@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Diceroll
+Comment=Roll the bones
+Exec=diceroll
+Icon=gg.vlad.Diceroll
+Categories=Game;

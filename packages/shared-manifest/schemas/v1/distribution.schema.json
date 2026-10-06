@@ -336,7 +336,7 @@
       ]
     },
     "outlet_direct": {
-      "description": "The identity fields a direct outlet reads: platforms, homebrewCask, homebrewFormula, scoop. Other keys are ignored.",
+      "description": "The identity fields a direct outlet reads: platforms, homebrewCask, homebrewFormula, homebrewTap, scoop, scoopBucket. Other keys are ignored.",
       "type": "object",
       "properties": {
         "kind": {
@@ -351,8 +351,14 @@
         "homebrewFormula": {
           "$ref": "#/$defs/homebrewFormula"
         },
+        "homebrewTap": {
+          "$ref": "#/$defs/homebrewTap"
+        },
         "scoop": {
           "$ref": "#/$defs/scoop"
+        },
+        "scoopBucket": {
+          "$ref": "#/$defs/scoopBucket"
         },
         "listing": {
           "$ref": "#/$defs/listing"
@@ -801,6 +807,16 @@
       "description": "The Homebrew formula name, for runtime outlet detection (an executable under Cellar/<formula>/).",
       "type": "string",
       "pattern": "^[a-z0-9][a-z0-9.@+_-]{0,99}$"
+    },
+    "homebrewTap": {
+      "description": "The product's own Homebrew tap, <owner>/homebrew-<name> on GitHub (A-18i): the PR plane commits the cask there. Never a repository of the Homebrew organisation.",
+      "type": "string",
+      "pattern": "^(?![Hh][Oo][Mm][Ee][Bb][Rr][Ee][Ww]/)[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})/homebrew-[A-Za-z0-9._-]{1,90}$"
+    },
+    "scoopBucket": {
+      "description": "The product's own Scoop bucket, <owner>/<repo> on GitHub (A-18i): the PR plane commits the feed's manifest there. Never a repository of the ScoopInstaller organisation.",
+      "type": "string",
+      "pattern": "^(?![Ss][Cc][Oo][Oo][Pp][Ii][Nn][Ss][Tt][Aa][Ll][Ll][Ee][Rr]/)[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})/(?!\\.)[A-Za-z0-9._-]{1,100}$"
     },
     "msixPublisher": {
       "description": "The MSIX package Publisher (P3-09): the signing certificate's subject DN exactly as the package manifest states it.",

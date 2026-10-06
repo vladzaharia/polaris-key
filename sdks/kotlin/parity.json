@@ -53,7 +53,7 @@
           "reason": "dependency"
         }
       ],
-      "note": "Android: :android's AndroidKeystoreStore, the token and device id wrapped by :platform's SecureStore (an AndroidKeyStore AES-256-GCM key, StrongBox where present), the verified cache in a noBackup file; a FileStore's token and device id migrate in, a failed Keystore call throws and status() reports keyring-error, a lost key drops the token and keeps the device id (AndroidKeystoreStoreTest). The JVM keeps P6-06's 0600 FileStore, which supports() reports as dependency."
+      "note": "Android: :android's AndroidKeystoreStore, the token and device id wrapped by :platform's SecureStore (an AndroidKeyStore AES-256-GCM key, StrongBox where present), the verified cache in a noBackup file; a FileStore's token and device id migrate in, a failed Keystore call throws and status() reports keyring-error, a lost key drops the token and keeps the device id (AndroidKeystoreStoreTest). JVM desktop (UK-40): :core's KeyringStore, Python's KeyringStore ported (the token in the OS keyring, Keychain, Credential Manager or Secret Service through java-keyring, service pkey:<product>; a verified write, else the 0600 file with status() saying keyring-error; file-first reads; a FileStore token moves in), wired by PolarisKeyDesktop; the storage contract runs against the real OS keyring on macOS, Windows and Linux in the kotlin-desktop CI matrix (KeyringStoreTest, PolarisKeyDesktopTest). java-keyring is compileOnly: without it, or with no reachable keyring (a headless Linux session with no Secret Service), the token stays in the 0600 file and supports() reports dependency, as it does for a plain FileStore."
     },
     "license.gate": {
       "status": "implemented"
@@ -162,17 +162,11 @@
     },
     "update.driver": {
       "status": "implemented",
-      "except": [
-        {
-          "runtime": "jvm",
-          "reason": "runtime"
-        }
-      ],
-      "note": ":update's InstallDriver port; :android's PlayInstallDriver (play: In-App Updates, flexible or immediate by the decision's urgency and optionally Play's priority and staleness, completing a downloaded update, staging-aware) and DirectInstallDriver (direct: the verified record's one payload downloaded to private storage, size and SHA-256 checked, then :platform's verified PackageInstaller session, every refusal surfaced as swap-refused), against FakeAppUpdateManager and an installer fake (PlayInstallDriverTest, DirectInstallDriverTest); the flavour boundary holds (tools/check_flavours.sh). A JVM desktop build has none: JvmInstallDriver throws the typed runtime N/A. The internal-track and self-update device runs are the owner's (P6-12 brief)."
+      "note": ":update's InstallDriver port; :android's PlayInstallDriver (play: In-App Updates, flexible or immediate by the decision's urgency and optionally Play's priority and staleness, completing a downloaded update, staging-aware) and DirectInstallDriver (direct: the verified record's one payload downloaded to private storage, size and SHA-256 checked, then :platform's verified PackageInstaller session, every refusal surfaced as swap-refused), against FakeAppUpdateManager and an installer fake (PlayInstallDriverTest, DirectInstallDriverTest); the flavour boundary holds (tools/check_flavours.sh). JVM desktop (UK-40): :update's DesktopInstallDriver, the default UpdateClient.install uses on a JVM and PolarisKeyDesktop wires: the verified record's one payload for the decision's build, fetched resumably by OkHttpArtifactFetch (the minimal fetch until SP-K13's release.fetch; the bearer kept to the control plane's origin), size and SHA-256 checked before the OS opens it (open, ShellExec, xdg-open or an AppImage run), a mismatch opening nothing (DesktopInstallDriverTest). The internal-track and self-update device runs are the owner's (P6-12 brief)."
     },
     "update.bootguard": {
       "status": "implemented",
-      "note": ":update's BootGuard over the host's UpdateSlots port (Godot P3-10's semantics: apply-staged and roll-back with skipVersion, failedBoots counted while an applied update is active, the stage-matrix v2 confirmation rows; BootGuardTest); the launch decision is stage-matrix.json's guard and confirm rows (StageMatrixTest). With no slots (a platform-installed Android app, a JVM desktop build) nothing is counted."
+      "note": ":update's BootGuard over the host's UpdateSlots port (Godot P3-10's semantics: apply-staged and roll-back with skipVersion, failedBoots counted while an applied update is active, the stage-matrix v2 confirmation rows; BootGuardTest); the launch decision is stage-matrix.json's guard and confirm rows (StageMatrixTest). The default JVM slots (UK-40): DirUpdateSlots (staged, current and previous directories swapped by renames that recover from an interruption) and FileBootGuardStore, wired by PolarisKeyDesktop.bootGuard (DirUpdateSlotsTest). With no slots (a platform-installed Android app) nothing is counted."
     },
     "outlet.detect": {
       "status": "implemented",

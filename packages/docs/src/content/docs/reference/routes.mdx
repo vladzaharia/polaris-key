@@ -66,6 +66,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/{product}/distribution/obtainium/{channel}.json` | distribution | Obtainium app config for one channel |
 | GET | `/{product}/distribution/packs/{pack}/{variant}/payload/{sha256}` | distribution | Download a pack's decoded container payload (Compression Dictionary Transport) |
 | HEAD | `/{product}/distribution/packs/{pack}/{variant}/payload/{sha256}` | distribution | The headers of a pack payload answer |
+| GET | `/{product}/distribution/pr/{store}` | distribution | A PR-plane generator's inputs (CI) |
 | POST | `/{product}/distribution/report` | distribution | Report availability, a submission state or a signing key (CI) |
 | POST | `/{product}/distribution/rollouts/{outlet}/{channel}/complete` | distribution | Complete an outlet rollout (CI) |
 | POST | `/{product}/distribution/rollouts/{outlet}/{channel}/halt` | distribution | Halt an outlet rollout (CI) |
@@ -101,6 +102,28 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/media/{product}/{asset}` | portal | A product's listing art, served same-origin |
 | GET | `https://pkg.plrs.im/` | registry | The registry host's landing page (registry host only) |
 | HEAD | `https://pkg.plrs.im/` | registry | The registry host's landing page, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/cargo/{owner}/{prefix1}/{prefix2}/{name}` | registry | Cargo sparse-index file, a longer name under `<characters 1-2>/<characters 3-4>/` (registry host only) |
+| HEAD | `https://pkg.plrs.im/cargo/{owner}/{prefix1}/{prefix2}/{name}` | registry | Cargo sparse-index file, a longer name under `<characters 1-2>/<characters 3-4>/`, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/cargo/{owner}/1/{name}` | registry | Cargo sparse-index file, a one-character name under `1/` (registry host only) |
+| HEAD | `https://pkg.plrs.im/cargo/{owner}/1/{name}` | registry | Cargo sparse-index file, a one-character name under `1/`, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/cargo/{owner}/2/{name}` | registry | Cargo sparse-index file, a two-character name under `2/` (registry host only) |
+| HEAD | `https://pkg.plrs.im/cargo/{owner}/2/{name}` | registry | Cargo sparse-index file, a two-character name under `2/`, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/cargo/{owner}/3/{first}/{name}` | registry | Cargo sparse-index file, a three-character name under `3/<first character>/` (registry host only) |
+| HEAD | `https://pkg.plrs.im/cargo/{owner}/3/{first}/{name}` | registry | Cargo sparse-index file, a three-character name under `3/<first character>/`, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/cargo/{owner}/config.json` | registry | Cargo sparse-registry configuration (registry host only) |
+| HEAD | `https://pkg.plrs.im/cargo/{owner}/config.json` | registry | Cargo sparse-registry configuration, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/cargo/{owner}/files/{sha256}/{file}` | registry | Cargo crate download (registry host only) |
+| HEAD | `https://pkg.plrs.im/cargo/{owner}/files/{sha256}/{file}` | registry | Cargo crate download, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/go/{owner}/{module}/@latest` | registry | A Go module's latest version info, the proxy's @latest (registry host only) |
+| HEAD | `https://pkg.plrs.im/go/{owner}/{module}/@latest` | registry | A Go module's latest version info, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/go/{owner}/{module}/@v/{version}.info` | registry | A Go module version's info, or a channel's canonical version (registry host only) |
+| HEAD | `https://pkg.plrs.im/go/{owner}/{module}/@v/{version}.info` | registry | A Go module version's info, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/go/{owner}/{module}/@v/{version}.mod` | registry | A Go module version's go.mod (registry host only) |
+| HEAD | `https://pkg.plrs.im/go/{owner}/{module}/@v/{version}.mod` | registry | A Go module version's go.mod, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/go/{owner}/{module}/@v/{version}.zip` | registry | A Go module version's module zip (registry host only) |
+| HEAD | `https://pkg.plrs.im/go/{owner}/{module}/@v/{version}.zip` | registry | A Go module version's module zip, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/go/{owner}/{module}/@v/list` | registry | A Go module's versions, the proxy's @v/list (registry host only) |
+| HEAD | `https://pkg.plrs.im/go/{owner}/{module}/@v/list` | registry | A Go module's versions, headers only (registry host only) |
 | GET | `https://pkg.plrs.im/godot/{owner}/asset-library/api/asset/{id}` | registry | Godot ≤ 4.6 Asset Library: one asset (registry host only) |
 | HEAD | `https://pkg.plrs.im/godot/{owner}/asset-library/api/asset/{id}` | registry | Godot ≤ 4.6 Asset Library: one asset, headers only (registry host only) |
 | GET | `https://pkg.plrs.im/godot/{owner}/asset-library/api/asset` | registry | Godot ≤ 4.6 Asset Library: search (registry host only) |
@@ -151,20 +174,26 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | HEAD | `https://pkg.plrs.im/godot/{owner}/t/{token}/store/api/v1/tags/` | registry | As `/godot/\{owner\}/store/api/v1/tags/` through a Godot URL token, headers only (registry host only) |
 | GET | `https://pkg.plrs.im/maven/{owner}/{groupPath}/{artifactId}/{version}/{file}` | registry | A file of a Maven publication, or its checksum sidecar (registry host only) |
 | HEAD | `https://pkg.plrs.im/maven/{owner}/{groupPath}/{artifactId}/{version}/{file}` | registry | A file of a Maven publication, headers only (registry host only) |
+| PUT | `https://pkg.plrs.im/maven/{owner}/{groupPath}/{artifactId}/{version}/{file}` | registry | Deploy a file of a Maven version (registry host only) |
 | GET | `https://pkg.plrs.im/maven/{owner}/{groupPath}/{artifactId}/maven-metadata.xml.{checksum}` | registry | A checksum sidecar of maven-metadata.xml (registry host only) |
 | HEAD | `https://pkg.plrs.im/maven/{owner}/{groupPath}/{artifactId}/maven-metadata.xml.{checksum}` | registry | A checksum sidecar of maven-metadata.xml, headers only (registry host only) |
+| PUT | `https://pkg.plrs.im/maven/{owner}/{groupPath}/{artifactId}/maven-metadata.xml.{checksum}` | registry | A checksum of an uploaded maven-metadata.xml (registry host only) |
 | GET | `https://pkg.plrs.im/maven/{owner}/{groupPath}/{artifactId}/maven-metadata.xml` | registry | Maven artifact metadata, maven-metadata.xml (registry host only) |
 | HEAD | `https://pkg.plrs.im/maven/{owner}/{groupPath}/{artifactId}/maven-metadata.xml` | registry | Maven artifact metadata, headers only (registry host only) |
+| PUT | `https://pkg.plrs.im/maven/{owner}/{groupPath}/{artifactId}/maven-metadata.xml` | registry | Finish a Maven deploy (registry host only) |
 | GET | `https://pkg.plrs.im/npm/{owner}/{escapedName}/-/{tarball}` | registry | npm tarball, escaped name (registry host only) |
 | HEAD | `https://pkg.plrs.im/npm/{owner}/{escapedName}/-/{tarball}` | registry | npm tarball, escaped name, headers only (registry host only) |
 | GET | `https://pkg.plrs.im/npm/{owner}/{escapedName}` | registry | npm packument (registry host only) |
 | HEAD | `https://pkg.plrs.im/npm/{owner}/{escapedName}` | registry | npm packument, headers only (registry host only) |
+| PUT | `https://pkg.plrs.im/npm/{owner}/{escapedName}` | registry | npm publish (registry host only) |
 | GET | `https://pkg.plrs.im/npm/{owner}/{scope}/{name}/-/{tarball}` | registry | npm tarball (registry host only) |
 | HEAD | `https://pkg.plrs.im/npm/{owner}/{scope}/{name}/-/{tarball}` | registry | npm tarball, headers only (registry host only) |
 | GET | `https://pkg.plrs.im/npm/{owner}/{scope}/{name}` | registry | npm packument, unescaped name (registry host only) |
 | HEAD | `https://pkg.plrs.im/npm/{owner}/{scope}/{name}` | registry | npm packument, unescaped name, headers only (registry host only) |
+| PUT | `https://pkg.plrs.im/npm/{owner}/{scope}/{name}` | registry | npm publish (registry host only) |
 | GET | `https://pkg.plrs.im/pypi/{owner}/files/{sha256}/{filename}` | registry | PyPI file or PEP 658 metadata (registry host only) |
 | HEAD | `https://pkg.plrs.im/pypi/{owner}/files/{sha256}/{filename}` | registry | PyPI file or PEP 658 metadata, headers only (registry host only) |
+| POST | `https://pkg.plrs.im/pypi/{owner}/legacy/` | registry | twine upload, the legacy upload API (registry host only) |
 | GET | `https://pkg.plrs.im/pypi/{owner}/simple/{project}/` | registry | PyPI project page (registry host only) |
 | HEAD | `https://pkg.plrs.im/pypi/{owner}/simple/{project}/` | registry | PyPI project page, headers only (registry host only) |
 | GET | `https://pkg.plrs.im/pypi/{owner}/simple/` | registry | PyPI project list (registry host only) |
@@ -175,6 +204,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | HEAD | `https://pkg.plrs.im/swift/{owner}/{scope}/{name}/{version}/Package.swift` | registry | A Swift package release's manifest, headers only (registry host only) |
 | GET | `https://pkg.plrs.im/swift/{owner}/{scope}/{name}/{version}` | registry | A Swift package release's metadata (registry host only) |
 | HEAD | `https://pkg.plrs.im/swift/{owner}/{scope}/{name}/{version}` | registry | A Swift package release's metadata, headers only (registry host only) |
+| PUT | `https://pkg.plrs.im/swift/{owner}/{scope}/{name}/{version}` | registry | swift package-registry publish (registry host only) |
 | GET | `https://pkg.plrs.im/swift/{owner}/{scope}/{name}` | registry | List a Swift package's releases (registry host only) |
 | HEAD | `https://pkg.plrs.im/swift/{owner}/{scope}/{name}` | registry | List a Swift package's releases, headers only (registry host only) |
 | GET | `https://pkg.plrs.im/swift/{owner}/identifiers` | registry | Swift package identifiers for a repository URL (registry host only) |
@@ -182,8 +212,15 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `https://pkg.plrs.im/swift/{owner}/login` | registry | SwiftPM registry login (registry host only) |
 | GET | `https://pkg.plrs.im/v2/{owner}/{repository}/blobs/{digest}` | registry | OCI blob by digest, with Range (registry host only) |
 | HEAD | `https://pkg.plrs.im/v2/{owner}/{repository}/blobs/{digest}` | registry | OCI blob existence and size (registry host only) |
+| GET | `https://pkg.plrs.im/v2/{owner}/{repository}/blobs/uploads/{uuid}` | registry | A blob upload's progress (registry host only) |
+| HEAD | `https://pkg.plrs.im/v2/{owner}/{repository}/blobs/uploads/{uuid}` | registry | A blob upload's progress, headers only (registry host only) |
+| PUT | `https://pkg.plrs.im/v2/{owner}/{repository}/blobs/uploads/{uuid}` | registry | Finish a blob upload (registry host only) |
+| PATCH | `https://pkg.plrs.im/v2/{owner}/{repository}/blobs/uploads/{uuid}` | registry | Upload one chunk of a blob, in order (registry host only) |
+| DELETE | `https://pkg.plrs.im/v2/{owner}/{repository}/blobs/uploads/{uuid}` | registry | Cancel a blob upload (registry host only) |
+| POST | `https://pkg.plrs.im/v2/{owner}/{repository}/blobs/uploads/` | registry | Start a blob upload, upload a blob whole, or mount one (registry host only) |
 | GET | `https://pkg.plrs.im/v2/{owner}/{repository}/manifests/{reference}` | registry | OCI manifest or image index by tag or digest (registry host only) |
 | HEAD | `https://pkg.plrs.im/v2/{owner}/{repository}/manifests/{reference}` | registry | OCI manifest existence check (registry host only) |
+| PUT | `https://pkg.plrs.im/v2/{owner}/{repository}/manifests/{reference}` | registry | Push an OCI manifest or image index (registry host only) |
 | GET | `https://pkg.plrs.im/v2/{owner}/{repository}/tags/list` | registry | OCI tag list, paginated (registry host only) |
 | HEAD | `https://pkg.plrs.im/v2/{owner}/{repository}/tags/list` | registry | OCI tag list, headers only (registry host only) |
 | GET | `https://pkg.plrs.im/v2/` | registry | OCI distribution base endpoint (registry host only) |

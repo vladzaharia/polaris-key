@@ -322,6 +322,7 @@ const TABLE_OWNERS = {
     "product_secrets",
     "outlet_credentials",
     "devices",
+    "license_refusals",
     "device_fingerprints",
     "device_facts",
     "audit",
@@ -387,6 +388,7 @@ const TABLE_OWNERS = {
     "release_delegated_records",
     "release_lazy_deltas",
     "release_packages",
+    "release_native_uploads",
   ],
   distribution: [
     "dist_outlets",

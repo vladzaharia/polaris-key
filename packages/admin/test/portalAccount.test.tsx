@@ -30,7 +30,8 @@ describe("Account v1 (PX-07)", () => {
     ).toBeTruthy();
     const methods = screen.getByRole("region", { name: "Sign-in methods" });
     expect(within(methods).getByText(ACCOUNT.email)).toBeTruthy();
-    expect(within(methods).getByText("Primary")).toBeTruthy();
+    // Neutral facts are text, never a chip (EXPERIENCE §11.3).
+    expect(within(methods).queryByText("Primary")).toBeNull();
     const nav = screen.getByRole("navigation", { name: "On this page" });
     expect(
       within(nav)

@@ -421,6 +421,29 @@ const NAMESPACE_COPY: Record<
       placeholder: "acme",
     },
   },
+  cargo: {},
+  go: {
+    modulePrefixes: {
+      row: "Module paths",
+      label: "Module prefixes",
+      help: "Every module path must equal or sit under one of these prefixes, like go.acme.dev. Clients name the same prefixes in GONOSUMDB.",
+      placeholder: "go.acme.dev",
+    },
+  },
+};
+
+/** How the Namespace section names a feed whose namespace is the owner itself (no fields). */
+const OWNER_NAMESPACE_COPY: Partial<
+  Record<FeedEcosystem, { label: string; help: string }>
+> = {
+  oci: {
+    label: "Repositories",
+    help: "Every repository sits under the owner's path; there is nothing else to claim.",
+  },
+  cargo: {
+    label: "Crates",
+    help: "Every crate sits in the owner's own index, and Cargo takes a crate from it only for a dependency that names it with registry =. There is nothing else to claim.",
+  },
 };
 
 /**
@@ -514,8 +537,11 @@ function NamespaceSection({
       >
         {fields.length === 0 ? (
           <SettingsRow
-            label="Repositories"
-            help="Every repository sits under the owner's path; there is nothing else to claim."
+            label={OWNER_NAMESPACE_COPY[eco]?.label ?? "Packages"}
+            help={
+              OWNER_NAMESPACE_COPY[eco]?.help ??
+              "Every package sits under the owner's path; there is nothing else to claim."
+            }
           >
             <span className="font-mono text-sm">{owner}/…</span>
           </SettingsRow>

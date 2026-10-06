@@ -70,6 +70,7 @@ import {
 } from "./devices.js";
 import { openManagedPayload, resolveMergedPayload } from "./payload.js";
 import { injectAdminPolicy, tighterMax, tighterMin } from "./entitlements.js";
+import { logRefusal, type RefusalReason, type WaitUntil } from "./refusals.js";
 
 export type AuthzError =
   | { error: "unauthorized" }
@@ -294,16 +295,45 @@ export async function authorizeDevice(
     /** I-05: the pairwise subject of an ACCOUNT sign-in activating this device. Key entry, enrol
      *  and every licence-only path never pass it (plans/I-04.md §6.2). */
     subject?: string | null;
+    /** UX-15: the request's `waitUntil`, so the refusal log is written after the answer. Absent,
+     *  the (total, never-throwing) write runs inline before the refusal is returned. */
+    waitUntil?: WaitUntil;
   } = {},
 ): Promise<{ token: string; device: DeviceRow } | AuthzError> {
-  if (!licenseUsable(license, now)) return { error: "unauthorized" };
+  // UX-15: every refusal below is logged (`core/refusals.ts`) for the console's licence Status
+  // health line, the Refusing devices facet and the attention model. Logging never changes the
+  // error returned, and with a `waitUntil` it is not on the response path at all.
+  const refuse = async <E extends AuthzError>(
+    reason: RefusalReason,
+    error: E,
+  ): Promise<E> => {
+    await logRefusal(
+      db,
+      {
+        product: product.slug,
+        licenseId: license.id,
+        deviceId,
+        reason,
+        at: now,
+        platform: opts.platform ?? null,
+        arch: opts.arch ?? null,
+        userAgent: opts.userAgent ?? null,
+      },
+      opts.waitUntil,
+    );
+    return error;
+  };
+
+  if (!licenseUsable(license, now))
+    return refuse("license_unusable", { error: "unauthorized" });
 
   const mode = await tierFingerprintMode(db, product, license.tier_id);
   const presented = opts.fingerprint ?? null;
 
   // `strict` is the only mode that makes a fingerprint mandatory, so clients that predate
   // fingerprinting keep working everywhere else (recorded `unverified` by `bindDevice`).
-  if (mode === "strict" && !presented) return { error: "fingerprint_required" };
+  if (mode === "strict" && !presented)
+    return refuse("fingerprint_required", { error: "fingerprint_required" });
 
   // Core owns the hardware reconciliation and the device-row bookkeeping it implies: retiring
   // a swapped binding, and coalescing a re-registered machine's stale device id. It runs
@@ -319,7 +349,7 @@ export async function authorizeDevice(
     now,
     { mode, presented },
   );
-  if ("error" in reconciled) return reconciled;
+  if ("error" in reconciled) return refuse("hardware_mismatch", reconciled);
   const { isNewAuthorization } = reconciled;
   if (isNewAuthorization) {
     // The seat limit is an ENTITLEMENT, resolved through the same pipeline the license
@@ -349,7 +379,11 @@ export async function authorizeDevice(
       seatActiveSince(now),
     );
     if (limit <= 0 || count >= limit) {
-      return { error: "device_limit", limit, deviceCount: count };
+      return refuse("device_limit", {
+        error: "device_limit",
+        limit,
+        deviceCount: count,
+      });
     }
     if (
       !(await claimDeviceSeat(
@@ -361,7 +395,7 @@ export async function authorizeDevice(
         now,
       ))
     ) {
-      return {
+      return refuse("device_limit", {
         error: "device_limit",
         limit,
         deviceCount: await countActiveDevices(
@@ -370,7 +404,7 @@ export async function authorizeDevice(
           license.id,
           seatActiveSince(now),
         ),
-      };
+      });
     }
   }
 

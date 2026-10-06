@@ -1,0 +1,67 @@
+{
+  "files": [
+    {
+      "name": "sha256:b07c1fded0c0d0038d595003922dd3eae4a83a778766a0890c184c8775acc9fc",
+      "type": "oci-index",
+      "sha256": "b07c1fded0c0d0038d595003922dd3eae4a83a778766a0890c184c8775acc9fc",
+      "size": 491,
+      "mediaType": "application/vnd.oci.image.index.v1+json"
+    },
+    {
+      "name": "sha256:7403a6788ff2a825b71ad73c716ba3ddc102a9adc6af1fa684945926eeae278f",
+      "type": "oci-manifest",
+      "sha256": "7403a6788ff2a825b71ad73c716ba3ddc102a9adc6af1fa684945926eeae278f",
+      "size": 400,
+      "mediaType": "application/vnd.oci.image.manifest.v1+json"
+    },
+    {
+      "name": "sha256:54476896577d8f08cbacecedd883a60488e050edb883499eb175231103b79b63",
+      "type": "oci-blob",
+      "sha256": "54476896577d8f08cbacecedd883a60488e050edb883499eb175231103b79b63",
+      "size": 151,
+      "mediaType": "application/vnd.oci.image.config.v1+json"
+    },
+    {
+      "name": "sha256:3164bba23d8d5f6a13ed5b950d8aa50020b6581bb8b5594711619b3c8d649fea",
+      "type": "oci-blob",
+      "sha256": "3164bba23d8d5f6a13ed5b950d8aa50020b6581bb8b5594711619b3c8d649fea",
+      "size": 25,
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip"
+    },
+    {
+      "name": "sha256:8318e8284a8795169c3656d5f36890d07b852b86e9186d5d3d4dbe947ed0c89e",
+      "type": "oci-manifest",
+      "sha256": "8318e8284a8795169c3656d5f36890d07b852b86e9186d5d3d4dbe947ed0c89e",
+      "size": 400,
+      "mediaType": "application/vnd.oci.image.manifest.v1+json"
+    },
+    {
+      "name": "sha256:e204556652a9163ca073af53d606c74e48354698ef97e648a430105bc48574a1",
+      "type": "oci-blob",
+      "sha256": "e204556652a9163ca073af53d606c74e48354698ef97e648a430105bc48574a1",
+      "size": 151,
+      "mediaType": "application/vnd.oci.image.config.v1+json"
+    },
+    {
+      "name": "sha256:b1e75288f70ca9f504a01c61d7058a0f398214029e7b232bd1df8f888edb108e",
+      "type": "oci-blob",
+      "sha256": "b1e75288f70ca9f504a01c61d7058a0f398214029e7b232bd1df8f888edb108e",
+      "size": 25,
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip"
+    }
+  ],
+  "metadata": {
+    "name": "tools/app",
+    "version": "2.0.0",
+    "root": "sha256:b07c1fded0c0d0038d595003922dd3eae4a83a778766a0890c184c8775acc9fc",
+    "mediaType": "application/vnd.oci.image.index.v1+json",
+    "platforms": [
+      "linux/amd64",
+      "linux/arm64"
+    ]
+  },
+  "source": {
+    "kind": "registry",
+    "via": "oci-push"
+  }
+}

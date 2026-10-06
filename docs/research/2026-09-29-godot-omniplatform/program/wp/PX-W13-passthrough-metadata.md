@@ -64,7 +64,7 @@ recorded here.
   per-call name always wins.
 - **Validator run over `products/*`** (both modes): `djdl` and the repo's `.pkey/` (the system
   product `polaris-key`, exempt) report no display-name finding.
-- **Migration** `0074_app_consent_scope.sql` (main's highest was `0073`); `account_product_grants`
+- **Migration** `0078_app_consent_scope.sql` (renumbered from `0074` after main took `0074`–`0077`); `account_product_grants`
   keeps its name (Q6), and a merge carries `scope_hash` with the consent.
 
 ## Goal

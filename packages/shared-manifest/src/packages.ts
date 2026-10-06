@@ -15,7 +15,9 @@
  * below are derived from `PACKAGE_ECOSYSTEM_RULES`.
  */
 
+import { CARGO_PACKAGE_RULES } from "./ecosystems/cargo.js";
 import { GODOT_PACKAGE_RULES } from "./ecosystems/godot.js";
+import { GO_PACKAGE_RULES } from "./ecosystems/go.js";
 import { MAVEN_PACKAGE_RULES } from "./ecosystems/maven.js";
 import { NPM_PACKAGE_RULES } from "./ecosystems/npm.js";
 import { OCI_PACKAGE_RULES } from "./ecosystems/oci.js";
@@ -28,6 +30,11 @@ import { SWIFT_PACKAGE_RULES } from "./ecosystems/swift.js";
 
 export { npmScope } from "./ecosystems/npm.js";
 export {
+  GO_MODULE_PATH,
+  goMajorProblem,
+  goPathMajor,
+} from "./ecosystems/go.js";
+export {
   namespaceIsEmpty,
   namespaceStrings,
   type PackageEcosystemRules,
@@ -35,8 +42,9 @@ export {
 } from "./ecosystems/rules.js";
 
 /**
- * The ecosystems a package feed serves (tier 1). Open for `cargo`, `go` and `nuget` in tier 3:
- * each new ecosystem is its own rule-9 change (validator, schema, mutation rows).
+ * The ecosystems a package feed serves: the six of tier 1, then tier 3's `cargo` (F-30) and `go`
+ * (F-31). Open for `nuget`: each new ecosystem is its own rule-9 change (validator, schema,
+ * mutation rows).
  */
 export const PACKAGE_ECOSYSTEMS = [
   "npm",
@@ -45,6 +53,8 @@ export const PACKAGE_ECOSYSTEMS = [
   "maven",
   "oci",
   "godot",
+  "cargo",
+  "go",
 ] as const;
 export type PackageEcosystem = (typeof PACKAGE_ECOSYSTEMS)[number];
 
@@ -94,6 +104,8 @@ export const PACKAGE_ECOSYSTEM_RULES: {
   maven: MAVEN_PACKAGE_RULES,
   oci: OCI_PACKAGE_RULES,
   godot: GODOT_PACKAGE_RULES,
+  cargo: CARGO_PACKAGE_RULES,
+  go: GO_PACKAGE_RULES,
 };
 
 function perEcosystem<T>(
