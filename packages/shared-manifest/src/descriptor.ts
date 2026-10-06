@@ -57,6 +57,7 @@ import {
   type ReleaseRecordDoc,
 } from "@polaris-key/protocol/release";
 import { MAX_BUILD_EMBEDS, MAX_CONTENT_PINS } from "@polaris-key/protocol/core";
+import { PRODUCT_SLUG_RE } from "./productSlug.js";
 import {
   VOCAB_TOKEN_PATTERN,
   type AppContent,
@@ -523,7 +524,9 @@ export function descriptorToRecord(
 
 // ── Field rules (mirrored as patterns in release-descriptor.schema.json) ─────
 
-const SLUG_RE = /^[a-z0-9-]{1,64}$/;
+// A product slug takes the one shape (P0-14) but not the reservations: a descriptor names an
+// existing product.
+const SLUG_RE = PRODUCT_SLUG_RE;
 const DELIVERABLE_RE = /^[a-z][a-z0-9-]*(\.[a-z0-9-]+)*$/;
 const VERSION_RE = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
 const SEMVER_RE =

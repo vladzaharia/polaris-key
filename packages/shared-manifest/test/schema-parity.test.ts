@@ -561,6 +561,32 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => (p(d).product.slug = "avatar"),
   },
   {
+    code: "invalid_slug",
+    file: "product",
+    schema: "rejects",
+    // P0-14: the shape starts with a letter or digit, as link-repo and the slug check ask.
+    mutate: (d) => (p(d).product.slug = "-acme"),
+  },
+  {
+    code: "reserved_slug",
+    file: "product",
+    schema: "rejects",
+    // P0-14: the admin API's one-segment actions under /manage/api/products/.
+    mutate: (d) => (p(d).product.slug = "kek"),
+  },
+  {
+    code: "reserved_slug",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).product.slug = "link-repo"),
+  },
+  {
+    code: "reserved_slug",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).product.slug = "slug-check"),
+  },
+  {
     code: "missing_name",
     file: "product",
     schema: "rejects",

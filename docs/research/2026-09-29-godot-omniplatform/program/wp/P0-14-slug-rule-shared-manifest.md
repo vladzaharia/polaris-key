@@ -110,6 +110,14 @@ schema that matches. This moves the rule there.
 - [ ] `PRODUCT_SLUG_PATTERN`, `PRODUCT_SLUG_MAX`, `PRODUCT_ROUTE_ACTIONS` and
       `isReservedProductSlug` are exported from `@polaris-key/shared-manifest`, and
       `packages/worker/src` defines no slug regex or route-action list of its own (grep).
+      _Correction (implementation, P0-14): read as the create and check paths
+      (`services/release/linkRepo.ts`, `admin/handlers/products.ts`), which now hold none. The
+      worker still parses a product segment out of paths and keys with its own patterns (the
+      router's `/([a-z0-9-]+)`, `core/blobs.ts` and `core/hostedAssets.ts` key shapes,
+      `distribution/bytes.ts`, and the existing-product lookups in
+      `platformStoreConnections.ts` / `platformStoreProvisioning.ts`). Those read existing
+      products, never create one, and several are embedded in compound path regexes, so they are
+      left as they are and filed as a follow-up._
 - [ ] `pkey validate` refuses a manifest whose slug starts with `-` (`invalid_slug`) or is `kek`,
       `link-repo` or `slug-check` (`reserved_slug`), and accepts what link-repo accepts (tests).
 - [ ] `schema-parity.test.ts` carries the new mutations, both `schema: "rejects"`, and passes.
