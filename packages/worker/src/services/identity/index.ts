@@ -55,12 +55,17 @@ export const identityService: ServiceDescriptor = {
     authorizeRegistration(ctx),
   /**
    * Licence deletion (`core/licenseDelete.ts`): the portal's links to the deleted licence go, so
-   * no account's library keeps a card for a licence that no longer exists.
+   * no account's library keeps a card for a licence that no longer exists, and so do its I-12
+   * relink rows (nothing is left to undo; the `audit` rows keep the history).
    */
   licenseDelete: {
     statements: ({ product, licenseId }) => [
       {
         sql: "DELETE FROM portal_license_links WHERE product = ? AND license_id = ?",
+        params: [product, licenseId],
+      },
+      {
+        sql: "DELETE FROM license_relinks WHERE product = ? AND license_id = ?",
         params: [product, licenseId],
       },
     ],
