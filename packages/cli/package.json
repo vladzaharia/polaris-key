@@ -33,9 +33,12 @@
     "@polaris-key/protocol": "workspace:*",
     "@polaris-key/zstd-wasm": "workspace:*",
     "sharp": "^0.35.4",
+    "smol-toml": "1.8.0",
     "yaml": "^2.6.1"
   },
   "devDependencies": {
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
     "esbuild": "0.28.1"
   }
 }

@@ -12,6 +12,15 @@ usable but a delightful experience for both our users and admins. The customer p
 speaking quite user friendly, but likely could be better as well. The admin console likely needs a
 bit more help."
 
+> **Setup, wizards and storefronts are specified in [SETUP.md](SETUP.md) (2026-10-05).** It adds
+> one wizard pattern for every setup, the unified Storefronts model (one catalogue, one page per
+> storefront, scoped to the platforms the product ships, Homebrew and the other channels as
+> storefronts, one Publish action per release), the Connect your app wizard, per-service setup and
+> the empty state of every console page. Its automation pass (same day) makes Polaris Key do every
+> setup step it can, so each wizard holds only the human steps and typed confirmations. It
+> supersedes §0.4 S5 and the UX-32 package, and adds Wave 5 (UX-50 to UX-71) to §13.3. Where the
+> two disagree on setup, SETUP.md wins.
+
 **What this document is.** The single experience spec for both apps: the console
 (`packages/admin/src/console`) and the customer portal (`packages/admin/src/portal`), plus the pages
 the Worker renders (`packages/worker/src/core/brandHtml.ts`) and the emails. It leads with
@@ -372,6 +381,10 @@ Mockup: storyboard frames 3–4.
 
 #### S5 · Storefronts (AS J5)
 
+> **Superseded by [SETUP.md §2](SETUP.md#2-storefronts-one-catalogue-one-page-per-storefront)
+> (2026-10-05):** one catalogue and one page per storefront, scoped to the product's platforms, with
+> A-18j's flow kept as the engine. The text below is kept for history.
+
 A-18j ships this journey's console: Distribution → **Storefronts** (a tile per registered store,
 rendered from the adapter declarations, with the capability strip) and **Add to storefronts**, a
 seven-step flow (Storefronts, Prerequisites, Listing, Assets, Plan, Run, Submit and release) whose
@@ -731,7 +744,7 @@ detail named in the last column); **defer** means the UX package waits for and b
 | UX-27 server-side activity                   | ST-04 (audit before/after), ST-07 history, ST-24          | Diffs and per-setting history                                        | **Defer** diffs to ST-04's columns; UX-27 keeps server search and the global Activity page                                                                  | Global Activity, Product facet, per-record history                                           |
 | UX-28 settings impact preview                | ST-07 (pre-save diff, confirm level), ST-16 (fan-out, L2) | The same preview                                                     | **Drop**                                                                                                                                                    | The impact line inside ST-07's diff for `policyBound` entries (§0.5 O4)                      |
 | UX-30 Platform Status and Settings           | ST-09 (Platform settings area)                            | What Platform → Settings holds                                       | **Narrowed**: UX-30 merges Deployment and Operations only; Platform Settings is ST-09's                                                                     | Status page (§0.5 O5)                                                                        |
-| UX-32 storefronts page                       | A-18j (shipped flow), ST-12, ST-13                        | The Storefronts page itself                                          | **Defer and evolve**: UX-32 builds on A-18j's page and flow                                                                                                 | Launch-path entry, inline app pick, tiles open App Store and Commerce, nav cleanup (§0.4 S5) |
+| UX-32 storefronts page                       | A-18j (shipped flow), ST-12, ST-13                        | The Storefronts page itself                                          | **Superseded** by SETUP.md's UX-52 to UX-58 (2026-10-05), which build on A-18j's routes                                                                     | Launch-path entry, inline app pick, tiles open App Store and Commerce, nav cleanup (§0.4 S5) |
 | UX-34 catalog entry form                     | LX-14 (`combine`, `entitlementKind`)                      | The same form                                                        | **Keep**, first; LX-14 adds its selects under the collapsed group                                                                                           | Progressive disclosure (§0.4 S4)                                                             |
 | UX-36 bulk license actions (new)             | ST-21 (`can()`), LX-14 (comp)                             | Capability checks, a bulk comp                                       | **Keep**; adds Comp in bulk after LX-14                                                                                                                     | §0.5 O8                                                                                      |
 | UX-03 portal pill sweep, UX-46 product page  | LX-15 (portal licensing)                                  | License card and product page                                        | **Keep**, sequenced: UX-03 now; UX-46 before LX-15, which adds What you own and the cards on its layout                                                     | §0.6 P4                                                                                      |
@@ -1419,16 +1432,16 @@ any file it edits (checked against §13.1), not merely that its dependencies are
 
 **Wave 3: console journeys on the shared layer**
 
-| Id    | Package                                                                                                                                                         | Size | Deps                                                                  |
-| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | --------------------------------------------------------------------- |
-| UX-21 | **Launch path**: Worker `setup` model (unifies Home and Overview), `LaunchPath`, step drawers, polling steps with live announcements, launched line             | XL   | UX-12, UX-20; links UX-23's panel and A-18j's flow                    |
-| UX-26 | **Remaining IA moves**: Content keys → Keys & secrets, Simulator → Compatibility tab, Update feed rename, Enrollment retired once ST-08/ST-12 hold its settings | M    | UX-11, ST-08, ST-12; docsLinks                                        |
-| UX-27 | **Server-side activity search** and global Activity with Product facet; diffs from ST-04's audit columns                                                        | L    | r2 (`Activity.tsx`), ST-04 for diffs                                  |
-| UX-30 | **Platform Status** (Deployment + Operations merged)                                                                                                            | M    | r2 (`platform.tsx`, `platformOperations.tsx`), UX-12                  |
-| UX-32 | **Storefronts evolution** on A-18j: launch-path entry, inline app pick in Prerequisites, tiles open App Store and Commerce, nav cleanup                         | M    | A-18j, UX-21; ST-12 (credentials editors), ST-13 (Listing in the hub) |
-| UX-35 | **Moments of delight** (`Celebration` + one-shot keys) for first license, catalog, release, store                                                               | S    | UX-21                                                                 |
-| UX-36 | **Bulk license actions**: Select all matching, Export, Extend, Change tier, Disable (L2 count), server job, result download                                     | L    | UX-07, ST-21; Comp in bulk after LX-14                                |
-| UX-37 | **Alerts from attention**: danger kinds delivered through ST-27's destinations                                                                                  | S    | UX-12, ST-27                                                          |
+| Id    | Package                                                                                                                                                                          | Size | Deps                                                                  |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | --------------------------------------------------------------------- |
+| UX-21 | **Launch path**: Worker `setup` model (unifies Home and Overview), `LaunchPath`, step drawers, polling steps with live announcements, launched line                              | XL   | UX-12, UX-20; links UX-23's panel and A-18j's flow                    |
+| UX-26 | **Remaining IA moves**: Content keys → Keys & secrets, Simulator → Compatibility tab, Update feed rename, Enrollment retired once ST-08/ST-12 hold its settings                  | M    | UX-11, ST-08, ST-12; docsLinks                                        |
+| UX-27 | **Server-side activity search** and global Activity with Product facet; diffs from ST-04's audit columns                                                                         | L    | r2 (`Activity.tsx`), ST-04 for diffs                                  |
+| UX-30 | **Platform Status** (Deployment + Operations merged)                                                                                                                             | M    | r2 (`platform.tsx`, `platformOperations.tsx`), UX-12                  |
+| UX-32 | _Superseded by Wave 5 (SETUP.md §2.14)._ **Storefronts evolution** on A-18j: launch-path entry, inline app pick in Prerequisites, tiles open App Store and Commerce, nav cleanup | M    | A-18j, UX-21; ST-12 (credentials editors), ST-13 (Listing in the hub) |
+| UX-35 | **Moments of delight** (`Celebration` + one-shot keys) for first license, catalog, release, store                                                                                | S    | UX-21                                                                 |
+| UX-36 | **Bulk license actions**: Select all matching, Export, Extend, Change tier, Disable (L2 count), server job, result download                                                      | L    | UX-07, ST-21; Comp in bulk after LX-14                                |
+| UX-37 | **Alerts from attention**: danger kinds delivered through ST-27's destinations                                                                                                   | S    | UX-12, ST-27                                                          |
 
 **Wave 4: portal journeys**
 
@@ -1440,7 +1453,38 @@ any file it edits (checked against §13.1), not merely that its dependencies are
 | UX-48 | **Account**: theme row, `DangerAction` + `ConfirmDialog`, Download my data, header Sign out removed                      | M    | UX-10, UX-13, PX-22 |
 | UX-49 | **Portal on the shared kit**: `Section`, `DescriptionList`, `Callout`, `Select`, `Input`, `ErrorState`, `CommandPalette` | M    | UX-10, PX-20        |
 
-**Dropped or merged** (§0.8): UX-24 (into LX-14 as Add seats…), UX-28 (into ST-07 and ST-16), the
+**Wave 5: setup wizards** ([SETUP.md](SETUP.md) §8, 2026-10-05; the owner request for wizards,
+per-storefront pages scoped to the builds, channels merged into storefronts and easy publishing)
+
+| Id    | Package                                                                                                                                       | Size | Deps                                         |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------- | ---- | -------------------------------------------- |
+| UX-50 | **Wizard kit**: `ui/wizard/` (page and drawer hosts, stepper, prerequisites, snippets, deep links, live waiting rows, done)                   | L    | UX-10                                        |
+| UX-51 | **Setup state**: `setup_state` table and `…/setup` routes (choices, skips, assertions, requests); per-wizard step states in the `setup` model | M    | none (UX-21 reads it)                        |
+| UX-52 | **Storefront catalogue declaration**: platforms, artifacts, family and plane per storefront; feed-only and link entries; conformance          | M    | A-18j                                        |
+| UX-53 | **Storefronts read model**: product platforms, scope, state machine, artifact fit; `distribution.intendedPlatforms`                           | L    | UX-52, A-18j, ST-03                          |
+| UX-54 | **Catalogue and storefront page shell**, Distribution nav to four items, legacy redirects                                                     | L    | UX-50, UX-53, A-18j, UX-31                   |
+| UX-55 | **Storefront wizard steps**, human only (Connect, In the vendor console, Merge, Go live) under Polaris Key's `AutoList`                       | XL   | UX-54, UX-51, UX-56, UX-68, UX-69; ST-12     |
+| UX-56 | **`renderOutletBlock`, `pkey storefront add` and `pkey storefronts sync`**                                                                    | M    | UX-52                                        |
+| UX-57 | **Storefront status pages** (Status, Releases, Listing, Commerce, Setup)                                                                      | L    | UX-54, UX-31, A-18m                          |
+| UX-58 | **Publish everywhere**: one dialog and route per release, batch confirmation                                                                  | L    | UX-57, UX-08, A-18j; security review         |
+| UX-59 | **SDK quick-start correctness now**: `pkg.plrs.im` registry line, missing languages, valid Godot resource, staged pins                        | S    | none                                         |
+| UX-60 | **Shared SDK setup generator** `renderSdkSetup` with goldens and per-SDK parse checks                                                         | M    | F-10; SP-02 amended                          |
+| UX-61 | **Connect your app** page, Verify, test license, release keys read, Overview's compact panel                                                  | L    | UX-50, UX-51, UX-60; ST-08                   |
+| UX-62 | **Publish from CI** drawer: two steps for you; environment, ruleset, trust policy and workflow by Polaris Key; `renderCiWorkflow`             | L    | UX-23, UX-50, UX-61                          |
+| UX-63 | **License and Config quick starts**, human steps only                                                                                         | L    | UX-50, UX-34; ST-12                          |
+| UX-64 | **Signing key, Update feed and Access** inline setup, scoped by platform                                                                      | M    | UX-50, UX-53, UX-29                          |
+| UX-65 | **Customer sign-in wizard**                                                                                                                   | M    | UX-50, ST-12, ST-14                          |
+| UX-66 | **Empty-state and service-off sweep** for every console page                                                                                  | L    | UX-50, UX-10, UX-09                          |
+| UX-67 | **Platform ready** checklist                                                                                                                  | M    | UX-50, UX-30, ST-09                          |
+| UX-68 | **Setup runner**: performs each storefront's automated actions after the Set up consent; prepares submissions; fills testing tracks           | L    | UX-51, UX-52, UX-53, A-18j                   |
+| UX-69 | **Live credential check** on paste for store keys and CI secrets                                                                              | M    | none                                         |
+| UX-70 | **GitHub write path**: the setup pull request, repositories, environment, ruleset, CI secrets                                                 | L    | owner action (App permissions); UX-51, UX-56 |
+| UX-71 | **CI installation-token exchange** for tap and bucket pull requests (no personal token)                                                       | M    | UX-70; security review                       |
+
+SETUP.md §8.3 lists the amendments this wave makes to UX-21, UX-23, UX-33, UX-09, PS-06, HA-06,
+ST-08, ST-12, SP-02 and UI-KITS.md §4.2, and §8.5 its sequencing.
+
+**Dropped or merged** (§0.8): UX-32 (superseded by Wave 5, SETUP.md §2.14), UX-24 (into LX-14 as Add seats…), UX-28 (into ST-07 and ST-16), the
 old UX-09 editor (into ST-12). UX-26 and UX-30 shrank to what S-18 does not cover.
 
 ### 13.4 Sequencing (nothing collides)
@@ -1499,6 +1543,8 @@ flowchart LR
   PX22[PX-22 Avatar] --> UX48 & UX13
 ```
 
+- **Wave 5** (setup wizards) is sequenced in [SETUP.md §8.5](SETUP.md#85-sequencing): UX-59, UX-51
+  and UX-60 start now; the storefront packages follow A-18j; the console packages follow UX-50.
 - **Start today, in parallel:** UX-01, UX-03, UX-04, UX-05, UX-06a, UX-08 and UX-15. Each edits
   only files that no in-flight branch touches (§13.3 lists them). UX-06a must stay off `src/api.ts`,
   `data/queries.ts` and `routes.ts`; UX-15 picks its migration number when it merges.
