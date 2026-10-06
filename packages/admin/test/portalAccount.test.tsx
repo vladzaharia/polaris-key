@@ -14,6 +14,7 @@ beforeEach(() => {
   window.history.replaceState(null, "", "/#/account");
   window.localStorage.clear();
   document.documentElement.removeAttribute("data-theme");
+  document.documentElement.removeAttribute("data-motion");
 });
 
 afterEach(() => {
@@ -52,15 +53,38 @@ describe("Account v1 (PX-07)", () => {
     const appearance = await screen.findByRole("region", {
       name: "Appearance",
     });
-    await userEvent.click(
-      within(appearance).getByRole("radio", { name: /Light/ }),
-    );
+    const theme = within(appearance).getByRole("radiogroup", { name: "Theme" });
+    await userEvent.click(within(theme).getByRole("radio", { name: /Light/ }));
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");
     expect(window.localStorage.getItem("pk-admin-theme")).toBe("light");
     await userEvent.click(
-      within(appearance).getByRole("radio", { name: /Match my device/ }),
+      within(theme).getByRole("radio", { name: /Match my device/ }),
     );
     expect(document.documentElement.hasAttribute("data-theme")).toBe(false);
+  });
+
+  it("turns motion down and back, on <html> and in storage (MO-12)", async () => {
+    mockFetch(signedIn());
+    renderPortal();
+    const appearance = await screen.findByRole("region", {
+      name: "Appearance",
+    });
+    const motion = within(appearance).getByRole("radiogroup", {
+      name: "Motion",
+    });
+    const system = within(motion).getByRole("radio", {
+      name: /Match my device/,
+    });
+    expect(system.getAttribute("aria-checked")).toBe("true");
+    await userEvent.click(
+      within(motion).getByRole("radio", { name: /Reduced/ }),
+    );
+    expect(document.documentElement.getAttribute("data-motion")).toBe("reduce");
+    expect(window.localStorage.getItem("pk-admin-motion")).toBe("reduce");
+    await userEvent.click(system);
+    expect(document.documentElement.hasAttribute("data-motion")).toBe(false);
+    expect(window.localStorage.getItem("pk-admin-motion")).toBe("system");
+    expect(await axeViolations()).toEqual([]);
   });
 
   it("deletes the account only after the email is typed", async () => {
