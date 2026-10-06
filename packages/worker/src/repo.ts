@@ -172,12 +172,12 @@ export interface ProfileRow {
   payload_json: string;
   modified_by: string | null;
   modified_at: number;
-  /** ST-01b (0075): who owns the row. Absent on rows read before the migration ran. */
+  /** ST-01b (0078): who owns the row. Absent on rows read before the migration ran. */
   source?: RowSource;
 }
 
 /**
- * ST-01b (migrations/0075): who owns a tier or profile row. A resync upserts only `manifest` rows
+ * ST-01b (migrations/0078): who owns a tier or profile row. A resync upserts only `manifest` rows
  * and leaves `console` rows (created or edited in the console) alone.
  */
 export type RowSource = "manifest" | "console";
@@ -197,7 +197,7 @@ export interface TierRow {
   policy_fingerprint?: string | null;
   modified_by: string | null;
   modified_at: number;
-  /** ST-01b (0075): who owns the row. */
+  /** ST-01b (0078): who owns the row. */
   source?: RowSource;
 }
 
@@ -1694,18 +1694,18 @@ export function stmtSetAutoIssuePolicy(
 export async function setServices(
   db: Db,
   product: string,
-  policyJson: string | null,
+  servicesJson: string | null,
   source: "manifest" | "admin",
   at: number,
 ): Promise<void> {
-  const stmt = stmtSetServices(product, policyJson, source, at);
+  const stmt = stmtSetServices(product, servicesJson, source, at);
   await db.run(stmt.sql, ...stmt.params);
 }
 
 /** `setServices` as a statement, for a batch (ST-01b: the resync applies in one batch). */
 export function stmtSetServices(
   product: string,
-  policyJson: string | null,
+  servicesJson: string | null,
   source: "manifest" | "admin",
   at: number,
 ): DbStatement {
@@ -1713,12 +1713,12 @@ export function stmtSetServices(
     return {
       sql: `UPDATE products SET services_json = ?, modified_at = ?
          WHERE slug = ? AND COALESCE(services_source, 'manifest') = 'manifest'`,
-      params: [policyJson, at, product],
+      params: [servicesJson, at, product],
     };
   return {
     sql: `UPDATE products SET services_json = ?, services_source = 'admin',
        modified_at = ? WHERE slug = ?`,
-    params: [policyJson, at, product],
+    params: [servicesJson, at, product],
   };
 }
 

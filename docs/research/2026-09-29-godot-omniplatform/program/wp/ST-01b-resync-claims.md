@@ -57,7 +57,7 @@ owner delegated open questions to the lead, who takes the recommended option):**
 
 - **No `ON DELETE CASCADE`** on `product_settings.product`, unlike S-18 §4.3's sketch: R11-01
   (`test/attack/R11-data.test.ts`) pins that no product-scoped table declares `ON DELETE`, the same
-  correction ST-01a made. Migration `0075_product_settings.sql` (renumbered from 0074 at fix round 2: main took 0074 for `license_refusals`); `LATEST_MIGRATION` bumped.
+  correction ST-01a made. Migration `0078_product_settings.sql` (renumbered from 0074 at fix round 2: main took 0074 for `license_refusals`; renumbered again from 0075 at fix round 3: integ/feeds-2 took 0075-0077 for `release_native_uploads`, `cargo_registry_policy` and `go_registry_policy`); `LATEST_MIGRATION` bumped.
 - **The claim module is `packages/worker/src/core/settingsClaims.ts`** (Core-owned, beside ST-01a's
   `core/manifestSnapshot.ts`); `CLAIM_KEYS` lists the five column-backed keys. ST-04's resolver
   should read claims through it rather than querying `product_settings` again.

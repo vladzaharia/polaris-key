@@ -1,6 +1,6 @@
 /**
  * Console claims on manifest-declared settings (ST-01b; notes/S-18 §4.3, §4.5, owner decision 1:
- * model C). Core-owned, over `product_settings` (migration 0075).
+ * model C). Core-owned, over `product_settings` (migration 0078).
  *
  * A repo-linked product's `.pkey/` declares some settings that an operator may also edit in the
  * console; before ST-01b every resync overwrote those edits silently. Now:
@@ -15,7 +15,7 @@
  *
  * The five keys here are COLUMN-BACKED, permanently: the hot paths keep reading `products.*` and
  * the active `product_schema`, and the row holds only the claim (`value_json` stays NULL). Tiers
- * and profiles are claimed per row instead, through their own `source` column (migration 0075).
+ * and profiles are claimed per row instead, through their own `source` column (migration 0078).
  *
  * `core.adminGroup` is manifest-only (owner decision 1): never claimable, so it is not listed.
  *

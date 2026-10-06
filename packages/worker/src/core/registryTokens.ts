@@ -30,7 +30,7 @@
  * not a JWS and never reaches an SDK or the corpus (no wire change, §2).
  */
 
-import { PACKAGE_ECOSYSTEMS } from "@polaris-key/manifest";
+import { PACKAGE_ECOSYSTEMS, SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import type { Env } from "../env.js";
 import { secret } from "../env.js";
 import type { Db, DbStatement } from "../db/types.js";
@@ -43,6 +43,10 @@ import {
   MAX_LIVE_TOKENS_PER_LICENSE,
   MAX_LIVE_TOKENS_PER_OWNER,
   MINTABLE_REGISTRY_SCOPES,
+  OCI_PUSH_CI_SCOPE,
+  REGISTRY_PUBLISH_ECOSYSTEMS,
+  REGISTRY_PUBLISH_TOKEN_DEFAULT_DAYS,
+  REGISTRY_PUBLISH_TOKEN_MAX_DAYS,
   REGISTRY_PULL_TOKEN_TTL_SECONDS,
   REGISTRY_TOKEN_DEFAULT_DAYS,
   REGISTRY_TOKEN_LABEL_MAX,
@@ -165,11 +169,13 @@ export interface MintRegistryTokenInput {
   readonly label: string;
   /** `null` (or absent) = every feed of the owner. Ignored for a URL token (always godot). */
   readonly ecosystems?: readonly string[] | null;
-  /** Default 90 (30 for a URL token); 1 to 365. */
+  /** Default 90 (30 for a URL token, 7 for a publish token); 1 to 365 (30 for a publish token). */
   readonly expiresInDays?: number;
   readonly binding: RegistryTokenBinding;
   readonly licenseId?: string | null;
   readonly presentation?: RegistryTokenPresentation;
+  /** `["read"]` (the default) or `["publish"]` / `["read", "publish"]` (F-22): `publish` implies
+   *  `read` and is stored as both. */
   readonly scopes?: readonly string[];
   /** `admin:<sub>` or `portal:<accountId>`. */
   readonly createdBy: string;
@@ -206,6 +212,11 @@ function refuse(
  * token); licence-bound tokens are `read` only; a URL token is `read` and `["godot"]`; at most
  * 10 live tokens per licence and 500 per owner. The licence must exist within the owner. Returns
  * the plaintext once. Drops this isolate's resolution cache.
+ *
+ * A PUBLISH token (F-22, plans/F-20.md §9: "owner-bound only, implies read") is held to more:
+ * owner-bound, presented in a header, narrowed to named publish ecosystems (never "every feed"),
+ * and short-lived (1 to 30 days, default 7), so a native client's publish secret is as narrow
+ * and as brief as a person's own machine needs.
  */
 export async function mintRegistryToken(
   env: Env,
@@ -219,36 +230,42 @@ export async function mintRegistryToken(
     fields.push("label");
   const presentation: RegistryTokenPresentation =
     input.presentation === "url" ? "url" : "header";
-  const days =
-    input.expiresInDays ??
-    (presentation === "url"
-      ? REGISTRY_URL_TOKEN_DEFAULT_DAYS
-      : REGISTRY_TOKEN_DEFAULT_DAYS);
+  const requested = [...new Set(input.scopes ?? ["read"])];
   if (
-    !Number.isSafeInteger(days) ||
-    days < REGISTRY_TOKEN_MIN_DAYS ||
-    days > REGISTRY_TOKEN_MAX_DAYS
-  )
-    fields.push("expiresInDays");
-  const scopes = [...new Set(input.scopes ?? ["read"])];
-  if (
-    scopes.length === 0 ||
-    scopes.some(
+    requested.length === 0 ||
+    requested.some(
       (s) => !(MINTABLE_REGISTRY_SCOPES as readonly string[]).includes(s),
     )
   )
     fields.push("scopes");
+  const publish = requested.includes("publish");
+  // `publish` implies `read`: stored as both, sorted, so the row says what the token can do.
+  const scopes = publish ? ["publish", "read"] : requested;
+  const days =
+    input.expiresInDays ??
+    (publish
+      ? REGISTRY_PUBLISH_TOKEN_DEFAULT_DAYS
+      : presentation === "url"
+        ? REGISTRY_URL_TOKEN_DEFAULT_DAYS
+        : REGISTRY_TOKEN_DEFAULT_DAYS);
+  if (
+    !Number.isSafeInteger(days) ||
+    days < REGISTRY_TOKEN_MIN_DAYS ||
+    days > (publish ? REGISTRY_PUBLISH_TOKEN_MAX_DAYS : REGISTRY_TOKEN_MAX_DAYS)
+  )
+    fields.push("expiresInDays");
   let ecosystems: string[] | null = null;
   if (presentation === "url") ecosystems = ["godot"];
   else if (input.ecosystems !== undefined && input.ecosystems !== null) {
     const list = [...new Set(input.ecosystems)];
-    if (
-      list.length === 0 ||
-      list.some((e) => !(PACKAGE_ECOSYSTEMS as readonly string[]).includes(e))
-    )
+    const allowed: readonly string[] = publish
+      ? REGISTRY_PUBLISH_ECOSYSTEMS
+      : PACKAGE_ECOSYSTEMS;
+    if (list.length === 0 || list.some((e) => !allowed.includes(e)))
       fields.push("ecosystems");
     else ecosystems = [...list].sort();
-  }
+  } else if (publish) fields.push("ecosystems");
+  if (publish && presentation === "url") fields.push("presentation");
   const binding = input.binding;
   if (binding !== "owner" && binding !== "license") fields.push("binding");
   const licenseId = binding === "license" ? (input.licenseId ?? null) : null;
@@ -256,6 +273,14 @@ export async function mintRegistryToken(
     fields.push("licenseId");
   if (fields.length)
     return refuse(422, "invalid_token", "invalid registry token", fields);
+  // The platform's own SDK feeds are published only by the deploy pipeline (F-10 owner ruling).
+  if (publish && input.product === SYSTEM_PRODUCT_SLUG)
+    return refuse(
+      422,
+      "system_feeds_pipeline_only",
+      "the platform's SDK feeds are published by the deploy pipeline only",
+      ["scopes"],
+    );
   if (binding === "license" && scopes.some((s) => s !== "read"))
     return refuse(
       422,
@@ -517,11 +542,20 @@ export type ResolvedRegistryToken =
       readonly ecosystems: readonly string[] | null;
       /** Licence-bound only. `null` when the licence row is gone (refused by the ladder). */
       readonly license: LicenseRow | null;
+      /** The token's scopes (`read`; `publish` and `read` for an owner-bound publish token: F-22's
+       *  native publishes and F-23's `docker push`). */
+      readonly scopes: readonly string[];
     }
   | {
       readonly kind: "ci";
       readonly product: string;
       readonly tokenId: string;
+      /** The CI token's scopes: F-22 publishes and F-23 pushes only with `release:publish`. */
+      readonly scopes: readonly string[];
+      /** `oidc` (trusted publishing) or `static` (an operator-issued token). */
+      readonly ciKind: "oidc" | "static";
+      /** The CI token's subject, audited as `ci:<subject>` (`ciActor`). */
+      readonly subject: string;
     };
 
 interface CacheEntry {
@@ -607,6 +641,7 @@ async function resolveRow(
     presentation: row.presentation === "url" ? "url" : "header",
     ecosystems: parseList(row.ecosystems_json),
     license,
+    scopes: parseList(row.scopes_json) ?? [],
   };
 }
 
@@ -636,7 +671,14 @@ export async function lookupRegistryCredential(
   if (isCi) {
     const ci = await lookupCiToken(env, db, token, now);
     const value: ResolvedRegistryToken | null = ci
-      ? { kind: "ci", product: ci.product, tokenId: ci.tokenId }
+      ? {
+          kind: "ci",
+          product: ci.product,
+          tokenId: ci.tokenId,
+          scopes: ci.scopes,
+          ciKind: ci.kind,
+          subject: ci.subject,
+        }
       : null;
     return { resolved: remember(key, value, nowMs), miss: value === null };
   }
@@ -674,8 +716,14 @@ export async function lookupRegistrySubject(
   const hit = cached(key, nowMs);
   if (hit) return hit.value;
   if (subject.startsWith("ci:")) {
-    const row = await db.first<{ token_id: string }>(
-      `SELECT t.token_id FROM ci_tokens t JOIN products p ON p.slug = t.product
+    const row = await db.first<{
+      token_id: string;
+      scopes_json: string | null;
+      kind: string | null;
+      subject: string | null;
+    }>(
+      `SELECT t.token_id, t.scopes_json, t.kind, t.subject FROM ci_tokens t
+         JOIN products p ON p.slug = t.product
         WHERE t.product = ? AND t.token_id = ? AND t.revoked_at IS NULL AND t.expires_at > ?
           AND COALESCE(p.status, 'active') <> 'deleted'`,
       product,
@@ -684,7 +732,16 @@ export async function lookupRegistrySubject(
     );
     return remember(
       key,
-      row ? { kind: "ci", product, tokenId: row.token_id } : null,
+      row
+        ? {
+            kind: "ci",
+            product,
+            tokenId: row.token_id,
+            scopes: parseList(row.scopes_json) ?? [],
+            ciKind: row.kind === "static" ? "static" : "oidc",
+            subject: row.subject ?? "",
+          }
+        : null,
       nowMs,
     );
   }
@@ -741,6 +798,9 @@ export interface PullTokenClaims {
   readonly own: string | null;
   /** The repositories granted, as `<owner>/<repository>`. */
   readonly repos: readonly string[];
+  /** F-23: the repositories granted `push` as well, a subset of `repos`. Absent on a pull-only
+   *  token (every token minted before F-23 included), which then pushes nowhere. */
+  readonly push?: readonly string[];
   readonly iat: number;
   readonly exp: number;
 }
@@ -795,8 +855,11 @@ export async function signPullToken(
 ): Promise<{ token: string; expiresIn: number; issuedAt: number } | null> {
   const material = secret(env, "REGISTRY_TOKEN_KEY");
   if (!material) return null;
+  const { push, ...identity } = claims;
   const full: PullTokenClaims = {
-    ...claims,
+    ...identity,
+    // A pull-only token carries no `push` at all, exactly as before F-23.
+    ...(push && push.length ? { push } : {}),
     iat: now,
     exp: now + REGISTRY_PULL_TOKEN_TTL_SECONDS,
   };
@@ -868,7 +931,12 @@ export async function verifyPullToken(
     !Array.isArray(c.repos) ||
     !c.repos.every((r) => typeof r === "string") ||
     typeof c.iat !== "number" ||
-    typeof c.exp !== "number"
+    typeof c.exp !== "number" ||
+    (c.push !== undefined &&
+      (!Array.isArray(c.push) ||
+        !c.push.every(
+          (r) => typeof r === "string" && (c.repos as unknown[]).includes(r),
+        )))
   )
     return null;
   if (c.exp <= now) return null;
@@ -876,7 +944,63 @@ export async function verifyPullToken(
     sub: c.sub,
     own: c.own as string | null,
     repos: c.repos as string[],
+    ...(Array.isArray(c.push) && c.push.length
+      ? { push: c.push as string[] }
+      : {}),
     iat: c.iat,
     exp: c.exp,
+  };
+}
+
+// ── Publishing through a registry credential (F-23) ──────────────────────────────────────────
+
+/** Who may publish through a registry protocol, once resolved: the source a push records. */
+export interface RegistryPublisher {
+  /** The pull token's `sub` spelling: a registry token id, or `ci:<id>`. */
+  readonly sub: string;
+  readonly tokenId: string;
+  /** `registry` for an owner-bound `pkeyr_` publish token; the CI token's own kind otherwise. */
+  readonly kind: "registry" | "static" | "oidc";
+  /** The audit actor (`registry:<tokenId>` or `ci:<subject>`). */
+  readonly actor: string;
+}
+
+/**
+ * May `resolved` publish to `owner`'s `ecosystem` feed through its native protocol (F-23's
+ * `docker push`)? Only two credentials can (plans/F-20.md §10, Q4):
+ *   - an OWNER-BOUND, header-presented `pkeyr_` of `owner` holding `publish`, whose ecosystems
+ *     (when narrowed) include `ecosystem`. A licence-bound or URL token never publishes;
+ *   - a `pkeyci_` of `owner` holding `release:publish`, the scope a ticket publish needs.
+ * Anything else, another owner's credential included, is `null`. The platform's own SDK feeds
+ * are published by the deploy pipeline only (F-10 owner ruling, as F-22's `registryPublish.ts`).
+ */
+export function registryPublisher(
+  resolved: ResolvedRegistryToken | null,
+  owner: string,
+  ecosystem: string,
+): RegistryPublisher | null {
+  if (resolved === null || resolved.product !== owner) return null;
+  if (owner === SYSTEM_PRODUCT_SLUG) return null;
+  if (resolved.kind === "ci")
+    return resolved.scopes.includes(OCI_PUSH_CI_SCOPE)
+      ? {
+          sub: `ci:${resolved.tokenId}`,
+          tokenId: resolved.tokenId,
+          kind: resolved.ciKind,
+          actor: `ci:${resolved.subject}`,
+        }
+      : null;
+  if (
+    resolved.kind !== "owner" ||
+    resolved.presentation !== "header" ||
+    !resolved.scopes.includes("publish") ||
+    (resolved.ecosystems !== null && !resolved.ecosystems.includes(ecosystem))
+  )
+    return null;
+  return {
+    sub: resolved.tokenId,
+    tokenId: resolved.tokenId,
+    kind: "registry",
+    actor: `registry:${resolved.tokenId}`,
   };
 }

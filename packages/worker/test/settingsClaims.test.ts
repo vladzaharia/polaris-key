@@ -472,6 +472,36 @@ describe("tiers and profiles carry a per-row source (ST-01b)", () => {
     ).toHaveLength(1);
   });
 
+  it("dropping a tier and the profile only it referenced in one push removes both", async () => {
+    const ctx = await linked({
+      tiers: [
+        { id: "standard", profileId: "standard" },
+        { id: "legacy", label: "Legacy", profileId: "legacy" },
+      ],
+      profiles: ["standard", "legacy"],
+    });
+    await okResync(ctx);
+    expect((await rows(ctx, "tiers")).map((t) => t.id)).toEqual(["standard"]);
+    expect((await rows(ctx, "profiles")).map((p) => p.id)).toEqual([
+      "standard",
+    ]);
+  });
+
+  it("re-pointing a tier away from a profile the manifest drops removes the profile", async () => {
+    const ctx = await linked({
+      tiers: [{ id: "standard", profileId: "old" }],
+      profiles: ["standard", "old"],
+    });
+    await okResync(ctx);
+    expect((await rows(ctx, "tiers"))[0]).toMatchObject({
+      id: "standard",
+      profile_id: "standard",
+    });
+    expect((await rows(ctx, "profiles")).map((p) => p.id)).toEqual([
+      "standard",
+    ]);
+  });
+
   it("a console edit to a manifest tier claims it; the resync leaves it alone", async () => {
     const ctx = await linked();
     expect(
