@@ -739,14 +739,20 @@ export function listingSettingWrites(
     patch.storeAudience !== undefined &&
     patch.storeAudience !== current.store_audience
   )
-    out.push({ key: "storefront.polarisKey.audience", value: patch.storeAudience });
+    out.push({
+      key: "storefront.polarisKey.audience",
+      value: patch.storeAudience,
+    });
   if (patch.storeOfferPaths !== undefined) {
     const next =
-      patch.storeOfferPaths === null ? null : JSON.stringify(patch.storeOfferPaths);
+      patch.storeOfferPaths === null
+        ? null
+        : JSON.stringify(patch.storeOfferPaths);
     if (next !== current.store_offer_paths_json)
       out.push({
         key: "storefront.polarisKey.offerPaths",
-        value: patch.storeOfferPaths === null ? null : [...patch.storeOfferPaths],
+        value:
+          patch.storeOfferPaths === null ? null : [...patch.storeOfferPaths],
       });
   }
   if (patch.storeGroupLabels !== undefined) {

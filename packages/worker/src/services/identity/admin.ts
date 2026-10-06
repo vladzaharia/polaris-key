@@ -147,7 +147,8 @@ async function handlePortalSettings(
   }
   // The legacy Discover switch is the listing state now (PS-02 dual-write).
   if (body.discoverEnabled !== undefined) {
-    if (typeof body.discoverEnabled !== "boolean") fields.push("discoverEnabled");
+    if (typeof body.discoverEnabled !== "boolean")
+      fields.push("discoverEnabled");
     else listing.discoverEnabled = body.discoverEnabled;
   }
   // R5-01/R5-02 — tri-state, so an operator can override the issuer-derived default in either
@@ -163,7 +164,8 @@ async function handlePortalSettings(
   // PS-02: the Polaris Key listing state (S-21 §6.2). Accepted here until ST-05's generic
   // settings API exists; the registry entries are `storefront.polarisKey.*`.
   if (body.storeListed !== undefined) {
-    if (isListingState(body.storeListed)) listing.storeListed = body.storeListed;
+    if (isListingState(body.storeListed))
+      listing.storeListed = body.storeListed;
     else fields.push("storeListed");
   }
   if (body.storeAudience !== undefined) {
@@ -217,10 +219,20 @@ async function handlePortalSettings(
   const portalSummary = `Updated portal settings for ${slug}`;
   if (writes.length === 0) {
     await upsertPortalProductSettings(db, slug, patch, now);
-    await audit(db, slug, session, now, "portal.settings.update", target, portalSummary);
+    await audit(
+      db,
+      slug,
+      session,
+      now,
+      "portal.settings.update",
+      target,
+      portalSummary,
+    );
   } else {
     if (!ctx.settings)
-      throw new Error("the portal settings route needs ServiceContext.settings");
+      throw new Error(
+        "the portal settings route needs ServiceContext.settings",
+      );
     const written = await writeSettings(
       { env: ctx.env, db, registry: ctx.settings },
       writes,
@@ -277,4 +289,3 @@ function describeListingChange(
       return `group labels for ${Object.keys(value as object).length} group(s)`;
   }
 }
-

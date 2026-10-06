@@ -378,7 +378,9 @@ async function handleSettings(
   }
   // The request's own `update.settings.update` row when no setting row carries that action (a
   // PATCH of the artifact policy alone, or of nothing), committed with the write.
-  const envelope = !writes.some((w) => w.audit?.action === "update.settings.update");
+  const envelope = !writes.some(
+    (w) => w.audit?.action === "update.settings.update",
+  );
   if (writes.length === 0)
     await audit(
       db,
@@ -390,28 +392,24 @@ async function handleSettings(
       `Updated update settings for ${slug}`,
     );
   else {
-    const written = await writeSettings(
-      settingsCtx(ctx),
-      writes,
-      {
-        ...writeOpts(ctx, "console"),
-        ...(envelope
-          ? {
-              extra: (guard) => [
-                auditStatementFor(
-                  slug,
-                  session,
-                  now,
-                  "update.settings.update",
-                  target,
-                  `Updated update settings for ${slug}`,
-                  guard,
-                ),
-              ],
-            }
-          : {}),
-      },
-    );
+    const written = await writeSettings(settingsCtx(ctx), writes, {
+      ...writeOpts(ctx, "console"),
+      ...(envelope
+        ? {
+            extra: (guard) => [
+              auditStatementFor(
+                slug,
+                session,
+                now,
+                "update.settings.update",
+                target,
+                `Updated update settings for ${slug}`,
+                guard,
+              ),
+            ],
+          }
+        : {}),
+    });
     if (!written.ok) return settingRefused(written);
   }
 

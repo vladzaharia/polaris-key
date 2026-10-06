@@ -386,23 +386,29 @@ export async function handleProducts(
     if (body.adminGroup === null) add("core.adminGroup", null);
     else if (typeof body.adminGroup === "string")
       add("core.adminGroup", body.adminGroup.trim() || null);
-    const written = await writeSettings({ env, db, registry: SETTINGS }, writes, {
-      actor: {
-        sub: session.sub,
-        name: session.name ?? null,
-        email: session.email ?? null,
+    const written = await writeSettings(
+      { env, db, registry: SETTINGS },
+      writes,
+      {
+        actor: {
+          sub: session.sub,
+          name: session.name ?? null,
+          email: session.email ?? null,
+        },
+        origin: "console",
+        now,
+        product: row,
+        // A bespoke route (ST-05 makes it an alias of the generic API): no version in its
+        // contract, and its confirmations are the console's (the claim dialog).
+        strict: false,
       },
-      origin: "console",
-      now,
-      product: row,
-      // A bespoke route (ST-05 makes it an alias of the generic API): no version in its
-      // contract, and its confirmations are the console's (the claim dialog).
-      strict: false,
-    });
+    );
     if (!written.ok)
       return settingRefused(
         written,
-        written.key && FIELD_OF[written.key] ? [FIELD_OF[written.key]!] : undefined,
+        written.key && FIELD_OF[written.key]
+          ? [FIELD_OF[written.key]!]
+          : undefined,
       );
     const claimed = written.written.filter((w) => w.claimed).map((w) => w.key);
     return adminJson({

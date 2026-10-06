@@ -49,7 +49,10 @@ const PROBES: Readonly<Record<string, Probe>> = {
       ),
     enforced: (p) =>
       Object.fromEntries(
-        SERVICE_SLUGS.map((s) => [s, { enabled: p.services[s]?.enabled === true }]),
+        SERVICE_SLUGS.map((s) => [
+          s,
+          { enabled: p.services[s]?.enabled === true },
+        ]),
       ),
   },
   // The version window every grant is intersected with: discovery's `core.compat`, and the
@@ -67,16 +70,26 @@ function resolvedShape(key: string, value: unknown): unknown {
     return Object.fromEntries(
       SERVICE_SLUGS.map((s) => [
         s,
-        { enabled: (value as Record<string, { enabled?: boolean }>)[s]?.enabled === true },
+        {
+          enabled:
+            (value as Record<string, { enabled?: boolean }>)[s]?.enabled ===
+            true,
+        },
       ]),
     );
   return value;
 }
 
-async function discovery(env: Env, db: Db, slug: string): Promise<Record<string, any>> {
+async function discovery(
+  env: Env,
+  db: Db,
+  slug: string,
+): Promise<Record<string, any>> {
   const product = (await loadProduct(env, db, slug))!;
   const res = await handleDiscovery(
-    new Request(`https://key.plrs.im/${slug}/.well-known/polaris.json`) as unknown as Request,
+    new Request(
+      `https://key.plrs.im/${slug}/.well-known/polaris.json`,
+    ) as unknown as Request,
     env,
     db,
     product,
@@ -88,9 +101,12 @@ async function discovery(env: Env, db: Db, slug: string): Promise<Record<string,
 
 /** Every key path of a JSON value (array indexes collapsed), for the shape comparison. */
 function shape(v: unknown, path = ""): string[] {
-  if (Array.isArray(v)) return [path, ...v.flatMap((x) => shape(x, `${path}[]`))];
+  if (Array.isArray(v))
+    return [path, ...v.flatMap((x) => shape(x, `${path}[]`))];
   if (v && typeof v === "object")
-    return Object.entries(v).flatMap(([k, x]) => shape(x, path ? `${path}.${k}` : k));
+    return Object.entries(v).flatMap(([k, x]) =>
+      shape(x, path ? `${path}.${k}` : k),
+    );
   return [path];
 }
 
@@ -109,7 +125,9 @@ describe("discovery and enforcement agree after a write (ST-04)", () => {
       const db = makeTestDb();
       const env = makeEnv(new KvMock(), ["acme"]);
       await seedProduct(db, "acme");
-      await db.run("UPDATE products SET release_source = 'github' WHERE slug = 'acme'");
+      await db.run(
+        "UPDATE products SET release_source = 'github' WHERE slug = 'acme'",
+      );
       const before = await discovery(env, db, "acme");
       expect(probe.published(before)).not.toEqual(
         resolvedShape(key, probe.value),
@@ -118,12 +136,22 @@ describe("discovery and enforcement agree after a write (ST-04)", () => {
       const res = await writeSetting(
         { env, db, registry: SETTINGS },
         { key, value: probe.value },
-        { actor: { sub: "u1", name: null, email: null }, origin: "console", now: NOW, product: "acme", strict: false },
+        {
+          actor: { sub: "u1", name: null, email: null },
+          origin: "console",
+          now: NOW,
+          product: "acme",
+          strict: false,
+        },
       );
       expect(res.ok, JSON.stringify(res)).toBe(true);
 
       const after = await discovery(env, db, "acme");
-      const resolved = await resolveProductSetting({ env, db, registry: SETTINGS }, "acme", key);
+      const resolved = await resolveProductSetting(
+        { env, db, registry: SETTINGS },
+        "acme",
+        key,
+      );
       const enforced = probe.enforced((await loadProduct(env, db, "acme"))!);
       const expected = resolvedShape(key, probe.value);
       expect(probe.published(after)).toEqual(expected);

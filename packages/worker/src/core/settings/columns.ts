@@ -74,7 +74,9 @@ function productScalar(
     columns: [column],
     decode: (row) => (row ? decode(row[column]) : undefined),
     set: (args) =>
-      updateProductColumns(args, [[column, args.value as string | number | null]]),
+      updateProductColumns(args, [
+        [column, args.value as string | number | null],
+      ]),
   };
 }
 
@@ -224,7 +226,9 @@ export const CORE_COLUMN_ADAPTERS: Readonly<
     keyColumn: "slug",
     columns: ["compat_min", "compat_max", "compat_source"],
     decode: (row) =>
-      row ? { min: row.compat_min ?? null, max: row.compat_max ?? null } : undefined,
+      row
+        ? { min: row.compat_min ?? null, max: row.compat_max ?? null }
+        : undefined,
     marker: (row) => legacyMarker(row?.compat_source),
     set: (args) => {
       const v = (args.value ?? {}) as { min?: unknown; max?: unknown };
@@ -234,7 +238,8 @@ export const CORE_COLUMN_ADAPTERS: Readonly<
         ["compat_source", "admin"],
       ]);
     },
-    reset: (args) => updateProductColumns(args, [["compat_source", "manifest"]]),
+    reset: (args) =>
+      updateProductColumns(args, [["compat_source", "manifest"]]),
   },
 
   // ── The Polaris Key storefront (PS-02), Core's columns on `portal_product_settings` ──────

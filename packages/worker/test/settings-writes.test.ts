@@ -44,7 +44,7 @@ const A13_STORE = ["core/platformSettings.ts"] as const;
 /** The manifest writer, with what each module applies. */
 const MANIFEST_WRITERS: Readonly<Record<string, string>> = {
   "repo.ts":
-    "product creation (`stmtInsertProduct`, the release_config insert) and the ingest's statement builders, called with `\"manifest\"`",
+    'product creation (`stmtInsertProduct`, the release_config insert) and the ingest\'s statement builders, called with `"manifest"`',
   "services/release/resync.ts":
     "the resync apply: claim-guarded in SQL (ST-01b), one `setting.resync` audit row per field",
   "admin/systemProduct.ts":

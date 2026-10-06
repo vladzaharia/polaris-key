@@ -381,9 +381,15 @@ function commonChecks(
     );
   const level = confirmLevelFor(def, before, after);
   if ((level === "L2" || level === "L3") && opts.confirm !== def.key)
-    return refuse(400, "confirm_required", `type ${def.key} to confirm`, def.key, {
-      level,
-    });
+    return refuse(
+      400,
+      "confirm_required",
+      `type ${def.key} to confirm`,
+      def.key,
+      {
+        level,
+      },
+    );
   return null;
 }
 
@@ -460,8 +466,7 @@ async function writeProduct(
           opts.product,
         )
       : opts.product!;
-  if (!product)
-    return refuse(404, "product_not_found", "no such product");
+  if (!product) return refuse(404, "product_not_found", "no such product");
   const slug = product.slug;
   const linked = followsManifest(product);
   const system = product.system === 1;
@@ -470,7 +475,12 @@ async function writeProduct(
   for (const w of writes) {
     const def = ctx.registry.get(w.key, "product");
     if (!def)
-      return refuse(404, "unknown_setting", `${w.key} is not a product setting`, w.key);
+      return refuse(
+        404,
+        "unknown_setting",
+        `${w.key} is not a product setting`,
+        w.key,
+      );
     if (def.pending)
       return refuse(
         409,
@@ -511,7 +521,8 @@ async function writeProduct(
       key: def.key,
       scope: def.scope,
       value: undefined,
-      source: claimRows.get(def.key)?.source === "console" ? "console" : "manifest",
+      source:
+        claimRows.get(def.key)?.source === "console" ? "console" : "manifest",
       chain: [],
       version: claimRows.get(def.key)?.version ?? 0,
     };
@@ -541,11 +552,26 @@ async function writeProduct(
     // pre-ST-04 behaviour there: the deploy hook honours the marker itself, and ST-01c lists those
     // bootstrap-owned claims for the operator, so refusing them here would be a new restriction.
     if (def.ownership === "claimable" && system && !adapter?.marker)
-      return refuse(409, "manifest_authoritative", MANIFEST_AUTHORITATIVE_MESSAGE, def.key);
+      return refuse(
+        409,
+        "manifest_authoritative",
+        MANIFEST_AUTHORITATIVE_MESSAGE,
+        def.key,
+      );
     if (def.storage.kind === "column" && !adapter)
-      return refuse(409, "no_writer", `${def.key} has no column adapter`, def.key);
+      return refuse(
+        409,
+        "no_writer",
+        `${def.key} has no column adapter`,
+        def.key,
+      );
     if (op === "set" && def.storage.kind === "column" && !adapter!.set)
-      return refuse(409, "no_writer", `${def.key} has no console writer`, def.key);
+      return refuse(
+        409,
+        "no_writer",
+        `${def.key} has no console writer`,
+        def.key,
+      );
     if (op === "set" && def.storage.kind === "rich" && !w.statements)
       return refuse(
         409,
@@ -607,8 +633,14 @@ async function writeProduct(
   const versionChecks = plans.filter((p) => p.w.expectedVersion !== undefined);
   const when: SqlGuard = versionChecks.length
     ? {
-        sql: versionChecks.map(() => VERSION_OF("product_settings")).join(" AND "),
-        params: versionChecks.flatMap((p) => [slug, p.def.key, p.w.expectedVersion!]),
+        sql: versionChecks
+          .map(() => VERSION_OF("product_settings"))
+          .join(" AND "),
+        params: versionChecks.flatMap((p) => [
+          slug,
+          p.def.key,
+          p.w.expectedVersion!,
+        ]),
       }
     : NO_GUARD;
   const ids = plans.map(() => randomId("aud"));
@@ -617,7 +649,11 @@ async function writeProduct(
     params: [slug, ids[0]!],
   };
   const versionAfter = (p: ProductPlan) =>
-    p.row === "upsert" ? p.before.version + 1 : p.row === "delete" ? 0 : p.before.version;
+    p.row === "upsert"
+      ? p.before.version + 1
+      : p.row === "delete"
+        ? 0
+        : p.before.version;
 
   const stmts: DbStatement[] = plans.map((p, i) =>
     productAuditStmt(
@@ -635,19 +671,27 @@ async function writeProduct(
       when,
     ),
   );
-  const args = { product: slug, at: opts.now, by: opts.actor.sub ?? "system", guard };
+  const args = {
+    product: slug,
+    at: opts.now,
+    by: opts.actor.sub ?? "system",
+    guard,
+  };
   for (const p of plans) {
     if (p.w.statements) stmts.push(...p.w.statements(guard));
     if (p.def.storage.kind !== "column") continue;
     const adapter = ctx.registry.columnAdapter(p.def.key)!;
-    if (p.op === "set") stmts.push(...adapter.set!({ ...args, value: p.w.value }));
+    if (p.op === "set")
+      stmts.push(...adapter.set!({ ...args, value: p.w.value }));
     else if (p.w.restore !== undefined && !adapter.marker && adapter.set)
       stmts.push(...adapter.set({ ...args, value: p.w.restore }));
     else if (adapter.reset) stmts.push(...adapter.reset(args));
   }
   if (opts.extra) stmts.push(...opts.extra(guard));
   const source =
-    opts.origin === "resync" || opts.origin === "manifest-push" ? "manifest" : "console";
+    opts.origin === "resync" || opts.origin === "manifest-push"
+      ? "manifest"
+      : "console";
   for (const p of plans) {
     if (p.row === "delete")
       stmts.push({
@@ -676,7 +720,13 @@ async function writeProduct(
       });
   }
 
-  if (!(await applyBatch(ctx.db, stmts, { table: "audit", id: ids[0]!, product: slug }))) {
+  if (
+    !(await applyBatch(ctx.db, stmts, {
+      table: "audit",
+      id: ids[0]!,
+      product: slug,
+    }))
+  ) {
     const current = new Map(
       (
         await ctx.db.all<{ key: string; version: number }>(
@@ -686,8 +736,9 @@ async function writeProduct(
       ).map((r) => [r.key, r.version]),
     );
     const stale =
-      versionChecks.find((p) => (current.get(p.def.key) ?? 0) !== p.w.expectedVersion) ??
-      versionChecks[0];
+      versionChecks.find(
+        (p) => (current.get(p.def.key) ?? 0) !== p.w.expectedVersion,
+      ) ?? versionChecks[0];
     return refuse(
       409,
       "version_conflict",
@@ -728,7 +779,12 @@ async function writePlatform(
   for (const w of writes) {
     const def = ctx.registry.get(w.key, "platform");
     if (!def)
-      return refuse(404, "unknown_setting", `${w.key} is not a platform setting`, w.key);
+      return refuse(
+        404,
+        "unknown_setting",
+        `${w.key} is not a platform setting`,
+        w.key,
+      );
     if (def.pending)
       return refuse(
         409,
@@ -742,23 +798,43 @@ async function writePlatform(
     const before = await resolvePlatformSetting(ctx, def.key, { fresh: true });
     const storedStep = before.chain.find((s) => s.source === "platform");
     if (op === "reset" && !storedStep)
-      return refuse(404, "nothing_stored", `${def.key} has no runtime value`, def.key);
+      return refuse(
+        404,
+        "nothing_stored",
+        `${def.key} has no runtime value`,
+        def.key,
+      );
     const rowKey = def.storage.storedAs ?? def.key;
     // A reset falls back to the deploy value or the default (A-13's DELETE).
-    const fallback = before.chain.filter((s) => s.source !== "platform" && !s.ignored).at(-1);
+    const fallback = before.chain
+      .filter((s) => s.source !== "platform" && !s.ignored)
+      .at(-1);
     const after: WrittenSetting["after"] =
       op === "set"
         ? { value: w.value, source: "platform" }
-        : { value: fallback?.value ?? def.defaultValue, source: fallback?.source ?? "default" };
+        : {
+            value: fallback?.value ?? def.defaultValue,
+            source: fallback?.source ?? "default",
+          };
     const refused = commonChecks(def, w, op, before.value, after.value, opts);
     if (refused) return refused;
-    plans.push({ def, w, op, rowKey, before, after, stored: storedStep?.value });
+    plans.push({
+      def,
+      w,
+      op,
+      rowKey,
+      before,
+      after,
+      stored: storedStep?.value,
+    });
   }
 
   const versionChecks = plans.filter((p) => p.w.expectedVersion !== undefined);
   const when: SqlGuard = versionChecks.length
     ? {
-        sql: versionChecks.map(() => VERSION_OF("platform_settings")).join(" AND "),
+        sql: versionChecks
+          .map(() => VERSION_OF("platform_settings"))
+          .join(" AND "),
         params: versionChecks.flatMap((p) => [p.rowKey, p.w.expectedVersion!]),
       }
     : NO_GUARD;
@@ -781,8 +857,12 @@ async function writePlatform(
       opts.actor.email,
       p.w.audit?.action ??
         (p.op === "set" ? "platform.setting.set" : "platform.setting.revert"),
-      p.w.audit?.target === undefined ? "setting" : (p.w.audit.target?.kind ?? null),
-      p.w.audit?.target === undefined ? p.def.key : (p.w.audit.target?.id ?? null),
+      p.w.audit?.target === undefined
+        ? "setting"
+        : (p.w.audit.target?.kind ?? null),
+      p.w.audit?.target === undefined
+        ? p.def.key
+        : (p.w.audit.target?.id ?? null),
       p.w.audit?.summary ??
         defaultSummary(p.def, p.op, opts.origin, p.before.value, p.after.value),
       snapshot(p.def, {
@@ -812,7 +892,13 @@ async function writePlatform(
                   ON CONFLICT(key) DO UPDATE SET
                     value_json = excluded.value_json, version = platform_settings.version + 1,
                     updated_at = excluded.updated_at, updated_by = excluded.updated_by`,
-            params: [p.rowKey, JSON.stringify(p.w.value), opts.now, by, ...guard.params],
+            params: [
+              p.rowKey,
+              JSON.stringify(p.w.value),
+              opts.now,
+              by,
+              ...guard.params,
+            ],
           }
         : // A tombstone (A-13's): the version keeps counting, so a stale one can never pass.
           {
@@ -824,12 +910,16 @@ async function writePlatform(
     );
   if (opts.extra) stmts.push(...opts.extra(guard));
 
-  const ok = await applyBatch(ctx.db, stmts, { table: "platform_audit", id: ids[0]! });
+  const ok = await applyBatch(ctx.db, stmts, {
+    table: "platform_audit",
+    id: ids[0]!,
+  });
   invalidatePlatformSettings(ctx.env, ctx.db);
   if (!ok) {
     // With no version to check the anchor always inserts; a miss there is a broken database.
     const stale = versionChecks[0];
-    if (!stale) throw new Error("writeSetting: the unguarded batch did not apply");
+    if (!stale)
+      throw new Error("writeSetting: the unguarded batch did not apply");
     const current = await ctx.db.first<{ version: number }>(
       "SELECT version FROM platform_settings WHERE key = ?",
       stale.rowKey,

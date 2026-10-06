@@ -172,7 +172,9 @@ function pick(def: SettingDef, chain: ChainStep[]): ChainStep {
   for (let i = chain.length - 1; i >= 0; i--)
     if (!chain[i]!.ignored) return chain[i]!;
   // The default is always valid (`checkRegistry` refuses one that is not).
-  return chain[0] ?? { source: "default", from: "default", value: def.defaultValue };
+  return (
+    chain[0] ?? { source: "default", from: "default", value: def.defaultValue }
+  );
 }
 
 /** The input of `resolvePlatformValue`. */
@@ -311,7 +313,11 @@ export function resolveProductValue(
     out.value = clamp.value;
     out.lockedBy = "platform";
     if (!sameValue(clamp.value, top.value))
-      out.clamped = { requested: top.value, bound: clamp.bound, by: "platform" };
+      out.clamped = {
+        requested: top.value,
+        bound: clamp.bound,
+        by: "platform",
+      };
   }
   if (
     def.ownership === "claimable" &&
@@ -469,7 +475,8 @@ async function readColumnRows(
   for (const a of adapters) {
     if (a.table === "products") continue;
     let t = byTable.get(a.table);
-    if (!t) byTable.set(a.table, (t = { keyColumn: a.keyColumn, cols: new Set() }));
+    if (!t)
+      byTable.set(a.table, (t = { keyColumn: a.keyColumn, cols: new Set() }));
     for (const c of a.columns) t.cols.add(c);
   }
   const out = new Map<string, Record<string, unknown> | null>([
@@ -501,7 +508,8 @@ function columnSource(
   row: ProductSettingsRow | undefined,
 ): "manifest" | "console" {
   if (marker === "console" || marker === "default") return "console";
-  if (marker === "manifest") return followsManifest(product) ? "manifest" : "console";
+  if (marker === "manifest")
+    return followsManifest(product) ? "manifest" : "console";
   if (row) return row.source;
   return def.ownership !== "operator" && followsManifest(product)
     ? "manifest"
@@ -572,7 +580,9 @@ export async function resolveProductSettings(
     : null;
   const linked = (d: SettingDef): ResolvedSetting | undefined => {
     const p = ctx.registry.get(d.key, "platform");
-    return p && platformRead ? platformFromRead(ctx, p, platformRead) : undefined;
+    return p && platformRead
+      ? platformFromRead(ctx, p, platformRead)
+      : undefined;
   };
 
   let manifest: unknown;
@@ -611,7 +621,9 @@ export async function resolveProductSettings(
     return resolveProductValue(def, {
       inherit: def.inherits === "platform" ? p : undefined,
       bound:
-        def.merge === "policy" && p && ctx.registry.get(def.key, "platform")?.productLink?.bound
+        def.merge === "policy" &&
+        p &&
+        ctx.registry.get(def.key, "platform")?.productLink?.bound
           ? p
           : undefined,
       stored: layer,

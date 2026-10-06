@@ -31,7 +31,10 @@ import { Catalog } from "@polaris-key/catalog";
 import { validateCatalogCloudSync } from "@polaris-key/manifest";
 import { ErrorCode } from "../../../core/errors.js";
 import { getActiveSchema } from "../../../core/data.js";
-import { claimFacts, systemClaimRefusal } from "../../../core/settingsClaims.js";
+import {
+  claimFacts,
+  systemClaimRefusal,
+} from "../../../core/settingsClaims.js";
 import { writeSetting } from "../../../core/settings/write.js";
 import {
   catalogRepresentabilityResponse,
@@ -190,7 +193,13 @@ async function handleActive(ctx: ConfigAdminContext): Promise<Response> {
           {
             sql: `INSERT INTO product_schema (product, catalog_version, catalog_json, active, created_at)
                   SELECT ?, ?, ?, 1, ? WHERE (${guard.sql})`,
-            params: [slug, version, JSON.stringify(published), now, ...guard.params],
+            params: [
+              slug,
+              version,
+              JSON.stringify(published),
+              now,
+              ...guard.params,
+            ],
           },
         ],
         audit: {

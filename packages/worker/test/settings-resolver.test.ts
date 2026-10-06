@@ -116,12 +116,17 @@ describe("the chain (every source)", () => {
     for (let seed = 1; seed <= CASES; seed++) {
       const r = rng(seed);
       const def = intDef({ inherits: "platform" });
-      const twin = platformTwin({ productLink: { default: true, bound: false } });
+      const twin = platformTwin({
+        productLink: { default: true, bound: false },
+      });
       // Which layers are present, and whether each holds a valid value.
       const deploy = r.bool() ? { valid: r.bool(0.7) } : null;
       const platform = r.bool() ? { valid: r.bool(0.7) } : null;
       const product = r.bool()
-        ? { valid: r.bool(0.7), source: r.pick(["manifest", "console"] as const) }
+        ? {
+            valid: r.bool(0.7),
+            source: r.pick(["manifest", "console"] as const),
+          }
         : null;
       const entities = Array.from({ length: r.int(0, 2) }, (_, i) => ({
         valid: r.bool(0.7),
@@ -133,7 +138,9 @@ describe("the chain (every source)", () => {
           ? String(r.int(1, 100))
           : r.pick(["abc", "0", "1000", ""])
         : undefined;
-      const platformValue = platform ? maybeValue(r, platform.valid) : undefined;
+      const platformValue = platform
+        ? maybeValue(r, platform.valid)
+        : undefined;
       const inherit = resolvePlatformValue(twin, {
         deploy: deployRaw,
         row: platform ? { value: platformValue, version: 3 } : null,
@@ -162,12 +169,15 @@ describe("the chain (every source)", () => {
       const expected: { source: string; value: unknown }[] = [
         { source: "default", value: 10 },
       ];
-      if (deploy?.valid) expected.push({ source: "deploy", value: Number(deployRaw) });
-      if (platform?.valid) expected.push({ source: "platform", value: platformValue });
+      if (deploy?.valid)
+        expected.push({ source: "deploy", value: Number(deployRaw) });
+      if (platform?.valid)
+        expected.push({ source: "platform", value: platformValue });
       if (product?.valid)
         expected.push({ source: product.source, value: layers.stored!.value });
       layers.entities!.forEach((e, i) => {
-        if (entities[i]!.valid) expected.push({ source: "console", value: e.value });
+        if (entities[i]!.valid)
+          expected.push({ source: "console", value: e.value });
       });
       const top = expected.at(-1)!;
       expect(res.value, why).toEqual(top.value);
@@ -177,9 +187,16 @@ describe("the chain (every source)", () => {
       const order = ["default", "deploy", "platform", "manifest", "console"];
       const sources = res.chain.map((s) => s.source);
       const ranks = sources.map((s) => order.indexOf(s));
-      expect([...ranks].sort((a, b) => a - b), why).toEqual(ranks);
+      expect(
+        [...ranks].sort((a, b) => a - b),
+        why,
+      ).toEqual(ranks);
       expect(res.chain.length, why).toBe(
-        1 + (deploy ? 1 : 0) + (platform ? 1 : 0) + (product ? 1 : 0) + entities.length,
+        1 +
+          (deploy ? 1 : 0) +
+          (platform ? 1 : 0) +
+          (product ? 1 : 0) +
+          entities.length,
       );
       for (const step of res.chain)
         expect(Boolean(step.ignored), `${why} ${step.from}`).toBe(
@@ -197,7 +214,9 @@ describe("the chain (every source)", () => {
 
   it("does not inherit a platform value unless the entry says `inherits`", () => {
     const twin = platformTwin({ productLink: { default: true, bound: false } });
-    const inherit = resolvePlatformValue(twin, { row: { value: 42, version: 1 } });
+    const inherit = resolvePlatformValue(twin, {
+      row: { value: 42, version: 1 },
+    });
     expect(resolveProductValue(intDef(), { inherit }).value).toBe(10);
     expect(
       resolveProductValue(intDef({ inherits: "platform" }), { inherit }),
@@ -230,10 +249,13 @@ describe("the chain (every source)", () => {
       }).drift,
     ).toBeUndefined();
     expect(
-      resolveProductValue(intDef({ ownership: "operator", manifest: undefined }), {
-        stored,
-        manifestValue: 5,
-      }).drift,
+      resolveProductValue(
+        intDef({ ownership: "operator", manifest: undefined }),
+        {
+          stored,
+          manifestValue: 5,
+        },
+      ).drift,
     ).toBeUndefined();
   });
 });
@@ -245,7 +267,8 @@ describe("the policy clamp (direction)", () => {
     intDef({
       merge: "policy",
       policyBound: bound,
-      widensWhen: bound === "max" ? "higher" : bound === "min" ? "lower" : "any",
+      widensWhen:
+        bound === "max" ? "higher" : bound === "min" ? "lower" : "any",
       allowUnset,
     });
   const boundOf = (value: number | null) =>
@@ -278,7 +301,11 @@ describe("the policy clamp (direction)", () => {
       expect(res.lockedBy, why).toBe("platform");
       expect(Boolean(res.clamped), why).toBe(v === null || v > b);
       if (res.clamped)
-        expect(res.clamped, why).toEqual({ requested: v, bound: b, by: "platform" });
+        expect(res.clamped, why).toEqual({
+          requested: v,
+          bound: b,
+          by: "platform",
+        });
       // The write path refuses exactly the values the read path clamps.
       expect(Boolean(outOfBounds(def, v, { bound: boundOf(b) })), why).toBe(
         Boolean(res.clamped),
@@ -325,8 +352,12 @@ describe("the policy clamp (direction)", () => {
   it("applies no clamp without a bound, to a cascade entry, or under an unset bound", () => {
     const stored = { value: 90, source: "console" as const, from: "x" };
     expect(resolveProductValue(bounded("max"), { stored }).value).toBe(90);
-    expect(resolveProductValue(intDef(), { stored, bound: boundOf(5) }).value).toBe(90);
-    expect(clampToBound(bounded("max"), 90, { bound: boundOf(null) })).toBeUndefined();
+    expect(
+      resolveProductValue(intDef(), { stored, bound: boundOf(5) }).value,
+    ).toBe(90);
+    expect(
+      clampToBound(bounded("max"), 90, { bound: boundOf(null) }),
+    ).toBeUndefined();
   });
 });
 
@@ -334,12 +365,37 @@ describe("the policy clamp (direction)", () => {
 
 describe("A-13's keys resolve as A-13 resolves them", () => {
   const VARS = [
-    undefined, "on", "off", " ON ", "runtime", "false", "0", "disabled", "abc", "",
-    "1", "100", "1048576", "33554432", "40000000", "30", "1.5", "-3", "warn", "error", "WARN",
+    undefined,
+    "on",
+    "off",
+    " ON ",
+    "runtime",
+    "false",
+    "0",
+    "disabled",
+    "abc",
+    "",
+    "1",
+    "100",
+    "1048576",
+    "33554432",
+    "40000000",
+    "30",
+    "1.5",
+    "-3",
+    "warn",
+    "error",
+    "WARN",
   ];
   const ROWS: (StoredSetting | undefined)[] = [
     undefined,
-    { value: undefined, deleted: true, version: 4, updatedAt: NOW, updatedBy: "u" },
+    {
+      value: undefined,
+      deleted: true,
+      version: 4,
+      updatedAt: NOW,
+      updatedBy: "u",
+    },
     { value: "on", version: 2, updatedAt: NOW, updatedBy: "u" },
     { value: "off", version: 2, updatedAt: NOW, updatedBy: "u" },
     { value: 2_000_000, version: 3, updatedAt: NOW, updatedBy: "u" },
@@ -349,7 +405,11 @@ describe("A-13's keys resolve as A-13 resolves them", () => {
     { value: "nope", version: 1, updatedAt: NOW, updatedBy: "u" },
     { value: undefined, version: 1, updatedAt: NOW, updatedBy: "u" },
   ];
-  const SOURCE = { runtime: "platform", deploy: "deploy", default: "default" } as const;
+  const SOURCE = {
+    runtime: "platform",
+    deploy: "deploy",
+    default: "default",
+  } as const;
 
   it("value, source and the deploy-time hard off agree for every var, row and store state", () => {
     expect(PLATFORM_SETTINGS.length).toBeGreaterThan(0);
@@ -361,7 +421,10 @@ describe("A-13's keys resolve as A-13 resolves them", () => {
             const old = resolveA13(a13, raw, row, storeOk);
             const now = resolvePlatformValue(def, {
               deploy: raw,
-              row: row && !row.deleted ? { value: row.value, version: row.version } : null,
+              row:
+                row && !row.deleted
+                  ? { value: row.value, version: row.version }
+                  : null,
               storeOk,
               version: row?.version ?? 0,
             });
@@ -384,7 +447,10 @@ describe("A-13's keys resolve as A-13 resolves them", () => {
 // ── The loaders ──────────────────────────────────────────────────────────────────────────────
 
 describe("the loaders", () => {
-  const ctx = (db: ReturnType<typeof makeTestDb>, env: Record<string, unknown> = {}) => ({
+  const ctx = (
+    db: ReturnType<typeof makeTestDb>,
+    env: Record<string, unknown> = {},
+  ) => ({
     env,
     db,
     registry: SETTINGS,
@@ -394,16 +460,34 @@ describe("the loaders", () => {
     const db = makeTestDb();
     await seedProduct(db, "acme");
     const manual = await resolveProductSettings(ctx(db), "acme", {
-      keys: ["core.name", "license.defaults.deviceLimit", "core.services", "core.trustPolicy"],
+      keys: [
+        "core.name",
+        "license.defaults.deviceLimit",
+        "core.services",
+        "core.trustPolicy",
+      ],
     });
-    const by = (key: string, rs: ResolvedSetting[]) => rs.find((r) => r.key === key)!;
+    const by = (key: string, rs: ResolvedSetting[]) =>
+      rs.find((r) => r.key === key)!;
     // A manual product's values are the console's; an operator key with nothing stored is default.
-    expect(by("core.name", manual)).toMatchObject({ value: "acme", source: "console", version: 0 });
-    expect(by("license.defaults.deviceLimit", manual)).toMatchObject({ value: 5, source: "console" });
-    expect(by("core.trustPolicy", manual)).toMatchObject({ value: null, source: "default" });
+    expect(by("core.name", manual)).toMatchObject({
+      value: "acme",
+      source: "console",
+      version: 0,
+    });
+    expect(by("license.defaults.deviceLimit", manual)).toMatchObject({
+      value: 5,
+      source: "console",
+    });
+    expect(by("core.trustPolicy", manual)).toMatchObject({
+      value: null,
+      source: "default",
+    });
 
     // Repo-linked: unclaimed fields follow the manifest; a claim row makes one the console's.
-    await db.run("UPDATE products SET release_source = 'github' WHERE slug = 'acme'");
+    await db.run(
+      "UPDATE products SET release_source = 'github' WHERE slug = 'acme'",
+    );
     await db.run(
       `INSERT INTO product_settings (product, key, value_json, source, version, updated_at, updated_by)
        VALUES ('acme', 'core.name', NULL, 'console', 3, ?, 'u1')`,
@@ -417,8 +501,14 @@ describe("the loaders", () => {
     const linked = await resolveProductSettings(ctx(db), "acme", {
       keys: ["core.name", "license.defaults.deviceLimit", "core.services"],
     });
-    expect(by("core.name", linked)).toMatchObject({ source: "console", version: 3 });
-    expect(by("license.defaults.deviceLimit", linked)).toMatchObject({ source: "manifest", version: 0 });
+    expect(by("core.name", linked)).toMatchObject({
+      source: "console",
+      version: 3,
+    });
+    expect(by("license.defaults.deviceLimit", linked)).toMatchObject({
+      source: "manifest",
+      version: 0,
+    });
     expect(by("core.services", linked)).toMatchObject({
       source: "console",
       // Decoded through the router's own parser: a slug the row omits takes its default.
@@ -429,9 +519,13 @@ describe("the loaders", () => {
       }),
     });
     // An expired break-glass claim is no claim (ST-20's `expires_at`).
-    await db.run("UPDATE product_settings SET expires_at = ? WHERE key = 'core.name'", NOW - 1);
+    await db.run(
+      "UPDATE product_settings SET expires_at = ? WHERE key = 'core.name'",
+      NOW - 1,
+    );
     expect(
-      (await resolveProductSetting(ctx(db), "acme", "core.name", { now: NOW }))!.source,
+      (await resolveProductSetting(ctx(db), "acme", "core.name", { now: NOW }))!
+        .source,
     ).toBe("manifest");
   });
 
@@ -443,9 +537,17 @@ describe("the loaders", () => {
        VALUES ('acme', 'identity.keyEntry.limit', '50', 'console', 1, ?, 'u1')`,
       NOW,
     );
-    const unbounded = await resolveProductSetting(ctx(db), "acme", "identity.keyEntry.limit");
+    const unbounded = await resolveProductSetting(
+      ctx(db),
+      "acme",
+      "identity.keyEntry.limit",
+    );
     // The platform default bound is the code maximum (100), so 50 stands.
-    expect(unbounded).toMatchObject({ value: 50, source: "console", lockedBy: "platform" });
+    expect(unbounded).toMatchObject({
+      value: 50,
+      source: "console",
+      lockedBy: "platform",
+    });
     expect(unbounded!.clamped).toBeUndefined();
     await db.run(
       `INSERT INTO platform_settings (key, value_json, version, updated_at, updated_by)
@@ -453,7 +555,11 @@ describe("the loaders", () => {
       NOW,
     );
     invalidatePlatformSettings({}, db);
-    const clamped = await resolveProductSetting(ctx(db), "acme", "identity.keyEntry.limit");
+    const clamped = await resolveProductSetting(
+      ctx(db),
+      "acme",
+      "identity.keyEntry.limit",
+    );
     expect(clamped).toMatchObject({
       value: 20,
       source: "console",
@@ -465,7 +571,12 @@ describe("the loaders", () => {
   it("reads platform keys through A-13's 30-second cache, stored under their registry key", async () => {
     const db = makeTestDb();
     const env = {};
-    expect(await resolvePlatformSetting(ctx(db, env), "storefront.polarisKey.enabled")).toMatchObject({
+    expect(
+      await resolvePlatformSetting(
+        ctx(db, env),
+        "storefront.polarisKey.enabled",
+      ),
+    ).toMatchObject({
       value: "on",
       source: "default",
       version: 0,
@@ -476,9 +587,20 @@ describe("the loaders", () => {
       NOW,
     );
     // Cached: the direct write is not seen until the copy is dropped or refreshed.
-    expect((await resolvePlatformSetting(ctx(db, env), "storefront.polarisKey.enabled")).value).toBe("on");
     expect(
-      (await resolvePlatformSetting(ctx(db, env), "storefront.polarisKey.enabled", { fresh: true })),
+      (
+        await resolvePlatformSetting(
+          ctx(db, env),
+          "storefront.polarisKey.enabled",
+        )
+      ).value,
+    ).toBe("on");
+    expect(
+      await resolvePlatformSetting(
+        ctx(db, env),
+        "storefront.polarisKey.enabled",
+        { fresh: true },
+      ),
     ).toMatchObject({ value: "off", source: "platform", version: 2 });
     // An alias resolves to its entry, and a tombstone is no row (A-13's DELETE).
     await db.run(
@@ -488,8 +610,17 @@ describe("the loaders", () => {
       NOW,
     );
     expect(
-      await resolvePlatformSetting(ctx(db, { LAZY_DELTAS: "runtime" }), "LAZY_DELTAS", { fresh: true }),
-    ).toMatchObject({ key: "deltas.lazy.mode", value: "off", source: "default", version: 5 });
+      await resolvePlatformSetting(
+        ctx(db, { LAZY_DELTAS: "runtime" }),
+        "LAZY_DELTAS",
+        { fresh: true },
+      ),
+    ).toMatchObject({
+      key: "deltas.lazy.mode",
+      value: "off",
+      source: "default",
+      version: 5,
+    });
   });
 
   it("answers nothing for a product that does not exist, and refuses an unknown key", async () => {

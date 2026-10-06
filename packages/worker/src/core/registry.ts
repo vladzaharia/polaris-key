@@ -134,7 +134,12 @@ export interface ServiceContext {
  *  `ingest`, `storeGrants`, `licenseMerge`, `licenseDelete` and `settings`. */
 export type ServiceRequest = Omit<
   ServiceContext,
-  "hooks" | "ingest" | "storeGrants" | "licenseMerge" | "licenseDelete" | "settings"
+  | "hooks"
+  | "ingest"
+  | "storeGrants"
+  | "licenseMerge"
+  | "licenseDelete"
+  | "settings"
 >;
 
 /**

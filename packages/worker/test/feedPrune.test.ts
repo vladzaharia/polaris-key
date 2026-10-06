@@ -350,7 +350,11 @@ async function setRetention(
       strict: false,
     },
   );
-  return res.ok ? "written" : res.reason === "version_conflict" ? "stale" : res.reason;
+  return res.ok
+    ? "written"
+    : res.reason === "version_conflict"
+      ? "stale"
+      : res.reason;
 }
 
 /** Feed retention is off by default for a tenant product: opt `product` in. */
@@ -797,18 +801,14 @@ describe("the automatic prune", () => {
 
     // Opting in (version 0 → 1), then turning it off again, each against the version read.
     await optIn();
-    expect(await setRetention(P, false, 0)).toBe(
-      "stale",
-    );
+    expect(await setRetention(P, false, 0)).toBe("stale");
     expect(await pruneRetentionOf(db, P)).toMatchObject({
       prunePrereleases: true,
       locked: false,
       version: 1,
       updatedBy: "admin:u1",
     });
-    expect(await setRetention(P, false, 1)).toBe(
-      "written",
-    );
+    expect(await setRetention(P, false, 1)).toBe("written");
     expect(await autoPrune("npm", "1.1.0")).toEqual({ status: "off" });
     expect(await versionsOf("npm")).toHaveLength(7);
   });
@@ -821,9 +821,9 @@ describe("the automatic prune", () => {
       updatedAt: null,
       updatedBy: null,
     });
-    expect(
-      await setRetention(SYSTEM_PRODUCT_SLUG, false, 0, "u"),
-    ).toBe("locked");
+    expect(await setRetention(SYSTEM_PRODUCT_SLUG, false, 0, "u")).toBe(
+      "locked",
+    );
     // Even a row that says off (written around the API) does not turn it off.
     await seedProduct(db, SYSTEM_PRODUCT_SLUG);
     await db.run(

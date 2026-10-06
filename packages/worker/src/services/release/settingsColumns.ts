@@ -123,6 +123,7 @@ export const UPDATE_COLUMN_ADAPTERS: Readonly<
         ],
       ]);
     },
-    reset: (args) => updateReleaseConfig(args, [["operator_policy_json", null]]),
+    reset: (args) =>
+      updateReleaseConfig(args, [["operator_policy_json", null]]),
   },
 };
