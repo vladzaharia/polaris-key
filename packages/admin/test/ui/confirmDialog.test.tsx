@@ -6,7 +6,6 @@ import {
   ConfirmDialog,
   type ConfirmDialogProps,
 } from "../../src/ui/ConfirmDialog.js";
-import { ConfirmDialog as LegacyConfirmDialog } from "../../src/components/ui/ConfirmDialog.js";
 
 afterEach(cleanup);
 
@@ -134,22 +133,5 @@ describe("ConfirmDialog", () => {
     await waitFor(() =>
       expect(screen.getByTestId("state").textContent).toBe("closed"),
     );
-  });
-
-  it("legacy re-export keeps the destructive default and leaves closing to the caller", async () => {
-    const user = userEvent.setup();
-    const onOpenChange = vi.fn();
-    render(
-      <LegacyConfirmDialog
-        open
-        onOpenChange={onOpenChange}
-        title="Revoke key?"
-        onConfirm={() => undefined}
-      />,
-    );
-    const confirm = await screen.findByRole("button", { name: "Confirm" });
-    expect(confirm.className).toContain("bg-danger");
-    await user.click(confirm);
-    expect(onOpenChange).not.toHaveBeenCalled();
   });
 });

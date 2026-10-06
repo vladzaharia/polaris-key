@@ -217,6 +217,40 @@
         "ttf",
         "otf"
       ]
+    },
+    {
+      "name": "licenseStatus",
+      "description": "Every gate status a licence evaluates to (`LicenseStatus` in `@polaris-key/protocol/license`, `client-core`'s gate). A tools/gen-sdk-constants.test.ts case keeps them equal; `copy.en.json`'s `gate` keys equal it (plans/SP-00.md §4).",
+      "values": [
+        "ok",
+        "grace",
+        "expired",
+        "revoked",
+        "needs-activation",
+        "version-too-old",
+        "version-too-new",
+        "channel-not-entitled",
+        "not-applicable"
+      ]
+    },
+    {
+      "name": "activationResult",
+      "description": "The typed activation results of `license.activate` and `license.enroll` (SDK-PARITY-PASS §3.1), in the transcript (kebab) form; each SDK spells its own kinds in its casing. `copy.en.json`'s `activation` keys equal it (plans/SP-00.md §4).",
+      "values": [
+        "ok",
+        "device-limit",
+        "fingerprint-required",
+        "hardware-mismatch",
+        "enroll-claimed",
+        "license-disabled",
+        "license-expired",
+        "attestation-required",
+        "rate-limited",
+        "unauthorized",
+        "enroll-disabled",
+        "refused",
+        "error"
+      ]
     }
   ]
 }

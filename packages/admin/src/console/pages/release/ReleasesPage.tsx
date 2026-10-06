@@ -5,7 +5,6 @@ import type {
   ReleaseDto,
   ResyncResult,
 } from "../../../api.js";
-import { docsUrl } from "../../../lib/docsLinks.js";
 import { fromSeconds } from "../../../lib/format.js";
 import { useLoadingAnnouncement } from "../../../ui/loading.js";
 import {
@@ -13,7 +12,7 @@ import {
   type DataColumn,
   type RowActionItem,
 } from "../../../ui/data-table/index.js";
-import { EmptyState } from "../../../ui/EmptyState.js";
+import { announce } from "../../../ui/LiveRegion.js";
 import { Timestamp } from "../../../ui/Timestamp.js";
 import { Version } from "../../../ui/Version.js";
 import { PageHeader } from "../../components/PageHeader.js";
@@ -27,6 +26,7 @@ import {
   useReleaseHealth,
   useReleaseStore,
 } from "./data.js";
+import { FirstReleasePanel } from "./FirstReleasePanel.js";
 import { PolicyDialog, type PolicyAction } from "./PolicyDialog.js";
 import {
   isRepoLinked,
@@ -47,6 +47,10 @@ import {
  * The version links to the release record; the channels, builds, packs and signer are columns;
  * Promote, Pin and Yank are row actions (REL-1, REL-4, REL-5, REL-10). Repo health and the last
  * sync live in the Repo sync drawer (`?panel=sync`), product metadata in Settings (REL-2, REL-3).
+ *
+ * Before the first release the table gives way to the guided `FirstReleasePanel` (EXPERIENCE.md
+ * §0.4 S2), which polls the store; the release that ends the wait is announced politely
+ * ("0.1.0 published from CI", §7.1) and nothing moves under the pointer.
  */
 
 const FACETS = ["channel", "platform", "yank"] as const;
@@ -92,6 +96,25 @@ export function ReleasesPage({ slug }: { slug: string }): React.ReactElement {
     [channelsQuery.data],
   );
   const linked = isRepoLinked(product.data);
+  const firstRun = !!store.data && !store.error && releases.length === 0;
+
+  // The wait completes out loud: once the panel has been up, the first release is announced.
+  const waited = React.useRef(false);
+  React.useEffect(() => {
+    if (firstRun) {
+      waited.current = true;
+      return;
+    }
+    if (!waited.current || releases.length === 0) return;
+    waited.current = false;
+    // Newest first: by seq, then by publish time (never one compared against the other).
+    const first = [...releases].sort(
+      (a, b) =>
+        (b.seq ?? -1) - (a.seq ?? -1) ||
+        (b.publishedAt ?? 0) - (a.publishedAt ?? 0),
+    )[0]!;
+    announce(`${first.version} published from CI`);
+  }, [firstRun, releases]);
 
   const channelNames = [
     ...new Set([
@@ -289,7 +312,7 @@ export function ReleasesPage({ slug }: { slug: string }): React.ReactElement {
         <PageHeader
           title="Releases"
           titleAside={
-            store.data ? (
+            store.data && !firstRun ? (
               <span className="text-sm tabular-nums text-fg-muted">
                 {releases.length}
               </span>
@@ -315,69 +338,66 @@ export function ReleasesPage({ slug }: { slug: string }): React.ReactElement {
         />
       }
     >
-      <DataTable<ReleaseDto>
-        id="releases"
-        caption="Releases"
-        data={releases}
-        columns={columns}
-        getRowId={(x) => x.releaseId}
-        rowLabel={(x) => x.version}
-        rowHref={(x) => r.release(slug, x.releaseId)}
-        linkComponent={Link}
-        rowActions={rowActions}
-        state={state}
-        onStateChange={setState}
-        search={{
-          placeholder: "Search version or title",
-          columns: ["version", "title"],
-        }}
-        facets={[
-          {
-            id: "channel",
-            label: "Channel",
-            options: channelNames.map((c) => ({ value: c, label: c })),
-            accessor: (x) => [
-              ...servingChannels(x.releaseId, appChannels),
-              ...(x.channel ? [x.channel] : []),
-            ],
-          },
-          {
-            id: "platform",
-            label: "Platform",
-            options: platforms.map((p) => ({
-              value: p,
-              label: p === "any" ? "Any platform" : platformName(p),
-            })),
-            accessor: (x) => x.builds.map((b) => b.platform ?? "any"),
-          },
-          {
-            id: "yank",
-            label: "Status",
-            options: [
-              { value: "available", label: "Available" },
-              { value: "yanked", label: "Yanked" },
-            ],
-            accessor: (x) => (x.yank ? "yanked" : "available"),
-          },
-        ]}
-        pagination={{ mode: "client" }}
-        loading={store.isPending}
-        error={store.error}
-        onRetry={() => void store.refetch()}
-        mobile="cards"
-        empty={
-          <EmptyState
-            kind="first-run"
-            title="No releases yet"
-            description={
-              linked
-                ? "Releases appear when the linked repository publishes one, or when you resync from it. The store fills from the repository and CI, never by hand."
-                : "Releases appear when CI publishes one with pkey release publish. The store fills from CI, never by hand."
-            }
-            docs={docsUrl("releaseChannels")}
-          />
-        }
-      />
+      {firstRun ? (
+        <FirstReleasePanel
+          slug={slug}
+          productName={product.data?.name ?? slug}
+          linked={linked}
+          health={health}
+        />
+      ) : (
+        <DataTable<ReleaseDto>
+          id="releases"
+          caption="Releases"
+          data={releases}
+          columns={columns}
+          getRowId={(x) => x.releaseId}
+          rowLabel={(x) => x.version}
+          rowHref={(x) => r.release(slug, x.releaseId)}
+          linkComponent={Link}
+          rowActions={rowActions}
+          state={state}
+          onStateChange={setState}
+          search={{
+            placeholder: "Search version or title",
+            columns: ["version", "title"],
+          }}
+          facets={[
+            {
+              id: "channel",
+              label: "Channel",
+              options: channelNames.map((c) => ({ value: c, label: c })),
+              accessor: (x) => [
+                ...servingChannels(x.releaseId, appChannels),
+                ...(x.channel ? [x.channel] : []),
+              ],
+            },
+            {
+              id: "platform",
+              label: "Platform",
+              options: platforms.map((p) => ({
+                value: p,
+                label: p === "any" ? "Any platform" : platformName(p),
+              })),
+              accessor: (x) => x.builds.map((b) => b.platform ?? "any"),
+            },
+            {
+              id: "yank",
+              label: "Status",
+              options: [
+                { value: "available", label: "Available" },
+                { value: "yanked", label: "Yanked" },
+              ],
+              accessor: (x) => (x.yank ? "yanked" : "available"),
+            },
+          ]}
+          pagination={{ mode: "client" }}
+          loading={store.isPending}
+          error={store.error}
+          onRetry={() => void store.refetch()}
+          mobile="cards"
+        />
+      )}
       <RepoSyncDrawer
         open={panel === "sync"}
         onOpenChange={(open) => setPanel(open ? "sync" : "")}

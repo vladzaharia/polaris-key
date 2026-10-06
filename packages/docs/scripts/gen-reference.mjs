@@ -333,6 +333,7 @@ const TABLE_OWNERS = {
     "blob_objects",
     "blob_refs",
     "blob_gc_log",
+    "hosted_assets",
     "ci_publishers",
     "ci_tokens",
     "ci_upload_tickets",

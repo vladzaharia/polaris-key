@@ -15,6 +15,9 @@
  *   value at once (or at the next resync when there is no snapshot yet). The admin group is
  *   manifest-only there and shown read-only. The system product is manifest-authoritative, so its
  *   fields are read-only until ST-20's break-glass claims.
+ * - A manual product offers Link repository… instead (EXPERIENCE.md §0.4 S1, AS 1.5): the drawer
+ *   checks the repository, shows the plan, then links and applies; the same result panel
+ *   follows.
  * - Delete product is L3: the operator types the slug, which is what is sent as `confirmSlug`
  *   (SET-2, PRD-4). Afterwards `me` and the registry refresh (the mutation table) and the console
  *   goes Home.
@@ -22,7 +25,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, RefreshCw, Trash2 } from "lucide-react";
+import { ArrowRight, GitBranch, RefreshCw, Trash2 } from "lucide-react";
 import {
   api,
   type BlobGcDryRun,
@@ -71,6 +74,7 @@ import {
   SettingsTemplate,
 } from "../../templates/Settings.js";
 import { SaveCancelled, intentOf, useConfirmGate } from "./confirmGate.js";
+import { LinkRepositoryDrawer } from "./LinkRepository.js";
 
 /** Which draft field writes which claimable key. */
 const CLAIM_OF_FIELD: Partial<Record<keyof Draft, ClaimKey>> = {
@@ -406,7 +410,11 @@ function RepositorySection({
   product: ProductDetail;
 }): React.ReactElement {
   const [open, setOpen] = React.useState(false);
-  const [result, setResult] = React.useState<ResyncResult | null>(null);
+  const [linking, setLinking] = React.useState(false);
+  const [result, setResult] = React.useState<{
+    title: string;
+    result: ResyncResult;
+  } | null>(null);
   const linked = product.releaseSource === "github";
   const sync = product.setup?.sync ?? null;
   return (
@@ -414,17 +422,25 @@ function RepositorySection({
       id="settings-repository"
       title="Repository"
       actions={
-        <Button
-          variant="outline"
-          size="sm"
-          iconStart={<RefreshCw aria-hidden />}
-          disabledReason={
-            linked ? undefined : "This product isn't linked to a repository."
-          }
-          onClick={() => setOpen(true)}
-        >
-          Resync from repo…
-        </Button>
+        linked ? (
+          <Button
+            variant="outline"
+            size="sm"
+            iconStart={<RefreshCw aria-hidden />}
+            onClick={() => setOpen(true)}
+          >
+            Resync from repo…
+          </Button>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            iconStart={<GitBranch aria-hidden />}
+            onClick={() => setLinking(true)}
+          >
+            Link repository…
+          </Button>
+        )
       }
     >
       <SettingsRow
@@ -432,7 +448,7 @@ function RepositorySection({
         help={
           linked
             ? "Pushes to the repository re-apply its .pkey/ manifest."
-            : undefined
+            : "Set in the console. Link a repository to manage it from .pkey/ instead."
         }
       >
         {linked ? "Linked GitHub repository" : "Manual"}
@@ -456,7 +472,8 @@ function RepositorySection({
       {result ? (
         <div className="px-5 pb-4">
           <ResyncResultPanel
-            result={result}
+            title={result.title}
+            result={result.result}
             onDismiss={() => setResult(null)}
           />
         </div>
@@ -476,19 +493,32 @@ function RepositorySection({
         describeError={(e) => errorCopy(e)}
         onConfirm={async () => {
           const res = await mutate("resyncProduct", slug);
-          setResult(res);
+          setResult({ title: "Resync finished", result: res });
           toast.success("Resynced from repo");
         }}
       />
+      {!linked ? (
+        <LinkRepositoryDrawer
+          slug={slug}
+          productName={product.name}
+          open={linking}
+          onClose={() => setLinking(false)}
+          onLinked={(res) =>
+            setResult({ title: `Linked to ${res.repository}`, result: res })
+          }
+        />
+      ) : null}
     </SettingsSection>
   );
 }
 
 /** What a resync did: the panel §5.3 asks for, not just a toast (RSY-3). */
 export function ResyncResultPanel({
+  title = "Resync finished",
   result,
   onDismiss,
 }: {
+  title?: string;
   result: ResyncResult;
   onDismiss: () => void;
 }): React.ReactElement {
@@ -504,7 +534,7 @@ export function ResyncResultPanel({
           ? "warning"
           : "success"
       }
-      title="Resync finished"
+      title={title}
       live
       action={
         <Button variant="ghost" size="sm" onClick={onDismiss}>

@@ -14,6 +14,7 @@
 
 import * as React from "react";
 import { cn } from "../../lib/cn.js";
+import { Section, type SectionProps } from "../../ui/Section.js";
 
 export interface SettingsSectionRef {
   id: string;
@@ -73,67 +74,17 @@ export function SettingsTemplate({
   );
 }
 
-/** One settings card. `footer` holds the section's `SaveBar` when it saves on its own. */
+/**
+ * One settings card: the shared `Section variant="settings"` (EXPERIENCE.md §3), from `ui/`.
+ * `footer` holds the section's `SaveBar` when it saves on its own.
+ */
 export function SettingsSection({
   id,
-  title,
-  description,
-  source,
-  actions,
-  tone = "default",
-  children,
-  footer,
-}: {
+  ...props
+}: Omit<SectionProps, "variant" | "id" | "headingLevel"> & {
   id: string;
-  title: string;
-  description?: React.ReactNode;
-  /** A `SourceBadge`. */
-  source?: React.ReactNode;
-  /** Header-end actions: "Revert to manifest…". */
-  actions?: React.ReactNode;
-  tone?: "default" | "danger";
-  children: React.ReactNode;
-  footer?: React.ReactNode;
 }): React.ReactElement {
-  const headingId = `${id}-heading`;
-  return (
-    <section
-      id={id}
-      tabIndex={-1}
-      aria-labelledby={headingId}
-      className={cn(
-        "scroll-mt-20 rounded-lg border bg-surface-raised outline-hidden",
-        tone === "danger" ? "border-danger-border" : "border-border",
-      )}
-    >
-      <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-3">
-        <div className="min-w-0 flex-1 space-y-0.5">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2
-              id={headingId}
-              className={cn(
-                "text-base font-bold",
-                tone === "danger" ? "text-danger" : "text-fg-strong",
-              )}
-            >
-              {title}
-            </h2>
-            {source}
-          </div>
-          {description ? (
-            <p className="text-sm text-fg-muted">{description}</p>
-          ) : null}
-        </div>
-        {actions ? (
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-            {actions}
-          </div>
-        ) : null}
-      </div>
-      <div className="divide-y divide-border">{children}</div>
-      {footer}
-    </section>
-  );
+  return <Section {...props} id={id} variant="settings" />;
 }
 
 /**

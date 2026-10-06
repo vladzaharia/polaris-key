@@ -988,7 +988,7 @@ async function applyRepoManifest(
 }
 
 /** The tier and profile ids a stored snapshot declared (ST-01b: claim vs conflict). */
-function snapshotRowIds(json: string | undefined): {
+export function snapshotRowIds(json: string | undefined): {
   tiers: Set<string>;
   profiles: Set<string>;
 } {
@@ -1012,7 +1012,7 @@ function snapshotRowIds(json: string | undefined): {
 }
 
 /** Licences that list a profile directly (`license_profiles`), the referrer a tier is not. */
-async function countLicensesListingProfile(
+export async function countLicensesListingProfile(
   db: Db,
   product: string,
   profileId: string,

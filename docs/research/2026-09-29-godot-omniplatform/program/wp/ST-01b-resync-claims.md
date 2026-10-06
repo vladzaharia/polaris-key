@@ -57,13 +57,23 @@ owner delegated open questions to the lead, who takes the recommended option):**
 
 - **No `ON DELETE CASCADE`** on `product_settings.product`, unlike S-18 §4.3's sketch: R11-01
   (`test/attack/R11-data.test.ts`) pins that no product-scoped table declares `ON DELETE`, the same
-  correction ST-01a made. Migration `0078_product_settings.sql` (renumbered from 0074 at fix round 2: main took 0074 for `license_refusals`; renumbered again from 0075 at fix round 3: integ/feeds-2 took 0075-0077 for `release_native_uploads`, `cargo_registry_policy` and `go_registry_policy`); `LATEST_MIGRATION` bumped.
+  correction ST-01a made. Migration `0079_product_settings.sql` (renumbered from 0074 at fix round 2: main took 0074 for `license_refusals`; renumbered again from 0075 at fix round 3: integ/feeds-2 took 0075-0077 for `release_native_uploads`, `cargo_registry_policy` and `go_registry_policy`, then from 0078 because main took 0078 for `hosted_assets`); `LATEST_MIGRATION` bumped.
 - **The claim module is `packages/worker/src/core/settingsClaims.ts`** (Core-owned, beside ST-01a's
   `core/manifestSnapshot.ts`); `CLAIM_KEYS` lists the five column-backed keys. ST-04's resolver
   should read claims through it rather than querying `product_settings` again.
 - **Claims are written only on repo-linked products** (`release_source = 'github'`): a manual
-  product has no manifest to claim from and can never be linked later (`linkRepo` refuses an
-  existing slug). Tier and profile rows written by the console are always marked `console`.
+  product has no manifest to claim from. Tier and profile rows written by the console are always
+  marked `console`, so they survive the product's first resync too.
+- **Link repository (main's `services/release/linkExisting.ts`, merged at fix round 3).** Linking an
+  existing manual product applies the manifest through `resyncRepo`, so ST-01b's rules govern it.
+  Its dry-run plan (`planRepoManifest`) was written before ST-01b and said every tier and profile
+  was replaced or deleted. It now reads the same ownership facts as the apply: claimed product
+  fields and a claimed catalog go under `skipClaimed`; a `console` tier or profile holding a
+  manifest id is listed as kept (the manifest row is not applied); a `console` row the manifest
+  omits is neither deleted nor a conflict; a dropped profile counts licences plus surviving tiers.
+  Decision (lead, recommended option): a manual product's console-made tiers stay console-owned
+  after the link rather than being adopted by the manifest, which is model C as written; renaming
+  or deleting the console row hands the id to the manifest. Pinned in `test/linkExisting.test.ts`.
 - **`core.adminGroup` manifest-only** is enforced by refusing a console write on a linked product
   (409 `manifest_only`) rather than accepting a value the next resync would replace; manual
   products keep the editor.

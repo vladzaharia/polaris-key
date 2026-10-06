@@ -151,6 +151,8 @@ export async function licenseSummary(
     minVersion: row.min_version,
     maxVersion: row.max_version,
     identityProvider: row.sub ? "oidc" : "manual",
+    // How the row was minted (`admin`, `oidc`, `enroll`): decides whether it may be deleted.
+    origin: row.origin ?? "admin",
     oidcSubject: row.sub ?? undefined,
     modifiedBy: row.modified_by ?? undefined,
     modifiedAt: row.modified_at,

@@ -55,6 +55,7 @@ import {
   type PlayImageType,
 } from "../../../../core/storefront/rules/googlePlay.js";
 import { GOOGLE_PLAY_ADAPTER } from "../../../../core/storefront/stores/googlePlay.js";
+import { SNIFF_BYTES, sniffContentType } from "../../../../core/sniff.js";
 import { PlayError, type FetchImpl, type GoogleApiClient } from "./client.js";
 import {
   acquirePlayEditLease,
@@ -539,8 +540,23 @@ export async function playImageFromListingAsset(
   const head = await env.BLOBS.head(row.blob);
   if (!head) return null;
   const bucket = env.BLOBS;
+  // Every put since HA-01 stores the sniffed type; an object stored before it has none, so its
+  // first bytes are sniffed here (a ranged read, never the whole object).
+  let contentType = head.httpMetadata?.contentType;
+  if (!contentType) {
+    const first =
+      head.size > 0
+        ? await bucket.get(row.blob, {
+            range: { offset: 0, length: Math.min(SNIFF_BYTES, head.size) },
+          })
+        : null;
+    contentType =
+      first && "body" in first
+        ? sniffContentType(new Uint8Array(await first.arrayBuffer()))
+        : "application/octet-stream";
+  }
   return {
-    contentType: head.httpMetadata?.contentType ?? "application/octet-stream",
+    contentType,
     size: head.size,
     sha256: row.sha256,
     async read() {

@@ -21,6 +21,12 @@
  *                                                        one variant's files, from its index
  *     GET    …/release/delegations                      the content keys (P4-19), read-only
  *
+ * and Link repository for a product that exists already (UX-23, `linkExisting.ts`):
+ *
+ *     POST   …/release/link?dryRun=1                    { "repoUrl" } → the checks and the plan
+ *     POST   …/release/link                             { "repoUrl", "manifestDigest" } → link
+ *                                                        and apply (the digest is the check's)
+ *
  * and the compatibility matrix (P4-15, `packs/compat.ts`):
  *
  *     GET    …/release/compat[?limit=N&offset=M]        app releases × pack releases, a cell
@@ -84,6 +90,11 @@ import {
 } from "./resolve.js";
 import { resyncNotes, resyncRepo } from "./resync.js";
 import {
+  linkExistingProduct,
+  prepareLink,
+  type LinkRefusal,
+} from "./linkExisting.js";
+import {
   appPinsByRelease,
   delegationsView,
   deliverablesView,
@@ -111,6 +122,126 @@ import {
   releaseIdForVersion,
   type ReleaseChannelFloorRow,
 } from "./store.js";
+
+/** A link refusal. `reason` names the check it failed (`app`, `manifest`, `slug`…), so the
+ *  console can mark the checks before it as passed. */
+function linkRefusal(r: LinkRefusal): Response {
+  return err(r.status, ErrorCode.BadRequest, r.error, {
+    reason: r.check,
+    ...(r.errors ? { errors: r.errors } : {}),
+  });
+}
+
+/**
+ * `POST …/release/link[?dryRun=1]`: Link repository (UX-23). The dry run checks and plans and
+ * writes nothing; the link re-checks against the manifest GitHub serves now, refuses (409) when
+ * it is not the one the operator checked, then links and applies it through `resyncRepo`.
+ */
+async function handleLink(
+  ctx: ServiceContext & { session: AdminSession },
+): Promise<Response> {
+  const { req, env, db, product, session, now } = ctx;
+  if (req.method !== "POST")
+    return err(405, ErrorCode.BadRequest, "method not allowed");
+  const slug = product.slug;
+  const body = await readBody(req);
+  const repoUrl = typeof body.repoUrl === "string" ? body.repoUrl.trim() : "";
+  if (!repoUrl)
+    return err(422, ErrorCode.BadRequest, "repoUrl is required", {
+      fields: ["repoUrl"],
+    });
+  const dryRun = new URL(req.url).searchParams.get("dryRun") === "1";
+
+  if (dryRun) {
+    const prepared = await prepareLink(env, db, slug, repoUrl, now, fetch);
+    if (!prepared.ok) return linkRefusal(prepared);
+    return adminJson({
+      ok: true,
+      dryRun: true,
+      slug,
+      repository: prepared.repository,
+      commit: prepared.commit,
+      manifestDigest: prepared.manifestDigest,
+      plan: prepared.plan,
+      remainingSecrets: prepared.remainingSecrets,
+    });
+  }
+
+  const digest =
+    typeof body.manifestDigest === "string" ? body.manifestDigest : "";
+  if (!digest)
+    return err(
+      422,
+      ErrorCode.BadRequest,
+      "manifestDigest is required: check the repository first (?dryRun=1)",
+      { fields: ["manifestDigest"] },
+    );
+  // A refusal or a throw after the coordinates were written is put back by
+  // `linkExistingProduct`, and audited here: a link that half-ran must leave a trace.
+  const refusedAfterWrite = (why: string) =>
+    audit(
+      db,
+      slug,
+      session,
+      now,
+      "product.link.refused",
+      { kind: "product", id: slug },
+      `Link of ${slug} to ${repoUrl} refused while applying, put back to manual: ${why}`,
+    );
+  let result: Awaited<ReturnType<typeof linkExistingProduct>>;
+  try {
+    result = await linkExistingProduct(
+      env,
+      db,
+      slug,
+      repoUrl,
+      digest,
+      now,
+      fetch,
+      ctx.ingest,
+    );
+  } catch (e) {
+    await refusedAfterWrite(e instanceof Error ? e.message : "apply failed");
+    throw e;
+  }
+  if (!result.ok) {
+    if (result.afterWrite) await refusedAfterWrite(result.error);
+    return linkRefusal(result);
+  }
+  await upsertProductSyncState(db, {
+    product: slug,
+    source: "manual",
+    status: "ok",
+    last_checked_at: now,
+    last_synced_at: now,
+    commit_sha: null,
+    changed_paths_json: null,
+    updated_json: JSON.stringify(result.updated),
+    errors_json: result.refused ? JSON.stringify(result.refused) : null,
+    message: result.refused
+      ? result.refused.map((r) => `${r.code}: ${r.message}`).join("; ")
+      : null,
+  });
+  await audit(
+    db,
+    slug,
+    session,
+    now,
+    "product.link",
+    { kind: "product", id: slug },
+    `Linked ${slug} to ${result.repository}`,
+  );
+  return adminJson({
+    ok: true,
+    slug,
+    repository: result.repository,
+    plan: result.plan,
+    updated: result.updated,
+    remainingSecrets: result.remainingSecrets,
+    ...(result.refused ? { refused: result.refused } : {}),
+    ...(result.packSets ? { packSets: result.packSets } : {}),
+  });
+}
 
 function floorView(f: ReleaseChannelFloorRow) {
   return {
@@ -279,6 +410,8 @@ export async function handleReleaseAdmin(
       ),
     );
   }
+
+  if (rest[0] === "link") return handleLink(ctx);
 
   if (rest[0] !== "resync") return adminNotFound();
   if (req.method !== "POST")
