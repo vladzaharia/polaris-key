@@ -177,6 +177,8 @@ export interface PortalLibrary {
 
 export interface PortalLibraryItem extends PortalPresentation {
   product: string;
+  /** PS-04: `entry` is an open product with no licence (filtered out until PS-05 shows it). */
+  kind?: "license" | "entry";
   status: PortalStatus;
   license: PortalLicenseSeats;
   licenseCount: number;
@@ -415,6 +417,41 @@ export interface PortalDiscoverOffer extends PortalPresentation {
   reason: PortalDiscoverReason;
 }
 
+/**
+ * One offer as the Worker sends it since PS-04: the additive storefront fields, and `offer` and
+ * `reason` `null` for an open product (no licence terms) or a link (nothing to add).
+ */
+type WirePortalDiscoverOffer = Omit<PortalDiscoverOffer, "offer" | "reason"> & {
+  offer: PortalDiscoverTerms | null;
+  reason: PortalDiscoverReason | null;
+  cta?: "add" | "link";
+};
+
+/**
+ * Until PS-05 renders open products and link-only listings (notes/S-21 §6.5), the Discover page
+ * shows only the offers PX-16's tile can show: an Add with licence terms.
+ */
+function addableOffers(body: { offers: WirePortalDiscoverOffer[] }): {
+  offers: PortalDiscoverOffer[];
+} {
+  const offers: PortalDiscoverOffer[] = [];
+  for (const o of body.offers)
+    if ((o.cta ?? "add") === "add" && o.offer !== null && o.reason !== null)
+      offers.push({ ...o, offer: o.offer, reason: o.reason });
+  return { offers };
+}
+
+/**
+ * Until PS-05 renders library entries (open products with no licence, PS-04), the library shows
+ * only the products it holds a licence for.
+ */
+function licensedOnly(body: PortalLibrary): PortalLibrary {
+  return {
+    ...body,
+    products: body.products.filter((p) => (p.kind ?? "license") === "license"),
+  };
+}
+
 /** `POST /api/discover/<p>/claim`: the licence, new (`added`) or already held. */
 export interface PortalDiscoverClaim {
   added: boolean;
@@ -594,8 +631,11 @@ export const portalApi = {
       `/api/licenses/${enc(product)}/${enc(id)}/devices/${enc(deviceId)}`,
       { method: "DELETE" },
     ),
-  library: () => call<PortalLibrary>("/api/library"),
-  discover: () => call<{ offers: PortalDiscoverOffer[] }>("/api/discover"),
+  library: () => call<PortalLibrary>("/api/library").then(licensedOnly),
+  discover: () =>
+    call<{ offers: WirePortalDiscoverOffer[] }>("/api/discover").then(
+      addableOffers,
+    ),
   /** "Add to library" (G25): mints through the auto-issue path; idempotent per product. */
   claimDiscover: (product: string) =>
     call<PortalDiscoverClaim>(`/api/discover/${enc(product)}/claim`, {
