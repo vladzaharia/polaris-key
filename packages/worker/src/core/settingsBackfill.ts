@@ -406,11 +406,12 @@ function payloadChanges(
 ): string[] {
   const out: string[] = [];
   const buckets = new Set([...Object.keys(stored), ...Object.keys(declared)]);
+  const isMap = (v: unknown): v is Record<string, unknown> =>
+    !!v && typeof v === "object" && !Array.isArray(v);
   for (const bucket of [...buckets].sort()) {
-    const a = stored[bucket];
-    const b = declared[bucket];
-    const isMap = (v: unknown): v is Record<string, unknown> =>
-      !!v && typeof v === "object" && !Array.isArray(v);
+    // An absent bucket reads as an empty one: the console writes `{}` buckets a manifest omits.
+    const a = stored[bucket] ?? {};
+    const b = declared[bucket] ?? {};
     if (!isMap(a) || !isMap(b)) {
       if (canonical(a ?? null) !== canonical(b ?? null)) out.push(bucket);
       continue;

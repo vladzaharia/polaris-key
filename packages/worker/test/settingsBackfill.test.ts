@@ -43,6 +43,7 @@ import { parseManifest } from "../src/services/release/manifest.js";
 import { manifestIngestFor } from "../src/core/registry.js";
 import { SERVICES } from "../src/mount.js";
 import { stmtClaim } from "../src/core/settingsClaims.js";
+import { isSealedEnvelope } from "../src/admin/lib/managedSecrets.js";
 import {
   ensureSystemProduct,
   linkSystemProduct,
@@ -758,6 +759,62 @@ describe("the apply", () => {
       ["applied", expect.any(Number)],
       ["unchanged", 0],
     ]);
+  });
+
+  it("reverting a console-edited profile keeps its sealed secret values, and the report never holds one", async () => {
+    const withSecret = JSON.stringify({
+      schemaVersion: 1,
+      entries: [
+        entry("run.name"),
+        {
+          key: "api.key",
+          kind: "secret",
+          category: "api",
+          label: "API key",
+          description: "",
+          schema: { type: "string", minLength: 8 },
+        },
+      ],
+    });
+    const ctx = await linked({ schema: withSecret });
+    const put = async (key: string, value: string) =>
+      expect(
+        (
+          await call(ctx, "PUT", `products/${SLUG}/config/profiles/standard`, {
+            updates: [{ key, value, state: "enforced" }],
+          })
+        ).status,
+      ).toBe(200);
+    await put("api.key", "sk-secret-0001");
+    await put("run.name", "console value");
+    expect((await rows(ctx.db, "profiles"))[0]!.source).toBe("console");
+
+    const report = await okRun(ctx, {
+      github: { head: { schema: withSecret } },
+    });
+    expect(item(report, "profile", "standard")).toMatchObject({
+      class: "differs",
+      owner: "console",
+      action: "revert",
+      changed: ["config.run.name"],
+    });
+    expect(JSON.stringify(report)).not.toContain("sk-secret-0001");
+    const stored = await ctx.db.first<{ payload_json: string; source: string }>(
+      "SELECT payload_json, source FROM profiles WHERE product = ? AND id = 'standard'",
+      SLUG,
+    );
+    expect(stored!.source).toBe("manifest");
+    const payload = JSON.parse(stored!.payload_json) as {
+      config?: Record<string, unknown>;
+      secrets?: Record<string, { value?: unknown }>;
+    };
+    expect(payload.config?.["run.name"]).toBeUndefined();
+    expect(isSealedEnvelope(payload.secrets?.["api.key"]?.value)).toBe(true);
+    const row = await ctx.db.first<{ report_json: string }>(
+      "SELECT report_json FROM settings_backfill_reports WHERE product = ?",
+      SLUG,
+    );
+    expect(row!.report_json).not.toContain("sk-secret-0001");
   });
 
   it("a live break-glass claim is kept; an expired one is not a claim", async () => {
