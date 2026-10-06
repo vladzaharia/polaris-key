@@ -59,6 +59,9 @@ public suspend fun CoreContext.fetchVerified(
 ): FetchedFile {
     require(size >= 0 && window > 0)
     val part = File(dest.absoluteFile.parentFile, dest.name + ".part")
+    // Private resume sidecar `<dest>.part.etag` (the ETag as plain text). Not a public format,
+    // but the conformance TranscriptTest seeds it (with `.part`) to replay an interrupted fetch,
+    // so a change here must change the replayer too.
     val etagFile = File(dest.absoluteFile.parentFile, dest.name + ".part.etag")
     dest.absoluteFile.parentFile?.let { if (!it.isDirectory && !it.mkdirs() && !it.isDirectory) throw PolarisException(ErrorCode.storeFailed, "cannot create $it") }
     var etag: String? = if (part.isFile) etagFile.takeIf { it.isFile }?.readText()?.trim()?.ifEmpty { null } else null
