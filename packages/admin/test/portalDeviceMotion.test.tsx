@@ -471,6 +471,88 @@ describe("the Devices card: Remove opens in place, then frees the seat", () => {
   });
 });
 
+describe("the Devices card: overlapping removals", () => {
+  /** Every DELETE answers only when the test lets it, in the order the test chooses. */
+  function gatedDeletes(): Record<string, () => void> {
+    const open: Record<string, () => void> = {};
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        (input: RequestInfo | URL) =>
+          new Promise<Response>((resolve) => {
+            const url =
+              typeof input === "string"
+                ? input
+                : input instanceof URL
+                  ? input.toString()
+                  : input.url;
+            const id = url.split("/").pop()!;
+            open[id] = () =>
+              resolve(
+                new Response(JSON.stringify({ ok: true, deviceId: id }), {
+                  status: 200,
+                  headers: { "content-type": "application/json" },
+                }),
+              );
+          }),
+      ),
+    );
+    return open;
+  }
+
+  /** Confirm Studio PC's removal, then the MacBook's while the first is still in flight. */
+  async function removeBoth(open: Record<string, () => void>): Promise<void> {
+    for (const name of ["Studio PC", "Mara's MacBook Pro"]) {
+      await userEvent.click(
+        screen.getByRole("button", { name: `Remove ${name}` }),
+      );
+      await userEvent.click(
+        screen.getByRole("button", { name: `Remove ${name}` }),
+      );
+    }
+    await waitFor(() => expect(Object.keys(open).sort()).toEqual(["d1", "d2"]));
+  }
+
+  it("each says the count as it is when it lands, not as it was at its click", async () => {
+    const open = gatedDeletes();
+    renderCard(TWO);
+    await removeBoth(open);
+    await act(async () => open.d2!());
+    await waitFor(() =>
+      expect(lastAnnouncement()).toBe(
+        "Studio PC was removed. 1 of 3 devices in use.",
+      ),
+    );
+    // Both were confirmed with two seats in use; the second to land leaves none.
+    await act(async () => open.d1!());
+    await waitFor(() =>
+      expect(lastAnnouncement()).toBe(
+        "Mara's MacBook Pro was removed. 0 of 3 devices in use.",
+      ),
+    );
+  });
+
+  it("counts a landed removal once, when the live data already shows it", async () => {
+    const open = gatedDeletes();
+    const { refetch } = renderCard(TWO);
+    await removeBoth(open);
+    await act(async () => open.d2!());
+    await waitFor(() =>
+      expect(lastAnnouncement()).toBe(
+        "Studio PC was removed. 1 of 3 devices in use.",
+      ),
+    );
+    // The refetch after the first removal lands before the second does.
+    refetch(ONE);
+    await act(async () => open.d1!());
+    await waitFor(() =>
+      expect(lastAnnouncement()).toBe(
+        "Mara's MacBook Pro was removed. 0 of 3 devices in use.",
+      ),
+    );
+  });
+});
+
 // ── The seat meter ─────────────────────────────────────────────────────────────────────────────
 
 /** A transition the test finishes: stands in for `.pk-seg`'s transform transition. */

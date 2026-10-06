@@ -78,6 +78,7 @@ export function DevicesCard({
   // removal's announcement counts from the live seats).
   const live = activeOf(detail);
   const liveIds = new Set(live.map((d) => d.deviceId));
+  const seatsLeftAfter = useSeatsLeft(detail, live);
   const active = activeOf(view);
   const idle = (view?.devices.length ?? 0) - active.length;
   const signIn = view ? isSignInLicense(view) : false;
@@ -135,7 +136,7 @@ export function DevicesCard({
                   detail={view}
                   productName={productName}
                   inUse={active.length}
-                  liveInUse={live.length}
+                  seatsLeftAfter={seatsLeftAfter}
                   seatLimit={showCount ? seatLimit : null}
                   showCount={showCount}
                   emailConfigured={emailConfigured}
@@ -159,6 +160,34 @@ export function DevicesCard({
 /** The devices using a seat. */
 function activeOf(detail: PortalLicenseDetail | undefined): PortalDevice[] {
   return detail?.devices.filter((d) => d.status === "authorized") ?? [];
+}
+
+/**
+ * How many devices use a seat once `deviceId`'s removal has landed, for its announcement. Read
+ * when the removal lands, not at its click: removals can overlap, and one that lands first changes
+ * what the other leaves. Counts the live devices (from a ref, so never a click's stale render)
+ * less every removal that has landed and that the live data does not show yet.
+ */
+function useSeatsLeft(
+  detail: PortalLicenseDetail | undefined,
+  live: PortalDevice[],
+): (deviceId: string) => number {
+  const liveRef = React.useRef(live);
+  liveRef.current = live;
+  /** Removals that have landed while the live data still shows the device using a seat. */
+  const landed = React.useRef(new Set<string>());
+  // Once the live data shows a removal, it is forgotten (a device activated again counts).
+  React.useEffect(() => {
+    const ids = new Set(activeOf(detail).map((d) => d.deviceId));
+    for (const id of landed.current)
+      if (!ids.has(id)) landed.current.delete(id);
+  }, [detail]);
+  return React.useCallback((deviceId: string) => {
+    if (liveRef.current.some((d) => d.deviceId === deviceId))
+      landed.current.add(deviceId);
+    return liveRef.current.filter((d) => !landed.current.has(d.deviceId))
+      .length;
+  }, []);
 }
 
 function sameIds(a: PortalDevice[], b: PortalDevice[]): boolean {
@@ -276,7 +305,7 @@ export function DeviceRow({
   seatLimit,
   showCount = true,
   emailConfigured = false,
-  liveInUse = inUse,
+  seatsLeftAfter = () => inUse - 1,
   gone = false,
 }: {
   device: PortalDevice;
@@ -285,10 +314,11 @@ export function DeviceRow({
   /** The devices using a seat, as the card shows them (the consequences say what is left). */
   inUse: number;
   /**
-   * The devices using a seat in the live data, which a removal acts on (the announcement); it
-   * differs from `inUse` only while a list transition holds the old view.
+   * The devices using a seat once this removal has landed, asked when it lands (the
+   * announcement): counted from the live data, which differs from `inUse` while a list transition
+   * holds the old view or another removal has landed meanwhile (`useSeatsLeft`).
    */
-  liveInUse?: number;
+  seatsLeftAfter?: (deviceId: string) => number;
   seatLimit?: number | null;
   /** False drops the new count from the consequences (the card shows no counter). */
   showCount?: boolean;
@@ -399,10 +429,11 @@ export function DeviceRow({
                   if (gone) return;
                   // The row leaves with the removal; find the page's heading while it is here.
                   const heading = pageHeading(rowRef.current);
-                  // Said once, with the new count (S-23 §6.5: a freed seat is counted in text).
-                  const left = liveInUse - 1;
                   remove.mutate(device.deviceId, {
                     onSuccess: () => {
+                      // Said once, with the count as it is when the removal lands (S-23 §6.5: a
+                      // freed seat is counted in text), never as it was at the click.
+                      const left = seatsLeftAfter(device.deviceId);
                       toast.success(`${name} was removed`, {
                         description: `${productName} has a free seat now.`,
                       });
