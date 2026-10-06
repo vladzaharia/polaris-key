@@ -89,8 +89,8 @@ const DEFAULTS := {
 	"activation_rate_limited": "Too many attempts. Wait a moment and try again.",
 	"activation_unsupported": "This isn't available on this platform.",
 	"activation_error": "Activation failed. Check your connection and try again.",
-	"free_device": "Free up a device",
-	"free_device_scan": "Scan with your phone to free up a device, then try again.",
+	"free_device": "Replace a device",
+	"free_device_scan": "Scan with your phone to free a device, then try again.",
 	# ── PKeySignInDialog ────────────────────────────────────────────────────────────────────
 	"sign_in_title": "Sign in",
 	"sign_in_starting": "Starting sign-in…",

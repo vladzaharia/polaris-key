@@ -260,7 +260,7 @@
     "ui.kit": { "status": "implemented" },
     "ui.kit.manage": {
       "status": "implemented",
-      "note": "PX-W8: LicenseGate and PolarisLogin show Free up a device on device-limit."
+      "note": "PX-W8: LicenseGate and PolarisLogin show Replace a device on device-limit."
     },
     "commerce.receipt": {
       "status": "planned",

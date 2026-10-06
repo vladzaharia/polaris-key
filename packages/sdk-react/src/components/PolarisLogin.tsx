@@ -47,7 +47,7 @@ export interface PolarisLoginProps {
   /** Drop the card chrome (border, background, padding) when the form sits inside another
    *  card, such as the gate's "license expired" screen. */
   bare?: boolean;
-  /** Where the customer portal sends the person back after "Free up a device" (PX-W8), as
+  /** Where the customer portal sends the person back after "Replace a device" (PX-W8), as
    *  `return=`. The portal honours it only when it is one of the product's declared return
    *  targets; leave it unset to add none. */
   returnUrl?: string;

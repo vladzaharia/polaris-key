@@ -20,7 +20,7 @@ signal activated()
 ## Where the portal sends the player back once a seat is free (PX-W8): one of the product's
 ## declared return targets, or "" for none.
 @export var return_url := ""
-## How "Free up a device" is offered: "auto" (a button, or a QR code where a joypad is the only
+## How "Replace a device" is offered: "auto" (a button, or a QR code where a joypad is the only
 ## input), "button" or "qr".
 @export_enum("auto", "button", "qr") var manage_mode := "auto"
 
@@ -34,7 +34,7 @@ var mode := "main"
 var busy := false
 var message := ""
 var message_ok := false
-## The link "Free up a device" opens, or "" (PX-W8). Never an auth failure: it is only offered.
+## The link "Replace a device" opens, or "" (PX-W8). Never an auth failure: it is only offered.
 var manage_url := ""
 
 var _caps_override: Variant = null
@@ -164,7 +164,7 @@ func _focus_chain() -> Array:
 	return [_key, _submit, _manage, _sign_in, _free, _offline]
 
 
-## "button" or "qr" for "Free up a device" here (manage_mode, else the device).
+## "button" or "qr" for "Replace a device" here (manage_mode, else the device).
 func manage_presentation() -> String:
 	if manage_mode == "button" or manage_mode == "qr":
 		return manage_mode

@@ -1273,7 +1273,7 @@
     {
       "id": "ui.kit.manage",
       "family": "ui",
-      "title": "Device-limit screen: Free up a device (button, or a QR on TV and console) and Try again",
+      "title": "Device-limit screen: Replace a device (button, or a QR on TV and console) and Try again",
       "service": "sdk",
       "proof": [{ "kind": "snapshot" }],
       "allowedNa": [

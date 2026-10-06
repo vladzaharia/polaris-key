@@ -75,6 +75,29 @@ differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US 
 
 - `for=` carries the PX-W13 device label when known; the kit button is **Replace a device** (opens `manageUrl`) and the portal quick action **Free a device** (SIGN-IN.md D-49; `plans/PX-W8.md` alignment note).
 
+How the branch applied it (fix round 1, after merging main):
+
+- **Kit button.** All four UI kits (React `LicenseGate`/`PolarisLogin`, Swift `PolarisLoginView`,
+  Kotlin `PolarisGate`, Godot `PKeyActivationPanel`) now label the button **Replace a device**. The
+  QR caption reads "Scan with your phone to free a device, then try again." The parity row
+  `ui.kit.manage`, the SDK READMEs, WIRE-CONTRACT-V4 §5.3 and the threat model use the same words.
+  Kotlin's Roborazzi references and Godot's structural snapshot were re-recorded for the new copy.
+- **Portal quick action.** `packages/admin/src/portal/model/library.ts` now says **Free a device**.
+  The two CLIs print `Free a device: <url>`, because the link opens the free-device page.
+  `FreeDevicePage.tsx`'s own heading is left to UX-04, which owns that page.
+- **`for=` label.** PX-W13 is still `todo`, so no device label exists yet. `manageForLabel` in
+  `packages/worker/src/core/manageUrl.ts` is the only place `for` is chosen, and its comment marks
+  it as the seam where PX-W13 puts its label first.
+- **Merged with UX-15.** `/activate` and `/enroll` keep UX-15's refusal record (`waitUntil` into
+  `authorizeDevice`, `license_refusals`) and still answer `authorizationError(authorized, await
+refusalManageUrl(...))`, so a `device_limit` refusal is logged and carries its link.
+  `Constants.generated.kt` was regenerated with `gen:constants`, not merged by hand.
+- **One validation rule, enforced everywhere** (review round 1 parity nit). client-core's
+  `parseManage` no longer leans on `new URL` alone: it requires `<scheme>://` and refuses an `@` or
+  `\` in the authority, the rule the Godot and Kotlin ports already applied. Python and Swift now
+  check it explicitly too. The shared table in every SDK gains three cases (`https:host`,
+  `https://host\@x`, `https://host\x`). §5.3 item 4 states the rule.
+
 ## Goal
 
 Apps receive a `manageUrl` on `device_limit` and on the key-entries refusal that opens `#/p/:product/free-device?for=…&return=…` or `/activate?key=…&product=…`, specified in I-04's contract and carried through `errors.json`, the corpus and transcripts, client-core, Node, React, Python, Swift, Godot, Kotlin and the SDK UI kits.

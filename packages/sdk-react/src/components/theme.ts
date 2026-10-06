@@ -312,7 +312,7 @@ export const defaultTheme: PolarisTheme = {
       "Your license doesn't include this release channel. Switch channels or contact your administrator.",
     loadingLabel: "Checking your license…",
     retryLabel: "Try again",
-    freeDeviceLabel: "Free up a device",
+    freeDeviceLabel: "Replace a device",
     signOutLabel: "Sign out",
     notApplicableLabel: "This product is not licensed separately.",
     configTitle: "Settings",

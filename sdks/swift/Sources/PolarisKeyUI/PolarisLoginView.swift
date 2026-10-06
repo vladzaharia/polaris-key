@@ -327,7 +327,7 @@ struct PolarisGateSurface<Content: View>: View {
         }
     }
 
-    /// PX-W8: "Free up a device" for a `device_limit` refusal. A button that opens the portal on
+    /// PX-W8: "Replace a device" for a `device_limit` refusal. A button that opens the portal on
     /// macOS and iOS; a QR code on tvOS, where the link is opened on a phone. The person then
     /// returns and presses Activate again, so the button above is the "Try again".
     @ViewBuilder private func freeDeviceAction(_ url: URL) -> some View {
@@ -355,7 +355,7 @@ struct PolarisGateSurface<Content: View>: View {
             .buttonBorderShape(.roundedRectangle(radius: PolarisGateLayout.controlRadius))
             .modifier(OptionalTint(color: accentTextTint))
             .accessibilityLabel(theme.copy.freeDeviceButton)
-            .accessibilityHint("Opens your account in the browser to free up a device.")
+            .accessibilityHint("Opens your account in the browser to free a device.")
         }
     }
 
@@ -687,7 +687,7 @@ private struct OptionalTint: ViewModifier {
                 onSignIn: {}, onActivate: { _ in }, onRefresh: {}, content: { EmptyView() }
             )
             .previewLayout(.fixed(width: 393, height: 852))
-            .previewDisplayName("Device limit with Free up a device")
+            .previewDisplayName("Device limit with Replace a device")
             surface(.grace)
                 .environment(\.dynamicTypeSize, .accessibility3)
                 .previewLayout(.fixed(width: 393, height: 852))

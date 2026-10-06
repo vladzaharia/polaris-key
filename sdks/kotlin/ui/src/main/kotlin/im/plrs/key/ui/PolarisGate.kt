@@ -97,7 +97,7 @@ public data class PolarisActivationUi(
     val busy: Boolean = false,
     val error: PolarisActivationError? = null,
     /**
-     * PX-W8: the portal link "Free up a device" opens after a device-limit refusal, or null. It
+     * PX-W8: the portal link "Replace a device" opens after a device-limit refusal, or null. It
      * already carries the app's return URL and, on an `/activate` link, the key as a fragment.
      * Never an auth failure: the screen only offers it.
      */
@@ -337,7 +337,7 @@ public fun PolarisGateScreen(
 /**
  * The activation screen: a welcome, the sign-in button (when [onSignIn] is given), and the licence
  * key field with its Activate button. [notice] (a revoked licence's message) sits above the form.
- * After a device-limit refusal that carries a portal link, "Free up a device" opens it: a button,
+ * After a device-limit refusal that carries a portal link, "Replace a device" opens it: a button,
  * or a QR code when [manageAsQr] (Android TV, where the link is opened on a phone). Activate again
  * is the "Try again".
  */

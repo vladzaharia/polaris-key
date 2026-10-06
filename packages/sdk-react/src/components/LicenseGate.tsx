@@ -40,7 +40,7 @@ export interface LicenseGateProps {
   /** When in `grace`, render children behind a dismissible banner instead of blocking. */
   allowGrace?: boolean;
   className?: string;
-  /** Passed to the sign-in card's "Free up a device" link as `return=` (PX-W8). */
+  /** Passed to the sign-in card's "Replace a device" link as `return=` (PX-W8). */
   returnUrl?: string;
 }
 

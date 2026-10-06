@@ -378,7 +378,7 @@
     },
     "ui.kit.manage": {
       "status": "implemented",
-      "note": "PX-W8: the activation panel shows Free up a device on device-limit, or a QR when a joypad is the only input (suite_ui)."
+      "note": "PX-W8: the activation panel shows Replace a device on device-limit, or a QR when a joypad is the only input (suite_ui)."
     },
     "commerce.receipt": {
       "status": "implemented",

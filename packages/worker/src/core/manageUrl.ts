@@ -1,7 +1,7 @@
 /**
  * The refusal link (PX-W8, G15b; WIRE-CONTRACT-V4 §5.3): the `manageUrl` the Worker puts on a
  * seat refusal (`device_limit`) and, with Identity, on the key-entries refusal
- * (`key_entry_limit`, I-09), so an app can offer "Free up a device" instead of a dead end.
+ * (`key_entry_limit`, I-09), so an app can offer "Replace a device" instead of a dead end.
  *
  * It lives in Core because License (activate, enroll) and Identity (session/license, and I-09's
  * key-entry refusal) both build it, and services may not import one another (rule 6).
@@ -66,6 +66,10 @@ function cleanLabelPart(raw: string): string {
  * The coarse device label for `for`: `"<Platform> <arch>"` from the metadata headers (e.g.
  * `macOS arm64`), at most `MANAGE_FOR_MAX_LENGTH` characters, or `null` when the request
  * carries no usable metadata.
+ *
+ * The one place `for` is chosen. SIGN-IN.md D-49 asks for the PX-W13 device label when known;
+ * PX-W13 (the SDK `deviceName`) has not shipped, so this label is the fallback today, and
+ * PX-W13 swaps its sanitized label in here, ahead of the platform pair.
  */
 export function manageForLabel(req: Request): string | null {
   const platform = normalizePlatformHeader(

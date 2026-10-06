@@ -62,8 +62,8 @@ func all() -> Array:
 				for web in [false, true]:
 					out.append(["activation", "license %s, identity %s, enrolment %s, %s" % [_on(lic), _on(idn), _on(enr), "web" if web else "native"], activation.bind(lic, idn, enr, web)])
 	out.append(["activation", "device limit", activation_result])
-	out.append(["activation", "device limit, free up a device (button)", activation_manage.bind("button")])
-	out.append(["activation", "device limit, free up a device (QR)", activation_manage.bind("qr")])
+	out.append(["activation", "device limit, replace a device (button)", activation_manage.bind("button")])
+	out.append(["activation", "device limit, replace a device (QR)", activation_manage.bind("qr")])
 	# ── PKeySignInDialog.
 	out.append(["sign_in", "starting", sign_in.bind("starting")])
 	out.append(["sign_in", "pending", sign_in.bind("pending")])

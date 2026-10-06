@@ -75,7 +75,7 @@ message, with Reconnect or Try again, for `expired`, `version-too-old`, `version
 `channel-not-entitled`. The server's allowed version window is appended when it sends one.
 
 When an activation is refused because every seat is taken and the Worker sent a portal link
-(`ActivationResult.DeviceLimit.manageUrl`, PX-W8), the activation screen shows **Free up a device**
+(`ActivationResult.DeviceLimit.manageUrl`, PX-W8), the activation screen shows **Replace a device**
 under the error. It is a button that opens the link, or a QR code with a "scan with your phone"
 line on Android TV. The link carries the key fragment on an `/activate` link and the `returnUrl`
 you pass to `PolarisGateState`.

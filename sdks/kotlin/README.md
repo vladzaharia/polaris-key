@@ -170,12 +170,12 @@ class stays source-compatible. It is never an auth failure.
 val r = client.activate(key)
 if (r is ActivationResult.DeviceLimit && r.manageUrl != null) {
     val link = ManageLink.withReturn(ManageLink.withKey(r.manageUrl!!, key), "myapp://activated")
-    // offer "Free up a device", opening `link`
+    // offer "Replace a device", opening `link`
 }
 ```
 
 The Compose gate (`:ui`) does this for you: pass `returnUrl` to `PolarisGateState` and the
-activation screen shows **Free up a device** (a QR code on Android TV). The QR code carries
+activation screen shows **Replace a device** (a QR code on Android TV). The QR code carries
 `PolarisActivationUi.manageQrUrl`, the link without the key: anyone who can see a TV can scan it,
 so the phone's page asks for the key. Leave `withKey` out of any QR you draw yourself.
 

@@ -6,7 +6,7 @@ extends RefCounted
 ##
 ## Pure functions: no I/O, no signing, no change to any result type. The link is never an auth
 ## failure, so nothing here wipes state or asks for a retry; a game opens it only behind a player
-## action ("Free up a device"). Every SDK pins the same table of cases (client-core
+## action ("Replace a device"). Every SDK pins the same table of cases (client-core
 ## `test/manage.test.ts`), so the links each one builds are byte-identical.
 
 ## The longest `manageUrl` a client keeps (characters); a longer one is ignored.

@@ -497,7 +497,7 @@ func _dev_menu(t: PKeyTestContext) -> void:
 
 
 func _controllers(t: PKeyTestContext) -> void:
-	# PX-W8: "Free up a device" — a button where a browser is at hand, a QR code where a joypad is
+	# PX-W8: "Replace a device" — a button where a browser is at hand, a QR code where a joypad is
 	# the only input; the link carries the key fragment (on /activate only) and the game's return.
 	t.check("manage: desktop, web and touch phones get a button", PKeyActivationController.manage_presentation("Windows", false, 1) == "button" and PKeyActivationController.manage_presentation("Web", false, 0) == "button" and PKeyActivationController.manage_presentation("Android", true, 1) == "button")
 	t.check("manage: a TV or console gets a QR code", PKeyActivationController.manage_presentation("Android", false, 1) == "qr" and PKeyActivationController.manage_presentation("Switch", false, 1) == "qr")
@@ -511,7 +511,7 @@ func _controllers(t: PKeyTestContext) -> void:
 	limited.manage_url = null
 	t.check("manage: no link, no offer", PKeyActivationController.manage_link(limited, "k") == "" and PKeyActivationController.manage_link(PKeyActivationResult.of(PKeyActivationResult.KIND_UNAUTHORIZED, &"x", ""), "k") == "")
 	var copy := PKeyUiCopy.DEFAULTS
-	t.check("manage: copy", copy.get("free_device") == "Free up a device" and copy.has("free_device_scan"))
+	t.check("manage: copy", copy.get("free_device") == "Replace a device" and copy.has("free_device_scan"))
 	var caps := PKeyActivationController.capabilities(true, true, true, true)
 	t.check("activation: Continue free is never offered on web", not caps["continue_free"] and caps["key_entry"] and caps["sign_in"] and caps["offline"])
 	t.check("activation: without License there is no key entry, no enrolment, no offline file", PKeyActivationController.capabilities(false, false, true, false) == {"key_entry": false, "sign_in": false, "continue_free": false, "offline": false})

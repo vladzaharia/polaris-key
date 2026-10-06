@@ -98,9 +98,9 @@ public data class PolarisCopy(
     val activationEnrollDisabled: String = "This app doesn't offer a free tier.",
     val activationError: String = "Activation failed. Check your connection and try again.",
     // PX-W8: the action on a device-limit refusal that carries the portal link.
-    val freeDevice: String = "Free up a device",
-    val freeDeviceScan: String = "Scan with your phone to free up a device, then try again.",
-    val freeDeviceQrDescription: String = "QR code that opens your account to free up a device",
+    val freeDevice: String = "Replace a device",
+    val freeDeviceScan: String = "Scan with your phone to free a device, then try again.",
+    val freeDeviceQrDescription: String = "QR code that opens your account to free a device",
 
     // ── Sign-in with QR (RFC 8628) ───────────────────────────────────────────────────────────
     val signInTitle: String = "Sign in",

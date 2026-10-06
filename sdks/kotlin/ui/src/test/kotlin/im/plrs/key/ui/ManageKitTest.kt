@@ -41,8 +41,8 @@ class ManageKitTest {
     @Test
     fun theCopy() {
         val copy = PolarisCopy()
-        assertEquals("Free up a device", copy.freeDevice)
-        assertEquals("Scan with your phone to free up a device, then try again.", copy.freeDeviceScan)
+        assertEquals("Replace a device", copy.freeDevice)
+        assertEquals("Scan with your phone to free a device, then try again.", copy.freeDeviceScan)
     }
 
     @Test

@@ -2,7 +2,7 @@
 //
 // PX-W8 (WIRE-CONTRACT-V4 §5.3): the device-limit refusal link. Both adapters forward a valid
 // `manageUrl` onto the license error (and drop an invalid one), and the sign-in card shows
-// "Free up a device", which opens the link with the app's return URL and the typed key as a
+// "Replace a device", which opens the link with the app's return URL and the typed key as a
 // fragment. It is never an auth failure: the state is not wiped.
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
@@ -94,7 +94,7 @@ describe("adapters forward manageUrl on device-limit", () => {
   });
 });
 
-describe("PolarisLogin — Free up a device", () => {
+describe("PolarisLogin — Replace a device", () => {
   it("opens the link with return= and the key fragment", async () => {
     const open = vi.spyOn(window, "open").mockReturnValue(null);
     const bridge = makeFakeBridge(
@@ -127,7 +127,7 @@ describe("PolarisLogin — Free up a device", () => {
       expect(el).toBeTruthy();
       return el as HTMLButtonElement;
     });
-    expect(button.textContent).toBe("Free up a device");
+    expect(button.textContent).toBe("Replace a device");
     expect(open).not.toHaveBeenCalled();
     fireEvent.click(button);
     expect(open).toHaveBeenCalledWith(

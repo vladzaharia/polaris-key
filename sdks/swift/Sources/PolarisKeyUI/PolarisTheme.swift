@@ -61,9 +61,9 @@ public struct PolarisCopy: Sendable {
         channelNotEntitledTitle: String = "Channel not entitled",
         versionBlockSubtitle: String = "Your current version isn't permitted to run.",
         deviceLimitMessage: String = "This license has reached its device limit.",
-        freeDeviceButton: String = "Free up a device",
+        freeDeviceButton: String = "Replace a device",
         freeDeviceScanCaption: String =
-            "Scan with your phone to free up a device, then try again."
+            "Scan with your phone to free a device, then try again."
     ) {
         self.productName = productName
         self.welcomeTitle = welcomeTitle ?? "Welcome to \(productName)"

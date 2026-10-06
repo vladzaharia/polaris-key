@@ -168,7 +168,7 @@ exposes the aggregates (`busy`, `error`) alongside `busyByService` / `errorBySer
 
 On a device-limit refusal, `PolarisError.manageUrl` carries the customer-portal link that frees a
 seat (WIRE-CONTRACT-V4 §5.3), validated, and only while the product's portal is on. `<PolarisLogin>`
-(and `<LicenseGate>`, which renders it) shows **Free up a device** under the error: it opens the
+(and `<LicenseGate>`, which renders it) shows **Replace a device** under the error: it opens the
 link in a new tab with the key fragment on an `/activate` link and `return=` set to `returnUrl`
 when you pass one. Activate again is the "try again". `openManageUrl(url, { key, returnUrl })` and
 the `withManageReturn` / `withManageKey` helpers are exported for a custom screen. The link is

@@ -74,7 +74,7 @@ function describeFailure(
           : "";
       // PX-W8: the portal link that frees a seat, when the Worker sent one. Printed without
       // the key: a terminal scrollback is a log.
-      const manage = r.manageUrl ? `\nFree up a device: ${r.manageUrl}` : "";
+      const manage = r.manageUrl ? `\nFree a device: ${r.manageUrl}` : "";
       return fail(`device limit reached${detail}.${manage}`);
     }
     case "unauthorized":

@@ -4784,7 +4784,7 @@ form: they carry the key only as a fragment.
 ### Refusal links: `manageUrl` and the `#key=` fragment (PX-W8)
 
 A `device_limit` or `key_entry_limit` refusal carries `manageUrl`, a portal link an app offers as
-**Free up a device** (WIRE-CONTRACT-V4 §5.3). The Worker builds it, and the link itself never names
+**Replace a device** (WIRE-CONTRACT-V4 §5.3). The Worker builds it, and the link itself never names
 the key, an account, a holder, a hostname, a device id or an IP. The licence id (on an attached
 licence) and a coarse `for` label (`macOS arm64`) are the only identifiers in it. Asset: the
 licence key, a bearer credential (whoever holds it can activate seats and add the licence through

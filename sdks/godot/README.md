@@ -712,7 +712,7 @@ await PolarisKey.identity.begin_sign_in()        # polls in the background; canc
   customer-portal link that frees a seat (WIRE-CONTRACT-V4 §5.3), validated, and only while the
   product's portal is on. It is never an auth failure. `PKeyManage.with_key(url, key)` adds
   `#key=` to an `/activate` link and `PKeyManage.with_return(url, return_url)` adds `return=`.
-  `PKeyActivationPanel` shows **Free up a device** under the error: a button that calls
+  `PKeyActivationPanel` shows **Replace a device** under the error: a button that calls
   `OS.shell_open`, or a QR code where a joypad is the only input (a console, or a TV). Set
   `return_url` on the panel, and `manage_mode` to force `button` or `qr`. The QR code never
   carries the key (anyone who can see the screen can scan it): `manage_link(..., for_qr = true)`

@@ -8,7 +8,7 @@ extends RefCounted
 ##   Continue free      only when the game offers keyless enrolment, License is enabled, and
 ##                      never on web (a browser has no machine anchor)
 ##   Offline activation only when License is enabled (a bundle carries a licence)
-##   Free up a device   only after a device-limit result that carries `manage_url` (PX-W8): a
+##   Replace a device   only after a device-limit result that carries `manage_url` (PX-W8): a
 ##                      button that opens the portal, or a QR code where the player has no
 ##                      browser at hand (manage_presentation)
 
@@ -65,7 +65,7 @@ static func message_for(r: PKeyActivationResult) -> Array:
 	return ["activation_error", null]
 
 
-## The link "Free up a device" opens for a result, or "" when it offers none: the served
+## The link "Replace a device" opens for a result, or "" when it offers none: the served
 ## `manage_url` with the key as a fragment (on an `/activate` link only) and the game's return URL
 ## added (PX-W8, WIRE-CONTRACT-V4 §5.3). A QR link (`for_qr`) never carries the key: a code on a
 ## shared screen can be scanned by anyone in the room, so the phone's page asks for the key.

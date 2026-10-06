@@ -156,7 +156,7 @@ an account it opens the free-device flow for that licence
 (`/#/p/<slug>/free-device?license=<id>`); for a floating licence it opens the activate page, which
 goes on to free-device once the key is added. `for` is a coarse platform-and-arch label from the
 request's metadata headers. The link never carries the key, an account id or a device id, and it
-is not an auth failure: SDKs offer it behind a "Free up a device" action.
+is not an auth failure: SDKs offer it behind a "Replace a device" action.
 
 ### 7. `bindDevice`
 

@@ -764,7 +764,7 @@ architecture it was built for. For example:
 Pinned by `license-device-limit.json` (transcript) and the `readManageUrl`, `withManageReturn` and
 `withManageKey` table that every SDK repeats (client-core `test/manage.test.ts`).
 
-A seat refusal carries a link to the customer portal, so an app can offer **Free up a device**
+A seat refusal carries a link to the customer portal, so an app can offer **Replace a device**
 instead of a dead end. It is one optional member of an unsigned flat refusal body. No signed
 document, claim, header or error code changes, and `PROTOCOL_VERSION` stays 4.
 
@@ -785,9 +785,10 @@ document, claim, header or error code changes, and `PROTOCOL_VERSION` stays 4.
    (for example `macOS arm64`), at most `MANAGE_FOR_MAX_LENGTH` (64) characters, omitted without
    metadata. It is display text only.
 4. **Client validation.** A client keeps the member (top level, else nested under `error`) only if
-   it is an absolute `https` URL, or `http` to `localhost`, `127.0.0.1` or `[::1]`, with a host,
-   no userinfo, no whitespace or control characters, and within the length limit. Anything else
-   is dropped, never repaired.
+   it is an absolute `https` URL, or `http` to `localhost`, `127.0.0.1` or `[::1]`, written
+   `<scheme>://` with a host, no `@` (userinfo) or `\` in the authority, no whitespace or control
+   characters, and within the length limit. Anything else is dropped, never repaired. Every SDK
+   applies this rule itself rather than trusting a platform URL parser, which may be laxer.
 5. **What a client may add.** Only two things, each spelled with the
    `application/x-www-form-urlencoded` byte serializer:
    - `return=<app URL>`: into the query inside the fragment when the fragment holds a portal

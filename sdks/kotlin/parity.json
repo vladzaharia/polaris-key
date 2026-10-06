@@ -308,7 +308,7 @@
     },
     "ui.kit.manage": {
       "status": "implemented",
-      "note": "PX-W8: the Compose activation screen shows Free up a device on device-limit, or a QR on Android TV."
+      "note": "PX-W8: the Compose activation screen shows Replace a device on device-limit, or a QR on Android TV."
     },
     "commerce.receipt": {
       "status": "planned",
