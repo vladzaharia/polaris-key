@@ -23,6 +23,8 @@ export interface ListingImageSlot {
   readonly maxBytes: number;
   readonly min: number;
   readonly max: number;
+  /** The width-to-height ratio the slot needs, when it has one (`[16, 9]`). */
+  readonly aspect?: readonly [number, number];
 }
 
 export interface ListingProfile {
