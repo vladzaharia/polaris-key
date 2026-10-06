@@ -4449,7 +4449,7 @@
       "optional": true,
       "refs": ["notes/S-12 §10 tier 2"],
       "brief": "wp/F-22-native-publish.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "F-23",
@@ -4467,7 +4467,7 @@
       "optional": true,
       "refs": ["notes/S-12 §9", "notes/S-12 §10 tier 2"],
       "brief": "wp/F-23-docker-push.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "F-30",
@@ -4485,7 +4485,7 @@
       "optional": true,
       "refs": ["notes/S-12 §4.1", "notes/S-12 §10 tier 3"],
       "brief": "wp/F-30-cargo-feed.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "F-31",
@@ -4503,7 +4503,7 @@
       "optional": true,
       "refs": ["notes/S-12 §4.1", "notes/S-12 §10 tier 3"],
       "brief": "wp/F-31-go-proxy.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "F-32",

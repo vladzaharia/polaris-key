@@ -103,6 +103,7 @@ describe("the package-feeds bootstrap (F-03)", () => {
       SYSTEM_PRODUCT_SLUG,
     );
     expect(feeds.map((f) => f.ecosystem)).toEqual([
+      "cargo",
       "godot",
       "maven",
       "npm",

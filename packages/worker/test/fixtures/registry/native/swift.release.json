@@ -1,0 +1,47 @@
+{
+  "ecosystem": "swift",
+  "name": "acme.AcmeKit",
+  "version": "1.0.0",
+  "deliverable_id": "swift.kit",
+  "release_id": "swift.kit@1.0.0",
+  "state": "live",
+  "files_json": [
+    {
+      "name": "acme.AcmeKit-1.0.0.zip",
+      "type": "source-archive",
+      "sha256": "1b48162fae03f76af81eea4b207756b05c23a20c0461b902a18d4e17ec667d20",
+      "size": 614
+    },
+    {
+      "name": "acme.AcmeKit-1.0.0.zip.sig",
+      "type": "source-archive-signature",
+      "sha256": "3487c9035d3d2ce78a973782a7aa4684a62ae12456f98b3c0b054852b4571685",
+      "size": 19
+    },
+    {
+      "name": "Package.swift",
+      "type": "manifest",
+      "sha256": "7b12086f47596ce6759a694108063ef89fd13c10596e7af452c09ba9127cc325",
+      "size": 92
+    },
+    {
+      "name": "Package@swift-5.10.swift",
+      "type": "manifest",
+      "sha256": "0e3a2a394098b82bcb311a0ec667ef42e203bf1a6780d5c7fd9d586316ed030f",
+      "size": 93
+    }
+  ],
+  "metadata_json": {
+    "name": "acme.AcmeKit",
+    "version": "1.0.0",
+    "toolsVersions": [
+      "5.10"
+    ],
+    "signatureFormat": "cms-1.0.0"
+  },
+  "source_json": {
+    "kind": "registry",
+    "tokenId": "rtok_<id>",
+    "client": "swift"
+  }
+}
