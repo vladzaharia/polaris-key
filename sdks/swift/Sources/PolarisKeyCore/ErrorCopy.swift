@@ -1,23 +1,35 @@
-// User-facing copy for the registry's error codes (notes/SDK-PARITY-PASS.md §3.2).
+// The core copy catalog (core.copy, notes/SDK-PARITY-PASS.md §3.2): what a surface SAYS for a
+// code, in one place.
 //
-// One English sentence per code a person can meet, keyed by the codes in
-// `conformance/parity/errors.json` (the generated `ErrorCode` constants), so every surface that
-// shows an error — `PolarisError.errorDescription`, `ActivationResult.message`, the SwiftUI kit —
-// says the same thing for the same code. The shared base, `conformance/parity/copy.en.json`, is
-// SP-03's; until it lands this table is that base for Swift, and it is checked against the
-// registry by `ErrorCopyTests` (every code a person can meet has its own line).
+//   ErrorCopy.message(code, detail:, params:)         the sentence a screen shows
+//   ErrorCopy.title(code)                             the short heading above it
+//   ErrorCopy.activationMessage(kind, code:, params:) the sentence for a typed activation result
+//   ErrorCopy.activationTitle(kind)                   its heading
 //
-// The rules (§3.2):
+// ENGLISH IS GENERATED. `Copy.generated.swift` is written by `pnpm gen:constants` from
+// `conformance/parity/copy.en.json` (checked against errors.json and enums.json), with three
+// tables: COPY_CODES (per error code), COPY_GATE (per licenseStatus) and COPY_ACTIVATION (per
+// activationResult). They are separate on purpose: the error code `unauthorized` reads "Not
+// signed in", the activation result `unauthorized` reads "Key not accepted". `message(code)`
+// looks a code up as an error code, then as a gate status, then as an activation result (the
+// reference rule, packages/sdk-react/src/core/copy.ts); `activationMessage(kind)` reads the
+// activation table only.
 //
-//   * a code with no line of its own falls back to a generic sentence PLUS the code, never the raw
-//     server body, so a support request still carries something a developer can look up;
-//   * the copy names no platform ("this Mac") unless it is one: `deviceNoun` is "this Mac" on
-//     macOS and "this device" everywhere else.
+// A code with no entry falls back to COPY_FALLBACK, which NAMES the code and never shows the raw
+// server body: a body is not copy, and it is not localised.
+//
+// The host's English override layer (`setOverrides`) wins per key over the generated tables and
+// starts empty. Localisation beyond English is the String Catalog's job (UK-07), not this table's.
 
 import Foundation
 
 public enum ErrorCopy {
-    /// "this Mac" on macOS, "this device" on every other platform.
+    /// Placeholder values for a sentence (`COPY_PLACEHOLDERS`: `code`, `detail`, `limit`,
+    /// `deviceCount`, `retryAfterSeconds`, `product`).
+    public typealias Params = [String: String]
+
+    /// "this Mac" on macOS, "this device" on every other platform. The generated copy says
+    /// "this device" everywhere; this is for a host's own sentences.
     public static var deviceNoun: String {
         #if os(macOS)
             return "this Mac"
@@ -35,140 +47,138 @@ public enum ErrorCopy {
         #endif
     }
 
-    /// The generic sentence for a code with no line of its own.
-    public static let genericMessage = "Something went wrong."
+    // ── The host override layer ──────────────────────────────────────────────────────────
 
-    /// The sentence for `code`, with `detail` appended when given. A code with no line of its own
-    /// answers `genericMessage` followed by the code in parentheses.
-    public static func message(_ code: String, detail: String? = nil) -> String {
-        let base = messages[code] ?? "\(genericMessage) (\(code))"
-        guard let detail, !detail.isEmpty else { return base }
-        return "\(base) \(detail)"
+    private struct Overrides {
+        var messages: [String: String] = [:]
+        var titles: [String: String] = [:]
     }
 
-    /// A short title for `code` (a dialog or card heading).
+    private static let overrides = LockedValue(Overrides())
+
+    /// Replace the host's English overrides: `messages` and `titles` keyed by error code, gate
+    /// status or activation result (`device-limit`, or its camelCase kind `deviceLimit`). An
+    /// override wins over the generated tables for its key; every other key keeps the generated
+    /// text. Pass empty maps to clear.
+    public static func setOverrides(
+        messages: [String: String] = [:], titles: [String: String] = [:]
+    ) {
+        overrides.set(Overrides(messages: messages, titles: titles))
+    }
+
+    // ── Lookup ───────────────────────────────────────────────────────────────────────────
+
+    /// The generated entry for `code`: error code, then gate status, then activation result.
+    public static func entry(_ code: String) -> CopyEntry? {
+        COPY_CODES[code] ?? COPY_GATE[code] ?? COPY_ACTIVATION[activationResult(code)]
+    }
+
+    /// Whether `code` has its own sentence (a host override or the generated tables).
+    public static func has(_ code: String) -> Bool {
+        overrides.current.messages[code] != nil || entry(code) != nil
+    }
+
+    /// The sentence for `code`. `{code}` is replaced by the code, the other placeholders by
+    /// `params` (an unfilled one is dropped with the space before it); `detail` is appended in
+    /// parentheses when given. A code with no entry answers COPY_FALLBACK naming the code.
+    public static func message(_ code: String, detail: String? = nil, params: Params = [:])
+        -> String
+    {
+        let text =
+            overrides.current.messages[code] ?? entry(code)?.message ?? COPY_FALLBACK.message
+        let out = fill(text, code: code, params: params)
+        guard let detail, !detail.isEmpty else { return out }
+        return "\(out) (\(detail))"
+    }
+
+    /// The short heading for `code`, or COPY_FALLBACK's title.
     public static func title(_ code: String) -> String {
-        titles[code] ?? "Something went wrong"
+        overrides.current.titles[code] ?? entry(code)?.title ?? COPY_FALLBACK.title
     }
 
-    /// Whether `code` has a line of its own.
-    public static func has(_ code: String) -> Bool { messages[code] != nil }
+    /// The sentence for a typed activation result (`ActivationResult.kind`, `device-limit`, or
+    /// its camelCase kind): the host override, else the activation table — never the error-code
+    /// table. `{code}` (in `refused`) names `code`. A kind the table lacks reads as `message`.
+    public static func activationMessage(
+        _ kind: String, code: String? = nil, params: Params = [:]
+    ) -> String {
+        guard let text = activationText(kind, messages: true) else {
+            return message(kind, params: params)
+        }
+        return fill(text, code: code ?? kind, params: params)
+    }
 
-    // ── The table ────────────────────────────────────────────────────────────────────────
-    static let messages: [String: String] = [
-        // Licence and activation (§3.1).
-        ErrorCode.unauthorized: "That license key wasn't accepted.",
-        ErrorCode.deviceLimit:
-            "This license has reached its device limit. Free a device to use it here.",
-        ErrorCode.fingerprintRequired:
-            "This license needs a hardware fingerprint, which couldn't be read on \(deviceNoun).",
-        ErrorCode.hardwareMismatch:
-            "\(deviceNounCapitalized)'s hardware changed. "
-            + "The previous authorization was released; activate again to re-bind.",
-        ErrorCode.enrollDisabled: "This product doesn't offer a free license.",
-        ErrorCode.enrollClaimed:
-            "The free license for \(deviceNoun) belongs to an account now. Sign in to use it.",
-        ErrorCode.enrollFailed: "A free license couldn't be issued. Try again later.",
-        ErrorCode.licenseDisabled: "This license has been disabled.",
-        ErrorCode.licenseExpired: "This license has expired.",
-        ErrorCode.licenseOwned:
-            "This license belongs to another account. Sign in to that account to use it.",
-        ErrorCode.attestationRequired:
-            "This product only runs on verified installs, and \(deviceNoun) couldn't be verified.",
-        ErrorCode.attestationRejected: "\(deviceNounCapitalized) couldn't be verified.",
-        ErrorCode.attestationUnavailable: "Install verification isn't set up for this product.",
-        ErrorCode.rateLimited: "Too many attempts. Wait a moment and try again.",
-        ErrorCode.registrationClosed: "This product isn't accepting new devices.",
-        ErrorCode.notEntitled: "Your license doesn't include this.",
-        ErrorCode.versionBlocked: "This version isn't permitted to run.",
-        ErrorCode.channelNotAllowed: "Your license doesn't include this release channel.",
-        ErrorCode.forbidden: "That isn't allowed.",
-        ErrorCode.notFound: "That couldn't be found.",
-        ErrorCode.badRequest: "The request was refused as invalid.",
-        ErrorCode.managedByAdmin: "This setting is managed by your administrator.",
-        // Identity.
-        ErrorCode.disabled: "Sign-in isn't available for this product.",
-        ErrorCode.oidcError: "Sign-in failed at the identity provider. Try again.",
-        ErrorCode.unavailable: "Sign-in is busy right now. Try again.",
-        ErrorCode.signInFailed: "Sign-in didn't complete.",
-        ErrorCode.signOutFailed: "Sign-out didn't complete.",
-        ErrorCode.signInExpired: "The sign-in code expired. Start again.",
-        ErrorCode.signInDenied: "Sign-in was refused. Start again.",
-        ErrorCode.signInUnavailable: "Sign-in couldn't start.",
-        ErrorCode.cancelled: "Cancelled.",
-        // Client-side.
-        ErrorCode.serviceUnavailable: "This product doesn't offer that service.",
-        ErrorCode.serviceDisabled: "This product doesn't offer that service.",
-        ErrorCode.localOnly: "This app is running offline-only, so it can't reach the server.",
-        ErrorCode.insecureBaseUrl: "The server address isn't secure.",
-        ErrorCode.network: "The server couldn't be reached. Check your connection.",
-        ErrorCode.networkError: "The server couldn't be reached. Check your connection.",
-        ErrorCode.transport: "The server couldn't be reached. Check your connection.",
-        ErrorCode.timeout: "The server took too long to answer.",
-        ErrorCode.serverError: "The server had a problem. Try again later.",
-        ErrorCode.internalError: "The server had a problem. Try again later.",
-        ErrorCode.httpError: "The server refused the request.",
-        ErrorCode.badResponse: "The server's answer couldn't be read.",
-        ErrorCode.invalidResponse: "The server's answer couldn't be read.",
-        ErrorCode.syncFailed: "Your license couldn't be checked.",
-        ErrorCode.fetchFailed: "Required content couldn't be downloaded.",
-        ErrorCode.refreshFailed: "Your license couldn't be refreshed.",
-        ErrorCode.storeFailed: "Your license couldn't be saved on \(deviceNoun).",
-        ErrorCode.noToken: "Activate or sign in first.",
-        ErrorCode.deviceManagementUnsupported: "Activate or sign in to manage devices.",
-        ErrorCode.deviceListFailed: "Your devices couldn't be listed.",
-        ErrorCode.deviceRenameFailed: "The device couldn't be renamed.",
-        ErrorCode.deviceDeauthorizeFailed: "The device couldn't be removed.",
-        ErrorCode.unsupported: "That isn't supported here.",
-        ErrorCode.notConfigured: "That isn't set up in this app.",
-        ErrorCode.invalidOptions: "This app's Polaris Key setup is invalid.",
-        ErrorCode.platformError: "The system refused the request.",
-        ErrorCode.mintUnavailable: "That isn't available for this product.",
-        // Offline bundles.
-        ErrorCode.bundle: "That activation file couldn't be used.",
-        ErrorCode.bundleRejected: "That activation file couldn't be used.",
-        ErrorCode.bundleJwsRejected: "That activation file isn't valid.",
-        ErrorCode.bundleClaimsRejected: "That activation file is for another device or has expired.",
-        ErrorCode.bundleTrustRejected: "That activation file isn't from this product.",
-        ErrorCode.innerDocRejected: "That activation file isn't from this product.",
-        ErrorCode.bundleImportUnsupported: "Activation files can't be used here.",
-        // Updates and downloads.
-        ErrorCode.downloadAuthRequired: "Activate or sign in to download this.",
-        ErrorCode.feedRejected: "The update information couldn't be verified.",
-        ErrorCode.feedRollback: "The update information is older than what's installed.",
-        ErrorCode.recordRejected: "The update couldn't be verified.",
-        ErrorCode.recordMismatch: "The update couldn't be verified.",
-        ErrorCode.payloadMismatch: "The download was damaged. Try again.",
-        ErrorCode.releaseRefused: "Your license doesn't include this release.",
-        ErrorCode.upstreamRateLimited: "Downloads are busy right now. Try again later.",
-        // Packs.
-        ErrorCode.packNotEntitled: "Your license doesn't include this content.",
-        ErrorCode.packRevoked: "This content has been withdrawn.",
-        ErrorCode.packStateUnreadable: "Installed content couldn't be read.",
-        ErrorCode.planInsufficientDisk: "There isn't enough free space to download this content.",
-        ErrorCode.deliveryGateMissing: "This content isn't available yet.",
-    ]
+    /// The heading for a typed activation result.
+    public static func activationTitle(_ kind: String) -> String {
+        activationText(kind, messages: false) ?? title(kind)
+    }
 
-    static let titles: [String: String] = [
-        ErrorCode.unauthorized: "Key not accepted",
-        ErrorCode.deviceLimit: "Device limit reached",
-        ErrorCode.fingerprintRequired: "Hardware check needed",
-        ErrorCode.hardwareMismatch: "Hardware changed",
-        ErrorCode.enrollDisabled: "No free license",
-        ErrorCode.enrollClaimed: "Sign in to continue",
-        ErrorCode.licenseDisabled: "License disabled",
-        ErrorCode.licenseExpired: "License expired",
-        ErrorCode.licenseOwned: "License belongs to another account",
-        ErrorCode.attestationRequired: "Verification needed",
-        ErrorCode.rateLimited: "Too many attempts",
-        ErrorCode.network: "You're offline",
-        ErrorCode.networkError: "You're offline",
-        ErrorCode.serverError: "Server problem",
-        ErrorCode.localOnly: "Offline only",
-        ErrorCode.notEntitled: "Not included",
-        ErrorCode.signInExpired: "Code expired",
-        ErrorCode.signInDenied: "Sign-in refused",
-    ]
+    // ── Internals ────────────────────────────────────────────────────────────────────────
+
+    private static func activationText(_ kind: String, messages: Bool) -> String? {
+        let result = activationResult(kind)
+        let layer = overrides.current
+        let own = messages ? layer.messages : layer.titles
+        if let text = own[result] ?? own[camelCase(result)] { return text }
+        guard let entry = COPY_ACTIVATION[result] else { return nil }
+        return messages ? entry.message : entry.title
+    }
+
+    /// A §3.1 kind (`deviceLimit`) as its activationResult (`device-limit`); an already-kebab
+    /// spelling is unchanged.
+    static func activationResult(_ kind: String) -> String {
+        var out = ""
+        for ch in kind {
+            if ch.isUppercase {
+                out += "-" + ch.lowercased()
+            } else {
+                out.append(ch)
+            }
+        }
+        return out
+    }
+
+    /// An activationResult (`device-limit`) as its camelCase kind (`deviceLimit`).
+    static func camelCase(_ result: String) -> String {
+        var out = ""
+        var upper = false
+        for ch in result {
+            if ch == "-" {
+                upper = true
+            } else {
+                out += upper ? ch.uppercased() : String(ch)
+                upper = false
+            }
+        }
+        return out
+    }
+
+    /// Fill `{name}` placeholders; `{code}` defaults to `code`. An unfilled placeholder is dropped
+    /// with the space before it, so a raw `{name}` never shows.
+    static func fill(_ text: String, code: String, params: Params) -> String {
+        var out = ""
+        var rest = Substring(text)
+        while let open = rest.firstIndex(of: "{") {
+            let after = rest.index(after: open)
+            guard let close = rest[after...].firstIndex(of: "}") else { break }
+            let name = rest[after..<close]
+            let isWord =
+                !name.isEmpty
+                && name.allSatisfy { ($0.isASCII && ($0.isLetter || $0.isNumber)) || $0 == "_" }
+            guard isWord else {
+                out += rest[...open]
+                rest = rest[after...]
+                continue
+            }
+            var head = rest[..<open]
+            let value = params[String(name)] ?? (name == "code" ? code : nil)
+            if value == nil, head.last == " " { head = head.dropLast() }
+            out += head
+            if let value { out += value }
+            rest = rest[rest.index(after: close)...]
+        }
+        return out + rest
+    }
 }
 
 extension PolarisError: LocalizedError {

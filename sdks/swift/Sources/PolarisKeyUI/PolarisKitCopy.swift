@@ -1,6 +1,7 @@
 // Copy for the kit's components beyond the gate (notes/SDK-PARITY-PASS.md §3.18). Every string a
 // component renders is here, so a product can localise or brand all of it from one place
-// (`theme.copy.kit.signInTitle = …`). Error lines come from `ErrorCopy` by code.
+// (`theme.copy.kit.signInTitle = …`). Error lines come from `ErrorCopy` by code (core.copy, the
+// generated tables), and a string whose key the generated copy has reads it from there.
 
 import PolarisKeyCore
 
@@ -67,7 +68,7 @@ public struct PolarisKitCopy: Sendable, Equatable {
 
     // Updates.
     public var updateAvailableTitle = "Update available"
-    public var updateRequiredTitle = "Update required"
+    public var updateRequiredTitle = ErrorCopy.title(LicenseStatus.versionTooOld.rawValue)
     public var updateButton = "Update"
     public var laterButton = "Later"
     public var restartToFinish = "Restart to finish"
@@ -111,7 +112,8 @@ public struct PolarisKitCopy: Sendable, Equatable {
 }
 
 extension PolarisCopy {
-    /// The sentence for a registry `code` (`ErrorCopy`), for components that surface errors.
+    /// The sentence for a registry `code`, for components that surface errors: the product's
+    /// override, else `ErrorCopy.message` (the generated tables, fallback naming the code).
     public func errorMessage(_ code: String) -> String {
         activationMessages[code] ?? ErrorCopy.message(code)
     }

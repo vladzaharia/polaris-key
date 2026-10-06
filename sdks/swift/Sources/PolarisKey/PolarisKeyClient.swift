@@ -554,6 +554,19 @@ public actor PolarisKeyClient {
             highWaterMark: await core.highWaterMark)
     }
 
+    // ── Crash-report tags (crash.tags, §3.14) ────────────────────────────────────────────
+    /// The crash-reporter tags for this install: `release` (`app@<version>[+<build>]`),
+    /// `environment` (the channel) and `pkey.outlet` (the outlet the update client resolved, left
+    /// out while unknown). Pass them to a Sentry start as `releaseName`, `environment` and a tag;
+    /// the Worker's Sentry hook maps an alert on them to the staged rollout it came from.
+    public nonisolated func crashTags(deliverable: String = "app", build: String? = nil)
+        -> CrashTags
+    {
+        crashTagsFor(
+            version: core.version, channel: core.channel, outlet: core.journal.outlet.current,
+            deliverable: deliverable, build: build)
+    }
+
     // ── Offline bundles (§7) ─────────────────────────────────────────────────────────────
     /// Verify and install an offline activation bundle. All-or-nothing; no token is created.
     /// Throws `PolarisError` carrying the §7 step that refused.
