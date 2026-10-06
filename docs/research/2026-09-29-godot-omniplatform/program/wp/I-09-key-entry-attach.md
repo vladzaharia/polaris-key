@@ -153,6 +153,7 @@ mise exec node@22 -- pnpm gen:transcripts -- --check
 ## Hand-off
 
 - I-10a and I-10b surface both refusals in every SDK and UI kit; I-11 builds the Activate License modal on the same counter.
+- I-09 drops `pending` on `identity.keyEntry.limit` (manifest `identity:` block plus discovery probe), and moves the `identity.keyEntryRefusals` switch read from A-13's platformSetting onto `resolvePlatformSetting`.
 
 The role agent sets `--set I-09 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:
