@@ -22,13 +22,27 @@
  * The system product (`system = 1`) is manifest-authoritative (S-18 §4.5 item 8). Its expiring
  * break-glass claims are ST-20's; until then every console claim on it is refused
  * (`systemClaimRefusal`).
+ *
+ * ST-04: console claims are WRITTEN by `writeSetting()` (`core/settings/write.ts`), the one write
+ * path, which claims a key in the same batch as its value and its audit row. Revert goes through
+ * it too (`op: "reset"` with the snapshot's value). What stays here is what the resync and the
+ * console views need: which keys are claimed, the claim guard as SQL, and the resync's per-field
+ * audit row (now carrying the structured `before_json`/`after_json`/`origin`/`setting_key`).
  */
 
 import { Catalog } from "@polaris-key/catalog";
 import type { Db, DbStatement } from "../db/types.js";
 import { randomId } from "./platform.js";
-import { serializeWebOrigins } from "./cors.js";
 import { getManifestSnapshot } from "./manifestSnapshot.js";
+import { snapshotValue } from "./settings/snapshot.js";
+import type { SettingOrigin, SqlGuard } from "./settings/types.js";
+import {
+  auditValue as writeAuditValue,
+  MANIFEST_AUTHORITATIVE_MESSAGE,
+  writeSetting,
+  type AuditActor,
+  type SettingsWriteContext,
+} from "./settings/write.js";
 
 /** The column-backed claimable keys ST-01b introduces (registry keys, ST-03). */
 export const CLAIM_KEYS = [
@@ -84,9 +98,7 @@ export function claimsApply(product: {
 export function systemClaimRefusal(product: {
   system?: number | null;
 }): string | null {
-  return product.system === 1
-    ? "the system product is manifest-authoritative: change the monorepo's .pkey/ instead"
-    : null;
+  return product.system === 1 ? MANIFEST_AUTHORITATIVE_MESSAGE : null;
 }
 
 /** The two product facts a claim decision needs, for handlers that hold a loaded product. */
@@ -174,7 +186,8 @@ export function unlessClaimed(
 
 /**
  * Claim `key` for the console: "set to the same value keeps one" (S-18 §4.3): the claim is the
- * write, not the difference. A re-claim bumps `version` and clears any expiry.
+ * write, not the difference. A re-claim bumps `version` and clears any expiry. `writeSetting()`
+ * writes the same row in its own batch; this statement is kept for fixtures that plant a claim.
  */
 export function stmtClaim(
   product: string,
@@ -203,12 +216,8 @@ export function stmtDeleteClaim(product: string, key: ClaimKey): DbStatement {
   };
 }
 
-/** Who a settings audit row names. */
-export interface AuditActor {
-  sub: string | null;
-  name: string | null;
-  email: string | null;
-}
+/** Who a settings audit row names (`core/settings/write.ts`'s, re-exported). */
+export type { AuditActor };
 
 /** The actor of every resync audit row. */
 export const RESYNC_ACTOR: AuditActor = {
@@ -218,15 +227,28 @@ export const RESYNC_ACTOR: AuditActor = {
 };
 
 /** A short, bounded rendering of a setting value for an audit summary. */
-export function auditValue(value: unknown): string {
-  const text = value === undefined ? "unset" : JSON.stringify(value);
-  return text.length > 200 ? `${text.slice(0, 197)}...` : text;
-}
+export const auditValue = writeAuditValue;
+
+/** The registry key a per-row audit target belongs to (tiers and profiles are rich settings). */
+const ROW_SETTING: Record<"tier" | "profile", string> = {
+  tier: "license.tiers",
+  profile: "config.profiles",
+};
+
+const ORIGIN_OF: Record<
+  "setting.resync" | "setting.claim" | "setting.revert",
+  SettingOrigin
+> = {
+  "setting.resync": "resync",
+  "setting.claim": "console",
+  "setting.revert": "revert",
+};
 
 /**
- * One per-field settings audit row, as a statement for the writer's batch. ST-04 adds the
- * structured `before_json`/`after_json`/`origin`/`setting_key` columns; until then the key is the
- * target and the summary carries before → after.
+ * One per-field settings audit row, as a statement for the writer's batch (the resync's, ST-01b).
+ * ST-04's structured columns: `setting_key` (the key, or the rich setting a tier or profile row
+ * belongs to), `origin` (from the action) and, when given, `before_json` / `after_json` as
+ * `{"effective": …}`. The summary still carries before → after for the activity feed.
  */
 export function stmtSettingAudit(
   product: string,
@@ -236,12 +258,15 @@ export function stmtSettingAudit(
   targetKind: "setting" | "tier" | "profile",
   targetId: string,
   summary: string,
+  change?: { before?: unknown; after?: unknown },
 ): DbStatement {
+  const side = (v: unknown) =>
+    change && v !== undefined ? JSON.stringify({ effective: v }) : null;
   return {
     sql: `INSERT INTO audit
             (product, id, at, actor_sub, actor_name, actor_email, action, target_kind,
-             target_id, parent_id, summary)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)`,
+             target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, NULL, ?)`,
     params: [
       product,
       randomId("aud"),
@@ -253,22 +278,15 @@ export function stmtSettingAudit(
       targetKind,
       targetId,
       summary,
+      side(change?.before),
+      side(change?.after),
+      ORIGIN_OF[action],
+      targetKind === "setting" ? targetId : ROW_SETTING[targetKind],
     ],
   };
 }
 
 // ── Revert ──────────────────────────────────────────────────────────────────────
-
-/** The fields of a stored snapshot Revert reads (the normalised ParsedManifest, ST-01a). */
-interface SnapshotManifest {
-  product?: {
-    name?: unknown;
-    defaultMaxOfflineDays?: unknown;
-    defaultDeviceLimit?: unknown;
-  };
-  webOrigins?: unknown;
-  catalog?: unknown;
-}
 
 export type RevertResult =
   | { ok: true; applied: true; value: unknown }
@@ -277,137 +295,76 @@ export type RevertResult =
 
 const NEXT_RESYNC = "applies at the next resync";
 
-function parseSnapshot(json: string): SnapshotManifest | null {
+function parseSnapshot(json: string): unknown {
   try {
-    const parsed = JSON.parse(json) as unknown;
-    return parsed && typeof parsed === "object"
-      ? (parsed as SnapshotManifest)
-      : null;
+    return JSON.parse(json) as unknown;
   } catch {
     return null;
   }
 }
 
 /**
- * The column write that puts the snapshot's value for `key` back, plus the value it writes, or
- * `null` when the snapshot does not carry a usable one (the claim is still dropped; the value then
- * "applies at the next resync").
+ * The catalog's revert statements (a rich key: `product_schema`, versions never deleted), each
+ * ANDing `guard`, or a refusal when the snapshot's catalog fails the screen every catalog write
+ * applies. A resync does NOT screen the catalog while it is claimed (it is not installed), yet the
+ * snapshot still records it, so a repo writer could otherwise plant a catalog that this Revert
+ * would activate unscreened.
  */
-async function revertStatements(
+async function catalogRevert(
   db: Db,
   product: string,
-  key: ClaimKey,
-  manifest: SnapshotManifest,
+  catalog: unknown,
   now: number,
 ): Promise<
-  { statements: DbStatement[]; value: unknown } | { refusal: string } | null
+  { statements: (guard: SqlGuard) => DbStatement[] } | { refusal: string }
 > {
-  const p = manifest.product ?? {};
-  const intIn = (v: unknown, min: number): v is number =>
-    typeof v === "number" && Number.isInteger(v) && v >= min;
-  switch (key) {
-    case "core.name":
-      if (typeof p.name !== "string" || p.name.trim() === "") return null;
-      return {
-        value: p.name,
-        statements: [
-          {
-            sql: "UPDATE products SET name = ?, modified_at = ? WHERE slug = ?",
-            params: [p.name, now, product],
-          },
-        ],
-      };
-    case "license.defaults.maxOfflineDays":
-      if (!intIn(p.defaultMaxOfflineDays, 0)) return null;
-      return {
-        value: p.defaultMaxOfflineDays,
-        statements: [
-          {
-            sql: "UPDATE products SET default_max_offline_days = ?, modified_at = ? WHERE slug = ?",
-            params: [p.defaultMaxOfflineDays, now, product],
-          },
-        ],
-      };
-    case "license.defaults.deviceLimit":
-      if (!intIn(p.defaultDeviceLimit, 1)) return null;
-      return {
-        value: p.defaultDeviceLimit,
-        statements: [
-          {
-            sql: "UPDATE products SET default_device_limit = ?, modified_at = ? WHERE slug = ?",
-            params: [p.defaultDeviceLimit, now, product],
-          },
-        ],
-      };
-    case "core.web.origins": {
-      const origins = Array.isArray(manifest.webOrigins)
-        ? manifest.webOrigins.filter((o): o is string => typeof o === "string")
-        : [];
-      return {
-        value: origins,
-        statements: [
-          {
-            sql: "UPDATE products SET web_origins_json = ?, modified_at = ? WHERE slug = ?",
-            params: [serializeWebOrigins(origins), now, product],
-          },
-        ],
-      };
-    }
-    case "config.catalog": {
-      if (!manifest.catalog || typeof manifest.catalog !== "object")
-        return null;
-      // The same screening the console publish, linkRepo and a resync apply before writing
-      // `product_schema` — the only thing bounding `pattern` complexity. A resync does NOT screen
-      // the catalog while it is claimed (it is not installed), yet the snapshot still records it,
-      // so a repo writer could otherwise plant a catalog that this Revert would activate unscreened.
-      try {
-        new Catalog(manifest.catalog as never).compileAll();
-      } catch (e) {
-        return {
-          refusal: `the manifest's catalog is invalid: ${e instanceof Error ? e.message : "unknown error"}`,
-        };
-      }
-      const json = JSON.stringify(manifest.catalog);
-      const active = await db.first<{ catalog_json: string }>(
-        "SELECT catalog_json FROM product_schema WHERE product = ? AND active = 1 ORDER BY catalog_version DESC LIMIT 1",
-        product,
-      );
-      if (active?.catalog_json === json)
-        return { value: manifest.catalog, statements: [] };
-      // A new active version, exactly as a resync publishes one: the old rows are kept (versions
-      // are never deleted), the next number is taken inside the INSERT.
-      return {
-        value: manifest.catalog,
-        statements: [
-          {
-            sql: "UPDATE product_schema SET active = 0 WHERE product = ?",
-            params: [product],
-          },
-          {
-            sql: `INSERT INTO product_schema (product, catalog_version, catalog_json, active, created_at)
-                  SELECT ?, COALESCE(MAX(catalog_version), 0) + 1, ?, 1, ?
-                    FROM product_schema WHERE product = ?`,
-            params: [product, json, now, product],
-          },
-        ],
-      };
-    }
+  try {
+    new Catalog(catalog as never).compileAll();
+  } catch (e) {
+    return {
+      refusal: `the manifest's catalog is invalid: ${e instanceof Error ? e.message : "unknown error"}`,
+    };
   }
+  const json = JSON.stringify(catalog);
+  const active = await db.first<{ catalog_json: string }>(
+    "SELECT catalog_json FROM product_schema WHERE product = ? AND active = 1 ORDER BY catalog_version DESC LIMIT 1",
+    product,
+  );
+  if (active?.catalog_json === json) return { statements: () => [] };
+  // A new active version, exactly as a resync publishes one: the old rows are kept, the next
+  // number is taken inside the INSERT (over a derived table, so a false guard inserts nothing).
+  return {
+    statements: (guard) => [
+      {
+        sql: `UPDATE product_schema SET active = 0 WHERE product = ? AND (${guard.sql})`,
+        params: [product, ...guard.params],
+      },
+      {
+        sql: `INSERT INTO product_schema (product, catalog_version, catalog_json, active, created_at)
+              SELECT ?, next.v, ?, 1, ?
+                FROM (SELECT COALESCE(MAX(catalog_version), 0) + 1 AS v
+                        FROM product_schema WHERE product = ?) AS next
+               WHERE (${guard.sql})`,
+        params: [product, json, now, product, ...guard.params],
+      },
+    ],
+  };
 }
 
 /**
- * Revert a console claim (S-18 §4.5 item 2): delete the claim and re-apply the manifest snapshot's
- * value in one batch, with a `setting.revert` audit row. With no snapshot (linked before ST-01a and
- * not resynced since), only the claim goes and the answer says the value applies at the next
- * resync.
+ * Revert a console claim (S-18 §4.5 item 2) through `writeSetting()`: drop the claim and re-apply
+ * the manifest snapshot's value in one batch, with a `setting.revert` audit row (origin
+ * `revert`). With no snapshot (linked before ST-01a and not resynced since), only the claim goes
+ * and the answer says the value applies at the next resync.
  */
 export async function revertClaim(
-  db: Db,
+  ctx: SettingsWriteContext,
   product: { slug: string; system?: number | null },
   key: string,
   actor: AuditActor,
   now: number,
 ): Promise<RevertResult> {
+  const { db } = ctx;
   if (!isClaimKey(key))
     return {
       ok: false,
@@ -425,34 +382,47 @@ export async function revertClaim(
     };
   const snapshot = await getManifestSnapshot(db, product.slug);
   const manifest = snapshot ? parseSnapshot(snapshot.manifest_json) : null;
-  const plan = manifest
-    ? await revertStatements(db, product.slug, key, manifest, now)
-    : null;
-  // A snapshot value the write path would refuse keeps the claim: dropping it would let the next
-  // resync's own screening be the only guard, and leave the key "following" a manifest it cannot.
-  if (plan && "refusal" in plan)
+  const value = manifest ? snapshotValue(key, manifest) : undefined;
+  let statements: ((guard: SqlGuard) => DbStatement[]) | undefined;
+  if (key === "config.catalog" && value !== undefined) {
+    const plan = await catalogRevert(db, product.slug, value, now);
+    // A snapshot value the write path would refuse keeps the claim: dropping it would let the
+    // next resync's own screening be the only guard, and leave the key "following" a manifest it
+    // cannot.
+    if ("refusal" in plan)
+      return {
+        ok: false,
+        status: 409,
+        reason: "invalid_catalog",
+        message: `${plan.refusal}; the claim is kept`,
+      };
+    statements = plan.statements;
+  }
+  const applied = value !== undefined;
+  const result = await writeSetting(
+    ctx,
+    {
+      key,
+      op: "reset",
+      ...(applied && key !== "config.catalog" ? { restore: value } : {}),
+      ...(statements ? { statements } : {}),
+      audit: {
+        action: "setting.revert",
+        summary: applied
+          ? `Reverted ${key} to the manifest: ${auditValue(value)}`
+          : `Reverted ${key} to the manifest: ${NEXT_RESYNC}`,
+      },
+    },
+    { actor, origin: "revert", now, product: product.slug, strict: false },
+  );
+  if (!result.ok)
     return {
       ok: false,
-      status: 409,
-      reason: "invalid_catalog",
-      message: `${plan.refusal}; the claim is kept`,
+      status: result.status === 404 ? 404 : 409,
+      reason: result.reason,
+      message: result.message,
     };
-  await db.batch([
-    stmtDeleteClaim(product.slug, key),
-    ...(plan?.statements ?? []),
-    stmtSettingAudit(
-      product.slug,
-      now,
-      actor,
-      "setting.revert",
-      "setting",
-      key,
-      plan
-        ? `Reverted ${key} to the manifest: ${auditValue(plan.value)}`
-        : `Reverted ${key} to the manifest: ${NEXT_RESYNC}`,
-    ),
-  ]);
-  return plan
-    ? { ok: true, applied: true, value: plan.value }
+  return applied
+    ? { ok: true, applied: true, value }
     : { ok: true, applied: false, message: NEXT_RESYNC };
 }

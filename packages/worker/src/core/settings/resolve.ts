@@ -444,7 +444,6 @@ export interface ProductFacts {
   slug: string;
   system?: number | null;
   release_source?: string | null;
-  [column: string]: unknown;
 }
 
 /** Is the product linked to a repository whose `.pkey/` manifest it follows? */
@@ -474,7 +473,8 @@ async function readColumnRows(
     for (const c of a.columns) t.cols.add(c);
   }
   const out = new Map<string, Record<string, unknown> | null>([
-    ["products", product],
+    // The caller's `products` row (a full `SELECT *` or `ProductRow`): its columns are read as is.
+    ["products", product as unknown as Record<string, unknown>],
   ]);
   for (const [table, { keyColumn, cols }] of byTable) {
     try {

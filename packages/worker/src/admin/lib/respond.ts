@@ -4,6 +4,7 @@
  */
 
 import { ErrorCode } from "../../core/errors.js";
+import type { WriteRefusal } from "../../core/settings/write.js";
 import { appSecurityHeaders } from "../../securityHeaders.js";
 
 /** JSON response with the admin defaults (no-store, charset). */
@@ -40,6 +41,23 @@ export function err(
     },
     status,
   );
+}
+
+/**
+ * A `writeSetting()` refusal (ST-04) as the console's error: its status, its reason, the key and
+ * any details (`currentVersion`, `bound`, `level`). `fields` names the request field(s) when the
+ * route's body spells the setting differently from its registry key.
+ */
+export function settingRefused(
+  refusal: WriteRefusal,
+  fields?: readonly string[],
+): Response {
+  return err(refusal.status, ErrorCode.BadRequest, refusal.message, {
+    reason: refusal.reason,
+    ...(refusal.key ? { key: refusal.key } : {}),
+    ...(fields ? { fields } : {}),
+    ...(refusal.details ?? {}),
+  });
 }
 
 export function unauthorized(): Response {
