@@ -49,8 +49,9 @@ docker run --rm --init --ipc=host --platform linux/amd64 \
     npm install -g --silent "pnpm@$PNPM"
     pnpm config set store-dir /pnpm-store >/dev/null
     pnpm install --frozen-lockfile --filter=@polaris-key/admin... --filter=@polaris-key/worker... >/dev/null
-    # The e2e harness runs the Worker from source, and the Worker imports client-core (PX-W13).
-    pnpm exec turbo run build --filter=@polaris-key/admin... --filter=@polaris-key/client-core... --output-logs=errors-only
+    # The e2e harness imports the Worker (its security headers, media proxy and handlers), so the
+    # Worker's workspace dependencies build too (client-core among them since PX-W13).
+    pnpm exec turbo run build --filter=@polaris-key/admin... --filter=@polaris-key/worker... --output-logs=errors-only
     cd packages/admin
     # Update re-records every state it visits over the committed set, so a state that fails
     # before its screenshot (a timeout under emulation) keeps its committed baseline rather
