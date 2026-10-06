@@ -140,6 +140,7 @@ export async function resolveEntitlements(
     license,
     device,
     now,
+    { entitlementsOnly: true },
   );
   injectAdminPolicy(payload, tier, license, tighterMin, tighterMax);
   return payload.entitlements;
@@ -260,6 +261,7 @@ export async function licenseDeviceLimitInfo(
     license,
     null,
     now,
+    { entitlementsOnly: true },
   );
   const merged = payload.entitlements["deviceLimit"];
   const tierLimit = tierDeviceLimit(tier);

@@ -179,6 +179,7 @@ async function grantDecision(
     license,
     device,
     now,
+    { entitlementsOnly: true },
   );
   injectAdminPolicy(payload, tier, license, tighterMin, tighterMax);
   const channels = entitledChannels(payload.entitlements);
@@ -367,6 +368,7 @@ export async function entitlementFlagRefusal(
     valid.license,
     valid.device,
     now,
+    { entitlementsOnly: true },
   );
   injectAdminPolicy(payload, tier, valid.license, tighterMin, tighterMax);
   const held = flags.some(
@@ -407,6 +409,7 @@ export async function licenseHoldsFlags(
     license,
     null,
     now,
+    { entitlementsOnly: true },
   );
   injectAdminPolicy(payload, tier, license, tighterMin, tighterMax);
   return flags.some(

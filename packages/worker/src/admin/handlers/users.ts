@@ -11,6 +11,8 @@
  *   GET  users/<subject>                         one row (an absorbed subject answers mergedInto)
  *   GET  users/<subject>/export                  the subject's product data as JSON (audited)
  *   POST users/<subject>/data/delete             delete the subject's account × product data
+ *   GET  users/<subject>/overrides               the subject's account overrides (U-03)
+ *   PUT  users/<subject>/overrides               { updates }  edit them (`accountOverrides.ts`)
  *   POST users/<subject>/licenses/<id>/detach    the licence becomes floating
  *   POST users/<subject>/licenses/<id>/relink    { target, reason }   step-up
  *   POST users/relinks/<relinkId>/undo           { reason }           step-up, within 72 hours
@@ -48,6 +50,7 @@ import {
 import type { AccountContext } from "../../services/identity/accounts/links.js";
 import { audit } from "../audit.js";
 import { adminJson, err, notFound, readBody } from "../lib/respond.js";
+import { handleUserOverrides } from "./accountOverrides.js";
 import {
   STEP_UP_MAX_AGE_SECONDS,
   isSteppedUp,
@@ -251,6 +254,22 @@ export async function handleProductUsers(
     return adminJson(doc, 200, {
       "content-disposition": `attachment; filename="${slug}-${found.subject}.json"`,
     });
+  }
+
+  // U-03: the account override layer, on every product (Identity on or off).
+  if (second === "overrides" && third === undefined) {
+    return handleUserOverrides(
+      req,
+      env,
+      db,
+      session,
+      {
+        slug,
+        subject: found.subject,
+        configOn: product.services.config?.enabled === true,
+      },
+      now,
+    );
   }
 
   if (second === "data" && third === "delete" && fourth === undefined) {

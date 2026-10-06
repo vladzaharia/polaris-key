@@ -702,6 +702,11 @@ describe("R11-05 product scoping", () => {
       // account serves every product pinned to it; A-16's lister is team-wide), and the row holds
       // no tenant data: a caller kind, an actor id and two timestamps.
       "store_edit_leases",
+      // 00XX (U-03) — the licence-override migration's one state row: the run is ONE
+      // platform-wide run (notes/S-17 §5.12), so its notice, run and inventory belong to no
+      // product. The per-product data (`account_overrides`, `override_migration_report`) IS
+      // product-first (this loop).
+      "override_migration",
     ]);
     const offenders: string[] = [];
     for (const t of tables.map((r) => r.name)) {
@@ -1002,7 +1007,15 @@ describe("R11-08 migration safety", () => {
     const rows = await db.all<{ name: string }>(
       "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '%migration%'",
     );
-    expect(rows).toHaveLength(0);
+    // U-03's licence-override migration tables are product data (a data migration's state and
+    // report), not schema-migration bookkeeping; every other name still counts.
+    const dataMigrationTables = new Set([
+      "override_migration",
+      "override_migration_report",
+    ]);
+    expect(rows.filter((r) => !dataMigrationTables.has(r.name))).toHaveLength(
+      0,
+    );
   });
 });
 

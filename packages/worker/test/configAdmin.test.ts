@@ -299,6 +299,18 @@ describe("catalog usage (A-7b)", () => {
       config: { theme: { value: "light", state: "default", updatedAt: NOW } },
     });
     await seedLicenseWithKey(db, "djdl", { id: "lic_2" });
+    // U-03: an account's override of the key counts too, by subject.
+    await db.run(
+      `INSERT INTO account_overrides (product, subject, payload_json, updated_at, updated_by)
+       VALUES ('djdl', 'ps_AAAAAAAAAAAAAAAAAAAAAA', ?, ?, 'op')`,
+      JSON.stringify({
+        config: {
+          theme: { value: "sepia", state: "enforced", updatedAt: NOW },
+        },
+        secrets: {},
+      }),
+      NOW,
+    );
 
     const res = await call(
       "GET",
@@ -308,6 +320,7 @@ describe("catalog usage (A-7b)", () => {
     const text = await res.text();
     expect(text).not.toContain("dark");
     expect(text).not.toContain("light");
+    expect(text).not.toContain("sepia");
     const { keys } = JSON.parse(text) as {
       keys: Record<
         string,
@@ -315,6 +328,7 @@ describe("catalog usage (A-7b)", () => {
           profiles: { id: string }[];
           tiers: { id: string; profile: string }[];
           licenses: { id: string }[];
+          accounts: { subject: string }[];
         }
       >;
     };
@@ -324,7 +338,15 @@ describe("catalog usage (A-7b)", () => {
       { id: "pro", label: "pro", profile: "base" },
     ]);
     expect(keys.theme!.licenses.map((l) => l.id)).toEqual(["lic_1"]);
-    expect(keys.missing).toEqual({ profiles: [], tiers: [], licenses: [] });
+    expect(keys.theme!.accounts).toEqual([
+      { subject: "ps_AAAAAAAAAAAAAAAAAAAAAA" },
+    ]);
+    expect(keys.missing).toEqual({
+      profiles: [],
+      tiers: [],
+      licenses: [],
+      accounts: [],
+    });
   });
 
   it("requires at least one key", async () => {

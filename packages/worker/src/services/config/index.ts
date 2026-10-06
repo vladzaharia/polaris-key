@@ -17,6 +17,9 @@ import { handleConfigRoutes } from "./routes.js";
 import { hasApprovedEdgeMintRecipes } from "./mint.js";
 import { handleConfigAdmin } from "./admin/index.js";
 import { CONFIG_SETTINGS_SLICE } from "./settings.js";
+// U-03: registers the account override layer with Core's subject-store registry (merge, delete,
+// export), at module load like every store (`core/subjectHooks.ts`).
+import "./accountOverrideStore.js";
 
 export const configService: ServiceDescriptor = {
   slug: "config",

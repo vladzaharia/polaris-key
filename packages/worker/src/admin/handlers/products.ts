@@ -646,13 +646,15 @@ const SEALED_TABLES = [
  * (`openManagedValue` swallows a failed open and returns `null`, so the damage would surface as
  * a config document with a missing secret, not as an error.)
  *
- * Both tables are keyed `(product, id)` and store `JSON.stringify(ManagedPayload)` with sealed
- * values under `config` / `secrets`. The AAD is `…:product-secret:managed:<key>`, exactly as
+ * Each table is keyed `(product, <idColumn>)` and stores `JSON.stringify(ManagedPayload)` with
+ * sealed values under `config` / `secrets` (`account_overrides` has no `entitlements`). The AAD is `…:product-secret:managed:<key>`, exactly as
  * `admin/lib/managedSecrets.ts` writes it.
  */
 const MANAGED_PAYLOAD_TABLES = [
-  { table: "profiles", column: "payload_json" },
-  { table: "licenses", column: "overrides_json" },
+  { table: "profiles", column: "payload_json", idColumn: "id" },
+  { table: "licenses", column: "overrides_json", idColumn: "id" },
+  // U-03: the account override layer, keyed `(product, subject)`, sealed under the same AAD.
+  { table: "account_overrides", column: "payload_json", idColumn: "subject" },
 ] as const;
 
 /** How `"kekId":"` looks once the envelope has been JSON-encoded INTO the payload column. */
@@ -947,10 +949,10 @@ async function resealSweep(
   for (const t of MANAGED_PAYLOAD_TABLES) {
     if (budget <= 0) break;
     const rows = await db.all<{ product: string; id: string; blob: string }>(
-      `SELECT product, id, ${t.column} AS blob
+      `SELECT product, ${t.idColumn} AS id, ${t.column} AS blob
          FROM ${t.table}
         WHERE ${managedNeedsWork(t.column)}
-        ORDER BY product, id
+        ORDER BY product, ${t.idColumn}
         LIMIT ?`,
       ...managedNeedsWorkParams(active),
       budget,
@@ -985,7 +987,7 @@ async function resealSweep(
       if (rewritten === 0) continue;
       const changed = await db.runChanges(
         `UPDATE ${t.table} SET ${t.column} = ?
-          WHERE product = ? AND id = ? AND ${t.column} = ?`,
+          WHERE product = ? AND ${t.idColumn} = ? AND ${t.column} = ?`,
         JSON.stringify(payload),
         row.product,
         row.id,

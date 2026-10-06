@@ -56,6 +56,7 @@ import {
   settleOwnershipConflicts,
 } from "./services/identity/accounts/legacy.js";
 import { sweepAvatars } from "./services/identity/card/avatars.js";
+import { overrideMigrationNightly } from "./core/overrideMigration.js";
 import { pruneEvents as pruneConnectorEvents } from "./services/distribution/connectors/state.js";
 import { REFUSAL_RETENTION_SECONDS, pruneRefusals } from "./core/refusals.js";
 import { lazyDeltaProducts } from "./core/deltaDemand.js";
@@ -395,6 +396,12 @@ export async function runScheduledMaintenance(
     await catchUpLegacyAccounts(db);
     return 0;
   });
+  // U-03: the licence-override migration's daily inventory (until the run), its report past 90
+  // days and, once the report window has passed, the licences' emptied config and secrets columns
+  // (`core/overrideMigration.ts`). The run itself is never started here: it is the owner's.
+  await step(report, "overrideMigration", () =>
+    overrideMigrationNightly(db, now),
+  );
   if (env) {
     await step(report, "accountOwnership", () =>
       settleOwnershipConflicts({

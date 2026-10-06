@@ -59,7 +59,13 @@ import {
   WriteChecks,
 } from "../../../core/adminApi.js";
 import { tierExpiresAt } from "../authz.js";
-import { licenseEmail } from "../../../core/accountSubjects.js";
+import { licenseEmail, subjectFor } from "../../../core/accountSubjects.js";
+import {
+  licenseConfigFrozen,
+  licenseConfigRetired,
+  readOverrideMigrationState,
+} from "../../../core/overrideMigration.js";
+import { portalEnabled, portalOriginOf } from "../../../core/manageUrl.js";
 import {
   associateLicenseHolder,
   describeHolder,
@@ -200,6 +206,50 @@ async function validateRefs(
     });
   }
   return fields;
+}
+
+/**
+ * Where this licence's config and secret overrides live (U-03, notes/S-17 §5.12), for the
+ * console's Config tab:
+ *
+ *   - `phase`: `license` (before any notice: the licence editor edits them), `notice` (the
+ *     migration's notice is running; `runNotBefore` is the earliest run), `moving` (the run has
+ *     started: config and secrets are frozen here, step 4), `moved` (the run completed: they live
+ *     on the owner's account overrides and this licence no longer delivers them, step 5);
+ *   - `owned`: whether an account owns the licence. An unowned licence has no account layer, so
+ *     the console says "No account: managed config for this customer needs an account" and offers
+ *     `signUpUrl`, the portal's Activate License page (an offer to the customer, never forced);
+ *   - `ownerSubject`: the owner's subject for the Users-page link (created on first contact, as
+ *     the licence summary's `ownerSubject` is).
+ *
+ * Entitlement overrides stay on the licence in every phase (decision 20).
+ */
+async function configOverridesView(
+  ctx: LicenseAdminContext,
+  license: LicenseRow,
+): Promise<Record<string, unknown>> {
+  const slug = ctx.product.slug;
+  const state = await readOverrideMigrationState(ctx.db);
+  const owned = (license.account_id ?? null) !== null;
+  const origin = portalOriginOf(ctx.env, ctx.req);
+  return {
+    phase: licenseConfigRetired(state)
+      ? "moved"
+      : licenseConfigFrozen(state)
+        ? "moving"
+        : state.noticeStartedAt !== null
+          ? "notice"
+          : "license",
+    owned,
+    ownerSubject: owned
+      ? await subjectFor(ctx.db, license.account_id!, slug, ctx.now)
+      : null,
+    runNotBefore: state.runNotBefore,
+    signUpUrl:
+      origin && (await portalEnabled(ctx.db, slug))
+        ? `${origin}/activate?product=${encodeURIComponent(slug)}`
+        : null,
+  };
 }
 
 export async function handleLicenses(
@@ -350,6 +400,14 @@ export async function handleLicenses(
       const devices = await listDevicesByLicense(db, slug, id);
       const profiles = await listLicenseProfiles(db, slug, id);
       const overrides = parsePayload(license.overrides_json);
+      const configOverrides = await configOverridesView(ctx, license);
+      // U-03 step 5: once the run completed, the column's config and secrets are no longer
+      // delivered (they live on the owner's account overrides), so they are not shown as this
+      // licence's; the nightly sweep empties them after the report window.
+      if (configOverrides.phase === "moved") {
+        overrides.config = {};
+        overrides.secrets = {};
+      }
       return adminJson({
         ...(await summarize(ctx, license)),
         deletion: (await deletionVerdicts(ctx, [license])).get(id),
@@ -366,6 +424,7 @@ export async function handleLicenses(
           seatActiveSince(now),
         ),
         overrides: redactPayload(overrides, catalog),
+        configOverrides,
         keys: keys.map((k) => ({
           hash: k.key_hash,
           status: k.status,
@@ -631,6 +690,37 @@ export async function handleLicenses(
     const updates = Array.isArray(body.updates)
       ? (body.updates as OverrideUpdate[])
       : [];
+    // U-03 step 4 (decision 20): from the migration run's start, config and secrets live on the
+    // account override layer. This route keeps entitlements and refuses the rest, naming where
+    // they went. Unknown keys still fall through to the catalog's 422 below.
+    if (licenseConfigFrozen(await readOverrideMigrationState(db))) {
+      const moved = updates.filter((u) => {
+        const kind =
+          u && typeof u.key === "string"
+            ? catalog.entryByKey(u.key)?.kind
+            : undefined;
+        return kind === "config" || kind === "secret";
+      });
+      if (moved.length > 0) {
+        const subject = license.account_id
+          ? await subjectFor(db, license.account_id, slug, now)
+          : null;
+        const route = subject
+          ? `/manage/api/products/${slug}/users/${subject}/overrides`
+          : null;
+        return err(
+          400,
+          ErrorCode.BadRequest,
+          subject
+            ? `config and secret overrides moved to the account override layer: edit them on the owner's Users page (PUT ${route})`
+            : "config and secret overrides moved to the account override layer, and this license has no account: managed config for this customer needs an account",
+          {
+            fields: moved.map((u) => u.key),
+            accountOverrides: { subject, route },
+          },
+        );
+      }
+    }
     const result = await applyOverrides(
       env,
       slug,

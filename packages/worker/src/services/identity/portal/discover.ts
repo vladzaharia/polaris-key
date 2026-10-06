@@ -298,7 +298,9 @@ export async function handleDiscoverClaim(
   const { product } = ev;
   let licenseId: string;
   try {
-    const result = await activateFromIdentity(db, product, identity, now);
+    const result = await activateFromIdentity(db, product, identity, now, {
+      env,
+    });
     if ("error" in result) return notEligible();
     licenseId = result.licenseId;
   } catch (e) {

@@ -24,6 +24,9 @@
  *                                   platform packages (F-03, `../systemProduct.ts`); idempotent,
  *                                   audited `feed.bootstrap` in `platform_audit`.
  *   /api/platform/feeds/…         — the Feeds admin API in platform scope (F-11, `feeds.ts`).
+ *   /api/platform/override-migration/… — the licence-override migration: prerequisites, notice,
+ *                                   inventory, dry run, run and report (U-03,
+ *                                   `overrideMigration.ts`; in the OpenAPI spec, rule 10).
  *
  * Admin routes are narrative-only under AGENTS.md rule 10 (`adminApi` in routeCoverage's
  * NARRATIVE_ONLY): no OpenAPI entry. Nothing here is secret (THREAT-MODEL "Platform settings and
@@ -55,6 +58,7 @@ import { ensureSystemProduct } from "../systemProduct.js";
 import { handleFeedsAdmin } from "./feeds.js";
 import { platformAudit } from "../audit.js";
 import { operationsSnapshot } from "../../core/operations.js";
+import { handleOverrideMigration } from "./overrideMigration.js";
 
 /** The bindings the Deployment page lists. Presence only. */
 const BINDINGS = [
@@ -205,6 +209,23 @@ export async function handlePlatform(
         db,
         session,
         { kind: "platform" },
+        rest.slice(1),
+        now,
+      );
+    } catch (e) {
+      if (e instanceof AdminBodyError)
+        return err(e.status, e.code, e.message, e.extra);
+      throw e;
+    }
+  }
+  // U-03: the licence-override migration (notes/S-17 §5.12).
+  if (rest[0] === "override-migration") {
+    try {
+      return await handleOverrideMigration(
+        req,
+        env,
+        db,
+        session,
         rest.slice(1),
         now,
       );

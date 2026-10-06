@@ -269,13 +269,13 @@ is still under it, and _Safe to delete PLATFORM_KEK_ once nothing is.
 
 Five classes of value are covered, and all five are counted and swept together:
 
-| `counts` bucket       | Where it lives                                                                                                  |
-| --------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `keys`                | `product_keys.enc_private_json` — per-product signing keys                                                      |
-| `secrets`             | `product_secrets.enc_value_json` — per-product secrets                                                          |
-| `outletCredentials`   | `outlet_credentials.enc_value_json` — store credentials (App Store Connect, Google Play, Partner Center; P5-01) |
-| `managed`             | catalog-declared managed secrets sealed inside `profiles.payload_json` and `licenses.overrides_json` (R12-02)   |
-| `platformCredentials` | `platform_credentials.enc_value_json` — team store credentials stored in the console (A-16)                     |
+| `counts` bucket       | Where it lives                                                                                                                                        |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `keys`                | `product_keys.enc_private_json` — per-product signing keys                                                                                            |
+| `secrets`             | `product_secrets.enc_value_json` — per-product secrets                                                                                                |
+| `outletCredentials`   | `outlet_credentials.enc_value_json` — store credentials (App Store Connect, Google Play, Partner Center; P5-01)                                       |
+| `managed`             | catalog-declared managed secrets sealed inside `profiles.payload_json`, `licenses.overrides_json` and `account_overrides.payload_json` (R12-02, U-03) |
+| `platformCredentials` | `platform_credentials.enc_value_json` — team store credentials stored in the console (A-16)                                                           |
 
 ### Rotating PLATFORM_KEK
 
@@ -349,7 +349,7 @@ migration). Do not skip step 6.
    ```
 
    - `limit` bounds the work per call: one unit per `product_keys` / `product_secrets` row, and
-     one per `profiles` / `licenses` row (a payload row may carry several managed secrets, all
+     one per `profiles` / `licenses` / `account_overrides` row (a payload row may carry several managed secrets, all
      re-sealed together under one compare-and-swap).
    - `skipped` — a concurrent admin write (key rotation, `secret.set`) won the compare-and-swap
      for that row. It is already sealed under the active kid or will be picked up next pass.
