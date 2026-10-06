@@ -110,7 +110,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
     area: "general",
     label: "Manifest-authoritative",
     description:
-      "The product's .pkey/ is the only writer of its display name, licence defaults, web origins and catalog: a console edit to one is refused unless it is a break-glass claim, which needs a reason and expires after 7 days or at the first resync or deploy that changes that field, whichever comes first. Other manifest-declared settings are not refused yet. Off by default; always on, and locked, for the system product.",
+      "The product's .pkey/ is the only writer of its display name, licence defaults, web origins, catalog and licensing settings: a console edit to one is refused unless it is a break-glass claim, which needs a reason and expires after 7 days or at the first resync or deploy that changes that field, whichever comes first. Settings claimed through their older markers (services, the compatibility window, update access, the device policies) are not refused yet. Off by default; always on, and locked, for the system product.",
     keywords: ["break-glass", "gitops", "claims", "lock", "single writer"],
     docs: "/docs/admin/products/",
     value: { kind: "boolean" },
@@ -122,9 +122,11 @@ export const CORE_SLICE: readonly SettingDef[] = [
     // each deploy, so no row can turn this off there (the system-lock rule, `rules.ts`).
     systemLock: { value: true },
     readers: [
+      // ST-04: the one write path decides it (`authority.ts`), for every route that claims.
+      "core/settings/authority.ts",
+      "core/settings/write.ts",
       "core/settingsClaims.ts",
       "admin/handlers/products.ts",
-      "services/config/admin/catalog.ts",
     ],
     storage: { kind: "scalar" },
     since: "ST-20",

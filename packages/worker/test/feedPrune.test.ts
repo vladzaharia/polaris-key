@@ -326,11 +326,33 @@ async function rendered(eco: PackageEcosystem): Promise<string> {
     .join("\n");
 }
 
+/**
+ * The retention switch as the route sets it (`setPruneRetention`, through `writeSetting()`,
+ * ST-04): `locked` for the system product, `stale` for a version that is not the one read, else
+ * `written`. `by` is the operator's plain subject; the stored author gains the `admin:` prefix.
+ */
+async function setRetention(
+  product: string,
+  enabled: boolean,
+  expectedVersion: number,
+  by = "u1",
+): Promise<string> {
+  const res = await setPruneRetention(
+    { env: {}, db, registry: SETTINGS },
+    {
+      product: { slug: product },
+      enabled,
+      expectedVersion,
+      actor: { sub: by, name: null, email: null },
+      now: NOW,
+    },
+  );
+  return typeof res === "string" ? res : res.reason;
+}
+
 /** Feed retention is off by default for a tenant product: opt `product` in. */
 async function optIn(product = P): Promise<void> {
-  expect(await setPruneRetention(db, product, true, 0, "admin:u1", NOW)).toBe(
-    "written",
-  );
+  expect(await setRetention(product, true, 0)).toBe("written");
 }
 
 /** The automatic prune after `version` of `eco`'s package was published on `channel`. */
@@ -772,18 +794,14 @@ describe("the automatic prune", () => {
 
     // Opting in (version 0 → 1), then turning it off again, each against the version read.
     await optIn();
-    expect(await setPruneRetention(db, P, false, 0, "admin:u1", NOW)).toBe(
-      "stale",
-    );
+    expect(await setRetention(P, false, 0)).toBe("stale");
     expect(await pruneRetentionOf(db, P)).toMatchObject({
       prunePrereleases: true,
       locked: false,
       version: 1,
       updatedBy: "admin:u1",
     });
-    expect(await setPruneRetention(db, P, false, 1, "admin:u1", NOW)).toBe(
-      "written",
-    );
+    expect(await setRetention(P, false, 1)).toBe("written");
     expect(await autoPrune("npm", "1.1.0")).toEqual({ status: "off" });
     expect(await versionsOf("npm")).toHaveLength(7);
   });
@@ -796,9 +814,9 @@ describe("the automatic prune", () => {
       updatedAt: null,
       updatedBy: null,
     });
-    expect(
-      await setPruneRetention(db, SYSTEM_PRODUCT_SLUG, false, 0, "u", NOW),
-    ).toBe("locked");
+    expect(await setRetention(SYSTEM_PRODUCT_SLUG, false, 0, "u")).toBe(
+      "locked",
+    );
     // Even a row that says off (written around the API) does not turn it off.
     await seedProduct(db, SYSTEM_PRODUCT_SLUG);
     await db.run(

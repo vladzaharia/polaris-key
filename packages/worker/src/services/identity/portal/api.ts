@@ -1,4 +1,5 @@
 import { RELEASE_PLATFORMS, platformFromFileName } from "@polaris-key/manifest";
+import type { SettingsRegistry } from "../../../core/settings/registry.js";
 import { CHANNEL_STABLE } from "@polaris-key/protocol";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import {
@@ -1348,6 +1349,8 @@ export async function handlePortalApi(
   now: number,
   /** One product's descriptor hooks (`dispatch.ts`); without them no download is offered. */
   hooksFor?: PortalHooksFor,
+  /** The settings registry (ST-04): what the app-consent view resolves product settings from. */
+  settings?: SettingsRegistry,
 ): Promise<Response> {
   let p = path.startsWith("/api") ? path.slice(4) : path;
   if (p.length > 1 && p.endsWith("/")) p = p.slice(0, -1);
@@ -1507,6 +1510,7 @@ export async function handlePortalApi(
       rest[1],
       session.accountId,
       now,
+      settings,
     );
     return view.status === 200 ? portalJson(view.body) : notFound();
   }

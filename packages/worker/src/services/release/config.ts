@@ -122,8 +122,8 @@ export interface OperatorPolicy {
 /**
  * Resolve the OPERATOR-owned artifact policy from `operator_policy_json` (0022_c).
  *
- * This column is written by `setOperatorPolicy` (the console's `update/settings`) and by nothing
- * else: no manifest shape carries either key (R6-03), and resync never names the column. It is
+ * This column is written by the setting `update.operatorPolicy` (the console's `update/settings`,
+ * through `writeSetting()`) and by nothing else: no manifest shape carries either key (R6-03), and resync never names the column. It is
  * separate from `artifact_policy_json` precisely because that blob is manifest-owned and a
  * resync rewrites it whole — which used to drop these keys on every push.
  *
@@ -166,7 +166,7 @@ export function operatorPolicy(
  * `false`. The default is always "required".
  *
  * The METADATA mode comes from its own column; whether a resync may rewrite it is decided by
- * `access_source` (see `setReleaseAccess`). The ARTIFACTS mode is not Release's any more
+ * `access_source` (the `update.metadataAccess` column adapter). The ARTIFACTS mode is not Release's any more
  * (P2b-04): it is Distribution's delivery access (`dist_access`), which a caller reads through
  * `delivery.accessMode()` and passes as `artifactsAccess`. Without one it fails CLOSED to
  * `entitled`, the strictest mode — never back to `release_config.artifacts_access`.
@@ -303,81 +303,30 @@ export function accessModeFor(
 }
 
 /**
- * Set a product's release METADATA access mode, and CLAIM it for the operator.
- *
- * The WRITER lives with the table (spec §5.2: `release_config` is Release's), even though the
- * admin endpoint that calls it is `update/settings` — Update reaches it across the one
- * sanctioned cross-service edge rather than issuing SQL against a table it does not own. The two
- * modes are validated by the caller against `isReleaseAccess`; this function does not re-check,
- * because a silent fallback here would turn a rejected value into a quiet downgrade.
- *
- * Setting it flips `access_source` to `admin`, so the next resync skips it (the guard is in
- * resync's own UPDATE). Without that, `entitled` — which no manifest can express — would be
- * downgraded to the manifest's mode (default `public`) by the very next push.
- *
- * METADATA ONLY since P2b-04. The artifacts mode moved to Distribution's `dist_access`
- * (`GET|PUT …/distribution/access`); `release_config.artifacts_access` is no longer read for any
- * decision and this function no longer writes it (see `ReleaseConfigRow.artifacts_access`).
- */
-export async function setReleaseAccess(
-  db: Db,
-  product: string,
-  access: { metadata?: ReleaseAccess },
-): Promise<void> {
-  await db.run(
-    `UPDATE release_config
-        SET metadata_access = COALESCE(?, metadata_access),
-            access_source = 'admin'
-      WHERE product = ?`,
-    access.metadata ?? null,
-    product,
-  );
-}
-
-/**
- * Hand the access modes back to manifest control.
- *
- * Only the OWNER flips — the stored modes stay exactly as the operator left them, and the next
- * resync re-applies `.pkey/release`. Same contract as `revertServicesToManifest`: reverting never
- * reaches out to GitHub on the spot.
- */
-export async function revertReleaseAccessToManifest(
-  db: Db,
-  product: string,
-): Promise<void> {
-  await db.run(
-    "UPDATE release_config SET access_source = 'manifest' WHERE product = ?",
-    product,
-  );
-}
-
-/**
- * Patch the operator-only artifact policy (`operator_policy_json`).
- *
- * `undefined` leaves a key alone; `minimumSystemVersion: null` removes it. The caller validates
- * the values (`MINIMUM_SYSTEM_VERSION_RE`, a boolean for the signature flag). Keys the stored
- * object already carries are preserved, and an unreadable stored value is replaced — the reader
- * treats it as the defaults already, so nothing an operator could see is lost.
+ * The operator-only artifact policy (`operator_policy_json`) after a patch, as the object to store
+ * (`null` when nothing is left). `undefined` leaves a key alone; `minimumSystemVersion: null`
+ * removes it. The caller validates the values (`MINIMUM_SYSTEM_VERSION_RE`, a boolean for the
+ * signature flag). Keys the stored object already carries are preserved, and an unreadable stored
+ * value is replaced — the reader treats it as the defaults already, so nothing an operator could
+ * see is lost.
  *
  * There is no ownership marker because there is no second writer: this column has no manifest
- * spelling at all, so it is operator-owned by construction.
+ * spelling at all, so it is operator-owned by construction. ST-04: the write is the registry
+ * setting `update.operatorPolicy` through `writeSetting()` (the column adapter is in
+ * `settingsColumns.ts`), as is the METADATA access mode (`update.metadataAccess`, claimed through
+ * `access_source`; the artifacts mode moved to Distribution's `dist_access` in P2b-04).
  */
-export async function setOperatorPolicy(
-  db: Db,
-  product: string,
+export function mergeOperatorPolicy(
+  storedJson: string | null | undefined,
   patch: {
     requireSparkleSignature?: boolean;
     minimumSystemVersion?: string | null;
   },
-): Promise<void> {
-  const row = await db.first<{ operator_policy_json: string | null }>(
-    "SELECT operator_policy_json FROM release_config WHERE product = ?",
-    product,
-  );
+): Record<string, unknown> | null {
   let current: Record<string, unknown> = {};
-  if (row?.operator_policy_json) {
+  if (storedJson) {
     try {
-      const parsed: unknown = JSON.parse(row.operator_policy_json);
+      const parsed: unknown = JSON.parse(storedJson);
       if (parsed && typeof parsed === "object" && !Array.isArray(parsed))
         current = parsed as Record<string, unknown>;
     } catch {
@@ -389,9 +338,5 @@ export async function setOperatorPolicy(
   if (patch.minimumSystemVersion === null) delete current.minimumSystemVersion;
   else if (patch.minimumSystemVersion !== undefined)
     current.minimumSystemVersion = patch.minimumSystemVersion;
-  await db.run(
-    "UPDATE release_config SET operator_policy_json = ? WHERE product = ?",
-    Object.keys(current).length > 0 ? JSON.stringify(current) : null,
-    product,
-  );
+  return Object.keys(current).length > 0 ? current : null;
 }

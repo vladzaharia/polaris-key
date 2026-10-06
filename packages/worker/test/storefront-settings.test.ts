@@ -32,8 +32,9 @@ import { listAudit } from "../src/repo.js";
 import {
   getPortalProductSettings,
   portalProductSettingsView,
-  upsertPortalProductSettings,
+  type ListingPatch,
 } from "../src/services/identity/portal/repo.js";
+import { writeListing } from "./listingWrites.js";
 import { storefrontListing } from "../src/services/identity/portal/storefrontListing.js";
 import {
   DEFAULT_LISTING,
@@ -145,18 +146,16 @@ describe("migration 0085 (PS-02)", () => {
   it("is expand-only: a pre-PS-02 Worker reads and writes the table unaffected", async () => {
     const raw = await beforePs02();
     raw.exec(sql(PS02));
+    // The new Worker runs on the fully migrated database (its listing writes go through
+    // `writeSetting()`, ST-04, which needs `product_settings` and the audit columns).
+    for (const f of AFTER) raw.exec(sql(f));
     const db = new SqliteDb(raw);
     // The new Worker narrows a product's paths and labels a group…
-    await upsertPortalProductSettings(
-      db,
-      "on",
-      {
-        storeListed: "listed",
-        storeOfferPaths: ["group"],
-        storeGroupLabels: { staff: "Staff copy" },
-      },
-      NOW,
-    );
+    await writeListing(db, "on", {
+      storeListed: "listed",
+      storeOfferPaths: ["group"],
+      storeGroupLabels: { staff: "Staff copy" },
+    });
     // …then the old Worker writes the row (its UPSERT never names the new columns) and inserts a
     // fresh one, which takes the column defaults.
     legacyUpsert(raw, "on", 1);
@@ -194,17 +193,12 @@ describe("storefrontListing and the writer (PS-02)", () => {
   it("writes and reads every value back, normalising the path order", async () => {
     const db = makeTestDb();
     await seedProduct(db, "mossgarden");
-    await upsertPortalProductSettings(
-      db,
-      "mossgarden",
-      {
-        storeListed: "listed",
-        storeAudience: "everyone",
-        storeOfferPaths: parseOfferPaths(["open", "group", "open"])!,
-        storeGroupLabels: { "aperture-7": "Included with Aperture Seven" },
-      },
-      NOW,
-    );
+    await writeListing(db, "mossgarden", {
+      storeListed: "listed",
+      storeAudience: "everyone",
+      storeOfferPaths: parseOfferPaths(["open", "group", "open"])!,
+      storeGroupLabels: { "aperture-7": "Included with Aperture Seven" },
+    });
     expect(await storefrontListing(db, "mossgarden")).toEqual({
       listed: "listed",
       audience: "everyone",
@@ -213,12 +207,10 @@ describe("storefrontListing and the writer (PS-02)", () => {
       groupLabels: { "aperture-7": "Included with Aperture Seven" },
     });
     // null restores every kind; an empty label map stores NULL.
-    await upsertPortalProductSettings(
-      db,
-      "mossgarden",
-      { storeOfferPaths: null, storeGroupLabels: {} },
-      NOW,
-    );
+    await writeListing(db, "mossgarden", {
+      storeOfferPaths: null,
+      storeGroupLabels: {},
+    });
     const row = await getPortalProductSettings(db, "mossgarden");
     expect(row.store_offer_paths_json).toBeNull();
     expect(row.store_group_labels_json).toBeNull();
@@ -230,8 +222,7 @@ describe("storefrontListing and the writer (PS-02)", () => {
   it("keeps discover_enabled in step with the listing state (dual-write)", async () => {
     const db = makeTestDb();
     await seedProduct(db, "mossgarden");
-    const up = (patch: Parameters<typeof upsertPortalProductSettings>[2]) =>
-      upsertPortalProductSettings(db, "mossgarden", patch, NOW);
+    const up = (patch: ListingPatch) => writeListing(db, "mossgarden", patch);
 
     let row = await up({ storeListed: "unlisted" });
     expect([row.store_listed, row.discover_enabled]).toEqual(["unlisted", 0]);
@@ -299,12 +290,7 @@ describe("storefrontListing and the writer (PS-02)", () => {
   it("derives discoverEnabled from the resolved state (deploy-window row)", async () => {
     const db = makeTestDb();
     await seedProduct(db, "mossgarden");
-    await upsertPortalProductSettings(
-      db,
-      "mossgarden",
-      { storeListed: "unlisted" },
-      NOW,
-    );
+    await writeListing(db, "mossgarden", { storeListed: "unlisted" });
     // A pre-0085 Worker turns Discover back on without naming store_listed.
     await db.run(
       "UPDATE portal_product_settings SET discover_enabled = 1 WHERE product = ?",
@@ -376,14 +362,33 @@ describe("the portal-settings route's listing fields (PS-02)", () => {
       storeOfferPaths: ["group", "open"],
       storeGroupLabels: { staff: "Staff copy" },
     });
+    // ST-04: one audit row per setting that changed (each with its `setting_key` and the
+    // structured before/after), where PS-02 wrote one row joining the three.
     const rows = await listAudit(db, SLUG, { limit: 10 });
-    const listing = rows.find(
-      (r) => r.action === "storefront.polarisKey.update",
-    );
-    expect(listing?.summary).toBe(
-      "Changed the Polaris Key listing for djdl: listing auto → listed; ways to obtain all → group, open; group labels for 1 group(s)",
-    );
-    expect(listing?.actor_sub).toBe("u1");
+    const listing = rows
+      .filter((r) => r.action === "storefront.polarisKey.update")
+      .map((r) => r as typeof r & { setting_key: string | null });
+    expect(
+      listing
+        .map((r) => [r.setting_key, r.summary, r.actor_sub])
+        .sort((a, b) => String(a[0]).localeCompare(String(b[0]))),
+    ).toEqual([
+      [
+        "storefront.polarisKey.groupLabels",
+        "Changed the Polaris Key listing for djdl: group labels for 1 group(s)",
+        "u1",
+      ],
+      [
+        "storefront.polarisKey.listed",
+        "Changed the Polaris Key listing for djdl: listing auto → listed",
+        "u1",
+      ],
+      [
+        "storefront.polarisKey.offerPaths",
+        "Changed the Polaris Key listing for djdl: ways to obtain all → group, open",
+        "u1",
+      ],
+    ]);
   });
 
   it("writes no listing audit row when no listing value changed", async () => {

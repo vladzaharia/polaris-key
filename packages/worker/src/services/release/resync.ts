@@ -461,6 +461,8 @@ async function applyRepoManifest(
       "setting",
       key,
       `${key} set from the manifest${appliedSha ? ` at ${appliedSha.slice(0, 12)}` : ""}: ${auditValue(before)} → ${auditValue(after)}`,
+      // ST-04: the structured before/after beside the summary.
+      { before, after },
     );
     // A claimable key's audit row carries the same in-statement guard as its write, so a claim
     // made after `claims` was read leaves neither the write nor an audit row claiming it happened.

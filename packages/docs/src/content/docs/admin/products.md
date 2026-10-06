@@ -243,6 +243,10 @@ field is a later settings work package (ST-17). Its break-glass claims (today on
 admin group cannot be changed in the console) end after 7 days or at the first deploy that
 changes the field, and each deploy's log names the live ones as warnings.
 
+Every save is checked against the [settings reference](/docs/reference/settings/): the display
+name and the admin group are at most 200 characters, the device limit at most 1,000,000 and the
+offline grace 1 to 365 days, and a value outside answers 422 `invalid_value`.
+
 ### Linking a repository to an existing product
 
 A product created from nothing (or before its repository had a `.pkey/`) can be handed over to

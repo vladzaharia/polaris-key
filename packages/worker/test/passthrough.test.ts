@@ -16,7 +16,11 @@ import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
 import type { Env } from "../src/env.js";
 import type { Db } from "../src/db/types.js";
-import { loadProduct, type Product } from "../src/core/products.js";
+import {
+  loadProduct,
+  loadProductPublic,
+  type Product,
+} from "../src/core/products.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
 import { setServices } from "../src/repo.js";
 import {
@@ -30,6 +34,14 @@ import { REQUEST_BINDER_COOKIE } from "../src/services/identity/passthrough/requ
 import { consentScope } from "../src/services/identity/passthrough/routes.js";
 import { handlePortalApi } from "./portalHarness.js";
 import { dispatchWith } from "../src/dispatch.js";
+import { SETTINGS } from "../src/mount.js";
+import { resolveProductSetting } from "../src/core/settings/resolve.js";
+import { COMBINED_ENTITLEMENT_MODEL_SINCE } from "../src/services/license/licensingSettings.js";
+import {
+  entitlementModelFor,
+  licenseConsentItem,
+  resolvedEntitlementModel,
+} from "../src/services/identity/passthrough/anchor.js";
 
 const ORIGIN = "https://key.plrs.im";
 /** A well-formed device id (32 base64url characters, as `devices/register` requires). */
@@ -542,5 +554,43 @@ describe("the label on activation and registration (§8 Q2)", () => {
     );
     expect(res.status).toBe(200);
     expect(await labelOf(w)).toBe("Studio Mac");
+  });
+});
+
+describe("the consent view's entitlement model (decision D1 on LX-06)", () => {
+  it("reads legacy for a product registered after the cut-over until LX-09 ships", async () => {
+    const db = makeTestDb();
+    const env = makeEnv(new KvMock(), ["fresh"]);
+    await seedProduct(db, "fresh");
+    await db.run(
+      "UPDATE products SET created_at = ? WHERE slug = 'fresh'",
+      COMBINED_ENTITLEMENT_MODEL_SINCE + 3600,
+    );
+    const account = await getOrCreateAccountByEmail(db, "ada@example.com", NOW);
+    for (const id of ["lic_a", "lic_b"])
+      await db.run(
+        `INSERT INTO licenses (product, id, status, activated_at, modified_at, account_id)
+         VALUES ('fresh', ?, 'active', ?, ?, ?)`,
+        id,
+        NOW,
+        NOW,
+        account.id,
+      );
+    const product = (await loadProductPublic(db, "fresh"))!;
+    const ctx = { env, db, registry: SETTINGS };
+    // The resolver already answers `combined` for it (registered past the cut-over)…
+    expect(
+      (await resolveProductSetting(ctx, "fresh", "licensing.entitlementModel"))
+        ?.value,
+    ).toBe("combined");
+    expect(await resolvedEntitlementModel(ctx, product)).toBe("combined");
+    // …and the licence line still reads `legacy`, counting no other licence, until LX-09.
+    expect(await entitlementModelFor(ctx, product)).toBe("legacy");
+    const item = await licenseConsentItem(db, account.id, product, NOW, {
+      env,
+      registry: SETTINGS,
+    });
+    expect(item.anchor).not.toBeNull();
+    expect(item.more).toBe(0);
   });
 });

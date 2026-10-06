@@ -22,28 +22,32 @@
  * declaring loses its manifest row and returns to the default, so `.pkey/` keeps describing what
  * is in force. A console claim is never touched by either.
  *
- * ST-04 takes this over: its resolver replaces `readRowSettings` (adding the deploy and platform
- * steps of the source chain), and its `writeSetting()` replaces `writeRowSetting` and
- * `revertRowSetting` with the structured audit columns (`before_json`, `after_json`, `origin`,
- * `setting_key`). Until then the audit row's target is the key and its summary carries
- * before → after, as ST-01b's resync rows do.
+ * ST-04: the console's write and Revert go through `writeSetting()` (`core/settings/write.ts`),
+ * the one write path: this module keeps the route's own checks and answers (`preflight`, the
+ * reason, the version it read, `not_claimed`) and hands the write itself, the claim and the
+ * structured audit row to it. That also brings these keys under manifest-authoritative mode
+ * (ST-20): on a product in that mode a console write is refused unless it is a break-glass claim.
+ * ST-05's generic API replaces `readRowSettings` with the resolver.
  */
 
 import type { Db, DbStatement } from "../db/types.js";
 import { randomId } from "./platform.js";
 import { getManifestSnapshot } from "./manifestSnapshot.js";
-import { onlyAfterAChange } from "./platformSettings.js";
 import {
   auditValue,
   claimsApply,
   isClaimKey,
   RESYNC_ACTOR,
-  stmtSettingAudit,
   type AuditActor,
   type ProductSettingRow,
 } from "./settingsClaims.js";
 import { fitsValueSpec } from "./settings/rules.js";
 import type { SettingDef } from "./settings/types.js";
+import {
+  writeSetting,
+  type SettingsWriteContext,
+  type WriteRefusal,
+} from "./settings/write.js";
 
 /** The product facts the row store needs: who it is, when it was registered, how it is linked. */
 export interface RowSettingProduct {
@@ -134,6 +138,7 @@ export async function readRowSettings(
   db: Db,
   product: RowSettingProduct,
   defs: readonly SettingDef[],
+  now: number = Math.floor(Date.now() / 1000),
 ): Promise<RowSettingView[]> {
   const keys = defs.map((d) => d.key);
   const rows =
@@ -145,7 +150,17 @@ export async function readRowSettings(
           ...keys,
         );
   const byKey = new Map(rows.map((r) => [r.key, r]));
-  return defs.map((def) => viewOf(def, product, byKey.get(def.key) ?? null));
+  return defs.map((def) =>
+    viewOf(def, product, liveRow(byKey.get(def.key) ?? null, now)),
+  );
+}
+
+/** An expired break-glass claim (ST-20) is no row at all, as the resolver and the write read it. */
+function liveRow(
+  row: ProductSettingRow | null,
+  now: number,
+): ProductSettingRow | null {
+  return row && row.expires_at !== null && row.expires_at <= now ? null : row;
 }
 
 function viewOf(
@@ -174,11 +189,15 @@ async function readOne(
   db: Db,
   product: RowSettingProduct,
   def: SettingDef,
+  now: number,
 ): Promise<{ row: ProductSettingRow | null; view: RowSettingView }> {
-  const row = await db.first<ProductSettingRow>(
-    "SELECT * FROM product_settings WHERE product = ? AND key = ?",
-    product.slug,
-    def.key,
+  const row = liveRow(
+    await db.first<ProductSettingRow>(
+      "SELECT * FROM product_settings WHERE product = ? AND key = ?",
+      product.slug,
+      def.key,
+    ),
+    now,
   );
   return { row, view: viewOf(def, product, row) };
 }
@@ -322,14 +341,16 @@ export type RowSettingRefusal = {
   reason:
     | "unknown_setting"
     | "setting_pending"
-    | "system_product"
     | "invalid_value"
     | "reason_required"
     | "invalid_reason"
     | "invalid_expected_version"
     | "version_conflict"
     | "not_claimed"
-    | "invalid_manifest_value";
+    | "invalid_manifest_value"
+    // ST-20 through `writeSetting()`: a manifest-authoritative product without (or with a bad)
+    // break-glass claim, and anything else the one write path refuses.
+    | WriteRefusal["reason"];
   message: string;
   /** On a version conflict: the value in force now, so the console can offer "reload". */
   current?: RowSettingView;
@@ -349,6 +370,8 @@ export interface RowSettingWriteInput {
   /** Required: the row version the caller read (0 when there was no row). */
   expectedVersion: unknown;
   reason?: unknown;
+  /** ST-20: the request's break-glass claim, `{ reason }` (a manifest-authoritative product). */
+  breakGlass?: unknown;
 }
 
 const NEXT_RESYNC = "applies at the next resync";
@@ -372,17 +395,9 @@ function preflight(
       reason: "setting_pending",
       message: `${def.key} is not available yet (${def.pending.wp})`,
     };
-  // The system product is manifest-authoritative by a registry rule (ST-20). This path takes no
-  // break-glass claim (ST-04's `writeSetting()` brings row-backed keys onto `decideClaim`), so it
-  // refuses outright rather than offering one.
-  if (product.system === 1)
-    return {
-      ok: false,
-      status: 409,
-      reason: "system_product",
-      message:
-        "the system product is manifest-authoritative: change the monorepo's .pkey/ instead (the deploy hook applies it)",
-    };
+  // The system product, and any product in manifest-authoritative mode (ST-20), is decided by
+  // `writeSetting()`: a console write there is refused (`manifest_authoritative`) unless it is a
+  // break-glass claim with a reason.
   return null;
 }
 
@@ -443,29 +458,41 @@ function checkVersion(
   return null;
 }
 
-/**
- * Run a batch whose first statement is the guarded write and whose follow-ups are guarded on
- * `changes()` (`onlyAfterAChange`, as platform settings do); `false` when that write changed no
- * row (another writer got there first), in which case the follow-ups wrote nothing either. An
- * engine without per-statement counts (a test double) runs the write, then the rest only if it
- * changed a row.
- */
-async function guardedBatch(db: Db, stmts: DbStatement[]): Promise<boolean> {
-  if (db.batchChanges) return ((await db.batchChanges(stmts))[0] ?? 0) > 0;
-  const [first, ...rest] = stmts;
-  const changed = await db.runChanges(first!.sql, ...first!.params);
-  if (changed > 0) for (const st of rest) await db.run(st.sql, ...st.params);
-  return changed > 0;
+/** A `writeSetting()` refusal as this route answers it (a version conflict with the value now). */
+async function fromWriteRefusal(
+  ctx: SettingsWriteContext,
+  product: RowSettingProduct,
+  def: SettingDef,
+  r: WriteRefusal,
+  now: number,
+  verb: string,
+): Promise<RowSettingRefusal> {
+  if (r.reason === "version_conflict")
+    return {
+      ok: false,
+      status: 409,
+      reason: "version_conflict",
+      message: `${def.key} changed while it was being ${verb}`,
+      current: (await readOne(ctx.db, product, def, now)).view,
+    };
+  return {
+    ok: false,
+    status: r.status === 400 ? 422 : r.status,
+    reason: r.reason,
+    message: r.message,
+  };
 }
 
 /**
  * A console write (S-18 §4.5 item 2): validate against the registry entry, check
  * `expectedVersion`, and store the value as a `source = 'console'` row with a `setting.claim`
- * audit row (`setting.update` on a product no manifest feeds), in one batch. "Set to the same
- * value keeps one" (S-18 §4.3): the claim is the write, not the difference.
+ * audit row (`setting.update` on a product no manifest feeds), in one batch, through
+ * `writeSetting()`. "Set to the same value keeps one" (S-18 §4.3): the claim is the write, not the
+ * difference. On a manifest-authoritative product (ST-20) it is refused unless `breakGlass`
+ * carries a reason, and then the claim expires in 7 days at the latest.
  */
 export async function writeRowSetting(
-  db: Db,
+  ctx: SettingsWriteContext,
   product: RowSettingProduct,
   def: SettingDef,
   input: RowSettingWriteInput,
@@ -483,79 +510,53 @@ export async function writeRowSetting(
     };
   const reason = checkReason(def, input.reason);
   if (reason !== null && typeof reason !== "string") return reason;
-  const { row, view } = await readOne(db, product, def);
+  const { view } = await readOne(ctx.db, product, def, now);
   const conflict = checkVersion(input.expectedVersion, view);
   if (conflict) return conflict;
 
-  const json = JSON.stringify(input.value);
-  const write: DbStatement = row
-    ? {
-        sql: `UPDATE product_settings
-                 SET value_json = ?, source = 'console', version = version + 1,
-                     updated_at = ?, updated_by = ?, reason = ?, expires_at = NULL
-               WHERE product = ? AND key = ? AND version = ?`,
-        params: [
-          json,
-          now,
-          actor.sub ?? "console",
-          reason,
-          product.slug,
-          def.key,
-          row.version,
-        ],
-      }
-    : {
-        sql: `INSERT INTO product_settings
-                (product, key, value_json, source, version, updated_at, updated_by, reason, expires_at)
-              SELECT ?, ?, ?, 'console', 1, ?, ?, ?, NULL
-              WHERE NOT EXISTS (SELECT 1 FROM product_settings WHERE product = ? AND key = ?)`,
-        params: [
-          product.slug,
-          def.key,
-          json,
-          now,
-          actor.sub ?? "console",
-          reason,
-          product.slug,
-          def.key,
-        ],
-      };
   const claimed = claimsApply(product);
-  // The audit row follows the write directly and inserts only if the write changed a row, so the
-  // loser of a race (whose guarded write matched nothing) records nothing.
-  const audit = onlyAfterAChange(
-    stmtSettingAudit(
-      product.slug,
-      now,
+  const res = await writeSetting(
+    ctx,
+    {
+      key: def.key,
+      value: input.value,
+      // Re-checked in the write's own batch: the loser of a race writes nothing.
+      expectedVersion: view.version,
+      reason,
+      audit: {
+        action: claimed ? "setting.claim" : "setting.update",
+        summary: ({ breakGlass }) =>
+          `${def.key} set in the console${claimed ? " (claimed from the manifest)" : ""}: ${auditValue(view.value)} → ${auditValue(input.value)}${reason ? ` (reason: ${reason})` : ""}${breakGlass ? ` (break-glass claim until ${new Date(breakGlass.expiresAt * 1000).toISOString()}: ${breakGlass.reason})` : ""}`,
+      },
+    },
+    {
       actor,
-      claimed ? "setting.claim" : "setting.update",
-      "setting",
-      def.key,
-      `${def.key} set in the console${claimed ? " (claimed from the manifest)" : ""}: ${auditValue(view.value)} → ${auditValue(input.value)}${reason ? ` (reason: ${reason})` : ""}`,
-    ),
+      origin: "console",
+      now,
+      product,
+      // This route checks the version and the reason itself (above), with its own answers.
+      strict: false,
+      breakGlass: input.breakGlass,
+    },
   );
-  if (!(await guardedBatch(db, [write, audit]))) {
-    const fresh = await readOne(db, product, def);
-    return {
-      ok: false,
-      status: 409,
-      reason: "version_conflict",
-      message: `${def.key} changed while it was being saved`,
-      current: fresh.view,
-    };
-  }
-  return { ok: true, view: (await readOne(db, product, def)).view, claimed };
+  if (!res.ok) return fromWriteRefusal(ctx, product, def, res, now, "saved");
+  return {
+    ok: true,
+    view: (await readOne(ctx.db, product, def, now)).view,
+    claimed,
+  };
 }
 
 /**
- * Revert a console claim (S-18 §4.5 item 2): drop it and, on a repo-linked product, put the last
- * applied manifest's value back at once (a `source = 'manifest'` row, or no row when the manifest
- * does not declare it), with a `setting.revert` audit row, in one batch. With no snapshot yet
- * (linked before ST-01a and not resynced since) the claim goes and the value "applies at the next
- * resync". On a product no manifest feeds, Revert is "reset to default".
+ * Revert a console claim (S-18 §4.5 item 2) through `writeSetting()`: drop it and, on a
+ * repo-linked product, put the last applied manifest's value back at once (a `source = 'manifest'`
+ * row, or no row when the manifest does not declare it), with a `setting.revert` audit row, in one
+ * batch. With no snapshot yet (linked before ST-01a and not resynced since) the claim goes and the
+ * value "applies at the next resync". On a product no manifest feeds, Revert is "reset to
+ * default". Reverting is open on a manifest-authoritative product: it returns the key to `.pkey/`.
  */
 export async function revertRowSetting(
-  db: Db,
+  ctx: SettingsWriteContext,
   product: RowSettingProduct,
   def: SettingDef,
   input: { expectedVersion: unknown },
@@ -564,7 +565,7 @@ export async function revertRowSetting(
 ): Promise<RowSettingRevertResult> {
   const refused = preflight(def, product);
   if (refused) return refused;
-  const { row, view } = await readOne(db, product, def);
+  const { row, view } = await readOne(ctx.db, product, def, now);
   if (!row || row.source !== "console")
     return {
       ok: false,
@@ -580,7 +581,7 @@ export async function revertRowSetting(
   let restore: { value: unknown } | null = null;
   let applied = true;
   if (claimsApply(product)) {
-    const snapshot = await getManifestSnapshot(db, product.slug);
+    const snapshot = await getManifestSnapshot(ctx.db, product.slug);
     if (!snapshot) applied = false;
     else {
       const declared = manifestValueAt(parseValue(snapshot.manifest_json), def);
@@ -604,57 +605,33 @@ export async function revertRowSetting(
     : applied
       ? `${auditValue(rowSettingDefault(def, product))} (default)`
       : NEXT_RESYNC;
-  // DELETE → audit → restore, each follow-up guarded on `changes()`: the audit row inserts only if
-  // the DELETE removed the claim, and the restore only if the audit row was written (and no row
-  // has appeared since). The loser of a race (two reverts, or a revert against a newer save) gets
-  // a 409 and writes nothing.
-  const stmts: DbStatement[] = [
+  const res = await writeSetting(
+    ctx,
     {
-      sql: "DELETE FROM product_settings WHERE product = ? AND key = ? AND version = ? AND source = 'console'",
-      params: [product.slug, def.key, row.version],
-    },
-    onlyAfterAChange(
-      stmtSettingAudit(
-        product.slug,
-        now,
-        actor,
-        "setting.revert",
-        "setting",
-        def.key,
-        claimsApply(product)
+      key: def.key,
+      op: "reset",
+      expectedVersion: row.version,
+      // The manifest's value goes back as a `source = 'manifest'` row (none: the row goes).
+      ...(restore ? { restore: restore.value } : {}),
+      audit: {
+        action: "setting.revert",
+        summary: claimsApply(product)
           ? `Reverted ${def.key} to the manifest: ${auditValue(view.value)} → ${after}`
           : `Reset ${def.key} to its default: ${auditValue(view.value)} → ${after}`,
-      ),
-    ),
-  ];
-  if (restore)
-    stmts.push({
-      sql: `INSERT INTO product_settings
-              (product, key, value_json, source, version, updated_at, updated_by, reason, expires_at)
-            SELECT ?, ?, ?, 'manifest', ?, ?, 'revert', NULL, NULL
-            WHERE changes() > 0
-              AND NOT EXISTS (SELECT 1 FROM product_settings WHERE product = ? AND key = ?)`,
-      params: [
-        product.slug,
-        def.key,
-        JSON.stringify(restore.value),
-        row.version + 1,
-        now,
-        product.slug,
-        def.key,
-      ],
-    });
-  if (!(await guardedBatch(db, stmts))) {
-    const fresh = await readOne(db, product, def);
-    return {
-      ok: false,
-      status: 409,
-      reason: "version_conflict",
-      message: `${def.key} changed while it was being reverted`,
-      current: fresh.view,
-    };
-  }
-  const fresh = (await readOne(db, product, def)).view;
+      },
+    },
+    {
+      actor,
+      origin: "revert",
+      now,
+      product,
+      strict: false,
+      // The restored manifest row's author, as the resync spells its own.
+      ...(restore ? { author: "revert" } : {}),
+    },
+  );
+  if (!res.ok) return fromWriteRefusal(ctx, product, def, res, now, "reverted");
+  const fresh = (await readOne(ctx.db, product, def, now)).view;
   return applied
     ? { ok: true, view: fresh, applied: true }
     : { ok: true, view: fresh, applied: false, message: NEXT_RESYNC };

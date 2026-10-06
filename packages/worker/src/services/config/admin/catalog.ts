@@ -31,11 +31,7 @@ import { Catalog } from "@polaris-key/catalog";
 import { validateCatalogCloudSync } from "@polaris-key/manifest";
 import { ErrorCode } from "../../../core/errors.js";
 import { getActiveSchema } from "../../../core/data.js";
-import {
-  claimFacts,
-  decideClaim,
-  stmtClaim,
-} from "../../../core/settingsClaims.js";
+import { writeSetting } from "../../../core/settings/write.js";
 import {
   catalogRepresentabilityResponse,
   adminJson,
@@ -52,7 +48,7 @@ import {
   parsePayload,
   readBody,
   reservedNamesResponse,
-  stmtInsertSchema,
+  settingRefused,
 } from "../../../core/adminApi.js";
 import { reservedNamesMode } from "../../../core/reservedNames.js";
 import type { ConfigAdminContext } from "./index.js";
@@ -165,59 +161,63 @@ async function handleActive(ctx: ConfigAdminContext): Promise<Response> {
     // on a repo-linked product, so the next resync leaves it alone. ST-20: a manifest-authoritative
     // product (the system product always) refuses it unless it is a break-glass claim
     // (`breakGlass: { reason }`), which expires in 7 days or at the first apply that changes it.
-    const facts = await claimFacts(db, slug);
-    const decision = facts
-      ? await decideClaim(db, { slug, ...facts }, body.breakGlass, now)
-      : ({ ok: true, claim: null } as const);
-    if (!decision.ok)
-      return err(decision.status, ErrorCode.BadRequest, decision.message, {
-        reason: decision.reason,
-        ...(decision.fields ? { fields: decision.fields } : {}),
-      });
+    // `writeSetting()` decides both, in the same batch as the new active version.
     const version = await nextSchemaVersion(db, slug);
-    await db.batch([
+    const published = {
+      schemaVersion: version,
+      entries: catalog.entries,
+      ...(cloudSync === undefined ? {} : { cloudSync }),
+    };
+    // ST-04: `config.catalog` is a rich registry setting; `writeSetting()` claims it (on a
+    // repo-linked product) and audits the publish in the same batch as the new active version.
+    if (!ctx.settings)
+      throw new Error("the catalog route needs ServiceContext.settings");
+    const written = await writeSetting(
+      { env: ctx.env, db, registry: ctx.settings },
       {
-        sql: "UPDATE product_schema SET active = 0 WHERE product = ?",
-        params: [slug],
-      },
-      stmtInsertSchema({
-        product: slug,
-        catalog_version: version,
-        catalog_json: JSON.stringify({
-          schemaVersion: version,
-          entries: catalog.entries,
-          ...(cloudSync === undefined ? {} : { cloudSync }),
-        }),
-        active: 1,
-        created_at: now,
-      }),
-      ...(decision.claim
-        ? [
-            stmtClaim(
+        key: "config.catalog",
+        value: published,
+        statements: (guard) => [
+          {
+            sql: `UPDATE product_schema SET active = 0 WHERE product = ? AND (${guard.sql})`,
+            params: [slug, ...guard.params],
+          },
+          {
+            sql: `INSERT INTO product_schema (product, catalog_version, catalog_json, active, created_at)
+                  SELECT ?, ?, ?, 1, ? WHERE (${guard.sql})`,
+            params: [
               slug,
-              "config.catalog",
-              session.sub,
+              version,
+              JSON.stringify(published),
               now,
-              decision.claim.reason,
-              decision.claim.expiresAt,
-            ),
-          ]
-        : []),
-    ]);
-    const breakGlass = decision.claim?.expiresAt
-      ? { reason: decision.claim.reason!, expiresAt: decision.claim.expiresAt }
-      : null;
-    await audit(
-      db,
-      slug,
-      session,
-      now,
-      "schema.publish",
-      { kind: "schema", id: String(version) },
-      breakGlass
-        ? `Published catalog v${version} as a break-glass claim until ${new Date(breakGlass.expiresAt * 1000).toISOString()}: ${breakGlass.reason}`
-        : `Published catalog v${version}`,
+              ...guard.params,
+            ],
+          },
+        ],
+        audit: {
+          action: "schema.publish",
+          target: { kind: "schema", id: String(version) },
+          summary: ({ breakGlass }) =>
+            breakGlass
+              ? `Published catalog v${version} as a break-glass claim until ${new Date(breakGlass.expiresAt * 1000).toISOString()}: ${breakGlass.reason}`
+              : `Published catalog v${version}`,
+        },
+      },
+      {
+        actor: {
+          sub: session.sub,
+          name: session.name ?? null,
+          email: session.email ?? null,
+        },
+        origin: "console",
+        now,
+        product: slug,
+        strict: false,
+        breakGlass: body.breakGlass,
+      },
     );
+    if (!written.ok) return settingRefused(written);
+    const breakGlass = written.written[0]?.breakGlass;
     return adminJson({
       ok: true,
       schemaVersion: version,

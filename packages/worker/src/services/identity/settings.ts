@@ -184,8 +184,8 @@ export const IDENTITY_SETTINGS_SLICE: ServiceSettingsSlice = {
     }),
     // PX-W13 (plans/PX-W13.md §8 Q4, as amended): the operator's approval of one product whose
     // display name uses a reserved term (a third party's "Steam Deck Companion"). Operator-only
-    // and audited; read by the manifest rule and the card's render-time check once ST-04's
-    // resolver can read product settings.
+    // and audited; read by the manifest rule and the card's render-time check through ST-04's
+    // resolver, which PX-W13b wires.
     setting({
       key: "identity.displayNameApproved",
       scope: "product",
@@ -203,7 +203,7 @@ export const IDENTITY_SETTINGS_SLICE: ServiceSettingsSlice = {
       confirm: { on: "L1", off: "L0" },
       visibleWhen: VISIBLE,
       storage: { kind: "scalar" },
-      pending: { wp: "ST-04" },
+      pending: { wp: "PX-W13b" },
     }),
     SYNC_TIER_ON_SIGN_IN,
   ],

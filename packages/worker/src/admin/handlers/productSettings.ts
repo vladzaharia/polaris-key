@@ -26,6 +26,7 @@
  */
 
 import type { Db } from "../../db/types.js";
+import type { Env } from "../../env.js";
 import type { ProductRow } from "../../repo.js";
 import { ErrorCode } from "../../core/errors.js";
 import { parseServices } from "../../core/services.js";
@@ -149,6 +150,7 @@ function missingVersion(): Response {
 
 export async function handleProductSettings(
   req: Request,
+  env: Env,
   db: Db,
   session: AdminSession,
   product: ProductRow,
@@ -164,7 +166,7 @@ export async function handleProductSettings(
       return err(405, ErrorCode.BadRequest, "method not allowed");
     const area = new URL(req.url).searchParams.get("area");
     const defs = rowBackedSettings().filter((d) => !area || d.area === area);
-    const views = await readRowSettings(db, product, defs);
+    const views = await readRowSettings(db, product, defs, now);
     const manifest = await snapshotManifest(db, product);
     return adminJson({
       settings: views.map((v) => dto(v, services, manifest)),
@@ -199,13 +201,15 @@ export async function handleProductSettings(
       });
     if (body.expectedVersion === undefined) return missingVersion();
     const res = await writeRowSetting(
-      db,
+      { env, db, registry: SETTINGS },
       product,
       def,
       {
         value: body.value,
         expectedVersion: body.expectedVersion,
         reason: body.reason,
+        // ST-20: a manifest-authoritative product takes a break-glass claim only.
+        breakGlass: body.breakGlass,
       },
       actor,
       now,
@@ -222,7 +226,7 @@ export async function handleProductSettings(
     const body = await readBody(req);
     if (body.expectedVersion === undefined) return missingVersion();
     const res = await revertRowSetting(
-      db,
+      { env, db, registry: SETTINGS },
       product,
       def,
       { expectedVersion: body.expectedVersion },

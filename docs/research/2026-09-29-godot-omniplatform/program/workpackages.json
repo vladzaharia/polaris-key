@@ -5490,6 +5490,28 @@
       "status": "done"
     },
     {
+      "id": "PX-W13b",
+      "title": "Display-name policy settings: `identity.reservedDisplayTerms` (platform) and `identity.displayNameApproved` (product) wired into the reserved-name check and the shared-manifest validator (rule 9)",
+      "phase": "PX",
+      "stage": "phase W: Worker additions",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.3, 0.6],
+      "deps": ["PX-W13", "ST-04"],
+      "planMode": false,
+      "gates": ["rule-9", "threat-model"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "plans/PX-W13.md §3 (reserved display names) and §8 Q4 (amended 2026-10-05)",
+        "registry: identity.reservedDisplayTerms (core/settings/platform.ts)",
+        "registry: identity.displayNameApproved (services/identity/settings.ts)"
+      ],
+      "brief": "wp/PX-W13b-display-name-settings.md",
+      "status": "todo"
+    },
+    {
       "id": "PX-W14",
       "title": "Approve a new device (G29) on the I-02 store: start, approve with step-up for new locations, poll",
       "phase": "PX",
@@ -6054,7 +6076,7 @@
         "notes/S-18 §6.2 ST-04"
       ],
       "brief": "wp/ST-04-settings-resolver.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "ST-05",

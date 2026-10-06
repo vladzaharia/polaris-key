@@ -38,10 +38,6 @@ import {
   getProduct,
   getProductSecret,
   getTier,
-  revertAutoIssueToManifest,
-  revertFingerprintPolicyToManifest,
-  setAutoIssuePolicy,
-  setFingerprintPolicy,
   type ProductRow,
   listProducts,
   stmtInsertProduct,
@@ -52,20 +48,18 @@ import {
   upsertProductSecret,
 } from "../../repo.js";
 import { deleteTokenRecord } from "../../kv.js";
-import {
-  deleteProduct,
-  listDevicesByProduct,
-  stmtUpdateProduct,
-} from "../repo.js";
+import { deleteProduct, listDevicesByProduct } from "../repo.js";
 import {
   claimsApply,
-  decideClaim,
   manifestAuthorityOf,
+  MANIFEST_AUTHORITATIVE_KEY,
   revertClaim,
-  stmtClaim,
-  stmtSetManifestAuthority,
-  type ClaimKey,
 } from "../../core/settingsClaims.js";
+import {
+  auditValue,
+  writeSettings,
+  type SettingWrite,
+} from "../../core/settings/write.js";
 import {
   describeKeyring,
   generateEd25519,
@@ -78,7 +72,7 @@ import { linkRepo, MAX_MANIFEST_BYTES } from "../../services/release/sync.js";
 import { SIGNIN_ENV } from "../../services/identity/providers/config.js";
 import { checkSlug, prepareCreate } from "../../services/release/linkRepo.js";
 import { manifestIngestFor } from "../../core/registry.js";
-import { SERVICES } from "../../mount.js";
+import { SERVICES, SETTINGS } from "../../mount.js";
 import {
   isAutoIssueMode,
   isFingerprintMode,
@@ -94,6 +88,7 @@ import {
   forbidden,
   notFound,
   readBody,
+  settingRefused,
 } from "../lib/respond.js";
 import { listProductSecretsView, productView } from "../lib/shape.js";
 import { productIcons } from "../lib/presentation.js";
@@ -104,13 +99,6 @@ import {
 } from "../lib/writeChecks.js";
 import { reservedNamesMode } from "../../core/reservedNames.js";
 import { handleOutletCredentials } from "./outletCredentials.js";
-
-/** The PATCH body field that writes each claimable setting (ST-20's refusals name the field). */
-const FIELD_OF_CLAIM: Partial<Record<ClaimKey, string>> = {
-  "core.name": "name",
-  "license.defaults.maxOfflineDays": "defaultMaxOfflineDays",
-  "license.defaults.deviceLimit": "defaultDeviceLimit",
-};
 
 /** Compile a schema supplied as a JSON/YAML string or a parsed object. Returns the catalog or
  *  an error message. Reuses the catalog compiler so manual schema is validated like a publish. */
@@ -381,95 +369,101 @@ export async function handleProducts(
         { fields: ["adminGroup"] },
       );
     }
-    const fields = {
-      name: typeof body.name === "string" ? body.name.trim() : undefined,
-      // `compatMin`/`compatMax` are NOT accepted here any more. The compatibility window is a
-      // statement about which BUILDS this product supports, so spec §8 relocates it to
-      // `PATCH …/update/settings`. Dropped rather than ignored: an endpoint that quietly
-      // accepts a field it no longer owns lets a console appear to save a value that never
-      // changes, which is a worse failure than a rejected request.
-      default_max_offline_days:
-        typeof body.defaultMaxOfflineDays === "number"
-          ? body.defaultMaxOfflineDays
-          : undefined,
-      default_device_limit:
-        typeof body.defaultDeviceLimit === "number"
-          ? body.defaultDeviceLimit
-          : undefined,
-      admin_group:
-        body.adminGroup === null
-          ? null
-          : typeof body.adminGroup === "string"
-            ? body.adminGroup.trim() || null
-            : undefined,
+    // ST-04: every field is a registry setting, written through `writeSetting()` in one batch:
+    // each gets its own audit row (`product.update`, with before/after and the setting key), and
+    // on a repo-linked product each claimable field is claimed for the console (ST-01b, model C),
+    // so the next resync leaves it alone until a Revert. ST-20: on a manifest-authoritative
+    // product (the system product always) `writeSetting()` refuses those claims unless the body
+    // carries a break-glass claim (`breakGlass: { reason }`, L2 in the console), which expires in
+    // 7 days at the latest. `compatMin`/`compatMax` are NOT accepted
+    // here any more: the window moved to `PATCH …/update/settings` (spec §8). Dropped rather than
+    // ignored, so a console cannot appear to save a value this endpoint no longer owns.
+    const FIELD_OF: Record<string, string> = {
+      "core.name": "name",
+      "license.defaults.maxOfflineDays": "defaultMaxOfflineDays",
+      "license.defaults.deviceLimit": "defaultDeviceLimit",
+      "core.adminGroup": "adminGroup",
+      [MANIFEST_AUTHORITATIVE_KEY]: "manifestAuthoritative",
     };
-    // ST-01b (model C): on a repo-linked product, each claimable field this write sets is claimed
-    // for the console in the same batch, so the next resync leaves it alone until a Revert.
-    // ST-20: a manifest-authoritative product refuses the write unless it is a break-glass claim
-    // (`breakGlass: { reason }`, L2 in the console), which expires in 7 days at the latest.
-    // The system product keeps its name (F-03): a same-name save is not a claim on it, so no
-    // break-glass claim on `core.name` can exist there for an apply to end and rename it by.
-    const claimable: ClaimKey[] = [
-      ...(fields.name !== undefined && row.system !== 1
-        ? (["core.name"] as const)
-        : []),
-      ...(fields.default_max_offline_days !== undefined
-        ? (["license.defaults.maxOfflineDays"] as const)
-        : []),
-      ...(fields.default_device_limit !== undefined
-        ? (["license.defaults.deviceLimit"] as const)
-        : []),
-    ];
-    const decision =
-      claimable.length > 0
-        ? await decideClaim(db, row, body.breakGlass, now)
-        : ({ ok: true, claim: null } as const);
-    if (!decision.ok)
-      return err(decision.status, ErrorCode.BadRequest, decision.message, {
-        fields: decision.fields ?? claimable.map((k) => FIELD_OF_CLAIM[k]),
-        reason: decision.reason,
+    // One summary per setting; a break-glass claim and the mode keep ST-20's wording.
+    const describe =
+      (key: string, value: unknown) =>
+      ({
+        breakGlass,
+      }: {
+        breakGlass?: { reason: string; expiresAt: number };
+      }): string =>
+        key === MANIFEST_AUTHORITATIVE_KEY
+          ? `Updated product ${slug}; manifest-authoritative mode ${value ? "on" : "off"}`
+          : breakGlass
+            ? `Updated product ${slug}; break-glass claim until ${new Date(breakGlass.expiresAt * 1000).toISOString()} on ${key}: ${breakGlass.reason}`
+            : `Updated product ${slug}: ${FIELD_OF[key]} ${auditValue(value)}`;
+    const writes: SettingWrite[] = [];
+    const add = (key: string, value: unknown) =>
+      writes.push({
+        key,
+        value,
+        audit: {
+          action: "product.update",
+          target: { kind: "product", id: slug },
+          summary: describe(key, value),
+        },
       });
-    const claim = decision.claim;
-    const claimed = claim ? claimable : [];
-    const breakGlass = claim?.expiresAt
-      ? { reason: claim.reason!, expiresAt: claim.expiresAt }
-      : null;
-    const mode =
-      typeof body.manifestAuthoritative === "boolean" && row.system !== 1
-        ? body.manifestAuthoritative
-        : undefined;
-    await db.batch([
-      stmtUpdateProduct(slug, fields, now),
-      ...claimed.map((key) =>
-        stmtClaim(slug, key, session.sub, now, claim!.reason, claim!.expiresAt),
-      ),
-      ...(mode !== undefined
-        ? [stmtSetManifestAuthority(slug, mode, session.sub, now)]
-        : []),
-    ]);
-    const notes = [
-      ...(claimed.length > 0
-        ? [
-            breakGlass
-              ? `break-glass claim until ${new Date(breakGlass.expiresAt * 1000).toISOString()} on ${claimed.join(", ")}: ${breakGlass.reason}`
-              : `claimed for the console: ${claimed.join(", ")}`,
-          ]
-        : []),
-      ...(mode !== undefined
-        ? [`manifest-authoritative mode ${mode ? "on" : "off"}`]
-        : []),
-    ];
-    await audit(
-      db,
-      slug,
-      session,
-      now,
-      "product.update",
-      { kind: "product", id: slug },
-      notes.length > 0
-        ? `Updated product ${slug}; ${notes.join("; ")}`
-        : `Updated product ${slug}`,
+    // The system product's unchanged name is accepted and left alone (F-03 refused a change).
+    if (
+      typeof body.name === "string" &&
+      !(row.system === 1 && body.name.trim() === row.name)
+    )
+      add("core.name", body.name.trim());
+    if (typeof body.defaultMaxOfflineDays === "number")
+      add("license.defaults.maxOfflineDays", body.defaultMaxOfflineDays);
+    if (typeof body.defaultDeviceLimit === "number")
+      add("license.defaults.deviceLimit", body.defaultDeviceLimit);
+    if (body.adminGroup === null) add("core.adminGroup", null);
+    else if (typeof body.adminGroup === "string")
+      add("core.adminGroup", body.adminGroup.trim() || null);
+    // The mode itself: an operator setting, never written for the system product (locked).
+    if (typeof body.manifestAuthoritative === "boolean" && row.system !== 1)
+      add(MANIFEST_AUTHORITATIVE_KEY, body.manifestAuthoritative);
+    const written = await writeSettings(
+      { env, db, registry: SETTINGS },
+      writes,
+      {
+        actor: {
+          sub: session.sub,
+          name: session.name ?? null,
+          email: session.email ?? null,
+        },
+        origin: "console",
+        now,
+        product: row,
+        // A bespoke route (ST-05 makes it an alias of the generic API): no version in its
+        // contract, and its confirmations are the console's (the claim and break-glass dialogs).
+        strict: false,
+        breakGlass: body.breakGlass,
+      },
     );
+    if (!written.ok)
+      return settingRefused(
+        written,
+        // ST-20's refusal names every field the save would have claimed.
+        written.reason === "manifest_authoritative"
+          ? writes
+              .map((w) => FIELD_OF[w.key])
+              .filter(
+                (f): f is string =>
+                  f !== undefined &&
+                  f !== "adminGroup" &&
+                  f !== "manifestAuthoritative",
+              )
+          : written.details?.fields
+            ? (written.details.fields as string[])
+            : written.key && FIELD_OF[written.key]
+              ? [FIELD_OF[written.key]!]
+              : undefined,
+      );
+    const claimed = written.written.filter((w) => w.claimed).map((w) => w.key);
+    const breakGlass = written.written.find((w) => w.breakGlass)?.breakGlass;
     return adminJson({
       ok: true,
       slug,
@@ -1258,7 +1252,7 @@ export async function handleProductScopedResource(
   if (resource === "keys")
     return handleKeys(req, env, db, session, slug, id, now);
   if (resource === "claims")
-    return handleClaimRevert(req, db, session, slug, id, now);
+    return handleClaimRevert(req, env, db, session, slug, id, now);
   return notFound();
 }
 
@@ -1270,6 +1264,7 @@ export async function handleProductScopedResource(
  */
 async function handleClaimRevert(
   req: Request,
+  env: Env,
   db: Db,
   session: AdminSession,
   slug: string,
@@ -1282,7 +1277,7 @@ async function handleClaimRevert(
   const product = await getProduct(db, slug);
   if (!product) return notFound();
   const result = await revertClaim(
-    db,
+    { env, db, registry: SETTINGS },
     product,
     key,
     {

@@ -68,6 +68,12 @@ import {
 } from "../../../core/blobs.js";
 import { stmtEnqueuePackageRender } from "../../../core/registryQueue.js";
 import { bumpReleaseGeneration } from "../ghCache.js";
+import {
+  writeSetting,
+  type AuditActor,
+  type SettingsWriteContext,
+  type WriteRefusal,
+} from "../../../core/settings/write.js";
 
 /** The actor the automatic prune records (`pruned_by`, the audit's `actor_sub`). */
 export const PRUNE_ACTOR = "system:feed-retention";
@@ -154,6 +160,11 @@ export interface PruneRetention {
 /**
  * `release.packages.prunePrereleases` for `product`: no row is the default, OFF for a tenant
  * product (it opts in); the system product is always on.
+ *
+ * ST-04: the setting is written through `writeSetting()` (its column adapter is in
+ * `../settingsColumns.ts`), whose `product_settings` row carries the version a write must name,
+ * so `version` is read from there. The table keeps its own audit columns, which stand in for the
+ * author of a value written before ST-04.
  */
 export async function pruneRetentionOf(
   db: Db,
@@ -161,60 +172,87 @@ export async function pruneRetentionOf(
 ): Promise<PruneRetention> {
   const row = await db.first<{
     prune_prereleases: number;
-    version: number;
     updated_at: number;
     updated_by: string | null;
   }>(
-    `SELECT prune_prereleases, version, updated_at, updated_by
+    `SELECT prune_prereleases, updated_at, updated_by
        FROM release_package_retention WHERE product = ?`,
     product,
   );
-  const locked = product === SYSTEM_PRODUCT_SLUG;
+  const setting = await db.first<{
+    version: number;
+    updated_at: number;
+    updated_by: string;
+  }>(
+    "SELECT version, updated_at, updated_by FROM product_settings WHERE product = ? AND key = ?",
+    product,
+    PRUNE_SETTING_KEY,
+  );
+  const locked = retentionLocked(product);
   return {
     prunePrereleases: locked || row?.prune_prereleases === 1,
     locked,
-    version: row?.version ?? 0,
-    updatedAt: row?.updated_at ?? null,
-    updatedBy: row?.updated_by ?? null,
+    version: setting?.version ?? 0,
+    updatedAt: setting?.updated_at ?? row?.updated_at ?? null,
+    updatedBy: setting?.updated_by ?? row?.updated_by ?? null,
   };
 }
 
+/** The registry key of the retention switch. */
+export const PRUNE_SETTING_KEY = "release.packages.prunePrereleases";
+
+/** The system product always prunes: its switch is locked on and a write is refused. */
+export function retentionLocked(product: string): boolean {
+  return product === SYSTEM_PRODUCT_SLUG;
+}
+
 /**
- * Set `product`'s retention switch, only while its version is still `expectedVersion` (0 for a
- * row never written). Answers whether it was written; the system product's is refused (locked).
+ * Set `product`'s retention switch through `writeSetting()` (ST-04), only while the setting's
+ * version is still `expectedVersion` (0: never written). The system product's is refused
+ * (`locked`). The stored author keeps the table's `admin:<sub>` spelling; the audit row
+ * (`feed.retention.update`) names the operator as every audit row does.
  */
 export async function setPruneRetention(
-  db: Db,
-  product: string,
-  enabled: boolean,
-  expectedVersion: number,
-  by: string,
-  now: number,
-): Promise<"written" | "stale" | "locked"> {
-  if (product === SYSTEM_PRODUCT_SLUG) return "locked";
-  const changed =
-    expectedVersion === 0
-      ? await db.runChanges(
-          `INSERT INTO release_package_retention
-             (product, prune_prereleases, version, updated_at, updated_by)
-           VALUES (?, ?, 1, ?, ?)
-           ON CONFLICT(product) DO NOTHING`,
-          product,
-          enabled ? 1 : 0,
-          now,
-          by,
-        )
-      : await db.runChanges(
-          `UPDATE release_package_retention
-              SET prune_prereleases = ?, version = version + 1, updated_at = ?, updated_by = ?
-            WHERE product = ? AND version = ?`,
-          enabled ? 1 : 0,
-          now,
-          by,
-          product,
-          expectedVersion,
-        );
-  return changed > 0 ? "written" : "stale";
+  ctx: SettingsWriteContext,
+  w: {
+    product: {
+      slug: string;
+      system?: number | null;
+      release_source?: string | null;
+    };
+    enabled: boolean;
+    expectedVersion: number;
+    actor: AuditActor;
+    now: number;
+  },
+): Promise<"written" | "stale" | "locked" | WriteRefusal> {
+  if (retentionLocked(w.product.slug)) return "locked";
+  const res = await writeSetting(
+    ctx,
+    {
+      key: PRUNE_SETTING_KEY,
+      value: w.enabled,
+      expectedVersion: w.expectedVersion,
+      audit: {
+        action: "feed.retention.update",
+        target: { kind: "feed", id: "retention" },
+        summary: w.enabled
+          ? "Turned on pruning of the builds of main once a version is released"
+          : "Turned off pruning of the builds of main once a version is released",
+      },
+    },
+    {
+      actor: w.actor,
+      author: `admin:${w.actor.sub ?? "system"}`,
+      origin: "console",
+      now: w.now,
+      product: w.product,
+      // The route's contract always carried `expectedVersion`; its confirmation is the console's.
+      strict: false,
+    },
+  );
+  if (res.ok) return "written";
+  return res.reason === "version_conflict" ? "stale" : res;
 }
 
 // ── The plan ─────────────────────────────────────────────────────────────────────────────────

@@ -7,12 +7,15 @@
 
 import { setting } from "../../core/settings/define.js";
 import type { ServiceSettingsSlice } from "../../core/settings/types.js";
+import { RELEASE_COLUMN_ADAPTERS } from "./settingsColumns.js";
 import { RELEASE_MANIFEST_SETTINGS } from "./manifestSettings.js";
 
 const VISIBLE = { service: "release", offBehaviour: "hide" } as const;
 
 export const RELEASE_SETTINGS_SLICE: ServiceSettingsSlice = {
   namespaces: ["release"],
+  // ST-04: how the entries stored in Release's tables are decoded and written.
+  columns: RELEASE_COLUMN_ADAPTERS,
   entries: [
     setting({
       key: "release.compatWindow",

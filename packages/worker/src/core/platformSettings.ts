@@ -348,9 +348,11 @@ async function readStore(db: Db): Promise<StoreRead> {
     }>(
       "SELECT key, value_json, version, updated_at, updated_by FROM platform_settings",
     );
+    // Every row, not only A-13's keys: the settings resolver (ST-04, `settings/resolve.ts`) reads
+    // the registry's other platform keys (stored under their registry key) through this same
+    // 30-second cache. A-13's own readers still look up only the keys `PLATFORM_SETTINGS` lists.
     const out = new Map<string, StoredSetting>();
     for (const r of rows) {
-      if (!BY_KEY.has(r.key)) continue;
       let value: unknown;
       try {
         value = JSON.parse(r.value_json) as unknown;
@@ -385,6 +387,25 @@ async function loadStore(
   if (read.ok) cache.set(key, { at: now, read });
   else cache.delete(key);
   return read;
+}
+
+/**
+ * Every `platform_settings` row, from this isolate's 30-second copy (ST-04): what the settings
+ * resolver reads for any platform-scope key. `ok` is false when the table could not be read.
+ */
+export async function platformStoreRows(
+  env: SettingsEnv,
+  db: Db,
+  opts: { fresh?: boolean } = {},
+): Promise<{ ok: boolean; rows: ReadonlyMap<string, StoredSetting> }> {
+  return loadStore(env, db, opts);
+}
+
+/** Each A-13 key's deploy-time parser, by `[vars]` name (the resolver keeps A-13's parsing). */
+export function deployVarParser(
+  varName: string,
+): ((raw: string) => number | undefined) | undefined {
+  return VAR_PARSERS[varName];
 }
 
 /** Re-read the table now (the cron handler and the consumer, at the start of an invocation). */

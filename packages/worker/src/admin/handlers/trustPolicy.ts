@@ -10,6 +10,10 @@
  * Platform admins only: the policy names the Apple Team ID App Attest binds to and decides whether
  * basic devices are refused, so it is the operator's, never the repo's (`core/deviceTrust.ts`).
  * Every write is audited with the before and after.
+ *
+ * ST-04: the policy is the registry setting `core.trustPolicy`, written through `writeSetting()`
+ * (the one write path; its column adapter keeps `trust_policy_source`). A bespoke route with no
+ * version in its contract, so it writes in compatibility mode (ST-05 makes it an alias).
  */
 
 import type { Env } from "../../env.js";
@@ -21,8 +25,13 @@ import {
   validateTrustPolicy,
   type TrustPolicy,
 } from "../../core/deviceTrust.js";
-import { getProduct, setTrustPolicy } from "../../repo.js";
-import { audit } from "../audit.js";
+import { getProduct } from "../../repo.js";
+import { SETTINGS } from "../../mount.js";
+import {
+  writeSetting,
+  type SettingWrite,
+  type WriteOptions,
+} from "../../core/settings/write.js";
 import { isPlatformAdmin } from "../authz.js";
 import type { AdminSession } from "../session.js";
 import {
@@ -31,6 +40,7 @@ import {
   forbidden,
   notFound,
   readBody,
+  settingRefused,
 } from "../lib/respond.js";
 
 function describe(p: TrustPolicy): string {
@@ -59,17 +69,30 @@ export async function handleTrustPolicy(
   if (req.method === "GET")
     return adminJson({ ok: true, policy: current, source });
 
-  if (req.method === "DELETE") {
-    await setTrustPolicy(db, slug, null, now);
-    await audit(
-      db,
-      slug,
-      session,
+  const write = (w: SettingWrite) =>
+    writeSetting({ env, db, registry: SETTINGS }, w, {
+      actor: {
+        sub: session.sub,
+        name: session.name ?? null,
+        email: session.email ?? null,
+      },
+      origin: "console",
       now,
-      "trust_policy.reset",
-      { kind: "trust_policy", id: slug },
-      `Reset the device-trust policy to the default (was: ${describe(current)})`,
-    );
+      product: row,
+      strict: false,
+    } satisfies WriteOptions);
+
+  if (req.method === "DELETE") {
+    const reset = await write({
+      key: "core.trustPolicy",
+      op: "reset",
+      audit: {
+        action: "trust_policy.reset",
+        target: { kind: "trust_policy", id: slug },
+        summary: `Reset the device-trust policy to the default (was: ${describe(current)})`,
+      },
+    });
+    if (!reset.ok) return settingRefused(reset);
     return adminJson({
       ok: true,
       policy: DEFAULT_TRUST_POLICY,
@@ -82,15 +105,15 @@ export async function handleTrustPolicy(
   const v = validateTrustPolicy(await readBody(req));
   if (!v.ok)
     return err(400, ErrorCode.BadRequest, v.message, { field: v.field });
-  await setTrustPolicy(db, slug, JSON.stringify(v.policy), now);
-  await audit(
-    db,
-    slug,
-    session,
-    now,
-    "trust_policy.set",
-    { kind: "trust_policy", id: slug },
-    `Set the device-trust policy: ${describe(v.policy)} (was: ${describe(current)})`,
-  );
+  const set = await write({
+    key: "core.trustPolicy",
+    value: v.policy,
+    audit: {
+      action: "trust_policy.set",
+      target: { kind: "trust_policy", id: slug },
+      summary: `Set the device-trust policy: ${describe(v.policy)} (was: ${describe(current)})`,
+    },
+  });
+  if (!set.ok) return settingRefused(set);
   return adminJson({ ok: true, policy: v.policy, source: "admin" });
 }

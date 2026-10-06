@@ -26,6 +26,7 @@ import {
   REGISTRY_OWNERLESS_ROUTES,
   REGISTRY_ROUTES,
   SERVICES,
+  SETTINGS,
 } from "./mount.js";
 import { handleAdmin } from "./admin/index.js";
 import { handleDocs } from "./docs.js";
@@ -179,7 +180,10 @@ export async function dispatchWith(
     case "portalLogout":
     case "portalMagicVerify":
     case "portalMedia":
-      return handlePortal(req, env, db, url.pathname, { hooksFor });
+      return handlePortal(req, env, db, url.pathname, {
+        hooksFor,
+        settings: SETTINGS,
+      });
     case "portalDownload":
       return handlePortal(
         req,

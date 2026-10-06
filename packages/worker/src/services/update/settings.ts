@@ -5,11 +5,15 @@
 
 import { setting } from "../../core/settings/define.js";
 import type { ServiceSettingsSlice } from "../../core/settings/types.js";
+import { UPDATE_COLUMN_ADAPTERS } from "../release/settingsColumns.js";
 
 const VISIBLE = { service: "update", offBehaviour: "hide" } as const;
 
 export const UPDATE_SETTINGS_SLICE: ServiceSettingsSlice = {
   namespaces: ["update"],
+  // ST-04: both entries live in Release's `release_config`, so Release's adapters write them
+  // (Update → Release is the one sanctioned cross-service edge, D-05).
+  columns: UPDATE_COLUMN_ADAPTERS,
   entries: [
     setting({
       key: "update.metadataAccess",

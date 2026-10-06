@@ -25,7 +25,7 @@ this page or fails the freshness gate.
 | `license_key_entries` | 0100_license_key_entries.sql | `product`, `license_id`, `id`, `surface`, `device_id`, `created_at` |
 | `device_fingerprints` | 0010_fingerprint.sql | `product`, `device_id`, `hwid`, `components_json`, `anchor_hash`, `status`, `first_seen`, `last_seen`, `last_drift_at`, `last_drift_count` |
 | `device_facts` | 0010_fingerprint.sql | `product`, `device_id`, `os_name`, `os_version`, `os_build`, `kernel`, `cpu_model`, `cpu_cores`, `ram_mb`, `machine_model`, `locale`, `timezone`, `runtime_name`, `runtime_version`, `probes_json`, `updated_at` |
-| `audit` | 0001_init.sql | `product`, `id`, `at`, `actor_sub`, `actor_name`, `actor_email`, `action`, `target_kind`, `target_id`, `parent_id`, `summary` |
+| `audit` | 0001_init.sql | `product`, `id`, `at`, `actor_sub`, `actor_name`, `actor_email`, `action`, `target_kind`, `target_id`, `parent_id`, `summary`, `before_json (0101)`, `after_json (0101)`, `origin (0101)`, `reason (0101)`, `setting_key (0101)` |
 | `product_sync_state` | 0005_product_sync_state.sql | `product`, `source`, `status`, `last_checked_at`, `last_synced_at`, `commit_sha`, `changed_paths_json`, `updated_json`, `errors_json`, `message` |
 | `product_manifest_snapshot` | 0072_product_manifest_snapshot.sql | `product`, `applied_sha`, `applied_at`, `origin`, `files_sha256`, `manifest_json` |
 | `product_settings` | 0086_product_settings.sql | `product`, `key`, `value_json`, `source`, `version`, `updated_at`, `updated_by`, `reason`, `expires_at` |
@@ -45,7 +45,7 @@ this page or fails the freshness gate.
 | `platform_credentials` | 0055_platform_store_connections.sql | `credential_id`, `store`, `slot`, `kind`, `enc_value_json`, `meta_json`, `status`, `created_at`, `created_by`, `rotated_at`, `last_used_at`, `last_ok_at`, `last_error` |
 | `platform_credential_pins` | 0055_platform_store_connections.sql | `credential_id`, `product`, `pin`, `pinned_at`, `pinned_by` |
 | `platform_store_settings` | 0055_platform_store_connections.sql | `store`, `key`, `value`, `updated_at`, `updated_by` |
-| `platform_audit` | 0054_b_platform_audit.sql | `id`, `at`, `actor_sub`, `actor_name`, `actor_email`, `action`, `target_kind`, `target_id`, `summary`, `before_json`, `after_json` |
+| `platform_audit` | 0054_b_platform_audit.sql | `id`, `at`, `actor_sub`, `actor_name`, `actor_email`, `action`, `target_kind`, `target_id`, `summary`, `before_json`, `after_json`, `origin (0101)`, `reason (0101)`, `setting_key (0101)` |
 | `registry_render_queue` | 0058_d_registry.sql | `product`, `deliverable_id`, `reason`, `enqueued_at`, `generation`, `attempts (0060)` |
 | `registry_tokens` | 0067_registry_tokens.sql | `product`, `token_id`, `token_hash`, `hint`, `label`, `scopes_json`, `ecosystems_json`, `binding`, `license_id`, `presentation`, `created_by`, `portal_account_id`, `created_at`, `expires_at`, `last_used_at`, `revoked_at`, `revoked_by`, `revoke_reason` |
 | `platform_settings` | 0056_platform_settings.sql | `key`, `value_json`, `version`, `updated_at`, `updated_by` |

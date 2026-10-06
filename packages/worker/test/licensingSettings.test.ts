@@ -41,6 +41,7 @@ import {
 import { readSyncTierOnSignIn } from "../src/services/identity/settings.js";
 import { getProduct } from "../src/repo.js";
 import { revertRowSetting, writeRowSetting } from "../src/core/rowSettings.js";
+import { BREAK_GLASS_MAX_SECONDS } from "../src/core/settingsClaims.js";
 import type { Db, DbParam } from "../src/db/types.js";
 import { withDefaultHead } from "./githubHead.js";
 
@@ -544,7 +545,7 @@ describe("the settings API refuses what the registry refuses", () => {
     const db = afterReads(ctx.db, 2);
     const [a, b] = await Promise.all([
       writeRowSetting(
-        db,
+        { env: {}, db, registry: SETTINGS },
         product,
         def,
         { value: "rank-first", expectedVersion: 1 },
@@ -552,7 +553,7 @@ describe("the settings API refuses what the registry refuses", () => {
         AFTER + 5,
       ),
       writeRowSetting(
-        db,
+        { env: {}, db, registry: SETTINGS },
         product,
         def,
         { value: "most-free-seats", expectedVersion: 1 },
@@ -580,7 +581,7 @@ describe("the settings API refuses what the registry refuses", () => {
     const db = afterReads(ctx.db, 2);
     const [a, b] = await Promise.all([
       revertRowSetting(
-        db,
+        { env: {}, db, registry: SETTINGS },
         product,
         def,
         { expectedVersion: 2 },
@@ -588,7 +589,7 @@ describe("the settings API refuses what the registry refuses", () => {
         AFTER + 5,
       ),
       revertRowSetting(
-        db,
+        { env: {}, db, registry: SETTINGS },
         product,
         def,
         { expectedVersion: 2 },
@@ -651,8 +652,50 @@ describe("the settings API refuses what the registry refuses", () => {
       value: "never",
       expectedVersion: 0,
     });
+    // ST-04: decided by `writeSetting()`, exactly as for every other governed setting (ST-20).
     expect(res.status).toBe(409);
-    expect(res.json.reason).toBe("system_product");
+    expect(res.json.reason).toBe("manifest_authoritative");
+  });
+
+  it("a manifest-authoritative customer product takes a console claim only as break-glass (ST-20 through writeSetting)", async () => {
+    const ctx = await linked({}, AFTER);
+    await ctx.db.run(
+      `INSERT INTO product_settings (product, key, value_json, source, version, updated_at, updated_by)
+       VALUES (?, 'core.manifest.authoritative', 'true', 'console', 1, ?, 'u1')`,
+      SLUG,
+      AFTER,
+    );
+    const refused = await call(ctx, "PATCH", "licensing.reanchor", {
+      value: "never",
+      expectedVersion: 0,
+    });
+    expect(refused.status).toBe(409);
+    expect(refused.json.reason).toBe("manifest_authoritative");
+    expect(
+      (
+        await call(ctx, "PATCH", "licensing.reanchor", {
+          value: "never",
+          expectedVersion: 0,
+          breakGlass: { reason: "" },
+        })
+      ).json.reason,
+    ).toBe("reason_required");
+    const ok = await call(ctx, "PATCH", "licensing.reanchor", {
+      value: "never",
+      expectedVersion: 0,
+      breakGlass: { reason: "incident 42" },
+    });
+    expect(ok.status).toBe(200);
+    expect(
+      await ctx.db.first(
+        "SELECT source, reason, expires_at FROM product_settings WHERE product = ? AND key = 'licensing.reanchor'",
+        SLUG,
+      ),
+    ).toEqual({
+      source: "console",
+      reason: "incident 42",
+      expires_at: AFTER + 1 + BREAK_GLASS_MAX_SECONDS,
+    });
   });
 
   it("every live row-backed entry is one the API serves", () => {

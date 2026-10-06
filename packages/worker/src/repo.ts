@@ -1660,20 +1660,6 @@ export function stmtSetFingerprintPolicy(
   };
 }
 
-/** Hand a product's fingerprint policy back to manifest control (the "revert" action). */
-export async function revertFingerprintPolicyToManifest(
-  db: Db,
-  product: string,
-  at: number,
-): Promise<void> {
-  await db.run(
-    `UPDATE products SET fingerprint_policy_source = 'manifest', modified_at = ?
-       WHERE slug = ?`,
-    at,
-    product,
-  );
-}
-
 /** Write a product's auto-issue policy under the same manifest-vs-admin ownership rule as
  *  the fingerprint policy: a resync only writes while the row is still manifest-owned. */
 export async function setAutoIssuePolicy(
@@ -1746,38 +1732,6 @@ export function stmtSetServices(
        modified_at = ? WHERE slug = ?`,
     params: [servicesJson, at, product],
   };
-}
-
-/**
- * Hand a product's service enablement back to manifest control.
- *
- * Only the OWNER flips. The stored set is left exactly as the operator left it, and the next
- * resync re-applies the manifest through `setServices` — see `core/servicesAdmin.ts` for why
- * reverting deliberately does not reach out to GitHub on the spot.
- */
-export async function revertServicesToManifest(
-  db: Db,
-  product: string,
-  at: number,
-): Promise<void> {
-  await db.run(
-    `UPDATE products SET services_source = 'manifest', modified_at = ? WHERE slug = ?`,
-    at,
-    product,
-  );
-}
-
-/** Hand a product's auto-issue policy back to manifest control. */
-export async function revertAutoIssueToManifest(
-  db: Db,
-  product: string,
-  at: number,
-): Promise<void> {
-  await db.run(
-    `UPDATE products SET auto_issue_source = 'manifest', modified_at = ? WHERE slug = ?`,
-    at,
-    product,
-  );
 }
 
 // ── Fingerprints / device facts ──────────────────────────────────────────────

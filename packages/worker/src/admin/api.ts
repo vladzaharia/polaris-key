@@ -91,7 +91,7 @@ import { loadProduct } from "../core/products.js";
 import { buildHooks } from "../core/hooks.js";
 import { manifestIngestFor } from "../core/registry.js";
 import { licenseDeleteFor } from "../core/licenseDelete.js";
-import { SERVICES } from "../mount.js";
+import { SERVICES, SETTINGS } from "../mount.js";
 import type { ServiceSlug } from "../core/services.js";
 
 // ── per-product routing ────────────────────────────────────────────────────────
@@ -195,6 +195,8 @@ async function handleProductScoped(
         ingest: manifestIngestFor(SERVICES),
         // Core's licence-deletion collector (`core/licenseDelete.ts`): License's delete route.
         licenseDelete: licenseDeleteFor(SERVICES),
+        // ST-04: the settings registry, for the handlers that write through `writeSetting()`.
+        settings: SETTINGS,
         // Same gate as the public path: a hook whose providing service is off answers `null`,
         // even though the admin route itself is reachable while its own service is off.
         hooks: buildHooks(SERVICES, loaded.services, {
@@ -254,7 +256,15 @@ async function handleProductScoped(
   //   GET /products/<slug>/settings/effective[?area=]
   //   PATCH|DELETE /products/<slug>/settings/<key>
   if (resource === "settings")
-    return handleProductSettings(req, db, session, product, rest.slice(1), now);
+    return handleProductSettings(
+      req,
+      env,
+      db,
+      session,
+      product,
+      rest.slice(1),
+      now,
+    );
 
   // Trusted publishing (P2-02): the publisher policy and static CI tokens. CORE, like the
   // secrets: the credential store serves Release now and Distribution (P2b-03) later.
@@ -275,7 +285,7 @@ async function handleProductScoped(
   // one: a service cannot own its own off switch, because it would have to be running to be
   // turned off. `id` carries the single sub-action (`revert`).
   if (resource === "services") {
-    return handleServicesAdmin(req, env, db, session, slug, id, now);
+    return handleServicesAdmin(req, env, db, session, slug, id, now, SETTINGS);
   }
 
   // Offline activation bundles (wire v3 §7). CORE for the same reason `services` is: one bundle

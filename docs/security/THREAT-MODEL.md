@@ -7314,9 +7314,11 @@ from the keyring endpoint.
   until ST-01c's backfill runs.
 - **Manifest-authoritative mode and break-glass claims (ST-20, notes/S-18 §4.5 items 7–8).** A
   product setting, `core.manifest.authoritative`, makes `.pkey/` the only writer of its claimable
-  settings: the products PATCH and the catalog publish refuse a console write to them (409
+  settings: the one write path, `writeSetting()` (ST-04), refuses a console write to them (409
   `manifest_authoritative`) unless it carries `breakGlass: { reason }` (1–500 characters; L2 in the
-  console), and that claim's `product_settings.expires_at` is at most 7 days out. An apply ends it
+  console), and that claim's `product_settings.expires_at` is at most 7 days out (a shorter
+  `breakGlass.seconds` may be asked for, never a longer one). The products PATCH, the catalog
+  publish and the row-backed settings' `PATCH …/settings/<key>` all write through it. An apply ends it
   sooner, in the apply's own batch, when the manifest it applies declares a different value for the
   field than the last applied snapshot did (`claimsForApply`), so committing the fix to `.pkey/`
   takes the field back; an apply that leaves the field alone keeps the claim, so an unrelated push or
@@ -7338,11 +7340,12 @@ from the keyring endpoint.
   or at the next apply that changes the field, and every deploy names it in the job log (as a
   warning). The deploy job's log may be readable beyond the operators, so the hook's answer carries
   each claim's key and expiry only; the reason and the claimant stay in the console and the
-  platform activity row. The mode governs the five `product_settings` claim keys; the settings
-  still claimed through their older markers (`services_source`, `compat_source`, `access_source`,
-  the fingerprint and auto-issue policies, tier and profile rows, the trusted publisher) and
-  LX-06's row-backed keys (below; their own path refuses only the system product) are not yet
-  refused by it, and move to the one write path with ST-04/ST-05.
+  platform activity row. The mode governs every claimable setting claimed through a
+  `product_settings` row: the five column-backed claim keys and LX-06's row-backed keys (below).
+  The settings still claimed through their older markers (`services_source`, `compat_source`,
+  `access_source`, the fingerprint and auto-issue policies) and the rich ones (tier and profile
+  rows, the trusted publisher) are not yet refused by it: their markers are the deploy hook's to
+  honour, and ST-05 decides them with the generic API.
 - **Row-backed claimable settings (LX-06, `core/rowSettings.ts`).** The licensing settings
   (`licensing.*`) and `identity.oidc.syncTierOnSignIn` keep their VALUE in the `product_settings`
   row (`value_json`): no row means the registry default, `source = 'manifest'` the last applied
@@ -7355,8 +7358,10 @@ from the keyring endpoint.
   session and CSRF like every admin write; the value is checked against the registry entry
   server-side; a critical key needs a reason, enforced by the Worker, not the console; every
   write carries a required `expectedVersion`, compared before the write and again in the write's
-  own `WHERE`; and the audit row inserts only after a change (`changes()`), so the loser of a race
-  gets a 409 and leaves no row claiming it wrote. The system product refuses both. `upgradeOnly`
+  own `WHERE`; and the write goes through `writeSetting()` (ST-04), whose audit row and claim
+  apply all-or-nothing, so the loser of a race gets a 409 and leaves no row claiming it wrote. A
+  manifest-authoritative product (the system product always) takes a console write only as a
+  break-glass claim (above); Revert stays open. `upgradeOnly`
   for `identity.oidc.syncTierOnSignIn` would let an identity provider's groups raise a licence's
   tier, so the registry marks it security-widening (critical, at least L1 to widen, never
   inherited from platform). Nothing reads it yet: the behaviour behind it, and the licensing

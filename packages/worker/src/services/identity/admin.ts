@@ -25,15 +25,22 @@ import {
   adminJson,
   adminNotFound,
   audit,
+  auditStatementFor,
   err,
   readBody,
+  settingRefused,
 } from "../../core/adminApi.js";
+import { writeSettings } from "../../core/settings/write.js";
 import { patchSignInSettings, signInSettingsView } from "./signInSettings.js";
 import {
   getPortalProductSettings,
+  listingSettingWrites,
   portalProductSettingsView,
+  stmtUpsertPortalProductSettings,
   upsertPortalProductSettings,
+  type ListingPatch,
   type PortalProductSettingsView,
+  type PortalSettingsPatch,
 } from "./portal/repo.js";
 import {
   isListingAudience,
@@ -121,7 +128,8 @@ async function handlePortalSettings(
     return err(405, ErrorCode.BadRequest, "method not allowed");
 
   const body = await readBody(req);
-  const patch: Parameters<typeof upsertPortalProductSettings>[2] = {};
+  const patch: PortalSettingsPatch = {};
+  const listing: ListingPatch = {};
   const booleans = [
     "portalEnabled",
     "oidcEnabled",
@@ -130,13 +138,18 @@ async function handlePortalSettings(
     "releasesEnabled",
     "keyReissueEnabled",
     "claimByKey",
-    "discoverEnabled",
   ] as const;
   const fields: string[] = [];
   for (const key of booleans) {
     if (body[key] === undefined) continue;
     if (typeof body[key] !== "boolean") fields.push(key);
     else patch[key] = body[key];
+  }
+  // The legacy Discover switch is the listing state now (PS-02 dual-write).
+  if (body.discoverEnabled !== undefined) {
+    if (typeof body.discoverEnabled !== "boolean")
+      fields.push("discoverEnabled");
+    else listing.discoverEnabled = body.discoverEnabled;
   }
   // R5-01/R5-02 — tri-state, so an operator can override the issuer-derived default in either
   // direction: `null` restores "auto" (on for platform-issuer products, OFF for products on a
@@ -151,23 +164,24 @@ async function handlePortalSettings(
   // PS-02: the Polaris Key listing state (S-21 §6.2). Accepted here until ST-05's generic
   // settings API exists; the registry entries are `storefront.polarisKey.*`.
   if (body.storeListed !== undefined) {
-    if (isListingState(body.storeListed)) patch.storeListed = body.storeListed;
+    if (isListingState(body.storeListed))
+      listing.storeListed = body.storeListed;
     else fields.push("storeListed");
   }
   if (body.storeAudience !== undefined) {
     if (isListingAudience(body.storeAudience))
-      patch.storeAudience = body.storeAudience;
+      listing.storeAudience = body.storeAudience;
     else fields.push("storeAudience");
   }
   if (body.storeOfferPaths !== undefined) {
     const paths = parseOfferPaths(body.storeOfferPaths);
     if (paths === undefined) fields.push("storeOfferPaths");
-    else patch.storeOfferPaths = paths;
+    else listing.storeOfferPaths = paths;
   }
   if (body.storeGroupLabels !== undefined) {
     const labels = parseGroupLabels(body.storeGroupLabels);
     if (labels === undefined) fields.push("storeGroupLabels");
-    else patch.storeGroupLabels = labels;
+    else listing.storeGroupLabels = labels;
   }
   if (fields.length > 0) {
     return err(422, ErrorCode.BadRequest, "invalid portal settings", {
@@ -175,11 +189,10 @@ async function handlePortalSettings(
     });
   }
 
-  const before = portalProductSettingsView(
-    await getPortalProductSettings(db, slug),
-  );
+  const current = await getPortalProductSettings(db, slug);
+  const before = portalProductSettingsView(current);
   if (
-    patch.storeAudience === "everyone" &&
+    listing.storeAudience === "everyone" &&
     before.storeAudience !== "everyone" &&
     body.confirm !== STOREFRONT_AUDIENCE_CONFIRM
   )
@@ -190,56 +203,89 @@ async function handlePortalSettings(
       { reason: "confirm_required", level: "L2" },
     );
 
-  const settings = await upsertPortalProductSettings(db, slug, patch, now);
-  const after = portalProductSettingsView(settings);
-  await audit(
-    db,
-    slug,
-    session,
-    now,
-    "portal.settings.update",
-    { kind: "product", id: slug },
-    `Updated portal settings for ${slug}`,
-  );
-  const listingChanges = describeListingChanges(before, after);
-  if (listingChanges.length > 0)
+  // ST-04: the listing values are registry settings (`storefront.polarisKey.*`), written through
+  // `writeSetting()` with one `storefront.polarisKey.update` row per value that changes; the
+  // portal switches and branding ride in the same batch with the `portal.settings.update` row.
+  // A bespoke route with no version in its contract: compatibility mode (ST-05: an alias).
+  const target = { kind: "product", id: slug };
+  const writes = listingSettingWrites(current, listing).map((w) => ({
+    ...w,
+    audit: {
+      action: "storefront.polarisKey.update",
+      target,
+      summary: `Changed the Polaris Key listing for ${slug}: ${describeListingChange(before, w.key, w.value)}`,
+    },
+  }));
+  const portalSummary = `Updated portal settings for ${slug}`;
+  if (writes.length === 0) {
+    await upsertPortalProductSettings(db, slug, patch, now);
     await audit(
       db,
       slug,
       session,
       now,
-      "storefront.polarisKey.update",
-      { kind: "product", id: slug },
-      `Changed the Polaris Key listing for ${slug}: ${listingChanges.join("; ")}`,
+      "portal.settings.update",
+      target,
+      portalSummary,
     );
+  } else {
+    if (!ctx.settings)
+      throw new Error(
+        "the portal settings route needs ServiceContext.settings",
+      );
+    const written = await writeSettings(
+      { env: ctx.env, db, registry: ctx.settings },
+      writes,
+      {
+        actor: {
+          sub: session.sub,
+          name: session.name ?? null,
+          email: session.email ?? null,
+        },
+        origin: "console",
+        now,
+        product: slug,
+        strict: false,
+        extra: (guard) => [
+          stmtUpsertPortalProductSettings(current, slug, patch, now, guard),
+          auditStatementFor(
+            slug,
+            session,
+            now,
+            "portal.settings.update",
+            target,
+            portalSummary,
+            guard,
+          ),
+        ],
+      },
+    );
+    if (!written.ok) return settingRefused(written);
+  }
   return adminJson({
     ok: true,
-    settings: portalProductSettingsView(settings),
+    settings: portalProductSettingsView(
+      await getPortalProductSettings(db, slug),
+    ),
   });
 }
 
-/** The listing values that changed, as `name before → after`; group labels are counted, never quoted. */
-function describeListingChanges(
+/** One listing value's change, as `name before → after`; group labels are counted, never quoted. */
+function describeListingChange(
   before: PortalProductSettingsView,
-  after: PortalProductSettingsView,
-): string[] {
-  const out: string[] = [];
-  const paths = (v: PortalProductSettingsView["storeOfferPaths"]) =>
+  key: string,
+  value: unknown,
+): string {
+  const paths = (v: readonly string[] | null) =>
     v === null ? "all" : v.length === 0 ? "none" : v.join(", ");
-  if (before.storeListed !== after.storeListed)
-    out.push(`listing ${before.storeListed} → ${after.storeListed}`);
-  if (before.storeAudience !== after.storeAudience)
-    out.push(`audience ${before.storeAudience} → ${after.storeAudience}`);
-  if (paths(before.storeOfferPaths) !== paths(after.storeOfferPaths))
-    out.push(
-      `ways to obtain ${paths(before.storeOfferPaths)} → ${paths(after.storeOfferPaths)}`,
-    );
-  if (
-    JSON.stringify(before.storeGroupLabels) !==
-    JSON.stringify(after.storeGroupLabels)
-  )
-    out.push(
-      `group labels for ${Object.keys(after.storeGroupLabels).length} group(s)`,
-    );
-  return out;
+  switch (key) {
+    case "storefront.polarisKey.listed":
+      return `listing ${before.storeListed} → ${String(value)}`;
+    case "storefront.polarisKey.audience":
+      return `audience ${before.storeAudience} → ${String(value)}`;
+    case "storefront.polarisKey.offerPaths":
+      return `ways to obtain ${paths(before.storeOfferPaths)} → ${paths(value as string[] | null)}`;
+    default:
+      return `group labels for ${Object.keys(value as object).length} group(s)`;
+  }
 }

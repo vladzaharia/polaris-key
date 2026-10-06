@@ -41,6 +41,8 @@ import {
   upsertPortalProductSettings,
 } from "../src/services/identity/portal/repo.js";
 import { mergeAccounts } from "../src/services/identity/accounts/merge.js";
+// ST-04: the listing is a registry setting, written through `writeSetting()`.
+import { writeListing } from "./listingWrites.js";
 import {
   PORTAL_COOKIE,
   PORTAL_CSRF_HEADER,
@@ -167,7 +169,7 @@ async function world(): Promise<World> {
   const listed = async (slug: string, svc: Partial<ServicesMap>) => {
     await seedProduct(db, slug);
     await services(db, slug, svc);
-    await upsertPortalProductSettings(db, slug, { storeListed: "listed" }, NOW);
+    await writeListing(db, slug, { storeListed: "listed" });
   };
   await listed("mossgarden", LICENSED);
   await seedTier(db, "mossgarden", "free", { deviceLimit: 2 });
@@ -182,12 +184,9 @@ async function world(): Promise<World> {
   await groupMap(db, "aperture", {
     "aperture-beta": { role: "user", tier: "beta" },
   });
-  await upsertPortalProductSettings(
-    db,
-    "aperture",
-    { storeGroupLabels: { "aperture-beta": "Aperture Seven" } },
-    NOW,
-  );
+  await writeListing(db, "aperture", {
+    storeGroupLabels: { "aperture-beta": "Aperture Seven" },
+  });
 
   await listed("openutil", DOWNLOADS_ONLY);
   await db.run(
@@ -203,22 +202,12 @@ async function world(): Promise<World> {
   });
 
   await listed("teaser", { ...LICENSED, ...DOWNLOADS_ONLY });
-  await upsertPortalProductSettings(
-    db,
-    "teaser",
-    { storeAudience: "everyone" },
-    NOW,
-  );
+  await writeListing(db, "teaser", { storeAudience: "everyone" });
   await distListing(db, "teaser", { website: "https://teaser.example" });
 
   await seedProduct(db, "hidden");
   await services(db, "hidden", LICENSED);
-  await upsertPortalProductSettings(
-    db,
-    "hidden",
-    { storeListed: "unlisted" },
-    NOW,
-  );
+  await writeListing(db, "hidden", { storeListed: "unlisted" });
   await seedTier(db, "hidden", "free");
   await autoIssue(db, "hidden", {
     enabled: true,

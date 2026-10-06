@@ -19,6 +19,7 @@
  * service owns the rows.
  */
 
+import type { SettingsRegistry } from "../../../core/settings/registry.js";
 import { isSafeAssetPath, type Db, type Env } from "../../../core/platform.js";
 import {
   handleMagicVerify,
@@ -102,6 +103,8 @@ export async function handlePortal(
     /** One product's descriptor hooks, from the composition root (`dispatch.ts`): the portal's
      *  downloads read Distribution's delivery access through them (P2b-04). */
     hooksFor?: PortalHooksFor;
+    /** The settings registry (ST-04), from the composition root. */
+    settings?: SettingsRegistry;
   } = {},
 ): Promise<Response> {
   const now = opts.now ?? Math.floor(Date.now() / 1000);
@@ -117,7 +120,15 @@ export async function handlePortal(
   if (clean === "/logout") return handlePortalLogout(req, env, db, now);
   if (clean === "/magic/verify") return handleMagicVerify(req, env, db, now);
   if (clean === "/api" || clean.startsWith("/api/")) {
-    return handlePortalApi(req, env, db, clean, now, opts.hooksFor);
+    return handlePortalApi(
+      req,
+      env,
+      db,
+      clean,
+      now,
+      opts.hooksFor,
+      opts.settings,
+    );
   }
   // PX-W1: the same-origin media proxy (`media.ts`): `/media/<product>/<asset>`, public. Every
   // other path under `/media` is its not-found, never the SPA shell.

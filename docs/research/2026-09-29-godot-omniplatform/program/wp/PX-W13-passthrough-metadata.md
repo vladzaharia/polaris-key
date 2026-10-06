@@ -5,7 +5,7 @@
 | Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase W: Worker additions)                                                                                                                             |
 | Size        | 0.4–0.8 engineer-weeks                                                                                                                                                                              |
 | Depends on  | [I-04](I-04-account-contract-plan.md), [LX-05](LX-05-reserved-names-warn.md)                                                                                                                        |
-| Unblocks    | [I-08](I-08-app-passthrough.md), [PX-14](PX-14-passthrough-header.md), [SP-11](SP-11-presentation-accent.md), [PX-W18](PX-W18-signin-hints.md)                                                      |
+| Unblocks    | [I-08](I-08-app-passthrough.md), [PX-W13b](PX-W13b-display-name-settings.md), [PX-14](PX-14-passthrough-header.md), [SP-11](SP-11-presentation-accent.md), [PX-W18](PX-W18-signin-hints.md)         |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                               |
 | Plan mode   | yes: executes the approved [`plans/PX-W13.md`](../plans/PX-W13.md) (approved 2026-10-05), which fills the G28 gap in [`plans/I-04.md`](../plans/I-04.md)                                            |
 | Gates       | the PORTAL.md §11 green gate; plan mode; corpus and transcripts (`gen:corpus -- --check`, `gen:transcripts -- --check`); THREAT-MODEL; every SDK's replayer; `typecheck:workerd` and `test:workerd` |

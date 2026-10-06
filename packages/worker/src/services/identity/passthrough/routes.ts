@@ -17,6 +17,7 @@
  * (the reasons for entitlements); every new type and route here says "app consent" (§8 Q6).
  */
 
+import type { SettingsRegistry } from "../../../core/settings/registry.js";
 import type {
   AppConsentView,
   ConsentItem,
@@ -99,6 +100,8 @@ export async function signInConsentView(
   handle: string,
   accountId: string,
   now: number,
+  /** The settings registry (ST-04), for the product's entitlement model; absent reads `legacy`. */
+  settings?: SettingsRegistry,
 ): Promise<Reply> {
   const live = await liveRequest(env, db, req, handle, now);
   if (!live) return { status: 404 };
@@ -110,7 +113,12 @@ export async function signInConsentView(
   const cloudSync = cloudSyncOn(product);
   const items: ConsentItem[] = [];
   if (license)
-    items.push(await licenseConsentItem(db, accountId, product, now));
+    items.push(
+      await licenseConsentItem(db, accountId, product, now, {
+        env,
+        registry: settings,
+      }),
+    );
   if (cloudSync) items.push({ kind: "cloudSync" });
   items.push({ kind: "profile", claims: [...CONSENT_PROFILE_CLAIMS] });
 

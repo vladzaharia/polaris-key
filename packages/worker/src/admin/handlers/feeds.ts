@@ -63,7 +63,14 @@ import {
 import type { Env } from "../../env.js";
 import type { Db, DbStatement } from "../../db/types.js";
 import type { AdminSession } from "../session.js";
-import { adminJson, err, notFound, readBody } from "../lib/respond.js";
+import {
+  adminJson,
+  err,
+  notFound,
+  readBody,
+  settingRefused,
+} from "../lib/respond.js";
+import { SETTINGS } from "../../mount.js";
 import { audit, platformAudit } from "../audit.js";
 import { getProduct, type ProductRow } from "../../repo.js";
 import { parseServices } from "../../core/services.js";
@@ -1168,6 +1175,7 @@ async function getRetention(db: Db, scope: FeedScope): Promise<Response> {
 /** `PUT <base>/retention` `{expectedVersion, prunePrereleases}` — `feed.retention.update`. */
 async function putRetention(
   req: Request,
+  env: Env,
   db: Db,
   session: AdminSession,
   scope: FeedScope,
@@ -1183,14 +1191,20 @@ async function putRetention(
     fields.push("prunePrereleases");
   if (fields.length)
     return err(422, "bad_request", "invalid retention setting", { fields });
-  const enabled = body.prunePrereleases as boolean;
+  // ST-04: the registry setting `release.packages.prunePrereleases`, through `writeSetting()`.
   const outcome = await setPruneRetention(
-    db,
-    owner.slug,
-    enabled,
-    body.expectedVersion as number,
-    `admin:${session.sub}`,
-    now,
+    { env, db, registry: SETTINGS },
+    {
+      product: owner.row,
+      enabled: body.prunePrereleases as boolean,
+      expectedVersion: body.expectedVersion as number,
+      actor: {
+        sub: session.sub,
+        name: session.name ?? null,
+        email: session.email ?? null,
+      },
+      now,
+    },
   );
   if (outcome === "locked")
     return err(
@@ -1206,17 +1220,7 @@ async function putRetention(
       "the retention setting changed since you read it",
       { reason: "version_conflict" },
     );
-  await audit(
-    db,
-    owner.slug,
-    session,
-    now,
-    "feed.retention.update",
-    { kind: "feed", id: "retention" },
-    enabled
-      ? "Turned on pruning of the builds of main once a version is released"
-      : "Turned off pruning of the builds of main once a version is released",
-  );
+  if (outcome !== "written") return settingRefused(outcome);
   return adminJson({
     product: owner.slug,
     ...(await pruneRetentionOf(db, owner.slug)),
@@ -1290,7 +1294,8 @@ export async function handleFeedsAdmin(
     );
   if (rest.length === 1 && rest[0] === "retention") {
     if (method === "GET") return getRetention(db, scope);
-    if (method === "PUT") return putRetention(req, db, session, scope, now);
+    if (method === "PUT")
+      return putRetention(req, env, db, session, scope, now);
     return notAllowed();
   }
   if (rest.length === 1 && rest[0] === "prune") {

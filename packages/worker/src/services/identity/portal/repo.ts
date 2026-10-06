@@ -3,6 +3,8 @@ import {
   mintOpaqueToken,
   randomId,
   type Db,
+  type DbParam,
+  type DbStatement,
   type Env,
 } from "../../../core/platform.js";
 import type {
@@ -698,114 +700,113 @@ function listingView(
   };
 }
 
+/** The listing part of a portal-settings patch (PS-02), written as registry settings (ST-04). */
+export interface ListingPatch {
+  discoverEnabled?: boolean;
+  /** Wins over `discoverEnabled` in one patch. */
+  storeListed?: ListingState;
+  storeAudience?: ListingAudience;
+  /** `null` restores "every kind". */
+  storeOfferPaths?: readonly ObtainPathKind[] | null;
+  storeGroupLabels?: GroupLabels;
+}
+
 /**
- * The listing columns after a patch, with `discover_enabled` kept in step (PS-02 dual-write):
- * a listing state sets `discover_enabled` to 0 exactly when `unlisted`; the Discover switch alone
- * turned off makes the product `unlisted`, and turned back on returns an `unlisted` product to
- * `auto` (any other state is kept).
+ * The listing settings a patch changes, as `writeSetting()` writes (ST-04): the registry keys
+ * `storefront.polarisKey.*` with the values that differ from `current`. The PS-02 rules hold: the
+ * listing state is derived from the EFFECTIVE state (dual-read), the Discover switch alone turned
+ * off makes the product `unlisted`, turned back on returns an `unlisted` product to `auto` (any
+ * other state is kept), and `storeListed` wins over it. The `listed` column adapter keeps
+ * `discover_enabled` in step (0 exactly when `unlisted`), so a pre-0085 Worker still agrees.
  */
-function nextListingColumns(
+export function listingSettingWrites(
   current: PortalProductSettingsRow,
-  patch: {
-    discoverEnabled?: boolean;
-    storeListed?: ListingState;
-    storeAudience?: ListingAudience;
-    storeOfferPaths?: readonly ObtainPathKind[] | null;
-    storeGroupLabels?: GroupLabels;
-  },
-): Pick<
-  PortalProductSettingsRow,
-  | "discover_enabled"
-  | "store_listed"
-  | "store_audience"
-  | "store_offer_paths_json"
-  | "store_group_labels_json"
-> {
-  // The effective state today (dual-read), so a pre-0085 Worker's Discover-off is carried.
-  let listed: ListingState = resolveListing(current).listed;
+  patch: ListingPatch,
+): { key: string; value: unknown }[] {
+  const effective = resolveListing(current);
+  let listed: ListingState = effective.listed;
   if (patch.storeListed !== undefined) listed = patch.storeListed;
   else if (patch.discoverEnabled === false) listed = "unlisted";
   else if (patch.discoverEnabled === true && listed === "unlisted")
     listed = "auto";
-  return {
-    store_listed: listed,
-    discover_enabled: listed === "unlisted" ? 0 : 1,
-    store_audience: patch.storeAudience ?? current.store_audience,
-    store_offer_paths_json:
-      patch.storeOfferPaths === undefined
-        ? current.store_offer_paths_json
-        : patch.storeOfferPaths === null
-          ? null
-          : JSON.stringify(patch.storeOfferPaths),
-    store_group_labels_json:
-      patch.storeGroupLabels === undefined
-        ? current.store_group_labels_json
-        : Object.keys(patch.storeGroupLabels).length === 0
-          ? null
-          : JSON.stringify(patch.storeGroupLabels),
-  };
+  const out: { key: string; value: unknown }[] = [];
+  if (
+    listed !== current.store_listed ||
+    (listed === "unlisted" ? 0 : 1) !== current.discover_enabled
+  )
+    out.push({ key: "storefront.polarisKey.listed", value: listed });
+  if (
+    patch.storeAudience !== undefined &&
+    patch.storeAudience !== current.store_audience
+  )
+    out.push({
+      key: "storefront.polarisKey.audience",
+      value: patch.storeAudience,
+    });
+  if (patch.storeOfferPaths !== undefined) {
+    const next =
+      patch.storeOfferPaths === null
+        ? null
+        : JSON.stringify(patch.storeOfferPaths);
+    if (next !== current.store_offer_paths_json)
+      out.push({
+        key: "storefront.polarisKey.offerPaths",
+        value:
+          patch.storeOfferPaths === null ? null : [...patch.storeOfferPaths],
+      });
+  }
+  if (patch.storeGroupLabels !== undefined) {
+    const next =
+      Object.keys(patch.storeGroupLabels).length === 0
+        ? null
+        : JSON.stringify(patch.storeGroupLabels);
+    if (next !== current.store_group_labels_json)
+      out.push({
+        key: "storefront.polarisKey.groupLabels",
+        value: { ...patch.storeGroupLabels },
+      });
+  }
+  return out;
 }
 
-export async function upsertPortalProductSettings(
-  db: Db,
+/** The non-listing portal switches and branding a console or sign-in-settings patch may set. */
+export type PortalSettingsPatch = Partial<{
+  portalEnabled: boolean;
+  oidcEnabled: boolean;
+  magicEnabled: boolean;
+  licenseKeyClaimEnabled: boolean;
+  releasesEnabled: boolean;
+  /** `null` restores "auto" (derived from the product's OIDC issuer) — R5-01/R5-02. */
+  autoLinkEnabled: boolean | null;
+  keyReissueEnabled: boolean;
+  claimByKey: boolean;
+  branding: unknown;
+}>;
+
+/**
+ * The upsert of a product's portal switches and branding, as one statement (`guard`, when given,
+ * is ANDed in so it can ride in a `writeSetting()` batch). The listing columns
+ * (`discover_enabled`, `store_*`) are NOT named here: they are registry settings, written only
+ * through `writeSetting()` (ST-04), and a new row takes their column defaults.
+ */
+export function stmtUpsertPortalProductSettings(
+  current: PortalProductSettingsRow,
   product: string,
-  patch: Partial<{
-    portalEnabled: boolean;
-    oidcEnabled: boolean;
-    magicEnabled: boolean;
-    licenseKeyClaimEnabled: boolean;
-    releasesEnabled: boolean;
-    /** `null` restores "auto" (derived from the product's OIDC issuer) — R5-01/R5-02. */
-    autoLinkEnabled: boolean | null;
-    keyReissueEnabled: boolean;
-    claimByKey: boolean;
-    discoverEnabled: boolean;
-    /**
-     * PS-02. Writing the listing state keeps `discover_enabled` in step (0 exactly when
-     * `unlisted`), so a pre-0085 Worker still reading it agrees. It wins over `discoverEnabled`.
-     */
-    storeListed: ListingState;
-    storeAudience: ListingAudience;
-    /** `null` restores "every kind". */
-    storeOfferPaths: readonly ObtainPathKind[] | null;
-    storeGroupLabels: GroupLabels;
-    branding: unknown;
-  }>,
+  patch: PortalSettingsPatch,
   now: number,
-): Promise<PortalProductSettingsRow> {
-  const current = await getPortalProductSettings(db, product);
-  const listing = nextListingColumns(current, patch);
+  guard: { sql: string; params: DbParam[] } = { sql: "1", params: [] },
+): DbStatement {
+  const flag = (v: boolean | undefined, was: number) =>
+    v === undefined ? was : v ? 1 : 0;
   const next = {
-    portal_enabled:
-      patch.portalEnabled === undefined
-        ? current.portal_enabled
-        : patch.portalEnabled
-          ? 1
-          : 0,
-    oidc_enabled:
-      patch.oidcEnabled === undefined
-        ? current.oidc_enabled
-        : patch.oidcEnabled
-          ? 1
-          : 0,
-    magic_enabled:
-      patch.magicEnabled === undefined
-        ? current.magic_enabled
-        : patch.magicEnabled
-          ? 1
-          : 0,
-    license_key_claim_enabled:
-      patch.licenseKeyClaimEnabled === undefined
-        ? current.license_key_claim_enabled
-        : patch.licenseKeyClaimEnabled
-          ? 1
-          : 0,
-    releases_enabled:
-      patch.releasesEnabled === undefined
-        ? current.releases_enabled
-        : patch.releasesEnabled
-          ? 1
-          : 0,
+    portal_enabled: flag(patch.portalEnabled, current.portal_enabled),
+    oidc_enabled: flag(patch.oidcEnabled, current.oidc_enabled),
+    magic_enabled: flag(patch.magicEnabled, current.magic_enabled),
+    license_key_claim_enabled: flag(
+      patch.licenseKeyClaimEnabled,
+      current.license_key_claim_enabled,
+    ),
+    releases_enabled: flag(patch.releasesEnabled, current.releases_enabled),
     auto_link_enabled:
       patch.autoLinkEnabled === undefined
         ? current.auto_link_enabled
@@ -814,19 +815,11 @@ export async function upsertPortalProductSettings(
           : patch.autoLinkEnabled
             ? 1
             : 0,
-    key_reissue_enabled:
-      patch.keyReissueEnabled === undefined
-        ? current.key_reissue_enabled
-        : patch.keyReissueEnabled
-          ? 1
-          : 0,
-    claim_by_key:
-      patch.claimByKey === undefined
-        ? current.claim_by_key
-        : patch.claimByKey
-          ? 1
-          : 0,
-    ...listing,
+    key_reissue_enabled: flag(
+      patch.keyReissueEnabled,
+      current.key_reissue_enabled,
+    ),
+    claim_by_key: flag(patch.claimByKey, current.claim_by_key),
     branding_json:
       patch.branding === undefined
         ? current.branding_json
@@ -834,14 +827,12 @@ export async function upsertPortalProductSettings(
           ? null
           : JSON.stringify(patch.branding),
   };
-  await db.run(
-    `INSERT INTO portal_product_settings
+  return {
+    sql: `INSERT INTO portal_product_settings
        (product, portal_enabled, oidc_enabled, magic_enabled,
         license_key_claim_enabled, releases_enabled, auto_link_enabled,
-        key_reissue_enabled, claim_by_key, discover_enabled, store_listed, store_audience,
-        store_offer_paths_json, store_group_labels_json, branding_json, created_at,
-        modified_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        key_reissue_enabled, claim_by_key, branding_json, created_at, modified_at)
+     SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE (${guard.sql})
      ON CONFLICT(product) DO UPDATE SET
        portal_enabled = excluded.portal_enabled,
        oidc_enabled = excluded.oidc_enabled,
@@ -851,31 +842,36 @@ export async function upsertPortalProductSettings(
        auto_link_enabled = excluded.auto_link_enabled,
        key_reissue_enabled = excluded.key_reissue_enabled,
        claim_by_key = excluded.claim_by_key,
-       discover_enabled = excluded.discover_enabled,
-       store_listed = excluded.store_listed,
-       store_audience = excluded.store_audience,
-       store_offer_paths_json = excluded.store_offer_paths_json,
-       store_group_labels_json = excluded.store_group_labels_json,
        branding_json = excluded.branding_json,
        modified_at = excluded.modified_at`,
-    product,
-    next.portal_enabled,
-    next.oidc_enabled,
-    next.magic_enabled,
-    next.license_key_claim_enabled,
-    next.releases_enabled,
-    next.auto_link_enabled,
-    next.key_reissue_enabled,
-    next.claim_by_key,
-    next.discover_enabled,
-    next.store_listed,
-    next.store_audience,
-    next.store_offer_paths_json,
-    next.store_group_labels_json,
-    next.branding_json,
-    current.created_at || now,
-    now,
-  );
+    params: [
+      product,
+      next.portal_enabled,
+      next.oidc_enabled,
+      next.magic_enabled,
+      next.license_key_claim_enabled,
+      next.releases_enabled,
+      next.auto_link_enabled,
+      next.key_reissue_enabled,
+      next.claim_by_key,
+      next.branding_json,
+      current.created_at || now,
+      now,
+      ...guard.params,
+    ],
+  };
+}
+
+/** Upsert a product's portal switches and branding (not its listing: see above). */
+export async function upsertPortalProductSettings(
+  db: Db,
+  product: string,
+  patch: PortalSettingsPatch,
+  now: number,
+): Promise<PortalProductSettingsRow> {
+  const current = await getPortalProductSettings(db, product);
+  const stmt = stmtUpsertPortalProductSettings(current, product, patch, now);
+  await db.run(stmt.sql, ...stmt.params);
   return getPortalProductSettings(db, product);
 }
 
