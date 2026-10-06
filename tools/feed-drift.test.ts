@@ -13,6 +13,7 @@ import {
   compareSemver,
   kindOf,
   packageDeliverables,
+  staleMainBuilds,
 } from "./feed-drift.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -166,6 +167,57 @@ describe("checkListing", () => {
   });
 });
 
+describe("staleMainBuilds (feed retention)", () => {
+  const npm = { id: "npm.node", ecosystem: "npm", name: "@polaris-key/node" };
+  const pypi = {
+    id: "pypi.polaris-key",
+    ecosystem: "pypi",
+    name: "polaris-key",
+  };
+
+  it("on a stable build, names the builds of main at or below it, never newer ones or betas", () => {
+    expect(
+      staleMainBuilds(
+        npm,
+        {
+          versions: [
+            "0.9.0",
+            "0.9.1-main.3",
+            "0.9.1-rc.1",
+            "0.9.1",
+            "0.9.0-main.7",
+            "0.9.2-main.1",
+          ],
+          tags: {},
+        },
+        STABLE,
+      ),
+    ).toEqual(["0.9.1-main.3", "0.9.0-main.7"]);
+    expect(
+      staleMainBuilds(
+        pypi,
+        {
+          versions: ["0.9.1.dev3", "0.9.1rc1", "0.9.1", "0.9.2.dev1"],
+          tags: null,
+        },
+        STABLE,
+      ),
+    ).toEqual(["0.9.1.dev3"]);
+  });
+
+  it("is empty on a main or beta build", () => {
+    const listing = { versions: ["0.9.1-main.3", "0.9.1-main.4"], tags: {} };
+    expect(staleMainBuilds(npm, listing, MAIN)).toEqual([]);
+    expect(
+      staleMainBuilds(npm, listing, {
+        version: "0.9.1-rc.1",
+        pep440: "0.9.1rc1",
+        channel: "beta",
+      }),
+    ).toEqual([]);
+  });
+});
+
 describe("checkDrift", () => {
   afterEach(() => vi.unstubAllGlobals());
 
@@ -234,5 +286,32 @@ describe("checkDrift", () => {
     expect(seen).toContain(
       "https://pkg.example.test/v2/polaris-key/pkey/tags/list?n=10000",
     );
+  });
+
+  it("on a stable build, collects the builds of main a feed still lists as warnings, never problems", async () => {
+    vi.stubGlobal(
+      "fetch",
+      async () =>
+        new Response(
+          JSON.stringify({
+            versions: { "0.9.1": {}, "0.9.1-main.4": {}, "0.9.2-main.1": {} },
+            "dist-tags": { latest: "0.9.1", main: "0.9.2-main.1" },
+          }),
+          { status: 200 },
+        ),
+    );
+    const warnings = new Map<string, string[]>();
+    const problems = await checkDrift({
+      origin: "https://pkg.example.test",
+      owner: "polaris-key",
+      root: ROOT,
+      expected: STABLE,
+      timeoutSec: 0,
+      only: ["npm"],
+      sleep: async () => undefined,
+      warnings,
+    });
+    expect(problems.size).toBe(0);
+    expect(warnings.get("npm.node")).toEqual(["0.9.1-main.4"]);
   });
 });

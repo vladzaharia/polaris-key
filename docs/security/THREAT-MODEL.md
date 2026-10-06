@@ -1360,9 +1360,76 @@ F-21 every access mode can be set: leaving `public` is an L1 confirmation that n
 clients will get, and the system product's feeds change only from the platform scope. A version verb the protocol
 has no state for is refused (`unsupported_by_ecosystem`) rather than recorded as a console-only
 fiction; the verbs that apply run Release's own yank, unyank and deprecation (the same batch,
-render enqueue and pack-set invalidation as Release's routes). There is no delete. A write drops
+render enqueue and pack-set invalidation as Release's routes). There is no per-version delete;
+the only deletion is feed retention's (below), and only of builds of main. A write drops
 its isolate's cached registry settings; other isolates follow within the 30-second TTL. Tests:
 `test/adminFeeds.test.ts`.
+
+### Feed retention: pruning builds of main (owner request 2026-10-06)
+
+**What it is.** `services/release/packages/prune.ts` deletes a package's `main`-channel
+prereleases once a version at or above them is released. When version V is published on
+`stable`, it deletes semver `X-main.N` and PEP 440 `X.devN` with X ≤ V. This is the one place a
+package version is ever deleted. The lead made the decisions under delegated owner authority,
+and the operations are in RUNBOOK "Feed retention".
+
+**Deletion authority: who can trigger it.**
+
+| Trigger                            | Who                                                                                                                      | Scope                                                  | Audited as              |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------ | ----------------------- |
+| a stable publish (automatic)       | whoever may publish (`release:publish`, a trusted publisher, a `publish` registry token), only once the product opted in | that package, below the version just published         | `system:feed-retention` |
+| `POST /<p>/release/packages/prune` | a `pkeyci_` token of that product with `release:yank` (operator-granted, opt-in); another product's token is 401         | the product's packages, below each one's newest stable | `ci:<subject>`          |
+| `POST …/feeds/prune` (admin)       | a platform-admin console session (403 otherwise)                                                                         | the scope's owner's packages                           | `admin:<sub>`           |
+| `PUT …/feeds/retention` (admin)    | the same; refused for the system product                                                                                 | the setting only                                       | `feed.retention.update` |
+
+**Off by default.** `release.packages.prunePrereleases` is off for a tenant product: nothing is
+deleted automatically until a platform admin opts the product in (`PUT …/feeds/retention`, an L1
+confirmation, audited). Only the reserved system product (`polaris-key`) is on by default, and it
+is locked on.
+
+A publisher therefore gains no new power. The automatic prune only removes builds of main below
+a version the publisher was already allowed to publish as the stable release, and the
+publisher's own publish triggers it. A publisher cannot choose what goes. A forged or mistaken
+stable publish already moves `latest`, which is the larger harm, and it prunes only builds of
+main, which are disposable by design. Nothing a client sends selects a version to delete: the
+candidates are computed from D1. The backfill routes take only `apply` and an optional
+deliverable id.
+
+**What it can never touch.** A stable or beta version, a prerelease of a version newer than V,
+another package, another product, or a version that a channel policy points at or that any
+other row names (a revocation, a pack pin or hold, a download token). Those are reported as
+`kept`; one that became held between the plan and its batch is reported as `skipped` and kept,
+never dropped silently. Only a final release on the channel named exactly `stable` triggers a
+prune. A beta (prerelease tag) never does. Only a LIVE stable release is a ceiling: a yanked or
+deprecated stable, even a far newer one, never pulls builds of main into the prune. A build of
+main published on any channel but `main` is never a candidate, and only the exact spellings
+`X-main.N` and PEP 440 `X.devN` (ASCII digits, nothing after) are.
+
+**Unique forever survives.** Each pruned version leaves a tombstone (`release_package_prunes`).
+Ingest refuses to republish it (`package-version-taken`), so a pruned npm tarball name, Swift
+archive or Maven file can never come back with different bytes under the same coordinates.
+
+**Bytes and refcount.** The prune drops only the version's own `artifact` refs, in the same batch
+as its rows. It never deletes an object. The blob collector reclaims an object only when no ref
+from any product of any kind holds it, after the grace period and the bucket lock. So a
+content-addressed blob that a remaining version, another package, another product, a pack or an
+OCI push shares is never lost. The byte routes serve only keys the product still references
+(`hasRef`), which leaves the shared bytes of kept versions intact.
+
+**Audit.** Every deletion is one audit row in the same batch (`package.version.prune`: package,
+version, actor, file count, bytes, bytes no longer referenced; `parent_id` the stable release
+that set the ceiling) plus its tombstone row. The bytes no longer referenced are counted per
+batch against the refs left after it, so a run the cap or a failure cuts short never claims a
+blob that an undeleted version still holds. A failure
+of the automatic prune is audited (`package.prune.failed`, the Worker has no console log), never thrown at the
+publish.
+
+**Residual.** The immutable byte URLs of a pruned version can still be answered by a data centre
+whose Cache API already holds them, until that copy is evicted. The Worker cannot purge other
+data centres, and the bytes stay in R2 until the collector takes them. A pinned lockfile of a
+build of main stops installing once it is pruned. That is the intended effect, and the
+install-from-feeds page tells adopters to pin stable or beta releases. Tests:
+`test/feedPrune.test.ts`, `test/feedPruneRoutes.test.ts`.
 
 ### Registry credentials (F-20, F-21)
 
@@ -6358,7 +6425,9 @@ service on starts running an ingest; a byte route is added to `BYTE_ROUTES`, a t
 `REGISTRY_HOST_TYPES`, the PyPI HTML fallback is admitted anywhere but its one flagged route or
 under a looser policy, a registry route answers CORS or a method other than GET, HEAD,
 Swift's `POST …/login`, F-22's four publish writes and F-23's OCI push methods, or
-`authorizeFeedRead` moves after the cache lookup (F-02); a push route that is not Release's, a push
+`authorizeFeedRead` moves after the cache lookup (F-02); feed retention deletes anything but a
+build of main below a stable release, gains a trigger, lets a request name the versions it
+deletes, deletes a blob-store object itself, stops leaving its tombstone, or turns on by default for a tenant product (2026-10-06); a push route that is not Release's, a push
 credential other than an owner-bound `publish` token or a `release:publish` CI token, a push that
 creates a repository or moves a channel tag, or an `oci-push` ref that serves anything beyond its
 repository's digest reads (F-23); a new registry

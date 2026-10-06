@@ -4969,6 +4969,177 @@ paths:
         "404": { $ref: "#/components/responses/CiRefusal" }
         "422": { $ref: "#/components/responses/CiRefusal" }
 
+  /{product}/release/packages/prune:
+    post:
+      operationId: ciPrunePackages
+      tags: [release]
+      summary: Prune builds of main below each package's newest stable release (CI)
+      description: >
+        Feed retention's backfill. For each package deliverable of the product (or the one
+        `deliverable` names), the `main`-channel prereleases below its newest stable release —
+        semver `X-main.N` and PEP 440 `X.devN` with X at or below that release — are deleted
+        from every feed: their release rows and files go, their blob refs are dropped (the blob
+        collector reclaims an object only once no ref from any product holds it), a tombstone
+        keeps each version unique forever, and the package re-renders. Stable and beta versions,
+        prereleases of newer versions, and a version a channel points at are never touched, and
+        a yanked or deprecated stable is never the ceiling. The same prune runs automatically
+        right after a stable publish once the product turned
+        `release.packages.prunePrereleases` on (off by default for a tenant product; always on
+        for the platform's own). A DRY RUN unless `apply` is `true`: the report lists what would
+        go, with counts and bytes (`freedBytes`: the part no remaining ref holds; with `apply`,
+        only what this request's own deletions left unreferenced). A version that became held
+        between the plan and its deletion is kept and listed in its package's `skipped`.
+        Requires a `pkeyci_` token of this product with `release:yank` (operator-granted). Every
+        deletion is audited as `package.version.prune` under `ci:<subject>`, its parent the
+        stable release that set the ceiling. Idempotent. No CORS.
+      security: [{ ciToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                apply: { type: boolean, default: false }
+                deliverable: { type: string }
+            examples:
+              dryRun: { value: {} }
+              apply: { value: { apply: true, deliverable: npm.node } }
+      responses:
+        "200":
+          description: The plan (a dry run) or what was pruned.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, product, dryRun, packages, skipped, totals]
+                properties:
+                  ok: { type: boolean, const: true }
+                  product: { type: string }
+                  dryRun: { type: boolean }
+                  prunePrereleases:
+                    type: boolean
+                    description: The product's automatic retention setting.
+                  packages:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        deliverableId: { type: string }
+                        ecosystem: { type: string }
+                        name: { type: string }
+                        stable:
+                          type: string
+                          description: The newest live stable release, the ceiling.
+                        stableReleaseId:
+                          type: string
+                          description: >
+                            That release's id (`<deliverable>@<stable>`), the audit rows'
+                            `parent_id`.
+                        prune:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              releaseId: { type: string }
+                              version: { type: string }
+                              files: { type: integer }
+                              bytes: { type: integer }
+                              freedBytes: { type: integer }
+                        kept:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              releaseId: { type: string }
+                              version: { type: string }
+                              reason:
+                                { type: string, enum: [pinned, referenced] }
+                        bytes: { type: integer }
+                        freedBytes: { type: integer }
+                        failed:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              version: { type: string }
+                              error: { type: string }
+                        skipped:
+                          type: array
+                          description: >
+                            With `apply`: planned versions a channel pointer or another row
+                            took hold of before their deletion, so they were kept.
+                          items:
+                            type: object
+                            properties:
+                              releaseId: { type: string }
+                              version: { type: string }
+                              reason:
+                                { type: string, enum: [pinned, referenced] }
+                  skipped:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        deliverableId: { type: string }
+                        reason: { type: string, enum: [no-stable] }
+                  totals:
+                    type: object
+                    properties:
+                      versions: { type: integer }
+                      bytes: { type: integer }
+                      freedBytes: { type: integer }
+                      failed: { type: integer }
+                      skipped:
+                        type: integer
+                        description: Versions skipped because they became held (with `apply`).
+                  more:
+                    type: boolean
+                    description: >
+                      With `apply`, versions were left for another request: at most 200 are
+                      deleted per request. Repeat until it is false (`pkey feeds prune --apply`
+                      does).
+              examples:
+                dryRun:
+                  summary: test/feedPrune.test.ts
+                  value:
+                    ok: true
+                    product: acme
+                    dryRun: true
+                    prunePrereleases: true
+                    packages:
+                      - deliverableId: npm.sdk
+                        ecosystem: npm
+                        name: "@acme/sdk"
+                        stable: 1.1.0
+                        stableReleaseId: npm.sdk@1.1.0
+                        prune:
+                          - {
+                              releaseId: npm.sdk@1.1.0-main.1,
+                              version: 1.1.0-main.1,
+                              files: 1,
+                              bytes: 1200,
+                              freedBytes: 1200,
+                            }
+                        kept: []
+                        bytes: 1200
+                        freedBytes: 1200
+                    skipped: []
+                    totals:
+                      {
+                        versions: 1,
+                        bytes: 1200,
+                        freedBytes: 1200,
+                        failed: 0,
+                        skipped: 0,
+                      }
+        "400": { $ref: "#/components/responses/CiRefusal" }
+        "401": { $ref: "#/components/responses/CiUnauthorized" }
+        "403": { $ref: "#/components/responses/CiForbidden" }
+        "404": { $ref: "#/components/responses/CiRefusal" }
+
   /{product}/release/publish/token:
     post:
       operationId: ciPublishToken

@@ -587,7 +587,9 @@ to F-09) and the console pages (F-11) follow.
 {"enabled": true|false, "expectedVersion": <n>}`. Off stops every read for the owner at once.
 - **Yank or deprecate a version:** the release's yank (`…/release/releases/<id>/yank`) is its feed
   state; deprecate is `POST|DELETE …/release/releases/<id>/deprecate {"message"}`. Neither frees
-  the version: a package version is never published again.
+  the version: a package version is never published again. Only feed retention deletes a version
+  (a build of main below a stable release; "Feed retention" below), and it leaves a tombstone so
+  the version is still never published again.
 - **Publish:** CI runs `pkey release publish --deliverable <package id>`, which always dry-runs
   first; a Worker older than F-03 is reported as such and nothing is uploaded.
 
@@ -643,6 +645,88 @@ nothing to bump and no per-SDK tag:
   against a local Worker. `pkey release publish --product polaris-key --deliverable <id> --dir
 <packed files> --dry-run` without a CI credential extracts and validates one package and stops
   before the server.
+
+### Feed retention: pruning builds of main
+
+Owner request 2026-10-06. These decisions were made by the lead under delegated owner authority.
+
+- **What is pruned.** When version V of a package is published on `stable`, the package's
+  `main`-channel prereleases that sort below V are deleted. That means semver `X-main.N` and PEP 440
+  `X.devN` with X ≤ V (`services/release/packages/prune.ts`). Stable and beta versions are never
+  touched, prereleases of versions newer than V are never touched, and other packages are never
+  touched. A `beta` publish (a prerelease tag) prunes nothing. Only a live stable release sets
+  the ceiling: a yanked or deprecated one never does. A candidate that a channel policy points
+  at (a promote or pin) is kept. So is any candidate another row names (a revocation, a pack pin
+  or hold, a download token). Both show as `kept` in the report. A candidate that became held
+  between the plan and its deletion is kept too and listed as `skipped`, never dropped silently.
+- **When.** Once the product opted in (below), the prune runs automatically in the Worker, right
+  after the stable version is committed, for that package only. A failure never fails the publish. It is recorded
+  in the product's audit as `package.prune.failed`, with the error. The Worker never logs to the
+  console (R12), so the audit is the log. The next stable
+  publish retries it, because each run prunes every remaining candidate. The backfill below also
+  retries it. Every statement is idempotent, so running it twice is harmless.
+- **The setting.** `release.packages.prunePrereleases` (settings registry; table
+  `release_package_retention`) is OFF by default for a tenant product, which opts in with
+  `PUT /manage/api/products/<slug>/distribution/feeds/retention {"expectedVersion": <n>,
+"prunePrereleases": true}` (audited `feed.retention.update`; `false` turns it off again). The
+  system product (`polaris-key`) is on by default and locked on: a write is refused.
+- **What a prune does.** Versions go in atomic D1 batches of up to 20. For each version, the batch deletes its
+  `release_packages`, `release_artifacts`, `release_yanks` and `release_metadata` rows and drops
+  its `artifact` blob refs. It writes a tombstone to `release_package_prunes`: ingest refuses to
+  republish the version (`package-version-taken`), so versions stay unique forever. It also
+  audits `package.version.prune` with the package, version, actor and bytes, its `parent_id` the
+  stable release that set the ceiling (`<deliverable>@<stable>`), and enqueues the package's
+  render. The feeds render from D1 and every read is stamp-checked, so a pruned version
+  is a not-found on every feed before the drain runs. A render also deletes the per-version
+  documents a pruned version left under `registry/`.
+- **Space.** A prune never deletes blob-store bytes. The prune drops the refs, and the blob
+  collector (below) reclaims an object only once **no** ref from any product holds it. A blob
+  that a remaining version, another package or another product shares (content-addressed)
+  stays. The report's `freedBytes` is what the collector will reclaim. It does so after the
+  grace period and the bucket lock's age (180 days), so the bucket shrinks months later, not
+  at once. An applied run counts it per batch against the refs that remain, so a run the
+  200-version cap or a failed batch cuts short records only what its own deletions freed.
+- **Caches.** Index documents expire from the edge within two minutes (`max-age=60`,
+  `stale-while-revalidate=60`). The immutable byte URLs of a pruned version (a tarball, a
+  manifest by digest) can still be answered by a data centre whose Cache API already holds them,
+  until that copy is evicted. The Worker cannot purge other data centres. A zone purge by URL
+  would need a Cloudflare API token, which is a follow-up and not wired.
+- **Backfill (dry run first).** For versions released before this existed, prune each package's
+  builds of main below its newest stable release:
+
+  ```sh
+  # Dry run: prints, per package, what would go, with counts and bytes. Deletes nothing.
+  PKEY_CI_TOKEN=<pkeyci_ token with release:yank> pkey feeds prune --product polaris-key
+  # Then delete (audited per version under ci:<subject>):
+  PKEY_CI_TOKEN=... pkey feeds prune --product polaris-key --apply
+  ```
+
+  Issue the token as a platform admin: `POST /manage/api/products/polaris-key/ci-tokens
+{"scopes": ["release:yank"], "expiresInDays": 1}`. The token is shown once. Revoke it
+  afterwards (`DELETE …/ci-tokens/<tokenId>`). The
+  same backfill is in the console's Feeds API without a token: `POST
+/manage/api/platform/feeds/prune {}` for a dry run, or `{"apply": true}` to delete (audited
+  under `admin:<sub>`). One request deletes at most 200 versions and answers `"more": true` when
+  some are left. `pkey feeds prune --apply` repeats the request on its own, lists any version it
+  skipped, and exits non-zero when any version failed (run it again: a failed batch is left whole
+  and retried); with the admin route, send it again. Use `/manage/api/products/<slug>/distribution/feeds/prune` for another
+  product. `--deliverable <id>` (`"deliverable"`) limits it to one package.
+
+- **Drift.** On a stable build the drift job also warns about builds of main at or below the
+  release that a feed still lists (`::warning::`). It never fails the job. A warning means the
+  automatic prune did not run or failed: check the audit for `package.prune.failed`, then run the
+  backfill.
+
+### Do not roll back across feed retention (0090)
+
+A Worker older than feed retention (`0090_release_package_prune.sql`) has no tombstone check: its
+ingest looks only at `release_packages` and `release_metadata`, which a prune deleted, so it would
+accept a republish of a pruned version, possibly with different bytes under the same coordinates.
+The schema change is additive, so the old code runs, but versions would stop being unique forever.
+Do not roll the CODE back across it without re-checking: if you must, first confirm no publish
+can reach the old Worker (pause the publish workflows), or check `release_package_prunes` for
+every version published while it ran and yank any that reappeared. Rolling forward again restores
+the check; the tombstones were never removed.
 
 ### Do not roll back past 0058_b with package rows
 

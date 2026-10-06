@@ -157,6 +157,8 @@ const SERVICE_PATHS: Array<[string, string[]]> = [
   ["/{product}/release/channels/{channel}/pin", ["post"]],
   ["/{product}/release/channels/{channel}/unpin", ["post"]],
   ["/{product}/release/releases/{releaseId}/yank", ["post"]],
+  // Feed retention: the backfill of the builds of main below each package's stable release.
+  ["/{product}/release/packages/prune", ["post"]],
   // P2-02: trusted publishing.
   ["/{product}/release/publish/token", ["post"]],
   ["/{product}/release/publish/uploads", ["post"]],
@@ -591,6 +593,7 @@ const CORS_EXCLUDED = new Set([
   "/{product}/release/channels/{channel}/pin",
   "/{product}/release/channels/{channel}/unpin",
   "/{product}/release/releases/{releaseId}/yank",
+  "/{product}/release/packages/prune",
   // P2-02: the trusted-publishing routes, called by CI with an OIDC or `pkeyci_` credential.
   "/{product}/release/publish/token",
   "/{product}/release/publish/uploads",
