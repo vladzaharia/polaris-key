@@ -797,8 +797,8 @@ Polaris Key <noreply@auth.plrs.im>`. Repeat to a Hide-My-Email (`@privaterelay.a
 ## Login card (I-07)
 
 The login card's Worker half needs two owner inputs per environment. Until they are set the card
-works without them: no Turnstile token is asked for, and copied avatars use the `BLOBS` bucket
-that already exists.
+works without them: no Turnstile token is asked for, and avatars use the `BLOBS` bucket and the
+`IMAGES` binding that already exist.
 
 1. **Turnstile.** Cloudflare dashboard → Turnstile → Add widget, one per environment, hostname
    `key.plrs.im` (`key-staging.plrs.im`, `key-dev.plrs.im` for the others), mode Managed. Put the
@@ -824,9 +824,14 @@ that already exists.
    `PUT /accounts/{account}/workers/scripts/{script}/secrets` as `TURNSTILE_SECRET_KEY`
    (`type: secret_text`), returning nothing. Then test email sign-in on staging before prod.
 
-2. **Avatars.** Copied provider pictures live in the environment's `BLOBS` bucket under the
-   `avatars/` prefix; no extra binding or bucket is needed. To use a separate bucket instead, it
-   would need a binding and a code change.
+2. **Avatars.** Account pictures (provider copies and uploads, PX-W16) live in the environment's
+   `BLOBS` bucket under the `avatars/` prefix; no extra bucket is needed. Never add `avatars/` to
+   the bucket's lock rules: a deleted account's pictures must go at once. They are re-encoded by
+   the `IMAGES` binding that `wrangler.toml` already declares for prod, staging and dev (four
+   transformations per new picture; Images must stay enabled on the account). Without it no
+   picture is copied, uploads answer `503 unavailable`, and accounts show initials. The nightly
+   cron's `avatars` step deletes pictures nothing has used for a day; a failure there shows in the
+   maintenance report like any other step.
 
 **Sessions after the deploy.** Account sessions became server-side rows (`account_sessions`); a
 portal cookie signed before this deploy names no row and is refused, so every portal visitor signs

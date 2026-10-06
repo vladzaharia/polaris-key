@@ -462,7 +462,8 @@ compensation (no cookies, `nosniff`, a `sandbox` CSP, JSON errors), adds
 - Rendered index documents live in the same `BLOBS` bucket under `registry/`. **That prefix gets
   no age lock and no lifecycle rule**: it is rewritten on every publish, yank and channel move,
   and an object lost there is re-rendered on read. Never add `registry/` to the lock rules
-  above.
+  above. The same goes for `avatars/` (account pictures, PX-W16): a deleted account's pictures
+  must be deleted at once, not 180 days later.
 - Optional: a WAF rate-limiting rule for the host (for example, per IP on `pkg.plrs.im/*`).
   Registry clients fetch many small documents, so set the threshold well above a cold
   `npm install`.

@@ -456,8 +456,9 @@ PKEY_ENVIRONMENT = "test"
 #   PORTAL_SESSION_SECRET (falls back to ADMIN_SESSION_SECRET when omitted).
 # Portal licensed downloads (PX-W3; optional, without it licensed R2-only files stay not_hosted):
 #   DOWNLOAD_TICKET_KEY (32 random bytes, base64), DOWNLOAD_TICKET_KEY_PREVIOUS during a rotation.
-# Login card (I-07): TURNSTILE_SECRET_KEY, with the TURNSTILE_SITE_KEY var above. Copied
-#   avatars live in the BLOBS bucket under the `avatars/` prefix (no extra binding).
+# Login card (I-07): TURNSTILE_SECRET_KEY, with the TURNSTILE_SITE_KEY var above. Account
+#   pictures live in the BLOBS bucket under the `avatars/` prefix (no extra binding; never
+#   age-locked) and are re-encoded by the IMAGES binding above (PX-W16).
 # Console's own Pocket ID client (I-03; set all three in ONE `wrangler secret bulk`):
 #   ADMIN_OIDC_ISSUER, ADMIN_OIDC_CLIENT_ID, ADMIN_OIDC_CLIENT_SECRET. Until they are set the
 #   console signs in through PLATFORM_OIDC_*; the portal never reads them.

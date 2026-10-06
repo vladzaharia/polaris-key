@@ -5,7 +5,7 @@
  *
  * `/login`, `/login/<provider>/…` (I-06), `/callback`, `/logout`, `/magic/verify`, `/api/*`
  * (the login card's `/api/signin/*` among them, I-07), `/download/<token>`,
- * `/media/<product>/<asset>` (PX-W1) and `/media/avatar/<key>` (I-07) are ROOT
+ * `/media/<product>/<asset>` (PX-W1) and `/media/avatar/<asset>` (I-07, PX-W16) are ROOT
  * paths, reserved ahead of every product slug by `router.ts`. They stay exactly where they
  * were, and they must: the portal is one account across every tenant on the deployment — an
  * account can hold licences for several products at once — so there is no `<product>` to scope
@@ -102,7 +102,7 @@ export async function handlePortal(
   }
   // PX-W1: the same-origin media proxy (`media.ts`): `/media/<product>/<asset>`, public. Every
   // other path under `/media` is its not-found, never the SPA shell.
-  // I-07: copied provider avatars, `/media/avatar/<key>` (`avatar` is a reserved product slug,
+  // I-07, PX-W16: account pictures, `/media/avatar/<asset>` (`avatar` is a reserved product slug,
   // so this never shadows a product's art).
   const avatar = clean.match(/^\/media\/avatar\/([^/]+)$/);
   if (avatar) return serveAvatar(req, env, avatar[1] ?? "");
