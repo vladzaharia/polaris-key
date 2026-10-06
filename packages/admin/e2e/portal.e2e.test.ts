@@ -7,7 +7,7 @@ import {
   type OpenOptions,
   type PortalHarness,
 } from "./portalHarness.js";
-import { portalRoutes, type PortalScenario } from "./portalFixtures.js";
+import type { PortalScenario } from "./portalFixtures.js";
 
 /**
  * The customer site's main flows (PORTAL.md) in real Chromium under the Worker's exact CSP, driven
@@ -231,31 +231,29 @@ describe("library cards: 16:9 art, the status inset on its plate, no byline", ()
   }
 });
 
-describe("Discover count (G24): never counts what the library holds", () => {
-  it("count 0 hides the nav pill and the phone bar's dot, and the library's Discover line", async () => {
-    const library = (
-      portalRoutes("three")["/api/library"] as () => {
-        body: { products: unknown[] };
-      }
-    )().body;
+describe("Discover count (P6, FLOWS P-13): never counts what the page cannot show", () => {
+  it("the Worker counts 4 offers, the page lists none yet: no Discover in either nav, no library line", async () => {
     for (const width of [1440, 390]) {
-      const o = await open("three", "/", {
-        width,
-        routes: {
-          "/api/library": { body: { ...library, discoverCount: 0 } },
-        },
-      });
+      // The fixture's library carries `discoverCount: 4`, as `main`'s Worker does.
+      const o = await open("three", "/", { width });
       await h1(o.page, "Your library");
       const nav = o.page.getByRole("navigation", {
         name: width === 390 ? "Phone" : "Main",
       });
-      const discover = nav.getByRole("link", { name: /Discover/ });
-      await discover.waitFor();
-      expect((await discover.innerText()).trim()).toBe("Discover");
-      expect(await discover.locator("span.rounded-full").count()).toBe(0);
+      await nav.getByRole("link", { name: /Library/ }).waitFor();
+      expect(await nav.getByRole("link", { name: /Discover/ }).count()).toBe(0);
       expect(await o.page.getByText(/in Discover/).count()).toBe(0);
+      expect(await o.violations()).toEqual([]);
       await o.close();
     }
+  });
+
+  it("a typed #/discover is the honest empty state, with the way back", async () => {
+    const o = await open("three", "/#/discover");
+    await h1(o.page, "Nothing to add right now");
+    await o.page.getByRole("link", { name: "Back to your library" }).waitFor();
+    expect(await o.violations()).toEqual([]);
+    await o.close();
   });
 });
 
@@ -279,7 +277,7 @@ describe("Library on GET /api/library (PX-08)", () => {
     expect(o.requests).toContain("GET /media/nightfall/header");
     await o.page
       .getByRole("navigation", { name: "Main" })
-      .getByRole("link", { name: /Discover/ })
+      .getByRole("link", { name: /Library/ })
       .waitFor();
     expect(await o.violations()).toEqual([]);
     await o.close();

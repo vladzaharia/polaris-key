@@ -229,24 +229,15 @@ describe("Library on today's data (PX-02)", () => {
 });
 
 describe("Library on GET /api/library (PX-08)", () => {
-  it("shows Discover with its count once the Worker counts offers", async () => {
+  it("keeps Discover and its count out while the Discover page can't show the offers (P6)", async () => {
+    // `main`'s Worker counts 4 offers; the page lists none until PX-16 (model/discover.ts).
     mockFetch(
       signedIn([nightfall], { "/api/library": libraryFor([nightfall], 4) }),
     );
     renderPortal();
-    const main = await screen.findByRole("navigation", { name: "Main" });
-    const link = await within(main).findByRole("link", { name: /Discover/ });
-    expect(link.getAttribute("href")).toBe("#/discover");
-    expect(link.textContent).toBe("Discover4");
-    const phone = screen.getByRole("navigation", { name: "Phone" });
-    expect(
-      within(phone).getByRole("link", { name: /^Discover\W+4 offers$/ }),
-    ).toBeTruthy();
-    expect(
-      await screen.findByRole("link", {
-        name: "4 more you can add in Discover",
-      }),
-    ).toBeTruthy();
+    await screen.findByRole("article", { name: "Nightfall" });
+    expect(screen.queryByRole("link", { name: /Discover/ })).toBeNull();
+    expect(screen.queryByText(/in Discover/)).toBeNull();
     expect(await axeViolations()).toEqual([]);
   });
 

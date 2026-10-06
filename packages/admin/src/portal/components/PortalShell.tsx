@@ -18,8 +18,9 @@ import { Lockup } from "./Lockup.js";
  * - **Footer**, a skip link, one `banner`, `nav` ("Main"), `main` and `contentinfo`.
  *
  * Discover sits in the nav with its count of offers (a small violet count; a dot on the phone
- * bar) once `GET /api/library` carries `discoverCount` (G24, PX-W10); without it Discover is
- * hidden from the nav, as the spec's fallback says.
+ * bar) once `GET /api/library` carries `discoverCount` (G24, PX-W10) and the Discover page can
+ * show those offers (`model/discover.ts`); otherwise Discover is hidden from the nav, as the
+ * spec's fallback says.
  */
 export function PortalShell({
   account,
