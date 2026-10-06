@@ -43,6 +43,10 @@ import { notFound } from "./core/errors.js";
 import { handleDevices, handleReport } from "./core/devices.js";
 import { handleRegister } from "./core/register.js";
 import { handleAttest, handleAttestChallenge } from "./core/attestation.js";
+import { handleAssetsPush } from "./core/hostedAssetUploads.js";
+// HA-06: a CI push into a listing-model slot also writes Distribution's listing row; Core takes
+// the writer from here rather than importing the service.
+import { listingSlotMirror } from "./services/distribution/listing/hostedMirror.js";
 import { dispatchBytesHost, isBytesHost } from "./core/bytesHost.js";
 import { dispatchRegistryHost, isRegistryHost } from "./core/registryHost.js";
 import { dispatchImgHost, isImgHost } from "./core/imgHost.js";
@@ -57,6 +61,7 @@ const PRODUCT_ROUTES = new Set<Route["kind"]>([
   "register",
   "attestChallenge",
   "attest",
+  "assetsPush",
   "service",
 ]);
 
@@ -292,6 +297,15 @@ async function dispatchProductRoute(
         product,
         now,
         buildHooks(SERVICES, product.services, { env, db, product, now }),
+      );
+    case "assetsPush":
+      return handleAssetsPush(
+        req,
+        env,
+        db,
+        product.slug,
+        now,
+        listingSlotMirror,
       );
     case "jwks":
       return handleJwks(db, product);

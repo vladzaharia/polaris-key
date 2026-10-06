@@ -928,8 +928,8 @@ into `dist_listing_assets`. A new opt-in CI scope, `distribution:listing`, buys 
   objects, and no store receives them until a storefront adapter pushes them under the store
   gate, after an operator accepts each output in the console. Screenshot crops are proposals,
   applied only for the images the operator names, because a crop can cut UI.
-- **An operator's image wins.** A row with `source = admin` is never replaced by CI; the register
-  answers it as `kept`.
+- **An operator's image wins.** A row with `source = admin` (a console upload into a store slot,
+  HA-06) is never replaced by CI; the register answers it as `kept`.
 - **Red outputs stay local.** The table has no status column, so a stored row would look
   compliant. The CLI registers only `ok` and `warn` outputs; an icon-only fallback, a `title` slot
   with no wordmark, or a file over the store's byte limit is printed as not uploaded.
@@ -6106,8 +6106,9 @@ neither is a ref of another kind: a release file, a pack or a bundle is the byte
 `release-file` hosted copy is refused even when its bytes are a PNG. A variant answers only when
 the original's row lists it in `variants_json` and the same slot holds a ref to the variant's
 object. The tenancy check runs on every request and is never cached, so dropping a slot (or
-HA-06's delete-a-copy) stops the answer at once; only the bytes, named by their hash, are kept in
-the Cache API.
+HA-06's delete-a-copy) stops the answer at once, unless another image slot of the same product
+still holds the same bytes, which keep answering at the same URL; only the bytes, named by their
+hash, are kept in the Cache API.
 
 **Never gated (owner decision 7).** The host builds only ungated `blobs/` keys and carries no auth
 code: anything under `gated/`, anything licensed and anything not hosted is a 404, never a 401.
@@ -6117,7 +6118,7 @@ client IP, 600 a minute, fail open: nothing secret is behind it). A stored objec
 is missing or disagrees with its name is the not-found, as in `blobResponse`.
 
 Residual risk: an operator can host abusive or illegal images, now served from a Polaris Key host.
-The operator terms apply, and HA-06 adds delete-a-copy, which takes effect at the next request.
+The operator terms apply, and HA-06's delete-a-copy (below) takes effect at the next request.
 
 ### The console loads product logos from the image host (console product card)
 
@@ -6216,6 +6217,71 @@ which the main script consumes (notes/S-20 §6.3, §6.4). Code: `core/hostedAsse
 - **The status read is read-only and platform-admin gated.** `GET
 /manage/api/products/<slug>/assets` returns slot metadata, source refs (URLs and
   `<path>@<commit>`) and reason codes, never bytes or tokens.
+
+### Uploads and CI pushes into hosted-asset slots (HA-06)
+
+Two more ways in to the HA-01 ingest, for files that are not on the web (notes/S-20 §6.3, owner
+decision 11), plus the console's Revert and delete-a-copy. Code: `core/hostedAssetUploads.ts`,
+`admin/handlers/hostedAssets.ts`, `services/distribution/listing/hostedMirror.ts`, the CLI's
+`assets.ts`; tests: `test/hostedAssetUploads.test.ts`.
+
+- **Who can write a slot.** The console (`POST|DELETE /manage/api/products/<slug>/assets/<slot>`):
+  the platform-admin session with CSRF, like every console write, audited with the session's
+  subject (`assets.ingest`, `assets.revert`, `assets.delete`). CI (`POST /<p>/assets`): a `pkeyci_`
+  token holding the new scope `assets:write`, which is **opt-in** (not in `DEFAULT_CI_SCOPES`, so
+  an operator grants it deliberately), never valid for another product, and audited as
+  `ci:<subject>` (`assets.push`, plus `assets.ingest` per file). No end user can name a slot or a
+  file. Only image slots are writable: `presentation.icon`, `listing.icon`, `listing.header`,
+  `listing.screenshot:<1-16>` and the shared listing's store image slots; never a release file
+  (HA-08's), a notes image (HA-16's), a video, a store pack or the trailer link.
+- **The bytes are checked exactly as a pull's are.** Both routes stream into `ingest`: the slot's
+  cap (icon slots 10 MiB, the rest 20 MiB; a declared `Content-Length` over it is refused before a
+  byte is read, and the stream is cut at the cap whatever the header said), the magic-number sniff
+  (PNG, JPEG, WebP, GIF or AVIF; never SVG or HTML; the request's `Content-Type` is ignored), and a
+  SHA-256 over every byte. A console upload has no expected hash; a CI push's declared `sha256` and
+  `size` must match the bytes. A refused file changes nothing on the slot (`recordRefusal:
+false`): bytes that never became the copy cannot mark the copy `failed`.
+- **Possession, unchanged (§3).** A CI push reads each object from the caller's own upload ticket
+  (P2-02's uploads route accepts `assets:write`; the ticket is bound to the token and redeemed once,
+  and given back only after a transient store failure), staged under `staging/<p>/<ticketId>/`, or
+  from `blobs/` only when this product already holds a `hosted-asset` ref to that object. Either
+  way the ingest re-reads and re-hashes every byte before it grants a ref, so a digest alone never
+  earns one, and whether another product stores the same bytes never leaves the module.
+- **A pull's follow-up writes respect a claim.** The consumer's back-off and success bookkeeping
+  after `ingest` (`stmtPullFailed`, including the `repo:no-access` path, and the success update)
+  apply only while the slot is not console-claimed, so an upload that lands mid-pull is never
+  marked failed or held off its ladder retry.
+- **Precedence is enforced atomically.** A console upload claims its slot (`origin = 'console'`);
+  otherwise the manifest's source fills it; otherwise CI. A lower way in names who it yields to
+  (`yieldsTo`): a manifest pull yields to a claim, a CI push to a claim and to any slot a manifest
+  declares. The check runs before any byte is read and again inside the batch that writes the row
+  and its refs (every statement guarded, the row's upsert last), so a console upload landing while
+  a pull or push is in flight is never overwritten, and a lost race writes nothing. A store slot's
+  listing row (`dist_listing_assets`) follows the same rule: a console upload writes `source =
+admin`, which the A-18d register and a CI push never replace.
+- **Revert and delete-a-copy.** Revert (a claim whose source the manifest still names) deletes the
+  console's copy and its refs at once and queues one pull of the manifest's ref (reason
+  `operator`), held to HA-05's queue rules above. Delete-a-copy drops the row and its refs. Both
+  run in one batch guarded on the copy the decision saw (its origin and its `sha256`), so a
+  Replace from another tab or a pull that lands first is never undone (`asset_changed`); a store
+  slot's listing row and ref go only while that row holds the same bytes. The image host's
+  tenancy check is never cached, so the slot's copy stops answering on the next request; the bytes
+  fall to the collector after the age lock and grace. **Delete-a-copy is per slot:** the same bytes
+  held by another slot of the product (the listing icon falls back to the product icon) keep
+  answering at the same content-addressed URL until that slot is deleted or replaced too, and the
+  console says so in the confirmation.
+  Polaris Key never writes to a developer's source. This is the content-risk control S-20 §6.12
+  names: an operator can drop an abusive image at once (a manifest-declared one returns at the
+  next resync until the manifest stops naming it, or a replacement claims the slot).
+- **Amplification is bounded.** One CI push carries at most 32 files (each at most 20 MiB) in a
+  16 KiB body; a console upload is one file. Neither fetches anything: the only outbound fetch is
+  Revert's one queued pull of a ref a manifest author wrote.
+- **The console shows only what the image host serves.** The status list adds image-host URLs
+  built server-side from content-addressed hashes (`imgUrl`), the `img-src` source the console
+  product card already added; no developer URL is loaded by the console.
+- **Residual.** An `assets:write` token can replace any CI-pushed copy of its product's unclaimed,
+  undeclared slots with any image whose bytes it holds; it cannot touch an operator's upload or a
+  manifest's slot, and the art it hosts is public by design.
 
 ### Linking an existing product to a repository (UX-23)
 

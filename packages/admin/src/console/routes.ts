@@ -427,6 +427,7 @@ export const r = {
     productPage(slug, "users", { query }),
   user: (slug: string, subject: string, tab?: string) =>
     productPage(slug, "users", { id: subject, tab }),
+  presentation: (slug: string) => productPage(slug, "presentation"),
   keys: (slug: string) => productPage(slug, "keys"),
   activity: (slug: string, query?: QueryInit) =>
     productPage(slug, "activity", { query }),

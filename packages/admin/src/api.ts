@@ -919,6 +919,56 @@ export interface ProductPresentation {
   accentDark?: string | null;
 }
 
+/**
+ * One hosted-asset slot as the Presentation page reads it (HA-05, HA-06; worker
+ * `admin/handlers/hostedAssets.ts`, `HostedAssetDto`).
+ */
+export interface HostedAssetDto {
+  slot: string;
+  /** `''` is every locale. */
+  locale: string;
+  /** Who filled the slot: `manifest`, `console` (an upload: it claims the slot), `ci`, `release-mirror`. */
+  origin: string;
+  /** Where the original is: `url`, `repo`, `upload`, `ci`, `github-asset`. */
+  sourceKind: string;
+  /** The URL or `<path>@<commit>`; `null` for an upload or a CI push. */
+  sourceRef: string | null;
+  /** `pending` (nothing served yet), `ready`, `failed` or `stale` (the last good copy kept). */
+  status: string;
+  /** The last failure's reason code. */
+  error: string | null;
+  sha256: string | null;
+  size: number | null;
+  contentType: string | null;
+  width: number | null;
+  height: number | null;
+  checkedAt: number | null;
+  modifiedAt: number;
+  /** What the manifest declares for the slot now, or `null`. */
+  wanted: { kind: "url" | "repo"; src: string; sha256?: string } | null;
+  /** The manifest wants a ref the stored copy was not pulled for (a pull is owed). */
+  pullPending: boolean;
+  attempts: number;
+  nextAttemptAt: number | null;
+  /** A ready copy still owes its WebP sizes (retried while the Images binding is bound). */
+  sizesPending: boolean;
+  /** The size ladder's widths. */
+  widths: number[];
+  /** The original on the image host, when it serves it. */
+  url: string | null;
+  /** A ~256 px variant, else the original. */
+  previewUrl: string | null;
+  /** The console may upload to and delete this slot. */
+  uploadable: boolean;
+  /** The slot's byte cap. */
+  maxBytes: number | null;
+}
+
+/** What Revert or delete-a-copy did (`DELETE …/assets/<slot>`). */
+export type HostedAssetOutcome =
+  | { outcome: "reverted"; pulling: boolean }
+  | { outcome: "deleted" };
+
 /** One product's facts for Home's card (`GET /manage/api/summary`; a member per service it runs). */
 export interface ProductSummary {
   license?: { active: number };
@@ -1371,6 +1421,7 @@ export const CI_SCOPES = [
   "distribution:rollout",
   "distribution:feeds",
   "distribution:listing",
+  "assets:write",
 ] as const;
 
 /** The blob collector's dry run for one product (`GET …/blob-gc`, P4-14). */
@@ -3573,7 +3624,9 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   const mutating = init.method != null && init.method !== "GET";
   if (mutating) {
     headers.set(CSRF_HEADER, csrf);
-    if (init.body) headers.set("Content-Type", "application/json");
+    // A JSON body unless the caller sent its own type (HA-06's raw file upload).
+    if (init.body && !headers.has("Content-Type"))
+      headers.set("Content-Type", "application/json");
   }
   const res = await fetch(path, {
     ...init,
@@ -4027,6 +4080,33 @@ const rawApi = {
     ),
   /** The blob collector's dry run: what would be dropped, and when. Read-only. */
   blobGc: (slug: string) => call<BlobGcDryRun>(`${p(slug)}/blob-gc`),
+  /** HA-05, HA-06: every hosted-asset slot of the product (the Presentation page). */
+  hostedAssets: (slug: string) =>
+    call<{ assets: HostedAssetDto[] }>(`${p(slug)}/assets`),
+  /**
+   * HA-06: upload `file` into `slot` (the body is the file itself; the Worker sniffs the type).
+   * The upload claims the slot: a resync and a CI push leave it alone until Revert.
+   */
+  uploadHostedAsset: (
+    slug: string,
+    slot: string,
+    file: Blob,
+    locale?: string,
+  ) =>
+    call<{ asset: HostedAssetDto | null }>(
+      `${p(slug)}/assets/${enc(slot)}${locale ? `?locale=${enc(locale)}` : ""}`,
+      {
+        method: "POST",
+        body: file,
+        headers: { "Content-Type": file.type || "application/octet-stream" },
+      },
+    ),
+  /** HA-06: Revert a console claim to the manifest, or delete the slot's hosted copy. */
+  deleteHostedAsset: (slug: string, slot: string, locale?: string) =>
+    call<HostedAssetOutcome>(
+      `${p(slug)}/assets/${enc(slot)}${locale ? `?locale=${enc(locale)}` : ""}`,
+      { method: "DELETE" },
+    ),
 
   // ── services (per-product enablement) ───────────────────────────────────────
   services: (slug: string) => call<ServicesResponse>(`${p(slug)}/services`),

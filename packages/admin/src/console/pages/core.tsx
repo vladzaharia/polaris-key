@@ -3,13 +3,14 @@ import { ActivityPage } from "./core/Activity.js";
 import { DevicesPage } from "./core/Devices.js";
 import { KeysPage } from "./core/Keys.js";
 import { OverviewPage } from "./core/Overview.js";
+import { PresentationPage } from "./core/Presentation.js";
 import { ServicesPage } from "./core/Services.js";
 import { SettingsPage } from "./core/Settings.js";
 import { UsersPage } from "./core/Users.js";
 import type { SectionPageProps } from "./types.js";
 
-/** Core: Overview, Services, Devices (with the routed device drawer), Users (I-12), Keys & secrets, Activity
- *  and Settings (ADMIN.md §2.3, §6.2, §6.7–§6.9). */
+/** Core: Overview, Services, Devices (with the routed device drawer), Users (I-12), Presentation (HA-06),
+ *  Keys & secrets, Activity and Settings (ADMIN.md §2.3, §6.2, §6.7–§6.9). */
 export default function CorePages({
   route,
 }: SectionPageProps): React.ReactElement | null {
@@ -23,6 +24,8 @@ export default function CorePages({
       return <DevicesPage slug={slug} deviceId={route.id} />;
     case "users":
       return <UsersPage slug={slug} subject={route.id} tab={route.tab} />;
+    case "presentation":
+      return <PresentationPage slug={slug} />;
     case "keys":
       return <KeysPage slug={slug} />;
     case "activity":

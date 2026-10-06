@@ -7795,7 +7795,7 @@
       "optional": false,
       "refs": ["notes/S-20 §6.3", "notes/S-20 owner decision 11"],
       "brief": "wp/HA-06-upload-paths.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "HA-07",

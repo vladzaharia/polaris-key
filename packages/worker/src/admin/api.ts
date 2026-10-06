@@ -286,11 +286,13 @@ async function handleProductScoped(
     return handleRefusals(req, db, slug, rest.slice(1), now);
   }
 
-  // HA-05: the product's hosted assets (`core/hostedAssetPulls.ts`). CORE, like `activity`: a
-  // product hosts its presentation icon whether or not it runs Distribution.
+  // HA-05, HA-06: the product's hosted assets (`core/hostedAssetPulls.ts`,
+  // `core/hostedAssetUploads.ts`). CORE, like `activity`: a product hosts its presentation icon
+  // whether or not it runs Distribution.
   //   GET /products/<slug>/assets
+  //   POST|DELETE /products/<slug>/assets/<slot>[?locale=]
   if (resource === "assets") {
-    return handleHostedAssets(req, db, slug, rest.slice(1));
+    return handleHostedAssets(req, env, db, session, slug, rest.slice(1), now);
   }
 
   // Every device of the product, licensed or not. CORE: a product that issues no licenses (open

@@ -58,6 +58,7 @@ import {
   ingest,
   isHostedAssetLocale,
   ladderOwedSql,
+  parseVariants,
   PULL_BACKOFF_BASE_SECONDS,
   rebuildLadder,
   variantFamily,
@@ -656,7 +657,10 @@ export type PullOutcome =
   /** No blob store bound: nothing attempted. */
   | "unavailable";
 
-/** Record a failed pull's back-off (the row's status and error are `ingest`'s, or set here). */
+/**
+ * Record a failed pull's back-off (the row's status and error are `ingest`'s, or set here). Never
+ * on a slot an operator uploaded while the pull ran (HA-06): the claim is not the pull's to mark.
+ */
 function stmtPullFailed(
   product: string,
   slot: string,
@@ -668,7 +672,8 @@ function stmtPullFailed(
     sql: `UPDATE hosted_assets SET attempts = attempts + 1,
             next_attempt_at = ? + ${backoffAfterFailureSql()}
             ${error ? ", status = 'failed', error = ?, checked_at = ?" : ""}
-           WHERE product = ? AND slot = ? AND locale = '' AND wanted_ref = ?`,
+           WHERE product = ? AND slot = ? AND locale = '' AND wanted_ref = ?
+             AND origin <> 'console'`,
     params: error
       ? [now, error, now, product, slot, wanted]
       : [now, product, slot, wanted],
@@ -708,6 +713,8 @@ export async function processAssetPull(
       sourceKind: "url",
       sourceRef: ref.src,
       expectedSha256: ref.sha256 ?? null,
+      // A console upload that lands while this pull is in flight wins (HA-06, S-18 model C).
+      yieldsTo: ["console"],
     };
   } else {
     const commit = gitShaOrNull(msg.commit);
@@ -736,6 +743,7 @@ export async function processAssetPull(
       expectedSha256: ref.sha256 ?? null,
       // The raw Contents URL changes with the commit; a validator from another commit means nothing.
       force: true,
+      yieldsTo: ["console"],
     };
   }
 
@@ -750,7 +758,8 @@ export async function processAssetPull(
         sql: `UPDATE hosted_assets SET pulled_ref = ?, source_blob = ?,
                 attempts = CASE WHEN ${owed} THEN 1 ELSE 0 END,
                 next_attempt_at = CASE WHEN ${owed} THEN ? ELSE NULL END
-               WHERE product = ? AND slot = ? AND locale = '' AND wanted_ref = ?`,
+               WHERE product = ? AND slot = ? AND locale = '' AND wanted_ref = ?
+                 AND origin <> 'console'`,
         params: [
           msg.wanted,
           blob,
@@ -765,6 +774,8 @@ export async function processAssetPull(
   }
   if (result.reason === "retry") return "retry";
   if (result.reason === "unavailable") return "unavailable";
+  // An operator uploaded the slot while the pull ran: the claim stands, nothing is recorded.
+  if (result.reason === "claimed") return "superseded";
   await db.batch([
     stmtPullFailed(msg.product, msg.slot, msg.wanted, now, null),
   ]);
@@ -903,12 +914,24 @@ export interface HostedAssetView {
   pullPending: boolean;
   attempts: number;
   nextAttemptAt: number | null;
+  /**
+   * HA-06: a ready copy that still owes its WebP size ladder (`ladderOwedSql`) while the Images
+   * binding is bound, so HA-05 retries it. Without the binding the original serves alone, by
+   * design, and nothing is pending.
+   */
+  sizesPending: boolean;
+  /** The widths of the copy's size ladder (`variants_json`), ascending. */
+  widths: number[];
 }
 
-/** Every hosted asset of `product`, ordered by slot and locale. */
+/**
+ * Every hosted asset of `product`, ordered by slot and locale. `images` says whether the Images
+ * binding is bound (`sizesPending` is only ever true while it is).
+ */
 export async function listHostedAssetViews(
   db: Db,
   product: string,
+  opts: { images?: boolean } = {},
 ): Promise<HostedAssetView[]> {
   const rows = await db.all<{
     slot: string;
@@ -929,10 +952,12 @@ export async function listHostedAssetViews(
     pulled_ref: string | null;
     attempts: number;
     next_attempt_at: number | null;
+    variants_json: string | null;
+    ladder_owed: number;
   }>(
     `SELECT slot, locale, origin, source_kind, source_ref, status, error, sha256, size,
             content_type, width, height, checked_at, modified_at, wanted_ref, pulled_ref,
-            attempts, next_attempt_at
+            attempts, next_attempt_at, variants_json, ${ladderOwedSql()} AS ladder_owed
        FROM hosted_assets WHERE product = ? ORDER BY slot, locale`,
     product,
   );
@@ -958,5 +983,9 @@ export async function listHostedAssetViews(
       r.wanted_ref !== r.pulled_ref,
     attempts: r.attempts,
     nextAttemptAt: r.next_attempt_at,
+    sizesPending: !!opts.images && r.ladder_owed === 1,
+    widths: parseVariants(r.variants_json)
+      .map((v) => v.w)
+      .sort((a, b) => a - b),
   }));
 }
