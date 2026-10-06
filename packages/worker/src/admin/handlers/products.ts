@@ -59,9 +59,11 @@ import {
 } from "../repo.js";
 import {
   claimsApply,
+  decideClaim,
+  manifestAuthorityOf,
   revertClaim,
   stmtClaim,
-  systemClaimRefusal,
+  stmtSetManifestAuthority,
   type ClaimKey,
 } from "../../core/settingsClaims.js";
 import {
@@ -293,26 +295,46 @@ export async function handleProducts(
         "the system product cannot be renamed",
         { fields: ["name"], reason: "system_product" },
       );
-    // ST-01b (S-18 §4.5 item 8): every other claimable field of the system product is
-    // manifest-authoritative; ST-20 adds its expiring break-glass claims.
-    const systemRefusal = systemClaimRefusal(row);
-    const systemFields = (
-      ["defaultMaxOfflineDays", "defaultDeviceLimit", "adminGroup"] as const
-    ).filter((f) => body[f] !== undefined);
-    if (systemRefusal && systemFields.length > 0)
-      return err(409, ErrorCode.BadRequest, systemRefusal, {
-        fields: systemFields,
-        reason: "manifest_authoritative",
-      });
-    // Owner decision 1 (S-18 D2): the admin group is manifest-only on a repo-linked product. It
-    // is never claimed, so a console value would vanish at the next resync; refusing it says so.
-    if (body.adminGroup !== undefined && claimsApply(row))
+    // Owner decision 1 (S-18 D2): the admin group is manifest-only on a repo-linked product (and
+    // on the system product, whose manifest the deploy hook applies). It is never claimed, so a
+    // console value would vanish at the next apply; refusing it says so.
+    if (body.adminGroup !== undefined && (claimsApply(row) || row.system === 1))
       return err(
         409,
         ErrorCode.BadRequest,
         "the admin group is set by the product's .pkey/product (adminGroup)",
         { fields: ["adminGroup"], reason: "manifest_only" },
       );
+    // ST-20 (S-18 §4.5 item 7, D14): manifest-authoritative mode, an operator setting. Locked on
+    // for the system product by the registry (the system-lock rule); only a repo-linked product
+    // has a manifest to make authoritative.
+    if (body.manifestAuthoritative !== undefined) {
+      if (typeof body.manifestAuthoritative !== "boolean")
+        return err(
+          422,
+          ErrorCode.BadRequest,
+          "manifestAuthoritative must be a boolean",
+          { fields: ["manifestAuthoritative"] },
+        );
+      const authority = await manifestAuthorityOf(db, row);
+      if (
+        authority.locked &&
+        body.manifestAuthoritative !== authority.authoritative
+      )
+        return err(
+          409,
+          ErrorCode.BadRequest,
+          "the system product is always manifest-authoritative: the deploy hook is its only writer",
+          { fields: ["manifestAuthoritative"], reason: "locked" },
+        );
+      if (body.manifestAuthoritative && !authority.locked && !claimsApply(row))
+        return err(
+          409,
+          ErrorCode.BadRequest,
+          "only a repository-linked product has a manifest to make authoritative",
+          { fields: ["manifestAuthoritative"], reason: "not_linked" },
+        );
+    }
     // plans/P3-01.md §2.2: the default offline-day count becomes `graceUntil`, so it takes the
     // bundle mint's rule, an integer from 1 to 365.
     const refused = new WriteChecks()
@@ -376,21 +398,56 @@ export async function handleProducts(
     };
     // ST-01b (model C): on a repo-linked product, each claimable field this write sets is claimed
     // for the console in the same batch, so the next resync leaves it alone until a Revert.
-    const claimed: ClaimKey[] = claimsApply(row)
-      ? [
-          ...(fields.name !== undefined ? (["core.name"] as const) : []),
-          ...(fields.default_max_offline_days !== undefined
-            ? (["license.defaults.maxOfflineDays"] as const)
-            : []),
-          ...(fields.default_device_limit !== undefined
-            ? (["license.defaults.deviceLimit"] as const)
-            : []),
-        ]
-      : [];
+    // ST-20: a manifest-authoritative product refuses the write unless it is a break-glass claim
+    // (`breakGlass: { reason }`, L2 in the console), which expires in 7 days at the latest.
+    const claimable: ClaimKey[] = [
+      ...(fields.name !== undefined ? (["core.name"] as const) : []),
+      ...(fields.default_max_offline_days !== undefined
+        ? (["license.defaults.maxOfflineDays"] as const)
+        : []),
+      ...(fields.default_device_limit !== undefined
+        ? (["license.defaults.deviceLimit"] as const)
+        : []),
+    ];
+    const decision =
+      claimable.length > 0
+        ? await decideClaim(db, row, body.breakGlass, now)
+        : ({ ok: true, claim: null } as const);
+    if (!decision.ok)
+      return err(decision.status, ErrorCode.BadRequest, decision.message, {
+        fields: decision.fields ?? claimable,
+        reason: decision.reason,
+      });
+    const claim = decision.claim;
+    const claimed = claim ? claimable : [];
+    const breakGlass = claim?.expiresAt
+      ? { reason: claim.reason!, expiresAt: claim.expiresAt }
+      : null;
+    const mode =
+      typeof body.manifestAuthoritative === "boolean" && row.system !== 1
+        ? body.manifestAuthoritative
+        : undefined;
     await db.batch([
       stmtUpdateProduct(slug, fields, now),
-      ...claimed.map((key) => stmtClaim(slug, key, session.sub, now)),
+      ...claimed.map((key) =>
+        stmtClaim(slug, key, session.sub, now, claim!.reason, claim!.expiresAt),
+      ),
+      ...(mode !== undefined
+        ? [stmtSetManifestAuthority(slug, mode, session.sub, now)]
+        : []),
     ]);
+    const notes = [
+      ...(claimed.length > 0
+        ? [
+            breakGlass
+              ? `break-glass claim until ${new Date(breakGlass.expiresAt * 1000).toISOString()} on ${claimed.join(", ")}: ${breakGlass.reason}`
+              : `claimed for the console: ${claimed.join(", ")}`,
+          ]
+        : []),
+      ...(mode !== undefined
+        ? [`manifest-authoritative mode ${mode ? "on" : "off"}`]
+        : []),
+    ];
     await audit(
       db,
       slug,
@@ -398,14 +455,15 @@ export async function handleProducts(
       now,
       "product.update",
       { kind: "product", id: slug },
-      claimed.length > 0
-        ? `Updated product ${slug}; claimed for the console: ${claimed.join(", ")}`
+      notes.length > 0
+        ? `Updated product ${slug}; ${notes.join("; ")}`
         : `Updated product ${slug}`,
     );
     return adminJson({
       ok: true,
       slug,
       ...(claimed.length ? { claimed } : {}),
+      ...(breakGlass ? { breakGlass: { expiresAt: breakGlass.expiresAt } } : {}),
     });
   }
   if (req.method === "DELETE") {

@@ -215,6 +215,13 @@ export interface SettingDef<T = unknown> {
   /** Worker files (under `src/`) or Worker scripts (`deltas`) that read the value. */
   readers: readonly string[];
   storage: SettingStorage;
+  /**
+   * Product scope only: the value every system product (`system = 1`) has, fixed by this entry
+   * (S-18 §4.5 item 8). No row, console write or manifest changes it there, and the console shows
+   * it locked. `rules.ts` requires it on every key `SYSTEM_LOCKED_KEYS` names, so the lock is a
+   * registry rule rather than a row an operator could delete.
+   */
+  systemLock?: { value: T };
   /** The work package that registered it. */
   since: string;
   /**
