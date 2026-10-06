@@ -1,5 +1,8 @@
 import * as React from "react";
+import { flushSync } from "react-dom";
 import { Compass } from "lucide-react";
+import { cn } from "../../lib/cn.js";
+import { viewTransition } from "../../ui/motion/index.js";
 import { Skeleton } from "../../ui/Skeleton.js";
 import type { PortalAccount } from "../api.js";
 import { AttentionShelf } from "../components/AttentionShelf.js";
@@ -28,10 +31,16 @@ import {
   readView,
   rememberMode,
 } from "../model/libraryView.js";
+import { useFirstLoadStagger } from "../stagger.js";
 
 /**
  * The Library (§4.12–4.15), the default page: one tile per product, never per license.
  * 0 → the empty state; 1 → the hero; 2–7 → large tiles; 8+ → the shelf and the compact grid.
+ *
+ * Motion (notes/S-23 §6.1; MO-07): the tiles (or the list's rows) stagger in when the library
+ * first arrives, never on a refetch, a filter or a return to the page (`stagger.ts`); the
+ * Grid/List toggle is one `list` View Transition. The page's own blocks are its `.pk-vt-scope`,
+ * so during that transition they hold still while the products' view changes.
  */
 export function LibraryPage({
   account,
@@ -43,9 +52,11 @@ export function LibraryPage({
   useDocumentTitle("Library");
   const lib = useLibrary();
   const count = lib.isPending ? 0 : (lib.products?.length ?? 0);
+  // Cached data (a return to the page) shows at once; data that arrives while you watch staggers.
+  const [firstLoad] = React.useState(() => lib.isPending);
 
   return (
-    <section className="space-y-8">
+    <section className="pk-vt-scope space-y-8">
       <div className="space-y-2">
         <h1 className="text-[1.875rem] font-bold leading-tight text-fg-strong desk:text-[2.5rem]">
           Your library
@@ -79,6 +90,7 @@ export function LibraryPage({
           email={account.email}
           discoverCount={lib.discoverCount}
           params={params}
+          firstLoad={firstLoad}
         />
       )}
     </section>
@@ -91,13 +103,16 @@ function LibraryBody({
   email,
   discoverCount,
   params,
+  firstLoad,
 }: {
   products: LibraryProduct[];
   device: DeviceInHand;
   email: string;
   discoverCount: number | null;
   params: URLSearchParams;
+  firstLoad: boolean;
 }): React.ReactElement {
+  const stagger = useFirstLoadStagger(firstLoad);
   const action = (p: LibraryProduct) =>
     quickAction(p, device, (s) => href.product(p.slug, s));
   if (products.length === 1) {
@@ -133,7 +148,13 @@ function LibraryBody({
         <h2 id="all-h" className="sr-only">
           All products
         </h2>
-        <ul className="grid gap-6 desk:grid-cols-2 wide:grid-cols-3">
+        <ul
+          ref={stagger.ref}
+          className={cn(
+            "grid gap-6 desk:grid-cols-2 wide:grid-cols-3",
+            stagger.className,
+          )}
+        >
           {products.map((p) => (
             <li key={p.slug} className="grid">
               <LibraryTile
@@ -147,7 +168,14 @@ function LibraryBody({
       </section>
     );
   }
-  return <ScaledLibrary products={products} device={device} params={params} />;
+  return (
+    <ScaledLibrary
+      products={products}
+      device={device}
+      params={params}
+      firstLoad={firstLoad}
+    />
+  );
 }
 
 /** 8+ products (§4.15): toolbar, the shelf, then the compact grid or the list. */
@@ -155,10 +183,12 @@ function ScaledLibrary({
   products,
   device,
   params,
+  firstLoad,
 }: {
   products: LibraryProduct[];
   device: DeviceInHand;
   params: URLSearchParams;
+  firstLoad: boolean;
 }): React.ReactElement {
   const v = readView(params);
   const [remembered, setRemembered] = React.useState(readRememberedMode);
@@ -174,6 +204,14 @@ function ScaledLibrary({
     quickAction(p, device, (s) => href.product(p.slug, s));
   const attention = products.filter((p) => p.status.attention).length;
   const summary = `Showing ${shown.length} of ${products.length}`;
+  // Any search, filter, sort or view switch ends the first-load stagger for good.
+  const stagger = useFirstLoadStagger(
+    firstLoad,
+    [mode, v.q, v.filter, v.sort].join("\n"),
+  );
+  // The products' section: its heading and its view (the grid or the list) are the rows of the
+  // Grid/List transition.
+  const productsSection = React.useRef<HTMLElement>(null);
   return (
     <>
       <LibraryToolbar
@@ -196,8 +234,17 @@ function ScaledLibrary({
         }
         onMode={(m) => {
           rememberMode(m);
-          setRemembered(m);
-          setParams({ view: m });
+          // One list transition (S-23 §6.1, D7): the old view leaves, the new one rises in, and
+          // the rest of the page (the LibraryPage scope) holds still. Under reduced motion, or
+          // without the API, an instant swap.
+          viewTransition(
+            () =>
+              flushSync(() => {
+                setRemembered(m);
+                setParams({ view: m });
+              }),
+            { type: "list", list: productsSection.current },
+          );
         }}
       />
       <LiveRegion message={filtered ? summary : ""} />
@@ -206,7 +253,11 @@ function ScaledLibrary({
           items={attentionItems(products, (s) => href.product(s, "devices"))}
         />
       )}
-      <section aria-labelledby="all-h" className="space-y-4">
+      <section
+        ref={productsSection}
+        aria-labelledby="all-h"
+        className="space-y-4"
+      >
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <h2
             id="all-h"
@@ -237,6 +288,8 @@ function ScaledLibrary({
           </p>
         ) : mode === "list" ? (
           <LibraryList
+            bodyRef={stagger.ref}
+            bodyClassName={stagger.className}
             products={shown}
             actionFor={action}
             actionHeader={
@@ -246,7 +299,13 @@ function ScaledLibrary({
             }
           />
         ) : (
-          <ul className="grid gap-5 desk:grid-cols-3 wide:grid-cols-4">
+          <ul
+            ref={stagger.ref}
+            className={cn(
+              "grid gap-5 desk:grid-cols-3 wide:grid-cols-4",
+              stagger.className,
+            )}
+          >
             {shown.map((p) => (
               <li key={p.slug} className="grid">
                 <LibraryTile

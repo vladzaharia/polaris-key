@@ -1,5 +1,6 @@
 import * as React from "react";
 import { Info, LayoutGrid } from "lucide-react";
+import { cn } from "../../lib/cn.js";
 import { Button } from "../../ui/Button.js";
 import { StationaryStar } from "../../ui/EmptyState.js";
 import { Skeleton } from "../../ui/Skeleton.js";
@@ -15,6 +16,7 @@ import { portalErrorCopy } from "../errors.js";
 import { addedOfferFromLibrary, mergeAdded } from "../model/discover.js";
 import { withoutHeld } from "../model/owned.js";
 import { href, navigate, setParams, useDocumentTitle } from "../router.js";
+import { useFirstLoadStagger } from "../stagger.js";
 
 interface TileError {
   text: string;
@@ -28,6 +30,9 @@ interface TileError {
  * (the button is guarded while its request runs, and the Worker's claim is idempotent), then the
  * tile shows the just-added state, also after a reload through `?added=<product>`. With nothing
  * to add, the star and **Back to your library**.
+ *
+ * Motion (MO-07): the tiles stagger in when the offers first arrive (`stagger.ts`), never on a
+ * refetch or a return to the page; a just-added tile's ring pops in (`DiscoverTile`).
  */
 export function DiscoverPage({
   params,
@@ -38,6 +43,12 @@ export function DiscoverPage({
   const discover = useDiscover();
   const library = useLibraryView();
   const claim = useClaimDiscover();
+  // Offers that arrive while you watch stagger in; cached ones (a return to the page) don't.
+  const [firstLoad] = React.useState(
+    () =>
+      discover.isPending || (params.get("added") !== null && library.isPending),
+  );
+  const stagger = useFirstLoadStagger(firstLoad);
 
   // Added in this visit, kept as the offer that was shown (the Worker stops listing it).
   const [added, setAdded] = React.useState<Map<string, PortalDiscoverOffer>>(
@@ -169,7 +180,13 @@ export function DiscoverPage({
             <h2 id="offers-h" className="sr-only">
               Products you can add
             </h2>
-            <ul className="grid gap-5 desk:grid-cols-2 wide:grid-cols-4">
+            <ul
+              ref={stagger.ref}
+              className={cn(
+                "grid gap-5 desk:grid-cols-2 wide:grid-cols-4",
+                stagger.className,
+              )}
+            >
               {tiles.map((offer) => {
                 const slug = offer.product;
                 const state: DiscoverTileState = addedSlugs.has(slug)
