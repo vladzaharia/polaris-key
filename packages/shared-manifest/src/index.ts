@@ -5074,6 +5074,11 @@ function normalizeCatalog(parsed: unknown): ProductCatalog | null {
     return {
       schemaVersion: Number(parsed.schemaVersion ?? 1),
       entries: parsed.catalog,
+      // The legacy form's top-level `cloudSync` is validated with the rest of the schema
+      // (validateCloudSync reads manifest.schema.cloudSync), so it is kept, not dropped.
+      ...(parsed.cloudSync === undefined
+        ? {}
+        : { cloudSync: parsed.cloudSync }),
     } as unknown as ProductCatalog;
   }
   return null;

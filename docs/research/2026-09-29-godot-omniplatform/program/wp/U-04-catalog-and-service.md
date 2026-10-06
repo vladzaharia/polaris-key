@@ -93,10 +93,14 @@ taken with the recommended option, as the lead delegated.
   line, so the darwin baselines are stale. U-04 touches neither the portal source nor those
   baselines. Everything else in admin e2e passes; a lone run of four layout timeouts on
   platform pages was a flake and passed when re-run.
-- **Known seams left to U-05** (decided: do not widen this package). The legacy
-  `{schemaVersion, catalog:[…]}` schema form validates a top-level `cloudSync` but
-  `normalizeCatalog` drops it; the admin-API product register (`schema` body) stores `entries`
-  only; and with Config off the schema's `cloudSync` is stored unvalidated. Nothing reads the block
+  A fifth merge (main at 915424055, MO-02) merged cleanly; typecheck, the action bundle,
+  `gen:services` and the docs `gen:check` are clean on it.
+- **Legacy catalog form keeps `cloudSync`** (fix round 3). `normalizeCatalog` now carries the
+  legacy `{schemaVersion, catalog:[…]}` form's top-level `cloudSync` into the stored catalog, the
+  same block the validator judged; pinned by a `schema-parity.test.ts` case.
+- **Known seams left to U-05** (decided: do not widen this package). The admin-API product
+  register (`schema` body) stores `entries` only, as it did before; and with Config off the
+  schema's `cloudSync` is stored unvalidated. Nothing reads the block
   before U-05, which must revalidate it on read.
 
 ## Goal

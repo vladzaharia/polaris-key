@@ -3104,6 +3104,24 @@ describe("compatible and standalone packs (P4-12)", () => {
   });
 });
 
+describe("the legacy catalog form keeps cloudSync (U-04)", () => {
+  it("stores the top-level cloudSync the validator judged, not entries only", () => {
+    const docs = base();
+    const { entries, cloudSync, ...rest } = cat(docs);
+    const legacy = { ...rest, catalog: entries, cloudSync };
+    const m = parseManifest({
+      product: JSON.stringify(docs.product),
+      schema: JSON.stringify(legacy),
+      release: JSON.stringify(docs.release),
+    });
+    if (!m.ok) throw new Error(m.errors.join("; "));
+    expect(m.manifest.catalog.entries).toEqual(entries);
+    expect(
+      (m.manifest.catalog as unknown as Record<string, unknown>).cloudSync,
+    ).toEqual(cloudSync);
+  });
+});
+
 describe("the pack schema's vocabularies are the validator's constants (P4-02)", () => {
   it("packDeliverable enums", () => {
     const schema = JSON.parse(
