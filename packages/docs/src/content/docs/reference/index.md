@@ -23,4 +23,4 @@ registry, and the worker suite byte-compares it.
 | [D1 data model](/docs/reference/data-model/)                          | the migrations, replayed to the live schema                  |
 | [Conformance corpus v2](/docs/reference/corpus/)                      | the corpus files themselves                                  |
 | [SDK parity matrix](/docs/reference/parity/)                          | the feature registry and every SDK's `parity.json`           |
-| [Settings reference](/docs/reference/settings/) | the settings registry (`pnpm gen:settings`) |
+| [Settings reference](/docs/reference/settings/)                       | the settings registry (`pnpm gen:settings`)                  |

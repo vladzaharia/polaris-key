@@ -109,7 +109,7 @@ mise exec node@22 -- pnpm --filter @polaris-key/worker test
 
 ## Hand-off
 
-- ST-10 reads the index; ST-11, ST-14 and ST-25 shrink `PENDING`.
+- ST-10 reads the index. ST-08, ST-09, ST-11, ST-12, ST-13, ST-14 and ST-19 shrink `PENDING` by the entries the "PENDING owners" decision assigns them; ST-25 closes the list.
 
 The role agent sets `--set ST-06 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:
