@@ -36,6 +36,11 @@
       "unowned": true,
       "note": "P1-02 ships the 0600 file store with surfaced failures and store_status() (file or indexeddb, degraded not-persistent). PKeyCore picks a platform store by default when its plugin is present (Keychain, then Keystore, then the file store): iOS, P5-05's Keychain store (core/store/keychain_store.gd, PKeyKeychainStore over PKeyApple: device id and token AfterFirstUnlockThisDeviceOnly with no access group); Android, P5-06's Keystore store (core/store/keystore_store.gd, PKeyKeystoreStore over PKeyAndroid: one AndroidKeyStore AES-256-GCM key per product, StrongBox where present, blobs in noBackupFilesDir, a lost key surfaced and re-enrolled). Both migrate from the file store and surface failures as keyring-error. No work package owns a desktop keyring, so the desktop runtimes keep the file store."
     },
+    "core.copy": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-G03 and SP-G13, SDK-PARITY-PASS §5.6."
+    },
     "license.gate": {
       "status": "implemented"
     },
@@ -63,6 +68,11 @@
     "license.reregister": {
       "status": "implemented"
     },
+    "license.refusals": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-G03, SDK-PARITY-PASS §5.6."
+    },
     "config.resolve": {
       "status": "implemented",
       "note": "OS.get_environment drops a leading U+FEFF from a value, so on a Godot host the two U+FEFF rows of config-matrix.json hold for the resolver, not for the process environment. A number's value is Godot's own reading, which is not correctly rounded, and a string value's \\u0000 reads as U+FFFD (both WIRE-CONTRACT-V3 §10); verdicts are unaffected."
@@ -81,6 +91,11 @@
     },
     "config.mirror": {
       "status": "implemented"
+    },
+    "config.local": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-G05, SDK-PARITY-PASS §5.6."
     },
     "devices.fingerprint": {
       "status": "implemented",
@@ -104,6 +119,11 @@
     "devices.report": {
       "status": "implemented",
       "note": "The report also carries the Godot keys engine and outlet (the Worker bounds them; outlet is PKeyCore.reported_outlet()), and the updater's queued update events in updates (P6-03, P3-10)."
+    },
+    "telemetry.updates": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-G18, SDK-PARITY-PASS §5.6. The report already carries the updater's queued events in updates (P6-03, P3-10); SP-G18 tags it against telemetry-report-updates.json."
     },
     "devices.attest": {
       "status": "implemented",
@@ -157,11 +177,26 @@
     "release.record": {
       "status": "implemented"
     },
+    "release.fetch": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-G18, SDK-PARITY-PASS §5.6. core/download.gd already fetches with Range resume and checks size and SHA-256; SP-G18 tags it and teaches suite_transcripts the releaseFetch action."
+    },
+    "release.distribution": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-G14, SDK-PARITY-PASS §5.6."
+    },
     "update.check": {
       "status": "implemented"
     },
     "update.feed": {
       "status": "implemented"
+    },
+    "update.feeds": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-G18, SDK-PARITY-PASS §5.6. The P3-10 outlet adapters already build the Sparkle, WinSparkle, Velopack and AppImageUpdate feed URLs from update.endpoints; SP-G18 tags them against feed-url-matrix.json."
     },
     "update.decide": {
       "status": "implemented"
@@ -187,6 +222,11 @@
     "outlet.detect": {
       "status": "implemented",
       "note": "distribution/outlet.gd PKeyOutlet.detect_outlet over distribution/outlet_signals.gd (Flatpak, snap, AppImage, Steam library and environment, itch receipt, macOS receipt and Mach-O leaf, Caskroom, Windows path conventions, Android getInstallSourceInfo through JavaClassWrapper (PKeyAndroid.install_source() reads the same facts, plus the initiator's full signer set, through the P5-06 plugin), web display mode); iOS reads AppDistributor (raced against 2 s, every launch), embedded.mobileprovision and ALTBundleIdentifier through the Apple plugin's facade (native/pkey_apple.gd, P5-05; no evidence without the plugin or before the launch read arrives); the Windows package reader is a hook that answers unavailable until a Windows native reader lands. PKeyCore.update_outlet() feeds the decision and PKeyCore.reported_outlet() the device report; PolarisKey.update.outlet() and detected() expose the result, as client.update.outlet and detected do in Node and Python."
+    },
+    "crash.tags": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-G14, SDK-PARITY-PASS §5.6."
     },
     "packs.record": {
       "status": "implemented",
@@ -390,9 +430,20 @@
       "status": "implemented",
       "note": "PKeyStages (core/stages.gd) replays every stage-matrix.json row, probe, guard and confirm case; PKeyBoot drives every row through PolarisKey.boot() with a scripted host (suite_boot)."
     },
+    "ui.boot": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-G18, SDK-PARITY-PASS §5.6. PolarisKey.boot() and PKeyBoot already run it (suite_boot); SP-G18 tags them and teaches suite_transcripts the boot action."
+    },
     "ui.kit": {
       "status": "implemented",
       "note": "P1-10's v1 kit: PKeyBoot, gate, activation panel, sign-in dialog with QR, offline activation, settings panel, status banner, update prompt, entitlement badge and dev-menu section, pinned as structural snapshots and centred at five window sizes (suite_ui); a neutral default look over the game's theme, with opt-in Polaris Key branding and an optional Powered-by badge (PKeyOptions.ui_*, PKeyUiTheme; suite_brand). PKeyDeviceList is not in v1 (unowned; needs P1-05) and the pack progress UI is P4-08's."
+    },
+    "ui.cli": {
+      "status": "na",
+      "runtime": ["linux", "macos", "windows", "android", "ios", "web"],
+      "reason": "runtime",
+      "note": "This SDK ships a widget kit (ui.kit); the terminal kit is the headless SDKs' expectation."
     },
     "commerce.receipt": {
       "status": "implemented",

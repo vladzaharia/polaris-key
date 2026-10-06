@@ -974,12 +974,24 @@
           "maxLength": 4000,
           "pattern": "^[^\\u0000-\\u0008\\u000b-\\u001f\\u007f]+$"
         },
+        "icon": {
+          "description": "The listing icon: an https URL or a repo path, optionally { src, sha256 }. When absent, the product's presentation.icon is used.",
+          "$ref": "#/$defs/assetRef"
+        },
         "iconUrl": {
+          "description": "Deprecated alias of icon, an https URL only. Still accepted with a warning; declaring both is an error.",
+          "deprecated": true,
           "type": "string",
           "maxLength": 2048,
           "pattern": "^https://[^\\s\\u0000-\\u001f\\u007f]+$"
         },
+        "header": {
+          "description": "The header or hero art: an https URL or a repo path, optionally { src, sha256 }.",
+          "$ref": "#/$defs/assetRef"
+        },
         "headerUrl": {
+          "description": "Deprecated alias of header, an https URL only. Still accepted with a warning; declaring both is an error.",
+          "deprecated": true,
           "type": "string",
           "maxLength": 2048,
           "pattern": "^https://[^\\s\\u0000-\\u001f\\u007f]+$"
@@ -994,12 +1006,11 @@
           "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
         },
         "screenshots": {
+          "description": "Up to 16 screenshots, each an https URL or a repo path, optionally { src, sha256 }.",
           "type": "array",
           "maxItems": 16,
           "items": {
-            "type": "string",
-            "maxLength": 2048,
-            "pattern": "^https://[^\\s\\u0000-\\u001f\\u007f]+$"
+            "$ref": "#/$defs/assetRef"
           }
         },
         "website": {
@@ -1025,7 +1036,56 @@
           "maxLength": 254,
           "pattern": "^[^\\s@<>\\u0000-\\u001f\\u007f]+@[^\\s@<>\\u0000-\\u001f\\u007f]+\\.[^\\s@<>\\u0000-\\u001f\\u007f]+$"
         }
+      },
+      "not": {
+        "description": "An image slot and its deprecated alias are never declared together.",
+        "anyOf": [
+          {
+            "required": ["icon", "iconUrl"]
+          },
+          {
+            "required": ["header", "headerUrl"]
+          }
+        ]
       }
+    },
+    "assetSrc": {
+      "description": "Where an image's bytes come from: an https URL, or a relative path in the product's own repository, resolved at the synced commit (private repositories included). A repo path has an optional leading ./, no leading /, no . or .. segment, at most 512 characters, and ends in .png, .jpg, .jpeg, .webp, .gif or .avif (lower case).",
+      "anyOf": [
+        {
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^https://[^\\s\\u0000-\\u001f\\u007f]+$"
+        },
+        {
+          "type": "string",
+          "maxLength": 512,
+          "pattern": "^(?:\\./)?(?!(?:[^/]*/)*\\.{1,2}(?:/|$))[A-Za-z0-9._~@+-]+(?:/[A-Za-z0-9._~@+-]+)*\\.(?:png|jpe?g|webp|gif|avif)$"
+        }
+      ]
+    },
+    "assetRef": {
+      "description": "An image Polaris Key hosts: its source as a string, or { src, sha256 } to pin the bytes (a pull whose hash differs is refused). Polaris Key keeps its own copy and serves it from its media host.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/assetSrc"
+        },
+        {
+          "type": "object",
+          "required": ["src"],
+          "additionalProperties": false,
+          "properties": {
+            "src": {
+              "$ref": "#/$defs/assetSrc"
+            },
+            "sha256": {
+              "description": "The file's SHA-256, as 64 lower-case hex digits.",
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          }
+        }
+      ]
     }
   }
 }

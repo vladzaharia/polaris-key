@@ -56,6 +56,13 @@ export const PLATFORM_INVENTORY: readonly PlatformInventoryEntry[] = [
     editable: null,
   },
   {
+    name: "IMAGES",
+    kind: "binding",
+    area: "delivery",
+    optional: true,
+    editable: null,
+  },
+  {
     name: "BLOB_GC_MODE",
     kind: "var",
     area: "jobs",

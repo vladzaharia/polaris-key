@@ -35,9 +35,28 @@ Replace, and the in-app device list. That plan names its transcripts and all six
 differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
 **No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
 
-- `POST /<p>/identity/token` answers `200 {"status":"choose","choices":LicenseChoiceView}` with the amended view (`current`, `access`, `seats.limit: null` for Account-wide, `getLicense.keyEntry`) and takes `choice` on a follow-up call (I-04 §D, §F). The plan names its transcripts and all six SDKs.
+- `POST /<p>/identity/token` answers `200 {"status":"choose","choices":LicenseChoiceView}` with the amended view (`current`, `access` a display label with the real seat count (SIGN-IN.md D-53), `getLicense.keyEntry`) and takes `choice` on a follow-up call (I-04 §D, §F). The plan names its transcripts and all six SDKs.
 - Carry the device list for an in-kit Replace (the `ReplaceView` shape) so the kit's **Replace a device** expands inline like the card's; until then it opens `manageUrl`.
 - Native LicenseChoice copy is `signin.choice.*` (title "Choose a license for this device", primary **Use this license and continue**, row anatomy of SIGN-IN.md §3.6).
+
+## One sign-in form (2026-10-05): `plans/I-04.md` §G and SIGN-IN.md §3.17
+
+The owner decided on 2026-10-05 that every in-app sign-in step happens in **one form whose body
+morphs in place** (no stacked sheets), that the license is chosen **inside the app** when it can
+show it, that the presentation is configurable with native controls kept, that there are **two
+equal ways to integrate** (the hosted card, and the kit form with headless primitives), and that
+the web flow is one continuous, animated card. The wire is
+[`plans/I-04.md`](../plans/I-04.md) §G (a pending sign-in grant, `licenseChoice: "app" | "card"`);
+the experience is [`SIGN-IN.md`](../../../../design/SIGN-IN.md) §2.4, §3.17, §3.18, §4.16 and
+D-78–D-93. Where this brief differs, they win. **No device-wire version change**
+(`PROTOCOL_VERSION` 4, `DISCOVERY_VERSION` 2, `corpusVersion` 2; no corpus file). New UI copy uses
+the owner's license vocabulary (SIGN-IN.md O-17: the tier pill and "{used} of {limit} devices" on
+every row, no "Account-wide"). For this package:
+
+- **Supersedes the pre-decided follow-up call.** `POST /<p>/identity/token` takes `licenseChoice` (default `"app"`). When a choice is due it answers `200 {"status":"choose","grant","expiresIn":300,"choices":LicenseChoiceView}`, and the app completes through I-08's grant routes (`choice/licenses`, `choice/devices`, `choice/complete`, `choice/cancel`), not a second call to `token`. With `"card"` a due choice answers `interstitial_required` with the card URL at the choice step.
+- The in-kit device list for **Replace a device** is `choice/devices` (I-04 §G.5), so Replace is inline in every kit's form.
+- **Transcript:** `exchange-choose.json`. `exchange({kind, token, licenseChoice})` in all six SDKs.
+- **Depends on I-08** for the grant routes (already transitive through I-10a and I-10b).
 
 ## Goal
 

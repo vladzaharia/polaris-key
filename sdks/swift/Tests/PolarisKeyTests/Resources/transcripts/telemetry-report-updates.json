@@ -1,0 +1,503 @@
+{
+  "transcriptVersion": 1,
+  "id": "telemetry-report-updates",
+  "description": "Update-health events on the device report (P6-03). The client's update journal holds seventeen events; a report carries at most sixteen, oldest first, in the report's updates member, and the client drops the ones a 200 delivered. So the first report() carries the first sixteen and leaves one pending, and the second carries the last and leaves none. The Worker counts each event once by its eventId.",
+  "features": ["telemetry.updates"],
+  "requires": ["core.store", "core.sync", "devices.report"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "token": "pkeyt_pFlWjKJ0CsW7cdsJ8vbE0mrterL8GL32C9mTLSjOrg0",
+    "version": "1.0.0",
+    "updateJournal": [
+      {
+        "eventId": "transcript-01",
+        "event": "update_offered",
+        "deliverable": "app",
+        "release": "v1.1.0",
+        "fromRelease": "v1.0.0",
+        "outlet": "direct",
+        "channel": "stable",
+        "at": 1699996400
+      },
+      {
+        "eventId": "transcript-02",
+        "event": "update_downloaded",
+        "deliverable": "app",
+        "release": "v1.1.0",
+        "fromRelease": "v1.0.0",
+        "outlet": "direct",
+        "channel": "stable",
+        "at": 1699996460
+      },
+      {
+        "eventId": "transcript-03",
+        "event": "update_applied",
+        "deliverable": "app",
+        "release": "v1.1.0",
+        "fromRelease": "v1.0.0",
+        "outlet": "direct",
+        "channel": "stable",
+        "at": 1699996520
+      },
+      {
+        "eventId": "transcript-04",
+        "event": "update_confirmed",
+        "deliverable": "app",
+        "release": "v1.1.0",
+        "fromRelease": "v1.0.0",
+        "outlet": "direct",
+        "channel": "stable",
+        "at": 1699996580
+      },
+      {
+        "eventId": "transcript-05",
+        "event": "update_offered",
+        "deliverable": "app",
+        "release": "v1.1.0",
+        "fromRelease": "v1.0.0",
+        "outlet": "direct",
+        "channel": "stable",
+        "at": 1699996640
+      },
+      {
+        "eventId": "transcript-06",
+        "event": "update_downloaded",
+        "deliverable": "app",
+        "release": "v1.1.0",
+        "fromRelease": "v1.0.0",
+        "outlet": "direct",
+        "channel": "stable",
+        "at": 1699996700
+      },
+      {
+        "eventId": "transcript-07",
+        "event": "update_applied",
+        "deliverable": "app",
+        "release": "v1.1.0",
+        "fromRelease": "v1.0.0",
+        "outlet": "direct",
+        "channel": "stable",
+        "at": 1699996760
+      },
+      {
+        "eventId": "transcript-08",
+        "event": "update_confirmed",
+        "deliverable": "app",
+        "release": "v1.1.0",
+        "fromRelease": "v1.0.0",
+        "outlet": "direct",
+        "channel": "stable",
+        "at": 1699996820
+      },
+      {
+        "eventId": "transcript-09",
+        "event": "update_offered",
+        "deliverable": "app",
+        "release": "v1.1.0",
+        "fromRelease": "v1.0.0",
+        "outlet": "direct",
+        "channel": "stable",
+        "at": 1699996880
+      },
+      {
+        "eventId": "transcript-10",
+        "event": "update_downloaded",
+        "deliverable": "app",
+        "release": "v1.1.0",
+        "fromRelease": "v1.0.0",
+        "outlet": "direct",
+        "channel": "stable",
+        "at": 1699996940
+      },
+      {
+        "eventId": "transcript-11",
+        "event": "update_applied",
+        "deliverable": "app",
+        "release": "v1.1.0",
+        "fromRelease": "v1.0.0",
+        "outlet": "direct",
+        "channel": "stable",
+        "at": 1699997000
+      },
+      {
+        "eventId": "transcript-12",
+        "event": "update_confirmed",
+        "deliverable": "app",
+        "release": "v1.1.0",
+        "fromRelease": "v1.0.0",
+        "outlet": "direct",
+        "channel": "stable",
+        "at": 1699997060
+      },
+      {
+        "eventId": "transcript-13",
+        "event": "update_offered",
+        "deliverable": "app",
+        "release": "v1.1.0",
+        "fromRelease": "v1.0.0",
+        "outlet": "direct",
+        "channel": "stable",
+        "at": 1699997120
+      },
+      {
+        "eventId": "transcript-14",
+        "event": "update_downloaded",
+        "deliverable": "app",
+        "release": "v1.1.0",
+        "fromRelease": "v1.0.0",
+        "outlet": "direct",
+        "channel": "stable",
+        "at": 1699997180
+      },
+      {
+        "eventId": "transcript-15",
+        "event": "update_applied",
+        "deliverable": "app",
+        "release": "v1.1.0",
+        "fromRelease": "v1.0.0",
+        "outlet": "direct",
+        "channel": "stable",
+        "at": 1699997240
+      },
+      {
+        "eventId": "transcript-16",
+        "event": "update_confirmed",
+        "deliverable": "app",
+        "release": "v1.1.0",
+        "fromRelease": "v1.0.0",
+        "outlet": "direct",
+        "channel": "stable",
+        "at": 1699997300
+      },
+      {
+        "eventId": "transcript-17",
+        "event": "update_offered",
+        "deliverable": "app",
+        "release": "v1.1.0",
+        "fromRelease": "v1.0.0",
+        "outlet": "direct",
+        "channel": "stable",
+        "at": 1699997360
+      }
+    ]
+  },
+  "steps": [
+    {
+      "action": "report",
+      "note": "The first sixteen journalled events.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/devices/report",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "updates": [
+                    {
+                      "eventId": "transcript-01",
+                      "event": "update_offered",
+                      "deliverable": "app",
+                      "release": "v1.1.0",
+                      "fromRelease": "v1.0.0",
+                      "outlet": "direct",
+                      "channel": "stable",
+                      "at": 1699996400
+                    },
+                    {
+                      "eventId": "transcript-02",
+                      "event": "update_downloaded",
+                      "deliverable": "app",
+                      "release": "v1.1.0",
+                      "fromRelease": "v1.0.0",
+                      "outlet": "direct",
+                      "channel": "stable",
+                      "at": 1699996460
+                    },
+                    {
+                      "eventId": "transcript-03",
+                      "event": "update_applied",
+                      "deliverable": "app",
+                      "release": "v1.1.0",
+                      "fromRelease": "v1.0.0",
+                      "outlet": "direct",
+                      "channel": "stable",
+                      "at": 1699996520
+                    },
+                    {
+                      "eventId": "transcript-04",
+                      "event": "update_confirmed",
+                      "deliverable": "app",
+                      "release": "v1.1.0",
+                      "fromRelease": "v1.0.0",
+                      "outlet": "direct",
+                      "channel": "stable",
+                      "at": 1699996580
+                    },
+                    {
+                      "eventId": "transcript-05",
+                      "event": "update_offered",
+                      "deliverable": "app",
+                      "release": "v1.1.0",
+                      "fromRelease": "v1.0.0",
+                      "outlet": "direct",
+                      "channel": "stable",
+                      "at": 1699996640
+                    },
+                    {
+                      "eventId": "transcript-06",
+                      "event": "update_downloaded",
+                      "deliverable": "app",
+                      "release": "v1.1.0",
+                      "fromRelease": "v1.0.0",
+                      "outlet": "direct",
+                      "channel": "stable",
+                      "at": 1699996700
+                    },
+                    {
+                      "eventId": "transcript-07",
+                      "event": "update_applied",
+                      "deliverable": "app",
+                      "release": "v1.1.0",
+                      "fromRelease": "v1.0.0",
+                      "outlet": "direct",
+                      "channel": "stable",
+                      "at": 1699996760
+                    },
+                    {
+                      "eventId": "transcript-08",
+                      "event": "update_confirmed",
+                      "deliverable": "app",
+                      "release": "v1.1.0",
+                      "fromRelease": "v1.0.0",
+                      "outlet": "direct",
+                      "channel": "stable",
+                      "at": 1699996820
+                    },
+                    {
+                      "eventId": "transcript-09",
+                      "event": "update_offered",
+                      "deliverable": "app",
+                      "release": "v1.1.0",
+                      "fromRelease": "v1.0.0",
+                      "outlet": "direct",
+                      "channel": "stable",
+                      "at": 1699996880
+                    },
+                    {
+                      "eventId": "transcript-10",
+                      "event": "update_downloaded",
+                      "deliverable": "app",
+                      "release": "v1.1.0",
+                      "fromRelease": "v1.0.0",
+                      "outlet": "direct",
+                      "channel": "stable",
+                      "at": 1699996940
+                    },
+                    {
+                      "eventId": "transcript-11",
+                      "event": "update_applied",
+                      "deliverable": "app",
+                      "release": "v1.1.0",
+                      "fromRelease": "v1.0.0",
+                      "outlet": "direct",
+                      "channel": "stable",
+                      "at": 1699997000
+                    },
+                    {
+                      "eventId": "transcript-12",
+                      "event": "update_confirmed",
+                      "deliverable": "app",
+                      "release": "v1.1.0",
+                      "fromRelease": "v1.0.0",
+                      "outlet": "direct",
+                      "channel": "stable",
+                      "at": 1699997060
+                    },
+                    {
+                      "eventId": "transcript-13",
+                      "event": "update_offered",
+                      "deliverable": "app",
+                      "release": "v1.1.0",
+                      "fromRelease": "v1.0.0",
+                      "outlet": "direct",
+                      "channel": "stable",
+                      "at": 1699997120
+                    },
+                    {
+                      "eventId": "transcript-14",
+                      "event": "update_downloaded",
+                      "deliverable": "app",
+                      "release": "v1.1.0",
+                      "fromRelease": "v1.0.0",
+                      "outlet": "direct",
+                      "channel": "stable",
+                      "at": 1699997180
+                    },
+                    {
+                      "eventId": "transcript-15",
+                      "event": "update_applied",
+                      "deliverable": "app",
+                      "release": "v1.1.0",
+                      "fromRelease": "v1.0.0",
+                      "outlet": "direct",
+                      "channel": "stable",
+                      "at": 1699997240
+                    },
+                    {
+                      "eventId": "transcript-16",
+                      "event": "update_confirmed",
+                      "deliverable": "app",
+                      "release": "v1.1.0",
+                      "fromRelease": "v1.0.0",
+                      "outlet": "direct",
+                      "channel": "stable",
+                      "at": 1699997300
+                    }
+                  ]
+                },
+                "match": "subset",
+                "allowedKeys": [
+                  "os",
+                  "hardware",
+                  "runtime",
+                  "locale",
+                  "timezone",
+                  "probes",
+                  "sdk",
+                  "sdkVersion",
+                  "appVersion",
+                  "platform",
+                  "arch",
+                  "gate",
+                  "config",
+                  "entitlements",
+                  "timestamp",
+                  "engine",
+                  "outlet",
+                  "content",
+                  "updates",
+                  "caps",
+                  "packInstalls"
+                ]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "ok": true }
+            }
+          }
+        ]
+      },
+      "expect": { "result": true, "updatesPending": 1 }
+    },
+    {
+      "action": "report",
+      "note": "The seventeenth, the last one pending.",
+      "args": {},
+      "now": 1700000060,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/devices/report",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "updates": [
+                    {
+                      "eventId": "transcript-17",
+                      "event": "update_offered",
+                      "deliverable": "app",
+                      "release": "v1.1.0",
+                      "fromRelease": "v1.0.0",
+                      "outlet": "direct",
+                      "channel": "stable",
+                      "at": 1699997360
+                    }
+                  ]
+                },
+                "match": "subset",
+                "allowedKeys": [
+                  "os",
+                  "hardware",
+                  "runtime",
+                  "locale",
+                  "timezone",
+                  "probes",
+                  "sdk",
+                  "sdkVersion",
+                  "appVersion",
+                  "platform",
+                  "arch",
+                  "gate",
+                  "config",
+                  "entitlements",
+                  "timestamp",
+                  "engine",
+                  "outlet",
+                  "content",
+                  "updates",
+                  "caps",
+                  "packInstalls"
+                ]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "ok": true }
+            }
+          }
+        ]
+      },
+      "expect": { "result": true, "updatesPending": 0 }
+    }
+  ]
+}

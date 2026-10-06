@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://key.plrs.im/docs/schemas/parity/copy.schema.json",
+  "title": "Polaris Key core copy (conformance/parity/copy.<locale>.json)",
+  "description": "The core copy (`core.copy`): a title and a message for every error code (errors.json), every gate status (`licenseStatus`) and every activation result (`activationResult`) in enums.json. Hand-written; tools/gen-sdk-constants.ts validates it against this schema, checks that each key set equals its source and that every placeholder is one of the closed set, and emits one generated copy module per SDK (plans/SP-00.md §4).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "copyVersion",
+    "locale",
+    "fallback",
+    "codes",
+    "gate",
+    "activation"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "$comment": { "type": "string" },
+    "copyVersion": { "const": 1 },
+    "locale": {
+      "description": "A BCP-47 tag (`en`, `fr`, `pt-BR`, `zh-Hans`).",
+      "type": "string",
+      "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
+    },
+    "fallback": {
+      "description": "Shown for a code the SDK does not know at run time: a generic message plus the code, never the raw body.",
+      "$ref": "#/$defs/entry"
+    },
+    "codes": {
+      "description": "One entry per errors.json code, keyed by the code exactly as registered.",
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z][a-z0-9]*([_-][a-z0-9]+)*$" },
+      "additionalProperties": { "$ref": "#/$defs/entry" }
+    },
+    "gate": {
+      "description": "One entry per licenseStatus value.",
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/entry" }
+    },
+    "activation": {
+      "description": "One entry per activationResult value.",
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/entry" }
+    }
+  },
+  "$defs": {
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "message"],
+      "properties": {
+        "title": { "$ref": "#/$defs/text" },
+        "message": { "$ref": "#/$defs/text" }
+      }
+    },
+    "text": {
+      "description": "Plain text. A placeholder is `{name}` from the closed set {code}, {detail}, {limit}, {deviceCount}, {retryAfterSeconds} and {product}; the generator refuses any other.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\n]*$"
+    }
+  }
+}

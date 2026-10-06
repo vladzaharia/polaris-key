@@ -64,8 +64,33 @@ recorded here.
   per-call name always wins.
 - **Validator run over `products/*`** (both modes): `djdl` and the repo's `.pkey/` (the system
   product `polaris-key`, exempt) report no display-name finding.
-- **Migration** `0078_app_consent_scope.sql` (renumbered from `0074` after main took `0074`–`0077`); `account_product_grants`
+- **Migration** `0079_app_consent_scope.sql` (renumbered from `0074`, then `0078`, after main took `0074`–`0078`); `account_product_grants`
   keeps its name (Q6), and a merge carries `scope_hash` with the consent.
+- **Seeding a cleared label (for PX-W5).** Activation and registration fill `devices.label` only
+  while it is NULL. A console "clear" stores NULL, so the next activation seeds the reported
+  label again; a rename (any non-NULL value) always wins. PX-W5's "rename wins" holds; a
+  "cleared stays cleared" rule would need its own marker.
+- **Re-merge with main (2026-10-05, fix round 1).** `license-delete` landed five console refusal
+  codes (`store_grants`, `store_purchases`, `issued_active`, `enroll_guard`, `changed`) after
+  SP-00's error-code scan and core copy, so `pnpm gen:constants` failed on main itself. This
+  branch adds them to `conformance/parity/errors.json` (wire, `license`) and `copy.en.json`, the
+  registry's documented remedy, so the gate can run.
+
+## One sign-in form (2026-10-05): `plans/I-04.md` §G and SIGN-IN.md §3.17
+
+The owner decided on 2026-10-05 that every in-app sign-in step happens in **one form whose body
+morphs in place** (no stacked sheets), that the license is chosen **inside the app** when it can
+show it, that the presentation is configurable with native controls kept, that there are **two
+equal ways to integrate** (the hosted card, and the kit form with headless primitives), and that
+the web flow is one continuous, animated card. The wire is
+[`plans/I-04.md`](../plans/I-04.md) §G (a pending sign-in grant, `licenseChoice: "app" | "card"`);
+the experience is [`SIGN-IN.md`](../../../../design/SIGN-IN.md) §2.4, §3.17, §3.18, §4.16 and
+D-78–D-93. Where this brief differs, they win. **No device-wire version change**
+(`PROTOCOL_VERSION` 4, `DISCOVERY_VERSION` 2, `corpusVersion` 2; no corpus file). New UI copy uses
+the owner's license vocabulary (SIGN-IN.md O-17: the tier pill and "{used} of {limit} devices" on
+every row, no "Account-wide"). For this package:
+
+- The pushed request `POST /<p>/identity/request` (§2.5) carries `licenseChoice` (`"app" | "card"`, default `"card"`) and echoes the effective value in its response. I-08 adds the member when it builds on this route (I-04 §G.2); this package only keeps room for it in the request record.
 
 ## Goal
 

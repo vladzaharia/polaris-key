@@ -47,6 +47,11 @@
         }
       ]
     },
+    "core.copy": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-N01, SDK-PARITY-PASS §5.1."
+    },
     "license.gate": {
       "status": "implemented"
     },
@@ -68,6 +73,11 @@
     "license.reregister": {
       "status": "implemented"
     },
+    "license.refusals": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-N01, SDK-PARITY-PASS §5.1."
+    },
     "config.resolve": {
       "status": "implemented"
     },
@@ -87,6 +97,11 @@
       "status": "implemented",
       "note": "The TypeScript mirror is rendered by tools/gen-mirrors.ts."
     },
+    "config.local": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-N13, SDK-PARITY-PASS §5.1."
+    },
     "devices.fingerprint": {
       "status": "implemented"
     },
@@ -101,6 +116,11 @@
     },
     "devices.report": {
       "status": "implemented"
+    },
+    "telemetry.updates": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-N03, SDK-PARITY-PASS §5.1."
     },
     "devices.attest": {
       "status": "na",
@@ -130,12 +150,27 @@
       "status": "implemented",
       "note": "client.update.releaseRecord(hash) and decide() over client-core's verifyReleaseRecord: hash before signature, pinned release keys only; persisted in the releaseRecords cache slice while a committed feed pins it."
     },
+    "release.fetch": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-N07, SDK-PARITY-PASS §5.1."
+    },
+    "release.distribution": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-N08, SDK-PARITY-PASS §5.1."
+    },
     "update.check": {
       "status": "implemented"
     },
     "update.feed": {
       "status": "implemented",
       "note": "client.update.feed() and decide() over client-core's verifyFeed; the feeds cache slice is keyed by the canonical channel and re-verified on load, so each seq floor survives a restart."
+    },
+    "update.feeds": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-N08, SDK-PARITY-PASS §5.1."
     },
     "update.decide": {
       "status": "implemented",
@@ -158,6 +193,11 @@
     "outlet.detect": {
       "status": "implemented",
       "note": "client-core's detectOutlet over this process's signals (src/update/outlet.ts readOutletSignals: environment, executable and script path conventions, isSea, Electron's mas and windowsStore, product-named markers); the update client detects when the host names no outlet. Windows SignatureKind needs WinRT and is not read."
+    },
+    "crash.tags": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-N16, SDK-PARITY-PASS §5.1."
     },
     "packs.record": {
       "status": "implemented",
@@ -266,15 +306,25 @@
     "ui.stages": {
       "status": "implemented"
     },
+    "ui.boot": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-N05, SDK-PARITY-PASS §5.1."
+    },
     "ui.kit": {
       "status": "na",
       "runtime": "headless",
       "reason": "runtime"
     },
-    "commerce.receipt": {
+    "ui.cli": {
       "status": "planned",
       "unowned": true,
-      "note": "P6-01 builds the Worker bridge and leaves the SDK side planned with no owner."
+      "note": "SP-N14, SDK-PARITY-PASS §5.1."
+    },
+    "commerce.receipt": {
+      "status": "planned",
+      "wp": "LX-20",
+      "note": "Required (owner, 2026-10-05). LX-20 builds the client side (Steam claim) over P6-01's Worker bridge."
     }
   }
 }

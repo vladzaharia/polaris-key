@@ -38,6 +38,11 @@
       "status": "implemented",
       "note": "macOS uses the data-protection keychain where entitled; an unentitled process (an unsigned CLI) keeps the file-based keychain and storeStatus() reports legacy-keychain."
     },
+    "core.copy": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-S01 and SP-S13, SDK-PARITY-PASS §5.4."
+    },
     "license.gate": {
       "status": "implemented"
     },
@@ -59,6 +64,11 @@
     "license.reregister": {
       "status": "implemented"
     },
+    "license.refusals": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-S01, SDK-PARITY-PASS §5.4."
+    },
     "config.resolve": {
       "status": "implemented",
       "note": "Member names compare by scalar value, but JSONValue keeps the first of two canonically equivalent names (WIRE-CONTRACT-V3 §10)."
@@ -79,6 +89,11 @@
       "status": "implemented",
       "note": "The Swift mirror is rendered by tools/gen-mirrors.ts."
     },
+    "config.local": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-S14, SDK-PARITY-PASS §5.4."
+    },
     "devices.fingerprint": {
       "status": "implemented"
     },
@@ -93,6 +108,11 @@
     },
     "devices.report": {
       "status": "implemented"
+    },
+    "telemetry.updates": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-S05, SDK-PARITY-PASS §5.4."
     },
     "devices.attest": {
       "status": "planned",
@@ -126,11 +146,26 @@
     "release.record": {
       "status": "implemented"
     },
+    "release.fetch": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-S10, SDK-PARITY-PASS §5.4."
+    },
+    "release.distribution": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-S10, SDK-PARITY-PASS §5.4."
+    },
     "update.check": {
       "status": "implemented"
     },
     "update.feed": {
       "status": "implemented"
+    },
+    "update.feeds": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-S10, SDK-PARITY-PASS §5.4."
     },
     "update.decide": {
       "status": "implemented"
@@ -157,6 +192,11 @@
     "outlet.detect": {
       "status": "implemented",
       "note": "PolarisKeyCore detectOutlet over PolarisKeyUpdate readOutletSignals: AppDistributor.current behind #available(iOS 17.4) (web from 17.5) raced against the 2 s deadline, AltStore's ALTBundleIdentifier, embedded.mobileprovision, the macOS _MASReceipt and ProductionSandbox, the signing leaf (SecCodeCopySigningInformation) and the product's Caskroom link. UpdateClient detects at its first decision when the host names no outlet."
+    },
+    "crash.tags": {
+      "status": "planned",
+      "unowned": true,
+      "note": "No task yet: the lead cuts a Swift crashTags() task (plans/SP-00.md §5; SDK-PARITY-PASS §5.4)."
     },
     "packs.record": {
       "status": "implemented",
@@ -271,15 +311,26 @@
     "ui.stages": {
       "status": "implemented"
     },
+    "ui.boot": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-S09, SDK-PARITY-PASS §5.4."
+    },
     "ui.kit": {
       "status": "planned",
       "unowned": true,
       "note": "PolarisLoginView only; no work package builds the rest of the Swift kit."
     },
+    "ui.cli": {
+      "status": "na",
+      "runtime": ["macos", "ios"],
+      "reason": "runtime",
+      "note": "This SDK ships a widget kit (ui.kit); the terminal kit is the headless SDKs' expectation."
+    },
     "commerce.receipt": {
       "status": "planned",
-      "unowned": true,
-      "note": "P5-05's PolarisKeyPlatform target carries the StoreKit 2 client (signed JWS, appAccountToken, deduplicated Transaction.updates, finish on demand); P6-01 builds the Worker bridge and leaves the SDK side planned with no owner."
+      "wp": "LX-20",
+      "note": "P5-05's PolarisKeyPlatform target carries the StoreKit 2 client (signed JWS, appAccountToken, deduplicated Transaction.updates, finish on demand); LX-20 wires it into the SDK client over P6-01's Worker bridge."
     }
   }
 }

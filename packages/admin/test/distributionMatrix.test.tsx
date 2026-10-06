@@ -2,6 +2,9 @@
  * Distribution → Matrix (admin chunk 9, ADMIN.md §6.4): the T5 grid, its views and URL state, the
  * cell drawer with only the server-allowed verbs, the store's own controls for a mirrored
  * rollout, readiness overrides, Set percentage and Start rollout. Closes MTX-1 to MTX-10.
+ *
+ * UX-31: the matrix is Rollouts' Matrix and Readiness views; `distribution/matrix` (used here,
+ * as old links and the `m` shortcut still do) redirects there with its query intact.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -36,11 +39,34 @@ async function grid(): Promise<HTMLElement> {
 }
 
 describe("Distribution → Matrix", () => {
+  it("redirects the old page to Rollouts' Matrix view, keeping the cell and options", async () => {
+    bootWith(`${MATRIX_HASH}?view=rollouts&channel=stable&cell=rel_240:direct`);
+    await waitFor(() =>
+      expect(window.location.hash).toContain("/distribution/rollouts?"),
+    );
+    const hash = window.location.hash;
+    expect(hash).toContain("view=matrix");
+    expect(hash).toContain("channel=stable");
+    expect(hash).toContain("cell=rel_240%3Adirect");
+    expect(
+      await screen.findByRole("dialog", { name: "2.4.0 on direct" }),
+    ).toBeTruthy();
+  });
+
+  it("redirects the old Readiness view to Rollouts' Readiness view", async () => {
+    bootWith(`${MATRIX_HASH}?view=readiness`);
+    await waitFor(() =>
+      expect(window.location.hash).toContain(
+        "/distribution/rollouts?view=readiness",
+      ),
+    );
+  });
+
   it("renders releases × outlets as a grid of summaries, with a legend and no status caveat", async () => {
     bootWith(MATRIX_HASH);
     const g = await grid();
     expect(
-      screen.getByRole("heading", { level: 1, name: "Matrix" }),
+      screen.getByRole("heading", { level: 1, name: "Rollouts" }),
     ).toBeTruthy();
     for (const o of ["direct", "app-store", "play", "altstore"])
       expect(
@@ -79,8 +105,12 @@ describe("Distribution → Matrix", () => {
           c.path === P("/distribution/matrix") && c.query.includes("limit=50"),
       ),
     ).toBe(true);
-    await userEvent.click(screen.getByRole("radio", { name: "Availability" }));
-    await waitFor(() => expect(window.location.hash).not.toContain("view="));
+    await userEvent.click(
+      within(
+        screen.getByRole("navigation", { name: "Rollouts views" }),
+      ).getByRole("link", { name: "Matrix" }),
+    );
+    await waitFor(() => expect(window.location.hash).toContain("view=matrix"));
     expect(window.location.hash).toContain("channel=beta");
   });
 

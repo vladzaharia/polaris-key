@@ -43,6 +43,11 @@
       ],
       "note": "keyring is an optional extra; without it the token is in a 0600 file and store_status() reports keyring-unavailable."
     },
+    "core.copy": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-P14, SDK-PARITY-PASS §5.3."
+    },
     "license.gate": {
       "status": "implemented"
     },
@@ -64,6 +69,11 @@
     "license.reregister": {
       "status": "implemented"
     },
+    "license.refusals": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-P01, SDK-PARITY-PASS §5.3."
+    },
     "config.resolve": {
       "status": "implemented"
     },
@@ -83,6 +93,11 @@
       "status": "implemented",
       "note": "The Python mirror is rendered by tools/gen-mirrors.ts."
     },
+    "config.local": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-P11, SDK-PARITY-PASS §5.3."
+    },
     "devices.fingerprint": {
       "status": "implemented"
     },
@@ -97,6 +112,11 @@
     },
     "devices.report": {
       "status": "implemented"
+    },
+    "telemetry.updates": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-P03, SDK-PARITY-PASS §5.3."
     },
     "devices.attest": {
       "status": "na",
@@ -126,12 +146,27 @@
       "status": "implemented",
       "note": "core/release_record.py verify_release_record (hash before signature, pinned release keys only, never a product key); client.update.release_record() and decide() fetch by hash and keep the releaseRecords slice while a committed feed pins it."
     },
+    "release.fetch": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-P07, SDK-PARITY-PASS §5.3."
+    },
+    "release.distribution": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-P07, SDK-PARITY-PASS §5.3."
+    },
     "update.check": {
       "status": "implemented"
     },
     "update.feed": {
       "status": "implemented",
       "note": "core/feed.py verify_feed with floors keyed by the canonical channel; client.update.feed() and decide() fetch, verify and commit the feeds cache slice, re-verified on load."
+    },
+    "update.feeds": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-P07, SDK-PARITY-PASS §5.3."
     },
     "update.decide": {
       "status": "implemented",
@@ -154,6 +189,11 @@
     "outlet.detect": {
       "status": "implemented",
       "note": "core/detection.py detect_outlet over update/outlet.py read_outlet_signals (environment, sys.executable and script path conventions, product-named markers, GetCurrentPackageFamilyName through ctypes); the update client detects when the host names no outlet. PEP 376 INSTALLER names no v4 signal and is not read."
+    },
+    "crash.tags": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-P14, SDK-PARITY-PASS §5.3."
     },
     "packs.record": {
       "status": "implemented",
@@ -263,15 +303,25 @@
     "ui.stages": {
       "status": "implemented"
     },
+    "ui.boot": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-P08, SDK-PARITY-PASS §5.3."
+    },
     "ui.kit": {
       "status": "na",
       "runtime": "headless",
       "reason": "runtime"
     },
-    "commerce.receipt": {
+    "ui.cli": {
       "status": "planned",
       "unowned": true,
-      "note": "P6-01 builds the Worker bridge and leaves the SDK side planned with no owner."
+      "note": "SP-P12, SDK-PARITY-PASS §5.3."
+    },
+    "commerce.receipt": {
+      "status": "planned",
+      "wp": "LX-20",
+      "note": "Required (owner, 2026-10-05; reverses LX-20's planned allowedNa). LX-20 adds binding, claim and claim_steam over P6-01's Worker bridge."
     }
   }
 }

@@ -112,8 +112,16 @@ function cases(): Case[] {
   list.push(
     { name: "djdl:activity?table", hash: "#/p/djdl/activity?view=table" },
     {
-      name: "djdl:matrix?cell",
-      hash: "#/p/djdl/distribution/matrix?cell=rel_240:altstore",
+      name: "djdl:rollouts?view=matrix&cell",
+      hash: "#/p/djdl/distribution/rollouts?view=matrix&cell=rel_240:altstore",
+    },
+    {
+      name: "djdl:rollouts?view=readiness",
+      hash: "#/p/djdl/distribution/rollouts?view=readiness",
+    },
+    {
+      name: "djdl:rollouts?cell",
+      hash: "#/p/djdl/distribution/rollouts?cell=rel_240:direct",
     },
     {
       name: "djdl:outlets?outlet",

@@ -60,7 +60,22 @@
 //
 //   result          discover: "ok" | "not-found" | "invalid" | "error"
 //                   activate / enroll: "ok" | "device-limit" | "unauthorized" |
-//                     "fingerprint-required" | "enroll-disabled" | "hardware-mismatch" | "error"
+//                     "fingerprint-required" | "enroll-disabled" | "hardware-mismatch" |
+//                     "enroll-claimed" | "license-disabled" | "license-expired" |
+//                     "attestation-required" | "rate-limited" | "refused" | "error" — the
+//                     `activationResult` enum (conformance/parity/enums.json; SDK-PARITY-PASS
+//                     §3.1), mapped from the refusal body's code, never from the status alone.
+//                     activate-refusals.json records every one the routes answer today. Two are
+//                     reserved and recorded nowhere yet (plans/SP-00.md §8: never faked):
+//                     "license-expired" (an expired licence's key is answered 401
+//                     `unauthorized` today, so its step expects "unauthorized") and
+//                     "attestation-required" (activation and enrolment are not trust
+//                     operations, so no attesting product makes them answer it; the step is
+//                     dropped)
+//                   releaseFetch: "ok" (the payload was fetched, and its size and SHA-256 match
+//                     the target's) | "refused" (a 4xx with a registry code: no file is left) |
+//                     "error"
+//                   downloadModel: "ok"
 //                   register: "ok" | "registration-closed" | "rate-limited" | "not-configured" |
 //                     "error"
 //                   report: true when the server accepted the report
@@ -91,6 +106,16 @@
 //                   bytes when the 206 was clipped at the end of the object)
 //   licenseStatus   the gate's status afterwards (client-core `licenseState`)
 //   tokenHeld       whether the client holds a device token afterwards
+//   code            on a refusal: the wire code the body carried (`{"error":"<code>"}` or
+//                   `{"error":{"code":"<code>"}}`), exactly as sent
+//   bootOutcome     boot: the stage machine's terminal outcome (`vocabulary.outcomes` in
+//                   conformance/corpus/v2/stage-matrix.json: "ready", "blocked", "offline", …)
+//   size / sha256   releaseFetch on "ok": the payload's byte count and lowercase hex SHA-256,
+//                   as the client verified them (the whole file, a resumed one included)
+//   platforms       downloadModel: the model's platform groups, by platform id, in its order
+//   current         downloadModel: the model's group for `initial.platform` (or null), by value
+//   updatesPending  report: how many journalled update events the client still holds after
+//                   the step (a 200 drops the ones it delivered)
 //
 // updateDecide (P3-03, plans/P3-01.md §2.5) — `client.update.decide({channel})` returns an
 // `UpdateCheck`, and every member is asserted:
@@ -112,10 +137,35 @@
 //
 // Every key present is asserted; an absent key is not.
 //
+// `initial.platform` (downloadModel, releaseFetch) is the device's canonical platform
+// (WIRE-CONTRACT-V3 §5.2): what `current` is chosen by.
+//
+// `initial.updateJournal` (telemetry.updates) is the update journal (P6-03) the client holds
+// before the first step: the queued events, oldest first, in the report's `updates` shape. A
+// report carries at most 16 of them, oldest first (`core/updateHealth.ts` `MAX_UPDATE_EVENTS`),
+// and drops the ones a 200 delivered.
+//
 // Step `args` per action: activate { key }; sync { force }; beginSignIn { deviceName? };
 // mintToken { recipeId }; updateDecide { channel } (the REQUESTED name, which may be an alias);
 // commerceClaim { store, payload } (payload: the store's own fields, sent beside `store`). pollSignIn and waitForSignIn act on the prompt the transcript's last
-// beginSignIn returned.
+// beginSignIn returned. boot {} and downloadModel {} take none.
+//
+// boot (SP-00, `ui.boot`) — the SDK's one-call boot (Godot `PolarisKey.boot()`, the
+// client-core stage machine): every request the stages make — discovery, the keyless
+// registration where the policy is open and no token is held, and the sync pass — then the
+// machine's terminal outcome.
+//
+// releaseFetch (SP-00, `release.fetch`) — `{ version, platform, arch, build, size, sha256,
+// partial? }`: the target is a verified release record's build entry for the device's platform
+// and arch (its build id, and the payload size and SHA-256 the record pins). The SDK expands
+// discovery's `distribution.endpoints.builds` template with `{selector}` = `version` and
+// `{buildId}` = `build`, streams it with the device bearer and the metadata headers, and checks
+// size and SHA-256 before it reports "ok". `partial` (resume): the replayer seeds a partial
+// download holding the payload's first `partial` bytes, and the SDK sends
+// `Range: bytes=<partial>-` with `If-Range: "<sha256>"`.
+//
+// downloadModel (SP-00, `release.distribution`) — the public GET of
+// `/<p>/distribution/download.json` (`distribution.downloadModel()`).
 //
 // chunkRange (P4-32, plans/P4-32.md §4) — `{ bundle, offset, length }`: the SDK's chunk-range
 // fetch (client-core `chunkRangeFetch`, Python `chunk_range_fetch`, Swift `chunkRangeFetch`,
@@ -193,7 +243,13 @@ export type Action =
   /** P6-01: `client.commerce.claim(store, payload)` — a store purchase as a licence flag. */
   | "commerceClaim"
   /** P4-32: one chunk-bundle Range + If-Range fetch (WIRE-CONTRACT-V4 §11.4). */
-  | "chunkRange";
+  | "chunkRange"
+  /** SP-00: the one-call boot, to the stage machine's terminal outcome (`ui.boot`). */
+  | "boot"
+  /** SP-00: one verified build download, resumable (`release.fetch`). */
+  | "releaseFetch"
+  /** SP-00: `distribution.downloadModel()` (`release.distribution`). */
+  | "downloadModel";
 
 export interface Step {
   action: Action;
@@ -230,6 +286,10 @@ export interface Transcript {
     deviceName?: string;
     /** P3-03: the update client's state, on `updateDecide` transcripts only. */
     update?: UpdateInitial;
+    /** SP-00: the device's canonical platform (downloadModel's `current`, releaseFetch). */
+    platform?: string;
+    /** SP-00: the journalled update events (P6-03), oldest first (`telemetry.updates`). */
+    updateJournal?: JsonValue[];
   };
   steps: Step[];
 }
