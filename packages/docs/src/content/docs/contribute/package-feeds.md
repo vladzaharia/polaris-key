@@ -91,7 +91,7 @@ one fails CI.
    already there, reserved: take yours out of `RESERVED_ECOSYSTEMS`, as Cargo's F-30 and Go's
    F-31 did). If the protocol needs a content type that is not on `REGISTRY_HOST_TYPES`, stop:
    that list is a THREAT-MODEL review trigger. Seed the ecosystem's row in `dist_registry_policy`
-   with a migration (F-30's `0075_cargo_registry_policy.sql`, F-31's `0076_go_registry_policy.sql`):
+   with a migration (F-30's `0076_cargo_registry_policy.sql`, F-31's `0077_go_registry_policy.sql`):
    the access ladder reads a missing row as the platform switch off, so without it the feed never
    answers.
 3. **The directory.** Create `registry/<ecosystem>/` with `render.ts` (pure documents),

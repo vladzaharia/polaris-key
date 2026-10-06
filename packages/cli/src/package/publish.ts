@@ -7,10 +7,15 @@
  *      `--version`, when given, must equal what the files carry.
  *   2. Hash every file and build the `kind: package` descriptor; validate it LOCALLY with the
  *      Worker's own validator.
- *   3. Credentials, an upload ticket (which also answers the release's `seq`), then ALWAYS a
- *      dry-run submit first. A Worker older than F-03 refuses `kind: package` with
- *      `invalid_descriptor` ("kind must be app"): that is reported as "this Polaris Key predates
- *      package releases (F-03)" and nothing is uploaded.
+ *   3. Credentials, an upload ticket, then ALWAYS a dry-run submit first. A Worker older than
+ *      F-03 refuses `kind: package` with `invalid_descriptor` ("kind must be app"): that is
+ *      reported as "this Polaris Key predates package releases (F-03)" and nothing is uploaded.
+ *      The descriptor carries NO `seq`: the Worker takes the deliverable's next one atomically
+ *      when it writes the row. A package's seq is publication order only (the feeds order
+ *      versions by the scheme; replay is refused by unique-forever versions), and a seq pinned
+ *      from the ticket loses to any publish of the same deliverable between ticket and submit:
+ *      v0.8.22's stable `npm.zstd-wasm` lost seq 22 to a concurrent `main` prerelease
+ *      (`0.8.23-main.9`) and was refused `seq_not_increasing`.
  *   4. Upload what the product does not hold, and submit. A package release carries no release
  *      record (`--release-key-file` and `PKEY_RELEASE_KEY` are not read): it is never signed.
  *
@@ -180,17 +185,14 @@ export async function publishPackage(
         metadata: extracted.metadata,
       },
     };
-    const check = () => {
-      const v = validateReleaseDescriptor(descriptor, context);
-      if (!v.ok)
-        throw new Error(
-          `The package descriptor does not validate:\n${v.errors
-            .map((e) => `  ${e.path} ${e.code}: ${e.message}`)
-            .join("\n")}`,
-        );
-      return v.releaseId;
-    };
-    const releaseId = check();
+    const v = validateReleaseDescriptor(descriptor, context);
+    if (!v.ok)
+      throw new Error(
+        `The package descriptor does not validate:\n${v.errors
+          .map((e) => `  ${e.path} ${e.code}: ${e.message}`)
+          .join("\n")}`,
+      );
+    const releaseId = v.releaseId;
     out.write(
       `Package ${declared.name} ${version} (${declared.ecosystem}, ${hashed.length} file${hashed.length === 1 ? "" : "s"})\n`,
     );
@@ -245,11 +247,9 @@ export async function publishPackage(
           sha256: f.sha256,
           size: f.size,
         })),
-        releases: [{ deliverable: declared.id, version }],
       },
     })) as {
       ticket?: unknown;
-      seqs?: { deliverable: string; version: string; seq: number }[];
       credentials?: {
         endpoint: string;
         bucket: string;
@@ -276,13 +276,6 @@ export async function publishPackage(
     mask(opts.env, out, ticket.ticket);
     mask(opts.env, out, ticket.credentials.secretAccessKey);
     mask(opts.env, out, ticket.credentials.sessionToken);
-    const seq = ticket.seqs?.find(
-      (s) => s.deliverable === declared.id && s.version === version,
-    )?.seq;
-    if (seq !== undefined && Number.isSafeInteger(seq) && seq >= 1) {
-      descriptor.seq = seq;
-      check();
-    }
     let verdict: Record<string, unknown>;
     try {
       verdict = await client.postJson("release/publish/submit", {

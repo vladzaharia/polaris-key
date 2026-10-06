@@ -14,17 +14,27 @@
 
 ## Owner decision (2026-10-05): licence choice at sign-in
 
-The owner decided on 2026-10-05 that every sign-in that binds a device asks the person which licence to use (**Choose a licence for this device**, with an inline **Replace a device** on full licences), never silently mints a second auto-issued licence, and treats the rank-first rule as the preselected default only. The verbatim decision, the card API and the delegated decisions are in [`plans/I-04.md`](../plans/I-04.md), "Owner decision (2026-10-05): licence choice at sign-in"; that section wins over this brief where they differ. **The device wire does not change** (`PROTOCOL_VERSION` 4, no corpus change).
+The owner decided on 2026-10-05 that every sign-in that binds a device asks the person which licence to use (**Choose a license for this device**, with an inline **Replace a device** on full licences), never silently mints a second auto-issued licence, and treats the rank-first rule as the preselected default only. The verbatim decision, the card API and the delegated decisions are in [`plans/I-04.md`](../plans/I-04.md), "Owner decision (2026-10-05): licence choice at sign-in"; that section wins over this brief where they differ. **The device wire does not change** (`PROTOCOL_VERSION` 4, no corpus change).
 
 For this package: **add the copy keys** for the renamed device-limit screen:
 
 - `deviceLimit.title`: "Replace a device";
-- `deviceLimit.primary`: "Replace {device}";
-- `deviceLimit.consequence`: "{device} will need to sign in again";
-- `deviceLimit.confirm`: "Replace {device}? It will need to sign in again.".
+- `deviceLimit.confirmTitle`: "Replace {device}?";
+- `deviceLimit.consequence`: SIGN-IN.md's `signin.replace.consequence`;
+- `deviceLimit.primary`: "Replace and continue".
 
-They replace "Remove <device> and continue". The hosted card's `LicenseChoiceStep` copy lives in
-the portal, not in this catalog.
+They replace "Remove <device> and continue". _Amended 2026-10-05 (sign-in alignment):_ the hosted
+card's `LicenseChoiceStep` copy lives in this catalog too, as the `signin.*` namespace that the
+portal, the Worker pages and the kits all read (SIGN-IN.md §5.2, D-41).
+
+## Sign-in alignment (2026-10-05): SIGN-IN.md
+
+[`docs/design/SIGN-IN.md`](../../../../design/SIGN-IN.md) is the canonical sign-in experience, and `plans/I-04.md`
+§F (the reconciliation, with delegated decisions 16–24) is its wire counterpart. Where this brief
+differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
+**No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
+
+- Add the `signin.*` namespace of SIGN-IN.md §5.2 (incl. `signin.choice.devices`, `signin.choice.accountWide`, `signin.term.*`, `signin.consent.licenseLineAccount`) over `core.copy`; the portal `AuthCard`, the Worker's `renderAuthCard()` and the emails read it (D-41).
 
 ## Goal
 

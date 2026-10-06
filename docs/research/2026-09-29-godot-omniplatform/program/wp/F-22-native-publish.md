@@ -79,7 +79,7 @@ commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/chec
   (npm, PyPI, Swift, Maven) and lasts 1 to 30 days (default 7) — stricter than F-20's 365-day cap,
   recorded in THREAT-MODEL §3 "Native-client publish (F-22)".
 - **twine and Maven send a version as several requests**, and F-03 versions never gain files, so
-  a new Release table, `release_native_uploads` (migration `0074`, renumbered from `0072` after main took 0072-0073, `TABLE_OWNERS.release`),
+  a new Release table, `release_native_uploads` (migration `0075`, renumbered from `0072` after main took 0072-0074, `TABLE_OWNERS.release`),
   gathers a version's files: Maven publishes on `maven-metadata.xml`, twine ten seconds after its
   last upload (`waitUntil` settle, held back by in-flight requests of the same token), and
   Release's new `scheduled` hook (the 15-minute connector cron) publishes idle sessions.

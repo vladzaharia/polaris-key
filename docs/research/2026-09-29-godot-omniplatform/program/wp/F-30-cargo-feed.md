@@ -60,7 +60,7 @@ Deferred: there is no Rust SDK. The standing rule makes it required the day one 
   `.crate`'s normalised `Cargo.toml` (new direct dependency `smol-toml`, already in the lockfile)
   into the metadata the index renders from; the Worker never unpacks a crate.
 - **A policy row is required.** The access ladder reads a missing `dist_registry_policy` row as
-  off, so migration `0075_cargo_registry_policy.sql` seeds Cargo's (on, 50 MiB). The contribute
+  off, so migration `0076_cargo_registry_policy.sql` seeds Cargo's (on, 50 MiB). The contribute
   checklist now says so for the next feed.
 - **Beyond the brief's file list,** adding an ecosystem also touched the console's per-ecosystem
   tables (`FeedEcosystem`, labels, icon, yank copy, namespace copy) and the portal's label, which
