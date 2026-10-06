@@ -15,7 +15,8 @@
     "sdks/kotlin/conformance/src/test",
     "sdks/kotlin/android/src/test",
     "sdks/kotlin/android/src/testPlay",
-    "sdks/kotlin/android/src/testDirect"
+    "sdks/kotlin/android/src/testDirect",
+    "sdks/kotlin/billing/src/test"
   ],
   "features": {
     "core.verify": {
@@ -31,7 +32,8 @@
       "status": "implemented"
     },
     "core.sync": {
-      "status": "implemented"
+      "status": "implemented",
+      "note": "client.events (license, config, updateAvailable, packs) as one SharedFlow, config.setting(key) StateFlows and config.changes; on Android PolarisKeyLifecycle syncs on foreground (throttled; ETags and backoff apply). A periodic background sync is the host's WorkManager worker (no WorkManager dependency)."
     },
     "core.local": {
       "status": "implemented"
@@ -57,8 +59,8 @@
     },
     "core.copy": {
       "status": "planned",
-      "unowned": true,
-      "note": "SP-K01, SDK-PARITY-PASS §5.5."
+      "wp": "SP-21",
+      "note": "Copy.generated.kt (gen:constants) carries the tables, but there is no copy.message(code)/copy.title(code) API with the fallback and placeholder fill over them, and no unit test of one; the Android kit's PolarisCopy uses its own strings."
     },
     "license.gate": {
       "status": "implemented"
@@ -82,9 +84,8 @@
       "status": "implemented"
     },
     "license.refusals": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-K01, SDK-PARITY-PASS §5.5."
+      "status": "implemented",
+      "note": "ActivationResult's typed refusals by the body's code, each carrying the registry code (LicenseEndpoints, LicenseClientTest); the activate-refusals transcript replays."
     },
     "config.resolve": {
       "status": "implemented"
@@ -106,9 +107,8 @@
       "note": "The Kotlin mirror is rendered by tools/gen-mirrors.ts (--lang kotlin); the :config tests compile the committed sample."
     },
     "config.local": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-K07, SDK-PARITY-PASS §5.5."
+      "status": "implemented",
+      "note": "config.set/clear/clearAll persist device-local overrides in local-config.json beside the store, checked against the catalog (or the document's type), never over an enforced or hidden entry (managed_by_admin); config.setting(key) StateFlows and config.changes emit every change (ConfigLocalTest)."
     },
     "devices.fingerprint": {
       "status": "implemented",
@@ -125,27 +125,30 @@
       "status": "implemented"
     },
     "devices.report": {
-      "status": "implemented"
+      "status": "implemented",
+      "note": "PolarisKeyClient.report(): the facts, the verified config and entitlement values, caps, content.packSetId, gate {status}, outlet, and the update-health journal (`updates`, at most 16 per report, marked sent once accepted; notes/SDK-PARITY-PASS.md §3.13). UpdateClient journals update_offered, the boot guard update_applied, update_reverted, boot_rolled_back and update_confirmed, PacksClient update_downloaded, update_applied and pack_failed, and both Android install drivers update_downloaded and update_applied (UpdateEventJournalTest, BootGuardEventsTest, DevicesTest, DirectInstallDriverTest)."
     },
     "telemetry.updates": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-K03, SDK-PARITY-PASS §5.5."
+      "status": "implemented",
+      "note": "The update-health journal rides devices/report, at most 16 events per report, dropped once accepted (UpdateEventJournalTest, DevicesTest); the telemetry-report-updates transcript replays."
     },
     "devices.attest": {
-      "status": "planned",
-      "unowned": true,
+      "status": "implemented",
       "except": [
         {
           "runtime": "jvm",
           "reason": "runtime"
+        },
+        {
+          "runtime": "android",
+          "reason": "outlet"
         }
       ],
-      "note": "P6-09 brings the standard Play Integrity API into :platform for native hosts; as in Swift (App Attest in PolarisKeyPlatform), no work package wires attestation into the Kotlin SDK client."
+      "note": "client.devices.attest() (:core's attestDevice): POST devices/attest/challenge, the platform token for the requestHash, POST devices/attest, the Worker's refusal codes kept. On Android :android's PlayIntegrityAttestation over :platform's PlatformIntegrity (the challenge's cloud project number, or AndroidOptions.playCloudProjectNumber); a direct build, or a play build Google Play did not install, answers outlet. Attest-and-retry (one attest, one retry on attestation_required) on edge-mint and commerce claims (AttestTest, PlayIntegrityAttestationTest). A JVM desktop build answers runtime (NoAttestation)."
     },
     "identity.oidc": {
       "status": "planned",
-      "unowned": true,
+      "wp": "I-15",
       "note": "Only through a host-supplied sign-in closure, as in Swift; no work package gives the Kotlin SDK its own browser sign-in (P6-07)."
     },
     "identity.devicecode": {
@@ -155,20 +158,19 @@
       "status": "implemented"
     },
     "release.download": {
-      "status": "implemented"
+      "status": "implemented",
+      "note": "installUrl()/downloadUrl() build the transcript-pinned URLs; release.fetch(target, to, onProgress) downloads one build of a VERIFIED release record from discovery's builds template (Distribution's, else Release's) with the bearer and X-PKey headers, in bounded Range windows resumed with If-Range, and keeps nothing unless size and SHA-256 match (DeliveryHelpersTest); distribution.downloadModel()/thisPlatform() type the public download page."
     },
     "release.record": {
       "status": "implemented"
     },
     "release.fetch": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-K13, SDK-PARITY-PASS §5.5."
+      "status": "implemented",
+      "note": "release.fetch(target, to, onProgress): the build of a verified record from discovery's builds template with the bearer, bounded Range windows (the last one open-ended) resumed with If-Range, nothing kept unless size and SHA-256 match (DeliveryHelpersTest); the release-fetch-gated transcript replays."
     },
     "release.distribution": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-K13, SDK-PARITY-PASS §5.5."
+      "status": "implemented",
+      "note": "distribution.downloadModel() and thisPlatform() type GET /<p>/distribution/download.json (DeliveryHelpersTest); the distribution-download-model transcript replays."
     },
     "update.check": {
       "status": "implemented",
@@ -176,12 +178,11 @@
     },
     "update.feed": {
       "status": "implemented",
-      "note": ":core's verifyFeed, feedClaims, reloadFeeds and commitFeed (every feedCases vector, FeedCasesTest); UpdateClient.channelFeed() and decide() run them through runUpdateCheck, and Core keeps the feeds slice and its seq floors (the update-feed-rollback transcript)."
+      "note": ":core's verifyFeed, feedClaims, reloadFeeds and commitFeed (every feedCases vector, FeedCasesTest); UpdateClient.channelFeed() and decide() run them through runUpdateCheck, and Core keeps the feeds slice and its seq floors (the update-feed-rollback transcript). update.feedUrl(kind) and appcastUrl() expand discovery's appcast, winsparkle, velopack, appInstaller and zsync templates; a template the Worker does not advertise is the typed product N/A (DeliveryHelpersTest)."
     },
     "update.feeds": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-K13, SDK-PARITY-PASS §5.5."
+      "status": "implemented",
+      "note": "update.feedUrl(kind) and appcastUrl() over discovery's update.endpoints by feedUrlFrom; every feed-url-matrix.json row (FeedUrlMatrixTest); a missing template is the typed product N/A."
     },
     "update.decide": {
       "status": "implemented",
@@ -193,7 +194,7 @@
     },
     "update.driver": {
       "status": "implemented",
-      "note": ":update's InstallDriver port; :android's PlayInstallDriver (play: In-App Updates, flexible or immediate by the decision's urgency and optionally Play's priority and staleness, completing a downloaded update, staging-aware) and DirectInstallDriver (direct: the verified record's one payload downloaded to private storage, size and SHA-256 checked, then :platform's verified PackageInstaller session, every refusal surfaced as swap-refused), against FakeAppUpdateManager and an installer fake (PlayInstallDriverTest, DirectInstallDriverTest); the flavour boundary holds (tools/check_flavours.sh). JVM desktop (UK-40): :update's DesktopInstallDriver, the default UpdateClient.install uses on a JVM and PolarisKeyDesktop wires: the verified record's one payload for the decision's build, fetched resumably by OkHttpArtifactFetch (the minimal fetch until SP-K13's release.fetch; the bearer kept to the control plane's origin), size and SHA-256 checked before the OS opens it (open, ShellExec, xdg-open or an AppImage run), a mismatch opening nothing (DesktopInstallDriverTest). The internal-track and self-update device runs are the owner's (P6-12 brief)."
+      "note": ":update's InstallDriver port; :android's PlayInstallDriver (play: In-App Updates, flexible or immediate by the decision's urgency and optionally Play's priority and staleness, completing a downloaded update, staging-aware) and DirectInstallDriver (direct: the verified record's one payload downloaded to private storage, size and SHA-256 checked, then :platform's verified PackageInstaller session, every refusal surfaced as swap-refused), against FakeAppUpdateManager and an installer fake (PlayInstallDriverTest, DirectInstallDriverTest); the flavour boundary holds (tools/check_flavours.sh). A Play flexible update reports its download and finishes with a restart (ProgressiveInstallDriver: progress, finish, resume). JVM desktop (UK-40): :update's DesktopInstallDriver, the default UpdateClient.install uses on a JVM and PolarisKeyDesktop wires: the verified record's one payload for the decision's build, fetched resumably by OkHttpArtifactFetch (the minimal fetch until SP-K13's release.fetch; the bearer kept to the control plane's origin), size and SHA-256 checked before the OS opens it (open, ShellExec, xdg-open or an AppImage run), a mismatch opening nothing (DesktopInstallDriverTest); UpdateClient.install journals update_applied when it hands off (§3.13). The internal-track and self-update device runs are the owner's (P6-12 brief)."
     },
     "update.bootguard": {
       "status": "implemented",
@@ -204,9 +205,8 @@
       "note": ":core's detectOutlet passes every outlet-matrix.json row in :conformance; on Android :android's AndroidOutletSignalReader turns :platform's InstallSource into android.installSource and android.installerMismatch, and every Android row of the matrix replays through it (AndroidOutletTest). A JVM desktop observes no signal (NoOutletSignals): detection falls to the stamp."
     },
     "crash.tags": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-K13, SDK-PARITY-PASS §5.5."
+      "status": "implemented",
+      "note": "client.crashTags(): release app@<version>[+<build>], environment the channel, pkey.outlet when known, as the Worker's Sentry hook reads them (DeliveryHelpersTest)."
     },
     "packs.record": {
       "status": "implemented",
@@ -315,7 +315,7 @@
     },
     "packs.transport.steam": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-28",
       "except": [
         {
           "runtime": "android",
@@ -340,12 +340,12 @@
     },
     "ui.boot": {
       "status": "planned",
-      "unowned": true,
-      "note": "SP-K06, SDK-PARITY-PASS §5.5."
+      "wp": "SP-20",
+      "note": "The one-call boot is :ui's PolarisBootState.launch over client.bootHost(), an Android library; there is no JVM boot API the :conformance replayer can drive, so boot-cold-register cannot replay yet."
     },
     "ui.kit": {
       "status": "implemented",
-      "note": "P6-11's :ui (polaris-key-ui, Jetpack Compose + Material 3, Android): PolarisBoot over :core's stage machine, the gate (every terminal state and the grace banner), activation, sign-in with QR, settings, devices, the update banner and prompt and pack progress, each with a StateFlow state holder; neutral over the host's MaterialTheme by default, Polaris Key branding behind PolarisBranding.PolarisKey and the Powered-by badge behind showPoweredBy. Proof: every screen's Roborazzi snapshots (light, dark, 200 % font, phone, tablet; neutral and branded) plus the branding, contrast and TalkBack suites."
+      "note": "Android only: there is no JVM desktop kit yet (SP-K12's Compose Multiplatform target), and the registry allows no jvm exception for ui.kit until SP-00 adds one (notes/SDK-PARITY-PASS.md SP-01). P6-11's :ui (polaris-key-ui, Jetpack Compose + Material 3, Android): PolarisKeyApp (the one-call wiring, LocalPolarisKey and the remember* helpers), PolarisBoot over :core's stage machine, the gate (every terminal state and the grace banner), activation, sign-in with QR, settings, devices, the update banner and prompt and pack progress, each with a StateFlow state holder; neutral over the host's MaterialTheme by default, Polaris Key branding behind PolarisBranding.PolarisKey and the Powered-by badge behind showPoweredBy. Proof: every screen's Roborazzi snapshots (light, dark, 200 % font, phone, tablet; neutral and branded) plus the branding, contrast and TalkBack suites."
     },
     "ui.cli": {
       "status": "na",
@@ -354,9 +354,8 @@
       "note": "This SDK ships a widget kit (ui.kit); the terminal kit is the headless SDKs' expectation."
     },
     "commerce.receipt": {
-      "status": "planned",
-      "wp": "LX-20",
-      "note": "Play Billing is a store edge; LX-20 wires Play purchases into the Kotlin SDK client over P6-01's Worker bridge."
+      "status": "implemented",
+      "note": "client.commerce (:sdk's CommerceClient, P6-01): binding() and claim(store, payload) with claimPlay, claimSteam and claimAppStore, ClaimResult Ok / NotOwned / AttestationRequired / Refused(code, reason) (the host syncs after an Ok claim, as the transcript pins), attest-and-retry on attestation_required, hiddenHere/isUnlocked (App Store 3.1.3(b)); the commerce-claim transcript replays. Steam claims work on the JVM (the host passes the GetAuthTicketForWebApi hex ticket); Play Billing's one-call purchase and restore are :billing's PolarisPlayBilling in polaris-key-billing (obfuscatedAccountId = the binding, claim, acknowledge after the claim)."
     }
   }
 }

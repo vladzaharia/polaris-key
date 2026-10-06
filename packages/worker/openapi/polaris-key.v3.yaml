@@ -7284,7 +7284,11 @@ paths:
         2026-10-05). Renders "Choose a license for this device": the product, the device label
         (`deviceName`, or "This browser" for the redirect flow) and one radio row per candidate
         license (the account's usable licenses, plus the identity's own unattached `sub`-keyed
-        license) with its tier, origin, its seat count ("1 of 3 devices", or "Account-wide · 2 of 2 devices" for a sign-in license) and expiry. The first free row in
+        license) with its tier, its seat count ("1 of 3 devices", for every license) and its
+        origin and term in plain words ("From signing in", "Steam key", "From Steam", "Added
+        with a key", then "Lifetime" or "Expires <date>"); no license is labelled by type, since
+        every license is account-bound (owner decision 2026-10-05). Only a store's name is
+        shown, never an order id or purchase key. The first free row in
         rank-first order (no expiry, then the latest expiry, then the oldest) is preselected.
         A full row is disabled ("No free devices") and offers **Replace a device** (its
         seat-holding devices, the least recent preselected, when the account owns it and the
@@ -7309,7 +7313,7 @@ paths:
                     <form method="post" action="https://key.plrs.im/djdl/identity/auth/choose">
                       <input type="hidden" name="choice" value="Qm9sZC1jaG9pY2UtdG9rZW4">
                       <label class="choice"><input type="radio" name="license" value="lic_std" checked> <span class="tag">Standard</span> 1 of 3 devices · From the developer · Lifetime</label>
-                      <label class="choice is-disabled"><input type="radio" name="license" value="lic_old" disabled> <span class="tag">Starter</span> Account-wide · 1 of 1 device · Lifetime · No free devices</label>
+                      <label class="choice is-disabled"><input type="radio" name="license" value="lic_old" disabled> <span class="tag">Starter</span> 1 of 1 device · From signing in · Lifetime · No free devices</label>
                       <button class="button" type="submit" name="action" value="use">Use this license</button>
                       <button class="button secondary" type="submit" name="action" value="cancel">Cancel</button>
                     </form>

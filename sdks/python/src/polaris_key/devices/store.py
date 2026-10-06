@@ -129,6 +129,9 @@ def _read_maybe(path: str) -> Optional[str]:
 class FileStore:
     """0600 file-backed store under ``<configDir>/<product>/``."""
 
+    #: Persists to disk, so the SDK's local state files go to the state directory too.
+    persistent = True
+
     def __init__(self, product_slug: str, config_dir: str) -> None:
         self._product_slug = product_slug
         self._dir = os.path.join(config_dir, product_slug)
@@ -204,6 +207,9 @@ class KeyringStore:
     ``status()`` reports ``file`` exactly when :meth:`get_token` would return the file's token
     or the keyring cannot be read.
     """
+
+    #: Persists to disk, so the SDK's local state files go to the state directory too.
+    persistent = True
 
     def __init__(
         self,

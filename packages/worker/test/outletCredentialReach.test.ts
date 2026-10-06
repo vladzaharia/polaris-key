@@ -45,6 +45,16 @@
  *      path gets a token, minted after the product's pin is checked — and the open itself refuses
  *      a product whose pin does not match.
  *
+ * UX-69 adds the TRANSIENT path (`TransientOutletCredential`: an unsaved value held for one
+ * request, for the live check a connect form runs on paste) and guards it in one more direction:
+ *
+ *  11. **The transient path.** Only the owner and the store-connections handler name
+ *      `transientOutletCredential` (the one place an unsaved value becomes a credential); only the
+ *      owner, the token helpers and the Distribution service call `.reveal()` (the checks that send
+ *      it to its store); and the `transient…Token` minters are named only there too. Nothing on the
+ *      path seals, caches or writes: `credentialCheck.test.ts` proves no row, no KV key and no
+ *      audit row survives a check, and that the value never appears in a response or a log.
+ *
  * Adding an entry to any allowlist is a custody decision: it needs a review that says why, and
  * the threat model's review trigger (§9) applies. P6-02 added one reviewed entry: see
  * `TOKENS_IMPORT_ALLOW_FILES`.
@@ -139,6 +149,17 @@ const PLATFORM_OPENER_ALLOW_FILES = [
   "src/services/distribution/connectors/msstore/token.ts",
   // Reviewed (A-16): Steam uses the raw key per call (no token); the open checks the pin.
   "src/services/distribution/commerce/steam.ts",
+];
+
+// ── UX-69: the transient path ─────────────────────────────────────────────────────────────────
+const TRANSIENT_MAKER_ALLOW_FILES = [
+  "src/core/outletCredentials.ts",
+  "src/admin/handlers/platformStoreConnections.ts",
+];
+const REVEAL_ALLOW_PREFIXES = ["src/services/distribution/"];
+const REVEAL_ALLOW_FILES = [
+  "src/core/outletCredentials.ts",
+  "src/core/outletTokens.ts",
 ];
 
 interface Source {
@@ -252,6 +273,19 @@ function reachViolations(sources: Source[]): string[] {
       /\bopenPlatformCredential\b/.test(body)
     )
       out.push(`${src.file} names the platform-credential opener`);
+    if (
+      !TRANSIENT_MAKER_ALLOW_FILES.includes(src.file) &&
+      /\btransientOutletCredential\b/.test(body)
+    )
+      out.push(`${src.file} makes a transient credential`);
+    const revealOk =
+      REVEAL_ALLOW_FILES.includes(src.file) ||
+      REVEAL_ALLOW_PREFIXES.some((p) => src.file.startsWith(p));
+    if (
+      !revealOk &&
+      /\.reveal\s*\(|\btransient(?:Asc|Google|MsStore)\w*Token\b/.test(body)
+    )
+      out.push(`${src.file} reveals a transient credential`);
     const team = /\{\s*team\s*:/;
     if (
       !PLATFORM_TEAM_PURPOSE_ALLOW_FILES.includes(src.file) &&
@@ -289,6 +323,8 @@ describe("outlet-credential reach", () => {
       ...PLATFORM_WRITER_ALLOW_FILES,
       ...PLATFORM_OPENER_ALLOW_FILES,
       ...TOKENS_IMPORT_ALLOW_FILES,
+      ...TRANSIENT_MAKER_ALLOW_FILES,
+      ...REVEAL_ALLOW_FILES,
     ])
       expect(existsSync(join(WORKER_ROOT, f)), f).toBe(true);
   });
@@ -461,6 +497,33 @@ describe("outlet-credential reach", () => {
     ).toEqual([
       "src/services/distribution/connectors/play/run.ts builds a team-wide platform purpose",
       "src/services/distribution/commerce/steam.ts builds a team-wide platform purpose outside fetchSteamApps",
+    ]);
+  });
+
+  it("UX-69: the transient path is made by the store-connections handler and revealed only by Distribution and the token helpers", () => {
+    expect(
+      reachViolations([
+        {
+          file: "src/admin/handlers/outletCredentials.ts",
+          text: 'const t = await transientOutletCredential("asc-api-key", raw);',
+        },
+        {
+          file: "src/admin/handlers/platformStoreConnections.ts",
+          text: "const key = t.credential.reveal().p8;",
+        },
+        {
+          file: "src/core/attestation.ts",
+          text: "await transientGoogleAccessToken(cred, scopes, now);",
+        },
+        {
+          file: "src/services/distribution/connectors/asc/platform.ts",
+          text: "const { p8 } = o.cred.reveal();",
+        },
+      ]),
+    ).toEqual([
+      "src/admin/handlers/outletCredentials.ts makes a transient credential",
+      "src/admin/handlers/platformStoreConnections.ts reveals a transient credential",
+      "src/core/attestation.ts reveals a transient credential",
     ]);
   });
 });

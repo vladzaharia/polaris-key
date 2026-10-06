@@ -33,13 +33,13 @@
     },
     "core.store": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-27",
       "note": "P1-02 ships the 0600 file store with surfaced failures and store_status() (file or indexeddb, degraded not-persistent). PKeyCore picks a platform store by default when its plugin is present (Keychain, then Keystore, then the file store): iOS, P5-05's Keychain store (core/store/keychain_store.gd, PKeyKeychainStore over PKeyApple: device id and token AfterFirstUnlockThisDeviceOnly with no access group); Android, P5-06's Keystore store (core/store/keystore_store.gd, PKeyKeystoreStore over PKeyAndroid: one AndroidKeyStore AES-256-GCM key per product, StrongBox where present, blobs in noBackupFilesDir, a lost key surfaced and re-enrolled). Both migrate from the file store and surface failures as keyring-error. No work package owns a desktop keyring, so the desktop runtimes keep the file store."
     },
     "core.copy": {
       "status": "planned",
-      "unowned": true,
-      "note": "SP-G03 and SP-G13, SDK-PARITY-PASS §5.6."
+      "wp": "SP-23",
+      "note": "core/copy_generated.gd (PKeyCoreCopy) is generated from copy.en.json, but no API reads it: there is no copy.message(code)/copy.title(code) and the kit's PKeyUiCopy keeps its own table (SP-G03). Needs that API over the generated table, a unit test of its fallback and placeholders, and SP-G13's .po generation."
     },
     "license.gate": {
       "status": "implemented"
@@ -69,9 +69,7 @@
       "status": "implemented"
     },
     "license.refusals": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-G03, SDK-PARITY-PASS §5.6."
+      "status": "implemented"
     },
     "config.resolve": {
       "status": "implemented",
@@ -94,8 +92,8 @@
     },
     "config.local": {
       "status": "planned",
-      "unowned": true,
-      "note": "SP-G05, SDK-PARITY-PASS §5.6."
+      "wp": "SP-24",
+      "note": "SP-G05 persists overrides by default (PKeyConfigFileStore at user://pkey_settings.cfg) and a store write emits config_changed (tests/config/test_store.gd), but there is no config.set/config.setting API with S-17's names and nothing validates a written value against the catalog type."
     },
     "devices.fingerprint": {
       "status": "implemented",
@@ -121,9 +119,7 @@
       "note": "The report also carries the Godot keys engine and outlet (the Worker bounds them; outlet is PKeyCore.reported_outlet()), and the updater's queued update events in updates (P6-03, P3-10)."
     },
     "telemetry.updates": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-G18, SDK-PARITY-PASS §5.6. The report already carries the updater's queued events in updates (P6-03, P3-10); SP-G18 tags it against telemetry-report-updates.json."
+      "status": "implemented"
     },
     "devices.attest": {
       "status": "implemented",
@@ -157,8 +153,8 @@
     },
     "identity.oidc": {
       "status": "planned",
-      "unowned": true,
-      "note": "Native Godot has no completion path for the OIDC redirect; see P1-07, which ships device-code sign-in instead."
+      "wp": "I-15",
+      "note": "Native Godot has no completion path for the OIDC redirect: it waits on the native redirect token route (I-15). The deprecated /identity/auth/poll route is not a substitute. Until then P1-07's device-code sign-in is the path, and identity.sign_in_with_browser() opens it in the system browser."
     },
     "identity.devicecode": {
       "status": "implemented",
@@ -175,13 +171,11 @@
     },
     "release.fetch": {
       "status": "planned",
-      "unowned": true,
-      "note": "SP-G18, SDK-PARITY-PASS §5.6. core/download.gd already fetches with Range resume and checks size and SHA-256; SP-G18 tags it and teaches suite_transcripts the releaseFetch action."
+      "wp": "SP-25",
+      "note": "core/download.gd streams with Range resume and the updater checks size and SHA-256, but there is no public fetch call (only the updater's internal sidecar and APK paths) and a resume sends no If-Range, which release-fetch-gated.json records. Needs a release fetch API over PKeyDownload before suite_transcripts can map releaseFetch."
     },
     "release.distribution": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-G14, SDK-PARITY-PASS §5.6."
+      "status": "implemented"
     },
     "update.check": {
       "status": "implemented"
@@ -191,8 +185,8 @@
     },
     "update.feeds": {
       "status": "planned",
-      "unowned": true,
-      "note": "SP-G18, SDK-PARITY-PASS §5.6. The P3-10 outlet adapters already build the Sparkle, WinSparkle, Velopack and AppImageUpdate feed URLs from update.endpoints; SP-G18 tags them against feed-url-matrix.json."
+      "wp": "SP-26",
+      "note": "The updater builds the Sparkle appcast, WinSparkle and the Velopack feed directory (PKeyUpdater.feed_url, PKeyDiscovery.appcast_url_from) for this build's channel, but not the App Installer or zsync feeds, a Velopack releases.<velopackChannel> file, the channel-alias rewrite, or the typed unsupported (product) feed-url-matrix.json expects."
     },
     "update.decide": {
       "status": "implemented"
@@ -220,9 +214,7 @@
       "note": "distribution/outlet.gd PKeyOutlet.detect_outlet over distribution/outlet_signals.gd (Flatpak, snap, AppImage, Steam library and environment, itch receipt, macOS receipt and Mach-O leaf, Caskroom, Windows path conventions, Android getInstallSourceInfo through JavaClassWrapper (PKeyAndroid.install_source() reads the same facts, plus the initiator's full signer set, through the P5-06 plugin), web display mode); iOS reads AppDistributor (raced against 2 s, every launch), embedded.mobileprovision and ALTBundleIdentifier through the Apple plugin's facade (native/pkey_apple.gd, P5-05; no evidence without the plugin or before the launch read arrives); the Windows package reader is a hook that answers unavailable until a Windows native reader lands. PKeyCore.update_outlet() feeds the decision and PKeyCore.reported_outlet() the device report; PolarisKey.update.outlet() and detected() expose the result, as client.update.outlet and detected do in Node and Python."
     },
     "crash.tags": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-G14, SDK-PARITY-PASS §5.6."
+      "status": "implemented"
     },
     "packs.record": {
       "status": "implemented",
@@ -370,7 +362,7 @@
     },
     "packs.transport.msix": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-30",
       "note": "No work package owns an MSIX transport for Godot (program README §9).",
       "except": [
         {
@@ -397,7 +389,7 @@
     },
     "packs.transport.flatpak": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-30",
       "note": "No work package owns a Flatpak transport for Godot (program README §9).",
       "except": [
         {
@@ -427,9 +419,7 @@
       "note": "PKeyStages (core/stages.gd) replays every stage-matrix.json row, probe, guard and confirm case; PKeyBoot drives every row through PolarisKey.boot() with a scripted host (suite_boot)."
     },
     "ui.boot": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-G18, SDK-PARITY-PASS §5.6. PolarisKey.boot() and PKeyBoot already run it (suite_boot); SP-G18 tags them and teaches suite_transcripts the boot action."
+      "status": "implemented"
     },
     "ui.kit": {
       "status": "implemented",

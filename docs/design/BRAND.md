@@ -261,14 +261,14 @@ exact kit gold.
 
 ### 4.6 Scales
 
-| Group     | Tokens                                                                                                                                                                                                        |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Space     | `--pk-space-{0,0_5,1,1_5,2,3,4,5,6,8,10,12,16,20,24}` on a 4 px grid (Tailwind `--spacing: 0.25rem`, so `p-4` = `--pk-space-4`)                                                                               |
-| Radius    | `none 0`, `xs 2px`, `sm 4px`, `md 6px` (controls), `lg 10px` (cards), `xl 18px` (the badge frame's `rx`), `full`                                                                                              |
-| Elevation | `--pk-elevation-{0..3}`: page-ground-ink shadows, stronger in light; on dark the surface step does the layering                                                                                               |
-| Motion    | `--pk-duration-{instant 0, fast 120ms, base 200ms, slow 320ms}`; `--pk-ease-{standard, enter, exit}`                                                                                                          |
-| Type      | `--pk-font-sans` (variable Rubik), `--pk-font-mono` (JetBrains Mono); `--pk-font-size-*` / `--pk-line-height-*` for `xs 12/16 … 5xl 48`; `--pk-font-weight-{regular 400, medium 500, semibold 600, bold 700}` |
-| UI kits   | `--pk-kit-*` in `kit.css` (component measures, the per-platform type scale, highlight, scrim, the danger solid): [UI-KITS.md §2.1](UI-KITS.md#21-generated-never-hand-copied)                                 |
+| Group     | Tokens                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Space     | `--pk-space-{0,0_5,1,1_5,2,3,4,5,6,8,10,12,16,20,24}` on a 4 px grid (Tailwind `--spacing: 0.25rem`, so `p-4` = `--pk-space-4`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Radius    | `none 0`, `xs 2px`, `sm 4px`, `md 6px` (controls), `lg 10px` (cards), `xl 18px` (the badge frame's `rx`), `full`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Elevation | `--pk-elevation-{0..3}`: page-ground-ink shadows, stronger in light; on dark the surface step does the layering                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Motion    | Durations `--pk-duration-{instant 0, micro 80ms, fast 120ms, base 200ms, moderate 260ms, slow 320ms, deliberate 480ms, shimmer 1600ms}`; easings `--pk-ease-{standard, enter, exit, emphasized, spring}` (`spring` is a `linear()` curve with a 4 % overshoot, `standard` where `linear()` is unsupported); distances `--pk-motion-distance-{xs 2px, sm 4px, md 8px, lg 12px, xl 24px}`; scales `--pk-motion-scale-{press 0.98, enter 0.98, pop 0.9}`; `--pk-stagger-step` 30ms, `--pk-stagger-max` 6; delays `--pk-delay-{skeleton 150ms, highlight 1600ms}` (not motion: never collapsed). §7.5 and notes/S-23 §5 |
+| Type      | `--pk-font-sans` (variable Rubik), `--pk-font-mono` (JetBrains Mono); `--pk-font-size-*` / `--pk-line-height-*` for `xs 12/16 … 5xl 48`; `--pk-font-weight-{regular 400, medium 500, semibold 600, bold 700}`                                                                                                                                                                                                                                                                                                                                                                                                       |
+| UI kits   | `--pk-kit-*` in `kit.css` (component measures, the per-platform type scale, highlight, scrim, the danger solid): [UI-KITS.md §2.1](UI-KITS.md#21-generated-never-hand-copied)                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 
 **Monospace** is **JetBrains Mono** (SIL OFL 1.1; variable, wght 400–600, about 30 KB as a latin
 WOFF2), the kit mono for keys, user codes, hashes and code, so a key reads the same on every OS
@@ -436,8 +436,8 @@ Rules:
 4. **The star never changes colour, rotates or animates.** Only the bit's fill moves.
 5. **Smooth, reduced-motion-aware transitions.** The bit eases between section colours over
    `--pk-duration-base` with `--pk-ease-standard` (class `polaris-section-bit`, in tokens.css).
-   Under `prefers-reduced-motion: reduce` the transition is removed and every duration token is
-   0 ms, so the change is instant.
+   Under `prefers-reduced-motion: reduce` (or `data-motion="reduce"` on `<html>`) the transition
+   is removed and every duration token is 0 ms, so the change is instant.
 6. **Mono stays mono**: under a one-ink theme the bit is the same ink as everything else.
 7. **CSP-safe markup.** No renderer emits an inline `style`; the live bit is coloured by the
    `polaris-live-bit` class in tokens.css, so lockup `innerHTML` is safe under a `style-src`
@@ -524,13 +524,34 @@ The ring is violet in every section and both themes (≥ 3:1 everywhere).
 
 ### 7.5 Motion
 
-- Use only the duration and easing tokens. They collapse to 0 ms under reduced motion, so a
-  component animating through them needs no extra code.
-- Motion is functional: state changes (open/close, expand, the section bit, toasts). No ambient,
-  looping or decorative motion; no parallax.
+The one motion system for the console, the portal, the sign-in card and the UI kits is
+[notes/S-23](../research/2026-09-29-godot-omniplatform/notes/S-23-motion-system.md): the tokens
+of §4.6 (S-23 §5) and nine named patterns (enter, exit, morph, expand, shared-element,
+stagger-list, success, skeleton, press; S-23 §6).
+
+- **Motion is functional and expressive within the tokens**: state changes (open and close,
+  expand, the section bit, toasts), navigation (route, tab and step transitions), and the brief
+  success moments of [EXPERIENCE §0.7](EXPERIENCE.md#07-moments-of-delight), which burst plain
+  sparks in the section accent once per moment at `deliberate`, never the mark.
+- **Use only the motion tokens**: durations, easings, distances, scales, the stagger and the
+  delays. Every duration and the stagger step collapse to 0 ms under reduced motion, so a
+  component animating through them needs no extra code. There is no `quick` step: exits use
+  `fast`.
+- **Only loading indicators loop**: the spinner and the skeleton shimmer (period `shimmer`). No
+  ambient or decorative motion; no parallax.
+- **Nothing that blocks input runs longer than `slow` plus `micro`**; success bursts, count-ups and
+  highlight fades (`deliberate`) never block input. Animate transform and opacity only, with
+  S-23's three named exceptions (the expand pattern's grid rows, colour on small elements, SVG
+  stroke draws).
+- **Reduced motion swaps instantly** (S-23 D3): under `prefers-reduced-motion: reduce` or the
+  in-app preference (`data-motion="reduce"` on `<html>`), tokens.css sets every
+  `--pk-duration-*` and `--pk-stagger-step` to 0 ms, and no View Transition, shimmer or burst
+  runs. The delays (`--pk-delay-skeleton`, `--pk-delay-highlight`) are not motion and stay: a
+  skeleton still waits 150 ms, a new row keeps its tint for 1.6 s. The spinner keeps turning: it
+  is a loading indicator, not decoration (S-23 §6.6).
 - **The star never animates, rotates, pulses, twinkles or orbits**, anywhere: not in a loader, not
-  in an empty state, not on hover. Loading indicators are neutral (a bar or a ring in
-  `text-subtle`), never the mark.
+  in an empty state, not on hover, not in a success moment. Loading indicators are neutral (a bar
+  or a ring in `text-subtle`), never the mark.
 
 ### 7.6 Console density and layout (data-heavy tables)
 
@@ -647,7 +668,8 @@ is nothing to browse. It never lists owners, packages or versions.
    a title it is decorative.
 4. Controls are labelled with visible text; an icon-only control needs an accessible name and a
    24 × 24 px minimum target (44 × 44 on touch).
-5. Reduced motion is honoured globally through the duration tokens; the section bit stops easing.
+5. Reduced motion (the OS setting or `data-motion="reduce"`) is honoured globally through the
+   duration tokens: every change swaps instantly and the section bit stops easing (§7.5).
 6. Respect the OS theme by default; the override is a user choice, persisted, and never forced.
 7. Do not set body text below 14 px; never use `text-subtle` for content a user must read to
    complete a task.

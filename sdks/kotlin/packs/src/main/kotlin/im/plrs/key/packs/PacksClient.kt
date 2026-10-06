@@ -29,6 +29,7 @@ import im.plrs.key.core.PackTarget
 import im.plrs.key.core.PolarisException
 import im.plrs.key.core.ReleasePin
 import im.plrs.key.core.ServiceSlug
+import im.plrs.key.core.UpdateEvent
 import im.plrs.key.core.TrustSet
 import im.plrs.key.core.UpdateCheckContent
 import im.plrs.key.core.UpdateCheckRevocations
@@ -201,7 +202,7 @@ public class PacksClient(
     /** Install the pinned release of each pack (CONTENT §10). */
     public suspend fun ensure(packIds: List<String>): List<PackInstall> {
         core.requireService(ServiceSlug.release, Feature.packsState)
-        return start().ensure(packIds)
+        return journaled(packIds.associateWith { null }) { start().ensure(packIds) }
     }
 
     /** The install state and this process's running set. */
@@ -265,12 +266,84 @@ public class PacksClient(
         metered: Boolean = false,
         answer: (suspend (Long, Boolean) -> Boolean)? = null,
         install: List<PackTarget>? = null,
-    ): BootFetchResult = runBootFetch(start(), RunBootFetchOptions(readStamp(), send, consent, metered, answer, install))
+    ): BootFetchResult {
+        val engine = start()
+        val stamp = readStamp()
+        val before = try {
+            engine.state().running.mapValues { it.value.recordSha256 to it.value.version }
+        } catch (e: Exception) {
+            emptyMap()
+        }
+        val out = runBootFetch(engine, RunBootFetchOptions(stamp, send, consent, metered, answer, install))
+        // §3.13: what the fetch changed, and what it could not install.
+        val after = try {
+            engine.state().running
+        } catch (e: Exception) {
+            emptyMap()
+        }
+        val journal = core.updateEvents
+        val changed = after.values.filter { before[it.packId]?.first != it.recordSha256 }
+        if (changed.isNotEmpty()) {
+            val setId = packSetId()
+            for (i in changed) {
+                val from = before[i.packId]?.second
+                journal.record(UpdateEvent.updateDownloaded, i.version, deliverable = i.packId, fromRelease = from, packSetId = setId)
+                journal.record(UpdateEvent.updateApplied, i.version, deliverable = i.packId, fromRelease = from, packSetId = setId)
+            }
+        }
+        if (out.result == im.plrs.key.core.BootEvent.FetchResult.failed || out.result == im.plrs.key.core.BootEvent.FetchResult.offline) {
+            val (required, essential) = bootPackOptions(stamp)
+            val targets = install?.associate { it.pack to it.release.version } ?: emptyMap()
+            for (id in (required + essential).distinct()) {
+                if (id in out.installed) continue
+                journal.record(UpdateEvent.packFailed, targets[id] ?: before[id]?.second ?: "unknown", deliverable = id, fromRelease = before[id]?.second, code = if (out.result == im.plrs.key.core.BootEvent.FetchResult.offline) ErrorCode.networkError else ErrorCode.fetchFailed)
+            }
+        }
+        return out
+    }
 
     /** Install exact releases: a `packs` decision's `install` list (plans/P4-13.md §2.6). */
     public suspend fun ensureReleases(targets: List<PackTarget>): List<PackInstall> {
         core.requireService(ServiceSlug.release, Feature.packsState)
-        return start().ensureReleases(targets)
+        return journaled(targets.associate { it.pack to it.release.version }) { start().ensureReleases(targets) }
+    }
+
+    /**
+     * §3.13 (notes/SDK-PARITY-PASS.md): a pack install that changed the running release journals
+     * `update_downloaded` and `update_applied` for that pack; a refused install journals
+     * `pack_failed` with the refusal's code, then rethrows. [wanted] maps each pack id to the
+     * release it targets, when known.
+     */
+    private suspend fun journaled(wanted: Map<String, String?>, block: suspend () -> List<PackInstall>): List<PackInstall> {
+        val journal = core.updateEvents
+        val before = try {
+            start().state().running.mapValues { it.value.recordSha256 to it.value.version }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            emptyMap()
+        }
+        val installed = try {
+            block()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            val code = (e as? PackException)?.code ?: ErrorCode.internalError
+            for ((id, target) in wanted) {
+                journal.record(UpdateEvent.packFailed, target ?: before[id]?.second ?: "unknown", deliverable = id, fromRelease = before[id]?.second, code = code)
+            }
+            throw e
+        }
+        val changed = installed.filter { before[it.packId]?.first != it.recordSha256 }
+        if (changed.isNotEmpty()) {
+            val setId = packSetId()
+            for (i in changed) {
+                val from = before[i.packId]?.second
+                journal.record(UpdateEvent.updateDownloaded, i.version, deliverable = i.packId, fromRelease = from, packSetId = setId)
+                journal.record(UpdateEvent.updateApplied, i.version, deliverable = i.packId, fromRelease = from, packSetId = setId)
+            }
+        }
+        return installed
     }
 
     /** Preflight sizes for a consent dialog. */

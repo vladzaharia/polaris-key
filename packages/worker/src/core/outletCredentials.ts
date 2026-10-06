@@ -301,6 +301,74 @@ export async function validateOutletCredential<K extends OutletCredentialKind>(
   >;
 }
 
+// ── the transient path (UX-69, SETUP.md D42) ─────────────────────────────────────────────────
+
+/**
+ * A credential value held for ONE request and never stored: the live check a connect form runs
+ * on paste, before anything is saved (`POST …/store-connections/<store>/check`).
+ *
+ * It is validated by the kind's own validator, exactly as a stored value is, and then wrapped so
+ * that the value cannot leave by accident:
+ *
+ *   - the value is a private field, read only through `reveal()` by the check that sends it to
+ *     its store (`outletCredentialReach.test.ts` keeps `transientOutletCredential` to the
+ *     store-connections handler and `reveal()` to the Distribution service and the token helpers);
+ *   - `JSON.stringify`, string conversion and Node's `inspect` all render the kind and display
+ *     metadata only, so a response, an audit row or a log line built from it carries no key;
+ *   - nothing here seals, writes, caches or audits: the value lives exactly as long as the
+ *     request that carried it. A token minted from it (`core/outletTokens.ts`, the `transient…`
+ *     functions) is never cached either.
+ */
+export class TransientOutletCredential<
+  K extends OutletCredentialKind = OutletCredentialKind,
+> {
+  readonly #value: OutletCredentialValues[K];
+
+  constructor(
+    readonly kind: K,
+    value: OutletCredentialValues[K],
+    /** Non-secret display fields (key id, issuer id, client email, …). */
+    readonly meta: OutletCredentialMeta,
+  ) {
+    this.#value = value;
+  }
+
+  /** The value itself, for the one call that sends it to its store. Never log or echo it. */
+  reveal(): OutletCredentialValues[K] {
+    return this.#value;
+  }
+
+  toJSON(): { kind: K; meta: OutletCredentialMeta; transient: true } {
+    return { kind: this.kind, meta: this.meta, transient: true };
+  }
+
+  toString(): string {
+    return `[transient ${this.kind}]`;
+  }
+
+  [Symbol.for("nodejs.util.inspect.custom")](): string {
+    return this.toString();
+  }
+}
+
+export type TransientValidation<K extends OutletCredentialKind> =
+  | { ok: true; credential: TransientOutletCredential<K> }
+  | { ok: false; message: string; field: string };
+
+/** Validate an unsaved value for `kind` into a transient credential, or the first failing field
+ *  (the same validator, and the same messages, as a stored value). Never echoes the value. */
+export async function transientOutletCredential<K extends OutletCredentialKind>(
+  kind: K,
+  raw: unknown,
+): Promise<TransientValidation<K>> {
+  const r = await validateOutletCredential(kind, raw);
+  if (!r.ok) return { ok: false, message: r.message, field: r.field };
+  return {
+    ok: true,
+    credential: new TransientOutletCredential(kind, r.value, r.meta),
+  };
+}
+
 // ── pins ─────────────────────────────────────────────────────────────────────────────────────
 
 /**

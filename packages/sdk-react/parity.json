@@ -15,9 +15,8 @@
       "note": "client-core's verifier, which the Node runner drives vector for vector and the browser runner (conformance/runners/browser, the same suites) drives in Chromium, Firefox and WebKit, through WebCrypto's Ed25519."
     },
     "core.cache": {
-      "status": "planned",
-      "unowned": true,
-      "note": "The browser adapter keeps no verified licence/config cache (only the signed update slices, P3-05); on desktop the host's Node SDK holds it. No work package gives the browser one."
+      "status": "implemented",
+      "note": "SP-R02: bearer mode keeps a verified CacheRecordV3 in IndexedDB (signed artifacts only: the trust manifest and both documents, ETags, the unsigned hints that only tighten the gate), re-verified against the pins on every load (src/browser/bearer/session.ts); the sync-etag-304 transcript replays through it. On desktop the host's Node SDK holds the cache and the renderer reads it through the bridge."
     },
     "core.bundle": {
       "status": "implemented",
@@ -31,7 +30,7 @@
     },
     "core.local": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-15",
       "note": "No local-only client in React; P1b-07 leaves it unowned."
     },
     "core.headers": {
@@ -44,15 +43,19 @@
       "status": "implemented"
     },
     "core.store": {
-      "status": "na",
-      "runtime": ["web", "desktop-bridge"],
-      "reason": "runtime",
-      "note": "New desktop-bridge N/A (P1b-01). On desktop the host process's store holds the token."
+      "status": "implemented",
+      "except": [
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "note": "On desktop the host process's store holds the token."
+        }
+      ],
+      "note": "SP-R02: bearer mode's indexedDbStore (src/browser/bearer/store.ts) implements client-core's Store: the token in its own object store, the random device id and the cache in the offline record; status() reports backend indexeddb, degraded not-persistent unless navigator.storage.persisted(). The cookie session holds no credential, so a cookie page's supports() answers it runtime-unsupported."
     },
     "core.copy": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-R03, SDK-PARITY-PASS §5.2."
+      "status": "implemented",
+      "note": "English is src/copy.generated.ts (pnpm gen:constants, from conformance/parity/copy.en.json): copyMessage/copyTitle read the error-code, gate and activation tables, describeError reads a typed activation result from the activation table only. French is the hand-written proof locale until SP-03."
     },
     "license.gate": {
       "status": "implemented"
@@ -61,10 +64,15 @@
       "status": "implemented"
     },
     "license.enroll": {
-      "status": "na",
-      "runtime": ["web", "desktop-bridge"],
-      "reason": "runtime",
-      "note": "New desktop-bridge N/A (P1b-01). On desktop the host's Node SDK enrols."
+      "status": "implemented",
+      "except": [
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "note": "On desktop the host's Node SDK enrols."
+        }
+      ],
+      "note": "SP-R02: bearer mode's POST /<p>/license/enroll, then a sync (adapter.enroll()); activate-enroll-deactivate replays through it."
     },
     "license.deactivate": {
       "status": "implemented"
@@ -76,15 +84,19 @@
       "status": "implemented"
     },
     "license.reregister": {
-      "status": "na",
-      "runtime": ["web", "desktop-bridge"],
-      "reason": "runtime",
-      "note": "New web and desktop-bridge N/As (P1b-01). On desktop the host's Node SDK re-registers inside its own sync (P1b-06); test/bridge.test.ts pins the renderer picking up the host's post-re-register state through refresh() and a pushed stateChanged."
+      "status": "implemented",
+      "except": [
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "note": "On desktop the host's Node SDK re-registers inside its own sync (P1b-06); test/bridge.test.ts pins the renderer picking up the host's post-re-register state."
+        }
+      ],
+      "note": "SP-R02: bearer mode's single re-acquire takes devices/register for a registered (or licence-less) device, as Node's chooseReacquireRoute; register-reregister-401 replays through it."
     },
     "license.refusals": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-R03, SDK-PARITY-PASS §5.2."
+      "status": "implemented",
+      "note": "src/core/activation.ts classifyActivation maps every refusal by its body code (never a collapsed 403); bearer mode's activate/enroll return it and activate-refusals replays through BearerSession. The cookie session and the desktop bridge classify through the same table."
     },
     "config.resolve": {
       "status": "implemented"
@@ -102,9 +114,8 @@
       "status": "implemented"
     },
     "config.mint": {
-      "status": "planned",
-      "unowned": true,
-      "note": "P1b-08 ports edge-mint to Node, Python and Swift only."
+      "status": "implemented",
+      "note": "SP-R02: bearer mode's GET /<p>/config/mint/<recipe>/token, memory-cached per device token until 30 s before expiry (edge-mint replays through it). Desktop: the renderer half of bridge v4's invoke(\"config\", \"mint\") is in place and is sent only to a host reporting version 4 or later; the Node Electron host is still v3 until SP-N10, so today a desktop renderer gets the typed version N/A."
     },
     "config.mirror": {
       "status": "implemented",
@@ -112,8 +123,8 @@
     },
     "config.local": {
       "status": "planned",
-      "unowned": true,
-      "note": "SP-R05, SDK-PARITY-PASS §5.2."
+      "wp": "SP-13",
+      "note": "Not built: React has no persisted device-local override API (config.set, config.setting, onConfigChange); ConfigPanel shows the delivered values only (SP-R05, SDK-PARITY-PASS §5.2)."
     },
     "devices.fingerprint": {
       "status": "na",
@@ -128,35 +139,28 @@
       "note": "New desktop-bridge N/A (P1b-01). On desktop the host's Node SDK collects them."
     },
     "devices.register": {
-      "status": "na",
-      "runtime": ["web", "desktop-bridge"],
-      "reason": "runtime",
-      "note": "New web and desktop-bridge N/As (P1b-01). On desktop the host's Node SDK registers."
+      "status": "implemented",
+      "except": [
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "note": "On desktop the host's Node SDK registers."
+        }
+      ],
+      "note": "SP-R02: bearer mode registers keylessly at load when discovery's core.registration is open (autoRegister), or on adapter.register(); register-open replays through it."
     },
     "devices.manage": {
       "status": "implemented",
-      "except": [
-        {
-          "runtime": "web",
-          "reason": "runtime"
-        }
-      ],
-      "note": "New web N/A (P1b-01). Through the desktop bridge only. A browser cookie session cannot call /<p>/devices, which authenticates with a device bearer; the browser adapter refuses with device-management-unsupported."
+      "note": "Desktop through the bridge's invoke(\"devices\", …). Web in bearer mode (SP-R02): GET /<p>/devices, PATCH and DELETE /<p>/devices/:id with the device token. A cookie-session page cannot (the routes take a device bearer) and refuses with device-management-unsupported carrying the runtime reason."
     },
     "devices.report": {
       "status": "implemented",
-      "except": [
-        {
-          "runtime": "web",
-          "reason": "runtime"
-        }
-      ],
-      "note": "Desktop through invoke(\"devices\", \"report\"). POST /<p>/devices/report accepts only a device bearer, which a browser session does not hold; the browser adapter throws report-unsupported."
+      "note": "Desktop through invoke(\"devices\", \"report\"). Web in bearer mode (SP-R02): POST /<p>/devices/report after every sync and on report(), with the browser facts (os family, cores, memory bucket, locale, time zone), caps, outlet and the update-health journal (src/browser/bearer/facts.ts); telemetry-report replays through it. A cookie-session page throws report-unsupported."
     },
     "telemetry.updates": {
       "status": "planned",
-      "unowned": true,
-      "note": "SP-R11, SDK-PARITY-PASS §5.2.",
+      "wp": "SP-14",
+      "note": "Half built: bearer mode's BearerSession queues P6-03 update events and drains at most 16 per POST /<p>/devices/report (dropping them only on a 200), but nothing records them: the adapter exposes no record call and the browser update path journals no update_offered, and the desktop renderer forwards none (SP-R11, SDK-PARITY-PASS §5.2).",
       "except": [
         {
           "runtime": "web",
@@ -176,13 +180,7 @@
     },
     "identity.devicecode": {
       "status": "implemented",
-      "except": [
-        {
-          "runtime": "web",
-          "reason": "runtime"
-        }
-      ],
-      "note": "New web N/A (P1b-01). Through the desktop bridge (beginSignIn/pollSignIn). A browser signs in with the OIDC redirect (identity.oidc)."
+      "note": "Desktop through the bridge (beginSignIn/pollSignIn, v4 adds the expiry, interval and identity). Web in bearer mode (SP-R02): POST /<p>/identity/auth/device/{start,poll} through adapter.beginSignIn(); devicecode-happy and devicecode-expired replay through it. A cookie-session page signs in by the OIDC redirect (identity.oidc)."
     },
     "release.changelog": {
       "status": "implemented"
@@ -195,14 +193,12 @@
       "note": "client-core verifyReleaseRecord (hash before signature, pinned release keys only); the browser adapter fetches by hash and persists releaseRecords in IndexedDB, desktop through the host's decide()."
     },
     "release.fetch": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-R09, SDK-PARITY-PASS §5.2."
+      "status": "implemented",
+      "note": "adapter.releaseFetch(target): discovery builds route, the bearer session's device bearer and X-PKey-* headers, held bytes resumed with Range and If-Range on the payload SHA-256, size and SHA-256 checked against the verified record before a Blob is returned; a refusal is release-refused with the server code; on desktop-bridge the host's client.release.fetch() over bridge v4 (SP-12)."
     },
     "release.distribution": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-R09, SDK-PARITY-PASS §5.2."
+      "status": "implemented",
+      "note": "adapter.downloadModel() and thisPlatform(): the public GET /<p>/distribution/download.json with no credential, the visitor's platform from the user agent; on desktop-bridge the host's client.distribution over bridge v4 (SP-12)."
     },
     "update.check": {
       "status": "implemented"
@@ -212,9 +208,8 @@
       "note": "client-core verifyFeed with floors keyed by the canonical channel; the browser adapter fetches, verifies and persists the feeds slice in IndexedDB; desktop through invoke(\"update\", \"decide\")."
     },
     "update.feeds": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-R08 (desktop), SDK-PARITY-PASS §5.2.",
+      "status": "implemented",
+      "note": "adapter.feedUrl(kind) on desktop-bridge: the host's client.update.feedUrl() over bridge v4, the typed version N/A on an older host; the web adapter answers the runtime N/A (SP-12).",
       "except": [
         {
           "runtime": "web",
@@ -233,12 +228,12 @@
     },
     "update.driver": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-15",
       "note": "No updater hand-off in React, and no work package adds one."
     },
     "update.bootguard": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-15",
       "note": "P1-09 ported the launch decision (bootGuardAction and the guard cases in stage-matrix.json); the slots, the counting and the confirmation rows come from P3-10 and P3-02."
     },
     "outlet.detect": {
@@ -246,9 +241,8 @@
       "note": "client-core's detectOutlet, re-exported; the browser adapter reads the page's display mode (readOutletSignals) and detects over the synthesised web stamp when the host names no outlet. The desktop adapter defers to the host (Node's detection)."
     },
     "crash.tags": {
-      "status": "planned",
-      "unowned": true,
-      "note": "No task yet: the lead cuts a React crashTags() task (plans/SP-00.md §5; SDK-PARITY-PASS §5.2)."
+      "status": "implemented",
+      "note": "adapter.crashTags() / crashTagsFor(): release <deliverable>@<version>[+<build>], environment the channel, pkey.outlet the resolved outlet, as the Worker Sentry hook parses them; on desktop-bridge the host's client.crashTags() over bridge v4 (SP-12)."
     },
     "packs.record": {
       "status": "implemented",
@@ -361,9 +355,8 @@
       "status": "implemented"
     },
     "ui.boot": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-R06, SDK-PARITY-PASS §5.2."
+      "status": "implemented",
+      "note": "adapter.boot() and useBoot(): client-core's stage machine over discovery, the keyless registration of a fresh install on an open product, the sync (trust, documents, report), the reacquire per core.registration, the gate, the update decision and the page's packs; on desktop-bridge the host's client.boot() over bridge v4 (SP-12)."
     },
     "ui.kit": {
       "status": "implemented"
@@ -376,8 +369,8 @@
     },
     "commerce.receipt": {
       "status": "planned",
-      "wp": "LX-20",
-      "note": "Required. LX-20 builds the client side through client-core over P6-01's Worker bridge."
+      "wp": "SP-16",
+      "note": "Required. LX-20 builds the client side through client-core over P6-01's Worker bridge. The bearer engine already speaks GET /<p>/distribution/commerce/binding and POST .../claim, but the Worker's CORS allow-list (packages/worker/src/core/cors.ts CORS_SERVICE_PATHS) does not cover them, so a cross-origin page cannot use them yet; the desktop bridge verbs wait on the v4 host (SP-N10)."
     }
   }
 }

@@ -623,9 +623,10 @@
 
   // 22 A key license and a sign-in license for one product (O-17): the key license hides its
   // counter and meter (D-54); the sign-in license keeps its device limit (D-53) and shows "2 of 3
-  // devices" like every license. No "Account-wide" label.
+  // devices" like every license. No "Account-wide" label. The key came from an App Store purchase,
+  // so its origin names the store with the key (owner, 2026-10-05).
   F({
-    id: "22-choice-account-wide",
+    id: "22-choice-sign-in",
     deskHead: appHeader({
       icon: "storytime",
       app: "Storytime",
@@ -645,7 +646,7 @@
       <h1>Choose a license for this device</h1>
       <p class="lede">Storytime will use it on Mara's iPad.</p>
       <div role="radiogroup" aria-label="Licenses for Storytime" class="rows">
-      ${lic({ name: "Storytime", tier: "Standard", meta: "Key ending 7Q2M4X · Lifetime", used: 1, limit: 5, hideCount: true, sel: true })}
+      ${lic({ name: "Storytime", tier: "Standard", meta: "App Store key ending 7Q2M4X · Lifetime", used: 1, limit: 5, hideCount: true, sel: true })}
       ${lic({ name: "Storytime", tier: "Standard", meta: "From signing in · Lifetime", used: 2, limit: 3 })}
       </div>
       ${btn("primary", "Use this license and continue")}

@@ -44,6 +44,7 @@ import {
 import { ErrorCode, Feature, SdkId } from "../constants.generated.js";
 import { SDK_VERSION } from "../version.js";
 import { KeyringStore } from "./store.js";
+import { resolveAppVersion } from "./appVersion.js";
 import { defaultDirBases, resolveDirs, type ProductDirs } from "./dirs.js";
 import {
   DEFAULT_SERVICES,
@@ -101,8 +102,10 @@ export interface CoreOptions {
   productSlug: string;
   /** MUST be `https:` — or `http://localhost` / `http://127.0.0.1` for local development. */
   baseUrl?: string;
-  /** The HOST APPLICATION's version, sent as `X-PKey-Version` and gated on by the server. */
-  version: string;
+  /** The HOST APPLICATION's version, sent as `X-PKey-Version` and gated on by the server.
+   *  Omitted: Electron's `app.getVersion()`, else the nearest `package.json` above the entry
+   *  script, with a warning when neither is found (SDK parity pass, SP-N17). */
+  version?: string;
   /** Release channel; derived from `version` when omitted. */
   channel?: string;
   /** Pinned trust set (kid → raw Ed25519 pubkey base64url). The ONLY root: keys learned from
@@ -191,8 +194,8 @@ export class CoreContext {
   constructor(opts: CoreOptions & { localOnly?: boolean }) {
     this.product = opts.productSlug;
     this.baseUrl = normalizeBaseUrl(opts.baseUrl ?? DEFAULT_BASE);
-    this.version = opts.version;
-    this.channel = opts.channel ?? channelForVersion(opts.version);
+    this.version = opts.version ?? resolveAppVersion();
+    this.channel = opts.channel ?? channelForVersion(this.version);
     this.pinnedTrust = { ...opts.trust.pinnedKeys };
     this.trustRefreshEnabled = opts.trustRefresh !== false;
     this.dirs = resolveDirs(opts.productSlug, opts);

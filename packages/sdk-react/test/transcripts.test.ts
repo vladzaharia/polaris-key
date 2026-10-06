@@ -2,6 +2,19 @@
 //
 // @pkey-feature core.discover config.schema release.changelog release.download update.feed release.record update.decide
 // @pkey-feature packs.apply.chunk
+// @pkey-feature core.sync core.cache core.store license.activate license.enroll license.deactivate
+// @pkey-feature license.reregister devices.register devices.report identity.devicecode config.mint
+// @pkey-feature commerce.receipt license.refusals
+// @pkey-feature ui.boot release.fetch release.distribution
+//
+// BEARER MODE (SDK-PARITY-PASS §3.17, SP-R02). The transcripts that authenticate with a `pkeyt_`
+// device token run through the browser's bearer engine, `BearerSession`
+// (src/browser/bearer/session.ts) — the code `browserAdapter({ auth: "bearer" })` drives —
+// over a store holding the transcript's device id and token. `licenseStatus` is the gate the
+// adapter projects from the session's state (the same `projectState` both adapters run) and
+// `tokenHeld` whether the session holds a token. A browser has no fingerprint; like the Node
+// replayer, this one hands the session a fixed hashed one, because the recordings were made by a
+// host that had one.
 //
 // The React transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, over the shared TypeScript replay engine
 // in `conformance/runners/node/transcriptReplay.ts`.
@@ -30,6 +43,14 @@
 // pack transport's own object fetch (`browserObjectFetch`, the closure `createBrowserPacks` hands
 // the engine), against the blobs template of the last discovery the transcript ran. The browser
 // sends no `X-PKey-*` headers there, which is why the recording asserts none.
+//
+// `boot` (SP-12, ui.boot) is `runBoot` over the bearer engine's driver (`bearerBootDriver`, the one
+// the adapter's `boot()` builds), with discovery through `discoverProduct`. `releaseFetch`
+// (release.fetch) is `fetchReleaseBuild` over a record built from the step's args, the
+// session's headers and bearer, and the last discovery; `args.partial` seeds the held bytes
+// with the payload's first bytes from the transcript's own 200, as the Node replayer seeds its
+// `.part` file. `downloadModel` (release.distribution) is `fetchDownloadModel`, with `current`
+// the platform group of `initial.platform`.
 //
 // `result` is `discoverProduct`'s outcome; React reports a 404 as `{kind:"error",status:404}`,
 // which is the vocabulary's `not-found`. `services` is the map the browser adapter installs from
@@ -61,6 +82,18 @@ import {
   fetchChangelog,
 } from "../src/browser/release.js";
 import { PolarisError } from "../src/core/types.js";
+import { runBoot } from "../src/core/boot.js";
+import { bearerBootDriver } from "../src/browser/boot.js";
+import { fetchReleaseBuild } from "../src/browser/releaseFetch.js";
+import { fetchDownloadModel } from "../src/browser/distribution.js";
+import { ErrorCode } from "../src/constants.generated.js";
+import type { ReleaseRecordDoc } from "@polaris-key/protocol/release";
+import { projectState } from "../src/core/adapter.js";
+import {
+  BearerSession,
+  type SignInPrompt,
+} from "../src/browser/bearer/session.js";
+import type { CacheRecordV3, Store } from "@polaris-key/client-core";
 import {
   copyServices,
   defaultServices,
@@ -109,6 +142,61 @@ function standardDiscovery(t: Transcript): DiscoveryDocument {
   } as unknown as DiscoveryDocument;
 }
 
+/** A fixed hashed fingerprint, as the Node replayer's. */
+const FINGERPRINT = {
+  components: { machineUuid: "REPLAYmachineUuid00000" },
+  hwid: "REPLAYhwid0000000000000000000000",
+};
+
+/** The store the replay starts from: the transcript's device id and token, nothing cached. */
+class TranscriptStore implements Store {
+  private cache: CacheRecordV3 | null = null;
+  token: string | null;
+  constructor(
+    private readonly deviceId: string,
+    token: string | undefined,
+  ) {
+    this.token = token ?? null;
+  }
+  async getToken() {
+    return this.token;
+  }
+  async setToken(t: string) {
+    this.token = t;
+  }
+  async clearToken() {
+    this.token = null;
+  }
+  async getDeviceId() {
+    return this.deviceId;
+  }
+  async readCache() {
+    return this.cache;
+  }
+  async writeCache(rec: CacheRecordV3) {
+    this.cache = rec;
+  }
+  async clearCache() {
+    this.cache = null;
+  }
+}
+
+/** The payload's first `n` bytes, from the transcript's own whole-payload (200) answer on
+ *  `path` (the Node replayer's `payloadPrefix`). */
+function payloadPrefix(t: Transcript, path: string, n: number): Uint8Array {
+  for (const step of t.steps)
+    for (const x of step.exchanges.items)
+      if (
+        x.request.method === "GET" &&
+        x.request.path === path &&
+        x.response.status === 200
+      )
+        return new TextEncoder()
+          .encode(ReplayServer.bodyText(x))
+          .subarray(0, n);
+  throw new Error(`${t.id}: no whole-payload answer for ${path} to seed from`);
+}
+
 async function replay(t: Transcript): Promise<void> {
   const server = new ReplayServer(t);
   let discovered: DiscoveryDocument | null = null;
@@ -122,16 +210,226 @@ async function replay(t: Transcript): Promise<void> {
     product: t.product,
     fetchImpl: server.fetch as typeof fetch,
   };
+  let clock = t.now;
+  const store = new TranscriptStore(t.initial.deviceId, t.initial.token);
+  const session = new BearerSession({
+    baseUrl: t.baseUrl,
+    product: t.product,
+    version: t.initial.version,
+    fetchImpl: base.fetchImpl,
+    now: () => clock,
+    pinned: t.trust,
+    store,
+    enabled: (slug) => belief[slug].enabled,
+    fingerprint: () => FINGERPRINT,
+  });
+  await session.init();
+  /** The gate the adapter projects from the session's state (`projectState`). */
+  const status = () => {
+    const st = session.syncState();
+    return projectState(
+      "browser",
+      { license: st.doc, config: st.config ?? {} },
+      {
+        activation: st.activation,
+        now: clock,
+        highWaterMark: st.highWaterMark ?? 0,
+        lastSyncUnauthorized: st.lastSyncUnauthorized,
+        blocked: st.blocked ?? null,
+        lastVerifiedAt: st.lastVerifiedAt ?? null,
+      },
+      { capabilities: belief },
+    ).status;
+  };
+  const discover = async () => {
+    const r = await discoverProduct(base);
+    if (r.kind === "ok") {
+      belief = copyServices(r.services);
+      discovered = r.document;
+    }
+    return r;
+  };
+  let prompt: SignInPrompt | null = null;
   for (let i = 0; i < t.steps.length; i += 1) {
     const step = server.beginStep(i);
+    clock = step.now ?? t.now;
     const observed: Record<string, JsonValue> = {};
     switch (step.action) {
-      case "discover": {
-        const r = await discoverProduct(base);
-        if (r.kind === "ok") {
-          belief = copyServices(r.services);
-          discovered = r.document;
+      case "register":
+        observed.result = (await session.register()).kind;
+        break;
+      case "sync": {
+        const r = await session.sync({ force: step.args.force === true });
+        observed.applied = r.applied;
+        observed.unauthorized = r.unauthorized === true;
+        observed.blocked = r.blocked === true;
+        const docs: Record<string, JsonValue> = {};
+        for (const [slice, o] of Object.entries(r.documents))
+          if (o && o.kind !== "skipped") docs[slice] = o.kind;
+        observed.documents = docs;
+        break;
+      }
+      case "activate":
+      case "enroll": {
+        const r =
+          step.action === "activate"
+            ? await session.activate(String(step.args.key))
+            : await session.enroll();
+        // The adapter syncs after an acquisition, as Node's facade does.
+        if (r.kind === "ok") await session.sync();
+        // license.refusals: the §3.1 kind in the shared activationResult vocabulary
+        // (`deviceLimit` → `device-limit`), and the server's code it was classified from.
+        observed.result = r.kind.replace(
+          /[A-Z]/g,
+          (c) => `-${c.toLowerCase()}`,
+        );
+        observed.code = r.code;
+        break;
+      }
+      case "deactivate":
+        await session.deactivate();
+        break;
+      case "report":
+        observed.result = await session.report();
+        break;
+      case "beginSignIn": {
+        const name = step.args.deviceName;
+        prompt = await session.beginSignIn(
+          typeof name === "string" ? { deviceName: name } : {},
+        );
+        observed.prompt = {
+          userCode: prompt.userCode,
+          verificationUri: prompt.verificationUri,
+          verificationUriComplete: prompt.verificationUriComplete,
+          expiresIn: prompt.expiresIn,
+          interval: prompt.interval,
+        };
+        break;
+      }
+      case "pollSignIn": {
+        const poll = await session.pollSignIn(prompt!);
+        observed.result = poll.status;
+        if (poll.status === "slow-down") observed.interval = poll.interval;
+        break;
+      }
+      case "waitForSignIn":
+        observed.result = (
+          await session.waitForSignIn(prompt!, { sleep: async () => undefined })
+        ).status;
+        break;
+      case "mintToken":
+        try {
+          const minted = await session.mint(String(step.args.recipeId));
+          observed.result = "ok";
+          observed.token = minted.token;
+          observed.expiresAt = minted.expiresAt;
+        } catch (e) {
+          if (!(e instanceof PolarisError)) throw e;
+          observed.result = e.wireCode ?? e.code;
         }
+        break;
+      case "commerceBinding": {
+        const b = await session.commerceBinding();
+        observed.result = "ok";
+        observed.bindingId = b.bindingId;
+        observed.products = b.products as unknown as JsonValue;
+        break;
+      }
+      case "commerceClaim": {
+        const r = await session.commerceClaim(
+          String(step.args.store) as "steam",
+          step.args.payload as never,
+        );
+        if (r.kind === "ok") {
+          observed.result = "ok";
+          observed.flag = r.flag;
+          observed.state = r.state;
+          observed.granted = r.granted;
+        } else {
+          observed.result = r.code;
+          if ("reason" in r && r.reason) observed.reason = r.reason;
+        }
+        break;
+      }
+      case "boot": {
+        const driver = bearerBootDriver({
+          session,
+          discover: async () => {
+            if (!discovered) await discover();
+          },
+          registrationPolicy: () => {
+            const core = discovered?.core as
+              | { registration?: unknown }
+              | undefined;
+            return typeof core?.registration === "string"
+              ? core.registration
+              : null;
+          },
+          licenseEnabled: () => belief.license.enabled,
+          status,
+        });
+        observed.bootOutcome = (await runBoot(driver)).outcome;
+        break;
+      }
+      case "releaseFetch": {
+        const a = step.args;
+        const build = String(a.build);
+        const sha256 = String(a.sha256);
+        const record = {
+          version: String(a.version),
+          builds: [
+            {
+              id: build,
+              platform: String(a.platform),
+              arch: String(a.arch),
+              artifacts: [{ role: "payload", sha256, size: Number(a.size) }],
+            },
+          ],
+        } as unknown as ReleaseRecordDoc;
+        const parts = new Map<string, Uint8Array>();
+        if (typeof a.partial === "number")
+          parts.set(
+            sha256,
+            payloadPrefix(t, step.exchanges.items[0]!.request.path, a.partial),
+          );
+        try {
+          const r = await fetchReleaseBuild({
+            baseUrl: t.baseUrl,
+            product: t.product,
+            fetchImpl: base.fetchImpl,
+            discovery: discovered,
+            headers: session.headers(),
+            bearer: session.bearer,
+            record,
+            buildId: build,
+            parts,
+          });
+          observed.result = "ok";
+          observed.size = r.size;
+          observed.sha256 = r.sha256;
+          expect(r.blob.size, "the verified payload").toBe(r.size);
+        } catch (e) {
+          if (!(e instanceof PolarisError)) throw e;
+          // The client's own failures; `release-refused` is the server's refusal, its code the
+          // body's (`wireCode`), the code the other SDKs report.
+          observed.result =
+            e.code === ErrorCode.releaseRefused ? "refused" : "error";
+          observed.code = e.wireCode ?? e.code;
+        }
+        break;
+      }
+      case "downloadModel": {
+        const model = await fetchDownloadModel(base);
+        observed.result = "ok";
+        observed.platforms = model.platforms.map((p) => p.platform);
+        const platform = (t.initial as { platform?: unknown }).platform;
+        observed.current = (model.platforms.find(
+          (p) => p.platform === platform,
+        ) ?? null) as unknown as JsonValue;
+        break;
+      }
+      case "discover": {
+        const r = await discover();
         observed.result =
           r.kind === "error" && r.status === 404 ? "not-found" : r.kind;
         break;
@@ -141,7 +439,14 @@ async function replay(t: Transcript): Promise<void> {
         break;
       case "changelog":
         try {
-          observed.entries = (await fetchChangelog(base)) as never;
+          // Bearer mode presents the device token, so an `entitled` changelog answers.
+          const bearer = session.bearer;
+          observed.entries = (await fetchChangelog({
+            ...base,
+            ...(bearer
+              ? { headers: { authorization: `Bearer ${bearer}` } }
+              : {}),
+          })) as never;
           observed.result = "ok";
         } catch (e) {
           if (!(e instanceof PolarisError)) throw e;
@@ -254,23 +559,26 @@ async function replay(t: Transcript): Promise<void> {
     observed.services = Object.fromEntries(
       Object.entries(belief).map(([slug, s]) => [slug, s.enabled]),
     );
+    observed.licenseStatus = status();
+    observed.tokenHeld = session.hasToken;
     for (const [key, want] of Object.entries(step.expect))
       expect(observed[key], `${t.id} step ${i}: ${key}`).toEqual(want);
   }
 }
 
 describe("HTTP transcripts: @polaris-key/react", () => {
-  it("replays what the browser transport does itself, and nothing that needs a device token", () => {
+  it("replays every transcript but the planned features': the cookie-free bearer engine closed the device-token ones", () => {
     const ids = TRANSCRIPTS.filter((t) => applies(t, MANIFEST)).map(
       (t) => t.id,
     );
-    expect(ids.sort()).toEqual([
-      "config-schema-fetch",
-      "discovery-capabilities",
-      "discovery-failure",
-      "packs-chunk-range",
-      "release-changelog",
-    ]);
+    // Planned here, so their transcripts do not apply: commerce.receipt (LX-20; the Worker's CORS
+    // list does not cover distribution/commerce yet) and telemetry.updates (the bearer engine
+    // drains a journal, but nothing in the adapter records update events yet).
+    const plannedHere = ["commerce.receipt", "telemetry.updates"];
+    const expected = TRANSCRIPTS.filter(
+      (t) => !t.features.some((f) => plannedHere.includes(f)),
+    ).map((t) => t.id);
+    expect(ids.sort()).toEqual(expected.sort());
   });
 
   for (const t of TRANSCRIPTS) {
@@ -296,6 +604,37 @@ describe("the React replayer's chunkRange mapping fails on a doctored transcript
       })),
     );
     await expect(replay(t)).rejects.toThrow(/step 1: range/);
+  });
+});
+
+// @pkey-feature release.fetch
+describe("the React replayer's releaseFetch mapping fails on a doctored transcript", () => {
+  const base = TRANSCRIPTS.find((t) => t.id === "release-fetch-gated")!;
+
+  it("a resumed body that is not the payload's tail is a mismatch, not ok", async () => {
+    const t = doctor(base, 2, (items) =>
+      items.map((x) => ({
+        ...x,
+        response: {
+          ...x.response,
+          body: "X".repeat(String(x.response.body).length),
+        },
+      })),
+    );
+    await expect(replay(t)).rejects.toThrow(/step 2: result/);
+  });
+
+  it("a whole payload sent without the device bearer is refused by the recording", async () => {
+    const t = doctor(base, 1, (items) =>
+      items.map((x) => ({
+        ...x,
+        request: {
+          ...x.request,
+          requiredHeaders: [...x.request.requiredHeaders, "x-pkey-doctored"],
+        },
+      })),
+    );
+    await expect(replay(t)).rejects.toThrow(/required header x-pkey-doctored/);
   });
 });
 

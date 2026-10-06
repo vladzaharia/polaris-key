@@ -1,0 +1,16 @@
+{
+  "name": "polaris-key-example-node-express",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx server.ts"
+  },
+  "dependencies": {
+    "@polaris-key/node": "^0.0.0",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "tsx": "^4.19.0"
+  }
+}

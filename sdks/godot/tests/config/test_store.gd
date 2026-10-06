@@ -13,6 +13,7 @@ func run(t: PKeyTestContext) -> void:
 	_locate(t)
 	await _live_file(t)
 	await _locked_keeps_file(t)
+	await _persisted_default(t)
 
 
 func _locate(t: PKeyTestContext) -> void:
@@ -109,6 +110,38 @@ func _locked_keeps_file(t: PKeyTestContext) -> void:
 	t.check("store: relaxed to default, the saved value returns", sdk.config.get_value("ui.theme") == "light" and sdk.config.get_source("ui.theme") == &"local")
 	sdk.queue_free()
 	server.queue_free()
+	PKeyTestFixtures.remove_tree(dir)
+
+
+## SDK parity §3.11: without a store of the game's own, the settings layer persists by default in
+## a PKeyConfigFileStore at PKeyOptions.settings_path, survives a restart (a new configure), never
+## replaces a store the game installed, and persist_settings = false keeps it in memory.
+func _persisted_default(t: PKeyTestContext) -> void:
+	var dir := PKeyTestFixtures.scratch_dir("cfgdefault")
+	var path := dir.path_join("pkey_settings.cfg")
+	t.check("persist: the documented default path", PKeyOptions.new().settings_path == "user://pkey_settings.cfg" and PKeyOptions.new().persist_settings)
+	var o := PKeyTestFixtures.options("http://127.0.0.1:1", PKeyMemoryStore.new("dev_x"), [S.NOW])
+	o.persist_settings = true
+	o.settings_path = path
+	var sdk := PKeyTestFixtures.new_sdk()
+	sdk.configure(o)
+	var store = sdk.config.get_override_store()
+	t.check("persist: configure installs the file store", store is PKeyConfigFileStore and store.path == path and sdk.config.is_default_override_store())
+	store.set_override("dice.animSpeed", 3.0)
+	sdk.queue_free()
+	var again := PKeyTestFixtures.new_sdk()
+	again.configure(o)
+	t.check("persist: the saved setting survives a restart", again.config.get_value("dice.animSpeed") == 3.0 and again.config.get_source("dice.animSpeed") == &"local")
+	var own := PKeyOverrideStore.new({"dice.animSpeed": 9.0})
+	again.config.set_override_store(own)
+	again.configure(o)
+	t.check("persist: a store the game installed is never replaced", again.config.get_override_store() == own and not again.config.is_default_override_store())
+	again.queue_free()
+	var off := PKeyTestFixtures.new_sdk()
+	o.persist_settings = false
+	off.configure(o)
+	t.check("persist: persist_settings = false keeps no file store", off.config.get_override_store() == null and off.config.get_value("dice.animSpeed") == null)
+	off.queue_free()
 	PKeyTestFixtures.remove_tree(dir)
 
 

@@ -34,15 +34,20 @@
 > §4.18–§4.19, §4.23–§4.25 and §4.29. Contradictions it resolved are fixed in place below (its §7
 > lists them).
 >
-> **License vocabulary (owner, 2026-10-05; SIGN-IN.md O-11, D-53–D-58).** Account-bound licenses
-> (today's "Signed-in app") are labelled **Account-wide**. **Owner decision (2026-10-05):
-> account-wide licenses stay device-limited**, and operators change the numbers. Wherever a
-> license is shown (License card, switcher, Library note, LicenseChoiceStep) the tier is a neutral
-> pill ("Standard") with "0 of 5 devices" or "Account-wide · 1 of 5 devices" beside it. "For
-> life" is **Lifetime**. When an account holds a seat license and an Account-wide license for one
-> product, the seat license hides its device counter and meter (SIGN-IN.md D-54). **Devices**, with
-> **Remove**, shows for both kinds. The Worker reports the kind as `access: "seats" | "account"` (`plans/I-04.md`
-> §F.6).
+> **License vocabulary (owner, 2026-10-05; SIGN-IN.md O-11, D-53–D-58).** **Owner decision
+> (2026-10-05): no "Account-wide" label; origin shown as plain words.** Every license is
+> account-bound, so none is labelled by type. Wherever a license is shown (License card, switcher,
+> Library note, LicenseChoiceStep) the tier is a neutral pill ("Standard") with "0 of 5 devices"
+> beside it, for every license, and the meta line says how it came to be and its term: "From
+> signing in", "Key ending 3WPLDA", "Steam key ending 3WPLDA" (the store is named with the key when
+> the key came from a store purchase), "From Steam" (store-bound, no key), "Gift", "Included with
+> <org>", then "Lifetime", "Renews 3 Mar" or "Expires 24 Dec". Sign-in licenses stay
+> device-limited (D-53), and operators change the numbers. "For life" is **Lifetime**. When an
+> account holds a key or seat license and a sign-in license for one product, the key license hides
+> its device counter and meter (SIGN-IN.md D-54). **Devices**, with **Remove**, shows for every
+> license. The Worker reports `access: "seats" | "account"` (`plans/I-04.md` §F.6) as the fact
+> behind "From signing in" and that rule, and the store of an active purchase as the product
+> view's `purchase.store` (PX-W6; the store's name only, never an order id).
 
 **Status:** draft for owner approval, revised with the owner decisions of 2026-10-04 (Appendix C,
 and the second round in Appendix E)
@@ -137,8 +142,9 @@ violet accent, no `data-service` attribute. Specifically:
   underline, selection, focus and small counts. Gold (`--pk-signed`) only on _Signed_ chips.
   Status colours always with an icon and a word.
 - **Illustration:** the stationary star (BRAND §7.7) is the only illustration, on empty, error and
-  no-context screens. A sparse static star field sits behind the login card on wide screens. Nothing
-  animates.
+  no-context screens. A sparse static star field sits behind the login card on wide screens. The
+  star and the star field never animate; everything else moves only through the shared motion
+  system (§7, [notes/S-23](../research/2026-09-29-godot-omniplatform/notes/S-23-motion-system.md)).
 - **No gradients** in chrome or fallback art. Developer key art is the developer's content and is
   shown as supplied.
 - **Theme:** dark first, following the system, with a persisted "Match my device / Dark / Light"
@@ -254,10 +260,11 @@ or the person's other sign-in methods. Profile and email reach an app only after
 The library aggregates by **product**. When a person holds several licenses for one product, the
 product page shows the best one (by status precedence, §5.3) with a license switcher in the
 License card ("2 licenses · Pro, Edu"). Per-license sections (Devices, Package access) follow the
-switcher. Each license in the card and the switcher shows its tier as a neutral pill, then "2 of 3
-devices" for a seat license or "Account-wide · 2 of 3 devices" for an Account-wide one (both are
-device-limited; SIGN-IN.md O-11, D-53); seat licenses drop the counter when the product also has
-an Account-wide license (D-54).
+switcher. Each license in the card shows its tier as a neutral pill, then "2 of 3 devices" (every license is
+device-limited; SIGN-IN.md O-11, D-53), and its origin and term ("From signing in · Lifetime");
+the switcher names each "<Tier> · <origin>" ("Standard · Sign-in", "Pro · Key …3WPLDA",
+"Standard · Steam key …3WPLDA"). Key licenses drop the counter when the product also has a
+sign-in license (D-54).
 
 ### 3.2 Global elements
 
@@ -853,20 +860,24 @@ amber "Expires in 6 days" pill.
 
 **License card, tier and devices (owner, 2026-10-05):** the tier ("Standard" when the licence has
 none) is a quiet neutral pill, an identity label rather than a status, with the device count beside
-it on the same line: "0 of 5 devices" for a key licence, "Account-wide · 1 of 5 devices" for an
-account-bound one (signed in, no key; "Account-wide" alone while the limit is unknown). Activation
-still enforces a seat limit on account-wide licences, so the page never calls them unlimited. Only
+it on the same line: "0 of 5 devices" for every licence ("1 device" while the limit is unknown).
+Under it a quiet meta line says how the licence came to be and its term, never a licence type
+(owner decision, 2026-10-05: no "Account-wide" label): "From signing in · Lifetime", "Steam key
+ending 3WPLDA · Lifetime" (or "Steam key" while the key's last characters aren't kept, G7), "From
+Steam · Expires 24 Dec 2026" for a store-bound licence with no key, "Key ending 3WPLDA" or "Added
+with a key". Activation still enforces a seat limit on sign-in licences, so the page never calls
+them unlimited. Only
 an issue status (Expired, Suspended, Device limit reached, Expires in …) sits on that line, as a
 right-aligned pill. "Updates included" reads **Lifetime** for a licence with no end. With several
-licences the picker names each by tier and how it is held ("Standard · Key", "Standard ·
-Account-wide"), adding the status only when it wants attention. When the account holds a key
-licence and an account-wide licence for the same product, the key licence shows no device counter
-(on the License card or in Devices); the account-wide licence keeps its counter. **Devices** is
-shown for both kinds, always with the device list and **Remove** (remote deauthorize, §4.22).
+licences the picker names each by tier and its short origin ("Standard · Sign-in", "Standard · Key
+…3WPLDA", "Standard · Steam key …3WPLDA"), adding the status only when it wants attention. When the
+account holds a key licence and a sign-in licence for the same product, the key licence shows no
+device counter (on the License card or in Devices); the sign-in licence keeps its counter.
+**Devices** is shown for every licence, always with the device list and **Remove** (remote deauthorize, §4.22).
 
 **States:** loading (skeleton header and two skeleton cards); not found (§4.28); load error
 (`ErrorState` with Retry); license expired (a `danger` callout with **Renew with <developer>**);
-suspended by the developer; account-wide product (Get it becomes **Open Quill** plus store links;
+suspended by the developer; a sign-in licence (Get it becomes **Open Quill** plus store links;
 no key; Devices lists the signed-in devices with **Remove**).
 
 ### 4.21 Package token created
@@ -883,7 +894,7 @@ scope and expiry, and the snippet with the real token inlined.
 
 **Remove** expands the row in place into a `danger-subtle` panel with the consequences (the seat is
 free straight away with the new count; the app on that device asks to activate next time; an email
-confirms it), **Remove Studio PC** and **Keep it**. Focus moves to the panel heading. On an Account-wide license the seat is freed the same way, and the panel adds "Studio PC signs
+confirms it), **Remove Studio PC** and **Keep it**. Focus moves to the panel heading. On a sign-in license the seat is freed the same way, and the panel adds "Studio PC signs
 out of <Product>." (SIGN-IN.md D-58).
 
 ### 4.23 Sign in with another device
@@ -1155,16 +1166,16 @@ key glyph in `accent-fg`; the header's Activate license).
 One status per product (from its best license), computed server-side once G1/G5 land and
 client-side from existing fields before then. Precedence, first match wins:
 
-| Status                | Pill (icon · word · token)              | Reason line / note                                 | Attention shelf action |
-| --------------------- | --------------------------------------- | -------------------------------------------------- | ---------------------- |
-| Suspended             | alert · "Suspended" · danger            | "Suspended by <developer>."                        | Contact <developer>    |
-| Expired               | alert · "Expired" · danger              | "Updates ended at 1.8" (or "Ended 4 Sep 2026")     | Renew with <developer> |
-| Device limit reached  | alert · "Device limit reached" · danger | "2 of 2 devices"                                   | Free a device          |
-| Key not activated     | key · "Key not activated" · info        | "Steam key"                                        | Activate on Steam      |
-| Expires soon (≤ 14 d) | clock · "Expires in 9 days" · warning   | "Studio · ends 13 Oct"                             | Renew with <developer> |
-| Offline grace ended   | alert · "Needs a check-in" · warning    | "Open <product> while online"                      | none                   |
-| Account-wide          | user · "Account-wide" · neutral         | tier first, e.g. "Standard · Account-wide"         | none                   |
-| Active                | check · "Active" · success              | tier and devices, e.g. "Lifetime · 2 of 3 devices" | none                   |
+| Status                | Pill (icon · word · token)                                  | Reason line / note                                             | Attention shelf action |
+| --------------------- | ----------------------------------------------------------- | -------------------------------------------------------------- | ---------------------- |
+| Suspended             | alert · "Suspended" · danger                                | "Suspended by <developer>."                                    | Contact <developer>    |
+| Expired               | alert · "Expired" · danger                                  | "Updates ended at 1.8" (or "Ended 4 Sep 2026")                 | Renew with <developer> |
+| Device limit reached  | alert · "Device limit reached" · danger                     | "2 of 2 devices"                                               | Free a device          |
+| Key not activated     | key · "Key not activated" · info                            | "Steam key"                                                    | Activate on Steam      |
+| Expires soon (≤ 14 d) | clock · "Expires in 9 days" · warning                       | "Studio · ends 13 Oct"                                         | Renew with <developer> |
+| Offline grace ended   | alert · "Needs a check-in" · warning                        | "Open <product> while online"                                  | none                   |
+| From signing in       | user · "From signing in" · neutral (quiet text, not a type) | tier first, e.g. "Standard · From signing in · 1 of 5 devices" | none                   |
+| Active                | check · "Active" · success                                  | tier and devices, e.g. "Lifetime · 2 of 3 devices"             | none                   |
 
 A past date is never shown as "Expires …": it is "Ended <date>" or "Updates ended at <version>".
 Expiry inside 14 days uses relative days; otherwise "until 14 Mar 2027".
@@ -1175,7 +1186,7 @@ Expiry inside 14 days uses relative days; otherwise "until 14 Mar 2027".
 | --------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------ |
 | Device limit reached                    | Free a device                                                  | Free a device                                          |
 | Steam key held, not activated           | Activate on Steam                                              | Activate on Steam                                      |
-| Account-wide (signed in, no key)        | Open <product> (website / app scheme)                          | Get it on the App Store / Google Play, else Open       |
+| Sign-in licence (no key)                | Open <product> (website / app scheme)                          | Get it on the App Store / Google Play, else Open       |
 | Build for this OS exists and is covered | Download for <OS>                                              | Store link for this OS, else **Email me the download** |
 | Covered builds exist, none for this OS  | See downloads (with "Windows and Linux only" as the meta line) | Email me the download / See downloads                  |
 | Expired, an older build is covered      | Download <last covered version>                                | Email me the download                                  |
@@ -1271,8 +1282,14 @@ again." with the reference id. Never render the HTTP status or an internal code 
   listing docs).
 - **Type scale:** page `h1` 40/44 (30 on phones); product `h1` 36 (28); card `h2` 18; tile name 18
   (16 compact); body 15–16; metadata 13; group labels and counts 12 bold.
-- **Motion:** only the duration tokens (`fast` for hover, `base` for disclosure and the inline
-  confirm, `slow` for sheets). Nothing loops. The star never moves.
+- **Motion:** the one system of [notes/S-23](../research/2026-09-29-godot-omniplatform/notes/S-23-motion-system.md) and EXPERIENCE §7.2, built by
+  phase MO (MO-05 navigation, MO-06 devices and activation, MO-07 Library and Discover). In the
+  portal: the Library tile's art and name fly into the product hero and back; routes fade through
+  with scroll reset and heading focus; the Library staggers in on first load only; tiles lift and
+  press; developer art fades in once decoded; the Remove confirm expands in place; a freed device
+  leaves the list while the seat meter and count follow; the Activate dialog morphs between steps
+  and its first success draws a check with a short burst of sparks, once per account. Only loading
+  indicators loop. The star never moves. Under reduced motion every change is an instant swap.
 - **Images:** all developer images are served **same-origin** through the media proxy (G1) because
   the site's CSP is `img-src 'self' data:`; sizes 1280 × 720 banner, 640 × 360 tile, 256 × 256 icon,
   WebP with PNG fallback.
@@ -1321,7 +1338,9 @@ WCAG 2.2 AA in both themes (BRAND §9), plus:
    cards and tabs; everything reachable without a pointer.
 8. **Text:** task-critical text ≥ 14 px; 13 px only for secondary metadata; 12 px only for group
    labels and counts; `text-subtle` never carries required information.
-9. **Motion:** reduced motion honoured through the duration tokens.
+9. **Motion:** reduced motion (the OS setting or the Reduce motion preference, MO-12) makes every
+   change an instant swap; motion never carries information on its own; focus moves when the new
+   state is in place (notes/S-23 §6.5–§6.6).
 10. **Testing:** `vitest-axe` on every page component; a Playwright axe pass over all states in both
     themes at 1440 and 390 px (PX-15).
 
@@ -1430,6 +1449,10 @@ platform identity signs in the account and links the product user.
 ---
 
 ## 11. Implementation work packages
+
+Motion is not in this table: it is phase MO of the execution program
+([notes/S-23](../research/2026-09-29-godot-omniplatform/notes/S-23-motion-system.md) §10). MO-05 to MO-07 build on the PX packages below and wait for the ones
+that own their files (MO-06 for SP-08's `DevicesCard` changes, MO-07 for PX-16).
 
 Sizes: S ≤ 1 day, M 2–4 days, L 5+ days (agent-days). ⚑ = plan mode. **Every WP** runs the green
 gate: `mise exec node@22 -- pnpm build`, `pnpm typecheck`, `pnpm test`, `pnpm lint`,

@@ -547,6 +547,57 @@ export interface PlatformStoreReleaseResult {
   cleared: { credential: string; pin: string }[];
 }
 
+/**
+ * The live credential check's answer (UX-69, SETUP.md D42; worker
+ * `services/distribution/connectors/credentialCheck.ts`). What the store found with the unsaved
+ * value, in words; never the value itself.
+ */
+export interface CredentialCheck {
+  verdict: "valid" | "warning" | "invalid" | "unavailable" | "unchecked";
+  reason:
+    | "ok"
+    | "format"
+    | "rejected"
+    | "expired"
+    | "expiring"
+    | "permission"
+    | "wrong-account"
+    | "not-found"
+    | "rate-limited"
+    | "store-down"
+    | "not-checkable";
+  /** One line: what was found ("Team 69a6de7f · 3 apps") or what is wrong. */
+  title: string;
+  /** The fix, or what a warning means. */
+  detail: string | null;
+  /** What the store reported: the account, the app count, scopes, expiry. */
+  facts: { label: string; value: string }[];
+  /** The form field a field-specific failure belongs to (`value.p8`, `value.clientSecret`). */
+  field?: string;
+  /** The store's HTTP status when it refused or failed. */
+  status?: number;
+}
+
+/** `POST …/store-connections/<store>[/credentials/<slot>]/check`. */
+export interface PlatformStoreCheckResult {
+  id: string;
+  check: CredentialCheck;
+}
+
+/** `PUT …/store-connections/<store>[/credentials/<slot>]`: metadata only, never the value. */
+export interface PlatformStoreCredentialSaved {
+  id: string;
+  source: "console";
+  meta: Record<string, string>;
+}
+
+/** `POST …/distribution/storefronts/<id>/ci-secrets/<name>/check`. */
+export interface CiSecretCheckResult {
+  storefront: string;
+  name: string;
+  check: CredentialCheck;
+}
+
 // ── products (platform registry) ──────────────────────────────────────────────
 type ProductReleaseSource = "manual" | "github" | (string & {});
 
@@ -3156,6 +3207,43 @@ const rawApi = {
       { method: "DELETE" },
     );
   },
+
+  /**
+   * The live check (UX-69): the UNSAVED value goes to the store once, through the Worker, and
+   * the answer says what it found. Nothing is stored. `slot` null is the store's primary slot.
+   */
+  checkPlatformStoreCredential: (
+    store: PlatformStore,
+    slot: string | null,
+    value: unknown,
+  ) =>
+    call<PlatformStoreCheckResult>(
+      `/manage/api/platform/store-connections/${enc(store)}${slot ? `/credentials/${enc(slot)}` : ""}/check`,
+      { method: "POST", body: JSON.stringify({ value }) },
+    ),
+  /** Store (or rotate) a slot's console credential. The connect form calls it only after a
+   *  check passed. Answers metadata only. */
+  putPlatformStoreCredential: (
+    store: PlatformStore,
+    slot: string | null,
+    value: unknown,
+  ) =>
+    call<PlatformStoreCredentialSaved>(
+      `/manage/api/platform/store-connections/${enc(store)}${slot ? `/credentials/${enc(slot)}` : ""}`,
+      { method: "PUT", body: JSON.stringify({ value }) },
+    ),
+  /** The live check of a CI secret a storefront needs (UX-69). Nothing is stored; writing the
+   *  secret to GitHub is UX-70's route. */
+  checkCiSecret: (
+    slug: string,
+    storefront: string,
+    name: string,
+    value: string,
+  ) =>
+    call<CiSecretCheckResult>(
+      `${p(slug)}/distribution/storefronts/${enc(storefront)}/ci-secrets/${enc(name)}/check`,
+      { method: "POST", body: JSON.stringify({ value }) },
+    ),
 
   // ── products (platform registry) ──────────────────────────────────────────────
   products: () => call<{ products: ProductDetail[] }>("/manage/api/products"),

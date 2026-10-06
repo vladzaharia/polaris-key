@@ -3,12 +3,13 @@
 // framework-agnostic + side-effect-free; the commander/yargs adapters are thin shells (each an
 // OPTIONAL peer dependency).
 //
-// Verbs are grouped by owning service — license (activate/enroll/deactivate/status), devices
-// (register), config (config), core (import-bundle) — so the CLI surface matches the SDK's.
+// Verbs are grouped by owning service (see `kit.ts` for the full table, `CLI_VERBS`) so the CLI
+// surface matches the SDK's: license, identity, devices, config, update, packs and core.
 
 export {
   activate,
   deactivate,
+  describeFailure,
   enroll,
   formatStoreStatus,
   getConfig,
@@ -22,7 +23,36 @@ export {
 } from "./commands.js";
 
 export {
+  argName,
+  changelog,
+  CLI_VERBS,
+  configList,
+  configReset,
+  configSet,
+  describeDecision,
+  devicesDeauthorize,
+  devicesList,
+  devicesRename,
+  doctor,
+  mint,
+  offlineRequest,
+  packsEnsure,
+  packsStatus,
+  parseCliValue,
+  progressBar,
+  secret,
+  signIn,
+  signOut,
+  updateApply,
+  updateCheck,
+  type CliGroup,
+  type CliIO,
+  type CliVerb,
+} from "./kit.js";
+
+export {
   registerPolarisCommands,
+  ttyProgress,
   type CommanderAdapterOptions,
 } from "./commander.js";
 

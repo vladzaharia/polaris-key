@@ -509,24 +509,24 @@ export const KIT_TOKENS = {
   },
   motion: {
     web: {
-      step: {
-        ms: 200,
-        easing: "standard",
-        how: "View Transition on the card: cross-fade plus an 8 px slide",
-      },
-      sheetIn: {
+      enter: {
         ms: 320,
         easing: "enter",
         how: "scale 0.98 to 1 and opacity via @starting-style; scrim fades at base",
       },
-      sheetOut: {
+      exit: {
         ms: 200,
         easing: "exit",
         how: "opacity and scale 1 to 0.98; scrim fades at base",
       },
+      morph: {
+        ms: 200,
+        easing: "standard",
+        how: "View Transition on the card: cross-fade plus an 8 px slide",
+      },
       press: { ms: 120, easing: "standard", how: "scale 0.98" },
-      progress: { ms: 200, easing: "standard", how: "width transition" },
-      waiting: {
+      meter: { ms: 200, easing: "standard", how: "width transition" },
+      skeleton: {
         ms: 0,
         easing: "linear",
         how: "countdown ring drains linearly; 2 px shimmer",

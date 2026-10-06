@@ -194,6 +194,7 @@ describe("DeviceManager — the roster", () => {
 describe("DeviceManager — device-management-unsupported", () => {
   it("a browser session degrades to the current device plus an explanation", async () => {
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl: makeFakeFetch(makeDoc()),
       now: () => NOW_SEC,
@@ -211,14 +212,13 @@ describe("DeviceManager — device-management-unsupported", () => {
     ).toBeTruthy();
     // It is an explanation (status), never a role=alert failure.
     expect(container.querySelector('[role="alert"]')).toBeNull();
-    expect(container.textContent).toMatch(
-      /not supported from a browser session/i,
-    );
+    expect(container.textContent).toMatch(/cookie session/i);
     adapter.dispose();
   });
 
   it("with no device knowable at all it renders the explanatory screen", async () => {
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl: makeFakeFetch(null),
       now: () => NOW_SEC,

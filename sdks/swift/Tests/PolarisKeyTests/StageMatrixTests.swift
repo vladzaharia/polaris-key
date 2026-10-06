@@ -1,4 +1,4 @@
-// @pkey-feature ui.stages packs.state
+// @pkey-feature ui.stages packs.state update.bootguard ui.boot
 // Cross-SDK boot stage machine conformance, driven off `conformance/corpus/v2`'s
 // `stage-matrix.json`, mirrored into this bundle's `Resources/v2/` by `pnpm gen:corpus`.
 //
@@ -105,7 +105,8 @@ final class StageMatrixTests: XCTestCase {
     }
 
     private func loadMatrix() throws -> StageMatrix {
-        try CorpusBundleLoader.load(StageMatrix.self, "stage-matrix")
+        try CorpusBundleLoader.load(
+            StageMatrix.self, (stageMatrixFile as NSString).deletingPathExtension)
     }
 
     // ── Strict mapping onto the public types ─────────────────────────────────────────
@@ -353,3 +354,6 @@ final class StageMatrixTests: XCTestCase {
         XCTAssertFalse(state.canPlayOffline)
     }
 }
+
+/// The corpus file these tests replay (its guard cases are `update.bootguard`'s proof).
+private let stageMatrixFile = "stage-matrix.json"
