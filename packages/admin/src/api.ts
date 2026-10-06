@@ -2296,8 +2296,49 @@ export interface LicenseSummary {
   maxVersion: string | null;
   identityProvider: "manual" | "oidc";
   oidcSubject?: string;
+  /** How the licence was minted: by an operator, a sign-in, or an auto-issue. */
+  origin?: LicenseOrigin;
+  /** Whether it may be deleted, and every reason it may not. */
+  deletion?: LicenseDeletion;
   modifiedBy?: string;
   modifiedAt?: number;
+}
+
+export type LicenseOrigin = "admin" | "oidc" | "enroll";
+
+/** One reason a licence cannot be deleted (`issued_active`, `store_grants`, `store_purchases`). */
+export interface LicenseDeleteReason {
+  code: string;
+  message: string;
+}
+
+export interface LicenseDeletion {
+  allowed: boolean;
+  reasons: LicenseDeleteReason[];
+}
+
+/** One row of the "Clean up duplicates" list. */
+export interface LicenseCleanupCandidate {
+  id: string;
+  name: string;
+  email: string;
+  status: LicenseStatus;
+  tier: string | null;
+  /** The owner's pairwise subject, when it has one. */
+  accountSubject: string | null;
+  deviceCount: number;
+  lastSeen: number | null;
+  /** Always `duplicate`: the account holds another usable licence (`keeps`), which stays. */
+  reason: "duplicate";
+  keeps: string;
+  deletion: LicenseDeletion;
+}
+
+export interface LicenseBulkDeleteResult {
+  ok: boolean;
+  deleted: { id: string; devices: number }[];
+  refused: { id: string; reasons: LicenseDeleteReason[] }[];
+  notFound: string[];
 }
 
 export interface KeyDto {
@@ -3668,6 +3709,22 @@ const rawApi = {
     call<{ ok: true; id: string; status: LicenseStatus }>(
       `${p(slug)}/license/licenses/${enc(id)}/${enabled ? "enable" : "disable"}`,
       { method: "POST" },
+    ),
+  /** Typed confirmation: `confirm` is `delete <id>`. */
+  deleteLicense: (slug: string, id: string, confirm: string) =>
+    call<{ ok: true; id: string; devices: number }>(
+      `${p(slug)}/license/licenses/${enc(id)}`,
+      { method: "DELETE", body: JSON.stringify({ confirm }) },
+    ),
+  /** Typed confirmation: `confirm` is `delete <n> licenses` (`delete 1 license`). */
+  deleteLicenses: (slug: string, ids: string[], confirm: string) =>
+    call<LicenseBulkDeleteResult>(`${p(slug)}/license/deletions`, {
+      method: "POST",
+      body: JSON.stringify({ ids, confirm }),
+    }),
+  licenseCleanupCandidates: (slug: string) =>
+    call<{ candidates: LicenseCleanupCandidate[] }>(
+      `${p(slug)}/license/deletions/candidates`,
     ),
   putLicenseOverrides: (slug: string, id: string, updates: OverrideUpdate[]) =>
     call<{ ok: true; id: string }>(

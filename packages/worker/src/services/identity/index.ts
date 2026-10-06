@@ -54,6 +54,18 @@ export const identityService: ServiceDescriptor = {
   authorizeRegistration: (ctx: RegistrationAuthContext) =>
     authorizeRegistration(ctx),
   /**
+   * Licence deletion (`core/licenseDelete.ts`): the portal's links to the deleted licence go, so
+   * no account's library keeps a card for a licence that no longer exists.
+   */
+  licenseDelete: {
+    statements: ({ product, licenseId }) => [
+      {
+        sql: "DELETE FROM portal_license_links WHERE product = ? AND license_id = ?",
+        params: [product, licenseId],
+      },
+    ],
+  },
+  /**
    * Identity's slice of `/.well-known/polaris.json` (design spec §4.3): the sign-in URLs and the
    * session surface a client needs, at their canonical `/identity/…` spellings.
    *
