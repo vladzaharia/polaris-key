@@ -368,9 +368,8 @@
       "note": "This SDK ships a widget kit (ui.kit); the terminal kit is the headless SDKs' expectation."
     },
     "commerce.receipt": {
-      "status": "planned",
-      "wp": "SP-16",
-      "note": "Required. LX-20 builds the client side through client-core over P6-01's Worker bridge. The bearer engine already speaks GET /<p>/distribution/commerce/binding and POST .../claim, but the Worker's CORS allow-list (packages/worker/src/core/cors.ts CORS_SERVICE_PATHS) does not cover them, so a cross-origin page cannot use them yet; the desktop bridge verbs wait on the v4 host (SP-N10)."
+      "status": "implemented",
+      "note": "SP-16: bearer mode's GET /<p>/distribution/commerce/binding and POST .../claim (browserAdapter's commerceBinding() and commerceClaim(store, payload), synced after an ok claim), cross-origin under the product's web.origins now that the Worker's CORS_SERVICE_PATHS covers both routes; commerce-claim replays through the bearer engine. Desktop: the renderer half of bridge v4's invoke(\"commerce\", \"binding\" | \"claim\"), with the host's fresh state read after an ok claim, replays commerce-claim through a v4 bridge; it is sent only to a host reporting version 4 or later, and the Node Electron host is still v3 (SP-N10), so today a desktop renderer gets the typed version N/A. Store purchase UI and restore are the UI kits' (UK-*)."
     }
   }
 }

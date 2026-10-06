@@ -52,6 +52,15 @@
 // `.part` file. `downloadModel` (release.distribution) is `fetchDownloadModel`, with `current`
 // the platform group of `initial.platform`.
 //
+// `commerceBinding` / `commerceClaim` (commerce.receipt, SP-16) are the bearer engine's
+// `commerceBinding()` and `commerceClaim(store, payload)` — the calls `browserAdapter({ auth:
+// "bearer" })` makes, cross-origin under the product's `web.origins` since the Worker's CORS list
+// covers both routes. The DESKTOP runtime replays the same transcript through the bridge (the
+// describe block "commerce through the desktop bridge" at the end of this file): `DesktopAdapter`
+// over a v4 `PolarisBridge` whose host answers `invoke("commerce", …)` by driving an engine
+// against the recording, so the renderer's verbs, their argument shape and the post-claim state
+// refresh are checked against the same exchanges.
+//
 // `result` is `discoverProduct`'s outcome; React reports a 404 as `{kind:"error",status:404}`,
 // which is the vocabulary's `not-found`. `services` is the map the browser adapter installs from
 // it (BrowserAdapter.loadCapabilities): the document's map on success, otherwise the
@@ -89,6 +98,10 @@ import { fetchDownloadModel } from "../src/browser/distribution.js";
 import { ErrorCode } from "../src/constants.generated.js";
 import type { ReleaseRecordDoc } from "@polaris-key/protocol/release";
 import { projectState } from "../src/core/adapter.js";
+import { DesktopAdapter } from "../src/desktop/desktopAdapter.js";
+import type { PolarisBridge } from "../src/desktop/bridge.js";
+import type { CommerceClaimResult } from "../src/core/types.js";
+import { makeFakeBridge, okBridgeState } from "./fixtures.js";
 import {
   BearerSession,
   type SignInPrompt,
@@ -195,6 +208,16 @@ function payloadPrefix(t: Transcript, path: string, n: number): Uint8Array {
           .encode(ReplayServer.bodyText(x))
           .subarray(0, n);
   throw new Error(`${t.id}: no whole-payload answer for ${path} to seed from`);
+}
+
+/** A commerce claim's outcome in the transcript's vocabulary: `ok` with the granted flag, or
+ *  the refusal's own wire code and reason. Shared by the bearer and the bridge replays. */
+function claimObserved(r: CommerceClaimResult): Record<string, JsonValue> {
+  if (r.kind === "ok")
+    return { result: "ok", flag: r.flag, state: r.state, granted: r.granted };
+  const o: Record<string, JsonValue> = { result: r.code };
+  if ("reason" in r && r.reason) o.reason = r.reason;
+  return o;
 }
 
 async function replay(t: Transcript): Promise<void> {
@@ -340,15 +363,7 @@ async function replay(t: Transcript): Promise<void> {
           String(step.args.store) as "steam",
           step.args.payload as never,
         );
-        if (r.kind === "ok") {
-          observed.result = "ok";
-          observed.flag = r.flag;
-          observed.state = r.state;
-          observed.granted = r.granted;
-        } else {
-          observed.result = r.code;
-          if ("reason" in r && r.reason) observed.reason = r.reason;
-        }
+        Object.assign(observed, claimObserved(r as CommerceClaimResult));
         break;
       }
       case "boot": {
@@ -571,10 +586,9 @@ describe("HTTP transcripts: @polaris-key/react", () => {
     const ids = TRANSCRIPTS.filter((t) => applies(t, MANIFEST)).map(
       (t) => t.id,
     );
-    // Planned here, so their transcripts do not apply: commerce.receipt (LX-20; the Worker's CORS
-    // list does not cover distribution/commerce yet) and telemetry.updates (the bearer engine
+    // Planned here, so their transcripts do not apply: telemetry.updates (the bearer engine
     // drains a journal, but nothing in the adapter records update events yet).
-    const plannedHere = ["commerce.receipt", "telemetry.updates"];
+    const plannedHere = ["telemetry.updates"];
     const expected = TRANSCRIPTS.filter(
       (t) => !t.features.some((f) => plannedHere.includes(f)),
     ).map((t) => t.id);
@@ -833,5 +847,149 @@ describe("the React replayer's updateDecide mapping (a synthetic transcript)", (
     const wrong = structuredClone(t);
     wrong.steps[0]!.expect.channel = "latest";
     await expect(replay(wrong)).rejects.toThrow(/channel/);
+  });
+});
+
+// ── commerce.receipt through the desktop bridge (SP-16) ───────────────────────────────────
+
+/** The transcripts the bridge replay runs: every applicable one made only of commerce steps. */
+const COMMERCE_ACTIONS = new Set(["commerceBinding", "commerceClaim"]);
+const BRIDGE_TRANSCRIPTS = TRANSCRIPTS.filter(
+  (t) =>
+    t.features.includes("commerce.receipt") &&
+    t.steps.every((s) => COMMERCE_ACTIONS.has(s.action)),
+);
+
+/**
+ * Replay a commerce transcript through `DesktopAdapter`. The bridge is a v4 host: its
+ * `invoke("commerce", "binding" | "claim")` is the host SDK's `client.commerce` over the
+ * recording — here the bearer engine against the `ReplayServer`, holding the transcript's device
+ * token as a host's store would (the Node host's own `client.commerce` replays this transcript in
+ * the Node runner). What is under test is the renderer half: the verbs it sends, the argument
+ * shape the host receives, the result it hands back, and the fresh host state it reads after an
+ * `ok` claim.
+ */
+async function replayThroughBridge(t: Transcript): Promise<void> {
+  const server = new ReplayServer(t);
+  const belief = t.initial.services
+    ? servicesFromList(t.initial.services as never)
+    : defaultServices();
+  const host = new BearerSession({
+    baseUrl: t.baseUrl,
+    product: t.product,
+    version: t.initial.version,
+    fetchImpl: server.fetch as typeof fetch,
+    now: () => t.now,
+    pinned: t.trust,
+    store: new TranscriptStore(t.initial.deviceId, t.initial.token),
+    enabled: (slug) => belief[slug].enabled,
+    fingerprint: () => FINGERPRINT,
+  });
+  const invoked: string[] = [];
+  let stateReads = 0;
+  const base = makeFakeBridge(okBridgeState());
+  const bridge: PolarisBridge = {
+    ...base,
+    version: 4,
+    async getSyncState() {
+      stateReads += 1;
+      return base.getSyncState();
+    },
+    async invoke(service: string, method: string, args?: unknown) {
+      invoked.push(`${service}.${method}`);
+      if (service === "commerce" && method === "binding")
+        return host.commerceBinding();
+      if (service === "commerce" && method === "claim") {
+        const a = args as { store: "steam"; payload: never };
+        return host.commerceClaim(a.store, a.payload);
+      }
+      throw new Error(`the test host does not answer ${service}.${method}`);
+    },
+  };
+  const adapter = new DesktopAdapter({ bridge, now: () => t.now });
+  for (let i = 0; i < 50 && adapter.snapshot().phase === "loading"; i++)
+    await new Promise((r) => setTimeout(r, 0));
+  expect(adapter.supports("commerce.receipt")).toMatchObject({
+    supported: true,
+  });
+  for (let i = 0; i < t.steps.length; i += 1) {
+    const step = server.beginStep(i);
+    const observed: Record<string, JsonValue> = {};
+    const readsBefore = stateReads;
+    if (step.action === "commerceBinding") {
+      const b = await adapter.commerceBinding();
+      observed.result = "ok";
+      observed.bindingId = b.bindingId;
+      observed.products = b.products as unknown as JsonValue;
+    } else {
+      const r = await adapter.commerceClaim(
+        String(step.args.store) as "steam",
+        step.args.payload as never,
+      );
+      Object.assign(observed, claimObserved(r));
+      // On `ok` the renderer re-reads the host's state (the flag arrives with it); a refusal
+      // changes nothing, so nothing is re-read.
+      expect(stateReads - readsBefore, `${t.id} step ${i}: state reads`).toBe(
+        r.kind === "ok" ? 1 : 0,
+      );
+    }
+    server.endStep();
+    for (const [key, want] of Object.entries(step.expect))
+      if (key in observed)
+        expect(observed[key], `${t.id} step ${i}: ${key}`).toEqual(want);
+      else
+        throw new Error(
+          `${t.id} step ${i}: the bridge replay does not observe ${key}`,
+        );
+  }
+  expect(invoked).toEqual(
+    t.steps.map((s) =>
+      s.action === "commerceBinding" ? "commerce.binding" : "commerce.claim",
+    ),
+  );
+  adapter.dispose();
+}
+
+// @pkey-feature commerce.receipt
+describe("commerce through the desktop bridge (React desktop-bridge runtime)", () => {
+  it("covers the commerce transcript", () => {
+    expect(BRIDGE_TRANSCRIPTS.map((t) => t.id)).toContain("commerce-claim");
+  });
+
+  for (const t of BRIDGE_TRANSCRIPTS) {
+    const run = applies(t, MANIFEST) ? it : it.skip;
+    run(`${t.id} through a v4 bridge`, async () => {
+      await replayThroughBridge(t);
+    });
+  }
+
+  it("fails when the claim the host forwards is not the recorded one", async () => {
+    const base = TRANSCRIPTS.find((t) => t.id === "commerce-claim")!;
+    const t = doctor(base, 1, (items) =>
+      items.map((x) => ({
+        ...x,
+        request: {
+          ...x.request,
+          body: {
+            json: { store: "steam", ticket: "00", dlcAppId: "1234560" },
+            match: "exact",
+          },
+        },
+      })),
+    );
+    await expect(replayThroughBridge(t)).rejects.toThrow(/step 1/);
+  });
+});
+
+// @pkey-feature commerce.receipt
+describe("the React replayer's commerce mapping fails on a doctored transcript", () => {
+  const base = TRANSCRIPTS.find((t) => t.id === "commerce-claim")!;
+
+  it("a refusal recorded where the transcript expects a grant", async () => {
+    const refusal = base.steps[2]!.exchanges.items[0]!.response;
+    const t = doctor(base, 1, (items) =>
+      items.map((x) => ({ ...x, response: refusal })),
+    );
+    await expect(replay(t)).rejects.toThrow(/step 1: result/);
   });
 });
