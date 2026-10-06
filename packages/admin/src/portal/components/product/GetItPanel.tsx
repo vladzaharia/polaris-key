@@ -8,6 +8,7 @@ import { formatDay, osName } from "../../model/library.js";
 import {
   getItFromDownloads,
   getItModel,
+  recommendedLabel,
   type FileRowModel,
 } from "../../model/product.js";
 import { PLATFORM_NAME, PlatformGlyph } from "../Glyphs.js";
@@ -23,6 +24,10 @@ import { DownloadButton } from "./DownloadButton.js";
  * The data is the per-product downloads view (PX-W2: the Worker's own picks, reasons and store
  * links) when this Worker has it, else `GET /api/releases`. Change platform and the phone
  * actions come with PX-09.
+ *
+ * `device` is the product page's one OS source (`resolveDevice`, §0.6 P3), the value the header's
+ * action used too: the recommendation's label and its build name the same OS. A file this site
+ * doesn't host says where to get it ("Get it from Steam"), never "Not included".
  */
 export function GetItPanel({
   product,
@@ -38,12 +43,17 @@ export function GetItPanel({
         <Skeleton className="h-40 w-full" aria-busy />
       </SectionCard>
     );
+  const who = {
+    developer: product.presentation.developer,
+    website: product.presentation.website,
+  };
   const model =
-    (downloads.data ? getItFromDownloads(downloads.data, device) : null) ??
+    (downloads.data ? getItFromDownloads(downloads.data, device, who) : null) ??
     getItModel(
       product.releases,
       device,
       product.licenses.some((l) => l.usable),
+      { ...who, stores: product.stores },
     );
   if (!model) return null;
   const { latest } = model;
@@ -66,11 +76,9 @@ export function GetItPanel({
         <p className="mb-4 rounded-lg border border-border bg-surface-sunken p-4 text-sm text-fg">
           Open this page on your computer to download {product.name}.
         </p>
-      ) : model.recommended.length ? (
+      ) : model.os && model.recommended.length ? (
         <div className="mb-5 space-y-3 rounded-xl border border-border bg-accent-subtle p-4 desk:p-5">
-          <p className="text-sm text-fg-muted">
-            Recommended for this {device.os === "macos" ? "Mac" : "computer"}
-          </p>
+          <p className="text-sm text-fg-muted">{recommendedLabel(model.os)}</p>
           {model.recommended.map((r) => (
             <div
               key={r.artifact.artifactId}
@@ -83,7 +91,8 @@ export function GetItPanel({
               </span>
               <div className="min-w-0 flex-1">
                 <p className="font-bold text-fg-strong">
-                  {device.os ? osName(device.os) : ""} · {r.title}
+                  {r.platform ? `${osName(r.platform)} · ` : ""}
+                  {r.title}
                 </p>
                 <p className="text-sm text-fg-muted">
                   {r.title === "Universal" && r.platform === "macos"
@@ -137,7 +146,23 @@ export function GetItPanel({
                       className="hidden sm:inline-flex"
                     />
                   ) : null}
-                  {r.notIncluded ? (
+                  {r.elsewhere ? (
+                    r.elsewhere.href ? (
+                      <a
+                        href={r.elsewhere.href}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex h-10 items-center gap-2 rounded-md border border-border-strong px-3 text-sm font-bold text-fg-strong hover:bg-hover"
+                      >
+                        {r.elsewhere.label}
+                        <ExternalLink aria-hidden className="size-4" />
+                      </a>
+                    ) : (
+                      <span className="text-right text-sm font-bold text-fg-strong">
+                        {r.elsewhere.label}
+                      </span>
+                    )
+                  ) : r.notIncluded ? (
                     <span className="text-right text-sm">
                       <span className="block font-bold text-fg-strong">
                         Not included

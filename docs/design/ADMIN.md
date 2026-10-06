@@ -10,6 +10,13 @@
 > §6.10. Settings follow the S-18 hub and licensing follows S-19 (both owner-approved); EXPERIENCE.md
 > §0.8 reconciles its work packages with the `ST`, `LX` and `PX` packages.
 
+> **Setup and storefronts are specified in [SETUP.md](SETUP.md) (2026-10-05).** It supersedes
+> this document's T6 wizard rules where they differ (one wizard pattern with page and drawer
+> hosts, resumable from server-side state, ending in a live verification), §2.3's Distribution rows
+> (Storefronts, Listing, App Store, Commerce, Outlets & feeds and Outlet credentials become one
+> Storefronts catalogue with one page per storefront) and the empty states of every page it lists
+> in its §4.7.
+
 > **Sign-in is specified in [SIGN-IN.md](SIGN-IN.md) (2026-10-05).** It supersedes this document's
 > sign-in parts where they differ: §2.7's Sign in row, T8's Session expired row (the console now
 > renders "Your session ended" in place on the shared card, not a dialog) and §6.10.1.
@@ -128,7 +135,7 @@ alias layer in admin absorbs the difference:
 | `SectionMark`              | `<SectionMark section={ServiceId} size={28} />`: the Pinned K whose terminal bit is `signed.mark` for `core` and the section's `accent.solid` otherwise, star unchanged                                               | `BrandBlock` (top bar)          |
 | `ServiceGlyph`             | `<ServiceGlyph id size={16 \| 24} />`: the Star Cut service and favicon cuts for distribution; lucide icons for the rest (Update: `CircleArrowUp`)                                                                    | sidebar, badges, empty states   |
 | `SignedGlyph`              | the terminal-bit rhombus as a 10–12 px UI glyph in `signed.solid`                                                                                                                                                     | `SignedBadge`                   |
-| Fonts                      | `@polaris-key/brand/fonts.css` (Rubik 400/700, latin and latin-ext WOFF2), self-hosted through Vite                                                                                                                   | both SPAs                       |
+| Fonts                      | `@polaris-key/brand/fonts.css` (variable Rubik and JetBrains Mono, latin and latin-ext WOFF2), self-hosted through Vite                                                                                               | both SPAs                       |
 | Favicons and PWA           | the kit's `04-web/key` set for `/manage` and `/`                                                                                                                                                                      | `index.html`, `manage.html`     |
 
 **Mapping from today's tokens.** `styles.css` `--pk-*` HSL channels and the

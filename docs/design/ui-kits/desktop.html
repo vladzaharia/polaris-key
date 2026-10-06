@@ -366,6 +366,80 @@
       .ver {
         font-variant-numeric: tabular-nums;
       }
+
+      /* macOS 15 fallback (the 2024 floor): the same layout on system materials. Windows have
+         the 10 pt corner, push buttons are rounded rectangles (not capsules), and the sheet drops
+         from the title bar, attached, on the window material, with the parent dimmed. */
+      .m15 .win {
+        border-radius: 10px;
+      }
+      .m15 .art {
+        border-radius: 0;
+        margin: 0;
+      }
+      .m15 .mb {
+        border-radius: 6px;
+        height: 24px;
+      }
+      .m15 .mb.xl {
+        height: 32px;
+        border-radius: 7px;
+      }
+      .m15 .sheet {
+        top: 52px;
+        border-radius: 0 0 10px 10px;
+        background: var(--m-win);
+        backdrop-filter: none;
+        box-shadow:
+          0 0 0 0.5px rgb(0 0 0 / 0.4),
+          0 12px 30px -6px rgb(0 0 0 / 0.5);
+      }
+      [data-theme="light"] .m15 .sheet {
+        background: #ececec;
+        box-shadow:
+          0 0 0 0.5px rgb(0 0 0 / 0.16),
+          0 12px 30px -6px rgb(0 0 0 / 0.22);
+      }
+      .m15 .mfield {
+        border-radius: 5px;
+      }
+      .m15 .dimwin {
+        position: absolute;
+        inset: 52px 0 0;
+        background: rgb(0 0 0 / 0.18);
+        z-index: 10;
+      }
+
+      /* Boot, status, error: compact windows sized to their content. */
+      .trio {
+        display: flex;
+        gap: 36px;
+        align-items: center;
+      }
+      .swin {
+        width: 440px;
+        min-height: 300px;
+        display: grid;
+        align-content: center;
+        justify-items: center;
+        text-align: center;
+        gap: 10px;
+        padding: 44px 40px 28px;
+      }
+      .swin .lights {
+        position: absolute;
+        top: 18px;
+        left: 18px;
+      }
+      .sglyph {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: var(--m-bezel);
+        color: var(--m-text);
+      }
     </style>
   </head>
   <body>
@@ -956,6 +1030,146 @@
           </div>
         </div>
       </figure>
+
+      <!-- 7. macOS 15 fallback -->
+      <figure>
+        <figcaption>
+          macos · macOS 15 fallback (system materials: rounded-rect buttons, the
+          attached sheet)
+        </figcaption>
+        <div class="shot m15" data-shot="macos15">
+          <div class="win gatewin">
+            <div class="art" id="art4"></div>
+            <div class="form-col">
+              <div style="position: absolute; top: 20px; left: 20px">
+                <div class="lights"><i></i><i></i><i></i></div>
+              </div>
+              <div
+                class="k-appicon"
+                data-art="tidewater"
+                data-size="64"
+                style="border-radius: 15px"
+              ></div>
+              <div style="display: grid; gap: 6px">
+                <h1 class="mtitle" style="font-size: 26px; line-height: 32px">
+                  Welcome to Tidewater Studio
+                </h1>
+                <span class="mhelp">by Harbor Audio</span>
+              </div>
+              <div style="display: grid; gap: 8px; max-width: 300px">
+                <span class="mb default xl block">Sign in</span>
+                <span class="mb xl block">Use a license key</span>
+              </div>
+            </div>
+            <div class="dimwin"></div>
+            <div class="sheet" style="width: 460px">
+              <div class="mhead">
+                <span
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="24"
+                  style="border-radius: 6px"
+                ></span
+                >Tidewater Studio <small>· Pro</small>
+              </div>
+              <div style="display: grid; gap: 4px">
+                <h2 class="mtitle">Add your license</h2>
+                <span class="mhelp" style="font-size: 13px; line-height: 18px"
+                  >Your key is in the purchase email from Harbor Audio.</span
+                >
+              </div>
+              <div>
+                <label class="mlabel">License key</label>
+                <div class="mfield focus">
+                  <span class="mono"
+                    ><span class="k-key"
+                      ><span>pkey_tidewater_7Q2MXK9RV4TC8HJN</span
+                      ><span>3WPLDA</span></span
+                    ></span
+                  >
+                </div>
+                <div class="k-verdict" style="font-size: 12px; margin-top: 6px">
+                  <span data-icon="checkCircle" data-size="14"></span>
+                  <span
+                    ><b style="font-weight: 600; color: var(--m-text)"
+                      >Tidewater Studio Pro</b
+                    >&#8201;·&#8201;Lifetime&#8201;·&#8201;3 devices</span
+                  >
+                </div>
+              </div>
+              <div class="btnrow">
+                <span class="mb">Cancel</span
+                ><span class="mb default">Activate</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 8. Boot, status, error -->
+      <figure>
+        <figcaption>
+          macos · boot, status (blocked) and error (offline)
+        </figcaption>
+        <div class="shot" data-shot="states">
+          <div class="trio">
+            <div class="win swin">
+              <div class="lights utility"><i></i><i></i><i></i></div>
+              <div
+                class="k-appicon"
+                data-art="tidewater"
+                data-size="80"
+                style="border-radius: 18px"
+              ></div>
+              <div class="k-progress" style="width: 140px; margin-top: 20px">
+                <i style="width: 45%"></i>
+              </div>
+              <span class="mhelp">Checking your license</span>
+            </div>
+            <div class="win swin">
+              <div class="lights"><i></i><i></i><i></i></div>
+              <div
+                class="k-appicon"
+                data-art="tidewater"
+                data-size="56"
+                style="border-radius: 13px"
+              ></div>
+              <h1 class="mtitle" style="margin-top: 8px">
+                Your license has ended
+              </h1>
+              <p
+                class="mhelp"
+                style="font-size: 13px; line-height: 18px; margin: 0"
+              >
+                Tidewater Studio Pro ended on 30 September. Renew to keep
+                working on your sessions.
+              </p>
+              <div class="btnrow" style="width: 100%; margin-top: 18px">
+                <span class="mb">Use a Different Key…</span
+                ><span class="mb default">Renew…</span>
+              </div>
+            </div>
+            <div class="win swin">
+              <div class="lights"><i></i><i></i><i></i></div>
+              <div class="sglyph" data-icon="wifiOff" data-size="22"></div>
+              <h1 class="mtitle" style="margin-top: 8px">
+                Can’t reach Harbor Audio
+              </h1>
+              <p
+                class="mhelp"
+                style="font-size: 13px; line-height: 18px; margin: 0"
+              >
+                Check your connection. You can keep working offline for 3 more
+                days.
+              </p>
+              <div class="btnrow" style="width: 100%; margin-top: 18px">
+                <span class="mb">Continue Offline</span
+                ><span class="mb default">Try Again</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
     </main>
     <script>
       // The product's own art at full bleed (the developer's content, never re-themed).
@@ -970,7 +1184,7 @@
             return `<path d="${d}" stroke="${["#5fe3cf", "#8eeedd", "#bff5ea", "#5fe3cf", "#8eeedd"][i]}" stroke-width="9" fill="none" stroke-linecap="round" opacity="${(0.95 - i * 0.14).toFixed(2)}"/>`;
           })
           .join("")}</svg>`;
-      ["art1", "art2", "art3"].forEach(
+      ["art1", "art2", "art3", "art4"].forEach(
         (id) => (document.getElementById(id).innerHTML = scene()),
       );
     </script>

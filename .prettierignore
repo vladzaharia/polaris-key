@@ -16,6 +16,9 @@ packages/worker/test/fixtures/registry/
 packages/worker/test/fixtures/updater-feeds/
 # P5-08's transport goldens (Manifest.json, Gradle, VDF) and Godot's Gradle template, byte-compared.
 packages/cli/test/fixtures/transport/
+# A-18i's PR-plane generator goldens (byte-compared) and the vendored winget 1.12.0 schemas.
+packages/cli/test/fixtures/pr-golden/
+packages/cli/test/fixtures/winget-schema-1.12.0/
 
 # Build caches.
 packages/docs/.astro/

@@ -1,5 +1,10 @@
 import * as React from "react";
-import { AlertCircle, Check, ClipboardPaste } from "lucide-react";
+import {
+  AlertCircle,
+  AlertTriangle,
+  Check,
+  ClipboardPaste,
+} from "lucide-react";
 import { cn } from "../../lib/cn.js";
 import { keyParts, normaliseKey } from "../model/key.js";
 
@@ -11,13 +16,25 @@ import { keyParts, normaliseKey } from "../model/key.js";
  *
  * The colouring is a mirror behind a transparent `<textarea>` (one control, one accessible
  * name); Enter submits the form instead of adding a line.
+ *
+ * Under the field sits at most one **verdict** (EXPERIENCE.md §0.6 P1 step 4): a format error,
+ * a refusal or the entries notice, with its actions. The help line shows only while there is
+ * no verdict (§6: help hidden while an error shows).
  */
+export interface KeyFieldVerdict {
+  /** `danger` marks the field invalid; `warning` (the entries notice) never does. */
+  tone: "danger" | "warning";
+  message: React.ReactNode;
+  /** The verdict's own way forward ("Sign in to that account", "Use a different key"). */
+  actions?: React.ReactNode;
+}
+
 export function KeyField({
   id,
   value,
   onChange,
   valid,
-  error,
+  verdict,
   hint,
   help,
   autoFocus,
@@ -27,8 +44,8 @@ export function KeyField({
   value: string;
   onChange: (value: string, how: "type" | "paste") => void;
   valid: boolean;
-  /** The inline error (§4.19), with `aria-invalid`. */
-  error?: React.ReactNode;
+  /** The inline verdict (§4.19); a `danger` one sets `aria-invalid`. */
+  verdict?: KeyFieldVerdict | null;
   /** "Key for Mossgarden · Little Fern", under the field. */
   hint?: React.ReactNode;
   help: React.ReactNode;
@@ -57,7 +74,12 @@ export function KeyField({
   const mac =
     typeof navigator !== "undefined" &&
     /Mac|iPhone|iPad/.test(navigator.userAgent);
-  const describedBy = [error ? errorId : null, valid ? okId : null, helpId]
+  const danger = verdict?.tone === "danger";
+  const describedBy = [
+    verdict ? errorId : null,
+    valid ? okId : null,
+    verdict ? null : helpId,
+  ]
     .filter(Boolean)
     .join(" ");
 
@@ -69,11 +91,13 @@ export function KeyField({
       <div
         className={cn(
           "relative rounded-md border bg-surface-sunken focus-within:ring-2 focus-within:ring-focus focus-within:ring-offset-2 focus-within:ring-offset-surface-overlay",
-          error
+          danger
             ? "border-danger"
-            : valid
-              ? "border-success"
-              : "border-border-strong",
+            : verdict
+              ? "border-warning"
+              : valid
+                ? "border-success"
+                : "border-border-strong",
         )}
       >
         <div
@@ -107,7 +131,7 @@ export function KeyField({
           autoCorrect="off"
           spellCheck={false}
           inputMode="text"
-          aria-invalid={error ? true : undefined}
+          aria-invalid={danger ? true : undefined}
           aria-describedby={describedBy}
           onBlur={onBlur}
           onPaste={(e) => {
@@ -145,19 +169,40 @@ export function KeyField({
         </p>
       ) : null}
       {hint}
-      {error ? (
-        <p id={errorId} role="alert" className="flex gap-2 text-sm text-fg">
-          <AlertCircle
-            aria-hidden
-            className="mt-0.5 size-4 shrink-0 text-danger"
-          />
-          <span>{error}</span>
+      {verdict ? (
+        <>
+          <p
+            id={errorId}
+            role={danger ? "alert" : "status"}
+            className="flex gap-2 text-sm text-fg"
+          >
+            {danger ? (
+              <AlertCircle
+                aria-hidden
+                className="mt-0.5 size-4 shrink-0 text-danger"
+              />
+            ) : (
+              <AlertTriangle
+                aria-hidden
+                className="mt-0.5 size-4 shrink-0 text-warning"
+              />
+            )}
+            <span>{verdict.message}</span>
+          </p>
+          {verdict.actions ? (
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {verdict.actions}
+            </div>
+          ) : null}
+        </>
+      ) : (
+        <p id={helpId} className="text-sm text-fg-muted">
+          {pasteHint
+            ? `Press ${mac ? "⌘V" : "Ctrl V"} to paste the key. `
+            : null}
+          {help}
         </p>
-      ) : null}
-      <p id={helpId} className="text-sm text-fg-muted">
-        {pasteHint ? `Press ${mac ? "⌘V" : "Ctrl V"} to paste the key. ` : null}
-        {help}
-      </p>
+      )}
     </div>
   );
 }

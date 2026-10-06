@@ -4884,7 +4884,7 @@
         "notes/S-15 §13 decision 7"
       ],
       "brief": "wp/A-18i-pr-plane-generators.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "A-18j",
@@ -7029,7 +7029,7 @@
         "plans/SP-00.md (approved 2026-10-05; decisions delegated to Claude)"
       ],
       "brief": "wp/SP-00-parity-registry-plan.md",
-      "status": "done"
+      "status": "todo"
     },
     {
       "id": "SP-08",
@@ -7512,7 +7512,7 @@
         "docs/design/BRAND.md §4, §7.1, §12"
       ],
       "brief": "wp/UK-01-brand-kit-tokens.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "UK-02",
@@ -8375,7 +8375,7 @@
         "docs/design/UI-KITS.md owner decisions (2026-10-05)"
       ],
       "brief": "wp/UK-40-kotlin-jvm-desktop.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "UK-41",
