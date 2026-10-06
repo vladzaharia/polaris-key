@@ -113,11 +113,17 @@ delegated to the lead).
 
 ## Acceptance criteria
 
-- [ ] The 21 existing Discover tests pass unchanged.
-- [ ] The prototype table passes as a Worker unit test (same rows and expectations).
-- [ ] Unknown, unlisted and ineligible products produce identical results everywhere the engine is used.
-- [ ] `boundaries.test.ts` passes.
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+- [x] The 21 existing Discover tests pass unchanged (22 on main since PS-02; all pass, the file is
+      untouched).
+- [x] The prototype table passes as a Worker unit test (same rows and expectations):
+      `test/obtainPaths.test.ts`, "the prototype's acceptance table".
+- [x] Unknown, unlisted and ineligible products produce identical results everywhere the engine is
+      used: one frozen `{ visible: false }` from `obtainPaths`, absent from `storefrontOffers`,
+      `discoverOffers` and the count, one `409 not_eligible` body from the claim.
+- [x] `boundaries.test.ts` passes.
+- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header
+      (`/Users/vlad/Repos/pk-wt/_lead/gate.sh`, GATE GREEN, scope changed; workerd typecheck and
+      smoke included; `pnpm gen:settings -- --check` up to date).
 
 ## Verify
 
