@@ -426,36 +426,57 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     pagination.mode === "cursor" ||
     (pagination.mode === "offset" && pagination.total !== undefined);
 
-  // The rows on screen. In client mode a new `data` is held back for one frame, so a list View
-  // Transition can capture the old rows before React renders the new ones (S-23 §6.3: the update
-  // runs inside the transition). Server paging and long lists take `data` as it comes.
+  // The rows on screen. In client mode, when a new `data` adds, removes or reorders rows, the old
+  // rows are held for the frame a list View Transition needs to capture them, and the new ones are
+  // rendered inside it (S-23 §6.3). Every other change (a refetch, an edit in place, the first
+  // load, server paging, a long list, reduced motion) takes `data` in the same render.
   const [held, setHeld] = React.useState(incoming);
   const listMotion =
     !serverSide &&
     incoming.length <= VIRTUALIZE_ABOVE &&
     held.length <= VIRTUALIZE_ABOVE;
-  const data = listMotion ? held : incoming;
+  const moving =
+    held !== incoming &&
+    listMotion &&
+    held.length > 0 &&
+    incoming.length > 0 &&
+    !sameRowIds(held, incoming, getRowId) &&
+    listMotionOn();
+  if (held !== incoming && !moving) setHeld(incoming);
+  const data = moving ? held : incoming;
+  /** The newest `data`, for a transition whose update runs a frame later. */
+  const latest = React.useRef(incoming);
+  latest.current = incoming;
+  /** A list transition has started and not yet rendered the new rows. */
+  const pending = React.useRef(false);
   /** The list whose rows move: the table body, or the cards list on a narrow screen. */
   const listRef = React.useRef<HTMLElement | null>(null);
   const setList = React.useCallback((el: HTMLElement | null) => {
     listRef.current = el;
   }, []);
   const scrollRef = React.useRef<HTMLDivElement>(null);
-  /** Rows to tint once the new data is on screen. */
-  const tint = React.useRef<string[]>([]);
+  /** The rows last committed, to find the created and edited ones. */
+  const committed = React.useRef(data);
   /** Has the table shown loaded data before (so a new row is a created one, not the first load)? */
   const loadedOnce = React.useRef(false);
 
+  /** A table scrolled sideways never animates: a row's snapshot is not clipped by its scroller. */
+  const scrolledSideways = (): boolean => {
+    const scroller = scrollRef.current;
+    return scroller !== null && scroller.scrollWidth > scroller.clientWidth + 1;
+  };
+
   /**
    * Run `change` (a filter, chip or sort update) as a `list` View Transition: client mode, at most
-   * VIRTUALIZE_ABOVE rows, the API present, motion on, and the table not scrolled sideways (a row
-   * snapshot is not clipped by its scroller). Otherwise it is a plain update.
+   * VIRTUALIZE_ABOVE rows, the API present, motion on. Otherwise it is a plain update.
    */
   const asListChange = (change: () => void): void => {
-    const scroller = scrollRef.current;
-    const sideways =
-      scroller !== null && scroller.scrollWidth > scroller.clientWidth + 1;
-    if (!listMotion || sideways || !listMotionOn() || !listRef.current) {
+    if (
+      !listMotion ||
+      !listMotionOn() ||
+      !listRef.current ||
+      scrolledSideways()
+    ) {
       change();
       return;
     }
@@ -465,49 +486,47 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     });
   };
 
-  // A new `data`: created rows arrive, deleted rows leave, reordered rows move, in one transition
-  // when the set or order of rows changed; otherwise (a refetch, an edit in place) an instant
-  // swap. Created and edited rows are tinted either way.
+  // Rows held for a transition: start it. Created rows arrive, deleted rows leave, the rest move.
   React.useLayoutEffect(() => {
-    if (held === incoming) return;
-    tint.current =
-      listMotion && loadedOnce.current
-        ? changedRowIds(held, incoming, getRowId, columns)
-        : [];
-    const scroller = scrollRef.current;
-    const move =
-      listMotion &&
-      held.length > 0 &&
-      incoming.length > 0 &&
-      !sameRowIds(held, incoming, getRowId) &&
-      listRef.current !== null &&
-      !(scroller && scroller.scrollWidth > scroller.clientWidth + 1) &&
-      listMotionOn();
-    if (!move) {
-      setHeld(incoming);
+    if (!moving || pending.current) return;
+    if (!listRef.current || scrolledSideways()) {
+      setHeld(latest.current);
       return;
     }
-    viewTransition(() => flushSync(() => setHeld(incoming)), {
+    pending.current = true;
+    const land = (): void => {
+      if (!pending.current) return;
+      pending.current = false;
+      flushSync(() => setHeld(latest.current));
+    };
+    const handle = viewTransition(land, {
       type: "list",
       list: listRef.current,
     });
-    // Only `incoming` starts this; the rest is read as it is now.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [incoming]);
+    // If the browser never ran the update (it always should), the rows still land.
+    void handle.finished.then(() => {
+      if (!pending.current) return;
+      pending.current = false;
+      setHeld(latest.current);
+    });
+  });
 
   // Tint the created and edited rows once they are in the DOM (a delay, not motion: it stays
-  // under reduced motion, S-23 §6.6).
+  // under reduced motion, S-23 §6.6). Not on the first load, and never for a filter or sort.
   React.useLayoutEffect(() => {
-    const ids = tint.current;
-    tint.current = [];
+    const prev = committed.current;
+    committed.current = data;
     const list = listRef.current;
-    if (!list || ids.length === 0) return;
-    const want = new Set(ids);
+    if (prev === data || !listMotion || !loadedOnce.current || !list) return;
+    const want = new Set(changedRowIds(prev, data, getRowId, columns));
+    if (want.size === 0) return;
     for (const el of Array.from(
       list.querySelectorAll<HTMLElement>("[data-row-id]"),
     ))
       if (want.has(el.dataset.rowId ?? "")) highlight(el);
-  }, [held]);
+    // Only a new `data` tints; the rest is read as it is now.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
 
   React.useEffect(() => {
     if (!loading && !error) loadedOnce.current = true;
