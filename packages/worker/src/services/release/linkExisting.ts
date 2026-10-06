@@ -31,7 +31,8 @@
 import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import type { Db, Env } from "../../core/platform.js";
 import {
-  claimedKeys,
+  claimsForApply,
+  type BreakGlassClaim,
   countLicensesUsingTier,
   getActiveSchema,
   getManifestSnapshot,
@@ -432,7 +433,7 @@ async function manifestPolicyRefusal(
   // Screened only when it changed and the console has not claimed it (ST-01b), as resync does: an
   // unchanged or claimed catalog is not published by the resync.
   const active = await getActiveSchema(db, slug);
-  const claims = await claimedKeys(db, slug, now);
+  const claims = (await claimsForApply(db, slug, manifest, now)).claimed;
   const screened = screenCatalog(
     manifest,
     !claims.has("config.catalog") &&
@@ -451,6 +452,8 @@ export type PlannedResync =
       /** The default-branch commit the files were read at. */
       commit: string;
       plan: ManifestPlan;
+      /** ST-20: the break-glass claims the resync would keep (each one's field is skipped). */
+      breakGlass: BreakGlassClaim[];
     }
   | LinkRefusal;
 
@@ -474,6 +477,7 @@ export async function planResync(
   const { owner, repo, token, commit, manifest } = read;
 
   const plan = await planRepoManifest(db, slug, manifest, now);
+  const { live } = await claimsForApply(db, slug, manifest, now);
   const policy = await manifestPolicyRefusal(
     env,
     db,
@@ -496,7 +500,13 @@ export async function planResync(
   if (!publisher.ok)
     plan.conflicts.unshift({ area: "publisher", summary: publisher.error });
   if (policy) plan.conflicts.unshift(policy);
-  return { ok: true, repository: `${owner}/${repo}`, commit, plan };
+  return {
+    ok: true,
+    repository: `${owner}/${repo}`,
+    commit,
+    plan,
+    breakGlass: live,
+  };
 }
 
 /** The distinct secret NAMES a manifest references (OIDC, edge-mint, provisioning hooks). */
@@ -574,7 +584,18 @@ export async function planRepoManifest(
   const m = manifest.product;
 
   // ── the product row ────────────────────────────────────────────────────────
-  const claims = await claimedKeys(db, slug, now);
+  // ST-20: the claims the resync honours; a break-glass claim it would end is not among them, so
+  // its field is planned as applied, and the ending is planned too.
+  const applyClaims = await claimsForApply(db, slug, manifest, now);
+  const claims = applyClaims.claimed;
+  for (const e of applyClaims.ended)
+    plan.apply.push({
+      area: e.key === "config.catalog" ? "catalog" : "product",
+      summary:
+        e.why === "expired"
+          ? `Ends the expired break-glass claim on ${e.key}`
+          : `Ends the break-glass claim on ${e.key}: the manifest changed it`,
+    });
   const fields: string[] = [];
   const kept: string[] = [];
   const field = (

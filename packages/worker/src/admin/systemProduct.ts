@@ -51,6 +51,13 @@ import {
 import { stmtInsertReleaseConfig } from "../repo.js";
 import { manifestDeliverableStatements } from "../services/release/deliverables.js";
 import { manifestSnapshotStatement } from "../core/manifestSnapshot.js";
+import {
+  claimsForApply,
+  endBreakGlassStatements,
+  type AuditActor,
+  type BreakGlassClaim,
+  type ClaimKey,
+} from "../core/settingsClaims.js";
 import { isSafeBinaryName } from "../services/release/install.js";
 import { stmtEnqueuePackageRender, RENDER_ALL } from "../core/registryQueue.js";
 import {
@@ -191,6 +198,13 @@ export type LinkSystemProduct =
       publisherClaimed: boolean;
       /** Whether this run changed the manifest-owned publisher. */
       publisherChanged: boolean;
+      /**
+       * ST-20 (S-18 §4.5 item 7): the live break-glass claims after this apply. The deploy
+       * summary lists them.
+       */
+      breakGlass: BreakGlassClaim[];
+      /** ST-20: the break-glass claims this apply ended (expired, or the manifest changed them). */
+      breakGlassEnded: { key: ClaimKey; why: "expired" | "changed" }[];
     }
   | {
       ok: false;
@@ -241,8 +255,14 @@ export function systemManifestProblem(
  *   - the manifest snapshot (ST-01a, `product_manifest_snapshot`, origin `deploy-hook`): the raw
  *     documents the hook body carried and the deploy's commit (`PKEY_GIT_SHA`) as `applied_sha`.
  *
- * It never touches the services, `packageFeeds`, the feeds, the signing key or the catalog:
- * those are the bootstrap's (and then the operator's).
+ *   - ST-20: the system product's break-glass claims (it is manifest-authoritative, locked; S-18
+ *     §4.5 items 7–8). One whose 7 days ran out, or whose field this manifest changes from the
+ *     last applied one, ends here and the manifest's value is written (`endBreakGlassStatements`);
+ *     the rest stay, and the answer lists them for the deploy summary.
+ *
+ * Apart from ended break-glass claims it never touches the services, `packageFeeds`, the feeds,
+ * the signing key or the catalog: those are the bootstrap's (and then the operator's). Applying
+ * every claimable product field here is ST-17's shared plan function.
  */
 export async function linkSystemProduct(
   db: Db,
@@ -363,6 +383,16 @@ export async function linkSystemProduct(
     const services = parseServices(product.services_json).services;
     stmts.push(...ingest(manifest, slug, services, now).statements);
   }
+  // ST-20: break-glass claims, compared against the snapshot this batch replaces (read first).
+  const claims = await claimsForApply(db, slug, manifest, now);
+  stmts.push(
+    ...(await endBreakGlassStatements(db, slug, claims.ended, {
+      actor: DEPLOY_ACTOR,
+      sha: applied.sha,
+      now,
+      apply: manifest,
+    })),
+  );
   stmts.push(
     await manifestSnapshotStatement(
       slug,
@@ -383,5 +413,14 @@ export async function linkSystemProduct(
       : null,
     publisherClaimed: claimed,
     publisherChanged,
+    breakGlass: claims.live,
+    breakGlassEnded: claims.ended.map((e) => ({ key: e.key, why: e.why })),
   };
 }
+
+/** The actor of the deploy hook's settings audit rows. */
+export const DEPLOY_ACTOR: AuditActor = {
+  sub: "deploy",
+  name: "Deploy hook",
+  email: null,
+};
