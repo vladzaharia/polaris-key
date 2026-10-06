@@ -22,7 +22,7 @@ the Worker's standard templates (the fallback the Node and React replayers use),
 only has to hold the feed and record traffic.
 
 ``activate`` / ``enroll`` report the ``ActivationResult``'s ``kind`` as ``result`` and, on a
-refusal, its wire ``code``. ``boot`` is ``client.boot(discover=True)``: its ``outcome`` is
+refusal, its wire ``code``. ``boot`` is ``client.boot()`` (default discovery): its ``outcome`` is
 ``bootOutcome``. ``releaseFetch`` is ``client.release.fetch`` of the build a release record built
 from the step's target names (``_release_fetch``; ``partial`` seeds the interrupted ``.part``).
 ``downloadModel`` is ``client.distribution.download_model()`` with ``current`` from
@@ -194,7 +194,7 @@ def _act(
     elif action == "boot":
         # The shell stage's discovery runs even though the host pinned its services
         # (``initial.services``): the recording's boot loads discovery first.
-        out["bootOutcome"] = client.boot(discover=True).outcome
+        out["bootOutcome"] = client.boot().outcome
     elif action == "releaseFetch":
         out.update(_release_fetch(client, args, session))
     elif action == "downloadModel":
