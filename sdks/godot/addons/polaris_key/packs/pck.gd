@@ -64,6 +64,10 @@ static var _res: Dictionary = {}
 ## The engine's script kinds (P4-08 audit GAP 5), filled on the main thread by `warm()`:
 ## {exts: {extension: true}, markers: PackedStringArray}.
 static var _kinds: Dictionary = {}
+## How many app resources' types have been read from disk (`_remapped_type` misses), for the
+## tests' work count: a check naming one app scene many times reads its type once (P4-28 audit
+## GAP D). Informational only; nothing reads it to decide.
+static var type_reads := 0
 
 
 static func _re(pattern: String) -> RegEx:
@@ -965,6 +969,7 @@ static func _app_script_type(p: String, memo: Dictionary = {}) -> bool:
 static func _remapped_type(p: String, memo: Dictionary = {}) -> String:
 	if memo.has(p):
 		return memo[p]
+	type_reads += 1
 	var t := _read_type(p)
 	memo[p] = t
 	return t

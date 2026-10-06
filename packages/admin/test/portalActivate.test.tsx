@@ -10,10 +10,17 @@ import {
 import userEvent from "@testing-library/user-event";
 import { KeyField } from "../src/portal/components/KeyField.js";
 import {
+  blocksResend,
   checkKey,
+  claimVerdict,
+  entriesVerdict,
   keyProblem,
   maskKey,
   normaliseKey,
+  previewVerdict,
+  productLabel,
+  readEntries,
+  readSignInUrl,
   slugOf,
 } from "../src/portal/model/key.js";
 import {
@@ -93,6 +100,115 @@ describe("license keys (§4.17)", () => {
   });
 });
 
+describe("key verdicts (UX-05)", () => {
+  const PRODUCT = { name: "Mossgarden", developerName: "Little Fern" };
+
+  it("tells cut short, too long, a line break and a wrong character apart", () => {
+    expect(keyProblem(checkKey("pkey_mossgarden_Q7xZr2Lk9v"))).toBe(
+      "This key is cut short. After mossgarden_ come 22 characters, and this has 10. Copy the whole key again.",
+    );
+    expect(keyProblem(checkKey(`${KEY}abc`))).toBe(
+      "This key is too long. After mossgarden_ come 22 characters, and this has 25. Copy only the key.",
+    );
+    expect(
+      keyProblem(checkKey("pkey_mossgarden_Q7xZr2Lk9v\nT3mN8pB1cY4w")),
+    ).toBe(
+      "This key has a space or line break in it. Copy the whole key again in one piece.",
+    );
+    expect(
+      keyProblem(checkKey("pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4!")),
+    ).toMatch(
+      /^This key doesn't look right\. After mossgarden_ come exactly 22/,
+    );
+    // The product so far, no separator yet: cut short. An upper-case product: not cut short.
+    expect(keyProblem(checkKey("pkey_mossgarden"))).toMatch(
+      /^This key is cut short\./,
+    );
+    expect(keyProblem(checkKey("pkey_Mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w"))).toBe(
+      "This key doesn't look right. After pkey_ comes the product in lowercase, then _ and 22 characters. Copy the whole key again.",
+    );
+    // Pressing Continue on "pke" explains; while typing, "partial" stays quiet (the caller).
+    expect(keyProblem(checkKey("pke"))).toMatch(/^This key is cut short\./);
+  });
+
+  it("shows a product by its presentation name, never the slug", () => {
+    expect(productLabel("mossgarden")).toBe("Mossgarden");
+    expect(productLabel("lumen-raw")).toBe("Lumen Raw");
+    expect(productLabel("lumen-raw", "Lumen RAW")).toBe("Lumen RAW");
+    expect(productLabel("lumen-raw", " ")).toBe("Lumen Raw");
+  });
+
+  it("gives license_owned its sign-in only for an http(s) signInUrl", () => {
+    const bare = previewVerdict(
+      { verdict: "license_owned", product: PRODUCT },
+      "x",
+    );
+    expect(bare).toEqual({
+      code: "license_owned",
+      tone: "danger",
+      message:
+        "This Mossgarden license is already in another Polaris Key account. A license never moves by its key.",
+    });
+    expect(
+      previewVerdict(
+        {
+          verdict: "license_owned",
+          product: PRODUCT,
+          signInUrl: "https://key.plrs.im/portal/login?hint=m",
+        },
+        "x",
+      ).signInUrl,
+    ).toBe("https://key.plrs.im/portal/login?hint=m");
+    expect(readSignInUrl({ signInUrl: "javascript:alert(1)" })).toBeUndefined();
+    expect(readSignInUrl({ signInUrl: "/relative" })).toBeUndefined();
+    expect(readSignInUrl({ signInUrl: 42 })).toBeUndefined();
+    expect(
+      claimVerdict(
+        {
+          status: 403,
+          code: "license_owned",
+          signInUrl: "https://a.example/s",
+        },
+        "Mossgarden",
+      ),
+    ).toMatchObject({
+      code: "license_owned",
+      signInUrl: "https://a.example/s",
+    });
+  });
+
+  it("raises the entries notice only once every entry is used, as a warning", () => {
+    expect(readEntries({ entries: null })).toBeNull();
+    expect(readEntries({ entries: { used: 2, limit: 5 } })).toEqual({
+      used: 2,
+      limit: 5,
+    });
+    expect(readEntries({ keyEntries: { used: 5, limit: 5 } })).toEqual({
+      used: 5,
+      limit: 5,
+    });
+    expect(readEntries({ entries: { used: "5", limit: 5 } })).toBeNull();
+    expect(entriesVerdict({ used: 2, limit: 5 }, "Mossgarden")).toBeNull();
+    const notice = entriesVerdict({ used: 5, limit: 5 }, "Ember Tactics");
+    expect(notice).toEqual({
+      code: "entries",
+      tone: "warning",
+      message:
+        "This key has no entries left in Ember Tactics. Add it to your account and the app signs you in instead.",
+    });
+    expect(blocksResend(notice)).toBe(false);
+  });
+
+  it("blocks sending the same key again only for refusals", () => {
+    expect(blocksResend(claimVerdict({ status: 401 }, "M"))).toBe(true);
+    expect(blocksResend(claimVerdict({ status: 429 }, "M"))).toBe(false);
+    expect(blocksResend({ code: "failed", tone: "danger", message: "x" })).toBe(
+      false,
+    );
+    expect(blocksResend(null)).toBe(false);
+  });
+});
+
 describe("KeyField", () => {
   afterEach(cleanup);
   it("is one labelled, monospace, paste-first control that never re-cases", async () => {
@@ -127,6 +243,55 @@ describe("KeyField", () => {
     );
     expect(screen.getByText("Key format is valid")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Paste" })).toBeNull();
+  });
+  it("hides the help line once there is a verdict, and marks only danger invalid", () => {
+    const { rerender } = render(
+      <KeyField
+        id="k"
+        value="pkey_mossgarden_Q7"
+        onChange={() => undefined}
+        valid={false}
+        help="Starts with pkey_. Case-sensitive."
+      />,
+    );
+    expect(screen.getByText("Starts with pkey_. Case-sensitive.")).toBeTruthy();
+    rerender(
+      <KeyField
+        id="k"
+        value="pkey_mossgarden_Q7"
+        onChange={() => undefined}
+        valid={false}
+        verdict={{ tone: "danger", message: "This key is cut short." }}
+        help="Starts with pkey_. Case-sensitive."
+      />,
+    );
+    const field = screen.getByRole("textbox", { name: "License key" });
+    expect(screen.queryByText("Starts with pkey_. Case-sensitive.")).toBeNull();
+    expect(screen.getByRole("alert").textContent).toBe(
+      "This key is cut short.",
+    );
+    expect(field.getAttribute("aria-invalid")).toBe("true");
+    expect(field.getAttribute("aria-describedby")).toBe("k-error");
+    rerender(
+      <KeyField
+        id="k"
+        value={KEY}
+        onChange={() => undefined}
+        valid
+        verdict={{
+          tone: "warning",
+          message: "This key has used all 5 entries.",
+          actions: <button type="button">Act</button>,
+        }}
+        help="Starts with pkey_. Case-sensitive."
+      />,
+    );
+    expect(field.getAttribute("aria-invalid")).toBeNull();
+    expect(screen.getByRole("status").textContent).toBe(
+      "This key has used all 5 entries.",
+    );
+    expect(screen.getByRole("button", { name: "Act" })).toBeTruthy();
+    expect(screen.queryByText("Starts with pkey_. Case-sensitive.")).toBeNull();
   });
 });
 
@@ -167,7 +332,7 @@ describe("Activate license modal (PX-06)", () => {
     }) as HTMLButtonElement;
     expect(continueBtn.disabled).toBe(true);
     fireEvent.paste(field, { clipboardData: { getData: () => KEY } });
-    expect(dialog.textContent).toContain("Key for mossgarden");
+    expect(dialog.textContent).toContain("Key for Mossgarden");
     expect(fetchedRequests().some((r) => r.includes("claim"))).toBe(false);
     expect(continueBtn.disabled).toBe(false);
     expect(await axeViolations()).toEqual([]);
@@ -231,7 +396,7 @@ describe("Activate license modal (PX-06)", () => {
       within(dialog).getByRole("button", { name: "Continue" }),
     );
     expect((await within(dialog).findByRole("alert")).textContent).toBe(
-      "mossgarden manages this license elsewhere.",
+      "Mossgarden manages this license elsewhere.",
     );
   });
 
@@ -276,7 +441,7 @@ describe("Activate license modal (PX-06)", () => {
     const confirm = await screen.findByRole("dialog", {
       name: "Add Mossgarden to your account?",
     });
-    expect(confirm.textContent).toContain("Key recognised");
+    expect(confirm.textContent).toContain("Key recognized");
     expect(confirm.textContent).toContain("Little Fern");
     expect(confirm.textContent).toContain("Lifetime · up to 5 devices");
     expect(confirm.textContent).toContain(KEY);
@@ -400,7 +565,7 @@ describe("Activate license modal (PX-06)", () => {
     const dialog = await screen.findByRole("dialog", {
       name: "Activate a license",
     });
-    expect(within(dialog).getByText(/mossgarden sent you here/)).toBeTruthy();
+    expect(within(dialog).getByText(/Mossgarden sent you here/)).toBeTruthy();
   });
 
   it("survives the signed-out round trip: login card first, then the modal", async () => {
@@ -453,5 +618,133 @@ describe("Activate license modal (PX-06)", () => {
     expect(
       await screen.findByRole("dialog", { name: "Activate a license" }),
     ).toBeTruthy();
+  });
+
+  it("explains a typed cut-short key on Continue and drops the help line (UX-05)", async () => {
+    mockFetch(routes());
+    renderPortal();
+    const dialog = await openFromHeader();
+    expect(
+      within(dialog).getByText("Starts with pkey_. Case-sensitive."),
+    ).toBeTruthy();
+    const field = within(dialog).getByRole("textbox", { name: "License key" });
+    await userEvent.type(field, "pkey_mossgarden_Q7xZr2Lk9v");
+    // Typing stays quiet until the person is done.
+    expect(within(dialog).queryByRole("alert")).toBeNull();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Continue" }),
+    );
+    expect(within(dialog).getByRole("alert").textContent).toBe(
+      "This key is cut short. After mossgarden_ come 22 characters, and this has 10. Copy the whole key again.",
+    );
+    expect(
+      within(dialog).queryByText("Starts with pkey_. Case-sensitive."),
+    ).toBeNull();
+    expect(fetchedRequests().some((r) => r.includes("preview"))).toBe(false);
+    expect(await axeViolations()).toEqual([]);
+  });
+
+  it("offers license_owned's way forward: a different key, or that account's sign-in (UX-05)", async () => {
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, assign });
+    mockFetch({
+      ...routes(),
+      "POST /api/activate/preview": {
+        verdict: "license_owned",
+        product: PREVIEW_PRODUCT,
+        entries: null,
+        signInUrl: "https://key.plrs.im/portal/login?product=mossgarden",
+      },
+    });
+    renderPortal();
+    const dialog = await openFromHeader();
+    await pasteAndContinue(dialog);
+    const alert = await within(dialog).findByRole("alert");
+    expect(alert.textContent).toBe(
+      "This Mossgarden license is already in another Polaris Key account. A license never moves by its key.",
+    );
+    // The same key gets the same answer: Continue waits for a new one.
+    expect(
+      (
+        within(dialog).getByRole("button", {
+          name: "Continue",
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Sign in to that account" }),
+    );
+    expect(assign).toHaveBeenCalledWith(
+      "https://key.plrs.im/portal/login?product=mossgarden",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Use a different key" }),
+    );
+    const field = within(dialog).getByRole("textbox", { name: "License key" });
+    expect((field as HTMLTextAreaElement).value).toBe("");
+    expect(document.activeElement).toBe(field);
+    expect(within(dialog).queryByRole("alert")).toBeNull();
+  });
+
+  it("offers only Use a different key while the Worker sends no signInUrl", async () => {
+    mockFetch({
+      ...routes(),
+      "POST /api/activate/preview": {
+        verdict: "license_owned",
+        product: PREVIEW_PRODUCT,
+        entries: null,
+      },
+    });
+    renderPortal();
+    const dialog = await openFromHeader();
+    await pasteAndContinue(dialog);
+    await within(dialog).findByRole("alert");
+    expect(
+      within(dialog).getByRole("button", { name: "Use a different key" }),
+    ).toBeTruthy();
+    expect(
+      within(dialog).queryByRole("button", { name: "Sign in to that account" }),
+    ).toBeNull();
+  });
+
+  it("names the product as the preview did once it has answered (UX-05)", async () => {
+    mockFetch({
+      ...routes(),
+      "POST /api/activate/preview": {
+        verdict: "portal_off",
+        product: { ...PREVIEW_PRODUCT, name: "Mossgarden: Deluxe" },
+        entries: null,
+      },
+    });
+    renderPortal();
+    const dialog = await openFromHeader();
+    await pasteAndContinue(dialog);
+    await within(dialog).findByRole("alert");
+    expect(dialog.textContent).toContain("Key for Mossgarden: Deluxe");
+    expect(dialog.textContent).not.toContain("Key for mossgarden");
+  });
+
+  it("shows the entries notice on the confirm step and keeps Add enabled (Q-5)", async () => {
+    mockFetch({
+      ...routes(),
+      "POST /api/activate/preview": {
+        verdict: "addable",
+        product: PREVIEW_PRODUCT,
+        entries: { used: 5, limit: 5 },
+      },
+    });
+    renderPortal();
+    await pasteAndContinue(await openFromHeader());
+    const confirm = await screen.findByRole("dialog", {
+      name: "Add Mossgarden to your account?",
+    });
+    expect(within(confirm).getByRole("status").textContent).toBe(
+      "This key has no entries left in Mossgarden. Add it to your account and the app signs you in instead.",
+    );
+    const add = within(confirm).getByRole("button", {
+      name: "Add Mossgarden",
+    }) as HTMLButtonElement;
+    expect(add.disabled).toBe(false);
+    expect(await axeViolations()).toEqual([]);
   });
 });

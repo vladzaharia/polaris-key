@@ -391,7 +391,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       ]
     },
     "outlet_direct": {
-      "description": "The identity fields a direct outlet reads: platforms, homebrewCask, homebrewFormula, scoop. Other keys are ignored.",
+      "description": "The identity fields a direct outlet reads: platforms, homebrewCask, homebrewFormula, homebrewTap, scoop, scoopBucket. Other keys are ignored.",
       "type": "object",
       "properties": {
         "kind": {
@@ -406,8 +406,14 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
         "homebrewFormula": {
           "$ref": "#/$defs/homebrewFormula"
         },
+        "homebrewTap": {
+          "$ref": "#/$defs/homebrewTap"
+        },
         "scoop": {
           "$ref": "#/$defs/scoop"
+        },
+        "scoopBucket": {
+          "$ref": "#/$defs/scoopBucket"
         },
         "listing": {
           "$ref": "#/$defs/listing"
@@ -856,6 +862,16 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "description": "The Homebrew formula name, for runtime outlet detection (an executable under Cellar/<formula>/).",
       "type": "string",
       "pattern": "^[a-z0-9][a-z0-9.@+_-]{0,99}$"
+    },
+    "homebrewTap": {
+      "description": "The product's own Homebrew tap, <owner>/homebrew-<name> on GitHub (A-18i): the PR plane commits the cask there. Never a repository of the Homebrew organisation.",
+      "type": "string",
+      "pattern": "^(?![Hh][Oo][Mm][Ee][Bb][Rr][Ee][Ww]/)[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})/homebrew-[A-Za-z0-9._-]{1,90}$"
+    },
+    "scoopBucket": {
+      "description": "The product's own Scoop bucket, <owner>/<repo> on GitHub (A-18i): the PR plane commits the feed's manifest there. Never a repository of the ScoopInstaller organisation.",
+      "type": "string",
+      "pattern": "^(?![Ss][Cc][Oo][Oo][Pp][Ii][Nn][Ss][Tt][Aa][Ll][Ll][Ee][Rr]/)[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})/(?!\\\\.)[A-Za-z0-9._-]{1,100}$"
     },
     "msixPublisher": {
       "description": "The MSIX package Publisher (P3-09): the signing certificate's subject DN exactly as the package manifest states it.",
@@ -3539,10 +3555,10 @@ var require_identity = __commonJS({
     var NODE_TYPE = /* @__PURE__ */ Symbol.for("yaml.node.type");
     var isAlias = (node) => !!node && typeof node === "object" && node[NODE_TYPE] === ALIAS;
     var isDocument = (node) => !!node && typeof node === "object" && node[NODE_TYPE] === DOC;
-    var isMap = (node) => !!node && typeof node === "object" && node[NODE_TYPE] === MAP;
+    var isMap2 = (node) => !!node && typeof node === "object" && node[NODE_TYPE] === MAP;
     var isPair = (node) => !!node && typeof node === "object" && node[NODE_TYPE] === PAIR;
     var isScalar = (node) => !!node && typeof node === "object" && node[NODE_TYPE] === SCALAR;
-    var isSeq = (node) => !!node && typeof node === "object" && node[NODE_TYPE] === SEQ;
+    var isSeq2 = (node) => !!node && typeof node === "object" && node[NODE_TYPE] === SEQ;
     function isCollection(node) {
       if (node && typeof node === "object")
         switch (node[NODE_TYPE]) {
@@ -3575,11 +3591,11 @@ var require_identity = __commonJS({
     exports.isAlias = isAlias;
     exports.isCollection = isCollection;
     exports.isDocument = isDocument;
-    exports.isMap = isMap;
+    exports.isMap = isMap2;
     exports.isNode = isNode;
     exports.isPair = isPair;
     exports.isScalar = isScalar;
-    exports.isSeq = isSeq;
+    exports.isSeq = isSeq2;
   }
 });
 
@@ -3604,17 +3620,17 @@ var require_visit = __commonJS({
     visit.BREAK = BREAK;
     visit.SKIP = SKIP;
     visit.REMOVE = REMOVE;
-    function visit_(key, node, visitor, path25) {
-      const ctrl = callVisitor(key, node, visitor, path25);
+    function visit_(key, node, visitor, path26) {
+      const ctrl = callVisitor(key, node, visitor, path26);
       if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-        replaceNode(key, path25, ctrl);
-        return visit_(key, ctrl, visitor, path25);
+        replaceNode(key, path26, ctrl);
+        return visit_(key, ctrl, visitor, path26);
       }
       if (typeof ctrl !== "symbol") {
         if (identity.isCollection(node)) {
-          path25 = Object.freeze(path25.concat(node));
+          path26 = Object.freeze(path26.concat(node));
           for (let i = 0; i < node.items.length; ++i) {
-            const ci = visit_(i, node.items[i], visitor, path25);
+            const ci = visit_(i, node.items[i], visitor, path26);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -3625,13 +3641,13 @@ var require_visit = __commonJS({
             }
           }
         } else if (identity.isPair(node)) {
-          path25 = Object.freeze(path25.concat(node));
-          const ck = visit_("key", node.key, visitor, path25);
+          path26 = Object.freeze(path26.concat(node));
+          const ck = visit_("key", node.key, visitor, path26);
           if (ck === BREAK)
             return BREAK;
           else if (ck === REMOVE)
             node.key = null;
-          const cv = visit_("value", node.value, visitor, path25);
+          const cv = visit_("value", node.value, visitor, path26);
           if (cv === BREAK)
             return BREAK;
           else if (cv === REMOVE)
@@ -3652,17 +3668,17 @@ var require_visit = __commonJS({
     visitAsync.BREAK = BREAK;
     visitAsync.SKIP = SKIP;
     visitAsync.REMOVE = REMOVE;
-    async function visitAsync_(key, node, visitor, path25) {
-      const ctrl = await callVisitor(key, node, visitor, path25);
+    async function visitAsync_(key, node, visitor, path26) {
+      const ctrl = await callVisitor(key, node, visitor, path26);
       if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-        replaceNode(key, path25, ctrl);
-        return visitAsync_(key, ctrl, visitor, path25);
+        replaceNode(key, path26, ctrl);
+        return visitAsync_(key, ctrl, visitor, path26);
       }
       if (typeof ctrl !== "symbol") {
         if (identity.isCollection(node)) {
-          path25 = Object.freeze(path25.concat(node));
+          path26 = Object.freeze(path26.concat(node));
           for (let i = 0; i < node.items.length; ++i) {
-            const ci = await visitAsync_(i, node.items[i], visitor, path25);
+            const ci = await visitAsync_(i, node.items[i], visitor, path26);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -3673,13 +3689,13 @@ var require_visit = __commonJS({
             }
           }
         } else if (identity.isPair(node)) {
-          path25 = Object.freeze(path25.concat(node));
-          const ck = await visitAsync_("key", node.key, visitor, path25);
+          path26 = Object.freeze(path26.concat(node));
+          const ck = await visitAsync_("key", node.key, visitor, path26);
           if (ck === BREAK)
             return BREAK;
           else if (ck === REMOVE)
             node.key = null;
-          const cv = await visitAsync_("value", node.value, visitor, path25);
+          const cv = await visitAsync_("value", node.value, visitor, path26);
           if (cv === BREAK)
             return BREAK;
           else if (cv === REMOVE)
@@ -3706,23 +3722,23 @@ var require_visit = __commonJS({
       }
       return visitor;
     }
-    function callVisitor(key, node, visitor, path25) {
+    function callVisitor(key, node, visitor, path26) {
       if (typeof visitor === "function")
-        return visitor(key, node, path25);
+        return visitor(key, node, path26);
       if (identity.isMap(node))
-        return visitor.Map?.(key, node, path25);
+        return visitor.Map?.(key, node, path26);
       if (identity.isSeq(node))
-        return visitor.Seq?.(key, node, path25);
+        return visitor.Seq?.(key, node, path26);
       if (identity.isPair(node))
-        return visitor.Pair?.(key, node, path25);
+        return visitor.Pair?.(key, node, path26);
       if (identity.isScalar(node))
-        return visitor.Scalar?.(key, node, path25);
+        return visitor.Scalar?.(key, node, path26);
       if (identity.isAlias(node))
-        return visitor.Alias?.(key, node, path25);
+        return visitor.Alias?.(key, node, path26);
       return void 0;
     }
-    function replaceNode(key, path25, node) {
-      const parent = path25[path25.length - 1];
+    function replaceNode(key, path26, node) {
+      const parent = path26[path26.length - 1];
       if (identity.isCollection(parent)) {
         parent.items[key] = node;
       } else if (identity.isPair(parent)) {
@@ -3879,12 +3895,12 @@ var require_directives = __commonJS({
        * Given a fully resolved tag, returns its printable string form,
        * taking into account current tag prefixes and defaults.
        */
-      tagString(tag) {
+      tagString(tag2) {
         for (const [handle, prefix] of Object.entries(this.tags)) {
-          if (tag.startsWith(prefix))
-            return handle + escapeTagName(tag.substring(prefix.length));
+          if (tag2.startsWith(prefix))
+            return handle + escapeTagName(tag2.substring(prefix.length));
         }
-        return tag[0] === "!" ? tag : `!<${tag}>`;
+        return tag2[0] === "!" ? tag2 : `!<${tag2}>`;
       }
       toString(doc) {
         const lines3 = this.yaml.explicit ? [`%YAML ${this.yaml.version || "1.2"}`] : [];
@@ -4341,10 +4357,10 @@ var require_Collection = __commonJS({
     var createNode = require_createNode();
     var identity = require_identity();
     var Node = require_Node();
-    function collectionFromPath(schema, path25, value) {
+    function collectionFromPath(schema, path26, value) {
       let v = value;
-      for (let i = path25.length - 1; i >= 0; --i) {
-        const k = path25[i];
+      for (let i = path26.length - 1; i >= 0; --i) {
+        const k = path26[i];
         if (typeof k === "number" && Number.isInteger(k) && k >= 0) {
           const a = [];
           a[k] = v;
@@ -4363,7 +4379,7 @@ var require_Collection = __commonJS({
         sourceObjects: /* @__PURE__ */ new Map()
       });
     }
-    var isEmptyPath = (path25) => path25 == null || typeof path25 === "object" && !!path25[Symbol.iterator]().next().done;
+    var isEmptyPath = (path26) => path26 == null || typeof path26 === "object" && !!path26[Symbol.iterator]().next().done;
     var Collection = class extends Node.NodeBase {
       constructor(type, schema) {
         super(type);
@@ -4393,11 +4409,11 @@ var require_Collection = __commonJS({
        * be a Pair instance or a `{ key, value }` object, which may not have a key
        * that already exists in the map.
        */
-      addIn(path25, value) {
-        if (isEmptyPath(path25))
+      addIn(path26, value) {
+        if (isEmptyPath(path26))
           this.add(value);
         else {
-          const [key, ...rest] = path25;
+          const [key, ...rest] = path26;
           const node = this.get(key, true);
           if (identity.isCollection(node))
             node.addIn(rest, value);
@@ -4411,8 +4427,8 @@ var require_Collection = __commonJS({
        * Removes a value from the collection.
        * @returns `true` if the item was found and removed.
        */
-      deleteIn(path25) {
-        const [key, ...rest] = path25;
+      deleteIn(path26) {
+        const [key, ...rest] = path26;
         if (rest.length === 0)
           return this.delete(key);
         const node = this.get(key, true);
@@ -4426,8 +4442,8 @@ var require_Collection = __commonJS({
        * scalar values from their surrounding node; to disable set `keepScalar` to
        * `true` (collections are always returned intact).
        */
-      getIn(path25, keepScalar) {
-        const [key, ...rest] = path25;
+      getIn(path26, keepScalar) {
+        const [key, ...rest] = path26;
         const node = this.get(key, true);
         if (rest.length === 0)
           return !keepScalar && identity.isScalar(node) ? node.value : node;
@@ -4445,8 +4461,8 @@ var require_Collection = __commonJS({
       /**
        * Checks if the collection includes a value with the key `key`.
        */
-      hasIn(path25) {
-        const [key, ...rest] = path25;
+      hasIn(path26) {
+        const [key, ...rest] = path26;
         if (rest.length === 0)
           return this.has(key);
         const node = this.get(key, true);
@@ -4456,8 +4472,8 @@ var require_Collection = __commonJS({
        * Sets a value in this collection. For `!!set`, `value` needs to be a
        * boolean to add/remove the item from the set.
        */
-      setIn(path25, value) {
-        const [key, ...rest] = path25;
+      setIn(path26, value) {
+        const [key, ...rest] = path26;
         if (rest.length === 0) {
           this.set(key, value);
         } else {
@@ -4482,13 +4498,13 @@ var require_stringifyComment = __commonJS({
   "../../node_modules/.pnpm/yaml@2.9.0/node_modules/yaml/dist/stringify/stringifyComment.js"(exports) {
     "use strict";
     init_define_PKEY_EMBEDDED_SCHEMAS();
-    var stringifyComment = (str4) => str4.replace(/^(?!$)(?: $)?/gm, "#");
+    var stringifyComment = (str6) => str6.replace(/^(?!$)(?: $)?/gm, "#");
     function indentComment(comment, indent) {
       if (/^\n+$/.test(comment))
         return comment.substring(1);
       return indent ? comment.replace(/^(?! *$)/gm, indent) : comment;
     }
-    var lineComment = (str4, indent, comment) => str4.endsWith("\n") ? indentComment(comment, indent) : comment.includes("\n") ? "\n" + indentComment(comment, indent) : (str4.endsWith(" ") ? "" : " ") + comment;
+    var lineComment = (str6, indent, comment) => str6.endsWith("\n") ? indentComment(comment, indent) : comment.includes("\n") ? "\n" + indentComment(comment, indent) : (str6.endsWith(" ") ? "" : " ") + comment;
     exports.indentComment = indentComment;
     exports.lineComment = lineComment;
     exports.stringifyComment = stringifyComment;
@@ -4644,16 +4660,16 @@ var require_stringifyString = __commonJS({
       lineWidth: ctx.options.lineWidth,
       minContentWidth: ctx.options.minContentWidth
     });
-    var containsDocumentMarker = (str4) => /^(%|---|\.\.\.)/m.test(str4);
-    function lineLengthOverLimit(str4, lineWidth, indentLength) {
+    var containsDocumentMarker = (str6) => /^(%|---|\.\.\.)/m.test(str6);
+    function lineLengthOverLimit(str6, lineWidth, indentLength) {
       if (!lineWidth || lineWidth < 0)
         return false;
       const limit = lineWidth - indentLength;
-      const strLen = str4.length;
+      const strLen = str6.length;
       if (strLen <= limit)
         return false;
       for (let i = 0, start = 0; i < strLen; ++i) {
-        if (str4[i] === "\n") {
+        if (str6[i] === "\n") {
           if (i - start > limit)
             return true;
           start = i + 1;
@@ -4670,11 +4686,11 @@ var require_stringifyString = __commonJS({
       const { implicitKey } = ctx;
       const minMultiLineLength = ctx.options.doubleQuotedMinMultiLineLength;
       const indent = ctx.indent || (containsDocumentMarker(value) ? "  " : "");
-      let str4 = "";
+      let str6 = "";
       let start = 0;
       for (let i = 0, ch = json[i]; ch; ch = json[++i]) {
         if (ch === " " && json[i + 1] === "\\" && json[i + 2] === "n") {
-          str4 += json.slice(start, i) + "\\ ";
+          str6 += json.slice(start, i) + "\\ ";
           i += 1;
           start = i;
           ch = "\\";
@@ -4683,38 +4699,38 @@ var require_stringifyString = __commonJS({
           switch (json[i + 1]) {
             case "u":
               {
-                str4 += json.slice(start, i);
+                str6 += json.slice(start, i);
                 const code = json.substr(i + 2, 4);
                 switch (code) {
                   case "0000":
-                    str4 += "\\0";
+                    str6 += "\\0";
                     break;
                   case "0007":
-                    str4 += "\\a";
+                    str6 += "\\a";
                     break;
                   case "000b":
-                    str4 += "\\v";
+                    str6 += "\\v";
                     break;
                   case "001b":
-                    str4 += "\\e";
+                    str6 += "\\e";
                     break;
                   case "0085":
-                    str4 += "\\N";
+                    str6 += "\\N";
                     break;
                   case "00a0":
-                    str4 += "\\_";
+                    str6 += "\\_";
                     break;
                   case "2028":
-                    str4 += "\\L";
+                    str6 += "\\L";
                     break;
                   case "2029":
-                    str4 += "\\P";
+                    str6 += "\\P";
                     break;
                   default:
                     if (code.substr(0, 2) === "00")
-                      str4 += "\\x" + code.substr(2);
+                      str6 += "\\x" + code.substr(2);
                     else
-                      str4 += json.substr(i, 6);
+                      str6 += json.substr(i, 6);
                 }
                 i += 5;
                 start = i + 1;
@@ -4724,14 +4740,14 @@ var require_stringifyString = __commonJS({
               if (implicitKey || json[i + 2] === '"' || json.length < minMultiLineLength) {
                 i += 1;
               } else {
-                str4 += json.slice(start, i) + "\n\n";
+                str6 += json.slice(start, i) + "\n\n";
                 while (json[i + 2] === "\\" && json[i + 3] === "n" && json[i + 4] !== '"') {
-                  str4 += "\n";
+                  str6 += "\n";
                   i += 2;
                 }
-                str4 += indent;
+                str6 += indent;
                 if (json[i + 2] === " ")
-                  str4 += "\\";
+                  str6 += "\\";
                 i += 1;
                 start = i + 1;
               }
@@ -4740,8 +4756,8 @@ var require_stringifyString = __commonJS({
               i += 1;
           }
       }
-      str4 = start ? str4 + json.slice(start) : json;
-      return implicitKey ? str4 : foldFlowLines.foldFlowLines(str4, indent, foldFlowLines.FOLD_QUOTED, getFoldOptions(ctx, false));
+      str6 = start ? str6 + json.slice(start) : json;
+      return implicitKey ? str6 : foldFlowLines.foldFlowLines(str6, indent, foldFlowLines.FOLD_QUOTED, getFoldOptions(ctx, false));
     }
     function singleQuotedString(value, ctx) {
       if (ctx.options.singleQuote === false || ctx.implicitKey && value.includes("\n") || /[ \t]\n|\n[ \t]/.test(value))
@@ -4869,15 +4885,15 @@ ${indent}${start}${value}${end}`;
           return quotedString(value, ctx);
         }
       }
-      const str4 = value.replace(/\n+/g, `$&
+      const str6 = value.replace(/\n+/g, `$&
 ${indent}`);
       if (actualString) {
-        const test = (tag) => tag.default && tag.tag !== "tag:yaml.org,2002:str" && tag.test?.test(str4);
+        const test = (tag2) => tag2.default && tag2.tag !== "tag:yaml.org,2002:str" && tag2.test?.test(str6);
         const { compat, tags } = ctx.doc.schema;
         if (tags.some(test) || compat?.some(test))
           return quotedString(value, ctx);
       }
-      return implicitKey ? str4 : foldFlowLines.foldFlowLines(str4, indent, foldFlowLines.FOLD_FLOW, getFoldOptions(ctx, false));
+      return implicitKey ? str6 : foldFlowLines.foldFlowLines(str6, indent, foldFlowLines.FOLD_FLOW, getFoldOptions(ctx, false));
     }
     function stringifyString(item, ctx, onComment, onChompKeep) {
       const { implicitKey, inFlow } = ctx;
@@ -5003,9 +5019,9 @@ var require_stringify = __commonJS({
         anchors$1.add(anchor);
         props.push(`&${anchor}`);
       }
-      const tag = node.tag ?? (tagObj.default ? null : tagObj.tag);
-      if (tag)
-        props.push(doc.directives.tagString(tag));
+      const tag2 = node.tag ?? (tagObj.default ? null : tagObj.tag);
+      if (tag2)
+        props.push(doc.directives.tagString(tag2));
       return props.join(" ");
     }
     function stringify(item, ctx, onComment, onChompKeep) {
@@ -5030,11 +5046,11 @@ var require_stringify = __commonJS({
       const props = stringifyProps(node, tagObj, ctx);
       if (props.length > 0)
         ctx.indentAtStart = (ctx.indentAtStart ?? 0) + props.length + 1;
-      const str4 = typeof tagObj.stringify === "function" ? tagObj.stringify(node, ctx, onComment, onChompKeep) : identity.isScalar(node) ? stringifyString.stringifyString(node, ctx, onComment, onChompKeep) : node.toString(ctx, onComment, onChompKeep);
+      const str6 = typeof tagObj.stringify === "function" ? tagObj.stringify(node, ctx, onComment, onChompKeep) : identity.isScalar(node) ? stringifyString.stringifyString(node, ctx, onComment, onChompKeep) : node.toString(ctx, onComment, onChompKeep);
       if (!props)
-        return str4;
-      return identity.isScalar(node) || str4[0] === "{" || str4[0] === "[" ? `${props} ${str4}` : `${props}
-${ctx.indent}${str4}`;
+        return str6;
+      return identity.isScalar(node) || str6[0] === "{" || str6[0] === "[" ? `${props} ${str6}` : `${props}
+${ctx.indent}${str6}`;
     }
     exports.createStringifyContext = createStringifyContext;
     exports.stringify = stringify;
@@ -5070,8 +5086,8 @@ var require_stringifyPair = __commonJS({
       });
       let keyCommentDone = false;
       let chompKeep = false;
-      let str4 = stringify.stringify(key, ctx, () => keyCommentDone = true, () => chompKeep = true);
-      if (!explicitKey && !ctx.inFlow && str4.length > 1024) {
+      let str6 = stringify.stringify(key, ctx, () => keyCommentDone = true, () => chompKeep = true);
+      if (!explicitKey && !ctx.inFlow && str6.length > 1024) {
         if (simpleKeys)
           throw new Error("With simple keys, single line scalar must not span more than 1024 characters");
         explicitKey = true;
@@ -5080,27 +5096,27 @@ var require_stringifyPair = __commonJS({
         if (allNullValues || value == null) {
           if (keyCommentDone && onComment)
             onComment();
-          return str4 === "" ? "?" : explicitKey ? `? ${str4}` : str4;
+          return str6 === "" ? "?" : explicitKey ? `? ${str6}` : str6;
         }
       } else if (allNullValues && !simpleKeys || value == null && explicitKey) {
-        str4 = `? ${str4}`;
+        str6 = `? ${str6}`;
         if (keyComment && !keyCommentDone) {
-          str4 += stringifyComment.lineComment(str4, ctx.indent, commentString(keyComment));
+          str6 += stringifyComment.lineComment(str6, ctx.indent, commentString(keyComment));
         } else if (chompKeep && onChompKeep)
           onChompKeep();
-        return str4;
+        return str6;
       }
       if (keyCommentDone)
         keyComment = null;
       if (explicitKey) {
         if (keyComment)
-          str4 += stringifyComment.lineComment(str4, ctx.indent, commentString(keyComment));
-        str4 = `? ${str4}
+          str6 += stringifyComment.lineComment(str6, ctx.indent, commentString(keyComment));
+        str6 = `? ${str6}
 ${indent}:`;
       } else {
-        str4 = `${str4}:`;
+        str6 = `${str6}:`;
         if (keyComment)
-          str4 += stringifyComment.lineComment(str4, ctx.indent, commentString(keyComment));
+          str6 += stringifyComment.lineComment(str6, ctx.indent, commentString(keyComment));
       }
       let vsb, vcb, valueComment;
       if (identity.isNode(value)) {
@@ -5116,7 +5132,7 @@ ${indent}:`;
       }
       ctx.implicitKey = false;
       if (!explicitKey && !keyComment && identity.isScalar(value))
-        ctx.indentAtStart = str4.length + 1;
+        ctx.indentAtStart = str6.length + 1;
       chompKeep = false;
       if (!indentSeq && indentStep.length >= 2 && !ctx.inFlow && !explicitKey && identity.isSeq(value) && !value.flow && !value.tag && !value.anchor) {
         ctx.indent = ctx.indent.substring(2);
@@ -5160,16 +5176,16 @@ ${ctx.indent}`;
       } else if (valueStr === "" || valueStr[0] === "\n") {
         ws = "";
       }
-      str4 += ws + valueStr;
+      str6 += ws + valueStr;
       if (ctx.inFlow) {
         if (valueCommentDone && onComment)
           onComment();
       } else if (valueComment && !valueCommentDone) {
-        str4 += stringifyComment.lineComment(str4, ctx.indent, commentString(valueComment));
+        str6 += stringifyComment.lineComment(str6, ctx.indent, commentString(valueComment));
       } else if (chompKeep && onChompKeep) {
         onChompKeep();
       }
-      return str4;
+      return str6;
     }
     exports.stringifyPair = stringifyPair;
   }
@@ -5216,7 +5232,7 @@ var require_merge = __commonJS({
       }),
       stringify: () => MERGE_KEY
     };
-    var isMergeKey = (ctx, key) => (merge.identify(key) || identity.isScalar(key) && (!key.type || key.type === Scalar.Scalar.PLAIN) && merge.identify(key.value)) && ctx?.doc.schema.tags.some((tag) => tag.tag === merge.tag && tag.default);
+    var isMergeKey = (ctx, key) => (merge.identify(key) || identity.isScalar(key) && (!key.type || key.type === Scalar.Scalar.PLAIN) && merge.identify(key.value)) && ctx?.doc.schema.tags.some((tag2) => tag2.tag === merge.tag && tag2.default);
     function addMergeToJSMap(ctx, map, value) {
       const source = resolveAliasValue(ctx, value);
       if (identity.isSeq(source))
@@ -5401,31 +5417,31 @@ var require_stringifyCollection = __commonJS({
           }
         }
         chompKeep = false;
-        let str5 = stringify.stringify(item, itemCtx, () => comment2 = null, () => chompKeep = true);
+        let str7 = stringify.stringify(item, itemCtx, () => comment2 = null, () => chompKeep = true);
         if (comment2)
-          str5 += stringifyComment.lineComment(str5, itemIndent, commentString(comment2));
+          str7 += stringifyComment.lineComment(str7, itemIndent, commentString(comment2));
         if (chompKeep && comment2)
           chompKeep = false;
-        lines3.push(blockItemPrefix + str5);
+        lines3.push(blockItemPrefix + str7);
       }
-      let str4;
+      let str6;
       if (lines3.length === 0) {
-        str4 = flowChars.start + flowChars.end;
+        str6 = flowChars.start + flowChars.end;
       } else {
-        str4 = lines3[0];
+        str6 = lines3[0];
         for (let i = 1; i < lines3.length; ++i) {
           const line = lines3[i];
-          str4 += line ? `
+          str6 += line ? `
 ${indent}${line}` : "\n";
         }
       }
       if (comment) {
-        str4 += "\n" + stringifyComment.indentComment(commentString(comment), indent);
+        str6 += "\n" + stringifyComment.indentComment(commentString(comment), indent);
         if (onComment)
           onComment();
       } else if (chompKeep && onChompKeep)
         onChompKeep();
-      return str4;
+      return str6;
     }
     function stringifyFlowCollection({ items }, ctx, { flowChars, itemIndent }) {
       const { indent, indentStep, flowCollectionPadding: fcPadding, options: { commentString } } = ctx;
@@ -5468,21 +5484,21 @@ ${indent}${line}` : "\n";
         }
         if (comment)
           reqNewline = true;
-        let str4 = stringify.stringify(item, itemCtx, () => comment = null);
-        reqNewline || (reqNewline = lines3.length > linesAtValue || str4.includes("\n"));
+        let str6 = stringify.stringify(item, itemCtx, () => comment = null);
+        reqNewline || (reqNewline = lines3.length > linesAtValue || str6.includes("\n"));
         if (i < items.length - 1) {
-          str4 += ",";
+          str6 += ",";
         } else if (ctx.options.trailingComma) {
           if (ctx.options.lineWidth > 0) {
-            reqNewline || (reqNewline = lines3.reduce((sum, line) => sum + line.length + 2, 2) + (str4.length + 2) > ctx.options.lineWidth);
+            reqNewline || (reqNewline = lines3.reduce((sum, line) => sum + line.length + 2, 2) + (str6.length + 2) > ctx.options.lineWidth);
           }
           if (reqNewline) {
-            str4 += ",";
+            str6 += ",";
           }
         }
         if (comment)
-          str4 += stringifyComment.lineComment(str4, itemIndent, commentString(comment));
-        lines3.push(str4);
+          str6 += stringifyComment.lineComment(str6, itemIndent, commentString(comment));
+        lines3.push(str6);
         linesAtValue = lines3.length;
       }
       const { start, end } = flowChars;
@@ -5494,11 +5510,11 @@ ${indent}${line}` : "\n";
           reqNewline = ctx.options.lineWidth > 0 && len > ctx.options.lineWidth;
         }
         if (reqNewline) {
-          let str4 = start;
+          let str6 = start;
           for (const line of lines3)
-            str4 += line ? `
+            str6 += line ? `
 ${indentStep}${indent}${line}` : "\n";
-          return `${str4}
+          return `${str6}
 ${indent}${end}`;
         } else {
           return `${start}${fcPadding}${lines3.join(" ")}${fcPadding}${end}`;
@@ -5540,7 +5556,7 @@ var require_YAMLMap = __commonJS({
       }
       return void 0;
     }
-    var YAMLMap = class extends Collection.Collection {
+    var YAMLMap2 = class extends Collection.Collection {
       static get tagName() {
         return "tag:yaml.org,2002:map";
       }
@@ -5657,7 +5673,7 @@ var require_YAMLMap = __commonJS({
         });
       }
     };
-    exports.YAMLMap = YAMLMap;
+    exports.YAMLMap = YAMLMap2;
     exports.findPair = findPair;
   }
 });
@@ -5668,18 +5684,18 @@ var require_map = __commonJS({
     "use strict";
     init_define_PKEY_EMBEDDED_SCHEMAS();
     var identity = require_identity();
-    var YAMLMap = require_YAMLMap();
+    var YAMLMap2 = require_YAMLMap();
     var map = {
       collection: "map",
       default: true,
-      nodeClass: YAMLMap.YAMLMap,
+      nodeClass: YAMLMap2.YAMLMap,
       tag: "tag:yaml.org,2002:map",
       resolve(map2, onError) {
         if (!identity.isMap(map2))
           onError("Expected a mapping for this tag");
         return map2;
       },
-      createNode: (schema, obj, ctx) => YAMLMap.YAMLMap.from(schema, obj, ctx)
+      createNode: (schema, obj, ctx) => YAMLMap2.YAMLMap.from(schema, obj, ctx)
     };
     exports.map = map;
   }
@@ -5696,7 +5712,7 @@ var require_YAMLSeq = __commonJS({
     var identity = require_identity();
     var Scalar = require_Scalar();
     var toJS = require_toJS();
-    var YAMLSeq = class extends Collection.Collection {
+    var YAMLSeq2 = class extends Collection.Collection {
       static get tagName() {
         return "tag:yaml.org,2002:seq";
       }
@@ -5798,7 +5814,7 @@ var require_YAMLSeq = __commonJS({
         idx = Number(idx);
       return typeof idx === "number" && Number.isInteger(idx) && idx >= 0 ? idx : null;
     }
-    exports.YAMLSeq = YAMLSeq;
+    exports.YAMLSeq = YAMLSeq2;
   }
 });
 
@@ -5808,18 +5824,18 @@ var require_seq = __commonJS({
     "use strict";
     init_define_PKEY_EMBEDDED_SCHEMAS();
     var identity = require_identity();
-    var YAMLSeq = require_YAMLSeq();
+    var YAMLSeq2 = require_YAMLSeq();
     var seq = {
       collection: "seq",
       default: true,
-      nodeClass: YAMLSeq.YAMLSeq,
+      nodeClass: YAMLSeq2.YAMLSeq,
       tag: "tag:yaml.org,2002:seq",
       resolve(seq2, onError) {
         if (!identity.isSeq(seq2))
           onError("Expected a sequence for this tag");
         return seq2;
       },
-      createNode: (schema, obj, ctx) => YAMLSeq.YAMLSeq.from(schema, obj, ctx)
+      createNode: (schema, obj, ctx) => YAMLSeq2.YAMLSeq.from(schema, obj, ctx)
     };
     exports.seq = seq;
   }
@@ -5835,7 +5851,7 @@ var require_string = __commonJS({
       identify: (value) => typeof value === "string",
       default: true,
       tag: "tag:yaml.org,2002:str",
-      resolve: (str4) => str4,
+      resolve: (str6) => str6,
       stringify(item, ctx, onComment, onChompKeep) {
         ctx = Object.assign({ actualString: true }, ctx);
         return stringifyString.stringifyString(item, ctx, onComment, onChompKeep);
@@ -5875,7 +5891,7 @@ var require_bool = __commonJS({
       default: true,
       tag: "tag:yaml.org,2002:bool",
       test: /^(?:[Tt]rue|TRUE|[Ff]alse|FALSE)$/,
-      resolve: (str4) => new Scalar.Scalar(str4[0] === "t" || str4[0] === "T"),
+      resolve: (str6) => new Scalar.Scalar(str6[0] === "t" || str6[0] === "T"),
       stringify({ source, value }, ctx) {
         if (source && boolTag.test.test(source)) {
           const sv = source[0] === "t" || source[0] === "T";
@@ -5894,14 +5910,14 @@ var require_stringifyNumber = __commonJS({
   "../../node_modules/.pnpm/yaml@2.9.0/node_modules/yaml/dist/stringify/stringifyNumber.js"(exports) {
     "use strict";
     init_define_PKEY_EMBEDDED_SCHEMAS();
-    function stringifyNumber({ format, minFractionDigits, tag, value }) {
+    function stringifyNumber({ format, minFractionDigits, tag: tag2, value }) {
       if (typeof value === "bigint")
         return String(value);
       const num = typeof value === "number" ? value : Number(value);
       if (!isFinite(num))
         return isNaN(num) ? ".nan" : num < 0 ? "-.inf" : ".inf";
       let n = Object.is(value, -0) ? "-0" : JSON.stringify(value);
-      if (!format && minFractionDigits && (!tag || tag === "tag:yaml.org,2002:float") && /^-?\d/.test(n) && !n.includes("e")) {
+      if (!format && minFractionDigits && (!tag2 || tag2 === "tag:yaml.org,2002:float") && /^-?\d/.test(n) && !n.includes("e")) {
         let i = n.indexOf(".");
         if (i < 0) {
           i = n.length;
@@ -5929,7 +5945,7 @@ var require_float = __commonJS({
       default: true,
       tag: "tag:yaml.org,2002:float",
       test: /^(?:[-+]?\.(?:inf|Inf|INF)|\.nan|\.NaN|\.NAN)$/,
-      resolve: (str4) => str4.slice(-3).toLowerCase() === "nan" ? NaN : str4[0] === "-" ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY,
+      resolve: (str6) => str6.slice(-3).toLowerCase() === "nan" ? NaN : str6[0] === "-" ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY,
       stringify: stringifyNumber.stringifyNumber
     };
     var floatExp = {
@@ -5938,7 +5954,7 @@ var require_float = __commonJS({
       tag: "tag:yaml.org,2002:float",
       format: "EXP",
       test: /^[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)[eE][-+]?[0-9]+$/,
-      resolve: (str4) => parseFloat(str4),
+      resolve: (str6) => parseFloat(str6),
       stringify(node) {
         const num = Number(node.value);
         return isFinite(num) ? num.toExponential() : stringifyNumber.stringifyNumber(node);
@@ -5949,11 +5965,11 @@ var require_float = __commonJS({
       default: true,
       tag: "tag:yaml.org,2002:float",
       test: /^[-+]?(?:\.[0-9]+|[0-9]+\.[0-9]*)$/,
-      resolve(str4) {
-        const node = new Scalar.Scalar(parseFloat(str4));
-        const dot = str4.indexOf(".");
-        if (dot !== -1 && str4[str4.length - 1] === "0")
-          node.minFractionDigits = str4.length - dot - 1;
+      resolve(str6) {
+        const node = new Scalar.Scalar(parseFloat(str6));
+        const dot = str6.indexOf(".");
+        if (dot !== -1 && str6[str6.length - 1] === "0")
+          node.minFractionDigits = str6.length - dot - 1;
         return node;
       },
       stringify: stringifyNumber.stringifyNumber
@@ -5971,7 +5987,7 @@ var require_int = __commonJS({
     init_define_PKEY_EMBEDDED_SCHEMAS();
     var stringifyNumber = require_stringifyNumber();
     var intIdentify = (value) => typeof value === "bigint" || Number.isInteger(value);
-    var intResolve = (str4, offset, radix, { intAsBigInt }) => intAsBigInt ? BigInt(str4) : parseInt(str4.substring(offset), radix);
+    var intResolve = (str6, offset, radix, { intAsBigInt }) => intAsBigInt ? BigInt(str6) : parseInt(str6.substring(offset), radix);
     function intStringify(node, radix, prefix) {
       const { value } = node;
       if (intIdentify(value) && value >= 0)
@@ -5984,7 +6000,7 @@ var require_int = __commonJS({
       tag: "tag:yaml.org,2002:int",
       format: "OCT",
       test: /^0o[0-7]+$/,
-      resolve: (str4, _onError, opt) => intResolve(str4, 2, 8, opt),
+      resolve: (str6, _onError, opt) => intResolve(str6, 2, 8, opt),
       stringify: (node) => intStringify(node, 8, "0o")
     };
     var int = {
@@ -5992,7 +6008,7 @@ var require_int = __commonJS({
       default: true,
       tag: "tag:yaml.org,2002:int",
       test: /^[-+]?[0-9]+$/,
-      resolve: (str4, _onError, opt) => intResolve(str4, 0, 10, opt),
+      resolve: (str6, _onError, opt) => intResolve(str6, 0, 10, opt),
       stringify: stringifyNumber.stringifyNumber
     };
     var intHex = {
@@ -6001,7 +6017,7 @@ var require_int = __commonJS({
       tag: "tag:yaml.org,2002:int",
       format: "HEX",
       test: /^0x[0-9a-fA-F]+$/,
-      resolve: (str4, _onError, opt) => intResolve(str4, 2, 16, opt),
+      resolve: (str6, _onError, opt) => intResolve(str6, 2, 16, opt),
       stringify: (node) => intStringify(node, 16, "0x")
     };
     exports.int = int;
@@ -6056,7 +6072,7 @@ var require_schema2 = __commonJS({
         identify: (value) => typeof value === "string",
         default: true,
         tag: "tag:yaml.org,2002:str",
-        resolve: (str4) => str4,
+        resolve: (str6) => str6,
         stringify: stringifyJSON
       },
       {
@@ -6073,7 +6089,7 @@ var require_schema2 = __commonJS({
         default: true,
         tag: "tag:yaml.org,2002:bool",
         test: /^true$|^false$/,
-        resolve: (str4) => str4 === "true",
+        resolve: (str6) => str6 === "true",
         stringify: stringifyJSON
       },
       {
@@ -6081,7 +6097,7 @@ var require_schema2 = __commonJS({
         default: true,
         tag: "tag:yaml.org,2002:int",
         test: /^-?(?:0|[1-9][0-9]*)$/,
-        resolve: (str4, _onError, { intAsBigInt }) => intAsBigInt ? BigInt(str4) : parseInt(str4, 10),
+        resolve: (str6, _onError, { intAsBigInt }) => intAsBigInt ? BigInt(str6) : parseInt(str6, 10),
         stringify: ({ value }) => intIdentify(value) ? value.toString() : JSON.stringify(value)
       },
       {
@@ -6089,7 +6105,7 @@ var require_schema2 = __commonJS({
         default: true,
         tag: "tag:yaml.org,2002:float",
         test: /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]*)?(?:[eE][-+]?[0-9]+)?$/,
-        resolve: (str4) => parseFloat(str4),
+        resolve: (str6) => parseFloat(str6),
         stringify: stringifyJSON
       }
     ];
@@ -6097,9 +6113,9 @@ var require_schema2 = __commonJS({
       default: true,
       tag: "",
       test: /^/,
-      resolve(str4, onError) {
-        onError(`Unresolved plain scalar ${JSON.stringify(str4)}`);
-        return str4;
+      resolve(str6, onError) {
+        onError(`Unresolved plain scalar ${JSON.stringify(str6)}`);
+        return str6;
       }
     };
     var schema = [map.map, seq.seq].concat(jsonScalars, jsonError);
@@ -6132,10 +6148,10 @@ var require_binary = __commonJS({
         if (typeof node_buffer.Buffer === "function") {
           return node_buffer.Buffer.from(src, "base64");
         } else if (typeof atob === "function") {
-          const str4 = atob(src.replace(/[\n\r]/g, ""));
-          const buffer = new Uint8Array(str4.length);
-          for (let i = 0; i < str4.length; ++i)
-            buffer[i] = str4.charCodeAt(i);
+          const str6 = atob(src.replace(/[\n\r]/g, ""));
+          const buffer = new Uint8Array(str6.length);
+          for (let i = 0; i < str6.length; ++i)
+            buffer[i] = str6.charCodeAt(i);
           return buffer;
         } else {
           onError("This environment does not support reading binary tags; either Buffer or atob is required");
@@ -6146,28 +6162,28 @@ var require_binary = __commonJS({
         if (!value)
           return "";
         const buf = value;
-        let str4;
+        let str6;
         if (typeof node_buffer.Buffer === "function") {
-          str4 = buf instanceof node_buffer.Buffer ? buf.toString("base64") : node_buffer.Buffer.from(buf.buffer).toString("base64");
+          str6 = buf instanceof node_buffer.Buffer ? buf.toString("base64") : node_buffer.Buffer.from(buf.buffer).toString("base64");
         } else if (typeof btoa === "function") {
           let s = "";
           for (let i = 0; i < buf.length; ++i)
             s += String.fromCharCode(buf[i]);
-          str4 = btoa(s);
+          str6 = btoa(s);
         } else {
           throw new Error("This environment does not support writing binary tags; either Buffer or btoa is required");
         }
         type ?? (type = Scalar.Scalar.BLOCK_LITERAL);
         if (type !== Scalar.Scalar.QUOTE_DOUBLE) {
           const lineWidth = Math.max(ctx.options.lineWidth - ctx.indent.length, ctx.options.minContentWidth);
-          const n = Math.ceil(str4.length / lineWidth);
+          const n = Math.ceil(str6.length / lineWidth);
           const lines3 = new Array(n);
           for (let i = 0, o = 0; i < n; ++i, o += lineWidth) {
-            lines3[i] = str4.substr(o, lineWidth);
+            lines3[i] = str6.substr(o, lineWidth);
           }
-          str4 = lines3.join(type === Scalar.Scalar.BLOCK_LITERAL ? "\n" : " ");
+          str6 = lines3.join(type === Scalar.Scalar.BLOCK_LITERAL ? "\n" : " ");
         }
-        return stringifyString.stringifyString({ comment, type, value: str4 }, ctx, onComment, onChompKeep);
+        return stringifyString.stringifyString({ comment, type, value: str6 }, ctx, onComment, onChompKeep);
       }
     };
     exports.binary = binary;
@@ -6182,7 +6198,7 @@ var require_pairs = __commonJS({
     var identity = require_identity();
     var Pair = require_Pair();
     var Scalar = require_Scalar();
-    var YAMLSeq = require_YAMLSeq();
+    var YAMLSeq2 = require_YAMLSeq();
     function resolvePairs(seq, onError) {
       if (identity.isSeq(seq)) {
         for (let i = 0; i < seq.items.length; ++i) {
@@ -6211,7 +6227,7 @@ ${cn.comment}` : item.comment;
     }
     function createPairs(schema, iterable, ctx) {
       const { replacer } = ctx;
-      const pairs2 = new YAMLSeq.YAMLSeq(schema);
+      const pairs2 = new YAMLSeq2.YAMLSeq(schema);
       pairs2.tag = "tag:yaml.org,2002:pairs";
       let i = 0;
       if (iterable && Symbol.iterator in Object(iterable))
@@ -6260,17 +6276,17 @@ var require_omap = __commonJS({
     init_define_PKEY_EMBEDDED_SCHEMAS();
     var identity = require_identity();
     var toJS = require_toJS();
-    var YAMLMap = require_YAMLMap();
-    var YAMLSeq = require_YAMLSeq();
+    var YAMLMap2 = require_YAMLMap();
+    var YAMLSeq2 = require_YAMLSeq();
     var pairs = require_pairs();
-    var YAMLOMap = class _YAMLOMap extends YAMLSeq.YAMLSeq {
+    var YAMLOMap = class _YAMLOMap extends YAMLSeq2.YAMLSeq {
       constructor() {
         super();
-        this.add = YAMLMap.YAMLMap.prototype.add.bind(this);
-        this.delete = YAMLMap.YAMLMap.prototype.delete.bind(this);
-        this.get = YAMLMap.YAMLMap.prototype.get.bind(this);
-        this.has = YAMLMap.YAMLMap.prototype.has.bind(this);
-        this.set = YAMLMap.YAMLMap.prototype.set.bind(this);
+        this.add = YAMLMap2.YAMLMap.prototype.add.bind(this);
+        this.delete = YAMLMap2.YAMLMap.prototype.delete.bind(this);
+        this.get = YAMLMap2.YAMLMap.prototype.get.bind(this);
+        this.has = YAMLMap2.YAMLMap.prototype.has.bind(this);
+        this.set = YAMLMap2.YAMLMap.prototype.set.bind(this);
         this.tag = _YAMLOMap.tag;
       }
       /**
@@ -6377,7 +6393,7 @@ var require_float2 = __commonJS({
       default: true,
       tag: "tag:yaml.org,2002:float",
       test: /^(?:[-+]?\.(?:inf|Inf|INF)|\.nan|\.NaN|\.NAN)$/,
-      resolve: (str4) => str4.slice(-3).toLowerCase() === "nan" ? NaN : str4[0] === "-" ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY,
+      resolve: (str6) => str6.slice(-3).toLowerCase() === "nan" ? NaN : str6[0] === "-" ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY,
       stringify: stringifyNumber.stringifyNumber
     };
     var floatExp = {
@@ -6386,7 +6402,7 @@ var require_float2 = __commonJS({
       tag: "tag:yaml.org,2002:float",
       format: "EXP",
       test: /^[-+]?(?:[0-9][0-9_]*)?(?:\.[0-9_]*)?[eE][-+]?[0-9]+$/,
-      resolve: (str4) => parseFloat(str4.replace(/_/g, "")),
+      resolve: (str6) => parseFloat(str6.replace(/_/g, "")),
       stringify(node) {
         const num = Number(node.value);
         return isFinite(num) ? num.toExponential() : stringifyNumber.stringifyNumber(node);
@@ -6397,11 +6413,11 @@ var require_float2 = __commonJS({
       default: true,
       tag: "tag:yaml.org,2002:float",
       test: /^[-+]?(?:[0-9][0-9_]*)?\.[0-9_]*$/,
-      resolve(str4) {
-        const node = new Scalar.Scalar(parseFloat(str4.replace(/_/g, "")));
-        const dot = str4.indexOf(".");
+      resolve(str6) {
+        const node = new Scalar.Scalar(parseFloat(str6.replace(/_/g, "")));
+        const dot = str6.indexOf(".");
         if (dot !== -1) {
-          const f = str4.substring(dot + 1).replace(/_/g, "");
+          const f = str6.substring(dot + 1).replace(/_/g, "");
           if (f[f.length - 1] === "0")
             node.minFractionDigits = f.length;
         }
@@ -6422,34 +6438,34 @@ var require_int2 = __commonJS({
     init_define_PKEY_EMBEDDED_SCHEMAS();
     var stringifyNumber = require_stringifyNumber();
     var intIdentify = (value) => typeof value === "bigint" || Number.isInteger(value);
-    function intResolve(str4, offset, radix, { intAsBigInt }) {
-      const sign2 = str4[0];
+    function intResolve(str6, offset, radix, { intAsBigInt }) {
+      const sign2 = str6[0];
       if (sign2 === "-" || sign2 === "+")
         offset += 1;
-      str4 = str4.substring(offset).replace(/_/g, "");
+      str6 = str6.substring(offset).replace(/_/g, "");
       if (intAsBigInt) {
         switch (radix) {
           case 2:
-            str4 = `0b${str4}`;
+            str6 = `0b${str6}`;
             break;
           case 8:
-            str4 = `0o${str4}`;
+            str6 = `0o${str6}`;
             break;
           case 16:
-            str4 = `0x${str4}`;
+            str6 = `0x${str6}`;
             break;
         }
-        const n2 = BigInt(str4);
+        const n2 = BigInt(str6);
         return sign2 === "-" ? BigInt(-1) * n2 : n2;
       }
-      const n = parseInt(str4, radix);
+      const n = parseInt(str6, radix);
       return sign2 === "-" ? -1 * n : n;
     }
     function intStringify(node, radix, prefix) {
       const { value } = node;
       if (intIdentify(value)) {
-        const str4 = value.toString(radix);
-        return value < 0 ? "-" + prefix + str4.substr(1) : prefix + str4;
+        const str6 = value.toString(radix);
+        return value < 0 ? "-" + prefix + str6.substr(1) : prefix + str6;
       }
       return stringifyNumber.stringifyNumber(node);
     }
@@ -6459,7 +6475,7 @@ var require_int2 = __commonJS({
       tag: "tag:yaml.org,2002:int",
       format: "BIN",
       test: /^[-+]?0b[0-1_]+$/,
-      resolve: (str4, _onError, opt) => intResolve(str4, 2, 2, opt),
+      resolve: (str6, _onError, opt) => intResolve(str6, 2, 2, opt),
       stringify: (node) => intStringify(node, 2, "0b")
     };
     var intOct = {
@@ -6468,7 +6484,7 @@ var require_int2 = __commonJS({
       tag: "tag:yaml.org,2002:int",
       format: "OCT",
       test: /^[-+]?0[0-7_]+$/,
-      resolve: (str4, _onError, opt) => intResolve(str4, 1, 8, opt),
+      resolve: (str6, _onError, opt) => intResolve(str6, 1, 8, opt),
       stringify: (node) => intStringify(node, 8, "0")
     };
     var int = {
@@ -6476,7 +6492,7 @@ var require_int2 = __commonJS({
       default: true,
       tag: "tag:yaml.org,2002:int",
       test: /^[-+]?[0-9][0-9_]*$/,
-      resolve: (str4, _onError, opt) => intResolve(str4, 0, 10, opt),
+      resolve: (str6, _onError, opt) => intResolve(str6, 0, 10, opt),
       stringify: stringifyNumber.stringifyNumber
     };
     var intHex = {
@@ -6485,7 +6501,7 @@ var require_int2 = __commonJS({
       tag: "tag:yaml.org,2002:int",
       format: "HEX",
       test: /^[-+]?0x[0-9a-fA-F_]+$/,
-      resolve: (str4, _onError, opt) => intResolve(str4, 2, 16, opt),
+      resolve: (str6, _onError, opt) => intResolve(str6, 2, 16, opt),
       stringify: (node) => intStringify(node, 16, "0x")
     };
     exports.int = int;
@@ -6502,8 +6518,8 @@ var require_set = __commonJS({
     init_define_PKEY_EMBEDDED_SCHEMAS();
     var identity = require_identity();
     var Pair = require_Pair();
-    var YAMLMap = require_YAMLMap();
-    var YAMLSet = class _YAMLSet extends YAMLMap.YAMLMap {
+    var YAMLMap2 = require_YAMLMap();
+    var YAMLSet = class _YAMLSet extends YAMLMap2.YAMLMap {
       constructor(schema) {
         super(schema);
         this.tag = _YAMLSet.tag;
@@ -6516,7 +6532,7 @@ var require_set = __commonJS({
           pair = new Pair.Pair(key.key, null);
         else
           pair = new Pair.Pair(key, null);
-        const prev = YAMLMap.findPair(this.items, pair.key);
+        const prev = YAMLMap2.findPair(this.items, pair.key);
         if (!prev)
           this.items.push(pair);
       }
@@ -6525,13 +6541,13 @@ var require_set = __commonJS({
        * Otherwise, returns the value of that Pair's key.
        */
       get(key, keepPair) {
-        const pair = YAMLMap.findPair(this.items, key);
+        const pair = YAMLMap2.findPair(this.items, key);
         return !keepPair && identity.isPair(pair) ? identity.isScalar(pair.key) ? pair.key.value : pair.key : pair;
       }
       set(key, value) {
         if (typeof value !== "boolean")
           throw new Error(`Expected boolean value for set(key, value) in a YAML set, not ${typeof value}`);
-        const prev = YAMLMap.findPair(this.items, key);
+        const prev = YAMLMap2.findPair(this.items, key);
         if (prev && !value) {
           this.items.splice(this.items.indexOf(prev), 1);
         } else if (!prev && value) {
@@ -6591,9 +6607,9 @@ var require_timestamp = __commonJS({
     "use strict";
     init_define_PKEY_EMBEDDED_SCHEMAS();
     var stringifyNumber = require_stringifyNumber();
-    function parseSexagesimal(str4, asBigInt) {
-      const sign2 = str4[0];
-      const parts = sign2 === "-" || sign2 === "+" ? str4.substring(1) : str4;
+    function parseSexagesimal(str6, asBigInt) {
+      const sign2 = str6[0];
+      const parts = sign2 === "-" || sign2 === "+" ? str6.substring(1) : str6;
       const num = (n) => asBigInt ? BigInt(n) : Number(n);
       const res = parts.replace(/_/g, "").split(":").reduce((res2, p) => res2 * num(60) + num(p), num(0));
       return sign2 === "-" ? num(-1) * res : res;
@@ -6630,7 +6646,7 @@ var require_timestamp = __commonJS({
       tag: "tag:yaml.org,2002:int",
       format: "TIME",
       test: /^[-+]?[0-9][0-9_]*(?::[0-5]?[0-9])+$/,
-      resolve: (str4, _onError, { intAsBigInt }) => parseSexagesimal(str4, intAsBigInt),
+      resolve: (str6, _onError, { intAsBigInt }) => parseSexagesimal(str6, intAsBigInt),
       stringify: stringifySexagesimal
     };
     var floatTime = {
@@ -6639,7 +6655,7 @@ var require_timestamp = __commonJS({
       tag: "tag:yaml.org,2002:float",
       format: "TIME",
       test: /^[-+]?[0-9][0-9_]*(?::[0-5]?[0-9])+\.[0-9_]*$/,
-      resolve: (str4) => parseSexagesimal(str4, false),
+      resolve: (str6) => parseSexagesimal(str6, false),
       stringify: stringifySexagesimal
     };
     var timestamp = {
@@ -6650,8 +6666,8 @@ var require_timestamp = __commonJS({
       // may be omitted altogether, resulting in a date format. In such a case, the time part is
       // assumed to be 00:00:00Z (start of day, UTC).
       test: RegExp("^([0-9]{4})-([0-9]{1,2})-([0-9]{1,2})(?:(?:t|T|[ \\t]+)([0-9]{1,2}):([0-9]{1,2}):([0-9]{1,2}(\\.[0-9]+)?)(?:[ \\t]*(Z|[-+][012]?[0-9](?::[0-9]{2})?))?)?$"),
-      resolve(str4) {
-        const match = str4.match(timestamp.test);
+      resolve(str6) {
+        const match = str6.match(timestamp.test);
         if (!match)
           throw new Error("!!timestamp expects a date, starting with yyyy-mm-dd");
         const [, year, month, day, hour, minute, second] = match.map(Number);
@@ -6790,17 +6806,17 @@ var require_tags = __commonJS({
         }
       }
       if (Array.isArray(customTags)) {
-        for (const tag of customTags)
-          tags = tags.concat(tag);
+        for (const tag2 of customTags)
+          tags = tags.concat(tag2);
       } else if (typeof customTags === "function") {
         tags = customTags(tags.slice());
       }
       if (addMergeTag)
         tags = tags.concat(merge.merge);
-      return tags.reduce((tags2, tag) => {
-        const tagObj = typeof tag === "string" ? tagsByName[tag] : tag;
+      return tags.reduce((tags2, tag2) => {
+        const tagObj = typeof tag2 === "string" ? tagsByName[tag2] : tag2;
         if (!tagObj) {
-          const tagName = JSON.stringify(tag);
+          const tagName = JSON.stringify(tag2);
           const keys = Object.keys(tagsByName).map((key) => JSON.stringify(key)).join(", ");
           throw new Error(`Unknown custom tag ${tagName}; use one of ${keys}`);
         }
@@ -6944,7 +6960,7 @@ var require_Document = __commonJS({
     var applyReviver = require_applyReviver();
     var createNode = require_createNode();
     var directives = require_directives();
-    var Document = class _Document {
+    var Document3 = class _Document {
       constructor(value, replacer, options) {
         this.commentBefore = null;
         this.comment = null;
@@ -7007,9 +7023,9 @@ var require_Document = __commonJS({
           this.contents.add(value);
       }
       /** Adds a value to the document. */
-      addIn(path25, value) {
+      addIn(path26, value) {
         if (assertCollection(this.contents))
-          this.contents.addIn(path25, value);
+          this.contents.addIn(path26, value);
       }
       /**
        * Create a new `Alias` node, ensuring that the target `node` has the required anchor.
@@ -7043,7 +7059,7 @@ var require_Document = __commonJS({
           options = replacer;
           replacer = void 0;
         }
-        const { aliasDuplicateObjects, anchorPrefix, flow, keepUndefined, onTagObj, tag } = options ?? {};
+        const { aliasDuplicateObjects, anchorPrefix, flow, keepUndefined, onTagObj, tag: tag2 } = options ?? {};
         const { onAnchor, setAnchors, sourceObjects } = anchors.createNodeAnchors(
           this,
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -7058,7 +7074,7 @@ var require_Document = __commonJS({
           schema: this.schema,
           sourceObjects
         };
-        const node = createNode.createNode(value, tag, ctx);
+        const node = createNode.createNode(value, tag2, ctx);
         if (flow && identity.isCollection(node))
           node.flow = true;
         setAnchors();
@@ -7084,14 +7100,14 @@ var require_Document = __commonJS({
        * Removes a value from the document.
        * @returns `true` if the item was found and removed.
        */
-      deleteIn(path25) {
-        if (Collection.isEmptyPath(path25)) {
+      deleteIn(path26) {
+        if (Collection.isEmptyPath(path26)) {
           if (this.contents == null)
             return false;
           this.contents = null;
           return true;
         }
-        return assertCollection(this.contents) ? this.contents.deleteIn(path25) : false;
+        return assertCollection(this.contents) ? this.contents.deleteIn(path26) : false;
       }
       /**
        * Returns item at `key`, or `undefined` if not found. By default unwraps
@@ -7106,10 +7122,10 @@ var require_Document = __commonJS({
        * scalar values from their surrounding node; to disable set `keepScalar` to
        * `true` (collections are always returned intact).
        */
-      getIn(path25, keepScalar) {
-        if (Collection.isEmptyPath(path25))
+      getIn(path26, keepScalar) {
+        if (Collection.isEmptyPath(path26))
           return !keepScalar && identity.isScalar(this.contents) ? this.contents.value : this.contents;
-        return identity.isCollection(this.contents) ? this.contents.getIn(path25, keepScalar) : void 0;
+        return identity.isCollection(this.contents) ? this.contents.getIn(path26, keepScalar) : void 0;
       }
       /**
        * Checks if the document includes a value with the key `key`.
@@ -7120,10 +7136,10 @@ var require_Document = __commonJS({
       /**
        * Checks if the document includes a value at `path`.
        */
-      hasIn(path25) {
-        if (Collection.isEmptyPath(path25))
+      hasIn(path26) {
+        if (Collection.isEmptyPath(path26))
           return this.contents !== void 0;
-        return identity.isCollection(this.contents) ? this.contents.hasIn(path25) : false;
+        return identity.isCollection(this.contents) ? this.contents.hasIn(path26) : false;
       }
       /**
        * Sets a value in this document. For `!!set`, `value` needs to be a
@@ -7140,13 +7156,13 @@ var require_Document = __commonJS({
        * Sets a value in this document. For `!!set`, `value` needs to be a
        * boolean to add/remove the item from the set.
        */
-      setIn(path25, value) {
-        if (Collection.isEmptyPath(path25)) {
+      setIn(path26, value) {
+        if (Collection.isEmptyPath(path26)) {
           this.contents = value;
         } else if (this.contents == null) {
-          this.contents = Collection.collectionFromPath(this.schema, Array.from(path25), value);
+          this.contents = Collection.collectionFromPath(this.schema, Array.from(path26), value);
         } else if (assertCollection(this.contents)) {
-          this.contents.setIn(path25, value);
+          this.contents.setIn(path26, value);
         }
       }
       /**
@@ -7234,7 +7250,7 @@ var require_Document = __commonJS({
         return true;
       throw new Error("Expected a YAML collection as document contents");
     }
-    exports.Document = Document;
+    exports.Document = Document3;
   }
 });
 
@@ -7319,7 +7335,7 @@ var require_resolve_props = __commonJS({
       let reqSpace = false;
       let tab = null;
       let anchor = null;
-      let tag = null;
+      let tag2 = null;
       let newlineAfterProp = null;
       let comma = null;
       let found = null;
@@ -7365,7 +7381,7 @@ var require_resolve_props = __commonJS({
               commentSep += token.source;
             atNewline = true;
             hasNewline = true;
-            if (anchor || tag)
+            if (anchor || tag2)
               newlineAfterProp = token;
             hasSpace = true;
             break;
@@ -7381,9 +7397,9 @@ var require_resolve_props = __commonJS({
             reqSpace = true;
             break;
           case "tag": {
-            if (tag)
+            if (tag2)
               onError(token, "MULTIPLE_TAGS", "A node can have at most one tag");
-            tag = token;
+            tag2 = token;
             start ?? (start = token.offset);
             atNewline = false;
             hasSpace = false;
@@ -7391,7 +7407,7 @@ var require_resolve_props = __commonJS({
             break;
           }
           case indicator:
-            if (anchor || tag)
+            if (anchor || tag2)
               onError(token, "BAD_PROP_ORDER", `Anchors and tags must be after the ${token.source} indicator`);
             if (found)
               onError(token, "UNEXPECTED_TOKEN", `Unexpected ${token.source} in ${flow ?? "collection"}`);
@@ -7429,7 +7445,7 @@ var require_resolve_props = __commonJS({
         comment,
         hasNewline,
         anchor,
-        tag,
+        tag: tag2,
         newlineAfterProp,
         end,
         start: start ?? end
@@ -7524,14 +7540,14 @@ var require_resolve_block_map = __commonJS({
     "use strict";
     init_define_PKEY_EMBEDDED_SCHEMAS();
     var Pair = require_Pair();
-    var YAMLMap = require_YAMLMap();
+    var YAMLMap2 = require_YAMLMap();
     var resolveProps = require_resolve_props();
     var utilContainsNewline = require_util_contains_newline();
     var utilFlowIndentCheck = require_util_flow_indent_check();
     var utilMapIncludes = require_util_map_includes();
     var startColMsg = "All mapping items must start at the same column";
-    function resolveBlockMap({ composeNode, composeEmptyNode }, ctx, bm, onError, tag) {
-      const NodeClass = tag?.nodeClass ?? YAMLMap.YAMLMap;
+    function resolveBlockMap({ composeNode, composeEmptyNode }, ctx, bm, onError, tag2) {
+      const NodeClass = tag2?.nodeClass ?? YAMLMap2.YAMLMap;
       const map = new NodeClass(ctx.schema);
       if (ctx.atRoot)
         ctx.atRoot = false;
@@ -7632,11 +7648,11 @@ var require_resolve_block_seq = __commonJS({
   "../../node_modules/.pnpm/yaml@2.9.0/node_modules/yaml/dist/compose/resolve-block-seq.js"(exports) {
     "use strict";
     init_define_PKEY_EMBEDDED_SCHEMAS();
-    var YAMLSeq = require_YAMLSeq();
+    var YAMLSeq2 = require_YAMLSeq();
     var resolveProps = require_resolve_props();
     var utilFlowIndentCheck = require_util_flow_indent_check();
-    function resolveBlockSeq({ composeNode, composeEmptyNode }, ctx, bs, onError, tag) {
-      const NodeClass = tag?.nodeClass ?? YAMLSeq.YAMLSeq;
+    function resolveBlockSeq({ composeNode, composeEmptyNode }, ctx, bs, onError, tag2) {
+      const NodeClass = tag2?.nodeClass ?? YAMLSeq2.YAMLSeq;
       const seq = new NodeClass(ctx.schema);
       if (ctx.atRoot)
         ctx.atRoot = false;
@@ -7730,18 +7746,18 @@ var require_resolve_flow_collection = __commonJS({
     init_define_PKEY_EMBEDDED_SCHEMAS();
     var identity = require_identity();
     var Pair = require_Pair();
-    var YAMLMap = require_YAMLMap();
-    var YAMLSeq = require_YAMLSeq();
+    var YAMLMap2 = require_YAMLMap();
+    var YAMLSeq2 = require_YAMLSeq();
     var resolveEnd = require_resolve_end();
     var resolveProps = require_resolve_props();
     var utilContainsNewline = require_util_contains_newline();
     var utilMapIncludes = require_util_map_includes();
     var blockMsg = "Block collections are not allowed within flow collections";
     var isBlock = (token) => token && (token.type === "block-map" || token.type === "block-seq");
-    function resolveFlowCollection({ composeNode, composeEmptyNode }, ctx, fc, onError, tag) {
-      const isMap = fc.start.source === "{";
-      const fcName = isMap ? "flow map" : "flow sequence";
-      const NodeClass = tag?.nodeClass ?? (isMap ? YAMLMap.YAMLMap : YAMLSeq.YAMLSeq);
+    function resolveFlowCollection({ composeNode, composeEmptyNode }, ctx, fc, onError, tag2) {
+      const isMap2 = fc.start.source === "{";
+      const fcName = isMap2 ? "flow map" : "flow sequence";
+      const NodeClass = tag2?.nodeClass ?? (isMap2 ? YAMLMap2.YAMLMap : YAMLSeq2.YAMLSeq);
       const coll = new NodeClass(ctx.schema);
       coll.flow = true;
       const atRoot = ctx.atRoot;
@@ -7777,7 +7793,7 @@ var require_resolve_flow_collection = __commonJS({
             offset = props.end;
             continue;
           }
-          if (!isMap && ctx.options.strict && utilContainsNewline.containsNewline(key))
+          if (!isMap2 && ctx.options.strict && utilContainsNewline.containsNewline(key))
             onError(
               key,
               // checked by containsNewline()
@@ -7817,7 +7833,7 @@ var require_resolve_flow_collection = __commonJS({
             }
           }
         }
-        if (!isMap && !sep && !props.found) {
+        if (!isMap2 && !sep && !props.found) {
           const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep, null, props, onError);
           coll.items.push(valueNode);
           offset = valueNode.range[2];
@@ -7840,7 +7856,7 @@ var require_resolve_flow_collection = __commonJS({
             startOnNewline: false
           });
           if (valueProps.found) {
-            if (!isMap && !props.found && ctx.options.strict) {
+            if (!isMap2 && !props.found && ctx.options.strict) {
               if (sep)
                 for (const st of sep) {
                   if (st === valueProps.found)
@@ -7872,13 +7888,13 @@ var require_resolve_flow_collection = __commonJS({
           const pair = new Pair.Pair(keyNode, valueNode);
           if (ctx.options.keepSourceTokens)
             pair.srcToken = collItem;
-          if (isMap) {
+          if (isMap2) {
             const map = coll;
             if (utilMapIncludes.mapIncludes(ctx, map.items, keyNode))
               onError(keyStart, "DUPLICATE_KEY", "Map keys must be unique");
             map.items.push(pair);
           } else {
-            const map = new YAMLMap.YAMLMap(ctx.schema);
+            const map = new YAMLMap2.YAMLMap(ctx.schema);
             map.flow = true;
             map.items.push(pair);
             const endRange = (valueNode ?? keyNode).range;
@@ -7888,7 +7904,7 @@ var require_resolve_flow_collection = __commonJS({
           offset = valueNode ? valueNode.range[2] : valueProps.end;
         }
       }
-      const expectedEnd = isMap ? "}" : "]";
+      const expectedEnd = isMap2 ? "}" : "]";
       const [ce, ...ee] = fc.end;
       let cePos = offset;
       if (ce?.source === expectedEnd)
@@ -7925,13 +7941,13 @@ var require_compose_collection = __commonJS({
     init_define_PKEY_EMBEDDED_SCHEMAS();
     var identity = require_identity();
     var Scalar = require_Scalar();
-    var YAMLMap = require_YAMLMap();
-    var YAMLSeq = require_YAMLSeq();
+    var YAMLMap2 = require_YAMLMap();
+    var YAMLSeq2 = require_YAMLSeq();
     var resolveBlockMap = require_resolve_block_map();
     var resolveBlockSeq = require_resolve_block_seq();
     var resolveFlowCollection = require_resolve_flow_collection();
-    function resolveCollection(CN, ctx, token, onError, tagName, tag) {
-      const coll = token.type === "block-map" ? resolveBlockMap.resolveBlockMap(CN, ctx, token, onError, tag) : token.type === "block-seq" ? resolveBlockSeq.resolveBlockSeq(CN, ctx, token, onError, tag) : resolveFlowCollection.resolveFlowCollection(CN, ctx, token, onError, tag);
+    function resolveCollection(CN, ctx, token, onError, tagName, tag2) {
+      const coll = token.type === "block-map" ? resolveBlockMap.resolveBlockMap(CN, ctx, token, onError, tag2) : token.type === "block-seq" ? resolveBlockSeq.resolveBlockSeq(CN, ctx, token, onError, tag2) : resolveFlowCollection.resolveFlowCollection(CN, ctx, token, onError, tag2);
       const Coll = coll.constructor;
       if (tagName === "!" || tagName === Coll.tagName) {
         coll.tag = Coll.tagName;
@@ -7953,15 +7969,15 @@ var require_compose_collection = __commonJS({
         }
       }
       const expType = token.type === "block-map" ? "map" : token.type === "block-seq" ? "seq" : token.start.source === "{" ? "map" : "seq";
-      if (!tagToken || !tagName || tagName === "!" || tagName === YAMLMap.YAMLMap.tagName && expType === "map" || tagName === YAMLSeq.YAMLSeq.tagName && expType === "seq") {
+      if (!tagToken || !tagName || tagName === "!" || tagName === YAMLMap2.YAMLMap.tagName && expType === "map" || tagName === YAMLSeq2.YAMLSeq.tagName && expType === "seq") {
         return resolveCollection(CN, ctx, token, onError, tagName);
       }
-      let tag = ctx.schema.tags.find((t) => t.tag === tagName && t.collection === expType);
-      if (!tag) {
+      let tag2 = ctx.schema.tags.find((t) => t.tag === tagName && t.collection === expType);
+      if (!tag2) {
         const kt = ctx.schema.knownTags[tagName];
         if (kt?.collection === expType) {
           ctx.schema.tags.push(Object.assign({}, kt, { default: false }));
-          tag = kt;
+          tag2 = kt;
         } else {
           if (kt) {
             onError(tagToken, "BAD_COLLECTION_TYPE", `${kt.tag} used for ${expType} collection, but expects ${kt.collection ?? "scalar"}`, true);
@@ -7971,13 +7987,13 @@ var require_compose_collection = __commonJS({
           return resolveCollection(CN, ctx, token, onError, tagName);
         }
       }
-      const coll = resolveCollection(CN, ctx, token, onError, tagName, tag);
-      const res = tag.resolve?.(coll, (msg) => onError(tagToken, "TAG_RESOLVE_FAILED", msg), ctx.options) ?? coll;
+      const coll = resolveCollection(CN, ctx, token, onError, tagName, tag2);
+      const res = tag2.resolve?.(coll, (msg) => onError(tagToken, "TAG_RESOLVE_FAILED", msg), ctx.options) ?? coll;
       const node = identity.isNode(res) ? res : new Scalar.Scalar(res);
       node.range = coll.range;
       node.tag = tagName;
-      if (tag?.format)
-        node.format = tag.format;
+      if (tag2?.format)
+        node.format = tag2.format;
       return node;
     }
     exports.composeCollection = composeCollection;
@@ -8401,18 +8417,18 @@ var require_compose_scalar = __commonJS({
     function composeScalar(ctx, token, tagToken, onError) {
       const { value, type, comment, range } = token.type === "block-scalar" ? resolveBlockScalar.resolveBlockScalar(ctx, token, onError) : resolveFlowScalar.resolveFlowScalar(token, ctx.options.strict, onError);
       const tagName = tagToken ? ctx.directives.tagName(tagToken.source, (msg) => onError(tagToken, "TAG_RESOLVE_FAILED", msg)) : null;
-      let tag;
+      let tag2;
       if (ctx.options.stringKeys && ctx.atKey) {
-        tag = ctx.schema[identity.SCALAR];
+        tag2 = ctx.schema[identity.SCALAR];
       } else if (tagName)
-        tag = findScalarTagByName(ctx.schema, value, tagName, tagToken, onError);
+        tag2 = findScalarTagByName(ctx.schema, value, tagName, tagToken, onError);
       else if (token.type === "scalar")
-        tag = findScalarTagByTest(ctx, value, token, onError);
+        tag2 = findScalarTagByTest(ctx, value, token, onError);
       else
-        tag = ctx.schema[identity.SCALAR];
+        tag2 = ctx.schema[identity.SCALAR];
       let scalar;
       try {
-        const res = tag.resolve(value, (msg) => onError(tagToken ?? token, "TAG_RESOLVE_FAILED", msg), ctx.options);
+        const res = tag2.resolve(value, (msg) => onError(tagToken ?? token, "TAG_RESOLVE_FAILED", msg), ctx.options);
         scalar = identity.isScalar(res) ? res : new Scalar.Scalar(res);
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
@@ -8425,8 +8441,8 @@ var require_compose_scalar = __commonJS({
         scalar.type = type;
       if (tagName)
         scalar.tag = tagName;
-      if (tag.format)
-        scalar.format = tag.format;
+      if (tag2.format)
+        scalar.format = tag2.format;
       if (comment)
         scalar.comment = comment;
       return scalar;
@@ -8435,17 +8451,17 @@ var require_compose_scalar = __commonJS({
       if (tagName === "!")
         return schema[identity.SCALAR];
       const matchWithTest = [];
-      for (const tag of schema.tags) {
-        if (!tag.collection && tag.tag === tagName) {
-          if (tag.default && tag.test)
-            matchWithTest.push(tag);
+      for (const tag2 of schema.tags) {
+        if (!tag2.collection && tag2.tag === tagName) {
+          if (tag2.default && tag2.test)
+            matchWithTest.push(tag2);
           else
-            return tag;
+            return tag2;
         }
       }
-      for (const tag of matchWithTest)
-        if (tag.test?.test(value))
-          return tag;
+      for (const tag2 of matchWithTest)
+        if (tag2.test?.test(value))
+          return tag2;
       const kt = schema.knownTags[tagName];
       if (kt && !kt.collection) {
         schema.tags.push(Object.assign({}, kt, { default: false, test: void 0 }));
@@ -8455,17 +8471,17 @@ var require_compose_scalar = __commonJS({
       return schema[identity.SCALAR];
     }
     function findScalarTagByTest({ atKey, directives, schema }, value, token, onError) {
-      const tag = schema.tags.find((tag2) => (tag2.default === true || atKey && tag2.default === "key") && tag2.test?.test(value)) || schema[identity.SCALAR];
+      const tag2 = schema.tags.find((tag3) => (tag3.default === true || atKey && tag3.default === "key") && tag3.test?.test(value)) || schema[identity.SCALAR];
       if (schema.compat) {
-        const compat = schema.compat.find((tag2) => tag2.default && tag2.test?.test(value)) ?? schema[identity.SCALAR];
-        if (tag.tag !== compat.tag) {
-          const ts = directives.tagString(tag.tag);
+        const compat = schema.compat.find((tag3) => tag3.default && tag3.test?.test(value)) ?? schema[identity.SCALAR];
+        if (tag2.tag !== compat.tag) {
+          const ts = directives.tagString(tag2.tag);
           const cs = directives.tagString(compat.tag);
           const msg = `Value may be parsed as either ${ts} or ${cs}`;
           onError(token, "TAG_RESOLVE_FAILED", msg, true);
         }
       }
-      return tag;
+      return tag2;
     }
     exports.composeScalar = composeScalar;
   }
@@ -8516,20 +8532,20 @@ var require_compose_node = __commonJS({
     var CN = { composeNode, composeEmptyNode };
     function composeNode(ctx, token, props, onError) {
       const atKey = ctx.atKey;
-      const { spaceBefore, comment, anchor, tag } = props;
+      const { spaceBefore, comment, anchor, tag: tag2 } = props;
       let node;
       let isSrcToken = true;
       switch (token.type) {
         case "alias":
           node = composeAlias(ctx, token, onError);
-          if (anchor || tag)
+          if (anchor || tag2)
             onError(token, "ALIAS_PROPS", "An alias node must not specify any properties");
           break;
         case "scalar":
         case "single-quoted-scalar":
         case "double-quoted-scalar":
         case "block-scalar":
-          node = composeScalar.composeScalar(ctx, token, tag, onError);
+          node = composeScalar.composeScalar(ctx, token, tag2, onError);
           if (anchor)
             node.anchor = anchor.source.substring(1);
           break;
@@ -8556,7 +8572,7 @@ var require_compose_node = __commonJS({
         onError(anchor, "BAD_ALIAS", "Anchor cannot be an empty string");
       if (atKey && ctx.options.stringKeys && (!identity.isScalar(node) || typeof node.value !== "string" || node.tag && node.tag !== "tag:yaml.org,2002:str")) {
         const msg = "With stringKeys, all keys must be strings";
-        onError(tag ?? token, "NON_STRING_KEY", msg);
+        onError(tag2 ?? token, "NON_STRING_KEY", msg);
       }
       if (spaceBefore)
         node.spaceBefore = true;
@@ -8570,14 +8586,14 @@ var require_compose_node = __commonJS({
         node.srcToken = token;
       return node;
     }
-    function composeEmptyNode(ctx, offset, before, pos, { spaceBefore, comment, anchor, tag, end }, onError) {
+    function composeEmptyNode(ctx, offset, before, pos, { spaceBefore, comment, anchor, tag: tag2, end }, onError) {
       const token = {
         type: "scalar",
         offset: utilEmptyScalarPosition.emptyScalarPosition(offset, before, pos),
         indent: -1,
         source: ""
       };
-      const node = composeScalar.composeScalar(ctx, token, tag, onError);
+      const node = composeScalar.composeScalar(ctx, token, tag2, onError);
       if (anchor) {
         node.anchor = anchor.source.substring(1);
         if (node.anchor === "")
@@ -8614,13 +8630,13 @@ var require_compose_doc = __commonJS({
   "../../node_modules/.pnpm/yaml@2.9.0/node_modules/yaml/dist/compose/compose-doc.js"(exports) {
     "use strict";
     init_define_PKEY_EMBEDDED_SCHEMAS();
-    var Document = require_Document();
+    var Document3 = require_Document();
     var composeNode = require_compose_node();
     var resolveEnd = require_resolve_end();
     var resolveProps = require_resolve_props();
     function composeDoc(options, directives, { offset, start, value, end }, onError) {
       const opts = Object.assign({ _directives: directives }, options);
-      const doc = new Document.Document(void 0, opts);
+      const doc = new Document3.Document(void 0, opts);
       const ctx = {
         atKey: false,
         atRoot: true,
@@ -8660,7 +8676,7 @@ var require_composer = __commonJS({
     init_define_PKEY_EMBEDDED_SCHEMAS();
     var node_process = __require("process");
     var directives = require_directives();
-    var Document = require_Document();
+    var Document3 = require_Document();
     var errors = require_errors();
     var identity = require_identity();
     var composeDoc = require_compose_doc();
@@ -8849,7 +8865,7 @@ ${end.comment}` : end.comment;
           this.doc = null;
         } else if (forceDoc) {
           const opts = Object.assign({ _directives: this.directives }, this.options);
-          const doc = new Document.Document(void 0, opts);
+          const doc = new Document3.Document(void 0, opts);
           if (this.atDirectives)
             this.onError(endOffset, "MISSING_CHAR", "Missing directives-end indicator line");
           doc.range = [0, endOffset, endOffset];
@@ -9126,9 +9142,9 @@ var require_cst_visit = __commonJS({
     visit.BREAK = BREAK;
     visit.SKIP = SKIP;
     visit.REMOVE = REMOVE;
-    visit.itemAtPath = (cst, path25) => {
+    visit.itemAtPath = (cst, path26) => {
       let item = cst;
-      for (const [field, index] of path25) {
+      for (const [field, index] of path26) {
         const tok = item?.[field];
         if (tok && "items" in tok) {
           item = tok.items[index];
@@ -9137,23 +9153,23 @@ var require_cst_visit = __commonJS({
       }
       return item;
     };
-    visit.parentCollection = (cst, path25) => {
-      const parent = visit.itemAtPath(cst, path25.slice(0, -1));
-      const field = path25[path25.length - 1][0];
+    visit.parentCollection = (cst, path26) => {
+      const parent = visit.itemAtPath(cst, path26.slice(0, -1));
+      const field = path26[path26.length - 1][0];
       const coll = parent?.[field];
       if (coll && "items" in coll)
         return coll;
       throw new Error("Parent collection not found");
     };
-    function _visit(path25, item, visitor) {
-      let ctrl = visitor(item, path25);
+    function _visit(path26, item, visitor) {
+      let ctrl = visitor(item, path26);
       if (typeof ctrl === "symbol")
         return ctrl;
       for (const field of ["key", "value"]) {
         const token = item[field];
         if (token && "items" in token) {
           for (let i = 0; i < token.items.length; ++i) {
-            const ci = _visit(Object.freeze(path25.concat([[field, i]])), token.items[i], visitor);
+            const ci = _visit(Object.freeze(path26.concat([[field, i]])), token.items[i], visitor);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -9164,10 +9180,10 @@ var require_cst_visit = __commonJS({
             }
           }
           if (typeof ctrl === "function" && field === "key")
-            ctrl = ctrl(item, path25);
+            ctrl = ctrl(item, path26);
         }
       }
-      return typeof ctrl === "function" ? ctrl(item, path25) : ctrl;
+      return typeof ctrl === "function" ? ctrl(item, path26) : ctrl;
     }
     exports.visit = visit;
   }
@@ -10779,7 +10795,7 @@ var require_public_api = __commonJS({
     "use strict";
     init_define_PKEY_EMBEDDED_SCHEMAS();
     var composer = require_composer();
-    var Document = require_Document();
+    var Document3 = require_Document();
     var errors = require_errors();
     var log = require_log();
     var identity = require_identity();
@@ -10804,7 +10820,7 @@ var require_public_api = __commonJS({
         return docs;
       return Object.assign([], { empty: true }, composer$1.streamInfo());
     }
-    function parseDocument3(source, options = {}) {
+    function parseDocument4(source, options = {}) {
       const { lineCounter: lineCounter2, prettyErrors } = parseOptions(options);
       const parser$1 = new parser.Parser(lineCounter2?.addNewLine);
       const composer$1 = new composer.Composer(options);
@@ -10830,7 +10846,7 @@ var require_public_api = __commonJS({
       } else if (options === void 0 && reviver && typeof reviver === "object") {
         options = reviver;
       }
-      const doc = parseDocument3(src, options);
+      const doc = parseDocument4(src, options);
       if (!doc)
         return null;
       doc.warnings.forEach((warning) => log.warn(doc.options.logLevel, warning));
@@ -10862,11 +10878,11 @@ var require_public_api = __commonJS({
       }
       if (identity.isDocument(value) && !_replacer)
         return value.toString(options);
-      return new Document.Document(value, _replacer, options).toString(options);
+      return new Document3.Document(value, _replacer, options).toString(options);
     }
     exports.parse = parse;
     exports.parseAllDocuments = parseAllDocuments;
-    exports.parseDocument = parseDocument3;
+    exports.parseDocument = parseDocument4;
     exports.stringify = stringify;
   }
 });
@@ -10877,15 +10893,15 @@ var require_dist = __commonJS({
     "use strict";
     init_define_PKEY_EMBEDDED_SCHEMAS();
     var composer = require_composer();
-    var Document = require_Document();
+    var Document3 = require_Document();
     var Schema = require_Schema();
     var errors = require_errors();
     var Alias = require_Alias();
     var identity = require_identity();
     var Pair = require_Pair();
     var Scalar = require_Scalar();
-    var YAMLMap = require_YAMLMap();
-    var YAMLSeq = require_YAMLSeq();
+    var YAMLMap2 = require_YAMLMap();
+    var YAMLSeq2 = require_YAMLSeq();
     var cst = require_cst();
     var lexer = require_lexer();
     var lineCounter = require_line_counter();
@@ -10893,7 +10909,7 @@ var require_dist = __commonJS({
     var publicApi = require_public_api();
     var visit = require_visit();
     exports.Composer = composer.Composer;
-    exports.Document = Document.Document;
+    exports.Document = Document3.Document;
     exports.Schema = Schema.Schema;
     exports.YAMLError = errors.YAMLError;
     exports.YAMLParseError = errors.YAMLParseError;
@@ -10909,8 +10925,8 @@ var require_dist = __commonJS({
     exports.isSeq = identity.isSeq;
     exports.Pair = Pair.Pair;
     exports.Scalar = Scalar.Scalar;
-    exports.YAMLMap = YAMLMap.YAMLMap;
-    exports.YAMLSeq = YAMLSeq.YAMLSeq;
+    exports.YAMLMap = YAMLMap2.YAMLMap;
+    exports.YAMLSeq = YAMLSeq2.YAMLSeq;
     exports.CST = cst;
     exports.Lexer = lexer.Lexer;
     exports.LineCounter = lineCounter.LineCounter;
@@ -10930,7 +10946,7 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 // src/index.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 import { readFile as readFile20 } from "node:fs/promises";
-import path24 from "node:path";
+import path25 from "node:path";
 
 // ../shared-manifest/dist/index.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -11661,20 +11677,20 @@ function numberInWireRange(n) {
 function representabilityIssue(value) {
   return walk(value, "", 0);
 }
-function walk(value, path25, depth) {
+function walk(value, path26, depth) {
   if (typeof value === "string") {
-    return hasLoneSurrogate(value) ? { rule: "lone-surrogate", path: path25 } : null;
+    return hasLoneSurrogate(value) ? { rule: "lone-surrogate", path: path26 } : null;
   }
   if (typeof value === "number") {
-    return numberInWireRange(value) ? null : { rule: "number-out-of-range", path: path25 };
+    return numberInWireRange(value) ? null : { rule: "number-out-of-range", path: path26 };
   }
   if (value === null || typeof value !== "object")
     return null;
   if (depth + 1 > MAX_VALUE_DEPTH)
-    return { rule: "too-deep", path: path25 };
+    return { rule: "too-deep", path: path26 };
   if (Array.isArray(value)) {
     for (let k = 0; k < value.length; k++) {
-      const issue = walk(value[k], `${path25}/${k}`, depth + 1);
+      const issue = walk(value[k], `${path26}/${k}`, depth + 1);
       if (issue)
         return issue;
     }
@@ -11682,7 +11698,7 @@ function walk(value, path25, depth) {
   }
   const seen = /* @__PURE__ */ new Map();
   for (const [name, member] of Object.entries(value)) {
-    const memberPath = `${path25}/${escapePointer(name)}`;
+    const memberPath = `${path26}/${escapePointer(name)}`;
     if (hasLoneSurrogate(name))
       return { rule: "lone-surrogate", path: memberPath };
     if (name.includes("\0"))
@@ -12440,7 +12456,14 @@ var TRANSPORT_OUTLET_KINDS = {
 };
 var IMPLICIT_OUTLET_ID = "direct";
 var OUTLET_IDENTITY_FIELDS = {
-  direct: ["platforms", "homebrewCask", "homebrewFormula", "scoop"],
+  direct: [
+    "platforms",
+    "homebrewCask",
+    "homebrewFormula",
+    "homebrewTap",
+    "scoop",
+    "scoopBucket"
+  ],
   "app-store": ["appleId", "bundleId"],
   testflight: ["appleId", "bundleId", "publicLink"],
   altstore: ["artifact", "bundleId"],
@@ -12479,6 +12502,8 @@ var SNAP_CHANNEL_RE = /^(?:[a-z0-9][a-z0-9.-]{0,63}\/)?(?:stable|candidate|beta|
 var WINGET_ID_RE = /^[A-Za-z0-9][A-Za-z0-9-]{0,31}(\.[A-Za-z0-9][A-Za-z0-9-]{0,31}){1,7}$/;
 var HOMEBREW_CASK_PATTERN = /^[a-z0-9][a-z0-9.@-]{0,99}$/;
 var HOMEBREW_FORMULA_PATTERN = /^[a-z0-9][a-z0-9.@+_-]{0,99}$/;
+var HOMEBREW_TAP_PATTERN = /^(?![Hh][Oo][Mm][Ee][Bb][Rr][Ee][Ww]\/)[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})\/homebrew-[A-Za-z0-9._-]{1,90}$/;
+var SCOOP_BUCKET_PATTERN = /^(?![Ss][Cc][Oo][Oo][Pp][Ii][Nn][Ss][Tt][Aa][Ll][Ll][Ee][Rr]\/)[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})\/(?!\.)[A-Za-z0-9._-]{1,100}$/;
 var MAX_CHANNEL_MAP_ENTRIES = 32;
 var SCOOP_PATH_PATTERN = /^(?!.*(?:^|[\\/])\.\.(?:[\\/]|$))[A-Za-z0-9 ._()+-]{1,128}(?:[\\/][A-Za-z0-9 ._()+-]{1,128}){0,7}$/;
 var SCOOP_SHORTCUT_NAME_RE = /^[^\u0000-\u001f\u007f\\/:*?"<>|]{1,100}$/;
@@ -12568,8 +12593,18 @@ function fieldCheck(kind, field) {
         HOMEBREW_FORMULA_PATTERN,
         "a Homebrew formula name (lower-case letters, digits, ., @, +, _ and -)"
       );
+    case "homebrewTap":
+      return pattern(
+        HOMEBREW_TAP_PATTERN,
+        "the product's own Homebrew tap, <owner>/homebrew-<name> on GitHub (never a Homebrew organisation repository)"
+      );
     case "scoop":
       return scoopCheck;
+    case "scoopBucket":
+      return pattern(
+        SCOOP_BUCKET_PATTERN,
+        "the product's own Scoop bucket, <owner>/<repo> on GitHub (never a ScoopInstaller repository)"
+      );
     case "publisher":
       return pattern(
         MSIX_PUBLISHER_PATTERN,
@@ -12755,11 +12790,11 @@ function validateDistribution(errors, doc, ctx, warnings) {
       "apiVersion must be pkey.dev/v1 when present."
     );
   }
-  for (const path25 of capabilityPaths(doc)) {
+  for (const path26 of capabilityPaths(doc)) {
     add(
       errors,
       "distribution",
-      path25,
+      path26,
       "capabilities_not_manifest_writable",
       "outlet capabilities are operator-owned and cannot be set in .pkey/distribution; they default per outlet kind and an operator narrows them in the console."
     );
@@ -12921,13 +12956,13 @@ function validateTransports(errors, transports, ctx, kinds) {
       );
     }
   }
-  const checkMap = (path25, raw) => {
+  const checkMap = (path26, raw) => {
     if (raw === void 0) return;
     if (!isRecord2(raw)) {
       add(
         errors,
         "distribution",
-        path25,
+        path26,
         "invalid_transport",
         "a transport map must be an object keyed by outlet id."
       );
@@ -12938,7 +12973,7 @@ function validateTransports(errors, transports, ctx, kinds) {
         add(
           errors,
           "distribution",
-          `${path25}/${outletId}`,
+          `${path26}/${outletId}`,
           "invalid_transport",
           `transports must be one of ${TRANSPORTS.join(", ")}.`
         );
@@ -12949,7 +12984,7 @@ function validateTransports(errors, transports, ctx, kinds) {
         add(
           errors,
           "distribution",
-          `${path25}/${outletId}`,
+          `${path26}/${outletId}`,
           "unknown_outlet_ref",
           `transport maps may only name outlets declared under outlets.`
         );
@@ -12957,7 +12992,7 @@ function validateTransports(errors, transports, ctx, kinds) {
         add(
           errors,
           "distribution",
-          `${path25}/${outletId}`,
+          `${path26}/${outletId}`,
           "transport_not_allowed",
           `transport ${transport} cannot carry a deliverable on a ${kind} outlet.`
         );
@@ -13007,11 +13042,11 @@ function capabilityPaths(doc) {
     { node: doc, path: "" }
   ];
   while (stack.length) {
-    const { node, path: path25 } = stack.pop();
+    const { node, path: path26 } = stack.pop();
     if (node === null || typeof node !== "object") continue;
     const entries = Array.isArray(node) ? node.map((v, i) => [String(i), v]) : Object.entries(node);
     for (const [key, child] of entries) {
-      const childPath = `${path25}/${key}`;
+      const childPath = `${path26}/${key}`;
       if (!Array.isArray(node) && key === "capabilities") found.push(childPath);
       stack.push({ node: child, path: childPath });
     }
@@ -13174,8 +13209,8 @@ function sortedRecord(v) {
   for (const key of Object.keys(v).sort(compare)) out[key] = v[key];
   return out;
 }
-function add(list2, file, path25, code, message) {
-  list2.push({ file, path: path25, code, message });
+function add(list2, file, path26, code, message) {
+  list2.push({ file, path: path26, code, message });
 }
 var DESCRIPTOR_VERSION = 1;
 var MAX_DESCRIPTOR_BYTES = 64 * 1024;
@@ -13260,8 +13295,8 @@ var MAX_HOLD_REASON = 200;
 function descriptorReleaseId(d) {
   return d.tag ?? `${d.deliverable}@${d.version}`;
 }
-function isContentAddressedKey(key, sha2565) {
-  return key === `blobs/sha256/${sha2565}` || key === `gated/blobs/sha256/${sha2565}`;
+function isContentAddressedKey(key, sha2566) {
+  return key === `blobs/sha256/${sha2566}` || key === `gated/blobs/sha256/${sha2566}`;
 }
 function canonicalDescriptorJson(value) {
   if (Array.isArray(value))
@@ -13438,7 +13473,7 @@ function versionFitsScheme(version, scheme) {
 }
 function validateReleaseDescriptor(descriptor, manifest) {
   const errors = [];
-  const err = (path25, code, message) => errors.push({ path: path25, code, message });
+  const err = (path26, code, message) => errors.push({ path: path26, code, message });
   if (!isRecord3(descriptor)) {
     err(
       "/",
@@ -13936,7 +13971,7 @@ var MAVEN_EXTENSION_RE = /^[a-z0-9][a-z0-9.]{0,15}$/;
 var MEDIA_TYPE_RE = /^[a-z0-9][a-z0-9.+-]*\/[a-z0-9][a-z0-9.+-]*$/;
 var OCI_TAG_RE = /^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$/;
 function validatePackageDescriptor(d, manifest, errors) {
-  const err = (path25, code, message) => errors.push({ path: path25, code, message });
+  const err = (path26, code, message) => errors.push({ path: path26, code, message });
   for (const key of Object.keys(d))
     if (!PACKAGE_DESCRIPTOR_FIELDS.has(key))
       err(
@@ -14630,7 +14665,7 @@ var OCI_SETUP = {
     const host = v.get("registryHost");
     const owner = v.get("owner");
     const repo = str(v.get("package.name")) ?? "<repository>";
-    const tag = str(v.get("package.version")) ?? "latest";
+    const tag2 = str(v.get("package.version")) ?? "latest";
     const login = v.credential.kind === "env" ? `echo "$${v.credential.name}" | docker login ${host} -u __token__ --password-stdin` : v.credential.kind === "token" ? `echo ${v.credential.value} | docker login ${host} -u __token__ --password-stdin` : null;
     return [
       {
@@ -14639,7 +14674,7 @@ var OCI_SETUP = {
         title: "Pull by the fully qualified reference",
         description: "podman pull and crane pull take the same reference; it never resolves on another registry.",
         language: "sh",
-        code: lines(login, `docker pull ${host}/${owner}/${repo}:${tag}`)
+        code: lines(login, `docker pull ${host}/${owner}/${repo}:${tag2}`)
       }
     ];
   }
@@ -15388,7 +15423,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
     GROUP_NAME_RE,
     "product.adminGroup must be a plain group name (^[A-Za-z0-9][A-Za-z0-9 ._:@/-]{0,127}$)."
   );
-  for (const [key, path25] of [
+  for (const [key, path26] of [
     [productNode.compatMin ?? productRoot.compatMin, "/compatMin"],
     [productNode.compatMax ?? productRoot.compatMax, "/compatMax"]
   ]) {
@@ -15396,13 +15431,13 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       add2(
         errors,
         "product",
-        path25,
+        path26,
         "invalid_semver",
         "Version bounds must be semver strings."
       );
     }
   }
-  for (const [key, path25] of [
+  for (const [key, path26] of [
     [
       productNode.defaultDeviceLimit ?? productRoot.defaultDeviceLimit ?? licensing.defaultDeviceLimit,
       "/licensing/defaultDeviceLimit"
@@ -15416,7 +15451,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       add2(
         errors,
         "product",
-        path25,
+        path26,
         "invalid_number",
         "Value must be a non-negative integer."
       );
@@ -15951,8 +15986,8 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
             `release.ignoreTags must be an array of at most ${MAX_IGNORE_TAGS} exact tag names.`
           );
         } else {
-          for (const [i, tag] of relRoot.ignoreTags.entries()) {
-            if (!isIgnoreTag(tag)) {
+          for (const [i, tag2] of relRoot.ignoreTags.entries()) {
+            if (!isIgnoreTag(tag2)) {
               add2(
                 errors,
                 "release",
@@ -17192,14 +17227,14 @@ function isAttachableEntry(s) {
   }
   if (!s.startsWith("res://")) return false;
   const rest = s.slice(6);
-  const path25 = rest.endsWith("/") ? rest.slice(0, -1) : rest;
-  if (path25 === "" || path25.includes("..") || path25.includes("./")) return false;
-  for (let i = 0; i < path25.length; i++) {
-    const c = path25.charCodeAt(i);
-    if (c < 32 || c > 126 || ATTACHABLE_BAD_CHARS.has(path25[i]))
+  const path26 = rest.endsWith("/") ? rest.slice(0, -1) : rest;
+  if (path26 === "" || path26.includes("..") || path26.includes("./")) return false;
+  for (let i = 0; i < path26.length; i++) {
+    const c = path26.charCodeAt(i);
+    if (c < 32 || c > 126 || ATTACHABLE_BAD_CHARS.has(path26[i]))
       return false;
   }
-  const segments = path25.split("/");
+  const segments = path26.split("/");
   if (segments[0].toLowerCase() === ".pkey") return false;
   for (const seg of segments) {
     if (seg === "" || seg === "." || seg === "..") return false;
@@ -17321,8 +17356,8 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
           `deliverables.app.versioning.ignoreTags must be an array of at most ${MAX_IGNORE_TAGS} exact tag names.`
         );
       } else {
-        for (const [i, tag] of versioning.ignoreTags.entries()) {
-          if (!isIgnoreTag(tag)) {
+        for (const [i, tag2] of versioning.ignoreTags.entries()) {
+          if (!isIgnoreTag(tag2)) {
             add2(
               errors,
               "release",
@@ -18192,36 +18227,36 @@ function validateCatalogShape(catalog) {
   }
   return issues;
 }
-function constrained(errors, file, value, path25, code, re, message) {
+function constrained(errors, file, value, path26, code, re, message) {
   if (value === void 0 || value === null || value === "") return;
   if (typeof value !== "string" || !re.test(value)) {
-    add2(errors, file, path25, code, message);
+    add2(errors, file, path26, code, message);
   }
 }
-function releaseString(errors, value, path25, code, re, message) {
-  constrained(errors, "release", value, path25, code, re, message);
+function releaseString(errors, value, path26, code, re, message) {
+  constrained(errors, "release", value, path26, code, re, message);
 }
-function boundedText(errors, file, value, path25, code, max, label) {
+function boundedText(errors, file, value, path26, code, max, label) {
   if (value === void 0 || value === null || value === "") return;
   if (typeof value !== "string") {
-    add2(errors, file, path25, code, `${label} must be a string.`);
+    add2(errors, file, path26, code, `${label} must be a string.`);
     return;
   }
   if (value.length > max || CONTROL_CHAR_RE.test(value)) {
     add2(
       errors,
       file,
-      path25,
+      path26,
       code,
       `${label} must be at most ${max} characters and free of control characters.`
     );
   }
 }
-function constrainedList(errors, file, values, path25, code, re, message) {
+function constrainedList(errors, file, values, path26, code, re, message) {
   if (!Array.isArray(values)) return;
   for (const [i, value] of values.entries()) {
     if (typeof value !== "string" || !re.test(value)) {
-      add2(errors, file, `${path25}/${i}`, code, message);
+      add2(errors, file, `${path26}/${i}`, code, message);
     }
   }
 }
@@ -18429,8 +18464,8 @@ function isOneOf(value, allowed) {
 function notNull(v) {
   return v !== null;
 }
-function add2(list2, file, path25, code, message) {
-  list2.push({ file, path: path25, code, message });
+function add2(list2, file, path26, code, message) {
+  list2.push({ file, path: path26, code, message });
 }
 
 // src/bundle.ts
@@ -18966,9 +19001,9 @@ function ciClient(opts) {
   const f = opts.fetchImpl ?? fetch;
   const sleep = opts.sleep ?? defaultSleep;
   const maxAttempts = opts.maxAttempts ?? MAX_ATTEMPTS;
-  const url = (path25) => `${baseUrl}/${encodeURIComponent(product)}/${path25.replace(/^\/+/, "")}`;
-  async function postJson(path25, p) {
-    const target = url(path25);
+  const url = (path26) => `${baseUrl}/${encodeURIComponent(product)}/${path26.replace(/^\/+/, "")}`;
+  async function postJson(path26, p) {
+    const target = url(path26);
     const auth = p.auth !== false;
     if (auth && !opts.token)
       throw new Error(`${p.what}: no CI token (this is a bug in pkey).`);
@@ -19008,8 +19043,8 @@ function ciClient(opts) {
       await sleep(wait);
     }
   }
-  async function getJson(path25, p) {
-    const target = url(path25);
+  async function getJson(path26, p) {
+    const target = url(path26);
     if (!opts.token)
       throw new Error(`${p.what}: no CI token (this is a bug in pkey).`);
     let res;
@@ -19277,8 +19312,8 @@ function signV4(input) {
 }
 function objectUrl(creds, key) {
   const base = creds.endpoint.replace(/\/+$/, "");
-  const path25 = [creds.bucket, ...key.split("/")].map(encodeSegment).join("/");
-  return new URL(`${base}/${path25}`);
+  const path26 = [creds.bucket, ...key.split("/")].map(encodeSegment).join("/");
+  return new URL(`${base}/${path26}`);
 }
 var TRANSIENT = /* @__PURE__ */ new Set([408, 429, 500, 502, 503, 504]);
 async function putFile(opts) {
@@ -19510,16 +19545,16 @@ function parseXml(text) {
       i++;
   };
   const tagOf = (tok) => /^<\/?([A-Za-z]+)/.exec(tok)?.[1] ?? "";
-  const textUntil = (tag) => {
+  const textUntil = (tag2) => {
     let s = "";
-    while (i < tokens.length && tokens[i] !== `</${tag}>`) {
+    while (i < tokens.length && tokens[i] !== `</${tag2}>`) {
       if (tokens[i].startsWith("<"))
-        throw new PlistError(`xml plist: unexpected ${tokens[i]} in <${tag}>`);
+        throw new PlistError(`xml plist: unexpected ${tokens[i]} in <${tag2}>`);
       s += tokens[i];
       i++;
     }
     if (i >= tokens.length)
-      throw new PlistError(`xml plist: <${tag}> not closed`);
+      throw new PlistError(`xml plist: <${tag2}> not closed`);
     i++;
     return unescapeXml(s);
   };
@@ -19529,9 +19564,9 @@ function parseXml(text) {
     const tok = tokens[i++];
     if (!tok || !tok.startsWith("<"))
       throw new PlistError("xml plist: expected a value");
-    const tag = tagOf(tok);
+    const tag2 = tagOf(tok);
     const selfClosing = tok.endsWith("/>");
-    switch (tag) {
+    switch (tag2) {
       case "true":
         return true;
       case "false":
@@ -19578,7 +19613,7 @@ function parseXml(text) {
         }
       }
       default:
-        throw new PlistError(`xml plist: unknown element <${tag}>`);
+        throw new PlistError(`xml plist: unknown element <${tag2}>`);
     }
   };
   skipSpace();
@@ -19611,9 +19646,9 @@ function u64(buf, at) {
   return Number(v);
 }
 var ZipReader = class _ZipReader {
-  constructor(fh, path25, fileSize, entries, centralDirectoryOffset) {
+  constructor(fh, path26, fileSize, entries, centralDirectoryOffset) {
     this.fh = fh;
-    this.path = path25;
+    this.path = path26;
     this.fileSize = fileSize;
     this.entries = entries;
     this.centralDirectoryOffset = centralDirectoryOffset;
@@ -19623,8 +19658,8 @@ var ZipReader = class _ZipReader {
   fileSize;
   entries;
   centralDirectoryOffset;
-  static async open(path25) {
-    const fh = await open(path25, "r");
+  static async open(path26) {
+    const fh = await open(path26, "r");
     try {
       const { size } = await fh.stat();
       const tailLen = Math.min(size, 65557);
@@ -19637,32 +19672,32 @@ var ZipReader = class _ZipReader {
           break;
         }
       }
-      if (eocd < 0) throw new ZipError(`${path25} is not a ZIP archive`);
+      if (eocd < 0) throw new ZipError(`${path26} is not a ZIP archive`);
       let count = tail.readUInt16LE(eocd + 10);
       let cdSize = tail.readUInt32LE(eocd + 12);
       let cdOffset = tail.readUInt32LE(eocd + 16);
       if (count === 65535 || cdSize === 4294967295 || cdOffset === 4294967295) {
         const loc = eocd - 20;
         if (loc < 0 || tail.readUInt32LE(loc) !== ZIP64_LOCATOR_SIG)
-          throw new ZipError(`${path25}: ZIP64 locator missing`);
+          throw new ZipError(`${path26}: ZIP64 locator missing`);
         const recOffset = u64(tail, loc + 8);
         const rec = Buffer.alloc(56);
         await fh.read(rec, 0, 56, recOffset);
         if (rec.readUInt32LE(0) !== ZIP64_EOCD_SIG)
-          throw new ZipError(`${path25}: ZIP64 end record missing`);
+          throw new ZipError(`${path26}: ZIP64 end record missing`);
         count = u64(rec, 32);
         cdSize = u64(rec, 40);
         cdOffset = u64(rec, 48);
       }
       if (cdOffset + cdSize > size)
-        throw new ZipError(`${path25}: the central directory runs past the end`);
+        throw new ZipError(`${path26}: the central directory runs past the end`);
       const cd = Buffer.alloc(cdSize);
       await fh.read(cd, 0, cdSize, cdOffset);
       const entries = [];
       let p = 0;
       for (let i = 0; i < count; i++) {
         if (p + 46 > cd.length || cd.readUInt32LE(p) !== CDH_SIG)
-          throw new ZipError(`${path25}: a central directory entry is malformed`);
+          throw new ZipError(`${path26}: a central directory entry is malformed`);
         const flags = cd.readUInt16LE(p + 8);
         const method = cd.readUInt16LE(p + 10);
         const crc322 = cd.readUInt32LE(p + 16);
@@ -19703,7 +19738,7 @@ var ZipReader = class _ZipReader {
         });
         p = xEnd + commentLen;
       }
-      return new _ZipReader(fh, path25, size, entries, cdOffset);
+      return new _ZipReader(fh, path26, size, entries, cdOffset);
     } catch (e) {
       await fh.close();
       throw e;
@@ -19741,8 +19776,8 @@ var ZipReader = class _ZipReader {
     return this.fh.close();
   }
 };
-async function withZip(path25, fn) {
-  const zip = await ZipReader.open(path25);
+async function withZip(path26, fn) {
+  const zip = await ZipReader.open(path26);
   try {
     return await fn(zip);
   } finally {
@@ -19904,7 +19939,7 @@ async function iosBuildMetadata(ipa) {
   return withZip(ipa, async (zip) => {
     const root = appRoot(zip);
     const info = await readPlistEntry(zip, `${root}Info.plist`);
-    const str4 = (k) => {
+    const str6 = (k) => {
       const v = info[k];
       if (typeof v !== "string" || !v)
         throw new MetadataError(`${root}Info.plist has no ${k}`);
@@ -19931,9 +19966,9 @@ async function iosBuildMetadata(ipa) {
         privacy[k] = v;
     const minOS = info.MinimumOSVersion;
     return {
-      bundleIdentifier: str4("CFBundleIdentifier"),
-      version: str4("CFBundleShortVersionString"),
-      buildVersion: str4("CFBundleVersion"),
+      bundleIdentifier: str6("CFBundleIdentifier"),
+      version: str6("CFBundleShortVersionString"),
+      buildVersion: str6("CFBundleVersion"),
       ...typeof minOS === "string" && minOS ? { minOSVersion: minOS } : {},
       appPermissions: {
         entitlements: [...entitlements].filter((e) => !EXCLUDED_ENTITLEMENTS.has(e)).sort(),
@@ -20107,7 +20142,7 @@ async function signingBlockCertificate(zip) {
 }
 function der(buf, at) {
   if (at + 2 > buf.length) throw new MetadataError("DER: truncated");
-  const tag = buf[at];
+  const tag2 = buf[at];
   let len = buf[at + 1];
   let start = at + 2;
   if (len & 128) {
@@ -20119,7 +20154,7 @@ function der(buf, at) {
     start += n;
   }
   if (start + len > buf.length) throw new MetadataError("DER: truncated");
-  return { tag, start, end: start + len };
+  return { tag: tag2, start, end: start + len };
 }
 function pkcs7FirstCertificate(buf) {
   const ci = der(buf, 0);
@@ -20457,7 +20492,7 @@ function scanStrictJson(text) {
     i += 4;
     return parseInt(h, 16);
   };
-  const str4 = () => {
+  const str6 = () => {
     if (text.charCodeAt(i) !== 34) refuse2();
     i++;
     let out = "";
@@ -20544,7 +20579,7 @@ function scanStrictJson(text) {
       }
       for (; ; ) {
         ws();
-        const name = str4();
+        const name = str6();
         if (name.indexOf("\0") !== -1) refuse2();
         if (names.has(name)) refuse2();
         names.add(name);
@@ -20595,7 +20630,7 @@ function scanStrictJson(text) {
       }
     }
     if (c === '"') {
-      str4();
+      str6();
       return;
     }
     if (c === "-" || c !== void 0 && c >= "0" && c <= "9") {
@@ -21633,16 +21668,16 @@ var DEVICES = /* @__PURE__ */ new Set([
   ..."123456789".split("").flatMap((d) => [`com${d}`, `lpt${d}`])
 ]);
 var asciiLower = (s) => s.replace(/[A-Z]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 32));
-function pathSafe(path25) {
-  const n = utf8Length(path25);
+function pathSafe(path26) {
+  const n = utf8Length(path26);
   if (n < 1 || n > MAX_PACK_PATH_BYTES)
     return false;
-  for (let i = 0; i < path25.length; i++) {
-    const c = path25.charCodeAt(i);
-    if (c < 32 || c > 126 || BAD_CHARS.has(path25[i]))
+  for (let i = 0; i < path26.length; i++) {
+    const c = path26.charCodeAt(i);
+    if (c < 32 || c > 126 || BAD_CHARS.has(path26[i]))
       return false;
   }
-  const segments = path25.split("/");
+  const segments = path26.split("/");
   if (asciiLower(segments[0]) === ".pkey")
     return false;
   for (const s of segments) {
@@ -21659,21 +21694,21 @@ function checkPaths(paths) {
   const seen = /* @__PURE__ */ new Set();
   const lower = /* @__PURE__ */ new Set();
   const dirs = /* @__PURE__ */ new Set();
-  for (const path25 of paths) {
-    if (typeof path25 !== "string" || !pathSafe(path25))
-      return { ok: false, error: "files-unsafe-path", path: String(path25) };
-    if (seen.has(path25))
-      return { ok: false, error: "files-duplicate-path", path: path25 };
-    const lp = asciiLower(path25);
+  for (const path26 of paths) {
+    if (typeof path26 !== "string" || !pathSafe(path26))
+      return { ok: false, error: "files-unsafe-path", path: String(path26) };
+    if (seen.has(path26))
+      return { ok: false, error: "files-duplicate-path", path: path26 };
+    const lp = asciiLower(path26);
     if (lower.has(lp))
-      return { ok: false, error: "files-case-collision", path: path25 };
+      return { ok: false, error: "files-case-collision", path: path26 };
     const parts = lp.split("/");
     const prefixes = [];
     for (let k = 1; k < parts.length; k++)
       prefixes.push(parts.slice(0, k).join("/"));
     if (dirs.has(lp) || prefixes.some((x) => lower.has(x)))
-      return { ok: false, error: "files-path-conflict", path: path25 };
-    seen.add(path25);
+      return { ok: false, error: "files-path-conflict", path: path26 };
+    seen.add(path26);
     lower.add(lp);
     for (const x of prefixes)
       dirs.add(x);
@@ -22052,23 +22087,23 @@ function dataOnlyTextRefusal(bytes) {
       return "content";
   return null;
 }
-function dataOnlyExtension(path25) {
-  const last = path25.slice(path25.lastIndexOf("/") + 1);
+function dataOnlyExtension(path26) {
+  const last = path26.slice(path26.lastIndexOf("/") + 1);
   const dot = last.lastIndexOf(".");
   if (dot < 0)
     return null;
   return last.slice(dot + 1).replace(/[A-Z]/g, (c) => c.toLowerCase());
 }
-function dataOnlyPathRefusal(path25) {
-  if (typeof path25 !== "string" || !pathSafe(path25))
+function dataOnlyPathRefusal(path26) {
+  if (typeof path26 !== "string" || !pathSafe(path26))
     return "extension";
-  const ext = dataOnlyExtension(path25);
+  const ext = dataOnlyExtension(path26);
   if (ext === null || !DATA_ONLY_EXTENSIONS.includes(ext))
     return "extension";
   return null;
 }
-function dataOnlyRefusal(path25, head, tail, full) {
-  const p = dataOnlyPathRefusal(path25);
+function dataOnlyRefusal(path26, head, tail, full) {
+  const p = dataOnlyPathRefusal(path26);
   if (p !== null)
     return p;
   const h = head.subarray(0, DATA_ONLY_HEAD_BYTES);
@@ -22098,12 +22133,12 @@ function dataOnlyRefusal(path25, head, tail, full) {
   for (let k = 0; k + 4 <= t.length; k++)
     if (t[k] === 80 && startsWith(t, k, ZIP_EOCD))
       return "content";
-  if (DATA_ONLY_TEXT_EXTENSIONS.includes(dataOnlyExtension(path25)))
+  if (DATA_ONLY_TEXT_EXTENSIONS.includes(dataOnlyExtension(path26)))
     return full === void 0 ? "content" : dataOnlyTextRefusal(full);
   return null;
 }
-function dataOnlyFileRefusal(path25, bytes) {
-  return dataOnlyRefusal(path25, bytes.subarray(0, DATA_ONLY_HEAD_BYTES), bytes.subarray(Math.max(0, bytes.length - DATA_ONLY_TAIL_BYTES)), bytes);
+function dataOnlyFileRefusal(path26, bytes) {
+  return dataOnlyRefusal(path26, bytes.subarray(0, DATA_ONLY_HEAD_BYTES), bytes.subarray(Math.max(0, bytes.length - DATA_ONLY_TAIL_BYTES)), bytes);
 }
 
 // ../client-core/dist/packs/stamp.js
@@ -22209,8 +22244,8 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var BCP47_RE = /^(?:[a-z]{2,3}(?:-[a-z]{3}){0,3}|[a-z]{5,8})(?:-[a-z]{4})?(?:-(?:[a-z]{2}|[0-9]{3}))?(?:-(?:[a-z0-9]{5,8}|[0-9][a-z0-9]{3}))*(?:-[0-9a-wy-z](?:-[a-z0-9]{2,8})+)*(?:-x(?:-[a-z0-9]{1,8})+)?$/;
 var TAG_CHARS_RE = /^[A-Za-z0-9-]{2,35}$/;
-function bcp47Canonical(tag) {
-  const canonical = tag.replace(/_/g, "-");
+function bcp47Canonical(tag2) {
+  const canonical = tag2.replace(/_/g, "-");
   if (!TAG_CHARS_RE.test(canonical))
     return null;
   return BCP47_RE.test(canonical.toLowerCase()) ? canonical : null;
@@ -22220,7 +22255,7 @@ function sameLocale(a, b) {
   return asciiLower2(a.replace(/_/g, "-")) === asciiLower2(b.replace(/_/g, "-"));
 }
 var fail3 = { ok: false, detail: "table" };
-function parseL10nFile(path25, bytes) {
+function parseL10nFile(path26, bytes) {
   let text;
   try {
     text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
@@ -22249,7 +22284,7 @@ function parseL10nFile(path25, bytes) {
     const locale = bcp47Canonical(t.locale);
     if (locale === null)
       return { ok: false, detail: "locale" };
-    tables.push({ path: path25, locale, messages: t.messages });
+    tables.push({ path: path26, locale, messages: t.messages });
   }
   return { ok: true, tables };
 }
@@ -22531,9 +22566,9 @@ function parseCsv(text) {
 var DEFAULT_MAX_TYPE_FILE_BYTES = 16 * 1024 * 1024;
 var MAX_DESCRIPTOR_BYTES2 = 65536;
 var TYPE_TOKEN_PATTERN = /^[a-z][a-z0-9-]{0,31}$/;
-var refuse = (detail, path25, message) => ({
+var refuse = (detail, path26, message) => ({
   detail,
-  ...path25 !== void 0 ? { path: path25 } : {},
+  ...path26 !== void 0 ? { path: path26 } : {},
   ...message !== void 0 ? { message } : {}
 });
 var formatsOf = (v) => new Set(v ?? [1]);
@@ -23782,8 +23817,8 @@ ${problems.map((p) => `  ${p}`).join("\n")}`
     );
   return out;
 }
-function blobKey(sha2565) {
-  return `blobs/sha256/${sha2565}`;
+function blobKey(sha2566) {
+  return `blobs/sha256/${sha2566}`;
 }
 function provenanceFrom(env) {
   const commit = env.GITHUB_SHA;
@@ -23874,8 +23909,8 @@ ${PUBLISH_USAGE}`);
     throw new Error(
       `--deliverable ${deliverable}: publishRelease publishes the app; a pack publishes through publishPack (pkey release publish dispatches).`
     );
-  const tag = opts.tag?.trim() || void 0;
-  const version = opts.version?.trim() || tag?.replace(/^v/, "");
+  const tag2 = opts.tag?.trim() || void 0;
+  const version = opts.version?.trim() || tag2?.replace(/^v/, "");
   if (!version)
     throw new Error(`--version (or --tag) is required.
 ${PUBLISH_USAGE}`);
@@ -23965,7 +24000,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
     product: opts.product,
     deliverable,
     version,
-    ...tag !== void 0 ? { tag } : {},
+    ...tag2 !== void 0 ? { tag: tag2 } : {},
     ...opts.channel?.trim() ? { channel: opts.channel.trim() } : {},
     source,
     builds: hashed,
@@ -24970,16 +25005,13 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
         metadata: extracted.metadata
       }
     };
-    const check = () => {
-      const v = validateReleaseDescriptor(descriptor, context);
-      if (!v.ok)
-        throw new Error(
-          `The package descriptor does not validate:
+    const v = validateReleaseDescriptor(descriptor, context);
+    if (!v.ok)
+      throw new Error(
+        `The package descriptor does not validate:
 ${v.errors.map((e) => `  ${e.path} ${e.code}: ${e.message}`).join("\n")}`
-        );
-      return v.releaseId;
-    };
-    const releaseId = check();
+      );
+    const releaseId = v.releaseId;
     out.write(
       `Package ${declared.name} ${version} (${declared.ecosystem}, ${hashed.length} file${hashed.length === 1 ? "" : "s"})
 `
@@ -25038,8 +25070,7 @@ Local validation: ok
         objects: [...objects.values()].map((f) => ({
           sha256: f.sha256,
           size: f.size
-        })),
-        releases: [{ deliverable: declared.id, version }]
+        }))
       }
     });
     if (typeof ticket.ticket !== "string" || !ticket.credentials || !Array.isArray(ticket.objects))
@@ -25049,13 +25080,6 @@ Local validation: ok
     mask(opts.env, out, ticket.ticket);
     mask(opts.env, out, ticket.credentials.secretAccessKey);
     mask(opts.env, out, ticket.credentials.sessionToken);
-    const seq = ticket.seqs?.find(
-      (s) => s.deliverable === declared.id && s.version === version
-    )?.seq;
-    if (seq !== void 0 && Number.isSafeInteger(seq) && seq >= 1) {
-      descriptor.seq = seq;
-      check();
-    }
     let verdict;
     try {
       verdict = await client.postJson("release/publish/submit", {
@@ -25305,24 +25329,24 @@ function readPck(b, name = "the payload") {
       const md5 = Buffer.from(b.subarray(p + 16, p + 32)).toString("hex");
       const flags = dv.getUint32(p + 32, true);
       p += 36;
-      const path25 = rawPath.startsWith("res://") ? rawPath.slice("res://".length) : rawPath;
+      const path26 = rawPath.startsWith("res://") ? rawPath.slice("res://".length) : rawPath;
       if (flags & PACK_FILE_ENCRYPTED)
         throw new PckError(
-          `${path25}: an encrypted entry; a published pack is never encrypted.`
+          `${path26}: an encrypted entry; a published pack is never encrypted.`
         );
       if (flags & (PACK_FILE_REMOVAL | PACK_FILE_DELTA))
         throw new PckError(
-          `${path25}: a patch pack's ${flags & PACK_FILE_REMOVAL ? "removal" : "delta"} entry (flags ${flags}); a published pack stands alone.`
+          `${path26}: a patch pack's ${flags & PACK_FILE_REMOVAL ? "removal" : "delta"} entry (flags ${flags}); a published pack stands alone.`
         );
       if (flags !== 0)
-        throw new PckError(`${path25}: unknown entry flags ${flags}.`);
-      if (!pckPathOk(path25))
+        throw new PckError(`${path26}: unknown entry flags ${flags}.`);
+      if (!pckPathOk(path26))
         throw new PckError(
-          `${path25}: an unsafe path (a \`..\`, \`.\` or empty segment, or a character the path rules refuse).`
+          `${path26}: an unsafe path (a \`..\`, \`.\` or empty segment, or a character the path rules refuse).`
         );
       if (offset + size > b.byteLength)
-        throw new PckError(`${path25}: its bytes run past the end of the file.`);
-      entries.push({ rawPath, path: path25, offset, size, md5, flags });
+        throw new PckError(`${path26}: its bytes run past the end of the file.`);
+      entries.push({ rawPath, path: path26, offset, size, md5, flags });
     }
     const all = checkPaths(entries.map((e) => e.path));
     if (!all.ok)
@@ -25338,18 +25362,18 @@ function readPck(b, name = "the payload") {
     );
   }
 }
-function pckPathOk(path25) {
-  if (!checkPaths([path25]).ok) return false;
-  return !(path25.includes("..") || path25.includes("./") || path25.includes("//") || path25.endsWith("/") || path25.endsWith("/."));
+function pckPathOk(path26) {
+  if (!checkPaths([path26]).ok) return false;
+  return !(path26.includes("..") || path26.includes("./") || path26.includes("//") || path26.endsWith("/") || path26.endsWith("/."));
 }
 function pad(n, align) {
   const r = n % align;
   return r === 0 ? 0 : align - r;
 }
 function writePck(src, header, keep) {
-  const enc2 = new TextEncoder();
+  const enc3 = new TextEncoder();
   const paths = keep.map((e) => {
-    const raw = enc2.encode(e.rawPath);
+    const raw = enc3.encode(e.rawPath);
     const padded = new Uint8Array(raw.byteLength + pad(raw.byteLength, 4));
     padded.set(raw);
     return padded;
@@ -25386,11 +25410,11 @@ function writePck(src, header, keep) {
   dv.setUint32(p, keep.length, true);
   p += 4;
   for (const [i, e] of keep.entries()) {
-    const path25 = paths[i];
-    dv.setUint32(p, path25.byteLength, true);
+    const path26 = paths[i];
+    dv.setUint32(p, path26.byteLength, true);
     p += 4;
-    out.set(path25, p);
-    p += path25.byteLength;
+    out.set(path26, p);
+    p += path26.byteLength;
     dv.setBigUint64(p, BigInt(rel[i]), true);
     dv.setBigUint64(p + 8, BigInt(e.size), true);
     out.set(Buffer.from(e.md5, "hex"), p + 16);
@@ -25704,13 +25728,13 @@ async function listDelegations(client, deliverable) {
     ...nextSeq !== void 0 ? { nextSeq } : {}
   };
 }
-async function storedDelegation(client, sha2565) {
+async function storedDelegation(client, sha2566) {
   const { delegations } = await listDelegations(client);
-  const hit = delegations.find((d) => d.sha256 === sha2565);
+  const hit = delegations.find((d) => d.sha256 === sha2566);
   if (hit === void 0) return null;
-  if (typeof hit.jws !== "string" || sha256Hex3(hit.jws) !== sha2565)
+  if (typeof hit.jws !== "string" || sha256Hex3(hit.jws) !== sha2566)
     throw new Error(
-      `${client.url("release/publish/delegations")} answered delegation ${sha2565.slice(0, 12)}… without its JWS, or with one of another hash.`
+      `${client.url("release/publish/delegations")} answered delegation ${sha2566.slice(0, 12)}… without its JWS, or with one of another hash.`
     );
   return hit.jws;
 }
@@ -25719,16 +25743,16 @@ var trustOf = (declared) => {
   for (const k of declared) trust[k.kid] = k.publicKey;
   return trust;
 };
-async function checkDelegation(jws, sha2565, product, declared) {
+async function checkDelegation(jws, sha2566, product, declared) {
   const v = await verifyDelegation(jws, {
     releaseKeys: trustOf(declared),
     productTrust: {},
     expectedAud: product,
-    expectedHash: sha2565
+    expectedHash: sha2566
   });
   if (!v.ok)
     throw new Error(
-      `The delegation ${sha2565.slice(0, 12)}… does not verify against .pkey/release's releaseKeys (step ${v.step}); nothing was signed.`
+      `The delegation ${sha2566.slice(0, 12)}… does not verify against .pkey/release's releaseKeys (step ${v.step}); nothing was signed.`
     );
   return v.delegation;
 }
@@ -25758,8 +25782,8 @@ function parseDelegationTypes(types) {
   }
   return list2;
 }
-async function keepSignedDelegation(cwd, jws, sha2565) {
-  const file = path11.join(cwd, `pkey-delegation-${sha2565}.jws`);
+async function keepSignedDelegation(cwd, jws, sha2566) {
+  const file = path11.join(cwd, `pkey-delegation-${sha2566}.jws`);
   await writeFile6(file, `${jws}
 `, { mode: 384, flag: "wx" });
   return file;
@@ -25884,7 +25908,7 @@ Dry run: nothing signed or submitted.
     return { record, jws: null, sha256: null, kid: null, server: null };
   }
   const jws = await sign2(record);
-  const sha2565 = sha256Hex3(jws);
+  const sha2566 = sha256Hex3(jws);
   if (!opts.signRecord) {
     const v = await verifyJws(jws, trustOf(ctx.releaseKeys), {
       typ: "pkey-release+jws"
@@ -25893,11 +25917,11 @@ Dry run: nothing signed or submitted.
       throw new Error(
         "The signed delegation is not the record pkey built; nothing was submitted."
       );
-    await checkDelegation(jws, sha2565, opts.product, ctx.releaseKeys);
+    await checkDelegation(jws, sha2566, opts.product, ctx.releaseKeys);
   }
-  const kid = delegatedKid(sha2565);
+  const kid = delegatedKid(sha2566);
   out.write(
-    `Signed the delegation record (sha256 ${sha2565})
+    `Signed the delegation record (sha256 ${sha2566})
 Content kid: ${kid}
 `
   );
@@ -25910,20 +25934,20 @@ Content kid: ${kid}
   } catch (e) {
     let saved = null;
     try {
-      saved = await keepSignedDelegation(opts.cwd, jws, sha2565);
+      saved = await keepSignedDelegation(opts.cwd, jws, sha2566);
     } catch {
       saved = null;
     }
     throw new Error(
       `${e.message}
-` + (saved ? `The signed delegation was kept at ${saved} (public material only). Revoke it with pkey release revoke --delegation ${path11.relative(opts.cwd, saved)} --reason <text> if it may have leaked, or retry.` : `The signed delegation could not be kept beside the run; its sha256 is ${sha2565}.`)
+` + (saved ? `The signed delegation was kept at ${saved} (public material only). Revoke it with pkey release revoke --delegation ${path11.relative(opts.cwd, saved)} --reason <text> if it may have leaked, or retry.` : `The signed delegation could not be kept beside the run; its sha256 is ${sha2566}.`)
     );
   }
   out.write(
     `Delegated ${opts.prefix} to ${kid} (${String(server.outcome ?? "submitted")})
 `
   );
-  return { record, jws, sha256: sha2565, kid, server };
+  return { record, jws, sha256: sha2566, kid, server };
 }
 function localDelegatedChecks(pack, files) {
   if (!DELEGABLE_PACK_TYPES.includes(pack.type))
@@ -26179,8 +26203,8 @@ function attachableEntryProblem(s) {
     return canonicalUid(s) === null ? "not a canonical uid://" : null;
   if (!s.startsWith("res://")) return "neither res:// nor uid://";
   const rest = s.slice(6);
-  const path25 = rest.endsWith("/") ? rest.slice(0, -1) : rest;
-  return pckPathOk(path25) ? null : "not a normal res:// path";
+  const path26 = rest.endsWith("/") ? rest.slice(0, -1) : rest;
+  return pckPathOk(path26) ? null : "not a normal res:// path";
 }
 function parseAttachable(list2 = []) {
   const paths = /* @__PURE__ */ new Set();
@@ -26314,7 +26338,7 @@ function binaryRefs(b, start) {
     need2(n);
     pos += n;
   };
-  const str4 = () => {
+  const str6 = () => {
     const n = u32();
     need2(n);
     const s = b.subarray(pos, pos + n);
@@ -26342,46 +26366,46 @@ function binaryRefs(b, start) {
       return {
         why: `is a binary resource in format ${format}, above ${BINARY_FORMAT_MAX}${AMBIGUOUS}`
       };
-    str4();
+    str6();
     skip(8);
     const flags = u32();
     skip(8);
-    if (flags & FLAG_SCRIPT_CLASS) str4();
+    if (flags & FLAG_SCRIPT_CLASS) str6();
     skip(4 * RESERVED_FIELDS);
     part = "reference tables";
     const nstr = u32();
     const rpNames = /* @__PURE__ */ new Set();
     const badNames = /* @__PURE__ */ new Set();
     for (let i = 0; i < nstr; i++) {
-      const entry = str4();
+      const entry = str6();
       if (isResourcePath(entry)) rpNames.add(i);
       if (!nameUtf8(entry)) badNames.add(i);
     }
     const refs = [];
     const next = u32();
     for (let i = 0; i < next; i++) {
-      const type = text(str4());
-      const path25 = text(str4());
+      const type = text(str6());
+      const path26 = text(str6());
       let uid = null;
       if (flags & FLAG_UIDS) {
         need2(8);
         uid = dv.getBigInt64(pos, true);
         pos += 8;
       }
-      refs.push({ type, path: path25, uid });
+      refs.push({ type, path: path26, uid });
     }
     const nint = u32();
     const offsets = [];
     let tableEnd = 0;
     for (let i = 0; i < nint; i++) {
-      const path25 = text(str4());
+      const path26 = text(str6());
       need2(8);
       const lo = dv.getUint32(pos, true);
       const hi = dv.getUint32(pos + 4, true);
       pos += 8;
-      if (i < nint - 1 && !path25.startsWith("local://"))
+      if (i < nint - 1 && !path26.startsWith("local://"))
         return {
-          why: `has a sub-resource path that is not local:// (${path25})${AMBIGUOUS}`
+          why: `has a sub-resource path that is not local:// (${path26})${AMBIGUOUS}`
         };
       offsets.push(hi > 2097151 ? -1 : hi * 4294967296 + lo);
     }
@@ -26408,15 +26432,15 @@ function binaryRefs(b, start) {
       if (off < 0 || off <= prev || off > b.byteLength) throw fail4();
       limit = i + 1 < offsets.length ? Math.max(off, Math.min(offsets[i + 1], b.byteLength)) : b.byteLength;
       pos = off;
-      str4();
+      str6();
       const pc = u32();
       for (let j = 0; j < pc; j++) {
         name(true);
         let pending = 1;
         while (pending > 0) {
           pending--;
-          const tag = u32();
-          switch (tag) {
+          const tag2 = u32();
+          switch (tag2) {
             case 1:
             // NIL
             case 42:
@@ -26441,7 +26465,7 @@ function binaryRefs(b, start) {
             case 5:
             // STRING
             case 44:
-              str4();
+              str6();
               break;
             case 10:
               skip(2 * real);
@@ -26527,7 +26551,7 @@ function binaryRefs(b, start) {
               break;
             case 34: {
               const n = u32();
-              for (let k = 0; k < n; k++) str4();
+              for (let k = 0; k < n; k++) str6();
               break;
             }
             case 37:
@@ -26544,7 +26568,7 @@ function binaryRefs(b, start) {
               break;
             default:
               return {
-                why: `has a value of unknown type ${tag}${AMBIGUOUS}`
+                why: `has a value of unknown type ${tag2}${AMBIGUOUS}`
               };
           }
         }
@@ -26620,9 +26644,9 @@ function isScript(p, kinds) {
 }
 var NATIVE_RE = /\.(so|dll|dylib|wasm|gdextension)$|\.so\.\d+(\.\d+)*$/i;
 var NATIVE_DIR_RE = /\.(framework|xcframework)$/i;
-function isNative(path25) {
-  if (NATIVE_RE.test(path25)) return true;
-  return path25.split("/").some((s) => NATIVE_DIR_RE.test(s));
+function isNative(path26) {
+  if (NATIVE_RE.test(path26)) return true;
+  return path26.split("/").some((s) => NATIVE_DIR_RE.test(s));
 }
 function resPath(p) {
   return p.startsWith("res://") ? p.slice("res://".length) : null;
@@ -27598,8 +27622,8 @@ async function publishPack(opts) {
 `);
   };
   const packId = opts.deliverable;
-  const tag = opts.tag?.trim() || void 0;
-  const version = opts.version?.trim() || tag?.replace(/^v/, "");
+  const tag2 = opts.tag?.trim() || void 0;
+  const version = opts.version?.trim() || tag2?.replace(/^v/, "");
   if (!version) throw new Error("--version (or --tag) is required.");
   if (opts.minSupportedSeq !== void 0 && (!Number.isSafeInteger(opts.minSupportedSeq) || opts.minSupportedSeq < 1))
     throw new Error(
@@ -27904,7 +27928,7 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
       const ask = /* @__PURE__ */ new Map();
       for (const c of chains.values())
         for (const [sha, size] of c.index.bundles) ask.set(sha, size);
-      const list3 = [...ask].map(([sha2565, size]) => ({ sha256: sha2565, size }));
+      const list3 = [...ask].map(([sha2566, size]) => ({ sha256: sha2566, size }));
       if (client)
         for (let i = 0; i < list3.length; i += STAGE_ROUND_OBJECTS) {
           const ticket = await requestTicket(
@@ -27925,9 +27949,9 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
     }
     const objects = /* @__PURE__ */ new Map();
     const addObject = (bytes, label) => {
-      const sha2565 = sha256Hex2(bytes);
-      if (!objects.has(sha2565))
-        objects.set(sha2565, { sha256: sha2565, size: bytes.byteLength, bytes, label });
+      const sha2566 = sha256Hex2(bytes);
+      if (!objects.has(sha2566))
+        objects.set(sha2566, { sha256: sha2566, size: bytes.byteLength, bytes, label });
     };
     const reports = [];
     const recordVariants = [];
@@ -28089,7 +28113,7 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
       seq: seq ?? 1,
       issuedAt: issuedNow,
       ...opts.minSupportedSeq !== void 0 ? { minSupportedSeq: opts.minSupportedSeq } : {},
-      ...tag !== void 0 ? { tag } : {},
+      ...tag2 !== void 0 ? { tag: tag2 } : {},
       ...opts.channel?.trim() ? { channel: opts.channel.trim() } : {},
       ...provenance ? { provenance } : {},
       type: pack.type,
@@ -28505,10 +28529,10 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
   const trust = {};
   for (const k of ctx.releaseKeys) trust[k.kid] = k.publicKey;
   if (!opts.signRecord) await checkSignedRevocation(jws, record, trust);
-  const sha2565 = sha256Hex2(jws);
+  const sha2566 = sha256Hex2(jws);
   out.write(
     `Revocation of ${pack}@${version} (seq ${record.seq}, record ${record.revokes.slice(0, 12)}…)${record.replacement ? `, replacement ${record.replacement.version} (seq ${record.replacement.seq})` : ", no replacement"}
-Signed the revocation record (sha256 ${sha2565})
+Signed the revocation record (sha256 ${sha2566})
 `
   );
   if (opts.dryRun) {
@@ -28520,7 +28544,7 @@ ${jws}
 `
     );
     out.write("Dry run: nothing submitted.\n");
-    return { record, jws, sha256: sha2565, server: null };
+    return { record, jws, sha256: sha2566, server: null };
   }
   const server = await client.postJson(
     "release/publish/submit",
@@ -28530,7 +28554,7 @@ ${jws}
     `Revoked ${pack}@${version} (${String(server.outcome ?? "submitted")})
 `
   );
-  return { record, jws, sha256: sha2565, server };
+  return { record, jws, sha256: sha2566, server };
 }
 var REVOKE_DELEGATION_USAGE = "Usage: pkey release revoke --delegation <sha256 | file> --reason <text> --product <slug> [--release-key-file pem] [--base-url <url>] [--dry-run]";
 async function revokeDelegation(opts) {
@@ -28614,10 +28638,10 @@ ${REVOKE_DELEGATION_USAGE}`
   const trust = {};
   for (const k of ctx.releaseKeys) trust[k.kid] = k.publicKey;
   if (!opts.signRecord) await checkSignedRevocation(signed, record, trust);
-  const sha2565 = sha256Hex2(signed);
+  const sha2566 = sha256Hex2(signed);
   out.write(
     `Revocation of delegation ${hash.slice(0, 12)}… (${d.deliverable}, seq ${d.seq})${supplied ? ", supplied alongside" : ""}
-Signed the revocation record (sha256 ${sha2565})
+Signed the revocation record (sha256 ${sha2566})
 `
   );
   if (opts.dryRun) {
@@ -28629,7 +28653,7 @@ ${signed}
 `
     );
     out.write("Dry run: nothing submitted.\n");
-    return { record, jws: signed, sha256: sha2565, server: null, supplied };
+    return { record, jws: signed, sha256: sha2566, server: null, supplied };
   }
   const server = await client.postJson(
     "release/publish/submit",
@@ -28642,7 +28666,7 @@ ${signed}
     `Revoked delegation ${hash.slice(0, 12)}… (${String(server.outcome ?? "submitted")}); every pack release signed under it is refused from now on.
 `
   );
-  return { record, jws: signed, sha256: sha2565, server, supplied };
+  return { record, jws: signed, sha256: sha2566, server, supplied };
 }
 
 // src/distribution.ts
@@ -28799,8 +28823,8 @@ ${DISTRIBUTION_CI_USAGE}`
   }
   const client = await clientFor2(opts);
   const base = `distribution/rollouts/${encodeURIComponent(opts.outlet)}/${encodeURIComponent(opts.channel)}`;
-  const path25 = opts.command === "rollout" ? base : `${base}/${opts.command}`;
-  const body = await client.postJson(path25, {
+  const path26 = opts.command === "rollout" ? base : `${base}/${opts.command}`;
+  const body = await client.postJson(path26, {
     what: opts.command === "rollout" ? `Rolling out ${opts.releaseId} on ${opts.outlet}/${opts.channel}` : `${opts.command[0].toUpperCase()}${opts.command.slice(1)} on ${opts.outlet}/${opts.channel}`,
     body: {
       ...opts.releaseId ? { releaseId: opts.releaseId } : {},
@@ -29816,7 +29840,7 @@ async function steamVdf(o) {
 // src/storefronts/command.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 import { readdir as readdir8, stat as stat7 } from "node:fs/promises";
-import path20 from "node:path";
+import path21 from "node:path";
 
 // src/storefronts/ciPlane.generated.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -30125,6 +30149,428 @@ var CI_PLANE = {
         release: ["upload"]
       }
     }
+  ],
+  prStores: [
+    {
+      store: "winget",
+      label: "winget",
+      outletKinds: ["winget"],
+      repo: "microsoft/winget-pkgs",
+      fork: true,
+      list: {
+        tool: "github",
+        commands: {
+          "pull-request": {
+            argv: [
+              "pull-request",
+              "--repo",
+              "microsoft/winget-pkgs",
+              "--package",
+              {
+                param: "package",
+                pattern: "[A-Za-z0-9][A-Za-z0-9-]{0,31}(?:\\.[A-Za-z0-9][A-Za-z0-9-]{0,31}){1,7}",
+                identity: {
+                  field: "packageIdentifier",
+                  match: "equal"
+                }
+              },
+              "--version",
+              {
+                param: "version",
+                pattern: "[0-9A-Za-z][0-9A-Za-z.+_-]{0,63}"
+              }
+            ],
+            confirm: "plain",
+            why: "one version's multi-file manifest (schema 1.12.0), from a fork, for moderator review: every version is reviewed, so the flow shows the PR and never promises a date"
+          },
+          status: {
+            argv: [
+              "status",
+              "--repo",
+              "microsoft/winget-pkgs",
+              "--package",
+              {
+                param: "package",
+                pattern: "[A-Za-z0-9][A-Za-z0-9-]{0,31}(?:\\.[A-Za-z0-9][A-Za-z0-9-]{0,31}){1,7}",
+                identity: {
+                  field: "packageIdentifier",
+                  match: "equal"
+                }
+              },
+              "--version",
+              {
+                param: "version",
+                pattern: "[0-9A-Za-z][0-9A-Za-z.+_-]{0,63}"
+              }
+            ],
+            confirm: "plain",
+            why: "read the pull request's state and review labels (the verifier; it writes nothing)"
+          }
+        }
+      },
+      commandOps: {
+        "pull-request": ["uploadBuild", "release", "writeListingText"],
+        status: ["status"]
+      },
+      paths: [
+        {
+          template: "manifests/{package|first}/{package|segments}/{version}/{package}.yaml",
+          why: "the version manifest"
+        },
+        {
+          template: "manifests/{package|first}/{package|segments}/{version}/{package}.installer.yaml",
+          why: "the installer manifest: HTTPS direct installer URLs from the release"
+        },
+        {
+          template: "manifests/{package|first}/{package|segments}/{version}/{package}.locale.{locale}.yaml",
+          why: "the default and extra locale manifests, from the listing model"
+        }
+      ],
+      naturalKey: ["package", "version"],
+      labels: {
+        needsAuthor: ["Needs-Author-Feedback"],
+        validationPrefix: "Validation-",
+        validationOk: ["Validation-Completed"]
+      },
+      never: [
+        [
+          "pull-request",
+          "--repo",
+          "microsoft/winget-cli",
+          "--package",
+          "Vlad.Dice",
+          "--version",
+          "1.0.0"
+        ],
+        [
+          "pull-request",
+          "--repo",
+          "microsoft/winget-pkgs",
+          "--package",
+          "Vlad.Dice"
+        ],
+        ["merge", "--repo", "microsoft/winget-pkgs", "--pr", "1"],
+        ["close", "--repo", "microsoft/winget-pkgs", "--pr", "1"],
+        [
+          "delete-branch",
+          "--repo",
+          "microsoft/winget-pkgs",
+          "--branch",
+          "master"
+        ]
+      ],
+      neverTokens: ["merge", "close", "delete", "--force", "winget-cli"]
+    },
+    {
+      store: "homebrew",
+      label: "Homebrew tap",
+      outletKinds: ["direct"],
+      repo: "{homebrewTap}",
+      fork: false,
+      list: {
+        tool: "github",
+        commands: {
+          "pull-request": {
+            argv: [
+              "pull-request",
+              "--repo",
+              {
+                param: "repo",
+                pattern: "(?![Hh][Oo][Mm][Ee][Bb][Rr][Ee][Ww]/)[A-Za-z0-9][A-Za-z0-9-]{0,38}/homebrew-[A-Za-z0-9._-]{1,90}",
+                identity: {
+                  field: "homebrewTap",
+                  match: "equal"
+                }
+              },
+              "--cask",
+              {
+                param: "cask",
+                pattern: "[a-z0-9][a-z0-9.@-]{0,99}",
+                identity: {
+                  field: "homebrewCask",
+                  match: "equal"
+                }
+              },
+              "--version",
+              {
+                param: "version",
+                pattern: "[0-9A-Za-z][0-9A-Za-z.+_-]{0,63}"
+              }
+            ],
+            confirm: "plain",
+            why: "the cask in the product's own tap; never homebrew/cask, which has notability rules and needs the owner"
+          },
+          status: {
+            argv: [
+              "status",
+              "--repo",
+              {
+                param: "repo",
+                pattern: "(?![Hh][Oo][Mm][Ee][Bb][Rr][Ee][Ww]/)[A-Za-z0-9][A-Za-z0-9-]{0,38}/homebrew-[A-Za-z0-9._-]{1,90}",
+                identity: {
+                  field: "homebrewTap",
+                  match: "equal"
+                }
+              },
+              "--cask",
+              {
+                param: "cask",
+                pattern: "[a-z0-9][a-z0-9.@-]{0,99}",
+                identity: {
+                  field: "homebrewCask",
+                  match: "equal"
+                }
+              },
+              "--version",
+              {
+                param: "version",
+                pattern: "[0-9A-Za-z][0-9A-Za-z.+_-]{0,63}"
+              }
+            ],
+            confirm: "plain",
+            why: "read the pull request's state and review labels (the verifier; it writes nothing)"
+          }
+        }
+      },
+      commandOps: {
+        "pull-request": ["uploadBuild", "release", "writeListingText"],
+        status: ["status"]
+      },
+      paths: [
+        {
+          template: "Casks/{cask}.rb",
+          why: "the cask"
+        }
+      ],
+      naturalKey: ["cask", "version"],
+      labels: {
+        needsAuthor: [],
+        validationPrefix: null,
+        validationOk: []
+      },
+      never: [
+        [
+          "pull-request",
+          "--repo",
+          "Homebrew/homebrew-cask",
+          "--cask",
+          "dice",
+          "--version",
+          "1.0.0"
+        ],
+        [
+          "pull-request",
+          "--repo",
+          "homebrew/homebrew-core",
+          "--cask",
+          "dice",
+          "--version",
+          "1.0.0"
+        ],
+        ["merge", "--repo", "vlad/homebrew-games", "--pr", "1"],
+        ["delete-repo", "--repo", "vlad/homebrew-games"]
+      ],
+      neverTokens: ["merge", "close", "delete", "--force", "homebrew/"]
+    },
+    {
+      store: "scoop",
+      label: "Scoop bucket",
+      outletKinds: ["direct"],
+      repo: "{scoopBucket}",
+      fork: false,
+      list: {
+        tool: "github",
+        commands: {
+          "pull-request": {
+            argv: [
+              "pull-request",
+              "--repo",
+              {
+                param: "repo",
+                pattern: "(?![Ss][Cc][Oo][Oo][Pp][Ii][Nn][Ss][Tt][Aa][Ll][Ll][Ee][Rr]/)[A-Za-z0-9][A-Za-z0-9-]{0,38}/(?!\\.)[A-Za-z0-9._-]{1,100}",
+                identity: {
+                  field: "scoopBucket",
+                  match: "equal"
+                }
+              },
+              "--app",
+              {
+                param: "app",
+                pattern: "[a-z0-9][a-z0-9._-]{0,63}"
+              },
+              "--version",
+              {
+                param: "version",
+                pattern: "[0-9A-Za-z][0-9A-Za-z.+_-]{0,63}"
+              }
+            ],
+            confirm: "plain",
+            why: "the Scoop feed's manifest, with checkver and autoupdate, in the product's own bucket"
+          },
+          status: {
+            argv: [
+              "status",
+              "--repo",
+              {
+                param: "repo",
+                pattern: "(?![Ss][Cc][Oo][Oo][Pp][Ii][Nn][Ss][Tt][Aa][Ll][Ll][Ee][Rr]/)[A-Za-z0-9][A-Za-z0-9-]{0,38}/(?!\\.)[A-Za-z0-9._-]{1,100}",
+                identity: {
+                  field: "scoopBucket",
+                  match: "equal"
+                }
+              },
+              "--app",
+              {
+                param: "app",
+                pattern: "[a-z0-9][a-z0-9._-]{0,63}"
+              },
+              "--version",
+              {
+                param: "version",
+                pattern: "[0-9A-Za-z][0-9A-Za-z.+_-]{0,63}"
+              }
+            ],
+            confirm: "plain",
+            why: "read the pull request's state and review labels (the verifier; it writes nothing)"
+          }
+        }
+      },
+      commandOps: {
+        "pull-request": ["uploadBuild", "release", "writeListingText"],
+        status: ["status"]
+      },
+      paths: [
+        {
+          template: "bucket/{app}.json",
+          why: "the app manifest"
+        }
+      ],
+      naturalKey: ["app", "version"],
+      labels: {
+        needsAuthor: [],
+        validationPrefix: null,
+        validationOk: []
+      },
+      never: [
+        [
+          "pull-request",
+          "--repo",
+          "ScoopInstaller/Main",
+          "--app",
+          "dice",
+          "--version",
+          "1.0.0"
+        ],
+        [
+          "pull-request",
+          "--repo",
+          "scoopinstaller/extras",
+          "--app",
+          "dice",
+          "--version",
+          "1.0.0"
+        ],
+        ["merge", "--repo", "vlad/scoop-games", "--pr", "1"]
+      ],
+      neverTokens: ["merge", "close", "delete", "--force", "scoopinstaller"]
+    },
+    {
+      store: "flathub",
+      label: "Flathub",
+      outletKinds: ["flathub"],
+      repo: "flathub/{appId}",
+      fork: false,
+      list: {
+        tool: "github",
+        commands: {
+          "pull-request": {
+            argv: [
+              "pull-request",
+              "--repo",
+              {
+                param: "repo",
+                pattern: "[A-Za-z_][A-Za-z0-9_-]{0,63}(?:\\.[A-Za-z_][A-Za-z0-9_-]{0,63}){1,7}",
+                prefix: "flathub/",
+                identity: {
+                  field: "appId",
+                  match: "equal"
+                }
+              },
+              "--version",
+              {
+                param: "version",
+                pattern: "[0-9A-Za-z][0-9A-Za-z.+_-]{0,63}"
+              }
+            ],
+            confirm: "plain",
+            why: "an update PR to the app's own repository (updates never need submission review); the first submission to flathub/flathub is opened and shepherded by a person"
+          },
+          status: {
+            argv: [
+              "status",
+              "--repo",
+              {
+                param: "repo",
+                pattern: "[A-Za-z_][A-Za-z0-9_-]{0,63}(?:\\.[A-Za-z_][A-Za-z0-9_-]{0,63}){1,7}",
+                prefix: "flathub/",
+                identity: {
+                  field: "appId",
+                  match: "equal"
+                }
+              },
+              "--version",
+              {
+                param: "version",
+                pattern: "[0-9A-Za-z][0-9A-Za-z.+_-]{0,63}"
+              }
+            ],
+            confirm: "plain",
+            why: "read the pull request's state and review labels (the verifier; it writes nothing)"
+          }
+        }
+      },
+      commandOps: {
+        "pull-request": [
+          "uploadBuild",
+          "release",
+          "writeListingText",
+          "writeListingAssets",
+          "contentRating"
+        ],
+        status: ["status"]
+      },
+      paths: [
+        {
+          template: "{repo}.yml",
+          why: "the manifest (YAML)"
+        },
+        {
+          template: "{repo}.yaml",
+          why: "the manifest (YAML)"
+        },
+        {
+          template: "{repo}.json",
+          why: "the manifest (JSON)"
+        },
+        {
+          template: "{repo}.metainfo.xml",
+          why: "the MetaInfo: listing text, screenshots, releases, OARS rating, branding"
+        }
+      ],
+      naturalKey: ["repo", "version"],
+      labels: {
+        needsAuthor: [],
+        validationPrefix: null,
+        validationOk: []
+      },
+      never: [
+        ["pull-request", "--repo", "flathub/flathub", "--version", "1.0.0"],
+        ["pull-request", "--repo", "vlad/gg.vlad.Dice", "--version", "1.0.0"],
+        ["archive", "--repo", "flathub/gg.vlad.Dice"],
+        ["close", "--repo", "flathub/gg.vlad.Dice", "--pr", "1"]
+      ],
+      neverTokens: ["merge", "close", "delete", "archive", "--force", "new-pr"]
+    }
   ]
 };
 
@@ -30257,60 +30703,830 @@ function itchPushStep(o) {
   };
 }
 
-// src/storefronts/outlets.ts
+// src/storefronts/prPlane.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-async function loadStepProduct(cwd, product) {
-  const loaded2 = await loadManifest(cwd);
-  const validation = validateLoadedManifest(loaded2);
-  if (!validation.ok)
-    throw new Error(
-      `.pkey/ is invalid; run pkey validate:
-${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}`
+function prStoreIds() {
+  return CI_PLANE.prStores.map((s) => s.store);
+}
+function prStore(store) {
+  return CI_PLANE.prStores.find((s) => s.store === store) ?? null;
+}
+var PR_LOCALE_PATTERN = String.raw`[A-Za-z]{2,3}(?:-[A-Za-z0-9]{1,8}){0,3}`;
+var escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function prPathPattern(template, values) {
+  let missing = false;
+  const source = template.split(/(\{[A-Za-z]+(?:\|[a-z]+)?\})/).map((part) => {
+    const m = /^\{([A-Za-z]+)(?:\|([a-z]+))?\}$/.exec(part);
+    if (!m) return escapeRe(part);
+    const [, name, filter] = m;
+    if (name === "locale") return PR_LOCALE_PATTERN;
+    const v = values[name];
+    if (v === void 0 || v === "") {
+      missing = true;
+      return "";
+    }
+    if (filter === "segments") return escapeRe(v.split(".").join("/"));
+    if (filter === "first") return escapeRe(v.charAt(0).toLowerCase());
+    return escapeRe(v);
+  }).join("");
+  return missing ? null : new RegExp(`^${source}$`);
+}
+function prParams(list2, command, argv2) {
+  const rule = list2.commands[command];
+  const out = {};
+  if (!rule) return out;
+  rule.argv.forEach((a, i) => {
+    if (typeof a === "string" || argv2[i] === void 0) return;
+    out[a.param] = argv2[i].slice(
+      (a.prefix ?? "").length
     );
-  const files = {};
-  for (const [name, doc] of Object.entries({
-    product: loaded2.product,
-    schema: loaded2.schema,
-    release: loaded2.release,
-    distribution: loaded2.distribution
-  }))
-    if (doc !== void 0) files[name] = JSON.stringify(doc);
-  const parsed = parseManifest(files);
-  if (!parsed.ok)
-    throw new Error(`.pkey/ does not parse:
-  ${parsed.errors.join("\n  ")}`);
-  const m = parsed.manifest;
-  if (product && product !== m.product.slug)
+  });
+  return out;
+}
+function prPathAllowed(store, argv2, path26) {
+  if (path26.length > 512 || path26.includes("..") || path26.startsWith("/"))
+    return false;
+  const values = prParams(store.list, "pull-request", argv2);
+  return store.paths.some(
+    (rule) => prPathPattern(rule.template, values)?.test(path26) ?? false
+  );
+}
+function prNaturalKey(store, command, argv2) {
+  const values = prParams(store.list, command, argv2);
+  const [pkg, version] = store.naturalKey.map((k) => values[k]);
+  return pkg && version ? `pr:${pkg}:${version}` : null;
+}
+function prVerdict(store, pr) {
+  if (pr.merged) return "merged";
+  if (pr.state === "closed") return "closed";
+  if (pr.labels.some((l) => store.labels.needsAuthor.includes(l)))
+    return "needs-author-feedback";
+  const prefix = store.labels.validationPrefix;
+  if (prefix !== null && pr.labels.some(
+    (l) => l.startsWith(prefix) && !store.labels.validationOk.includes(l)
+  ))
+    return "validation-issue";
+  return "in-review";
+}
+function checkPrCommand(store, command, argv2, identity) {
+  const refusal = checkCiCommand(store.list, command, argv2, identity);
+  if (!refusal) return;
+  const why = {
+    not_allowed: `is not ${command} as ${store.label}'s PR plane declares it`,
+    value_not_allowed: `has a value ${store.label}'s PR plane refuses for ${command}`,
+    identity_required: "is bound to the outlet's identity, and no outlet was given",
+    identity_mismatch: "names a repository or package the outlet's identity does not declare"
+  };
+  throw new Error(
+    `Refused by the PR plane's allow-list: ${store.list.tool} ${argv2.join(" ")} ${why[refusal]}.`
+  );
+}
+function checkPrPaths(store, argv2, paths) {
+  for (const p of paths)
+    if (!prPathAllowed(store, argv2, p))
+      throw new Error(
+        `Refused by the PR plane: ${p} is not a path ${store.label}'s pull request may write (${store.paths.map((r) => r.template).join(", ")}).`
+      );
+  if (new Set(paths).size !== paths.length)
+    throw new Error("Refused by the PR plane: a path is written twice.");
+}
+
+// src/storefronts/prRun.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+import { createHash as createHash11 } from "node:crypto";
+import { mkdir as mkdir8, writeFile as writeFile13 } from "node:fs/promises";
+import path20 from "node:path";
+
+// src/storefronts/flathub.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var import_yaml3 = __toESM(require_dist(), 1);
+
+// src/storefronts/prInputs.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+async function fetchPrInputs(client, store, channel, outlet) {
+  const q = new URLSearchParams({ channel });
+  if (outlet) q.set("outlet", outlet);
+  const body = await client.getJson(
+    `distribution/pr/${encodeURIComponent(store)}?${q.toString()}`,
+    { what: `Reading the ${store} generator's inputs` }
+  );
+  return body.inputs;
+}
+function needRelease(i) {
+  if (!i.release)
     throw new Error(
-      `--product ${product} does not match .pkey/product's slug ${m.product.slug}.`
+      `The ${i.channel} channel serves no release on the ${i.outlet.id} outlet yet: publish one first.`
     );
+  return i.release;
+}
+function needPayload(i, label) {
+  const l = i.listing;
+  if (l?.payload) return l.payload;
+  const blocking = (l?.issues ?? []).filter((x) => x.severity === "block").map((x) => `${x.field}${x.locale ? ` (${x.locale})` : ""}: ${x.issue}`).join("; ");
+  throw new Error(
+    `The listing's ${label} projection is blocked${l && !l.exists ? " (the product has no listing yet)" : ""}: ${blocking || "fix it in the console's Listing editor"}.`
+  );
+}
+function isoDate(seconds) {
+  return seconds === null ? null : new Date(seconds * 1e3).toISOString().slice(0, 10);
+}
+function isHttps(u) {
+  try {
+    return new URL(u).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+// src/storefronts/flathub.ts
+var FLATHUB_RUNTIME_VERSION = "25.08";
+var RUNTIME_VERSION_PATTERN = /^\d{2}\.\d{2}$/;
+var FLATPAK_ARCH = {
+  x86_64: "x86_64",
+  arm64: "aarch64",
+  aarch64: "aarch64"
+};
+var OARS_IDS = [
+  "violence-cartoon",
+  "violence-fantasy",
+  "violence-realistic",
+  "violence-bloodshed",
+  "violence-sexual",
+  "violence-desecration",
+  "violence-slavery",
+  "violence-worship",
+  "drugs-alcohol",
+  "drugs-narcotics",
+  "drugs-tobacco",
+  "sex-nudity",
+  "sex-themes",
+  "sex-homosexuality",
+  "sex-prostitution",
+  "sex-adultery",
+  "sex-appearance",
+  "language-profanity",
+  "language-humor",
+  "language-discrimination",
+  "social-chat",
+  "social-info",
+  "social-audio",
+  "social-location",
+  "social-contacts",
+  "money-purchasing",
+  "money-gambling",
+  "money-advertising"
+];
+var OARS_ALIASES = {
+  chat: "social-chat",
+  gambling: "money-gambling",
+  ads: "money-advertising",
+  advertising: "money-advertising",
+  purchases: "money-purchasing",
+  inAppPurchases: "money-purchasing",
+  profanity: "language-profanity"
+};
+var OARS_VALUES = {
+  none: "none",
+  mild: "mild",
+  moderate: "moderate",
+  intense: "intense",
+  infrequent: "mild",
+  infrequent_or_mild: "mild",
+  frequent: "intense",
+  frequent_or_intense: "intense"
+};
+function oarsAttributes(descriptors) {
+  const attributes = /* @__PURE__ */ new Map();
+  const unmapped = [];
+  for (const [key, raw] of Object.entries(descriptors ?? {})) {
+    const id = OARS_ALIASES[key] ?? key.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`).replace(/_/g, "-");
+    const value = typeof raw === "string" ? OARS_VALUES[raw.toLowerCase()] : void 0;
+    if (!OARS_IDS.includes(id) || !value) {
+      unmapped.push(key);
+      continue;
+    }
+    attributes.set(id, value);
+  }
   return {
-    slug: m.product.slug,
-    outlets: (m.distribution?.outlets ?? []).map((o) => ({
-      id: o.id,
-      kind: o.kind,
-      identity: { ...o.identity }
-    }))
+    attributes: [...attributes].sort(([a], [b]) => a.localeCompare(b)),
+    unmapped: unmapped.sort()
   };
 }
-function pickOutlet(p, kinds, outletId, label) {
-  if (outletId) {
-    const o = p.outlets.find((x) => x.id === outletId);
-    if (!o)
-      throw new Error(
-        `--outlet ${outletId} is not declared in .pkey/distribution.`
-      );
-    if (!kinds.includes(o.kind))
-      throw new Error(
-        `--outlet ${outletId} is a ${o.kind} outlet, not a ${label} one (${kinds.join(", ")}).`
-      );
-    return o;
+function xmlEscape(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function metainfoMarkup(text, indent) {
+  const out = [];
+  const isItem = (l) => /^[-*]\s+/.test(l);
+  for (const block of text.replace(/\r\n/g, "\n").split(/\n\s*\n/)) {
+    const lines3 = block.split("\n").map((l) => l.trim()).filter(Boolean);
+    for (let n = 0; n < lines3.length; ) {
+      const list2 = isItem(lines3[n]);
+      const run2 = [];
+      while (n < lines3.length && isItem(lines3[n]) === list2)
+        run2.push(lines3[n++]);
+      if (list2) {
+        out.push(`${indent}<ul>`);
+        for (const l of run2)
+          out.push(
+            `${indent}  <li>${xmlEscape(l.replace(/^[-*]\s+/, ""))}</li>`
+          );
+        out.push(`${indent}</ul>`);
+      } else out.push(`${indent}<p>${xmlEscape(run2.join(" "))}</p>`);
+    }
   }
-  const matching = p.outlets.filter((o) => kinds.includes(o.kind));
-  if (matching.length === 1) return matching[0];
-  throw new Error(
-    matching.length === 0 ? `.pkey/distribution declares no ${label} outlet (${kinds.join(", ")}).` : `.pkey/distribution declares ${matching.length} ${label} outlets (${matching.map((o) => o.id).join(", ")}); pass --outlet.`
+  return out;
+}
+var MEDIA_HOST_ORIGIN = "https://img.plrs.im";
+var HOSTED_ASSET_PATH = /^\/[a-z0-9][a-z0-9-]*\/a\/[0-9a-f]{64}$/;
+function isHostedAsset(url) {
+  try {
+    const u = new URL(url);
+    return u.origin === MEDIA_HOST_ORIGIN && HOSTED_ASSET_PATH.test(u.pathname) && !u.search && !u.hash && !u.username && !u.password;
+  } catch {
+    return false;
+  }
+}
+var str2 = (v) => typeof v === "string" && v.trim() !== "" ? v : null;
+function flathubAppId(i) {
+  const id = str2(i.outlet.identity.appId);
+  if (!id)
+    throw new Error(
+      `The ${i.outlet.id} outlet declares no appId in .pkey/distribution.`
+    );
+  return id;
+}
+function developerId(appId) {
+  return appId.split(".").slice(0, -1).join(".");
+}
+function generateMetainfo(i, o = {}) {
+  const appId = flathubAppId(i);
+  const release = needRelease(i);
+  const payload = needPayload(i, "Flathub");
+  const warnings = [];
+  const def = i.app.defaultLocale;
+  const dl = payload.locales[def] ?? {};
+  const name = str2(dl.name) ?? i.app.name;
+  const summary = str2(dl.summary);
+  const description = str2(dl.description);
+  if (!summary || !description)
+    throw new Error(
+      `The listing's Flathub projection has no ${summary ? "description" : "summary"} in the default locale ${def}.`
+    );
+  const others = Object.keys(payload.locales).filter((l) => l !== def).sort();
+  const x = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    "<!-- Created with Polaris Key (pkey storefront flathub) -->",
+    '<component type="desktop-application">',
+    `  <id>${xmlEscape(appId)}</id>`,
+    "  <metadata_license>CC0-1.0</metadata_license>",
+    `  <project_license>${xmlEscape(o.projectLicense ?? "LicenseRef-proprietary")}</project_license>`,
+    `  <name>${xmlEscape(name)}</name>`
+  ];
+  for (const l of others) {
+    const v = str2(payload.locales[l]?.name);
+    if (v && v !== name)
+      x.push(`  <name xml:lang="${xmlEscape(l)}">${xmlEscape(v)}</name>`);
+  }
+  x.push(`  <summary>${xmlEscape(summary)}</summary>`);
+  for (const l of others) {
+    const v = str2(payload.locales[l]?.summary);
+    if (v)
+      x.push(`  <summary xml:lang="${xmlEscape(l)}">${xmlEscape(v)}</summary>`);
+  }
+  const developer = str2(payload.app.developerName) ?? i.app.developerName;
+  if (developer)
+    x.push(
+      `  <developer id="${xmlEscape(developerId(appId))}">`,
+      `    <name>${xmlEscape(developer)}</name>`,
+      "  </developer>"
+    );
+  else warnings.push("no developer name: the MetaInfo has no <developer>");
+  x.push("  <description>", ...metainfoMarkup(description, "    "));
+  x.push("  </description>");
+  x.push(
+    `  <launchable type="desktop-id">${xmlEscape(appId)}.desktop</launchable>`
   );
+  const homepage = str2(payload.app.homepage) ?? i.app.website;
+  if (homepage) x.push(`  <url type="homepage">${xmlEscape(homepage)}</url>`);
+  else warnings.push("no website: the MetaInfo has no homepage URL");
+  if (i.app.supportUrl)
+    x.push(`  <url type="help">${xmlEscape(i.app.supportUrl)}</url>`);
+  const keywords = Array.isArray(dl.keywords) ? dl.keywords.filter(
+    (k) => typeof k === "string" && k.trim() !== ""
+  ) : [];
+  if (keywords.length) {
+    x.push("  <keywords>");
+    for (const k of keywords) x.push(`    <keyword>${xmlEscape(k)}</keyword>`);
+    x.push("  </keywords>");
+  }
+  const screenshots = i.app.screenshots.filter(isHostedAsset);
+  if (screenshots.length < i.app.screenshots.length)
+    warnings.push(
+      "screenshots not on the media host dropped: MetaInfo takes only hosted copies (S-20)"
+    );
+  if (screenshots.length) {
+    x.push("  <screenshots>");
+    screenshots.forEach(
+      (s, n) => x.push(
+        `    <screenshot${n === 0 ? ' type="default"' : ""}>`,
+        `      <image>${xmlEscape(s)}</image>`,
+        "    </screenshot>"
+      )
+    );
+    x.push("  </screenshots>");
+  } else
+    warnings.push(
+      "no screenshots: Flathub requires at least one, served from the media host (S-20; HA-02/06/07)"
+    );
+  if (i.app.tint && i.app.tintDark)
+    x.push(
+      "  <branding>",
+      `    <color type="primary" scheme_preference="light">${xmlEscape(i.app.tint)}</color>`,
+      `    <color type="primary" scheme_preference="dark">${xmlEscape(i.app.tintDark)}</color>`,
+      "  </branding>"
+    );
+  else
+    warnings.push(
+      "no tint and tintDark: the MetaInfo has no <branding> colours, which Flathub asks for"
+    );
+  const { attributes, unmapped } = oarsAttributes(i.app.contentDescriptors);
+  if (attributes.length) {
+    x.push('  <content_rating type="oars-1.1">');
+    for (const [id, v] of attributes)
+      x.push(`    <content_attribute id="${id}">${v}</content_attribute>`);
+    x.push("  </content_rating>");
+  } else x.push('  <content_rating type="oars-1.1"/>');
+  if (unmapped.length)
+    warnings.push(
+      `content descriptors with no OARS attribute, left out: ${unmapped.join(", ")}`
+    );
+  const date = isoDate(release.publishedAt);
+  const notes = str2(payload.locales[def]?.releases) ?? i.notes?.[def]?.text;
+  x.push(
+    "  <releases>",
+    `    <release version="${xmlEscape(release.version)}"${date ? ` date="${date}"` : ""}${notes ? "" : "/"}>`
+  );
+  if (notes) {
+    x.push("      <description>", ...metainfoMarkup(notes, "        "));
+    x.push("      </description>", "    </release>");
+  }
+  x.push("  </releases>", "</component>", "");
+  return {
+    file: { path: `${appId}.metainfo.xml`, content: x.join("\n") },
+    warnings
+  };
+}
+function linuxBuilds(i) {
+  const release = needRelease(i);
+  const out = /* @__PURE__ */ new Map();
+  for (const b of release.builds) {
+    if (b.platform !== null && b.platform !== "linux") continue;
+    const arch = FLATPAK_ARCH[b.arch];
+    if (!arch || out.has(arch)) continue;
+    if (!b.sha256 || b.size === null)
+      throw new Error(
+        `${b.name}: an extra-data source needs the build's SHA-256 and size.`
+      );
+    out.set(arch, b);
+  }
+  if (!out.size)
+    throw new Error(
+      `${release.version} has no Linux x86_64 or arm64 build on the ${i.outlet.id} outlet.`
+    );
+  return [...out].sort(([a], [b]) => a.localeCompare(b));
+}
+function archiveExt(name) {
+  const m = /\.(tar\.gz|tgz|tar\.xz|tar\.zst|zip)$/i.exec(name);
+  if (!m)
+    throw new Error(
+      `${name}: the skeleton extracts a .tar.gz, .tgz, .tar.xz, .tar.zst or .zip build.`
+    );
+  return m[1].toLowerCase();
+}
+function extractCommand(file, ext) {
+  return ext === "zip" ? `unzip -q ${file} && rm ${file}` : `tar -xf ${file} && rm ${file}`;
+}
+function generateFlathubSkeleton(i, o = {}) {
+  const appId = flathubAppId(i);
+  const slug = i.product.slug.toLowerCase();
+  const command = o.command ?? slug;
+  const runtimeVersion = o.runtimeVersion ?? FLATHUB_RUNTIME_VERSION;
+  if (!RUNTIME_VERSION_PATTERN.test(runtimeVersion))
+    throw new Error(
+      `--runtime-version must be a Freedesktop SDK branch such as ${FLATHUB_RUNTIME_VERSION} (got ${runtimeVersion}).`
+    );
+  if (!/^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$/.test(command) || command.includes(".."))
+    throw new Error(
+      `--command must be a relative path inside the build (got ${command}).`
+    );
+  const builds = linuxBuilds(i);
+  const sources = [];
+  const applyExtra = [];
+  for (const [arch, b] of builds) {
+    const ext = archiveExt(b.name);
+    const filename = `${slug}-${arch}.${ext}`;
+    sources.push({
+      type: "extra-data",
+      filename,
+      "only-arches": [arch],
+      url: b.url,
+      sha256: b.sha256,
+      size: b.size,
+      "x-checker-data": {
+        type: "json",
+        url: i.links.flathubFeed,
+        "version-query": ".version",
+        "url-query": `.releases[] | select(.arch == "${arch}") | .url`
+      }
+    });
+    applyExtra.push(
+      `if [ -f ${filename} ]; then ${extractCommand(filename, ext)}; fi`
+    );
+  }
+  sources.push(
+    {
+      type: "script",
+      "dest-filename": "apply_extra",
+      commands: applyExtra
+    },
+    {
+      type: "script",
+      "dest-filename": `${slug}.sh`,
+      commands: [`exec /app/extra/${command} "$@"`]
+    },
+    { type: "file", path: `${appId}.metainfo.xml` },
+    { type: "file", path: `${appId}.desktop` }
+  );
+  const manifest = new import_yaml3.Document({
+    id: appId,
+    runtime: "org.freedesktop.Platform",
+    "runtime-version": runtimeVersion,
+    sdk: "org.freedesktop.Sdk",
+    command: slug,
+    "finish-args": [
+      "--share=ipc",
+      "--socket=x11",
+      "--socket=pulseaudio",
+      "--device=dri"
+    ],
+    modules: [
+      {
+        name: slug,
+        buildsystem: "simple",
+        "build-commands": [
+          "install -Dm755 apply_extra -t /app/bin",
+          `install -Dm755 ${slug}.sh /app/bin/${slug}`,
+          `install -Dm644 ${appId}.metainfo.xml -t /app/share/metainfo`,
+          `install -Dm644 ${appId}.desktop -t /app/share/applications`
+        ],
+        sources
+      }
+    ]
+  });
+  manifest.commentBefore = ` Created with Polaris Key (pkey storefront flathub init): the skeleton of the first submission.
+ Before opening the PR to flathub/flathub (base branch new-pr): add the icon, a 256x256 PNG
+ installed as /app/share/icons/hicolor/256x256/apps/${appId}.png, and check finish-args.
+ Updates after that: Flathub's external-data checker follows x-checker-data, or
+ pkey storefront flathub pr opens the update PR.`;
+  const desktop = [
+    "[Desktop Entry]",
+    "Type=Application",
+    `Name=${i.app.name}`,
+    ...i.app.subtitle ? [`Comment=${i.app.subtitle}`] : [],
+    `Exec=${slug}`,
+    `Icon=${appId}`,
+    "Categories=Game;",
+    ""
+  ].join("\n");
+  const meta = generateMetainfo(i, o);
+  return {
+    files: [
+      { path: `${appId}.yml`, content: manifest.toString({ lineWidth: 0 }) },
+      meta.file,
+      { path: `${appId}.desktop`, content: desktop }
+    ],
+    warnings: meta.warnings
+  };
+}
+function extraDataSources(modules, out = []) {
+  if (!(0, import_yaml3.isSeq)(modules)) return out;
+  for (const m of modules.items) {
+    if (!(0, import_yaml3.isMap)(m)) continue;
+    const sources = m.get("sources");
+    if ((0, import_yaml3.isSeq)(sources)) {
+      for (const s of sources.items)
+        if ((0, import_yaml3.isMap)(s) && s.get("type") === "extra-data") out.push(s);
+    }
+    extraDataSources(m.get("modules"), out);
+  }
+  return out;
+}
+function updateFlathubManifest(text, path26, i) {
+  const builds = new Map(linuxBuilds(i));
+  const json = path26.endsWith(".json");
+  const doc = (0, import_yaml3.parseDocument)(text);
+  if (doc.errors.length)
+    throw new Error(`${path26} does not parse: ${doc.errors[0].message}`);
+  const sources = extraDataSources(doc.get("modules"));
+  if (!sources.length)
+    throw new Error(
+      `${path26} has no extra-data source to update: edit it by hand, or let Flathub's external-data checker open the PR.`
+    );
+  let changed = 0;
+  for (const s of sources) {
+    const arches = s.get("only-arches");
+    const archList = (0, import_yaml3.isSeq)(arches) ? arches.items.map((a) => String(a.value ?? a)) : null;
+    const b = archList ? archList.map((a) => builds.get(a)).find((x) => x !== void 0) : builds.size === 1 ? [...builds.values()][0] : void 0;
+    if (!b) continue;
+    s.set("url", b.url);
+    s.set("sha256", b.sha256);
+    s.set("size", b.size);
+    changed++;
+  }
+  if (!changed)
+    throw new Error(
+      `${path26}'s extra-data sources name no architecture this release has a Linux build for (${[...builds.keys()].join(", ")}).`
+    );
+  return json ? `${JSON.stringify(doc.toJS(), null, 4)}
+` : doc.toString({ lineWidth: 0 });
+}
+
+// src/storefronts/github.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var GITHUB_API = "https://api.github.com";
+var GitHubError = class extends Error {
+  constructor(message, status) {
+    super(message);
+    this.status = status;
+    this.name = "GitHubError";
+  }
+  status;
+};
+function toPull(r) {
+  const merged = Boolean(r.merged || r.merged_at || r.pull_request?.merged_at);
+  return {
+    number: r.number,
+    url: r.pull_request?.html_url ?? r.html_url,
+    state: r.state === "open" ? "open" : "closed",
+    merged,
+    labels: (r.labels ?? []).map((l) => l.name).filter((n) => typeof n === "string" && n.length > 0).sort(),
+    title: r.title ?? ""
+  };
+}
+var enc2 = (p) => p.split("/").map(encodeURIComponent).join("/");
+function githubClient(o = {}) {
+  const f = o.fetchImpl ?? fetch;
+  const base = o.apiBase ?? GITHUB_API;
+  const sleep = o.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
+  async function call(method, path26, body, allow404 = false) {
+    const headers = {
+      accept: "application/vnd.github+json",
+      "x-github-api-version": "2022-11-28",
+      "user-agent": "polaris-key-pkey"
+    };
+    if (o.token) headers.authorization = `Bearer ${o.token}`;
+    if (body !== void 0) headers["content-type"] = "application/json";
+    const res = await f(`${base}${path26}`, {
+      method,
+      headers,
+      ...body !== void 0 ? { body: JSON.stringify(body) } : {}
+    });
+    if (res.status === 404 && allow404) return null;
+    const text = await res.text();
+    let parsed = null;
+    try {
+      parsed = text ? JSON.parse(text) : null;
+    } catch {
+      parsed = null;
+    }
+    if (res.ok) return parsed;
+    const message = parsed && typeof parsed === "object" && "message" in parsed ? String(parsed.message) : `HTTP ${res.status}`;
+    const remaining = res.headers.get("x-ratelimit-remaining");
+    throw new GitHubError(
+      `GitHub ${method} ${path26.split("?")[0]}: ${res.status} ${message}${remaining === "0" ? " (the token's rate limit is spent; retry after X-RateLimit-Reset)" : ""}`,
+      res.status
+    );
+  }
+  const client = {
+    async login() {
+      const u = await call("GET", "/user");
+      return u.login;
+    },
+    async defaultBranch(repo) {
+      const r = await call("GET", `/repos/${repo}`);
+      return r.default_branch;
+    },
+    async refSha(repo, branch) {
+      const r = await call(
+        "GET",
+        `/repos/${repo}/git/ref/heads/${enc2(branch)}`,
+        void 0,
+        true
+      );
+      return r?.object.sha ?? null;
+    },
+    async fileText(repo, path26, ref) {
+      const r = await call(
+        "GET",
+        `/repos/${repo}/contents/${enc2(path26)}?ref=${encodeURIComponent(ref)}`,
+        void 0,
+        true
+      );
+      if (!r || r.type !== "file" || typeof r.content !== "string") return null;
+      return Buffer.from(r.content, "base64").toString("utf8");
+    },
+    async exists(repo, path26, ref) {
+      const r = await call(
+        "GET",
+        `/repos/${repo}/contents/${enc2(path26)}?ref=${encodeURIComponent(ref)}`,
+        void 0,
+        true
+      );
+      return r !== null;
+    },
+    async pullsFromHead(repo, head) {
+      const r = await call(
+        "GET",
+        `/repos/${repo}/pulls?state=all&per_page=20&head=${encodeURIComponent(head)}`
+      );
+      return (r ?? []).map(toPull);
+    },
+    async pullsByTitle(repo, phrase) {
+      const q = `repo:${repo} is:pr in:title "${phrase.replace(/"/g, "")}"`;
+      const r = await call(
+        "GET",
+        `/search/issues?per_page=20&q=${encodeURIComponent(q)}`
+      );
+      return (r?.items ?? []).map(toPull).filter((p) => p.title.includes(phrase));
+    },
+    async pull(repo, n) {
+      return toPull(await call("GET", `/repos/${repo}/pulls/${n}`));
+    },
+    async fork(repo) {
+      const r = await call(
+        "POST",
+        `/repos/${repo}/forks`,
+        { default_branch_only: true }
+      );
+      const name = r.full_name;
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const there = await call(
+          "GET",
+          `/repos/${name}`,
+          void 0,
+          true
+        );
+        if (there) return name;
+        await sleep(3e3);
+      }
+      throw new GitHubError(`GitHub: the fork ${name} did not appear`, 504);
+    },
+    async syncFork(fork, branch) {
+      try {
+        await call("POST", `/repos/${fork}/merge-upstream`, { branch });
+      } catch {
+      }
+    },
+    async commit(repo, parent, files, message) {
+      const c = await call(
+        "GET",
+        `/repos/${repo}/git/commits/${parent}`
+      );
+      const tree = await call(
+        "POST",
+        `/repos/${repo}/git/trees`,
+        {
+          base_tree: c.tree.sha,
+          tree: files.map((x) => ({
+            path: x.path,
+            mode: "100644",
+            type: "blob",
+            content: x.content
+          }))
+        }
+      );
+      const commit = await call(
+        "POST",
+        `/repos/${repo}/git/commits`,
+        { message, tree: tree.sha, parents: [parent] }
+      );
+      return commit.sha;
+    },
+    async createBranch(repo, branch, sha) {
+      await call("POST", `/repos/${repo}/git/refs`, {
+        ref: `refs/heads/${branch}`,
+        sha
+      });
+    },
+    async advanceBranch(repo, branch, sha) {
+      await call("PATCH", `/repos/${repo}/git/refs/heads/${enc2(branch)}`, {
+        sha,
+        force: false
+      });
+    },
+    async openPull(repo, p) {
+      return toPull(
+        await call("POST", `/repos/${repo}/pulls`, {
+          ...p,
+          maintainer_can_modify: true
+        })
+      );
+    }
+  };
+  return client;
+}
+
+// src/storefronts/homebrew.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+function rubyString(s) {
+  return `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/#\{/g, "\\#{").replace(/\n/g, "\\n")}"`;
+}
+function checkBuild(b) {
+  if (!isHttps(b.url))
+    throw new Error(`${b.name}: a cask needs an HTTPS URL (got ${b.url}).`);
+  if (!b.sha256)
+    throw new Error(`${b.name}: the release records no SHA-256 for it.`);
+  if (!/\.(dmg|zip)$/i.test(b.name))
+    throw new Error(
+      `${b.name}: the cask installs an app from a .dmg or .zip build.`
+    );
+  return { url: b.url, sha256: b.sha256 };
+}
+function generateCask(i, o = {}) {
+  const cask = i.outlet.identity.homebrewCask;
+  if (typeof cask !== "string" || !cask)
+    throw new Error(
+      `The ${i.outlet.id} outlet declares no homebrewCask in .pkey/distribution.`
+    );
+  const release = needRelease(i);
+  const builds = release.builds.filter(
+    (b) => b.platform === null || b.platform === "macos"
+  );
+  const universal = builds.find(
+    (b) => b.arch === "universal" || b.arch === "neutral"
+  );
+  const arm = builds.find((b) => b.arch === "arm64" || b.arch === "aarch64");
+  const intel = builds.find((b) => b.arch === "x86_64" || b.arch === "x64");
+  if (!universal && !arm && !intel)
+    throw new Error(
+      `${release.version} has no macOS build on the ${i.outlet.id} outlet.`
+    );
+  const app = o.app ?? `${i.app.name}.app`;
+  if (!/\.app$/.test(app) || app.includes("/") || app.includes(".."))
+    throw new Error(`--app must name a .app bundle (got ${app}).`);
+  const desc = (i.app.shortDescription ?? i.app.subtitle ?? i.app.name).trim().replace(/\.$/, "");
+  const lines3 = [
+    `cask ${rubyString(cask)} do`,
+    `  version ${rubyString(release.version)}`
+  ];
+  if (universal || !(arm && intel)) {
+    const b = checkBuild(universal ?? arm ?? intel);
+    if (!universal && arm) lines3.push(`  depends_on arch: :arm64`);
+    if (!universal && intel) lines3.push(`  depends_on arch: :x86_64`);
+    lines3.push(
+      `  sha256 ${rubyString(b.sha256)}`,
+      "",
+      `  url ${rubyString(b.url)}`
+    );
+  } else {
+    const a = checkBuild(arm);
+    const x = checkBuild(intel);
+    lines3.push(
+      "",
+      "  on_arm do",
+      `    sha256 ${rubyString(a.sha256)}`,
+      `    url ${rubyString(a.url)}`,
+      "  end",
+      "  on_intel do",
+      `    sha256 ${rubyString(x.sha256)}`,
+      `    url ${rubyString(x.url)}`,
+      "  end",
+      ""
+    );
+  }
+  lines3.push(`  name ${rubyString(i.app.name)}`, `  desc ${rubyString(desc)}`);
+  if (i.app.website) lines3.push(`  homepage ${rubyString(i.app.website)}`);
+  lines3.push("");
+  if (i.channel === "stable")
+    lines3.push(
+      "  livecheck do",
+      `    url ${rubyString(i.links.downloadJson)}`,
+      "    strategy :json do |json|",
+      '      json.dig("release", "version")',
+      "    end",
+      "  end"
+    );
+  else
+    lines3.push(
+      "  livecheck do",
+      `    skip ${rubyString(`follows the ${i.channel} channel through pkey storefront homebrew pr`)}`,
+      "  end"
+    );
+  lines3.push("");
+  if (i.selfUpdates) lines3.push("  auto_updates true", "");
+  lines3.push(`  app ${rubyString(app)}`, "end", "");
+  return { path: `Casks/${cask}.rb`, content: lines3.join("\n") };
 }
 
 // src/storefronts/run.ts
@@ -30562,10 +31778,793 @@ Nothing ran: ${line}`);
   return outcomes;
 }
 
+// src/storefronts/scoop.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var SCOOP_APP_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+function scoopApp(i, o = {}) {
+  const app = o.app ?? i.product.slug.toLowerCase();
+  if (!SCOOP_APP_PATTERN.test(app))
+    throw new Error(
+      `--app must be 1-64 lower-case letters, digits, ., _ or - (got ${app}).`
+    );
+  return app;
+}
+function generateScoop(i, o = {}) {
+  const bucket = i.outlet.identity.scoopBucket;
+  if (typeof bucket !== "string" || !bucket)
+    throw new Error(
+      `The ${i.outlet.id} outlet declares no scoopBucket in .pkey/distribution.`
+    );
+  const release = needRelease(i);
+  const manifest = i.scoop;
+  if (!manifest || typeof manifest !== "object")
+    throw new Error(
+      `The Scoop feed has no manifest for ${release.version}: it needs a Windows x86_64 or arm64 build with a SHA-256.`
+    );
+  if (manifest.version !== release.version)
+    throw new Error(
+      `The Scoop feed serves ${String(manifest.version)}, not ${release.version}.`
+    );
+  return {
+    path: `bucket/${scoopApp(i, o)}.json`,
+    content: `${JSON.stringify(withHashAutoupdate(manifest), null, 4)}
+`
+  };
+}
+var HASH_URL = /\/blobs\/sha256\/([0-9a-f]{64})$/;
+var HASH_GROUP = {
+  "64bit": "hashx",
+  "32bit": "hashi",
+  arm64: "hasharm"
+};
+function hashGroup(arch) {
+  return HASH_GROUP[arch] ?? null;
+}
+function withHashAutoupdate(manifest) {
+  const m = manifest;
+  if (m.autoupdate !== void 0 || !m.architecture) return manifest;
+  const feedUrl = m.checkver?.url;
+  if (typeof feedUrl !== "string") return manifest;
+  const arches = Object.keys(m.architecture);
+  if (arches.length === 0) return manifest;
+  const autoArch = {};
+  const parts = ['"version"\\s*:\\s*"(?<version>[^"]+)"'];
+  for (const arch of arches) {
+    const { url, hash } = m.architecture[arch];
+    if (typeof url !== "string" || typeof hash !== "string") return manifest;
+    const match = HASH_URL.exec(url);
+    if (!match || match[1] !== hash) return manifest;
+    const group = hashGroup(arch);
+    if (!group) return manifest;
+    const variable = `$match${group[0].toUpperCase()}${group.slice(1)}`;
+    parts.push(
+      `"${arch}"\\s*:\\s*\\{[^}]*?"hash"\\s*:\\s*"(?<${group}>[0-9a-f]{64})"`
+    );
+    autoArch[arch] = {
+      url: `${url.slice(0, -hash.length)}${variable}`,
+      hash: { url: feedUrl, jsonpath: `$.architecture.${arch}.hash` }
+    };
+  }
+  return {
+    ...manifest,
+    checkver: { url: feedUrl, regex: parts.join("[\\s\\S]*?") },
+    autoupdate: { architecture: autoArch }
+  };
+}
+
+// src/storefronts/winget.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var import_yaml4 = __toESM(require_dist(), 1);
+var WINGET_MANIFEST_VERSION = "1.12.0";
+var ARCH = {
+  x86_64: "x64",
+  x64: "x64",
+  amd64: "x64",
+  arm64: "arm64",
+  aarch64: "arm64",
+  x86: "x86",
+  i686: "x86",
+  universal: "neutral",
+  neutral: "neutral"
+};
+function wingetInstallerType(name) {
+  const n = name.toLowerCase();
+  if (n.endsWith(".zip")) return "zip";
+  if (n.endsWith(".exe")) return "portable";
+  if (n.endsWith(".msi")) return "msi";
+  if (n.endsWith(".msix") || n.endsWith(".msixbundle")) return "msix";
+  return null;
+}
+function wingetDir(id, version) {
+  return `manifests/${id.charAt(0).toLowerCase()}/${id.split(".").join("/")}/${version}`;
+}
+function wingetPackageDir(id) {
+  return `manifests/${id.charAt(0).toLowerCase()}/${id.split(".").join("/")}`;
+}
+function tag(t) {
+  const v = t.trim().toLowerCase().replace(/\s+/g, "-").slice(0, 40);
+  return v.length ? v : null;
+}
+var str3 = (v) => typeof v === "string" && v.trim() !== "" ? v : void 0;
+function yamlFile(kind, body) {
+  const clean = Object.fromEntries(
+    Object.entries(body).filter(([, v]) => v !== void 0 && v !== null)
+  );
+  const doc = new import_yaml4.Document(clean);
+  doc.commentBefore = ` Created with Polaris Key (pkey storefront winget)
+ yaml-language-server: $schema=https://aka.ms/winget-manifest.${kind}.${WINGET_MANIFEST_VERSION}.schema.json`;
+  return doc.toString({ lineWidth: 0 });
+}
+function installer(b, date, o) {
+  const arch = ARCH[b.arch];
+  if (!arch)
+    throw new Error(
+      `${b.name}: winget has no architecture for ${b.arch} (x64, x86, arm64 or neutral).`
+    );
+  if (!isHttps(b.url))
+    throw new Error(
+      `${b.name}: winget needs an HTTPS direct installer URL (got ${b.url}).`
+    );
+  if (!b.sha256)
+    throw new Error(`${b.name}: the release records no SHA-256 for it.`);
+  const type = wingetInstallerType(b.name);
+  if (!type)
+    throw new Error(
+      `${b.name}: winget installs a .zip (with a portable executable inside), .exe, .msi or .msix.`
+    );
+  const out = {
+    Architecture: arch,
+    InstallerType: type
+  };
+  if (type === "zip") {
+    if (!o.portable)
+      throw new Error(
+        `${b.name} is a zip: pass --portable <path of the executable inside it>.`
+      );
+    if (o.portable.startsWith("/") || o.portable.includes("..") || /^[A-Za-z]:/.test(o.portable))
+      throw new Error(
+        `--portable must be a relative path inside the archive (got ${o.portable}).`
+      );
+    out.NestedInstallerType = "portable";
+    out.NestedInstallerFiles = [
+      {
+        RelativeFilePath: o.portable.replace(/\//g, "\\"),
+        ...o.command ? { PortableCommandAlias: o.command } : {}
+      }
+    ];
+  } else if (type === "portable" && o.command) {
+    out.Commands = [o.command];
+  }
+  out.InstallerUrl = b.url;
+  out.InstallerSha256 = b.sha256.toUpperCase();
+  if (date) out.ReleaseDate = date;
+  return out;
+}
+function generateWinget(i, o = {}) {
+  const id = str3(i.outlet.identity.packageIdentifier);
+  if (!id)
+    throw new Error(
+      `The ${i.outlet.id} outlet declares no packageIdentifier in .pkey/distribution.`
+    );
+  if (o.command !== void 0 && !/^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$/.test(o.command))
+    throw new Error(
+      `--command must be 1-40 letters, digits, ., _ or - (got ${o.command}).`
+    );
+  const release = needRelease(i);
+  const version = release.version;
+  const payload = needPayload(i, "winget");
+  const builds = release.builds.filter(
+    (b) => b.platform === null || b.platform === "windows"
+  );
+  if (builds.length === 0)
+    throw new Error(
+      `${version} has no Windows build on the ${i.outlet.id} outlet.`
+    );
+  const date = isoDate(release.publishedAt);
+  const installers = builds.map((b) => installer(b, date, o));
+  const seen = /* @__PURE__ */ new Set();
+  for (const x of installers) {
+    const key = `${x.Architecture}/${x.InstallerType}`;
+    if (seen.has(key))
+      throw new Error(
+        `${version} has two ${x.InstallerType} builds for ${x.Architecture}; winget takes one per architecture and type.`
+      );
+    seen.add(key);
+  }
+  const head = { PackageIdentifier: id, PackageVersion: version };
+  const defaultLocale = i.app.defaultLocale;
+  const locales = Object.keys(payload.locales).sort(
+    (a, b) => a === defaultLocale ? -1 : b === defaultLocale ? 1 : a.localeCompare(b)
+  );
+  if (!locales.includes(defaultLocale))
+    throw new Error(
+      `The listing's winget projection has nothing for the default locale ${defaultLocale}.`
+    );
+  const dir = wingetDir(id, version);
+  const files = [
+    {
+      path: `${dir}/${id}.yaml`,
+      content: yamlFile("version", {
+        ...head,
+        DefaultLocale: defaultLocale,
+        ManifestType: "version",
+        ManifestVersion: WINGET_MANIFEST_VERSION
+      })
+    },
+    {
+      path: `${dir}/${id}.installer.yaml`,
+      content: yamlFile("installer", {
+        ...head,
+        Installers: installers,
+        ManifestType: "installer",
+        ManifestVersion: WINGET_MANIFEST_VERSION
+      })
+    }
+  ];
+  const app = payload.app;
+  for (const locale of locales) {
+    const l = payload.locales[locale] ?? {};
+    const tags = Array.isArray(l.Tags) ? [
+      ...new Set(
+        l.Tags.filter((t) => typeof t === "string").map(tag).filter((t) => t !== null)
+      )
+    ].slice(0, 16) : [];
+    const isDefault = locale === defaultLocale;
+    const body = {
+      ...head,
+      PackageLocale: locale,
+      ...isDefault ? {
+        Publisher: str3(app.Publisher),
+        PublisherUrl: i.app.website ?? void 0,
+        PublisherSupportUrl: str3(app.PublisherSupportUrl),
+        PrivacyUrl: str3(app.PrivacyUrl)
+      } : {},
+      PackageName: str3(l.PackageName),
+      ...isDefault ? {
+        PackageUrl: i.app.website ?? void 0,
+        License: o.license ?? "Proprietary",
+        Copyright: str3(app.Copyright)
+      } : {},
+      ShortDescription: str3(l.ShortDescription),
+      Description: str3(l.Description),
+      Tags: tags.length ? tags : void 0,
+      ReleaseNotes: str3(l.ReleaseNotes),
+      ManifestType: isDefault ? "defaultLocale" : "locale",
+      ManifestVersion: WINGET_MANIFEST_VERSION
+    };
+    if (isDefault) {
+      for (const req of ["Publisher", "PackageName", "ShortDescription"])
+        if (body[req] === void 0)
+          throw new Error(
+            `The listing's winget projection has no ${req} in the default locale ${defaultLocale}.`
+          );
+    }
+    files.push({
+      path: `${dir}/${id}.locale.${locale}.yaml`,
+      content: yamlFile(isDefault ? "defaultLocale" : "locale", body)
+    });
+  }
+  return files;
+}
+
+// src/storefronts/prRun.ts
+var PR_TOKEN_ENV = "PKEY_PR_TOKEN";
+var sha2563 = (s) => createHash11("sha256").update(s).digest("hex");
+function identityString(i, field) {
+  const v = i.outlet.identity[field];
+  if (typeof v !== "string" || !v)
+    throw new Error(
+      `The ${i.outlet.id} outlet declares no ${field} in .pkey/distribution.`
+    );
+  return v;
+}
+function prArgv(store, i, command, version, o = {}) {
+  switch (store.store) {
+    case "winget":
+      return [
+        command,
+        "--repo",
+        "microsoft/winget-pkgs",
+        "--package",
+        identityString(i, "packageIdentifier"),
+        "--version",
+        version
+      ];
+    case "homebrew":
+      return [
+        command,
+        "--repo",
+        identityString(i, "homebrewTap"),
+        "--cask",
+        identityString(i, "homebrewCask"),
+        "--version",
+        version
+      ];
+    case "scoop":
+      return [
+        command,
+        "--repo",
+        identityString(i, "scoopBucket"),
+        "--app",
+        scoopApp(i, o),
+        "--version",
+        version
+      ];
+    case "flathub":
+      return [
+        command,
+        "--repo",
+        `flathub/${flathubAppId(i)}`,
+        "--version",
+        version
+      ];
+    default:
+      throw new Error(`${store.store} is not a PR-plane store.`);
+  }
+}
+async function planPr(store, i, o, gh) {
+  const version = needRelease(i).version;
+  const argv2 = prArgv(store, i, "pull-request", version, o);
+  const repo = argv2[2];
+  let files;
+  let warnings = [];
+  let title;
+  let branch;
+  let titlePhrase = null;
+  switch (store.store) {
+    case "winget": {
+      const id = argv2[4];
+      files = generateWinget(i, o);
+      titlePhrase = `${id} version ${version}`;
+      title = `New version: ${titlePhrase}`;
+      branch = `pkey/${id}-${version}`;
+      break;
+    }
+    case "homebrew": {
+      const cask = argv2[4];
+      files = [generateCask(i, o)];
+      title = `${cask} ${version}`;
+      branch = `pkey/${cask}-${version}`;
+      break;
+    }
+    case "scoop": {
+      const app = argv2[4];
+      files = [generateScoop(i, o)];
+      title = `${app}: Update to version ${version}`;
+      branch = `pkey/${app}-${version}`;
+      break;
+    }
+    default: {
+      const appId = flathubAppId(i);
+      const meta = generateMetainfo(i, o);
+      warnings = meta.warnings;
+      files = [meta.file];
+      if (gh) {
+        const base = await gh.defaultBranch(repo);
+        let found = false;
+        for (const name of [`${appId}.yml`, `${appId}.yaml`, `${appId}.json`]) {
+          const text = await gh.fileText(repo, name, base);
+          if (text === null) continue;
+          files.unshift({
+            path: name,
+            content: updateFlathubManifest(text, name, i)
+          });
+          found = true;
+          break;
+        }
+        if (!found)
+          throw new Error(
+            `${repo} has no ${appId}.yml, .yaml or .json manifest: the first submission is a person's (pkey storefront flathub init writes its files).`
+          );
+      } else
+        warnings.push(
+          "the manifest update is planned against the app repository, which a dry run without PKEY_PR_TOKEN does not read; only the MetaInfo is shown"
+        );
+      title = `Update to ${version}`;
+      branch = `pkey/${version}`;
+    }
+  }
+  return {
+    store,
+    repo,
+    argv: argv2,
+    version,
+    branch,
+    title,
+    titlePhrase,
+    files,
+    warnings
+  };
+}
+async function existingPull(gh, plan, headOwner) {
+  const candidates = [
+    ...await gh.pullsFromHead(plan.repo, `${headOwner}:${plan.branch}`),
+    ...plan.titlePhrase ? await gh.pullsByTitle(plan.repo, plan.titlePhrase) : []
+  ];
+  return candidates.find((p) => p.state === "open") ?? candidates.find((p) => p.merged) ?? null;
+}
+function reportPull(p) {
+  return {
+    number: p.number,
+    url: p.url,
+    state: p.state,
+    merged: p.merged,
+    labels: p.labels
+  };
+}
+async function reporter(o) {
+  if (o.report === false) return null;
+  const token = await resolveCiToken({
+    baseUrl: o.baseUrl,
+    product: o.product,
+    env: o.env,
+    out: o.stdout,
+    log: o.stderr,
+    fetchImpl: o.fetchImpl,
+    sleep: o.sleep
+  });
+  const client = ciClient({
+    baseUrl: o.baseUrl,
+    product: o.product,
+    token,
+    fetchImpl: o.fetchImpl,
+    sleep: o.sleep,
+    log: o.stderr
+  });
+  return {
+    post: (body, what) => client.postJson("distribution/report", { what, body })
+  };
+}
+async function inputsClient(o) {
+  const token = await resolveCiToken({
+    baseUrl: o.baseUrl,
+    product: o.product,
+    env: o.env,
+    out: o.stdout,
+    log: o.stderr,
+    fetchImpl: o.fetchImpl,
+    sleep: o.sleep
+  });
+  return ciClient({
+    baseUrl: o.baseUrl,
+    product: o.product,
+    token,
+    fetchImpl: o.fetchImpl,
+    sleep: o.sleep,
+    log: o.stderr
+  });
+}
+function needStore(id) {
+  const s = prStore(id);
+  if (!s) throw new Error(`${id} is not a PR-plane store.`);
+  return s;
+}
+function gitHub(o, required) {
+  const token = o.env.PKEY_PR_TOKEN;
+  if (!token && required)
+    throw new Error(
+      `${PR_TOKEN_ENV} is not set: the GitHub token that opens the pull request is a CI environment secret (decision 7).`
+    );
+  return githubClient({
+    ...token ? { token } : {},
+    fetchImpl: o.githubFetch ?? o.fetchImpl,
+    sleep: o.sleep,
+    ...o.githubApi ? { apiBase: o.githubApi } : {}
+  });
+}
+async function runPrStep(o) {
+  const store = needStore(o.store);
+  const inputs = await fetchPrInputs(
+    await inputsClient(o),
+    store.store,
+    o.channel,
+    o.outlet
+  );
+  const gh = gitHub(o, !o.dryRun);
+  const canRead = Boolean(o.env.PKEY_PR_TOKEN) || !o.dryRun;
+  const plan = await planPr(store, inputs, o.generator, canRead ? gh : null);
+  checkPrCommand(store, "pull-request", plan.argv, inputs.outlet.identity);
+  checkPrPaths(
+    store,
+    plan.argv,
+    plan.files.map((f) => f.path)
+  );
+  for (const w of plan.warnings) o.stderr.write(`warning: ${w}
+`);
+  const line = commandLine(store.list.tool, plan.argv);
+  if (o.dryRun) {
+    o.stdout.write(
+      `Would open: ${line}
+  ${plan.title} (${plan.repo}, branch ${plan.branch})
+`
+    );
+    for (const f of plan.files)
+      o.stdout.write(`  ${f.path} (${Buffer.byteLength(f.content)} bytes)
+`);
+    if (o.outDir) {
+      for (const f of plan.files) {
+        const target = path20.resolve(o.cwd, o.outDir, f.path);
+        await mkdir8(path20.dirname(target), { recursive: true });
+        await writeFile13(target, f.content, "utf8");
+      }
+      o.stdout.write(`Wrote ${plan.files.length} file(s) under ${o.outDir}.
+`);
+    }
+    return { outcome: "dry-run", plan, pr: null, verdict: null };
+  }
+  const github = gh;
+  const headOwner = store.fork ? await github.login() : plan.repo.split("/")[0];
+  const rep = await reporter(o);
+  const runId = stepRunId(o.env);
+  const runUrl = stepRunUrl(o.env);
+  const body = (state, extra = {}) => ({
+    type: "store-step",
+    store: store.store,
+    op: "release",
+    command: "pull-request",
+    argv: plan.argv,
+    outlet: inputs.outlet.id,
+    runId,
+    state,
+    ...runUrl ? { runUrl } : {},
+    ...extra
+  });
+  const key = prNaturalKey(store, "pull-request", plan.argv);
+  const existing = await existingPull(github, plan, headOwner);
+  if (existing) {
+    o.stdout.write(
+      `A pull request for ${key} is already ${existing.merged ? "merged" : "open"}: ${existing.url}
+`
+    );
+    if (rep) {
+      const opened = await rep.post(
+        body("pending"),
+        `Opening the ${store.store} step pull-request`
+      );
+      if (!opened.step.replayed)
+        await rep.post(
+          body("done", {
+            exitCode: 0,
+            existing: true,
+            pr: reportPull(existing)
+          }),
+          `Reporting the ${store.store} step pull-request`
+        );
+    }
+    return {
+      outcome: "existing",
+      plan,
+      pr: existing,
+      verdict: prVerdict(store, existing)
+    };
+  }
+  const baseBranch = await github.defaultBranch(plan.repo);
+  if (!store.fork) {
+    let same = true;
+    for (const f of plan.files)
+      if (await github.fileText(plan.repo, f.path, baseBranch) !== f.content) {
+        same = false;
+        break;
+      }
+    if (same) {
+      o.stdout.write(
+        `${plan.repo} already carries ${plan.version} on ${baseBranch}: nothing to open.
+`
+      );
+      return { outcome: "unchanged", plan, pr: null, verdict: null };
+    }
+  } else if (store.store === "winget") {
+    const id = plan.argv[4];
+    if (!await github.exists(plan.repo, wingetPackageDir(id), baseBranch))
+      plan.title = `New package: ${plan.titlePhrase}`;
+  }
+  if (rep) {
+    const opened = await rep.post(
+      body("pending"),
+      `Opening the ${store.store} step pull-request`
+    );
+    if (opened.step.replayed) {
+      o.stdout.write(`Already done in this run, skipped: ${line}
+`);
+      return { outcome: "skipped", plan, pr: null, verdict: null };
+    }
+  }
+  o.stdout.write(`Opening: ${line}
+`);
+  let pr;
+  try {
+    const headRepo = store.fork ? await github.fork(plan.repo) : plan.repo;
+    const baseSha = await github.refSha(plan.repo, baseBranch);
+    if (!baseSha) throw new Error(`${plan.repo} has no ${baseBranch} branch.`);
+    if (store.fork) await github.syncFork(headRepo, baseBranch);
+    const message = `${plan.title}
+
+Created with Polaris Key (pkey storefront ${store.store} pr).`;
+    const branchSha = await github.refSha(headRepo, plan.branch);
+    if (branchSha) {
+      const sha = await github.commit(headRepo, branchSha, plan.files, message);
+      await github.advanceBranch(headRepo, plan.branch, sha);
+    } else {
+      const sha = await github.commit(headRepo, baseSha, plan.files, message);
+      await github.createBranch(headRepo, plan.branch, sha);
+    }
+    pr = await github.openPull(plan.repo, {
+      title: plan.title,
+      head: store.fork ? `${headRepo.split("/")[0]}:${plan.branch}` : plan.branch,
+      base: baseBranch,
+      body: [
+        `${plan.title}, from the ${inputs.channel} channel's release ${plan.version}.`,
+        "",
+        `Created with Polaris Key (\`pkey storefront ${store.store} pr\`).`,
+        ...store.store === "winget" ? ["", "Every version is validated and then reviewed by a moderator."] : []
+      ].join("\n")
+    });
+  } catch (e) {
+    if (rep)
+      await rep.post(
+        body("failed", { exitCode: 1 }),
+        `Reporting the ${store.store} step pull-request`
+      );
+    throw e;
+  }
+  if (rep)
+    await rep.post(
+      body("done", {
+        exitCode: 0,
+        files: plan.files.map((f) => ({
+          path: f.path,
+          sha256: sha2563(f.content)
+        })),
+        pr: reportPull(pr)
+      }),
+      `Reporting the ${store.store} step pull-request`
+    );
+  o.stdout.write(`Opened ${pr.url}
+`);
+  return { outcome: "opened", plan, pr, verdict: prVerdict(store, pr) };
+}
+async function runPrStatus(o) {
+  const store = needStore(o.store);
+  const inputs = await fetchPrInputs(
+    await inputsClient(o),
+    store.store,
+    o.channel,
+    o.outlet
+  );
+  const version = o.version ?? needRelease(inputs).version;
+  const argv2 = prArgv(store, inputs, "status", version, o.generator);
+  checkPrCommand(store, "status", argv2, inputs.outlet.identity);
+  const gh = gitHub(o, false);
+  const repo = argv2[2];
+  const key = prNaturalKey(store, "status", argv2);
+  const pkg = argv2[4] ?? "";
+  const branch = store.store === "flathub" ? `pkey/${version}` : `pkey/${pkg}-${version}`;
+  const headOwner = store.fork ? o.env.PKEY_PR_TOKEN ? await gh.login() : null : repo.split("/")[0];
+  const candidates = [
+    ...headOwner ? await gh.pullsFromHead(repo, `${headOwner}:${branch}`) : [],
+    ...store.store === "winget" ? await gh.pullsByTitle(repo, `${pkg} version ${version}`) : []
+  ];
+  const pr = candidates.find((p) => p.state === "open") ?? candidates.find((p) => p.merged) ?? candidates[0] ?? null;
+  if (!pr) throw new Error(`No pull request for ${key} on ${repo}.`);
+  const verdict = prVerdict(store, pr);
+  o.stdout.write(
+    `${pr.url}: ${verdict}${pr.labels.length ? ` (${pr.labels.join(", ")})` : ""}
+`
+  );
+  const rep = await reporter(o);
+  if (rep)
+    await rep.post(
+      {
+        type: "store-step",
+        store: store.store,
+        op: "status",
+        command: "status",
+        argv: argv2,
+        outlet: inputs.outlet.id,
+        runId: stepRunId(o.env),
+        state: "done",
+        exitCode: 0,
+        pr: reportPull(pr),
+        ...stepRunUrl(o.env) ? { runUrl: stepRunUrl(o.env) } : {}
+      },
+      `Reporting the ${store.store} verifier`
+    );
+  const plan = {
+    store,
+    repo,
+    argv: argv2,
+    version,
+    branch,
+    title: pr.title,
+    titlePhrase: null,
+    files: [],
+    warnings: []
+  };
+  return { outcome: "existing", plan, pr, verdict };
+}
+async function writeFlathubInit(o) {
+  const inputs = await fetchPrInputs(
+    await inputsClient(o),
+    "flathub",
+    o.channel,
+    o.outlet
+  );
+  const { files, warnings } = generateFlathubSkeleton(inputs, o.generator);
+  for (const w of warnings) o.stderr.write(`warning: ${w}
+`);
+  for (const f of files) {
+    const target = path20.resolve(o.cwd, o.outDir, f.path);
+    await mkdir8(path20.dirname(target), { recursive: true });
+    await writeFile13(target, f.content, "utf8");
+    o.stdout.write(`Wrote ${path20.join(o.outDir, f.path)}
+`);
+  }
+  o.stdout.write(
+    "Open the first submission by hand: a PR to flathub/flathub against the new-pr branch (https://docs.flathub.org/docs/for-app-authors/submission). Later versions: pkey storefront flathub pr, or Flathub's external-data checker.\n"
+  );
+  return files;
+}
+
+// src/storefronts/outlets.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+async function loadStepProduct(cwd, product) {
+  const loaded2 = await loadManifest(cwd);
+  const validation = validateLoadedManifest(loaded2);
+  if (!validation.ok)
+    throw new Error(
+      `.pkey/ is invalid; run pkey validate:
+${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}`
+    );
+  const files = {};
+  for (const [name, doc] of Object.entries({
+    product: loaded2.product,
+    schema: loaded2.schema,
+    release: loaded2.release,
+    distribution: loaded2.distribution
+  }))
+    if (doc !== void 0) files[name] = JSON.stringify(doc);
+  const parsed = parseManifest(files);
+  if (!parsed.ok)
+    throw new Error(`.pkey/ does not parse:
+  ${parsed.errors.join("\n  ")}`);
+  const m = parsed.manifest;
+  if (product && product !== m.product.slug)
+    throw new Error(
+      `--product ${product} does not match .pkey/product's slug ${m.product.slug}.`
+    );
+  return {
+    slug: m.product.slug,
+    outlets: (m.distribution?.outlets ?? []).map((o) => ({
+      id: o.id,
+      kind: o.kind,
+      identity: { ...o.identity }
+    }))
+  };
+}
+function pickOutlet(p, kinds, outletId, label) {
+  if (outletId) {
+    const o = p.outlets.find((x) => x.id === outletId);
+    if (!o)
+      throw new Error(
+        `--outlet ${outletId} is not declared in .pkey/distribution.`
+      );
+    if (!kinds.includes(o.kind))
+      throw new Error(
+        `--outlet ${outletId} is a ${o.kind} outlet, not a ${label} one (${kinds.join(", ")}).`
+      );
+    return o;
+  }
+  const matching = p.outlets.filter((o) => kinds.includes(o.kind));
+  if (matching.length === 1) return matching[0];
+  throw new Error(
+    matching.length === 0 ? `.pkey/distribution declares no ${label} outlet (${kinds.join(", ")}).` : `.pkey/distribution declares ${matching.length} ${label} outlets (${matching.map((o) => o.id).join(", ")}); pass --outlet.`
+  );
+}
+
 // src/storefronts/snap.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-var import_yaml3 = __toESM(require_dist(), 1);
-import { readFile as readFile16, writeFile as writeFile13 } from "node:fs/promises";
+var import_yaml5 = __toESM(require_dist(), 1);
+import { readFile as readFile16, writeFile as writeFile14 } from "node:fs/promises";
 function snapReleaseChannels(outlet, channels2) {
   const map = outlet.identity.channels;
   if (!map || typeof map !== "object" || Array.isArray(map))
@@ -30629,7 +32628,7 @@ function snapMetadataFields(p) {
   return { summary, description };
 }
 function applySnapMetadata(yamlText, fields) {
-  const doc = (0, import_yaml3.parseDocument)(yamlText);
+  const doc = (0, import_yaml5.parseDocument)(yamlText);
   if (doc.errors.length)
     throw new Error(`snapcraft.yaml does not parse: ${doc.errors[0].message}`);
   if (!doc.contents || typeof doc.get !== "function" || !doc.has("name"))
@@ -30676,7 +32675,7 @@ async function writeSnapMetadata(o) {
     );
     return fields;
   }
-  if (next !== current) await writeFile13(o.yamlPath, next, "utf8");
+  if (next !== current) await writeFile14(o.yamlPath, next, "utf8");
   o.stdout.write(
     `${next === current ? "Unchanged" : "Wrote"} the Snap listing's summary and description in ${o.yamlPath} (${body.listing.defaultLocale}).
 `
@@ -30685,8 +32684,8 @@ async function writeSnapMetadata(o) {
 }
 
 // src/storefronts/command.ts
-var STOREFRONT_USAGE = "Usage: pkey storefront itch push --platform windows|linux|mac|android --dir <dir> --version <v> [--channel c] [--outlet id]\n       pkey storefront snap metadata --yaml <snapcraft.yaml>\n       pkey storefront snap upload --snap <file.snap> --channel c[,c...] [--outlet id]\n       pkey storefront snap upload-metadata --snap <file.snap>\n       pkey storefront exec <store> <command> --op <operation> [--outlet id] [--tool-path p] -- <argv...>\n       pkey storefront allow-list [--store s] [--json]\n  (each step also takes --product slug, --base-url url, --dry-run, --no-report)";
-function str2(a, name) {
+var STOREFRONT_USAGE = "Usage: pkey storefront itch push --platform windows|linux|mac|android --dir <dir> --version <v> [--channel c] [--outlet id]\n       pkey storefront snap metadata --yaml <snapcraft.yaml>\n       pkey storefront snap upload --snap <file.snap> --channel c[,c...] [--outlet id]\n       pkey storefront snap upload-metadata --snap <file.snap>\n       pkey storefront exec <store> <command> --op <operation> [--outlet id] [--tool-path p] -- <argv...>\n       pkey storefront allow-list [--store s] [--json]\n       pkey storefront winget|homebrew|scoop|flathub pr [--channel c] [--outlet id] [--out dir]\n              [--portable path] [--command name] [--license l] [--app name] [--project-license spdx]\n       pkey storefront winget|homebrew|scoop|flathub status [--channel c] [--version v] [--outlet id]\n       pkey storefront flathub init [--out dir] [--channel c] [--outlet id] [--command path] [--runtime-version v]\n  (each step also takes --product slug, --base-url url, --dry-run, --no-report)";
+function str4(a, name) {
   const v = a.flags[name];
   return typeof v === "string" && v.trim() ? v : void 0;
 }
@@ -30694,27 +32693,27 @@ function bool(a, name) {
   return a.flags[name] === true || a.flags[name] === "true";
 }
 function need(a, name, why) {
-  const v = str2(a, name);
+  const v = str4(a, name);
   if (!v)
     throw new Error(`--${name} is required: ${why}.
 ${STOREFRONT_USAGE}`);
   return v;
 }
 async function resolveSnapFile(cwd, p) {
-  const abs = path20.resolve(cwd, p);
+  const abs = path21.resolve(cwd, p);
   if ((await stat7(abs)).isFile()) return p;
   const snaps = (await readdir8(abs)).filter((f) => f.endsWith(".snap"));
   if (snaps.length !== 1)
     throw new Error(
       `${p} holds ${snaps.length} .snap files; name one (${snaps.join(", ") || "none"}).`
     );
-  return path20.join(p, snaps[0]);
+  return path21.join(p, snaps[0]);
 }
 async function resolveSnapcraftYaml(cwd, p) {
-  const abs = path20.resolve(cwd, p);
+  const abs = path21.resolve(cwd, p);
   if ((await stat7(abs)).isFile()) return abs;
   for (const candidate of ["snapcraft.yaml", "snap/snapcraft.yaml"]) {
-    const f = path20.join(abs, candidate);
+    const f = path21.join(abs, candidate);
     try {
       if ((await stat7(f)).isFile()) return f;
     } catch {
@@ -30723,7 +32722,7 @@ async function resolveSnapcraftYaml(cwd, p) {
   throw new Error(`${p} has no snapcraft.yaml (or snap/snapcraft.yaml).`);
 }
 function printAllowList(a, io) {
-  const only = str2(a, "store");
+  const only = str4(a, "store");
   if (only && !ciStore(only))
     throw new Error(
       `--store must be one of ${ciStoreIds().join(", ")} (got ${only}).`
@@ -30755,12 +32754,12 @@ function printAllowList(a, io) {
 async function cmdStorefront(a, io) {
   const [store, step] = a.positional;
   if (store === "allow-list") return printAllowList(a, io);
-  const productFlag = str2(a, "product");
+  const productFlag = str4(a, "product");
   const run2 = async (steps, slug) => {
     await runStoreSteps(steps, {
       cwd: io.cwd,
       product: slug,
-      baseUrl: str2(a, "base-url"),
+      baseUrl: str4(a, "base-url"),
       env: io.env,
       stdout: io.stdout,
       stderr: io.stderr,
@@ -30768,7 +32767,7 @@ async function cmdStorefront(a, io) {
       sleep: io.sleep,
       dryRun: bool(a, "dry-run"),
       report: !bool(a, "no-report"),
-      toolPath: str2(a, "tool-path")
+      toolPath: str4(a, "tool-path")
     });
     return 0;
   };
@@ -30777,7 +32776,7 @@ async function cmdStorefront(a, io) {
     const s = ciStore(storeId);
     return {
       slug: p.slug,
-      outlet: pickOutlet(p, s.outletKinds, str2(a, "outlet"), s.label)
+      outlet: pickOutlet(p, s.outletKinds, str4(a, "outlet"), s.label)
     };
   };
   switch (`${store ?? ""} ${step ?? ""}`) {
@@ -30793,7 +32792,7 @@ async function cmdStorefront(a, io) {
               "platform",
               "the platform word the channel starts with"
             ),
-            channel: str2(a, "channel"),
+            channel: str4(a, "channel"),
             version: need(a, "version", "the --userversion butler records")
           })
         ],
@@ -30829,7 +32828,7 @@ async function cmdStorefront(a, io) {
           need(a, "yaml", "the snapcraft.yaml to update")
         ),
         product: p.slug,
-        baseUrl: str2(a, "base-url"),
+        baseUrl: str4(a, "base-url"),
         env: io.env,
         stdout: io.stdout,
         stderr: io.stderr,
@@ -30842,6 +32841,46 @@ async function cmdStorefront(a, io) {
     default:
       break;
   }
+  const pr = store ? prStore(store) : null;
+  if (pr && (step === "pr" || step === "status" || step === "init" && pr.store === "flathub")) {
+    const generator = {
+      ...str4(a, "portable") ? { portable: str4(a, "portable") } : {},
+      ...str4(a, "command") ? { command: str4(a, "command") } : {},
+      ...str4(a, "license") ? { license: str4(a, "license") } : {},
+      ...str4(a, "app") ? { app: str4(a, "app") } : {},
+      ...str4(a, "project-license") ? { projectLicense: str4(a, "project-license") } : {},
+      ...str4(a, "runtime-version") ? { runtimeVersion: str4(a, "runtime-version") } : {}
+    };
+    const slug = productFlag ?? (await loadStepProduct(io.cwd)).slug;
+    const common = {
+      store: pr.store,
+      product: slug,
+      channel: str4(a, "channel") ?? "stable",
+      ...str4(a, "outlet") ? { outlet: str4(a, "outlet") } : {},
+      ...str4(a, "version") ? { version: str4(a, "version") } : {},
+      generator,
+      baseUrl: str4(a, "base-url"),
+      env: io.env,
+      stdout: io.stdout,
+      stderr: io.stderr,
+      fetchImpl: io.fetchImpl,
+      sleep: io.sleep,
+      dryRun: bool(a, "dry-run"),
+      report: !bool(a, "no-report"),
+      ...str4(a, "out") ? { outDir: str4(a, "out") } : {},
+      cwd: io.cwd
+    };
+    if (step === "pr") await runPrStep(common);
+    else if (step === "status") await runPrStatus(common);
+    else
+      await writeFlathubInit({ ...common, outDir: str4(a, "out") ?? "flathub" });
+    return 0;
+  }
+  if (store && !pr && (step === "pr" || step === "status"))
+    throw new Error(
+      `${store} is not a PR-plane store: ${prStoreIds().join(", ")}.
+${STOREFRONT_USAGE}`
+    );
   if (store === "exec") {
     const [, storeId, command] = a.positional;
     const s = storeId ? ciStore(storeId) : null;
@@ -30867,7 +32906,7 @@ ${STOREFRONT_USAGE}`
       );
     let slug;
     let outlet;
-    if (bindsIdentity(s.list, command) || str2(a, "outlet")) {
+    if (bindsIdentity(s.list, command) || str4(a, "outlet")) {
       const r = await outletFor(s.store);
       slug = r.slug;
       outlet = r.outlet;
@@ -30893,26 +32932,26 @@ ${STOREFRONT_USAGE}`
 
 // src/feeds.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash11 } from "node:crypto";
+import { createHash as createHash12 } from "node:crypto";
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
 import {
   lstat as lstat2,
-  mkdir as mkdir8,
+  mkdir as mkdir9,
   readdir as readdir9,
   readFile as readFile17,
   rm as rm5,
   rmdir,
-  writeFile as writeFile14
+  writeFile as writeFile15
 } from "node:fs/promises";
-import path21 from "node:path";
+import path22 from "node:path";
 import { promisify } from "node:util";
 var FEEDS_USAGE = "Usage: pkey feeds fdroid --product <slug> --channel <c> --out <dir>\n              [--keystore <path> --alias <alias>] [--ks-pass-env NAME] [--apksigner <path>]\n              [--icon <png>] [--base-url <url>] [--dry-run]";
 var FDROID_INDEX_VERSION = 3e4;
 var DEFAULT_KS_PASS_ENV = "PKEY_FDROID_KS_PASS";
 var LOCALE = "en-US";
 var SAFE_NAME = /^[A-Za-z0-9_~.-]+$/;
-var sha2563 = (b) => createHash11("sha256").update(b).digest("hex");
+var sha2564 = (b) => createHash12("sha256").update(b).digest("hex");
 function sortedJson(value) {
   return JSON.stringify(value, (_k, v) => {
     if (v && typeof v === "object" && !Array.isArray(v)) {
@@ -31132,7 +33171,7 @@ function buildRepoFiles(inputs, timestamp, opts = {}) {
     files.set(p, opts.icon.bytes);
     icon2 = {
       path: p,
-      sha256: sha2563(opts.icon.bytes),
+      sha256: sha2564(opts.icon.bytes),
       size: opts.icon.bytes.length
     };
   }
@@ -31151,7 +33190,7 @@ function buildRepoFiles(inputs, timestamp, opts = {}) {
     version: FDROID_INDEX_VERSION,
     index: {
       name: "/index-v2.json",
-      sha256: sha2563(indexBytes),
+      sha256: sha2564(indexBytes),
       size: indexBytes.length,
       numPackages
     },
@@ -31166,7 +33205,7 @@ function buildRepoFiles(inputs, timestamp, opts = {}) {
     files.set(p, bytes);
     entry.diffs[String(prevTs)] = {
       name: `/${p}`,
-      sha256: sha2563(bytes),
+      sha256: sha2564(bytes),
       size: bytes.length,
       numPackages: Object.keys(diff.packages ?? {}).length
     };
@@ -31178,13 +33217,13 @@ async function findApksigner(explicit, env) {
   if (explicit) return explicit;
   const sdk = env.ANDROID_HOME ?? env.ANDROID_SDK_ROOT;
   if (sdk) {
-    const bt = path21.join(sdk, "build-tools");
+    const bt = path22.join(sdk, "build-tools");
     try {
       const versions = (await readdir9(bt)).sort(
         (a, b) => a.localeCompare(b, void 0, { numeric: true })
       );
       for (const v of versions.reverse()) {
-        const p = path21.join(bt, v, "apksigner");
+        const p = path22.join(bt, v, "apksigner");
         if (existsSync(p)) return p;
       }
     } catch {
@@ -31199,7 +33238,7 @@ async function signEntryJar(jar, opts) {
       `The keystore password is not in $${opts.passEnv}; export it from the CI secret (never pass it on the command line).`
     );
   const unsigned = `${jar}.unsigned`;
-  await writeFile14(unsigned, await readFile17(jar));
+  await writeFile15(unsigned, await readFile17(jar));
   try {
     await promisify(execFile)(
       tool,
@@ -31240,8 +33279,8 @@ var OUT_DIRS = {
   icons: /^[A-Za-z0-9_~.-]+\.(png|jpe?g|webp)$/
 };
 async function staleOutFiles(dir, cwd) {
-  const up = path21.relative(dir, path21.resolve(cwd));
-  if (up === "" || up.split(path21.sep)[0] !== ".." && !path21.isAbsolute(up))
+  const up = path22.relative(dir, path22.resolve(cwd));
+  if (up === "" || up.split(path22.sep)[0] !== ".." && !path22.isAbsolute(up))
     throw new Error(
       `--out ${dir} is the working directory or one of its parents; point it at a directory of its own (for example --out fdroid-repo).`
     );
@@ -31257,7 +33296,7 @@ async function staleOutFiles(dir, cwd) {
   const dirs = [];
   const foreign = [];
   for (const name of (await readdir9(dir)).sort()) {
-    const full = path21.join(dir, name);
+    const full = path22.join(dir, name);
     const st = await lstat2(full);
     if (OUT_FILES.has(name) && st.isFile()) {
       files.push(full);
@@ -31267,10 +33306,10 @@ async function staleOutFiles(dir, cwd) {
     if (pattern2 && st.isDirectory()) {
       let clean = true;
       for (const inner of (await readdir9(full)).sort()) {
-        const f = path21.join(full, inner);
+        const f = path22.join(full, inner);
         if (pattern2.test(inner) && (await lstat2(f)).isFile()) files.push(f);
         else {
-          foreign.push(path21.join(name, inner));
+          foreign.push(path22.join(name, inner));
           clean = false;
         }
       }
@@ -31292,7 +33331,7 @@ async function currentIndex(inputs, fetchImpl, log) {
     const res = await fetchImpl(`${inputs.repo.address}/index-v2.json`);
     if (!res.ok) return null;
     const bytes = Buffer.from(await res.arrayBuffer());
-    if (sha2563(bytes) !== reg.sha256) return null;
+    if (sha2564(bytes) !== reg.sha256) return null;
     return JSON.parse(bytes.toString("utf8"));
   } catch (e) {
     log.write(
@@ -31308,7 +33347,7 @@ async function buildFdroidFeed(opts) {
   if (opts.keystore === void 0 !== (opts.alias === void 0))
     throw new Error(`--keystore and --alias go together.
 ${FEEDS_USAGE}`);
-  const dir = path21.resolve(opts.cwd, opts.out);
+  const dir = path22.resolve(opts.cwd, opts.out);
   await staleOutFiles(dir, opts.cwd);
   const token = await resolveCiToken({
     baseUrl: opts.baseUrl,
@@ -31344,8 +33383,8 @@ ${FEEDS_USAGE}`);
   const prevTs = previous?.repo?.timestamp ?? 0;
   const timestamp = Math.max(now, prevTs + 1);
   const icon2 = opts.icon ? {
-    name: path21.basename(opts.icon),
-    bytes: await readFile17(path21.resolve(opts.cwd, opts.icon))
+    name: path22.basename(opts.icon),
+    bytes: await readFile17(path22.resolve(opts.cwd, opts.icon))
   } : void 0;
   if (icon2 && !/^[A-Za-z0-9_~.-]+\.(png|jpe?g|webp)$/.test(icon2.name))
     throw new Error(
@@ -31360,13 +33399,13 @@ ${FEEDS_USAGE}`);
   for (const d of stale.dirs) await rmdir(d);
   const written = {};
   for (const [p, bytes] of repo.files) {
-    const file = path21.join(dir, ...p.split("/"));
-    await mkdir8(path21.dirname(file), { recursive: true });
-    await writeFile14(file, bytes);
+    const file = path22.join(dir, ...p.split("/"));
+    await mkdir9(path22.dirname(file), { recursive: true });
+    await writeFile15(file, bytes);
     written[p] = file;
   }
-  const jar = path21.join(dir, "entry.jar");
-  await writeFile14(
+  const jar = path22.join(dir, "entry.jar");
+  await writeFile15(
     jar,
     zipStore([{ name: "entry.json", data: repo.files.get("entry.json") }])
   );
@@ -31382,13 +33421,13 @@ ${FEEDS_USAGE}`);
   };
   if (!opts.keystore || !opts.alias) {
     out.write(
-      `Wrote the unsigned repository to ${path21.relative(opts.cwd, dir) || "."}; pass --keystore and --alias to sign, upload and register it.
+      `Wrote the unsigned repository to ${path22.relative(opts.cwd, dir) || "."}; pass --keystore and --alias to sign, upload and register it.
 `
     );
     return result;
   }
   await (opts.sign ?? signEntryJar)(jar, {
-    keystore: path21.resolve(opts.cwd, opts.keystore),
+    keystore: path22.resolve(opts.cwd, opts.keystore),
     alias: opts.alias,
     passEnv: opts.ksPassEnv ?? DEFAULT_KS_PASS_ENV,
     env: opts.env,
@@ -31408,7 +33447,7 @@ ${FEEDS_USAGE}`);
   const all = await Promise.all(
     Object.entries(written).map(async ([p, file]) => {
       const bytes = await readFile17(file);
-      return { path: p, file, sha256: sha2563(bytes), size: bytes.length };
+      return { path: p, file, sha256: sha2564(bytes), size: bytes.length };
     })
   );
   all.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
@@ -31532,9 +33571,9 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 
 // src/godotProject.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash12 } from "node:crypto";
+import { createHash as createHash13 } from "node:crypto";
 import { readFile as readFile18, stat as stat8 } from "node:fs/promises";
-import path22 from "node:path";
+import path23 from "node:path";
 var ConfigParser = class {
   constructor(src, file) {
     this.src = src;
@@ -31757,7 +33796,7 @@ var ANDROID_CATEGORIES = [
   "photo-and-video",
   null
 ];
-var str3 = (v) => typeof v === "string" && v.trim() !== "" ? v.trim() : void 0;
+var str5 = (v) => typeof v === "string" && v.trim() !== "" ? v.trim() : void 0;
 async function exists(file) {
   try {
     return (await stat8(file)).isFile();
@@ -31775,15 +33814,15 @@ function pngSize(bytes) {
 function resolveResPath(root, res) {
   if (!res.startsWith("res://")) return null;
   const rel = res.slice("res://".length);
-  const file = path22.resolve(root, rel);
-  const within = path22.relative(root, file);
-  if (!within || within.startsWith("..") || path22.isAbsolute(within))
+  const file = path23.resolve(root, rel);
+  const within = path23.relative(root, file);
+  if (!within || within.startsWith("..") || path23.isAbsolute(within))
     return null;
   return file;
 }
 async function readGodotListing(dir, opts = {}) {
-  const root = path22.basename(dir) === "project.godot" ? path22.dirname(dir) : path22.resolve(dir);
-  const projectFile = path22.join(root, "project.godot");
+  const root = path23.basename(dir) === "project.godot" ? path23.dirname(dir) : path23.resolve(dir);
+  const projectFile = path23.join(root, "project.godot");
   let projectText;
   try {
     projectText = await readFile18(projectFile, "utf8");
@@ -31796,26 +33835,26 @@ async function readGodotListing(dir, opts = {}) {
   const app = project.application ?? {};
   const warnings = [];
   const listing = {
-    project: path22.basename(root),
+    project: path23.basename(root),
     versions: [],
     bundleIds: [],
     categoryHints: [],
     icons: []
   };
-  const name = str3(app["config/name"]);
+  const name = str5(app["config/name"]);
   if (name) listing.name = name;
   const localized = app["config/name_localized"];
   if (localized && typeof localized === "object" && !Array.isArray(localized) && !("$type" in localized)) {
     const names = {};
     for (const [locale, v] of Object.entries(localized)) {
-      const n = str3(v);
+      const n = str5(v);
       if (n) names[locale] = n;
     }
     if (Object.keys(names).length) listing.nameLocalized = names;
   }
-  const version = str3(app["config/version"]);
+  const version = str5(app["config/version"]);
   if (version) listing.versions.push({ platform: "project", value: version });
-  const presetsFile = path22.join(root, "export_presets.cfg");
+  const presetsFile = path23.join(root, "export_presets.cfg");
   const presetsRead = [];
   const options = {};
   if (await exists(presetsFile)) {
@@ -31826,8 +33865,8 @@ async function readGodotListing(dir, opts = {}) {
     const sections = Object.keys(cfg).map((s) => /^preset\.(\d+)$/.exec(s)).filter((m) => m !== null).sort((a, b) => Number(a[1]) - Number(b[1]));
     for (const m of sections) {
       const preset = cfg[m[0]];
-      const presetName = str3(preset.name) ?? m[0];
-      const godotPlatform = str3(preset.platform) ?? "";
+      const presetName = str5(preset.name) ?? m[0];
+      const godotPlatform = str5(preset.platform) ?? "";
       const platform = PLATFORMS[godotPlatform];
       if (opts.presets?.length ? !opts.presets.includes(presetName) : platform && options[platform])
         continue;
@@ -31854,7 +33893,7 @@ async function readGodotListing(dir, opts = {}) {
       `--preset was given but ${root} has no export_presets.cfg.`
     );
   }
-  const opt = (platform, key) => str3(options[platform]?.[key]);
+  const opt = (platform, key) => str5(options[platform]?.[key]);
   for (const [platform, key] of [
     ["android", "version/name"],
     ["ios", "application/short_version"],
@@ -31895,9 +33934,9 @@ async function readGodotListing(dir, opts = {}) {
   } || opt("ios", "icons/icon_1024x1024") && {
     setting: "icons/icon_1024x1024",
     path: opt("ios", "icons/icon_1024x1024")
-  } || str3(app["config/icon"]) && {
+  } || str5(app["config/icon"]) && {
     setting: "application/config/icon",
-    path: str3(app["config/icon"])
+    path: str5(app["config/icon"])
   } || null;
   const wanted = [];
   if (master) wanted.push({ slot: "icon-master", ...master });
@@ -31921,7 +33960,7 @@ async function readGodotListing(dir, opts = {}) {
       warnings.push(`${w.setting} "${w.path}" does not exist in the project`);
     } else {
       const bytes = new Uint8Array(await readFile18(file));
-      icon2.sha256 = createHash12("sha256").update(bytes).digest("hex");
+      icon2.sha256 = createHash13("sha256").update(bytes).digest("hex");
       const size = pngSize(bytes);
       if (size) {
         icon2.width = size.width;
@@ -32062,25 +34101,25 @@ function formatImport(r) {
 
 // src/listingAssets.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash14 } from "node:crypto";
+import { createHash as createHash15 } from "node:crypto";
 import { existsSync as existsSync2 } from "node:fs";
 import {
-  mkdir as mkdir9,
+  mkdir as mkdir10,
   readdir as readdir10,
   readFile as readFile19,
   rm as rm6,
   rmdir as rmdir2,
   stat as stat9,
-  writeFile as writeFile15
+  writeFile as writeFile16
 } from "node:fs/promises";
-import path23 from "node:path";
+import path24 from "node:path";
 
 // src/listing/io.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
 // src/listing/raster.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash13 } from "node:crypto";
+import { createHash as createHash14 } from "node:crypto";
 var SCALE = 16384;
 var HALF = SCALE / 2;
 function makeRaster(width, height) {
@@ -32379,7 +34418,7 @@ function channels(src, n) {
   return out;
 }
 function pixelSha256(width, height, n, pixels) {
-  return createHash13("sha256").update(`pkey-pixels/1 ${width}x${height}x${n}
+  return createHash14("sha256").update(`pkey-pixels/1 ${width}x${height}x${n}
 `).update(pixels).digest("hex");
 }
 
@@ -33204,11 +35243,11 @@ var LISTING_ASSETS_USAGE = "Usage: pkey listing assets --out <dir> [--icon <png>
 var REPORT_FORMAT = "pkey-listing-assets/1";
 var SCREENSHOT_EXT = /\.(png|jpe?g|webp)$/i;
 var LOCALE_RE = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/;
-var sha2564 = (b) => createHash14("sha256").update(b).digest("hex");
+var sha2565 = (b) => createHash15("sha256").update(b).digest("hex");
 var hex4 = (c) => `#${c.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
 async function loadMaster(cwd, slot, file) {
   if (!file) return null;
-  const p = path23.resolve(cwd, file);
+  const p = path24.resolve(cwd, file);
   const bytes = await readFile19(p);
   const decoded = await decodeImage(
     bytes,
@@ -33218,7 +35257,7 @@ async function loadMaster(cwd, slot, file) {
 }
 async function loadScreenshots(cwd, dir) {
   if (!dir) return [];
-  const root = path23.resolve(cwd, dir);
+  const root = path24.resolve(cwd, dir);
   const out = [];
   const entries = (await readdir10(root, { withFileTypes: true })).sort(
     (a, b) => a.name < b.name ? -1 : 1
@@ -33230,13 +35269,13 @@ async function loadScreenshots(cwd, dir) {
         `--screenshots ${dir}: ${e.name} is not a size-class directory (${SCREENSHOT_CLASSES.join(", ")}).`
       );
     const cls = e.name;
-    const files = (await readdir10(path23.join(root, cls))).filter((f) => !f.startsWith(".")).sort();
+    const files = (await readdir10(path24.join(root, cls))).filter((f) => !f.startsWith(".")).sort();
     for (const f of files) {
       if (!SCREENSHOT_EXT.test(f) || !/^[A-Za-z0-9_.-]+$/.test(f))
         throw new Error(
           `--screenshots ${dir}/${cls}/${f}: screenshots are .png, .jpg or .webp files with plain names.`
         );
-      const p = path23.join(root, cls, f);
+      const p = path24.join(root, cls, f);
       const decoded = await decodeImage(
         await readFile19(p),
         `${dir}/${cls}/${f}`
@@ -33265,7 +35304,7 @@ async function clearOut(dir) {
   if (!existsSync2(dir)) return;
   const entries = await readdir10(dir);
   if (entries.length === 0) return;
-  const reportPath = path23.join(dir, "report.json");
+  const reportPath = path24.join(dir, "report.json");
   let previous;
   try {
     previous = JSON.parse(await readFile19(reportPath, "utf8"));
@@ -33280,9 +35319,9 @@ async function clearOut(dir) {
   for (const rel of previous.files) {
     if (typeof rel !== "string" || rel.startsWith("/") || rel.split("/").includes(".."))
       continue;
-    const p = path23.join(dir, ...rel.split("/"));
+    const p = path24.join(dir, ...rel.split("/"));
     await rm6(p, { force: true });
-    for (let d = path23.dirname(p); d.startsWith(dir) && d !== dir; d = path23.dirname(d))
+    for (let d = path24.dirname(p); d.startsWith(dir) && d !== dir; d = path24.dirname(d))
       dirs.add(d);
   }
   for (const d of [...dirs].sort((a, b) => b.length - a.length)) {
@@ -33366,7 +35405,7 @@ ${LISTING_ASSETS_USAGE}`);
   const focal = opts.focal ? parseFocal(opts.focal) : { x: 0.5, y: 0.5 };
   const focalPortrait = opts.focalPortrait ? parseFocal(opts.focalPortrait) : focal;
   const accepted = acceptances(opts.accept ?? [], opts.pad ?? []);
-  const dir = path23.resolve(opts.cwd, opts.out);
+  const dir = path24.resolve(opts.cwd, opts.out);
   if (existsSync2(dir) && !(await stat9(dir)).isDirectory())
     throw new Error(`--out ${opts.out} is not a directory.`);
   const masterList = (await Promise.all([
@@ -33395,12 +35434,12 @@ ${LISTING_ASSETS_USAGE}`);
       `${fitted.unused.join(", ")}: no screenshot proposal has ${fitted.unused.length === 1 ? "that id" : "those ids"}. Ids are <store>/<class>/<name>, as the report lists them; an image that already fits needs none.`
     );
   await clearOut(dir);
-  await mkdir9(dir, { recursive: true });
+  await mkdir10(dir, { recursive: true });
   const files = [];
   const writeRel = async (rel2, bytes) => {
-    const p = path23.join(dir, ...rel2.split("/"));
-    await mkdir9(path23.dirname(p), { recursive: true });
-    await writeFile15(p, bytes);
+    const p = path24.join(dir, ...rel2.split("/"));
+    await mkdir10(path24.dirname(p), { recursive: true });
+    await writeFile16(p, bytes);
     files.push(rel2);
     return p;
   };
@@ -33433,7 +35472,7 @@ ${LISTING_ASSETS_USAGE}`);
         width: s.raster.width,
         height: s.raster.height,
         alpha: s.spec.alpha,
-        sha256: sha2564(bytes),
+        sha256: sha2565(bytes),
         size: bytes.length,
         pixelSha256: pixelSha256(
           s.raster.width,
@@ -33482,7 +35521,7 @@ ${LISTING_ASSETS_USAGE}`);
         width: s.raster.width,
         height: s.raster.height,
         alpha: false,
-        sha256: sha2564(bytes),
+        sha256: sha2565(bytes),
         size: bytes.length,
         pixelSha256: pixelSha256(
           s.raster.width,
@@ -33502,7 +35541,7 @@ ${LISTING_ASSETS_USAGE}`);
             width: s.raster.width,
             height: s.raster.height,
             method: s.method,
-            sha256: sha2564(bytes)
+            sha256: sha2565(bytes)
           }
         );
     }
@@ -33539,7 +35578,7 @@ ${LISTING_ASSETS_USAGE}`);
       width: null,
       height: null,
       alpha: false,
-      sha256: sha2564(zip),
+      sha256: sha2565(zip),
       size: zip.length
     });
   }
@@ -33551,11 +35590,11 @@ ${LISTING_ASSETS_USAGE}`);
     background: hex4(background),
     masters: masterList.map((m) => ({
       slot: m.slot,
-      file: path23.relative(opts.cwd, m.path).split(path23.sep).join("/"),
+      file: path24.relative(opts.cwd, m.path).split(path24.sep).join("/"),
       width: m.decoded.raster.width,
       height: m.decoded.raster.height,
       alpha: m.decoded.alpha,
-      sha256: sha2564(m.bytes),
+      sha256: sha2565(m.bytes),
       size: m.bytes.length
     })),
     slots: reportSlots,
@@ -33565,12 +35604,12 @@ ${LISTING_ASSETS_USAGE}`);
   };
   await writeRel("preview.html", new TextEncoder().encode(previewHtml(report)));
   report.files = [...files, "report.json"].sort();
-  await writeFile15(
-    path23.join(dir, "report.json"),
+  await writeFile16(
+    path24.join(dir, "report.json"),
     `${JSON.stringify(report, null, 2)}
 `
   );
-  const relDir = path23.relative(opts.cwd, dir);
+  const relDir = path24.relative(opts.cwd, dir);
   const rel = relDir === "" ? "." : relDir.startsWith("..") ? dir : relDir;
   const count = (st) => reportSlots.filter((s) => s.status === st).length;
   out.write(
@@ -33603,7 +35642,7 @@ ${LISTING_ASSETS_USAGE}`);
       );
     }
   }
-  out.write(`Look before accepting: ${path23.join(rel, "preview.html")}
+  out.write(`Look before accepting: ${path24.join(rel, "preview.html")}
 `);
   const result = {
     report,
@@ -33617,7 +35656,7 @@ ${LISTING_ASSETS_USAGE}`);
     rows.push({
       slot: m.slot,
       file: m.path,
-      sha256: sha2564(m.bytes),
+      sha256: sha2565(m.bytes),
       size: m.bytes.length,
       width: m.decoded.raster.width,
       height: m.decoded.raster.height,
@@ -33630,7 +35669,7 @@ ${LISTING_ASSETS_USAGE}`);
     if (s.file && (s.status === "ok" || s.status === "warn"))
       rows.push({
         slot: s.slot,
-        file: path23.join(dir, ...s.file.split("/")),
+        file: path24.join(dir, ...s.file.split("/")),
         sha256: s.sha256,
         size: s.size,
         width: s.width ?? null,
@@ -33643,7 +35682,7 @@ ${LISTING_ASSETS_USAGE}`);
     if (s.file && (s.status === "fits" || s.status === "accepted"))
       rows.push({
         slot: s.slot,
-        file: path23.join(dir, ...s.file.split("/")),
+        file: path24.join(dir, ...s.file.split("/")),
         sha256: s.sha256,
         size: s.size,
         width: s.width ?? null,
@@ -33655,7 +35694,7 @@ ${LISTING_ASSETS_USAGE}`);
   for (const p of packs)
     rows.push({
       slot: p.slot,
-      file: path23.join(dir, ...p.file.split("/")),
+      file: path24.join(dir, ...p.file.split("/")),
       sha256: p.sha256,
       size: p.size,
       width: null,
@@ -33860,7 +35899,7 @@ function parseArgs(argv2) {
   return { command, flags, multi, bare, positional, rest: after };
 }
 async function cmdInit(parsed, cwd, stdout) {
-  const basename = path24.basename(cwd).toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-|-$/g, "") || "my-product";
+  const basename = path25.basename(cwd).toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-|-$/g, "") || "my-product";
   const slug = flagString(parsed, "product") ?? flagString(parsed, "slug") ?? basename;
   const name = flagString(parsed, "name") ?? titleize(slug);
   const modules = normalizeModules2(flagString(parsed, "modules"));
@@ -33879,7 +35918,7 @@ async function cmdInit(parsed, cwd, stdout) {
 `
   );
   for (const file of result.files)
-    stdout.write(`- ${path24.relative(cwd, file)}
+    stdout.write(`- ${path25.relative(cwd, file)}
 `);
   stdout.write("\nNext: pkey validate\n");
   return 0;
@@ -33915,7 +35954,7 @@ function located(manifest, cwd, msg) {
     release: manifest.releasePath,
     distribution: manifest.distributionPath
   }[msg.file];
-  return `${msg.file}${msg.path}${file ? ` (${path24.relative(cwd, file)})` : ""}`;
+  return `${msg.file}${msg.path}${file ? ` (${path25.relative(cwd, file)})` : ""}`;
 }
 var DISTRIBUTION_USAGE = `Usage: pkey distribution outlet-ids --outlet <id>
 ${DISTRIBUTION_CI_USAGE}`;
@@ -33943,7 +35982,7 @@ async function cmdDistribution(parsed, cwd, stdout, stderr, ci) {
   const ids = outletIdsFor(manifest, outlet);
   if (!ids) {
     stderr.write(
-      `outlet ${JSON.stringify(outlet)} is not declared in ${path24.relative(cwd, manifest.distributionPath)}
+      `outlet ${JSON.stringify(outlet)} is not declared in ${path25.relative(cwd, manifest.distributionPath)}
 `
     );
     return 1;
@@ -34051,7 +36090,7 @@ async function cmdBundle(parsed, cwd, stdout) {
     force: flagBool(parsed, "force"),
     cookie: process.env[ADMIN_COOKIE_ENV]
   });
-  const rel = path24.relative(cwd, result.file);
+  const rel = path25.relative(cwd, result.file);
   stdout.write(`Minted bundle ${result.bundleId}
 `);
   stdout.write(`- File: ${rel}
@@ -34131,14 +36170,14 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
       if (!product || !dir) throw new Error(PUBLISH_USAGE);
       const deliverable = flagString(parsed, "deliverable");
       const releaseKeyPem = flagString(parsed, "release-key-file") ? await readFile20(
-        path24.resolve(cwd, flagString(parsed, "release-key-file")),
+        path25.resolve(cwd, flagString(parsed, "release-key-file")),
         "utf8"
       ) : void 0;
       const minSupportedSeq = flagString(parsed, "min-supported-seq") !== void 0 ? Number(flagString(parsed, "min-supported-seq")) : void 0;
       if (parsed.bare.has("pin"))
         throw new Error("--pin needs a value: --pin <packId>@<version>.");
       const contentKeyPem = flagString(parsed, "content-key-file") ? await readFile20(
-        path24.resolve(cwd, flagString(parsed, "content-key-file")),
+        path25.resolve(cwd, flagString(parsed, "content-key-file")),
         "utf8"
       ) : void 0;
       const delegation = flagString(parsed, "delegation");
@@ -34304,7 +36343,7 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
           "no release replaces a delegation"
         );
         const pem = flagString(parsed, "release-key-file") ? await readFile20(
-          path24.resolve(cwd, flagString(parsed, "release-key-file")),
+          path25.resolve(cwd, flagString(parsed, "release-key-file")),
           "utf8"
         ) : void 0;
         await revokeDelegation({
@@ -34320,7 +36359,7 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
       }
       if (!product || !releaseId || !reason) throw new Error(REVOKE_USAGE);
       const releaseKeyPem = flagString(parsed, "release-key-file") ? await readFile20(
-        path24.resolve(cwd, flagString(parsed, "release-key-file")),
+        path25.resolve(cwd, flagString(parsed, "release-key-file")),
         "utf8"
       ) : void 0;
       await revokePackRelease({
@@ -34343,7 +36382,7 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
         throw new Error(DELEGATE_USAGE);
       const expires = flagString(parsed, "expires-in");
       const pem = flagString(parsed, "release-key-file") ? await readFile20(
-        path24.resolve(cwd, flagString(parsed, "release-key-file")),
+        path25.resolve(cwd, flagString(parsed, "release-key-file")),
         "utf8"
       ) : void 0;
       await delegateContentKey({
@@ -34367,7 +36406,7 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
         if (parsed.positional[1] !== "generate" || !outFile || kid)
           throw new Error(CONTENT_KEYS_USAGE);
         const generated2 = await generateContentKey({
-          out: path24.resolve(cwd, outFile)
+          out: path25.resolve(cwd, outFile)
         });
         stdout.write(generatedContentKeyText(generated2));
         return 0;
@@ -34376,7 +36415,7 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
         throw new Error(KEYS_USAGE);
       const generated = await generateReleaseKey({
         kid,
-        out: path24.resolve(cwd, outFile),
+        out: path25.resolve(cwd, outFile),
         force: flagBool(parsed, "force")
       });
       stdout.write(generatedKeyText(generated));
@@ -34499,10 +36538,10 @@ async function cmdManifest(parsed, cwd, stdout) {
   const outDir = flagString(parsed, "out");
   if (parsed.positional[0] !== "schemas" || !outDir)
     throw new Error(MANIFEST_USAGE);
-  const written = await writeManifestSchemas(path24.resolve(cwd, outDir));
+  const written = await writeManifestSchemas(path25.resolve(cwd, outDir));
   stdout.write(`Wrote ${written.length} schemas:
 `);
-  for (const file of written) stdout.write(`- ${path24.relative(cwd, file)}
+  for (const file of written) stdout.write(`- ${path25.relative(cwd, file)}
 `);
   return 0;
 }
@@ -34624,7 +36663,7 @@ async function cmdListingImport(parsed, cwd, stdout, ci) {
     throw new Error(LISTING_USAGE);
   const fields = flagString(parsed, "fields");
   const result = await listingImport({
-    godot: path24.resolve(cwd, godot),
+    godot: path25.resolve(cwd, godot),
     product: flagString(parsed, "product"),
     presets: parsed.multi["preset"] ?? [],
     locale: flagString(parsed, "locale"),
@@ -34720,6 +36759,10 @@ CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
   pkey storefront snap upload-metadata --snap file.snap [--dry-run] [--no-report]
   pkey storefront exec store command --op operation [--outlet id] [--tool-path path] -- argv...
   pkey storefront allow-list [--store s] [--json]
+  pkey storefront winget|homebrew|scoop|flathub pr [--channel c] [--outlet id] [--dry-run [--out dir]]
+              [--portable path] [--command name] [--license l] [--app name] [--project-license spdx] [--no-report]
+  pkey storefront winget|homebrew|scoop|flathub status [--channel c] [--version v] [--outlet id] [--no-report]
+  pkey storefront flathub init [--out dir] [--channel c] [--outlet id] [--command path] [--runtime-version v]
 
 pkey release publish matches the files under --dir against .pkey/release's
 deliverables.app.artifacts map (<file>.sig and <file>.sha256 ride along as sidecars), hashes
@@ -34830,6 +36873,13 @@ may set live only a named branch; msstore publish, refused while the console has
 draft; BuildPatchTool -mode=UploadBinary). Each step is reported back to Polaris Key before and
 after it runs (distribution:report), so the store's ledger shows it beside console steps; a step
 already done in the same run is skipped. --dry-run checks and prints the command lines.
+pkey storefront <store> pr writes winget's manifests (schema 1.12.0), the cask in your own
+Homebrew tap (direct.homebrewTap), the Scoop feed's manifest in your own bucket
+(direct.scoopBucket) or Flathub's updated manifest and MetaInfo for the channel's newest release,
+and opens one pull request per version with the GitHub token in PKEY_PR_TOKEN (a CI secret,
+never argv); a PR already open or merged for the version is recorded and nothing is written.
+status reads the pull request's state and review labels. flathub init writes the first
+submission's files, which a person opens against flathub/flathub's new-pr branch.
 
 pkey manifest schemas writes the .pkey/ JSON Schemas into a directory, for editors in a
 repository with no node_modules.

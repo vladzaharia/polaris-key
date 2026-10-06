@@ -1898,6 +1898,62 @@ comments, reads backslashes both ways a parser may, and refuses a script that us
 `#base`, since an included file is never checked. Steam itself also refuses `setlive` on
 `default`.
 
+### The PR plane: winget, the own Homebrew tap and Scoop bucket, Flathub (A-18i)
+
+**What it is.** winget, a product's own Homebrew tap, its own Scoop bucket and its Flathub app
+repository are written only through files in a GitHub repository (notes/S-15 §4.4). Their
+adapters (`core/storefront/stores/{winget,homebrew,scoop,flathub}.ts`) run on the PR plane:
+`core/storefront/prPlane.ts` declares, per store, the repository, a `pull-request` and a `status`
+command for the pseudo-tool `github` (the CLI's own client, never a spawned binary), the path
+templates a pull request may write, the natural key and the review labels. The CLI reads a
+generated copy (`ciPlane.generated.ts`, `prStores`) and runs `pkey storefront <store> pr|status`.
+
+| Store      | Repository                           | A PR may write                                                     | Never                                                                   |
+| ---------- | ------------------------------------ | ------------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| `winget`   | `microsoft/winget-pkgs`, from a fork | `manifests/<p>/<Pub>/<Pkg>/<v>/<id>{,.installer,.locale.<l>}.yaml` | another repository; merge, close, delete a branch                       |
+| `homebrew` | the identity's `homebrewTap`         | `Casks/<homebrewCask>.rb`                                          | `homebrew/cask` or any `Homebrew` organisation repo                     |
+| `scoop`    | the identity's `scoopBucket`         | `bucket/<app>.json`                                                | a `ScoopInstaller` bucket                                               |
+| `flathub`  | `flathub/<identity appId>`           | `<appId>.{yml,yaml,json}`, `<appId>.metainfo.xml`                  | `flathub/flathub` (the first submission is a person's); closing the app |
+
+**New CI secret (owner decision 7).** `PKEY_PR_TOKEN`, a GitHub token held as a CI environment
+secret and never in the Worker: fine-grained, `contents:write` and `pull_requests:write` on the
+own tap and bucket only; for winget a classic `public_repo` token only if A-18k shows a
+fine-grained one cannot open the PR (a classic token reaches every public repository the account
+can write, so it lives in its own GitHub environment with required reviewers); for Flathub the
+maintainer's token on `flathub/<appId>`. The Worker never calls GitHub and never sees the token.
+
+**Controls.**
+
+- **Two checks, neither trusting the other.** The CLI refuses a step whose argv is not the store's
+  `pull-request` command for the outlet identity, or that would write any path outside the
+  store's templates, before anything reaches GitHub; the Worker re-checks both when the step is
+  reported (`POST /<p>/distribution/report`, `type: "store-step"`): the repository against the
+  identity, every reported file path against the templates (no `..`, no leading `/`), the pull
+  request's URL against the argv's repository. A refused report writes nothing.
+- **Repositories bound to the identity.** The tap and bucket patterns (`HOMEBREW_TAP_PATTERN`,
+  `SCOOP_BUCKET_PATTERN` in `@polaris-key/manifest`) refuse the `Homebrew` and `ScoopInstaller`
+  organisations in any case, so a manifest cannot even declare an official repository; winget's is
+  a literal; Flathub's is `flathub/` plus the identity's app id.
+- **Additive writes only.** The client (`packages/cli/src/storefronts/github.ts`) forks, commits on
+  a `pkey/…` branch, moves that branch only to a descendant (`force: false`) and opens a pull
+  request. It has no merge, close, delete or force call; every winget version is reviewed by a
+  moderator and a tap or bucket PR is merged by a person or the repository's own automation.
+- **The natural key** (S-15 §6.3): an open or merged PR for (package, version) is the step; the CLI
+  reports it `existing: true` and writes nothing, so a re-run never opens a second PR.
+- **The token stays in CI.** Read from the environment, sent only to `api.github.com`, never in
+  argv, a report body, the ledger or a log line; the ledger keeps each file's path and SHA-256,
+  never its content.
+- **The inputs read** (`GET /<p>/distribution/pr/<store>`, `distribution:report`) answers only while
+  the app's delivery access is public (a PR-plane manifest sends strangers to the bytes, as the
+  feeds do), and holds no secret.
+
+**Residual risk.** A workflow that calls GitHub directly with the same token bypasses both checks;
+the token's own scope (fine-grained, two repositories) is the backstop, and the classic winget
+token is the widest credential the program asks for. A compromised Polaris Key account can change
+the outlet identity's tap or bucket to another repository the token can write; the token's scope
+bounds that too. The Flathub update PR rewrites the URLs of the app manifest's `extra-data`
+sources; its review is the app repository's own.
+
 ### App Store Connect writes: the write gate, the ledger and the budget (A-17a)
 
 **What it is.** The substrate every App Store Connect call goes through (notes/S-14 §7): the
@@ -4253,6 +4309,46 @@ The Godot SDK reaches Android through `polaris-key-platform` (sdks/kotlin) and t
   (notes/S-06 §7): it gates In-App Updates (a forged Play claim only reaches Play's own API, which
   then refuses) and never authorises anything on the server.
 
+### JVM desktop keyring store and installer driver (UK-40)
+
+The Kotlin SDK's JVM desktop path (`PolarisKeyDesktop`) adds an OS keyring token store
+(`KeyringStore`, `sdks/kotlin/core/.../Keyring.kt`) and a driver that downloads and opens a
+binary update (`DesktopInstallDriver` over `OkHttpArtifactFetch`, `sdks/kotlin/update/`). The
+driver installs new code, so its trust anchor is the point of this section.
+
+- **Trust anchor.** The driver acts only on a release record that `UpdateClient.releaseRecord`
+  has verified under the pinned release keys (`verifyReleaseRecord`). The expected size and
+  SHA-256 come from that record's `payload` artifact, never from the feed or the download
+  response, and the downloaded `.part` must match both before anything opens it; a mismatch is
+  `payload-mismatch`, the partial is removed and nothing runs. The URL only says where to fetch.
+- **Where installers land.** The record's artifact name is reduced to a safe basename
+  (`safeName`: no directory part, no leading dot, `[A-Za-z0-9._-]` only), and installers are
+  downloaded into an app-private directory created 0700. The verified file is handed to
+  `open` (macOS), `rundll32 shell32.dll,ShellExec_RunDLL` (Windows, so no `cmd` parsing of the
+  path) or `xdg-open` (Linux), except an AppImage, which is made owner-executable and run
+  directly. Arguments are passed as a list, never through a shell.
+- **The bearer and redirects.** `OkHttpArtifactFetch` follows redirects itself. The bearer goes
+  only to the control plane's own origin (scheme, host and port), is dropped as soon as a hop
+  changes origin and never comes back on a later hop, and plain http to a non-loopback host is
+  refused (`insecure-redirect`), on the first URL as on any redirect. Redirects are capped
+  (`too-many-redirects`).
+- **No publisher check.** The driver checks no code signature or publisher of its own. The OS
+  installer's checks (Gatekeeper and notarisation on macOS, Authenticode and SmartScreen on
+  Windows, the package's signature on Linux where the format has one; an AppImage has none) are
+  the residual. A malicious installer published under the product's own release key is the
+  release key's compromise (AT-3) and outside this model.
+- **Token store fallback (a deliberate difference).** The token lives in the OS keyring
+  (Keychain, Credential Manager or Secret Service) under service `pkey:<product>`. A write that
+  cannot be verified by reading it back, or a host with no reachable keyring (java-keyring
+  absent, a headless Linux session with no Secret Service), falls back to the 0600 token file,
+  and `status()` surfaces it as `keyring-error` or `keyring-unavailable`; it is never silent.
+  This follows the Python SDK's `KeyringStore` (finding R4-11) and departs on purpose from the
+  Apple and Android stores above, where the token is never written to a file instead: a desktop
+  JVM has no store the SDK can rely on everywhere, and the 0600 file is the same protection the
+  file store gave before. A keyring read that throws while no token file exists returns no token
+  (the host may activate again) and `status()` reports `keyring-error`, as in Python. The device
+  id and the verified cache stay in their 0600 files; neither is a secret.
+
 ### Platform pack transports (P5-08)
 
 Apple-hosted Background Assets, Play Asset Delivery and Steam depots move pack bytes that Polaris
@@ -4661,6 +4757,30 @@ proxy now fetches through the same guard.
 - **The portal media proxy** keeps its GitHub-only host rule on every hop (`allowHost`) on top of
   this guard until HA-07 serves hosted copies; its cap, 5 s budget and sniff are unchanged.
 
+### The refusal log (UX-15)
+
+`authorizeDevice` (`core/authz.ts`) now records each refused activation in `license_refusals`
+(`core/refusals.ts`): product, licence, time, reason, a device label and a SHA-256 prefix of the
+device id. Only the platform-admin session reads it (`GET /manage/api/products/<slug>/refusals`).
+
+- **The label is customer-influenced text.** It is the device's stored name, else the reported
+  platform and architecture, else the User-Agent, so whoever runs the client chooses it. It is
+  stripped of control, format, separator, private-use and surrogate characters (no bidirectional
+  override can make one label render as another), whitespace-collapsed and cut to 64 characters
+  before it is written, and the console renders it as text.
+- **A refused caller cannot grow the table without bound.** Activation is already rate limited
+  per IP (30 a minute per product), a write is folded into the previous row when the same device
+  was refused for the same reason on the same licence in the last minute, and the nightly sweep
+  deletes rows older than 30 days, per product and in bounded passes. Residual: a holder of one
+  valid key rotating device ids can still write about one row per id per minute within the IP
+  limit; the cost is bounded by the 30-day retention.
+- **No new oracle.** The device's answer is decided before the write and is unchanged by it: the
+  write is handed to `waitUntil` where the request has one (the licence activate and enroll
+  routes) and otherwise runs inline, wrapped so that a failure is dropped. No public response
+  carries anything from the table.
+- **No raw identifier is copied.** The device id is stored only as a truncated hash; the licence
+  holder's name and email are not stored here at all.
+
 ### Boundaries that are weaker than they look
 
 - **The SDK cache is inside the attacker's trust domain, but the SDK treats it as trusted.** The
@@ -5021,7 +5141,9 @@ out of a deny list such as `rules/appStoreDenied.ts`, a rule's attributes, relat
 checks or confirmation level loosened), a storefront adapter is added to `STOREFRONT_ADAPTERS`, a
 new vendor spec pin is adopted (`ASC_SPEC_PIN` or another adapter's `specPin`), a CI command
 allow-list (`core/storefront/ciPlane.ts`, the `ci.ts` check) gains or loosens a command, a pattern
-or an identity binding, a CI-plane step starts running without report-back, the store-step ingest
+or an identity binding, the PR plane (`core/storefront/prPlane.ts`) gains a repository, a command
+or a path template or loosens one, the CLI's GitHub client (`storefronts/github.ts`) gains a call
+that merges, closes, deletes or force-pushes, a CI-plane step starts running without report-back, the store-step ingest
 stops re-checking the command, an adapter
 declares `api` for `uploadBuild` or empties a never-list category, a check of
 `test/storefront/conformance.test.ts` is relaxed, anything but `core/asc/client.ts` sends a request

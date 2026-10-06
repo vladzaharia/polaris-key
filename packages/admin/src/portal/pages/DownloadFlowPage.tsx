@@ -107,7 +107,10 @@ function DownloadBody({
 }): React.ReactElement {
   const pres = presentationFrom(product);
   const model = downloads
-    ? getItFromDownloads(downloads, detectDevice())
+    ? getItFromDownloads(downloads, detectDevice(), {
+        developer: pres.developer,
+        website: pres.website,
+      })
     : null;
   const platform = downloads ? flowPlatform(platformParam, downloads) : null;
   const rows: FileRowModel[] =

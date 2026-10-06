@@ -118,16 +118,21 @@ function palette(theme: "dark" | "light"): string {
   ].join(";");
 }
 
-function fontFace(weight: 400 | 700): string {
-  return `@font-face{font-family:"Rubik";font-style:normal;font-weight:${weight};font-display:swap;src:url("${BRAND_FONT_PATH}/rubik-latin-${weight}.woff2") format("woff2")}`;
+/**
+ * The brand's variable faces (latin subset): Rubik (wght 300–900) for UI text and JetBrains Mono
+ * (wght 400–600) for codes, UI-KITS.md §2.1. `font-synthesis: none` keeps a browser from faking a
+ * weight the face does not carry.
+ */
+function fontFace(family: string, weights: string, file: string): string {
+  return `@font-face{font-family:"${family}";font-style:normal;font-weight:${weights};font-display:swap;src:url("${BRAND_FONT_PATH}/${file}") format("woff2")}`;
 }
 
 /**
  * The shell's one stylesheet. Constant per build, so its SHA-256 in the policy is constant too.
  */
 export const BRAND_PAGE_CSS = [
-  fontFace(400),
-  fontFace(700),
+  fontFace("Rubik", "300 900", "rubik-var-latin.woff2"),
+  fontFace("JetBrains Mono", "400 600", "jetbrains-mono-var-latin.woff2"),
   `:root{${palette("dark")}}`,
   `@media (prefers-color-scheme: light){:root{${palette("light")}}}`,
   `*{box-sizing:border-box}`,

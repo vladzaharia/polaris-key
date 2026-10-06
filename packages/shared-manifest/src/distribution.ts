@@ -177,11 +177,23 @@ export interface ManifestOutletIdentity {
    *  under `Cellar/<formula>/`. */
   homebrewFormula?: string;
   /**
+   * `direct`: the product's OWN Homebrew tap, `<owner>/homebrew-<name>` on GitHub (A-18i). The
+   * PR plane commits the cask (`Casks/<homebrewCask>.rb`) there and nowhere else; a repository of
+   * the `Homebrew` organisation (`homebrew/cask`) is refused: that needs the owner, by hand.
+   */
+  homebrewTap?: string;
+  /**
    * `direct` covering Windows: what the Scoop manifest P2b-05 renders installs — `bin`, the
    * executables (paths inside the archive) Scoop shims onto PATH, and `shortcuts`, Start-menu
    * entries as `[target, name]` pairs.
    */
   scoop?: ManifestScoop;
+  /**
+   * `direct` covering Windows: the product's OWN Scoop bucket, `<owner>/<repo>` on GitHub (A-18i).
+   * The PR plane commits the feed's manifest (`bucket/<product>.json`) there; a repository of the
+   * `ScoopInstaller` organisation (the official buckets) is refused.
+   */
+  scoopBucket?: string;
 }
 
 /**
@@ -211,7 +223,14 @@ export type OutletIdentityField = keyof ManifestOutletIdentity;
 export const OUTLET_IDENTITY_FIELDS: Readonly<
   Record<OutletKind, readonly OutletIdentityField[]>
 > = {
-  direct: ["platforms", "homebrewCask", "homebrewFormula", "scoop"],
+  direct: [
+    "platforms",
+    "homebrewCask",
+    "homebrewFormula",
+    "homebrewTap",
+    "scoop",
+    "scoopBucket",
+  ],
   "app-store": ["appleId", "bundleId"],
   testflight: ["appleId", "bundleId", "publicLink"],
   altstore: ["artifact", "bundleId"],
@@ -263,6 +282,19 @@ export const HOMEBREW_CASK_PATTERN = /^[a-z0-9][a-z0-9.@-]{0,99}$/;
  *  (`python@3.12`), `+` (`libsigc++`), `_` and `-`. [I] until checked against Homebrew's own
  *  naming rules. */
 export const HOMEBREW_FORMULA_PATTERN = /^[a-z0-9][a-z0-9.@+_-]{0,99}$/;
+/**
+ * The product's own Homebrew tap (A-18i): `<owner>/homebrew-<name>`, a GitHub repository whose
+ * owner is not the `Homebrew` organisation (any case), so `homebrew/cask` and `homebrew/core` can
+ * never be a PR-plane target.
+ */
+export const HOMEBREW_TAP_PATTERN =
+  /^(?![Hh][Oo][Mm][Ee][Bb][Rr][Ee][Ww]\/)[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})\/homebrew-[A-Za-z0-9._-]{1,90}$/;
+/**
+ * The product's own Scoop bucket (A-18i): `<owner>/<repo>` on GitHub, not of the
+ * `ScoopInstaller` organisation (the official buckets), any case.
+ */
+export const SCOOP_BUCKET_PATTERN =
+  /^(?![Ss][Cc][Oo][Oo][Pp][Ii][Nn][Ss][Tt][Aa][Ll][Ll][Ee][Rr]\/)[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})\/(?!\.)[A-Za-z0-9._-]{1,100}$/;
 const MAX_CHANNEL_MAP_ENTRIES = 32;
 /** A relative path inside a Windows archive: no drive, no leading separator, no `..`. */
 export const SCOOP_PATH_PATTERN =
@@ -387,8 +419,18 @@ function fieldCheck(kind: OutletKind, field: OutletIdentityField): FieldCheck {
         HOMEBREW_FORMULA_PATTERN,
         "a Homebrew formula name (lower-case letters, digits, ., @, +, _ and -)",
       );
+    case "homebrewTap":
+      return pattern(
+        HOMEBREW_TAP_PATTERN,
+        "the product's own Homebrew tap, <owner>/homebrew-<name> on GitHub (never a Homebrew organisation repository)",
+      );
     case "scoop":
       return scoopCheck;
+    case "scoopBucket":
+      return pattern(
+        SCOOP_BUCKET_PATTERN,
+        "the product's own Scoop bucket, <owner>/<repo> on GitHub (never a ScoopInstaller repository)",
+      );
     case "publisher":
       return pattern(
         MSIX_PUBLISHER_PATTERN,
