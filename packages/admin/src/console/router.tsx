@@ -15,8 +15,10 @@
  *   (`navigationTransition` picks its type: `forward` into a deeper path, `back` to a shallower
  *   one, `route` between siblings, `tab` between the tabs of one page or record). The blockers
  *   answer first; the query alone never starts one (filters, sort and paging stay live for the
- *   `list` transitions of the tables, MO-09). Under reduced motion, or without the API, the page
- *   swaps at once, exactly as before.
+ *   `list` transitions of the tables, MO-09). Neither does a navigation made while an overlay is on
+ *   screen (the palette, a menu, a confirm, the phone navigation, open or still closing): the
+ *   snapshots would paint over it (S-23 §3.4), so the page swaps under its exit instead. Under
+ *   reduced motion, or without the API, the page swaps at once, exactly as before.
  */
 
 import * as React from "react";
@@ -84,6 +86,19 @@ function replaceHash(hash: string): void {
   );
 }
 
+/**
+ * An overlay on screen, open or still running its exit: a modal's scrim (dialogs, sheets, the
+ * palette, the phone navigation), a drawer, or popper content (menus, popovers, the product
+ * switcher). Tooltips do not count: one closes on the click that navigates.
+ */
+function overlayShown(): boolean {
+  if (document.querySelector(".animate-pk-overlay-in, .pk-overlay, .pk-drawer"))
+    return true;
+  return [
+    ...document.querySelectorAll("[data-radix-popper-content-wrapper] > *"),
+  ].some((el) => !el.querySelector("[role='tooltip']"));
+}
+
 /** A hash's path segments, without its query: `#/p/djdl/license/licenses?q=x` → 4 of them. */
 function pathOf(hash: string): string[] {
   const body = hash.replace(/^#/, "");
@@ -121,7 +136,7 @@ export function navigationTransition(
  * transition's update (`flushSync`, so the DOM is final when the new state is captured, and the
  * shell's route focus and scroll reset have run by `updateCallbackDone`). The same hash again is
  * a no-op: one navigation fires both `popstate` and `hashchange`. `animate: false` publishes at
- * once (a redirect to the canonical URL is the same page).
+ * once (a redirect to the canonical URL is the same page), as does a navigation under an overlay.
  */
 function publish(next: string, animate = true): void {
   const from = shownHash;
@@ -136,7 +151,7 @@ function publish(next: string, animate = true): void {
   const type = animate
     ? (clicked?.type ?? navigationTransition(from, next))
     : null;
-  if (type === null) {
+  if (type === null || overlayShown()) {
     emit();
     return;
   }

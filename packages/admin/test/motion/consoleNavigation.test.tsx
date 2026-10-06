@@ -258,6 +258,36 @@ describe("the router: a change of page runs in a View Transition", () => {
     expect(html.dataset.vt).toBeUndefined();
     expect(screen.getByText("Ada Lovelace").style.cssText).toBe("");
   });
+
+  it("a navigation under an overlay (open or closing) swaps at once; a tooltip does not count", async () => {
+    const started = installFake();
+    render(<Probe />);
+    // A menu's popper content (the product switcher, an ActionMenu) is on screen.
+    const popper = document.createElement("div");
+    popper.setAttribute("data-radix-popper-content-wrapper", "");
+    popper.innerHTML = `<div role="menu" data-state="closed"></div>`;
+    document.body.append(popper);
+    await userEvent.click(screen.getByRole("link", { name: "Tiers" }));
+    await waitFor(() => expect(shown()).toBe("#/p/djdl/license/tiers"));
+    // A modal's scrim (the palette, a confirm, the phone navigation).
+    popper.innerHTML = "";
+    const scrim = document.createElement("div");
+    scrim.className = "animate-pk-overlay-in";
+    document.body.append(scrim);
+    act(() => {
+      window.location.hash = "#/p/djdl/license/licenses";
+    });
+    await waitFor(() => expect(shown()).toBe("#/p/djdl/license/licenses"));
+    await settle();
+    expect(started).toEqual([]);
+    // Only a tooltip left: the next navigation runs its transition.
+    scrim.remove();
+    popper.innerHTML = `<div data-state="delayed-open"><span role="tooltip">Tiers</span></div>`;
+    await userEvent.click(screen.getByRole("link", { name: "Tiers" }));
+    await waitFor(() => expect(started.map((s) => s.type)).toEqual(["route"]));
+    popper.remove();
+    await settle();
+  });
 });
 
 describe("the shell keeps its route focus through a transition", () => {
