@@ -95,6 +95,7 @@ this page or fails the freshness gate.
 | `release_delegated_records` | 0049_release_delegations.sql | `product`, `record_sha256`, `delegation_sha256` |
 | `release_lazy_deltas` | 0051_lazy_deltas.sql | `product`, `deliverable_id`, `build_id`, `from_sha256`, `to_sha256`, `method`, `state`, `reason`, `storage_key`, `artifact_sha256`, `artifact_bytes`, `descriptor_json`, `created_at`, `updated_at` |
 | `release_packages` | 0058_c_release_packages.sql | `product`, `ecosystem`, `name_norm`, `version`, `deliverable_id`, `release_id`, `name`, `state`, `state_message`, `files_json`, `metadata_json`, `source_json`, `published_at`, `deprecation_message (0058)` |
+| `release_native_uploads` | 0075_release_native_uploads.sql | `product`, `ecosystem`, `name_norm`, `version`, `deliverable_id`, `name`, `session_id`, `principal_id`, `principal_json`, `client`, `files_json`, `metadata_json`, `channel`, `state`, `error`, `release_id`, `touch_seq`, `created_at`, `updated_at` |
 
 ## distribution
 
@@ -154,5 +155,5 @@ this page or fails the freshness gate.
 | `portal_account_emails` | 0017_portal_fk_cascade.sql (rebuilt 0017) | `email`, `account_id`, `verified_at`, `created_at` |
 | `portal_account_identities` | 0017_portal_fk_cascade.sql (rebuilt 0017) | `provider`, `subject`, `account_id`, `email`, `display_name`, `created_at`, `last_seen_at` |
 | `portal_license_links` | 0017_portal_fk_cascade.sql (rebuilt 0017) | `account_id`, `product`, `license_id`, `source`, `created_at`, `last_seen_at` |
-| `portal_product_settings` | 0017_portal_fk_cascade.sql (rebuilt 0017) | `product`, `portal_enabled`, `oidc_enabled`, `magic_enabled`, `license_key_claim_enabled`, `releases_enabled`, `branding_json`, `created_at`, `modified_at`, `auto_link_enabled`, `key_reissue_enabled (0064)`, `claim_by_key (0064)`, `discover_enabled (0071)`, `store_listed (0075)`, `store_audience (0075)`, `store_offer_paths_json (0075)`, `store_group_labels_json (0075)` |
+| `portal_product_settings` | 0017_portal_fk_cascade.sql (rebuilt 0017) | `product`, `portal_enabled`, `oidc_enabled`, `magic_enabled`, `license_key_claim_enabled`, `releases_enabled`, `branding_json`, `created_at`, `modified_at`, `auto_link_enabled`, `key_reissue_enabled (0064)`, `claim_by_key (0064)`, `discover_enabled (0071)`, `store_listed (0078)`, `store_audience (0078)`, `store_offer_paths_json (0078)`, `store_group_labels_json (0078)` |
 | `portal_audit` | 0008_portal.sql | `id`, `account_id`, `at`, `action`, `product`, `target_kind`, `target_id`, `summary` |

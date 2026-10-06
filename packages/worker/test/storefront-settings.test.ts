@@ -1,7 +1,7 @@
 /**
  * PS-02 (notes/S-21 §6.2): the Polaris Key listing state.
  *
- *   - migration 0075 backfills `store_listed = 'unlisted'` where `discover_enabled = 0` and leaves
+ *   - migration 0078 backfills `store_listed = 'unlisted'` where `discover_enabled = 0` and leaves
  *     every other product `auto`;
  *   - it is expand-only: a Worker from before it (its exact INSERT/UPSERT and `SELECT *`) reads and
  *     writes `portal_product_settings` unaffected;
@@ -31,6 +31,7 @@ import {
 import { listAudit } from "../src/repo.js";
 import {
   getPortalProductSettings,
+  portalProductSettingsView,
   upsertPortalProductSettings,
 } from "../src/services/identity/portal/repo.js";
 import { storefrontListing } from "../src/services/identity/portal/storefrontListing.js";
@@ -47,7 +48,7 @@ const DIR = join(HERE, "..", "migrations");
 const FILES = readdirSync(DIR)
   .filter((f) => f.endsWith(".sql"))
   .sort();
-const PS02 = "0075_storefront_listing.sql";
+const PS02 = "0078_storefront_listing.sql";
 const BEFORE = FILES.filter((f) => f < PS02);
 const AFTER = FILES.filter((f) => f > PS02);
 const sql = (f: string) => readFileSync(join(DIR, f), "utf8");
@@ -93,7 +94,7 @@ async function beforePs02(): Promise<Database.Database> {
   return raw;
 }
 
-describe("migration 0075 (PS-02)", () => {
+describe("migration 0078 (PS-02)", () => {
   it("backfills unlisted where Discover was off; every other product reads auto", async () => {
     const raw = await beforePs02();
     raw.exec(sql(PS02));
@@ -288,6 +289,34 @@ describe("storefrontListing and the writer (PS-02)", () => {
       resolveListing({ ...base, store_group_labels_json: '{"g":42}' })
         .groupLabels,
     ).toEqual({});
+    // An unknown listing state fails closed; a missing column is the default.
+    expect(resolveListing({ ...base, store_listed: "public" }).listed).toBe(
+      "unlisted",
+    );
+    expect(resolveListing({ ...base, store_listed: null }).listed).toBe("auto");
+  });
+
+  it("derives discoverEnabled from the resolved state (deploy-window row)", async () => {
+    const db = makeTestDb();
+    await seedProduct(db, "mossgarden");
+    await upsertPortalProductSettings(
+      db,
+      "mossgarden",
+      { storeListed: "unlisted" },
+      NOW,
+    );
+    // A pre-0078 Worker turns Discover back on without naming store_listed.
+    await db.run(
+      "UPDATE portal_product_settings SET discover_enabled = 1 WHERE product = ?",
+      "mossgarden",
+    );
+    const view = portalProductSettingsView(
+      await getPortalProductSettings(db, "mossgarden"),
+    );
+    expect([view.discoverEnabled, view.storeListed]).toEqual([
+      false,
+      "unlisted",
+    ]);
   });
 });
 

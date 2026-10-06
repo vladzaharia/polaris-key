@@ -11,8 +11,8 @@
  *   GET /swift/<owner>/<scope>/<name>/<version>.zip                  source archive (§4.4)
  *   GET /swift/<owner>/identifiers?url=                              identifiers (§4.5)
  *
- * `POST /swift/<owner>/login` answers 501 until F-21 and `PUT` (publish, §4.6) 405 until F-22;
- * both are the host dispatcher's (`core/registryHost.ts`), because tier 1 routes are read-only.
+ * `POST /swift/<owner>/login` is F-21's credential route (`login.ts`), and `PUT` (publish, §4.6)
+ * is F-22's, Release's native publish route (`services/release/packages/native/swift.ts`).
  *
  * EVERY READ GOES THROUGH `serveFeedRead`: the access ladder first, then the Cache API, then the
  * work here. The answers:

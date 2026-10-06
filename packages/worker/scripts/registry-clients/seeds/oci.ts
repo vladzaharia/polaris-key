@@ -45,6 +45,13 @@ import type { Env } from "../../../src/env.ts";
 export const OWNER = "registry-smoke";
 export const DELIVERABLE = "oci.smoke";
 export const REPOSITORY = "tools/smoke";
+/** F-23: declared, empty repositories the `oci-push-*` clients push to. */
+export const PUSH_REPOSITORIES: ReadonlyArray<readonly [string, string]> = [
+  ["oci.pushed", "tools/pushed"],
+  ["oci.pushed-crane", "tools/pushed-crane"],
+  ["oci.conformance", "tools/conformance"],
+  ["oci.conformance-mount", "tools/conformance-mount"],
+];
 
 const OCI_INDEX = "application/vnd.oci.image.index.v1+json";
 const OCI_MANIFEST = "application/vnd.oci.image.manifest.v1+json";
@@ -250,6 +257,29 @@ async function main(): Promise<void> {
       DELIVERABLE,
       now,
     );
+    // F-23: the repositories the push clients push to, declared and empty (`docker push` never
+    // creates a deliverable; products are data).
+    for (const [id, repo] of PUSH_REPOSITORIES) {
+      const p = stmtUpsertDeliverable(
+        {
+          product: OWNER,
+          deliverableId: id,
+          kind: "package",
+          defJson: JSON.stringify({ ...declaration, id, name: repo }),
+          ecosystem: "oci",
+          packageName: repo,
+        },
+        now,
+      );
+      await db.run(p.sql, ...p.params);
+      await db.run(
+        `INSERT OR IGNORE INTO dist_access (product, deliverable_id, mode, source, modified_at)
+         VALUES (?, ?, 'public', 'manifest', ?)`,
+        OWNER,
+        id,
+        now,
+      );
+    }
     for (const [i, v] of VERSIONS.entries()) {
       const dir = layout(work, v.version, v.archs);
       const x = await extractOci({

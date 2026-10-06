@@ -68,13 +68,18 @@ delegated to the lead).
   visibility, not access. The route enforces the L2 typed confirmation now: widening to
   `everyone` needs `"confirm": "storefront.polarisKey.audience"`, as the platform-settings route
   asks for its key.
-- **Migration number is 0075** (`0075_storefront_listing.sql`): main took 0074 for UX-15's
-  `0074_license_refusals.sql` while this package was in review, so PS-02 takes the next free
-  number and `LATEST_MIGRATION` points at it.
+- **Migration number is 0078** (`0078_storefront_listing.sql`): main took 0074 for UX-15's
+  `0074_license_refusals.sql` and 0075-0077 for feeds-2 (F-22, F-30, F-31) while this package was
+  in review, so PS-02 takes the next free number and `LATEST_MIGRATION` points at it.
 - **Dual-write as well as dual-read.** Writing `storeListed` sets `discover_enabled` to 0 exactly
   when `unlisted`; `discoverEnabled: false` alone makes the product `unlisted`, and `true` returns
-  an `unlisted` product to `auto`. The two columns stay coherent for a pre-0075 Worker in the
+  an `unlisted` product to `auto`. The two columns stay coherent for a pre-0078 Worker in the
   deploy window.
+- **The settings view derives `discoverEnabled` from the resolved state** (`listed !== 'unlisted'`)
+  rather than echoing the raw column, so a deploy-window row (a pre-0078 Worker writing
+  `discover_enabled = 1` over `store_listed = 'unlisted'`) reads hidden in both fields.
+- **An unknown `store_listed` value resolves to `unlisted`** (fail closed); only a missing column
+  reads the `auto` default. The CHECK constraint makes the first case unreachable in practice.
 - **Discover's candidate query also skips `store_listed = 'unlisted'`** (one predicate in
   `listDiscoverCandidates`), so either column hides a product. `auto` and `listed` keep today's
   offers exactly; PS-03 still owns evaluation.

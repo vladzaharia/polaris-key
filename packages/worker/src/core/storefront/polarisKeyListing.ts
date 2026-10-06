@@ -18,7 +18,7 @@
  *   - `groupLabels`: presentation only, `{<group>: <label ≤ 40>}`.
  *
  * Dual-read until PS-11: `discover_enabled = 0` (migration 0071) forces `unlisted`, whatever
- * `store_listed` says, so a Worker from before 0075 that turns Discover off is still obeyed.
+ * `store_listed` says, so a Worker from before 0078 that turns Discover off is still obeyed.
  */
 
 export const LISTING_STATES = ["auto", "listed", "unlisted"] as const;
@@ -141,11 +141,18 @@ function parseJson(raw: string): unknown {
 }
 
 /**
- * Resolve one row. A stored value that no longer parses (a hand edit) fails closed: no offer
- * paths and no labels, never "all kinds".
+ * Resolve one row. A stored value that no longer parses (a hand edit) fails closed: `unlisted`,
+ * no offer paths and no labels, never "all kinds".
  */
 export function resolveListing(row: ListingColumns): StorefrontListing {
-  const stored = isListingState(row.store_listed) ? row.store_listed : "auto";
+  // A missing column (a row read before migration 0078 ran) is the default; a value the CHECK
+  // constraint would refuse fails closed to `unlisted`.
+  const stored: ListingState =
+    row.store_listed == null
+      ? "auto"
+      : isListingState(row.store_listed)
+        ? row.store_listed
+        : "unlisted";
   const listed: ListingState = row.discover_enabled === 0 ? "unlisted" : stored;
   const audience = isListingAudience(row.store_audience)
     ? row.store_audience

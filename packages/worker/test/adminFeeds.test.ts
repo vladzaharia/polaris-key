@@ -218,6 +218,8 @@ describe("product scope", () => {
       "maven",
       "oci",
       "godot",
+      "cargo",
+      "go",
     ]);
     expect(body.feeds[0]).toMatchObject({
       status: "off",
@@ -281,7 +283,7 @@ describe("product scope", () => {
         { mode: "entitled", available: true },
       ],
     });
-    expect((await admin("GET", product("/cargo"))).status).toBe(404);
+    expect((await admin("GET", product("/nuget"))).status).toBe(404);
   });
 
   it("validates settings writes: namespace, ceiling, access mode, upstream, unknown fields", async () => {
@@ -640,6 +642,27 @@ describe("platform scope", () => {
     });
   });
 
+  it("tokens: no publish on the platform's SDK feeds (pipeline only, F-10)", async () => {
+    expect((await admin("POST", platform("/bootstrap"))).status).toBe(200);
+    const list = await (await admin("GET", platform("/tokens"))).json();
+    expect(list.limits.publishEcosystems).toEqual([]);
+    const res = await admin("POST", platform("/tokens"), {
+      label: "x",
+      binding: "owner",
+      scopes: ["publish"],
+      ecosystems: ["npm"],
+    });
+    expect(res.status).toBe(422);
+    expect(await res.json()).toMatchObject({
+      error: { reason: "system_feeds_pipeline_only" },
+    });
+    const read = await admin("POST", platform("/tokens"), {
+      label: "x",
+      binding: "owner",
+    });
+    expect(read.status).toBe(201);
+  });
+
   it("after the bootstrap: the system product's feeds, every owner, and its packages", async () => {
     expect((await admin("POST", platform("/bootstrap"))).status).toBe(200);
     await turnOnPackageFeeds();
@@ -655,9 +678,20 @@ describe("platform scope", () => {
     ]);
     const body = await (await admin("GET", platform())).json();
     expect(body).toMatchObject({ owner: SYSTEM_PRODUCT_SLUG });
+    // The bootstrap sets up the feeds the platform's packages use (the six of tier 1 and Cargo,
+    // F-30); Go has no platform module (F-31), so its feed stays not set up.
     expect(
-      body.feeds.every((f: { status: string }) => f.status === "enabled"),
-    ).toBe(true);
+      body.feeds.map((f: { ecosystem: string; status: string }) => [
+        f.ecosystem,
+        f.status,
+      ]),
+    ).toEqual([
+      ...["npm", "pypi", "swift", "maven", "oci", "godot", "cargo"].map((e) => [
+        e,
+        "enabled",
+      ]),
+      ["go", "off"],
+    ]);
     expect(body.feeds[0]).toMatchObject({
       packages: 1,
       baseUrl: "https://pkg.plrs.im/npm/polaris-key/",
@@ -801,7 +835,7 @@ describe("registry tokens and the access switch (F-21, plans/F-20.md §6.5)", ()
     );
     expect(JSON.stringify(listed)).not.toContain(minted.token);
     expect(listed.username).toBe("__token__");
-    expect(listed.feeds).toHaveLength(6);
+    expect(listed.feeds).toHaveLength(8);
     expect(listed.limits).toMatchObject({
       defaultDays: 90,
       urlDefaultDays: 30,
@@ -828,6 +862,49 @@ describe("registry tokens and the access switch (F-21, plans/F-20.md §6.5)", ()
         "registry_token.revoke_all",
       ].sort(),
     );
+  });
+
+  it("mints a publish token (F-22): owner-bound, named publish feeds, at most 30 days, audited as such", async () => {
+    const res = await admin("POST", tokens(), {
+      label: "Laptop publish",
+      binding: "owner",
+      scopes: ["publish"],
+      ecosystems: ["npm", "maven"],
+    });
+    expect(res.status).toBe(201);
+    const minted = await res.json();
+    expect(minted.view).toMatchObject({
+      scopes: ["publish", "read"],
+      ecosystems: ["maven", "npm"],
+      expiresAt: NOW + 7 * 86_400,
+    });
+    const audit = await db.first<{ summary: string }>(
+      "SELECT summary FROM audit WHERE product = ? AND action = 'registry_token.create'",
+      OWNER,
+    );
+    expect(audit?.summary).toContain("; publish;");
+    for (const body of [
+      { scopes: ["publish"] },
+      { scopes: ["publish"], ecosystems: ["godot"] },
+      { scopes: ["publish"], ecosystems: ["npm"], expiresInDays: 31 },
+      { scopes: "publish", ecosystems: ["npm"] },
+    ])
+      expect(
+        (
+          await admin("POST", tokens(), {
+            label: "x",
+            binding: "owner",
+            ...body,
+          })
+        ).status,
+        JSON.stringify(body),
+      ).toBe(422);
+    const list = await (await admin("GET", tokens())).json();
+    expect(list.limits).toMatchObject({
+      publishDefaultDays: 7,
+      publishMaxDays: 30,
+      publishEcosystems: ["npm", "pypi", "swift", "maven", "oci"],
+    });
   });
 
   it("refuses bad input and narrows to one licence", async () => {

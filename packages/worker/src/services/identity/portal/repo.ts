@@ -60,7 +60,7 @@ export interface PortalProductSettingsRow {
   claim_by_key: number;
   /** PX-W10 (G24): the product may be offered on Discover. Default 1 (migrations/0071). */
   discover_enabled: number;
-  /** PS-02: the Polaris Key listing state (migrations/0075). Read through `resolveListing`. */
+  /** PS-02: the Polaris Key listing state (migrations/0078). Read through `resolveListing`. */
   store_listed: ListingState;
   store_audience: ListingAudience;
   /** A JSON array of obtain-path kinds; NULL = every kind. */
@@ -552,7 +552,7 @@ export async function getPortalProductSettings(
       claim_by_key: 0,
       // Discover defaults ON, as the migration's column default does (migrations/0071).
       discover_enabled: 1,
-      // The Polaris Key listing defaults, as the migration's column defaults (migrations/0075).
+      // The Polaris Key listing defaults, as the migration's column defaults (migrations/0078).
       store_listed: "auto",
       store_audience: "eligible",
       store_offer_paths_json: null,
@@ -578,7 +578,6 @@ export function portalProductSettingsView(
       row.auto_link_enabled == null ? null : row.auto_link_enabled === 1,
     keyReissueEnabled: row.key_reissue_enabled === 1,
     claimByKey: row.claim_by_key === 1,
-    discoverEnabled: row.discover_enabled === 1,
     ...listingView(row),
     branding: parseJsonUnknown(row.branding_json),
     modifiedAt: row.modified_at,
@@ -589,10 +588,17 @@ function listingView(
   row: PortalProductSettingsRow,
 ): Pick<
   PortalProductSettingsView,
-  "storeListed" | "storeAudience" | "storeOfferPaths" | "storeGroupLabels"
+  | "discoverEnabled"
+  | "storeListed"
+  | "storeAudience"
+  | "storeOfferPaths"
+  | "storeGroupLabels"
 > {
   const l = resolveListing(row);
   return {
+    // Derived from the resolved state, so a deploy-window row (`discover_enabled = 1` written by
+    // a pre-0078 Worker over `store_listed = 'unlisted'`) never reads "Discover on" while hidden.
+    discoverEnabled: l.listed !== "unlisted",
     storeListed: l.listed,
     storeAudience: l.audience,
     storeOfferPaths: l.offerPathsAll ? null : l.offerPaths,
@@ -623,7 +629,7 @@ function nextListingColumns(
   | "store_offer_paths_json"
   | "store_group_labels_json"
 > {
-  // The effective state today (dual-read), so a pre-0075 Worker's Discover-off is carried.
+  // The effective state today (dual-read), so a pre-0078 Worker's Discover-off is carried.
   let listed: ListingState = resolveListing(current).listed;
   if (patch.storeListed !== undefined) listed = patch.storeListed;
   else if (patch.discoverEnabled === false) listed = "unlisted";
@@ -664,7 +670,7 @@ export async function upsertPortalProductSettings(
     discoverEnabled: boolean;
     /**
      * PS-02. Writing the listing state keeps `discover_enabled` in step (0 exactly when
-     * `unlisted`), so a pre-0075 Worker still reading it agrees. It wins over `discoverEnabled`.
+     * `unlisted`), so a pre-0078 Worker still reading it agrees. It wins over `discoverEnabled`.
      */
     storeListed: ListingState;
     storeAudience: ListingAudience;

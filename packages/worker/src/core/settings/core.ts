@@ -20,7 +20,7 @@ import {
 /**
  * The Polaris Key storefront's product settings (PS-02, notes/S-21 §6.2). Core's, not
  * Distribution's: every product can be listed whether or not it runs the distribution service.
- * Columns on Identity's `portal_product_settings` (migration 0075), beside `discover_enabled`,
+ * Columns on Identity's `portal_product_settings` (migration 0078), beside `discover_enabled`,
  * which still forces `unlisted` until PS-11 (`core/storefront/polarisKeyListing.ts`).
  */
 const STOREFRONT_DOCS = "/docs/services/identity/portal/#polaris-key-listing";
