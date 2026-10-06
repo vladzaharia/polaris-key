@@ -297,9 +297,7 @@ describe("focused flows (PX-10)", () => {
         .getByRole("radio", { name: /Work laptop/ })
         .getAttribute("aria-checked"),
     ).toBe("true");
-    await o.page
-      .getByRole("button", { name: "Remove Work laptop and continue" })
-      .click();
+    await o.page.getByRole("button", { name: "Remove Work laptop" }).click();
     await h1(o.page, "Work laptop was removed");
     await shoot(o.page, "device-limit-done-mobile-dark");
     expect(
@@ -328,6 +326,116 @@ describe("focused flows (PX-10)", () => {
     ).toBe("#/p/orbit-survey");
     expect(await o.page.content()).not.toContain("evil.example");
     await o.close();
+  });
+});
+
+describe("portal flow conformance (UX-79)", () => {
+  it("on a phone, the removal toast sits at the bottom above the phone bar, full width", async () => {
+    for (const theme of ["dark", "light"] as const) {
+      const o = await open("three", "/#/p/nightfall/devices", {
+        width: 390,
+        height: 844,
+        theme,
+      });
+      await h1(o.page, "Nightfall");
+      await o.page
+        .getByRole("button", { name: "Remove Studio PC" })
+        .first()
+        .click();
+      await o.page
+        .getByRole("button", { name: "Remove Studio PC", exact: true })
+        .last()
+        .click();
+      const toast = o.page
+        .locator("[data-sonner-toast]")
+        .filter({ hasText: "Studio PC was removed" });
+      await toast.waitFor();
+      await expect
+        .poll(() => o.page.evaluate(() => document.activeElement?.tagName))
+        .toBe("H1");
+      // Let the toast's enter settle before measuring.
+      await o.page.waitForTimeout(500);
+      const box = await toast.boundingBox();
+      const bar = await o.page
+        .getByRole("navigation", { name: "Phone" })
+        .boundingBox();
+      expect(box && bar).toBeTruthy();
+      expect(box!.y).toBeGreaterThan(844 / 2);
+      expect(box!.y + box!.height).toBeLessThanOrEqual(bar!.y);
+      expect(box!.width).toBeGreaterThan(390 - 48);
+      await shoot(o.page, `device-removed-toast-390-${theme}`);
+      expect(await o.violations()).toEqual([]);
+      await o.close();
+    }
+  });
+
+  it("Free a device: least recent as text, an action-named primary, a back label that fits at 390", async () => {
+    for (const theme of ["dark", "light"] as const) {
+      for (const width of [1440, 390]) {
+        const o = await open(
+          "twelve",
+          "/#/p/orbit-survey/free-device?for=Steam%20Deck",
+          { width, height: width === 390 ? 844 : 900, theme },
+        );
+        await h1(o.page, "Your license is on 2 of 2 devices");
+        const work = o.page.getByRole("radio", { name: /Work laptop/ });
+        expect(await work.innerText()).toMatch(/· least recent/);
+        await o.page
+          .getByRole("button", { name: "Remove Work laptop", exact: true })
+          .waitFor();
+        const back = o.page
+          .getByRole("banner")
+          .getByRole("link", { name: /See Orbit Survey/ });
+        const label = back.locator("span.truncate");
+        const clipped = await label.evaluate(
+          (el) => el.scrollWidth > el.clientWidth,
+        );
+        expect(clipped, `${theme} ${width}`).toBe(false);
+        expect((await back.innerText()).trim()).toBe(
+          width === 390
+            ? "See Orbit Survey"
+            : "See Orbit Survey in your library",
+        );
+        await shoot(o.page, `free-device-${width}-${theme}`);
+        expect(await o.violations()).toEqual([]);
+        await o.close();
+      }
+    }
+  });
+
+  it("screens: activate confirm and the library without Discover, both widths and themes", async () => {
+    for (const theme of ["dark", "light"] as const) {
+      for (const width of [1440, 390]) {
+        const o = await open("three", "/", {
+          width,
+          height: width === 390 ? 844 : 900,
+          theme,
+        });
+        await h1(o.page, "Your library");
+        await shoot(o.page, `library-no-discover-${width}-${theme}`);
+        await o.page
+          .getByRole(width === 390 ? "navigation" : "banner", {
+            name: width === 390 ? "Phone" : undefined,
+          })
+          .getByRole("button", { name: /^Activate/ })
+          .click();
+        const dialog = o.page.getByRole("dialog", {
+          name: "Activate a license",
+        });
+        await dialog
+          .getByRole("textbox", { name: "License key" })
+          .fill("pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w");
+        await dialog.getByRole("button", { name: "Continue" }).click();
+        await expect
+          .poll(() =>
+            o.page.evaluate(() => document.activeElement?.textContent),
+          )
+          .toBe("Add Mossgarden to your account?");
+        await shoot(o.page, `activate-confirm-${width}-${theme}`);
+        expect(await o.violations()).toEqual([]);
+        await o.close();
+      }
+    }
   });
 });
 
@@ -371,6 +479,10 @@ describe("main flows", () => {
     });
     await confirm.waitFor();
     await confirm.getByText("Lifetime · up to 5 devices").waitFor();
+    // Focus follows the step to its heading (FLOWS.md §2 C18, P-5).
+    await expect
+      .poll(() => o.page.evaluate(() => document.activeElement?.textContent))
+      .toBe("Add Mossgarden to your account?");
     await shoot(o.page, "activate-confirm-desktop-dark");
     expect(o.requests).toContain("POST /api/activate/preview");
     expect(o.requests).not.toContain("POST /api/claim/license-key");
@@ -379,6 +491,9 @@ describe("main flows", () => {
       name: "Mossgarden is in your library",
     });
     await done.waitFor();
+    await expect
+      .poll(() => o.page.evaluate(() => document.activeElement?.textContent))
+      .toBe("Mossgarden is in your library");
     await shoot(o.page, "activate-done-desktop-dark");
     await done.getByRole("button", { name: "Open Mossgarden" }).click();
     await h1(o.page, "Mossgarden");
@@ -419,6 +534,14 @@ describe("main flows", () => {
       .fill("pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4z");
     await dialog.getByRole("button", { name: "Continue" }).click();
     await dialog.getByText(/We couldn't find that key/).waitFor();
+    // Continue is disabled until the key changes; focus goes to the field, not body (P-5).
+    await expect
+      .poll(() =>
+        o.page.evaluate(() =>
+          document.activeElement?.getAttribute("aria-invalid"),
+        ),
+      )
+      .toBe("true");
     await shoot(o.page, "activate-errors-desktop-dark");
     expect(await o.violations()).toEqual([]);
     await o.close();
@@ -445,6 +568,10 @@ describe("main flows", () => {
     expect(o.requests.some((r) => r.startsWith("DELETE /api/licenses/"))).toBe(
       true,
     );
+    // The row has gone; focus is on the product's h1, never body (FLOWS.md P-7).
+    await expect
+      .poll(() => o.page.evaluate(() => document.activeElement?.tagName))
+      .toBe("H1");
     expect(await o.violations()).toEqual([]);
     await o.close();
   });
@@ -507,6 +634,16 @@ describe("main flows", () => {
     await shoot(o.page, "switcher-desktop-dark");
     await o.page.keyboard.press("Enter");
     await h1(o.page, "Glyphsmith");
+    // Focus lands on the product's h1, not body (FLOWS.md P-14).
+    await expect
+      .poll(() =>
+        o.page.evaluate(() =>
+          document.activeElement?.tagName === "H1"
+            ? document.activeElement.textContent
+            : null,
+        ),
+      )
+      .toBe("Glyphsmith");
     expect(await o.violations()).toEqual([]);
     await o.close();
   });

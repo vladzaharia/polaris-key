@@ -149,11 +149,13 @@ describe("device limit, focused flow (§4.25, PX-10)", () => {
     expect(radios).toHaveLength(2);
     const work = screen.getByRole("radio", { name: /Work laptop/ });
     expect(work.getAttribute("aria-checked")).toBe("true");
-    expect(within(work).getByText("Least recent")).toBeTruthy();
+    // "Least recent" is text in the meta, never a pill (FLOWS.md P-6).
+    expect(within(work).getByText(/· least recent$/)).toBeTruthy();
+    expect(within(work).queryByText("Least recent")).toBeNull();
     expect(await axeViolations()).toEqual([]);
 
     await userEvent.click(
-      screen.getByRole("button", { name: "Remove Work laptop and continue" }),
+      screen.getByRole("button", { name: "Remove Work laptop" }),
     );
     const done = await screen.findByRole("heading", {
       level: 1,
@@ -243,7 +245,7 @@ describe("device limit, focused flow (§4.25, PX-10)", () => {
     });
     expect(screen.queryByText(/Try again/)).toBeNull();
     await userEvent.click(
-      screen.getByRole("button", { name: "Remove Work laptop and continue" }),
+      screen.getByRole("button", { name: "Remove Work laptop" }),
     );
     await screen.findByRole("heading", {
       level: 1,

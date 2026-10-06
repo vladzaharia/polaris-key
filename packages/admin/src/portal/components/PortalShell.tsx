@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Compass, KeyRound, Library } from "lucide-react";
 import { Button } from "../../ui/Button.js";
+import { TOAST_BOTTOM_INSET_VAR } from "../../ui/toast.js";
 import { cn } from "../../lib/cn.js";
 import type { PortalAccount } from "../api.js";
 import { useActivate } from "../activate.js";
@@ -49,6 +50,7 @@ export function PortalShell({
   const onDiscover = route.kind === "discover";
   const showDiscover = discoverCount !== null;
   const mainRef = React.useRef<HTMLElement>(null);
+  usePhoneBarToastInset();
 
   return (
     <div className="flex min-h-dvh flex-col bg-surface-page text-fg">
@@ -184,6 +186,32 @@ export function PortalShell({
       </nav>
     </div>
   );
+}
+
+/**
+ * Toasts on phones sit at the bottom (EXPERIENCE.md §7, FLOWS.md P-7), above the phone bar while
+ * it shows (below `desk`): its 52 px row, its hairline, the safe area and a 12 px gap.
+ */
+function usePhoneBarToastInset(): void {
+  React.useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const root = document.documentElement;
+    const barShows = window.matchMedia("(max-width: 47.5rem)");
+    const apply = (): void => {
+      if (barShows.matches)
+        root.style.setProperty(
+          TOAST_BOTTOM_INSET_VAR,
+          "calc(3.25rem + 1px + env(safe-area-inset-bottom) + 0.75rem)",
+        );
+      else root.style.removeProperty(TOAST_BOTTOM_INSET_VAR);
+    };
+    apply();
+    barShows.addEventListener("change", apply);
+    return () => {
+      barShows.removeEventListener("change", apply);
+      root.style.removeProperty(TOAST_BOTTOM_INSET_VAR);
+    };
+  }, []);
 }
 
 function NavLink({
