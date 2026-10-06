@@ -235,14 +235,13 @@ export function useGuardedDismissal({
   // Where focus was when the question opened; "Keep editing" puts it back.
   const before = React.useRef<HTMLElement | null>(null);
   const keepEditing = (): void => {
-    setAsking(false);
     const el = before.current;
     before.current = null;
-    if (el)
-      requestAnimationFrame(() => {
-        if (el.isConnected) el.focus({ preventScroll: true });
-      });
+    // Focus first, while the question's buttons still hold it, so it never drops to <body>.
+    if (el?.isConnected) el.focus({ preventScroll: true });
+    setAsking(false);
   };
+
   React.useEffect(() => {
     if (!guarded) setAsking(false);
   }, [guarded]);
