@@ -295,11 +295,18 @@ export function useRevokeRegistryToken(product: string, licenseId: string) {
   });
 }
 
-/** One product in full (PX-W1, `GET /api/products/<p>`): seats, devices, `returnTo`. */
-export function useProduct(product: string): UseQueryResult<PortalProduct> {
+/**
+ * One product in full (PX-W1, `GET /api/products/<p>`): seats, devices, `returnTo`. `enabled:
+ * false` waits (the Activate dialog asks only when a link's `return=` needs checking).
+ */
+export function useProduct(
+  product: string,
+  opts: { enabled?: boolean } = {},
+): UseQueryResult<PortalProduct> {
   return useQuery({
     queryKey: qk.portalProduct(product),
     queryFn: () => portalApi.product(product),
+    enabled: opts.enabled ?? true,
   });
 }
 
