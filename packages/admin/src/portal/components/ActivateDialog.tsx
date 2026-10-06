@@ -676,6 +676,8 @@ export function ConfirmStep({
             tint={null}
             src={p.headerUrl}
             variant="banner"
+            // No cover: a bare tint field; the icon overlapping the art already shows the letter.
+            letter={false}
             className="h-36 rounded-lg"
           />
           <ProductIcon
