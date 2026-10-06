@@ -7908,7 +7908,7 @@
         "notes/S-20 owner decision 10"
       ],
       "brief": "wp/HA-11-presentation-discovery-plan.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "HA-12",
@@ -7917,7 +7917,7 @@
       "stage": "phase 5: presentation in SDKs",
       "lane": "corpus",
       "role": "pkey-implementer",
-      "estimateWeeks": [0.4, 0.6],
+      "estimateWeeks": [0.6, 0.9],
       "deps": ["HA-11", "HA-02", "HA-07"],
       "planMode": true,
       "gates": ["plan-mode", "corpus", "drift-gate", "docs-generated"],

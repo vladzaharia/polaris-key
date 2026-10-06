@@ -79,6 +79,14 @@ Layer (c) for the JS kits; elements, React, Vue, Svelte, Angular and React Nativ
 - The presentation seam is the only path for presentation data in JS kits (owner decision); when HA-13 ships `client.presentation()` the SDK supplies the source and no kit changes.
 - Presentation comes only through the core's `ProductIdentity` seam from the SDK (HA-13, HA-14). This package does not depend on them: it tests the default with a fake source, and the real accessor plugs in without a kit change (UK-41 verifies it).
 
+## Presentation seam ([`plans/HA-11.md`](../plans/HA-11.md), approved 2026-10-06)
+
+- **Do not define a seam.** The kit's `ProductIdentity` resolver takes the TypeScript `PresentationSource` from `@polaris-key/client-core/presentation` (written by HA-12).
+- **Before that lands.** If the SDK type has not landed when this package starts, declare a
+  structurally identical local type, `current()`, `icon(px, scale)` and change notification, and
+  replace it with the SDK's type when it lands.
+- **Fake sources.** Tests build fake sources from that type.
+
 ## Steps
 
 1. Build the scope in the order listed.

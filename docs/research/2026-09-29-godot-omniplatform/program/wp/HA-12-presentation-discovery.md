@@ -3,7 +3,7 @@
 | Field       | Value                                                                                                              |
 | ----------- | ------------------------------------------------------------------------------------------------------------------ |
 | Phase       | HA: Hosted assets: Polaris Key hosts every file it serves (S-20) (phase 5: presentation in SDKs)                   |
-| Size        | 0.4–0.6 engineer-weeks                                                                                             |
+| Size        | 0.6–0.9 engineer-weeks                                                                                             |
 | Depends on  | [HA-11](HA-11-presentation-discovery-plan.md), [HA-02](HA-02-media-host.md), [HA-07](HA-07-serve-hosted-copies.md) |
 | Unblocks    | [HA-13](HA-13-sdks-presentation.md), [HA-14](HA-14-godot-presentation.md)                                          |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                              |
@@ -42,12 +42,51 @@ This is the server half of decision 10 ([S-20 §6.9](../../notes/S-20-hosted-ass
 - Follow the plan. Any deviation goes back to the planner.
 - **The settings-registry entry is provisional.** ST-06 registered `core.presentation` in `CORE_SLICE` (`packages/worker/src/core/settings/core.ts`) so the coverage test has a home for `.pkey/product` `presentation`: manifest-owned, `json` value (`ManifestPresentation`), carried in discovery, with `pending: { wp: "HA-12" }` and a provisional `scalar` storage in `product_settings` ([ST-06](ST-06-settings-docs-coverage.md#design-notes), fix round 1). When discovery serves it, remove the `pending` marker and set the entry's storage to the store HA-11's plan picks; regenerate the settings page and ⌘K index (`pnpm gen:settings`).
 
+## Approved plan (2026-10-06)
+
+[`plans/HA-11.md`](../plans/HA-11.md) is approved with every recommendation. This package does §2, §3, §4 and §6 of the plan:
+
+- **Migration.** `packages/worker/migrations/<NNNN>_products_presentation.sql` adds
+  `products.presentation_json`. `<NNNN>` is the next free number at merge time, and the lead
+  assigns it (0079–0088 are claimed). The column is written in the batch of `resyncRepo`,
+  `linkRepo` and `linkSystemProduct`.
+- **Settings.** In `core/settings/core.ts`, the `core.presentation` storage becomes
+  `{ kind: "column", table: "products", column: "presentation_json" }`. Its readers are set and
+  `pending` is removed. Run `gen:settings`.
+- **Resolver.** New `core/presentation.ts` `resolvePresentation(ctx)` follows the plan's §2.1
+  emission rule:
+  - name: the listing's, else the product's;
+  - developer: the listing's `developerName`;
+  - accent: `presentation.accent`, else the listing's `tintColor`;
+  - icon: `presentation.icon`, else `listing.icon`, from `hosted_assets` with the WebP `sizes`.
+
+  The member is emitted only when something beyond the name resolves. Discovery and the portal's
+  `presentationFor` both use the resolver.
+
+- **Contract and shared code.**
+  - `WIRE-CONTRACT-V4.md`: §5.3, plus additions to §9 and §10.
+  - `shared-protocol/src/core.ts`: the presentation types and `PRESENTATION_*` constants, emitted
+    by `gen:constants`.
+  - New `packages/client-core/src/presentation.ts`, exported as
+    `@polaris-key/client-core/presentation`: `parsePresentation`, `pickIconSize`, `iconMatches`
+    and the `PresentationSource` seam type.
+- **Corpus.** `tools/presentation-matrix.ts` produces `presentation-matrix.json`
+  (`presentationMatrixVersion: 1`) through `sign-corpus.ts`, with both mirrors and a self-check
+  against client-core. Add the file to AGENTS.md rule 1 and to `contribute/corpus.md`.
+- **Transcript.** `discovery-presentation.json`, two steps: the member is present, then gone.
+- **Parity.** A `core.presentation` row in `features.json`, set to `planned` in all six
+  `parity.json` files.
+- **Docs and spec.** The OpenAPI `DiscoveryDocument` schema, the `services/core/discovery.md`
+  "Presentation" section and one THREAT-MODEL row.
+
 ## Steps
 
 1. Per the plan.
 
 ## Acceptance criteria
 
+- [ ] `pnpm gen:corpus -- --check` covers `presentation-matrix.json` and its Swift and Godot mirrors; `pnpm gen:constants -- --check`, `pnpm gen:settings -- --check` and `pnpm parity:check` are green.
+- [ ] A product with only a listing icon and `tintColor` (no manifest `presentation`) emits `core.presentation` with that icon and accent (test).
 - [ ] `pnpm gen:transcripts -- --check` and `pnpm gen:corpus -- --check` are green after regeneration.
 - [ ] Discovery for a product with no presentation omits the member (test).
 - [ ] The `core.presentation` registry entry has no `pending` marker and its storage is the store HA-11's plan names; `pnpm gen:settings -- --check` is green.
