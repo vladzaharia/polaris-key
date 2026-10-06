@@ -6979,8 +6979,27 @@ from the keyring endpoint.
   each claim's key and expiry only; the reason and the claimant stay in the console and the
   platform activity row. The mode governs the five `product_settings` claim keys; the settings
   still claimed through their older markers (`services_source`, `compat_source`, `access_source`,
-  the fingerprint and auto-issue policies, tier and profile rows, the trusted publisher) are not
-  yet refused by it, and move to the one write path with ST-04/ST-05.
+  the fingerprint and auto-issue policies, tier and profile rows, the trusted publisher) and
+  LX-06's row-backed keys (below; their own path refuses only the system product) are not yet
+  refused by it, and move to the one write path with ST-04/ST-05.
+- **Row-backed claimable settings (LX-06, `core/rowSettings.ts`).** The licensing settings
+  (`licensing.*`) and `identity.oidc.syncTierOnSignIn` keep their VALUE in the `product_settings`
+  row (`value_json`): no row means the registry default, `source = 'manifest'` the last applied
+  `.pkey/` value, `source = 'console'` a claim. A push writes them through License's and
+  Identity's `manifestIngestAlways` with the same in-statement claim guard as above (the upsert
+  and its `setting.resync` audit row are `WHERE NOT EXISTS` a live console row), so a claim made
+  mid-resync still wins; a setting the manifest stops declaring loses its manifest row and returns
+  to the default (omit-clears, S-18 §4.5 item 1), never a console row. The console writes them
+  through `GET …/settings/effective`, `PATCH` and `DELETE …/settings/<key>`: platform admin
+  session and CSRF like every admin write; the value is checked against the registry entry
+  server-side; a critical key needs a reason, enforced by the Worker, not the console; every
+  write carries a required `expectedVersion`, compared before the write and again in the write's
+  own `WHERE`; and the audit row inserts only after a change (`changes()`), so the loser of a race
+  gets a 409 and leaves no row claiming it wrote. The system product refuses both. `upgradeOnly`
+  for `identity.oidc.syncTierOnSignIn` would let an identity provider's groups raise a licence's
+  tier, so the registry marks it security-widening (critical, at least L1 to widen, never
+  inherited from platform). Nothing reads it yet: the behaviour behind it, and the licensing
+  model's own threats (T1–T10), are LX-22's to add here when they ship.
 - **The IdP is trusted for `groups`, and `groups` is the entire admin authorization decision.**
 
 ## 4. Adversaries

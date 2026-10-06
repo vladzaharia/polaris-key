@@ -440,6 +440,7 @@ export const r = {
   tier: (slug: string, id: string, tab?: string) =>
     productPage(slug, "tiers", { id, tab }),
   enrollment: (slug: string) => productPage(slug, "enrollment"),
+  licenseSettings: (slug: string) => productPage(slug, "license-settings"),
   catalog: (slug: string) => productPage(slug, "catalog"),
   catalogEdit: (slug: string) => productPage(slug, "catalog-edit"),
   profiles: (slug: string) => productPage(slug, "profiles"),

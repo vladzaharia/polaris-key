@@ -572,10 +572,13 @@ describe("enablement gates the ingest and the hook", () => {
       NOW,
     );
     expect(calls).toEqual(["license", "distribution"]);
-    expect(out.slugs).toEqual(["license", "distribution"]);
-    // Two `manifestIngest` statements, plus Distribution's `manifestIngestAlways` delivery-access
-    // row (P2b-04), which is not behind enablement.
-    expect(out.statements).toHaveLength(3);
+    // Identity is off, so its `manifestIngest` never ran; it is listed for its
+    // `manifestIngestAlways` (LX-06's row-backed settings), which is not behind enablement.
+    expect(out.slugs).toEqual(["license", "distribution", "identity"]);
+    // The two `manifestIngest` statements ran; identity's did not.
+    expect(out.statements.filter((st) => st.sql === "SELECT 1")).toHaveLength(
+      2,
+    );
   });
 
   it("manifestIngestAlways runs whatever the enablement; manifestIngest does not", () => {
@@ -609,8 +612,10 @@ describe("enablement gates the ingest and the hook", () => {
       NOW,
     );
     expect(calls).toEqual(["always"]);
-    expect(out.slugs).toEqual(["distribution"]);
-    expect(out.statements).toEqual([{ sql: "SELECT 2", params: [] }]);
+    // License's and Identity's `manifestIngestAlways` (LX-06's row-backed settings) run too.
+    expect(out.slugs).toEqual(["license", "distribution", "identity"]);
+    expect(out.statements).toContainEqual({ sql: "SELECT 2", params: [] });
+    expect(out.statements).not.toContainEqual({ sql: "SELECT 1", params: [] });
   });
 });
 

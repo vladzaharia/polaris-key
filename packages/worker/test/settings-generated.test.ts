@@ -69,9 +69,13 @@ describe("the generated settings outputs (ST-06)", () => {
       secret: false,
       pending: null,
     });
+    // LX-06 made the licensing settings live; billing-retry grace waits for LX-23.
     expect(
       idx.find((e) => e.key === "licensing.entitlementModel")?.pending,
-    ).toBe("LX-06");
+    ).toBeNull();
+    expect(
+      idx.find((e) => e.key === "licensing.dunningGraceDays")?.pending,
+    ).toBe("LX-23");
   });
 
   it("describe values and confirmation levels in words", () => {

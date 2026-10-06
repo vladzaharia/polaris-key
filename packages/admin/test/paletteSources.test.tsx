@@ -187,8 +187,14 @@ describe("ranking", () => {
     expect(
       groups.map((g) => [g.heading, g.items.map((i) => i.detail)]),
     ).toEqual([
-      ["Pages", ["Core · DJDL"]],
+      // Core → Settings, then License → Settings (LX-06), in section order. The licence page is
+      // "Licensing" in the palette and still found by its sidebar label.
+      ["Pages", ["Core · DJDL", "License · DJDL"]],
       ["Platform", ["Platform"]],
+    ]);
+    expect(groups[0]!.items.map((i) => i.label)).toEqual([
+      "Settings",
+      "Licensing",
     ]);
   });
 

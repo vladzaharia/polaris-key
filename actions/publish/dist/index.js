@@ -1238,7 +1238,39 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
         "defaultDeviceLimit": { "$ref": "#/$defs/nonNegativeInteger" },
         "defaultMaxOfflineDays": { "$ref": "#/$defs/nonNegativeInteger" },
         "profiles": { "$ref": "#/$defs/profiles" },
-        "tiers": { "$ref": "#/$defs/tiers" }
+        "tiers": { "$ref": "#/$defs/tiers" },
+        "entitlementModel": {
+          "description": "Whether devices see the combined entitlements of every grant their holder has (combined) or only their own licence's (legacy). Undeclared: legacy for products registered before 2026-10-06, combined for newer ones. A console edit claims it; Revert returns it to this value.",
+          "enum": ["legacy", "combined"]
+        },
+        "entitlementHolder": {
+          "description": "Whose entitlements a device sees: the account signed in on that device (device, the default) or the licence owner's whole set (owner).",
+          "enum": ["device", "owner"]
+        },
+        "clampGraceToExpiry": {
+          "description": "End a device's offline grace no later than its licence's expiry (default true).",
+          "type": "boolean"
+        },
+        "anchorPolicy": {
+          "description": "Which of a holder's licences a device runs on (default rank-first).",
+          "enum": ["rank-first", "most-free-seats", "oldest"]
+        },
+        "reanchor": {
+          "description": "When a device may move to a better anchor licence (default onActivation). onRefresh is not available yet.",
+          "enum": ["never", "onActivation"]
+        },
+        "refundGraceHours": {
+          "description": "Hours a refunded or charged-back grant keeps working before it is revoked (default 0: at once). It only delays the revocation.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 168
+        },
+        "dunningGraceDays": {
+          "description": "Days a subscription grant keeps working while the store retries a failed renewal (default 0).",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 30
+        }
       }
     },
     "profiles": {
@@ -1707,6 +1739,10 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
             "maxLength": 2048,
             "pattern": "^https?://[^\\\\u0000-\\\\u001f\\\\u007f]+$"
           }
+        },
+        "syncTierOnSignIn": {
+          "description": "Whether a sign-in may move a licence to the tier the provider's groups map to: off (the default) or upgradeOnly, which never lowers a tier.",
+          "enum": ["off", "upgradeOnly"]
         },
         "groupRoleMap": {
           "description": "IdP group name -> role/entitlement grant map.",
@@ -17165,6 +17201,17 @@ var REGISTRATION_POLICIES = [
   "requires-identity",
   "requires-license"
 ];
+var LICENSING_ENTITLEMENT_MODELS = ["legacy", "combined"];
+var LICENSING_ENTITLEMENT_HOLDERS = ["device", "owner"];
+var LICENSING_ANCHOR_POLICIES = [
+  "rank-first",
+  "most-free-seats",
+  "oldest"
+];
+var LICENSING_REANCHOR_VALUES = ["never", "onActivation"];
+var LICENSING_REFUND_GRACE_HOURS_MAX = 168;
+var LICENSING_DUNNING_GRACE_DAYS_MAX = 30;
+var OIDC_SYNC_TIER_ON_SIGN_IN_VALUES = ["off", "upgradeOnly"];
 var MODULES = Object.keys(MODULE_SERVICES);
 var DEFAULT_ENABLED = DEFAULT_ENABLED_SERVICES;
 var ID_RE = /^[A-Za-z0-9._:-]{1,64}$/;
@@ -17615,6 +17662,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       );
     }
   }
+  validateLicensingSettings(licensing, errors);
   if (schemaAlwaysRequired || modules.includes("config")) {
     if (requireSchema(errors, manifest.schema)) {
       const catalog = normalizeCatalog(manifest.schema);
@@ -17866,6 +17914,15 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
           "/oidc/provider",
           "invalid_oidc_provider",
           "oidc.provider must be platform or custom."
+        );
+      }
+      if (oidc.syncTierOnSignIn !== void 0 && !isOneOf2(oidc.syncTierOnSignIn, OIDC_SYNC_TIER_ON_SIGN_IN_VALUES)) {
+        add4(
+          errors,
+          "product",
+          "/oidc/syncTierOnSignIn",
+          "invalid_oidc_sync_tier_on_sign_in",
+          "oidc.syncTierOnSignIn must be off or upgradeOnly."
         );
       }
       if (provider === "custom") {
@@ -19982,7 +20039,11 @@ function parseManifest(files, opts = {}) {
       redirectUris: arrayAt(oidcRoot, "redirectUris")?.filter(isString) ?? [],
       groupRoleMap: asRecord(oidcRoot.groupRoleMap)
     };
+    if (isOneOf2(oidcRoot.syncTierOnSignIn, OIDC_SYNC_TIER_ON_SIGN_IN_VALUES))
+      parsed.oidc.syncTierOnSignIn = oidcRoot.syncTierOnSignIn;
   }
+  const licensingSettings = normalizeLicensingSettings(licensing);
+  if (licensingSettings) parsed.licensing = licensingSettings;
   if (releaseDoc) parsed.release = normalizeRelease(releaseDoc);
   if (validation.enabledModules.includes("distribution") || docs.distribution !== void 0) {
     parsed.distribution = normalizeDistribution(
@@ -20740,6 +20801,86 @@ function secretUrlTemplateProblem(value) {
     return "must not place the {claim} placeholder in the host";
   }
   return null;
+}
+function integerIn(v, min, max) {
+  return typeof v === "number" && Number.isInteger(v) && v >= min && v <= max;
+}
+function validateLicensingSettings(licensing, errors) {
+  const declared = (field) => licensing[field] !== void 0;
+  if (declared("entitlementModel") && !isOneOf2(licensing.entitlementModel, LICENSING_ENTITLEMENT_MODELS))
+    add4(
+      errors,
+      "product",
+      "/licensing/entitlementModel",
+      "invalid_licensing_entitlement_model",
+      "licensing.entitlementModel must be legacy or combined."
+    );
+  if (declared("entitlementHolder") && !isOneOf2(licensing.entitlementHolder, LICENSING_ENTITLEMENT_HOLDERS))
+    add4(
+      errors,
+      "product",
+      "/licensing/entitlementHolder",
+      "invalid_licensing_entitlement_holder",
+      "licensing.entitlementHolder must be device or owner."
+    );
+  if (declared("clampGraceToExpiry") && typeof licensing.clampGraceToExpiry !== "boolean")
+    add4(
+      errors,
+      "product",
+      "/licensing/clampGraceToExpiry",
+      "invalid_licensing_clamp_grace_to_expiry",
+      "licensing.clampGraceToExpiry must be true or false."
+    );
+  if (declared("anchorPolicy") && !isOneOf2(licensing.anchorPolicy, LICENSING_ANCHOR_POLICIES))
+    add4(
+      errors,
+      "product",
+      "/licensing/anchorPolicy",
+      "invalid_licensing_anchor_policy",
+      "licensing.anchorPolicy must be rank-first, most-free-seats or oldest."
+    );
+  if (declared("reanchor") && !isOneOf2(licensing.reanchor, LICENSING_REANCHOR_VALUES))
+    add4(
+      errors,
+      "product",
+      "/licensing/reanchor",
+      "invalid_licensing_reanchor",
+      "licensing.reanchor must be never or onActivation (onRefresh is not available yet)."
+    );
+  if (declared("refundGraceHours") && !integerIn(licensing.refundGraceHours, 0, LICENSING_REFUND_GRACE_HOURS_MAX))
+    add4(
+      errors,
+      "product",
+      "/licensing/refundGraceHours",
+      "invalid_licensing_refund_grace_hours",
+      "licensing.refundGraceHours must be an integer from 0 to 168."
+    );
+  if (declared("dunningGraceDays") && !integerIn(licensing.dunningGraceDays, 0, LICENSING_DUNNING_GRACE_DAYS_MAX))
+    add4(
+      errors,
+      "product",
+      "/licensing/dunningGraceDays",
+      "invalid_licensing_dunning_grace_days",
+      "licensing.dunningGraceDays must be an integer from 0 to 30."
+    );
+}
+function normalizeLicensingSettings(licensing) {
+  const out = {};
+  if (isOneOf2(licensing.entitlementModel, LICENSING_ENTITLEMENT_MODELS))
+    out.entitlementModel = licensing.entitlementModel;
+  if (isOneOf2(licensing.entitlementHolder, LICENSING_ENTITLEMENT_HOLDERS))
+    out.entitlementHolder = licensing.entitlementHolder;
+  if (typeof licensing.clampGraceToExpiry === "boolean")
+    out.clampGraceToExpiry = licensing.clampGraceToExpiry;
+  if (isOneOf2(licensing.anchorPolicy, LICENSING_ANCHOR_POLICIES))
+    out.anchorPolicy = licensing.anchorPolicy;
+  if (isOneOf2(licensing.reanchor, LICENSING_REANCHOR_VALUES))
+    out.reanchor = licensing.reanchor;
+  if (integerIn(licensing.refundGraceHours, 0, LICENSING_REFUND_GRACE_HOURS_MAX))
+    out.refundGraceHours = licensing.refundGraceHours;
+  if (integerIn(licensing.dunningGraceDays, 0, LICENSING_DUNNING_GRACE_DAYS_MAX))
+    out.dunningGraceDays = licensing.dunningGraceDays;
+  return Object.keys(out).length > 0 ? out : void 0;
 }
 function positiveInteger(v) {
   return typeof v === "number" && Number.isInteger(v) && v > 0;

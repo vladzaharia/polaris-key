@@ -493,6 +493,7 @@ export function stmtSettingAudit(
     | "setting.resync"
     | "setting.claim"
     | "setting.revert"
+    | "setting.update"
     | "setting.breakGlass.end",
   targetKind: "setting" | "tier" | "profile",
   targetId: string,

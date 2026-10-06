@@ -39,6 +39,7 @@ import {
   getProduct,
   listProfiles,
   listTiers,
+  liveRowClaimKeys,
   stmtInsertReleaseConfig,
   type ClaimKey,
 } from "../../core/ingest.js";
@@ -93,7 +94,8 @@ export interface PlanItem {
     | "access"
     | "publisher"
     | "edgeMint"
-    | "provisioning";
+    | "provisioning"
+    | "settings";
   id?: string;
   summary: string;
 }
@@ -638,6 +640,13 @@ export async function planRepoManifest(
     plan.skipClaimed.push({
       area: "product",
       summary: `${kept.join(", ")} ${kept.length === 1 ? "stays" : "stay"} as set in the console`,
+    });
+  // LX-06: row-backed settings claimed in the console (`licensing.*`, the sign-in tier sync).
+  const rowClaims = await liveRowClaimKeys(db, slug, now);
+  if (rowClaims.length)
+    plan.skipClaimed.push({
+      area: "settings",
+      summary: `${list(rowClaims)} ${rowClaims.length === 1 ? "stays" : "stay"} as set in the console`,
     });
 
   const compatDiffers =

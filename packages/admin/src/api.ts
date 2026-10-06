@@ -1152,6 +1152,59 @@ export interface SignInSettings {
   appReview48Warning: boolean;
 }
 
+/** A setting's value shape (worker `core/settings/types.ts` `ValueSpec`). */
+export type SettingValueSpec =
+  | { kind: "switch" }
+  | { kind: "boolean" }
+  | { kind: "integer"; unit: string; min: number; max: number }
+  | { kind: "enum"; values: readonly string[] }
+  | { kind: "string"; pattern?: string; maxLength: number }
+  | { kind: "list"; of: SettingValueSpec; max: number }
+  | { kind: "json"; schema: string };
+
+export type SettingConfirmLevel = "L0" | "L1" | "L2" | "L3";
+
+/** The confirm level per direction (worker `SettingConfirm`). */
+export type SettingConfirmSpec =
+  | { up: SettingConfirmLevel; down: SettingConfirmLevel }
+  | { on: SettingConfirmLevel; off: SettingConfirmLevel }
+  | { change: SettingConfirmLevel };
+
+/**
+ * One row-backed product setting with its value in force (LX-06, `GET …/settings/effective`):
+ * `licensing.*` on License → Settings, `identity.oidc.syncTierOnSignIn` on Identity → Sign-in.
+ */
+export interface ProductSetting {
+  key: string;
+  area: string;
+  service: string;
+  label: string;
+  description: string;
+  docs: string;
+  spec: SettingValueSpec;
+  confirm: SettingConfirmSpec;
+  /** A write needs a reason. */
+  critical: boolean;
+  /** `product:<dotted path>` in `.pkey/`. */
+  manifestPath: string | null;
+  visibleWhen: {
+    service?: string;
+    offBehaviour: "hide" | "readOnly" | "visible";
+  } | null;
+  serviceEnabled: boolean;
+  value: unknown;
+  source: "default" | "manifest" | "console";
+  defaultValue: unknown;
+  /** What the last applied manifest declares (Revert's target); absent when it declares nothing. */
+  manifestValue?: unknown;
+  /** The row version, 0 for none: a write's `expectedVersion`. */
+  version: number;
+  /** Epoch seconds. */
+  updatedAt: number | null;
+  updatedBy: string | null;
+  reason: string | null;
+}
+
 /** The column-backed claimable settings (worker `core/settingsClaims.ts` `CLAIM_KEYS`). */
 export type ClaimKey =
   | "core.name"
@@ -4739,6 +4792,38 @@ const rawApi = {
       `${p(slug)}/identity/sign-in-settings`,
       { method: "PATCH", body: JSON.stringify(patch) },
     ),
+
+  // ── product settings (LX-06: the row-backed slice of S-18 §4.7's settings API) ─────
+  /** The row-backed settings of one settings-hub area, with the value in force. */
+  productSettings: (slug: string, area: string) =>
+    call<{ settings: ProductSetting[] }>(
+      `${p(slug)}/settings/effective?area=${encodeURIComponent(area)}`,
+    ),
+  /** Set a setting in the console: on a repo-linked product this claims it from the manifest. */
+  updateProductSetting: (
+    slug: string,
+    key: string,
+    body: { value: unknown; expectedVersion: number; reason?: string },
+  ) =>
+    call<{ ok: true; claimed: boolean; setting: ProductSetting }>(
+      `${p(slug)}/settings/${encodeURIComponent(key)}`,
+      { method: "PATCH", body: JSON.stringify(body) },
+    ),
+  /** Revert a console setting to the manifest (or to its default on a manual product). */
+  revertProductSetting: (
+    slug: string,
+    key: string,
+    body: { expectedVersion: number },
+  ) =>
+    call<{
+      ok: true;
+      applied: boolean;
+      message?: string;
+      setting: ProductSetting;
+    }>(`${p(slug)}/settings/${encodeURIComponent(key)}`, {
+      method: "DELETE",
+      body: JSON.stringify(body),
+    }),
 
   // ── offline bundles ─────────────────────────────────────────────────────────
   /** Mint one offline activation bundle for an air-gapped device. Re-minting is cheap — the

@@ -152,6 +152,15 @@ export interface SettingDef<T = unknown> {
   value: ValueSpec;
   /** `null` only when `allowUnset` is true (`null` reads as "unset" / "unlimited"). */
   defaultValue: T | null;
+  /**
+   * Product scope only: a different default for products registered before a cut-over, so a new
+   * default never changes an existing product's behaviour (plans/LX-01.md §8 Q2:
+   * `licensing.entitlementModel` is `legacy` for products created before LX-06 and `combined`
+   * after). `createdBefore` is epoch seconds, compared with `products.created_at`. Still DATA:
+   * the resolver (ST-04) applies it, with source `default`; a manifest value or a console claim
+   * overrides it like any default.
+   */
+  legacyDefault?: { createdBefore: number; value: T };
   merge: SettingMerge;
   /**
    * Product scope only: the product value inherits the platform entry of the same key (D5, live

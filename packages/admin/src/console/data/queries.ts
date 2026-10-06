@@ -123,6 +123,10 @@ export const qk = {
     product(slug, "license", "licenses", "_cleanup"),
   tiers: (slug: string) => product(slug, "license", "tiers"),
   fingerprintPolicy: (slug: string) => product(slug, "license", "enrollment"),
+  /** LX-06: the row-backed settings of one area; every area under one prefix (`productSettingsAll`). */
+  productSettings: (slug: string, area: string) =>
+    product(slug, "core", "settings", area),
+  productSettingsAll: (slug: string) => product(slug, "core", "settings"),
 
   // config
   catalog: (slug: string) => product(slug, "config", "catalog"),

@@ -596,13 +596,13 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     area: "license.licensing",
     label: "Entitlement model",
     description:
-      "Whether devices see the combined entitlements of every grant their holder has, or only their own licence's (the legacy model). New products start combined.",
-    keywords: [],
+      "Whether devices see the combined entitlements of every grant their holder has, or only their own licence's (the legacy model). Products registered before 2026-10-06 start on legacy; newer ones start combined.",
+    keywords: ["combined", "legacy", "grants", "holder report"],
     docs: "/docs/services/license/model/",
     ownership: "claimable",
     critical: false,
     secret: false,
-    pending: "LX-06",
+    pending: null,
     deprecated: null,
   },
   {
@@ -614,13 +614,13 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     area: "license.licensing",
     label: "Entitlement holder",
     description:
-      "Whose entitlements a device sees: the licence's own (device) or its owner account's whole set (owner). Owner lets a shared key reach everything the owner holds.",
-    keywords: [],
+      "Whose entitlements a device sees: the account signed in on that device (device), or the licence owner's whole set (owner). Owner lets anyone with a shared key reach everything the owner holds.",
+    keywords: ["owner", "device", "shared key"],
     docs: "/docs/services/license/model/",
     ownership: "claimable",
     critical: true,
     secret: false,
-    pending: "LX-06",
+    pending: null,
     deprecated: null,
   },
   {
@@ -633,12 +633,12 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     label: "Clamp offline grace to expiry",
     description:
       "Ends a device's offline grace no later than its licence's expiry, so an expired licence cannot keep running offline.",
-    keywords: [],
+    keywords: ["grace", "offline", "graceUntil", "expiry"],
     docs: "/docs/services/license/model/",
     ownership: "claimable",
-    critical: false,
+    critical: true,
     secret: false,
-    pending: "LX-06",
+    pending: null,
     deprecated: null,
   },
   {
@@ -650,13 +650,13 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     area: "license.licensing",
     label: "Anchor licence choice",
     description:
-      "Which of a holder's licences a device runs on: the highest-ranked tier, the one with most free seats, or the oldest.",
-    keywords: [],
+      "Which of a holder's licences a device runs on: the highest-ranked tier, the one with the most free seats, or the oldest.",
+    keywords: ["anchor", "rank", "seats"],
     docs: "/docs/services/license/model/",
     ownership: "claimable",
     critical: false,
     secret: false,
-    pending: "LX-06",
+    pending: null,
     deprecated: null,
   },
   {
@@ -668,13 +668,13 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     area: "license.licensing",
     label: "Re-anchor",
     description:
-      "When a device may move to a better anchor licence: never, on activation, or on every refresh.",
-    keywords: [],
+      "When a device may move to a better anchor licence: never, or on activation. Moving on every refresh is not available yet.",
+    keywords: ["anchor", "onActivation"],
     docs: "/docs/services/license/model/",
     ownership: "claimable",
     critical: false,
     secret: false,
-    pending: "LX-06",
+    pending: null,
     deprecated: null,
   },
   {
@@ -686,13 +686,13 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     area: "license.licensing",
     label: "Refund grace",
     description:
-      "Hours a refunded or charged-back grant keeps working before it is revoked. Zero revokes at once.",
-    keywords: [],
+      "Hours a refunded or charged-back grant keeps working before it is revoked. Zero revokes at once. It only delays the revocation; a refund always revokes.",
+    keywords: ["refund", "chargeback", "revoke"],
     docs: "/docs/services/license/model/",
     ownership: "claimable",
     critical: false,
     secret: false,
-    pending: "LX-06",
+    pending: null,
     deprecated: null,
   },
   {
@@ -705,12 +705,12 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     label: "Billing-retry grace",
     description:
       "Days a subscription grant keeps working while the store retries a failed renewal. Zero follows the store's own billing grace only.",
-    keywords: [],
+    keywords: ["dunning", "billing", "subscription"],
     docs: "/docs/services/license/model/",
     ownership: "claimable",
     critical: false,
     secret: false,
-    pending: "LX-06",
+    pending: "LX-23",
     deprecated: null,
   },
   {
@@ -1243,7 +1243,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     deprecated: null,
   },
   {
-    key: "identity.syncTierOnSignIn",
+    key: "identity.oidc.syncTierOnSignIn",
     aliases: [],
     scope: "product",
     entity: null,
@@ -1251,13 +1251,13 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     area: "identity.signIn",
     label: "Sync tier on sign-in",
     description:
-      "Whether a sign-in may move a licence to the tier the identity provider reports. Upgrade-only never lowers a tier.",
-    keywords: [],
+      "Whether a sign-in may move a licence to the tier the identity provider's groups map to. Upgrade-only never lowers a tier.",
+    keywords: ["groupRoleMap", "tier", "upgrade"],
     docs: "/docs/services/identity/oidc/",
     ownership: "claimable",
     critical: true,
     secret: false,
-    pending: "LX-06",
+    pending: null,
     deprecated: null,
   },
   {
@@ -1356,7 +1356,7 @@ export const NOT_A_SETTING_INDEX: readonly NotASettingEntry[] = [
   {
     thing: "Refund, void and chargeback handling",
     reason:
-      "Always revokes that one grant (S-19 decision 5); a keep-access-after-refund switch would override a store's revocation.",
+      "Always revokes that one grant (S-19 decision 5). licensing.refundGraceHours can only delay the revocation, by at most 168 hours, never prevent it; a keep-access-after-refund switch would override a store's revocation.",
     shows: "Distribution → Commerce",
   },
   {

@@ -8,7 +8,7 @@ description: "Every error and warning validateManifestDocuments and validateInge
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 227 distinct emit sites.
+codes with their JSON-pointer paths. 235 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
@@ -92,6 +92,13 @@ the offending value, or the allowed set.
 | `invalid_ignore_tags` | error | release | `/release/deliverables/app/versioning/ignoreTags` | deliverables.app.versioning.ignoreTags must be an array of at most $\{MAX_IGNORE_TAGS\} exact tag names. |
 | `invalid_ignore_tags` | error | release | `/release/ignoreTags/${i}` | release.ignoreTags entries must be non-empty tag names of at most $\{MAX_IGNORE_TAG_LENGTH\} characters with no spaces or control characters. |
 | `invalid_ignore_tags` | error | release | `/release/ignoreTags` | release.ignoreTags must be an array of at most $\{MAX_IGNORE_TAGS\} exact tag names. |
+| `invalid_licensing_anchor_policy` | error | product | `/licensing/anchorPolicy` | licensing.anchorPolicy must be rank-first, most-free-seats or oldest. |
+| `invalid_licensing_clamp_grace_to_expiry` | error | product | `/licensing/clampGraceToExpiry` | licensing.clampGraceToExpiry must be true or false. |
+| `invalid_licensing_dunning_grace_days` | error | product | `/licensing/dunningGraceDays` | licensing.dunningGraceDays must be an integer from 0 to 30. |
+| `invalid_licensing_entitlement_holder` | error | product | `/licensing/entitlementHolder` | licensing.entitlementHolder must be device or owner. |
+| `invalid_licensing_entitlement_model` | error | product | `/licensing/entitlementModel` | licensing.entitlementModel must be legacy or combined. |
+| `invalid_licensing_reanchor` | error | product | `/licensing/reanchor` | licensing.reanchor must be never or onActivation (onRefresh is not available yet). |
+| `invalid_licensing_refund_grace_hours` | error | product | `/licensing/refundGraceHours` | licensing.refundGraceHours must be an integer from 0 to 168. |
 | `invalid_listing` | error | distribution | `${at}` | $\{label\} $\{problem\}. |
 | `invalid_manual_channel` | error | release | `/release/manualChannels` | release.manualChannels must be an array of \{ name, regex \} entries. |
 | `invalid_manual_channel` | error | release | `${at}/name` | manualChannels[].name must match ^[A-Za-z0-9][A-Za-z0-9._-]\{0,63\}$. |
@@ -100,6 +107,7 @@ the offending value, or the allowed set.
 | `invalid_oidc_client_id` | error | product | `/oidc/clientId` | oidc.clientId must match ^[A-Za-z0-9][A-Za-z0-9._:@/~-]\{0,255\}$. |
 | `invalid_oidc_issuer` | error | product | `/oidc/issuer` | oidc.issuer $\{issuerProblem\}. It is the base of the token request that carries this product's OIDC client secret. |
 | `invalid_oidc_provider` | error | product | `/oidc/provider` | oidc.provider must be platform or custom. |
+| `invalid_oidc_sync_tier_on_sign_in` | error | product | `/oidc/syncTierOnSignIn` | oidc.syncTierOnSignIn must be off or upgradeOnly. |
 | `invalid_oidc` | error | product | `/oidc` | oidc must be an object. |
 | `invalid_outlet_id` | error | distribution | `/outlets/${id}` | outlet ids must match $\{OUTLET_ID_PATTERN.source\}. |
 | `invalid_outlet_id` | error | distribution | `/outlets` | outlets must be an object of at most $\{MAX_OUTLETS\} entries keyed by outlet id. |

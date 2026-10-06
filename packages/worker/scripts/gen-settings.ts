@@ -109,7 +109,13 @@ function describeDefault(e: SettingDef): string {
   if (e.sensitivity === "secret") return "—";
   if (e.defaultValue === null) return e.allowUnset ? "unset" : "—";
   const json = JSON.stringify(e.defaultValue);
-  return json.length > 60 ? "structured" : code(json);
+  const value = json.length > 60 ? "structured" : code(json);
+  if (!e.legacyDefault) return value;
+  // LX-06: a derived default (plans/LX-01.md §8 Q2), shown with its cut-over date.
+  const before = new Date(e.legacyDefault.createdBefore * 1000)
+    .toISOString()
+    .slice(0, 10);
+  return `${value} (${code(JSON.stringify(e.legacyDefault.value))} for products registered before ${before})`;
 }
 
 export function describeConfirm(c: SettingConfirm): string {

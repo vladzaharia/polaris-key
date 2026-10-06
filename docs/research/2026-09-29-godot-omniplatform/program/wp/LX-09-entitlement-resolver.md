@@ -77,6 +77,9 @@ mise exec node@22 -- pnpm gen:corpus -- --check
 ## Hand-off
 
 - LX-10, LX-13, LX-15, LX-18, U-01/U-02 (Cloud Sync quotas `byEntitlement`), PX-W3 re-run checks.
+- LX-09 moves `COMBINED_ENTITLEMENT_MODEL_SINCE` (`services/license/licensingSettings.ts`) to its
+  own deploy time, so products registered before LX-09 read `legacy` (lead decision D1 on LX-06,
+  2026-10-06; safe in that direction because only the displayed default changes until LX-09).
 
 The role agent sets `--set LX-09 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:

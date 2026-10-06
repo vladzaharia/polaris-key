@@ -86,4 +86,7 @@ export {
   type EndedBreakGlass,
 } from "./settingsClaims.js";
 export { getManifestSnapshot } from "./manifestSnapshot.js";
+// LX-06: the row-backed claims (`licensing.*`, `identity.oidc.syncTierOnSignIn`) a resync leaves
+// alone; their manifest rows are written by the owning services' `manifestIngestAlways`.
+export { liveRowClaimKeys } from "./rowSettings.js";
 export { parseWebOrigins } from "./cors.js";

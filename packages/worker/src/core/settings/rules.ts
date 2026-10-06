@@ -285,6 +285,17 @@ function checkEntry(def: SettingDef, out: string[]): void {
       out.push(`${at}: a null default needs allowUnset: true`);
   } else if (!fitsValueSpec(def.value, def.defaultValue))
     out.push(`${at}: defaultValue does not fit its value spec`);
+  if (def.legacyDefault) {
+    if (def.scope !== "product")
+      out.push(`${at}: legacyDefault is declared on product entries only`);
+    if (!fitsValueSpec(def.value, def.legacyDefault.value))
+      out.push(`${at}: legacyDefault.value does not fit its value spec`);
+    if (
+      !Number.isSafeInteger(def.legacyDefault.createdBefore) ||
+      def.legacyDefault.createdBefore <= 0
+    )
+      out.push(`${at}: legacyDefault.createdBefore is epoch seconds`);
+  }
   if (def.value.kind === "integer" && def.value.min > def.value.max)
     out.push(`${at}: integer min is above max`);
   if (def.sensitivity === "secret" && def.defaultValue !== null)
