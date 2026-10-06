@@ -5071,7 +5071,7 @@ no longer accepted.
   return URL leaves it out and a sign-in that navigates away keeps it in this tab's
   `sessionStorage` (`carriedKey.ts`, SIGN-IN.md §3.9). `test/portalRouter.test.ts` and
   `test/portalActivate.test.tsx` pin both link forms, and that no request URL carries the key.
-- **A legacy `GET /activate?key=…` (emails already sent) still works, and the Worker adds nothing
+- **A legacy `GET /activate?key=…` (a link already out) still works, and the Worker adds nothing
   to it.** It answers with the same SPA shell: `Cache-Control: no-store`,
   `Referrer-Policy: no-referrer`, the key in no response byte or header, and the shell fetched
   from `ASSETS` without the query, so the key reaches no subrequest. It is deliberately **not** a

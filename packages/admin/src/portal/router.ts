@@ -10,7 +10,7 @@ import * as React from "react";
  * - `/activate` (the path apps and emails link to) becomes `#/?activate=<key>`: the Library with
  *   the Activate license modal open and the key filled in. It is never a page. The key comes from
  *   the fragment (`/activate#key=…`), which never reaches a server; the legacy query form
- *   (`/activate?key=…`, in emails already sent) is still read. Both are dropped from the address
+ *   (`/activate?key=…`, in links already out) is still read. Both are dropped from the address
  *   bar before the first render (`rewriteActivatePath`).
  *
  * Query parameters live inside the hash (`#/?view=list&q=fern`). `setParams` rewrites them in
@@ -201,8 +201,8 @@ export function activateLinkKey(hash: string): string | null {
 /**
  * `/activate[?product=…]#key=…` → `/#/?activate=…[&product=…]`, in place, with
  * `history.replaceState`. Returns whether it rewrote the URL. Run once, before the first render
- * and before any request, so neither the `#key=` fragment nor a legacy `?key=` query (emails
- * already sent; the fragment wins when both are there) stays in the address bar or the history
+ * and before any request, so neither the `#key=` fragment nor a legacy `?key=` query (links
+ * already out; the fragment wins when both are there) stays in the address bar or the history
  * entry. The key then lives only in this tab's `#/?activate=`, which the signed-in shell
  * consumes as it opens the modal and every sign-in leaves out of its return URL
  * (`carriedKey.ts`). See THREAT-MODEL.md, "Key-bearing deep links".

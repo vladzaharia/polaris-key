@@ -586,7 +586,7 @@ describe("Activate license modal (PX-06)", () => {
   });
 
   // The deep link carries the key in the fragment, which no request carries (fix/keys-out-of-logs);
-  // the query form is the legacy one, in emails already sent. Both end the same way: the key in
+  // the query form is the legacy one, in links already out. Both end the same way: the key in
   // the modal, and in no URL and no request.
   it.each([
     ["the fragment, /activate#key=…", `/activate#key=${KEY}`],

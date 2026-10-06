@@ -23,7 +23,7 @@ import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
 import { dispatchWith } from "../src/dispatch.js";
 import { secureResponse } from "../src/securityHeaders.js";
-import { serializeServices } from "../src/core/services.js";
+import { DEFAULT_SERVICES, serializeServices } from "../src/core/services.js";
 import { setServices } from "../src/repo.js";
 import type { Env } from "../src/env.js";
 
@@ -133,16 +133,8 @@ describe("a license key presented to the Worker", () => {
     await setServices(
       db,
       "djdl",
-      serializeServices({
-        services: {
-          license: { enabled: true },
-          config: { enabled: false },
-          release: { enabled: false },
-          distribution: { enabled: false },
-          update: { enabled: false },
-          identity: { enabled: false },
-        },
-      }),
+      // The defaults (licensing on), whatever services the table grows.
+      serializeServices({ services: DEFAULT_SERVICES }),
       "manifest",
       NOW,
     );

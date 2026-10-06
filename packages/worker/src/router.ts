@@ -133,7 +133,7 @@ export function matchRoute(pathname: string): Route {
   // Root customer portal. These are reserved before product slugs.
   // `/activate` is the Activate license deep link (PORTAL.md §3.3). The key rides in the fragment
   // (`/activate#key=…`), so it never reaches this Worker; the SPA shell rewrites it to
-  // `#/?activate=…` before its first render. A legacy `/activate?key=…` (emails already sent)
+  // `#/?activate=…` before its first render. A legacy `/activate?key=…` (a link already out)
   // gets the same shell, never a redirect: the request is already logged, and a redirect would
   // only echo the key back in a `Location` header (THREAT-MODEL.md, "Key-bearing deep links").
   if (
