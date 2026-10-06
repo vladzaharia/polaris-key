@@ -783,6 +783,24 @@ describe("main flows", () => {
     await o.close();
   });
 
+  it("no Remove for a licence its key can't bring back: a sign-in licence (PX-23 review)", async () => {
+    const o = await open("signIn", "/#/p/quill");
+    await h1(o.page, "Quill");
+    await licenseSourceIs(o.page, "From signing in");
+    await o.page.getByRole("button", { name: "More for Quill" }).click();
+    const items = o.page.getByRole("menuitem");
+    await items.first().waitFor();
+    expect(await items.allTextContents()).toEqual([
+      "Manage devices",
+      "Copy link",
+    ]);
+    expect(o.requests.some((r) => r.startsWith("DELETE /api/licenses/"))).toBe(
+      false,
+    );
+    expect(await o.violations()).toEqual([]);
+    await o.close();
+  });
+
   it("Remove from my library: the licence leaves and stays out across reloads (PX-23, with LX-26)", async () => {
     const o = await open(
       "origins",

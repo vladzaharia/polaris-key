@@ -40,7 +40,17 @@ owner request joined the scope:
 - **The preview also answers `cloudSync`**, so Done says "Sign in on them to turn on Cloud Sync."
   only for a product that runs it; `devices` is answered only for `addable`.
 - **"From signing in"** keeps its existing rule (an OIDC-issued licence with no key), and an
-  origin a portal build does not know reads by the older facts.
+  origin a portal build does not know reads by the older facts; a store origin with no store
+  named reads as a key or the developer.
+- **Review B1 (lead decision, 2026-10-06): the server decides removability.** Only a licence its
+  key can bring back may be removed (an active key, on a product with `license_key_claim_enabled`):
+  the licence list and detail carry `removable`, the portal shows Remove only then, and the
+  DELETE refuses the rest with `409 not_removable` and a `reason` (`no_active_key`,
+  `key_claim_off`), writing nothing. `not_removable` is a new registered wire code (errors.json,
+  its copy in every locale; every SDK's generated constants, copy and kit-copy tables
+  regenerated). A Remove that meets a 404 (another tab removed it) counts as removed.
+- **Orphan baselines removed:** `library-account-wide*`, `product-account-wide*` and
+  `product-both-account-wide*` had no state.
 
 ## Goal
 

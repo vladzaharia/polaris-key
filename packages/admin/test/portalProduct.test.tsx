@@ -900,8 +900,17 @@ describe("licence origins and Remove from my library (PX-23)", () => {
     ]);
   });
 
-  /** A product whose licences the routes below remove (the Worker's state, mutable). */
-  function removable(held: ReturnType<typeof license>[], sync = false) {
+  /**
+   * A product whose licences the routes below remove (the Worker's state, mutable). Each licence
+   * is `removable` unless it says otherwise; `refuse` answers the DELETE instead (another tab's
+   * removal, a refusal).
+   */
+  function removable(
+    given: ReturnType<typeof license>[],
+    sync = false,
+    refuse?: { status: number; body: unknown },
+  ) {
+    const held = given.map((l) => ({ removable: true, ...l }));
     let list = [...held];
     const removed: string[] = [];
     const extra: Record<string, unknown> = {
@@ -918,6 +927,10 @@ describe("licence origins and Remove from my library (PX-23)", () => {
     for (const l of held) {
       extra[`/api/licenses/mossgarden/${l.id}`] = detail(l);
       extra[`DELETE /api/licenses/mossgarden/${l.id}`] = () => {
+        if (refuse) {
+          if (refuse.status === 404) list = list.filter((x) => x.id !== l.id);
+          return refuse;
+        }
         removed.push(l.id);
         list = list.filter((x) => x.id !== l.id);
         return { ok: true, product: "mossgarden", licenseId: l.id };
@@ -996,6 +1009,127 @@ describe("licence origins and Remove from my library (PX-23)", () => {
     );
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     expect(removed).toEqual([]);
+  });
+
+  it("offers no Remove for a licence its key can't bring back: a sign-in licence, a Discover claim", async () => {
+    window.history.replaceState(null, "", "/#/p/mossgarden");
+    // A Discover claim: minted by the auto-issue path, keyless; the Worker says removable false.
+    const claimed = license({
+      product: "mossgarden",
+      productName: "Mossgarden",
+      identityProvider: "oidc",
+      keyCount: 0,
+      activeKeyCount: 0,
+      origin: "signin",
+      removable: false,
+    });
+    const { extra } = removable([claimed]);
+    // The helper defaults removable to true only where the licence says nothing.
+    mockFetch(signedIn([claimed], extra as never));
+    renderPortal();
+    await screen.findByRole("heading", { level: 1, name: "Mossgarden" });
+    await userEvent.click(
+      screen.getByRole("button", { name: "More for Mossgarden" }),
+    );
+    const items = await screen.findAllByRole("menuitem");
+    expect(items.map((i) => i.textContent)).toEqual([
+      "Manage devices",
+      "Copy link",
+    ]);
+  });
+
+  it("an older Worker that doesn't say removable offers no Remove", async () => {
+    window.history.replaceState(null, "", "/#/p/mossgarden");
+    const old = license({ product: "mossgarden", productName: "Mossgarden" });
+    mockFetch(
+      signedIn([old], {
+        "/api/licenses/mossgarden/lic_mossgarden": detail(old),
+      }),
+    );
+    renderPortal();
+    await screen.findByRole("heading", { level: 1, name: "Mossgarden" });
+    await userEvent.click(
+      screen.getByRole("button", { name: "More for Mossgarden" }),
+    );
+    await screen.findAllByRole("menuitem");
+    expect(
+      screen.queryByRole("menuitem", { name: "Remove from my library" }),
+    ).toBeNull();
+  });
+
+  it("focus starts on Keep it, the least destructive action", async () => {
+    window.history.replaceState(null, "", "/#/p/mossgarden");
+    const added = license({
+      product: "mossgarden",
+      productName: "Mossgarden",
+      email: "",
+      origin: "key",
+    });
+    const { extra } = removable([added]);
+    mockFetch(signedIn([added], extra as never));
+    renderPortal();
+    const dialog = await openRemove("Remove Mossgarden from your library?");
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(dialog).getByRole("button", { name: "Keep it" }),
+      ),
+    );
+  });
+
+  it("removed in another tab (404): it counts as removed, and the page goes to the Library", async () => {
+    window.history.replaceState(null, "", "/#/p/mossgarden");
+    const added = license({
+      product: "mossgarden",
+      productName: "Mossgarden",
+      email: "",
+      origin: "key",
+    });
+    const { extra } = removable([added], false, {
+      status: 404,
+      body: { error: "not_found" },
+    });
+    mockFetch(signedIn([added], extra as never));
+    renderPortal();
+    const dialog = await openRemove("Remove Mossgarden from your library?");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Remove from my library" }),
+    );
+    await screen.findByText("Mossgarden was removed from your library");
+    await waitFor(() => expect(window.location.hash).toBe("#/"));
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("a refusal (409 not_removable) says why, inline, and the page stops offering Remove", async () => {
+    window.history.replaceState(null, "", "/#/p/mossgarden");
+    const added = license({
+      product: "mossgarden",
+      productName: "Mossgarden",
+      email: "",
+      origin: "key",
+    });
+    const { extra } = removable([added], false, {
+      status: 409,
+      body: {
+        error: "not_removable",
+        message: "this license could not be added back, so it stays",
+        reason: "key_claim_off",
+      },
+    });
+    mockFetch(signedIn([added], extra as never));
+    renderPortal();
+    const dialog = await openRemove("Remove Mossgarden from your library?");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Remove from my library" }),
+    );
+    expect(await within(dialog).findByText("Can't remove")).toBeTruthy();
+    expect(
+      within(dialog).getByText(
+        "This license can't be added back with a key, so it stays in your library.",
+      ),
+    ).toBeTruthy();
+    expect(fetchedRequests()).toContain(
+      "DELETE /api/licenses/mossgarden/lic_mossgarden",
+    );
   });
 
   it("with several licences it names the one the page shows, and the product stays", async () => {

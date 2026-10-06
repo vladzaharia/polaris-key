@@ -254,9 +254,14 @@ function originOf(
   facts: OriginFacts,
 ): { kind: PortalLicenseOrigin; store: string | null } {
   const store = l.originStore ?? facts.store ?? null;
-  if (l.origin && (ORIGIN_KINDS as readonly string[]).includes(l.origin))
-    return { kind: l.origin as PortalLicenseOrigin, store };
   const hasKey = l.keyCount > 0 || (facts.keys ?? []).length > 0;
+  if (l.origin && (ORIGIN_KINDS as readonly string[]).includes(l.origin)) {
+    const kind = l.origin as PortalLicenseOrigin;
+    // A store origin with no store named reads by its other facts, never " key" or "From ".
+    if (kind === "store-key" && !store) return { kind: "key", store: null };
+    if (kind === "store" && !store) return { kind: "developer", store: null };
+    return { kind, store };
+  }
   if (store) return { kind: hasKey ? "store-key" : "store", store };
   if (hasKey) return { kind: "key", store: null };
   if (isSignInLicense(l)) return { kind: "signin", store: null };

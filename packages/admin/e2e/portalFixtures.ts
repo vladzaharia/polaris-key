@@ -145,6 +145,8 @@ const TIDEWATER_KEY = {
   email: "",
   origin: "key",
   originStore: null,
+  // Its key can bring it back, so Remove is offered (PX-23 review).
+  removable: true,
 };
 /** PX-23: a second Tidewater licence, which Harbor Audio assigned to Mara's email. */
 const TIDEWATER_FREE = lic("tidewater", "Tidewater Studio", {
@@ -154,6 +156,7 @@ const TIDEWATER_FREE = lic("tidewater", "Tidewater Studio", {
   activatedAt: NOW - 20 * DAY,
   origin: "developer",
   originStore: null,
+  removable: true,
 });
 const SIGN_IN_DEVICE: Record<string, [string, string, string]> = {
   lic_quill: ["quill-tv", "Living room PC", "windows"],

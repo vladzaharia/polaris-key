@@ -213,6 +213,21 @@ describe("status model (§5.3), first match wins", () => {
     expect(licenseOrigin(appStore)).toBe("From the App Store");
     const signIn = license({ product: "a", keyCount: 0, origin: "signin" });
     expect(licenseOrigin(signIn, dev)).toBe("From signing in");
+    // A store origin with no store named reads by its other facts, never " key" or "From ".
+    expect(
+      licenseOrigin(license({ product: "a", origin: "store-key" }), {
+        keys: last,
+      }),
+    ).toBe("Key ending 3WPLDA");
+    expect(shortOrigin(license({ product: "a", origin: "store-key" }))).toBe(
+      "Key",
+    );
+    expect(
+      licenseOrigin(
+        license({ product: "a", keyCount: 0, origin: "store" }),
+        dev,
+      ),
+    ).toBe("From Little Fern");
     // An origin this build does not know reads by the older facts.
     expect(licenseOrigin(license({ product: "a", origin: "gift" }))).toBe(
       "Added with a key",

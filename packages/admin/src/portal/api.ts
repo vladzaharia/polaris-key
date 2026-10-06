@@ -83,6 +83,11 @@ export interface PortalLicenseSummary {
   origin?: PortalLicenseOrigin | (string & {});
   /** The store for `store-key` and `store` (`purchase.store`'s ids), else null. */
   originStore?: string | null;
+  /**
+   * PX-23: Remove from my library is offered (its key can bring it back: an active key, on a
+   * product that lets a key add a licence). Absent on an older Worker, which offers no Remove.
+   */
+  removable?: boolean;
 }
 
 export interface PortalKey {

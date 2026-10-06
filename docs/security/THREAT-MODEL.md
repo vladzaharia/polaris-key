@@ -6383,6 +6383,15 @@ whether it is in an account, never the account's details (D6).
   block stands (U-02's amendment above), so a removal is not a way to keep syncing a licence one
   no longer holds. The customer copy says "not in an account", never "floating" (S-24 D5): the
   licence keeps its email.
+- **Only a licence its key can bring back is removable (PX-23 review, lead decision
+  2026-10-06).** After a removal the block refuses every automatic path and Discover counts the
+  product as held, so a licence with no way back would be lost to the person for good: a sign-in
+  licence, a Discover claim, a keyless store or developer licence. The server decides: the licence
+  list and detail carry `removable` (an active key AND the product's `license_key_claim_enabled`),
+  the portal offers Remove only then, and the DELETE refuses any other licence with `409
+  not_removable` (`reason` `no_active_key` or `key_claim_off`) before the rate limit is charged
+  or anything is written. Residual, accepted: "removable" proves a key exists, not that the
+  person still has it; the dialog says the key is the way back.
 - **Clearing an assigned licence's email is refused** on the console PATCH (`400 bad_request`):
   removing a holder is the relink tool's Make floating (I-12, LX-30), which takes a step-up, a
   reason and has an undo, rather than an unaudited field edit.

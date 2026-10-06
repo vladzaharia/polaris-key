@@ -2,6 +2,7 @@ import * as React from "react";
 import { ConfirmDialog } from "../../../ui/ConfirmDialog.js";
 import type { PortalLicenseDetail, PortalLicenseSummary } from "../../api.js";
 import { useRemoveLicense } from "../../data.js";
+import { PortalApiError } from "../../api.js";
 import { portalErrorCopy } from "../../errors.js";
 import { licenseStatus, type LibraryProduct } from "../../model/library.js";
 import { licenseOptionLabel } from "../../model/product.js";
@@ -22,7 +23,9 @@ import { licenseOptionLabel } from "../../model/product.js";
  *   account" (customers never see "floating", S-24 D5), and it won't come back here by itself.
  *
  * With several licences for the product the dialog names the one the page shows ("Pro · Key"),
- * and the product stays in the library with the others.
+ * and the product stays in the library with the others. The page offers it only for a licence
+ * the Worker marks `removable` (its key can bring it back); a licence already gone (another tab)
+ * counts as removed.
  */
 export function RemoveLicenseDialog({
   open,
@@ -84,11 +87,22 @@ export function RemoveLicenseDialog({
       consequences={consequences}
       cancelLabel="Keep it"
       confirmLabel="Remove from my library"
-      describeError={portalErrorCopy}
+      describeError={removeErrorCopy}
       onConfirm={async () => {
         await remove.mutateAsync(license.id);
         onRemoved(others);
       }}
     />
   );
+}
+
+/** `409 not_removable` in the person's words (copy.en.json's), else the portal's usual copy. */
+function removeErrorCopy(err: unknown): { title: string; description: string } {
+  if (err instanceof PortalApiError && err.code === "not_removable")
+    return {
+      title: "Can't remove",
+      description:
+        "This license can't be added back with a key, so it stays in your library.",
+    };
+  return portalErrorCopy(err);
 }

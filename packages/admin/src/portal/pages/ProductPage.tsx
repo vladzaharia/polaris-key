@@ -253,7 +253,10 @@ function ProductBody({
         product={product}
         action={action}
         headingRef={headingRef}
-        onRemove={() => setRemoving(true)}
+        // Only a licence its key can bring back (the Worker's `removable`, PX-23 review).
+        onRemove={
+          selected.removable === true ? () => setRemoving(true) : undefined
+        }
       />
       <RemoveLicenseDialog
         open={removing}
