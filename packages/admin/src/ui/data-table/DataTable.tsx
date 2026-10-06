@@ -331,9 +331,9 @@ export function changedRowIds<T>(
  *   returned for the current state; the table does not search, filter or sort it again.
  * - Column visibility and density are viewer preferences in localStorage, never in the URL.
  * - **Motion** (notes/S-23 §6.1 "list"; MO-09): in client mode, up to VIRTUALIZE_ABOVE rows, a
- *   facet, chip or sort change and a refetch that adds, removes or reorders rows run as one
- *   `list` View Transition over the body (the layer names at most LIST_BUDGET rows, then only
- *   the rows on screen). React keeps keyed rows, so a surviving row moves rather than leaving
+ *   facet, chip or sort change (from the table, a page's own control or Back) and a refetch that
+ *   adds, removes or reorders rows run as one `list` View Transition over the body (the layer
+ *   names at most LIST_BUDGET rows, then only the rows on screen). React keeps keyed rows, so a surviving row moves rather than leaving
  *   and coming back. Typing in search never animates; the virtualised path never animates; a
  *   created or edited row is tinted (`highlight()`). The bulk-action bar enters and exits through
  *   `<Presence>`. Under reduced motion every change is an instant swap.
@@ -426,27 +426,54 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     pagination.mode === "cursor" ||
     (pagination.mode === "offset" && pagination.total !== undefined);
 
-  // The rows on screen. In client mode, when a new `data` adds, removes or reorders rows, the old
-  // rows are held for the frame a list View Transition needs to capture them, and the new ones are
-  // rendered inside it (S-23 §6.3). Every other change (a refetch, an edit in place, the first
-  // load, server paging, a long list, reduced motion) takes `data` in the same render.
-  const [held, setHeld] = React.useState(incoming);
+  // What the rows show: the data and the view of it (search, facets, sort, page). In client mode,
+  // when the rows would move (a facet or sort change, wherever it came from: a chip, a page's own
+  // tile, Back; or a refetch that adds, removes or reorders rows), the old view is held for the
+  // frame a `list` View Transition needs to capture it, and the new one is rendered inside the
+  // transition (S-23 §6.3; query-string changes are `list`, never `route`). Everything else lands
+  // in the same render: typing in search, paging, a refetch that changes nothing or edits in
+  // place, the first load, server paging, a list over VIRTUALIZE_ABOVE, reduced motion.
+  const viewKey = JSON.stringify([state.filters, state.sort]);
+  const current = {
+    data: incoming,
+    q: state.q,
+    filters: state.filters,
+    sort: state.sort,
+    offset: state.offset ?? 0,
+    key: viewKey,
+  };
+  const [held, setHeld] = React.useState(current);
   const listMotion =
     !serverSide &&
     incoming.length <= VIRTUALIZE_ABOVE &&
-    held.length <= VIRTUALIZE_ABOVE;
-  const moving =
-    held !== incoming &&
-    listMotion &&
-    held.length > 0 &&
+    held.data.length <= VIRTUALIZE_ABOVE;
+  const stale =
+    held.data !== incoming ||
+    held.key !== viewKey ||
+    held.q !== current.q ||
+    held.offset !== current.offset;
+  const rowsMove =
     incoming.length > 0 &&
-    !sameRowIds(held, incoming, getRowId) &&
-    listMotionOn();
-  if (held !== incoming && !moving) setHeld(incoming);
-  const data = moving ? held : incoming;
-  /** The newest `data`, for a transition whose update runs a frame later. */
-  const latest = React.useRef(incoming);
-  latest.current = incoming;
+    (held.key !== viewKey ||
+      (held.data !== incoming &&
+        held.data.length > 0 &&
+        !sameRowIds(held.data, incoming, getRowId)));
+  const moving = stale && listMotion && rowsMove && listMotionOn();
+  if (stale && !moving) setHeld(current);
+  const data = moving ? held.data : incoming;
+  /** The view the rows are drawn with (the held one while a transition captures it). */
+  const view: TableState = moving
+    ? {
+        ...state,
+        q: held.q,
+        filters: held.filters,
+        sort: held.sort,
+        offset: held.offset,
+      }
+    : state;
+  /** The newest data and view, for a transition whose update runs a frame later. */
+  const latest = React.useRef(current);
+  latest.current = current;
   /** A list transition has started and not yet rendered the new rows. */
   const pending = React.useRef(false);
   /** The list whose rows move: the table body, or the cards list on a narrow screen. */
@@ -460,36 +487,16 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   /** Has the table shown loaded data before (so a new row is a created one, not the first load)? */
   const loadedOnce = React.useRef(false);
 
-  /** A table scrolled sideways never animates: a row's snapshot is not clipped by its scroller. */
-  const scrolledSideways = (): boolean => {
-    const scroller = scrollRef.current;
-    return scroller !== null && scroller.scrollWidth > scroller.clientWidth + 1;
-  };
-
-  /**
-   * Run `change` (a filter, chip or sort update) as a `list` View Transition: client mode, at most
-   * VIRTUALIZE_ABOVE rows, the API present, motion on. Otherwise it is a plain update.
-   */
-  const asListChange = (change: () => void): void => {
-    if (
-      !listMotion ||
-      !listMotionOn() ||
-      !listRef.current ||
-      scrolledSideways()
-    ) {
-      change();
-      return;
-    }
-    viewTransition(() => flushSync(change), {
-      type: "list",
-      list: listRef.current,
-    });
-  };
-
-  // Rows held for a transition: start it. Created rows arrive, deleted rows leave, the rest move.
+  // A held view: start the transition. Created rows arrive, deleted and filtered-out rows leave,
+  // the rest move. A table scrolled sideways never animates (a row's snapshot is not clipped by
+  // its scroller).
   React.useLayoutEffect(() => {
     if (!moving || pending.current) return;
-    if (!listRef.current || scrolledSideways()) {
+    const scroller = scrollRef.current;
+    if (
+      !listRef.current ||
+      (scroller !== null && scroller.scrollWidth > scroller.clientWidth + 1)
+    ) {
       setHeld(latest.current);
       return;
     }
@@ -537,13 +544,13 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     () =>
       serverSide
         ? data
-        : filterRows(data, columns, state, facets, search?.columns),
-    [serverSide, data, columns, state, facets, search?.columns],
+        : filterRows(data, columns, view, facets, search?.columns),
+    [serverSide, data, columns, view, facets, search?.columns],
   );
 
   const isFiltered =
-    state.q.trim() !== "" ||
-    Object.values(state.filters).some((v) => v.length > 0);
+    view.q.trim() !== "" ||
+    Object.values(view.filters).some((v) => v.length > 0);
 
   // Selection.
   const [rowSelection, setRowSelection] = React.useState<
@@ -563,8 +570,8 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   // Stable references: react-table memoizes its row models on these, and a fresh array every
   // render would recompute the sorted model on every render.
   const sorting: SortingState = React.useMemo(
-    () => state.sort.map((s) => ({ id: s.id, desc: s.desc })),
-    [state.sort],
+    () => view.sort.map((s) => ({ id: s.id, desc: s.desc })),
+    [view.sort],
   );
   const columnVisibility: VisibilityState = React.useMemo(
     () => Object.fromEntries(hidden.map((h) => [h, false])),
@@ -607,7 +614,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   }, [presentIds]);
 
   const allRows = table.getRowModel().rows;
-  const offset = state.offset ?? 0;
+  const offset = view.offset ?? 0;
   const pageRows =
     pagination.mode === "offset" && pagination.total === undefined
       ? allRows.slice(offset, offset + pagination.pageSize)
@@ -621,7 +628,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   const selectedCount = selectedRows.length;
 
   // Live row count after a filter change (not on first render).
-  const filterKey = `${state.q}\u0000${JSON.stringify(state.filters)}`;
+  const filterKey = `${view.q}\u0000${JSON.stringify(view.filters)}`;
   const firstFilter = React.useRef(true);
   React.useEffect(() => {
     if (firstFilter.current) {
@@ -672,7 +679,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     } else {
       next = rule ? [rule] : [];
     }
-    asListChange(() => update({ sort: next }));
+    update({ sort: next });
   };
 
   // ── Rows ────────────────────────────────────────────────────────────────────────────────────
@@ -784,8 +791,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   const colSpan =
     visibleColumns.length + (selection ? 1 : 0) + (rowActions ? 1 : 0);
 
-  const clearFilters = (): void =>
-    asListChange(() => update({ q: "", filters: {} }));
+  const clearFilters = (): void => update({ q: "", filters: {} });
 
   // ── Keyboard: j/k move row focus, Enter opens, x toggles selection ─────────────────────────
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>): void => {
@@ -831,7 +837,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     const base = filterRows(
       data,
       columns,
-      state,
+      view,
       facets,
       search?.columns,
       facet.id,
@@ -853,11 +859,9 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
         ...o,
         count: counts ? (counts.get(o.value) ?? 0) : undefined,
       })),
-      selected: state.filters[f.id] ?? [],
+      selected: view.filters[f.id] ?? [],
       onChange: (next) =>
-        asListChange(() =>
-          update({ filters: { ...state.filters, [f.id]: next } }),
-        ),
+        update({ filters: { ...state.filters, [f.id]: next } }),
     };
   });
 
@@ -1065,7 +1069,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     <EmptyState
       kind="no-results"
       title={`No ${caption.toLowerCase()} match these filters`}
-      filters={describeFilters(state, facets)}
+      filters={describeFilters(view, facets)}
       onClearFilters={clearFilters}
     />
   ) : (
@@ -1149,7 +1153,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
           {(table.getHeaderGroups()[0]?.headers ?? []).map((header) => {
             const col = header.column;
             const meta = col.columnDef.meta;
-            const sortRule = state.sort.find((s) => s.id === col.id);
+            const sortRule = view.sort.find((s) => s.id === col.id);
             const dir = sortRule ? (sortRule.desc ? "desc" : "asc") : false;
             const canSort = col.getCanSort();
             const label = header.isPlaceholder

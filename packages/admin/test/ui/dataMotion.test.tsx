@@ -184,6 +184,31 @@ describe("DataTable list transitions", () => {
     expect(bodyRows()).toEqual([before[0], before[3], before[6]]);
   });
 
+  it("runs a filter set from outside the table (a page's tile, Back) as a list transition too", async () => {
+    const calls = withViewTransitions();
+    function Tile(): React.ReactElement {
+      const [state, setState] = React.useState<TableState>(EMPTY_TABLE_STATE);
+      return (
+        <>
+          <button
+            type="button"
+            onClick={() =>
+              setState({ ...state, filters: { status: ["expired"] } })
+            }
+          >
+            Expired tile
+          </button>
+          <Table state={state} onStateChange={setState} />
+        </>
+      );
+    }
+    render(<Tile />);
+    await userEvent.click(screen.getByRole("button", { name: "Expired tile" }));
+    await act(async () => undefined);
+    expect(calls).toEqual([{ type: "list", listed: true }]);
+    expect(ids()).toEqual(["r2", "r5", "r8"]);
+  });
+
   it("runs a sort as a list transition", async () => {
     const calls = withViewTransitions();
     render(<Table />);
