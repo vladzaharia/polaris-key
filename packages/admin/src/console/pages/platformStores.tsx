@@ -962,7 +962,12 @@ export function ConnectForm({
     const mine = ++run.current;
     setState({ phase: "checking", for: key });
     try {
-      const r = await api.checkPlatformStoreCredential(store, slot, wireOf(v));
+      const r = await mutate(
+        "checkPlatformStoreCredential",
+        store,
+        slot,
+        wireOf(v),
+      );
       if (mine === run.current)
         setState({ phase: "done", for: key, check: r.check });
     } catch (e) {
@@ -1015,13 +1020,12 @@ export function ConnectForm({
     if (!passed) return;
     setSaving(true);
     try {
-      await api.putPlatformStoreCredential(store, slot, wireOf(values));
+      await mutate("putPlatformStoreCredential", store, slot, wireOf(values));
       toast.success(`${c.label} saved`, {
         description: "Stored in the console, sealed. It is never shown again.",
       });
       setValues({});
       setState({ phase: "idle" });
-      void queryClient.invalidateQueries({ queryKey: qk.platformStores() });
       onSaved?.();
     } catch (e) {
       const copy = errorCopy(e);

@@ -101,6 +101,9 @@ export type WriteMethod =
   | "deleteTier"
   | "assignPlatformStoreApp"
   | "releasePlatformStoreApp"
+  | "checkPlatformStoreCredential"
+  | "putPlatformStoreCredential"
+  | "checkCiSecret"
   | "saveFeedSettings"
   | "saveFeedPolicy"
   | "feedVersionAction"
@@ -537,6 +540,22 @@ export const MUTATIONS: MutationTable = {
       prefix(qk.credentials(heldBy)),
       prefix(qk.health(heldBy)),
     ],
+  },
+  checkPlatformStoreCredential: {
+    label: "store credential live check",
+    invalidates: () => [],
+    why: "A POST that stores nothing (UX-69): the unsaved value is tried against the store and the answer is shown in the form.",
+  },
+  putPlatformStoreCredential: {
+    label: "store credential set",
+    // The connection list (presence, source, metadata, health) and every store's apps listing,
+    // which the Worker caches by the credential's version.
+    invalidates: () => [prefix(qk.platformStores())],
+  },
+  checkCiSecret: {
+    label: "CI secret live check",
+    invalidates: () => [],
+    why: "A POST that stores nothing (UX-69): the value is tried against the vendor and never kept.",
   },
   saveFeedSettings: {
     label: "feed settings save",
