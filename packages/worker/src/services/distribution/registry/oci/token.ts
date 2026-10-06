@@ -14,7 +14,14 @@
  * caller for that repository: with no credential only public repositories (an anonymous token,
  * which keeps public pulls working once `/v2/` challenges), with Basic `__token__:<pkeyr_ or
  * pkeyci_>` per §6.2. A scope is all or nothing: a request any of whose scopes is refused gets
- * no token. `push`, `delete`, `*` and `registry:catalog:*` are refused (F-23 adds push).
+ * no token. `delete`, `*` and `registry:catalog:*` are refused.
+ *
+ * PUSH (F-23). `push` is granted, per scope and with pull, only to a credential that may publish
+ * to that owner's OCI feed (`core/registryTokens.ts` `registryPublisher`: an owner-bound `pkeyr_`
+ * with `publish`, or a `pkeyci_` with `release:publish`), and only for a repository that is a
+ * declared package deliverable. The token then names the repository in `push` as well as in
+ * `repos`; Release's push routes (`services/release/packages/ociPush.ts`) re-resolve the subject
+ * on every request, so a revoked publisher stops pushing within 30 s.
  *
  * REFUSALS, so it is no oracle. No credential, or one that resolves to nothing, is 401 with a
  * Basic challenge, the same for an unknown, disabled or private owner. A valid credential
@@ -36,8 +43,10 @@ import {
   isPullToken,
   lookupRegistryCredential,
   principalOf,
+  registryPublisher,
   registryTokenKeyConfigured,
   signPullToken,
+  type ResolvedRegistryToken,
 } from "../../../../core/registryTokens.js";
 import {
   authorizeFeedRead,
@@ -77,7 +86,10 @@ function ociRefusal(
 interface Scope {
   readonly owner: string;
   readonly repository: string;
-  readonly pullOnly: boolean;
+  /** Every action is `pull` or `push` (F-23); anything else (`delete`, `*`) refuses the scope. */
+  readonly known: boolean;
+  /** `push` is asked for (F-23). Push implies pull (plans/F-20.md §10). */
+  readonly push: boolean;
 }
 
 /** The scopes a request names, or `null` when one is not a repository scope we know. */
@@ -94,7 +106,10 @@ function parseScopes(url: URL): Scope[] | null {
     out.push({
       owner: m[1]!,
       repository: m[2]!,
-      pullOnly: actions.length > 0 && actions.every((a) => a === "pull"),
+      known:
+        actions.length > 0 &&
+        actions.every((a) => a === "pull" || a === "push"),
+      push: actions.includes("push"),
     });
   }
   return out;
@@ -143,6 +158,7 @@ export const OCI_TOKEN_ROUTE: OwnerlessRegistryRoute = {
     // extractor reads. A pull token is not a credential for minting another.
     const credential = extractFeedCredential(req);
     let principal: FeedPrincipal = { kind: "anonymous" };
+    let resolvedCredential: ResolvedRegistryToken | null = null;
     if (credential !== null) {
       if (isPullToken(credential.token)) return unauthorized();
       const { resolved, miss } = await lookupRegistryCredential(
@@ -176,13 +192,22 @@ export const OCI_TOKEN_ROUTE: OwnerlessRegistryRoute = {
         return unauthorized();
       principal = principalOf(resolved);
       if (principal.kind === "anonymous") return unauthorized();
+      resolvedCredential = resolved;
     }
     const anonymous = principal.kind === "anonymous";
     const refuse = () => (anonymous ? unauthorized() : denied());
 
     const repos: string[] = [];
+    const push: string[] = [];
     for (const scope of scopes) {
-      if (!scope.pullOnly) return refuse();
+      if (!scope.known) return refuse();
+      // F-23: push only for a publisher of this very owner (an owner-bound `pkeyr_` holding
+      // `publish`, or a `pkeyci_` holding `release:publish`), and only to a declared repository.
+      if (
+        scope.push &&
+        !registryPublisher(resolvedCredential, scope.owner, "oci")
+      )
+        return refuse();
       const owner = await ctx.ownerContext(scope.owner, "oci", {
         repository: scope.repository,
       });
@@ -212,7 +237,9 @@ export const OCI_TOKEN_ROUTE: OwnerlessRegistryRoute = {
           });
         return refuse();
       }
+      if (scope.push && !deliverable) return refuse();
       repos.push(`${scope.owner}/${scope.repository}`);
+      if (scope.push) push.push(`${scope.owner}/${scope.repository}`);
     }
     const signed = await signPullToken(
       ctx.env,
@@ -225,6 +252,7 @@ export const OCI_TOKEN_ROUTE: OwnerlessRegistryRoute = {
               : principal.tokenId,
         own: principal.kind === "anonymous" ? null : principal.product,
         repos,
+        ...(push.length ? { push } : {}),
       },
       ctx.now,
     );

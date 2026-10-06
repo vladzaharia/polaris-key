@@ -4,6 +4,9 @@ import userEvent from "@testing-library/user-event";
 import {
   artifact,
   axeViolations,
+  dlFile,
+  downloadsView,
+  storeLink,
   CAPS_ALL,
   DAY,
   detail,
@@ -216,6 +219,53 @@ describe("product page on today's data (PX-04)", () => {
     expect(within(card).queryByText(/Get a new key/)).toBeNull();
   });
 
+  it("says nothing when healthy and keeps the facts as text (UX-03)", async () => {
+    mockFetch(routes());
+    renderPortal();
+    await page();
+    // Healthy is silence: no "Active" pill in the header or on the License card.
+    expect(within(screen.getByRole("main")).queryByText("Active")).toBeNull();
+    const card = screen.getByRole("region", { name: "Nightfall license" });
+    // The tier is a neutral pill on the License card (owner, 2026-10-05, overriding UX-03's
+    // "tier as text" for this card only); the facts stay as text.
+    expect(within(card).getByText("Deluxe")).toBeTruthy();
+    expect(within(card).queryByText("Tier")).toBeNull();
+    expect(within(card).getByText("Updates included").tagName).toBe("DT");
+    const included = within(card).getByRole("list", { name: "Included" });
+    expect(
+      within(included)
+        .getAllByRole("listitem")
+        .map((li) => li.textContent),
+    ).toEqual(["Original soundtrack", "Digital art book"]);
+  });
+
+  it("shows an issue once, in the header, not again on the License card (UX-03)", async () => {
+    const lapsed = license({
+      product: "nightfall",
+      tier: "deluxe",
+      expiresAt: NOW_S - 3 * DAY,
+    });
+    mockFetch(
+      signedIn([lapsed], {
+        "/api/releases": { releases },
+        "/api/licenses/nightfall/lic_nightfall": detail(lapsed, {
+          devices: [],
+        }),
+      }),
+    );
+    renderPortal();
+    const h1 = await screen.findByRole("heading", {
+      level: 1,
+      name: "Nightfall",
+    });
+    const card = await screen.findByRole("region", {
+      name: "Nightfall license",
+    });
+    await within(card).findByText("Updates included");
+    expect(within(h1.parentElement!).getByText("Expired")).toBeTruthy();
+    expect(within(card).queryByText("Expired")).toBeNull();
+  });
+
   it("masks a key with its last 4 when the Worker sends them", async () => {
     mockFetch(
       routes({
@@ -245,7 +295,7 @@ describe("product page on today's data (PX-04)", () => {
     renderPortal();
     await page();
     const get = screen.getByRole("region", { name: "Get Nightfall" });
-    expect(within(get).getByText("Recommended for this Mac")).toBeTruthy();
+    expect(within(get).getByText("Recommended for your Mac")).toBeTruthy();
     expect(
       within(get).getByText(/Runs on Apple silicon and Intel/),
     ).toBeTruthy();
@@ -684,6 +734,171 @@ describe("product page on today's data (PX-04)", () => {
         within(devices).getByRole("img", { name: "1 of 5 devices in use" }),
       ).toBeTruthy();
     });
+  });
+});
+
+describe("product page correctness (UX-04)", () => {
+  it("one OS source: the header's action and Get it name the OS the Worker detected", async () => {
+    // The browser says Mac; the Worker (UA-CH) says Windows. Both read the Worker's answer.
+    mockFetch(
+      routes({
+        "/api/products/nightfall/downloads": downloadsView(
+          "nightfall",
+          [
+            dlFile({ artifactId: "m", platform: "macos" }),
+            dlFile({ artifactId: "w", platform: "windows", arch: "x86_64" }),
+          ],
+          { recommend: "windows" },
+        ),
+      }),
+    );
+    renderPortal();
+    await page();
+    const get = await screen.findByRole("region", { name: "Get Nightfall" });
+    await within(get).findByText("Recommended for your Windows PC");
+    expect(within(get).queryByText(/Recommended for your Mac/)).toBeNull();
+    expect(within(get).getByText(/Windows · x64/)).toBeTruthy();
+    expect(
+      screen.getAllByRole("button", {
+        name: /^Download for Windows: Nightfall/,
+      }).length,
+    ).toBe(1);
+    expect(
+      screen.queryByRole("button", { name: /^Download for macOS/ }),
+    ).toBeNull();
+  });
+
+  it("a not_hosted file says where to get it, never 'Not included'", async () => {
+    mockFetch(
+      routes({
+        "/api/products/nightfall/downloads": downloadsView(
+          "nightfall",
+          [
+            dlFile({ artifactId: "m", platform: "macos" }),
+            dlFile({
+              artifactId: "pack",
+              name: "Sample pack.zip",
+              platform: null,
+              canDownload: false,
+              reason: "not_hosted",
+            }),
+          ],
+          {
+            stores: [
+              storeLink({
+                kind: "steam",
+                label: "Steam",
+                url: "https://store.steampowered.com/app/1/",
+              }),
+            ],
+          },
+        ),
+      }),
+    );
+    renderPortal();
+    await page();
+    const get = await screen.findByRole("region", { name: "Get Nightfall" });
+    const steam = await within(get).findByRole("link", {
+      name: "Get it from Steam",
+    });
+    expect(steam.getAttribute("href")).toBe(
+      "https://store.steampowered.com/app/1/",
+    );
+    expect(within(get).queryByText("Not included")).toBeNull();
+    expect(get.textContent).not.toContain("here yet");
+  });
+
+  it("no downloads and no website: the header never offers a 'View details' back to itself", async () => {
+    window.history.replaceState(null, "", "/#/p/ember");
+    mockFetch(routes());
+    renderPortal();
+    await screen.findByRole("heading", { level: 1, name: "Ember Tactics" });
+    expect(screen.queryByRole("link", { name: /View details/ })).toBeNull();
+  });
+
+  it("no downloads with a website: 'Get it from <developer>' everywhere", async () => {
+    const ember = license({
+      product: "ember",
+      productName: "Ember Tactics",
+      productBranding: {
+        developerName: "Kiln Games",
+        website: "https://kiln.example",
+      },
+    });
+    window.history.replaceState(null, "", "/#/p/ember");
+    mockFetch(signedIn([ember]));
+    renderPortal();
+    await screen.findByRole("heading", { level: 1, name: "Ember Tactics" });
+    const lead = screen.getByRole("link", {
+      name: "Get it from Kiln Games: Ember Tactics",
+    });
+    expect(lead.getAttribute("href")).toBe("https://kiln.example");
+    expect(screen.queryByRole("link", { name: /View details/ })).toBeNull();
+  });
+
+  it("one device source: the Devices card counts seats as the free-device flow does", async () => {
+    const seatLicense = {
+      id: "lic_nightfall",
+      tier: "deluxe",
+      status: "active" as const,
+      licenseStatus: "active",
+      activatedAt: NOW_S,
+      expiresAt: null,
+      maxOfflineDays: 30,
+      deviceLimit: 3,
+      activeSeatCount: 1,
+      deviceCount: 2,
+      dormantCount: 1,
+    };
+    const productDevice = (deviceId: string, dormant: boolean) => ({
+      deviceId,
+      label: deviceId,
+      platform: "macos",
+      arch: null,
+      appVersion: null,
+      firstSeen: NOW_S - 200 * DAY,
+      lastSeen: dormant ? NOW_S - 120 * DAY : NOW_S - DAY,
+      dormant,
+    });
+    mockFetch(
+      routes({
+        "/api/products/nightfall": {
+          product: "nightfall",
+          name: "Nightfall",
+          developerName: null,
+          tintColor: null,
+          website: null,
+          iconUrl: null,
+          headerUrl: null,
+          support: null,
+          services: { license: true },
+          status: "active",
+          addedAt: NOW_S,
+          licenses: [
+            {
+              ...seatLicense,
+              entitlements: [],
+              // Studio PC (d2) is past the dormancy window: it holds no seat.
+              devices: [productDevice("d1", false), productDevice("d2", true)],
+            },
+          ],
+        },
+      }),
+    );
+    renderPortal();
+    await page();
+    const devices = screen.getByRole("region", { name: "Devices" });
+    await waitFor(() =>
+      expect(devices.textContent).toContain("1 of 3 devices in use"),
+    );
+    expect(
+      within(devices).queryByRole("button", { name: "Remove Studio PC" }),
+    ).toBeNull();
+    expect(
+      within(devices).getByRole("button", {
+        name: "Remove Mara's MacBook Pro",
+      }),
+    ).toBeTruthy();
   });
 });
 

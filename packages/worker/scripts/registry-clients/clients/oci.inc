@@ -50,3 +50,9 @@ bad() {
   echo "FAIL $1"
   fail=1
 }
+
+# digest_of_name <name> <tag>: as digest_of, for any repository of the owner.
+digest_of_name() {
+  curl -fsSI "$REGISTRY/v2/$1/manifests/$2" | tr -d '\r' |
+    awk 'tolower($1) == "docker-content-digest:" { print $2 }'
+}

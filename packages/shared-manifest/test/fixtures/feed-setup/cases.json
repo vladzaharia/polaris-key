@@ -6,48 +6,76 @@
       "id": "npm-feed",
       "ecosystem": "npm",
       "owner": "polaris-key",
-      "namespace": { "scope": "@polaris-key" }
+      "namespace": {
+        "scope": "@polaris-key"
+      }
     },
     {
       "id": "npm-package",
       "ecosystem": "npm",
       "owner": "polaris-key",
-      "namespace": { "scope": "@polaris-key" },
-      "package": { "name": "@polaris-key/node", "version": "0.9.0" }
+      "namespace": {
+        "scope": "@polaris-key"
+      },
+      "package": {
+        "name": "@polaris-key/node",
+        "version": "0.9.0"
+      }
     },
     {
       "id": "npm-env",
       "ecosystem": "npm",
       "owner": "acme",
-      "namespace": { "scope": "@acme" },
-      "credential": { "kind": "env", "name": "PKEY_REGISTRY_TOKEN" }
+      "namespace": {
+        "scope": "@acme"
+      },
+      "credential": {
+        "kind": "env",
+        "name": "PKEY_REGISTRY_TOKEN"
+      }
     },
     {
       "id": "pypi-feed",
       "ecosystem": "pypi",
       "owner": "polaris-key",
-      "namespace": { "names": ["polaris-key"] }
+      "namespace": {
+        "names": ["polaris-key"]
+      }
     },
     {
       "id": "pypi-package",
       "ecosystem": "pypi",
       "owner": "polaris-key",
-      "namespace": { "names": ["polaris-key"] },
-      "package": { "name": "polaris-key", "version": "0.9.0" }
+      "namespace": {
+        "names": ["polaris-key"]
+      },
+      "package": {
+        "name": "polaris-key",
+        "version": "0.9.0"
+      }
     },
     {
       "id": "pypi-env",
       "ecosystem": "pypi",
       "owner": "acme",
-      "namespace": { "prefixes": ["acme"] },
-      "package": { "name": "acme-sdk" },
-      "credential": { "kind": "env", "name": "PKEY_REGISTRY_TOKEN" }
+      "namespace": {
+        "prefixes": ["acme"]
+      },
+      "package": {
+        "name": "acme-sdk"
+      },
+      "credential": {
+        "kind": "env",
+        "name": "PKEY_REGISTRY_TOKEN"
+      }
     },
     {
       "id": "pypi-token",
       "ecosystem": "pypi",
       "owner": "acme",
-      "package": { "name": "acme-sdk" },
+      "package": {
+        "name": "acme-sdk"
+      },
       "credential": {
         "kind": "token",
         "value": "pkeyr_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
@@ -57,71 +85,111 @@
       "id": "swift-feed",
       "ecosystem": "swift",
       "owner": "polaris-key",
-      "namespace": { "scope": "polaris-key" }
+      "namespace": {
+        "scope": "polaris-key"
+      }
     },
     {
       "id": "swift-package",
       "ecosystem": "swift",
       "owner": "polaris-key",
-      "namespace": { "scope": "polaris-key" },
-      "package": { "name": "polaris-key.PolarisKey", "version": "0.9.0" }
+      "namespace": {
+        "scope": "polaris-key"
+      },
+      "package": {
+        "name": "polaris-key.PolarisKey",
+        "version": "0.9.0"
+      }
     },
     {
       "id": "swift-env",
       "ecosystem": "swift",
       "owner": "acme",
-      "namespace": { "scope": "acme" },
-      "credential": { "kind": "env", "name": "PKEY_REGISTRY_TOKEN" }
+      "namespace": {
+        "scope": "acme"
+      },
+      "credential": {
+        "kind": "env",
+        "name": "PKEY_REGISTRY_TOKEN"
+      }
     },
     {
       "id": "maven-feed",
       "ecosystem": "maven",
       "owner": "polaris-key",
-      "namespace": { "groupPrefixes": ["im.plrs.key"] }
+      "namespace": {
+        "groupPrefixes": ["im.plrs.key"]
+      }
     },
     {
       "id": "maven-package",
       "ecosystem": "maven",
       "owner": "polaris-key",
-      "namespace": { "groupPrefixes": ["im.plrs.key", "im.plrs.tools"] },
-      "package": { "name": "im.plrs.key:polaris-key-sdk", "version": "0.9.0" }
+      "namespace": {
+        "groupPrefixes": ["im.plrs.key", "im.plrs.tools"]
+      },
+      "package": {
+        "name": "im.plrs.key:polaris-key-sdk",
+        "version": "0.9.0"
+      }
     },
     {
       "id": "maven-env",
       "ecosystem": "maven",
       "owner": "acme-games",
-      "namespace": { "groupPrefixes": ["gg.acme"] },
-      "credential": { "kind": "env", "name": "PKEY_REGISTRY_TOKEN" }
+      "namespace": {
+        "groupPrefixes": ["gg.acme"]
+      },
+      "credential": {
+        "kind": "env",
+        "name": "PKEY_REGISTRY_TOKEN"
+      }
     },
     {
       "id": "maven-token",
       "ecosystem": "maven",
       "owner": "acme",
-      "namespace": { "groupPrefixes": ["gg.acme"] },
+      "namespace": {
+        "groupPrefixes": ["gg.acme"]
+      },
       "credential": {
         "kind": "token",
         "value": "pkeyr_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
       }
     },
-    { "id": "oci-feed", "ecosystem": "oci", "owner": "polaris-key" },
+    {
+      "id": "oci-feed",
+      "ecosystem": "oci",
+      "owner": "polaris-key"
+    },
     {
       "id": "oci-package",
       "ecosystem": "oci",
       "owner": "acme",
-      "package": { "name": "server", "version": "1.2.3" }
+      "package": {
+        "name": "server",
+        "version": "1.2.3"
+      }
     },
     {
       "id": "oci-env",
       "ecosystem": "oci",
       "owner": "acme",
-      "package": { "name": "server" },
-      "credential": { "kind": "env", "name": "PKEY_REGISTRY_TOKEN" }
+      "package": {
+        "name": "server"
+      },
+      "credential": {
+        "kind": "env",
+        "name": "PKEY_REGISTRY_TOKEN"
+      }
     },
     {
       "id": "godot-feed",
       "ecosystem": "godot",
       "owner": "polaris-key",
-      "namespace": { "publisher": "polaris-key" }
+      "namespace": {
+        "publisher": "polaris-key"
+      }
     },
     {
       "id": "godot-url",
@@ -130,6 +198,76 @@
       "credential": {
         "kind": "godot-url",
         "value": "pkeyr_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      }
+    },
+    {
+      "id": "cargo-feed",
+      "ecosystem": "cargo",
+      "owner": "polaris-key"
+    },
+    {
+      "id": "cargo-package",
+      "ecosystem": "cargo",
+      "owner": "acme",
+      "package": {
+        "name": "acme-sdk",
+        "version": "1.2.3"
+      }
+    },
+    {
+      "id": "cargo-env",
+      "ecosystem": "cargo",
+      "owner": "acme",
+      "package": {
+        "name": "acme-sdk"
+      },
+      "credential": {
+        "kind": "env",
+        "name": "PKEY_REGISTRY_TOKEN"
+      }
+    },
+    {
+      "id": "cargo-token",
+      "ecosystem": "cargo",
+      "owner": "acme",
+      "package": {
+        "name": "acme-sdk"
+      },
+      "credential": {
+        "kind": "token",
+        "value": "pkeyr_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      }
+    },
+    {
+      "id": "go-feed",
+      "ecosystem": "go",
+      "owner": "acme",
+      "namespace": {
+        "modulePrefixes": ["go.acme.dev"]
+      }
+    },
+    {
+      "id": "go-package",
+      "ecosystem": "go",
+      "owner": "acme",
+      "namespace": {
+        "modulePrefixes": ["go.acme.dev"]
+      },
+      "package": {
+        "name": "go.acme.dev/sdk/v2",
+        "version": "2.1.0"
+      }
+    },
+    {
+      "id": "go-env",
+      "ecosystem": "go",
+      "owner": "acme",
+      "namespace": {
+        "modulePrefixes": ["go.acme.dev", "example.com/acme"]
+      },
+      "credential": {
+        "kind": "env",
+        "name": "PKEY_REGISTRY_TOKEN"
       }
     }
   ]

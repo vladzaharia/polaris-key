@@ -575,6 +575,213 @@
         place-items: center;
         font: 500 16px var(--pk-font-sans);
       }
+
+      .row-shot {
+        display: flex;
+        gap: 40px;
+        align-items: flex-start;
+      }
+      .row-shot > div {
+        display: grid;
+        gap: 10px;
+        justify-items: center;
+      }
+      .row-shot .lbl {
+        font: 500 13px/18px var(--pk-font-sans);
+        color: var(--pk-text-muted);
+      }
+
+      /* Tablet, 1280 × 800 dp landscape: list-detail (M3 adaptive ListDetailPaneScaffold). */
+      .tab {
+        width: 1308px;
+        height: 828px;
+        padding: 14px;
+        border-radius: 40px;
+        background: #1a1b1f;
+        box-shadow: 0 0 0 1px #34353a inset;
+      }
+      [data-theme="light"] .tab {
+        background: #d6d8de;
+        box-shadow: 0 0 0 1px #c2c5cd inset;
+      }
+      .tab .screen {
+        width: 1280px;
+        height: 800px;
+        border-radius: 26px;
+      }
+      .tab .status {
+        height: 32px;
+        padding: 0 24px;
+      }
+      .pane-list {
+        position: absolute;
+        top: 32px;
+        bottom: 0;
+        left: 24px;
+        width: 412px;
+        padding-top: 24px;
+      }
+      .pane-detail {
+        position: absolute;
+        top: 56px;
+        bottom: 24px;
+        left: 460px;
+        right: 24px;
+        border-radius: 28px;
+        background: var(--a-low);
+        padding: 32px 36px;
+      }
+      [data-theme="light"] .pane-detail {
+        background: #fff;
+      }
+      .citem.active {
+        background: var(--kit-accent-subtle);
+      }
+      .citem.active .ms:first-child {
+        color: var(--kit-accent-fg);
+      }
+
+      /* 200 % font size (Android 14 non-linear scaling: 16 sp body → 32, 36 sp display → 50). */
+      .f200 .display {
+        font-size: 50px;
+        line-height: 60px;
+      }
+      .f200 .body {
+        font-size: 30px;
+        line-height: 40px;
+      }
+      .f200 .btn {
+        height: auto;
+        min-height: 76px;
+        padding: 14px 24px;
+        font-size: 30px;
+        line-height: 40px;
+        text-align: center;
+      }
+      .f200 .btn.text {
+        font-size: 28px;
+        min-height: 64px;
+      }
+      .vscroll {
+        position: absolute;
+        right: 3px;
+        top: 140px;
+        width: 4px;
+        height: 200px;
+        border-radius: 2px;
+        background: var(--pk-text-subtle);
+        opacity: 0.5;
+        z-index: 30;
+      }
+
+      /* Predictive back: the outgoing screen shrinks to 90 %, rounds its corners and shifts
+         toward the gesture; the destination waits behind under a scrim; the back arrow rides
+         the edge. */
+      .pb-under {
+        position: absolute;
+        inset: 0;
+      }
+      .pb-scrim {
+        position: absolute;
+        inset: 0;
+        background: rgb(0 0 0 / 0.32);
+        z-index: 18;
+      }
+      .pb-card {
+        position: absolute;
+        inset: 0;
+        z-index: 20;
+        transform: translateX(16px) scale(0.9);
+        transform-origin: 50% 50%;
+        border-radius: 34px;
+        overflow: hidden;
+        background: var(--a-page);
+        box-shadow: 0 30px 60px rgb(0 0 0 / 0.4);
+      }
+      .pb-arrow {
+        position: absolute;
+        left: 8px;
+        top: 50%;
+        margin-top: -24px;
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: var(--a-high);
+        color: var(--pk-text-strong);
+        z-index: 30;
+        box-shadow: 0 6px 16px rgb(0 0 0 / 0.3);
+      }
+
+      /* Dynamic colour under the native preset: the host's MaterialTheme (wallpaper-derived,
+         here a sage scheme), Roboto from the host, M3 baseline shapes, no ambient. */
+      .dyn {
+        --kit-accent: #4c662b;
+        --a-page: #f9faef;
+        --a-high: #dce7c8;
+        --a-sunken: #e1e4d5;
+        --pk-text-strong: #1a1c16;
+        --pk-text-default: #1a1c16;
+        --pk-text-muted: #44483d;
+        --pk-text-subtle: #75796c;
+        font-family: Roboto, system-ui, sans-serif;
+      }
+      [data-theme="dark"] .dyn {
+        --kit-accent: #b1d18a;
+        --a-page: #12140e;
+        --a-high: #354e16;
+        --a-sunken: #1e201a;
+        --pk-text-strong: #e2e3d8;
+        --pk-text-default: #e2e3d8;
+        --pk-text-muted: #c5c8ba;
+        --pk-text-subtle: #8f9285;
+      }
+      .dyn .display,
+      .dyn .btn,
+      .dyn .body {
+        font-family: Roboto, system-ui, sans-serif;
+        font-weight: 400;
+      }
+      .dyn .btn {
+        font-weight: 500;
+        height: 48px;
+      }
+      [data-theme="dark"] .dyn .btn.filled {
+        color: #1f3701;
+      }
+      [data-theme="dark"] .dyn .btn.tonal {
+        color: #cdeda3;
+      }
+      [data-theme="light"] .dyn .btn.tonal {
+        color: #354e16;
+      }
+      .dyn .ambient {
+        display: none;
+      }
+
+      /* Boot, status and error. */
+      .stateA {
+        position: absolute;
+        top: 44px;
+        bottom: 220px;
+        left: 28px;
+        right: 28px;
+        display: grid;
+        align-content: center;
+        justify-items: center;
+        text-align: center;
+        gap: 12px;
+      }
+      .glyphA {
+        width: 64px;
+        height: 64px;
+        border-radius: 22px;
+        display: grid;
+        place-items: center;
+        background: var(--a-high);
+        color: var(--pk-text-strong);
+      }
     </style>
   </head>
   <body>
@@ -1163,6 +1370,291 @@
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 8. Tablet list-detail -->
+      <figure>
+        <figcaption>
+          android · tablet (1280 × 800 dp): account list and the devices detail
+          pane
+        </figcaption>
+        <div class="tab" data-shot="tablet">
+          <div class="screen">
+            <div class="pane-list">
+              <h1
+                class="display"
+                style="font-size: 32px; line-height: 40px; margin: 8px 8px 20px"
+              >
+                Account
+              </h1>
+              <div
+                class="citem"
+                style="
+                  border-radius: 28px;
+                  min-height: 96px;
+                  gap: 16px;
+                  padding: 16px 20px;
+                "
+              >
+                <span class="picon" data-art="tidewater" data-size="56"></span>
+                <div class="t">
+                  <div style="font: 600 18px/26px var(--pk-font-sans)">
+                    Tidewater Studio Pro
+                  </div>
+                  <small>Lifetime · mara@fennick.studio</small>
+                </div>
+              </div>
+              <div class="clist" style="margin-top: 16px">
+                <div class="citem">
+                  <span class="ms">open_in_new</span>
+                  <div class="t">Manage license</div>
+                </div>
+                <div class="citem active">
+                  <span class="ms">devices</span>
+                  <div class="t">Devices<small>2 of 3 in use</small></div>
+                  <span class="ms" style="color: var(--pk-text-muted)"
+                    >chevron_right</span
+                  >
+                </div>
+                <div class="citem">
+                  <span class="ms">cloud_done</span>
+                  <div class="t">Cloud Sync<small>Synced 2 min ago</small></div>
+                </div>
+                <div class="citem">
+                  <span class="ms">update</span>
+                  <div class="t">Version 2.4.1<small>Up to date</small></div>
+                </div>
+              </div>
+            </div>
+            <div class="pane-detail">
+              <h2 class="headline">Devices</h2>
+              <p class="body" style="margin: 8px 0 20px; font-size: 16px">
+                Your license works on 3 devices. Remove one to free a seat; you
+                can add it back later.
+              </p>
+              <div
+                class="k-meter"
+                style="margin: 0 0 24px"
+                role="img"
+                aria-label="2 of 3 devices in use"
+              >
+                <i class="on"></i><i class="on"></i><i></i
+                ><span style="font-size: 14px">2 of 3 in use</span>
+              </div>
+              <div class="clist">
+                <div class="citem">
+                  <span class="ms">tablet_android</span>
+                  <div class="t">
+                    This tablet<small>Android 16 · in use now</small>
+                  </div>
+                </div>
+                <div class="citem">
+                  <span class="ms">laptop_mac</span>
+                  <div class="t">
+                    MacBook Pro<small>macOS 26 · last used today</small>
+                  </div>
+                  <span class="btn text" style="color: var(--pk-danger)"
+                    >Remove</span
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 9. 200 % font -->
+      <figure>
+        <figcaption>
+          android · font size 200 % (non-linear scaling; stacks, wraps, scrolls)
+        </figcaption>
+        <div class="shot f200" data-shot="font-200">
+          <div class="screen">
+            <div class="ambient"></div>
+            <div class="vscroll"></div>
+            <div
+              style="
+                position: absolute;
+                top: 76px;
+                left: 24px;
+                right: 24px;
+                display: grid;
+                justify-items: center;
+                text-align: center;
+                gap: 14px;
+              "
+            >
+              <div class="picon" data-art="tidewater" data-size="88"></div>
+              <h1 class="display">Welcome to Tidewater Studio</h1>
+              <p class="body">Sign in or add your license to start.</p>
+              <div
+                style="display: grid; gap: 12px; width: 100%; margin-top: 8px"
+              >
+                <div class="btn filled">Sign in</div>
+                <div class="btn tonal">Use a license key</div>
+              </div>
+              <span class="btn text">Restore purchase</span>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 10. Predictive back -->
+      <figure>
+        <figcaption>
+          android · predictive back from Activate to the gate (mid-gesture)
+        </figcaption>
+        <div class="shot" data-shot="predictive-back">
+          <div class="screen">
+            <div class="pb-under" data-tpl="gate"></div>
+            <div class="pb-scrim"></div>
+            <div class="pb-card">
+              <div class="appbar">
+                <span class="ib"><span class="ms">arrow_back</span></span>
+              </div>
+              <div
+                style="
+                  position: absolute;
+                  top: 116px;
+                  left: 24px;
+                  right: 24px;
+                  display: grid;
+                  gap: 20px;
+                "
+              >
+                <div class="phead">
+                  <span class="picon" data-art="tidewater" data-size="32"></span
+                  ><span>Tidewater Studio <small>· Pro</small></span>
+                </div>
+                <h1 class="headline">Add your license</h1>
+                <p class="body" style="font-size: 16px; margin-top: -8px">
+                  Your key is in the purchase email from Harbor Audio.
+                </p>
+                <div class="field">
+                  <span class="mono" style="font-size: 15px"
+                    ><span class="k-key"
+                      ><span>pkey_tidewater_7Q2MXK9RV4TC8HJN</span
+                      ><span>3WPLDA</span></span
+                    ></span
+                  >
+                </div>
+              </div>
+              <div
+                style="
+                  position: absolute;
+                  left: 24px;
+                  right: 24px;
+                  bottom: 40px;
+                "
+              >
+                <div class="btn filled">Activate</div>
+              </div>
+            </div>
+            <div class="pb-arrow"><span class="ms">arrow_back</span></div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 11. Dynamic colour under native -->
+      <figure>
+        <figcaption>
+          android · native preset with dynamic colour (the host's wallpaper
+          scheme and font)
+        </figcaption>
+        <div class="shot dyn" data-shot="native-dynamic">
+          <div class="screen" data-tpl="gate"></div>
+        </div>
+      </figure>
+
+      <!-- 12. Boot, status, error -->
+      <figure>
+        <figcaption>
+          android · boot, status (blocked) and error (offline)
+        </figcaption>
+        <div class="row-shot" data-shot="states">
+          <div>
+            <div class="shot">
+              <div class="screen">
+                <div class="ambient"></div>
+                <div class="stateA" style="bottom: 120px">
+                  <div class="picon" data-art="tidewater" data-size="112"></div>
+                  <div class="loading" style="margin-top: 32px">
+                    <svg viewBox="0 0 30 30" aria-hidden="true">
+                      <path
+                        d="M15 3c3 0 4 2.6 6.4 3.6S27 6 27 9.5 24.4 13 24.4 15s2.6 3 2.6 5.5-2.6 3.9-5.6 4.4S18 27 15 27s-4-1.6-6.4-2.1S3 23 3 20.5 5.6 17 5.6 15 3 12 3 9.5 6.1 7.1 8.6 6.6 12 3 15 3Z"
+                        fill="var(--kit-accent-fg)"
+                      />
+                    </svg>
+                  </div>
+                  <span style="font-size: 14px; color: var(--pk-text-muted)"
+                    >Checking your license</span
+                  >
+                </div>
+              </div>
+            </div>
+            <span class="lbl">Boot</span>
+          </div>
+          <div>
+            <div class="shot">
+              <div class="screen">
+                <div class="stateA">
+                  <div class="picon" data-art="tidewater" data-size="72"></div>
+                  <h1 class="headline" style="margin-top: 16px">
+                    Your license has ended
+                  </h1>
+                  <p class="body" style="font-size: 16px">
+                    Tidewater Studio Pro ended on 30 September. Renew to keep
+                    working on your sessions.
+                  </p>
+                </div>
+                <div
+                  style="
+                    position: absolute;
+                    left: 24px;
+                    right: 24px;
+                    bottom: 40px;
+                    display: grid;
+                    gap: 12px;
+                  "
+                >
+                  <div class="btn filled">Renew</div>
+                  <div class="btn tonal">Use a different key</div>
+                </div>
+              </div>
+            </div>
+            <span class="lbl">Status: blocked</span>
+          </div>
+          <div>
+            <div class="shot">
+              <div class="screen">
+                <div class="stateA">
+                  <div class="glyphA"><span class="ms">wifi_off</span></div>
+                  <h1 class="headline" style="margin-top: 12px">
+                    Can’t reach Harbor Audio
+                  </h1>
+                  <p class="body" style="font-size: 16px">
+                    Check your connection. You can keep working offline for 3
+                    more days.
+                  </p>
+                </div>
+                <div
+                  style="
+                    position: absolute;
+                    left: 24px;
+                    right: 24px;
+                    bottom: 40px;
+                    display: grid;
+                    gap: 12px;
+                  "
+                >
+                  <div class="btn filled">Try again</div>
+                  <div class="btn tonal">Continue offline</div>
+                </div>
+              </div>
+            </div>
+            <span class="lbl">Error: offline</span>
           </div>
         </div>
       </figure>

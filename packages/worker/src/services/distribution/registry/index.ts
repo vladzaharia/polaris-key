@@ -24,6 +24,8 @@ import { SWIFT_ADAPTER } from "./swift/index.js";
 import { MAVEN_ADAPTER } from "./maven/index.js";
 import { OCI_ADAPTER } from "./oci/index.js";
 import { GODOT_ADAPTER } from "./godot/index.js";
+import { CARGO_ADAPTER } from "./cargo/index.js";
+import { GO_ADAPTER } from "./go/index.js";
 
 /** Every feed this build carries, one adapter per ecosystem, in route order. */
 export const FEED_ADAPTERS: readonly FeedAdapter[] = [
@@ -33,6 +35,8 @@ export const FEED_ADAPTERS: readonly FeedAdapter[] = [
   MAVEN_ADAPTER, // F-07
   OCI_ADAPTER, // F-08: OCI pull at /v2/
   GODOT_ADAPTER, // F-09: both editor API shapes and the GodotEnv index
+  CARGO_ADAPTER, // F-30: the sparse index, read-only (crates publish through pkey)
+  GO_ADAPTER, // F-31 (tier 3): the Go module proxy
 ];
 
 const BY_ECOSYSTEM = new Map<string, FeedAdapter>(

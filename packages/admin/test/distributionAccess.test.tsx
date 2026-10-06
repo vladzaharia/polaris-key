@@ -193,9 +193,7 @@ describe("Distribution → Access", () => {
     );
     expect(await within(app).findByText("storage unavailable")).toBeTruthy();
     expect(
-      within(app).getByText(
-        "Something went wrong on the server (500 internal)",
-      ),
+      within(app).getByText("Something went wrong on the server"),
     ).toBeTruthy();
   });
 

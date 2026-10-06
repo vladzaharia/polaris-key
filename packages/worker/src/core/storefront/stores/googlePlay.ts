@@ -189,6 +189,7 @@ export const GOOGLE_PLAY_ADAPTER: StorefrontAdapter = {
     ciTokens: ["delete", "users", "grants", "appsigning", "refund"],
   },
   ci: null,
+  pr: null,
   // Play's column of the shared listing model (A-18b; `../listingProfiles.ts`).
   listing: adapterListingProfile(STORE_LISTING_COLUMNS.play),
   confirmation: { phrase: "app-name", label: "Google Play" },
