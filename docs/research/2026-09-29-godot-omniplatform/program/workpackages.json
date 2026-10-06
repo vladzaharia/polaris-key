@@ -7587,7 +7587,7 @@
       "optional": false,
       "refs": ["docs/design/UI-KITS.md §4.7", "plans/UK-02.md"],
       "brief": "wp/UK-02a-kit-copy-catalog.md",
-      "status": "todo",
+      "status": "in-review",
       "planRef": "UK-02"
     },
     {

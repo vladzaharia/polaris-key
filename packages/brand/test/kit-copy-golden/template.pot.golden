@@ -1,0 +1,110 @@
+# GENERATED FILE — do not edit by hand.
+#
+# Written by `pnpm --filter @polaris-key/brand gen` (packages/brand/scripts/kit-copy.ts) from
+# packages/brand/kit-copy/ (en.json and the eight locale packs) and the core copy in
+# conformance/parity/copy.<locale>.json. `pnpm gen:brand -- --check` fails the green gate on any
+# difference. To change a string, edit its source and regenerate.
+#
+# The kit copy as gettext (template). msgid is the catalog key; arguments are {name}. A
+# formFactor select is msgctxt <case> (the bare msgid is "other"); a platform variant is
+# msgctxt <platform>.
+msgid ""
+msgstr ""
+"Project-Id-Version: polaris-key-ui\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. Sign in to {product}
+#. A button.
+msgid "common.signInTo"
+msgstr ""
+
+#. macos: Sign In to {product}
+msgctxt "macos"
+msgid "common.signInTo"
+msgstr ""
+
+#. Restart when ready
+#. Queues a restart.
+msgid "common.restart"
+msgstr ""
+
+#. macos: Install and Relaunch
+msgctxt "macos"
+msgid "common.restart"
+msgstr ""
+
+#. {product}: {count, plural, one {# device} other {# devices}}
+#. A count.
+#. Plural on {count}.
+msgid "part.devices"
+msgid_plural "part.devices"
+msgstr[0] ""
+msgstr[1] ""
+
+#. {formFactor, select, iphone {this iPhone} ipad {this iPad} mac {this Mac} phone {this phone} tablet {this tablet} computer {this computer} tv {this TV} other {this device}}
+#. The device.
+msgid "part.thisDevice"
+msgstr ""
+
+#. formFactor iphone: this iPhone
+msgctxt "iphone"
+msgid "part.thisDevice"
+msgstr ""
+
+#. formFactor ipad: this iPad
+msgctxt "ipad"
+msgid "part.thisDevice"
+msgstr ""
+
+#. formFactor mac: this Mac
+msgctxt "mac"
+msgid "part.thisDevice"
+msgstr ""
+
+#. formFactor phone: this phone
+msgctxt "phone"
+msgid "part.thisDevice"
+msgstr ""
+
+#. formFactor tablet: this tablet
+msgctxt "tablet"
+msgid "part.thisDevice"
+msgstr ""
+
+#. formFactor computer: this computer
+msgctxt "computer"
+msgid "part.thisDevice"
+msgstr ""
+
+#. formFactor tv: this TV
+msgctxt "tv"
+msgid "part.thisDevice"
+msgstr ""
+
+#. Say "hi" & <wave> \ {name}
+#. Escaping.
+msgid "common.quote"
+msgstr ""
+
+#. Oops
+#. Core copy (conformance/parity/copy.en.json, fallback).
+msgid "core.fallback.title"
+msgstr ""
+
+#. Oops ({code}).
+#. Core copy (conformance/parity/copy.en.json, fallback).
+msgid "core.fallback.message"
+msgstr ""
+
+#. Gone
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.not-found.title"
+msgstr ""
+
+#. It's gone.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.not-found.message"
+msgstr ""

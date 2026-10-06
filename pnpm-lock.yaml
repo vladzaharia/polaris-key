@@ -245,6 +245,9 @@ importers:
       '@types/react-dom':
         specifier: ^18.3.0
         version: 18.3.7(@types/react@18.3.31)
+      ajv:
+        specifier: ^8.20.0
+        version: 8.20.0
       prettier:
         specifier: ^3.5.0
         version: 3.8.4
