@@ -286,7 +286,6 @@ const PRESENTATION: Record<
     support: "https://kiln.example/renew",
   },
   mossgarden: { developerName: "Little Fern", deviceLimit: 5 },
-  quill: { developerName: "Inkwell Labs", deviceLimit: 0 },
   "lumen-raw": { developerName: "Aperture Seven", deviceLimit: 2 },
   "pixel-forge": { developerName: "Anvil Labs", deviceLimit: 0 },
   // At its limit: the 12-product shelf shows "Free a device" (§4.15, mockup 35).
