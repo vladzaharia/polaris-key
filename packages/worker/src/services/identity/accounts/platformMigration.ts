@@ -234,18 +234,20 @@ export async function claimPlatformSubject(
   await rekeyLegacyPortalIdentities(db, issuerKey);
   await rekeyLegacyAccountLinks(db, issuerKey);
 
-  const email = input.email?.trim() ? normalizeEmail(input.email) : null;
+  const asserted = input.email?.trim() ? normalizeEmail(input.email) : null;
+  // The one narrowing every provider's address goes through (PX-W15); for the platform IdP it is
+  // its own `email_verified`. An address it does not vouch for is attacker-chosen, so it is not
+  // kept at all, not even as unverified on the method (R8-05b).
+  const vouched = providerVouchesForEmail(
+    { kind: "oidc", email: asserted, emailVerified: input.emailVerified },
+    null,
+  );
   const identity: VerifiedIdentity = {
     issuerKey,
     subject: input.sub,
     kind: "oidc",
-    email,
-    // The one narrowing every provider's address goes through (PX-W15). For the platform IdP it
-    // is its own `email_verified`; re-applied by `signIn`'s callers, it is a no-op.
-    emailVerified: providerVouchesForEmail(
-      { kind: "oidc", email, emailVerified: input.emailVerified },
-      null,
-    ),
+    email: vouched ? asserted : null,
+    emailVerified: vouched,
     displayName: input.displayName ?? null,
   };
 

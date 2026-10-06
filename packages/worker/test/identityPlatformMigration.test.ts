@@ -759,6 +759,29 @@ describe("the portal's single sign-on", () => {
     expect(lic?.account_id).toBe(account!.id);
   });
 
+  it("claim: an address the IdP did not verify is neither offered nor kept", async () => {
+    const w = await portalWorld({ PLATFORM_OIDC_MIGRATION: "claim" });
+    const other = await emailAccount(w.db, ADA);
+    const d = new Device(w);
+    const res = await portalCallback(w, d, {
+      sub: SUB,
+      email: ADA,
+      email_verified: false,
+    });
+    expect(res.status).toBe(302);
+    expect(d.jar.has(EMAIL_GATE_COOKIE)).toBe(false);
+    expect(d.jar.has(ACCOUNT_SESSION_COOKIE)).toBe(true);
+    const link = await w.db.first<{
+      account_id: string;
+      email: string | null;
+    }>("SELECT account_id, email FROM account_links WHERE kind = 'oidc'");
+    expect(link?.account_id).not.toBe(other);
+    expect(link?.email).toBeNull();
+    expect(await linksOf(w.db, link!.account_id)).toEqual([
+      `oidc:${ISSUER}:${SUB}`,
+    ]);
+  });
+
   it("operators-only: a moved subject signs in; one that never moved is refused", async () => {
     const w = await portalWorld({ PLATFORM_OIDC_MIGRATION: "operators-only" });
     await platformLinkedAccount(w.db, "moved-1");
