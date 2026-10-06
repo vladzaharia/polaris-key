@@ -15,6 +15,9 @@
 import { ciClient, type Out, type Sleep } from "./ci.js";
 import { resolveCiToken, type CiEnv } from "./oidc.js";
 
+/** Requests one `--apply` makes at most (200 versions each). */
+const MAX_ROUNDS = 50;
+
 export const FEEDS_PRUNE_USAGE =
   "Usage: pkey feeds prune --product <slug> [--deliverable id] [--apply] [--json] [--base-url url]";
 
@@ -51,6 +54,8 @@ export interface PruneReport {
     freedBytes: number;
     failed: number;
   };
+  /** Versions were left for another request (the Worker deletes at most 200 per request). */
+  more?: boolean;
 }
 
 export interface FeedsPruneOptions {
@@ -130,13 +135,36 @@ export async function feedsPrune(
     sleep: opts.sleep,
     log: opts.stderr,
   });
-  const report = await client.postJson<PruneReport>("release/packages/prune", {
-    what: opts.apply ? "Pruning builds of main" : "Planning the prune",
-    body: {
-      apply: opts.apply,
-      ...(opts.deliverable ? { deliverable: opts.deliverable } : {}),
-    },
-  });
+  const ask = () =>
+    client.postJson<PruneReport>("release/packages/prune", {
+      what: opts.apply ? "Pruning builds of main" : "Planning the prune",
+      body: {
+        apply: opts.apply,
+        ...(opts.deliverable ? { deliverable: opts.deliverable } : {}),
+      },
+    });
+  let report = await ask();
+  // The Worker deletes a bounded number of versions per request; repeat until nothing is left,
+  // folding each round into one report.
+  for (
+    let round = 1;
+    opts.apply && report.more && round < MAX_ROUNDS;
+    round++
+  ) {
+    const next = await ask();
+    report = {
+      ...next,
+      packages: [...report.packages, ...next.packages].filter(
+        (p) => p.prune.length || p.kept.length || p.failed?.length,
+      ),
+      totals: {
+        versions: report.totals.versions + next.totals.versions,
+        bytes: report.totals.bytes + next.totals.bytes,
+        freedBytes: report.totals.freedBytes + next.totals.freedBytes,
+        failed: report.totals.failed + next.totals.failed,
+      },
+    };
+  }
   opts.stdout.write(
     opts.json
       ? `${JSON.stringify(report, null, 2)}\n`

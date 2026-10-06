@@ -5022,6 +5022,12 @@ paths:
                       bytes: { type: integer }
                       freedBytes: { type: integer }
                       failed: { type: integer }
+                  more:
+                    type: boolean
+                    description: >
+                      With `apply`, versions were left for another request: at most 200 are
+                      deleted per request. Repeat until it is false (`pkey feeds prune --apply`
+                      does).
               examples:
                 dryRun:
                   summary: test/feedPrune.test.ts

@@ -665,7 +665,7 @@ Owner request 2026-10-06. These decisions were made by the lead under delegated 
   `release_package_retention`) is on by default. A product turns it off with
   `PUT /manage/api/products/<slug>/distribution/feeds/retention {"expectedVersion": <n>,
 "prunePrereleases": false}` (audited `feed.retention.update`). The system product is locked on.
-- **What a prune does.** Each version is handled in one D1 batch. The batch deletes the version's
+- **What a prune does.** Versions go in atomic D1 batches of up to 20. For each version, the batch deletes its
   `release_packages`, `release_artifacts`, `release_yanks` and `release_metadata` rows and drops
   its `artifact` blob refs. It writes a tombstone to `release_package_prunes`: ingest refuses to
   republish the version (`package-version-taken`), so versions stay unique forever. It also
@@ -699,7 +699,9 @@ Owner request 2026-10-06. These decisions were made by the lead under delegated 
   afterwards (`DELETE …/ci-tokens/<tokenId>`). The
   same backfill is in the console's Feeds API without a token: `POST
 /manage/api/platform/feeds/prune {}` for a dry run, or `{"apply": true}` to delete (audited
-  under `admin:<sub>`). Use `/manage/api/products/<slug>/distribution/feeds/prune` for another
+  under `admin:<sub>`). One request deletes at most 200 versions and answers `"more": true` when
+  some are left. `pkey feeds prune --apply` repeats the request on its own; with the admin route,
+  send it again. Use `/manage/api/products/<slug>/distribution/feeds/prune` for another
   product. `--deliverable <id>` (`"deliverable"`) limits it to one package.
 
 - **Drift.** On a stable build the drift job also warns about builds of main at or below the

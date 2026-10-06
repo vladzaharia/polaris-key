@@ -16,7 +16,7 @@
  *   KEPT   A candidate a channel policy points at (a promote or a pin), or that any other row
  *          still names (a revocation, a pack pin or hold, a download token, a legacy channel row),
  *          is kept and reported: retention never breaks a pointer.
- *   HOW    Per version, one D1 batch: the `release_packages`, `release_artifacts`,
+ *   HOW    In atomic D1 batches of up to 20 versions (at most 200 per run): per version, the `release_packages`, `release_artifacts`,
  *          `release_yanks` and `release_metadata` rows go, the version's `artifact` blob refs are
  *          dropped (`core/blobs.ts` `stmtDropRefs`), a tombstone is written
  *          (`release_package_prunes`, which keeps the version unique forever: ingest refuses to
@@ -256,46 +256,86 @@ async function packageRows(
   );
 }
 
-/** Why a release may not be deleted, or `null` when nothing but its own rows names it. */
-async function holdOn(
-  db: Db,
-  product: string,
-  releaseId: string,
-): Promise<PruneKept["reason"] | null> {
-  const p = product;
-  const r = releaseId;
-  const row = await db.first<{ pinned: number; referenced: number }>(
-    `SELECT
-       EXISTS (SELECT 1 FROM release_channel_policy
-                WHERE product = ? AND pointer_release_id = ?) AS pinned,
-       (EXISTS (SELECT 1 FROM release_revocations
-                 WHERE product = ? AND (target_release_id = ? OR replacement_release_id = ?))
-        OR EXISTS (SELECT 1 FROM release_channels WHERE product = ? AND release_id = ?)
-        OR EXISTS (SELECT 1 FROM release_download_tokens WHERE product = ? AND release_id = ?)
-        OR EXISTS (SELECT 1 FROM release_pins
-                    WHERE product = ? AND (app_release_id = ? OR pack_release_id = ?))
-        OR EXISTS (SELECT 1 FROM release_holds
-                    WHERE product = ? AND (app_release_id = ? OR pack_release_id = ?))
-       ) AS referenced`,
-    ...[p, r, p, r, r, p, r, p, r, p, r, r, p, r, r],
-  );
-  if (row?.pinned) return "pinned";
-  if (row?.referenced) return "referenced";
-  return null;
+/** Release ids per `json_each` parameter. */
+const IDS_PER_QUERY = 500;
+
+function chunks<T>(xs: readonly T[], n: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < xs.length; i += n) out.push(xs.slice(i, i + n));
+  return out;
 }
 
-/** The ref ids a release's files are held by (`<releaseId>/<artifactId>`, `ingest.ts`). */
-async function artifactRefIds(
+/**
+ * Why each of `releaseIds` may not be deleted (absent: nothing but its own rows names it). One
+ * query per 500 ids, so a plan stays inside D1's per-invocation query budget.
+ */
+async function holdsOf(
   db: Db,
   product: string,
-  releaseId: string,
-): Promise<string[]> {
-  const rows = await db.all<{ artifact_id: string }>(
-    "SELECT artifact_id FROM release_artifacts WHERE product = ? AND release_id = ?",
-    product,
-    releaseId,
-  );
-  return rows.map((r) => `${releaseId}/${r.artifact_id}`);
+  releaseIds: readonly string[],
+): Promise<Map<string, PruneKept["reason"]>> {
+  const out = new Map<string, PruneKept["reason"]>();
+  for (const ids of chunks([...new Set(releaseIds)], IDS_PER_QUERY)) {
+    const p = product;
+    const j = JSON.stringify(ids);
+    const rows = await db.all<{
+      id: string;
+      pinned: number;
+      referenced: number;
+    }>(
+      `SELECT ids.value AS id,
+         EXISTS (SELECT 1 FROM release_channel_policy
+                  WHERE product = ? AND pointer_release_id = ids.value) AS pinned,
+         (EXISTS (SELECT 1 FROM release_revocations
+                   WHERE product = ? AND (target_release_id = ids.value
+                                          OR replacement_release_id = ids.value))
+          OR EXISTS (SELECT 1 FROM release_channels WHERE product = ? AND release_id = ids.value)
+          OR EXISTS (SELECT 1 FROM release_download_tokens
+                      WHERE product = ? AND release_id = ids.value)
+          OR EXISTS (SELECT 1 FROM release_pins
+                      WHERE product = ? AND (app_release_id = ids.value
+                                             OR pack_release_id = ids.value))
+          OR EXISTS (SELECT 1 FROM release_holds
+                      WHERE product = ? AND (app_release_id = ids.value
+                                             OR pack_release_id = ids.value))
+         ) AS referenced
+         FROM json_each(?) AS ids`,
+      p,
+      p,
+      p,
+      p,
+      p,
+      p,
+      j,
+    );
+    for (const r of rows) {
+      if (r.pinned) out.set(r.id, "pinned");
+      else if (r.referenced) out.set(r.id, "referenced");
+    }
+  }
+  return out;
+}
+
+/** The ref ids each release's files are held by (`<releaseId>/<artifactId>`, `ingest.ts`). */
+async function artifactRefIdsOf(
+  db: Db,
+  product: string,
+  releaseIds: readonly string[],
+): Promise<Map<string, string[]>> {
+  const out = new Map<string, string[]>();
+  for (const id of releaseIds) out.set(id, []);
+  for (const ids of chunks([...new Set(releaseIds)], IDS_PER_QUERY)) {
+    const rows = await db.all<{ release_id: string; artifact_id: string }>(
+      `SELECT release_id, artifact_id FROM release_artifacts
+        WHERE product = ? AND release_id IN (SELECT value FROM json_each(?))
+        ORDER BY release_id, artifact_id`,
+      product,
+      JSON.stringify(ids),
+    );
+    for (const r of rows)
+      out.get(r.release_id)?.push(`${r.release_id}/${r.artifact_id}`);
+  }
+  return out;
 }
 
 /**
@@ -325,25 +365,35 @@ export async function planPackagePrune(
     bytes: 0,
     freedBytes: 0,
   };
-  const chosen: { row: CandidateRow; refIds: string[] }[] = [];
-  for (const row of rows) {
-    if (row.channel !== MAIN_CHANNEL) continue;
+  const candidates = rows.filter((row) => {
+    if (row.channel !== MAIN_CHANNEL) return false;
     const base = mainPrerelease(row.ecosystem, row.version);
-    if (!base || compareRelease(base, ceiling) > 0) continue;
-    const hold = await holdOn(db, product, row.release_id);
-    if (hold) {
+    return base !== null && compareRelease(base, ceiling) <= 0;
+  });
+  const holds = await holdsOf(
+    db,
+    product,
+    candidates.map((r) => r.release_id),
+  );
+  const free = candidates.filter((row) => {
+    const hold = holds.get(row.release_id);
+    if (hold)
       plan.kept.push({
         releaseId: row.release_id,
         version: row.version,
         reason: hold,
       });
-      continue;
-    }
-    chosen.push({
-      row,
-      refIds: await artifactRefIds(db, product, row.release_id),
-    });
-  }
+    return !hold;
+  });
+  const refIdsByRelease = await artifactRefIdsOf(
+    db,
+    product,
+    free.map((r) => r.release_id),
+  );
+  const chosen = free.map((row) => ({
+    row,
+    refIds: refIdsByRelease.get(row.release_id) ?? [],
+  }));
   // The refcount: a key is freed only when no ref outside the WHOLE plan holds it (a later
   // version, another package, another product, a pack, an OCI push); a key two pruned versions
   // share is counted once, against the first.
@@ -427,7 +477,7 @@ export interface PruneApplied {
   failed: { version: string; error: string }[];
 }
 
-/** The statements that delete one version, tombstone it, audit it and re-render its package. */
+/** The statements that delete one version, tombstone it and audit it (the batch adds the render). */
 function pruneStatements(
   product: string,
   plan: PackagePrunePlan,
@@ -489,14 +539,24 @@ function pruneStatements(
       parent_id: null,
       summary: `Pruned ${plan.name} ${v.version} (a build of main below ${plan.stable}): ${v.files} file${v.files === 1 ? "" : "s"}, ${v.bytes} bytes, ${v.freedBytes} bytes no longer referenced`,
     }),
-    stmtEnqueuePackageRender(product, plan.deliverableId, "prune", now),
   ];
 }
 
+/** Versions per D1 batch: each batch is atomic, so a failure leaves its versions whole. */
+const VERSIONS_PER_BATCH = 20;
+
 /**
- * Prune what `plan` lists: one batch per version, so a failure leaves the others done and that
- * version whole for the next run. A version some other writer pinned since the plan was read is
- * kept (re-checked just before its batch).
+ * The most versions one run deletes (an automatic prune or one backfill request), so a run stays
+ * inside D1's per-invocation query budget; what is left is reported (`more`) and the next run,
+ * or the next stable publish, takes it.
+ */
+export const PRUNE_MAX_PER_RUN = 200;
+
+/**
+ * Prune what `plan` lists, at most `limit` versions, in atomic batches of
+ * `VERSIONS_PER_BATCH`: a failed batch leaves its versions whole for the next run and the others
+ * done. A version some other writer pinned since the plan was read is kept (the holds are read
+ * again just before the batches).
  */
 export async function applyPackagePrune(
   db: Db,
@@ -505,19 +565,41 @@ export async function applyPackagePrune(
   plan: PackagePrunePlan,
   actor: PruneActor,
   now: number,
+  limit: number = PRUNE_MAX_PER_RUN,
 ): Promise<PruneApplied> {
   const out: PruneApplied = { pruned: [], failed: [] };
-  for (const v of plan.prune) {
+  const todo = plan.prune.slice(0, Math.max(0, limit));
+  let held: Map<string, PruneKept["reason"]>;
+  let refIds: Map<string, string[]>;
+  try {
+    const ids = todo.map((v) => v.releaseId);
+    held = await holdsOf(db, product, ids);
+    refIds = await artifactRefIdsOf(db, product, ids);
+  } catch (e) {
+    const error = e instanceof Error ? e.message : String(e);
+    for (const v of todo) out.failed.push({ version: v.version, error });
+    return out;
+  }
+  const go = todo.filter((v) => !held.has(v.releaseId));
+  for (const batch of chunks(go, VERSIONS_PER_BATCH)) {
     try {
-      if (await holdOn(db, product, v.releaseId)) continue;
-      const refIds = await artifactRefIds(db, product, v.releaseId);
-      await db.batch(pruneStatements(product, plan, v, refIds, actor, now));
-      out.pruned.push(v);
+      await db.batch([
+        ...batch.flatMap((v) =>
+          pruneStatements(
+            product,
+            plan,
+            v,
+            refIds.get(v.releaseId) ?? [],
+            actor,
+            now,
+          ),
+        ),
+        stmtEnqueuePackageRender(product, plan.deliverableId, "prune", now),
+      ]);
+      out.pruned.push(...batch);
     } catch (e) {
-      out.failed.push({
-        version: v.version,
-        error: e instanceof Error ? e.message : String(e),
-      });
+      const error = e instanceof Error ? e.message : String(e);
+      for (const v of batch) out.failed.push({ version: v.version, error });
     }
   }
   if (out.pruned.length) await bumpReleaseGeneration(env, product, now);
@@ -673,6 +755,11 @@ export interface PruneReport {
     freedBytes: number;
     failed: number;
   };
+  /**
+   * Only with `apply`: versions were left for another run (at most `PRUNE_MAX_PER_RUN` go per
+   * request). `pkey feeds prune --apply` repeats until it is false.
+   */
+  more: boolean;
 }
 
 /**
@@ -709,7 +796,9 @@ export async function prunePackages(
     packages: [],
     skipped: [],
     totals: { versions: 0, bytes: 0, freedBytes: 0, failed: 0 },
+    more: false,
   };
+  let budget = PRUNE_MAX_PER_RUN;
   for (const id of ids) {
     const stable = await newestStable(db, product, id);
     if (!stable) {
@@ -727,7 +816,10 @@ export async function prunePackages(
         plan,
         opts.actor,
         opts.now,
+        budget,
       );
+      if (plan.prune.length > budget) report.more = true;
+      budget = Math.max(0, budget - plan.prune.length);
       const done = new Set(applied.pruned.map((v) => v.releaseId));
       const pruned = plan.prune.filter((v) => done.has(v.releaseId));
       entry = {

@@ -23,6 +23,7 @@ import type { Env } from "../src/env.js";
 import { manifestDeliverableStatements } from "../src/services/release/deliverables.js";
 import { packageCatalog } from "../src/services/release/packages/catalog.js";
 import {
+  applyPackagePrune,
   compareRelease,
   finalRelease,
   mainPrerelease,
@@ -637,6 +638,23 @@ describe("applying a prune", () => {
       "1.0.0-main.9",
       "1.1.0-main.1",
     ]);
+  });
+
+  it("deletes at most the run's budget and leaves the rest for the next run", async () => {
+    const plan = (await planPackagePrune(db, P, "npm.sdk", "1.1.0"))!;
+    expect(plan.prune).toHaveLength(3);
+    const first = await applyPackagePrune(
+      db,
+      env,
+      P,
+      plan,
+      SYSTEM_PRUNE_ACTOR,
+      NOW,
+      2,
+    );
+    expect(first.pruned).toHaveLength(2);
+    const rest = (await planPackagePrune(db, P, "npm.sdk", "1.1.0"))!;
+    expect(rest.prune.map((v) => v.version)).toEqual(["1.1.0-main.2"]);
   });
 
   it("only the named package with a deliverable", async () => {

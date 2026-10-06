@@ -139,6 +139,38 @@ describe("pkey feeds prune", () => {
     expect(r.out).not.toContain("--apply to delete");
   });
 
+  it("--apply repeats while the Worker reports more, and folds the rounds into one report", async () => {
+    let n = 0;
+    const w = fake(() => {
+      n++;
+      return [200, { ...report(false), more: n === 1 }];
+    });
+    const r = await run(
+      [
+        "feeds",
+        "prune",
+        "--product",
+        "polaris-key",
+        "--apply",
+        "--base-url",
+        BASE,
+      ],
+      w,
+    );
+    expect(r.code, r.err).toBe(0);
+    expect(w.seen).toHaveLength(2);
+    expect(r.out).toContain("Total: pruned 2 versions");
+  });
+
+  it("a dry run asks once even when more would be left", async () => {
+    const w = fake(() => [200, { ...report(true), more: true }]);
+    await run(
+      ["feeds", "prune", "--product", "polaris-key", "--base-url", BASE],
+      w,
+    );
+    expect(w.seen).toHaveLength(1);
+  });
+
   it("--json prints the Worker's report", async () => {
     const w = fake(() => [200, report(true)]);
     const r = await run(
