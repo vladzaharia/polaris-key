@@ -37,7 +37,7 @@ import {
 } from "../model/library.js";
 import { deviceSeats } from "../model/product.js";
 import { allowedReturn } from "../model/returnUrl.js";
-import { href, useDocumentTitle } from "../router.js";
+import { focusPageHeading, href, useDocumentTitle } from "../router.js";
 import { NotFoundProduct } from "./NotFoundProduct.js";
 
 /** The `for=` label as display text only (it is never markup): trimmed and bounded. */
@@ -181,11 +181,11 @@ function FreeDevice({
     if (removed) headingRef.current?.focus();
   }, [removed]);
   // Arriving from the Activate dialog (`next=free-device`, PX-17): focus the flow's heading once
-  // the dialog has closed (§9.4).
+  // the dialog has left (through its exit) and handed focus back to its opener (§9.4, MO-05).
   const titleRef = React.useRef<HTMLHeadingElement>(null);
   React.useEffect(() => {
     if (consumeHeadingFocus(product.product))
-      requestAnimationFrame(() => titleRef.current?.focus());
+      focusPageHeading(() => titleRef.current);
   }, [product.product]);
 
   const name = product.name;
