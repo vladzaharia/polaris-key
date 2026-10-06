@@ -1,0 +1,67 @@
+{
+  "_source": "Google OAuth 2.0 token endpoint (JWT-bearer grant) and Play Developer Reporting API v1beta1 apps:search answers, in Google's published shapes (developers.google.com/identity/protocols/oauth2/service-account, developers.google.com/play/developer/reporting/reference/rest/v1beta1/apps/search). Values are fictional.",
+  "token": {
+    "status": 200,
+    "body": {
+      "access_token": "ya29.c.fake-transient-token",
+      "expires_in": 3599,
+      "token_type": "Bearer"
+    }
+  },
+  "invalidGrant": {
+    "status": 400,
+    "body": {
+      "error": "invalid_grant",
+      "error_description": "Invalid JWT Signature."
+    }
+  },
+  "apps": {
+    "status": 200,
+    "body": {
+      "apps": [
+        {
+          "name": "apps/gg.acme.tonebox",
+          "packageName": "gg.acme.tonebox",
+          "displayName": "Tonebox"
+        },
+        {
+          "name": "apps/gg.acme.dice",
+          "packageName": "gg.acme.dice",
+          "displayName": "Dice"
+        }
+      ]
+    }
+  },
+  "noApps": { "status": 200, "body": {} },
+  "permissionDenied": {
+    "status": 403,
+    "body": {
+      "error": {
+        "code": 403,
+        "message": "The caller does not have permission",
+        "status": "PERMISSION_DENIED"
+      }
+    }
+  },
+  "serviceDisabled": {
+    "status": 403,
+    "body": {
+      "error": {
+        "code": 403,
+        "message": "Google Play Developer Reporting API has not been used in project 123456789012 before or it is disabled.",
+        "status": "PERMISSION_DENIED",
+        "details": [
+          {
+            "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+            "reason": "SERVICE_DISABLED",
+            "domain": "googleapis.com",
+            "metadata": {
+              "service": "playdeveloperreporting.googleapis.com",
+              "consumer": "projects/123456789012"
+            }
+          }
+        ]
+      }
+    }
+  }
+}
