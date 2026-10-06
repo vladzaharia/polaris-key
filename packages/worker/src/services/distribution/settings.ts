@@ -85,6 +85,36 @@ export const DISTRIBUTION_SETTINGS_SLICE: ServiceSettingsSlice = {
       readers: ["services/distribution/outlets.ts"],
       storage: { kind: "rich", adapter: "dist_outlets" },
     }),
+    // ST-19b: `.pkey/distribution`'s `transports`. Every ingest deletes and rewrites the rows
+    // (`outlets.ts`) and no admin route writes them, so the manifest owns them. A pack whose
+    // transport on an outlet cannot float is pinned in the signed feed (`update/packParts.ts`).
+    setting({
+      key: "distribution.transports",
+      scope: "product",
+      service: "distribution",
+      area: "distribution.outlets",
+      label: "Transports",
+      description:
+        "Which transport carries each deliverable on each outlet: a deliverable's own entry, else the packs entry for a pack, else the default (pkey-cdn when unset).",
+      keywords: ["pkey-cdn", "embedded", "play-pad", "apple-ba", "steam-depot"],
+      docs: "/docs/services/distribution/delivery/",
+      value: { kind: "json", schema: "transports (distribution.schema.json)" },
+      defaultValue: null,
+      allowUnset: true,
+      merge: "cascade",
+      ownership: "manifest",
+      manifest: { path: "distribution:transports" },
+      confirm: { change: "L1" },
+      visibleWhen: VISIBLE,
+      wire: ["document"],
+      readers: [
+        "services/distribution/outlets.ts",
+        "services/distribution/availability.ts",
+        "services/distribution/delivery.ts",
+      ],
+      storage: { kind: "rich", adapter: "dist_transports" },
+      since: "ST-19b",
+    }),
     setting({
       key: "distribution.commerce",
       scope: "product",

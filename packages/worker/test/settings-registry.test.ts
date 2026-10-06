@@ -153,6 +153,11 @@ function schemaHasPath(path: string): boolean | "deprecated" {
   return deprecated ? "deprecated" : true;
 }
 
+/** Every manifest field an entry names: `manifest.path`, then `manifest.alsoPaths` (ST-19b). */
+function manifestPaths(e: SettingDef): string[] {
+  return e.manifest ? [e.manifest.path, ...(e.manifest.alsoPaths ?? [])] : [];
+}
+
 function docsPageExists(link: string): boolean {
   const m = /^\/docs\/(.+?)\/?(#.*)?$/.exec(link);
   if (!m) return false;
@@ -385,17 +390,12 @@ describe("the settings registry (ST-03)", () => {
   it("names only canonical manifest spellings (ST-19 registry ↔ manifest parity)", () => {
     const deprecated = new Set(DEPRECATED_SPELLINGS.map(spellingPath));
     for (const e of SETTINGS.entries) {
-      if (!e.manifest) continue;
-      expect(
-        deprecated.has(e.manifest.path),
-        `${e.key} ${e.manifest.path}`,
-      ).toBe(false);
-      // No step of the path is an old spelling either (a pending entry's path may not exist in
-      // the schema yet, but it must not run through a deprecated property).
-      expect(
-        schemaHasPath(e.manifest.path),
-        `${e.key} ${e.manifest.path}`,
-      ).not.toBe("deprecated");
+      for (const path of manifestPaths(e)) {
+        expect(deprecated.has(path), `${e.key} ${path}`).toBe(false);
+        // No step of the path is an old spelling either (a pending entry's path may not exist in
+        // the schema yet, but it must not run through a deprecated property).
+        expect(schemaHasPath(path), `${e.key} ${path}`).not.toBe("deprecated");
+      }
     }
     // The check has teeth: an old spelling is caught.
     expect(schemaHasPath("product:tiers")).toBe("deprecated");
@@ -408,11 +408,12 @@ describe("the settings registry (ST-03)", () => {
       for (const r of e.readers)
         expect(existsSync(join(SRC, r)), `${e.key} reader ${r}`).toBe(true);
       expect(docsPageExists(e.docs), `${e.key} docs ${e.docs}`).toBe(true);
-      if (e.manifest && !e.pending)
-        expect(
-          schemaHasPath(e.manifest.path),
-          `${e.key} ${e.manifest.path} (a canonical spelling, ST-19)`,
-        ).toBe(true);
+      if (!e.pending)
+        for (const path of manifestPaths(e))
+          expect(
+            schemaHasPath(path),
+            `${e.key} ${path} (a canonical spelling, ST-19)`,
+          ).toBe(true);
     }
     expect(OFFLINE_DAYS_MAX).toBe(MAX_OFFLINE_DAYS);
   });
@@ -619,6 +620,27 @@ describe("the registry rules refuse", () => {
         "config",
         product("config.x.y", "config", { ownership: "claimable" }),
         /needs manifest\.path/,
+      ],
+      [
+        "malformed second manifest field (ST-19b)",
+        "config",
+        product("config.x.y", "config", {
+          ownership: "manifest",
+          manifest: { path: "product:web.origins", alsoPaths: ["web origins"] },
+        }),
+        /manifest\.alsoPaths must be/,
+      ],
+      [
+        "repeated manifest field (ST-19b)",
+        "config",
+        product("config.x.y", "config", {
+          ownership: "manifest",
+          manifest: {
+            path: "product:web.origins",
+            alsoPaths: ["product:web.origins"],
+          },
+        }),
+        /manifest\.alsoPaths repeats a path/,
       ],
       [
         "no readers",

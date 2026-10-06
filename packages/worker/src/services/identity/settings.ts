@@ -79,6 +79,36 @@ export const IDENTITY_SETTINGS_SLICE: ServiceSettingsSlice = {
       readers: ["services/identity/oidc.ts", "core/identityTrust.ts"],
       storage: { kind: "rich", adapter: "oidc_config" },
     }),
+    // ST-19b: `.pkey/product`'s `provisioning` hooks. Link and every resync replace the rows whole
+    // (`resync.ts`), and no admin route writes them, so the manifest owns them. A hook writes an
+    // entitlement and a templated secret into a signed-in licence's payload from a verified claim
+    // (`applyProvisioningHooks`), so changing one can widen what a sign-in grants:
+    // security-widening, like the OIDC block it extends. The entitlement reaches the document.
+    setting({
+      key: "identity.provisioning",
+      scope: "product",
+      service: "identity",
+      area: "identity.signIn",
+      label: "Provisioning hooks",
+      description:
+        "Hooks that turn a verified OIDC claim into an entitlement and a secret on the signed-in person's licence: the claim, the entitlement key and value, and a secret built from a URL template whose host must be one the hook allows. Changing one changes what a sign-in grants.",
+      keywords: ["claims", "entitlements", "provisioning_config"],
+      docs: "/docs/services/identity/oidc/",
+      value: { kind: "json", schema: "provisioning (product.schema.json)" },
+      defaultValue: [],
+      merge: "cascade",
+      ownership: "manifest",
+      manifest: { path: "product:provisioning" },
+      securityWidening: true,
+      widensWhen: "any",
+      critical: true,
+      confirm: { change: "L2" },
+      visibleWhen: VISIBLE,
+      wire: ["document"],
+      readers: ["services/identity/oidc.ts"],
+      storage: { kind: "rich", adapter: "provisioning_config" },
+      since: "ST-19b",
+    }),
     setting({
       key: "identity.browserSessionDays",
       scope: "product",

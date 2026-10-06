@@ -48,7 +48,9 @@ Product settings are spread over service pages today ([S-18 §2.6](../../notes/S
 ST-06 left a shrinking allow-list in `packages/worker/scripts/settings-coverage.ts`. Its "PENDING owners" decision ([ST-06](ST-06-settings-docs-coverage.md#design-notes)) assigns this package the 5 entries below. Register each one in the settings registry (the note names the intended key, where there is one), then delete it from `PENDING` and lower `PENDING_CEILING` by the same count. `checkCoverage` refuses an entry that is both pending and registered, so the two edits land together.
 
 - `table:product_keys` (`core.keys`)
-- `table:product_secrets` (`core.secrets`)
+- `table:product_secrets` (`core.secrets`: ST-19b registered this entry, pending on ST-08, with
+  names only and storage `none`. Extend it with the `product_secrets` adapter and its readers,
+  and drop its `pending`; do not register it again)
 - `table:release_channel_floors` (`release.channelFloors`)
 - `table:release_pack_floors` (`release.channelFloors`, packs)
 - `column:release_pack_floors.source`

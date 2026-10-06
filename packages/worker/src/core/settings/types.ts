@@ -184,8 +184,14 @@ export interface SettingDef<T = unknown> {
   varName?: string;
   /** A-13's semantics for the deploy step: `ceiling` = a deploy-time `off` is a hard off. */
   precedence?: "runtime" | "ceiling";
-  /** The manifest field that seeds or sets it: `<document>:<dotted path>`, e.g. `product:web.origins`. */
-  manifest?: { path: string };
+  /**
+   * The manifest field that seeds or sets it: `<document>:<dotted path>`, e.g. `product:web.origins`.
+   * `alsoPaths` (ST-19b) names further fields the same entry reads, for the one setting whose value
+   * the manifest spells as two sibling fields (`release.compatWindow`: `product.compatMin` and
+   * `product.compatMax`). Each is held to the same rules as `path`: canonical, present in the
+   * schema, and a coverage target the entry declares.
+   */
+  manifest?: { path: string; alsoPaths?: readonly string[] };
   /**
    * Who writes it (S-18 §4.2 places this inside `manifest`; it is top-level here so operator-only
    * and read-only entries carry it too). `manifest` / `claimable` / `narrow-only` need

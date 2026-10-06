@@ -4124,6 +4124,18 @@ composition root and refuses:
 No new data is collected and nothing reaches a device: `wire` only labels which existing channel
 already carries a value.
 
+ST-19b registers the manifest-declared settings ST-06 left pending (the `.pkey/release` block,
+deliverables, channel policy, trusted publisher, release keys, device registration, required
+secret names, provisioning hooks and transports). Each describes today's storage and adds no
+write path. Five are flagged security-widening, so any later generic write needs a reason and at
+least L1: `release.github` (whose releases are served and published; set by Link, never by a
+resync), `release.publishing.trustedPublisher` (which workflow and environment can mint a
+`pkeyci_` token; the console's `PUT …/ci-publisher` also sets the repository and the scopes,
+`release:yank` included), `release.keys` (who can sign an accepted release record),
+`core.registration` (`open` lets any client mint a device token) and `identity.provisioning`
+(what a verified claim grants). All five are in `SECURITY_WIDENING_KEYS`. `core.secrets` is
+`secret`: it names secrets, never holds a value, and stays pending until ST-08 wires it.
+
 ### Self-reported operations (A-14)
 
 `GET /manage/api/platform/operations` (A-14, notes/S-13 §7.2 phase 1) sits behind the same
