@@ -35,11 +35,11 @@ CREATE INDEX IF NOT EXISTS idx_release_package_prunes_deliverable
   ON release_package_prunes(product, deliverable_id, pruned_at);
 
 -- `release_package_retention`: the product's feed retention setting
--- (`release.packages.prunePrereleases`, the settings registry). No row = the default, on. The
--- system product always prunes, whatever its row says.
+-- (`release.packages.prunePrereleases`, the settings registry). No row = the default, OFF: a
+-- tenant product opts in. The system product always prunes, whatever its row says.
 CREATE TABLE IF NOT EXISTS release_package_retention (
   product           TEXT PRIMARY KEY REFERENCES products(slug),
-  prune_prereleases INTEGER NOT NULL DEFAULT 1,
+  prune_prereleases INTEGER NOT NULL DEFAULT 0,
   version           INTEGER NOT NULL DEFAULT 1,
   updated_at        INTEGER NOT NULL,
   updated_by        TEXT,
