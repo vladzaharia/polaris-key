@@ -55,12 +55,37 @@ Once MO-04 onwards add View Transitions and exits, a screenshot or a layout prob
 2. Write the smoke suite against today's overlays (MO-02's exits) and one console route.
 3. Run every e2e suite twice to show stability.
 
+## Corrections (as built, 2026-10-05)
+
+- **The portal suites already ran reduced.** `portal.e2e.test.ts` and `portalQuality.e2e.test.ts`
+  open every page through `e2e/portalHarness.ts`, which set `reducedMotion: "reduce"` before this
+  package. The harness gains a `reducedMotion` option (default `"reduce"`) so the motion suite can
+  turn motion on; `portal.e2e.test.ts` itself is untouched.
+- **Every context, not only the listed suites.** `license.e2e.test.ts` and
+  `storeCheck.e2e.test.ts` open contexts too and get the same option. `kit.e2e.test.ts` keeps its
+  explicit `no-preference` cases and defaults to `reduce`.
+- **No route calls `viewTransition()` yet.** MO-02 shipped the layer without consumers (MO-04 wires
+  the console router, MO-05 the portal's), so the route and list checks bundle the layer's real
+  source (`src/ui/motion/viewTransition.ts`, with Vite) and drive it inside the page against the
+  built `motion.css`, over the DevTools protocol. MO-04 and MO-05 replace the injected call with a
+  real navigation. A portal route check is included now, on the same terms.
+- **The phone navigation drawer is an `animate-pk-in` dialog**, so it exits through `pk-exit` on
+  `base`, not the `.pk-drawer` pattern.
+- **Reduced motion did not collapse bare Tailwind transitions.** A `transition-colors` with no
+  duration utility (17 sites, the sidebar links among them) ran Tailwind's 150 ms default even
+  under `prefers-reduced-motion`; the smoke suite caught it on a route change. `src/motion.css`
+  gains a section 0 that points `--default-transition-duration` and
+  `--default-transition-timing-function` at `micro` and `standard`.
+- **From the MO-02 review:** the motion lint also bans numbered `duration-NNN` and `delay-NNN`
+  utilities, and the smoke suite closes the Cmd-K palette, the product switcher, the phone
+  navigation (console) and the JumpPalette (portal) for real and checks `getAnimations()`.
+
 ## Acceptance criteria
 
-- [ ] Every e2e context in the listed suites sets `reducedMotion: "reduce"`.
-- [ ] `e2e/motion.e2e.test.ts` passes and fails if `motion.css` is not loaded (shown by a temporary revert in the PR description).
-- [ ] Two consecutive full e2e runs pass with identical layout-lint output.
-- [ ] The green gate passes (AGENTS.md), including `pnpm --filter @polaris-key/worker test adminCspParity` after the admin build and `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations.
+- [x] Every e2e context in the listed suites sets `reducedMotion: "reduce"`.
+- [x] `e2e/motion.e2e.test.ts` passes and fails if `motion.css` is not loaded (shown by a temporary revert in the PR description).
+- [x] Two consecutive full e2e runs pass with identical layout-lint output.
+- [x] The green gate passes (AGENTS.md), including `pnpm --filter @polaris-key/worker test adminCspParity` after the admin build and `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations.
 
 ## Verify
 
