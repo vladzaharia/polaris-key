@@ -56,6 +56,20 @@ const MOTION_PRESS_MS := 120
 const MOTION_PROGRESS_MS := 200
 const MOTION_WAITING_MS := 0
 const MOTION_SUCCESS_MS := 320
+## Brand motion durations (ms) and distances (px at 720p; notes/S-23 §5). Zero the durations when
+## reduced motion is on.
+const DURATION_MICRO_MS := 80
+const DURATION_FAST_MS := 120
+const DURATION_BASE_MS := 200
+const DURATION_MODERATE_MS := 260
+const DURATION_SLOW_MS := 320
+const DURATION_DELIBERATE_MS := 480
+const DURATION_SHIMMER_MS := 1600
+const MOTION_DISTANCE_XS := 2.0
+const MOTION_DISTANCE_SM := 4.0
+const MOTION_DISTANCE_MD := 8.0
+const MOTION_DISTANCE_LG := 12.0
+const MOTION_DISTANCE_XL := 24.0
 const PRESS_SCALE := 0.98
 const SHEET_RISE := 24.0
 const OVERSHOOT := 1.04
