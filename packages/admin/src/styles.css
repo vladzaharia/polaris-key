@@ -24,6 +24,31 @@
 /* sonner's base toast layout, bundled (vite.config.ts stops its inline <style> injection). */
 @import "sonner/dist/styles.css";
 
+/*
+ * Reduced motion has two triggers (notes/S-23 D3, §6.6): the OS query and the in-app preference
+ * (html[data-motion="reduce"], MO-12). Tailwind's built-in motion-reduce: / motion-safe: follow
+ * only the OS query, so they are redefined here to honour both: every motion-reduce: utility also
+ * applies under the preference, and motion-safe: ones stop under it.
+ */
+@custom-variant motion-reduce {
+  @media (prefers-reduced-motion: reduce) {
+    @slot;
+  }
+  &:where(:root[data-motion="reduce"], :root[data-motion="reduce"] *) {
+    @slot;
+  }
+}
+@custom-variant motion-safe {
+  @media (prefers-reduced-motion: no-preference) {
+    &:where(
+      :root:not([data-motion="reduce"]),
+      :root:not([data-motion="reduce"]) *
+    ) {
+      @slot;
+    }
+  }
+}
+
 /* Radix Select's viewport rules, bundled (vite.config.ts drops its inline <style>). */
 [data-radix-select-viewport] {
   scrollbar-width: none;
