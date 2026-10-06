@@ -33,6 +33,10 @@ public data class DownloadBuild(
     val minOs: String?,
     val url: String,
     val outletId: String,
+    /** The page's release id (`app@1.0.0`), or null when the model names none. */
+    val releaseId: String? = null,
+    /** The build's lowercase hex SHA-256 as the page lists it (informational: verify against the signed record). */
+    val sha256: String? = null,
 )
 
 /** One way to get the product: a store listing, a direct download, a package-manager command. */
@@ -131,6 +135,8 @@ public class DistributionClient(private val core: CoreContext) {
                 minOs = b["minOs"].stringValue,
                 url = b["url"].stringValue ?: return null,
                 outletId = b["outletId"].stringValue ?: "download",
+                releaseId = b["releaseId"].stringValue,
+                sha256 = b["sha256"].stringValue,
             )
         }
 

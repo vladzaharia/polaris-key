@@ -1,7 +1,10 @@
 // One-call boot (SDK parity pass §3.4, proposed id `ui.boot`; drives `ui.stages`): the host side of
 // client-core's boot stage machine, end to end.
 //
-//   shell    discovery, when the host pinned no `expectedServices`
+//   shell    discovery, when the host pinned no `expectedServices` or holds no token; then, on a
+//            fresh install (no token) of a product whose `core.registration` is `open`, the
+//            keyless registration, so the sync pass that follows already carries the token
+//            (conformance/transcripts/boot-cold-register.json)
 //   guard    the app boot guard (`update.markBootAttempt`, §3.15)
 //   sync     `client.sync()`
 //   gate     reacquire per discovery's `core.registration` (`ensureActivated`), then the status
@@ -169,8 +172,17 @@ export async function runBoot(
   let guard: BootAttempt | null = null;
 
   send({ type: "start" });
-  // shell: discovery, when the build did not pin what the product runs.
-  if (!client.servicesPinned) await client.discover().catch(() => null);
+  // shell: discovery, when the build did not pin what the product runs or this is a fresh
+  // install (its registration policy decides whether it may register before it syncs).
+  const fresh = !client.hasToken;
+  if (!client.servicesPinned || fresh)
+    await client.discover().catch(() => null);
+  if (
+    fresh &&
+    opts.registration !== false &&
+    client.discovery()?.core?.registration === "open"
+  )
+    await client.devices.register().catch(() => null);
   send({ type: "shell.done" });
 
   // guard

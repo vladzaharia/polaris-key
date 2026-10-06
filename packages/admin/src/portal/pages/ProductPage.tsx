@@ -152,22 +152,32 @@ function ProductBody({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // The nav marks the section on screen.
+  // The nav marks the section on screen: the topmost section inside the band (nav order breaks
+  // a tie, as between the two columns' first cards on desktop). An observer callback carries
+  // only the sections whose intersection changed, so the set in the band is kept across
+  // callbacks; picking from the changed entries alone left the nav on a section that had passed
+  // through the band and out again (a layout shift above a deep link, then a scroll back),
+  // whatever was on screen once the page settled.
   React.useEffect(() => {
     if (typeof IntersectionObserver === "undefined") return;
     const els = sections
       .map((s) => document.getElementById(`section-${s}`))
       .filter((e): e is HTMLElement => e !== null);
+    const inBand = new Set<Element>();
     const io = new IntersectionObserver(
       (entries) => {
-        const top = entries
-          .filter((e) => e.isIntersecting)
-          .sort(
-            (a, b) => a.boundingClientRect.top - b.boundingClientRect.top,
-          )[0];
-        const s = top?.target.getAttribute(
-          "data-section",
-        ) as ProductSection | null;
+        for (const e of entries) {
+          if (e.isIntersecting) inBand.add(e.target);
+          else inBand.delete(e.target);
+        }
+        let top: Element | undefined;
+        let topY = Infinity;
+        for (const el of els) {
+          if (!inBand.has(el)) continue;
+          const y = el.getBoundingClientRect().top;
+          if (y < topY) [top, topY] = [el, y];
+        }
+        const s = top?.getAttribute("data-section") as ProductSection | null;
         if (s) setCurrent(s);
       },
       { rootMargin: "-120px 0px -60% 0px" },

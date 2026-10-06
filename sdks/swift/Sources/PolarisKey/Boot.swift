@@ -4,7 +4,8 @@
 //   shell   discovery, when the client has no discovery document yet (a failure is tolerated:
 //           the services fall back to `expectedServices`)
 //   guard   the app boot guard's `markBootAttempt()` (§3.15)
-//   sync    one Core pass; no answer at all is `offline`
+//   sync    with no credential under an `open` registration policy, the keyless registration
+//           first; then one Core pass; no answer at all is `offline`
 //   gate    the gate status. With no credential it first REACQUIRES, following discovery's
 //           registration policy: `open` registers the device keylessly; anything else leaves the
 //           gate at `needs-activation`, an outcome the UI shell renders (an activation prompt is
@@ -144,7 +145,14 @@ extension PolarisKeyClient {
         let guardOutcome = await bootGuard.markBootAttempt()
         driver.send(.guardDone(guardOutcome.guardResult))
 
-        // sync
+        // sync: with no credential on a product whose registration policy is `open`, register
+        // keylessly first, so the pass fetches the documents with the new token (as Python's and
+        // Godot's boot do; boot-cold-register.json).
+        if register, !core.localOnly, await core.token == nil,
+            await core.discoveryDocument?.core?.registration == .open
+        {
+            _ = await self.register()
+        }
         let sync = await self.sync()
         // No answer for any document is `offline`; any answer (applied, unchanged, a refusal the
         // gate will render) is `ok`. A product that fetches no document has nothing to miss.

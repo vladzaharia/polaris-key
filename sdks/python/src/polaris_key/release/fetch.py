@@ -108,6 +108,9 @@ def fetch_verified(
         raise PolarisError("insecure-redirect", f"Refusing to download over plain http: {url}")
     expected_sha256 = expected_sha256.lower()
     part = to + ".part"
+    # Private resume sidecar ``<to>.part.json`` ({"sha256": ..., "etag": ...}). Not a public format, but
+    # tests/test_transcripts.py seeds it (with ``.part``) to replay an interrupted fetch, so a
+    # change here must change the replayer too.
     meta_path = part + ".json"
     directory = os.path.dirname(os.path.abspath(to))
     os.makedirs(directory, exist_ok=True)

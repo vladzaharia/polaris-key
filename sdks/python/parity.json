@@ -45,8 +45,8 @@
     },
     "core.copy": {
       "status": "planned",
-      "unowned": true,
-      "note": "SP-P14, SDK-PARITY-PASS §5.3."
+      "wp": "SP-22",
+      "note": "copy_generated.py is emitted from copy.en.json, but polaris_key.copy.message()/title() still read the hand-kept EN table (different strings, and a fallback that is not COPY_FALLBACK); core.copy flips once copy.py serves the generated catalog."
     },
     "license.gate": {
       "status": "implemented"
@@ -70,9 +70,7 @@
       "status": "implemented"
     },
     "license.refusals": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-P01, SDK-PARITY-PASS §5.3."
+      "status": "implemented"
     },
     "config.resolve": {
       "status": "implemented"
@@ -94,9 +92,7 @@
       "note": "The Python mirror is rendered by tools/gen-mirrors.ts."
     },
     "config.local": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-P11, SDK-PARITY-PASS §5.3."
+      "status": "implemented"
     },
     "devices.fingerprint": {
       "status": "implemented"
@@ -111,13 +107,11 @@
       "status": "implemented"
     },
     "devices.report": {
-      "status": "implemented",
-      "note": "The report omits the gate, outlet, packInstalls and updates keys, which the Worker allowlists and Godot sends. SDK parity pass SP-P03 adds them (updates also needs telemetry.updates, SP-00)."
+      "status": "implemented"
     },
     "telemetry.updates": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-P03, SDK-PARITY-PASS §5.3."
+      "status": "implemented",
+      "note": "core/update_journal.py UpdateJournal: at most 16 queued events ride each devices/report in updates, oldest first, dropped once a 200 delivers them."
     },
     "devices.attest": {
       "status": "na",
@@ -127,7 +121,7 @@
     },
     "identity.oidc": {
       "status": "planned",
-      "unowned": true,
+      "wp": "I-15",
       "note": "Browser redirect sign-in waits on the native redirect-token route (I-15, SDK parity pass wire item W4). Until then identity.sign_in_with_browser() opens the device-code verificationUriComplete in the system browser and polls (identity.devicecode); the deprecated /identity/auth/poll is never used."
     },
     "identity.devicecode": {
@@ -144,14 +138,12 @@
       "note": "core/release_record.py verify_release_record (hash before signature, pinned release keys only, never a product key); client.update.release_record() and decide() fetch by hash and keep the releaseRecords slice while a committed feed pins it."
     },
     "release.fetch": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-P07, SDK-PARITY-PASS §5.3."
+      "status": "implemented",
+      "note": "client.release.fetch(target, to=…): discovery's build template, device bearer and metadata headers, Range/If-Range resume, size and SHA-256 checked before the file appears."
     },
     "release.distribution": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-P07, SDK-PARITY-PASS §5.3."
+      "status": "implemented",
+      "note": "client.distribution.download_model() and this_platform()."
     },
     "update.check": {
       "status": "implemented"
@@ -161,9 +153,8 @@
       "note": "core/feed.py verify_feed with floors keyed by the canonical channel; client.update.feed() and decide() fetch, verify and commit the feeds cache slice, re-verified on load."
     },
     "update.feeds": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-P07, SDK-PARITY-PASS §5.3."
+      "status": "implemented",
+      "note": "client.update.feed_url(kind) over discovery's update.endpoints (aliases canonicalised, values percent-encoded, velopack without a channel is the UpdateManager directory); tests/test_feed_url_matrix.py drives every feed-url-matrix.json row."
     },
     "update.decide": {
       "status": "implemented",
@@ -186,9 +177,7 @@
       "note": "core/detection.py detect_outlet over update/outlet.py read_outlet_signals (environment, sys.executable and script path conventions, product-named markers, GetCurrentPackageFamilyName through ctypes); the update client detects when the host names no outlet. PEP 376 INSTALLER names no v4 signal and is not read."
     },
     "crash.tags": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-P14, SDK-PARITY-PASS §5.3."
+      "status": "implemented"
     },
     "packs.record": {
       "status": "implemented",
@@ -282,26 +271,24 @@
     },
     "packs.transport.steam": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-28",
       "note": "P5-08 covers Godot only; Python desktop hosts have no Steam-depot transport owner."
     },
     "packs.transport.msix": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-29",
       "note": "No work package owns the MSIX optional-package transport (P5-08 Out)."
     },
     "packs.transport.flatpak": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-29",
       "note": "No work package owns the Flatpak extension transport (P5-08 Out)."
     },
     "ui.stages": {
       "status": "implemented"
     },
     "ui.boot": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-P08, SDK-PARITY-PASS §5.3."
+      "status": "implemented"
     },
     "ui.kit": {
       "status": "na",
@@ -309,9 +296,7 @@
       "reason": "runtime"
     },
     "ui.cli": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-P12, SDK-PARITY-PASS §5.3."
+      "status": "implemented"
     },
     "commerce.receipt": {
       "status": "implemented",
