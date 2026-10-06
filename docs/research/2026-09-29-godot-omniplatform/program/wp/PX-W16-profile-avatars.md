@@ -102,7 +102,7 @@ outbound fetcher. The provider host allowlist stays specific to this route
   PNG output always discards metadata. Without the binding nothing is copied and the account shows
   initials; an avatar is never stored as fetched.
 - **Content-addressed, peppered.** The asset id is `HMAC(KEY_HASH_PEPPER, account ‖ SHA-256 of
-  the source)`, so the same picture is stored once per account and the id is not computable from a
+the source)`, so the same picture is stored once per account and the id is not computable from a
   public provider picture. A migration adds `account_avatars` (one row per asset) for deletion and GC.
 - **Refusals use registered codes.** Every `error` the Worker answers must be in
   `conformance/parity/errors.json`, and each code there needs copy in all eight locales and a
