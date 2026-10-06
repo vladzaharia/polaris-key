@@ -168,6 +168,101 @@ client that the customer portal and `provider: platform` products use.
 - **Rolling back.** `wrangler secret delete ADMIN_OIDC_CLIENT_ID --env <env>` returns the console
   to the platform client, which then needs `/manage/callback` back in its callback URLs.
 
+### Moving end users off the platform IdP (I-17)
+
+End users of `provider: platform` products, and customers who use **Continue with single sign-on**
+on the portal, still sign in through Pocket ID. They move to their Polaris Key account by **claim
+at next sign-in**: each sign-in through the platform client lands the Pocket ID subject on an
+account and keeps it there as a temporary sign-in method (`oidc:https://id.plrs.im`). Pocket ID
+then holds operators only (THREAT-MODEL "Moving end users off the platform IdP"). There is no bulk
+export: Pocket ID's users endpoint needs an admin API key, and none is needed for this.
+
+Two deploy-time vars control it. Neither is a console setting, so each step below is a reviewed
+change to `packages/worker/wrangler.toml` (`[env.<env>.vars]`) and a deploy.
+
+| Var                       | Values                                   | Unset means                                   |
+| ------------------------- | ---------------------------------------- | --------------------------------------------- |
+| `PLATFORM_OIDC_MIGRATION` | `off`, `claim`, `operators-only`         | `off`: every sign-in exactly as before I-17   |
+| `PLATFORM_OIDC_SUNSET`    | a UTC day, `YYYY-MM-DD` (from 00:00 UTC) | no sunset: the temporary method keeps working |
+
+- **`claim`.** A subject that already has a method signs in to its account. Otherwise, if no
+  account uses the address Pocket ID verified (`email_verified`), a new account gets it as its
+  primary email and an email sign-in method. If one account uses it, nothing is written: the
+  portal opens the email step's join offer (I-07's gate), which joins only after the person signs
+  in to that account in the same browser and confirms. An app's sign-in page links to the portal
+  for it. If two or more accounts use it, nothing is written or offered. A subject with no
+  verified email gets an account whose only method is the temporary one. The licences its
+  sign-ins created attach to the account (platform products only, first attach only).
+- **`operators-only`.** Only subjects that already moved still sign in through Pocket ID. Anyone
+  else sees _This way of signing in has ended_. Until I-08 moves `provider: platform` apps to the
+  login card, that includes new users of those apps, so turn it on only after I-08 ships, or
+  accept that.
+- **The sunset.** In `claim` or `operators-only`, from 00:00 UTC on that day nobody signs in
+  through the platform client: the portal hides **Continue with single sign-on**, `/login`
+  refuses, and both callbacks refuse before exchanging the code. While the mode is `off` it is
+  ignored. A value that is not a real day reads as unset (the report shows `sunsetInvalid`); so
+  does an unrecognised mode as `off` (`modeUnrecognised`).
+- **The count.** `GET https://key.plrs.im/manage/api/platform/identity-migration`, opened in a
+  browser signed in to the console (platform admins only). It answers counts only:
+
+  ```text
+  mode, sunset, ended, modeUnrecognised, sunsetInvalid, consoleClientDedicated
+  linked.subjects          moved subjects (the temporary method on an active account)
+  linked.withOtherMethod   ... with another way in: they keep access after the sunset
+  linked.onlyMethod        ... whose only way in is the temporary method
+  linked.onlyMethodRecent  ... of those, signed in through Pocket ID in the last 90 days
+  unlinked.subjects        subjects seen only on licences (licenses.sub) and not moved yet
+  unlinked.onAccount       ... with a licence already on an account (that account is the way in)
+  unlinked.withEmail       ... whose floating licence names an email (it attaches when that
+                               address signs up)
+  unlinked.emailLess       ... with nothing to go on
+  emailLess                linked.onlyMethod + unlinked.emailLess: who loses sign-in at the sunset
+  ```
+
+**Before the owner's go.**
+
+1. Deploy a build with I-17 and both vars unset. Read the count once; it works with the mode off.
+2. In Pocket ID, confirm that users cannot change their own email address, or that a changed
+   address is not reported as verified until it is. The move trusts `email_verified`.
+3. Prefer to wait for the email step's UI (PX-21). Until it ships, a person whose address another
+   account already uses is sent to the sign-in card and signs in to that account as before; the
+   join itself needs PX-21.
+
+**The rollout (owner go/no-go at each step; record it in the table below).**
+
+1. **Staging.** Set `PLATFORM_OIDC_MIGRATION = "claim"` in `[env.staging.vars]`, deploy, sign in
+   to a `provider: platform` product with a test Pocket ID user, and check the report shows
+   `mode: "claim"` and one more `linked.subjects`.
+2. **Production, `claim`.** The same change in `[env.prod.vars]`. Read the report weekly:
+   `linked` grows as people sign in, `unlinked` shrinks.
+3. **The sunset date.** Set only after the owner has read `emailLess` (S-16 §9 risk 11: the date
+   follows the count). Give the people in `linked.onlyMethod` time to add an email address in the
+   portal (Account → Sign-in methods, PX-W12; a passkey needs a verified email first); announce
+   the date. Then set `PLATFORM_OIDC_SUNSET`.
+4. **`operators-only`.** Once new people should no longer arrive through Pocket ID (after I-08).
+5. **After the sunset.** In Pocket ID, remove the end-user accounts, keeping the operators in the
+   `admins` group. Once `consoleClientDedicated` is `true` (I-03's console client is set) and I-08
+   has moved every `provider: platform` app to the login card, the platform client can be
+   deleted in Pocket ID and the `PLATFORM_OIDC_*` secrets removed. Pocket ID is then
+   operator-only.
+
+**Rolling back.** Set `PLATFORM_OIDC_MIGRATION = "off"` (or remove it) and deploy: every sign-in
+behaves as before I-17. Accounts and methods the claim made stay; they are ordinary accounts, and
+like every account one with no sign-in and no licence for 36 months gets the warning email and is
+then deleted (D23). Removing `PLATFORM_OIDC_SUNSET`, or moving it later, reopens the platform
+client to the people it had ended.
+
+The owner signs off each step; the lead records the date and value here in the change that makes it.
+
+| Owner decision                       | Date    | Value   |
+| ------------------------------------ | ------- | ------- |
+| Go for `claim` on staging            | pending | pending |
+| Go for `claim` on production         | pending | pending |
+| Email-less count read (`emailLess`)  | pending | pending |
+| Sunset date (`PLATFORM_OIDC_SUNSET`) | pending | pending |
+| Go for `operators-only`              | pending | pending |
+| End users removed from Pocket ID     | pending | pending |
+
 ### Platform store connections (A-16)
 
 The team-level store credentials (App Store Connect API key, In-App Purchase key, Google Play

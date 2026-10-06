@@ -147,6 +147,14 @@ copy.
 
 Used for: signing the person in, showing and ending their sessions, and filling their profile.
 
+While the owner has the move off single sign-on turned on (I-17), a sign-in through the platform
+identity provider (single sign-on at id.plrs.im, in an app of a `provider: platform` product or on
+the portal) is kept on a Polaris Key account: the provider's subject as a sign-in method, the
+address it verified as the account's primary email and an email sign-in method (when no other
+account uses it), the name it sent, and the time of the sign-in. The licences that provider's
+sign-ins created join the account. Nothing new is collected from the device. The operator's count
+of who would lose single sign-on at the sunset holds numbers only.
+
 For each passkey a person adds (I-16), the Worker keeps the credential's public key and id, its
 signature counter, the transports the browser reported, the relying party (`key.plrs.im`), the
 account's random WebAuthn user handle (never the account id), when it was added and last used, and

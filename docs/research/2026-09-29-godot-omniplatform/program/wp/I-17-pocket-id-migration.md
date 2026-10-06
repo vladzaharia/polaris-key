@@ -45,6 +45,36 @@ Operators and customers should not share a directory ([S-16 §5.4](../../notes/S
 - Migrating by email here is not "linking by email match across accounts": the Pocket ID subject is the same person's previous Polaris sign-in, and it lands on an account only if no other account holds that email. Otherwise the email step offers to join that account, with both proven in one session (the person signs in to the existing account by any of its methods), and never joins silently (owner, 2026-10-04).
 - Migrated accounts are ordinary accounts for dormancy: no sign-in and no licence for 36 months means a warning email, then deletion (D23, decided by the owner 2026-10-04).
 
+## Corrections against the code (I-17 builder, 2026-10-06)
+
+- **Two front doors, not one.** The portal's **Continue with single sign-on** (`/login` →
+  `/callback`) already ended in I-05's `signIn`, so it already made accounts with the Pocket ID
+  subject as an `oidc` link keyed by the issuer. The `provider: platform` product sign-in
+  (`/<p>/identity/auth/*`, `oidc.ts`) made only `sub`-keyed licences (I-04 §8 Q6). The claim is
+  therefore mostly the product path's: `services/identity/accounts/platformMigration.ts`
+  (`claimPlatformSubject`), called from both callbacks. On the portal it adds the join offer,
+  `operators-only` and the sunset.
+- **The switch is two deploy-time vars**, off by default: `PLATFORM_OIDC_MIGRATION`
+  (`off` | `claim` | `operators-only`) and `PLATFORM_OIDC_SUNSET` (`YYYY-MM-DD`, unset). Not a
+  console setting: the AT-2 deny-list refuses OIDC-named platform settings, and a console session
+  should not move people between sign-in paths. Both are `NOT_A_SETTING` rows and inventory vars.
+- **The join offer is the email step's** (I-07's gate, `beginProviderSignIn`): the portal callback
+  opens it for a conflicting address, and it joins only with the other account proven in the
+  same browser. Its card UI is PX-21 (todo); until then the person lands on the sign-in card and
+  signs in to the other account as before. A product route cannot open the gate (it never sees
+  the account realm's cookies, I-07), so the app's "signed in" page links to the portal's
+  single sign-on instead. Two or more accounts on the address: nothing written, nothing offered.
+- **Licences attach** through the portal's existing link sweep (`syncAccountLicenseLinks`) after
+  the flow's licence is activated (the browser callback, the I-26 chooser, the device-code poll),
+  so the R5-01/R5-02 and first-attach rules are unchanged. A moved person's later app sign-ins
+  therefore meet I-26's licence chooser (their account owns the licence) until I-08 replaces it.
+- **No D1 migration.** `account_links`, `accounts` and `licenses` hold everything; the count reads
+  them. No `TABLE_OWNERS` change.
+- **The count** is `GET /manage/api/platform/identity-migration` (platform admins; counts only;
+  works with the mode off). It cannot be read from this repository, so the PR reports it as
+  pending: the owner reads it after deploying this build with both vars unset (RUNBOOK).
+- **No bulk export**: optional, and no admin API key was issued.
+
 ## Steps
 
 1. Claim-on-sign-in path with tests.
