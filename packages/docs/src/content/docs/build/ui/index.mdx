@@ -8,11 +8,17 @@ sidebar:
 
 import KitTable from "../../../../components/ui/KitTable.astro";
 
-Every Polaris Key SDK that draws UI ships a **UI kit**: the screens a product needs to gate itself
-on a license, from boot and sign-in to devices, updates and settings. All of them are built to one
-specification, `docs/design/UI-KITS.md`. The kits share one component catalog, one theme API, one
-copy catalog and one set of flows, so a person who moves between a product's app, the customer
-portal and the console meets one system, whichever SDK the product links.
+:::note[Status]
+This section documents the UI-kit specification (`docs/design/UI-KITS.md`) the kits are being
+rebuilt to. No kit ships the shared theme API, copy catalog or sign-in form yet;
+[The kits](#the-kits) says where each kit's current docs are.
+:::
+
+Every Polaris Key SDK that draws UI is getting a **UI kit** built to one specification,
+`docs/design/UI-KITS.md`: the screens a product needs to gate itself on a license, from boot and
+sign-in to devices, updates and settings. The kits will share one component catalog, one theme
+API, one copy catalog and one set of flows, so a person who moves between a product's app, the
+customer portal and the console meets one system, whichever SDK the product links.
 
 This section is the shared half of the kit docs. Each kit adds its own framework page, and its tab
 on every component page, as it ships. Until a kit has its framework page, its current docs are on
@@ -27,7 +33,7 @@ its SDK page (see [The kits](#the-kits)).
 
 ## Three layers in every kit
 
-Every component in the [catalog](/docs/build/ui/components/) ships in three layers, so a team can
+Every component in the [catalog](/docs/build/ui/components/) is specified in three layers, so a team can
 drop in a flow, restyle a component, or rebuild the UI on the state alone:
 
 - **(a) The drop-in flow:** one call that gates the app and runs every screen it needs.
@@ -45,14 +51,14 @@ ships.
 | Godot   | `PKeyGate` node, `await PolarisKey.boot()`   | `PKeyActivate.tscn` with theme type variations          | `PKeyActivateController`                           |
 | Qt      | `polaris_key.ui.qt.run_gate(client, window)` | `Activate.qml`, QWidget parts with QSS                  | `ActivateViewModel` (`polaris_key.ui.core`)        |
 
-Layer (c) is one state machine in every language, specified once as shared fixtures: a React
-screen, a SwiftUI screen and a Godot scene fed the same inputs show the same step with the same
-copy key. An app that draws its own UI on the SDK primitives gets the same steps, states and copy
-keys as the drop-in.
+Layer (c) is to be one state machine in every language, specified once as shared fixtures: a
+React screen, a SwiftUI screen and a Godot scene fed the same inputs will show the same step with
+the same copy key. An app that draws its own UI on the SDK primitives gets the same steps, states
+and copy keys as the drop-in.
 
 ## The look
 
-- **The Polaris Key look by default.** Every kit renders the brand's surface, text, status and
+- **The Polaris Key look by default.** Every kit is to render the brand's surface, text, status and
   elevation tokens, Rubik, and the radius and motion tokens. It is dark first with full light
   parity and a System, Dark and Light choice. Games and TV default to dark.
 - **In the product's accent.** Polaris violet appears only when the integrator asks for
@@ -85,8 +91,8 @@ A kit's `ProductIdentity` holds `name`, `icon`, `developer`, and optionally `sho
 3. the app bundle: `Info.plist`, the Android manifest, `package.json`'s `productName`, or
    Godot's `application/config/name` and icon.
 
-Kits never fetch discovery or the icon themselves: they read the presentation through their SDK,
-and fall through to the bundle until the SDK exposes it. With no icon at all, a kit draws a
+Kits never fetch discovery or the icon themselves: they are to read the presentation through
+their SDK, and fall through to the bundle until the SDK exposes it. With no icon at all, a kit draws a
 monogram tile (the product's initial on a neutral surface), never a Polaris Key mark.
 
 The accent follows the same idea: the integrator's colour, else the presentation's `accent` (its
@@ -100,7 +106,7 @@ accents are off on product screens; an integrator can opt in with `serviceCues: 
 
 ## The presentation default
 
-Every kit has **one sign-in form**. Its body morphs in place through Sign in, Finish in your
+The specification gives every kit **one sign-in form**. Its body morphs in place through Sign in, Finish in your
 browser (or the code), Choose a license (and Replace a device, when the license is full), and
 Done. No sheet or dialog stacks on it. Activation with a license key is a step of the same form,
 and also ships on its own for a key-only product.
@@ -119,7 +125,7 @@ platform expects one.
 
 ## Accessibility
 
-Every kit meets WCAG 2.2 AA in both themes, and the specification's shared rules: one heading per
+Every kit is to meet WCAG 2.2 AA in both themes, and the specification's shared rules: one heading per
 screen; visible labels on every field; errors announced and focused; modals that trap focus,
 restore it and close on Escape, B or back; layouts that survive the largest text size; full
 keyboard, gamepad and D-pad reach; named icon-only controls; status never shown by colour alone;

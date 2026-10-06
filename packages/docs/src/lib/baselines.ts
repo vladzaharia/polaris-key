@@ -9,6 +9,9 @@
  * size, preset and font scale the kit records. A kit narrows or widens its own line when it
  * lands its baselines; the default is ui-qa's flat `<state>-<theme>.png` at the top of the
  * directory. Vite needs each pattern and its options as literals, which is why the calls repeat.
+ * The web kits' default also matches their 390 px, `native` and `forced-colors` renders, so UK-04
+ * (elements) and UK-05 (React), and the Vue, Svelte and Angular kits after them, must narrow their
+ * lines when they commit baselines, or every variant is published.
  *
  * `DIRS` must equal ui-qa's BASELINE_DIRS, and every pattern must sit inside its kit's directory:
  * test/ui.test.ts checks both, so a kit that moves its baselines updates this file too.

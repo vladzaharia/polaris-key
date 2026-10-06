@@ -9,7 +9,13 @@ import { Tabs, TabItem } from "@astrojs/starlight/components";
 import AccentVectors from "../../../../components/ui/AccentVectors.astro";
 import KitPending from "../../../../components/ui/KitPending.astro";
 
-Every kit exposes **one theme value** with the same field names, cased for the language
+:::note[Status]
+This section documents the UI-kit specification (`docs/design/UI-KITS.md`) the kits are being
+rebuilt to. No kit ships the shared theme API, copy catalog or sign-in form yet;
+[The kits](/docs/build/ui/#the-kits) says where each kit's current docs are.
+:::
+
+Every kit will expose **one theme value** with the same field names, cased for the language
 (`colorScheme` in TypeScript, Swift and Kotlin; `color_scheme` in Python and GDScript). Every field
 is optional. An empty theme is the Polaris Key look in the product's accent.
 
@@ -29,7 +35,7 @@ is optional. An empty theme is the Polaris Key look in the product's accent.
 | `ambient`     | boolean                                                                          | `true` (`false` under `native`)                      | The product's own icon or art, blurred behind the gate and boot screens                                                                                    |
 | `product`     | `ProductIdentity`                                                                | from the presentation, then the bundle               | [Product identity](/docs/build/ui/#product-identity), including `shortName`, `wordmark` and `deviceCodeUrl`                                                |
 | `copy`        | a partial map of copy keys, or a `locale`                                        | the OS locale                                        | [Localisation](/docs/build/ui/localisation/#overriding-copy)                                                                                               |
-| `poweredBy`   | `false` · `"line"` · `"badge"`                                                   | `false`                                              | The optional "Powered by Polaris Key" line or badge, at the foot of settings and about screens only                                                        |
+| `poweredBy`   | `false` · `"line"` · `"badge"`                                                   | `false`                                              | The optional "Powered by Polaris Key" line, at the foot of AccountAndLicense and About, or badge, on About                                                 |
 | `platform`    | `"auto"` · `"ios"` · `"android"` · `"macos"` · `"windows"` · `"linux"` · `"web"` | `"auto"`                                             | Web and Qt Quick kits render that platform's variant inside a webview or QML (Electron on Windows gets Fluent, Tauri on macOS gets the Mac sheet)          |
 
 ## Where each kit takes it
@@ -139,7 +145,7 @@ port must reproduce exactly (`packages/brand/fixtures/accent-vectors.json`):
 
 ## The native preset
 
-`preset: "native"` keeps the structure, flows, copy and spacing and hands the look to the host:
+`preset: "native"` will keep the structure, flows, copy and spacing and hand the look to the host:
 
 - **Web:** the host's font (`font: inherit`), `Canvas` and `CanvasText` neutrals, the host's accent
   from `theme.accent`, else its `accent-color`, else the CSS `AccentColor` system colour; radii from
@@ -154,6 +160,6 @@ port must reproduce exactly (`packages/brand/fixtures/accent-vectors.json`):
 
 ## Bring your own design system
 
-There are no separate kits for host design systems. The brand package publishes presets and theme
-objects for them instead, and each screen can be rendered with host components over the headless
-layer. They are listed on [Recipes](/docs/build/ui/recipes/).
+There will be no separate kits for host design systems. The brand package will publish presets
+and theme objects for them instead, and each screen can be rendered with host components over the
+headless layer. They are listed on [Recipes](/docs/build/ui/recipes/).
