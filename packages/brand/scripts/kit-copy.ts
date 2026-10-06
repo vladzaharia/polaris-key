@@ -232,6 +232,11 @@ const STATE_PATTERN = /^[a-z]+(-[a-z]+)*$/;
 const BRAND = "Polaris Key";
 
 /** D13: words macOS title case leaves lower case unless first or last. */
+/** D13: a particle after one of these verbs is part of a phrasal verb and keeps its capital ("Sign In"). */
+const PHRASAL_VERBS = new Set(
+  "sign log check set opt back turn look start try".split(" "),
+);
+const PARTICLES = new Set(["in", "out", "up", "on", "off"]);
 const SMALL_WORDS = new Set(
   "a an and as at but by for from in into nor of on or per the to via vs with".split(
     " ",
@@ -370,11 +375,12 @@ export function parseMessage(src: string): ParsedMessage {
   if (i >= src.length) return { head, tail: [] };
   if (src[i] === "}") fail("unbalanced }");
   // complex argument
-  const m = /^\{([A-Za-z][A-Za-z0-9]*), *([a-z]+) *,/.exec(src.slice(i));
+  const m = /^\{([A-Za-z][A-Za-z0-9]*), *([a-z]+) *(,|\})/.exec(src.slice(i));
   if (!m) fail("malformed complex argument");
   const [whole, arg, kind] = m!;
   if (kind !== "plural" && kind !== "select")
     fail(`ICU type "${kind}" is outside the subset (plural and select only)`);
+  if (m![3] !== ",") fail("a plural or select needs cases");
   i += whole.length;
   const cases: Record<string, Piece[]> = {};
   for (;;) {
@@ -505,7 +511,11 @@ export function titleCase(value: string): string {
       if (w.startsWith("{") || /^[a-z]+[A-Z]/.test(w)) return w; // argument or iPhone-style
       const lower = w.toLowerCase();
       const edge = idx === 0 || idx === words.length - 1;
-      if (!edge && SMALL_WORDS.has(lower.replace(/[^a-z]/g, ""))) return lower;
+      const bare = lower.replace(/[^a-z]/g, "");
+      const phrasal =
+        PARTICLES.has(bare) &&
+        PHRASAL_VERBS.has((words[idx - 1] ?? "").toLowerCase());
+      if (!edge && !phrasal && SMALL_WORDS.has(bare)) return lower;
       return w
         .split("-")
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
@@ -1251,7 +1261,7 @@ export function stringsXml(model: KitCopyModel, locale: string): string {
   }
   return `<?xml version="1.0" encoding="utf-8"?>
 <!--
-${banner("  ")}
+${BANNER_LINES.map((l) => (l ? `  ${l}` : "")).join("\n")}
 
   The kit copy for locale ${locale} (Compose Multiplatform resources). Names are the catalog key with
   "." and "-" as "_". A formFactor select is <name>__<case> (the bare name is "other"); a platform

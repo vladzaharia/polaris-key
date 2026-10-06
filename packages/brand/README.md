@@ -48,6 +48,7 @@ Assets resolve through the exports map: `@polaris-key/brand/web/key/favicon.svg`
 | `./tokens.css`, `./theme.css`                                                                                  | CSS custom properties; the Tailwind v4 `@theme`              |
 | `./fonts.css`, `./fonts/*`                                                                                     | Rubik 400/700 WOFF2 (latin, latin-ext) + OFL                 |
 | `./tokens.json`                                                                                                | every token, resolved, for generators                        |
+| `./kit-copy`                                                                                                   | the UI kit copy tables, nine locales (generated, see below)  |
 | `./web/*`, `./games/*`, `./social/*`, `./marks/*`, `./lockups/*`, `./powered-by/*`, `./app-icons/*`, `./kit/*` | launch-kit files, verbatim                                   |
 | `./lockups/delivery/*`                                                                                         | the Polaris Key Delivery lockups (generated, see below)      |
 
@@ -60,6 +61,39 @@ pnpm --filter @polaris-key/brand test           # React 18 and React 19 projects
 pnpm --filter @polaris-key/brand build          # dist/ + the living preview at dist/preview/index.html
 pnpm --filter @polaris-key/brand proofs         # re-render preview/proofs/section-bit-*.png
 ```
+
+### The kit copy catalog (`kit-copy/`)
+
+Every string a Polaris Key UI kit shows lives in one ICU MessageFormat catalog
+(plans/UK-02.md; UI-KITS.md §4.7). The sources are hand-written, each with a JSON Schema beside it:
+
+- `kit-copy/en.json`: every kit key as `{value, role, note, variants?}`. The `signin.*` namespace
+  is `docs/design/SIGN-IN.md` §5.2. Error and gate copy is **not** here: it is the core copy,
+  `conformance/parity/copy.en.json`, and every generated table carries it under `core.*` keys.
+- `kit-copy/<locale>.json`: the eight launch packs (`de`, `fr`, `es`, `pt-BR`, `it`, `ja`, `ko`,
+  `zh-Hans`), values only, `reviewed: false` until a native speaker has checked them.
+- `kit-copy/glossary.json`: the fixed word for license, device, tier and the other product terms
+  in each locale.
+- `kit-copy/components.json`: each UI-KITS §4.1 component's states and the copy keys each shows
+  (the UK-15 string lint and UK-02b's `ui-matrix.json` read it).
+
+Messages use a subset of ICU: plain `{arg}` arguments from a closed set, at most one
+`{n, plural, …}` on an integer argument with exactly the locale's CLDR categories, or one
+`{formFactor, select, …}` with all eight form factors ("this iPhone", "this Mac", "this device").
+Dates, durations and sizes are formatted by the platform and passed in as strings. `gen` refuses
+anything outside the subset, a missing or extra key in any locale, an argument set that differs
+from English, a kit string equal to a core string, "licence", "grant", "Retry", "machine" or
+"plan" in English, a control character, `%`, a changed "Polaris Key", and a component key no
+state lists. To check a pack while translating:
+`npx tsx scripts/kit-copy.ts --validate --only <locale>`.
+
+`gen` writes one native table per platform, kit keys plus `core.*` keys, in all nine locales:
+`src/generated/kit-copy/` (this package's `./kit-copy` export), the Node terminal module
+`packages/sdk-node/src/kitCopy.generated.ts`, the SwiftUI kit's `Localizable.xcstrings`, Compose
+Resources `strings.xml` under `sdks/kotlin/ui/src/commonMain/composeResources/`, the Godot kit's
+`ui/locale/*.po` and `.pot`, and the Python module `polaris_key/ui/kit_copy_generated.py` with a
+`.pot`. English buttons, menu items and window titles get a generated macOS title-case variant.
+Edit the sources, run `gen`, and commit the outputs; `gen:brand -- --check` fails on drift.
 
 ### The Polaris Key Delivery lockups
 
