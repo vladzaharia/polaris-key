@@ -45,7 +45,7 @@
     },
     "core.copy": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-22",
       "note": "copy_generated.py is emitted from copy.en.json, but polaris_key.copy.message()/title() still read the hand-kept EN table (different strings, and a fallback that is not COPY_FALLBACK); core.copy flips once copy.py serves the generated catalog."
     },
     "license.gate": {
@@ -121,7 +121,7 @@
     },
     "identity.oidc": {
       "status": "planned",
-      "unowned": true,
+      "wp": "I-15",
       "note": "Browser redirect sign-in waits on the native redirect-token route (I-15, SDK parity pass wire item W4). Until then identity.sign_in_with_browser() opens the device-code verificationUriComplete in the system browser and polls (identity.devicecode); the deprecated /identity/auth/poll is never used."
     },
     "identity.devicecode": {
@@ -275,17 +275,17 @@
     },
     "packs.transport.steam": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-28",
       "note": "P5-08 covers Godot only; Python desktop hosts have no Steam-depot transport owner."
     },
     "packs.transport.msix": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-29",
       "note": "No work package owns the MSIX optional-package transport (P5-08 Out)."
     },
     "packs.transport.flatpak": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-29",
       "note": "No work package owns the Flatpak extension transport (P5-08 Out)."
     },
     "ui.stages": {

@@ -689,21 +689,27 @@ describe("gen:constants --check", () => {
     }
     expect(await run({ check: true, root, model: MODEL })).toEqual([]);
 
-    for (const target of [...TARGETS, ...COPY_TARGETS]) {
+    // One hand edit in every generated file at once, then one --check run and one write run:
+    // each run must name every edited file (so no family's edit goes unreported), --check must
+    // leave every edit in place, and the write run must restore every original byte.
+    const all = [...TARGETS, ...COPY_TARGETS];
+    const originals = new Map<string, string>();
+    for (const target of all) {
       const abs = join(root, target.path);
       const original = readFileSync(abs, "utf8");
-      writeFileSync(
-        abs,
-        original.replace("service-unavailable", "service-gone"),
-      );
-      expect(await run({ check: true, root, model: MODEL })).toEqual([
-        target.path,
-      ]);
-      expect(readFileSync(abs, "utf8")).not.toBe(original);
-      expect(await run({ check: false, root, model: MODEL })).toEqual([
-        target.path,
-      ]);
-      expect(readFileSync(abs, "utf8")).toBe(original);
+      const edited = original.replace("service-unavailable", "service-gone");
+      expect(edited, target.path).not.toBe(original);
+      originals.set(target.path, original);
+      writeFileSync(abs, edited);
+    }
+    const paths = all.map((t) => t.path);
+    expect(await run({ check: true, root, model: MODEL })).toEqual(paths);
+    for (const [path, original] of originals) {
+      expect(readFileSync(join(root, path), "utf8"), path).not.toBe(original);
+    }
+    expect(await run({ check: false, root, model: MODEL })).toEqual(paths);
+    for (const [path, original] of originals) {
+      expect(readFileSync(join(root, path), "utf8"), path).toBe(original);
     }
   }, 30_000);
 

@@ -7160,6 +7160,417 @@
       "status": "dropped"
     },
     {
+      "id": "SP-12",
+      "title": "React boot and download surface: one-call `boot()` (`ui.boot`), bearer-mode `release.fetch` and the `distribution` model, `update.feedUrl()` on the desktop bridge, `crashTags()`",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1, 1.5],
+      "deps": [],
+      "planMode": false,
+      "gates": ["corpus-runner", "docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (SP-R06, SP-R09 and the feed-URL half of SP-R08)",
+        "packages/sdk-react/parity.json: ui.boot, release.fetch, release.distribution, update.feeds, crash.tags"
+      ],
+      "brief": "wp/SP-12-react-boot-download.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-13",
+      "title": "React device-local overrides (`config.local`): `config.set`, `config.setting` and `onConfigChange`, persisted in the browser and forwarded to the host on the desktop bridge",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": [],
+      "planMode": false,
+      "gates": ["docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (the `config.local` half of SP-R04 and SP-R05)",
+        "packages/sdk-react/parity.json: config.local"
+      ],
+      "brief": "wp/SP-13-react-config-local.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-14",
+      "title": "React update-health recording (`telemetry.updates`): a record call on the adapter, `update_offered` journalled by the browser update path, renderer events forwarded to the host",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.3, 0.5],
+      "deps": [],
+      "planMode": false,
+      "gates": ["corpus-runner", "docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (the `updates` half of SP-R11)",
+        "packages/sdk-react/parity.json: telemetry.updates"
+      ],
+      "brief": "wp/SP-14-react-update-telemetry.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-15",
+      "title": "React local client and update lifecycle: a network-free `core.local` adapter, `update.driver` (service-worker hand-off on the web, the host's driver over the bridge), `update.bootguard` slots and confirmation",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1, 1.5],
+      "deps": ["SP-12", "SP-14"],
+      "planMode": false,
+      "gates": ["corpus-runner", "docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (SP-R12 and the driver half of SP-R08)",
+        "packages/sdk-react/parity.json: core.local, update.driver, update.bootguard"
+      ],
+      "brief": "wp/SP-15-react-local-update-lifecycle.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-16",
+      "title": "React commerce in bearer mode (`commerce.receipt`): the commerce binding and claim routes in the Worker's `CORS_SERVICE_PATHS`, and React's cross-origin replay of P6-01's transcript",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.2, 0.4],
+      "deps": [],
+      "planMode": false,
+      "gates": ["threat-model", "workerd", "corpus-runner", "docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (SP-R10)",
+        "packages/sdk-react/parity.json: commerce.receipt"
+      ],
+      "brief": "wp/SP-16-react-commerce-cors.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-17",
+      "title": "Swift copy and crash tags: `ErrorCopy` serves the generated `Copy.generated.swift` tables with fallback and placeholder fill (`core.copy`), and `crashTags()` (`crash.tags`)",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": [],
+      "planMode": false,
+      "gates": ["ci:macos", "docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (the serving half of SP-S13 and the Swift crash-tags task of `plans/SP-00.md` §5)",
+        "sdks/swift/parity.json: core.copy, crash.tags"
+      ],
+      "brief": "wp/SP-17-swift-copy-crash-tags.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-18",
+      "title": "Swift `config.setting(key)` and `onConfigChange(key, listener)` over the existing `LocalConfigStore` (`config.local`)",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.2, 0.3],
+      "deps": [],
+      "planMode": false,
+      "gates": ["ci:macos", "docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (the rest of SP-S14)",
+        "sdks/swift/parity.json: config.local"
+      ],
+      "brief": "wp/SP-18-swift-config-local.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-19",
+      "title": "Swift verified download (`release.fetch`): Range and If-Range resume, the 401 body code mapped, and the fetch moved onto the client's transport so `release-fetch-gated.json` replays",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": [],
+      "planMode": false,
+      "gates": ["ci:macos", "corpus-runner", "docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (the Swift half of §3.6)",
+        "sdks/swift/parity.json: release.fetch"
+      ],
+      "brief": "wp/SP-19-swift-release-fetch.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-20",
+      "title": "Kotlin one-call boot in `:sdk` (`ui.boot`): the boot driver moves out of `:ui`'s `PolarisBootState` so the `:conformance` replayer drives `boot-cold-register.json` on the JVM",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.5, 0.8],
+      "deps": [],
+      "planMode": false,
+      "gates": ["ci:kotlin", "ci:android", "corpus-runner", "docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (SP-K06)",
+        "sdks/kotlin/parity.json: ui.boot"
+      ],
+      "brief": "wp/SP-20-kotlin-boot-sdk.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-21",
+      "title": "Kotlin copy API (`core.copy`): `copy.message(code)` and `copy.title(code)` over `Copy.generated.kt` with fallback and placeholder fill; the Android kit's `PolarisCopy` reads it",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.3, 0.5],
+      "deps": [],
+      "planMode": false,
+      "gates": ["ci:kotlin", "ci:android", "docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (the Kotlin copy task of §3.2)",
+        "sdks/kotlin/parity.json: core.copy"
+      ],
+      "brief": "wp/SP-21-kotlin-copy.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-22",
+      "title": "Python copy over the generated catalog (`core.copy`): `polaris_key.copy` serves `copy_generated.py` with React's code-versus-activation table rule and `COPY_FALLBACK`, keeping host English overrides",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.2, 0.4],
+      "deps": [],
+      "planMode": false,
+      "gates": ["docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (the copy half of SP-P14)",
+        "sdks/python/parity.json: core.copy"
+      ],
+      "brief": "wp/SP-22-python-copy.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-23",
+      "title": "Godot copy API (`core.copy`): `copy.message(code)` and `copy.title(code)` over `PKeyCoreCopy` with fallback and placeholder fill; the kit's `PKeyUiCopy` reads it",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "godot",
+      "role": "pkey-godot-engineer",
+      "estimateWeeks": [0.3, 0.5],
+      "deps": [],
+      "planMode": false,
+      "gates": ["docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (the API half of SP-G03 and SP-G13)",
+        "sdks/godot/parity.json: core.copy"
+      ],
+      "brief": "wp/SP-23-godot-copy.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-24",
+      "title": "Godot device-local overrides (`config.local`): `config.set`, `config.setting` and `config.clear` with S-17's names, validated against the catalog type, over `PKeyConfigFileStore`",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "godot",
+      "role": "pkey-godot-engineer",
+      "estimateWeeks": [0.3, 0.5],
+      "deps": [],
+      "planMode": false,
+      "gates": ["docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (the API half of SP-G05)",
+        "sdks/godot/parity.json: config.local"
+      ],
+      "brief": "wp/SP-24-godot-config-local.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-25",
+      "title": "Godot verified download (`release.fetch`): a public fetch API over `PKeyDownload`, If-Range on resume, and the `releaseFetch` mapping in `suite_transcripts`",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "godot",
+      "role": "pkey-godot-engineer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": [],
+      "planMode": false,
+      "gates": ["corpus-runner", "docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (the Godot half of §3.6)",
+        "sdks/godot/parity.json: release.fetch"
+      ],
+      "brief": "wp/SP-25-godot-release-fetch.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-26",
+      "title": "Godot updater feed URLs (`update.feeds`): App Installer and zsync feeds, the Velopack `releases.<velopackChannel>` file, the channel-alias rewrite and the typed `unsupported (product)`, replaying `feed-url-matrix.json`",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "godot",
+      "role": "pkey-godot-engineer",
+      "estimateWeeks": [0.5, 0.8],
+      "deps": ["P3-09"],
+      "planMode": false,
+      "gates": ["corpus-runner", "docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (the Godot half of §3.7)",
+        "sdks/godot/parity.json: update.feeds"
+      ],
+      "brief": "wp/SP-26-godot-update-feeds.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-27",
+      "title": "Godot desktop keyring stores (`core.store`): macOS Keychain through a macOS `PKeyApple` build, Windows Credential Manager through `pkey_win.dll`, Linux Secret Service, with file-store migration and a surfaced `keyring-error`",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "native",
+      "role": "pkey-godot-engineer",
+      "estimateWeeks": [1.5, 2.5],
+      "deps": ["P5-05"],
+      "planMode": false,
+      "gates": ["ci:macos", "ci:windows", "docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (SP-G11)",
+        "sdks/godot/parity.json: core.store"
+      ],
+      "brief": "wp/SP-27-godot-desktop-keyring.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-28",
+      "title": "Steam depot pack transport for desktop SDKs (`packs.transport.steam`): Node, Python, Swift (macOS) and Kotlin (JVM) read an installed depot or DLC through P5-08's `steam` transport contract",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1.5, 2.5],
+      "deps": ["P5-08"],
+      "planMode": false,
+      "gates": ["all-sdks", "ci:macos", "ci:kotlin", "docs-generated"],
+      "humanInputs": [
+        "Steamworks partner account (P5-08's test app, build account and test branch)",
+        "test devices (a Steam client on macOS, Windows and Linux)"
+      ],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (none (P5-08 covered Godot only))",
+        "packages/sdk-node/parity.json: packs.transport.steam",
+        "sdks/python/parity.json: packs.transport.steam",
+        "sdks/swift/parity.json: packs.transport.steam",
+        "sdks/kotlin/parity.json: packs.transport.steam"
+      ],
+      "brief": "wp/SP-28-steam-desktop-transport.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-29",
+      "title": "MSIX optional-package and Flatpak extension pack transports (`packs.transport.msix`, `packs.transport.flatpak`): the `pkey transport` build generators and the Node and Python transports",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1.5, 2.5],
+      "deps": ["P5-08"],
+      "planMode": false,
+      "gates": ["ci:windows", "cli-bundle", "docs-generated"],
+      "humanInputs": [
+        "a code-signing certificate for MSIX test packages",
+        "test devices (Windows 10/11 and a Linux desktop with Flatpak)"
+      ],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (none (program README §9: the `msix-optional` and `flatpak-ext` transports))",
+        "packages/sdk-node/parity.json: packs.transport.msix, packs.transport.flatpak",
+        "sdks/python/parity.json: packs.transport.msix, packs.transport.flatpak"
+      ],
+      "brief": "wp/SP-29-msix-flatpak-node-python.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-30",
+      "title": "Godot MSIX optional-package and Flatpak extension pack transports (`packs.transport.msix`, `packs.transport.flatpak`) over SP-29's layout",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "godot",
+      "role": "pkey-godot-engineer",
+      "estimateWeeks": [1, 1.5],
+      "deps": ["SP-29"],
+      "planMode": false,
+      "gates": ["ci:windows", "docs-generated"],
+      "humanInputs": [
+        "test devices (Windows 10/11 and a Linux desktop with Flatpak)"
+      ],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (none (program README §9))",
+        "sdks/godot/parity.json: packs.transport.msix, packs.transport.flatpak"
+      ],
+      "brief": "wp/SP-30-godot-msix-flatpak.md",
+      "status": "todo"
+    },
+    {
       "id": "HA-01",
       "title": "Hosted-asset core: `hosted_assets` table, `core/safeFetch.ts` guard, `core/hostedAssets.ts` ingest (cap, sniff, SHA-256, put, ref) and Content-Type on every R2 put",
       "phase": "HA",
@@ -8474,7 +8885,7 @@
       "stage": "wave 1: foundation",
       "lane": "console",
       "role": "pkey-implementer",
-      "estimateWeeks": [0.6, 1.0],
+      "estimateWeeks": [0.6, 1],
       "deps": ["MO-01"],
       "planMode": false,
       "gates": ["console-csp-parity", "ci"],
@@ -8622,7 +9033,7 @@
       "stage": "wave 2: areas",
       "lane": "console",
       "role": "pkey-implementer",
-      "estimateWeeks": [0.6, 1.0],
+      "estimateWeeks": [0.6, 1],
       "deps": ["MO-03"],
       "planMode": false,
       "gates": ["console-csp-parity", "ci"],

@@ -127,7 +127,7 @@
     },
     "identity.oidc": {
       "status": "planned",
-      "unowned": true,
+      "wp": "I-15",
       "note": "Browser redirect sign-in for native hosts waits on I-15's redirect token route (wire item W4); /identity/auth/poll is deprecated and never used. The interim is identity.signInWithBrowser(): device code opened in the system browser (SDK parity pass §3.12)."
     },
     "identity.devicecode": {
@@ -281,17 +281,17 @@
     },
     "packs.transport.steam": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-28",
       "note": "P5-08 covers Godot only; Node desktop hosts have no Steam-depot transport owner."
     },
     "packs.transport.msix": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-29",
       "note": "No work package owns the MSIX optional-package transport (P5-08 Out)."
     },
     "packs.transport.flatpak": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-29",
       "note": "No work package owns the Flatpak extension transport (P5-08 Out)."
     },
     "ui.stages": {
