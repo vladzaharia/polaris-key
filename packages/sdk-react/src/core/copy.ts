@@ -208,6 +208,8 @@ const FR: CopyBundle = {
       "Le service de téléchargement a échoué. Réessayez dans un instant.",
     release_record_rejected: "Cette version n'a pas pu être publiée.",
     release_tag_is_pack_release: "Cette version n'a pas pu être publiée.",
+    asset_unreachable:
+      "Une image n'a pas pu être récupérée depuis sa source. La copie précédente reste affichée.",
     feed_not_composable:
       "Impossible de vérifier les mises à jour pour le moment. Réessayez plus tard.",
     network:

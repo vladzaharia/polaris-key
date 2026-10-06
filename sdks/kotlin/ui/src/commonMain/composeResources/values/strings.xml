@@ -1324,6 +1324,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_release_tag_is_pack_release_message">A release was skipped because its tag matches a content pack release. Rename the tag.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_asset_unreachable_title">Image not updated</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_asset_unreachable_message">An image could not be fetched from its source. The previous copy is still shown, and it will be retried automatically.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_feed_not_composable_title">Update check unavailable</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_feed_not_composable_message">Updates can't be checked right now. Try again in a few minutes.</string>

@@ -5654,6 +5654,51 @@ proxy now fetches through the same guard.
 - **The portal media proxy** keeps its GitHub-only host rule on every hop (`allowHost`) on top of
   this guard until HA-07 serves hosted copies; its cap, 5 s budget and sniff are unchanged.
 
+### Pull on register and resync (HA-05)
+
+A link or resync now plans pulls for the manifest's asset refs (`presentation.icon`, the
+listing's `icon`, `header` and `screenshots[]`) and sends them to the queue `pkey-assets-<env>`,
+which the main script consumes (notes/S-20 §6.3, §6.4). Code: `core/hostedAssetPulls.ts`,
+`src/assetQueue.ts`, `services/release/assetSource.ts`, `admin/handlers/hostedAssets.ts`; tests:
+`test/hostedAssetPulls.test.ts`.
+
+- **Who names a source, unchanged.** Only a manifest author (a push to `.pkey/` on the default
+  branch, read at the pinned commit) names what is pulled. A pull runs at link, resync or the
+  nightly re-check, never on an end user's request. Every pull goes through the HA-01 guard and
+  ingest, so the guard, caps, sniff and possession rules above apply to it unchanged.
+- **The queue message is not trusted for anything that matters.** It carries the product, the
+  slot, the wanted ref, and for a repo path the commit and the blob SHA. On delivery the consumer
+  re-reads the row and drops the message unless the row still wants that exact ref and is not
+  console-claimed. The URL is re-derived from the stored ref and re-validated (https and length;
+  a repo path with no `.` or `..` segment). For a repo path the repository coordinates and the
+  installation come from `release_config`, never from the message or the manifest. A malformed
+  message is acknowledged and dropped.
+- **One more read with the installation token.** The consumer reads a repo path at a commit
+  through the Contents API with the raw media type, and the planner lists the path's directory to
+  read its git blob SHA. Both read the product's own repository with the R5-03 release token
+  (repo-scoped, `contents: read`) and its sealed cache. The token goes in `ingest`'s
+  `authorization` header, which `safeFetch` sends to the first hop only, so a redirect never
+  carries it. This is how a **private** repository's art gets served: Polaris Key hosts a copy of
+  a file the manifest author named, as the release path already reads release assets.
+- **Amplification is bounded.** A manifest declares at most 18 slots (an icon, a listing icon, a
+  header and 16 screenshots). An unchanged ref enqueues nothing. A repo path at a new commit costs
+  one directory listing per directory, and a pull only when its blob changed. Each enqueue holds
+  the slot off for one back-off step, so repeated resyncs do not stack pulls. A failed pull backs
+  off exponentially per slot, from 15 minutes up to a 24-hour cap. The nightly re-check enqueues
+  at most 50 pulls per run. A refused pull is recorded and acknowledged, never retried by the
+  queue. Only a throw (D1 unavailable) is retried, three times, and then goes to
+  `pkey-assets-dlq-<env>`.
+- **It never blocks a register.** Planning and enqueueing are best-effort and swallow every
+  failure. A failing source is reported to the resync as the warning `asset_unreachable`, never as
+  an error, and the last good copy keeps serving (`stale` after a 404 or 410, `failed` otherwise).
+- **A console claim wins.** A planned pull never overwrites a slot an operator uploaded
+  (`origin = 'console'`, HA-06). A slot the manifest stops declaring loses its row and its refs,
+  and the collector reclaims the bytes after the age lock, so URLs already in caches keep working
+  until then.
+- **The status read is read-only and platform-admin gated.** `GET
+/manage/api/products/<slug>/assets` returns slot metadata, source refs (URLs and
+  `<path>@<commit>`) and reason codes, never bytes or tokens.
+
 ### Linking an existing product to a repository (UX-23)
 
 **What changes hands.** `POST /manage/api/products/<slug>/release/link` turns a manual product

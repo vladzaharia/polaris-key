@@ -1314,6 +1314,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_release_tag_is_pack_release_message">タグがコンテンツパックのリリースと一致するため、リリースをスキップしました。タグの名前を変更してください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_asset_unreachable_title">画像は更新されていません</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_asset_unreachable_message">画像を取得元から取得できませんでした。以前のコピーが引き続き表示され、自動的に再試行されます。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_feed_not_composable_title">アップデートを確認できません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_feed_not_composable_message">現在アップデートを確認できません。数分後にもう一度お試しください。</string>

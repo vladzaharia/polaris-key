@@ -1324,6 +1324,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_release_tag_is_pack_release_message">Ein Release wurde übersprungen, weil sein Tag mit einem Content-Pack-Release übereinstimmt. Benennen Sie den Tag um.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_asset_unreachable_title">Bild nicht aktualisiert</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_asset_unreachable_message">Ein Bild konnte nicht von seiner Quelle abgerufen werden. Die bisherige Kopie wird weiter angezeigt, und es wird automatisch erneut versucht.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_feed_not_composable_title">Update-Prüfung nicht verfügbar</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_feed_not_composable_message">Updates können derzeit nicht geprüft werden. Versuchen Sie es in einigen Minuten erneut.</string>

@@ -78,6 +78,7 @@ public let COPY_CODES: [String: CopyEntry] = [
     "internal_error": CopyEntry(title: "Download failed", message: "The download server had a problem. Try again in a few minutes."),
     "release_record_rejected": CopyEntry(title: "Release refused", message: "The release wasn't published because a check failed. The publish log names the check."),
     "release_tag_is_pack_release": CopyEntry(title: "Release skipped", message: "A release was skipped because its tag matches a content pack release. Rename the tag."),
+    "asset_unreachable": CopyEntry(title: "Image not updated", message: "An image could not be fetched from its source. The previous copy is still shown, and it will be retried automatically."),
     "feed_not_composable": CopyEntry(title: "Update check unavailable", message: "Updates can't be checked right now. Try again in a few minutes."),
     "service-unavailable": CopyEntry(title: "Not available", message: "This app doesn't use this service."),
     "service-disabled": CopyEntry(title: "Not available", message: "This service is turned off for this app."),

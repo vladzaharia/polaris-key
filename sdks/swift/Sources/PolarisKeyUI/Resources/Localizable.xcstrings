@@ -7051,6 +7051,126 @@
         }
       }
     },
+    "core.codes.asset_unreachable.message": {
+      "comment": "Core copy (conformance/parity/copy.en.json, codes).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An image could not be fetched from its source. The previous copy is still shown, and it will be retried automatically."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein Bild konnte nicht von seiner Quelle abgerufen werden. Die bisherige Kopie wird weiter angezeigt, und es wird automatisch erneut versucht."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An image could not be fetched from its source. The previous copy is still shown, and it will be retried automatically."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo obtener una imagen de su origen. Se sigue mostrando la copia anterior y se volverá a intentar automáticamente."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível obter uma imagem da sua origem. A cópia anterior continua sendo exibida, e uma nova tentativa será feita automaticamente."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non è stato possibile recuperare un'immagine dalla sua origine. Viene ancora mostrata la copia precedente e il tentativo verrà ripetuto automaticamente."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "画像を取得元から取得できませんでした。以前のコピーが引き続き表示され、自動的に再試行されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "원본에서 이미지를 가져올 수 없습니다. 이전 사본이 계속 표시되며 자동으로 다시 시도됩니다."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法从来源获取图片。仍显示之前的副本，并将自动重试。"
+          }
+        }
+      }
+    },
+    "core.codes.asset_unreachable.title": {
+      "comment": "Core copy (conformance/parity/copy.en.json, codes).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Image not updated"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bild nicht aktualisiert"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Image not updated"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Imagen no actualizada"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Imagem não atualizada"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Immagine non aggiornata"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "画像は更新されていません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이미지가 업데이트되지 않음"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "图片未更新"
+          }
+        }
+      }
+    },
     "core.codes.attestation_rejected.message": {
       "comment": "Core copy (conformance/parity/copy.en.json, codes).",
       "extractionState": "manual",

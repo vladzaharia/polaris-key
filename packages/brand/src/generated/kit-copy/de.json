@@ -583,6 +583,8 @@
   "core.codes.release_record_rejected.message": "Das Release wurde nicht veröffentlicht, weil eine Prüfung fehlgeschlagen ist. Das Veröffentlichungsprotokoll nennt die Prüfung.",
   "core.codes.release_tag_is_pack_release.title": "Release übersprungen",
   "core.codes.release_tag_is_pack_release.message": "Ein Release wurde übersprungen, weil sein Tag mit einem Content-Pack-Release übereinstimmt. Benennen Sie den Tag um.",
+  "core.codes.asset_unreachable.title": "Bild nicht aktualisiert",
+  "core.codes.asset_unreachable.message": "Ein Bild konnte nicht von seiner Quelle abgerufen werden. Die bisherige Kopie wird weiter angezeigt, und es wird automatisch erneut versucht.",
   "core.codes.feed_not_composable.title": "Update-Prüfung nicht verfügbar",
   "core.codes.feed_not_composable.message": "Updates können derzeit nicht geprüft werden. Versuchen Sie es in einigen Minuten erneut.",
   "core.codes.service-unavailable.title": "Nicht verfügbar",

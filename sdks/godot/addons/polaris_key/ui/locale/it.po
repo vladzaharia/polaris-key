@@ -3542,6 +3542,16 @@ msgstr "Release saltata"
 msgid "core.codes.release_tag_is_pack_release.message"
 msgstr "Una release è stata saltata perché il suo tag corrisponde a una release di un pacchetto di contenuti. Rinomina il tag."
 
+#. Image not updated
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.asset_unreachable.title"
+msgstr "Immagine non aggiornata"
+
+#. An image could not be fetched from its source. The previous copy is still shown, and it will be retried automatically.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.asset_unreachable.message"
+msgstr "Non è stato possibile recuperare un'immagine dalla sua origine. Viene ancora mostrata la copia precedente e il tentativo verrà ripetuto automaticamente."
+
 #. Update check unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.feed_not_composable.title"

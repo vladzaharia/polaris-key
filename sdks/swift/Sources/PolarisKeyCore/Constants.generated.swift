@@ -63,6 +63,7 @@ public enum ErrorCode {
     public static let internalError = "internal_error"
     public static let releaseRecordRejected = "release_record_rejected"
     public static let releaseTagIsPackRelease = "release_tag_is_pack_release"
+    public static let assetUnreachable = "asset_unreachable"
     public static let feedNotComposable = "feed_not_composable"
     public static let serviceUnavailable = "service-unavailable"
     public static let serviceDisabled = "service-disabled"
@@ -218,6 +219,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "internal_error",
     "release_record_rejected",
     "release_tag_is_pack_release",
+    "asset_unreachable",
     "feed_not_composable",
     "service-unavailable",
     "service-disabled",
@@ -373,6 +375,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "internal_error": "wire",
     "release_record_rejected": "wire",
     "release_tag_is_pack_release": "wire",
+    "asset_unreachable": "wire",
     "feed_not_composable": "wire",
     "service-unavailable": "client",
     "service-disabled": "client",

@@ -15,7 +15,7 @@
  * Per-product resources are grouped by the SERVICE that owns them (plan §R1, spec §4.2). What is
  * left at the top level here is core/platform — the things a product has whether or not it runs
  * any service: `secrets/*`, `outlet-credentials/*`, `claims/*`, `ci-publisher`, `ci-tokens/*`, `keys/rotate`,
- * `activity`, `refusals`, `services[/revert]`, `bundles`, `blob-gc[/bundles]`, `devices/*`, `users/*`. Everything
+ * `activity`, `refusals`, `assets`, `services[/revert]`, `bundles`, `blob-gc[/bundles]`, `devices/*`, `users/*`. Everything
  * else is dispatched into a `ServiceDescriptor.adminHandle` with the full remaining path:
  *
  *   license/{licenses…,tiers…,policy[/revert]}   config/{catalog,profiles…}
@@ -79,6 +79,7 @@ import { handleCiPublisher, handleCiTokens } from "./handlers/ciPublishing.js";
 import { handleProductDevices } from "./handlers/devices.js";
 import { handleProductUsers } from "./handlers/users.js";
 import { handleRefusals } from "./handlers/refusals.js";
+import { handleHostedAssets } from "./handlers/hostedAssets.js";
 import { handleTrustPolicy } from "./handlers/trustPolicy.js";
 import { handleServicesAdmin } from "../core/servicesAdmin.js";
 import { handleBundleMint } from "../core/bundles.js";
@@ -282,6 +283,13 @@ async function handleProductScoped(
   //   GET /products/<slug>/refusals[?refusedSince=&licenseId=&limit=]
   if (resource === "refusals") {
     return handleRefusals(req, db, slug, rest.slice(1), now);
+  }
+
+  // HA-05: the product's hosted assets (`core/hostedAssetPulls.ts`). CORE, like `activity`: a
+  // product hosts its presentation icon whether or not it runs Distribution.
+  //   GET /products/<slug>/assets
+  if (resource === "assets") {
+    return handleHostedAssets(req, db, slug, rest.slice(1));
   }
 
   // Every device of the product, licensed or not. CORE: a product that issues no licenses (open

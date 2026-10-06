@@ -86,6 +86,7 @@ jobs:
       # lazy-delta consumer as its consumer), so `wrangler deploy` needs the queues to exist and
       # the token to hold Queues Edit (docs/DEPLOYMENT.md §2). Check both here, BEFORE the
       # migrations, so a missing permission or queue fails the job before anything changes.
+      # HA-05: the request Worker also produces to and consumes pkey-assets-<env>, with its DLQ.
       - name: Queues preflight
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -94,6 +95,8 @@ jobs:
           cd packages/worker
           npx wrangler queues info "pkey-deltas-$ENV"
           npx wrangler queues info "pkey-deltas-dlq-$ENV"
+          npx wrangler queues info "pkey-assets-$ENV"
+          npx wrangler queues info "pkey-assets-dlq-$ENV"
       - name: Apply D1 migrations
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

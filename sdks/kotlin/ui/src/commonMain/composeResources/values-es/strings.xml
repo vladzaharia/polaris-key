@@ -1334,6 +1334,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_release_tag_is_pack_release_message">Se omitió una versión porque su etiqueta coincide con una versión de un paquete de contenido. Cambia el nombre de la etiqueta.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_asset_unreachable_title">Imagen no actualizada</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_asset_unreachable_message">No se pudo obtener una imagen de su origen. Se sigue mostrando la copia anterior y se volverá a intentar automáticamente.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_feed_not_composable_title">Búsqueda de actualizaciones no disponible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_feed_not_composable_message">Ahora mismo no se pueden buscar actualizaciones. Vuelve a intentarlo en unos minutos.</string>

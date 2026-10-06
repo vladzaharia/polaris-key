@@ -736,6 +736,9 @@ export const KIT_COPY: Readonly<
     "core.codes.release_tag_is_pack_release.title": "Release skipped",
     "core.codes.release_tag_is_pack_release.message":
       "A release was skipped because its tag matches a content pack release. Rename the tag.",
+    "core.codes.asset_unreachable.title": "Image not updated",
+    "core.codes.asset_unreachable.message":
+      "An image could not be fetched from its source. The previous copy is still shown, and it will be retried automatically.",
     "core.codes.feed_not_composable.title": "Update check unavailable",
     "core.codes.feed_not_composable.message":
       "Updates can't be checked right now. Try again in a few minutes.",
@@ -1846,6 +1849,9 @@ export const KIT_COPY: Readonly<
     "core.codes.release_tag_is_pack_release.title": "Release übersprungen",
     "core.codes.release_tag_is_pack_release.message":
       "Ein Release wurde übersprungen, weil sein Tag mit einem Content-Pack-Release übereinstimmt. Benennen Sie den Tag um.",
+    "core.codes.asset_unreachable.title": "Bild nicht aktualisiert",
+    "core.codes.asset_unreachable.message":
+      "Ein Bild konnte nicht von seiner Quelle abgerufen werden. Die bisherige Kopie wird weiter angezeigt, und es wird automatisch erneut versucht.",
     "core.codes.feed_not_composable.title": "Update-Prüfung nicht verfügbar",
     "core.codes.feed_not_composable.message":
       "Updates können derzeit nicht geprüft werden. Versuchen Sie es in einigen Minuten erneut.",
@@ -2955,6 +2961,9 @@ export const KIT_COPY: Readonly<
     "core.codes.release_tag_is_pack_release.title": "Release skipped",
     "core.codes.release_tag_is_pack_release.message":
       "A release was skipped because its tag matches a content pack release. Rename the tag.",
+    "core.codes.asset_unreachable.title": "Image not updated",
+    "core.codes.asset_unreachable.message":
+      "An image could not be fetched from its source. The previous copy is still shown, and it will be retried automatically.",
     "core.codes.feed_not_composable.title": "Update check unavailable",
     "core.codes.feed_not_composable.message":
       "Updates can't be checked right now. Try again in a few minutes.",
@@ -4049,6 +4058,9 @@ export const KIT_COPY: Readonly<
     "core.codes.release_tag_is_pack_release.title": "Versión omitida",
     "core.codes.release_tag_is_pack_release.message":
       "Se omitió una versión porque su etiqueta coincide con una versión de un paquete de contenido. Cambia el nombre de la etiqueta.",
+    "core.codes.asset_unreachable.title": "Imagen no actualizada",
+    "core.codes.asset_unreachable.message":
+      "No se pudo obtener una imagen de su origen. Se sigue mostrando la copia anterior y se volverá a intentar automáticamente.",
     "core.codes.feed_not_composable.title":
       "Búsqueda de actualizaciones no disponible",
     "core.codes.feed_not_composable.message":
@@ -5144,6 +5156,9 @@ export const KIT_COPY: Readonly<
     "core.codes.release_tag_is_pack_release.title": "Lançamento ignorado",
     "core.codes.release_tag_is_pack_release.message":
       "Um lançamento foi ignorado porque a tag dele corresponde a um lançamento de pacote de conteúdo. Renomeie a tag.",
+    "core.codes.asset_unreachable.title": "Imagem não atualizada",
+    "core.codes.asset_unreachable.message":
+      "Não foi possível obter uma imagem da sua origem. A cópia anterior continua sendo exibida, e uma nova tentativa será feita automaticamente.",
     "core.codes.feed_not_composable.title":
       "Verificação de atualizações indisponível",
     "core.codes.feed_not_composable.message":
@@ -6242,6 +6257,9 @@ export const KIT_COPY: Readonly<
     "core.codes.release_tag_is_pack_release.title": "Release saltata",
     "core.codes.release_tag_is_pack_release.message":
       "Una release è stata saltata perché il suo tag corrisponde a una release di un pacchetto di contenuti. Rinomina il tag.",
+    "core.codes.asset_unreachable.title": "Immagine non aggiornata",
+    "core.codes.asset_unreachable.message":
+      "Non è stato possibile recuperare un'immagine dalla sua origine. Viene ancora mostrata la copia precedente e il tentativo verrà ripetuto automaticamente.",
     "core.codes.feed_not_composable.title":
       "Controllo aggiornamenti non disponibile",
     "core.codes.feed_not_composable.message":
@@ -7348,6 +7366,9 @@ export const KIT_COPY: Readonly<
       "リリースをスキップしました",
     "core.codes.release_tag_is_pack_release.message":
       "タグがコンテンツパックのリリースと一致するため、リリースをスキップしました。タグの名前を変更してください。",
+    "core.codes.asset_unreachable.title": "画像は更新されていません",
+    "core.codes.asset_unreachable.message":
+      "画像を取得元から取得できませんでした。以前のコピーが引き続き表示され、自動的に再試行されます。",
     "core.codes.feed_not_composable.title": "アップデートを確認できません",
     "core.codes.feed_not_composable.message":
       "現在アップデートを確認できません。数分後にもう一度お試しください。",
@@ -8427,6 +8448,9 @@ export const KIT_COPY: Readonly<
     "core.codes.release_tag_is_pack_release.title": "릴리스 건너뜀",
     "core.codes.release_tag_is_pack_release.message":
       "태그가 콘텐츠 팩 릴리스와 같아서 릴리스를 건너뛰었어요. 태그 이름을 바꾸세요.",
+    "core.codes.asset_unreachable.title": "이미지가 업데이트되지 않음",
+    "core.codes.asset_unreachable.message":
+      "원본에서 이미지를 가져올 수 없습니다. 이전 사본이 계속 표시되며 자동으로 다시 시도됩니다.",
     "core.codes.feed_not_composable.title": "업데이트 확인 불가",
     "core.codes.feed_not_composable.message":
       "지금은 업데이트를 확인할 수 없어요. 몇 분 후에 다시 시도하세요.",
@@ -9439,6 +9463,9 @@ export const KIT_COPY: Readonly<
     "core.codes.release_tag_is_pack_release.title": "版本已跳过",
     "core.codes.release_tag_is_pack_release.message":
       "由于标签与某个内容包版本相同，此版本已被跳过。请重命名该标签。",
+    "core.codes.asset_unreachable.title": "图片未更新",
+    "core.codes.asset_unreachable.message":
+      "无法从来源获取图片。仍显示之前的副本，并将自动重试。",
     "core.codes.feed_not_composable.title": "无法检查更新",
     "core.codes.feed_not_composable.message":
       "目前无法检查更新。请几分钟后重试。",

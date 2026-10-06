@@ -217,6 +217,10 @@
       "title": "Release übersprungen",
       "message": "Ein Release wurde übersprungen, weil sein Tag mit einem Content-Pack-Release übereinstimmt. Benennen Sie den Tag um."
     },
+    "asset_unreachable": {
+      "title": "Bild nicht aktualisiert",
+      "message": "Ein Bild konnte nicht von seiner Quelle abgerufen werden. Die bisherige Kopie wird weiter angezeigt, und es wird automatisch erneut versucht."
+    },
     "feed_not_composable": {
       "title": "Update-Prüfung nicht verfügbar",
       "message": "Updates können derzeit nicht geprüft werden. Versuchen Sie es in einigen Minuten erneut."

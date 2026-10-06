@@ -59,6 +59,7 @@ import { lazyDeltaProducts } from "./core/deltaDemand.js";
 import { refreshPlatformSettings } from "./core/platformSettings.js";
 import { sweepLazyDeltas } from "./services/release/packs/deltas/sweep.js";
 import { buildHooks } from "./core/hooks.js";
+import { recheckHostedAssets } from "./core/hostedAssetPulls.js";
 import {
   JOB_RUN_RETENTION_SECONDS,
   pruneHeartbeats,
@@ -405,6 +406,12 @@ export async function runScheduledMaintenance(
   // P4-17: the lazy-delta sweep, for products opted in (none while `LAZY_DELTAS` is off). Before
   // the collector, so a delta marked cold tonight loses its ref before tonight's mark pass.
   if (env) await runLazyDeltaSweep(report, env, db, now);
+
+  // HA-05: owed hosted-asset pulls whose back-off has elapsed (failed, stale, never delivered),
+  // re-enqueued to `pkey-assets-<env>`, at most `RECHECK_MAX_PER_RUN` per night. Before the
+  // collector, which never touches a ref a row still holds.
+  if (env)
+    await step(report, "hostedAssets", () => recheckHostedAssets(env, db, now));
 
   if (env) await runBlobGc(report, env, db, now);
 

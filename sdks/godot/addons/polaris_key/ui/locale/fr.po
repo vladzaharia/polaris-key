@@ -3542,6 +3542,16 @@ msgstr "Release skipped"
 msgid "core.codes.release_tag_is_pack_release.message"
 msgstr "A release was skipped because its tag matches a content pack release. Rename the tag."
 
+#. Image not updated
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.asset_unreachable.title"
+msgstr "Image not updated"
+
+#. An image could not be fetched from its source. The previous copy is still shown, and it will be retried automatically.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.asset_unreachable.message"
+msgstr "An image could not be fetched from its source. The previous copy is still shown, and it will be retried automatically."
+
 #. Update check unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.feed_not_composable.title"

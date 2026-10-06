@@ -12271,6 +12271,36 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/{product}/assets:
+    get:
+      operationId: listAdminHostedAssets
+      tags: [admin]
+      summary: The product's hosted assets, their sources and pull status
+      description: >
+        HA-05 (notes/S-20 §6.4). Every hosted asset of the product: one row per slot
+        (`presentation.icon`, `listing.icon`, `listing.header`, `listing.screenshot:<n>`, an A-18
+        listing slot, a release file) and locale, with its source (`url`, `repo`, `upload`, `ci`,
+        `github-asset`), the stored copy (`sha256`, sniffed `contentType`, size and dimensions) and
+        its status: `pending` (nothing served yet), `ready`, `failed` (the last pull was refused,
+        `error` names why) or `stale` (the source is gone; the last good copy keeps serving).
+        `wanted` is what the manifest declares for the slot now, and `pullPending` says a pull of
+        it is still owed, with `attempts` and `nextAttemptAt` for the back-off. Read-only; platform
+        admins only; admin session cookie.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The product's hosted assets, ordered by slot and locale.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminHostedAssets" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
   # ── Godot tokenised URLs (F-21) ──
   /godot/{owner}/t/{token}/asset-library/api/configure:
     servers:
@@ -14176,6 +14206,55 @@ components:
           type: integer
           description: Repositories matching `q`, across every page.
         nextCursor: { type: [string, "null"] }
+    AdminHostedAssets:
+      type: object
+      required: [assets]
+      properties:
+        assets:
+          type: array
+          items:
+            type: object
+            required:
+              [
+                slot,
+                locale,
+                origin,
+                sourceKind,
+                status,
+                modifiedAt,
+                pullPending,
+                attempts,
+              ]
+            properties:
+              slot: { type: string }
+              locale: { type: string, description: "`''` is every locale." }
+              origin:
+                { type: string, enum: [manifest, console, ci, release-mirror] }
+              sourceKind:
+                { type: string, enum: [url, repo, upload, ci, github-asset] }
+              sourceRef:
+                {
+                  type: [string, "null"],
+                  description: "The URL, `<path>@<commit>`, or the GitHub asset id.",
+                }
+              status: { type: string, enum: [pending, ready, failed, stale] }
+              error: { type: [string, "null"] }
+              sha256: { type: [string, "null"] }
+              size: { type: [integer, "null"] }
+              contentType: { type: [string, "null"] }
+              width: { type: [integer, "null"] }
+              height: { type: [integer, "null"] }
+              checkedAt: { type: [integer, "null"] }
+              modifiedAt: { type: integer }
+              wanted:
+                type: [object, "null"]
+                properties:
+                  kind: { type: string, enum: [url, repo] }
+                  src: { type: string }
+                  sha256: { type: string }
+              pullPending: { type: boolean }
+              attempts: { type: integer }
+              nextAttemptAt: { type: [integer, "null"] }
     AdminSlugCheck:
       type: object
       required: [slug, status]

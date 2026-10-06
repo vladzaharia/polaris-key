@@ -131,6 +131,8 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
   products: [
     ["/manage/api/products/link-repo", ["post"]],
     ["/manage/api/products/slug-check", ["get"]],
+    // HA-05: the hosted-asset status read the console's Presentation page uses.
+    ["/manage/api/products/{product}/assets", ["get"]],
   ],
 };
 

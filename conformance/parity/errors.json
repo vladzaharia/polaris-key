@@ -316,6 +316,12 @@
       "description": "A manifest resync's `refused` entry (P4-02): a GitHub release whose tag equals a pack release id (`<packId>@<version>`; git allows `@` in a tag) was skipped by the truth-store sync and never merged into the pack's row. The rest of the resync applied; rename the tag."
     },
     {
+      "code": "asset_unreachable",
+      "kind": "wire",
+      "service": "core",
+      "description": "A manifest resync's `warnings` entry (HA-05, notes/S-20 §6.4): a declared asset (`presentation.icon`, a listing icon, header or screenshot) whose source could not be pulled. The last good copy keeps serving (or nothing yet, for a new slot), and Polaris Key retries with back-off. A warning, never an error: the rest of the resync applied."
+    },
+    {
       "code": "feed_not_composable",
       "kind": "wire",
       "service": "update",

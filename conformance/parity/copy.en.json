@@ -216,6 +216,10 @@
       "title": "Release skipped",
       "message": "A release was skipped because its tag matches a content pack release. Rename the tag."
     },
+    "asset_unreachable": {
+      "title": "Image not updated",
+      "message": "An image could not be fetched from its source. The previous copy is still shown, and it will be retried automatically."
+    },
     "feed_not_composable": {
       "title": "Update check unavailable",
       "message": "Updates can't be checked right now. Try again in a few minutes."

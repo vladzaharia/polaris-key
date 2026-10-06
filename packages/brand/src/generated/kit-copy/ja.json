@@ -583,6 +583,8 @@
   "core.codes.release_record_rejected.message": "チェックに失敗したため、リリースは公開されませんでした。失敗したチェックは公開ログに記載されています。",
   "core.codes.release_tag_is_pack_release.title": "リリースをスキップしました",
   "core.codes.release_tag_is_pack_release.message": "タグがコンテンツパックのリリースと一致するため、リリースをスキップしました。タグの名前を変更してください。",
+  "core.codes.asset_unreachable.title": "画像は更新されていません",
+  "core.codes.asset_unreachable.message": "画像を取得元から取得できませんでした。以前のコピーが引き続き表示され、自動的に再試行されます。",
   "core.codes.feed_not_composable.title": "アップデートを確認できません",
   "core.codes.feed_not_composable.message": "現在アップデートを確認できません。数分後にもう一度お試しください。",
   "core.codes.service-unavailable.title": "利用できません",

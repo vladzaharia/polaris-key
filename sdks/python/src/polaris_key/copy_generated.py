@@ -92,6 +92,7 @@ COPY_CODES: Mapping[str, CopyEntry] = MappingProxyType(
         "internal_error": CopyEntry("Download failed", "The download server had a problem. Try again in a few minutes."),
         "release_record_rejected": CopyEntry("Release refused", "The release wasn't published because a check failed. The publish log names the check."),
         "release_tag_is_pack_release": CopyEntry("Release skipped", "A release was skipped because its tag matches a content pack release. Rename the tag."),
+        "asset_unreachable": CopyEntry("Image not updated", "An image could not be fetched from its source. The previous copy is still shown, and it will be retried automatically."),
         "feed_not_composable": CopyEntry("Update check unavailable", "Updates can't be checked right now. Try again in a few minutes."),
         "service-unavailable": CopyEntry("Not available", "This app doesn't use this service."),
         "service-disabled": CopyEntry("Not available", "This service is turned off for this app."),

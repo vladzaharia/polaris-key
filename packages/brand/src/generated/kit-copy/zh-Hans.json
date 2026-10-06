@@ -583,6 +583,8 @@
   "core.codes.release_record_rejected.message": "由于某项检查未通过，此版本未发布。发布日志中写明了该检查。",
   "core.codes.release_tag_is_pack_release.title": "版本已跳过",
   "core.codes.release_tag_is_pack_release.message": "由于标签与某个内容包版本相同，此版本已被跳过。请重命名该标签。",
+  "core.codes.asset_unreachable.title": "图片未更新",
+  "core.codes.asset_unreachable.message": "无法从来源获取图片。仍显示之前的副本，并将自动重试。",
   "core.codes.feed_not_composable.title": "无法检查更新",
   "core.codes.feed_not_composable.message": "目前无法检查更新。请几分钟后重试。",
   "core.codes.service-unavailable.title": "不可用",

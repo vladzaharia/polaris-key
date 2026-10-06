@@ -217,6 +217,10 @@
       "title": "Lançamento ignorado",
       "message": "Um lançamento foi ignorado porque a tag dele corresponde a um lançamento de pacote de conteúdo. Renomeie a tag."
     },
+    "asset_unreachable": {
+      "title": "Imagem não atualizada",
+      "message": "Não foi possível obter uma imagem da sua origem. A cópia anterior continua sendo exibida, e uma nova tentativa será feita automaticamente."
+    },
     "feed_not_composable": {
       "title": "Verificação de atualizações indisponível",
       "message": "Não é possível verificar atualizações agora. Tente novamente em alguns minutos."

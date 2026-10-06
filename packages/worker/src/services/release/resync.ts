@@ -93,6 +93,11 @@ import { randomId } from "../../core/platform.js";
 import { manifestSnapshotStatement } from "../../core/manifestSnapshot.js";
 import { reservedNamesMode } from "../../core/reservedNames.js";
 import { reservedDisplayNamesMode } from "../../core/reservedDisplayNames.js";
+import {
+  syncHostedAssets,
+  type AssetWarning,
+} from "../../core/hostedAssetPulls.js";
+import { repoBlobLookup } from "./assetSource.js";
 
 export type ResyncResult =
   | {
@@ -119,6 +124,12 @@ export type ResyncResult =
        * declares. The console row is kept and the manifest's row is not applied. Absent when none.
        */
       conflicts?: { path: string; message: string }[];
+      /**
+       * HA-05: `asset_unreachable` for each declared asset whose source is failing (the last good
+       * copy keeps serving). Warnings, never errors: a CDN outage never fails a resync. Absent
+       * when none.
+       */
+      warnings?: AssetWarning[];
     }
   | { ok: false; error: string; errors?: string[] };
 
@@ -896,6 +907,18 @@ async function applyRepoManifest(
   // failed resolution clears the sets and is answered; it never fails the resync.
   if (rel) packSets = await resolveAndStore(db, slug, now);
 
+  // HA-05 (notes/S-20 §6.4): the hosted-asset pulls this manifest owes, enqueued AFTER the batch
+  // (a new slot's row references the product) and best-effort (`syncHostedAssets` never throws).
+  // Repo paths are compared by git blob at the pinned commit, through the token this resync holds.
+  const assets = await syncHostedAssets(env, db, {
+    product: slug,
+    manifest,
+    commit: appliedSha,
+    repoBlob: repoBlobLookup(token, owner, repo, appliedSha, fetchImpl),
+    now,
+  });
+  if (assets.enqueued > 0) updated.push("assets");
+
   if (droppedBefore.length > 0) updated.push("edgeMintApprovals");
   return {
     ok: true,
@@ -904,6 +927,7 @@ async function applyRepoManifest(
     ...(claimed.length > 0 ? { claimed } : {}),
     ...(conflicts.length > 0 ? { conflicts } : {}),
     ...(packSets && (!packSets.ok || packSets.sets > 0) ? { packSets } : {}),
+    ...(assets.warnings.length > 0 ? { warnings: assets.warnings } : {}),
   };
 }
 

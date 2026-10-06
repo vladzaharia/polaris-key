@@ -65,6 +65,7 @@ public object ErrorCode {
     public const val internalError: String = "internal_error"
     public const val releaseRecordRejected: String = "release_record_rejected"
     public const val releaseTagIsPackRelease: String = "release_tag_is_pack_release"
+    public const val assetUnreachable: String = "asset_unreachable"
     public const val feedNotComposable: String = "feed_not_composable"
     public const val serviceUnavailable: String = "service-unavailable"
     public const val serviceDisabled: String = "service-disabled"
@@ -220,6 +221,7 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "internal_error",
     "release_record_rejected",
     "release_tag_is_pack_release",
+    "asset_unreachable",
     "feed_not_composable",
     "service-unavailable",
     "service-disabled",
@@ -375,6 +377,7 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "internal_error" to "wire",
     "release_record_rejected" to "wire",
     "release_tag_is_pack_release" to "wire",
+    "asset_unreachable" to "wire",
     "feed_not_composable" to "wire",
     "service-unavailable" to "client",
     "service-disabled" to "client",

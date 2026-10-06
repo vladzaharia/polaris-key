@@ -217,6 +217,10 @@
       "title": "Versión omitida",
       "message": "Se omitió una versión porque su etiqueta coincide con una versión de un paquete de contenido. Cambia el nombre de la etiqueta."
     },
+    "asset_unreachable": {
+      "title": "Imagen no actualizada",
+      "message": "No se pudo obtener una imagen de su origen. Se sigue mostrando la copia anterior y se volverá a intentar automáticamente."
+    },
     "feed_not_composable": {
       "title": "Búsqueda de actualizaciones no disponible",
       "message": "Ahora mismo no se pueden buscar actualizaciones. Vuelve a intentarlo en unos minutos."

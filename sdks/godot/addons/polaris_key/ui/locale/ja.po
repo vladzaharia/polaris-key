@@ -3522,6 +3522,16 @@ msgstr "リリースをスキップしました"
 msgid "core.codes.release_tag_is_pack_release.message"
 msgstr "タグがコンテンツパックのリリースと一致するため、リリースをスキップしました。タグの名前を変更してください。"
 
+#. Image not updated
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.asset_unreachable.title"
+msgstr "画像は更新されていません"
+
+#. An image could not be fetched from its source. The previous copy is still shown, and it will be retried automatically.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.asset_unreachable.message"
+msgstr "画像を取得元から取得できませんでした。以前のコピーが引き続き表示され、自動的に再試行されます。"
+
 #. Update check unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.feed_not_composable.title"

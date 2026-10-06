@@ -41,6 +41,20 @@ This is the owner's "just pull the files". It also retires DJDL's public `djdl-a
 
 - Console upload and CI push (→ HA-06). Release files (→ HA-08).
 
+## Corrections from the code (HA-05, 2026-10-05)
+
+- The admin read route is `GET /manage/api/products/:p/assets` (the console API's real prefix),
+  not `/admin/products/:p/assets`. It is pinned in the OpenAPI spec and `routeCoverage`'s
+  `ADMIN_KIND_PATHS` (rule 10).
+- HA-01's `hosted_assets` has no place to keep what the manifest wants while the old copy keeps
+  serving, nor any back-off state. The migration `0089_hosted_asset_pulls.sql` (numbered 0085 on the branch; renumbered at integration, where ps-1 took 0085) adds `wanted_ref`, `pulled_ref`, `source_blob`, `attempts` and `next_attempt_at`. There is no
+  new table, so `TABLE_OWNERS` is unchanged (`hosted_assets` is already Core's).
+- `asset_unreachable` is a Worker-side warning in the resync result (`warnings[]`), not a code
+  from `@polaris-key/manifest`'s validator. The validator never fetches, so there is no rule-9
+  entry.
+- The system product's deploy-hook apply (`admin/systemProduct.ts`) is not wired. Only link and
+  resync plan pulls.
+
 ## Design notes
 
 - Exponential back-off per slot, capped at 24 h.
@@ -55,10 +69,10 @@ This is the owner's "just pull the files". It also retires DJDL's public `djdl-a
 
 ## Acceptance criteria
 
-- [ ] Resyncing an unchanged manifest enqueues nothing (test).
-- [ ] Changing the icon URL swaps the copy only after the new ingest is `ready` (test).
-- [ ] A 404 source leaves the old copy serving, with status `stale` (test).
-- [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
+- [x] Resyncing an unchanged manifest enqueues nothing (test).
+- [x] Changing the icon URL swaps the copy only after the new ingest is `ready` (test).
+- [x] A 404 source leaves the old copy serving, with status `stale` (test).
+- [x] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify
 

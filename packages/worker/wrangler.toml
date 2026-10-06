@@ -182,6 +182,21 @@ queue = "pkey-deltas-prod"
 [[env.prod.queues.producers]]
 binding = "DELTA_DLQ"
 queue = "pkey-deltas-dlq-prod"
+# HA-05: the hosted-asset pull queue (core/hostedAssetPulls.ts). This Worker is the producer (a
+# register or resync enqueues the pulls its manifest owes; the nightly sweep re-checks failed ones)
+# AND the consumer (`queue()` in src/index.ts): pulls are I/O-bound, so no separate script. A
+# delivery that keeps throwing lands in pkey-assets-dlq-prod; a refused pull is recorded on its
+# row and acknowledged, never retried by the queue.
+[[env.prod.queues.producers]]
+binding = "HOSTED_ASSET_QUEUE"
+queue = "pkey-assets-prod"
+[[env.prod.queues.consumers]]
+queue = "pkey-assets-prod"
+max_batch_size = 10
+max_batch_timeout = 5
+max_retries = 3
+max_concurrency = 4
+dead_letter_queue = "pkey-assets-dlq-prod"
 # A-11: the running version's own Cloudflare id, tag and upload time (`env.CF_VERSION_METADATA`).
 # A binding, so NOT inherited from the top level (`wrangler deploy --dry-run` warns): one per env.
 [env.prod.version_metadata]
@@ -273,6 +288,21 @@ queue = "pkey-deltas-staging"
 [[env.staging.queues.producers]]
 binding = "DELTA_DLQ"
 queue = "pkey-deltas-dlq-staging"
+# HA-05: the hosted-asset pull queue (core/hostedAssetPulls.ts). This Worker is the producer (a
+# register or resync enqueues the pulls its manifest owes; the nightly sweep re-checks failed ones)
+# AND the consumer (`queue()` in src/index.ts): pulls are I/O-bound, so no separate script. A
+# delivery that keeps throwing lands in pkey-assets-dlq-staging; a refused pull is recorded on its
+# row and acknowledged, never retried by the queue.
+[[env.staging.queues.producers]]
+binding = "HOSTED_ASSET_QUEUE"
+queue = "pkey-assets-staging"
+[[env.staging.queues.consumers]]
+queue = "pkey-assets-staging"
+max_batch_size = 10
+max_batch_timeout = 5
+max_retries = 3
+max_concurrency = 4
+dead_letter_queue = "pkey-assets-dlq-staging"
 # A-11: the running version's own Cloudflare id, tag and upload time (`env.CF_VERSION_METADATA`).
 # A binding, so NOT inherited from the top level (`wrangler deploy --dry-run` warns): one per env.
 [env.staging.version_metadata]
@@ -346,6 +376,21 @@ queue = "pkey-deltas-dev"
 [[env.dev.queues.producers]]
 binding = "DELTA_DLQ"
 queue = "pkey-deltas-dlq-dev"
+# HA-05: the hosted-asset pull queue (core/hostedAssetPulls.ts). This Worker is the producer (a
+# register or resync enqueues the pulls its manifest owes; the nightly sweep re-checks failed ones)
+# AND the consumer (`queue()` in src/index.ts): pulls are I/O-bound, so no separate script. A
+# delivery that keeps throwing lands in pkey-assets-dlq-dev; a refused pull is recorded on its
+# row and acknowledged, never retried by the queue.
+[[env.dev.queues.producers]]
+binding = "HOSTED_ASSET_QUEUE"
+queue = "pkey-assets-dev"
+[[env.dev.queues.consumers]]
+queue = "pkey-assets-dev"
+max_batch_size = 10
+max_batch_timeout = 5
+max_retries = 3
+max_concurrency = 4
+dead_letter_queue = "pkey-assets-dlq-dev"
 # A-11: the running version's own Cloudflare id, tag and upload time (`env.CF_VERSION_METADATA`).
 # A binding, so NOT inherited from the top level (`wrangler deploy --dry-run` warns): one per env.
 [env.dev.version_metadata]

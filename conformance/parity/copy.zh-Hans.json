@@ -217,6 +217,10 @@
       "title": "版本已跳过",
       "message": "由于标签与某个内容包版本相同，此版本已被跳过。请重命名该标签。"
     },
+    "asset_unreachable": {
+      "title": "图片未更新",
+      "message": "无法从来源获取图片。仍显示之前的副本，并将自动重试。"
+    },
     "feed_not_composable": {
       "title": "无法检查更新",
       "message": "目前无法检查更新。请几分钟后重试。"

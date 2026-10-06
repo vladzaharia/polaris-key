@@ -3522,6 +3522,16 @@ msgstr "릴리스 건너뜀"
 msgid "core.codes.release_tag_is_pack_release.message"
 msgstr "태그가 콘텐츠 팩 릴리스와 같아서 릴리스를 건너뛰었어요. 태그 이름을 바꾸세요."
 
+#. Image not updated
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.asset_unreachable.title"
+msgstr "이미지가 업데이트되지 않음"
+
+#. An image could not be fetched from its source. The previous copy is still shown, and it will be retried automatically.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.asset_unreachable.message"
+msgstr "원본에서 이미지를 가져올 수 없습니다. 이전 사본이 계속 표시되며 자동으로 다시 시도됩니다."
+
 #. Update check unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.feed_not_composable.title"

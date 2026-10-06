@@ -112,6 +112,13 @@ export const PLATFORM_INVENTORY: readonly PlatformInventoryEntry[] = [
     editable: null,
   },
   {
+    name: "HOSTED_ASSET_QUEUE",
+    kind: "binding",
+    area: "jobs",
+    optional: true,
+    editable: null,
+  },
+  {
     name: "LAZY_DELTA_MAX_BYTES",
     kind: "var",
     area: "jobs",
