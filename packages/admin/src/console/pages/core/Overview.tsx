@@ -377,7 +377,7 @@ export function releaseMoment(
     | Pick<ReleaseDto, "deliverable" | "publishedAt" | "yank">[]
     | undefined,
 ): MomentObservation {
-  if (!enabled || !releases) return UNKNOWN;
+  if (!enabled || !Array.isArray(releases)) return UNKNOWN;
   const live = releases.filter((x) => x.deliverable === "app" && !x.yank);
   if (live.length === 0) return BEFORE;
   const times = live
@@ -426,7 +426,7 @@ function OverviewMoments({
     },
     queryClient,
   );
-  const connected = stores.data?.stores.find(
+  const connected = stores.data?.stores?.find(
     (s) => s.connection.state === "connected",
   );
   const keys = {
@@ -444,7 +444,7 @@ function OverviewMoments({
     catalog: useMoment(keys.catalog, catalogMoment(on(p, "config"), catalog)),
     store: useMoment(
       keys.store,
-      !on(p, "distribution") || !stores.data
+      !on(p, "distribution") || !Array.isArray(stores.data?.stores)
         ? UNKNOWN
         : connected
           ? { state: "after" }
@@ -462,7 +462,7 @@ function OverviewMoments({
   const latest = latestAppRelease(store.data?.releases);
   const channel = latest
     ? (latest.channel ??
-      store.data?.channels.find((c) => c.releaseId === latest.releaseId)
+      store.data?.channels?.find((c) => c.releaseId === latest.releaseId)
         ?.channel ??
       null)
     : null;

@@ -466,6 +466,29 @@ describe("moments with no time of their own count when the console saw the produ
   });
 });
 
+describe("moments read defensively", () => {
+  it("a storefronts answer without its list decides nothing and breaks nothing", async () => {
+    fns.product.mockResolvedValue({
+      product: product({
+        services: enablement(["license", "release", "distribution"]),
+      }),
+    });
+    fns.releases.mockResolvedValue({
+      releases: [release({ channel: null })],
+      channels: [],
+      floors: [],
+    });
+    // An answer without its list (a scripted or older backend answering `{}`).
+    fns.storefronts.mockResolvedValue({});
+    overview();
+    expect(await screen.findByText("0.1.0 is live")).toBeTruthy();
+    expect(seen("store-connected:djdl")).toBe(false);
+    expect(
+      window.localStorage.getItem("pk-moment-before:store-connected:djdl"),
+    ).toBeNull();
+  });
+});
+
 describe("moments under reduced motion: the same line, a static check", () => {
   for (const how of ["data-motion", "media"] as const) {
     it(`(${how}) shows the banner with no burst`, async () => {
