@@ -1,16 +1,16 @@
 # HA-01 Hosted-asset core: `hosted_assets` table, `core/safeFetch.ts` guard, `core/hostedAssets.ts` ingest (cap, sniff, SHA-256, put, ref) and Content-Type on every R2 put
 
-| Field       | Value                                                                                                                               |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | HA: Hosted assets: Polaris Key hosts every file it serves (S-20) (phase 1: substrate)                                               |
-| Size        | 1–1.5 engineer-weeks                                                                                                                |
-| Depends on  | none                                                                                                                                |
-| Unblocks    | [HA-02](HA-02-media-host.md), [HA-03](HA-03-image-variants.md), [HA-05](HA-05-pull-on-sync.md), [HA-08](HA-08-release-mirroring.md) |
-| Role        | `pkey-implementer`                                                                                                                  |
-| Plan mode   | no                                                                                                                                  |
-| Gates       | migration; table owners; THREAT-MODEL; workerd lane                                                                                 |
-| Human input | none                                                                                                                                |
-| Repo        | `vladzaharia/polaris-key`                                                                                                           |
+| Field       | Value                                                                                                                             |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | HA: Hosted assets: Polaris Key hosts every file it serves (S-20) (phase 1: substrate)                                             |
+| Size        | 1–1.5 engineer-weeks                                                                                                              |
+| Depends on  | none                                                                                                                              |
+| Unblocks    | [HA-02](HA-02-img-host.md), [HA-03](HA-03-image-variants.md), [HA-05](HA-05-pull-on-sync.md), [HA-08](HA-08-release-mirroring.md) |
+| Role        | `pkey-implementer`                                                                                                                |
+| Plan mode   | no                                                                                                                                |
+| Gates       | migration; table owners; THREAT-MODEL; workerd lane                                                                               |
+| Human input | none                                                                                                                              |
+| Repo        | `vladzaharia/polaris-key`                                                                                                         |
 
 ## Goal
 

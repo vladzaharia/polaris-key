@@ -1,16 +1,16 @@
 # HA-12 Discovery `core.presentation` in the Worker: contract text, `shared-protocol` type, transcripts and mirrors
 
-| Field       | Value                                                                                                              |
-| ----------- | ------------------------------------------------------------------------------------------------------------------ |
-| Phase       | HA: Hosted assets: Polaris Key hosts every file it serves (S-20) (phase 5: presentation in SDKs)                   |
-| Size        | 0.6–0.9 engineer-weeks                                                                                             |
-| Depends on  | [HA-11](HA-11-presentation-discovery-plan.md), [HA-02](HA-02-media-host.md), [HA-07](HA-07-serve-hosted-copies.md) |
-| Unblocks    | [HA-13](HA-13-sdks-presentation.md), [HA-14](HA-14-godot-presentation.md)                                          |
-| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                              |
-| Plan mode   | yes: executes the approved [`plans/HA-11.md`](../plans/HA-11.md)                                                   |
-| Gates       | plan mode; corpus and transcripts (rule 1); drift gates; generated docs                                            |
-| Human input | none                                                                                                               |
-| Repo        | `vladzaharia/polaris-key`                                                                                          |
+| Field       | Value                                                                                                            |
+| ----------- | ---------------------------------------------------------------------------------------------------------------- |
+| Phase       | HA: Hosted assets: Polaris Key hosts every file it serves (S-20) (phase 5: presentation in SDKs)                 |
+| Size        | 0.6–0.9 engineer-weeks                                                                                           |
+| Depends on  | [HA-11](HA-11-presentation-discovery-plan.md), [HA-02](HA-02-img-host.md), [HA-07](HA-07-serve-hosted-copies.md) |
+| Unblocks    | [HA-13](HA-13-sdks-presentation.md), [HA-14](HA-14-godot-presentation.md)                                        |
+| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                            |
+| Plan mode   | yes: executes the approved [`plans/HA-11.md`](../plans/HA-11.md)                                                 |
+| Gates       | plan mode; corpus and transcripts (rule 1); drift gates; generated docs                                          |
+| Human input | none                                                                                                             |
+| Repo        | `vladzaharia/polaris-key`                                                                                        |
 
 ## Goal
 

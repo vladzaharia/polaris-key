@@ -1,4 +1,4 @@
-# HA-02 Media host `media*.plrs.im`: fourth custom domain, `MEDIA_ORIGIN`, `core/mediaHost.ts` confinement, content-addressed immutable routes and stable aliases
+# HA-02 Image host `img.plrs.im` (`img-staging`, `img-dev`): fourth custom domain, `IMG_ORIGIN`, `core/imgHost.ts` confinement, content-addressed immutable routes and stable aliases
 
 | Field       | Value                                                                                                                                     |
 | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
@@ -31,8 +31,8 @@ Decision 2 gives presentation media their own cookie-less, CSP-friendly host ins
 
 **In:**
 
-- Routes `media*.plrs.im` (`custom_domain = true`) and var `MEDIA_ORIGIN` in prod, staging and dev. `env.ts` and `mediaHostname.ts`.
-- `core/mediaHost.ts`: confinement, headers (`nosniff`, sniffed `Content-Type`, `Cache-Control: public, max-age=31536000, immutable` on `/a/`, `Access-Control-Allow-Origin: *`, `Cross-Origin-Resource-Policy: cross-origin`, `Content-Security-Policy: default-src 'none'; sandbox`), cookie stripping, rate limit `media`.
+- Routes `img.plrs.im` (`img-staging`, `img-dev`) (`custom_domain = true`) and var `IMG_ORIGIN` in prod, staging and dev. `env.ts` and `mediaHostname.ts`.
+- `core/imgHost.ts`: confinement, headers (`nosniff`, sniffed `Content-Type`, `Cache-Control: public, max-age=31536000, immutable` on `/a/`, `Access-Control-Allow-Origin: *`, `Cross-Origin-Resource-Policy: cross-origin`, `Content-Security-Policy: default-src 'none'; sandbox`), cookie stripping, rate limit `media`.
 - Tenancy: serve only when `<p>` holds a `hosted-asset` ref to the hash. Refuse `gated/`.
 - Stable aliases with `Cache-Control: public, max-age=300`.
 - OpenAPI entries and `routeCoverage` (rule 10). `docs/DEPLOYMENT.md` media-host section.

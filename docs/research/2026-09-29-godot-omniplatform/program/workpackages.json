@@ -7685,7 +7685,7 @@
     },
     {
       "id": "HA-02",
-      "title": "Media host `media*.plrs.im`: fourth custom domain, `MEDIA_ORIGIN`, `core/mediaHost.ts` confinement, content-addressed immutable routes and stable aliases",
+      "title": "Image host `img.plrs.im` (`img-staging`, `img-dev`): fourth custom domain, `IMG_ORIGIN`, `core/imgHost.ts` confinement, content-addressed immutable routes and stable aliases",
       "phase": "HA",
       "stage": "phase 1: substrate",
       "lane": "worker",
@@ -7704,7 +7704,7 @@
         "notes/S-20 owner decision 2",
         "notes/S-20 §9 HA-02"
       ],
-      "brief": "wp/HA-02-media-host.md",
+      "brief": "wp/HA-02-img-host.md",
       "status": "todo"
     },
     {

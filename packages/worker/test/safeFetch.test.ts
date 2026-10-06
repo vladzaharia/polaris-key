@@ -60,7 +60,7 @@ describe("guardUrl", () => {
   it("also refuses the remaining S-20 names and spellings", () => {
     expect(guardUrl("https://plrs.im/x")).toBe("denied-host");
     expect(guardUrl("https://KEY.PLRS.IM./x")).toBe("denied-host");
-    expect(guardUrl("https://media-staging.plrs.im/x")).toBe("denied-host");
+    expect(guardUrl("https://img-staging.plrs.im/x")).toBe("denied-host");
     expect(guardUrl("https://box.internal/a.png")).toBe("denied-host");
     expect(guardUrl("https://app.localhost/a.png")).toBe("denied-host");
     expect(guardUrl("https://nas.home.arpa/a.png")).toBe("denied-host");
