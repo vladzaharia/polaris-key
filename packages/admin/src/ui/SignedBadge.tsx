@@ -1,6 +1,7 @@
 import * as React from "react";
 import { cn } from "../lib/cn.js";
 import { markPartPath } from "./markPath.js";
+import { useChangedSinceMount } from "./motion/changed.js";
 
 /**
  * Gold means signed, and nothing else (BRAND.md §4.5, §7.3; components.md §6.5).
@@ -60,10 +61,12 @@ export function SignedBadge({
   className,
 }: SignedBadgeProps): React.ReactElement {
   const word = verified ? "Signature verified" : "Signed";
+  // A record that becomes verified pops its new word; colours ease (S-23 §6.1 "status"; MO-09).
+  const popped = useChangedSinceMount(word);
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 whitespace-nowrap text-xs",
+        "pk-pill inline-flex items-center gap-1.5 whitespace-nowrap text-xs",
         variant === "chip"
           ? "rounded-full border border-signed-border bg-signed px-2 py-0.5 font-bold text-signed-on"
           : "text-fg",
@@ -76,7 +79,9 @@ export function SignedBadge({
         <SignedGlyph size={12} />
       )}
       <span className={cn(truncateKid && "inline-flex min-w-0 items-baseline")}>
-        {word}
+        <span key={word} className={cn(popped && "pk-pop-in inline-block")}>
+          {word}
+        </span>
         {kid ? (
           <>
             {"\u00a0·\u00a0"}

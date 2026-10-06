@@ -837,6 +837,53 @@
 ::view-transition-old(*.pk-row):only-child {
   animation: pk-fade-out var(--pk-duration-micro) var(--pk-ease-exit) both;
 }
+/* MO-09: a table's rows (DataTable marks its body or card list .pk-vt-table) enter only once the
+   survivors have moved (`micro` + `base`), and quickly (`fast`), so a row sliding into its place
+   never crosses one fading in there (rows from below the fold of a long list, Clear filters); the
+   move still ends by `slow` + `micro` (S-23 D7). The class is important so it also reaches the rows
+   the layer names inline over LIST_BUDGET. */
+:root[data-vt="list"] .pk-vt-table > * {
+  view-transition-class: pk-row pk-table-row !important;
+}
+::view-transition-new(*.pk-table-row):only-child {
+  animation-duration: var(--pk-duration-fast);
+  animation-delay: calc(var(--pk-duration-micro) + var(--pk-duration-base));
+}
+/* MO-09: in a list transition the main region does not fade through. Its two pictures are the
+   same page around the rows (which move on their own), so a fade-through only dimmed the whole
+   page for a filter click; it shows the new picture at once, and its box still glides when the
+   page gets shorter. */
+:root[data-vt="list"]::view-transition-old(pk-main) {
+  animation: none;
+  opacity: 0;
+}
+:root[data-vt="list"]::view-transition-new(pk-main) {
+  animation: none;
+}
+/* MO-09: an overlay open during a list transition (a facet menu, a closing dialog and its scrim, a
+   toast) is named too, or the moving rows and the main region paint over it (S-23 §3.4 item 1).
+   Overlays come later in paint order, so their groups stay on top; each shows only its live new
+   picture and does not move. */
+:root[data-vt="list"]
+  :is(
+    [data-radix-popper-content-wrapper],
+    [role="dialog"],
+    [role="alertdialog"],
+    .animate-pk-overlay-in,
+    .pk-overlay,
+    [data-sonner-toaster]
+  ) {
+  view-transition-name: match-element;
+  view-transition-class: pk-overlay-vt;
+}
+::view-transition-group(*.pk-overlay-vt),
+::view-transition-new(*.pk-overlay-vt) {
+  animation: none;
+}
+::view-transition-old(*.pk-overlay-vt) {
+  animation: none;
+  opacity: 0;
+}
 /* theme switch: one cross-fade of the whole page. */
 :root[data-vt="theme"] {
   view-transition-name: root;

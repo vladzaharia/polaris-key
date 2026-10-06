@@ -37,7 +37,11 @@ export function useDelayedFlag(flag: boolean, ms: number): boolean {
  * The background-refetch indicator: a 2 px indeterminate line under the page header, shown only
  * after 400 ms so quick refetches never flash, and never replacing content. Decorative
  * (`aria-hidden`); the page's live region carries any announcement. A neutral bar, never the mark.
- * Under reduced motion the brand duration tokens collapse, so the bar stays still.
+ *
+ * Motion (notes/S-23 §6.1, D6; MO-09): the track fades in (`base`) and a third-width bar sweeps
+ * across it on the `pk-refetch` keyframes (transform only, one `shimmer` period per pass) from
+ * src/motion.css: a loading indicator, so it is allowed to loop. Under reduced motion (the OS
+ * setting or html[data-motion="reduce"]) nothing moves: the bar stands still, full width and dimmed.
  */
 export function RefetchBar({
   active,
@@ -51,7 +55,10 @@ export function RefetchBar({
     <div
       aria-hidden
       data-active={shown || undefined}
-      className={cn("relative h-0.5 w-full overflow-hidden", className)}
+      className={cn(
+        "relative h-0.5 w-full overflow-hidden data-[active]:animate-pk-fade-in motion-reduce:animate-none",
+        className,
+      )}
     >
       {shown ? (
         <div className="absolute inset-y-0 left-0 w-1/3 animate-pk-refetch rounded-full bg-fg-subtle motion-reduce:animate-none motion-reduce:w-full motion-reduce:opacity-50" />

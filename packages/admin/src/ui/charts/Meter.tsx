@@ -6,6 +6,7 @@ import {
   formatCount,
   formatPercent,
 } from "../../lib/format.js";
+import { FillRect } from "./FillRect.js";
 
 export type MeterFormat = "count" | "percent" | "bp" | "bytes";
 export type MeterTone = "accent" | "success" | "warning" | "danger";
@@ -52,7 +53,8 @@ export function meterText(
 /**
  * A bounded quantity (components.md §6.13): seats "3 of 5", rollout progress, storage. A
  * `role="meter"` with the numbers in `aria-value*` and the reading as visible text, so the bar
- * itself is never the only carrier. Over-full values clamp the bar, not the text.
+ * itself is never the only carrier. Over-full values clamp the bar, not the text. A new value
+ * moves the fill by transform (`FillRect`, S-23 §6.1 "meter"); the text swaps at once.
  */
 export function Meter({
   value,
@@ -87,14 +89,7 @@ export function Meter({
       </div>
       <svg aria-hidden width="100%" height="6" className="block">
         <rect width="100%" height="6" rx="3" className="fill-border" />
-        {ratio > 0 ? (
-          <rect
-            width={`${ratio * 100}%`}
-            height="6"
-            rx="3"
-            className={FILL[tone]}
-          />
-        ) : null}
+        <FillRect ratio={ratio} height={6} rx={3} className={FILL[tone]} />
       </svg>
     </div>
   );

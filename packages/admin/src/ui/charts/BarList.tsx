@@ -2,6 +2,7 @@ import * as React from "react";
 import { cn } from "../../lib/cn.js";
 import { formatBytes, formatCount, formatPercent } from "../../lib/format.js";
 import { ChartFrame } from "./ChartTable.js";
+import { FillRect } from "./FillRect.js";
 
 export interface BarListItem {
   label: string;
@@ -24,6 +25,7 @@ export interface BarListProps {
 /**
  * Horizontal labelled bars, largest first (components.md §6.13): devices by platform, app version,
  * SDK. Direct labels and values on every row; bars in the section accent, scaled to the largest.
+ * A changed value moves its bar by transform (`FillRect`, S-23 §6.1 "meter").
  */
 export function BarList({
   items,
@@ -76,14 +78,14 @@ export function BarList({
                 </span>
               </div>
               <svg aria-hidden width="100%" height="8" className="block">
-                {max > 0 && i.value > 0 ? (
-                  <rect
-                    width={`${Math.max((i.value / max) * 100, 0.5)}%`}
-                    height="8"
-                    rx="2"
-                    className="fill-accent"
-                  />
-                ) : null}
+                <FillRect
+                  ratio={
+                    max > 0 && i.value > 0 ? Math.max(i.value / max, 0.005) : 0
+                  }
+                  height={8}
+                  rx={2}
+                  className="fill-accent"
+                />
               </svg>
             </li>
           ))}

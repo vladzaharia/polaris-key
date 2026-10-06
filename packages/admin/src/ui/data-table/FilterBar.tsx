@@ -3,6 +3,7 @@ import { ChevronDown, Search, X } from "lucide-react";
 import { cn } from "../../lib/cn.js";
 import { Button } from "../Button.js";
 import { Popover } from "../Popover.js";
+import { Presence, reducedMotion } from "../motion/index.js";
 import type { FacetOption } from "./types.js";
 
 /** How long the search field waits after the last keystroke (components.md §6.1). */
@@ -13,6 +14,12 @@ export interface FilterBarFacet {
   label: string;
   options: (FacetOption & { count?: number })[];
   selected: string[];
+  /**
+   * The values drawn as chips (default `selected`). DataTable passes the selection it is still
+   * showing while a list transition holds the old view, so the chip row changes inside the
+   * transition; the menu and each chip's remove button still act on `selected`.
+   */
+  chips?: string[];
   onChange: (next: string[]) => void;
 }
 
@@ -126,6 +133,76 @@ function FacetMenu({ facet }: { facet: FilterBarFacet }): React.ReactElement {
   );
 }
 
+interface Chip {
+  key: string;
+  facet: FilterBarFacet;
+  value: string;
+  label: string;
+}
+
+/** A chip on screen: a current one (`added` after the bar mounted), or one still leaving. */
+interface ShownChip extends Chip {
+  added: boolean;
+  leaving: boolean;
+}
+
+/**
+ * The chips to draw (notes/S-23 §6.1; MO-09): a chip added after the bar mounted pops in; a
+ * removed one stays where it was, inert, while it fades out, then goes. Chips present on the
+ * first render (a URL with filters, Back) do not pop. When the last chip goes, the row goes with
+ * it at once: a row that collapsed only after the fade would move the table after a list
+ * transition had already captured it. Under reduced motion a removed chip goes at once. Counts
+ * are never animated.
+ */
+function useChipPresence(chips: Chip[]): [ShownChip[], (key: string) => void] {
+  const keys = chips.map((c) => c.key).join("\n");
+  const [prev, setPrev] = React.useState({ keys, chips });
+  const [initial, setInitial] = React.useState(
+    () => new Set(chips.map((c) => c.key)),
+  );
+  const [leaving, setLeaving] = React.useState<
+    Array<{ chip: Chip; index: number }>
+  >([]);
+  if (prev.keys !== keys) {
+    const now = new Set(chips.map((c) => c.key));
+    const gone =
+      reducedMotion() || now.size === 0
+        ? []
+        : prev.chips.flatMap((chip, index) =>
+            now.has(chip.key) ? [] : [{ chip, index }],
+          );
+    setPrev({ keys, chips });
+    setLeaving((l) =>
+      now.size === 0
+        ? []
+        : [
+            ...l.filter((x) => !now.has(x.chip.key)),
+            ...gone.filter((g) => !l.some((x) => x.chip.key === g.chip.key)),
+          ],
+    );
+    // A chip removed since the first render pops when it comes back.
+    if ([...initial].some((k) => !now.has(k)))
+      setInitial(new Set([...initial].filter((k) => now.has(k))));
+  }
+  const shown: ShownChip[] = chips.map((c) => ({
+    ...c,
+    added: !initial.has(c.key),
+    leaving: false,
+  }));
+  for (const { chip, index } of [...leaving].sort((a, b) => a.index - b.index))
+    if (!shown.some((c) => c.key === chip.key))
+      shown.splice(Math.min(index, shown.length), 0, {
+        ...chip,
+        added: false,
+        leaving: true,
+      });
+  const drop = React.useCallback(
+    (key: string) => setLeaving((l) => l.filter((x) => x.chip.key !== key)),
+    [],
+  );
+  return [shown, drop];
+}
+
 /**
  * Search, facet menus and removable filter chips over a collection (components.md §6.2). It
  * holds no filter state of its own: the values live in the URL (`useTableUrlState`), so Back
@@ -143,13 +220,15 @@ export function FilterBar({
     search?.value ?? "",
     search?.onChange ?? (() => undefined),
   );
-  const chips = facets.flatMap((f) =>
-    f.selected.map((v) => ({
+  const chips: Chip[] = facets.flatMap((f) =>
+    (f.chips ?? f.selected).map((v) => ({
+      key: `${f.id}:${v}`,
       facet: f,
       value: v,
       label: f.options.find((o) => o.value === v)?.label ?? v,
     })),
   );
+  const [shownChips, dropChip] = useChipPresence(chips);
   const filtered = chips.length > 0 || (search?.value ?? "") !== "";
 
   return (
@@ -183,29 +262,42 @@ export function FilterBar({
           </div>
         ) : null}
       </div>
-      {chips.length > 0 ? (
+      {shownChips.length > 0 ? (
         <ul
           aria-label="Active filters"
           className="flex flex-wrap items-center gap-1.5"
         >
-          {chips.map((c) => (
-            <li key={`${c.facet.id}:${c.value}`}>
-              <span className="inline-flex h-7 items-center gap-1 rounded-full border border-border bg-surface-raised pl-2.5 pr-1 text-xs text-fg">
-                {c.facet.label}: {c.label}
-                <button
-                  type="button"
-                  aria-label={`Remove filter ${c.facet.label}: ${c.label}`}
-                  onClick={() =>
-                    c.facet.onChange(
-                      c.facet.selected.filter((v) => v !== c.value),
-                    )
-                  }
-                  className="inline-flex size-5 items-center justify-center rounded-full text-fg-muted hover:bg-hover hover:text-fg-strong"
-                >
-                  <X aria-hidden className="size-3.5" />
-                </button>
-              </span>
-            </li>
+          {shownChips.map((c) => (
+            <Presence
+              key={c.key}
+              open={!c.leaving}
+              onExited={() => dropChip(c.key)}
+            >
+              <li
+                inert={c.leaving || undefined}
+                aria-hidden={c.leaving || undefined}
+                className={cn(
+                  c.added && "pk-pop-in",
+                  "data-[state=closed]:animate-pk-fade-out motion-reduce:animate-none",
+                )}
+              >
+                <span className="inline-flex h-7 items-center gap-1 rounded-full border border-border bg-surface-raised pl-2.5 pr-1 text-xs text-fg">
+                  {c.facet.label}: {c.label}
+                  <button
+                    type="button"
+                    aria-label={`Remove filter ${c.facet.label}: ${c.label}`}
+                    onClick={() =>
+                      c.facet.onChange(
+                        c.facet.selected.filter((v) => v !== c.value),
+                      )
+                    }
+                    className="inline-flex size-5 items-center justify-center rounded-full text-fg-muted hover:bg-hover hover:text-fg-strong"
+                  >
+                    <X aria-hidden className="size-3.5" />
+                  </button>
+                </span>
+              </li>
+            </Presence>
           ))}
           {onClearAll && filtered ? (
             <li>

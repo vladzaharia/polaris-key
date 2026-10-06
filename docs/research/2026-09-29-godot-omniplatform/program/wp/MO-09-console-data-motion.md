@@ -51,9 +51,22 @@ Rows, chips, pills and charts all snap today; 12 `animate-pulse` sites contradic
 - React keeps keyed row elements, so `match-element` pairs survivors (verify in the smoke suite: a filter must move at least one row, not fade it out and in).
 - Counts in chips and tables update instantly; only headline numbers count up.
 
+## Corrections (found while building, 2026-10-06)
+
+The code is the fact; these replace the brief where they disagree.
+
+- **`animate-pulse` was already gone.** MO-10 retired the last sites, including `ui/charts/StatTile.tsx` (its loading state is already a `pk-skeleton` behind `pk-skeleton-group`), and emptied the motion lint allowlist (`PULSE_ALLOWLIST = {}`, asserted empty). Nothing was left to remove or tighten; `test/ui/dataMotion.test.tsx` re-checks that no Skeleton renders `animate-pulse`.
+- **`feat/license-delete` had merged** before this package started; no rebase was needed.
+- **The transition is started by the table, not by each control.** DataTable holds its rows and its view (search, facets, sort, page) for the one frame a `list` transition needs, so a filter or sort from anywhere moves the rows: its own facet menu and chips, a page's own control (the Licenses state tiles), and Back (S-23 §6.3: query-string changes are `list`). Typing in search, paging and refetches that change nothing never animate. While the old view is held, the controls (the facet menu, a chip's remove button) act on the live selection and only the chip row is drawn from the held one, so changes made inside that frame build on each other (review B1).
+- **Four real-app findings needed `motion.css` rules** (list section, MO-09 block, additive): an open overlay (the facet menu, a closing dialog and its scrim, a toast) was painted under the moving rows, so it is named for the transition; the main region's route fade-through dimmed the whole page on every filter, so in a list transition it shows its new picture at once; collapsed table borders belonged to the table's picture and ghosted, so DataTable draws each row's line on its cells (`border-separate`); and rows entering from below the fold crossed survivors still moving, so a table's entering rows (`.pk-vt-table`) start after the survivors land (`micro` + `base`, then `fast`, ending by `slow` + `micro`).
+- **The layer judged the 30-row budget only before the update**, so Clear filters on a long table (20 → 60 rows) named all 60 new rows. `viewTransition()` now judges it on each side of the update (one-line fix in `ui/motion/viewTransition.ts`, unit-tested).
+- **The smoke cases live in `e2e/dataMotion.e2e.test.ts`**, not `e2e/motion.e2e.test.ts`, as MO-10's `shellMotion.e2e.test.ts` does, so the area packages built in parallel (MO-04, MO-05, MO-07) do not collide in one file.
+
 ## Files it touches
 
 `ui/data-table/{DataTable,FilterBar}.tsx`, `ui/{StatusPill,SignedBadge,Skeleton,loading,Stepper}.tsx`, `ui/charts/*`, tests, `e2e/motion.e2e.test.ts`. In flight: `feat/license-delete` (`DataTable.tsx`).
+
+As built: also `ui/charts/FillRect.tsx` (new), `ui/motion/changed.ts` (new), `ui/motion/viewTransition.ts` (the budget fix), `src/motion.css` (the MO-09 list block), `test/ui/dataMotion.test.tsx` and `e2e/dataMotion.e2e.test.ts` (new) instead of `e2e/motion.e2e.test.ts`.
 
 ## Steps
 
@@ -65,12 +78,12 @@ Rows, chips, pills and charts all snap today; 12 `animate-pulse` sites contradic
 
 ## Acceptance criteria
 
-- [ ] A filter on a 60-row table names at most 30 rows and moves (not re-enters) surviving rows (smoke suite).
-- [ ] No `animate-pulse` remains under `src/ui/`.
-- [ ] Chart fills animate by transform only (motion lint + test).
-- [ ] Layout lint stays at zero.
-- [ ] Under `prefers-reduced-motion: reduce` (and `html[data-motion="reduce"]` once MO-12 lands) every change in scope is an instant swap: no View Transition starts and `document.getAnimations()` is empty after the interaction (checked in the motion smoke suite or a unit test).
-- [ ] The green gate passes (AGENTS.md), including `pnpm --filter @polaris-key/worker test adminCspParity` after the admin build and `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations.
+- [x] A filter on a 60-row table names at most 30 rows and moves (not re-enters) surviving rows (smoke suite: `e2e/dataMotion.e2e.test.ts`, both themes; Clear filters back to 60 rows names at most 30 too).
+- [x] No `animate-pulse` remains under `src/ui/` (MO-10 had already removed the last site; the motion lint's allowlist is empty).
+- [x] Chart fills animate by transform only (motion lint + test: `test/ui/dataMotion.test.tsx` scans `ui/charts/` for computed SVG widths and checks every fill is a full-width `pk-meter-fill`; the smoke suite measures a seat meter's fill at a fifth of its track).
+- [x] Layout lint stays at zero (`e2e/layout.e2e.test.ts` green in the full `test:e2e` run).
+- [x] Under `prefers-reduced-motion: reduce` (and `html[data-motion="reduce"]` once MO-12 lands) every change in scope is an instant swap: no View Transition starts and `document.getAnimations()` is empty after the interaction (checked in the motion smoke suite or a unit test): both variants in `e2e/dataMotion.e2e.test.ts`, plus unit tests.
+- [x] The green gate passes (AGENTS.md), including `pnpm --filter @polaris-key/worker test adminCspParity` after the admin build and `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations.
 
 ## Verify
 
