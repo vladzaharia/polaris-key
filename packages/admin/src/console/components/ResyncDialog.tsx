@@ -107,7 +107,7 @@ export function planRefusal(error: unknown): {
           ? `${plural(problems.length, "problem", "problems")} in .pkey/`
           : "The manifest couldn't be read",
         description: problems.length
-          ? "Fix them in one commit, then check again."
+          ? `Fix ${problems.length === 1 ? "it" : "them"} in one commit, then check again.`
           : message || "Check that the repository has a .pkey/ directory.",
         problems,
       };
@@ -391,7 +391,7 @@ export function ResyncResultPanel({
       }
       raf = requestAnimationFrame(() => {
         el.focus({ preventScroll: true });
-        el.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+        el.scrollIntoView?.({ block: "center", behavior: "smooth" });
       });
     };
     raf = requestAnimationFrame(settle);
