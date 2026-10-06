@@ -12,6 +12,20 @@
 | Human input | none                                                                                                                                                                                                            |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                       |
 
+## Changed by plan PX-W9 (2026-10-06)
+
+[`plans/PX-W9.md`](../plans/PX-W9.md) revision 2 was approved by the lead under the owner's delegation on 2026-10-06. These notes win over the text of this brief where they differ.
+
+- **Replace `keyEntryLimit()`.** Its body becomes `resolveSetting(product, "identity.keyEntry.limit")`. The
+  function is in `core/keyEntries.ts`, and today reads the `product_settings` row and defaults to 10.
+  - The signature stays the same, because PX-W9's enforcement and I-09's discovery member both call it.
+  - Keep the 1–100 bound and the platform `max` cap.
+- **Clear `pending`.** Remove `pending: {wp: "ST-04"}` from the product entry `identity.keyEntry.limit` once the
+  console can write it through `writeSetting()`.
+- **Read the switch through the resolver.** `identity.keyEntryRefusals` is already an editable platform setting
+  (`IDENTITY_KEY_ENTRY_REFUSALS`, PX-W9). Move its read in `core/keyEntries.ts` onto the resolver with no change in
+  behaviour.
+
 ## Goal
 
 One resolver returns a setting's effective value with its source chain over row- and column-backed keys, and every write goes through `writeSetting()`, which audits before, after, origin, reason and key.

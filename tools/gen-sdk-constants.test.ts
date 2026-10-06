@@ -179,7 +179,7 @@ describe("the sources", () => {
     );
   });
 
-  it("activationResult is SDK-PARITY-PASS §3.1's thirteen kinds, in kebab form", () => {
+  it("activationResult is SDK-PARITY-PASS §3.1's thirteen kinds and PX-W9's key-entry-limit, in kebab form", () => {
     const byName = Object.fromEntries(
       SOURCES.enums.map((e) => [e.name, e.values]),
     );
@@ -195,6 +195,8 @@ describe("the sources", () => {
       "rate-limited",
       "unauthorized",
       "enroll-disabled",
+      // PX-W9 (WIRE-CONTRACT-V4 §12.2): the `key_entry_limit` refusal.
+      "key-entry-limit",
       "refused",
       "error",
     ]);

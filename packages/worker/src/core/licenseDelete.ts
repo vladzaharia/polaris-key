@@ -27,8 +27,9 @@
  * Core's own rows go through {@link coreLicenseDeleteStatements}: the devices (their facts,
  * fingerprints, delta-demand rows and any download token naming them, ahead of the devices
  * themselves because `release_download_tokens` holds a foreign key onto `devices`), the
- * licence's registry tokens, its refused-activation log (`license_refusals`) and its auto-attach
- * blocks (`license_auto_attach_blocks`, LX-26). The devices' bearer tokens live in KV and are purged by the caller
+ * licence's registry tokens, its refused-activation log (`license_refusals`), its auto-attach
+ * blocks (`license_auto_attach_blocks`, LX-26) and its key-entry counter (`license_key_entries`,
+ * PX-W9). The devices' bearer tokens live in KV and are purged by the caller
  * after the batch commits.
  *
  * Every table holding a `license_id` column is accounted for here, in a contributor, or by a
@@ -195,8 +196,8 @@ function guardOf(
 /** The licence's devices, as a sub-select (the batch cannot read). */
 const LICENSE_DEVICES = `SELECT device_id FROM devices WHERE product = ? AND license_id = ?`;
 
-/** Core's rows for one licence: its devices and what hangs off them, its registry tokens and its
- *  refused activations. */
+/** Core's rows for one licence: its devices and what hangs off them, its registry tokens, its
+ *  refused activations, its auto-attach blocks and its key entries. */
 export function coreLicenseDeleteStatements(
   target: LicenseDeleteTarget,
 ): DbStatement[] {
@@ -227,6 +228,11 @@ export function coreLicenseDeleteStatements(
     // LX-26: the accounts this licence must not rejoin automatically; nothing is left to block.
     {
       sql: "DELETE FROM license_auto_attach_blocks WHERE product = ? AND license_id = ?",
+      params: [product, licenseId],
+    },
+    // PX-W9: the licence's key-entry counter (WIRE-CONTRACT-V4 §12.2).
+    {
+      sql: "DELETE FROM license_key_entries WHERE product = ? AND license_id = ?",
       params: [product, licenseId],
     },
   ];

@@ -1166,6 +1166,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_limit_message">このライセンスはすべてのデバイス枠が使用中です。ここで使うにはデバイスを置き換えてください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_key_entry_limit_title">キーの入力回数が残っていません</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_key_entry_limit_message">このキーは入力回数が残っていません。アカウントに追加して、代わりにサインインしてください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_disabled_title">ライセンスが無効です</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_disabled_message">このライセンスは無効化されています。開発者に問い合わせてください。</string>
@@ -1797,6 +1801,10 @@
     <string name="core_activation_enroll_disabled_title">無料ライセンスはありません</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_enroll_disabled_message">このアプリは無料ライセンスを提供していません。ライセンスキーを入力するか、サインインしてください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_key_entry_limit_title">キーの入力回数が残っていません</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_key_entry_limit_message">このキーは入力回数が残っていません。アカウントに追加して、代わりにサインインしてください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_refused_title">アクティベーションが拒否されました</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). Arguments: 1=code. -->

@@ -41,8 +41,13 @@ import {
 } from "../../core/devices.js";
 import { requireLicensedDevice } from "./auth.js";
 import { authorizeDevice, type AuthzError } from "./authz.js";
-import type { WaitUntil } from "../../core/refusals.js";
+import { logRefusal, type WaitUntil } from "../../core/refusals.js";
 import { buildManageUrl } from "../../core/manageUrl.js";
+import {
+  countKeyEntries,
+  keyEntryGate,
+  keyEntryLimitResponse,
+} from "../../core/keyEntries.js";
 
 /**
  * The refusal link for an `authorizeDevice` failure (PX-W8, WIRE-CONTRACT-V4 §5.3): a
@@ -158,6 +163,30 @@ async function activateWithKey(
 
   const license = await getLicense(db, product.slug, keyRow.license_id);
   if (!license) return errorResponse(401, ErrorCode.Unauthorized);
+  const metadata = deviceMetadata(req);
+
+  // PX-W9 (WIRE-CONTRACT-V4 §12.2): on an Identity product this is a key entry. An enrolled
+  // device goes on as before; a new one past the licence's limit is refused while the switch is
+  // on (step 4), and otherwise its seat claim records the entry (step 5).
+  const gate = await keyEntryGate(env, db, product, license, deviceId, now);
+  if (gate.kind === "refuse") {
+    await logRefusal(
+      db,
+      {
+        product: product.slug,
+        licenseId: license.id,
+        deviceId,
+        reason: "key_entry_limit",
+        at: now,
+        platform: metadata.platform,
+        arch: metadata.arch,
+        userAgent: metadata.userAgent,
+      },
+      waitUntil,
+    );
+    return keyEntryLimitResponse(env, db, req, product, gate.keyEntries);
+  }
+
   const authorized = await authorizeDevice(
     env,
     db,
@@ -166,13 +195,16 @@ async function activateWithKey(
     deviceId,
     now,
     {
-      ...deviceMetadata(req),
+      ...metadata,
       // PX-W13 §8 Q2: the body carries the fingerprint and the device label.
       ...(await readDeviceBody(req)),
       // I-05: key entry binds the device by key and NEVER sets the account binding.
       boundBy: "key",
       // UX-15: a refusal is logged after the answer, not before it.
       ...(waitUntil ? { waitUntil } : {}),
+      ...(gate.kind === "admit"
+        ? { keyEntry: { surface: "app" as const } }
+        : {}),
     },
   );
   if ("error" in authorized)
@@ -187,6 +219,15 @@ async function activateWithKey(
     schemaVersion: product.schemaVersion,
     device: shapeDevice(authorized.device, deviceId),
     license: shapeLicense(license),
+    // §12.2 rule 5: the count after this entry (an enrolled device's re-entry included).
+    ...(gate.kind === "admit"
+      ? {
+          keyEntries: {
+            used: await countKeyEntries(db, product.slug, license.id),
+            limit: gate.keyEntries.limit,
+          },
+        }
+      : {}),
   });
 }
 

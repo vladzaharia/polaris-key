@@ -304,7 +304,10 @@ export function claimVerdict(
   return null;
 }
 
-/** `signin.key.noEntries` (SIGN-IN.md §5.2): the one wording of "this key has no entries left". */
+/** SIGN-IN.md §5.2 `signin.key.noEntries` (the kit key, which names the product): the one wording
+ *  of "this key has no entries left" where the product is known. The core copy of
+ *  `key_entry_limit` (`conformance/parity/copy.en.json`, PX-W9) is the same sentence without the
+ *  product, for SDKs that cannot name it. */
 export function noEntriesCopy(name: string): string {
   return `This key has no entries left in ${name}. Add it to your account and ${name} signs you in instead.`;
 }

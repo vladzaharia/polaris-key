@@ -34,6 +34,11 @@ import { syncConfigLicenseUnusable, syncErrors, syncEtag304 } from "./sync.js";
 import { updateFeedRollback, updateRecordByHash } from "./update.js";
 import { commerceClaim } from "./commerce.js";
 import { packsChunkRange } from "./packs.js";
+import {
+  keyentryIdentityOff,
+  keyentryLimit,
+  keyentryRefusalsOff,
+} from "./keyEntry.js";
 
 export const SCENARIOS: Scenario[] = [
   discoveryCapabilities,
@@ -64,4 +69,7 @@ export const SCENARIOS: Scenario[] = [
   telemetryReportUpdates,
   releaseFetchGated,
   distributionDownloadModel,
+  keyentryLimit,
+  keyentryRefusalsOff,
+  keyentryIdentityOff,
 ];

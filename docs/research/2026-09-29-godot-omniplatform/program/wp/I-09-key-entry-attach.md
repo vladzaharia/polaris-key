@@ -70,6 +70,25 @@ Checked against `main` at `148439c4f`. Each item names the package whose review 
   per-request sweep from `portal/api.ts`; the per-sign-in sweeps stay. Whichever of I-08 and I-09
   lands second makes the drop.
 
+## Changed by plan PX-W9 (2026-10-06)
+
+[`plans/PX-W9.md`](../plans/PX-W9.md) revision 2 was approved by the lead under the owner's delegation on 2026-10-06. These notes win over the text of this brief where they differ.
+
+- **`keyentry-refusals-off.json` moves to PX-W9.** It is a counter transcript. I-09 keeps
+  `keyentry-owned.json` and its attach, subject and sign-out transcripts.
+- **The refusal switch is already wired.** PX-W9 makes `identity.keyEntryRefusals` an editable platform setting
+  (`IDENTITY_KEY_ENTRY_REFUSALS`), read in `core/keyEntries.ts`. I-09 adds its own reader for step 3
+  (`license_owned`) and does not register or wire the switch again.
+- **§12.2 already exists.** PX-W9 writes WIRE-CONTRACT-V4 §12.2 with step 3 reserved. I-09 inserts `license_owned`
+  there, and writes §12.3 onwards.
+- **The discovery member.** `keyEntryLimit` calls PX-W9's `keyEntryLimit()`, so the value published is the value
+  enforced. ST-04 later replaces that function's body.
+- **Step 3 comes before step 4.** Step 4 applies to any licence with no account (floating, or assigned and waiting;
+  PX-W9 Q3). An in-account licence meets `license_owned` first.
+- **Already registered by PX-W9.** `errors.json` `key_entry_limit`, `enums.json` `key-entry-limit`, and the parity
+  rows `identity.keyentry` and `ui.kit.keyentry`. I-09 extends the `identity.keyentry` note with `license_owned`
+  and registers only its own codes.
+
 ## Goal
 
 Key entry becomes a bounded on-ramp: each licence counts key entries against the product's `keyEntryLimit`; past the limit activation by key returns `key_entry_limit` with a Worker-built `manageUrl`; key entry of an owned licence on a new device returns `license_owned` with `signInUrl`; a signed-in device can attach its floating licence with `POST /<p>/identity/attach`. The limit, both key-entry refusals and device-wire attach are gated by the product's Identity toggle (owner, 2026-10-04: entry limits apply only to products with the Identity service on), and existing installs are never affected.

@@ -92,6 +92,29 @@ Two things follow from that:
   IdP, and a client that cannot tell "on but not set up" from "on and serving" retries a 500
   forever.
 
+## Key entries
+
+While Identity is on, the product counts **key entries** per licence (WIRE-CONTRACT-V4 §12.2): a
+new device activating by key, a browser key session (`POST /<p>/identity/session/license`, whose
+`201` then answers `{"ok": true, "keyEntries": {"used": 1, "limit": 10}}`), and a portal claim
+that adds the key to an account. An enrolled device entering the key again, sign-in, enrollment
+and token refresh never count. The table is Core's (`license_key_entries`), because License, the
+browser key session and the portal all write it.
+
+- **`identity.keyEntry.limit`** (product setting): 1 to 100, default 10, never unlimited. Until
+  the settings resolver (ST-04) lands it is read from the product's settings row and is not
+  editable in the console.
+- **`identity.keyEntryRefusals`** (platform setting, Platform → Settings, stored as
+  `KEYENTRY_REFUSALS`): off by default. While it is on, a new device whose key belongs to a usable
+  licence in no account, at or past the limit, gets `403 key_entry_limit` with `keyEntries` and a
+  `manageUrl` to the portal's activate page. Counting runs either way. Turn it on only once the
+  SDKs that show the refusal are released.
+
+The details, and the refusal's body, are in
+[Activation](/docs/services/license/activation/#key-entries-identity-products). The portal's
+previews report the same `keyEntries` — see
+[Customer portal](/docs/services/identity/portal/).
+
 ## Two shapes of credential
 
 Every sign-in — browser or device-code — runs the same PKCE exchange and lands on the same

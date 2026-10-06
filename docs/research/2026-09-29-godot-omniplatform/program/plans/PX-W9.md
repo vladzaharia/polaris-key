@@ -1,325 +1,390 @@
-# PX-W9 plan: key-entry counting (G21)
+# PX-W9 plan: key-entry counting (G21), revision 2
 
-## Owner decisions (2026-10-05)
+## Decisions (delegated to the lead, 2026-10-06)
 
-**Approved; every recommendation in "Open questions for the owner" accepted as written.** The
-owner approved nine plans together (U-01, PX-W3, LX-01, I-24, I-09, PX-W8, PX-W9, PX-W13 and
-PX-W17). These cross-plan overrides win over any text below that says otherwise:
+**Revision 2 is approved by the lead under the owner's delegation. Every recommendation in §8 is
+accepted as written.**
 
-- **Refusal link name.** `manageUrl` on **both** `device_limit` and `key_entry_limit`. PX-W8 Q1
-  wins over PX-W9 Q3's `portalUrl`. `license_owned` keeps `signInUrl`. Portal paths are root
-  paths, per PX-W8's corrections: `/activate?product=<slug>` and `/signin?product=<slug>`, never
-  `/portal/activate` or `/portal/signin`. PX-W9, I-09, `plans/I-04.md` and their briefs are
-  corrected to match.
-- **Reserved display names** (PX-W13 Q4). Warn first, following LX-05 and S-19 (§7.4, decision
-  15), then enforce in PX-W13. The rule is not a hard error from day one.
-- **I-24** is split into **I-24a** and **I-24b** in `workpackages.json`, with the dependencies I-08
-  and I-09 added. **I-09** gains the **ST-04** dependency (I-09 Q3).
-- **Brief changes.** Every "Brief changes" list in the nine plans is applied to the named briefs,
-  each under a section "Amendments from approved plans (2026-10-05)".
-- **Superseded drafts.** The branches `wp/U-01-cloud-sync-plan` and
-  `wp/PX-W3-licensed-downloads-plan` are superseded by `plans/U-01.md` and `plans/PX-W3.md` and
-  must not be merged.
+1. **Q1, the SDK split: PX-W9b.** A new package, PX-W9b, does §5:
+   - role `pkey-sdk-porter`, 0.8–1.2 weeks;
+   - deps PX-W9 and PX-W8, `planRef: PX-W9`.
 
-**Effect on this plan.** Q3 is overridden: `key_entry_limit` carries `manageUrl` (corrected in
-place). The PX-W8 builder emits it. PX-W9 gains the dependencies ST-01b and ST-03. It executes this
-plan rather than I-04's (`planRef` removed). The precondition branch `wp/S-18-S-19-decisions` has
-merged (`248fef64`). On Q2, the SDK may add the key as a `#key=` fragment (PX-W8 Q2), and PX-17's
-field is empty only without one.
+   I-10a and I-10b keep `license-owned`, attach and the refusal screen's **Sign in**, and gain
+   the dependency PX-W9b.
 
-> **Approved by the owner (2026-10-05)**; see "Owner decisions (2026-10-05)" above. As first written: PX-W9's brief
-> says it "executes the approved `plans/I-04.md`". This plan does not reopen I-04. It reconciles
-> PORTAL.md G21 with I-04 §2.2 and with the S-18 and S-19 owner decisions, and it fixes the split
-> with I-09, which the brief left to "whichever lands first". The questions are in §8.
+2. **Q2, the limit before ST-04: a Core reader.** `keyEntryLimit()` in `core/keyEntries.ts` reads
+   the `product_settings` row and defaults to 10. ST-04 replaces its body with `resolveSetting()`,
+   and until then the product entry stays `pending: {wp: "ST-04"}`. PX-W9 does not depend on
+   ST-04.
+3. **Q3, the holder model: count every success.** Every successful entry counts, whatever the
+   holder. The limit (step 4) applies to any licence with no account (`account_id IS NULL`),
+   whether floating or assigned and waiting. Registry descriptions say "a licence that is in no
+   account".
+4. **Q4, the forced upgrade: both conditions.** `upgrade: "forced"` only when `used ≥ limit`
+   **and** `identity.keyEntryRefusals` is on. Otherwise it is `skippable`.
+5. **Q5, the signed-out preview: follows SIGN-IN.md §3.9.**
+   - It shows the tier name, the term and a generic `license_owned` ("in an account") verdict.
+   - It never shows an email, masked email, licence id or device list.
+   - `email_mismatch` stays a signed-in verdict.
+6. **Q6, pinning: a unit table.** client-core's `test/keyEntries.test.ts` table is repeated by
+   every SDK. The signed corpus is untouched.
+7. **Q7, per-licence override, reset and console: none in PX-W9.**
+   - There is no per-licence limit and no reset.
+   - The console's "Key entries" row goes to LX-30.
+   - A reset action stays a later request.
 
-| Field        | Value                                                                                                                                                                                                                                                                                                    |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Brief        | [`wp/PX-W9-key-entry-counting.md`](../wp/PX-W9-key-entry-counting.md); [PORTAL.md](../../../../design/PORTAL.md) §3.1, §4.5–4.6, §4.19, §10.2 G21; [`plans/I-04.md`](I-04.md) §2.2, §4, §7; notes S-16, S-17, S-18, S-19                                                                                 |
-| Implementer  | **PX-W9** (`pkey-implementer`) executes §2–§6. **I-09** keeps the rest of I-04 §2.2–2.3 (§8 Q1). The SDKs follow in **I-10a** and **I-10b**; PX-W8 adds the deep-link member                                                                                                                             |
-| Wire change  | Inside wire v4. **`PROTOCOL_VERSION` stays 4** and `corpusVersion` does not change. There is no new `typ`, claim or signed shape. Changes: one refusal code (`key_entry_limit`) and one unsigned response member (`keyEntries`), both already named by I-04. Everything is additive and feature-detected |
-| Corpus       | **None.** The signed corpus is untouched. The evidence is two HTTP transcripts, a parity row and tests                                                                                                                                                                                                   |
-| Precondition | The S-18 and S-19 decisions sit on the unmerged branch `wp/S-18-S-19-decisions` (`3a367634`). The lead merges that branch before PX-W9 starts. PX-W9 also gains the dependencies **ST-01b** and **ST-03**, the same ones that branch gives I-09                                                          |
-| Line refs    | `main` at `8c28e023`. After a rebase, re-locate each reference by its quoted text                                                                                                                                                                                                                        |
+**Effect.**
 
-## Owner decision (2026-10-05): licence choice at sign-in
+- PX-W9b is registered in `workpackages.json` with its brief.
+- The PX-W9 brief is narrowed to §2–§4 and §6.
+- Each brief named under "Brief changes" carries a "Changed by plan PX-W9 (2026-10-06)" section.
 
-The owner decided on 2026-10-05 that sign-in shows a **Choose a license for this device** step and
-can replace a device inline. The full text is in [`plans/I-04.md`](I-04.md), "Owner decision
-(2026-10-05): licence choice at sign-in". **Effect on this plan:** none on the wire or on the
-counter. These rules are added to §12.2's list of things that never count:
+> **Revision 2 (2026-10-06), approved (see above).** The owner approved revision 1 on
+> 2026-10-05. Its decisions still bind and are restated in §0. This revision re-checks the plan
+> against `main` (`148439c4f`), now that PX-W8, PX-17, LX-26, ST-01b, ST-03 and ST-06 have landed.
+> It names the whole chain, from the contract through the errors, the copy, the transcripts and
+> every SDK, and it proposes splitting the SDK half into a new package, **PX-W9b** (§8 Q1). Line
+> references are to `148439c4f`. After a rebase, find each one again by its quoted text.
 
-- choosing a licence at sign-in;
-- **Keep the license this device uses**;
-- **Create a new free license**;
-- replacing a device from the card.
+| Field        | Value                                                                                                                                                                                                                                                                        |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Brief        | [`wp/PX-W9-key-entry-counting.md`](../wp/PX-W9-key-entry-counting.md); [PORTAL.md](../../../../design/PORTAL.md) §3.1, §4.6, §4.19, G21; [SIGN-IN.md](../../../../design/SIGN-IN.md) §3.9, §4.5; [`plans/I-04.md`](I-04.md) §2.2; [`plans/PX-W8.md`](PX-W8.md); notes S-24   |
+| Implementers | **PX-W9** (`pkey-implementer`) does §2–§4 and §6. **PX-W9b** (`pkey-sdk-porter`, new; `planRef: PX-W9`) does §5. I-09 adds `license_owned` into the same §12.2. I-10a and I-10b add the refusal screen's **Sign in**                                                         |
+| Wire change  | Inside wire v4. **`PROTOCOL_VERSION` stays 4**, `DISCOVERY_VERSION` stays 2 and `corpusVersion` stays 2. No new `typ`, claim, header or signed shape. Adds one wire code (`key_entry_limit`), one unsigned member (`keyEntries`), one activation result and one portal route |
+| Corpus       | **Signed corpus: none** (§8 Q6). The evidence is three new transcripts with their Swift and Godot mirrors, two parity rows and the Worker tests                                                                                                                              |
+| Depends on   | I-04, ST-01b and ST-03 (all done). PX-W8 is done. ST-04 is not needed (§8 Q2)                                                                                                                                                                                                |
 
-A licence added through the card's KeyStep counts once, as a `portal` submission (D20), exactly as
-today. `keyEntries` is never shown in the chooser, because it belongs to the key, not to the seat.
+## 0. Binding decisions (carried, not reopened)
 
-## 0. Owner decisions encoded (binding)
+- **S-16 and I-04.**
+  - D20: an entry counts only when it enrols a new device, or when it is a portal submission.
+  - Q5: a race at the last free entry may go slightly over the limit.
+  - Q7: the default limit is 10, the range is 1–100, and there is no "unlimited" while Identity is on.
+  - Counting, the limit and the refusal exist only while the product's Identity toggle is on.
+  - The switch `identity.keyEntryRefusals` stays off until the SDKs ship, and counting runs either way.
+  - Existing installs are never affected, and no URL carries the key.
+- **Revision 1, as approved.**
+  - Q1 split: PX-W9 owns the counter, the settings rows, I-04 §2.2 step 4, `keyEntries`, `key_entry_limit`, the key-entry transcripts and the portal surfaces. I-09 owns step 3 (`license_owned`), attach, subject, sign-out, the discovery members and the `identity:` manifest block.
+  - Q3, as overridden: `key_entry_limit` carries **`manageUrl`**, built by `core/manageUrl.ts` (`kind: "key_entry_limit"`, already supported).
+  - Q4: the signed-out preview never counts.
+  - Q5: the member is `keyEntries {used, limit}` on every surface.
+  - Q6: every licence key counts, add-on keys included, and grants never count.
+- **Licence choice at sign-in (owner, 2026-10-05).** These never count: choosing a licence, **Keep the license this device uses**, **Create a new free license** and **Replace a device**. A KeyStep add counts once, as a `portal` submission. I-08's app-mode `{kind: "key"}` counts once, as `app`.
+- **Approved I-09 plan.** The table owner is `core`, and counting starts at 0 with no backfill.
 
-- **S-16 / I-04.** The decisions that apply here:
-  - **D20**: a key entry counts only when it enrols a new device or is a portal Activate License
-    submission.
-  - **Q5**: a race at the last free entry may go slightly over the limit.
-  - **Q7**: the limit defaults to 10, ranges from 1 to 100, and has no "unlimited" value while
-    Identity is on.
-  - **Identity toggle**: counting, the limit and the refusal exist only while the product's
-    Identity toggle is on.
-  - **Refusal switch**: the platform switch `identity.keyEntryRefusals` stays off until the SDKs
-    ship. Counting runs whatever the switch says.
-  - **Existing installs** are never affected.
-  - **No key in URLs**: neither refusal URL carries the key.
-- **S-17.** Key entry never sets `devices.subject`. Cloud Sync's principal is unaffected.
-- **S-18.** The limit is a claimable `product_settings` row, `identity.keyEntry.limit`:
-  - `allowUnset: false`;
-  - a platform `max` policy bound;
-  - `wire: ["discovery", "refusal"]`;
-  - `visibleWhen` Identity.
+**Corrections to revision 1 found on `main`:**
 
-  `identity.keyEntryRefusals` is a platform registry switch. No `identity_product_settings`
-  table is created. The resolver call that enforces the limit is the same call that publishes it
-  (`resolveSetting()`).
-
-- **S-19 (model OC).** A **licence is the access contract**, and the counter belongs to it:
-  - It counts per licence, never per key, per grant or per account.
-  - **Grants** (store, comp, trial, bundle, redeem, OIDC) never count.
-  - The **holder is the account signed in on the device** (`entitlementHolder: device`):
-    - Sign-in, attach, Discover and anchor-chosen bindings are not key entries.
-    - A key-entry device runs on the entered key's licence and sees only that licence's slice.
-  - **Legacy mode is byte-identical.** With `entitlementModel: legacy`, no licence document byte
-    changes because of counting. `keyEntries` lives only in unsigned HTTP bodies.
+- `bindDevice` (`core/devices.ts:375`) writes with no batch. The commit point is the seat claim, `claimDeviceSeat` (`repo.ts:1373`) (§6).
+- ST-03 already registered both settings, with `pending: {wp: "I-09"}`.
+  - The bounds live in `core/settings/platform.ts:34-36`. They do not go into `shared-protocol`.
+  - I-09 still moves them into `shared-manifest` for its rule.
+- Activation kinds live in `enums.json` `activationResult`, not as `kind: client` codes in `errors.json`.
+- The SP pass changed deployed SDKs: they report an unknown 403 as `refused{code}` (`sdk-node/src/license/endpoints.ts:16-21`), not as `device-limit`.
+- PX-17 already reads the preview's member (`admin/src/portal/model/key.ts:194` reads `keyEntries ?? entries`).
+- `identity-disabled.json` already pins "no `keyEntries`" with Identity off.
+- I-09's `keyentry-refusals-off.json` is a counter transcript, so it moves to PX-W9.
+- Browser sessions share one device per licence (`browser:<licenseId>`, `browserSession.ts:126`), so the `browser` surface counts at most once per enrolment.
 
 ## 1. Summary
 
-- **One Core counter.** `license_key_entries` is an insert-only row per counted entry. It is
-  written only through `core/keyEntries.ts` and read as `{used, limit}`. It counts on three
-  surfaces: `app` (`POST /<p>/license/activate`), `browser` (`POST /<p>/identity/session/license`)
-  and `portal` (`POST /api/claim/license-key`).
-- **Device wire (I-04's names, unchanged).**
-  - On success, a key activation answers `"keyEntries": {"used": n, "limit": n}`.
-  - Past the limit it answers `403 {"error":"key_entry_limit","manageUrl":…,"keyEntries":{…}}`,
-    only while `identity.keyEntryRefusals` is on.
-  - A product with Identity off sees no change.
-- **Portal responses (narrative-only).**
-  - The `/api/activate/preview` placeholder `entries: null` (left by PX-W5) becomes
-    `keyEntries: {used, limit} | null`.
-  - The claim answer carries `keyEntries`.
-  - A new signed-out, read-only `POST /api/key/preview` feeds PORTAL §4.6's meter and its
-    skippable/forced choice (§8 Q4).
-  - The portal never refuses a signed-in claim for the limit (§4.19: a warning, not a block).
-- **Order:** this plan → migration and Core counter → call sites → `errors.json` and transcripts →
-  I-10a (Node, React, Python) and I-10b (Swift, Godot, Kotlin) with the four UI kits.
+- **One Core counter.** `license_key_entries` (insert-only) is written in the **same batch as the seat claim** of a new authorisation. That makes the count exactly-once per enrolled device, plus one row per portal claim.
+- **Device wire, Identity on.**
+  - Every key-entry success carries `"keyEntries": {"used": n, "limit": n}`: `200` on `license/activate`, `201` on `session/license`.
+  - With the switch on, a non-enrolled device at or past the limit gets `403 {"error":"key_entry_limit","manageUrl":…,"keyEntries":…}`.
+  - With Identity off, nothing changes.
+- **Portal.**
+  - `POST /api/activate/preview` swaps `entries: null` for `keyEntries`.
+  - The claim answer carries `keyEntries` and records a `portal` entry.
+  - A new signed-out, read-only **`POST /api/key/preview`** feeds SIGN-IN §3.9's meter and the skippable or forced body.
+- **Chain.** WIRE-CONTRACT §12.2 → `errors.json`, `enums.json` and the eight `copy.*.json` → Worker → transcripts and parity → client-core and the six SDKs with four UI kits (PX-W9b).
 
 ## 2. Contract
 
-- **`WIRE-CONTRACT-V4.md` §12.2 "Key entry"** is written by PX-W9 exactly as I-04 §2.2 has it,
-  steps 2, 4 and 5. If I-09 has not opened §12 yet, PX-W9 opens it with only §12.2, and I-09 adds
-  §12.1 and §12.3. The §12.2 text records three rules:
-  - an **enrolled** device never counts;
-  - **refused or failed attempts never count**;
-  - **refresh, offline grace, documents, `license/enroll`, store binding and sign-in activation
-    never count**.
-- **`shared-protocol`.** PX-W9 creates the subpath `@polaris-key/protocol/identity` if I-09 has
-  not:
-  - files: `src/identity.ts`, the `package.json` `exports` entry, and the layout pinned in
-    `test/exports.test.ts`;
-  - types: `KeyEntries {used: number; limit: number}` and `KeyEntryLimitBody`;
-  - constants: `KEY_ENTRY_LIMIT_DEFAULT = 10`, `KEY_ENTRY_LIMIT_MIN = 1` and
-    `KEY_ENTRY_LIMIT_MAX = 100`, which the settings registry and I-09's manifest rule import;
-  - `PolarisErrorCode` (`src/core.ts`) gains `key_entry_limit`.
-- **`shared-jws`, `client-core`:** no change. No signed shape moves, `PolarisError.code` already
-  accepts unknown strings, and an unknown response member passes through.
-- **Body shape.** The refusal uses the **flat** body that `license/activate` already emits, as
-  `device_limit` does (`core/errors.ts`). `manageUrl` is built from the Worker's own origin and
-  never carries the key. Its target is the PORTAL §3.3 route `/activate?product=<slug>` (§8 Q2).
-- **Deployed clients:**
-  - Old SDKs ignore `keyEntries`. They meet the refusal only after an operator turns the switch
-    on, which happens after I-10a and I-10b ship.
-  - An old Node SDK maps an unknown 403 to `device-limit` (`sdk-node/src/license/endpoints.ts:76-91`).
-    The copy is wrong, but no state is lost.
-  - New SDKs on an old Worker never see `keyEntries` and show no meter.
+**`docs/security/WIRE-CONTRACT-V4.md`.**
 
-## 3. Catalog, manifests and settings
+- PX-W9 writes **§12.2 "Key entry" [C]**, pinned by the three transcripts in §4. The §12 intro is reworded: §12.2 belongs to PX-W9, I-09 inserts step 3, and §12.3–§12.6 stay reserved. §12.2 says:
+  1. **Surfaces.** A key entry happens on one of three surfaces, on a product with Identity on:
+     - `app`: `POST /<p>/license/activate`;
+     - `browser`: `POST /<p>/identity/session/license`;
+     - `portal`: `POST /api/claim/license-key`, once the attach commits.
+  2. **Enrolled** means a `devices` row for `(product, device_id)` with this `license_id` and `status = 'authorized'`.
+  3. **Order on the device routes:**
+     1. rate limit, key and licence (unchanged);
+     2. enrolled → as today, never refused, never counted;
+     3. reserved for I-09;
+     4. switch on and `used ≥ limit` → the flat 403 `{error, message, manageUrl?, keyEntries}`;
+     5. `authorizeDevice`; a new authorisation that takes a seat records exactly one entry, atomically with the seat.
+  4. **Never counted:**
+     - refused or failed attempts;
+     - enrolled re-entry;
+     - token, refresh, offline grace and documents;
+     - `license/enroll`, store binding and sign-in activation;
+     - choosing a licence and Replace;
+     - an `already_yours` claim.
+  5. **The member.**
+     - `used` is the licence's row count. It may exceed `limit` after races, portal claims or periods with the switch off.
+     - `limit` is the product's effective `identity.keyEntry.limit`.
+     - A client shows `max(0, limit − used)` left.
+     - It is present on every Identity-on key-entry 2xx (enrolled re-entry included) and on `key_entry_limit`, and absent otherwise.
+  6. **The limit applies to a licence with no account.** It counts every successful key entry whatever the holder (§8 Q3).
+  7. **Not an auth failure.** A client never wipes state or retries.
+- The **§5.3** table row `key_entry_limit` changes from "the Identity key-entry routes (I-09)" to those two routes. The link itself (`<portal>/activate?product=<slug>`, omitted while the portal is off) does not change.
 
-- `shared-catalog`: no change.
-- `shared-manifest`: no change in PX-W9. The `identity:` block and
-  `invalid_identity_key_entry_limit` stay with I-09, which owns the whole block's rule 9 table.
-- **Settings (ST-03 registry):** PX-W9 registers two entries.
-  - `identity.keyEntry.limit`: product scope, claimable, integer 1–100, default 10,
-    `manifest.path: identity.keyEntryLimit`, `policyBound: "max"`, `widensWhen: "higher"`.
-  - `identity.keyEntryRefusals`: platform scope, switch, default off, L1 both ways.
+**`packages/shared-protocol`.**
 
-  Until I-09's validator accepts the manifest path, the effective value is the console or platform
-  value, or the default of 10. Gate: ST-04's discovery-vs-enforcement test, and
-  `gen:settings -- --check` if ST-06 has landed.
+- `src/core.ts:273`: `PolarisErrorCode` gains `"key_entry_limit"`.
+- `src/identity.ts` gains these types:
+  - `KeyEntries {used: number; limit: number}`;
+  - `KeyEntrySurface = "app" | "browser" | "portal"`;
+  - `KeyEntryLimitBody {error: "key_entry_limit"; message?: string; manageUrl?: string; keyEntries: KeyEntries}`;
+  - `KeyPreview` (§6) and `KeyUpgrade = "skippable" | "forced"`.
+
+  The subpath already exists (PX-W17), so the exports layout is unchanged.
+
+- **`shared-jws`:** no change.
+- **`client-core`:** it gains `src/keyEntries.ts` in **PX-W9b** (§5). PX-W9 changes no client-core file.
+
+## 3. Errors, copy, catalog, manifests and settings
+
+- **`conformance/parity/errors.json`** gains `{code: "key_entry_limit", kind: "wire", service: "license"}`. Its description: the 403 above, the flat body, `keyEntries`, and `manageUrl` while the portal is on. It is never sent to an enrolled device, it is not an auth failure, and it comes from PX-W9.
+- **`enums.json`** `activationResult` gains `key-entry-limit`, after `enroll-disabled`.
+- **Copy: eight files.** These are `copy.en.json` and its seven translations (`de`, `es`, `it`, `ja`, `ko`, `pt-BR`, `zh-Hans`). Each gains `codes.key_entry_limit` and `activation["key-entry-limit"]`:
+  - title: "No key entries left";
+  - message: "This key has no entries left in {product}. Add it to your account and {product} signs you in instead."
+
+  This is SIGN-IN `signin.key.noEntries`, using the allowed `{product}` placeholder. `copyVersion` stays 1.
+
+- **Generated (rule 3).** `pnpm gen:constants` regenerates `constants.generated.*` and `copy.generated.*` in all six SDKs, and PX-W9 commits them. Every SDK built from that commit then shows this copy for `refused{key_entry_limit}` (its "a known code arriving bare reads its own copy" rule), before PX-W9b.
+- **`shared-catalog`:** no change.
+- **`shared-manifest`:** no change, so there is no rule 9 entry. I-09 owns `identity.keyEntryLimit` and `invalid_identity_key_entry_limit`.
+- **Settings (ST-03's entries; PX-W9 wires them).**
+  - **Product `identity.keyEntry.limit`** (`services/identity/settings.ts`): `readers: ["core/keyEntries.ts"]`, and `pending` becomes `{wp: "ST-04"}`, because console writes need `writeSetting()` (§8 Q2). The description and the platform ceiling's description say "a licence that is in no account" instead of "floating licence" (§8 Q3).
+  - **Platform `identity.keyEntryRefusals`** (`core/settings/platform.ts:235`) becomes an A-13 store entry:
+    - `aliases` and `storage.storedAs` set to `IDENTITY_KEY_ENTRY_REFUSALS`, and `varName` set to the same name;
+    - `readers: ["core/keyEntries.ts"]`, with `pending` removed;
+    - `PlatformSettingKey` and `PlatformSettingValues` gain the key;
+    - `Env` gains `IDENTITY_KEY_ENTRY_REFUSALS?: string` (`@editable`).
+
+    I-09 adds its own reader later.
 
 ## 4. Corpus, transcripts and parity
 
-**No signed-corpus change.** `pnpm gen:corpus -- --check` stays green with no generator, constant
-or mirror edit. The transcripts are recorded by `pnpm gen:transcripts` from
-`packages/worker/test/transcripts/scenarios/license.ts`, and that command also writes the Swift and
-Godot mirrors. These two files move from I-09 to PX-W9 (I-04 §4):
+**Signed corpus: none.** `pnpm gen:corpus -- --check` stays green, with no `tools/sign-corpus.ts`, constant or mirror change.
 
-| File                         | Steps                                                                                                                            |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `keyentry-limit.json`        | Limit 2, refusals on. A → `{1,2}`; A again → `{1,2}` (enrolled); B → `{2,2}`; C → `key_entry_limit` + `manageUrl`; A again → 200 |
-| `keyentry-identity-off.json` | Identity off. No `keyEntries`. Activations past the "limit" succeed                                                              |
+**Transcripts.**
 
-- The existing refresh, token and offline-grace transcripts stay byte-identical. That is the
-  "installs unaffected" proof.
-- `errors.json` (`kind: wire`) gains `key_entry_limit`: 403, service `license`, WP PX-W9.
-- PX-W9 adds the parity row `identity.keyentry` (`conformance/parity/features.json`; proof:
-  transcript) with `planned` entries in all six `parity.json`. The entries point at
-  `wp: "I-10a"` (Node, React, Python) or `wp: "I-10b"` (Swift, Godot, Kotlin). I-09 later extends
-  the same row with `license_owned`.
+- A new scenario, `packages/worker/test/transcripts/scenarios/keyEntry.ts`, is registered in `scenarios/index.ts`. It runs on `productWorld(servicesOn("license", "config", "identity"))`.
+- The limit and the switch are fixture rows in `product_settings` and `platform_settings`.
+- The other device's entries are seeded between steps, as `license-device-limit.json` seeds its seat.
+- Each transcript has `features: ["license.activate", "identity.keyentry"]` and `requires: ["core.store"]`.
+- The `expect` keys are `result`, `keyEntries`, `manageUrl`, `licenseStatus` and `tokenHeld`.
+- `pnpm gen:transcripts` writes the files and the mirrors (`sdks/swift/Tests/PolarisKeyTests/Resources/transcripts/`, `sdks/godot/tests/transcripts/`).
 
-## 5. SDKs and UI kits, in order
+| File                         | Steps                                                                                                                                                                                                                                                |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `keyentry-limit.json`        | Limit 2, switch on. Activate → `ok` `{1,2}`; again (enrolled) → `ok` `{1,2}`; a second device's entry seeded and this device removed → `key-entry-limit`, `manageUrl` `…/activate?product=djdl`, `{2,2}`, no token; limit raised to 3 → `ok` `{3,3}` |
+| `keyentry-refusals-off.json` | Limit 1, switch off, one entry seeded → `ok` `{2,1}`: counted past the limit, never refused                                                                                                                                                          |
+| `keyentry-identity-off.json` | Identity off, limit row 1, one entry seeded → `ok`, `keyEntries: null`                                                                                                                                                                               |
 
-Each SDK replays §4's transcripts and passes `parity:check` and `gen:constants -- --check`. None
-treats the refusal as an auth failure: no wipe, no retry. The client code is `key-entry-limit`
-(I-04 §4).
+Every existing transcript stays byte-identical. That is the "installs unaffected" proof: no current scenario activates by key on an Identity-on product.
 
-1. **Node** (`packages/sdk-node` over `client-core`), **I-10a**:
-   - `activate` returns `keyEntries`;
-   - the outcome is `key-entry-limit {manageUrl, keyEntries}`.
-2. **React** (`packages/sdk-react`; `client-core` unchanged), **I-10a**: the hook result, plus
-   the activation component's "N activations left" meter and its refusal screen with QR.
-3. **Python** (`sdks/python`), **I-10a**: `key_entries`.
-4. **Swift** (`sdks/swift`) with **`PolarisKeyUI`**, **I-10b**.
-5. **Godot** (`sdks/godot`) with **`addons/polaris_key/ui`**, **I-10b**: `key_entries` as a
-   `Dictionary`.
-6. **Kotlin** (`sdks/kotlin`) with the **Compose activation component**, **I-10b**.
+**Parity.** `conformance/parity/features.json` gains two rows, with a `planned` entry (`wp: "PX-W9b"`) in all six `parity.json`:
 
-- **UI kits:** the parity row `ui.kit.account` (I-04) covers the React, SwiftUI, Compose and Godot
-  kits. Node and Python have the typed N/A `allowedNa: headless`.
-- **PX-W8** separately threads its deep-link member through the same six SDKs.
+- **`identity.keyentry`**: family `devices`, proof `transcript`, no N/A. I-09 later extends its note to cover `license_owned`.
+- **`ui.kit.keyentry`**: family `ui`, proof `snapshot`. `allowedNa` is `headless` (`runtime`) for Node and Python. It covers the meter line and the refusal screen.
 
-## 6. Worker
+## 5. SDKs and UI kits, in order (PX-W9b)
 
-- **Migration.** `00NN_license_key_entries.sql` takes the next free number at the final gate
-  (main's highest is `0071`). It is expand-only and reversible:
-  - columns: `product`, `license_id`, `id` (`ke_…`),
-    `surface CHECK (surface IN ('app','browser','portal'))`, `device_id NULL` (NULL for portal),
-    `created_at`;
-  - `PRIMARY KEY (product, license_id, id)`, whose prefix serves the count;
-  - the same `ON DELETE CASCADE` to `licenses` that `devices` uses.
+PX-W9b depends on PX-W9 and PX-W8. Each SDK must:
 
-  It needs no backfill: every licence starts at 0 used, and devices enrolled before the
-  migration are never counted retroactively. `TABLE_OWNERS` gains
-  `license_key_entries: license` in `packages/docs/scripts/gen-reference.mjs` and the Worker's
-  boundaries table, in the same commit.
+- replay the three transcripts and flip both rows to `implemented` (the replayers' `@pkey-feature identity.keyentry`);
+- pass `parity:check` and `gen:constants -- --check`;
+- never wipe state or retry on the refusal, and repeat client-core's table.
 
-- **Core** `core/keyEntries.ts` (rule 6: Identity's portal never imports License):
-  - `keyEntryState(db, product, license)` returns `{used, limit}`, or `null` when Identity is off;
-  - `recordKeyEntry(db, {product, licenseId, surface, deviceId, now})`.
+**Headless, every SDK:**
 
-  `recordKeyEntry` runs in the **same `db.batch`** as the device-row write in `authorizeDevice`,
-  which makes the count exactly-once per success. The limit check is a read before that batch, so
-  a race can overshoot by the number of racing requests (Q5).
+- the `ok` result gains `keyEntries`;
+- a new outcome `key-entry-limit {code, manageUrl?, keyEntries?}`, read through `readManageUrl` and `readKeyEntries`.
 
-- **Call sites:**
-  - `services/license/activation.ts` (`activateWithKey`): steps 2, 4 and 5;
-  - `services/identity/browserSession.ts` (session/license): the same steps;
-  - `services/identity/portal/selfService.ts`: - the preview replaces `entries: null` with `keyEntries`; - the claim records a `portal` entry after `attachLicense` returns `ok`, but not on
-    `already_yours` or on any refusal; - the new `handleKeyPreview` is signed out, read-only and never counts. It costs an IP rate
-    bucket with the same limit as `portalClaimKey` and returns `{product, keyEntries, upgrade:
-"skippable"|"forced"}`, never terms or ownership;
-  - `admin/lib/shape.ts`: the licence record gains `keyEntries` (the console count I-09 named);
-  - `packages/admin/src/portal/api.ts`: `PortalKeyPreview.keyEntries` (type only; the UI belongs
-    to PX-12 and PX-17).
+**Kits:**
 
-  A licence that is already owned shows no meter in the Library, because owned licences refuse
-  key entry on new devices (D24).
+- **Success line.** "{left} key entries left" (`signin.key.entriesLeftShort`).
+- **Refusal screen.** The title and body are the core copy above. It has **Add it in Polaris Key**, which opens `manageUrl` through `withManageKey` and `withManageReturn`, as a button. On a TV or console, or when a joypad is the only input, it shows a QR code without the key (§5.3 rule 5). It also has **Use a different key**.
+- **Not in PX-W9b.** The primary **Sign in** belongs to I-10a and I-10b, because it needs I-08.
+- **New kit copy.** `keyEntryLimit.manage` and `keyEntryLimit.scan` go into `packages/brand/kit-copy/en.json` and its eight packs (`de`, `es`, `fr`, `it`, `ja`, `ko`, `pt-BR`, `zh-Hans`), then `pnpm gen:brand`.
 
-- **Rule 10:**
-  - `packages/worker/openapi/polaris-key.v3.yaml` gains `keyEntries` on the activation response
-    and the `key_entry_limit` 403 on both device routes;
-  - the portal routes go on `packages/docs/src/content/docs/services/identity/portal.md`;
-  - the `routeCoverage` `portalApi` set gains `key/preview`.
-- **THREAT-MODEL:** I-04's item 5 gains a row for the signed-out preview (enumeration). It needs
-  the whole 128-bit key, as the PX-W5 preview does, and charges an IP bucket.
+| #   | SDK         | Headless files                                                                                                                                                                                                    | UI kit                                                                                                    |
+| --- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| 0   | client-core | `src/keyEntries.ts`: `readKeyEntries(body): KeyEntries \| undefined` (top level, else under `error`; safe integers, `used ≥ 0`, `limit ≥ 1`) and `keyEntriesLeft`; table `test/keyEntries.test.ts`                | none                                                                                                      |
+| 1   | Node        | `src/license/endpoints.ts` (`ActivationResult`, `KIND_BY_CODE`), re-exports in `src/index.ts`, `src/cli/commands.ts` prints the count left and the link                                                           | N/A `headless`                                                                                            |
+| 2   | React       | `src/core/activation.ts` (`classifyActivation`), `src/core/types.ts`, `src/browser/browserAdapter.ts` (the 201 `keyEntries`), `src/desktop/bridge.ts` and `src/desktop/desktopAdapter.ts`, the `useLicense` state | `src/components/PolarisLogin.tsx`                                                                         |
+| 3   | Python      | `license/endpoints.py` (`ActivationResult.key_entries`, kind `key-entry-limit`), `core/key_entries.py`, `cli/core.py`                                                                                             | N/A `headless`                                                                                            |
+| 4   | Swift       | `PolarisKeyCore/KeyEntries.swift`; `PolarisKeyLicense/Endpoints.swift` `.ok(token:schemaVersion:keyEntries:)` and `.keyEntryLimit(manageURL:keyEntries:)` (source-breaking; 0.x release note, as PX-W8)           | `PolarisKeyUI/PolarisLoginView.swift` (QR on tvOS)                                                        |
+| 5   | Godot       | `core/key_entries.gd`; `services/license/activation_result.gd` (`KIND_KEY_ENTRY_LIMIT`, `key_entries` Dictionary), `services/license/endpoints.gd`                                                                | `addons/polaris_key/ui/activation/activation_controller.gd`, `pkey_activation_panel.gd` (QR, joypad only) |
+| 6   | Kotlin      | `core/…/KeyEntries.kt`; `license/…/LicenseEndpoints.kt` `Ok(…, keyEntries: KeyEntries? = null)` and `KeyEntryLimit(manageUrl, keyEntries)` (source-compatible); `:conformance` `TranscriptTest`                   | `ui/…/PolarisGate.kt` (QR on Android TV)                                                                  |
 
-## 7. Rollout
+The order is the parity order, and Godot may go first. Each SDK's licensing guide gains a section, "When a key has no entries left".
 
-1. Merge `wp/S-18-S-19-decisions`, then ST-01b and ST-03.
-2. Ship the PX-W9 migration and Worker:
-   - counting goes live on Identity products;
-   - `keyEntries` appears in responses;
-   - refusals stay off (the switch);
-   - devices see only an extra member.
-3. I-09 adds `license_owned`, attach and the discovery `keyEntryLimit`.
-4. I-10a and I-10b ship and the SDKs are released.
-5. An operator turns on `identity.keyEntryRefusals`, after the I-19 docs have warned developers.
+## 6. Worker (PX-W9)
 
-**Rollback:** the old Worker ignores the table and old portal builds ignore the member. Discovery's
-300 s cache can advertise a stale limit, but the refusal carries the live value (S-18 §7.1 risk 7).
+**Migration `00XX_license_key_entries.sql`** (the lead assigns the number).
 
-## 8. Open questions for the owner
+- Columns: `product TEXT NOT NULL REFERENCES products(slug)`, `license_id`, `id` (`ke_…`), `surface CHECK (surface IN ('app','browser','portal'))`, `device_id NULL` (NULL for `portal`), `created_at`.
+- `PRIMARY KEY (product, license_id, id)`. Its prefix serves the count.
+- Expand-only, with no backfill. Rollback: `DROP TABLE`.
+- Same change:
+  - `LATEST_MIGRATION` (`core/deployIdentity.ts:19`);
+  - `TABLE_OWNERS.core` in `packages/docs/scripts/gen-reference.mjs`, beside `license_refusals`;
+  - `core/licenseDelete.ts` deletes the rows with the licence. An LX-03 merge leaves them on the retired licence.
 
-1. **Q1 Split with I-09.** **Recommend:**
-   - PX-W9 owns the counter, the settings rows, I-04 §2.2 step 4, `keyEntries` everywhere, the
-     `key_entry_limit` code, the two transcripts and the portal surfaces;
-   - I-09 keeps step 3 (`license_owned`), attach, subject and sign-out, the discovery members and
-     the `identity:` manifest block.
-2. **Q2 Deep link carries the key?** PORTAL §3.4 says `/activate?key=<key>&product=`, but I-04
-   (approved) says no URL carries the key. **Recommend I-04:**
-   - `manageUrl` (was `portalUrl`; see Q3) = `<origin>/activate?product=<slug>`. This corrects I-04's `/portal/activate`:
-     portal routes are root paths (`dispatch.ts` → `handlePortal`). I-09's `signInUrl` becomes
-     `/signin?product=` in the same way;
-   - PX-17's modal opens with the §4.18 notice and an empty field, unless the SDK added the key as
-     a `#key=` fragment (PX-W8 Q2, accepted 2026-10-05), which never reaches a server.
-3. **Q3 Member name.** PX-W8 and G15b call it `manageUrl`; I-04 uses `portalUrl` on
-   `key_entry_limit`. The recommendation here was to keep `portalUrl` on `key_entry_limit` and
-   put `manageUrl` on `device_limit` only. **Overridden by the owner (2026-10-05):** PX-W8 Q1
-   wins, so both refusals carry `manageUrl` and `license_owned` keeps `signInUrl`. The text of this
-   plan uses `manageUrl` throughout.
-4. **Q4 Signed-out key use (§4.5–4.6).** **Recommend** a read-only preview that never counts. The
-   entry counts once, when the claim is submitted after sign-in (D20: a portal _submission_). So:
-   - "Skip" counts nothing;
-   - the copy "This was entry 3" becomes "This will be entry 3";
-   - no ticket is needed to stop a double count.
-5. **Q5 Portal names.** G21 uses `entriesLimit`, `entriesUsed` and `entriesLeft`. **Recommend**
-   I-04's `keyEntries {used, limit}` on every surface, with "left" computed in the UI. The lead
-   amends PORTAL.md G21.
-6. **Q6 Which keys count.** **Recommend:**
-   - every licence key counts, including S-19 `kind: addon` keys claimed in the portal, against the
-     same per-licence limit;
-   - LX-25 redeem codes and every other grant never count;
-   - a portal claim past the limit still writes its row (for audit), and the UI caps the display
-     at `limit`.
+**Core `core/keyEntries.ts`** (rule 6: License and Identity's portal both call it).
+
+- `keyEntryLimit(db, product)` reads the `product_settings` row (1–100), else 10, capped at `KEY_ENTRY_LIMIT_MAX`. ST-04 later swaps the body for `resolveSetting()`, and I-09's discovery member calls the same function (§8 Q2).
+- `keyEntryState(db, product, licenseId)` answers `{used, limit}`, or `null` when Identity is off (`core/identityGate.ts` `identityEnabled`).
+- `keyEntryRefusalsOn(env, db)` reads the A-13 switch.
+- `stmtRecordKeyEntry(…)`.
+
+**Atomicity.**
+
+- `authorizeDevice` (`core/authz.ts:310`) gains `opts.keyEntry?: {surface: "app" | "browser"}`.
+- On `isNewAuthorization` (`:389`), `claimDeviceSeat` runs its seat `INSERT` and a guarded entry `INSERT` in one batch. The guard is `WHERE EXISTS`: the device row now holds the claimed seat ordinal for this licence. A UNIQUE loss rolls both back, and an already-held seat writes no entry.
+- Adopting a pre-`seat_no` authorised device is not new, so it is not counted.
+- The refusal is logged through UX-15's `logRefusal`, with `RefusalReason` gaining `key_entry_limit`.
+
+**Call sites.**
+
+- `services/license/activation.ts` `activateWithKey`:
+  - steps 2 and 4, then `authorizeDevice(…, {keyEntry: {surface: "app"}})`;
+  - the refusal goes through `errorResponse(403, "key_entry_limit", …)` and `buildManageUrl(…, {kind: "key_entry_limit"})`;
+  - `keyEntries` goes on the 200.
+- `services/identity/browserSession.ts`:
+  - `handleBrowserSessionLicense` (`:340`) runs the same steps and passes `keyEntry` through `createBrowserSession` (`:104`);
+  - the 201 becomes `{ok: true, keyEntries}`;
+  - the OIDC caller (`oidc.ts:2049`) never passes `keyEntry`.
+- `services/identity/portal/selfService.ts`:
+  - the preview (`:280`) answers `keyEntries` in place of `entries: null`;
+  - `handleClaimKey` records a `portal` entry after `attachLicense` returns `ok`, never on `already_yours` or a refusal, and answers `keyEntries` (Identity on only).
+- **New `handleKeyPreview`**, `POST /api/key/preview`, dispatched beside the card's pre-authentication routes (`portal/api.ts:1307`):
+  - signed out and read-only, so it never counts;
+  - it charges the IP bucket `portalKeyPreview` (10 per minute);
+  - it answers `{product, verdict: "addable" | "license_owned" | "portal_off", license: {tierName, term} | null, keyEntries | null, upgrade}` (§8 Q4, Q5), and `422` / `401` / `429` as the claim does;
+  - it never answers an email, a masked email, a licence id, devices or an account.
+- **Console:**
+  - `admin/lib/shape.ts` adds `keyEntries` to the licence record (`null` with Identity off);
+  - `packages/admin/src/portal/api.ts` adds types only (`PortalKeyPreview.keyEntries` and the signed-out preview). No UI changes in this package (PX-12, LX-30).
+
+**Rule 10.** `packages/worker/openapi/polaris-key.v3.yaml` gains:
+
+- a `KeyEntries` component;
+- `keyEntries` on `/{product}/license/activate` 200 (`:1019`) and `/{product}/identity/session/license` 201 (`:6640`);
+- the `key_entry_limit` 403 on both;
+- `keyEntries` on the admin licence GET;
+- `/api/key/preview` (tag `portal`), plus its `routeCoverage.test.ts` `PORTAL_KIND_PATHS.portalApi` entry.
+
+**Docs and threat model.**
+
+- Docs: `services/license/activation.md`, `services/identity/index.md` and `services/identity/portal.md`.
+- `start/concepts.md`: **key entry** gains the D20 rule and **key-entry limit** is added (rule 4).
+- `THREAT-MODEL.md` gains a section, "Key-entry counting and the signed-out key preview (PX-W9)", covering:
+  - a key holder burning entries with random device ids (bounded at 30/min/IP, and it hurts only that licence);
+  - preview enumeration (the whole 128-bit key, an IP bucket, no personal data);
+  - the race overshoot.
+
+## 7. Rollout, and what deployed clients see
+
+1. **PX-W9 deploys.**
+   - Counting goes live on Identity products from 0.
+   - `keyEntries` appears in the responses, and PX-17's entries notice starts working.
+   - Refusals stay off.
+2. **PX-W9b releases** the SDKs through the normal publish.
+3. **The later packages land.** I-09 adds `license_owned` and the discovery `keyEntryLimit`. ST-04 adds console writes. I-08, I-10a and I-10b add **Sign in**.
+4. **An operator turns on `identity.keyEntryRefusals`** after steps 2–3 have shipped and the I-19 docs have warned developers.
+
+**Deployed clients:**
+
+- **Old SDKs** ignore the member, which PX-W8's unknown-member unit tests already pin.
+- **With the switch on:**
+  - SP-pass builds show `refused{key_entry_limit}` with the catalog copy, or with the fallback that names the code if they were built before PX-W9;
+  - pre-SP builds show device-limit copy;
+  - none of them wipes state.
+- **New SDKs on an old Worker** show no meter and get no refusal.
+- **Installs are untouched.** Enrolled devices are never counted or refused, refresh, token, grace and documents do not change, and document bytes are unchanged with counting on, including `legacy` mode.
+- **The portal SPA ships with the Worker.**
+- **Rollback.** The old Worker ignores the table, and entries made in that window are not counted, which is harmless.
+
+## 8. Open questions (answered 2026-10-06: every recommendation accepted, see the top)
+
+1. **SDK split.** Revision 1 left the SDK half to I-10a and I-10b, which wait on I-08 and I-09. **Recommend** a new **PX-W9b**:
+   - role `pkey-sdk-porter`, lane `sdk`, 0.8–1.2 weeks;
+   - deps PX-W9 and PX-W8, `planMode: true`, `planRef: PX-W9`;
+   - gates `plan-mode`, `all-sdks`, `drift-gate`, `ui-snapshots`, `ci:macos` and `ci:android`;
+   - scope: §5.
+
+   I-10a and I-10b then keep `license-owned`, attach and the refusal screen's **Sign in**, and gain the dependency PX-W9b.
+
+2. **The limit before ST-04.** **Recommend** a narrow Core reader, `keyEntryLimit()` over `product_settings`, defaulting to 10. ST-04 swaps its body later. Keep `pending: {wp: "ST-04"}` so the console offers no write it cannot do. This keeps PX-W9 off ST-04. The alternative is to add ST-04 as a dependency.
+3. **The holder model (LX-26).** **Recommend:**
+   - count every successful entry whatever the holder (revision 1 Q6);
+   - apply step 4 to any licence with `account_id IS NULL`, whether floating or assigned and waiting;
+   - in-account licences meet I-09's `license_owned` first;
+   - registry descriptions say "a licence that is in no account".
+4. **When the portal forces the upgrade.** **Recommend** `upgrade: "forced"` only when `used ≥ limit` **and** the switch is on. Otherwise answer `skippable`, because with the switch off the app accepts the key and "From now on … through an account" would be untrue.
+5. **What the signed-out preview shows.** Revision 1 said "never terms or ownership". SIGN-IN §3.9 shows the tier, the term and a `license_owned` verdict before sign-in. **Recommend SIGN-IN:**
+   - include `tierName`, `term` and the generic `license_owned` verdict, which says only that the key is in an account;
+   - never include an email, masked email, licence id or devices;
+   - `email_mismatch` stays a signed-in verdict.
+
+   Activation by key already returns more than this to the key holder (S-24 H6).
+
+6. **Pinning the client rule.** **Recommend** client-core's `test/keyEntries.test.ts` table, repeated by every SDK, as PX-W8 did for `readManageUrl`. The corpus stays untouched. The alternative is a corpus matrix, `key-entries.json`, which would bring a generator change, mirrors and every runner.
+7. **Per-licence override, reset and the console.** **Recommend** none in PX-W9:
+   - no per-licence limit and no reset; operators raise the product limit;
+   - the console's "Key entries 3 of 10" row goes to LX-30's record holder line, from `keyEntries`;
+   - a reset action stays a later request.
 
 **Risks.**
 
-- PX-W9 now waits on ST-01b and ST-03.
-- The `db.batch` coupling touches `authorizeDevice`, which is the hot path. The regression suite
-  covers it.
+- The batch change touches `claimDeviceSeat`, which is on the hot path. Mitigations: a concurrency test (N parallel new devices → rows equal successes; N parallel calls from one device → one row) and the refresh and grace regression transcripts.
+- The browser surface counts once per licence enrolment (a fact, not a defect).
 
-**Brief changes (the lead makes these after approval):**
+**Brief changes (the lead makes these after the answers):**
 
-- **PX-W9**: add the dependencies ST-01b and ST-03, set `planRef: PX-W9`, and write the scope
-  per Q1.
-- **I-09**: narrow it per Q1.
-- **PX-W8**: per Q3.
-- **PX-12**: the preview route and the copy (Q4).
-- **PX-17**: no key in the link (Q2).
-- **I-10a, I-10b**: `keyEntries` on success, and the transcript owners.
-- **LX-09**: its byte-identity snapshot includes a counted key-entry device.
-- **PORTAL.md**: G15, G21, §3.4 and §4.6.
+- **PX-W9**:
+  - scope as in §2–§4 and §6;
+  - Unblocks gains PX-W9b;
+  - gates gain `drift-gate`, `rule-10`, `threat-model` and `corpus` (transcripts).
+- **New PX-W9b** brief and `workpackages.json` entry (Q1).
+- **I-09**:
+  - drop `keyentry-refusals-off.json`;
+  - read the switch that PX-W9 wired;
+  - its discovery member calls `keyEntryLimit()`.
+- **I-10a and I-10b**: per Q1.
+- **I-08**: `{kind: "key"}` records one `app` entry.
+- **PX-12**: the preview body and `upgrade` (Q4, Q5).
+- **ST-04**: replaces `keyEntryLimit()` and clears `pending`.
+- **LX-30**: Q7.
+- **LX-09**: a counted key-entry device in its byte-identity snapshot.
+- **I-19**: the switch and the limit.
 
 ## 9. Acceptance
 
 ```sh
 N="mise exec node@22 --"
+# PX-W9
 $N pnpm build && $N pnpm typecheck
-$N pnpm gen:corpus -- --check          # unchanged: no corpus impact
-$N pnpm gen:transcripts -- --check     # two new files, Swift and Godot mirrors; refresh/grace unchanged
-$N pnpm gen:constants -- --check && $N pnpm parity:check
-$N pnpm --filter @polaris-key/shared-protocol test   # exports layout
-$N pnpm --filter @polaris-key/worker test -- keyEntries portal   # concurrency: rows == successes under N parallel activations; never on refused/enrolled
-$N pnpm --filter @polaris-key/worker test            # routeCoverage (rule 10), boundaries (rule 6), migration, document bytes unchanged with counting on
+$N pnpm gen:corpus -- --check            # unchanged
+$N pnpm gen:transcripts -- --check       # three new files + Swift/Godot mirrors; all others byte-identical
+$N pnpm gen:constants -- --check         # errors.json, enums.json, 8 copy packs → six SDKs
+$N pnpm gen:settings -- --check && $N pnpm gen:platform-inventory -- --check
+$N pnpm parity:check                     # identity.keyentry, ui.kit.keyentry planned ×6
+$N pnpm --filter @polaris-key/cli bundle:action -- --check
+$N pnpm --filter @polaris-key/worker test -- keyEntries portal routeCoverage boundaries settings platformInventory licenseDelete
 $N pnpm --filter @polaris-key/worker typecheck:workerd && $N pnpm --filter @polaris-key/worker test:workerd
-$N pnpm --filter @polaris-key/docs gen:check && $N pnpm --filter @polaris-key/docs check:links
+$N pnpm --filter @polaris-key/admin build && $N pnpm --filter @polaris-key/docs gen:check && $N pnpm --filter @polaris-key/docs check:links
 $N pnpm test && $N pnpm lint && $N pnpm format
 node docs/research/2026-09-29-godot-omniplatform/program/check.mjs
+# PX-W9b, in addition
+$N pnpm --filter @polaris-key/client-core test && $N pnpm gen:brand -- --check && $N pnpm ui:lint && $N pnpm ui:report
+( cd sdks/python && .venv/bin/python -m pytest -q ); ( cd sdks/swift && swift test ); sdks/godot/tools/run_tests.sh
+( cd sdks/kotlin && ./gradlew -Ppkey.jvmOnly=true :core:test :license:test :sdk:test :conformance:test )
 ```

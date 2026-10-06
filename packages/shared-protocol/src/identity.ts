@@ -7,7 +7,8 @@
 // product's `identity` toggle gates only sign-in THROUGH that product. With it off, device and
 // JSON routes under `/<p>/identity/*` answer `not_found` and `POST /<p>/devices/register`
 // keeps its single `registration_closed` body; only a person sees `identity_disabled`
-// (WIRE-CONTRACT-V4 §12.8).
+// (WIRE-CONTRACT-V4 §12.8). PX-W9 adds §12.2, key entry: the counter's member, the
+// `key_entry_limit` refusal body and the signed-out key preview (plans/PX-W9.md §2).
 //
 // Nothing here is signed. The device label is display data that no server decision reads
 // (§12.7.1); the request handle, the client record and the app-consent view are same-origin
@@ -145,4 +146,69 @@ export interface DeviceStartResponse {
   pollUrl: string;
   /** The normalised label the Worker stored (§12.7.1), or null. Absent from an older Worker. */
   deviceName: string | null;
+}
+
+// ── §12.2 Key entry (PX-W9) ─────────────────────────────────────────────────────────────────
+
+/**
+ * §12.2 rule 5: a licence's key entries on an Identity product. `used` is the count of recorded
+ * entries and may exceed `limit` (races at the last entry, portal claims, a period with refusals
+ * off); a client shows `max(0, limit - used)` left. Present on every key-entry 2xx and on
+ * `key_entry_limit`, absent with Identity off.
+ */
+export interface KeyEntries {
+  used: number;
+  /** The product's effective `identity.keyEntry.limit`: 1 to 100, default 10. */
+  limit: number;
+}
+
+/** §12.2 rule 1: where a key entry happened. */
+export type KeyEntrySurface = "app" | "browser" | "portal";
+
+/**
+ * §12.2 step 4: the flat 403 of `POST /<p>/license/activate` and
+ * `POST /<p>/identity/session/license` when the licence has no entries left and refusals are on.
+ * Not an auth failure: a client keeps its state and offers `manageUrl` behind a user action.
+ */
+export interface KeyEntryLimitBody {
+  error: "key_entry_limit";
+  message?: string;
+  /** The §5.3 refusal link (`<portal>/activate?product=<slug>`), absent while the portal is off. */
+  manageUrl?: string;
+  keyEntries: KeyEntries;
+}
+
+/**
+ * §12.2 rule 8: whether the account upgrade the key preview leads to may be skipped. `forced` only
+ * when the verdict is `addable`, refusals are on and `used >= limit`.
+ */
+export type KeyUpgrade = "skippable" | "forced";
+
+/** §12.2 rule 8: the signed-out preview's verdict. `email_mismatch` stays a signed-in verdict. */
+export type KeyPreviewVerdict = "addable" | "license_owned" | "portal_off";
+
+/**
+ * `POST /api/key/preview` (§12.2 rule 8): what a key would do, before anyone signs in. Read-only,
+ * never counted. Never an email, a masked email, a licence id, devices or an account.
+ */
+export interface KeyPreview {
+  /** The product's public presentation, as the signed-in activate preview shows it. */
+  product: {
+    slug: string;
+    name: string;
+    branding: unknown;
+    developerName: string | null;
+    iconUrl: string | null;
+    headerUrl: string | null;
+  };
+  verdict: KeyPreviewVerdict;
+  /** The licence's tier and term; `null` on `portal_off`. */
+  license: {
+    tierName: string | null;
+    /** `perpetual`, or the licence's end as epoch seconds. */
+    term: "perpetual" | number;
+  } | null;
+  /** `null` with Identity off and on `portal_off`. */
+  keyEntries: KeyEntries | null;
+  upgrade: KeyUpgrade;
 }

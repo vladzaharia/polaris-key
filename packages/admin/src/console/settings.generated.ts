@@ -170,7 +170,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
   },
   {
     key: "identity.keyEntryRefusals",
-    aliases: [],
+    aliases: ["KEYENTRY_REFUSALS"],
     scope: "platform",
     entity: null,
     service: "platform",
@@ -183,7 +183,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     ownership: "operator",
     critical: false,
     secret: false,
-    pending: "I-09",
+    pending: null,
     deprecated: null,
   },
   {
@@ -195,7 +195,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     area: "product-defaults",
     label: "Key-entry limit ceiling",
     description:
-      "The most key entries any product may allow per floating licence. A product may set a lower limit, never a higher one; there is no unlimited value while Identity is on.",
+      "The most key entries any product may allow per licence that is in no account. A product may set a lower limit, never a higher one; there is no unlimited value while Identity is on.",
     keywords: ["key entry", "activations", "floating licence"],
     docs: "/docs/services/identity/",
     ownership: "operator",
@@ -1161,13 +1161,13 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     area: "identity.keyEntry",
     label: "Key-entry limit",
     description:
-      "How many times a floating licence's key may be entered on new devices while Identity is on. Past it, key entry is refused with a link to the portal.",
+      "How many times the key of a licence that is in no account may be entered on new devices while Identity is on. Past it, with key-entry refusals on, key entry is refused with a link to the portal.",
     keywords: ["key entry", "key_entry_limit", "activations"],
     docs: "/docs/services/identity/",
     ownership: "claimable",
     critical: false,
     secret: false,
-    pending: "I-09",
+    pending: "ST-04",
     deprecated: null,
   },
   {

@@ -513,7 +513,8 @@ PKEY_ENVIRONMENT = "test"
 #   only, while EMAIL_SENDER_ADDRESS is unset.
 # Optional [vars] left unset here, each with a code default (src/env.ts): BLOB_GC_MODE,
 #   BLOB_GC_GRACE_DAYS, LAZY_DELTA_MAX_BYTES, LICENSING_RESERVED_NAMES,
-#   IDENTITY_RESERVED_DISPLAY_NAMES (A-13: the console's Platform → Settings value wins),
+#   IDENTITY_RESERVED_DISPLAY_NAMES, KEYENTRY_REFUSALS (A-13: the console's Platform →
+#   Settings value wins),
 #   PLATFORM_DEPLOY_ENVIRONMENT (default production).
 # Injected at deploy by .github/workflows/deploy.yml (--var): PKEY_RELEASE_TAG, PKEY_GIT_SHA.
 # Product signing keys and product-scoped secrets are sealed in D1 through the admin API.

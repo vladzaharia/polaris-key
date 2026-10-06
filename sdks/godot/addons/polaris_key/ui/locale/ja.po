@@ -3152,6 +3152,16 @@ msgstr "デバイスの上限に達しました"
 msgid "core.codes.device_limit.message"
 msgstr "このライセンスはすべてのデバイス枠が使用中です。ここで使うにはデバイスを置き換えてください。"
 
+#. No key entries left
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.key_entry_limit.title"
+msgstr "キーの入力回数が残っていません"
+
+#. This key has no entries left. Add it to your account and sign in instead.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.key_entry_limit.message"
+msgstr "このキーは入力回数が残っていません。アカウントに追加して、代わりにサインインしてください。"
+
 #. License disabled
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_disabled.title"
@@ -4731,6 +4741,16 @@ msgstr "無料ライセンスはありません"
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.enroll-disabled.message"
 msgstr "このアプリは無料ライセンスを提供していません。ライセンスキーを入力するか、サインインしてください。"
+
+#. No key entries left
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.key-entry-limit.title"
+msgstr "キーの入力回数が残っていません"
+
+#. This key has no entries left. Add it to your account and sign in instead.
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.key-entry-limit.message"
+msgstr "このキーは入力回数が残っていません。アカウントに追加して、代わりにサインインしてください。"
 
 #. Activation refused
 #. Core copy (conformance/parity/copy.en.json, activation).

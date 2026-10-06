@@ -27,6 +27,19 @@ differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US 
 
 - Developer docs: the sign-in step model (SIGN-IN.md §3), license choice and what end users see, `status: "choose"` on the exchange, `license_choice_required` on the card's Continue, Replace a device and its shared rate budget, sign-in licences; a glossary entry saying licences are not typed: every licence is account-bound and shows its origin in plain words ("From signing in", "Steam key ending 3WPLDA", "From Steam") (`start/concepts.md`; owner decision 2026-10-05: no 'Account-wide' label).
 
+## Changed by plan PX-W9 (2026-10-06)
+
+[`plans/PX-W9.md`](../plans/PX-W9.md) revision 2 was approved by the lead under the owner's delegation on 2026-10-06. These notes win over the text of this brief where they differ.
+
+- **Key-entry limits page.** It documents for developers:
+  - the product setting `identity.keyEntry.limit` (default 10, range 1–100, no unlimited value while Identity is
+    on; set from the manifest once I-09 lands, from the console once ST-04 lands);
+  - what counts (D20: a new device by key, a browser key session, a portal claim) and what never counts;
+  - that the limit applies to licences in no account;
+  - the `keyEntries` member and the `key_entry_limit` refusal with `manageUrl`.
+- **Rollout.** Explain the platform switch `identity.keyEntryRefusals`: counting runs while it is off, and
+  refusals start only when an operator turns it on. Publish this before the switch is turned on (PX-W9 §7).
+
 ## Goal
 
 Developers and end users have accurate docs for layer 1: the account and the Library, recovery ("remaining links, then the developer's licence tool"), key-entry limits for developers, tenant-scoped native links, Steam and Game Center guides, and the inputs for the Polaris privacy notice.

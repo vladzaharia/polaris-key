@@ -3172,6 +3172,16 @@ msgstr "Limite di dispositivi raggiunto"
 msgid "core.codes.device_limit.message"
 msgstr "Questa licenza è già in uso su tutti i dispositivi consentiti. Sostituisci un dispositivo per usarla qui."
 
+#. No key entries left
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.key_entry_limit.title"
+msgstr "Nessun inserimento rimasto"
+
+#. This key has no entries left. Add it to your account and sign in instead.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.key_entry_limit.message"
+msgstr "Questa chiave non ha più inserimenti disponibili. Aggiungila al tuo account e accedi invece."
+
 #. License disabled
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_disabled.title"
@@ -4751,6 +4761,16 @@ msgstr "Nessuna licenza gratuita"
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.enroll-disabled.message"
 msgstr "Questa app non offre una licenza gratuita. Inserisci una chiave di licenza o accedi."
+
+#. No key entries left
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.key-entry-limit.title"
+msgstr "Nessun inserimento rimasto"
+
+#. This key has no entries left. Add it to your account and sign in instead.
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.key-entry-limit.message"
+msgstr "Questa chiave non ha più inserimenti disponibili. Aggiungila al tuo account e accedi invece."
 
 #. Activation refused
 #. Core copy (conformance/parity/copy.en.json, activation).

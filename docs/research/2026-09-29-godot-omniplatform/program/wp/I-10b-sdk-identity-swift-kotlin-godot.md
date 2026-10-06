@@ -4,7 +4,7 @@
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, phase-1a)                                                                                                                                                                                                                                                   |
 | Size        | 1.4–1.95 engineer-weeks                                                                                                                                                                                                                                                                                                                  |
-| Depends on  | [I-04](I-04-account-contract-plan.md), [I-08](I-08-app-passthrough.md), [I-09](I-09-key-entry-attach.md)                                                                                                                                                                                                                                 |
+| Depends on  | [I-04](I-04-account-contract-plan.md), [I-08](I-08-app-passthrough.md), [I-09](I-09-key-entry-attach.md), [PX-W9b](PX-W9b-key-entry-sdks.md)                                                                                                                                                                                             |
 | Unblocks    | [I-13](I-13-exchange-endpoint.md), [I-15](I-15-native-redirect.md), [I-19](I-19-identity-docs.md), [I-20](I-20-layer-2-plan.md), [I-24b](I-24b-named-user-seats-sdks.md), [U-07](U-07-sdk-settings-swift-kotlin.md), [U-21](U-21-sdk-settings-godot.md), [UK-43](UK-43-activation-holders-native.md), [UK-44](UK-44-sdk-signin-hints.md) |
 | Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                                                                                                     |
 | Plan mode   | yes: executes the approved [`plans/I-04.md`](../plans/I-04.md) (no separate plan)                                                                                                                                                                                                                                                        |
@@ -67,6 +67,23 @@ every row, no "Account-wide"). For this package:
 
 - **Headless primitives** (I-04 §G.9) in Swift, Godot and Kotlin, with I-10a's names: `choice.licenses`, `choice.devices`, `choice.complete` (incl. `{kind: "key"}`), `choice.cancel`, and the `choose` answer of `redirect/token`. Feature-detect the `choice*` endpoints; without them run card mode. Replay the §G.8 transcripts through the Swift and Godot mirrors; parity row `identity.choice`.
 - `PolarisKeyUI`, the Kotlin component and the Godot `ui` follow UK-07/UK-09/UK-11's one form; the Godot P1-07 attach stays offered only after **Keep**.
+
+## Changed by plan PX-W9 (2026-10-06)
+
+[`plans/PX-W9.md`](../plans/PX-W9.md) revision 2 was approved by the lead under the owner's delegation on 2026-10-06. These notes win over the text of this brief where they differ.
+
+- **PX-W9b does the key-entry outcome.** PX-W9 Q1 moves it out of this package. PX-W9b ships, in Swift, Godot
+  and Kotlin:
+  - `keyEntries` on success and the `key-entry-limit` result;
+  - the PolarisKeyUI, Godot and Compose entries line and refusal screen (**Add it in Polaris Key**, a QR code
+    without the key on tvOS, joypad-only Godot and Android TV).
+
+  This package gains the dependency PX-W9b.
+
+- **What stays here.**
+  - `license-owned`, attach, `subject`, `signOut`, `openAccount` and device-code passthrough.
+  - The refusal screen's primary **Sign in**, added onto PX-W9b's screen.
+- **Transcripts.** The `keyentry-*` transcripts are replayed by PX-W9b, not here.
 
 ## Goal
 

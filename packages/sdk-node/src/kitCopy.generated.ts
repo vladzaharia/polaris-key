@@ -629,6 +629,9 @@ export const KIT_COPY: Readonly<
     "core.codes.device_limit.title": "Device limit reached",
     "core.codes.device_limit.message":
       "This license is already on all its devices. Replace a device to use it here.",
+    "core.codes.key_entry_limit.title": "No key entries left",
+    "core.codes.key_entry_limit.message":
+      "This key has no entries left. Add it to your account and sign in instead.",
     "core.codes.license_disabled.title": "License disabled",
     "core.codes.license_disabled.message":
       "This license has been disabled. Contact the developer.",
@@ -1086,6 +1089,9 @@ export const KIT_COPY: Readonly<
     "core.activation.enroll-disabled.title": "No free license",
     "core.activation.enroll-disabled.message":
       "This app doesn't offer a free license. Enter a license key or sign in.",
+    "core.activation.key-entry-limit.title": "No key entries left",
+    "core.activation.key-entry-limit.message":
+      "This key has no entries left. Add it to your account and sign in instead.",
     "core.activation.refused.title": "Activation refused",
     "core.activation.refused.message": "Activation was refused ({code}).",
     "core.activation.error.title": "Activation failed",
@@ -1741,6 +1747,9 @@ export const KIT_COPY: Readonly<
     "core.codes.device_limit.title": "Gerätelimit erreicht",
     "core.codes.device_limit.message":
       "Diese Lizenz ist bereits auf allen zulässigen Geräten in Gebrauch. Ersetzen Sie ein Gerät, um sie hier zu verwenden.",
+    "core.codes.key_entry_limit.title": "Keine Schlüsseleingaben mehr",
+    "core.codes.key_entry_limit.message":
+      "Für diesen Schlüssel sind keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu und melden Sie sich stattdessen an.",
     "core.codes.license_disabled.title": "Lizenz deaktiviert",
     "core.codes.license_disabled.message":
       "Diese Lizenz wurde deaktiviert. Wenden Sie sich an den Entwickler.",
@@ -2216,6 +2225,9 @@ export const KIT_COPY: Readonly<
     "core.activation.enroll-disabled.title": "Keine kostenlose Lizenz",
     "core.activation.enroll-disabled.message":
       "Diese App bietet keine kostenlose Lizenz an. Geben Sie einen Lizenzschlüssel ein oder melden Sie sich an.",
+    "core.activation.key-entry-limit.title": "Keine Schlüsseleingaben mehr",
+    "core.activation.key-entry-limit.message":
+      "Für diesen Schlüssel sind keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu und melden Sie sich stattdessen an.",
     "core.activation.refused.title": "Aktivierung abgelehnt",
     "core.activation.refused.message":
       "Die Aktivierung wurde abgelehnt ({code}).",
@@ -2860,6 +2872,9 @@ export const KIT_COPY: Readonly<
     "core.codes.device_limit.title": "Device limit reached",
     "core.codes.device_limit.message":
       "This license is already on all its devices. Replace a device to use it here.",
+    "core.codes.key_entry_limit.title": "No key entries left",
+    "core.codes.key_entry_limit.message":
+      "This key has no entries left. Add it to your account and sign in instead.",
     "core.codes.license_disabled.title": "License disabled",
     "core.codes.license_disabled.message":
       "This license has been disabled. Contact the developer.",
@@ -3317,6 +3332,9 @@ export const KIT_COPY: Readonly<
     "core.activation.enroll-disabled.title": "No free license",
     "core.activation.enroll-disabled.message":
       "This app doesn't offer a free license. Enter a license key or sign in.",
+    "core.activation.key-entry-limit.title": "No key entries left",
+    "core.activation.key-entry-limit.message":
+      "This key has no entries left. Add it to your account and sign in instead.",
     "core.activation.refused.title": "Activation refused",
     "core.activation.refused.message": "Activation was refused ({code}).",
     "core.activation.error.title": "Activation failed",
@@ -3953,6 +3971,9 @@ export const KIT_COPY: Readonly<
     "core.codes.device_limit.title": "Límite de dispositivos alcanzado",
     "core.codes.device_limit.message":
       "Esta licencia ya está en todos sus dispositivos. Reemplaza un dispositivo para usarla aquí.",
+    "core.codes.key_entry_limit.title": "No quedan usos de la clave",
+    "core.codes.key_entry_limit.message":
+      "A esta clave no le quedan usos. Añádela a tu cuenta e inicia sesión en su lugar.",
     "core.codes.license_disabled.title": "Licencia desactivada",
     "core.codes.license_disabled.message":
       "Esta licencia se desactivó. Contacta con el desarrollador.",
@@ -4429,6 +4450,9 @@ export const KIT_COPY: Readonly<
     "core.activation.enroll-disabled.title": "Sin licencia gratuita",
     "core.activation.enroll-disabled.message":
       "Esta app no ofrece una licencia gratuita. Escribe una clave de licencia o inicia sesión.",
+    "core.activation.key-entry-limit.title": "No quedan usos de la clave",
+    "core.activation.key-entry-limit.message":
+      "A esta clave no le quedan usos. Añádela a tu cuenta e inicia sesión en su lugar.",
     "core.activation.refused.title": "Activación rechazada",
     "core.activation.refused.message": "Se rechazó la activación ({code}).",
     "core.activation.error.title": "Error de activación",
@@ -5059,6 +5083,9 @@ export const KIT_COPY: Readonly<
     "core.codes.device_limit.title": "Limite de dispositivos atingido",
     "core.codes.device_limit.message":
       "Esta licença já está em todos os dispositivos permitidos. Substitua um dispositivo para usá-la aqui.",
+    "core.codes.key_entry_limit.title": "Nenhum uso restante da chave",
+    "core.codes.key_entry_limit.message":
+      "Esta chave não tem mais usos. Adicione-a à sua conta e entre em vez disso.",
     "core.codes.license_disabled.title": "Licença desativada",
     "core.codes.license_disabled.message":
       "Esta licença foi desativada. Contate o desenvolvedor.",
@@ -5527,6 +5554,9 @@ export const KIT_COPY: Readonly<
     "core.activation.enroll-disabled.title": "Nenhuma licença gratuita",
     "core.activation.enroll-disabled.message":
       "Este app não oferece licença gratuita. Digite uma chave de licença ou entre.",
+    "core.activation.key-entry-limit.title": "Nenhum uso restante da chave",
+    "core.activation.key-entry-limit.message":
+      "Esta chave não tem mais usos. Adicione-a à sua conta e entre em vez disso.",
     "core.activation.refused.title": "Ativação recusada",
     "core.activation.refused.message": "A ativação foi recusada ({code}).",
     "core.activation.error.title": "Falha na ativação",
@@ -6159,6 +6189,9 @@ export const KIT_COPY: Readonly<
     "core.codes.device_limit.title": "Limite di dispositivi raggiunto",
     "core.codes.device_limit.message":
       "Questa licenza è già in uso su tutti i dispositivi consentiti. Sostituisci un dispositivo per usarla qui.",
+    "core.codes.key_entry_limit.title": "Nessun inserimento rimasto",
+    "core.codes.key_entry_limit.message":
+      "Questa chiave non ha più inserimenti disponibili. Aggiungila al tuo account e accedi invece.",
     "core.codes.license_disabled.title": "Licenza disattivata",
     "core.codes.license_disabled.message":
       "Questa licenza è stata disattivata. Contatta lo sviluppatore.",
@@ -6632,6 +6665,9 @@ export const KIT_COPY: Readonly<
     "core.activation.enroll-disabled.title": "Nessuna licenza gratuita",
     "core.activation.enroll-disabled.message":
       "Questa app non offre una licenza gratuita. Inserisci una chiave di licenza o accedi.",
+    "core.activation.key-entry-limit.title": "Nessun inserimento rimasto",
+    "core.activation.key-entry-limit.message":
+      "Questa chiave non ha più inserimenti disponibili. Aggiungila al tuo account e accedi invece.",
     "core.activation.refused.title": "Attivazione rifiutata",
     "core.activation.refused.message":
       "L'attivazione è stata rifiutata ({code}).",
@@ -7272,6 +7308,9 @@ export const KIT_COPY: Readonly<
     "core.codes.device_limit.title": "デバイスの上限に達しました",
     "core.codes.device_limit.message":
       "このライセンスはすべてのデバイス枠が使用中です。ここで使うにはデバイスを置き換えてください。",
+    "core.codes.key_entry_limit.title": "キーの入力回数が残っていません",
+    "core.codes.key_entry_limit.message":
+      "このキーは入力回数が残っていません。アカウントに追加して、代わりにサインインしてください。",
     "core.codes.license_disabled.title": "ライセンスが無効です",
     "core.codes.license_disabled.message":
       "このライセンスは無効化されています。開発者に問い合わせてください。",
@@ -7750,6 +7789,9 @@ export const KIT_COPY: Readonly<
     "core.activation.enroll-disabled.title": "無料ライセンスはありません",
     "core.activation.enroll-disabled.message":
       "このアプリは無料ライセンスを提供していません。ライセンスキーを入力するか、サインインしてください。",
+    "core.activation.key-entry-limit.title": "キーの入力回数が残っていません",
+    "core.activation.key-entry-limit.message":
+      "このキーは入力回数が残っていません。アカウントに追加して、代わりにサインインしてください。",
     "core.activation.refused.title": "アクティベーションが拒否されました",
     "core.activation.refused.message":
       "アクティベーションが拒否されました（{code}）。",
@@ -8361,6 +8403,9 @@ export const KIT_COPY: Readonly<
     "core.codes.device_limit.title": "기기 한도 도달",
     "core.codes.device_limit.message":
       "이 라이선스는 이미 모든 기기에서 사용 중이에요. 여기에서 사용하려면 기기를 교체하세요.",
+    "core.codes.key_entry_limit.title": "남은 키 등록 횟수 없음",
+    "core.codes.key_entry_limit.message":
+      "이 키는 남은 등록 횟수가 없어요. 계정에 추가하고 대신 로그인하세요.",
     "core.codes.license_disabled.title": "라이선스 비활성화됨",
     "core.codes.license_disabled.message":
       "이 라이선스는 비활성화되었어요. 개발자에게 문의하세요.",
@@ -8823,6 +8868,9 @@ export const KIT_COPY: Readonly<
     "core.activation.enroll-disabled.title": "무료 라이선스 없음",
     "core.activation.enroll-disabled.message":
       "이 앱은 무료 라이선스를 제공하지 않아요. 라이선스 키를 입력하거나 로그인하세요.",
+    "core.activation.key-entry-limit.title": "남은 키 등록 횟수 없음",
+    "core.activation.key-entry-limit.message":
+      "이 키는 남은 등록 횟수가 없어요. 계정에 추가하고 대신 로그인하세요.",
     "core.activation.refused.title": "활성화 거부됨",
     "core.activation.refused.message": "활성화가 거부됐어요({code}).",
     "core.activation.error.title": "활성화 실패",
@@ -9388,6 +9436,9 @@ export const KIT_COPY: Readonly<
     "core.codes.device_limit.title": "已达到设备上限",
     "core.codes.device_limit.message":
       "此许可证已用满所有设备。请替换一台设备以在此使用。",
+    "core.codes.key_entry_limit.title": "密钥已无剩余输入次数",
+    "core.codes.key_entry_limit.message":
+      "此密钥已没有剩余的输入次数。请将它添加到你的账户，然后改为登录。",
     "core.codes.license_disabled.title": "许可证已停用",
     "core.codes.license_disabled.message": "此许可证已被停用。请联系开发者。",
     "core.codes.license_expired.title": "许可证已过期",
@@ -9801,6 +9852,9 @@ export const KIT_COPY: Readonly<
     "core.activation.enroll-disabled.title": "无免费许可证",
     "core.activation.enroll-disabled.message":
       "此应用不提供免费许可证。请输入许可证密钥或登录。",
+    "core.activation.key-entry-limit.title": "密钥已无剩余输入次数",
+    "core.activation.key-entry-limit.message":
+      "此密钥已没有剩余的输入次数。请将它添加到你的账户，然后改为登录。",
     "core.activation.refused.title": "激活被拒绝",
     "core.activation.refused.message": "激活被拒绝（{code}）。",
     "core.activation.error.title": "激活失败",

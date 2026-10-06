@@ -258,6 +258,7 @@
         "rate-limited",
         "unauthorized",
         "enroll-disabled",
+        "key-entry-limit",
         "refused",
         "error"
       ]

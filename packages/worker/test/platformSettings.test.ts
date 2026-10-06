@@ -118,11 +118,12 @@ function countingDb(inner: Db): { db: Db; count: () => number } {
 // ── The registry ─────────────────────────────────────────────────────────────────────────────
 
 describe("PLATFORM_SETTINGS", () => {
-  it("declares exactly the four background-job settings and the two reserved-names severities", () => {
+  it("declares exactly the four background-job settings, the two reserved-names severities and the key-entry refusal switch", () => {
     expect(PLATFORM_SETTINGS.map((d) => d.key).sort()).toEqual([
       "BLOB_GC_GRACE_DAYS",
       "BLOB_GC_MODE",
       "IDENTITY_RESERVED_DISPLAY_NAMES",
+      "KEYENTRY_REFUSALS",
       "LAZY_DELTAS",
       "LAZY_DELTA_MAX_BYTES",
       "LICENSING_RESERVED_NAMES",
@@ -137,6 +138,9 @@ describe("PLATFORM_SETTINGS", () => {
       BLOB_GC_GRACE_DAYS: "runtime",
       LICENSING_RESERVED_NAMES: "runtime",
       IDENTITY_RESERVED_DISPLAY_NAMES: "runtime",
+      // PX-W9: a rollout switch, not a kill switch. Off is the permissive side (every key entry is
+      // admitted), so `runtime`: a console value, then `[vars]`, then the default `off`.
+      KEYENTRY_REFUSALS: "runtime",
     });
   });
 

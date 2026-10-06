@@ -94,6 +94,7 @@ import { signInConsentView, signInRequestView } from "../passthrough/routes.js";
 import {
   handleActivatePreview,
   handleClaimKey,
+  handleKeyPreview,
   handleDeviceRename,
   handleKeyReissue,
   handleLicenseRemove,
@@ -1385,6 +1386,14 @@ export async function handlePortalApi(
   if (segments[0] === "signin" && segments[1] !== "requests") {
     return handleCardApi(req, env, db, segments, now);
   }
+  // PX-W9 (WIRE-CONTRACT-V4 §12.2 rule 8): the login card's signed-out key preview. Read-only and
+  // never counted; it charges its own per-network bucket (`selfService.ts`).
+  if (
+    segments[0] === "key" &&
+    segments[1] === "preview" &&
+    segments.length === 2
+  )
+    return handleKeyPreview(req, env, db, now);
   // PX-W14 (G29): the new device's half of "Sign in with another device" is pre-auth: it has no
   // session yet. The signed-in half (`lookup`, `approve`) is dispatched below.
   if (segments[0] === "device-login" && segments.length === 2) {

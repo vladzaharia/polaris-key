@@ -49,6 +49,7 @@ const LICENSE_KEYED = [
   "dist_purchases",
   "keys_index",
   "license_auto_attach_blocks",
+  "license_key_entries",
   "license_profiles",
   "license_refusals",
   "license_relinks",
@@ -203,6 +204,18 @@ async function seedEverything(
   );
   await db.run(
     "INSERT INTO license_auto_attach_blocks (product, license_id, account_id, created_at) VALUES (?, ?, 'acct_removed', ?)",
+    SLUG,
+    licenseId,
+    NOW,
+  );
+  // PX-W9: one device entry and one portal entry of the key-entry counter.
+  await db.run(
+    `INSERT INTO license_key_entries (product, license_id, id, surface, device_id, created_at)
+     VALUES (?, ?, 'ke_app', 'app', ?, ?), (?, ?, 'ke_portal', 'portal', NULL, ?)`,
+    SLUG,
+    licenseId,
+    device,
+    NOW,
     SLUG,
     licenseId,
     NOW,

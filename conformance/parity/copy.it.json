@@ -69,6 +69,10 @@
       "title": "Limite di dispositivi raggiunto",
       "message": "Questa licenza è già in uso su tutti i dispositivi consentiti. Sostituisci un dispositivo per usarla qui."
     },
+    "key_entry_limit": {
+      "title": "Nessun inserimento rimasto",
+      "message": "Questa chiave non ha più inserimenti disponibili. Aggiungila al tuo account e accedi invece."
+    },
     "license_disabled": {
       "title": "Licenza disattivata",
       "message": "Questa licenza è stata disattivata. Contatta lo sviluppatore."
@@ -704,6 +708,10 @@
     "enroll-disabled": {
       "title": "Nessuna licenza gratuita",
       "message": "Questa app non offre una licenza gratuita. Inserisci una chiave di licenza o accedi."
+    },
+    "key-entry-limit": {
+      "title": "Nessun inserimento rimasto",
+      "message": "Questa chiave non ha più inserimenti disponibili. Aggiungila al tuo account e accedi invece."
     },
     "refused": {
       "title": "Attivazione rifiutata",

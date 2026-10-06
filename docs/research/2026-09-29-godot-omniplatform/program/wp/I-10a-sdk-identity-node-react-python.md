@@ -4,7 +4,7 @@
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, phase-1a)                                                                                                                                                                                                                                               |
 | Size        | 1–1.4 engineer-weeks                                                                                                                                                                                                                                                                                                                 |
-| Depends on  | [I-04](I-04-account-contract-plan.md), [I-08](I-08-app-passthrough.md), [I-09](I-09-key-entry-attach.md)                                                                                                                                                                                                                             |
+| Depends on  | [I-04](I-04-account-contract-plan.md), [I-08](I-08-app-passthrough.md), [I-09](I-09-key-entry-attach.md), [PX-W9b](PX-W9b-key-entry-sdks.md)                                                                                                                                                                                         |
 | Unblocks    | [I-13](I-13-exchange-endpoint.md), [I-15](I-15-native-redirect.md), [I-19](I-19-identity-docs.md), [I-20](I-20-layer-2-plan.md), [I-24b](I-24b-named-user-seats-sdks.md), [U-06](U-06-sdk-settings-node-python.md), [U-20](U-20-sdk-settings-react.md), [UK-42](UK-42-activation-holders-web.md), [UK-44](UK-44-sdk-signin-hints.md) |
 | Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                                                                                                 |
 | Plan mode   | yes: executes the approved [`plans/I-04.md`](../plans/I-04.md) (no separate plan)                                                                                                                                                                                                                                                    |
@@ -68,6 +68,24 @@ every row, no "Account-wide"). For this package:
 
 - **Headless primitives** (I-04 §G.9) in Node (the reference), React over `client-core` and Python: `choice.licenses(grant)`, `choice.devices(grant, licenseId)`, `choice.complete(grant, choice)` (kinds `license` with an optional `replaceDeviceId`, `keep`, `create`, `key`), `choice.cancel(grant)`, and the `choose` answer of `redirect/token` beside the activation response. React's web redirect sends `license_choice=app` when its form runs inline. Fix the per-language names in the PR.
 - Feature-detect the `choice*` discovery endpoints; without them run card mode. Replay `redirect-web-choose-app.json`, `choice-replace-app.json`, `choice-key-app.json`, `choice-grant-errors.json`; parity row `identity.choice`.
+
+## Changed by plan PX-W9 (2026-10-06)
+
+[`plans/PX-W9.md`](../plans/PX-W9.md) revision 2 was approved by the lead under the owner's delegation on 2026-10-06. These notes win over the text of this brief where they differ.
+
+- **PX-W9b does the key-entry outcome.** PX-W9 Q1 moves it out of this package. PX-W9b ships, in Node, React
+  and Python:
+  - `keyEntries` on success and the `key-entry-limit` result;
+  - client-core's `readKeyEntries`;
+  - React's entries line and refusal screen (**Add it in Polaris Key**, a QR code without the key).
+
+  This package gains the dependency PX-W9b.
+
+- **What stays here.**
+  - `license-owned`, attach, `subject`, `signOut`, `openAccount` and passthrough sign-in.
+  - The refusal screen's primary **Sign in**, added onto PX-W9b's screen.
+- **Transcripts.** The `keyentry-*` transcripts are replayed by PX-W9b, not here. "N activations left" is PX-W9b's
+  "{left} key entries left".
 
 ## Goal
 

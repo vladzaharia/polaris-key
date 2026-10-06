@@ -54,7 +54,8 @@ export type PlatformSettingKey =
   | "BLOB_GC_MODE"
   | "BLOB_GC_GRACE_DAYS"
   | "LICENSING_RESERVED_NAMES"
-  | "IDENTITY_RESERVED_DISPLAY_NAMES";
+  | "IDENTITY_RESERVED_DISPLAY_NAMES"
+  | "KEYENTRY_REFUSALS";
 
 /** The typed value each setting resolves to. */
 export interface PlatformSettingValues {
@@ -64,6 +65,7 @@ export interface PlatformSettingValues {
   BLOB_GC_GRACE_DAYS: number;
   LICENSING_RESERVED_NAMES: ReservedNamesMode;
   IDENTITY_RESERVED_DISPLAY_NAMES: ReservedDisplayNamesMode;
+  KEYENTRY_REFUSALS: "on" | "off";
 }
 
 export type Precedence = "runtime" | "ceiling";

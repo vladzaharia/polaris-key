@@ -2625,7 +2625,7 @@
       "lane": "sdk",
       "role": "pkey-sdk-porter",
       "estimateWeeks": [1, 1.4],
-      "deps": ["I-04", "I-08", "I-09"],
+      "deps": ["I-04", "I-08", "I-09", "PX-W9b"],
       "planMode": true,
       "gates": ["plan-mode", "all-sdks", "drift-gate", "ui-snapshots"],
       "humanInputs": [],
@@ -2650,7 +2650,7 @@
       "lane": "sdk",
       "role": "pkey-sdk-porter",
       "estimateWeeks": [1.4, 1.95],
-      "deps": ["I-04", "I-08", "I-09"],
+      "deps": ["I-04", "I-08", "I-09", "PX-W9b"],
       "planMode": true,
       "gates": [
         "plan-mode",
@@ -5339,7 +5339,7 @@
     },
     {
       "id": "PX-W9",
-      "title": "Key-entry counting (G21): per-licence limit setting, atomic counter for app, browser and portal entries, `keyEntries` everywhere, the `key_entry_limit` refusal with `manageUrl`, portal preview and responses",
+      "title": "Key-entry counting (G21): WIRE-CONTRACT §12.2, the per-licence limit setting and the refusal switch, an atomic counter for app, browser and portal entries, `keyEntries` everywhere, the `key_entry_limit` refusal with `manageUrl` (errors, copy, three transcripts), portal previews and responses; the SDKs follow in PX-W9b",
       "phase": "PX",
       "stage": "phase W: Worker additions",
       "lane": "worker",
@@ -5347,7 +5347,18 @@
       "estimateWeeks": [0.4, 0.8],
       "deps": ["I-04", "ST-01b", "ST-03"],
       "planMode": true,
-      "gates": ["plan-mode", "migration", "table-owners", "workerd"],
+      "gates": [
+        "plan-mode",
+        "migration",
+        "table-owners",
+        "drift-gate",
+        "corpus",
+        "rule-6",
+        "rule-10",
+        "threat-model",
+        "docs-generated",
+        "workerd"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
@@ -5355,10 +5366,42 @@
         "design/PORTAL §4.6",
         "design/PORTAL §10.2 G21",
         "design/PORTAL §11.2 PX-W9",
-        "plans/PX-W9.md (approved 2026-10-05)"
+        "design/SIGN-IN §3.9",
+        "plans/PX-W9.md revision 2 (approved 2026-10-06; revision 1 approved 2026-10-05)"
       ],
       "brief": "wp/PX-W9-key-entry-counting.md",
-      "status": "todo"
+      "status": "in-review"
+    },
+    {
+      "id": "PX-W9b",
+      "title": "Key-entry outcome in client-core and the six SDKs (G21): `readKeyEntries`, `keyEntries` on success, the `key-entry-limit` result with `manageUrl`, and the four UI kits' entries line and refusal screen (Add it in Polaris Key, QR without the key)",
+      "phase": "PX",
+      "stage": "phase W: Worker additions",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.8, 1.2],
+      "deps": ["PX-W9", "PX-W8"],
+      "planMode": true,
+      "gates": [
+        "plan-mode",
+        "all-sdks",
+        "drift-gate",
+        "ui-snapshots",
+        "ci:macos",
+        "ci:android"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "plans/PX-W9.md §5 (revision 2, approved 2026-10-06)",
+        "design/SIGN-IN §4.5",
+        "design/PORTAL §10.2 G21",
+        "plans/PX-W8.md §5"
+      ],
+      "brief": "wp/PX-W9b-key-entry-sdks.md",
+      "status": "todo",
+      "planRef": "PX-W9"
     },
     {
       "id": "PX-W10",

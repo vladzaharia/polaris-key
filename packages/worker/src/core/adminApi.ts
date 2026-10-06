@@ -85,7 +85,9 @@ export {
 } from "../admin/lib/writeChecks.js";
 
 export {
+  keyEntryListContext,
   licenseSummary,
+  type KeyEntryListContext,
   loadCatalog,
   parseJsonColumn,
   parseJsonList,

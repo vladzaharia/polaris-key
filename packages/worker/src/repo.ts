@@ -1381,6 +1381,16 @@ export async function claimDeviceSeat(
   deviceId: string,
   limit: number,
   now: number,
+  opts: {
+    /**
+     * PX-W9 (WIRE-CONTRACT-V4 §12.2 step 5): a statement written in the SAME batch as the seat
+     * INSERT, and before it, so it commits exactly when the claim does: a lost ordinal race rolls
+     * both back. Built afresh for each attempt. The key-entry counter passes
+     * `core/keyEntries.ts` `stmtRecordDeviceKeyEntry`, whose guard reads the row as it was before
+     * the claim. Never run for a device that already holds a seat on this licence.
+     */
+    withClaim?: () => DbStatement;
+  } = {},
 ): Promise<boolean> {
   await releaseDormantSeats(db, product, now, licenseId);
   const held = await db.first<{ seat_no: number | null }>(
@@ -1415,9 +1425,8 @@ export async function claimDeviceSeat(
       seatActiveSince(now),
     );
     if (!free || free.n == null) return false; // every seat is taken
-    try {
-      const changes = await db.runChanges(
-        `INSERT INTO devices
+    const seat: DbStatement = {
+      sql: `INSERT INTO devices
            (product, device_id, license_id, status, seat_no, first_seen, last_seen)
          VALUES (?, ?, ?, 'authorized', ?, ?, ?)
          ON CONFLICT(product, device_id) DO UPDATE SET
@@ -1426,22 +1435,28 @@ export async function claimDeviceSeat(
            seat_no = excluded.seat_no,
            last_seen = excluded.last_seen
          WHERE devices.seat_no IS NULL OR devices.status <> 'authorized'`,
-        product,
-        deviceId,
-        licenseId,
-        free.n,
-        now,
-        now,
-      );
-      if (changes > 0) return true;
-      // The row exists and already holds a seat — nothing to claim.
+      params: [product, deviceId, licenseId, free.n, now, now],
+    };
+    try {
+      // Applied, or a no-op because the row already holds a seat: either way nothing is left to
+      // claim. Only a UNIQUE loss on `idx_devices_seat` (below) tries again.
+      if (opts.withClaim) await db.batch([opts.withClaim(), seat]);
+      else await db.runChanges(seat.sql, ...seat.params);
       return true;
-    } catch {
-      // UNIQUE constraint on idx_devices_seat: another isolate took this ordinal first.
+    } catch (e) {
+      // UNIQUE constraint on idx_devices_seat: another isolate took this ordinal first, so try
+      // again. Anything else (a failed `withClaim` write, a database error) is not a full licence
+      // and surfaces as an error rather than as `device_limit`.
+      if (!isUniqueViolation(e)) throw e;
       continue;
     }
   }
   return false;
+}
+
+/** A UNIQUE-constraint failure, as better-sqlite3 and D1 both word it. */
+function isUniqueViolation(e: unknown): boolean {
+  return e instanceof Error && /UNIQUE constraint failed/i.test(e.message);
 }
 
 /** Free the seat a device was holding, so a deauthorized install stops occupying capacity. */

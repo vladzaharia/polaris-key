@@ -438,15 +438,38 @@ not_removable` with `reason` `no_active_key` or `key_claim_off`, and nothing is 
 
   Every answer carries `product` (`null` for `unknown`, so a guessed key never reveals whether a
   product exists; otherwise `slug`, `name`, `branding`; `developerName`, `iconUrl` and
-  `headerUrl` are reserved for the library presentation) and `entries`, which is `null` until key
-  entries are counted. Nothing is written. A refusal never names the other account or the license.
+  `headerUrl` are reserved for the library presentation) and `keyEntries`: the license's
+  [key entries](/docs/services/license/activation/#key-entries-identity-products)
+  `{ used, limit }` for `addable` and `already_yours` on a product with Identity on, else `null`.
+  Nothing is written, so previewing never counts. A refusal never names the other account or the
+  license.
+
+- **`POST /api/key/preview`** — the same question asked **signed out**, for the login card's
+  "Have a license key?" (SIGN-IN.md §3.9; WIRE-CONTRACT-V4 §12.2 rule 8). Takes
+  `{ "key": "pkey_…" }` with no session and no CSRF header, and answers
+  `{ product, verdict, license, keyEntries, upgrade }`:
+  - `verdict` is `addable`, `license_owned` (the license is in an account; never whose) or
+    `portal_off`. `email_mismatch` stays a signed-in verdict.
+  - `license` is `{ tierName, term }` (`term` is `perpetual` or the end in epoch seconds), `null`
+    on `portal_off`.
+  - `keyEntries` is `{ used, limit }` on a product with Identity on, else `null`.
+  - `upgrade` is `forced` exactly when a new device would be refused `key_entry_limit` (an
+    addable, usable license at its limit, with the platform's key-entry refusals on), else
+    `skippable`: the card then shows no **Continue without an account**.
+
+  It never answers an email, a masked email, a license id, devices or an account, and it writes
+  nothing. `422` for a string that is not a license key, `401` for an unknown key, and `429` past
+  10 previews per minute per client network (charged before any lookup).
 
 - **`POST /api/claim/license-key`** — link a license by presenting a typed `pkey_…` key. It acts
   on the same evaluation as the preview, so the two never disagree: `401` for an unknown key,
   `404` when the product's portal or key claim is off, `403 license_owned` (a `409 owned_elsewhere` until I-05), and
   `403 email_mismatch` with `maskedEmail`; a license already yours answers `200` without writing or
   emailing again. A new link emails the account and, when it is a different address, the
-  license's own email. The preview and the claim share one budget: 10 per minute per account.
+  license's own email. The preview and the claim share one budget: 10 per minute per account. On
+  a product with Identity on, a new link records one `portal` key entry (never for a license
+  already yours, never refused at the limit: adding the key to an account is the way past it), and
+  the answer carries `keyEntries`.
 - **`GET /api/releases`** and **`POST /api/releases/<product>/<releaseId>/artifacts/<artifactId>/token`**
   — the downloads surface, gated by _three_ independent things at once: the portal's own
   `releasesEnabled` toggle, whether the product runs the Release service at all

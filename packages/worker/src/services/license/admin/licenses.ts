@@ -44,7 +44,9 @@ import {
   applyOverrides,
   audit,
   err,
+  keyEntryListContext,
   licenseSummary,
+  type KeyEntryListContext,
   listLicenses,
   listProfiles,
   listTiers,
@@ -183,9 +185,15 @@ async function deviceLimitView(
 async function summarize(
   ctx: LicenseAdminContext,
   license: LicenseRow,
+  keyEntryContext?: KeyEntryListContext,
 ): Promise<Record<string, unknown>> {
   return {
-    ...(await licenseSummary(ctx.db, ctx.product.slug, license)),
+    ...(await licenseSummary(
+      ctx.db,
+      ctx.product.slug,
+      license,
+      keyEntryContext,
+    )),
     ...(await deviceLimitView(ctx, license)),
   };
 }
@@ -235,9 +243,11 @@ export async function handleLicenses(
         ...(batch ? { batch } : {}),
       });
       const verdicts = await deletionVerdicts(ctx, rows);
+      // PX-W9: the Identity toggle and the key-entry limit, read once for the whole list.
+      const keyEntryContext = await keyEntryListContext(db, slug);
       const licenses = await Promise.all(
         rows.map(async (r) => ({
-          ...(await summarize(ctx, r)),
+          ...(await summarize(ctx, r, keyEntryContext)),
           deletion: verdicts.get(r.id),
         })),
       );

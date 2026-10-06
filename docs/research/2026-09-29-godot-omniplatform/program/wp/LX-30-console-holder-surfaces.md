@@ -40,6 +40,17 @@ Checked against `main` at `148439c4f`. Each item names the package whose review 
   `assigned` also covers a licence waiting on its email, so LX-26 added a fourth value. An unknown
   value is `400 bad_request` (`fields: ["holder"]`).
 
+## Changed by plan PX-W9 (2026-10-06)
+
+[`plans/PX-W9.md`](../plans/PX-W9.md) revision 2 was approved by the lead under the owner's delegation on 2026-10-06. These notes win over the text of this brief where they differ.
+
+- **The "Key entries" row.** On a licence with no account, and with Identity on, the licence record shows "Key
+  entries {used} of {limit}" from the `keyEntries` member PX-W9 adds to the admin licence read
+  (`admin/lib/shape.ts`). It is `null` with Identity off, so hide the row. Show the true `used` even past the
+  limit, with no negative "left". The row sits beside the holder line.
+- **Not in scope.** No reset action and no per-licence limit (PX-W9 Q7). Operators raise the product's
+  `identity.keyEntry.limit`.
+
 ## Goal
 
 An operator can see who holds each licence (or that it is floating), filter by holder and batch,

@@ -91,6 +91,13 @@ export const PLATFORM_INVENTORY: readonly PlatformInventoryEntry[] = [
     editable: "IDENTITY_RESERVED_DISPLAY_NAMES",
   },
   {
+    name: "KEYENTRY_REFUSALS",
+    kind: "var",
+    area: "identity",
+    optional: true,
+    editable: "KEYENTRY_REFUSALS",
+  },
+  {
     name: "LAZY_DELTAS",
     kind: "var",
     area: "jobs",

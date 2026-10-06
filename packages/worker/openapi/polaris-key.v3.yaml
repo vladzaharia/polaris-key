@@ -1176,7 +1176,10 @@ paths:
                 value: {}
       responses:
         "200":
-          description: "Activation result. `cache-control: no-store`."
+          description: >
+            Activation result. `cache-control: no-store`. On a product with Identity on it also
+            carries `keyEntries` (PX-W9, WIRE-CONTRACT-V4 §12.2): a NEW device that takes a seat
+            is one key entry, recorded with the seat claim; an enrolled device's re-entry is not.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ActivationResult" }
@@ -1223,13 +1226,27 @@ paths:
         "401": { $ref: "#/components/responses/LegacyUnauthorized" }
         "403":
           description: >
-            Seat pool exhausted, or a `strict`-mode tier with no fingerprint — LEGACY FLAT.
-            `device_limit` carries `limit` and `deviceCount` at the top level, plus
-            `manageUrl` (PX-W8) while the product's customer portal is on.
+            Seat pool exhausted, a `strict`-mode tier with no fingerprint, or no key entries
+            left — LEGACY FLAT. `device_limit` carries `limit` and `deviceCount` at the top
+            level, plus `manageUrl` (PX-W8) while the product's customer portal is on.
+            `key_entry_limit` (PX-W9, WIRE-CONTRACT-V4 §12.2 step 4): an Identity product with
+            `identity.keyEntryRefusals` on, a new device, and a usable licence in no account that
+            has used its limit; it carries `keyEntries` and, while the portal is on,
+            `manageUrl`. Never sent to a device already enrolled on the licence, and not an
+            auth failure.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
+                keyEntryLimit:
+                  summary: test/keyEntries.test.ts
+                  value:
+                    {
+                      error: key_entry_limit,
+                      message: key entry limit reached,
+                      manageUrl: "https://key.plrs.im/activate?product=djdl",
+                      keyEntries: { used: 2, limit: 2 },
+                    }
                 deviceLimit:
                   summary: test/manageUrl.test.ts
                   value:
@@ -6759,11 +6776,13 @@ paths:
         Exchanges a `pkey_<product>_…` key for the session cookie, for products whose portal
         offers key entry beside (or instead of) OIDC. The key may be sent as the body field
         `key` or, if that is absent, as `Authorization: Bearer`. Success is 201, not 200, and
-        the body is only `{"ok": true}` — the payload is the `Set-Cookie`. Seat accounting
-        applies: a browser session takes a seat like any other device, so an exhausted pool
-        is a 403 `device_limit` carrying `limit` and `deviceCount` at the top level, plus
-        `manageUrl` (PX-W8) while the product's customer portal is on. All errors are LEGACY
-        FLAT.
+        the body is `{"ok": true, "keyEntries": {…}}` — the payload is the `Set-Cookie`. Seat
+        accounting applies: a browser session takes a seat like any other device, so an
+        exhausted pool is a 403 `device_limit` carrying `limit` and `deviceCount` at the top
+        level, plus `manageUrl` (PX-W8) while the product's customer portal is on. It is a key
+        entry on the `browser` surface (PX-W9, WIRE-CONTRACT-V4 §12.2): the browser device is
+        `browser:<licenseId>`, so it counts once per enrolment, and past the limit it can be
+        refused `key_entry_limit`. All errors are LEGACY FLAT.
       parameters: [{ $ref: "#/components/parameters/Product" }]
       requestBody:
         required: false
@@ -6777,14 +6796,17 @@ paths:
       responses:
         "201":
           description: >
-            Session established. The body is `{"ok": true}`; the cookie is the point.
+            Session established. The body is `ok` and the licence's key entries after this one
+            (PX-W9); the cookie is the point.
           headers:
             Set-Cookie: { $ref: "#/components/headers/SetSessionCookie" }
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/OkResult" }
+              schema: { $ref: "#/components/schemas/SessionFromLicenseResult" }
               examples:
-                established: { value: { ok: true } }
+                established:
+                  summary: test/keyEntries.test.ts
+                  value: { ok: true, keyEntries: { used: 1, limit: 10 } }
         "400":
           description: Unparseable body — LEGACY FLAT.
           content:
@@ -6796,12 +6818,22 @@ paths:
         "401": { $ref: "#/components/responses/LegacyUnauthorized" }
         "403":
           description: >
-            The license's seat pool is exhausted — LEGACY FLAT, with `manageUrl` while the
-            product's customer portal is on.
+            The license's seat pool is exhausted, or (PX-W9, §12.2 step 4) it has no key entries
+            left — LEGACY FLAT, with `manageUrl` while the product's customer portal is on, and
+            `keyEntries` on `key_entry_limit`.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
+                keyEntryLimit:
+                  summary: test/keyEntries.test.ts
+                  value:
+                    {
+                      error: key_entry_limit,
+                      message: key entry limit reached,
+                      manageUrl: "https://key.plrs.im/activate?product=djdl",
+                      keyEntries: { used: 1, limit: 1 },
+                    }
                 deviceLimit:
                   {
                     value:
@@ -11680,6 +11712,70 @@ paths:
                       error: not_eligible,
                       message: this product is no longer offered to your account,
                     }
+        "429":
+          description: "`rate_limited`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/key/preview:
+    post:
+      operationId: previewKeySignedOut
+      tags: [portal]
+      summary: What a licence key would do, before anyone signs in
+      description: >
+        PX-W9 (WIRE-CONTRACT-V4 §12.2 rule 8; SIGN-IN.md §3.9). Pre-auth: the login card's "Have
+        a license key?" asks it before sign-in. Read-only: it writes nothing, so it never counts
+        a key entry. Answers the product's public presentation, a verdict (`addable`,
+        `license_owned` — the licence is in an account, never whose — or `portal_off`), the
+        licence's tier name and term, the key-entry meter on an Identity product, and whether
+        the account upgrade may be skipped. Never an email, a masked email, a licence id,
+        devices or an account. 10 previews per client network per minute, charged before any
+        lookup (fails closed). Same-origin JSON; no CSRF header (it changes nothing).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [key]
+              properties:
+                key:
+                  {
+                    type: string,
+                    description: "The whole licence key, `pkey_<product>_…`.",
+                  }
+      responses:
+        "200":
+          description: "The preview. `cache-control: no-store`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortalKeyPreview" }
+              examples:
+                atTheLimit:
+                  summary: test/keyEntries.test.ts
+                  value:
+                    product:
+                      slug: djdl
+                      name: DJDL
+                      branding: null
+                      developerName: null
+                      iconUrl: null
+                      headerUrl: null
+                    verdict: addable
+                    license: { tierName: Pro, term: perpetual }
+                    keyEntries: { used: 10, limit: 10 }
+                    upgrade: forced
+        "401":
+          description: "`unauthorized`: no such key (or product), or the key was replaced."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "422":
+          description: "`bad_request`: not the shape of a licence key."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
         "429":
           description: "`rate_limited`."
           content:
@@ -17032,6 +17128,11 @@ components:
         batchId:
           type: [string, "null"]
           description: "LX-28: the batch the licence was created in; `null` for a licence created on its own."
+        keyEntries:
+          oneOf:
+            - { $ref: "#/components/schemas/KeyEntries" }
+            - { type: "null" }
+          description: "PX-W9 (WIRE-CONTRACT-V4 §12.2): the licence's key entries; `null` while the product's Identity toggle is off."
     AdminLicenseBatch:
       type: object
       description: >
@@ -18183,10 +18284,14 @@ components:
             On `device_limit` (PX-W8, WIRE-CONTRACT-V4 §5.3) — the customer-portal link that
             frees a seat: `<portal>/#/p/<product>/free-device?license=<id>[&for=<label>]` for a
             licence attached to an account, else
-            `<portal>/activate?product=<product>&next=free-device[&for=<label>]`. Present only
-            while the product's portal is on. Never carries the key, an account id or a device
-            id; a client may add `return=` and, on an `/activate` link, the fragment `#key=`.
-            Not an auth failure.
+            `<portal>/activate?product=<product>&next=free-device[&for=<label>]`. On
+            `key_entry_limit` (PX-W9, §12.2) — `<portal>/activate?product=<product>`. Present
+            only while the product's portal is on. Never carries the key, an account id or a
+            device id; a client may add `return=` and, on an `/activate` link, the fragment
+            `#key=`. Not an auth failure.
+        keyEntries:
+          $ref: "#/components/schemas/KeyEntries"
+          description: On `key_entry_limit` (PX-W9, WIRE-CONTRACT-V4 §12.2) — the licence's key entries.
         drift:
           type: integer
           description: On `hardware_mismatch` — how many fingerprint components changed.
@@ -19080,6 +19185,87 @@ components:
         schemaVersion: { type: integer }
         device: { $ref: "#/components/schemas/DeviceView" }
         license: { $ref: "#/components/schemas/LicenseView" }
+        keyEntries:
+          $ref: "#/components/schemas/KeyEntries"
+          description: >
+            `/license/activate` on a product with Identity on (PX-W9, WIRE-CONTRACT-V4 §12.2):
+            the licence's key entries after this one, an enrolled device's re-entry included.
+            Absent with Identity off, and always absent on `/license/enroll`. Older clients
+            ignore it.
+    KeyEntries:
+      type: object
+      description: >
+        A licence's key entries on an Identity product (PX-W9, WIRE-CONTRACT-V4 §12.2 rule 5).
+        `used` is the count of recorded entries and may exceed `limit` (concurrent entries at the
+        last one, portal claims, a period with refusals off); a client shows `max(0, limit −
+        used)` entries left. Unsigned; no signed document carries it.
+      required: [used, limit]
+      additionalProperties: false
+      properties:
+        used: { type: integer, minimum: 0 }
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: The product's effective `identity.keyEntry.limit` (default 10).
+    SessionFromLicenseResult:
+      type: object
+      description: >
+        `POST /{product}/identity/session/license`'s 201: `ok`, and the licence's key entries
+        after this browser key entry (PX-W9, §12.2). The cookie is the point.
+      required: [ok]
+      properties:
+        ok: { type: boolean, const: true }
+        keyEntries: { $ref: "#/components/schemas/KeyEntries" }
+    PortalKeyPreview:
+      type: object
+      description: >
+        `POST /api/key/preview` (PX-W9, WIRE-CONTRACT-V4 §12.2 rule 8): what a key would do,
+        before anyone signs in. Never an email, a masked email, a licence id, devices or an
+        account.
+      required: [product, verdict, license, keyEntries, upgrade]
+      additionalProperties: false
+      properties:
+        product:
+          type: object
+          description: The product's public presentation, as the signed-in activate preview shows it.
+          required: [slug, name]
+          properties:
+            slug: { type: string }
+            name: { type: string }
+            branding: {}
+            developerName: { type: [string, "null"] }
+            iconUrl: { type: [string, "null"] }
+            headerUrl: { type: [string, "null"] }
+        verdict:
+          type: string
+          enum: [addable, license_owned, portal_off]
+          description: "`license_owned`: the licence is in an account (never whose). `email_mismatch` stays a signed-in verdict."
+        license:
+          type: [object, "null"]
+          description: The licence's tier and term; `null` on `portal_off`.
+          required: [tierName, term]
+          properties:
+            tierName: { type: [string, "null"] }
+            term:
+              oneOf:
+                - { type: string, const: perpetual }
+                - {
+                    type: integer,
+                    description: "The licence's end, epoch seconds.",
+                  }
+        keyEntries:
+          oneOf:
+            - { $ref: "#/components/schemas/KeyEntries" }
+            - { type: "null" }
+          description: "`null` with Identity off and on `portal_off`."
+        upgrade:
+          type: string
+          enum: [skippable, forced]
+          description: >
+            `forced` exactly when a new device would be refused `key_entry_limit`: the verdict is
+            `addable`, the licence is usable, `identity.keyEntryRefusals` is on and `used ≥
+            limit`.
     TokenResult:
       type: object
       description: >

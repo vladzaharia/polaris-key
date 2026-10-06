@@ -1176,6 +1176,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_limit_message">This license is already on all its devices. Replace a device to use it here.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_key_entry_limit_title">No key entries left</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_key_entry_limit_message">This key has no entries left. Add it to your account and sign in instead.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_disabled_title">License disabled</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_disabled_message">This license has been disabled. Contact the developer.</string>
@@ -1807,6 +1811,10 @@
     <string name="core_activation_enroll_disabled_title">No free license</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_enroll_disabled_message">This app doesn't offer a free license. Enter a license key or sign in.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_key_entry_limit_title">No key entries left</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_key_entry_limit_message">This key has no entries left. Add it to your account and sign in instead.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_refused_title">Activation refused</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). Arguments: 1=code. -->

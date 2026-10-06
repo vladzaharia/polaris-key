@@ -6331,6 +6331,126 @@
         }
       }
     },
+    "core.activation.key-entry-limit.message": {
+      "comment": "Core copy (conformance/parity/copy.en.json, activation).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This key has no entries left. Add it to your account and sign in instead."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Für diesen Schlüssel sind keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu und melden Sie sich stattdessen an."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This key has no entries left. Add it to your account and sign in instead."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A esta clave no le quedan usos. Añádela a tu cuenta e inicia sesión en su lugar."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta chave não tem mais usos. Adicione-a à sua conta e entre em vez disso."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questa chiave non ha più inserimenti disponibili. Aggiungila al tuo account e accedi invece."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このキーは入力回数が残っていません。アカウントに追加して、代わりにサインインしてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 키는 남은 등록 횟수가 없어요. 계정에 추가하고 대신 로그인하세요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此密钥已没有剩余的输入次数。请将它添加到你的账户，然后改为登录。"
+          }
+        }
+      }
+    },
+    "core.activation.key-entry-limit.title": {
+      "comment": "Core copy (conformance/parity/copy.en.json, activation).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No key entries left"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Schlüsseleingaben mehr"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No key entries left"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No quedan usos de la clave"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhum uso restante da chave"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessun inserimento rimasto"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キーの入力回数が残っていません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "남은 키 등록 횟수 없음"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "密钥已无剩余输入次数"
+          }
+        }
+      }
+    },
     "core.activation.license-disabled.message": {
       "comment": "Core copy (conformance/parity/copy.en.json, activation).",
       "extractionState": "manual",
@@ -16407,6 +16527,126 @@
           "stringUnit": {
             "state": "translated",
             "value": "此处不可用"
+          }
+        }
+      }
+    },
+    "core.codes.key_entry_limit.message": {
+      "comment": "Core copy (conformance/parity/copy.en.json, codes).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This key has no entries left. Add it to your account and sign in instead."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Für diesen Schlüssel sind keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu und melden Sie sich stattdessen an."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This key has no entries left. Add it to your account and sign in instead."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A esta clave no le quedan usos. Añádela a tu cuenta e inicia sesión en su lugar."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta chave não tem mais usos. Adicione-a à sua conta e entre em vez disso."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questa chiave non ha più inserimenti disponibili. Aggiungila al tuo account e accedi invece."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このキーは入力回数が残っていません。アカウントに追加して、代わりにサインインしてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 키는 남은 등록 횟수가 없어요. 계정에 추가하고 대신 로그인하세요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此密钥已没有剩余的输入次数。请将它添加到你的账户，然后改为登录。"
+          }
+        }
+      }
+    },
+    "core.codes.key_entry_limit.title": {
+      "comment": "Core copy (conformance/parity/copy.en.json, codes).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No key entries left"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Schlüsseleingaben mehr"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No key entries left"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No quedan usos de la clave"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhum uso restante da chave"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessun inserimento rimasto"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キーの入力回数が残っていません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "남은 키 등록 횟수 없음"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "密钥已无剩余输入次数"
           }
         }
       }

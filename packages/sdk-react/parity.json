@@ -191,6 +191,10 @@
       "status": "planned",
       "wp": "I-10a"
     },
+    "identity.keyentry": {
+      "status": "planned",
+      "wp": "PX-W9b"
+    },
     "release.changelog": {
       "status": "implemented"
     },
@@ -373,6 +377,10 @@
     "ui.kit.manage": {
       "status": "implemented",
       "note": "PX-W8: LicenseGate and PolarisLogin show Replace a device on device-limit."
+    },
+    "ui.kit.keyentry": {
+      "status": "planned",
+      "wp": "PX-W9b"
     },
     "ui.cli": {
       "status": "na",

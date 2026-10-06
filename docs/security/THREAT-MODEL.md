@@ -5401,6 +5401,56 @@ the claim rules), so A7 and, through the claim, the buyer's account (A6).
   links come only from the Worker, so the disagreement decides at most whether a key fragment is
   offered on a non-`/activate` path of the portal origin, never where the link points.
 
+### Key-entry counting and the signed-out key preview (PX-W9)
+
+On a product with Identity on, every licence counts its key entries in `license_key_entries`
+(`core/keyEntries.ts`; WIRE-CONTRACT-V4 §12.2): a new device activating by key, a browser key
+session, and a portal claim that adds the key to an account. Past the product's limit (1 to 100,
+default 10), and only while the platform switch `identity.keyEntryRefusals` is on, a new device is
+refused `403 key_entry_limit` with `keyEntries` and a `manageUrl` to the portal's activate page.
+The portal's new `POST /api/key/preview` answers what a key would do before anyone signs in.
+Assets: the licence key (a bearer credential, A7), the licence's entries (an availability asset
+of its holder), and the platform switch (AT-2).
+
+- **A key holder burning entries.** Whoever holds a valid key can spend its entries by activating
+  under fresh device ids (deauthorizing in between to free the seat). It is bounded by the
+  activate bucket (30 a minute per IP per product, fails closed) and the browser bucket (the
+  same), and it hurts only that licence, whose key the attacker already holds and could use to
+  take its seats anyway. The effect is the designed one: the licence's next new device is pointed
+  at an account. Devices already using the key are never refused or counted, so no install is
+  locked out, and an operator raises the product's limit. Portal claims are budgeted per account
+  (10 a minute).
+- **Exactly-once, never under.** The device entry is written in the seat claim's own batch with a
+  guard that reads the device row as it was before the claim (`claimDeviceSeat`'s `withClaim`):
+  a lost ordinal race rolls the entry back with the seat, and of concurrent calls from one device
+  only one writes (`test/keyEntries.test.ts` races both). The accepted overshoot (I-04 Q5): calls
+  racing at the last free entry can all pass the pre-check, so `used` may end a little above
+  `limit`; the next new device is refused.
+- **No new oracle on activation.** The key and the licence are resolved first, so an unknown key
+  keeps its `401`, and an unusable licence keeps its `401` from `authorizeDevice` rather than
+  `key_entry_limit`. `key_entry_limit` tells only the key's holder that the key is valid and spent.
+  The refusal is logged with the other licence refusals (reason `key_entry_limit`, the refusal
+  log's debounce and retention).
+- **The signed-out preview is not a key oracle.** It needs the whole key (128 random bits), charges
+  a per-network bucket (`portalKeyPreview`, 10 a minute on the IPv4 address or the IPv6 /64, before
+  any lookup, failing closed) and writes nothing, so it never counts. It answers no email, masked
+  email, licence id, device or account: the product's public presentation, the tier name, the term,
+  the meter, and `license_owned` as a bare "in an account". Activating the key already tells its
+  holder more than that (S-24 H6). It needs no CSRF token because it changes nothing; a cross-site
+  page can only preview a key it already has. It is also the first route that confirms a key is
+  valid without leaving any trace (no device row, audit row or refusal log), so its rate limit is
+  the only control on it.
+- **The switch is a platform setting** (A-13 store, `runtime`, confirm L1 both ways, audited in
+  `platform_audit`). Off is the permissive side and the default. A stolen console session could
+  turn it on, which refuses new key entries on Identity products until it is turned off again;
+  enrolled devices and every document are unaffected. That is an availability lever of the same
+  size as the other A-13 switches, inside AT-2's time-bounded session. Its row and `[vars]` name,
+  `KEYENTRY_REFUSALS`, avoids a `KEY` token on purpose: it holds no key material, and the deny-list
+  must not be loosened to admit it.
+- **Stored data.** Each row holds the product, the licence, a random id, the surface, the device id
+  (as `devices` already does; `NULL` for a portal claim) and a time. No personal data. The rows go
+  with the licence when it is deleted, and an LX-03 merge leaves them on the retired licence.
+
 ### Portal emails: security notices and "Email me the download" (PX-W7)
 
 The portal mails its account holders when something changes (`services/identity/portal/

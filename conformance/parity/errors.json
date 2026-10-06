@@ -94,6 +94,12 @@
       "description": "The licence has no free device seat; the body may carry `manageUrl`, the customer-portal link that frees one."
     },
     {
+      "code": "key_entry_limit",
+      "kind": "wire",
+      "service": "license",
+      "description": "403 from POST /<p>/license/activate and POST /<p>/identity/session/license on a product with Identity on (WIRE-CONTRACT-V4 §12.2; PX-W9): the licence, in no account, has used every key entry and identity.keyEntryRefusals is on. A flat body carrying `keyEntries {used, limit}` and, while the product's customer portal is on, `manageUrl` (<portal>/activate?product=<slug>). Never sent to a device already enrolled on the licence, and not an auth failure: a client keeps its state."
+    },
+    {
       "code": "license_disabled",
       "kind": "wire",
       "service": "license",

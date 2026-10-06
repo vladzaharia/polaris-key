@@ -103,19 +103,19 @@ describe("copy catalog (§3.2)", () => {
   });
 
   it("an unknown code falls back to a generic sentence naming it", () => {
+    expect(copyMessage("brand_new_code")).toBe(
+      "Something went wrong (brand_new_code). Try again.",
+    );
+    expect(copyTitle("brand_new_code")).toBe(COPY_FALLBACK.title);
+    expect(copyMessage("brand_new_code", { locale: "fr-CA" })).toMatch(
+      /brand_new_code/,
+    );
+    // PX-W9: `key_entry_limit` is registered, so a bare one reads its own sentence, which needs
+    // no product name.
     expect(copyMessage("key_entry_limit")).toBe(
-      "Something went wrong (key_entry_limit). Try again.",
+      COPY_CODES.key_entry_limit!.message,
     );
-    expect(copyTitle("key_entry_limit")).toBe(COPY_FALLBACK.title);
-    expect(copyMessage("key_entry_limit", { locale: "fr-CA" })).toMatch(
-      /key_entry_limit/,
-    );
-  });
-
-  it("locales resolve by language and fall back to English per key", () => {
-    expect(copyMessage("device_limit", { locale: "fr-CA" })).toMatch(
-      /limite d'appareils/,
-    );
+    expect(copyMessage("key_entry_limit")).not.toMatch(/[{}]/);
     expect(copyTitle("device_limit", "fr")).toBe("Limite d'appareils atteinte");
     registerCopyLocale("de", {
       generic: "Fehler ({code}).",
@@ -131,9 +131,9 @@ describe("copy catalog (§3.2)", () => {
     expect(
       describeError({
         code: "sign-in-failed",
-        activation: { kind: "refused", code: "key_entry_limit" },
+        activation: { kind: "refused", code: "brand_new_code" },
       }),
-    ).toBe("Activation was refused (key_entry_limit).");
+    ).toBe("Activation was refused (brand_new_code).");
     expect(
       describeError({
         code: "sign-in-failed",

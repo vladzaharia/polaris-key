@@ -109,6 +109,16 @@ export interface Env {
    */
   IDENTITY_RESERVED_DISPLAY_NAMES?: string;
   /**
+   * PX-W9 (WIRE-CONTRACT-V4 §12.2 step 4): `on` or `off`, whether an Identity product refuses a key
+   * entry on a new device once a licence in no account has used its limit (`key_entry_limit`).
+   * Counting runs either way. A `[vars]` value, unset in every environment; read only through the
+   * platform settings store (`runtime`): a console value wins, then this, then the code default
+   * `off`. Turned on once the SDKs that show the refusal are released (plans/PX-W9.md §7).
+   * @inventory var identity
+   * @editable KEYENTRY_REFUSALS
+   */
+  KEYENTRY_REFUSALS?: string;
+  /**
    * Lazy hot-pair deltas (P4-17, `core/deltaDemand.ts`, `services/release/packs/deltas/`): the
    * deployment's kill switch. On lets an opted-in product (`lazy_delta_settings`) count demand
    * and generate deltas. A `[vars]` value, read only through the platform settings store (A-13,

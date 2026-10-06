@@ -79,6 +79,7 @@ const FR: CopyBundle = {
   titles: {
     deviceLimit: "Limite d'appareils atteinte",
     device_limit: "Limite d'appareils atteinte",
+    key_entry_limit: "Plus aucune saisie de clé",
     licenseDisabled: "Licence désactivée",
     license_disabled: "Licence désactivée",
     licenseExpired: "Licence expirée",
@@ -147,6 +148,8 @@ const FR: CopyBundle = {
       "La configuration du développeur ne peut pas être livrée pour le moment. Réessayez plus tard.",
     device_limit:
       "Cette licence a atteint sa limite d'appareils. Libérez un appareil depuis votre compte, puis réessayez.",
+    key_entry_limit:
+      "Cette clé n'a plus de saisies disponibles. Ajoutez-la à votre compte et connectez-vous à la place.",
     license_disabled:
       "Cette licence a été désactivée. Contactez le vendeur ou votre administrateur.",
     license_unusable:

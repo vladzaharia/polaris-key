@@ -62,7 +62,8 @@
 //                   activate / enroll: "ok" | "device-limit" | "unauthorized" |
 //                     "fingerprint-required" | "enroll-disabled" | "hardware-mismatch" |
 //                     "enroll-claimed" | "license-disabled" | "license-expired" |
-//                     "attestation-required" | "rate-limited" | "refused" | "error" — the
+//                     "attestation-required" | "rate-limited" | "key-entry-limit" (PX-W9: the
+//                     `key_entry_limit` refusal, keyentry-limit.json) | "refused" | "error" — the
 //                     `activationResult` enum (conformance/parity/enums.json; SDK-PARITY-PASS
 //                     §3.1), mapped from the refusal body's code, never from the status alone.
 //                     activate-refusals.json records every one the routes answer today. Two are
@@ -104,8 +105,12 @@
 //                   strategy fails, WIRE-CONTRACT-V4 §11.4)
 //   bytes           chunkRange on "ok": the returned body, as a string (fewer than `length`
 //                   bytes when the 206 was clipped at the end of the object)
-//   manageUrl       activate / enroll on "device-limit" (PX-W8): the refusal link the result
-//                   exposes, exactly as served, or null when the result carries none
+//   manageUrl       activate / enroll on "device-limit" (PX-W8) or "key-entry-limit" (PX-W9):
+//                   the refusal link the result exposes, exactly as served, or null when the
+//                   result carries none
+//   keyEntries      activate on "ok" or "key-entry-limit" (PX-W9, WIRE-CONTRACT-V4 §12.2): the
+//                   result's key entries {used, limit}, exactly as served, or null when the
+//                   result carries none (Identity off)
 //   licenseStatus   the gate's status afterwards (client-core `licenseState`)
 //   tokenHeld       whether the client holds a device token afterwards
 //   code            on a refusal: the wire code the body carried (`{"error":"<code>"}` or

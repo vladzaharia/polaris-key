@@ -44,6 +44,10 @@ export const ErrorCode = {
    *  facing only (the `303` to the card's `?error=` and the portal passthrough context's `403`);
    *  device and JSON routes keep answering `not_found` (plans/PX-W17.md §2). */
   IdentityDisabled: "identity_disabled",
+  /** PX-W9 (WIRE-CONTRACT-V4 §12.2): a licence in no account has used every key entry on an
+   *  Identity product while `identity.keyEntryRefusals` is on. The flat 403 carries `keyEntries`
+   *  and, while the portal is on, `manageUrl`. Never sent to an enrolled device. */
+  KeyEntryLimit: "key_entry_limit",
 } as const;
 
 export function json(

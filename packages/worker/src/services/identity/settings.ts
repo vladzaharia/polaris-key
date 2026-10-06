@@ -3,11 +3,13 @@
  * contributed through the descriptor (`identityService.settings`), never imported by Core
  * (rule 6).
  *
- * `identity.keyEntry.limit` is registered here for I-09 and I-10a: claimable from the manifest's
- * `identity:` block (I-04 §3), bounded 1–100 with no unlimited value (`allowUnset: false`, I-04
- * Q7), and capped by the platform entry of the same key (`policyBound: "max"`). The bounds are
- * the platform slice's `KEY_ENTRY_LIMIT_*` constants; the manifest rule I-09 adds
- * (`invalid_identity_key_entry_limit`) must use the same numbers.
+ * `identity.keyEntry.limit` is claimable from the manifest's `identity:` block (I-04 §3; I-09 adds
+ * the block), bounded 1–100 with no unlimited value (`allowUnset: false`, I-04 Q7), and capped by
+ * the platform entry of the same key (`policyBound: "max"`). The bounds are the platform slice's
+ * `KEY_ENTRY_LIMIT_*` constants; the manifest rule I-09 adds (`invalid_identity_key_entry_limit`)
+ * must use the same numbers. PX-W9 reads it (`core/keyEntries.ts` `keyEntryLimit()`, over the
+ * `product_settings` row); it stays pending on ST-04, whose `writeSetting()` gives the console a
+ * write and whose `resolveSetting()` replaces that reader's body.
  */
 
 import {
@@ -77,7 +79,7 @@ export const IDENTITY_SETTINGS_SLICE: ServiceSettingsSlice = {
       area: "identity.keyEntry",
       label: "Key-entry limit",
       description:
-        "How many times a floating licence's key may be entered on new devices while Identity is on. Past it, key entry is refused with a link to the portal.",
+        "How many times the key of a licence that is in no account may be entered on new devices while Identity is on. Past it, with key-entry refusals on, key entry is refused with a link to the portal.",
       keywords: ["key entry", "key_entry_limit", "activations"],
       docs: "/docs/services/identity/",
       value: {
@@ -96,8 +98,9 @@ export const IDENTITY_SETTINGS_SLICE: ServiceSettingsSlice = {
       confirm: { up: "L1", down: "L0" },
       visibleWhen: VISIBLE,
       wire: ["discovery", "refusal"],
+      readers: ["core/keyEntries.ts"],
       storage: { kind: "scalar" },
-      pending: { wp: "I-09" },
+      pending: { wp: "ST-04" },
     }),
     setting({
       key: "identity.oidc",

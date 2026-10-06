@@ -1186,6 +1186,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_limit_message">Esta licencia ya está en todos sus dispositivos. Reemplaza un dispositivo para usarla aquí.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_key_entry_limit_title">No quedan usos de la clave</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_key_entry_limit_message">A esta clave no le quedan usos. Añádela a tu cuenta e inicia sesión en su lugar.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_disabled_title">Licencia desactivada</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_disabled_message">Esta licencia se desactivó. Contacta con el desarrollador.</string>
@@ -1817,6 +1821,10 @@
     <string name="core_activation_enroll_disabled_title">Sin licencia gratuita</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_enroll_disabled_message">Esta app no ofrece una licencia gratuita. Escribe una clave de licencia o inicia sesión.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_key_entry_limit_title">No quedan usos de la clave</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_key_entry_limit_message">A esta clave no le quedan usos. Añádela a tu cuenta e inicia sesión en su lugar.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_refused_title">Activación rechazada</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). Arguments: 1=code. -->

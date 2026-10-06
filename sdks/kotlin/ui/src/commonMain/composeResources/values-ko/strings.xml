@@ -1166,6 +1166,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_limit_message">이 라이선스는 이미 모든 기기에서 사용 중이에요. 여기에서 사용하려면 기기를 교체하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_key_entry_limit_title">남은 키 등록 횟수 없음</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_key_entry_limit_message">이 키는 남은 등록 횟수가 없어요. 계정에 추가하고 대신 로그인하세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_disabled_title">라이선스 비활성화됨</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_disabled_message">이 라이선스는 비활성화되었어요. 개발자에게 문의하세요.</string>
@@ -1797,6 +1801,10 @@
     <string name="core_activation_enroll_disabled_title">무료 라이선스 없음</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_enroll_disabled_message">이 앱은 무료 라이선스를 제공하지 않아요. 라이선스 키를 입력하거나 로그인하세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_key_entry_limit_title">남은 키 등록 횟수 없음</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_key_entry_limit_message">이 키는 남은 등록 횟수가 없어요. 계정에 추가하고 대신 로그인하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_refused_title">활성화 거부됨</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). Arguments: 1=code. -->

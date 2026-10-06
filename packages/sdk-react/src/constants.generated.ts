@@ -22,6 +22,7 @@ export const ErrorCode = {
   valueNotRepresentable: "value_not_representable",
   documentNotRepresentable: "document_not_representable",
   deviceLimit: "device_limit",
+  keyEntryLimit: "key_entry_limit",
   licenseDisabled: "license_disabled",
   licenseExpired: "license_expired",
   notEntitled: "not_entitled",
@@ -180,6 +181,7 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "value_not_representable",
   "document_not_representable",
   "device_limit",
+  "key_entry_limit",
   "license_disabled",
   "license_expired",
   "not_entitled",
@@ -340,6 +342,7 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   value_not_representable: "wire",
   document_not_representable: "wire",
   device_limit: "wire",
+  key_entry_limit: "wire",
   license_disabled: "wire",
   license_expired: "wire",
   not_entitled: "wire",
@@ -520,6 +523,7 @@ export const Feature = {
   identityDevicecode: "identity.devicecode",
   identityDevicelabel: "identity.devicelabel",
   identityToggle: "identity.toggle",
+  identityKeyentry: "identity.keyentry",
   releaseChangelog: "release.changelog",
   releaseDownload: "release.download",
   releaseRecord: "release.record",
@@ -562,6 +566,7 @@ export const Feature = {
   uiBoot: "ui.boot",
   uiKit: "ui.kit",
   uiKitManage: "ui.kit.manage",
+  uiKitKeyentry: "ui.kit.keyentry",
   uiCli: "ui.cli",
   commerceReceipt: "commerce.receipt",
 } as const;
@@ -607,6 +612,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "identity.devicecode",
   "identity.devicelabel",
   "identity.toggle",
+  "identity.keyentry",
   "release.changelog",
   "release.download",
   "release.record",
@@ -649,6 +655,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "ui.boot",
   "ui.kit",
   "ui.kit.manage",
+  "ui.kit.keyentry",
   "ui.cli",
   "commerce.receipt",
 ];
@@ -1197,6 +1204,7 @@ export const ACTIVATION_RESULT_VALUES: readonly string[] = [
   "rate-limited",
   "unauthorized",
   "enroll-disabled",
+  "key-entry-limit",
   "refused",
   "error",
 ];
@@ -1539,6 +1547,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     na: [{ runtime: "web", reason: "runtime" }],
   },
   "identity.toggle": { status: "planned", service: "identity", na: [] },
+  "identity.keyentry": { status: "planned", service: "identity", na: [] },
   "release.changelog": { status: "implemented", service: "release", na: [] },
   "release.download": { status: "implemented", service: "release", na: [] },
   "release.record": { status: "implemented", service: "release", na: [] },
@@ -1642,6 +1651,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "ui.boot": { status: "implemented", service: "sdk", na: [] },
   "ui.kit": { status: "implemented", service: "sdk", na: [] },
   "ui.kit.manage": { status: "implemented", service: "sdk", na: [] },
+  "ui.kit.keyentry": { status: "planned", service: "sdk", na: [] },
   "ui.cli": {
     status: "na",
     service: "sdk",
@@ -1655,4 +1665,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "a37296a4bac0f4a1e945a081999bc8e91442138f3384ae4a3a2ad54016801d72";
+  "435f55614e0cbc424694b2684a27fba836a6718babe6c906ca46f4b0eeb315b9";

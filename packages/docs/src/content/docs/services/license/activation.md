@@ -36,6 +36,9 @@ A success is `200` with four fields:
 [Enrollment](/docs/services/license/enrollment/) returns this **exact** shape, which is why an
 SDK reuses one activation result type for both paths with no new client plumbing.
 
+On a product with Identity on, the answer carries a fifth member, `keyEntries` — see
+[Key entries](#key-entries-identity-products) below. Older SDKs ignore it.
+
 ### The request checks, in order
 
 1. **Method.** Anything but `POST` is `405`. The method check lives in the handler, so a
@@ -49,6 +52,9 @@ SDK reuses one activation result type for both paths with no new client plumbing
 5. **Key lookup.** The key is hashed with the deployment pepper and looked up by hash. A key
    that does not exist, or whose status is not `active`, is `401`.
 6. **License lookup.** A key whose license row has vanished is `401`.
+7. **Key entry** (Identity products only). A device already enrolled on the licence goes on as
+   before. A new device may be refused `key_entry_limit` here — see
+   [Key entries](#key-entries-identity-products).
 
 :::note[One 401 for several causes]
 Unknown key, revoked key, missing license, and dead license all answer `401 unauthorized` with
@@ -150,6 +156,10 @@ atomically in the database. Either failure is:
 
 with status `403`. A non-positive limit denies rather than meaning "unlimited".
 
+On an Identity product the claim also records the [key entry](#key-entries-identity-products), in
+the same database batch as the seat: a claim that loses the ordinal race rolls the entry back
+with it, and of concurrent calls from one device only one records.
+
 `manageUrl` is the customer-portal link that frees a seat (WIRE-CONTRACT-V4 §5.3), built by
 `core/manageUrl.ts` and present only while the product's portal is on. For a licence attached to
 an account it opens the free-device flow for that licence
@@ -174,6 +184,46 @@ The rows the binding consists of, written only once a seat is granted:
 - Or, when no fingerprint was presented and the mode is not `off`, an `unverified` marker row —
   written only if no prior row exists.
 - The KV token record: product, device id, license id.
+
+## Key entries (Identity products)
+
+A **key entry** is someone typing the licence key to use it (WIRE-CONTRACT-V4 §12.2). While the
+product's Identity service is on, every licence counts them, so a key passed around in public
+eventually stops working on new devices and the person is pointed at an account instead (see
+**key entry** and **key-entry limit** in [Concepts & terminology](/docs/start/concepts/)).
+
+- **What counts.** A new device that takes a seat through `/license/activate` (surface `app`), a
+  browser key session through `/identity/session/license` (`browser`, once per enrolment of the
+  licence's `browser:<licenseId>` device), and a portal claim that adds the key to an account
+  (`portal`). Nothing else: not an enrolled device entering the key again, not a refused or failed
+  attempt, not token rotation, offline grace or a document fetch, not
+  [enrollment](/docs/services/license/enrollment/), store bindings or sign-in.
+- **The member.** Every Identity-on success carries `"keyEntries": {"used": 3, "limit": 10}`,
+  an enrolled device's included. `used` may exceed `limit` (concurrent entries at the last one,
+  portal claims, a period with refusals off); an app shows `max(0, limit − used)` entries left.
+- **The limit.** The product setting `identity.keyEntry.limit`: 1 to 100, default 10, never
+  unlimited while Identity is on.
+- **The refusal.** While the platform switch `identity.keyEntryRefusals` is on, a new device whose
+  key belongs to a usable licence in no account, at or past its limit, is refused:
+
+  ```json
+  {
+    "error": "key_entry_limit",
+    "message": "key entry limit reached",
+    "manageUrl": "https://key.plrs.im/activate?product=djdl",
+    "keyEntries": { "used": 10, "limit": 10 }
+  }
+  ```
+
+  with status `403`. `manageUrl` opens the portal's activate page, where the key joins an
+  account; it is omitted while the product's portal is off. The refusal is logged with the
+  licence's other refusals (reason `key_entry_limit`). It is not an auth failure: an SDK keeps
+  its state and offers the link behind a user action. A device already using the key is never
+  refused.
+
+- **The switch stays off** until the SDKs that show the refusal are released. Counting runs
+  either way, so the meter is right on the day the switch turns on.
+- **Identity off:** nothing is counted or refused, and the member is absent.
 
 ## The fingerprint body
 
@@ -257,11 +307,16 @@ the portal, which authenticates the license owner.
   downgrade the existing devices keep working and the next activation is `403 device_limit`.
 - `test/fingerprintPolicy.test.ts` — the admin fingerprint reset clears a device's binding
   **without** deauthorizing it, so a false-positive drift lockout does not cost the user a seat.
+- `test/keyEntries.test.ts` — key entries: racing seat claims from one device write one entry,
+  racing new devices write one per seat won, a refusal writes none, the refusal applies only with
+  the switch on to a usable licence in no account, and an enrolled device's document is
+  byte-for-byte the same with counting on. The transcripts `keyentry-limit.json`,
+  `keyentry-refusals-off.json` and `keyentry-identity-off.json` pin what an SDK sees.
 
 ## Reference
 
 - [Public route table](/docs/reference/routes/) — every route with its owning service.
 - [Wire error codes](/docs/reference/error-codes/) — `unauthorized`, `device_limit`,
-  `fingerprint_required`, `hardware_mismatch`, `rate_limited`, `bad_request`.
+  `key_entry_limit`, `fingerprint_required`, `hardware_mismatch`, `rate_limited`, `bad_request`.
 - [The license model](/docs/services/license/model/) — seat pools, dormancy, and where
   `deviceLimit` is resolved.
