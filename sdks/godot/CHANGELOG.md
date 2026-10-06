@@ -19,6 +19,10 @@ The SDK parity pass (`notes/SDK-PARITY-PASS.md` §5.6).
   `attestation_required`, `managed_by_admin`, `not_entitled`, pack, commerce and mint refusals.
 - **Attest and retry.** Edge-mint, gated downloads and pack objects, and the commerce claim
   attest once on a 403 `attestation_required` and retry once (`PKeyOptions.auto_attest`).
+- **`update.feed_url(kind, opts)`** (`update.feeds`): the appcast, WinSparkle, Velopack
+  (releases file or feed directory), App Installer and zsync feed URLs from discovery's
+  templates, with the channel-alias rewrite and a typed `unsupported (product)` when the product
+  publishes no template.
 - **Settings persist by default** in `user://pkey_settings.cfg` (`PKeyOptions.settings_path`).
 - **`identity.current()`, `identity.sign_out()`**, a persisted `set_channel()` that update
   checks, decide and the dev menu read, `crash_tags()` and `PolarisKey.distribution`. No

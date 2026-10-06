@@ -1001,7 +1001,7 @@ static func capabilities() -> Dictionary:
 		"release.distribution": {"status": "implemented", "service": "distribution", "na": []},
 		"update.check": {"status": "implemented", "service": "update", "na": []},
 		"update.feed": {"status": "implemented", "service": "update", "na": []},
-		"update.feeds": {"status": "planned", "service": "update", "na": []},
+		"update.feeds": {"status": "implemented", "service": "update", "na": []},
 		"update.decide": {"status": "implemented", "service": "update", "na": []},
 		"update.content": {"status": "implemented", "service": "update", "na": []},
 		"update.driver": {"status": "implemented", "service": "update", "na": [{"runtime": "ios", "reason": "outlet"}]},
@@ -1040,4 +1040,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "c524503bb9f13f840dfc3bd8fbffe41f424631d61999b40efed0ba49dcae8931"
+const CAPABILITY_DIGEST := "96dd32e06b6d56186db2427667f6a839b2912503eb0a62b95e4f88e8d90984fd"

@@ -183,9 +183,8 @@
       "status": "implemented"
     },
     "update.feeds": {
-      "status": "planned",
-      "wp": "SP-26",
-      "note": "The updater builds the Sparkle appcast, WinSparkle and the Velopack feed directory (PKeyUpdater.feed_url, PKeyDiscovery.appcast_url_from) for this build's channel, but not the App Installer or zsync feeds, a Velopack releases.<velopackChannel> file, the channel-alias rewrite, or the typed unsupported (product) feed-url-matrix.json expects."
+      "status": "implemented",
+      "note": "SP-26: PolarisKey.update.feed_url(kind, {channel, velopack_channel, build_id, arch}) (PKeyUpdate.feed_url_for) expands discovery's update.endpoints templates for appcast, winsparkle, velopack (the releases.<velopack_channel> file, or the UpdateManager feed directory without one), appInstaller and zsync; an absent channel is this build's or stable, an alias is rewritten through CHANNEL_ALIASES, each value is encodeURIComponent-encoded, and a missing template answers the typed unsupported (product). PKeyUpdater.feed_url (the native bridges' feeds) delegates to it; every feed-url-matrix.json row on the editor and the release template."
     },
     "update.decide": {
       "status": "implemented"

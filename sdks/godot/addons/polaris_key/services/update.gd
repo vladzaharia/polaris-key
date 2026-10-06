@@ -673,6 +673,71 @@ func appcast_url(channel := "", arch := "") -> String:
 	return PKeyDiscovery.appcast_url_from(core.discovery_manifest, c, arch)
 
 
+## The feeds a native updater polls (`update.feeds`, SDK parity pass §3.7).
+const FEED_KINDS := ["appcast", "winsparkle", "velopack", "appInstaller", "zsync"]
+
+
+## The URL a native updater polls (`update.feeds`, conformance/corpus/v2/feed-url-matrix.json;
+## sdk-node `update.feedUrl`), expanded from this session's discovery `update.endpoints`
+## templates; no host is ever built here. `kind` is one of FEED_KINDS; `opts`:
+##   channel           the release channel (default: this build's, else `stable`); an alias
+##                     (`staging`, `latest`) is rewritten through CHANNEL_ALIASES first
+##   velopack_channel  `velopack`: the channel the app was packed with (`win-x64`) names the
+##                     releases.<velopack_channel>.json file; without it the answer is the feed
+##                     directory Velopack's UpdateManager opens (the template up to `releases.`)
+##   build_id          `zsync`: the AppImage build's artifact-map id (required)
+##   arch              `appcast`: the `?arch=` query
+## Each value is percent-encoded as encodeURIComponent. The channel name is not validated here
+## (the gate pins channel validity). ok with detail {kind, url}; the typed unsupported (reason
+## `product`) before discover(), with Update off, or when the document has no template for
+## `kind` (a Worker before P3-09); `invalid-options` for an unknown kind or a missing build_id.
+func feed_url(kind: String, opts := {}) -> PKeyResult:
+	return feed_url_for(_core(), kind, opts)
+
+
+## feed_url over `core`'s discovery (PKeyUpdater reaches it without the service node).
+static func feed_url_for(core: PKeyCore, kind: String, opts := {}) -> PKeyResult:
+	if not FEED_KINDS.has(kind):
+		return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "The feed kind must be one of %s, not %s." % [", ".join(FEED_KINDS), JSON.stringify(kind)])
+	var feature := PKeyConstants.Feature.UPDATE_DRIVER
+	var product := PKeyConstants.UnsupportedReason.PRODUCT
+	if core == null or core.discovery_manifest == null:
+		return PKeyResult.unsupported(feature, product, "Discovery has not been loaded (call discover()).")
+	var requested := String(opts.get("channel", ""))
+	if requested == "":
+		requested = core.channel if core.channel != "" else PKeyConstants.CHANNEL_STABLE
+	var channel := String(PKeyConstants.CHANNEL_ALIASES.get(requested, requested))
+	if kind == "appcast":
+		var appcast := PKeyDiscovery.appcast_url_from(core.discovery_manifest, channel, String(opts.get("arch", "")))
+		if appcast == "":
+			return PKeyResult.unsupported(feature, product, "The product publishes no Sparkle appcast.")
+		return PKeyResult.success({"kind": kind, "url": appcast})
+	var template := _endpoint(core.discovery_manifest, "update", kind)
+	if template == "":
+		return PKeyResult.unsupported(feature, product, "The product publishes no %s feed." % kind)
+	var values := {"channel": channel}
+	if template.contains("{velopackChannel}"):
+		var vc := String(opts.get("velopack_channel", ""))
+		if vc == "":
+			var cut := template.rfind("releases.")
+			if cut < 0:
+				return PKeyResult.unsupported(feature, product, "The velopack feed template has no releases. file to cut the directory from.")
+			template = template.substr(0, cut)
+		else:
+			values["velopackChannel"] = vc
+	if template.contains("{buildId}"):
+		var build_id := String(opts.get("build_id", ""))
+		if build_id == "":
+			return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "A zsync feed needs build_id (the AppImage build's artifact-map id).")
+		values["buildId"] = build_id
+	var url := template
+	for name in values:
+		url = url.replace("{%s}" % name, PKeyUri.component(values[name]))
+	if not (url.begins_with("https://") or url.begins_with("http://")):
+		url = PKeyTransport.resolve(core.base_url + "/", url)
+	return PKeyResult.success({"kind": kind, "url": url})
+
+
 ## `channel` as this SDK sends it (PKeyChannel.normalize_header), or null when it is not a channel
 ## name.
 static func canonical_channel(channel: String, version: String) -> Variant:
