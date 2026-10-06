@@ -14,7 +14,9 @@
  * App's inventory and each page's probe are cached in this isolate for 60 seconds, so a picker
  * that re-renders, searches or polls for a new installation does not re-list GitHub each time.
  * Nothing is written. An App that is not configured answers `configured: false` with empty
- * lists (the wizard then offers From scratch only); GitHub refusing answers 502.
+ * lists (the wizard then offers From scratch only). Suspended installations are not listed; an
+ * installation whose repositories cannot be read answers `repositoryCount: null` with
+ * `listingError`, and the rest still list. GitHub refusing the App itself answers 502.
  *
  * Rule 10: documented in `openapi/polaris-key.v3.yaml` (tag `admin`) and pinned in
  * `routeCoverage.test.ts`'s ADMIN_KIND_PATHS.
@@ -49,7 +51,11 @@ const MAX_LIMIT = 100;
 
 interface Inventory {
   app: GithubAppInfo;
-  installations: (GithubInstallation & { repositoryCount: number })[];
+  installations: (GithubInstallation & {
+    /** Null when this installation's repositories could not be listed (`listingError`). */
+    repositoryCount: number | null;
+    listingError: string | null;
+  })[];
   repositories: GithubRepository[];
 }
 
@@ -73,18 +79,27 @@ async function inventory(
     getAppInfo(env, now, fetchImpl),
     listInstallations(env, now, fetchImpl),
   ]);
+  // Each installation is listed on its own: one that GitHub refuses (a token it will not mint,
+  // a listing that fails) is reported with `listingError`, and the others still list.
   const lists = await Promise.all(
     installs.map((i) =>
-      listInstallationRepositories(env, i.id, now, fetchImpl),
+      listInstallationRepositories(env, i.id, now, fetchImpl).then(
+        (repos) => ({ repos, error: null }),
+        (e: unknown) => ({
+          repos: null,
+          error: e instanceof Error ? e.message : "github listing failed",
+        }),
+      ),
     ),
   );
   const value: Inventory = {
     app,
     installations: installs.map((i, n) => ({
       ...i,
-      repositoryCount: lists[n]!.length,
+      repositoryCount: lists[n]!.repos?.length ?? null,
+      listingError: lists[n]!.error,
     })),
-    repositories: lists.flat(),
+    repositories: lists.flatMap((l) => l.repos ?? []),
   };
   inventoryCache = { at: now, value };
   return value;

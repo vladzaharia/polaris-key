@@ -11283,6 +11283,7 @@ paths:
                         repositorySelection: selected
                         permissions: { contents: read, metadata: read }
                         repositoryCount: 2
+                        listingError: null
                     repositories:
                       - installationId: 11
                         owner: acme
@@ -13286,6 +13287,7 @@ components:
                 repositorySelection,
                 permissions,
                 repositoryCount,
+                listingError,
               ]
             properties:
               id: { type: integer }
@@ -13295,7 +13297,14 @@ components:
               permissions:
                 type: object
                 additionalProperties: { type: string }
-              repositoryCount: { type: integer }
+              repositoryCount:
+                type: [integer, "null"]
+                description: Null when this installation's repositories could not be listed.
+              listingError:
+                type: [string, "null"]
+                description: >-
+                  Why this installation's repositories could not be listed (GitHub refused its
+                  token or its listing); the other installations still list.
         repositories:
           type: array
           items: { $ref: "#/components/schemas/AdminGithubRepository" }

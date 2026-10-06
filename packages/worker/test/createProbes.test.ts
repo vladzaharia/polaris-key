@@ -645,6 +645,7 @@ describe("repositories the App can read (W22)", () => {
         repositorySelection: "selected",
         permissions: { contents: "read", metadata: "read" },
         repositoryCount: 4,
+        listingError: null,
       },
     ]);
     expect(body.repositories.map((r) => r.fullName)).toEqual([
@@ -751,6 +752,64 @@ describe("repositories the App can read (W22)", () => {
       app: null,
       repositories: [],
     });
+  });
+
+  it("lists the other installations when one is suspended or refuses a token", async () => {
+    const db = makeTestDb();
+    const env = envFor();
+    const base = githubStub([]);
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", (async (input, init) => {
+      const url = String(input);
+      calls.push(url);
+      if (url.startsWith("https://api.github.com/app/installations?"))
+        return Response.json([
+          {
+            id: 11,
+            account: { login: "acme", type: "Organization" },
+            repository_selection: "selected",
+            permissions: { contents: "read", metadata: "read" },
+          },
+          {
+            id: 12,
+            account: { login: "broken", type: "Organization" },
+            repository_selection: "all",
+            permissions: { contents: "read", metadata: "read" },
+          },
+          {
+            id: 13,
+            account: { login: "paused", type: "User" },
+            repository_selection: "all",
+            permissions: { contents: "read", metadata: "read" },
+            suspended_at: "2026-09-01T00:00:00Z",
+          },
+        ]);
+      if (url.endsWith("/installations/12/access_tokens"))
+        return new Response("forbidden", { status: 403 });
+      return base(input, init);
+    }) as FetchImpl);
+    const res = await call(env, db, "GET", "/api/github/repositories");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      installations: Array<Record<string, unknown>>;
+      total: number;
+    };
+    expect(body.installations).toEqual([
+      expect.objectContaining({
+        id: 11,
+        repositoryCount: 4,
+        listingError: null,
+      }),
+      expect.objectContaining({
+        id: 12,
+        account: "broken",
+        repositoryCount: null,
+        listingError: "installation token failed: 403",
+      }),
+    ]);
+    expect(body.total).toBe(4);
+    // The suspended installation is never asked for a token.
+    expect(calls.some((u) => u.includes("/installations/13/"))).toBe(false);
   });
 
   it("is platform-admin only, GET only, and 502s when GitHub refuses", async () => {

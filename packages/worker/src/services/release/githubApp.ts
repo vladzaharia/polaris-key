@@ -433,7 +433,10 @@ export interface GithubInstallation {
   permissions: Record<string, string>;
 }
 
-/** Every installation of the App (`GET /app/installations`, as the App). */
+/**
+ * Every active installation of the App (`GET /app/installations`, as the App). Suspended
+ * installations are left out: GitHub refuses them a token, so they can list nothing.
+ */
 export async function listInstallations(
   env: Env,
   now: number,
@@ -455,9 +458,12 @@ export async function listInstallations(
         account?: { login?: unknown; type?: unknown } | null;
         repository_selection?: unknown;
         permissions?: unknown;
+        suspended_at?: unknown;
       };
       if (typeof row.id !== "number" || typeof row.account?.login !== "string")
         continue;
+      // A suspended installation cannot mint a token (GitHub answers 403); it reads nothing.
+      if (row.suspended_at != null) continue;
       const permissions: Record<string, string> = {};
       if (row.permissions && typeof row.permissions === "object")
         for (const [k, v] of Object.entries(row.permissions))

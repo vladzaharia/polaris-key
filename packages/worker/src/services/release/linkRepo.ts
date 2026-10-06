@@ -426,11 +426,17 @@ async function createSlugProblems(
   slug: string,
   owner: string,
   repo: string,
-): Promise<{ registeredAs: string | null; problems: ManifestProblem[] }> {
+): Promise<{
+  registeredAs: string | null;
+  /** The slug check's verdict, or null when the repository is a product already (not run). */
+  verdict: SlugCheck | null;
+  problems: ManifestProblem[];
+}> {
   const registeredAs = await productForRepository(db, owner, repo);
   if (registeredAs)
     return {
       registeredAs,
+      verdict: null,
       problems: [
         {
           check: "repository",
@@ -444,7 +450,8 @@ async function createSlugProblems(
       ],
     };
   const verdict = await checkSlug(db, slug);
-  if (verdict.status === "available") return { registeredAs, problems: [] };
+  if (verdict.status === "available")
+    return { registeredAs, verdict, problems: [] };
   const message =
     // F-03: the system product is created only by the platform bootstrap (`ensureSystemProduct`,
     // `POST /manage/api/platform/feeds/bootstrap`), never by registering a repository.
@@ -457,6 +464,7 @@ async function createSlugProblems(
           : `invalid slug: ${verdict.message}`;
   return {
     registeredAs,
+    verdict,
     problems: [
       {
         check: "slug",
@@ -667,7 +675,7 @@ export async function prepareCreate(
   const manifest = result.manifest;
   const slug = manifest.product.slug;
 
-  const { registeredAs, problems } = await createSlugProblems(
+  const { registeredAs, verdict, problems } = await createSlugProblems(
     db,
     slug,
     owner,
@@ -702,7 +710,7 @@ export async function prepareCreate(
       name: manifest.product.name,
       presentation: manifest.presentation ?? null,
     },
-    slug: await checkSlug(db, slug),
+    slug: verdict ?? (await checkSlug(db, slug)),
     registeredAs,
     services: Object.entries(manifest.services)
       .filter(([, v]) => v.enabled)
