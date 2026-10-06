@@ -471,19 +471,45 @@ const TABLE_OWNERS = {
  * The column names a `CREATE TABLE` body declares, in order. Table constraints (`PRIMARY KEY`,
  * `UNIQUE`, `FOREIGN KEY`, `CHECK`, `CONSTRAINT`) and comments are skipped. Each keyword is
  * matched as a whole word, so a column whose name only starts with one (`checked_at`,
- * `unique_hash`) is still a column.
+ * `unique_hash`) is still a column. The body is split into its definitions at the commas outside
+ * parentheses and quotes, not at line breaks, so a definition that wraps (a `FOREIGN KEY` whose
+ * `REFERENCES` clause sits on the next line) is one definition, not a column named `REFERENCES`.
  */
 export function createTableColumns(body) {
-  return body
-    .split("\n")
-    .map((line) => line.trim().replace(/,$/, ""))
+  const definitions = [];
+  let current = "";
+  let depth = 0;
+  let quote = null;
+  for (let i = 0; i < body.length; i++) {
+    const c = body[i];
+    if (quote) {
+      if (c === quote) quote = null;
+    } else if (c === "-" && body[i + 1] === "-") {
+      // A comment runs to the end of its line; keep the line break so words stay apart.
+      const end = body.indexOf("\n", i);
+      i = (end === -1 ? body.length : end) - 1;
+      continue;
+    } else if (c === "'" || c === '"') quote = c;
+    else if (c === "(") depth++;
+    else if (c === ")") depth--;
+    else if (c === "," && depth === 0) {
+      definitions.push(current);
+      current = "";
+      continue;
+    }
+    current += c;
+  }
+  definitions.push(current);
+  return definitions
+    .map((definition) => definition.trim())
     .filter(
-      (line) =>
-        line &&
-        !line.startsWith("--") &&
-        !/^(PRIMARY\s+KEY|UNIQUE|FOREIGN\s+KEY|CHECK|CONSTRAINT)\b/i.test(line),
+      (definition) =>
+        definition &&
+        !/^(PRIMARY\s+KEY|UNIQUE|FOREIGN\s+KEY|CHECK|CONSTRAINT)\b/i.test(
+          definition,
+        ),
     )
-    .map((line) => line.split(/\s+/)[0]);
+    .map((definition) => definition.split(/\s+/)[0]);
 }
 
 function dataModel() {

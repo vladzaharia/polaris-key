@@ -49,6 +49,32 @@ describe("the data model's column parser", () => {
     ]);
   });
 
+  it("keeps a wrapped table constraint one definition, not a column", () => {
+    // 0016's rebuilt release_download_tokens wraps a FOREIGN KEY's REFERENCES clause onto the
+    // next line; split at line breaks, that line read as a column named REFERENCES.
+    const body = `
+  product     TEXT NOT NULL REFERENCES products(slug),
+  release_id  TEXT NOT NULL, -- a trailing comment, (with a paren
+  artifact_id TEXT DEFAULT 'a,(b',
+  FOREIGN KEY (product, release_id, artifact_id)
+    REFERENCES release_artifacts(product, release_id, artifact_id),
+  CHECK (artifact_id IS NULL
+    OR length(artifact_id) > 0)`;
+    expect((createTableColumns as (body: string) => string[])(body)).toEqual([
+      "product",
+      "release_id",
+      "artifact_id",
+    ]);
+    const page = (EMITTERS as Record<string, () => string>)[
+      "data-model.mdx"
+    ]!();
+    const row = page
+      .split("\n")
+      .find((l) => l.startsWith("| `release_download_tokens`"));
+    expect(row).toContain("`created_at`");
+    expect(row).not.toContain("REFERENCES");
+  });
+
   it("lists hosted_assets.checked_at on the data-model page", () => {
     const page = (EMITTERS as Record<string, () => string>)[
       "data-model.mdx"
