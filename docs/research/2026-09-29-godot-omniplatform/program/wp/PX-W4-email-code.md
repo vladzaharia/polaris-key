@@ -76,9 +76,17 @@ Codes work across devices where links do not ([PORTAL.md §4.4](../../../../desi
   the start's enumeration rule (a refused send answers like a sent one). It retires the flow
   atomically, so the previous code and link stop working and two racing resends mail once. The
   start and the resend now answer `resendIn` for the card's countdown.
-- **Rule 10 for portal routes is OpenAPI after all.** PORTAL.md §10.1 says the spec must not list
+- **Rule 10 for portal routes is OpenAPI after all.** PORTAL.md §10.1 said the spec must not list
   `/api/*`; the code moved on (PX-W1 and I-07 pinned portal routes in `PORTAL_KIND_PATHS`), so the
-  resend gets its OpenAPI operation and `routeCoverage` row, plus the docs portal page.
+  resend gets its OpenAPI operation and `routeCoverage` row, plus the docs portal page. §10.1 is
+  corrected to match (lead, 2026-10-06).
+- **The card's half ships with it (lead, 2026-10-06).** So the resend works end to end before PX-12,
+  `SignInPage.tsx` resends through `POST /api/signin/email/resend` rather than a second start
+  (which would need a fresh Turnstile token and leave the old link alive), counts down from
+  `resendIn`, shows a 429's `retryAfter` as the countdown, says at the per-flow cap that no more codes
+  can be sent and the latest still works, and goes back to the email step (address kept) on
+  `signin_expired`. So that "429 without `retryAfter`" means only the cap, the resend's per-address
+  minute refusal carries `retryAfter: 60` too. PX-12 keeps the rest of the card.
 - **Concurrency test.** The I-02 primitive already had one (`emailLimits.test.ts`, the workerd
   `singleUse.test.ts`); PX-W4 adds the route-level race in both lanes (`test/portalEmailCode.test.ts`,
   `test-workerd/emailCode.test.ts`).
