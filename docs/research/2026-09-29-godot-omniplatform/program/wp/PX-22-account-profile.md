@@ -41,6 +41,29 @@ Owner decision: import profile data from identity providers ([PORTAL.md §4.30](
 
 - **Reuse first** (§5.1): build on the console kit in `packages/admin/src/ui/` and `@polaris-key/brand/react`; new components live in `packages/admin/src/portal/components/` unless the console can use them too. Everything stays CSP-safe: no inline styles or scripts, images same-origin only (`img-src 'self' data:`).
 
+## Corrections (verified against the code, PX-22)
+
+- **Consent and TV done do not exist in the portal yet.** The consent person row (frame 12) and the
+  TV done row (frame 15) are PX-14's (`AppConsent`, the device-code done step), still `todo`. PX-22
+  ships `Avatar` ready for them (`picture` from the signed-in session, never before
+  authentication) and puts it in the header chip, the account menu and Account → Profile. PX-14
+  must pass the session's `avatarUrl` to `Avatar` in those two rows.
+- **The API is PX-W16's as built:** `GET /api/me` carries `avatarUrl` (256 px; the `-96` suffix
+  names the small one), `GET /api/me/profile` returns `{ profile }` with `displayNameSource` /
+  `pictureSource` (`provider` with `linkId`, `typed`, `upload`, `initials`), the explicit flags and
+  `sources[]` (`linkId`, `provider`, `label`, `name`, `picture`). `PATCH` takes `name` or
+  `nameFrom` and `picture: "initials" | {from} | {upload}`; refusals carry `reason`
+  (`invalid_name`, `unknown_source`, `no_name`, `no_picture`, `unknown_upload`, `too_large`,
+  `unsupported_type`, `unreadable_image`) and the editor's copy is chosen from it.
+- **Copy.** UK-02a's catalog serves the SDK UI kits and the portal does not read it, so the
+  strings live in `packages/admin/src/portal/copy/profile.ts` under the `profile.*` keys they move
+  to, marked for the catalog.
+- **`Avatar` stays in `portal/components/`.** It has no portal imports (the badge is a slot), so
+  UX-13 can move it to `ui/` when the console's account chip adopts it (EXPERIENCE.md §0.6 P5).
+- **Source line.** A persona names the account ("picture from Steam (marafox)", frame 36); an
+  address is left out ("Name from Apple", frame 38), since it is often an Apple relay address and
+  Sign-in methods lists it.
+
 ## Steps
 
 1. Re-read the PORTAL.md sections above and the matching mockups in `docs/design/portal/`; verify this brief against the code and record any correction here.
