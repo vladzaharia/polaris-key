@@ -26,6 +26,7 @@ const VERBS: Record<string, string> = {
   "license.create": "created license",
   "license.update": "updated license",
   "license.tier.change": "changed the tier of license",
+  "license.device_limit.set": "changed the device limit of license",
   "license.overrides": "changed config overrides of license",
   "license.enable": "enabled license",
   "license.disable": "disabled license",

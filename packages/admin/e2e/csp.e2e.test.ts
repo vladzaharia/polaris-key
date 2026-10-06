@@ -64,6 +64,35 @@ const ROUTES: Record<string, unknown> = {
   "/manage/api/products/djdl": { product: row("djdl", "DJDL") },
   "/manage/api/products/djdl/license/licenses": { licenses: [] },
   "/manage/api/products/djdl/license/tiers": { tiers: [] },
+  // LX-14a: a licence record for the Device limit… sheet.
+  "/manage/api/products/djdl/license/licenses/lic_1": {
+    id: "lic_1",
+    name: "Ada Lovelace",
+    email: "ada@x.io",
+    status: "active",
+    activatedAt: 1,
+    expiresAt: null,
+    keyCount: 1,
+    activeKeyCount: 1,
+    deviceCount: 4,
+    profile: null,
+    profiles: [],
+    tier: null,
+    channels: [],
+    minVersion: null,
+    maxVersion: null,
+    identityProvider: "oidc",
+    deviceLimit: 5,
+    effectiveDeviceLimit: 5,
+    deviceLimitSource: "license",
+    inheritedDeviceLimit: 3,
+    inheritedDeviceLimitSource: "product",
+    groups: [],
+    maxOfflineDays: null,
+    overrides: { config: {}, secrets: {}, entitlements: {} },
+    keys: [],
+    devices: [],
+  },
   "/manage/api/products/djdl/config/profiles": { profiles: [] },
   "/manage/api/products/djdl/release/releases": { releases: [] },
   "/manage/api/platform/version": {
@@ -101,7 +130,7 @@ const ROUTES: Record<string, unknown> = {
       {
         key: "deviceLimit",
         type: "integer",
-        rule: "The tier's device limit, else the license's, else the product default.",
+        rule: "The license's own device limit, else the tier's, else the license's deviceLimit entitlement, else the product default.",
       },
     ],
     prefixes: ["license.", "app.", "pkey."],
@@ -550,6 +579,29 @@ describe("overlays under the Worker's CSP", () => {
     expect(await violations(page), "registry tokens: CSP violations").toEqual(
       [],
     );
+    await page.context().close();
+  });
+
+  it("the licence record's Device limit… sheet (LX-14a)", async () => {
+    const page = await open({ width: 1440, height: 900 });
+    await page.evaluate(() => {
+      location.hash = "#/p/djdl/license/licenses/lic_1";
+    });
+    await page
+      .locator("[data-page-title]", { hasText: "Ada Lovelace" })
+      .first()
+      .waitFor();
+    expect(await violations(page), "licence record: CSP violations").toEqual(
+      [],
+    );
+    await check(page, "device limit sheet", async () => {
+      await page.getByRole("button", { name: "More actions" }).first().click();
+      await page.getByRole("menuitem", { name: "Device limit…" }).click();
+      const sheet = page.getByRole("dialog", { name: "Device limit" });
+      await sheet.waitFor();
+      await sheet.getByRole("textbox", { name: /Devices/ }).fill("2");
+      await sheet.getByText("None is signed out").waitFor();
+    });
     await page.context().close();
   });
 

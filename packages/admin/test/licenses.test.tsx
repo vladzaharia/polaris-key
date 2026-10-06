@@ -280,7 +280,7 @@ describe("Create license", () => {
       name: "Effective policy",
     });
     expect(within(policy).getByText("Device limit")).toBeTruthy();
-    expect(within(policy).getAllByText(/\(tier “Edu”\)/).length).toBe(1);
+    expect(within(policy).getAllByText(/\(from Edu\)/).length).toBe(1);
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Create license" }),
     );

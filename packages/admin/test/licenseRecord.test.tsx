@@ -657,3 +657,122 @@ describe("license record: offline bundle", () => {
     );
   });
 });
+
+describe("license record: device limit (LX-14a)", () => {
+  const OWN = {
+    ...DETAIL,
+    deviceLimit: 3,
+    effectiveDeviceLimit: 3,
+    deviceLimitSource: "license" as const,
+    inheritedDeviceLimit: 5,
+    inheritedDeviceLimitSource: "tier" as const,
+  };
+
+  it("shows the effective limit and its source on the header, the policy and the meter", async () => {
+    bootLicense(REC, { routes: { [LIC]: OWN } });
+    await header();
+    expect(screen.getByTestId("record-device-limit").textContent).toBe(
+      "Device limit 3 · set on this license",
+    );
+    const tabs = screen.getByRole("navigation", { name: "License sections" });
+    expect(
+      await within(tabs).findByRole("link", { name: /Devices\s*2\/3/ }),
+    ).toBeTruthy();
+    const policy = await screen.findByRole("region", {
+      name: "Effective policy",
+    });
+    expect(within(policy).getByText(/\(set on this license\)/)).toBeTruthy();
+
+    await userEvent.click(screen.getByRole("link", { name: /Devices/ }));
+    expect((await screen.findByTestId("seat-limit-source")).textContent).toBe(
+      "Device limit: 3 · set on this license",
+    );
+  });
+
+  it("names the tier when the limit is inherited", async () => {
+    bootLicense(REC, {
+      routes: {
+        [LIC]: {
+          ...DETAIL,
+          deviceLimit: null,
+          effectiveDeviceLimit: 5,
+          deviceLimitSource: "tier",
+          inheritedDeviceLimit: 5,
+          inheritedDeviceLimitSource: "tier",
+        },
+      },
+    });
+    await header();
+    expect(screen.getByTestId("record-device-limit").textContent).toBe(
+      "Device limit 5 · from Pro",
+    );
+  });
+
+  it("sets a lower limit from the sheet, warning that nobody is signed out", async () => {
+    const log = bootLicense(REC, {
+      routes: {
+        [LIC]: {
+          ...DETAIL,
+          deviceLimit: null,
+          effectiveDeviceLimit: 5,
+          deviceLimitSource: "tier",
+          inheritedDeviceLimit: 5,
+          inheritedDeviceLimitSource: "tier",
+        },
+        [`PATCH ${LIC}`]: {
+          ok: true,
+          id: "lic_1",
+          overLimit: { deviceCount: 2, deviceLimit: 1 },
+        },
+      },
+    });
+    await header();
+    await more("Device limit…");
+    const sheet = await screen.findByRole("dialog", { name: "Device limit" });
+    const field = within(sheet).getByRole("textbox", { name: /Devices/ });
+    expect(field.getAttribute("placeholder")).toBe("Inherits 5 from Pro");
+    expect(
+      within(sheet).getByRole("button", { name: "Use inherited limit" }),
+    ).toHaveProperty("disabled", true);
+    await userEvent.type(field, "1");
+    expect(
+      within(sheet).getByText(
+        "2 devices are signed in. None is signed out; new devices are refused until the count is under 1.",
+      ),
+    ).toBeTruthy();
+    await userEvent.click(within(sheet).getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(writes(log)).toEqual([
+        expect.objectContaining({
+          path: LIC,
+          method: "PATCH",
+          body: { deviceLimit: 1 },
+        }),
+      ]),
+    );
+    const results = await axe(document.body);
+    expect(results.violations.map((v) => v.id)).toEqual([]);
+  });
+
+  it("Use inherited limit clears it with null", async () => {
+    const log = bootLicense(REC, { routes: { [LIC]: OWN } });
+    await header();
+    await more("Device limit…");
+    const sheet = await screen.findByRole("dialog", { name: "Device limit" });
+    expect(
+      within(sheet).getByRole("textbox", { name: /Devices/ }),
+    ).toHaveProperty("value", "3");
+    await userEvent.click(
+      within(sheet).getByRole("button", { name: "Use inherited limit" }),
+    );
+    await waitFor(() =>
+      expect(writes(log)).toEqual([
+        expect.objectContaining({
+          path: LIC,
+          method: "PATCH",
+          body: { deviceLimit: null },
+        }),
+      ]),
+    );
+  });
+});

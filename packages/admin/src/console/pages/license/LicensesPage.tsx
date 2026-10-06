@@ -7,7 +7,7 @@
 
 import * as React from "react";
 import { Plus } from "lucide-react";
-import type { LicenseSummary, TierSummary } from "../../../api.js";
+import type { LicenseSummary } from "../../../api.js";
 import { useProduct } from "../../data/hooks.js";
 import { mutate } from "../../data/mutations.js";
 import { r } from "../../routes.js";
@@ -37,6 +37,8 @@ import {
   LICENSE_STATE_LABELS,
   LicenseStatus,
   licenseState,
+  seatLimitOf,
+  seatLimitText,
   useLicenses,
   useTiers,
   type LicenseState,
@@ -45,17 +47,6 @@ import {
 const STATES: LicenseState[] = ["active", "expiring", "expired", "disabled"];
 const FACETS = ["status", "tier", "channel", "signin"] as const;
 const NO_TIER = "__none__";
-
-/** The seat limit a license's devices count against: its tier's, else the product's. */
-function seatLimit(
-  l: LicenseSummary,
-  tiers: readonly TierSummary[],
-  productLimit: number | undefined,
-): number | null {
-  const tier = l.tier ? tiers.find((t) => t.id === l.tier) : undefined;
-  const limit = tier?.policyDeviceLimit ?? productLimit;
-  return limit && limit > 0 ? limit : null;
-}
 
 export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
   const licensesQ = useLicenses(slug);
@@ -183,18 +174,29 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
         meta: { priority: 2, numeric: true },
         cell: ({ row }) => {
           const l = row.original;
-          const limit = seatLimit(l, tiers, product?.defaultDeviceLimit);
-          return limit === null ? (
-            <span className="tabular-nums">{l.deviceCount}/—</span>
-          ) : (
-            <Meter
-              label="Seats"
-              hideLabel
-              value={l.deviceCount}
-              max={limit}
-              tone={l.deviceCount > limit ? "warning" : "accent"}
-              className="ml-auto w-28"
-            />
+          // LX-14a: the limit the Worker enforces and where it comes from.
+          const seats = seatLimitOf(l, tiers, product?.defaultDeviceLimit);
+          const limit = seats.limit;
+          return (
+            <div
+              className="ml-auto w-28 text-right"
+              title={seatLimitText(seats)}
+            >
+              {limit === null ? (
+                <span className="tabular-nums">{l.deviceCount}/—</span>
+              ) : (
+                <Meter
+                  label="Seats"
+                  hideLabel
+                  value={l.deviceCount}
+                  max={limit}
+                  tone={l.deviceCount > limit ? "warning" : "accent"}
+                />
+              )}
+              <span className="block truncate text-xs text-fg-muted">
+                {seats.from}
+              </span>
+            </div>
           );
         },
       },

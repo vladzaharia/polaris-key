@@ -2242,7 +2242,18 @@ export interface LicenseSummary {
   oidcSubject?: string;
   modifiedBy?: string;
   modifiedAt?: number;
+  /** LX-14a: the licence's own device limit; `null` inherits. */
+  deviceLimit?: number | null;
+  /** The limit the Worker enforces at the next activation (0: no limit), and its source. */
+  effectiveDeviceLimit?: number;
+  deviceLimitSource?: DeviceLimitSource;
+  /** What "Use inherited limit" falls back to: the tier's, an entitlement's or the product's. */
+  inheritedDeviceLimit?: number;
+  inheritedDeviceLimitSource?: Exclude<DeviceLimitSource, "license">;
 }
+
+/** Where a licence's effective device limit comes from, most specific first (LX-14a). */
+export type DeviceLimitSource = "license" | "tier" | "entitlement" | "product";
 
 export interface KeyDto {
   hash: string;
@@ -2426,6 +2437,8 @@ export interface PatchLicenseBody {
   channels?: string[];
   minVersion?: string | null;
   maxVersion?: string | null;
+  /** LX-14a: the licence's own device limit, a positive integer; `null` inherits again. */
+  deviceLimit?: number | null;
 }
 
 // ── offline bundles ───────────────────────────────────────────────────────────
@@ -3589,8 +3602,9 @@ const rawApi = {
     call<{
       ok: true;
       id: string;
-      /** Present when a tier change lands below the active device count. Existing devices
-       *  are grandfathered; new activations are refused until the count drops. */
+      /** Present when a tier or device-limit change lands below the active device count.
+       *  Existing devices are grandfathered; new activations are refused until the count
+       *  drops. */
       overLimit?: { deviceCount: number; deviceLimit: number };
     }>(`${p(slug)}/license/licenses/${enc(id)}`, {
       method: "PATCH",

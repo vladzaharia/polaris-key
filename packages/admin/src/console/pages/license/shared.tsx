@@ -11,6 +11,7 @@ import { Clock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import {
   api,
+  type DeviceLimitSource,
   type LicenseSummary,
   type ProductDetail,
   type TierSummary,
@@ -135,6 +136,11 @@ export interface PolicyLine {
 
 export interface PolicyInput {
   tier: string | null;
+  /** LX-14a: the licence's own device limit (`null` inherits). */
+  deviceLimit?: number | null;
+  /** A `deviceLimit` entitlement under the tier (profile, store grant, override), when the
+   *  Worker reported one as the inherited source. */
+  entitlementDeviceLimit?: number | null;
   maxOfflineDays: number | null;
   channels: string[];
   minVersion: string | null;
@@ -142,6 +148,80 @@ export interface PolicyInput {
 }
 
 const tierName = (t: TierSummary) => `tier “${t.label || t.id}”`;
+
+// ── Device limit (LX-14a) ──────────────────────────────────────────────────────────────────────
+
+export interface SeatLimit {
+  /** The enforced limit, or `null` when there is none (a product default of 0). */
+  limit: number | null;
+  source: DeviceLimitSource;
+  /** The source in words: "set on this license", "from Pro", "product default". */
+  from: string;
+}
+
+/** A device-limit source in words, as the record, the meter and the list show it. */
+export function deviceLimitFrom(
+  source: DeviceLimitSource,
+  tier: TierSummary | undefined,
+): string {
+  switch (source) {
+    case "license":
+      return "set on this license";
+    case "tier":
+      return tier ? `from ${tier.label || tier.id}` : "from the tier";
+    case "entitlement":
+      return "from an entitlement";
+    default:
+      return "product default";
+  }
+}
+
+/**
+ * The device limit the Worker enforces on a licence, with its source. The Worker reports both
+ * (`effectiveDeviceLimit`, `deviceLimitSource`: the licence's own limit, else the tier's, else a
+ * `deviceLimit` entitlement, else the product default); a response without them (an older
+ * Worker) falls back to the licence's own limit, else the tier's, else the product's.
+ */
+export function seatLimitOf(
+  license: Pick<
+    LicenseSummary,
+    "tier" | "deviceLimit" | "effectiveDeviceLimit" | "deviceLimitSource"
+  >,
+  tiers: readonly TierSummary[],
+  productLimit: number | undefined,
+): SeatLimit {
+  const tier = license.tier
+    ? tiers.find((t) => t.id === license.tier)
+    : undefined;
+  let limit: number | undefined;
+  let source: DeviceLimitSource;
+  if (
+    license.effectiveDeviceLimit !== undefined &&
+    license.deviceLimitSource !== undefined
+  ) {
+    limit = license.effectiveDeviceLimit;
+    source = license.deviceLimitSource;
+  } else if (license.deviceLimit != null) {
+    limit = license.deviceLimit;
+    source = "license";
+  } else if (tier?.policyDeviceLimit != null) {
+    limit = tier.policyDeviceLimit;
+    source = "tier";
+  } else {
+    limit = productLimit;
+    source = "product";
+  }
+  return {
+    limit: limit && limit > 0 ? limit : null,
+    source,
+    from: deviceLimitFrom(source, tier),
+  };
+}
+
+/** "3 · set on this license", "5 · from Pro", "No limit · product default". */
+export function seatLimitText(s: SeatLimit): string {
+  return `${s.limit ?? "No limit"} · ${s.from}`;
+}
 
 /** The stricter floor and the lower ceiling, as `core/entitlements.ts` merges them. */
 function tighter(
@@ -159,7 +239,8 @@ function tighter(
 
 /**
  * What a device on these terms receives, and where each value comes from. Mirrors the Worker:
- * the device limit is the tier's, else the product's (there is no per-license limit); offline
+ * the device limit is the license's own, else the tier's, else a `deviceLimit` entitlement, else
+ * the product's (LX-14a); offline
  * days are the license's, else the product's; channels are the union of the tier's and the
  * license's (none: stable only); the version window takes the tighter bound of each.
  */
@@ -173,12 +254,26 @@ export function effectivePolicy(
   const tier = input.tier ? tiers.find((t) => t.id === input.tier) : undefined;
   const lines: PolicyLine[] = [];
 
-  if (tier?.policyDeviceLimit != null) {
+  if (input.deviceLimit != null) {
+    lines.push({
+      label: "Device limit",
+      value: String(input.deviceLimit),
+      source: "license",
+      from: deviceLimitFrom("license", tier),
+    });
+  } else if (tier?.policyDeviceLimit != null) {
     lines.push({
       label: "Device limit",
       value: String(tier.policyDeviceLimit),
       source: "tier",
-      from: tierName(tier),
+      from: deviceLimitFrom("tier", tier),
+    });
+  } else if (input.entitlementDeviceLimit != null) {
+    lines.push({
+      label: "Device limit",
+      value: String(input.entitlementDeviceLimit),
+      source: "license",
+      from: deviceLimitFrom("entitlement", tier),
     });
   } else {
     const limit = product?.defaultDeviceLimit;
