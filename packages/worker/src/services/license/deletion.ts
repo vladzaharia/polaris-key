@@ -12,6 +12,7 @@
 import type { Db, DbStatement } from "../../core/platform.js";
 import {
   idChunks,
+  LicenseDeleteReason,
   type LicenseDeleteBlocker,
   type LicenseDeleteContributor,
   type LicenseDeleteTarget,
@@ -35,7 +36,7 @@ async function storeGrantBlockers(
     for (const r of rows)
       out.set(r.license_id, [
         {
-          code: "store_grants",
+          code: LicenseDeleteReason.StoreGrants,
           message: `It holds ${r.n} store purchase ${r.n === 1 ? "grant" : "grants"}: a buyer paid for something on it.`,
         },
       ]);

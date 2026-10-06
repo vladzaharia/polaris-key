@@ -49,9 +49,32 @@ export interface LicenseDeleteTarget {
   now: number;
 }
 
+/**
+ * The closed set of reasons a licence deletion is refused. These are not error codes: they ride
+ * inside a 409 `license_not_deletable` body's `reasons[]` (admin console only), so they are named
+ * through this table rather than as `code: "<literal>"` fields, which the error-code registry's
+ * Worker scan (tools/gen-sdk-constants.ts) reads as wire error codes.
+ */
+export const LicenseDeleteReason = {
+  /** The route has no licence-deletion wiring. */
+  Unavailable: "unavailable",
+  /** The licence is active and was issued by the developer; disable it first. */
+  IssuedActive: "issued_active",
+  /** A disabled auto-enrolled licence still bound to its machine blocks re-enrollment. */
+  EnrollGuard: "enroll_guard",
+  /** The licence changed between the verdict and the batch. */
+  Changed: "changed",
+  /** License: it holds store purchase grants. */
+  StoreGrants: "store_grants",
+  /** Distribution: store purchases are recorded against it. */
+  StorePurchases: "store_purchases",
+} as const;
+export type LicenseDeleteReasonCode =
+  (typeof LicenseDeleteReason)[keyof typeof LicenseDeleteReason];
+
 /** Why a licence cannot be deleted. `code` is stable; `message` is the operator's sentence. */
 export interface LicenseDeleteBlocker {
-  code: string;
+  code: LicenseDeleteReasonCode;
   message: string;
 }
 
