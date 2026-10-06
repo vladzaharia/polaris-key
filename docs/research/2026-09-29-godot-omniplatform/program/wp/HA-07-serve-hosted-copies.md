@@ -46,6 +46,44 @@ It turns the stored copies into the owner's outcome, and makes the THREAT-MODEL 
 
 - Rollback: when HA-10's `assets.hosting.enabled` is off, every surface uses today's path. Until HA-10 lands, a code constant does the same.
 
+## Corrections from the code (HA-07, 2026-10-06)
+
+Where the brief and the code disagreed, the code won. As built:
+
+- **The rollback keeps the proxy.** "The GitHub-only fetch is removed" and "turning hosting off
+  restores today's path" (HA-10's acceptance) conflict. While hosted copies are served, the fetch
+  is unreachable: `/media/<p>/<asset>` 302s to the image host's alias, or 404s. The proxy code stays
+  only for the rollback. The rollback is the kill switch (`core/assetHosting.ts`
+  `assetHostingEnabled`, a constant until HA-10) or a deployment with no `IMG_ORIGIN`. Every
+  surface branches on one answer, `hostedImageOrigin(env)` in `core/hostedImages.ts`.
+- **The client record keeps `/media/<p>/icon`.** WIRE-CONTRACT-V4 §12.7.2 and
+  `@polaris-key/protocol/identity` name the same-origin path. Changing it to an image-host URL would
+  be a wire change, so the sign-in card's `iconUrl` stays the `/media` path (`v` is now the copy's
+  hash prefix) and follows the 302.
+- **What counts as a copy.** "When `ready`" means what the image host serves: a stored copy with
+  its `hosted-asset` ref, including a failed or stale re-pull's last good copy. The feeds are
+  stricter: a copy stands in for a listing field only when it was pulled for exactly that field's
+  ref (`pulled_ref`) or an operator claimed the slot. So an outlet override that names other art
+  keeps its own URL (`feeds/art.ts`).
+- **The download page's icon is not in `download.json`.** The model is recorded in a transcript
+  (`distribution-download-model.json`) and replayed by every SDK. The icon is resolved per request
+  beside the cached model, so neither the transcript nor any SDK changes.
+- **Listing rows.** A manifest row never replaces an `admin` row, and never an `import` row either.
+  `import` rows are A-18d's store-exact CI derivation, which S-20 §6.6 keeps as the tool for store
+  art. A CI register replaces a manifest row like any non-admin row, so the two never flip a slot.
+  The slots are `listing.icon` → `icon-master`, `listing.header` → `key-art`, and
+  `listing.screenshot:<n>` → `screenshot:<class>`. The class is inferred from the copy's
+  dimensions; the first screenshot of each class is that class's master. `alpha` is 0 only for a
+  JPEG. The sync runs after a listing pull (the queue consumer) and on Distribution's 15-minute
+  connector cron. HA-05's planner drops slots inside Release's resync, which cannot call
+  Distribution (rule 6).
+- **The PR plane's screenshots.** `prInputs.ts` said "HA-07's hosted copies fill this". They now
+  do: image-host originals only, for A-18i's Flathub MetaInfo.
+- **The blob-route fix ignores the kill switch.** It is a fix, not a serving choice.
+- **Migration** `00XX_dist_listing_assets_manifest.sql` (table rebuild). The lead numbers it.
+  After numbering, rerun `pnpm --filter @polaris-key/docs gen`, because `reference/data-model.mdx`
+  names the file.
+
 ## Steps
 
 1. Portal and CSP.
@@ -71,6 +109,16 @@ mise exec node@22 -- pnpm --filter @polaris-key/admin test
 ## Hand-off
 
 HA-12 reuses the variant choice. A-18i reads `source='manifest'` screenshots.
+
+As built, the hand-offs are:
+
+- **HA-12** reads copies through `core/hostedImages.ts`: `hostedImages`, `firstHostedImage`,
+  `PRESENTATION_ICON_SLOTS`, `hostedImageUrl` and `pickVariantWidth`.
+- **HA-10** replaces the body of `assetHostingEnabled` (`core/assetHosting.ts`) with the
+  `assets.hosting.enabled` read. Every HA-07 surface already asks it. The rollback tests mock that
+  one export: `portalHostedArt`, `storefrontFeeds` ("hosted copies") and `downloadPageIcon`.
+- **A-18i's screenshots** arrive in `prInputs.app.screenshots` (image-host originals). The
+  `source='manifest'` rows hold class masters for the pushers.
 
 The role agent sets `--set HA-07 in-review` when it hands off. After review, the lead adds the last
 commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set HA-07 done`.
