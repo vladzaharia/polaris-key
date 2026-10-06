@@ -53,7 +53,7 @@ const INSTALL_STATUS_DOWNLOADED := 11
 ## Play Asset Delivery `AssetPackStatus.COMPLETED`.
 const PACK_COMPLETED := 4
 
-## The platform this answers for ("" means PKeyHeaders.platform()). Tests set it.
+## The platform this answers for ("" means PKeyHeaders.update_platform()). Tests set it.
 var platform := ""
 ## The native object to call instead of the Engine singleton: anything with
 ## `cmd(json: String) -> String` (tests).
@@ -138,7 +138,7 @@ static func reset_launch() -> void:
 
 
 func _platform() -> String:
-	return platform if platform != "" else PKeyHeaders.platform()
+	return platform if platform != "" else PKeyHeaders.update_platform()
 
 
 func _native_present() -> bool:

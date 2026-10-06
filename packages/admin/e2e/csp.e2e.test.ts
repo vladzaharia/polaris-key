@@ -469,11 +469,11 @@ afterAll(async () => {
   await new Promise<void>((r) => server?.httpServer.close(() => r()));
 });
 
-async function open(viewport: {
-  width: number;
-  height: number;
-}): Promise<Page> {
-  const ctx = await browser.newContext({ viewport });
+async function open(
+  viewport: { width: number; height: number },
+  reducedMotion: "reduce" | "no-preference" = "reduce",
+): Promise<Page> {
+  const ctx = await browser.newContext({ viewport, reducedMotion });
   await ctx.addInitScript(() => {
     (window as unknown as { __v: string[] }).__v = [];
     document.addEventListener("securitypolicyviolation", (e) =>
@@ -805,5 +805,81 @@ describe("overlays under the Worker's CSP", () => {
     expect(await page.evaluate(() => location.hash)).toBe("#/products");
     await page.context().close();
     process.stdout.write(`CSP overlay report: ${JSON.stringify(report)}\n`);
+  });
+});
+
+describe("the reduce-motion preference (MO-12) under the Worker's CSP", () => {
+  /** Every --pk-duration-* token on <html>, resolved, and Tailwind's motion variants on probes. */
+  const motionState = (page: Page) =>
+    page.evaluate(() => {
+      const names = new Set<string>();
+      for (const sheet of Array.from(document.styleSheets)) {
+        try {
+          for (const rule of Array.from(sheet.cssRules))
+            for (const m of rule.cssText.matchAll(/--pk-duration-[\w-]+/g))
+              names.add(m[0]);
+        } catch {
+          // a cross-origin sheet: none here, but never fatal
+        }
+      }
+      const css = getComputedStyle(document.documentElement);
+      // Probes carry classes only (no style=""), and leave at once.
+      const probe = (cls: string): HTMLElement => {
+        const el = document.createElement("div");
+        el.className = cls;
+        document.body.append(el);
+        return el;
+      };
+      const wide = probe("w-1/3 motion-reduce:w-full");
+      const safe = probe("motion-safe:animate-ping");
+      const state = {
+        attr: document.documentElement.getAttribute("data-motion"),
+        durations: Object.fromEntries(
+          [...names].map((n) => [n, css.getPropertyValue(n).trim()]),
+        ),
+        reduceFullWidth: wide.offsetWidth === document.body.clientWidth,
+        safeAnimation: getComputedStyle(safe).animationName,
+      };
+      wide.remove();
+      safe.remove();
+      return state;
+    });
+
+  /** A CSS time in ms (the bundle minifies 200ms to .2s and 0ms to 0s). */
+  const ms = (v: string): number =>
+    v.endsWith("ms") ? parseFloat(v) : parseFloat(v) * 1000;
+
+  async function expectReduced(page: Page): Promise<void> {
+    const s = await motionState(page);
+    expect(s.attr).toBe("reduce");
+    const values = Object.entries(s.durations);
+    expect(values.length).toBeGreaterThan(4);
+    for (const [name, value] of values) expect(ms(value), name).toBe(0);
+    expect(s.reduceFullWidth, "motion-reduce: under data-motion").toBe(true);
+    expect(s.safeAnimation, "motion-safe: under data-motion").toBe("none");
+  }
+
+  it("Reduced from the theme menu: an instant swap now and after a reload, no violations", async () => {
+    // Motion on at the OS level, so the in-app preference is what reduces it.
+    const page = await open({ width: 1440, height: 900 }, "no-preference");
+    const before = await motionState(page);
+    expect(before.attr).toBeNull();
+    expect(ms(before.durations["--pk-duration-base"]!)).toBe(200);
+    expect(before.reduceFullWidth).toBe(false);
+    expect(before.safeAnimation).toBe("ping");
+
+    await page.getByRole("button", { name: /^Theme: / }).click();
+    await page
+      .getByRole("group", { name: "Motion" })
+      .getByRole("menuitemradio", { name: /^Reduced/ })
+      .click();
+    await expectReduced(page);
+
+    await page.reload();
+    await page.locator("[data-page-title]", { hasText: "Licenses" }).waitFor();
+    await expectReduced(page);
+
+    expect(await violations(page)).toEqual([]);
+    await page.context().close();
   });
 });

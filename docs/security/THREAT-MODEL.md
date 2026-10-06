@@ -1889,8 +1889,8 @@ whether it works.
 
 **What it is.** Every storefront is one `StorefrontAdapter` (`core/storefront/adapter.ts`), the
 same base the package feeds' `FeedAdapter` extends (`core/adapters/contract.ts`, notes/S-15 §6). An
-adapter declares its operations (`api` behind the gate, `ci`, `pr`, `deep-link` or `unsupported`
-with a reason), its rate limits, its listing profile, its never-list and its typed-confirmation
+adapter declares its operations (`api` behind the gate, `ci`, `pr`, `deep-link`, `first-party`
+on Polaris Key's own tables, or `unsupported` with a reason), its rate limits, its listing profile, its never-list and its typed-confirmation
 phrase; what is shared it cannot bypass: the **store-agnostic write gate** (`gate.ts`, the engine;
 `match/{jsonapi,json,form,multipart}.ts`, one body matcher per wire style;
 `rules/<store>.ts`, one rule table per adapter, classified against a pinned vendor spec), the
@@ -1928,6 +1928,17 @@ line.
   engine; A-17a's `hookOrigin` rule, generalised).
 - **(g) Imported listing text is data**: rendered escaped in the console, never as HTML (A-18b,
   A-18c, A-18j).
+- **(h) A first-party adapter never reaches a vendor** (PS-01; notes/S-21 §6.1 and threat S9).
+  The `polaris-key` adapter (`stores/polarisKey.ts`) is the portal's own storefront: its ops are
+  `first-party` (`{mode, plane: "worker", handler}`) and run against Polaris Key's tables through
+  the ports of `firstParty.ts`. Conformance item 11 requires that only an adapter with no
+  credential, no gate and no spec pin declares a `first-party` op, and that it mixes in no `api`,
+  `ci` or `pr` op; that every one names a registered handler; that each handler, run with `fetch`
+  replaced by a thrower, sends nothing, writes no audit row for a read and exactly one for a
+  write; and that the typed op (`submit`, which lists the product) refuses without the typed
+  confirmation, as the gate does for a vendor. A test shows a fake first-party op on an adapter
+  with a credential fails the suite. The handlers' real reads and writes (PS-02, PS-03, PS-06)
+  plug in as ports and inherit these checks.
 
 **Boundaries.** `core/adapters/` imports nothing; `core/storefront/` imports no service, and its
 declaration modules import only the adapter layer, so the CLI's copy is generated
@@ -3068,6 +3079,16 @@ from the binding route's product list), not by the Worker: delivery requests car
 the Worker cannot tell an Apple build's download from another's. A modified client can ignore the
 rule; that is a store-policy matter, not an entitlement bypass (the player paid for the flag).
 
+**Browser pages (SP-16).** The binding and claim routes are in `core/cors.ts`'s covered paths, so
+a bearer-mode page served from one of the product's own `web.origins` can call them with `fetch`;
+every other origin gets no `Access-Control-*` header and a bare 204 preflight (a workerd test
+checks both). This widens reach only to the product's own origins and only for a caller that
+already holds a device token: both routes require the `pkeyt_` bearer, which is never ambient,
+and `Access-Control-Allow-Credentials` is never sent, so a listed page gains nothing a native
+build with the same token lacks, and an unlisted page cannot read either response at all. A
+page still cannot forge a purchase: the claim's payload is re-read from the store as above. The
+two store hooks stay uncovered (server-to-server only).
+
 **Lost or late signals.** Apple redelivers a notification answered non-2xx for days, Pub/Sub
 redelivers with backoff, and the hooks answer 503 on a store outage for exactly that reason. Play
 voids are also polled daily (Voided Purchases API, 30 days back); Steam pushes nothing, so active
@@ -3950,6 +3971,13 @@ is no new privilege level and no outbound call.
   → Licensing, which lists every incompatible declaration); it is confirmed (L1) and audited.
   The report route `GET /manage/api/platform/reserved-names` is read-only and returns catalog
   keys and product names, nothing secret.
+- **`IDENTITY_RESERVED_DISPLAY_NAMES` (PX-W13, `identity.reservedDisplayNames`) is a validation
+  severity too.** `warn` (the default) or `error` decides only whether a product or listing name
+  that uses a platform or store name (`reserved_display_name`) is accepted with a warning or
+  refused at link, resync, the deploy hook and console listing edits. A hostile session that sets
+  `warn` gains nothing on the sign-in card: the card's render-time check shows such a name as the
+  product slug in the neutral frame in both modes (see "Passthrough request metadata"). Setting
+  `error` can only make a product's next resync fail; it is confirmed (L1) and audited.
 - **Why nothing else may join it (AT-2).** Whoever takes the admin plane already reaches A2, A3,
   A5 and A6 through the API for as long as the session lasts. A runtime knob that _widens_ what a
   session can do (a longer session TTL, a raised rate limit, a looser `OIDC_ISSUER_ALLOWLIST`, a
@@ -5047,7 +5075,46 @@ is signed out it rides along in the OIDC `return_to` and the magic link's return
 the design (PORTAL.md §4.18); mitigated by `Referrer-Policy: no-referrer` on every page (the key
 never leaves in a `Referer`), by the SPA moving it into the hash (`#/?activate=`) on load, and by a
 key alone only ever adding a licence through the claim rules (no ownership move, verified-email
-gate, one rate bucket with the preview). Revisit when PX-17 or PX-W8 adds `manageUrl`.
+gate, one rate bucket with the preview). PX-W8's refusal links (below) do not use this query
+form: they carry the key only as a fragment.
+
+### Refusal links: `manageUrl` and the `#key=` fragment (PX-W8)
+
+A `device_limit` or `key_entry_limit` refusal carries `manageUrl`, a portal link an app offers as
+**Replace a device** (WIRE-CONTRACT-V4 §5.3). The Worker builds it, and the link itself never names
+the key, an account, a holder, a hostname, a device id or an IP. The licence id (on an attached
+licence) and a coarse `for` label (`macOS arm64`) are the only identifiers in it. Asset: the
+licence key, a bearer credential (whoever holds it can activate seats and add the licence through
+the claim rules), so A7 and, through the claim, the buyer's account (A6).
+
+- **The key never rides in a query string.** On an `/activate` link the UI kits (React, Swift,
+  Kotlin, Godot) add the key the person just typed as the fragment `#key=`, so the portal's page
+  can fill it in. A fragment never reaches a server, an edge log, a `Referer` or the OIDC
+  `return_to`. The query only ever gains `return=` (an app URL the portal checks against the
+  product's declared return targets). The `free-device` route of an attached licence never gets
+  the key at all.
+- **A fragment is still kept by the browser.** The opened URL, key included, lands in the
+  browser's history and in history sync to the person's other devices, and can be restored by a
+  session restore. Residual, accepted: it is the person's own browser, holding the person's own
+  key, which they just typed on the same machine. Required mitigation, owned by PX-17 (the portal
+  `/activate` page): read `#key=` once on load, then drop it with `history.replaceState` before
+  any other work, so the history entry and any later share of the address bar hold no key.
+- **A QR code never carries the key.** Where a joypad is the only input (tvOS, Android TV, a
+  console or joypad-only Godot) the link is drawn as a QR code on a screen others can see, and
+  anyone in the room can scan it into their own phone's history. So the QR form is built without
+  `#key=` in every kit (Swift `presentation: .qr`, Kotlin `manageQrUrl`, Godot
+  `manage_link(..., for_qr)`); the phone opens `/activate` with an empty field and the person types
+  or pastes the key there (plans/PX-W8.md Q2). The QR still holds the licence id (attached
+  licence) and the `for` label, which alone add or move nothing.
+- **The CLIs leave the key out too.** `pkey` (Node) and the Python CLI print the served link
+  without `#key=`: a terminal scrollback is a log.
+- **Untrusted input from the server.** Every SDK keeps `manageUrl` only if it is `https` (or
+  `http` to loopback), has a host and no userinfo, whitespace or control characters, and fits in
+  2048 characters; anything else is dropped, never repaired, and the link opens only on a user
+  action. Residual: the hand-written parsers (Godot, Kotlin, Swift) can disagree with
+  client-core's `new URL()` on odd but valid inputs (dot segments, percent normalisation); the
+  links come only from the Worker, so the disagreement decides at most whether a key fragment is
+  offered on a non-`/activate` path of the portal origin, never where the link points.
 
 ### Portal emails: security notices and "Email me the download" (PX-W7)
 
@@ -5304,6 +5371,38 @@ and 12 (cross-tenant correlation) are the deltas.
   developer who already holds a buyer email can still find that buyer's row by it: the email is
   the developer's own record. The step-up window is enforced server-side; the console's own check
   only decides whether to offer the form or "Sign in again".
+
+### Identity as a per-product service (PX-W17)
+
+One account per person; a product's `identity` toggle gates only sign-in through that product
+(plans/PX-W17.md, WIRE-CONTRACT-V4 §12.8).
+
+- **Cross-product correlation (item 12), the control.** `test/accountIdBoundary.test.ts` proves
+  the I-05 rule for every developer surface PX-W17 adds or touches: no non-portal OpenAPI schema
+  declares an `accountId`/`account_id` property, and with one account owning a licence in two
+  products, every product-scoped console GET that shows the product, licences, devices or
+  activity, every device route, the signed licence document and the subject feed carry neither
+  the account id nor the other product's subject. The console shows `ownerSubject` on licences and
+  `subject` on devices, pairwise ids only.
+- **S-19 T1's precondition: no signed-in device on an Identity-off product.** LX-09's holder
+  resolver trusts `devices.subject` without reading the toggle, so the column must never be set
+  on such a product. Controls: the transition hook (`core/servicesTransitions.ts`) clears every
+  binding of the product on every write of `services_json` that leaves Identity off — the console
+  PATCH and revert and the manifest resync — idempotently, so a straggler written by a racing
+  sign-in heals at the next write; and the bind guard (`assertIdentityBindable`, called by
+  `setDeviceSubject`, `bindDevice` and `registerDeviceBinding`) throws before any write while the
+  toggle is off. The clear releases no seat and deauthorizes nothing, so turning Identity off
+  cannot be used to free seats; it is audited (`services.identity_disabled`) with the count, and
+  the console's dry run (`PATCH …/services?dryRun=1`) shows that count before the operator
+  confirms. Residual: a sign-in that passed the guard and is mid-flight when the toggle flips can
+  leave one binding until the next services write or resync.
+- **The `identity_disabled` redirect.** A person's navigation to an app-sign-in entry of an
+  Identity-off product gets `303` to the portal's card. It discloses only what discovery already
+  publishes (`identity: {enabled:false}`); an unknown product keeps its 404, and every device and
+  JSON caller keeps the registry's `404 not_found` (and `registration_closed`), so the JSON API
+  still cannot tell "off" from "absent". The sniffing (`Sec-Fetch-Mode: navigate`, or an `Accept`
+  listing `text/html`) can only widen the answer to a redirect to a fixed same-origin path built
+  from the product slug, never to a caller-chosen URL.
 
 ### Discover: free offers and "Add to library" (PX-W10)
 
@@ -5617,6 +5716,55 @@ Account-wide alike, through `PATCH /manage/api/products/<slug>/license/licenses/
 - **No wire change.** The signed licence document carries the resolved number in its existing
   `deviceLimit` entitlement, so a client cannot tell (or forge) where the number came from.
 
+### Passthrough request metadata (PX-W13)
+
+The sign-in card behind "<App> wants you to sign in" (docs/design/PORTAL.md §4.7, G28) shows the
+app's name, developer, icon and origin, and on a device-code sign-in the device's label and the
+user code. WIRE-CONTRACT-V4 §12.7 is the normative form; plans/PX-W13.md §6 is the long form. It
+closes S-16 §5.4 items 13 and 14 (app impersonation on the card, and spoofed device names).
+
+- **Spoofed app names.** `@polaris-key/manifest`'s `checkDisplayName` refuses `product.name`,
+  `listing.name` and `listing.developerName` text that holds a control, zero-width or bidi code
+  point or starts or ends with whitespace (`invalid_display_text`, always an error), and reports
+  a name that contains a reserved term (`reserved_display_name`). The terms are Polaris Key,
+  plrs, Apple, App Store, Google, Google Play, Steam, Valve, Epic Games, Microsoft, Xbox,
+  PlayStation, Nintendo and itch.io. A name is compared as a skeleton: NFKD with marks dropped,
+  lowercased, Cyrillic and Greek look-alikes and `0`, `1`, `rn`, `vv` folded, split on anything
+  that is not a letter or digit, and matched as whole words or as a multi-word term written as one
+  word. The same function runs at ingest (link, resync, deploy hook), on console listing edits,
+  and again when the card renders. A failing app name renders as the product slug with
+  `nameVerified: false`, and a failing developer name is dropped. The render-time check also
+  covers names written before the rule existed and names accepted in `warn` mode. The system
+  product `polaris-key` is exempt from the reserved check, never from the text check. Residual:
+  the confusable map is a heuristic. A look-alike outside it ("Stéäm" with an unlisted
+  homoglyph) reaches the card as written until the list grows, and the platform can add terms
+  later (`identity.reservedDisplayTerms`, registered for ST-04).
+- **Label injection.** A device reports its own label (`deviceName`), so the card frames it as
+  "reported by the device", never as a verified fact. §12.7.1 deletes bidi overrides, isolates and
+  zero-width characters and folds whitespace controls before the label is stored, in every SDK
+  and again in the Worker, and caps it at 64 code points; the legacy confirmation page escapes it
+  as HTML. A label can still say anything printable ("Your bank"); it is display data and no
+  decision reads it. Activation and registration store it only while the device row has none, so
+  a reported label can never overwrite the owner's rename. OS device names are personal data;
+  they are shown to the person, the licence owner and the console, as `devices.label` already
+  was.
+- **The request handle.** `rq_` and 128 random bits, stored under its peppered hash in the
+  single-use store for 10 minutes, and bound to the browser that created it by the
+  `__Host-pk_req` binder (HttpOnly, Secure, SameSite=Lax; its hash is in the record). A handle
+  leaked by a screenshot or a shared URL is useless in another browser: every refusal answers the
+  same `404 not_found`. The record holds the product, the kind, the label, the user code, the
+  origin and a flow reference, and nothing beyond the user code that the device already shows. It
+  holds neither the device code nor `state`. There is no public creation route. Residual: whoever
+  holds both the binder cookie and the handle sees the user code, which they could already see on
+  the confirmation page.
+- **Display-parameter spoofing.** The card's reads (`GET /api/signin/requests/:handle` and
+  `/consent`) and `GET /api/capabilities` read no display query parameter: `appName`, `name`,
+  `icon`, `developer`, `origin` and `device` are ignored, and a test pins it
+  (`packages/worker/test/passthrough.test.ts`). The origin shown is the product's registered one.
+- **App consent.** `GET …/consent` needs the account session and the binder. It writes nothing:
+  the licence line is a dry run, and `scope_hash` (migration 0079) is written by I-08's Continue.
+  `person` (the account's name and email) is shown only to that account's own browser.
+
 ### Licence deletion (owner request, 2026-10-05)
 
 A platform admin can delete a licence outright (`DELETE /manage/api/products/<slug>/license/licenses/<id>`,
@@ -5720,6 +5868,37 @@ be disabled.
   records what was applied and never decides it. **Residual:** the backfill (ST-01c) may fetch at
   the webhook-supplied `commit_sha` to corroborate an old row; that read is compare-only, never
   applied, and the row it writes says so.
+- **Resync as a write path, and console claims (ST-01b, notes/S-18 §4.5).** A repo push changes
+  product settings: the name, the licence defaults (which set `graceUntil` and the activation
+  seat count), the web origins (the CORS allow-list), the admin group, the catalog, tiers and
+  profiles. Three controls bound it. (1) **Visibility**: every setting or tier/profile row a resync
+  changes gets its own `setting.resync` audit row (before → after) in the apply's batch, so a
+  silent revert of a console edit is no longer possible and a hostile push is attributable to the
+  applied commit. (2) **Claims**: a console write to a claimable setting (`core.name`,
+  `license.defaults.*`, `core.web.origins`, `config.catalog`) upserts a `source = 'console'` row in
+  `product_settings`, and a console create or edit of a tier or profile marks that row `console`;
+  every later resync skips them. The guard is in each write statement, not only in the resync's
+  early read of the claims: the five column writes keep the column while a live `product_settings`
+  claim exists (`CASE WHEN EXISTS …`), the catalog deactivate/insert and their audit rows carry
+  `NOT EXISTS`, and tiers and profiles carry `WHERE source = 'manifest'`, so a console edit that
+  claims a key while a push is between its GitHub reads and its batch is never overwritten.
+  Revert deletes the claim and re-applies the last snapshot (ST-01a), audited as
+  `setting.revert`; a reverted catalog is screened with `compileAll()` first (409
+  `invalid_catalog`, claim kept), because a resync does not screen a claimed catalog yet still
+  records it in the snapshot, so Revert would otherwise be an unscreened path to `product_schema`
+  and to unbounded `pattern` complexity. `core.adminGroup` is manifest-only: the console refuses it on a linked
+  product rather than storing a value the next push would silently replace. (3) **No half-applied
+  refusal**: every check (OIDC issuer, publisher lookup, catalog compile, binary name, the
+  referenced-tier and referenced-profile guards) runs before the first write and the apply is ONE
+  `db.batch`, so a refused or throwing push writes nothing — including the `services_json` and
+  `auto_issue_json` widenings P0-12's post-write sweep used to clean up after. A push still
+  deletes a manifest-sourced tier or profile it dropped when nothing references it, and never a
+  console row; a console row holding a new manifest id is kept and reported as a conflict.
+  **Residual:** claims make the console the stronger writer for those keys, so a stolen admin
+  session (T7) can now pin a value that the repo cannot override until someone reverts it; the
+  claim, its author and the revert are all audited, and the system product refuses console claims
+  outright (manifest-authoritative, S-18 §4.5 item 8) until ST-20's expiring, reason-bearing
+  break-glass claims. Existing rows default to `manifest` until ST-01c's backfill runs.
 - **The IdP is trusted for `groups`, and `groups` is the entire admin authorization decision.**
 
 ## 4. Adversaries
@@ -5745,9 +5924,9 @@ originating outside the trust boundary.
 | OIDC `groups`                   | **Platform admin authority**                                                      | The IdP              | Any IdP feature that lets a user influence group membership grants platform admin. A single claim string is the entire decision.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | OIDC `sub`                      | License identity                                                                  | The IdP              | Admin, portal and the product flow all require it non-empty (R8-05a); an ID token without `sub` is refused with a generic 401. Portal identities are keyed by (issuer, `sub`), never by `sub` alone (I-01).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | OIDC `email`                    | Portal license linking, cross-product                                             | The IdP              | Portal and the product flow both require `email_verified: true`; the product flow stores no email otherwise (R8-05b). Admins may still set `licenses.email` to any unverified string, and portal auto-linking trusts only emails the portal itself verified.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| `.pkey/` manifest               | Tiers, OIDC issuer, artifact policy, admin group, binary name                     | A linked GitHub repo | Applied on webhook-triggered resync, read at ONE commit: the default-branch head GitHub resolves from the DB-configured repo (R6-05: no webhook- or caller-supplied ref picks the content; ST-01a), recorded with that commit in `product_manifest_snapshot`. The repo effectively writes its own security policy — except edge-mint recipes, which are inert until an operator approves them column for column and sign only with an operator-marked `edge-mint` secret. Its tag regexes are length-capped only: R10-09.                                                                                                                                                                                                                                            |
+| `.pkey/` manifest               | Tiers, OIDC issuer, artifact policy, admin group, binary name                     | A linked GitHub repo | Applied on webhook-triggered resync, read at ONE commit: the default-branch head GitHub resolves from the DB-configured repo (R6-05: no webhook- or caller-supplied ref picks the content; ST-01a), recorded with that commit in `product_manifest_snapshot`. Since ST-01b a resync skips settings, tiers and profiles the console has claimed, writes one audit row per changed setting, and applies in one batch after every check (§3 "Resync as a write path"). The repo effectively writes its own security policy — except edge-mint recipes, which are inert until an operator approves them column for column and sign only with an operator-marked `edge-mint` secret. Its tag regexes are length-capped only: R10-09.                                      |
 | `.pkey/distribution`            | Outlet store identities, listings, transports (`dist_outlets`, `dist_transports`) | A linked GitHub repo | Applied on resync by Distribution's ingest hook. Its root listing (`dist_listing`) is the portal's product presentation and the media proxy's source: display data only, and art is fetched only from GitHub-hosted https URLs, typed by magic number (PX-W1). Cannot express outlet capabilities (`capabilities_not_manifest_writable`); those are operator-owned, narrow-only and clamped on read (P2b-02). The `appleId` identity must equal the operator's pin on the `asc-api-key` (P5-02f), or the App Store Connect connector is inert; it can no longer pick the app the team key acts on ("Who picks the outlet's app"). Likewise the Play `packageName` must equal the pin on the `google-service-account` (P5-03), or the Google Play connector is inert. |
-| `web.origins` (`.pkey/product`) | Which browser origins may read a product's device-facing responses (CORS)         | A linked GitHub repo | Exact origins only (no wildcard, `null`, path or non-loopback `http`), capped at 16, re-checked when the row is read. Never `Allow-Credentials`, so a listed page gains nothing a non-browser client lacks. Applied in dispatch after the handler, so the edge cache stays origin-free. The console, portal, docs, webhook and cookie-bearing identity routes never answer CORS (R1-09).                                                                                                                                                                                                                                                                                                                                                                             |
+| `web.origins` (`.pkey/product`) | Which browser origins may read a product's device-facing responses (CORS)         | A linked GitHub repo | Exact origins only (no wildcard, `null`, path or non-loopback `http`), capped at 16, re-checked when the row is read. Never `Allow-Credentials`, so a listed page gains nothing a non-browser client lacks. Applied in dispatch after the handler, so the edge cache stays origin-free. The console, portal, docs, webhook and cookie-bearing identity routes never answer CORS (R1-09). The commerce binding and claim routes are covered (SP-16): both need the device bearer, so a listed page reaches only what its own device token can.                                                                                                                                                                                                                        |
 | `X-PKey-Version` header         | Version and channel gating                                                        | The client           | A `0.0.0-dev*` version skips the version window and channel checks only when the licence is granted `dev` or the product sets `allowDevBuilds`, which no caller sets today (R3-01). Otherwise the version implies a channel per WIRE-CONTRACT-V3 §5.1 and is gated like any build.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `X-PKey-Channel` header         | Channel gating                                                                    | The client           | Normalised per WIRE-CONTRACT-V3 §5.1. It can only add a channel to check, never replace the build-implied one; a malformed value is refused, and an unknown well-formed name must be granted by name (R3-01, R3-13).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | `X-PKey-Device` header          | Device identity                                                                   | The client           | Entirely client-asserted; not bound to the fingerprint.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
@@ -6032,7 +6211,7 @@ is edited or its `MSSTORE_SPEC_PIN` re-dated (the docs-drift review: re-read eve
 re-classify every write), or a field joins a store's audit projection (A-17a, A-18a, A-18f); a platform store credential (A-16) is added, used
 without the product's platform pin matching at setup, token and open, cached in a way a hit can
 skip the pin, allowed to fall through from a mis-pinned own credential, or written or opened by a
-file outside its allowlists; the device trust level starts being carried in a signed document or token, an operation trusts `attested` without going through `trustRefusal`, the trust policy becomes writable by anything but the platform-admin `trust-policy` resource, the App Attest root stops being the pinned constant, or a path other than a token rotation keeps the level across a new device token (P6-02); or a new way to obtain a device token or licence without an
+file outside its allowlists; the sign-in card starts reading a display value from anywhere but the server-side client record, a passthrough request handle becomes creatable by a public route, readable without its binder, longer-lived than the sign-in flow, or holds a credential, a server decision starts reading the device label, or a term leaves `RESERVED_DISPLAY_TERMS` (PX-W13); the device trust level starts being carried in a signed document or token, an operation trusts `attested` without going through `trustRefusal`, the trust policy becomes writable by anything but the platform-admin `trust-policy` resource, the App Attest root stops being the pinned constant, or a path other than a token rotation keeps the level across a new device token (P6-02); or a new way to obtain a device token or licence without an
 operator-issued key is added, or a check on one is made conditional on product state (it must be
 folded into `mintIsPublic` or into the edge-mint approval's recorded state — `productWidening` in
 `core/edgeMintApproval.ts`, which the ingest sweep and the `0025_b` backfill follow); or, for

@@ -216,14 +216,34 @@ onProgress)` downloads one build of a verified release record (a `binary` decisi
   otherwise). `update.feedUrl(kind)` / `appcastUrl()` expand discovery's `appcast`, `winsparkle`,
   `velopack`, `appInstaller` and `zsync` templates (the typed `product` N/A when one is not
   advertised). `distribution.downloadModel()` / `thisPlatform()` type the public download page.
-  The SDK builds no customer-portal URLs (owner decision Q6): a "Manage devices" or "Sign in"
-  link is the server-supplied `manageUrl` / `signInUrl` on the refusal, once the Worker sends it
-  (PX-W8).
+  The SDK builds no customer-portal URLs (owner decision Q6): the "Replace a device" link is the
+  server-supplied `manageUrl` on the `device_limit` refusal (PX-W8), and a "Sign in" link the
+  `signInUrl`, once the Worker sends it.
   `crashTags()` answers `release` (`app@<version>[+<build>]`), `environment` and `pkey.outlet`
   for your crash reporter.
 - **`:release`**: `changelog`, `installUrl`, `downloadUrl` (built, never fetched), `verifyRecord`
   (a `pkey-release+jws` against the keys the app pins; `:core`'s `verifyReleaseRecord`, which the
   update engine shares).
+
+## When every seat is taken
+
+A refused activation returns `ActivationResult.DeviceLimit(limit, deviceCount, manageUrl)`.
+`manageUrl` is the customer-portal link that frees a seat (WIRE-CONTRACT-V4 §5.3), present while
+the product's portal is on and already validated by `ManageLink.read`. It defaults to null, so the
+class stays source-compatible. It is never an auth failure.
+
+```kotlin
+val r = client.activate(key)
+if (r is ActivationResult.DeviceLimit && r.manageUrl != null) {
+    val link = ManageLink.withReturn(ManageLink.withKey(r.manageUrl!!, key), "myapp://activated")
+    // offer "Replace a device", opening `link`
+}
+```
+
+The Compose gate (`:ui`) does this for you: pass `returnUrl` to `PolarisGateState` and the
+activation screen shows **Replace a device** (a QR code on Android TV). The QR code carries
+`PolarisActivationUi.manageQrUrl`, the link without the key: anyone who can see a TV can scan it,
+so the phone's page asks for the key. Leave `withKey` out of any QR you draw yourself.
 
 ## Update and packs
 
@@ -348,10 +368,10 @@ breaking change for P6-10.
 Play forbids self-update and `REQUEST_INSTALL_PACKAGES` in Play builds, so a build is one or the
 other, fixed at build time (`PolarisKeyPlatform.flavor`):
 
-| Flavour  | Has                                                                                | Never has                                          |
-| -------- | ---------------------------------------------------------------------------------- | -------------------------------------------------- |
-| `play`   | install source, Keystore, Play In-App Updates, Play Asset Delivery, Play Integrity | PackageInstaller session code, install permissions |
-| `direct` | install source, Keystore, verified PackageInstaller self-update, status receiver   | any `com.google.android.play` class                |
+| Flavour  | Has                                                                                                                               | Never has                                          |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| `play`   | install source, Keystore, Play In-App Updates, Play Asset Delivery, Play Integrity                                                | PackageInstaller session code, install permissions |
+| `direct` | install source, Keystore, verified PackageInstaller self-update, status receiver (builds for the Polaris Key outlet, id `direct`) | any `com.google.android.play` class                |
 
 Neither AAR declares a permission: a direct app adds `REQUEST_INSTALL_PACKAGES` and
 `UPDATE_PACKAGES_WITHOUT_USER_ACTION` itself (the Godot export plugin does it for direct presets).

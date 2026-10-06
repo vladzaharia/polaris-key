@@ -181,7 +181,7 @@ describe("ConfigPanel — the override affordance", () => {
     adapter.dispose();
   });
 
-  it("no onOverride handler ⇒ no input (the panel cannot persist on its own)", async () => {
+  it("no onOverride and a host that cannot store overrides (bridge < v4) ⇒ no input", async () => {
     const { container, adapter } = renderPanel(sample);
     await waitFor(() =>
       expect(

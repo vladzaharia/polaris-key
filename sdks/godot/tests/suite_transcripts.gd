@@ -1,10 +1,11 @@
 extends RefCounted
 # @pkey-feature core.discover core.sync core.cache config.schema config.mint devices.register devices.report
-# @pkey-feature license.activate license.enroll license.deactivate license.reregister identity.devicecode
+# @pkey-feature license.activate license.enroll license.deactivate license.reregister identity.devicecode identity.devicelabel
 # @pkey-feature release.changelog release.download update.feed release.record update.decide
 # @pkey-feature commerce.receipt
 # @pkey-feature packs.apply.chunk
 # @pkey-feature license.refusals ui.boot release.distribution telemetry.updates
+# @pkey-feature license.manage
 # The Godot transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read from the
 # generator-owned mirror res://tests/transcripts/ (written by `pnpm gen:transcripts`; never edit
 # it). Drives the `PolarisKey` root through every recorded conversation that
@@ -95,6 +96,9 @@ static func replay(tr: Dictionary) -> Array:
 	var opts := PKeyTestFixtures.options(server.base_url(), store, clock, tr["product"], tr["trust"], tr["initial"]["version"])
 	if tr["initial"].get("services") is Array:
 		opts.expected_services = PackedStringArray(tr["initial"]["services"])
+	# PX-W13: `initial.deviceName` stands in for the platform's device name; absent = none.
+	opts.send_device_name = tr["initial"].get("deviceName") is String
+	opts.device_name = String(tr["initial"].get("deviceName", ""))
 	if tr["initial"].get("update") is Dictionary:
 		_configure_update(opts, store, tr["initial"]["update"])
 	var journal = tr["initial"].get("updateJournal")
@@ -168,11 +172,17 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 			out["result"] = String(r.kind)
 			if not r.ok:
 				out["code"] = String(r.code)
+			# PX-W8: the refusal link, exactly as served; null when the result carries none.
+			if r.kind == PKeyActivationResult.KIND_DEVICE_LIMIT:
+				out["manageUrl"] = r.manage_url
 		"enroll":
 			var r: PKeyActivationResult = await sdk.license.enroll()
 			out["result"] = String(r.kind)
 			if not r.ok:
 				out["code"] = String(r.code)
+			# PX-W8: the refusal link, exactly as served; null when the result carries none.
+			if r.kind == PKeyActivationResult.KIND_DEVICE_LIMIT:
+				out["manageUrl"] = r.manage_url
 		"boot":
 			var view := PKeyBoot.new()
 			view.auto_sdk = false
@@ -212,6 +222,7 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 					"verificationUriComplete": prompt.verification_uri_complete,
 					"expiresIn": prompt.expires_in,
 					"interval": prompt.interval,
+					"deviceName": prompt.device_name if prompt.device_name != "" else null,
 				}
 			else:
 				out["result"] = String(prompt.code)

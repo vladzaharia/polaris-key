@@ -126,6 +126,8 @@ static func options(base_url: String, store: PKeyStore, clock: Array, product :=
 	o.now_source = func(): return clock[0]
 	# The exported template carries the CI build stamp; these tests must not see it.
 	o.build_stamp_path = ""
+	# PX-W13: a fixed device label, so request bodies do not depend on the host's model name.
+	o.device_name = "Test Device"
 	# The persisted settings layer (SDK parity §3.11) is tested on its own scratch file; suites
 	# that edit settings must not leak into each other through user://pkey_settings.cfg.
 	o.persist_settings = false

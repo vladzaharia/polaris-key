@@ -92,6 +92,8 @@ const DEFAULTS := {
 	"activation_attestation_required": "This game needs to confirm it was installed from an official store before it can be activated here.",
 	"activation_manage_devices": "Manage devices",
 	"activation_error": "Activation failed. Check your connection and try again.",
+	"free_device": "Replace a device",
+	"free_device_scan": "Scan with your phone to free a device, then try again.",
 	# ── PKeySignInDialog ────────────────────────────────────────────────────────────────────
 	"sign_in_title": "Sign in",
 	"sign_in_starting": "Starting sign-in…",
@@ -100,6 +102,7 @@ const DEFAULTS := {
 	"sign_in_copy_link": "Copy link",
 	"sign_in_copied": "Link copied.",
 	"sign_in_expires": "The code expires in %s.",
+	"sign_in_device": "The sign-in page will show “%s”.",
 	"sign_in_confirm_title": "Is this you?",
 	"sign_in_confirm_body": "Signed in as %s.",
 	"sign_in_attach": "Also attach this device's license to my account",

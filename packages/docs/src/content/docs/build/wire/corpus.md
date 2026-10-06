@@ -28,6 +28,8 @@ tools/sign-corpus.ts  →  conformance/corpus/v2/cases.json
                          conformance/corpus/v2/update-matrix.json
                          conformance/corpus/v2/outlet-matrix.json
                          conformance/corpus/v2/feed-url-matrix.json
+                         conformance/corpus/v2/sync-scenarios.json  (literal, tools/sync-scenarios.ts)
+                         conformance/corpus/v2/device-label.json
                       →  sdks/swift/Tests/PolarisKeyTests/Resources/v2/   (Swift mirror)
                       →  sdks/godot/tests/corpus/v2/                      (Godot mirror)
 
@@ -71,6 +73,8 @@ row pins the opt-in bypass instead.
 | `outlet-matrix.json`   | Outlet capability defaults and narrowing, listing-URL prefixes, and outlet detection                                                                                                               | §11.2 (client behaviour)                      |
 | `feed-url-matrix.json` | The native updater feed URLs (appcast, WinSparkle, Velopack, App Installer, zsync) expanded from discovery's `update.endpoints` templates, or `unsupported: product`                               | client behaviour (`update.feeds`)             |
 | `plan-matrix.json`     | The install planner (`rows`), variant selection (`variantCases`) and target mapping (`targetCases`)                                                                                                | §11.4 (client behaviour)                      |
+| `sync-scenarios.json`  | The Cloud Sync client state machine: scenarios of SDK calls, clock moves and scripted server answers, with the requests, journal, values, events and status each produces                          | §11.5 (client behaviour)                      |
+| `device-label.json`    | The device label every SDK sends as `deviceName` and the Worker stores: raw labels and their normalised form, or none                                                                              | §12.7.1                                       |
 | `content/cases.json`   | The content corpus: path rules, the files index, full, delta and file apply, `packSetId`, the content stamp and `frameWindow`, over the committed blobs in `content/blobs/`                        | §2.6, §2.7                                    |
 
 ### The case families in `cases.json`
@@ -183,6 +187,14 @@ against the captured request), `sdks/python/tests/test_headers.py`,
 of `sdks/godot/tests/suite_conformance.gd`, and `packages/worker/test/headersCorpus.test.ts`,
 which runs every row through the normaliser that stores the headers. Each runner also asserts
 that its generated `PLATFORM_SPELLINGS` / `ARCH_SPELLINGS` table equals the rows.
+
+`device-label.json` has a runner in every SDK and one in the Worker:
+`conformance/runners/node/deviceLabel.test.ts` (through `client-core`'s `normalizeDeviceLabel`,
+which React shares), `sdks/python/tests/test_device_label.py`,
+`sdks/swift/Tests/PolarisKeyTests/DeviceLabelTests.swift`, the device-label section of
+`sdks/godot/tests/suite_conformance.gd`, the Kotlin `DeviceLabelTest`, and
+`packages/worker/test/deviceLabelCorpus.test.ts`, which sends every row through
+`/identity/auth/device/start` and checks the echoed label.
 
 `config-matrix.json` has one runner per SDK: `conformance/runners/node/configMatrix.test.ts`
 (`client-core`'s `resolveValue`, `resolveSource` and `listUserEntries`),

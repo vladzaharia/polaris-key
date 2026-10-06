@@ -3,6 +3,11 @@
  * converges on what the Worker's normaliser stores today (WIRE-CONTRACT-V3 §5.2 rule 3), every
  * stored empty value becomes NULL, and replaying the migration changes nothing.
  *
+ * SP-08 — `0088_apple_platform_values.sql` extends the convergence to the spellings that gained a
+ * canonical value later (`tvOS`, `visionOS`, `watchOS`). "Today" is therefore the two migrations
+ * applied in order (`CONVERGENCE`): 0040 alone leaves those spellings as sent, as it did when it
+ * shipped.
+ *
  * The database is built up to (not including) the migration, seeded with one row per spelling,
  * then migrated — the `distributionBackfill.test.ts` pattern. The spellings are a LITERAL list,
  * not read from headers.json, so a spelling added to the corpus later cannot fail this migration.
@@ -27,7 +32,10 @@ const FILES = readdirSync(MIGRATIONS_DIR)
   .filter((f) => f.endsWith(".sql"))
   .sort();
 const MIGRATION = "0040_canonical_client_metadata.sql";
+const APPLE_MIGRATION = "0088_apple_platform_values.sql";
 const BEFORE = FILES.filter((f) => f < MIGRATION);
+/** The platform convergence migrations, in order. */
+const CONVERGENCE = [MIGRATION, APPLE_MIGRATION];
 
 const sql = (file: string): string =>
   readFileSync(join(MIGRATIONS_DIR, file), "utf8");
@@ -61,6 +69,11 @@ const PLATFORMS = [
   "visionOS",
   "tvOS",
   "unknown",
+  "watchOS",
+  "tvos",
+  "visionos",
+  "watchos",
+  "WATCHOS",
   "",
   " linux",
   "constructor",
@@ -156,7 +169,7 @@ describe(MIGRATION, () => {
 
   it("converges every stored value on the normaliser's output, and empty values on NULL", async () => {
     const raw = await seeded();
-    raw.exec(sql(MIGRATION));
+    for (const f of CONVERGENCE) raw.exec(sql(f));
     const got = rows(raw);
     got.forEach((row, i) => {
       const p = PLATFORMS[i];
@@ -182,6 +195,51 @@ describe(MIGRATION, () => {
     raw.exec(sql(MIGRATION));
     const once = rows(raw);
     raw.exec(sql(MIGRATION));
+    expect(rows(raw)).toEqual(once);
+  });
+
+  it("leaves the later Apple spellings as sent (0079 converges them)", async () => {
+    const raw = await seeded();
+    raw.exec(sql(MIGRATION));
+    const got = rows(raw);
+    for (const spelling of ["tvOS", "visionOS", "watchOS"])
+      expect(got[PLATFORMS.indexOf(spelling)]!.platform).toBe(spelling);
+  });
+});
+
+describe(APPLE_MIGRATION, () => {
+  it("exists after 0040 and holds no schema change", () => {
+    expect(FILES).toContain(APPLE_MIGRATION);
+    expect(APPLE_MIGRATION > MIGRATION).toBe(true);
+    expect(sql(APPLE_MIGRATION)).not.toMatch(/\b(CREATE|ALTER|DROP)\b/i);
+  });
+
+  it("converges tvOS, visionOS and watchOS spellings on their canonical values", async () => {
+    const raw = await seeded();
+    raw.exec(sql(MIGRATION));
+    raw.exec(sql(APPLE_MIGRATION));
+    const got = rows(raw);
+    const want: Record<string, string> = {
+      tvOS: "tvos",
+      tvos: "tvos",
+      visionOS: "visionos",
+      visionos: "visionos",
+      watchOS: "watchos",
+      watchos: "watchos",
+      WATCHOS: "watchos",
+    };
+    for (const [spelling, value] of Object.entries(want))
+      expect(got[PLATFORMS.indexOf(spelling)]!.platform, spelling).toBe(value);
+    // Nothing else moves.
+    const unknown = got[PLATFORMS.indexOf("unknown")]!;
+    expect(unknown.platform).toBe("unknown");
+  });
+
+  it("is idempotent: replaying it changes nothing", async () => {
+    const raw = await seeded();
+    for (const f of CONVERGENCE) raw.exec(sql(f));
+    const once = rows(raw);
+    raw.exec(sql(APPLE_MIGRATION));
     expect(rows(raw)).toEqual(once);
   });
 });

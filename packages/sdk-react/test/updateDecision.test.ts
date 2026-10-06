@@ -1,6 +1,6 @@
 // @vitest-environment node
 //
-// @pkey-feature update.feed release.record update.decide
+// @pkey-feature update.feed release.record update.decide telemetry.updates
 //
 // `decideUpdate()` in both React transports (WIRE-CONTRACT-V4 §2.5, plans/P3-01.md §2.6): what
 // the update-matrix parity suite does not cover — the options refusals, step 1's endpoints, the
@@ -16,6 +16,8 @@ import { recordHash } from "@polaris-key/client-core";
 import type { ChannelFeedDoc } from "@polaris-key/protocol/update";
 import type { ReleaseRecordDoc } from "@polaris-key/protocol/release";
 import { BrowserAdapter } from "../src/browser/browserAdapter.js";
+import { BearerSession } from "../src/browser/bearer/session.js";
+import { memoryStore as bearerMemoryStore } from "../src/browser/bearer/store.js";
 import type { OfflineRecord, OfflineStore } from "../src/browser/offline.js";
 import { desktopAdapter } from "../src/desktop/desktopAdapter.js";
 import type { PolarisBridge } from "../src/desktop/bridge.js";
@@ -289,6 +291,46 @@ describe("BrowserAdapter.decideUpdate() — options and step 1", () => {
       .catch((e) => e)) as PolarisError;
     expect(err.code).toBe("feed-rejected");
     expect(err.detail).toBe("channel");
+  });
+});
+
+describe("BrowserAdapter.decideUpdate() — update_offered (telemetry.updates, SP-14)", () => {
+  it("bearer mode journals update_offered once per offered release; a cookie page journals nothing", async () => {
+    const recorded = vi.spyOn(BearerSession.prototype, "recordUpdateEvent");
+    try {
+      const srv = server();
+      const { recordJws, hash, feedJws } = await signedPair();
+      srv.feedBody = feedJws;
+      srv.records.set(hash, () => new Response(recordJws, { status: 200 }));
+      const bearer = adapterFor(srv, null, {
+        auth: "bearer",
+        store: bearerMemoryStore(PRODUCT),
+      });
+      await bearer.decideUpdate();
+      await bearer.decideUpdate();
+      expect(recorded).toHaveBeenCalledTimes(1);
+      expect(recorded.mock.calls[0]).toEqual([
+        "update_offered",
+        { release: "1.5.0", fromRelease: "1.4.0", channel: "stable" },
+      ]);
+      expect(recorded.mock.results[0]!.value).toMatchObject({
+        event: "update_offered",
+        release: "1.5.0",
+        fromRelease: "1.4.0",
+        outlet: "web",
+        channel: "stable",
+        at: NOW,
+      });
+      bearer.dispose();
+
+      recorded.mockClear();
+      const cookie = adapterFor(srv, memoryStore({ deviceId: "dev_1" }));
+      await cookie.decideUpdate();
+      expect(recorded).not.toHaveBeenCalled();
+      cookie.dispose();
+    } finally {
+      recorded.mockRestore();
+    }
   });
 });
 

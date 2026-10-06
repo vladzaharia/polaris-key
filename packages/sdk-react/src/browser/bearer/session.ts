@@ -25,6 +25,11 @@
 // A browser has no hardware fingerprint (`devices.fingerprint` is a web N/A): `fingerprint`
 // answers null by default and the register request then carries no body, as Godot's web export
 // sends. The seam exists for the transcript replayer, which records a host that has one.
+//
+// The device label (WIRE-CONTRACT-V4 §12.7.1, PX-W13) follows the same rule: a browser has no
+// platform device name, so none is sent unless the host names one (`deviceName`, or a per-call
+// name on `beginSignIn`). It goes on registration, activation and sign-in (never enroll or the
+// token rotation), through client-core's `normalizeDeviceLabel`, as Node sends it.
 
 import {
   CACHE_VERSION,
@@ -32,6 +37,7 @@ import {
   channelForVersion,
   effectiveNow,
   mergeTrust,
+  normalizeDeviceLabel,
   verifyConfigDoc,
   verifyLicenseDoc,
   verifyTrustManifest,
@@ -73,6 +79,12 @@ import { PolarisError, type PolarisErrorCode } from "../../core/types.js";
 import type { BridgeState } from "../../desktop/bridge.js";
 import type { ServiceSlug } from "../../core/services.js";
 import type { TrustSet } from "../offline.js";
+import {
+  buildUpdateEvent,
+  type UpdateEventEntry,
+  type UpdateEventInput,
+} from "../../core/updateEvents.js";
+import type { UpdateEvent } from "../../constants.generated.js";
 
 /** How the current token was obtained, which picks the §5 re-acquire route (as Node). */
 export type TokenSource =
@@ -137,6 +149,9 @@ export interface SignInPrompt {
   interval: number;
   /** `beginSignIn`'s clock plus `expiresIn`, epoch seconds. */
   expiresAt: number;
+  /** The label the sign-in page shows (§12.7.1): the Worker's echo, else (an older Worker) the
+   *  label sent; null when there is none. */
+  deviceName: string | null;
 }
 
 export type SignInPoll =
@@ -196,28 +211,12 @@ export type ClaimPayload =
   | { ticket: string; dlcAppId: string | number };
 
 /** A P6-03 update-health event, the Worker's `UpdateEventEntry` (`core/updateHealth.ts`). */
-export interface UpdateEventEntry {
-  eventId: string;
-  event:
-    | "update_offered"
-    | "update_downloaded"
-    | "update_applied"
-    | "update_confirmed"
-    | "update_reverted"
-    | "pack_failed"
-    | "boot_rolled_back";
-  deliverable: string;
-  release: string;
-  fromRelease?: string;
-  outlet: string;
-  channel: string;
-  packSetId?: string;
-  at: number;
-  code?: string;
-}
+export type { UpdateEventEntry, UpdateEventInput };
 
 /** At most this many update events go in one report; the rest wait (§3.13). */
 export const MAX_REPORT_UPDATES = 16;
+/** At most this many unsent update events are kept in the page. */
+export const MAX_JOURNAL = 64;
 /** A cached mint is reused until this many seconds before its `expiresAt` (as Node). */
 export const MINT_REUSE_MARGIN_SECONDS = 30;
 /** The router's recipe-id alphabet. */
@@ -282,6 +281,9 @@ export interface BearerSessionOptions {
   enabled: (slug: ServiceSlug) => boolean;
   /** A hashed hardware fingerprint. A browser has none; the default answers null. */
   fingerprint?: () => HardwareFingerprint | null;
+  /** This device's label (§12.7.1). A browser has no platform name: when omitted, or `""`, none
+   *  is sent. */
+  deviceName?: string;
   /** The software facts a report carries (`./facts.ts`). */
   facts?: () => Record<string, JSONValue>;
   /** The `caps` list every report carries (P1b-10). */
@@ -296,6 +298,8 @@ export interface BearerSessionOptions {
   gate?: () => string | null;
   /** Jitter source for the sync backoff (tests). Defaults to `Math.random`. */
   random?: () => number;
+  /** A fresh update-event id (tests). Defaults to 16 random bytes in hex, then the event. */
+  eventId?: (event: UpdateEvent) => string;
 }
 
 type DocumentResult =
@@ -548,18 +552,38 @@ export class BearerSession {
 
   // ── Registration and activation ──────────────────────────────────────────────────────────
 
+  /** The label to send (§12.7.1): `override`, else the `deviceName` option; no platform default. */
+  private deviceLabel(override?: string): string | null {
+    return normalizeDeviceLabel(override ?? this.opts.deviceName ?? null);
+  }
+
+  /** The fingerprint and label body, or none when it would hold neither (as Node omits it). */
+  private static deviceBody(
+    fingerprint: HardwareFingerprint | null,
+    deviceName: string | null,
+  ): string | null {
+    if (!fingerprint && !deviceName) return null;
+    return JSON.stringify({
+      ...(fingerprint ? { fingerprint } : {}),
+      ...(deviceName ? { deviceName } : {}),
+    });
+  }
+
   /** `POST /<p>/devices/register` without storing the token (the re-register path stores it). */
   private async requestRegistration(): Promise<RegisterResult> {
-    const fingerprint = this.opts.fingerprint?.() ?? null;
+    const body = BearerSession.deviceBody(
+      this.opts.fingerprint?.() ?? null,
+      this.deviceLabel(),
+    );
     let res: Response;
     try {
       res = await this.send(
         "devices/register",
-        fingerprint
+        body
           ? {
               method: "POST",
               headers: this.headers({ "content-type": "application/json" }),
-              body: JSON.stringify({ fingerprint }),
+              body,
             }
           : { method: "POST", headers: this.headers() },
       );
@@ -597,20 +621,23 @@ export class BearerSession {
     path: string,
     headers: Record<string, string>,
     withFingerprint = true,
+    withLabel = false,
   ): Promise<ActivationOutcome & { token?: string }> {
-    // The rotate (`license/token`) carries no fingerprint, as in Node.
-    const fingerprint = withFingerprint
-      ? (this.opts.fingerprint?.() ?? null)
-      : null;
+    // The rotate (`license/token`) carries no fingerprint, and only activation carries the
+    // label (PX-W13 §8 Q2), as in Node.
+    const request = BearerSession.deviceBody(
+      withFingerprint ? (this.opts.fingerprint?.() ?? null) : null,
+      withLabel ? this.deviceLabel() : null,
+    );
     let res: Response;
     try {
       res = await this.send(
         path,
-        fingerprint
+        request
           ? {
               method: "POST",
               headers: { ...headers, "content-type": "application/json" },
-              body: JSON.stringify({ fingerprint }),
+              body: request,
             }
           : { method: "POST", headers },
       );
@@ -634,6 +661,8 @@ export class BearerSession {
     const r = await this.activationLike(
       "license/activate",
       this.headers({ authorization: `Bearer ${key}` }),
+      true,
+      true,
     );
     if (r.kind === "ok" && r.token) await this.setToken(r.token, "activate");
     const { token: _t, ...outcome } = r;
@@ -1031,15 +1060,35 @@ export class BearerSession {
     if (!res.ok) throw await refusal(res, "device_deauthorize_failed");
   }
 
-  /** Queue a P6-03 update-health event for the next report (§3.13). */
+  /**
+   * Journal a P6-03 update-health event for the next report (§3.13), with Node's defaults and
+   * validation (`core/updateEvents.ts`): the outlet is the report's outlet id, the channel this
+   * session's, the time now. Returns the entry, or null when a value was malformed (the event
+   * is not recorded). The in-page journal keeps at most `MAX_JOURNAL` unsent events, dropping
+   * the oldest, so a page that never reports cannot grow it without bound.
+   */
   recordUpdateEvent(
-    entry: Omit<UpdateEventEntry, "eventId" | "at"> & { at?: number },
-  ): void {
-    const eventId = randomId();
-    this.journal.push({ ...entry, eventId, at: entry.at ?? this.opts.now() });
-    // Bound the in-page journal: the oldest go first when a page never reports.
-    if (this.journal.length > 64)
-      this.journal.splice(0, this.journal.length - 64);
+    event: UpdateEvent,
+    input: UpdateEventInput,
+  ): UpdateEventEntry | null {
+    let outlet: string | null = null;
+    try {
+      const o = this.opts.outlet?.();
+      outlet = o && typeof o.id === "string" ? o.id : null;
+    } catch {
+      outlet = null;
+    }
+    const entry = buildUpdateEvent(event, input, {
+      outlet,
+      channel: this.channel,
+      now: this.opts.now(),
+      eventId: this.opts.eventId?.(event) ?? `${randomId()}-${event}`,
+    });
+    if (!entry) return null;
+    this.journal.push(entry);
+    if (this.journal.length > MAX_JOURNAL)
+      this.journal.splice(0, this.journal.length - MAX_JOURNAL);
+    return entry;
   }
 
   /** The events waiting for a report. */
@@ -1190,8 +1239,8 @@ export class BearerSession {
   async beginSignIn(opts: { deviceName?: string } = {}): Promise<SignInPrompt> {
     await this.init();
     const body: Record<string, string> = { deviceId: this.deviceIdValue };
-    const name = opts.deviceName?.trim();
-    if (name) body.deviceName = name;
+    const label = this.deviceLabel(opts.deviceName);
+    if (label) body.deviceName = label;
     const res = await this.postJson("identity/auth/device/start", body);
     if (res.status !== 200) throw await refusal(res, "sign-in-unavailable");
     const b = (await res.json().catch(() => ({}))) as Record<string, unknown>;
@@ -1216,6 +1265,13 @@ export class BearerSession {
       expiresIn,
       interval: Math.ceil(b.interval),
       expiresAt: this.now() + expiresIn,
+      // The echo is what the page shows; an older Worker sends none, so show what was sent.
+      deviceName:
+        "deviceName" in b
+          ? isString(b.deviceName)
+            ? b.deviceName
+            : null
+          : label,
     };
   }
 

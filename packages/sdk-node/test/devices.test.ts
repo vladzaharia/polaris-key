@@ -152,6 +152,7 @@ async function harness(opts: {
   token?: string | null;
   cache?: CacheRecordV3 | null;
   fingerprint?: boolean;
+  deviceName?: string;
 }): Promise<Harness> {
   const store = new FakeStore();
   store.token = opts.token ?? null;
@@ -164,6 +165,8 @@ async function harness(opts: {
     trust: { pinnedKeys: PINNED },
     store,
     fetchImpl: rec.impl,
+    // PX-W13: a fixed device label, so request bodies do not depend on the host name.
+    deviceName: opts.deviceName ?? "Test Device",
     ...(opts.fingerprint === undefined
       ? {}
       : { devices: { fingerprint: opts.fingerprint } }),
@@ -273,15 +276,17 @@ describe("devices.register() — the fingerprint body is present or absent, neve
     await h.client.devices.register();
     const call = h.only();
     expect(call.contentType).toBe("application/json");
-    expect(call.body).toEqual({ fingerprint });
+    // PX-W13 §8 Q2: the device label rides along on registration.
+    expect(call.body).toEqual({ fingerprint, deviceName: "Test Device" });
   });
 
-  it("sends NO body and no content-type when `devices: {fingerprint: false}`", async () => {
+  it("sends NO body and no content-type when `devices: {fingerprint: false}` and no label", async () => {
     // An opted-out host must send a request byte-identical to one that simply had nothing to
     // report; the server records it as `unverified` rather than refusing it.
     const h = await harness({
       respond: ok({ token: MINTED_TOKEN, deviceId: DEVICE }),
       fingerprint: false,
+      deviceName: "",
     });
     expect(h.client.devices.fingerprint()).toBeNull();
 
@@ -289,6 +294,15 @@ describe("devices.register() — the fingerprint body is present or absent, neve
     const call = h.only();
     expect(call.body).toBeUndefined();
     expect(call.contentType).toBeNull();
+  });
+
+  it("sends the device label alone when `devices: {fingerprint: false}`", async () => {
+    const h = await harness({
+      respond: ok({ token: MINTED_TOKEN, deviceId: DEVICE }),
+      fingerprint: false,
+    });
+    await h.client.devices.register();
+    expect(h.only().body).toEqual({ deviceName: "Test Device" });
   });
 });
 

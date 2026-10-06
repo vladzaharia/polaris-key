@@ -43,6 +43,11 @@
 > 5. **Settings home (S-18).** S-18 is now written and accepted. S-19's per-product licensing
 >    settings (§7.13) are claimable `product_settings` rows registered in S-18's registry
 >    (S-18 §5.3), not a `products.licensing_json` column; LX-06 builds them that way.
+> 6. **Grant source `polaris-key` (S-21 amendment, 2026-10-05).** The owner decided that
+>    "`direct` really becomes Polaris Key" (S-21 §6.8). A sale made through Polaris Key itself
+>    has the grant source `polaris-key`, not `direct`, and its portal badge reads "Polaris Key".
+>    The sections below are updated to match; the LX-08 brief records the same amendment. The
+>    distribution outlet id `direct` is unrelated and unchanged.
 
 Evidence tags, as in the other notes: **[V]** read in the code, the docs or a vendor's primary
 page; **[M]** measured; **[S]** summarised from a secondary source; **[I]** inference or design;
@@ -402,7 +407,7 @@ the singular `licenseId` claim. [I]
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **licence**         | An access contract for one product: tier, seats (device limit), term (`expires_at`), offline window, version window, channels, keys. Optionally attached to an account (its owner). A device runs on at most one.              |
 | **unowned licence** | S-16's "floating licence": a licence with no owner account. Not a concurrent-use licence; Polaris has no concurrent checkout (§7.8, decision 24). Docs say "unowned (floating)" on first use.                                  |
-| **grant**           | One reason someone holds one or more entitlements: a store purchase, a direct sale, a comp, a trial add-on, a bundle line, a redeemed code, an IdP claim. Own source, state, expiry, refund path.                              |
+| **grant**           | One reason someone holds one or more entitlements: a store purchase, a Polaris Key sale, a comp, a trial add-on, a bundle line, a redeemed code, an IdP claim. Own source, state, expiry, refund path.                         |
 | **grant holder**    | Who a grant belongs to: an **account** (`account_id`), a **licence** (`license_id`) or a **store identity** (`store_identity_hash`, Steam). Exactly one.                                                                       |
 | **entitlement**     | A named value the device and the server gate on. Its **kind** is `feature` (boolean capability), `ownership` (owns an item, usually a deliverable), `policy` (system keys and operator policy) or `quota` (numeric, reserved). |
 | **anchor**          | The licence a device runs on (`devices.license_id`). Seats, term and config come from it. A licence-less device has none.                                                                                                      |
@@ -450,7 +455,7 @@ CREATE TABLE IF NOT EXISTS grants (
   account_id           TEXT NULL,                  -- holder: account (global id; never leaves the Worker)
   license_id           TEXT NULL,                  -- holder: licence
   store_identity_hash  TEXT NULL,                  -- holder: store identity, e.g. H(product,'steam',steamid)
-  source               TEXT NOT NULL,              -- app-store | play | steam | direct | comp | trial | bundle | redeem | oidc
+  source               TEXT NOT NULL,              -- app-store | play | steam | polaris-key | comp | trial | bundle | redeem | oidc
   external_ref_hash    TEXT NULL,                  -- purchase key hash, order id hash
   sku                  TEXT NULL,                  -- store product id or catalog SKU
   order_ref            TEXT NULL,                  -- groups grants of one order or bundle for refunds
@@ -777,7 +782,7 @@ A.expires_at)` when `licensing.clampGraceToExpiry` is on: **default on for every
 - **Subscriptions** (Phase D, LX-23): Apple auto-renewables and Play subscriptions map onto
   `grants.expires_at` (add-on) or `licenses.expires_at` (base mapping), renewed by the server
   notifications the commerce bridge already receives for refunds. A web checkout source (Stripe or
-  Paddle webhook) creates `direct` grants or base licences through the same mapping table.
+  Paddle webhook) creates `polaris-key` grants or base licences through the same mapping table.
 - **Upgrades.** Same contract: change `tier_id` in place (audited). Store- or checkout-driven
   upgrade: a new licence plus `superseded_by` on the old one; devices move at their next activation
   (or refresh, under `onRefresh`).
@@ -846,21 +851,21 @@ applied when a valid purchase arrives from a holder other than the one that firs
 
 ### 7.8 Scenarios
 
-| Scenario                                                  | Under OC                                                                                                                         |
-| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| Base + 3 DLC bought on Steam, Apple and direct, signed in | Base licence anchors; three account-held grants; every signed-in device sees all three                                           |
-| Same, no Identity                                         | Steam DLC via store identity on every PC; Apple DLC via transfer on restore; direct DLC licence-held (portal "apply to licence") |
-| Trial → paid                                              | Paid licence supersedes; device moves at next activation (or refresh under `onRefresh`)                                          |
-| Shared key on a forum                                     | Key-entry devices see that licence only; with Identity, D24 and entry limits; no owner purchases leak                            |
-| Company licence, employee signs in on a seat (I-24)       | Company slice + employee's own grants; never the admin's                                                                         |
-| Identity-only F2P product, DLC bought while signed in     | Licence-less device; Cloud Sync and issuer see the grant; packs need an anchor, so use auto-issue                                |
-| Refund of one DLC                                         | Grant `refunded`; flag remains only if another grant holds it                                                                    |
-| Chargeback                                                | Grant `refunded` with no grace; base licence `ended_reason = chargeback`                                                         |
-| Subscription lapse with dunning                           | `past_due` until `grace_until`, then dropped (Phase D)                                                                           |
-| Gift of a direct-sale DLC                                 | Gift code redeemed into the recipient's holder (LX-25)                                                                           |
-| Account merge                                             | Grants, bindings and first-held purchases move to the survivor; old binding aliased                                              |
-| Concurrent-use ("floating" in the industry sense)         | **Not supported.** Seats are activation-based. A future tier option `seatMode: activation                                        | concurrent` with leases (Keygen leasing) is out of scope (decision 24) |
-| Offline device                                            | Verifies the document offline; grace clamped to the anchor's expiry; per-entry expiry from Phase C                               |
+| Scenario                                                       | Under OC                                                                                                                              |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Base + 3 DLC bought on Steam, Apple and Polaris Key, signed in | Base licence anchors; three account-held grants; every signed-in device sees all three                                                |
+| Same, no Identity                                              | Steam DLC via store identity on every PC; Apple DLC via transfer on restore; Polaris Key DLC licence-held (portal "apply to licence") |
+| Trial → paid                                                   | Paid licence supersedes; device moves at next activation (or refresh under `onRefresh`)                                               |
+| Shared key on a forum                                          | Key-entry devices see that licence only; with Identity, D24 and entry limits; no owner purchases leak                                 |
+| Company licence, employee signs in on a seat (I-24)            | Company slice + employee's own grants; never the admin's                                                                              |
+| Identity-only F2P product, DLC bought while signed in          | Licence-less device; Cloud Sync and issuer see the grant; packs need an anchor, so use auto-issue                                     |
+| Refund of one DLC                                              | Grant `refunded`; flag remains only if another grant holds it                                                                         |
+| Chargeback                                                     | Grant `refunded` with no grace; base licence `ended_reason = chargeback`                                                              |
+| Subscription lapse with dunning                                | `past_due` until `grace_until`, then dropped (Phase D)                                                                                |
+| Gift of a direct-sale DLC                                      | Gift code redeemed into the recipient's holder (LX-25)                                                                                |
+| Account merge                                                  | Grants, bindings and first-held purchases move to the survivor; old binding aliased                                                   |
+| Concurrent-use ("floating" in the industry sense)              | **Not supported.** Seats are activation-based. A future tier option `seatMode: activation                                             | concurrent` with leases (Keygen leasing) is out of scope (decision 24) |
+| Offline device                                                 | Verifies the document offline; grace clamped to the anchor's expiry; per-entry expiry from Phase C                                    |
 
 ### 7.9 APIs
 
@@ -953,7 +958,7 @@ adds no corpus work, but I-20's plan must name the resolver as the claim source.
 - **Licensing report** page (§7.3.4) and the platform **Reserved names** list (§7.4).
 
 **Portal (PORTAL.md amendments):** §3.1 product page shows **what you own** (the effective set,
-`userGrant` keys with `grantLabel`, source badges "App Store", "Steam", "Direct", "Gift", expiry)
+`userGrant` keys with `grantLabel`, source badges "App Store", "Steam", "Polaris Key", "Gift", expiry)
 above **your licenses** (seats, term, keys); "Apply to a licence" for account-held items on products
 without Identity; the "best licence + switcher" stays only for per-licence sections. Devices show
 the licence each runs on; "Change" appears only under `onRefresh`. Downloads use the resolver

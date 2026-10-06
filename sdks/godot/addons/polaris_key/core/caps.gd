@@ -41,7 +41,7 @@ func _init(p_services_provider: Callable = Callable(), p_sdk_version := "", p_ru
 
 ## The canonical platform is the runtime id (linuxbsd -> linux, …).
 static func detect_runtime() -> String:
-	return PKeyHeaders.platform()
+	return PKeyHeaders.update_platform()
 
 
 func supports(feature: String) -> PKeyResult:

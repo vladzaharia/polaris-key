@@ -16,7 +16,7 @@
 //                           from `res://` in the editor and in an exported pack). Every file
 //                           is written into every target in `CORPUS_TARGETS`.
 //
-// Ten files and one directory: `cases.json` (signed vectors, the v4 feed, release-record and
+// Eleven files and one directory: `cases.json` (signed vectors, the v4 feed, release-record and
 // pack families included), `gate-matrix.json` (§5, with SP-00's `entitlementRows` family),
 // `fingerprint.json` (the hardware-hash
 // formulas), `stage-matrix.json` (the boot stage machine of `@polaris-key/client-core/stages`,
@@ -27,7 +27,10 @@
 // values, §2.2.1), `update-matrix.json` (the update decision, plans/P3-01.md §2.8),
 // `outlet-matrix.json` (outlet kinds, capabilities and detection, plans/P3-01.md §2.9),
 // `plan-matrix.json` (the pack plan, plans/P4-01.md), `feed-url-matrix.json` (the app-updater
-// feed URLs out of discovery's `update.endpoints`, plans/SP-00.md D5) and `content/` (the content corpus:
+// feed URLs out of discovery's `update.endpoints`, plans/SP-00.md D5), `sync-scenarios.json` (the
+// Cloud Sync client scenario corpus, literal data from tools/sync-scenarios.ts, plans/U-01.md
+// §4.1, U-18), `device-label.json` (the device label every SDK sends as `deviceName`,
+// WIRE-CONTRACT-V4 §12.7.1, plans/PX-W13.md §4) and `content/` (the content corpus:
 // `cases.json` plus `blobs/`, plans/P4-01.md §4.4, P4-04).
 //
 // `corpus/v1` (wire contract v2) is GONE: its fifteen gate-matrix rows were inlined into
@@ -78,6 +81,7 @@ import {
   type ContentSet,
   type RefJson,
 } from "./gen-content-corpus.js";
+import { buildSyncScenarios } from "./sync-scenarios.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -274,6 +278,8 @@ const V2_UPDATE_MATRIX_OUT = join(V2_DIR, "update-matrix.json");
 const V2_OUTLET_MATRIX_OUT = join(V2_DIR, "outlet-matrix.json");
 const V2_PLAN_MATRIX_OUT = join(V2_DIR, "plan-matrix.json");
 const V2_FEED_URL_MATRIX_OUT = join(V2_DIR, "feed-url-matrix.json");
+const V2_SYNC_SCENARIOS_OUT = join(V2_DIR, "sync-scenarios.json");
+const V2_DEVICE_LABEL_OUT = join(V2_DIR, "device-label.json");
 /** Every directory that receives the corpus: the source, then each generator-owned mirror. */
 const CORPUS_TARGETS = [V2_DIR, SWIFT_V2_RESOURCES, GODOT_V2_RESOURCES];
 
@@ -4980,17 +4986,17 @@ const PLATFORM_CASES: HeaderCase[] = [
     expect: null,
   },
   {
-    id: "swift-visionos",
+    id: "swift-godot-visionos",
     description:
-      "Swift's os(visionOS): no value until a spelling and a case add one.",
+      "Swift's os(visionOS) and Godot OS.get_name() on visionOS (headersVersion 2: no value before).",
     raw: "visionOS",
-    expect: null,
+    expect: "visionos",
   },
   {
     id: "swift-tvos",
-    description: "Swift's os(tvOS): no value.",
+    description: "Swift's os(tvOS) (headersVersion 2: no value before).",
     raw: "tvOS",
-    expect: null,
+    expect: "tvos",
   },
   {
     id: "swift-legacy-unknown",
@@ -5022,6 +5028,30 @@ const PLATFORM_CASES: HeaderCase[] = [
     description: "The lookup reads the table's own entries only.",
     raw: "__proto__",
     expect: null,
+  },
+  {
+    id: "canonical-tvos",
+    description: "The canonical value maps to itself.",
+    raw: "tvos",
+    expect: "tvos",
+  },
+  {
+    id: "canonical-visionos",
+    description: "The canonical value maps to itself.",
+    raw: "visionos",
+    expect: "visionos",
+  },
+  {
+    id: "canonical-watchos",
+    description: "The canonical value maps to itself.",
+    raw: "watchos",
+    expect: "watchos",
+  },
+  {
+    id: "swift-watchos",
+    description: "Swift's os(watchOS) token.",
+    raw: "watchOS",
+    expect: "watchos",
   },
 ];
 
@@ -5288,12 +5318,242 @@ function buildHeadersCorpus(): unknown {
   );
   checkHeaderSection("archCases", ARCH_CASES, readParityEnum("arch"));
   return {
-    headersVersion: 1,
+    headersVersion: 2,
     description:
       "Client metadata header values (WIRE-CONTRACT-V3 §5.2). Each row is one spelling an OS or runtime reports (`raw`) and its canonical `X-PKey-Platform` (`platformCases`) or `X-PKey-Arch` (`archCases`) value. A runner looks `raw` up after ASCII case folding (A-Z only, never a locale-dependent lowercase), with no trimming, reading the table's own entries only. `expect: null` means the spelling has no value: an SDK omits the header rather than inventing one, and the Worker stores `raw` as sent (nothing, for an empty `raw`). The rows are the tables: `PLATFORM_SPELLINGS` and `ARCH_SPELLINGS` (`@polaris-key/protocol/core`, generated into every SDK) hold exactly the folded `raw` of the non-null rows, and every runner asserts that its table equals the map derived from them. Append-only: a new spelling (a row plus a table entry) keeps `headersVersion`; a changed row, or a change to folding or lookup, bumps it.",
     platformCases: PLATFORM_CASES,
     archCases: ARCH_CASES,
   };
+}
+
+// ── Device labels (device-label.json) ────────────────────────────────────────
+// WIRE-CONTRACT-V4 §12.7.1 (plans/PX-W13.md §2.1, §4): the one normalisation every SDK applies to
+// the label it sends as `deviceName`, and the Worker applies on receipt. Every row's `expect` is
+// checked against the generator-local reference below, which imports nothing from client-core or
+// shared-protocol (a golden corpus that shares code with the implementation it checks cannot
+// catch a bug in it). Strings are written with every non-ASCII code point escaped, so no bidi
+// override or zero-width character sits literally in a committed file.
+
+interface DeviceLabelCase {
+  id: string;
+  description: string;
+  raw: string;
+  expect: string | null;
+}
+
+const A63 = "A".repeat(63);
+const A64 = "A".repeat(64);
+
+const DEVICE_LABEL_CASES: DeviceLabelCase[] = [
+  {
+    id: "ascii-plain",
+    description: "An ordinary ASCII label is unchanged.",
+    raw: "Living room TV",
+    expect: "Living room TV",
+  },
+  {
+    id: "trim-and-collapse",
+    description: "Runs of spaces collapse to one; both ends are trimmed.",
+    raw: "  Living   room  TV  ",
+    expect: "Living room TV",
+  },
+  {
+    id: "tab-newline-crlf",
+    description:
+      "Step 1: tab, line feed, vertical tab, form feed and carriage return become spaces, then collapse.",
+    raw: "Living\troom\n\u000b\u000cTV\r\n",
+    expect: "Living room TV",
+  },
+  {
+    id: "c0-controls",
+    description:
+      "Step 2: the C0 controls outside step 1 (here SOH, BEL and ESC) are deleted, not spaced. No row holds U+0000: a Godot String cannot.",
+    raw: "Living\u0001room\u0007T\u001bV",
+    expect: "LivingroomTV",
+  },
+  {
+    id: "del-and-c1",
+    description:
+      "Step 2: DEL and the C1 controls are deleted; NEL (U+0085) is whitespace and becomes a space first.",
+    raw: "Den\u007f\u0080\u0085PC\u009f",
+    expect: "Den PC",
+  },
+  {
+    id: "nbsp-ideographic-space",
+    description: "Step 1: NBSP and the ideographic space become spaces.",
+    raw: "Living\u00a0room\u3000TV",
+    expect: "Living room TV",
+  },
+  {
+    id: "line-paragraph-separators",
+    description: "Step 1: U+2028 and U+2029 become spaces.",
+    raw: "Living\u2028room\u2029TV",
+    expect: "Living room TV",
+  },
+  {
+    id: "arabic-letter-mark",
+    description: "Step 2: the Arabic letter mark (U+061C) is deleted.",
+    raw: "TV\u061c",
+    expect: "TV",
+  },
+  {
+    id: "zero-width-and-marks",
+    description:
+      "Step 2: zero-width space, non-joiner and joiner, and the LRM and RLM marks (U+200B-200F) are deleted.",
+    raw: "Li\u200bving\u200c \u200dTV\u200e\u200f",
+    expect: "Living TV",
+  },
+  {
+    id: "rlo-spoof",
+    description:
+      "Step 2: a right-to-left override that would render the tail reversed (`exe.png`) is deleted, so the label reads in logical order.",
+    raw: "Living room TV\u202egnp.exe",
+    expect: "Living room TVgnp.exe",
+  },
+  {
+    id: "bidi-embeddings",
+    description:
+      "Step 2: the bidi embeddings, pop and overrides (U+202A-202E) are deleted.",
+    raw: "\u202aA\u202bB\u202cC\u202dD\u202e",
+    expect: "ABCD",
+  },
+  {
+    id: "invisible-operators",
+    description:
+      "Step 2: the word joiner and the invisible operators (U+2060-2064) are deleted.",
+    raw: "A\u2060B\u2061C\u2062D\u2063E\u2064",
+    expect: "ABCDE",
+  },
+  {
+    id: "bidi-isolates",
+    description: "Step 2: the bidi isolates (U+2066-2069) are deleted.",
+    raw: "\u2066A\u2067B\u2068C\u2069",
+    expect: "ABC",
+  },
+  {
+    id: "byte-order-mark",
+    description: "Step 2: a byte order mark (U+FEFF) is deleted.",
+    raw: "\ufeffDeck",
+    expect: "Deck",
+  },
+  {
+    id: "non-latin-kept",
+    description:
+      "Letters, punctuation and symbols outside the two lists are kept as they are.",
+    raw: "Gästezimmer-PC · 客厅",
+    expect: "Gästezimmer-PC · 客厅",
+  },
+  {
+    id: "no-unicode-normalisation",
+    description:
+      "There is no NFC step: a decomposed e and combining acute accent stay two code points.",
+    raw: "Cafe\u0301",
+    expect: "Cafe\u0301",
+  },
+  {
+    id: "length-64-kept",
+    description: "Exactly 64 code points: kept whole.",
+    raw: A64,
+    expect: A64,
+  },
+  {
+    id: "length-65-cut",
+    description: "65 code points: cut to the first 64.",
+    raw: `${A64}B`,
+    expect: A64,
+  },
+  {
+    id: "astral-at-boundary-kept",
+    description:
+      "An astral emoji as the 64th code point is kept whole: the limit counts code points (64 here), not UTF-16 units (65).",
+    raw: `${A63}\u{1f3ae}B`,
+    expect: `${A63}\u{1f3ae}`,
+  },
+  {
+    id: "astral-past-boundary-cut",
+    description:
+      "An astral emoji as the 65th code point is cut whole, never split into a lone surrogate.",
+    raw: `${A64}\u{1f3ae}`,
+    expect: A64,
+  },
+  {
+    id: "cut-exposes-space",
+    description:
+      "Step 4 trims a trailing space the cut exposes: the 64th code point is a space.",
+    raw: `${A63} B`,
+    expect: A63,
+  },
+  {
+    id: "length-after-cleaning",
+    description:
+      "The limit applies after steps 1-3: deleted code points and collapsed spaces do not count.",
+    raw: `\u200b${"A ".repeat(40)}`,
+    expect: "A ".repeat(32).trimEnd(),
+  },
+  {
+    id: "all-whitespace-absent",
+    description: "Only whitespace: nothing is left, so the label is absent.",
+    raw: " \t\n\u3000 ",
+    expect: null,
+  },
+  {
+    id: "only-stripped-absent",
+    description: "Only deleted code points: the label is absent.",
+    raw: "\u200b\u202e\u0001",
+    expect: null,
+  },
+  {
+    id: "empty-absent",
+    description: "The empty string is no label.",
+    raw: "",
+    expect: null,
+  },
+];
+
+/** The generator's own §12.7.1 reference, written with regular expressions on purpose. */
+function refDeviceLabel(raw: string): string | null {
+  const spaced = raw.replace(
+    /[\u0009-\u000d\u0085\u00a0\u2028\u2029\u3000]/gu,
+    " ",
+  );
+  const stripped = spaced.replace(
+    // eslint-disable-next-line no-control-regex
+    /[\u0000-\u001f\u007f-\u009f\u061c\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff]/gu,
+    "",
+  );
+  const collapsed = stripped.replace(/ +/g, " ").replace(/^ | $/g, "");
+  const cut = Array.from(collapsed).slice(0, 64).join("").replace(/ $/, "");
+  return cut === "" ? null : cut;
+}
+
+function buildDeviceLabelCorpus(): unknown {
+  const ids = new Set<string>();
+  for (const row of DEVICE_LABEL_CASES) {
+    if (ids.has(row.id)) throw new Error(`deviceLabel: duplicate id ${row.id}`);
+    ids.add(row.id);
+    const got = refDeviceLabel(row.raw);
+    if (got !== row.expect)
+      throw new Error(
+        `deviceLabel ${row.id}: reference gives ${JSON.stringify(got)}, row says ${JSON.stringify(row.expect)}`,
+      );
+    // A row is its own fixed point: normalising a normalised label changes nothing.
+    if (row.expect !== null && refDeviceLabel(row.expect) !== row.expect)
+      throw new Error(`deviceLabel ${row.id}: expect is not a fixed point`);
+  }
+  return {
+    deviceLabelVersion: 1,
+    description:
+      "Device labels (WIRE-CONTRACT-V4 section 12.7.1, plans/PX-W13.md section 2.1). Every SDK normalises the label it sends as `deviceName` (device-code sign-in, licence activation, registration), and the Worker normalises it again on receipt: (1) map U+0009-000D, U+0085, U+00A0, U+2028, U+2029 and U+3000 to U+0020; (2) delete U+0000-001F, U+007F-009F, U+061C, U+200B-200F, U+202A-202E, U+2060-2064, U+2066-2069 and U+FEFF; (3) collapse runs of U+0020 to one and trim both ends; (4) keep at most 64 code points (`DEVICE_LABEL_MAX_CODEPOINTS`; code points, never UTF-16 units) and trim a trailing space the cut exposes; (5) an empty result is no label: `expect: null`, the member is omitted and the Worker stores NULL. No Unicode normalisation; nothing is ever rejected. Each runner asserts its `normalizeDeviceLabel` maps every `raw` to `expect`. Non-ASCII code points are written escaped. Append-only: a new row keeps `deviceLabelVersion`; a changed row or rule bumps it.",
+    cases: DEVICE_LABEL_CASES,
+  };
+}
+
+/** JSON with every non-ASCII UTF-16 unit escaped (`\uXXXX`, astral as a surrogate pair). */
+function asciiJson(value: unknown): string {
+  return JSON.stringify(value).replace(
+    /[\u007f-\uffff]/g,
+    (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`,
+  );
 }
 
 // ── Config resolution (config-matrix.json) ───────────────────────────────────
@@ -20131,6 +20391,10 @@ async function main(): Promise<void> {
   const v2ConfigMatrix = await format(JSON.stringify(buildConfigMatrix()), {
     parser: "json",
   });
+  // §12.7.1 (PX-W13): the device label every SDK sends and the Worker stores. Unsigned, ASCII-only.
+  const v2DeviceLabel = await format(asciiJson(buildDeviceLabelCorpus()), {
+    parser: "json",
+  });
   // Wire contract v4's two decision tables (plans/P3-01.md §4.6, §4.7): unsigned client
   // behaviour, recomputed by the generator's reference implementations, mirrored like the rest.
   // `buildV2` above has built the record vectors their rows pin.
@@ -20153,6 +20417,11 @@ async function main(): Promise<void> {
   const planMatrix = await format(JSON.stringify(content.planMatrix), {
     parser: "json",
   });
+  // plans/U-01.md §4.1 (U-18): the Cloud Sync client scenario corpus. Literal data with its own
+  // self-check (tools/sync-scenarios.ts); unsigned, mirrored like the rest.
+  const syncScenarios = await format(JSON.stringify(buildSyncScenarios()), {
+    parser: "json",
+  });
 
   // One map from file name to content, reconciled into the source directory and into every
   // generator-owned mirror, so a file added here reaches each mirror by construction.
@@ -20167,6 +20436,8 @@ async function main(): Promise<void> {
     [basename(V2_OUTLET_MATRIX_OUT), v2OutletMatrix],
     [basename(V2_PLAN_MATRIX_OUT), planMatrix],
     [basename(V2_FEED_URL_MATRIX_OUT), v2FeedUrlMatrix],
+    [basename(V2_SYNC_SCENARIOS_OUT), syncScenarios],
+    [basename(V2_DEVICE_LABEL_OUT), v2DeviceLabel],
   ]);
   let stale = false;
   // `content/` is source-only (§4.1): its cases are reconciled in the source tree alone, its

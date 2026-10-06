@@ -120,6 +120,14 @@ class ConfigClientTest {
     }
 
     @Test
+    fun aCatalogWithCloudSyncMembersStillParses() = runBlocking {
+        // U-04: the catalog's `user` and `cloudSync` members are additive content.
+        val catalog = """{"schemaVersion":2,"entries":[{"key":"a","kind":"config","category":"c","label":"A","description":"","schema":{"type":"number"},"user":{"sync":"user","conflict":"max"}}],"cloudSync":{"collections":[{"name":"progress","access":"owner"}]}}"""
+        val (ok, _) = client { r -> if (r.path == "/djdl/config/schema") respond(200, catalog) else respond(404) }
+        assertEquals(catalog, ok.fetchSchema()!!.toString(Charsets.UTF_8))
+    }
+
+    @Test
     fun edgeMintRefusesBeforeAnyRequest() = runBlocking {
         val (config, transport) = client { respond(404) }
         val before = transport.requests().size

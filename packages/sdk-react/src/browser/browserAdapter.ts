@@ -87,8 +87,19 @@ import {
   readConfig,
   readEntitled,
   readEntitledChannels,
+  withOverrides,
 } from "../core/adapter.js";
-import { ErrorCode, Feature, Platform, SdkId } from "../constants.generated.js";
+import {
+  ErrorCode,
+  Feature,
+  Platform,
+  SdkId,
+  UpdateEvent,
+} from "../constants.generated.js";
+import type {
+  UpdateEventEntry,
+  UpdateEventInput,
+} from "../core/updateEvents.js";
 import { createStore, type Store } from "../core/store.js";
 import {
   PolarisError,
@@ -186,6 +197,11 @@ import {
   type UpdateSlices,
 } from "./update.js";
 import { fetchCatalog } from "./catalog.js";
+import {
+  LocalConfigEngine,
+  browserLocalConfigBackend,
+  type ConfigStorage,
+} from "../core/localConfig.js";
 import {
   buildDownloadUrl,
   buildInstallUrl,
@@ -291,6 +307,13 @@ export interface BrowserAdapterOptions {
   /** Client-supplied local/user overrides for `default`-state config keys. Never override
    *  `enforced`/`hidden` keys (server wins). */
   localOverrides?: Record<string, JSONValue>;
+  /** Where `config.set()` keeps device-local overrides (`config.local`). Defaults to
+   *  `localStorage`, under one key per product; `null` (or storage that throws) keeps them in
+   *  memory, which `config.persistent()` reports. */
+  configStorage?: ConfigStorage | null;
+  /** The product catalog `config.set()` validates against. Absent ⇒ fetched once
+   *  (`fetchSchema()`) on the first write. */
+  catalog?: ProductCatalog | null;
   /** The host app's version, reported as `X-PKey-Version` so a browser device row carries
    *  the same app-version metadata a native one does. Also the basis of `updateAvailable`. */
   version?: string;
@@ -333,6 +356,9 @@ export interface BrowserAdapterOptions {
   /** A hashed hardware fingerprint for bearer requests. A browser has none (the default);
    *  the seam exists for tests and for hosts (a kiosk shell) that do. */
   fingerprint?: () => HardwareFingerprint | null;
+  /** Bearer mode: this device's label (WIRE-CONTRACT-V4 §12.7.1), sent on registration,
+   *  activation and sign-in. A browser has no platform name, so none is sent by default. */
+  deviceName?: string;
   /** The page's own origin, for `auth: "auto"`. Defaults to `window.location.origin`. */
   pageOrigin?: string;
   /** Start loading at construction (default true). The Provider passes false and calls
@@ -408,7 +434,10 @@ export class BrowserAdapter implements PolarisAdapter {
   private readonly navigate: (url: string) => void;
   private readonly clock: () => number;
   private readonly store: Store<PolarisState>;
-  private readonly localOverrides: Record<string, JSONValue>;
+  /** The host's `localOverrides`, then the persisted `config.set()` layer over them. */
+  private localOverrides: Record<string, JSONValue>;
+  /** Device-local overrides (`config.local`), persisted in `localStorage`. */
+  readonly config: LocalConfigEngine;
   private readonly version?: string;
   private csrf: string | null = null;
   private hadSession = false;
@@ -433,6 +462,8 @@ export class BrowserAdapter implements PolarisAdapter {
   readonly authMode: BrowserAuthMode;
   /** Bearer mode's engine; null in cookie mode. */
   private readonly bearer: BearerSession | null = null;
+  /** The releases an update_offered was journalled for this page (§3.13). */
+  private readonly offered = new Set<string>();
   private readonly bearerStore: BrowserStore | null = null;
   private readonly autoRegister: boolean;
   private started = false;
@@ -454,7 +485,12 @@ export class BrowserAdapter implements PolarisAdapter {
         if (typeof window !== "undefined") window.location.assign(url);
       });
     this.clock = opts.now ?? nowSec;
-    this.localOverrides = opts.localOverrides ?? {};
+    const hostOverrides = opts.localOverrides ?? {};
+    const localBackend = browserLocalConfigBackend(
+      this.product,
+      opts.configStorage,
+    );
+    this.localOverrides = { ...hostOverrides, ...localBackend.read() };
     this.version = opts.version;
     // D-21: the pre-discovery belief. Never all-true.
     this.capabilities = copyServices(opts.expectServices ?? defaultServices());
@@ -532,6 +568,9 @@ export class BrowserAdapter implements PolarisAdapter {
         store: this.bearerStore,
         enabled: (slug) => this.capabilities[slug].enabled,
         ...(opts.fingerprint ? { fingerprint: opts.fingerprint } : {}),
+        ...(opts.deviceName !== undefined
+          ? { deviceName: opts.deviceName }
+          : {}),
         facts: () => browserFacts(),
         caps: () => this.caps(),
         outlet: () =>
@@ -549,6 +588,18 @@ export class BrowserAdapter implements PolarisAdapter {
     this.store = createStore<PolarisState>(
       initialState("browser", this.capabilities, this.localOverrides),
     );
+    this.config = new LocalConfigEngine({
+      backend: localBackend,
+      hostOverrides,
+      snapshot: () => this.store.get(),
+      subscribe: (cb) => this.store.subscribe(cb),
+      applyOverrides: (merged) => {
+        this.localOverrides = merged;
+        this.store.set((s) => withOverrides(s, merged));
+      },
+      fetchSchema: () => this.fetchSchema(),
+      ...(opts.catalog !== undefined ? { catalog: opts.catalog } : {}),
+    });
     this.updateConfig?.packs?.seedFeedDeltas?.(() =>
       this.committedFeedDeltas(),
     );
@@ -1314,6 +1365,7 @@ export class BrowserAdapter implements PolarisAdapter {
         ...(content ? { content } : {}),
       });
       await this.writeSlices(result.cache);
+      this.journalOffer(result.check);
       if (result.revocations && u.packs)
         await u.packs.recordRevocations(result.revocations);
       u.packs?.recordFeedDeltas?.(result.feedDeltas);
@@ -1330,6 +1382,21 @@ export class BrowserAdapter implements PolarisAdapter {
           : new PolarisError("network", (e as Error).message),
       );
     }
+  }
+
+  /** update_offered (§3.13): a decision that offers a newer build, once per release per page,
+   *  as Node's `update.decide()`. Bearer mode only: a cookie page has no journal to feed. */
+  private journalOffer(check: UpdateCheck): void {
+    const d = check.decision;
+    if (!this.bearer || d.action === "none" || !("release" in d)) return;
+    const release = d.release.version;
+    if (this.offered.has(release)) return;
+    this.offered.add(release);
+    this.bearer.recordUpdateEvent(UpdateEvent.updateOffered, {
+      release,
+      fromRelease: this.version ?? null,
+      channel: check.channel,
+    });
   }
 
   /** Core's read-modify-write of the update slices: everything else in the record stays. */
@@ -1504,6 +1571,15 @@ export class BrowserAdapter implements PolarisAdapter {
       'Device telemetry needs a device token; this page uses the cookie session (auth: "bearer" adds it).',
     );
     return b.report();
+  }
+
+  /** Bearer mode's in-page journal (telemetry.updates); a cookie page refuses typed. */
+  async recordUpdateEvent(
+    event: UpdateEvent,
+    input: UpdateEventInput,
+  ): Promise<UpdateEventEntry | null> {
+    const b = this.requireBearer(Feature.telemetryUpdates, COOKIE_DETAIL);
+    return b.recordUpdateEvent(event, input);
   }
 
   async enroll(): Promise<void> {
@@ -1901,7 +1977,7 @@ export class BrowserAdapter implements PolarisAdapter {
   }
 
   dispose(): void {
-    // No long-lived listeners/timers to clean up in browser mode.
+    this.config.dispose();
   }
 }
 
@@ -1916,6 +1992,7 @@ const BEARER_ONLY = new Set<string>([
   Feature.devicesRegister,
   Feature.devicesManage,
   Feature.devicesReport,
+  Feature.telemetryUpdates,
   Feature.licenseEnroll,
   Feature.licenseReregister,
   Feature.identityDevicecode,

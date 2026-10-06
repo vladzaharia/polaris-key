@@ -58,6 +58,10 @@
     "license.deactivate": {
       "status": "implemented"
     },
+    "license.manage": {
+      "status": "implemented",
+      "note": "PX-W8: the device-limit result exposes manageUrl (validated), plus the return and key helpers."
+    },
     "license.entitlements": {
       "status": "implemented"
     },
@@ -158,6 +162,14 @@
     "identity.devicecode": {
       "status": "implemented",
       "note": "PolarisKey.identity (P1-07): begin_sign_in with background polling on the server's cadence, cancel, the opt-in confirm-identity step and licence attach, and a pure-GDScript QR encoder with PKeyQrRect for verification_uri_complete. On web it runs too (OS.shell_open becomes window.open; Worker CORS needed)."
+    },
+    "identity.devicelabel": {
+      "status": "implemented",
+      "note": "PX-W13: PKeyDeviceLabel.normalize (UTF-32, one character per code point), PKeyOptions.device_name and send_device_name, the model-else-OS default, on begin_sign_in, activation and registration; PKeySignInPrompt.device_name is the echo, and PKeySignInDialog shows it under the code. A per-call name wins; opting out is send_device_name = false (an exported String cannot be null)."
+    },
+    "identity.toggle": {
+      "status": "planned",
+      "wp": "I-10b"
     },
     "release.changelog": {
       "status": "implemented"
@@ -423,6 +435,10 @@
     "ui.kit": {
       "status": "implemented",
       "note": "P1-10's v1 kit: PKeyBoot, gate, activation panel, sign-in dialog with QR, offline activation, settings panel, status banner, update prompt, entitlement badge and dev-menu section, pinned as structural snapshots and centred at five window sizes (suite_ui); a neutral default look over the game's theme, with opt-in Polaris Key branding and an optional Powered-by badge (PKeyOptions.ui_*, PKeyUiTheme; suite_brand). PKeyDeviceList is not in v1 (unowned; needs P1-05) and the pack progress UI is P4-08's."
+    },
+    "ui.kit.manage": {
+      "status": "implemented",
+      "note": "PX-W8: the activation panel shows Replace a device on device-limit, or a QR when a joypad is the only input (suite_ui)."
     },
     "ui.cli": {
       "status": "na",

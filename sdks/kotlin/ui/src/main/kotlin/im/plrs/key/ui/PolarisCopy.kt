@@ -105,6 +105,10 @@ public data class PolarisCopy(
     val activationRateLimitedFor: String = "Too many attempts. Try again in %1\$s.",
     val activationNetwork: String = "Couldn't reach the license server. Check your connection and try again.",
     val activationRefused: String = "The license server refused this activation (%1\$s).",
+    // PX-W8: the action on a device-limit refusal that carries the portal link.
+    val freeDevice: String = "Replace a device",
+    val freeDeviceScan: String = "Scan with your phone to free a device, then try again.",
+    val freeDeviceQrDescription: String = "QR code that opens your account to free a device",
 
     // ── Sign-in with QR (RFC 8628) ───────────────────────────────────────────────────────────
     val signInTitle: String = "Sign in",
@@ -114,6 +118,8 @@ public data class PolarisCopy(
     val signInCodeDescription: String = "Sign-in code %1\$s",
     val signInOpenBrowser: String = "Open sign-in page",
     val signInExpiresIn: String = "Code expires in %1\$s",
+    /** PX-W13 (WIRE-CONTRACT-V4 §12.7.1): the device label the sign-in page will show. */
+    val signInDeviceLabel: String = "The sign-in page will show “%1\$s”",
     val signInWaiting: String = "Waiting for you to finish signing in…",
     val signInDone: String = "Signed in.",
     val signInExpired: String = "The code expired before sign-in finished.",

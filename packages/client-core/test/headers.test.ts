@@ -11,6 +11,12 @@ describe("canonicalPlatform", () => {
     expect(canonicalPlatform("iPadOS")).toBe("ios");
   });
 
+  it("maps the Apple OS tokens to their own canonical values (§5.2, SP-08)", () => {
+    expect(canonicalPlatform("tvOS")).toBe("tvos");
+    expect(canonicalPlatform("visionOS")).toBe("visionos");
+    expect(canonicalPlatform("WATCHOS")).toBe("watchos");
+  });
+
   it("folds ASCII A-Z only, never a locale lowercase", () => {
     expect(canonicalPlatform("LINUX")).toBe("linux");
     // U+0130 LATIN CAPITAL LETTER I WITH DOT ABOVE is not folded.

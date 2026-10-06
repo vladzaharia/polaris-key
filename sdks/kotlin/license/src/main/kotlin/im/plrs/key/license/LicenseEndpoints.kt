@@ -20,11 +20,12 @@ import im.plrs.key.core.CoreContext
 import im.plrs.key.core.ErrorCode
 import im.plrs.key.core.HardwareFingerprint
 import im.plrs.key.core.JsonText
+import im.plrs.key.core.ManageLink
 import im.plrs.key.core.PolarisResponse
 import im.plrs.key.core.arrayValue
+import im.plrs.key.core.deviceRequestBody
 import im.plrs.key.core.longValue
 import im.plrs.key.core.objectValue
-import im.plrs.key.core.requestBody
 import im.plrs.key.core.stringValue
 import kotlinx.coroutines.CancellationException
 
@@ -43,8 +44,18 @@ public sealed interface ActivationResult {
         override fun toString(): String = "Ok(token=[redacted], schemaVersion=$schemaVersion)"
     }
 
-    /** 403 `device_limit`: every seat is taken. Free one (the portal's devices page) or deactivate elsewhere. */
-    public data class DeviceLimit(val limit: Long?, val deviceCount: Long?) : ActivationResult {
+    /**
+     * 403 `device_limit`: every seat is taken. Free one (the portal's devices page) or deactivate
+     * elsewhere. [manageUrl] (PX-W8, WIRE-CONTRACT-V4 §5.3) is the customer-portal link that frees
+     * one, present while the product's portal is on and already validated by [ManageLink.read].
+     * Add the app's return with [ManageLink.withReturn] and, on an `/activate` link, the key with
+     * [ManageLink.withKey]. Never an auth failure: open it only behind a user action.
+     */
+    public data class DeviceLimit(
+        val limit: Long?,
+        val deviceCount: Long?,
+        val manageUrl: String? = null,
+    ) : ActivationResult {
         override val code: String get() = ErrorCode.deviceLimit
     }
 
@@ -113,7 +124,8 @@ public sealed interface ActivationResult {
 public object LicenseEndpoints {
     /** `POST /<p>/license/activate`: exchange a licence key for a per-device `pkeyt_` token. */
     public suspend fun activate(core: CoreContext, key: String, fingerprint: HardwareFingerprint? = null): ActivationResult =
-        activationLike(core, core.endpoints.licenseActivate, mapOf("authorization" to "Bearer $key"), fingerprint)
+        // PX-W13 §8 Q2: the label seeds the device's name in the customer's and console's lists.
+        activationLike(core, core.endpoints.licenseActivate, mapOf("authorization" to "Bearer $key"), fingerprint, core.deviceLabel())
 
     /** `POST /<p>/license/enroll`: a licence with no key and no sign-in; the same shape as [activate]. */
     public suspend fun enroll(core: CoreContext, fingerprint: HardwareFingerprint? = null): ActivationResult =
@@ -144,15 +156,13 @@ public object LicenseEndpoints {
         url: String,
         extra: Map<String, String>,
         fingerprint: HardwareFingerprint?,
+        deviceName: String? = null,
     ): ActivationResult {
         val headers = LinkedHashMap(extra)
-        var body: ByteArray? = null
-        // No fingerprint, no body: a host that opted out sends a byte-identical request to one
-        // that has nothing to report.
-        if (fingerprint != null) {
-            headers["content-type"] = "application/json"
-            body = fingerprint.requestBody()
-        }
+        // No fingerprint and no label, no body: a host that opted out sends a byte-identical
+        // request to one that has nothing to report.
+        val body = deviceRequestBody(fingerprint, deviceName)
+        if (body != null) headers["content-type"] = "application/json"
         val response = try {
             core.request(url, method = "POST", headers = headers, body = body)
         } catch (e: CancellationException) {
@@ -183,7 +193,11 @@ public object LicenseEndpoints {
         }
         if (status >= 500 || status < 400) return ActivationResult.Error("activation answered HTTP $status", ErrorCode.serverError, status)
         return when (code) {
-            ErrorCode.deviceLimit -> ActivationResult.DeviceLimit(long("limit"), long("deviceCount"))
+            ErrorCode.deviceLimit -> ActivationResult.DeviceLimit(
+                long("limit"),
+                long("deviceCount"),
+                manageUrl = ManageLink.read(o?.get("manageUrl").stringValue, nested?.get("manageUrl").stringValue),
+            )
             ErrorCode.fingerprintRequired -> ActivationResult.FingerprintRequired
             ErrorCode.hardwareMismatch -> ActivationResult.HardwareMismatch(
                 drift = long("drift"),

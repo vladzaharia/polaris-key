@@ -59,6 +59,10 @@
     "license.deactivate": {
       "status": "implemented"
     },
+    "license.manage": {
+      "status": "implemented",
+      "note": "PX-W8: the device-limit result exposes manageUrl (validated), plus the return and key helpers."
+    },
     "license.entitlements": {
       "status": "implemented"
     },
@@ -125,6 +129,14 @@
     },
     "identity.devicecode": {
       "status": "implemented"
+    },
+    "identity.devicelabel": {
+      "status": "implemented",
+      "note": "PX-W13: normalize_device_label (polaris_key.core.device_label), the device_name option and platform.node() without .local/.lan/.home by default, on begin_sign_in, activate_with_key and register; SignInPrompt.deviceName is the Worker's echo."
+    },
+    "identity.toggle": {
+      "status": "planned",
+      "wp": "I-10a"
     },
     "release.changelog": {
       "status": "implemented"
@@ -290,6 +302,11 @@
       "status": "implemented"
     },
     "ui.kit": {
+      "status": "na",
+      "runtime": "headless",
+      "reason": "runtime"
+    },
+    "ui.kit.manage": {
       "status": "na",
       "runtime": "headless",
       "reason": "runtime"

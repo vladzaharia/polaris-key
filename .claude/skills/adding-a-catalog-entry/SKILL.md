@@ -85,6 +85,27 @@ The env override for a key is `PKEY_CONFIG_` + the key with dots → `__`
 text (WIRE-CONTRACT-V3 §2.2.1 rule 2: no duplicate names, every number zero or of magnitude
 10^−307 up to below 10^308, at most 64 deep), else the raw string.
 
+### 4b. Make it a user setting? (config kinds only)
+
+A `user` block makes a `config` key a value the **person** chooses: kept on the device by the
+Config SDK and, with the `sync` (Cloud Sync) service on and the person signed in, synced.
+
+```json
+"user": { "sync": "user", "conflict": "lastWrite", "listed": true }
+```
+
+- [ ] `sync` (required): `user` (every device), `platform` (per platform family), `device`
+      (stored per device), `local` (never leaves the device).
+- [ ] `conflict` (default `lastWrite`): `max`/`min` need a number schema; `merge` an object
+      schema with at most 256 top-level members; never `union`.
+- [ ] `listed` (default `true`): whether settings panels show it.
+- [ ] Refused on a `secret` or `flag` and under an `enforced` or `hidden` management default
+      (the operator locked it, so it is not the person's to choose). The rules live once, in
+      `@polaris-key/catalog`'s `userSettingIssues`, used by the manifest validator, the
+      console's publish route and the catalog editor.
+- [ ] A synced `user` block while Cloud Sync is off is a warning
+      (`cloud_sync_block_without_service`): the value stays on the device until it is on.
+
 ### 5. Choose `delivery` (secret kinds only)
 
 - [ ] `serverOnly` — never leaves the worker.

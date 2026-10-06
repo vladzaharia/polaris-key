@@ -9,6 +9,7 @@
 // `CoreContext.headers()` / `.deadline()`, so a new endpoint cannot ship without them (R4-08).
 
 import type { HardwareFingerprint } from "@polaris-key/protocol/core";
+import { readManageUrl } from "@polaris-key/client-core";
 import type { CoreContext, DocumentResult } from "../core/context.js";
 
 /**
@@ -23,11 +24,15 @@ import type { CoreContext, DocumentResult } from "../core/context.js";
  */
 export type ActivationResult =
   | { kind: "ok"; token: string; schemaVersion: number }
+  /** Every seat is taken. `manageUrl` (PX-W8) is the customer-portal link that frees one,
+   *  present while the product's portal is on; add the app's return with `withManageReturn`
+   *  and, on an `/activate` link, the key with `withManageKey`. Never an auth failure. */
   | {
       kind: "device-limit";
       code: string;
       limit?: number;
       deviceCount?: number;
+      manageUrl?: string;
     }
   /** 401: the key or token is missing, invalid or revoked. */
   | { kind: "unauthorized"; code: string }
@@ -141,11 +146,13 @@ export function activationRefusal(
     case "device-limit": {
       const limit = num(body.limit) ?? num(nested?.limit);
       const deviceCount = num(body.deviceCount) ?? num(nested?.deviceCount);
+      const manageUrl = readManageUrl(body);
       return {
         kind,
         code: wire!,
         ...(limit !== undefined ? { limit } : {}),
         ...(deviceCount !== undefined ? { deviceCount } : {}),
+        ...(manageUrl !== undefined ? { manageUrl } : {}),
       };
     }
     case "hardware-mismatch": {
@@ -217,6 +224,8 @@ async function activationLike(
   path: string,
   headers: Record<string, string>,
   fingerprint?: HardwareFingerprint | null,
+  /** PX-W13 §8 Q2: the device label, on activation only (never enroll or token rotation). */
+  deviceName?: string | null,
 ): Promise<ActivationResult> {
   // OUTSIDE the try, deliberately. `fetcher()` throws only in local-only mode, and that is a
   // configuration error — the host asked a transportless client to dial — not a transport
@@ -225,16 +234,21 @@ async function activationLike(
   const f = ctx.fetcher();
   let res: Response;
   try {
-    // The body is omitted entirely when there is no fingerprint, so a host that opted out
-    // sends a byte-identical request to one that has nothing to report.
-    const init: RequestInit = fingerprint
-      ? {
-          method: "POST",
-          headers: { ...headers, "content-type": "application/json" },
-          body: JSON.stringify({ fingerprint }),
-          signal: ctx.deadline(),
-        }
-      : { method: "POST", headers, signal: ctx.deadline() };
+    // The body is omitted entirely when there is neither a fingerprint nor a label, so a host
+    // that opted out sends a byte-identical request to one that has nothing to report.
+    const body = {
+      ...(fingerprint ? { fingerprint } : {}),
+      ...(deviceName ? { deviceName } : {}),
+    };
+    const init: RequestInit =
+      Object.keys(body).length > 0
+        ? {
+            method: "POST",
+            headers: { ...headers, "content-type": "application/json" },
+            body: JSON.stringify(body),
+            signal: ctx.deadline(),
+          }
+        : { method: "POST", headers, signal: ctx.deadline() };
     res = await f(ctx.url(path), init);
   } catch (e) {
     return { kind: "error", code: "network", message: (e as Error).message };
@@ -284,6 +298,8 @@ export function activateWithKey(
     "license/activate",
     ctx.headers({ authorization: `Bearer ${key}` }),
     fingerprint,
+    // PX-W13 §8 Q2: seeds the device's label in the customer's and the console's device lists.
+    ctx.deviceLabel(),
   );
 }
 

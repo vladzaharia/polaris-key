@@ -4,8 +4,18 @@
   "enums": [
     {
       "name": "platform",
-      "description": "OS family, the canonical `X-PKey-Platform` value (README §3.1). iPadOS is `ios`.",
-      "values": ["macos", "ios", "android", "windows", "linux", "web"]
+      "description": "OS family, the canonical `X-PKey-Platform` value (README §3.1). iPadOS is `ios`. `tvos`, `visionos` and `watchos` are header values only; build targets are `RELEASE_PLATFORMS` (WIRE-CONTRACT-V4 §5.2 rule 5).",
+      "values": [
+        "macos",
+        "ios",
+        "android",
+        "windows",
+        "linux",
+        "web",
+        "tvos",
+        "visionos",
+        "watchos"
+      ]
     },
     {
       "name": "arch",

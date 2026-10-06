@@ -77,6 +77,10 @@
     "license.deactivate": {
       "status": "implemented"
     },
+    "license.manage": {
+      "status": "implemented",
+      "note": "PX-W8: the device-limit result exposes manageUrl (validated), plus the return and key helpers."
+    },
     "license.entitlements": {
       "status": "implemented"
     },
@@ -122,9 +126,8 @@
       "note": "The TypeScript mirror is rendered by tools/gen-mirrors.ts."
     },
     "config.local": {
-      "status": "planned",
-      "wp": "SP-13",
-      "note": "Not built: React has no persisted device-local override API (config.set, config.setting, onConfigChange); ConfigPanel shows the delivered values only (SP-R05, SDK-PARITY-PASS §5.2)."
+      "status": "implemented",
+      "note": "adapter.config.set/clear/clearAll/setting/onConfigChange (SP-13): validated against the catalog type, refused for an admin-managed key, a change event per resolved-value move. Browser: localStorage per product, a memory fallback reported by config.persistent(). Desktop: forwarded to the host's client.config over bridge v4 (a v3 host is refused typed, reason version). useConfigSetting(key) re-renders on change; ConfigPanel saves overrides itself."
     },
     "devices.fingerprint": {
       "status": "na",
@@ -158,16 +161,8 @@
       "note": "Desktop through invoke(\"devices\", \"report\"). Web in bearer mode (SP-R02): POST /<p>/devices/report after every sync and on report(), with the browser facts (os family, cores, memory bucket, locale, time zone), caps, outlet and the update-health journal (src/browser/bearer/facts.ts); telemetry-report replays through it. A cookie-session page throws report-unsupported."
     },
     "telemetry.updates": {
-      "status": "planned",
-      "wp": "SP-14",
-      "note": "Half built: bearer mode's BearerSession queues P6-03 update events and drains at most 16 per POST /<p>/devices/report (dropping them only on a 200), but nothing records them: the adapter exposes no record call and the browser update path journals no update_offered, and the desktop renderer forwards none (SP-R11, SDK-PARITY-PASS §5.2).",
-      "except": [
-        {
-          "runtime": "web",
-          "reason": "runtime",
-          "note": "No device bearer in a browser cookie session (as devices.report); SP-R02 removes it."
-        }
-      ]
+      "status": "implemented",
+      "note": "adapter.recordUpdateEvent(event, input) journals a P6-03 event with Node's defaults and validation (src/core/updateEvents.ts). Web in bearer mode (SP-R02): BearerSession's in-page journal, drained at most 16 per POST /<p>/devices/report and dropped only on a 200; decideUpdate() journals update_offered once per offered release; telemetry-report-updates replays through recorded events. A cookie-session page refuses typed (runtime). Desktop: forwarded to the host's journal over bridge v4 (invoke(\"update\", \"journal\")), a typed version N/A on an older host (SP-14)."
     },
     "devices.attest": {
       "status": "na",
@@ -181,6 +176,20 @@
     "identity.devicecode": {
       "status": "implemented",
       "note": "Desktop through the bridge (beginSignIn/pollSignIn, v4 adds the expiry, interval and identity). Web in bearer mode (SP-R02): POST /<p>/identity/auth/device/{start,poll} through adapter.beginSignIn(); devicecode-happy and devicecode-expired replay through it. A cookie-session page signs in by the OIDC redirect (identity.oidc)."
+    },
+    "identity.devicelabel": {
+      "status": "implemented",
+      "except": [
+        {
+          "runtime": "web",
+          "reason": "runtime"
+        }
+      ],
+      "note": "PX-W13: a browser has no platform device name, so by default it reports none (the card shows the registered origin); in bearer mode a host may name one (browserAdapter deviceName, or per call on beginSignIn), sent on registration, activation and sign-in. Through the desktop bridge the main process's Node SDK sends it; the corpus runs through client-core's normalizeDeviceLabel."
+    },
+    "identity.toggle": {
+      "status": "planned",
+      "wp": "I-10a"
     },
     "release.changelog": {
       "status": "implemented"
@@ -361,6 +370,10 @@
     "ui.kit": {
       "status": "implemented"
     },
+    "ui.kit.manage": {
+      "status": "implemented",
+      "note": "PX-W8: LicenseGate and PolarisLogin show Replace a device on device-limit."
+    },
     "ui.cli": {
       "status": "na",
       "runtime": ["web", "desktop-bridge"],
@@ -368,9 +381,8 @@
       "note": "This SDK ships a widget kit (ui.kit); the terminal kit is the headless SDKs' expectation."
     },
     "commerce.receipt": {
-      "status": "planned",
-      "wp": "SP-16",
-      "note": "Required. LX-20 builds the client side through client-core over P6-01's Worker bridge. The bearer engine already speaks GET /<p>/distribution/commerce/binding and POST .../claim, but the Worker's CORS allow-list (packages/worker/src/core/cors.ts CORS_SERVICE_PATHS) does not cover them, so a cross-origin page cannot use them yet; the desktop bridge verbs wait on the v4 host (SP-N10)."
+      "status": "implemented",
+      "note": "SP-16: bearer mode's GET /<p>/distribution/commerce/binding and POST .../claim (browserAdapter's commerceBinding() and commerceClaim(store, payload), synced after an ok claim), cross-origin under the product's web.origins now that the Worker's CORS_SERVICE_PATHS covers both routes; commerce-claim replays through the bearer engine. Desktop: the renderer half of bridge v4's invoke(\"commerce\", \"binding\" | \"claim\"), with the host's fresh state read after an ok claim, replays commerce-claim through a v4 bridge; it is sent only to a host reporting version 4 or later, and the Node Electron host is still v3 (SP-N10), so today a desktop renderer gets the typed version N/A. Store purchase UI and restore are the UI kits' (UK-*)."
     }
   }
 }

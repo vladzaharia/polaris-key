@@ -92,7 +92,7 @@ const PRODUCT_DOC = {
     identity: { enabled: false },
   },
 };
-const SCHEMA_DOC = { apiVersion: "pkey.dev/v1", schemaVersion: 1, catalog: [] };
+const SCHEMA_DOC = { apiVersion: "pkey.dev/v1", schemaVersion: 1, entries: [] };
 const BUILDS = [
   ["macos", "macos", "universal", "zip", "djdl-*-macos.zip"],
   ["windows", "windows", "x86_64", "zip", "djdl-*-windows.zip"],

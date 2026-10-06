@@ -213,7 +213,14 @@ func _refused(t: PKeyTestContext, bed: B) -> void:
 	await sdk.identity.begin_sign_in()
 	await B.until(func(): return not results.is_empty())
 	var sent_name = bed.flow_requests[0]["body"].get("deviceName")
-	t.check("refused: begin_sign_in() names the device by default", sent_name is String and sent_name == PKeyIdentity.default_device_name() and sent_name != "", str(sent_name))
+	# PX-W13: the configured PKeyOptions.device_name (the fixtures set "Test Device"), else the
+	# platform default; a per-call name wins, and send_device_name = false sends none.
+	t.check("refused: begin_sign_in() names the device by default", sent_name is String and sent_name == "Test Device", str(sent_name))
+	var label_opts := PKeyOptions.new()
+	t.check("label: an unset device_name falls back to the platform default", PKeyDeviceLabel.resolve("", label_opts) == PKeyDeviceLabel.normalize(PKeyIdentity.default_device_name()) and PKeyDeviceLabel.resolve("", label_opts) != "")
+	t.check("label: a per-call name wins and is normalised", PKeyDeviceLabel.resolve(" Den\tPC ", label_opts) == "Den PC")
+	label_opts.send_device_name = false
+	t.check("label: send_device_name = false sends none, a per-call name still goes", PKeyDeviceLabel.resolve("", label_opts) == "" and PKeyDeviceLabel.resolve("Deck", label_opts) == "Deck")
 
 
 ## cancel() with a REAL timer: the wait wakes at once, ends cancelled, and sends nothing more.

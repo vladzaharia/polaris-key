@@ -184,6 +184,11 @@
   --pk-service-identity-on: #060912;
   --pk-service-identity-subtle: #1f172d;
   --pk-service-identity-bit: #d77df2;
+  --pk-service-sync: #14f8e1;
+  --pk-service-sync-fg: #14f8e1;
+  --pk-service-sync-on: #060912;
+  --pk-service-sync-subtle: #08262b;
+  --pk-service-sync-bit: #14f8e1;
   --pk-success: #56d57b;
   --pk-success-on: #060912;
   --pk-success-border: #3b9555;
@@ -267,6 +272,11 @@
     --pk-service-identity-on: #ffffff;
     --pk-service-identity-subtle: #ede4f7;
     --pk-service-identity-bit: #9e34ae;
+    --pk-service-sync: #086260;
+    --pk-service-sync-fg: #086260;
+    --pk-service-sync-on: #ffffff;
+    --pk-service-sync-subtle: #dee9ef;
+    --pk-service-sync-bit: #086260;
     --pk-success: #167337;
     --pk-success-on: #ffffff;
     --pk-success-border: #348f4f;
@@ -350,6 +360,11 @@
   --pk-service-identity-on: #ffffff;
   --pk-service-identity-subtle: #ede4f7;
   --pk-service-identity-bit: #9e34ae;
+  --pk-service-sync: #086260;
+  --pk-service-sync-fg: #086260;
+  --pk-service-sync-on: #ffffff;
+  --pk-service-sync-subtle: #dee9ef;
+  --pk-service-sync-bit: #086260;
   --pk-success: #167337;
   --pk-success-on: #ffffff;
   --pk-success-border: #348f4f;
@@ -440,6 +455,15 @@
   --pk-accent-on: var(--pk-service-identity-on);
   --pk-accent-subtle: var(--pk-service-identity-subtle);
   --pk-section-bit: var(--pk-service-identity-bit);
+  --pk-section-bit-display: inline;
+}
+
+[data-service="sync"] {
+  --pk-accent: var(--pk-service-sync);
+  --pk-accent-fg: var(--pk-service-sync-fg);
+  --pk-accent-on: var(--pk-service-sync-on);
+  --pk-accent-subtle: var(--pk-service-sync-subtle);
+  --pk-section-bit: var(--pk-service-sync-bit);
   --pk-section-bit-display: inline;
 }
 

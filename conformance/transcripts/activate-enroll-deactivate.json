@@ -1,7 +1,7 @@
 {
   "transcriptVersion": 1,
   "id": "activate-enroll-deactivate",
-  "description": "The licence mint and release paths. Activation exchanges a licence key (plus a hashed fingerprint) for a device token and syncs; deactivation releases the seat and wipes the client; keyless enrolment on the product's free tier mints a token and syncs; and a deactivation the server refuses (the device was already deauthorized from the console, so the token 401s) still wipes the client, because the remote half is best-effort and the local half is not.",
+  "description": "The licence mint and release paths. Activation exchanges a licence key (plus a hashed fingerprint and the device label the SDK takes from the platform's device name, PX-W13) for a device token and syncs; deactivation releases the seat and wipes the client; keyless enrolment on the product's free tier mints a token and syncs; and a deactivation the server refuses (the device was already deauthorized from the console, so the token 401s) still wipes the client, because the remote half is best-effort and the local half is not.",
   "features": ["license.activate", "license.enroll", "license.deactivate"],
   "requires": ["core.store"],
   "product": "djdl",
@@ -12,7 +12,8 @@
   },
   "initial": {
     "deviceId": "TRANSCRIPTDEVICE0000000000000001",
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "deviceName": "Transcript Device"
   },
   "steps": [
     {
@@ -42,9 +43,12 @@
                 "content-type"
               ],
               "body": {
-                "json": { "fingerprint": { "components": {}, "hwid": "" } },
+                "json": {
+                  "fingerprint": { "components": {}, "hwid": "" },
+                  "deviceName": ""
+                },
                 "match": "shape",
-                "allowedKeys": ["fingerprint"]
+                "allowedKeys": ["fingerprint", "deviceName"]
               }
             },
             "response": {
@@ -59,7 +63,7 @@
                 "device": {
                   "id": "TRANSCRIPTDEVICE0000000000000001",
                   "licenseId": "lic_djdl_1",
-                  "label": null,
+                  "label": "Transcript Device",
                   "status": "authorized",
                   "current": true,
                   "firstSeen": 1700000000,
@@ -310,7 +314,7 @@
                 "device": {
                   "id": "TRANSCRIPTDEVICE0000000000000001",
                   "licenseId": "lic_h6SHr90ZapVy",
-                  "label": null,
+                  "label": "Transcript Device",
                   "status": "authorized",
                   "current": true,
                   "firstSeen": 1700000000,

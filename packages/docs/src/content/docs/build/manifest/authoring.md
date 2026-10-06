@@ -52,10 +52,54 @@ JSON-Schema fragments fail during import/resync, not during a client request.
 `pkey init` writes `product.yaml` and `schema.yaml` every time (plus `release.yaml` when releases
 are selected): ingest requires the schema even when Config is off, and `pkey validate` applies the
 same rule as link/resync, reporting a missing one as `missing_schema`. Without the `config`
-module the scaffolded catalog is empty (`schemaVersion: 1`, `catalog: []`). The scaffolded tier
-sets `policyDeviceLimit: 5` and no expiry; a tier `deviceLimit` is ignored and a tier
+module the scaffolded catalog is empty (`schemaVersion: 1`, `entries: []`). The scaffolded tier
+names its profile with `profileId` and sets `policyDeviceLimit: 5` and no expiry; a tier `deviceLimit` is ignored and a tier
 `maxOfflineDays` sets the licence expiry (`policyExpiryDays`), not offline grace, so `pkey
 validate` warns with `tier_ignored_field` for either.
+
+## Deprecated spellings
+
+Some fields have more than one spelling, because the manifest grew in steps. Every spelling below
+still validates and still means what it always meant: when a document sets both the old and the
+canonical spelling, the reader keeps the precedence it has always had. `pkey validate` (and an
+editor that reads the published JSON Schemas, which mark each old spelling `deprecated`) warns
+instead:
+
+- `deprecated_spelling`: the document uses an old spelling. The message names the canonical one.
+- `conflicting_spelling`: the document sets both. The message names the value that is used.
+
+The canonical layout is the one `pkey init` writes: `product:` for identity and compatibility,
+`licensing:` for licence defaults, tiers and profiles, and `release:` in `.pkey/release`. The
+list is `DEPRECATED_SPELLINGS` in `@polaris-key/manifest` (`packages/shared-manifest/src/spellings.ts`),
+and it is what the validator, the schemas and the settings registry's parity test all read.
+
+| Document     | Old spelling                                                  | Write instead                                                                                   | When both are set                                                                |
+| ------------ | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| product      | `slug`, `name` at the root (a flat document)                  | `product.slug`, `product.name`                                                                  | the canonical value is used                                                      |
+| product      | `adminGroup`, `compatMin`, `compatMax` at the root            | `product.adminGroup`, `product.compatMin`, `.compatMax`                                         | the canonical value is used                                                      |
+| product      | `defaultDeviceLimit` at the root or under `product:`          | `licensing.defaultDeviceLimit`                                                                  | the old value is used                                                            |
+| product      | `defaultMaxOfflineDays` at the root or under `product:`       | `licensing.defaultMaxOfflineDays`                                                               | the old value is used                                                            |
+| product      | `tiers` at the root                                           | `licensing.tiers`                                                                               | the old value is used                                                            |
+| product      | `profiles` at the root                                        | `licensing.profiles`                                                                            | the old value is used                                                            |
+| product      | tier `profile`                                                | tier `profileId`                                                                                | the canonical value is used                                                      |
+| product      | tier `expiryDays`                                             | tier `policyExpiryDays`                                                                         | the canonical value is used                                                      |
+| product      | profile `label`                                               | profile `name`                                                                                  | the canonical value is used                                                      |
+| product      | `oidc.clientSecretRef`                                        | `oidc.clientSecretSecret`                                                                       | the canonical value is used                                                      |
+| product      | `release` (the release document inlined)                      | the `.pkey/release` document                                                                    | `.pkey/release` is used                                                          |
+| product      | `modules` names `licensing`, `releases`, `oidc`, `edgeMint`   | the service slugs `license`, `release` (with `distribution` and `update`), `identity`, `config` | both are read                                                                    |
+| schema       | `catalog`                                                     | `entries`                                                                                       | `entries` is used                                                                |
+| release      | the release body at the document root (no `release:` wrapper) | the same fields under `release:`                                                                | the wrapper is used; the root is ignored                                         |
+| release      | `ghOwner`, `ghRepo`                                           | `provider: { type: github, owner, repo }`                                                       | the old value is used                                                            |
+| release      | `stableTagPattern`, `ignoreTags` in the release body          | `deliverables.app.versioning.*`                                                                 | refused: `conflicting_versioning`; no warning on its own yet                     |
+| release      | `edgeMint` in the release document                            | `edgeMint` in `.pkey/product`                                                                   | `.pkey/product`'s is used; under `release:` it is never read                     |
+| distribution | `listing.iconUrl`, `listing.headerUrl`                        | `listing.icon`, `listing.header`                                                                | refused: `listing_field_conflict`; alone it warns `listing_url_field_deprecated` |
+
+The file extension is not a spelling: `product.json`, `product.yaml` and `product.yml` are a
+format preference. Keep one file per document, though: when more than one exists only the first
+of `json`, `yaml`, `yml` is read, and `pkey validate` says so.
+
+Refusing the old spellings is a later, separate decision. Until then a manifest that validated
+before keeps validating, with warnings.
 
 ## The catalog: `ConfigEntry`
 
@@ -128,10 +172,31 @@ error after a window of two minor releases or 60 days, whichever is later. Platf
 Licensing lists every registered product with a reserved-name declaration and whether it is
 compatible.
 
+## Display names
+
+The customer's sign-in card says "<App> wants you to sign in" and names the developer, so the
+names an app is shown by are checked (PX-W13): `product.name`, and the `.pkey/distribution`
+document's `listing.name` and `listing.developerName`.
+
+- **`invalid_display_text`** (always an error). The name holds a control character, a zero-width
+  character or a bidirectional-formatting character (an override such as U+202E, an isolate, a
+  mark), or it starts or ends with whitespace. Per-outlet listing names are held to this rule
+  too. The JSON Schemas carry it as a pattern, so editors flag it as you type.
+- **`reserved_display_name`**. The name contains a platform or store name as whole words:
+  Polaris, Polaris Key, plrs, Apple, App Store, Google, Google Play, Steam, Valve, Epic Games,
+  Microsoft, Xbox, PlayStation, Nintendo or itch.io. Case, width, accents, look-alike letters
+  (Cyrillic and Greek), `0` for `o`, `1` for `l`, `rn` for `m` and separators are folded first,
+  so `P0laris-Key` and `ＳＴＥＡＭ` match, and a multi-word term written as one word (`GooglePlay`)
+  matches too. `Applesauce Games` and `Steamroller` do not. It is a **warning** today (`pkey
+validate` prints it and link and resync accept it); the platform setting
+  [`IDENTITY_RESERVED_DISPLAY_NAMES`](/docs/admin/platform-settings/#the-runtime-settings) turns
+  it into an error after a window of two minor releases or 60 days, whichever is later. Either
+  way, the sign-in card shows such a product by its slug in a neutral frame.
+
 ## Enabled services: `modules` + `devices.registration`
 
-Polaris Key is six opt-in services — **license, config, release, distribution, update,
-identity** — over an
+Polaris Key is seven opt-in services — **license, config, release, distribution, update,
+identity, sync** — over an
 always-on Core substrate (see [Concepts & terminology](/docs/start/concepts/)). `.pkey/product` declares which of them the
 product runs, and that declaration is persisted verbatim into `products.services_json`, the
 single authority every other surface projects from. It used to be validated and then thrown
@@ -171,9 +236,11 @@ undeclared means "derive from the services" (`requires-license` if license is on
 chosen `open`. A product that later turns license off must move to the derived `open`, not stay
 pinned to a value nobody wrote.
 
-**The legacy vocabulary still parses.** The pre-suite module names are translated to service
-slugs at ingest and only slugs are stored, so a manifest in the field does not have to be
-rewritten on the day the server learns the new words, and one block may mix both spellings:
+**The legacy vocabulary still parses, and is deprecated.** The pre-suite module names are
+translated to service slugs at ingest and only slugs are stored, so a manifest in the field does
+not have to be rewritten on the day the server learns the new words, and one block may mix both
+spellings. `pkey validate` warns on each legacy name with `deprecated_spelling` (see
+[Deprecated spellings](#deprecated-spellings)):
 
 | Declared    | Enables                               | Note                                                                                                                                          |
 | ----------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -210,6 +277,55 @@ column (`services_source` flips `manifest` → `admin`) so a later push cannot s
 service back on, nor re-open registration after an operator closed it. "Revert to manifest" flips
 ownership back and changes nothing else — the manifest re-applies on the next resync, not
 immediately, so the operator's escape hatch never depends on a GitHub round trip that can fail.
+
+### User settings and Cloud Sync data
+
+A `config` entry with a `user` block is a **user setting**: a value the person chooses, kept on
+the device and, with [Cloud Sync](/docs/services/sync/) on, synced for people who sign in. The
+catalog's top-level `cloudSync` block declares the shape of the rest of the product's Cloud Sync
+data (collections, saves, catalog migrations):
+
+```jsonc
+{
+  "key": "audio.musicVolume",
+  "kind": "config",
+  "schema": { "type": "number", "minimum": 0, "maximum": 1 },
+  "default": 0.8,
+  // sync: user | platform | device | local; conflict: lastWrite | max | min | merge
+  "user": { "sync": "user", "conflict": "lastWrite" },
+}
+```
+
+The block is refused on a `secret` or `flag`, under an `enforced` or `hidden` management default,
+and with a conflict policy the value's schema cannot support. The full rules are on the
+[Cloud Sync](/docs/services/sync/#validation) page.
+
+## Cloud Sync limits: `cloudSync`
+
+`.pkey/product`'s `cloudSync` block sets the product's per-person limits and write policy:
+`limits` (with `byTier` and `byEntitlement` raises), `unlicensed` (signed-in people with no usable
+licence) and `writes`. Every limit stays within the platform ceilings, and `unlicensed` within the
+licensed limits (`cloud_sync_limit_over_ceiling`). Declaring either `cloudSync` block, or a user
+setting that syncs, while the `sync` service is off is a warning, not an error: settings stay on
+the device until it is on.
+
+```jsonc
+{
+  "modules": {
+    "config": { "enabled": true },
+    "identity": { "enabled": true },
+    "sync": { "enabled": true },
+  },
+  "cloudSync": {
+    "limits": {
+      "totalBytes": 268435456,
+      "byTier": { "pro": { "totalBytes": 536870912 } },
+    },
+    "unlicensed": { "saves": false },
+    "writes": { "requireLicense": false },
+  },
+}
+```
 
 ## Browser origins: `web.origins`
 
@@ -767,3 +883,11 @@ it from the catalog with
 `pnpm gen:mirrors -- --catalog <catalog.json> --out-dir <mirror-dir>` (and add `--check`
 in product-specific CI) — see `CONTRIBUTING.md`. `--lang` picks the targets (`ts`, `python` and
 `swift` by default, plus `gdscript` for a Godot game's `catalog_generated.gd`).
+
+:::note[Upgrade: mirrors now always carry a user-settings block]
+Since the catalog gained `user` entries and the `cloudSync` block, every generated mirror
+includes the user-settings section even when the catalog declares no user entry (TypeScript
+emits `UserSettingKey = never` and an empty `USER_SETTINGS`; Python, Swift and GDScript emit the
+equivalent empty block). A repository that commits a mirror sees a one-time diff the first time
+it regenerates after upgrading; commit it and `--check` is clean again.
+:::

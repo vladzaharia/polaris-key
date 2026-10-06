@@ -52,7 +52,18 @@ import {
   upsertProductSecret,
 } from "../../repo.js";
 import { deleteTokenRecord } from "../../kv.js";
-import { deleteProduct, listDevicesByProduct, updateProduct } from "../repo.js";
+import {
+  deleteProduct,
+  listDevicesByProduct,
+  stmtUpdateProduct,
+} from "../repo.js";
+import {
+  claimsApply,
+  revertClaim,
+  stmtClaim,
+  systemClaimRefusal,
+  type ClaimKey,
+} from "../../core/settingsClaims.js";
 import {
   describeKeyring,
   generateEd25519,
@@ -252,7 +263,7 @@ export async function handleProducts(
       const rows = await listProducts(db);
       return adminJson({
         products: await Promise.all(
-          rows.map((row) => productView(env, db, row)),
+          rows.map((row) => productView(env, db, row, now)),
         ),
       });
     }
@@ -265,7 +276,7 @@ export async function handleProducts(
   const row = await getProduct(db, slug);
   if (!row) return notFound();
   if (req.method === "GET")
-    return adminJson({ product: await productView(env, db, row) });
+    return adminJson({ product: await productView(env, db, row, now) });
   if (req.method === "PATCH") {
     const body = await readBody(req);
     // F-03: the system product keeps its name (it is the platform's, and the feeds and the
@@ -276,6 +287,26 @@ export async function handleProducts(
         ErrorCode.BadRequest,
         "the system product cannot be renamed",
         { fields: ["name"], reason: "system_product" },
+      );
+    // ST-01b (S-18 §4.5 item 8): every other claimable field of the system product is
+    // manifest-authoritative; ST-20 adds its expiring break-glass claims.
+    const systemRefusal = systemClaimRefusal(row);
+    const systemFields = (
+      ["defaultMaxOfflineDays", "defaultDeviceLimit", "adminGroup"] as const
+    ).filter((f) => body[f] !== undefined);
+    if (systemRefusal && systemFields.length > 0)
+      return err(409, ErrorCode.BadRequest, systemRefusal, {
+        fields: systemFields,
+        reason: "manifest_authoritative",
+      });
+    // Owner decision 1 (S-18 D2): the admin group is manifest-only on a repo-linked product. It
+    // is never claimed, so a console value would vanish at the next resync; refusing it says so.
+    if (body.adminGroup !== undefined && claimsApply(row))
+      return err(
+        409,
+        ErrorCode.BadRequest,
+        "the admin group is set by the product's .pkey/product (adminGroup)",
+        { fields: ["adminGroup"], reason: "manifest_only" },
       );
     // plans/P3-01.md §2.2: the default offline-day count becomes `graceUntil`, so it takes the
     // bundle mint's rule, an integer from 1 to 365.
@@ -316,33 +347,45 @@ export async function handleProducts(
         { fields: ["adminGroup"] },
       );
     }
-    await updateProduct(
-      db,
-      slug,
-      {
-        name: typeof body.name === "string" ? body.name.trim() : undefined,
-        // `compatMin`/`compatMax` are NOT accepted here any more. The compatibility window is a
-        // statement about which BUILDS this product supports, so spec §8 relocates it to
-        // `PATCH …/update/settings`. Dropped rather than ignored: an endpoint that quietly
-        // accepts a field it no longer owns lets a console appear to save a value that never
-        // changes, which is a worse failure than a rejected request.
-        default_max_offline_days:
-          typeof body.defaultMaxOfflineDays === "number"
-            ? body.defaultMaxOfflineDays
+    const fields = {
+      name: typeof body.name === "string" ? body.name.trim() : undefined,
+      // `compatMin`/`compatMax` are NOT accepted here any more. The compatibility window is a
+      // statement about which BUILDS this product supports, so spec §8 relocates it to
+      // `PATCH …/update/settings`. Dropped rather than ignored: an endpoint that quietly
+      // accepts a field it no longer owns lets a console appear to save a value that never
+      // changes, which is a worse failure than a rejected request.
+      default_max_offline_days:
+        typeof body.defaultMaxOfflineDays === "number"
+          ? body.defaultMaxOfflineDays
+          : undefined,
+      default_device_limit:
+        typeof body.defaultDeviceLimit === "number"
+          ? body.defaultDeviceLimit
+          : undefined,
+      admin_group:
+        body.adminGroup === null
+          ? null
+          : typeof body.adminGroup === "string"
+            ? body.adminGroup.trim() || null
             : undefined,
-        default_device_limit:
-          typeof body.defaultDeviceLimit === "number"
-            ? body.defaultDeviceLimit
-            : undefined,
-        admin_group:
-          body.adminGroup === null
-            ? null
-            : typeof body.adminGroup === "string"
-              ? body.adminGroup.trim() || null
-              : undefined,
-      },
-      now,
-    );
+    };
+    // ST-01b (model C): on a repo-linked product, each claimable field this write sets is claimed
+    // for the console in the same batch, so the next resync leaves it alone until a Revert.
+    const claimed: ClaimKey[] = claimsApply(row)
+      ? [
+          ...(fields.name !== undefined ? (["core.name"] as const) : []),
+          ...(fields.default_max_offline_days !== undefined
+            ? (["license.defaults.maxOfflineDays"] as const)
+            : []),
+          ...(fields.default_device_limit !== undefined
+            ? (["license.defaults.deviceLimit"] as const)
+            : []),
+        ]
+      : [];
+    await db.batch([
+      stmtUpdateProduct(slug, fields, now),
+      ...claimed.map((key) => stmtClaim(slug, key, session.sub, now)),
+    ]);
     await audit(
       db,
       slug,
@@ -350,9 +393,15 @@ export async function handleProducts(
       now,
       "product.update",
       { kind: "product", id: slug },
-      `Updated product ${slug}`,
+      claimed.length > 0
+        ? `Updated product ${slug}; claimed for the console: ${claimed.join(", ")}`
+        : `Updated product ${slug}`,
     );
-    return adminJson({ ok: true, slug });
+    return adminJson({
+      ok: true,
+      slug,
+      ...(claimed.length ? { claimed } : {}),
+    });
   }
   if (req.method === "DELETE") {
     // F-03: the system product owns the platform packages, whose versions are unique forever.
@@ -1072,7 +1121,50 @@ export async function handleProductScopedResource(
     return handleOutletCredentials(req, env, db, session, slug, id, now);
   if (resource === "keys")
     return handleKeys(req, env, db, session, slug, id, now);
+  if (resource === "claims")
+    return handleClaimRevert(req, db, session, slug, id, now);
   return notFound();
+}
+
+/**
+ * DELETE /api/products/<slug>/claims/<key> — Revert to manifest (ST-01b, S-18 §4.5 item 2). Drops
+ * the console claim on one column-backed key and re-applies the manifest snapshot's value at once
+ * (`applied: true`), or, with no snapshot yet, answers `applied: false` with "applies at the next
+ * resync". The claims themselves ride on the product view (`claims`).
+ */
+async function handleClaimRevert(
+  req: Request,
+  db: Db,
+  session: AdminSession,
+  slug: string,
+  key: string | undefined,
+  now: number,
+): Promise<Response> {
+  if (!key) return notFound();
+  if (req.method !== "DELETE")
+    return err(405, ErrorCode.BadRequest, "method not allowed");
+  const product = await getProduct(db, slug);
+  if (!product) return notFound();
+  const result = await revertClaim(
+    db,
+    product,
+    key,
+    {
+      sub: session.sub,
+      name: session.name ?? null,
+      email: session.email ?? null,
+    },
+    now,
+  );
+  if (!result.ok)
+    return err(result.status, ErrorCode.BadRequest, result.message, {
+      reason: result.reason,
+    });
+  return adminJson(
+    result.applied
+      ? { ok: true, key, applied: true, value: result.value }
+      : { ok: true, key, applied: false, message: result.message },
+  );
 }
 
 /**

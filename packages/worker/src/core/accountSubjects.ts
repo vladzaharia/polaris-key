@@ -15,7 +15,9 @@
  *   licenseOwnerSubject(licence)      the owner's subject (Config's fallback; never Cloud Sync's)
  *
  * The tables are Identity's (`TABLE_OWNERS`); Core reads and writes only the subject rows, the
- * owner pointer and the binding, and nothing here reads the product's Identity toggle.
+ * owner pointer and the binding. Subjects and the owner pointer ignore the product's Identity
+ * toggle; the ONE read of it here is the bind guard in `setDeviceSubject` (PX-W17): no device of
+ * an Identity-off product ever carries a binding, so S-19's holder rule can trust the column.
  *
  * ── THE ACCOUNT ID STAYS INSIDE ──────────────────────────────────────────────────────────────
  *
@@ -29,6 +31,7 @@ import type { Db, DbStatement } from "../db/types.js";
 import type { Env } from "../env.js";
 import { getTokenRecord, putTokenRecord } from "../kv.js";
 import { writeDeviceSubject } from "./devices.js";
+import { assertIdentityBindable } from "./identityGate.js";
 
 /** `ps_` and 22 base64url characters (plans/I-04.md §2; I-09 publishes it in the protocol). */
 export const PAIRWISE_SUBJECT_PATTERN = /^ps_[A-Za-z0-9_-]{22}$/;
@@ -282,6 +285,7 @@ export async function accountLicenses(
  * activated some other way (a key, an enrolment). Only an account sign-in through Identity calls
  * this; key entry never does (plans/I-04.md §6.2). `bound_by` is left alone, so a key-bound device
  * that later signs in is not released by a sign-out (§8 Q3). Mirrors the KV token record.
+ * Throws `IdentityDisabledBindError` while the product's Identity is off (PX-W17).
  */
 export async function setDeviceSubject(
   env: Env,
@@ -293,6 +297,7 @@ export async function setDeviceSubject(
   if (!PAIRWISE_SUBJECT_PATTERN.test(subject)) {
     throw new Error("setDeviceSubject: not a pairwise subject");
   }
+  await assertIdentityBindable(db, product);
   const device = await db.first<{ token_hash: string | null; status: string }>(
     "SELECT token_hash, status FROM devices WHERE product = ? AND device_id = ?",
     product,

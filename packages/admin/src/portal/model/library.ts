@@ -374,6 +374,26 @@ export function normalisePlatform(p: string | null): PlatformKey | null {
     : null;
 }
 
+/** A device's `X-PKey-Platform` value that is a header value only, not a download platform
+ *  (WIRE-CONTRACT-V4 §5.2 rule 5): the device rows show these, the download vocabulary does not. */
+export type HeaderOnlyPlatform = "tvos" | "visionos" | "watchos";
+const HEADER_ONLY_PLATFORMS: readonly HeaderOnlyPlatform[] = [
+  "tvos",
+  "visionos",
+  "watchos",
+];
+
+/** The family a stored device platform belongs to, for its glyph: a download platform, one of
+ *  the header-only Apple values, or null. */
+export function deviceFamily(
+  p: string | null,
+): PlatformKey | HeaderOnlyPlatform | null {
+  const v = p?.toLowerCase() ?? "";
+  if ((HEADER_ONLY_PLATFORMS as readonly string[]).includes(v))
+    return v as HeaderOnlyPlatform;
+  return normalisePlatform(p);
+}
+
 /** The licence summary a library item stands for, when `GET /api/licenses` hasn't listed it. */
 function summaryFromItem(item: PortalLibraryItem): PortalLicenseSummary {
   const l = item.license;
@@ -794,7 +814,7 @@ export function quickAction(
   if (p.status.kind === "deviceLimit") {
     return {
       kind: "link",
-      label: "Free up a device",
+      label: "Free a device",
       href: productHref("devices"),
       icon: "device",
     };
@@ -890,6 +910,17 @@ export function osName(os: PlatformKey): string {
   }[os];
 }
 
+/** The OS name a device row shows for its stored platform, header-only Apple values included;
+ *  null when the platform is unknown. */
+export function deviceOsName(p: string | null): string | null {
+  const k = deviceFamily(p);
+  if (k === null) return null;
+  if (k === "tvos") return "Apple TV";
+  if (k === "visionos") return "Apple Vision Pro";
+  if (k === "watchos") return "Apple Watch";
+  return osName(k);
+}
+
 /**
  * "Version 2.0 isn't covered. Renew with Kiln Games to get it." when the Worker recommends an
  * older covered build because the newest one is outside the licence (§5.4, mockup 20).
@@ -928,7 +959,7 @@ export interface AttentionItem {
 }
 
 /**
- * Only items the person can act on: a device limit (free up a device, G5), or an expiring,
+ * Only items the person can act on: a device limit (free a device, G5), or an expiring,
  * expired or suspended license with a renewal or contact link (G16). Without a link there is
  * nothing to press, so the item is not shown (never a dead-end "Needs attention"). Steam keys
  * join with G8.
@@ -944,7 +975,7 @@ export function attentionItems(
         product: p,
         text: `All ${devicesText(p.seats.limit)} are in use. Remove one to use ${p.name} on another.`,
         action: {
-          label: "Free up a device",
+          label: "Free a device",
           href: devicesHref(p.slug),
           external: false,
         },

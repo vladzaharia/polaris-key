@@ -75,16 +75,25 @@ public data class AccountDevice(
 }
 
 /** `{"fingerprint": {"components": {...}, "hwid": "..."}}`: the body register and activation read. */
-public fun HardwareFingerprint.requestBody(): ByteArray = JsonObject(
-    mapOf(
-        "fingerprint" to JsonObject(
+public fun HardwareFingerprint.requestBody(): ByteArray = deviceRequestBody(this, null)!!
+
+/**
+ * The register and activation body: the fingerprint and the device label (PX-W13 §8 Q2), each
+ * member omitted when absent; null when both are, so no body is sent at all.
+ */
+public fun deviceRequestBody(fingerprint: HardwareFingerprint?, deviceName: String?): ByteArray? {
+    val members = LinkedHashMap<String, kotlinx.serialization.json.JsonElement>()
+    if (fingerprint != null) {
+        members["fingerprint"] = JsonObject(
             mapOf(
-                "components" to JsonObject(components.mapValues { JsonPrimitive(it.value) }),
-                "hwid" to JsonPrimitive(hwid),
+                "components" to JsonObject(fingerprint.components.mapValues { JsonPrimitive(it.value) }),
+                "hwid" to JsonPrimitive(fingerprint.hwid),
             ),
-        ),
-    ),
-).toString().toByteArray(Charsets.UTF_8)
+        )
+    }
+    if (deviceName != null) members["deviceName"] = JsonPrimitive(deviceName)
+    return if (members.isEmpty()) null else JsonObject(members).toString().toByteArray(Charsets.UTF_8)
+}
 
 // ── Registration (§6) ────────────────────────────────────────────────────────────────────────
 
@@ -113,11 +122,9 @@ public suspend fun CoreContext.registerDevice(fingerprint: HardwareFingerprint? 
  */
 public suspend fun CoreContext.requestDeviceRegistration(fingerprint: HardwareFingerprint? = null): RegisterResult {
     val headers = LinkedHashMap<String, String>()
-    var body: ByteArray? = null
-    if (fingerprint != null) {
-        headers["content-type"] = "application/json"
-        body = fingerprint.requestBody()
-    }
+    // PX-W13 §8 Q2: the device label rides along, seeding the device's name in the lists.
+    val body = deviceRequestBody(fingerprint, deviceLabel())
+    if (body != null) headers["content-type"] = "application/json"
     val response = try {
         request(endpoints.devicesRegister, method = "POST", headers = headers, body = body)
     } catch (e: kotlinx.coroutines.CancellationException) {

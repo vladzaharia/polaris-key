@@ -306,6 +306,14 @@ export {
 // The one error type the transport/orchestration layers throw. Its `.code` carries the wire
 // error code, the §7 bundle refusal step, `local-only`, or `service-unavailable`.
 export { PolarisError } from "@polaris-key/client-core";
+// The refusal link (PX-W8): read `manageUrl` off a refusal body, and add the app's return URL or
+// (on an `/activate` link) the key fragment to it.
+export {
+  isManageUrl,
+  readManageUrl,
+  withManageKey,
+  withManageReturn,
+} from "@polaris-key/client-core";
 // Typed "unsupported here" (PARITY §2.2, P1b-10): `client.supports(feature)` answers a `Support`;
 // a call into an unsupported feature throws `UnsupportedError` (code `unsupported`) with the same
 // `feature`, `reason` and `detail`.

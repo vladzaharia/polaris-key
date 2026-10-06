@@ -53,6 +53,10 @@ import {
   type RegistrationPolicy,
   type ServiceSlug,
 } from "./services.js";
+import {
+  applyServiceTransitions,
+  countSignedInDevices,
+} from "./servicesTransitions.js";
 
 function isRegistrationPolicy(value: unknown): value is RegistrationPolicy {
   return (
@@ -63,7 +67,7 @@ function isRegistrationPolicy(value: unknown): value is RegistrationPolicy {
 
 export async function handleServicesAdmin(
   req: Request,
-  _env: Env,
+  env: Env,
   db: Db,
   session: AdminSession,
   slug: string,
@@ -84,6 +88,16 @@ export async function handleServicesAdmin(
       "found widened before a console edit",
     );
     await revertServicesToManifest(db, slug, now);
+    // PX-W17: the values did not change, but the transition hook is idempotent and heals any
+    // binding left on an Identity-off product.
+    await applyServiceTransitions(
+      env,
+      db,
+      slug,
+      parseServices(row.services_json).services,
+      session,
+      now,
+    );
     await audit(
       db,
       slug,
@@ -160,6 +174,32 @@ export async function handleServicesAdmin(
     ...(registration === undefined ? {} : { registration }),
     ...(current.unknown ? { unknown: current.unknown } : {}),
   };
+
+  // PX-W17: `?dryRun=1` answers what this PATCH would change, with no write, so the console can
+  // confirm turning Identity off with the number of devices it signs out.
+  if (new URL(req.url).searchParams.get("dryRun") === "1") {
+    const changes: Array<{ field: string; from: unknown; to: unknown }> = [];
+    for (const s of SERVICE_SLUGS) {
+      if (current.services[s].enabled !== services[s].enabled)
+        changes.push({
+          field: `services.${s}.enabled`,
+          from: current.services[s].enabled,
+          to: services[s].enabled,
+        });
+    }
+    if ((current.registration ?? null) !== (registration ?? null))
+      changes.push({
+        field: "registration",
+        from: current.registration ?? null,
+        to: registration ?? null,
+      });
+    return adminJson({
+      changes,
+      signedInDevicesToClear: services.identity.enabled
+        ? 0
+        : await countSignedInDevices(db, slug),
+    });
+  }
   // P0-12: drop every edge-mint approval the product has ALREADY widened before the console
   // writes an approval input. The ingest's own sweep is not enough on its own: a push whose
   // Worker is killed after its un-batched widening writes (CPU limit, cancelled request) never
@@ -174,6 +214,7 @@ export async function handleServicesAdmin(
     "found widened before a console edit",
   );
   await setServices(db, slug, serializeServices(next), "admin", now);
+  await applyServiceTransitions(env, db, slug, services, session, now);
 
   const enabled = SERVICE_SLUGS.filter((s) => services[s].enabled);
   await audit(

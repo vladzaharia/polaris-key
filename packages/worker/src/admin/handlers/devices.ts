@@ -69,6 +69,9 @@ function shapeSummary(d: DeviceRow): Record<string, unknown> {
     // `''` is the stored sentinel for "no license" (NO_LICENSE_ID); on the wire it is null.
     licenseId: d.license_id === "" ? null : d.license_id,
     seatNo: d.seat_no ?? null,
+    // PX-W17: the signed-in account as this product sees it (`ps_…`), or null. Only ever a
+    // pairwise subject: no device of an Identity-off product carries one.
+    subject: d.subject ?? null,
     // P6-02: the trust level and the last attestation verdict (a summary; never a raw token).
     trustLevel: d.trust_level === "attested" ? "attested" : "basic",
     attestedAt: d.attested_at ?? null,

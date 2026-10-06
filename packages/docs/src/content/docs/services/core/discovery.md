@@ -56,6 +56,7 @@ It is assembled by Core from the service registry, and it is **unsigned**.
     "release": { "enabled": false },
     "update": { "enabled": false },
     "identity": { "enabled": false },
+    "sync": { "enabled": false },
   },
 }
 ```

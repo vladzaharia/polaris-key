@@ -1,10 +1,11 @@
 // @pkey-feature core.discover core.sync core.cache license.activate license.enroll
 // @pkey-feature license.deactivate license.reregister devices.register devices.report
 // @pkey-feature config.schema release.changelog release.download
-// @pkey-feature identity.devicecode config.mint
+// @pkey-feature identity.devicecode identity.devicelabel config.mint
 // @pkey-feature update.feed release.record update.decide
 // @pkey-feature packs.apply.chunk commerce.receipt
 // @pkey-feature license.refusals ui.boot release.distribution telemetry.updates
+// @pkey-feature license.manage
 //
 // The Swift transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/ (read
 // from the generator-owned mirror in Resources/transcripts/): drive `PolarisKeyClient` through every
@@ -130,6 +131,7 @@ enum SwiftReplay {
                 "verificationUriComplete": .string(p.verificationUriComplete),
                 "expiresIn": .int(p.expiresIn),
                 "interval": .int(p.interval),
+                "deviceName": p.deviceName.map { .string($0) } ?? .null,
             ])
         case "pollSignIn":
             guard let prompt = session.prompt else { throw ReplayError("pollSignIn before beginSignIn") }
@@ -310,6 +312,10 @@ enum SwiftReplay {
         out["result"] = .string(r.kind)
         if case .ok = r { return }
         out["code"] = .string(r.code)
+        // PX-W8: the refusal link, exactly as served; null when the result carries none.
+        if case .deviceLimit(_, _, let manageURL) = r {
+            out["manageUrl"] = manageURL.map(JSONValue.string) ?? .null
+        }
     }
 
     /// A download model's platform group in the transcript's JSON vocabulary (nil ⇒ `null`).
@@ -352,7 +358,9 @@ enum SwiftReplay {
             pinnedKeys: t.trust, store: store, transport: ReplayTransport(server: server),
             requestTimeoutSeconds: 0,
             expectedServices: services?.compactMap(ServiceSlug.init(rawValue:)),
-            clock: { clock.now })
+            clock: { clock.now },
+            // PX-W13: `initial.deviceName` stands in for the platform's device name; absent = none.
+            deviceName: t.initial.deviceName ?? "")
         let client = try await PolarisKeyClient.create(options: PolarisKeyClientOptions(core: core))
         var update: UpdateClient?
         if let u {

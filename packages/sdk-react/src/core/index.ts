@@ -70,6 +70,7 @@ export {
   type CrashTags,
   type CrashTagsOptions,
 } from "./crash.js";
+export type { UpdateEventEntry, UpdateEventInput } from "./updateEvents.js";
 export type {
   StagedUpdate,
   UpdateCheck,
@@ -165,3 +166,14 @@ export type {
   LicenseStatus,
 } from "@polaris-key/protocol/license";
 export type { ConfigDoc } from "@polaris-key/protocol/config";
+// config.local: device-local overrides (SDK-PARITY-PASS §3.11).
+export {
+  LocalConfigEngine,
+  browserLocalConfigBackend,
+  localConfigStorageKey,
+  type ConfigChange,
+  type ConfigSetting,
+  type ConfigStorage,
+  type LocalConfig,
+  type LocalConfigBackend,
+} from "./localConfig.js";

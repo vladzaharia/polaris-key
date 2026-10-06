@@ -74,6 +74,9 @@ export interface BridgeState {
   capabilities?: ServicesMap;
   /** The CONFIG document's entries (v3 split them off the license document). */
   config?: Record<string, ManagedEntry>;
+  /** v4 (`config.local`): the host's persisted device-local overrides,
+   *  `client.config.localValues()`. Absent ⇒ the renderer keeps what it last knew. */
+  localConfig?: Record<string, JSONValue>;
 }
 
 /** The result of a desktop OIDC begin — a verification URL/code to render while polling. */
@@ -107,7 +110,13 @@ export type BridgeOidcPoll =
  *  than the device cap is never shown as one (SDK-PARITY-PASS §3.1). */
 export type BridgeActivation =
   | { kind: "ok" }
-  | { kind: "device-limit"; limit?: number; deviceCount?: number }
+  /** `manageUrl` (PX-W8): the portal link the host's Node SDK read off the refusal. */
+  | {
+      kind: "device-limit";
+      limit?: number;
+      deviceCount?: number;
+      manageUrl?: string;
+    }
   | { kind: "unauthorized" }
   | { kind: "fingerprint-required" }
   | { kind: "enroll-disabled" }
@@ -134,7 +143,14 @@ export type BridgeActivation =
  *     call crossing the bridge): `("config","mint",{recipeId})` → `{token, expiresAt}`;
  *     `("commerce","binding")` → `{bindingId, products}`; `("commerce","claim",{store,payload})`
  *     → a `CommerceClaimResult`; `("core","discovery")`; `("core","storeStatus")`;
- *     `("devices","id")`.
+ *     `("devices","id")`; `("update","journal",{event, release, fromRelease?, deliverable?,
+ *     channel?, packSetId?, code?})` → the journalled `UpdateEventEntry` or `null` (SP-14: the
+ *     renderer's update-health events, recorded in the host's journal with
+ *     `client.update.journal.record(event, input)`, so its next report drains them).
+ *   * `config.local` (SP-13): `("config","set",{key,value})` and `("config","clear",{key})` →
+ *     the host's `client.config.set`/`clear` (a refusal keeps its `managed_by_admin` or
+ *     `bad_request` code), and `BridgeState.localConfig` = `client.config.localValues()` on
+ *     every state, so the renderer resolves with the host's persisted overrides.
  *
  * Reserved, not yet used by this package: pack verbs (`("packs", …)`), telemetry extras and the
  * `onPackProgress` push below are declared for a later revision; nothing here calls or

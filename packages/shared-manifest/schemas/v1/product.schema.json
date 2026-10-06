@@ -10,13 +10,41 @@
       "const": "pkey.dev/v1"
     },
     "product": { "$ref": "#/$defs/productCore" },
-    "slug": { "$ref": "#/$defs/slug" },
-    "name": { "$ref": "#/$defs/label" },
-    "adminGroup": { "$ref": "#/$defs/groupName" },
-    "compatMin": { "$ref": "#/$defs/semver" },
-    "compatMax": { "$ref": "#/$defs/semver" },
-    "defaultDeviceLimit": { "$ref": "#/$defs/nonNegativeInteger" },
-    "defaultMaxOfflineDays": { "$ref": "#/$defs/nonNegativeInteger" },
+    "slug": {
+      "$ref": "#/$defs/slug",
+      "description": "Deprecated: write product.slug. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
+    },
+    "name": {
+      "$ref": "#/$defs/displayName",
+      "description": "Deprecated: write product.name. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
+    },
+    "adminGroup": {
+      "$ref": "#/$defs/groupName",
+      "description": "Deprecated: write product.adminGroup. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
+    },
+    "compatMin": {
+      "$ref": "#/$defs/semver",
+      "description": "Deprecated: write product.compatMin. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
+    },
+    "compatMax": {
+      "$ref": "#/$defs/semver",
+      "description": "Deprecated: write product.compatMax. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
+    },
+    "defaultDeviceLimit": {
+      "$ref": "#/$defs/nonNegativeInteger",
+      "description": "Deprecated: write licensing.defaultDeviceLimit. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
+    },
+    "defaultMaxOfflineDays": {
+      "$ref": "#/$defs/nonNegativeInteger",
+      "description": "Deprecated: write licensing.defaultMaxOfflineDays. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
+    },
     "modules": { "$ref": "#/$defs/modules" },
     "devices": {
       "type": "object",
@@ -67,8 +95,16 @@
         "tiers": { "$ref": "#/$defs/tiers" }
       }
     },
-    "profiles": { "$ref": "#/$defs/profiles" },
-    "tiers": { "$ref": "#/$defs/tiers" },
+    "profiles": {
+      "$ref": "#/$defs/profiles",
+      "description": "Deprecated: write licensing.profiles. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
+    },
+    "tiers": {
+      "$ref": "#/$defs/tiers",
+      "description": "Deprecated: write licensing.tiers. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
+    },
     "oidc": { "$ref": "#/$defs/oidc" },
     "provisioning": {
       "type": "array",
@@ -99,9 +135,11 @@
       "type": "array",
       "items": { "$ref": "#/$defs/edgeMintRecipe" }
     },
+    "cloudSync": { "$ref": "#/$defs/cloudSync" },
     "release": {
-      "description": "The release document may be inlined here instead of living in .pkey/release — same shape (see release.schema.json).",
-      "type": "object"
+      "description": "Deprecated: write the release block in .pkey/release. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "type": "object",
+      "deprecated": true
     }
   },
   "anyOf": [
@@ -199,6 +237,92 @@
           }
         }
       }
+    },
+    {
+      "$comment": "sync_requires_config: Cloud Sync syncs catalog config keys. (The legacy `edgeMint` module enables config, so it satisfies the requirement too.)",
+      "if": {
+        "required": ["modules"],
+        "properties": {
+          "modules": {
+            "required": ["sync"],
+            "properties": {
+              "sync": {
+                "required": ["enabled"],
+                "properties": { "enabled": { "const": true } }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "modules": {
+            "anyOf": [
+              {
+                "required": ["config"],
+                "properties": {
+                  "config": {
+                    "required": ["enabled"],
+                    "properties": { "enabled": { "const": true } }
+                  }
+                }
+              },
+              {
+                "required": ["edgeMint"],
+                "properties": {
+                  "edgeMint": {
+                    "required": ["enabled"],
+                    "properties": { "enabled": { "const": true } }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "$comment": "sync_requires_identity: Cloud Sync needs a person signed in through the product. (The legacy `oidc` module enables identity, so it satisfies the requirement too.)",
+      "if": {
+        "required": ["modules"],
+        "properties": {
+          "modules": {
+            "required": ["sync"],
+            "properties": {
+              "sync": {
+                "required": ["enabled"],
+                "properties": { "enabled": { "const": true } }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "modules": {
+            "anyOf": [
+              {
+                "required": ["identity"],
+                "properties": {
+                  "identity": {
+                    "required": ["enabled"],
+                    "properties": { "enabled": { "const": true } }
+                  }
+                }
+              },
+              {
+                "required": ["oidc"],
+                "properties": {
+                  "oidc": {
+                    "required": ["enabled"],
+                    "properties": { "enabled": { "const": true } }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
     }
   ],
   "$defs": {
@@ -234,6 +358,11 @@
       "minLength": 1,
       "maxLength": 200,
       "pattern": "^[^\\u0000-\\u001f\\u007f]*$"
+    },
+    "displayName": {
+      "description": "A name the sign-in card shows: a label, with no control, zero-width or bidirectional-formatting character and no leading or trailing whitespace (invalid_display_text, PX-W13).",
+      "allOf": [{ "$ref": "#/$defs/label" }],
+      "pattern": "^(?!\\s)(?![\\s\\S]*\\s$)[^\\u0000-\\u001f\\u007f-\\u009f\\u061c\\u200b-\\u200f\\u202a-\\u202e\\u2060-\\u2064\\u2066-\\u2069\\ufeff]*$"
     },
     "longText": {
       "description": "Longer human text: at most 2000 chars, no control characters.",
@@ -274,16 +403,24 @@
       "type": "object",
       "properties": {
         "slug": { "$ref": "#/$defs/slug" },
-        "name": { "$ref": "#/$defs/label" },
+        "name": { "$ref": "#/$defs/displayName" },
         "adminGroup": { "$ref": "#/$defs/groupName" },
         "compatMin": { "$ref": "#/$defs/semver" },
         "compatMax": { "$ref": "#/$defs/semver" },
-        "defaultDeviceLimit": { "$ref": "#/$defs/nonNegativeInteger" },
-        "defaultMaxOfflineDays": { "$ref": "#/$defs/nonNegativeInteger" }
+        "defaultDeviceLimit": {
+          "$ref": "#/$defs/nonNegativeInteger",
+          "description": "Deprecated: write licensing.defaultDeviceLimit. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+          "deprecated": true
+        },
+        "defaultMaxOfflineDays": {
+          "$ref": "#/$defs/nonNegativeInteger",
+          "description": "Deprecated: write licensing.defaultMaxOfflineDays. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+          "deprecated": true
+        }
       }
     },
     "modules": {
-      "description": "Per-service enablement. Service slugs (license, config, release, distribution, update, identity) are canonical; the legacy module vocabulary (licensing, releases, oidc, edgeMint) is accepted and mapped (releases enables release+distribution+update; edgeMint enables config). Undeclared defaults to license+config.",
+      "description": "Per-service enablement. Service slugs (license, config, release, distribution, update, identity, sync) are canonical. The legacy module names (licensing, releases, oidc, edgeMint) are deprecated but still accepted and mapped (releases enables release+distribution+update; edgeMint enables config). Undeclared defaults to license+config.",
       "type": "object",
       "properties": {
         "license": { "$ref": "#/$defs/moduleFlag" },
@@ -292,10 +429,27 @@
         "distribution": { "$ref": "#/$defs/moduleFlag" },
         "update": { "$ref": "#/$defs/moduleFlag" },
         "identity": { "$ref": "#/$defs/moduleFlag" },
-        "licensing": { "$ref": "#/$defs/moduleFlag" },
-        "releases": { "$ref": "#/$defs/moduleFlag" },
-        "oidc": { "$ref": "#/$defs/moduleFlag" },
-        "edgeMint": { "$ref": "#/$defs/moduleFlag" }
+        "sync": { "$ref": "#/$defs/moduleFlag" },
+        "licensing": {
+          "$ref": "#/$defs/moduleFlag",
+          "description": "Deprecated: write the service slug license. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+          "deprecated": true
+        },
+        "releases": {
+          "$ref": "#/$defs/moduleFlag",
+          "description": "Deprecated: write the service slug release (with distribution and update). Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+          "deprecated": true
+        },
+        "oidc": {
+          "$ref": "#/$defs/moduleFlag",
+          "description": "Deprecated: write the service slug identity. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+          "deprecated": true
+        },
+        "edgeMint": {
+          "$ref": "#/$defs/moduleFlag",
+          "description": "Deprecated: write the service slug config. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+          "deprecated": true
+        }
       }
     },
     "moduleFlag": {
@@ -309,7 +463,11 @@
         "properties": {
           "id": { "$ref": "#/$defs/identifier" },
           "name": { "$ref": "#/$defs/label" },
-          "label": { "$ref": "#/$defs/label" },
+          "label": {
+            "$ref": "#/$defs/label",
+            "description": "Deprecated: write name. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+            "deprecated": true
+          },
           "description": { "$ref": "#/$defs/longText" },
           "payload": {
             "description": "Managed-payload baseline: config/secrets/entitlements maps.",
@@ -330,13 +488,22 @@
             "anyOf": [{ "$ref": "#/$defs/identifier" }, { "type": "null" }]
           },
           "profile": {
-            "description": "Alias of profileId.",
-            "anyOf": [{ "$ref": "#/$defs/identifier" }, { "type": "null" }]
+            "description": "Deprecated: write profileId. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+            "anyOf": [
+              {
+                "$ref": "#/$defs/identifier"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "deprecated": true
           },
           "policyExpiryDays": { "type": ["number", "null"] },
           "expiryDays": {
-            "description": "Alias of policyExpiryDays.",
-            "type": ["number", "null"]
+            "description": "Deprecated: write policyExpiryDays. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+            "type": ["number", "null"],
+            "deprecated": true
           },
           "policyDeviceLimit": {
             "anyOf": [
@@ -382,8 +549,9 @@
         },
         "clientSecretSecret": { "$ref": "#/$defs/secretRef" },
         "clientSecretRef": {
-          "description": "Alias of clientSecretSecret.",
-          "$ref": "#/$defs/secretRef"
+          "description": "Deprecated: write clientSecretSecret. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+          "$ref": "#/$defs/secretRef",
+          "deprecated": true
         },
         "redirectUris": {
           "type": "array",
@@ -522,6 +690,84 @@
       "type": "string",
       "maxLength": 267,
       "pattern": "^(?:https://[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*|http://(?:localhost|127\\.0\\.0\\.1))(?::[0-9]{1,5})?$"
+    },
+    "cloudSyncLimits": {
+      "description": "Per-person Cloud Sync limits, each at most the platform ceiling (settings 256 KiB, collections 64 MiB, saves 1 GiB per person).",
+      "type": "object",
+      "properties": {
+        "totalBytes": { "type": "integer", "minimum": 0 },
+        "settingsBytes": { "type": "integer", "minimum": 0 },
+        "records": { "type": "integer", "minimum": 0 },
+        "collectionBytes": { "type": "integer", "minimum": 0 },
+        "saves": {
+          "type": "object",
+          "properties": {
+            "slots": { "type": "integer", "minimum": 0 },
+            "maxBytes": { "type": "integer", "minimum": 0 },
+            "keepRevisions": { "type": "integer", "minimum": 0 }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "cloudSync": {
+      "description": "Cloud Sync limits and access policy, persisted as claimable product settings. The data shape (collections, saves, migrations) lives in .pkey/schema's cloudSync block.",
+      "type": "object",
+      "properties": {
+        "limits": {
+          "description": "The licensed per-person limits.",
+          "type": "object",
+          "properties": {
+            "totalBytes": { "type": "integer", "minimum": 0 },
+            "settingsBytes": { "type": "integer", "minimum": 0 },
+            "records": { "type": "integer", "minimum": 0 },
+            "collectionBytes": { "type": "integer", "minimum": 0 },
+            "saves": {
+              "type": "object",
+              "properties": {
+                "slots": { "type": "integer", "minimum": 0 },
+                "maxBytes": { "type": "integer", "minimum": 0 },
+                "keepRevisions": { "type": "integer", "minimum": 0 }
+              },
+              "additionalProperties": false
+            },
+            "byTier": {
+              "description": "Tier id → limits; the tier of the highest-rank contributing licence applies.",
+              "type": "object",
+              "additionalProperties": { "$ref": "#/$defs/cloudSyncLimits" }
+            },
+            "byEntitlement": {
+              "description": "Limit → a numeric catalog flag (combined by max) that raises it.",
+              "type": "object",
+              "properties": {
+                "totalBytes": { "type": "string" },
+                "saveSlots": { "type": "string" }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "unlicensed": {
+          "description": "Signed-in people with no usable licence for the product: limits no higher than the licensed ones; saves off unless saves is true.",
+          "type": "object",
+          "properties": {
+            "limits": { "$ref": "#/$defs/cloudSyncLimits" },
+            "saves": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        },
+        "writes": {
+          "type": "object",
+          "properties": {
+            "requireLicense": { "type": "boolean" },
+            "minTrust": { "enum": [null, "basic", "attested"] }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     },
     "assetSrc": {
       "description": "Where an image's bytes come from: an https URL, or a relative path in the product's own repository, resolved at the synced commit (private repositories included). A repo path has an optional leading ./, no leading /, no . or .. segment, at most 512 characters, and ends in .png, .jpg, .jpeg, .webp, .gif or .avif (lower case).",

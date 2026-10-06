@@ -11,8 +11,18 @@ import {
 } from "./devices.js";
 import { discoveryCapabilities, discoveryFailure } from "./discovery.js";
 import { distributionDownloadModel } from "./distribution.js";
-import { devicecodeExpired, devicecodeHappy } from "./identity.js";
-import { activateEnrollDeactivate, activateRefusals } from "./license.js";
+import {
+  devicecodeDefault,
+  devicecodeExpired,
+  devicecodeHappy,
+  devicecodeLabel,
+  identityDisabled,
+} from "./identity.js";
+import {
+  activateEnrollDeactivate,
+  activateRefusals,
+  licenseDeviceLimit,
+} from "./license.js";
 import { configSchemaFetch } from "./catalog.js";
 import {
   releaseChangelog,
@@ -32,6 +42,7 @@ export const SCENARIOS: Scenario[] = [
   syncErrors,
   syncConfigLicenseUnusable,
   activateEnrollDeactivate,
+  licenseDeviceLimit,
   registerOpen,
   registerReregister401,
   telemetryReport,
@@ -40,6 +51,9 @@ export const SCENARIOS: Scenario[] = [
   releaseChangelogEntitled,
   devicecodeHappy,
   devicecodeExpired,
+  identityDisabled,
+  devicecodeLabel,
+  devicecodeDefault,
   edgeMint,
   updateFeedRollback,
   updateRecordByHash,

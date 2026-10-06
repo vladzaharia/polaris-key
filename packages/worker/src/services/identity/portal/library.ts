@@ -227,6 +227,33 @@ async function addedAt(
   return row?.at ?? null;
 }
 
+/**
+ * The account's licences for one product, best first (the order the product page uses), with
+ * their seats and statuses; empty when it holds none or the portal is off for the product. The
+ * passthrough consent view's dry-run anchor reads it (`passthrough/anchor.ts`).
+ */
+export async function rankedLicensesFor(
+  db: Db,
+  accountId: string,
+  product: ProductPublic,
+  now: number,
+): Promise<
+  Array<{
+    row: PortalLicenseRow;
+    seats: { deviceLimit: number; activeSeatCount: number };
+    status: LibraryStatus;
+  }>
+> {
+  const rows = (await groupedLicenses(db, accountId, product.slug)).get(
+    product.slug,
+  );
+  if (!rows) return [];
+  const shaped: ShapedLicense[] = [];
+  for (const row of rows)
+    shaped.push(await shapeLicense(db, product, row, now));
+  return shaped.sort(compareLicenses);
+}
+
 /** `GET /api/library`. */
 export async function libraryView(
   db: Db,

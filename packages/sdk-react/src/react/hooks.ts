@@ -31,6 +31,7 @@ import {
   type ImportBundleResult,
 } from "../core/index.js";
 import { readEntitled, readEntitledChannels } from "../core/adapter.js";
+import { Feature } from "../constants.generated.js";
 import { PolarisContext, type PolarisContextValue } from "./context.js";
 import type { PolarisTheme } from "../components/theme.js";
 
@@ -252,6 +253,18 @@ export interface UseManagedConfig {
   loading: boolean;
   busy: boolean;
   error: PolarisError | null;
+  /** `config.set`: persist a device-local override (`config.local`). Throws
+   *  `managed_by_admin` for a locked key, `bad_request` for a value the catalog refuses. */
+  set: (key: string, value: JSONValue) => Promise<void>;
+  /** `config.clear`: drop one device-local override. */
+  clear: (key: string) => Promise<void>;
+  /** `config.clearAll`: drop every device-local override. */
+  clearAll: () => Promise<void>;
+  /** False when overrides live in memory only (no usable browser storage). */
+  persistent: boolean;
+  /** True when `set` can work here (`supports("config.local")`): false on a desktop host that
+   *  predates bridge v4, or with the config service off. */
+  canSet: boolean;
 }
 
 /** The delivered managed config — the EFFECTIVE map (per-key precedence: `enforced|hidden` >
@@ -269,6 +282,57 @@ export function useManagedConfig(): UseManagedConfig {
     loading: state.phase === "loading",
     busy: state.busy.config,
     error: state.error.config,
+    set: (key, value) => adapter.config.set(key, value),
+    clear: (key) => adapter.config.clear(key),
+    clearAll: () => adapter.config.clearAll(),
+    persistent: adapter.config.persistent(),
+    canSet: adapter.supports(Feature.configLocal).supported,
+  };
+}
+
+/** One config key as a reactive setting (`config.local`): the effective value, where it came
+ *  from, whether the operator locked it, and `set`/`clear` for the device-local override. */
+export interface UseConfigSetting<T> {
+  key: string;
+  value: T;
+  source: ConfigSource;
+  /** True when the operator locked the key (`enforced`/`hidden`): `set` refuses. */
+  locked: boolean;
+  /** True when a device-local override supplies the value. */
+  overridden: boolean;
+  set: (value: T) => Promise<void>;
+  clear: () => Promise<void>;
+}
+
+/** Subscribe to one config key; re-renders whenever its resolved value, source or lock moves
+ *  (a local `set`/`clear`, or a sync). */
+export function useConfigSetting<T = JSONValue>(
+  key: string,
+): UseConfigSetting<T | undefined>;
+export function useConfigSetting<T = JSONValue>(
+  key: string,
+  fallback: T,
+): UseConfigSetting<T>;
+export function useConfigSetting<T = JSONValue>(
+  key: string,
+  fallback?: T,
+): UseConfigSetting<T | undefined> {
+  const { adapter } = useCtx();
+  const state = useAdapterState(adapter);
+  const setting = useMemo(
+    () => adapter.config.setting<T | undefined>(key),
+    [adapter, key],
+  );
+  const own = Object.prototype.hasOwnProperty.call(state.config, key);
+  const source = adapter.getConfigSource(key);
+  return {
+    key,
+    value: own ? (state.config[key] as unknown as T) : fallback,
+    source,
+    locked: setting.locked(),
+    overridden: source === "local",
+    set: setting.set,
+    clear: setting.clear,
   };
 }
 

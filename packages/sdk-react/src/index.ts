@@ -21,6 +21,7 @@ export {
   useCapabilities,
   useLicense,
   useManagedConfig,
+  useConfigSetting,
   useEntitlement,
   usePolarisAuth,
   useLicenseGate,
@@ -31,6 +32,7 @@ export {
   type UseLicense,
   type UseImportBundle,
   type UseManagedConfig,
+  type UseConfigSetting,
   type UsePolarisAuth,
   type UseLicenseGate,
   type GateScreen,
@@ -78,8 +80,16 @@ export {
 } from "./components/LicenseGate.js";
 export {
   PolarisLogin,
+  openManageUrl,
   type PolarisLoginProps,
 } from "./components/PolarisLogin.js";
+// The refusal link (PX-W8): validate `manageUrl`, add the app's return URL or the key fragment.
+export {
+  isManageUrl,
+  readManageUrl,
+  withManageKey,
+  withManageReturn,
+} from "@polaris-key/client-core";
 export {
   PolarisLogout,
   type PolarisLogoutProps,
@@ -253,6 +263,10 @@ export {
   type GateInput,
   type BlockedState,
   type ConfigSource,
+  type ConfigChange,
+  type ConfigSetting,
+  type ConfigStorage,
+  type LocalConfig,
   type Store,
   type PolarisAdapter,
   type Support,
@@ -304,6 +318,9 @@ export {
   type FeedKind,
   type FeedUrl,
   type FeedUrlOptions,
+  // telemetry.updates (SP-14): adapter.recordUpdateEvent
+  type UpdateEventEntry,
+  type UpdateEventInput,
 } from "./core/index.js";
 
 // ── Generated constants (`pnpm gen:constants`, tools/gen-sdk-constants.ts) ──

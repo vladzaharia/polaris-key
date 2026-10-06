@@ -52,6 +52,7 @@ export const SERVICE_IDS = [
   "distribution",
   "update",
   "identity",
+  "sync",
 ] as const;
 
 export type ServiceId = (typeof SERVICE_IDS)[number];
@@ -69,6 +70,7 @@ export const ACCENT_FAMILIES = [
   "green",
   "tangerine",
   "orchid",
+  "teal",
 ] as const;
 
 export type AccentFamily = (typeof ACCENT_FAMILIES)[number];
@@ -81,6 +83,7 @@ export const SERVICE_FAMILY: Record<ServiceId, AccentFamily> = {
   distribution: "green",
   update: "tangerine",
   identity: "orchid",
+  sync: "teal",
 };
 
 /** The mark each section uses: the Pinned K for the platform, the Star Cut for delivery. */
@@ -92,6 +95,7 @@ export const SERVICE_MARK: Record<ServiceId, "key" | "update"> = {
   distribution: "update",
   update: "update",
   identity: "key",
+  sync: "key",
 };
 
 /** Human labels (tools/services.json `label`; Core is the platform). */
@@ -103,6 +107,7 @@ export const SERVICE_LABEL: Record<ServiceId, string> = {
   distribution: "Distribution",
   update: "Update",
   identity: "Identity",
+  sync: "Cloud Sync",
 };
 
 /**
@@ -219,6 +224,25 @@ export const ACCENTS: Record<AccentFamily, Record<Theme, AccentSpec>> = {
     light: {
       solid: oklch(0.53, 0.2, 322),
       fg: oklch(0.53, 0.2, 322),
+      on: BRAND.mono.white,
+    },
+  },
+  // Cloud Sync (U-04, 2026-10-05). scripts/tune-accents.ts's `search` over the three gaps the
+  // palette leaves (teal 160-214°, red-orange 26-50°, magenta 286-334°; dark lightness 0.73-0.88,
+  // chroma >= 0.12; light 0.45-0.60, chroma >= 0.075) lands on this teal in both themes, the
+  // farthest (CIEDE2000) from every other accent, rose and danger: 19.0 dark and 19.3 light, both
+  // nearest the Release cyan. Red-orange (17.3 / 17.2, by Update and danger) and magenta (15.0 /
+  // 18.6, by Identity) measure closer. Light chroma 0.085 (17.46 from the cyan) misses the 17.5
+  // floor and the 0.085 ΔEOK floor against the Distribution green, so light steps down to 0.075.
+  teal: {
+    dark: {
+      solid: oklch(0.88, 0.155, 183),
+      fg: oklch(0.88, 0.155, 183),
+      on: BRAND.mono.black,
+    },
+    light: {
+      solid: oklch(0.45, 0.075, 192),
+      fg: oklch(0.45, 0.075, 192),
       on: BRAND.mono.white,
     },
   },

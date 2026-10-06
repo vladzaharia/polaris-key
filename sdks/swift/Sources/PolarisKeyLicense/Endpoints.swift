@@ -28,8 +28,12 @@ import PolarisKeyCore
 /// a device limit.
 public enum ActivationResult: Sendable, Equatable {
     case ok(token: String, schemaVersion: Int)
-    /// 403 `device_limit`: every seat is taken.
-    case deviceLimit(limit: Int?, deviceCount: Int?)
+    /// 403 `device_limit`: every seat is taken. `manageURL` (PX-W8, WIRE-CONTRACT-V4 §5.3) is
+    /// the customer-portal link that frees one, present while the product's portal is on and
+    /// already validated by `ManageLink.read`. Add the app's return with `ManageLink.withReturn`
+    /// and, on an `/activate` link, the key with `ManageLink.withKey`. It is never an auth
+    /// failure: open it only behind a user action.
+    case deviceLimit(limit: Int?, deviceCount: Int?, manageURL: String? = nil)
     /// 401: the key is unknown, revoked or no longer usable.
     case unauthorized
     /// 403 `fingerprint_required`: the tier requires a hardware fingerprint this host could not
@@ -139,7 +143,7 @@ public enum ActivationResult: Sendable, Equatable {
     var copyParams: ErrorCopy.Params {
         var p: ErrorCopy.Params = [:]
         switch self {
-        case .deviceLimit(let limit, let count):
+        case .deviceLimit(let limit, let count, _):
             if let limit { p["limit"] = String(limit) }
             if let count { p["deviceCount"] = String(count) }
         case .rateLimited(let after):
@@ -155,9 +159,11 @@ public enum LicenseEndpoints {
     public static func activate(
         _ core: CoreContext, key: String, fingerprint: HardwareFingerprint? = nil
     ) async -> ActivationResult {
+        // PX-W13 §8 Q2: the label seeds the device's name in the customer's and console's lists.
         await activationLike(
             core, url: core.endpoints.licenseActivate,
-            extra: ["authorization": "Bearer \(key)"], fingerprint: fingerprint)
+            extra: ["authorization": "Bearer \(key)"], fingerprint: fingerprint,
+            deviceName: await core.deviceLabel())
     }
 
     /// `POST /<p>/license/enroll` — obtain a licence with no key and no sign-in. Returns the
@@ -193,14 +199,15 @@ public enum LicenseEndpoints {
     /// The three mint/rotate endpoints share a response ladder, so they share a reader.
     private static func activationLike(
         _ core: CoreContext, url: URL, extra: [String: String],
-        fingerprint: HardwareFingerprint?
+        fingerprint: HardwareFingerprint?, deviceName: String? = nil
     ) async -> ActivationResult {
         var headers = extra
         var body: Data?
-        // The body is omitted entirely when there is no fingerprint, so a host that opted out
-        // sends a byte-identical request to one that has nothing to report.
-        if let fingerprint,
-            let encoded = try? JSONEncoder().encode(ActivationFingerprintBody(fingerprint))
+        // The body is omitted entirely when there is neither a fingerprint nor a label, so a host
+        // that opted out sends a byte-identical request to one that has nothing to report.
+        if fingerprint != nil || deviceName != nil,
+            let encoded = try? JSONEncoder().encode(
+                ActivationFingerprintBody(fingerprint, deviceName: deviceName))
         {
             headers["content-type"] = "application/json"
             body = encoded
@@ -248,7 +255,8 @@ public enum LicenseEndpoints {
         case 400..<500:
             switch code {
             case ErrorCode.deviceLimit?:
-                return .deviceLimit(limit: body?.limit, deviceCount: body?.deviceCount)
+                return .deviceLimit(
+                    limit: body?.limit, deviceCount: body?.deviceCount, manageURL: body?.manageURL)
             case ErrorCode.fingerprintRequired?: return .fingerprintRequired
             case ErrorCode.enrollClaimed?: return .enrollClaimed
             case ErrorCode.licenseDisabled?: return .licenseDisabled
@@ -306,6 +314,23 @@ struct ErrorBody: Decodable {
         let deviceCount: Int?
         let drift: Int?
         let changed: [String]?
+        /// PX-W8: read leniently, so a malformed link never costs the caller the other fields.
+        let manageUrl: String?
+
+        private enum CodingKeys: String, CodingKey {
+            case code, message, limit, deviceCount, drift, changed, manageUrl
+        }
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            code = try c.decodeIfPresent(String.self, forKey: .code)
+            message = try c.decodeIfPresent(String.self, forKey: .message)
+            limit = try c.decodeIfPresent(Int.self, forKey: .limit)
+            deviceCount = try c.decodeIfPresent(Int.self, forKey: .deviceCount)
+            drift = try c.decodeIfPresent(Int.self, forKey: .drift)
+            changed = try c.decodeIfPresent([String].self, forKey: .changed)
+            manageUrl = try? c.decode(String.self, forKey: .manageUrl)
+        }
     }
     let flatCode: String?
     let nested: Nested?
@@ -314,6 +339,7 @@ struct ErrorBody: Decodable {
     let topDeviceCount: Int?
     let topDrift: Int?
     let topChanged: [String]?
+    let topManageUrl: String?
 
     var code: String? { flatCode ?? nested?.code }
     var message: String? { topMessage ?? nested?.message }
@@ -321,13 +347,16 @@ struct ErrorBody: Decodable {
     var deviceCount: Int? { topDeviceCount ?? nested?.deviceCount }
     var drift: Int? { topDrift ?? nested?.drift }
     var changed: [String]? { topChanged ?? nested?.changed }
+    /// The validated refusal link (PX-W8): the top-level member, else the nested one.
+    var manageURL: String? { ManageLink.read(topManageUrl, nested?.manageUrl) }
 
     private enum CodingKeys: String, CodingKey {
-        case error, message, limit, deviceCount, drift, changed
+        case error, message, limit, deviceCount, drift, changed, manageUrl
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
+        topManageUrl = try? c.decode(String.self, forKey: .manageUrl)
         topMessage = try? c.decodeIfPresent(String.self, forKey: .message)
         topLimit = try? c.decodeIfPresent(Int.self, forKey: .limit)
         topDeviceCount = try? c.decodeIfPresent(Int.self, forKey: .deviceCount)
@@ -339,16 +368,20 @@ struct ErrorBody: Decodable {
     }
 }
 
-/// `{ "fingerprint": { "components": {...}, "hwid": "..." } }`
+/// `{ "fingerprint": { "components": {...}, "hwid": "..." }, "deviceName": "..." }`, each member
+/// omitted when absent (PX-W13 §8 Q2 adds the label, on activation only).
 private struct ActivationFingerprintBody: Encodable {
     struct Payload: Encodable {
         let components: [String: String]
         let hwid: String
     }
-    let fingerprint: Payload
+    let fingerprint: Payload?
+    let deviceName: String?
 
-    init(_ fingerprint: HardwareFingerprint) {
-        self.fingerprint = Payload(
-            components: fingerprint.components, hwid: fingerprint.hwid)
+    init(_ fingerprint: HardwareFingerprint?, deviceName: String? = nil) {
+        self.fingerprint = fingerprint.map {
+            Payload(components: $0.components, hwid: $0.hwid)
+        }
+        self.deviceName = deviceName
     }
 }

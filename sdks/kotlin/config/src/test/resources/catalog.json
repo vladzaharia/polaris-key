@@ -37,7 +37,8 @@
       "ui": {
         "order": 2,
         "advanced": true
-      }
+      },
+      "user": { "sync": "user", "conflict": "max" }
     },
     {
       "key": "ui.theme",
@@ -57,7 +58,8 @@
           "light": "Hell",
           "dark": "Dunkel ☾"
         }
-      }
+      },
+      "user": { "sync": "device", "listed": false }
     },
     {
       "key": "game.killSwitch",
@@ -116,5 +118,9 @@
       "userGrant": true,
       "grantLabel": "Dice skins"
     }
-  ]
+  ],
+  "cloudSync": {
+    "collections": [{ "name": "progress", "access": "owner" }],
+    "saves": { "conflict": "mostRecent" }
+  }
 }

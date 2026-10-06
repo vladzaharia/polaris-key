@@ -54,6 +54,10 @@
     "license.deactivate": {
       "status": "implemented"
     },
+    "license.manage": {
+      "status": "implemented",
+      "note": "PX-W8: the device-limit result exposes manageUrl (validated), plus the return and key helpers."
+    },
     "license.entitlements": {
       "status": "implemented"
     },
@@ -87,9 +91,8 @@
       "note": "The Swift mirror is rendered by tools/gen-mirrors.ts."
     },
     "config.local": {
-      "status": "planned",
-      "wp": "SP-18",
-      "note": "config.set, clear and clearAll persist through a LocalConfigStore, validate against the catalog and raise client.events .config (LocalConfigTests), but config.setting(key) and onConfigChange(key, listener) (SDK-PARITY-PASS §3.11) are missing."
+      "status": "implemented",
+      "note": "config.set, clear and clearAll persist through a LocalConfigStore (UserDefaults by default), validate against the catalog and raise client.events .config; config.setting(key) returns a handle whose current() gives the effective value, its source and lock, and onConfigChange(key | \"*\", listener) returns a cancellable ConfigSubscription (configChanges(key) is the AsyncStream form), fed by the same change observation as client.events for local writes and syncs (LocalConfigTests)."
     },
     "devices.fingerprint": {
       "status": "implemented"
@@ -130,6 +133,14 @@
     },
     "identity.devicecode": {
       "status": "implemented"
+    },
+    "identity.devicelabel": {
+      "status": "implemented",
+      "note": "PX-W13: normalizeDeviceLabel over Unicode scalars, CoreOptions.deviceName and the platform default (macOS Host.current().localizedName, iOS-family UIDevice.current.name), on beginSignIn, activation and registration; SignInPrompt.deviceName is the Worker's echo. PolarisKeyUI has no device-code sign-in view to show it in (ui.kit is planned and unowned)."
+    },
+    "identity.toggle": {
+      "status": "planned",
+      "wp": "I-10b"
     },
     "release.changelog": {
       "status": "implemented"
@@ -309,6 +320,10 @@
       "status": "planned",
       "wp": "UK-07",
       "note": "PolarisLoginView, PolarisGate, PolarisSignIn and PolarisOfflineActivation over the @Observable PolarisKeyModel; the rest of the kit (PARITY §5.9) belongs to the UI-kit program (UK-*)."
+    },
+    "ui.kit.manage": {
+      "status": "implemented",
+      "note": "PX-W8: PolarisLoginView shows Replace a device on device-limit (a button on macOS and iOS, a QR on tvOS)."
     },
     "ui.cli": {
       "status": "na",

@@ -43,7 +43,7 @@ func _init(p_product: String, p_apple: PKeyApple = null, root := "user://pkey") 
 ## else PKeyKeystoreStore.preferred() (the Keystore store on Android with its plugin, else the
 ## file store).
 static func preferred(p_product: String, root := "user://pkey") -> PKeyStore:
-	if PKeyHeaders.platform() == PKeyConstants.Platform.IOS:
+	if PKeyHeaders.update_platform() == PKeyConstants.Platform.IOS:
 		var apple := PKeyApple.shared()
 		if apple.is_available():
 			return PKeyKeychainStore.new(p_product, apple, root)

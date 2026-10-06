@@ -118,13 +118,14 @@ func is_signing_in() -> bool:
 ## Start a sign-in and poll in the background. Returns the prompt (also emitted as
 ## `sign_in_pending`); the ending arrives as `sign_in_finished(result)`. A sign-in already
 ## running is cancelled first. `device_name` is what the confirmation page shows the human (the
-## anti-phishing cue); empty: `default_device_name()`. `confirm_identity`: hold at the signed-in
+## anti-phishing cue); empty: `PKeyOptions.device_name`, else `default_device_name()`, unless
+## `PKeyOptions.send_device_name` is off (WIRE-CONTRACT-V4 §12.7.1). `confirm_identity`: hold at the signed-in
 ## identity for the player's acceptance, and offer the licence attach (see the class doc). When
 ## the start fails, the prompt is not ok and `sign_in_finished` reports it too. A coroutine.
 func begin_sign_in(device_name := "", confirm_identity := false) -> PKeySignInPrompt:
 	cancel()
 	var gen := _generation
-	var prompt := await request_sign_in(device_name if device_name.strip_edges() != "" else default_device_name())
+	var prompt := await request_sign_in(device_name)
 	if not prompt.ok:
 		sign_in_finished.emit(_start_failure(prompt))
 		return prompt
@@ -242,16 +243,13 @@ func sign_in_with_browser(device_name := "", confirm_identity := false) -> PKeyS
 ## The name a sign-in shows the human when the game gives none: the device model where the OS
 ## reports a real one, else the OS name ("macOS", "Linux", …).
 static func default_device_name() -> String:
-	var model := OS.get_model_name()
-	if model != "" and model != "GenericDevice":
-		return model
-	return OS.get_name()
+	return PKeyDeviceLabel.platform_default()
 
 
 # ── The pieces underneath ────────────────────────────────────────────────────────────────
 
-## `POST /identity/auth/device/start` alone: no polling, no signal. `device_name` is sent as
-## given (trimmed; omitted when empty). A coroutine.
+## `POST /identity/auth/device/start` alone: no polling, no signal. The label is
+## `PKeyDeviceLabel.resolve(device_name, options)`: normalised, omitted when empty. A coroutine.
 func request_sign_in(device_name := "") -> PKeySignInPrompt:
 	var core := _core()
 	if core == null or not core.started:
@@ -263,9 +261,9 @@ func request_sign_in(device_name := "") -> PKeySignInPrompt:
 	if not is_available():
 		return _prompt_failure(PKeyErrors.SERVICE_UNAVAILABLE, "The identity service is not enabled (or not set up) for %s." % core.product)
 	var body := {"deviceId": core.device_id}
-	var name := device_name.strip_edges()
-	if name != "":
-		body["deviceName"] = name
+	var label := PKeyDeviceLabel.resolve(device_name, core.options)
+	if label != "":
+		body["deviceName"] = label
 	var r := await core.request("POST", "identity/auth/device/start", body)
 	if not r.ok:
 		var p := _prompt_failure(r.code, r.message)
@@ -285,6 +283,11 @@ func request_sign_in(device_name := "") -> PKeySignInPrompt:
 	prompt.expires_in = _whole(b["expiresIn"])
 	prompt.interval = _whole(b["interval"])
 	prompt.expires_at = core.clock.system_now() + prompt.expires_in
+	# The echo is what the page shows; an older Worker sends none, so show what was sent.
+	if b.has("deviceName"):
+		prompt.device_name = b["deviceName"] if b["deviceName"] is String else ""
+	else:
+		prompt.device_name = label
 	return prompt
 
 

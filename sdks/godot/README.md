@@ -238,10 +238,9 @@ SentrySDK.set_tag("pkey.outlet", PolarisKey.crash_tags().get("pkey.outlet", ""))
 - `distribution.download_model()` reads `GET /<p>/distribution/download.json`, the unsigned,
   public document the hosted download page renders: show it ("Also on Steam, Flathub…"), never
   install from it. `this_platform()` picks this device's group with its primary action first.
-- The addon builds no customer-portal URLs. **Manage devices** links come from the server: once
-  the Worker sends a `manageUrl` on the `device_limit` refusal (PX-W8), `PKeyActivationPanel`
-  shows the button for it; until then the button stays hidden. Point players at the customer
-  portal in your own copy.
+- The addon builds no customer-portal URLs. The **Replace a device** link comes from the server:
+  the `manageUrl` on the `device_limit` refusal (PX-W8), which `PKeyActivationPanel` offers as a
+  button or a QR code. Without one (the product's portal is off) the button stays hidden.
 - `crash_tags()` is `{release: "app@<version>[+<build>]", environment: <update channel>,
 "pkey.outlet": <outlet>}`, the convention update health maps a crash report to a rollout with.
   No crash SDK is bundled; give the values to yours (Sentry: `release`, `environment` and a
@@ -435,7 +434,7 @@ says:
 
 | Option                       | Environment                 | Default                                                                                                                                                        |
 | ---------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `polaris_key/outlet`         | `PKEY_BUILD_OUTLET`         | `direct` on the desktop, `play`, `app-store`, `web`                                                                                                            |
+| `polaris_key/outlet`         | `PKEY_BUILD_OUTLET`         | `direct` (the Polaris Key outlet) on the desktop, `play`, `app-store`, `web`                                                                                   |
 | `polaris_key/outlet_kind`    | `PKEY_BUILD_OUTLET_KIND`    | empty: the outlet itself when it is one of the 17 kinds. A custom outlet id (`itch-beta`) needs its kind (`itch`)                                              |
 | `polaris_key/outlet_subkind` | `PKEY_BUILD_OUTLET_SUBKIND` | empty (none): `homebrew`, `npm`, `pnpm`, `npx`, `scoop`, `chocolatey`, `flatpak` or `appimage`                                                                 |
 | `polaris_key/format`         | `PKEY_BUILD_FORMAT`         | empty (none): the installed build's format (`zip`, `dmg`, `exe`, ...)                                                                                          |
@@ -641,6 +640,15 @@ await PolarisKey.identity.sign_out()             # cancel, forget, license.deact
   token came from `devices.register()` in this process; otherwise it asks `POST /license/token`.
   The token's source is held in memory only, so after a restart a licensed product's device asks
   `license/token`. One attempt per sync pass, whichever route.
+- **When every seat is taken.** A device-limit `PKeyActivationResult` carries `manage_url`, the
+  customer-portal link that frees a seat (WIRE-CONTRACT-V4 §5.3), validated, and only while the
+  product's portal is on. It is never an auth failure. `PKeyManage.with_key(url, key)` adds
+  `#key=` to an `/activate` link and `PKeyManage.with_return(url, return_url)` adds `return=`.
+  `PKeyActivationPanel` shows **Replace a device** under the error: a button that calls
+  `OS.shell_open`, or a QR code where a joypad is the only input (a console, or a TV). Set
+  `return_url` on the panel, and `manage_mode` to force `button` or `qr`. The QR code never
+  carries the key (anyone who can see the screen can scan it): `manage_link(..., for_qr = true)`
+  leaves `#key=` out, and the phone's page asks for the key. Do the same in a custom QR.
 
 ## Update and release (`PolarisKey.update`, `PolarisKey.release`)
 
@@ -796,7 +804,7 @@ is never talked into self-updating code.
 | AltStore, AltStore PAL, Obtainium, F-Droid repo, iOS `direct` | the feed has no listing: opens `PKeyOptions.update_page_url` (the source, repository or web-distribution page), else nothing | —                                     | —                   | —             |
 | Steam, itch, Flathub, Snap, App Installer, winget             | —                                                                                                                            | silent, with the outlet's own message | —                   | —             |
 | Web                                                           | —                                                                                                                            | "Reload"                              | —                   | —             |
-| Direct (desktop, Android)                                     | —                                                                                                                            | package-managed: silent               | per `method`, below | "Restart now" |
+| Polaris Key, `direct` (desktop, Android)                      | —                                                                                                                            | package-managed: silent               | per `method`, below | "Restart now" |
 | unknown                                                       | never offered anything                                                                                                       |                                       |                     |               |
 
 `binary` on a direct build dispatches on `method`:

@@ -88,6 +88,12 @@ const CONFIG_ENV_NEVER := 2
 ## Send a hashed hardware fingerprint when registering (PolarisKey.devices). Off: the server
 ## records the device `unverified` (a `strict` tier refuses it). Raw values never leave the device.
 @export var fingerprint_enabled := true
+## The device label the sign-in page and the customer's device list show (WIRE-CONTRACT-V4
+## §12.7.1): sent on device-code sign-in, activation and registration. Empty: the device's model
+## where the OS reports one, else the OS name.
+@export var device_name := ""
+## Off: send no device label at all (a per-call name to `begin_sign_in` still goes).
+@export var send_device_name := true
 ## Product-declared companion-app probes answered in the device report, each a Dictionary
 ## {id, label?, macos?, windows?, linux?} naming a path to test on that OS. Nothing else is ever
 ## enumerated.

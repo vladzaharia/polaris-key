@@ -125,8 +125,8 @@ paths:
         `version` is the DISCOVERY document's own version (still `2`) and `protocolVersion`
         is the wire version (`4`) — they are deliberately different numbers. `schemaVersion`
         is the product's catalog version, a third orthogonal counter. `services` always
-        carries all six slugs in the canonical order license, config, release, distribution,
-        update, identity, so a client can iterate it rather than probe. `core.endpoints.register`
+        carries all seven slugs in the canonical order license, config, release, distribution,
+        update, identity, sync, so a client can iterate it rather than probe. `core.endpoints.register`
         is OMITTED when the product's registration policy is `requires-license`.
       parameters: [{ $ref: "#/components/parameters/Product" }]
       responses:
@@ -240,8 +240,14 @@ paths:
                           authDeviceEntry: https://key.plrs.im/djdl/identity/auth/device
                           authDeviceVerify: https://key.plrs.im/djdl/identity/auth/device/verify
                           authDevicePoll: https://key.plrs.im/djdl/identity/auth/device/poll
+                      sync:
+                        enabled: true
+                        settings: false
+                        collections: false
+                        saves: false
+                        endpoints: { pull: null, push: null, saves: null }
                 configOnly:
-                  summary: A config-only product — the other five are bare `enabled:false`
+                  summary: A config-only product — the other six are bare `enabled:false`
                   value:
                     services:
                       license: { enabled: false }
@@ -260,6 +266,7 @@ paths:
                       distribution: { enabled: false }
                       update: { enabled: false }
                       identity: { enabled: false }
+                      sync: { enabled: false }
         "404": { $ref: "#/components/responses/LegacyNotFound" }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
     options:
@@ -1101,19 +1108,21 @@ paths:
         "403":
           description: >
             Seat pool exhausted, or a `strict`-mode tier with no fingerprint — LEGACY FLAT.
-            `device_limit` carries `limit` and `deviceCount` at the top level.
+            `device_limit` carries `limit` and `deviceCount` at the top level, plus
+            `manageUrl` (PX-W8) while the product's customer portal is on.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
                 deviceLimit:
-                  summary: test/licensing.test.ts
+                  summary: test/manageUrl.test.ts
                   value:
                     {
                       error: device_limit,
                       message: device limit reached,
                       limit: 1,
                       deviceCount: 1,
+                      manageUrl: "https://key.plrs.im/activate?product=djdl&next=free-device&for=Linux%20x86_64",
                     }
                 fingerprintRequired:
                   summary: test/fingerprintActivation.test.ts
@@ -1264,7 +1273,9 @@ paths:
         "401": { $ref: "#/components/responses/LegacyUnauthorized" }
         "403":
           description: >
-            No fingerprint, no anchor, or an already-claimed machine license — LEGACY FLAT.
+            No fingerprint, no anchor, an already-claimed machine license, or the free tier's
+            seat pool is exhausted — LEGACY FLAT. `device_limit` carries `limit`,
+            `deviceCount` and, while the product's customer portal is on, `manageUrl`.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
@@ -1295,6 +1306,16 @@ paths:
                     {
                       error: license_disabled,
                       message: "this machine's free license has been disabled",
+                    }
+                deviceLimit:
+                  summary: test/enroll.test.ts
+                  value:
+                    {
+                      error: device_limit,
+                      message: device limit reached,
+                      limit: 2,
+                      deviceCount: 2,
+                      manageUrl: "https://key.plrs.im/activate?product=djdl&next=free-device&for=Linux%20x86_64",
                     }
         "404":
           description: >
@@ -3923,6 +3944,15 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }
         "404": { $ref: "#/components/responses/NotFound" }
+    options:
+      operationId: preflightCommerceBinding
+      tags: [distribution]
+      summary: CORS preflight
+      description: Browser preflight for a page on one of the product's `web.origins` (a bearer-mode page reading its licence's purchase binding; SP-16). See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
 
   /{product}/distribution/commerce/claim:
     post:
@@ -4069,6 +4099,15 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }
+    options:
+      operationId: preflightCommerceClaim
+      tags: [distribution]
+      summary: CORS preflight
+      description: Browser preflight for a page on one of the product's `web.origins` (a bearer-mode page claiming a store purchase with its device token; SP-16). See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
 
   /{product}/distribution/hooks/app-store:
     post:
@@ -6431,8 +6470,9 @@ paths:
         `key` or, if that is absent, as `Authorization: Bearer`. Success is 201, not 200, and
         the body is only `{"ok": true}` — the payload is the `Set-Cookie`. Seat accounting
         applies: a browser session takes a seat like any other device, so an exhausted pool
-        is a 403 `device_limit` carrying `limit` and `deviceCount` at the top level. All
-        errors are LEGACY FLAT.
+        is a 403 `device_limit` carrying `limit` and `deviceCount` at the top level, plus
+        `manageUrl` (PX-W8) while the product's customer portal is on. All errors are LEGACY
+        FLAT.
       parameters: [{ $ref: "#/components/parameters/Product" }]
       requestBody:
         required: false
@@ -6464,7 +6504,9 @@ paths:
                   { value: { error: bad_request, message: invalid body } }
         "401": { $ref: "#/components/responses/LegacyUnauthorized" }
         "403":
-          description: The license's seat pool is exhausted — LEGACY FLAT.
+          description: >
+            The license's seat pool is exhausted — LEGACY FLAT, with `manageUrl` while the
+            product's customer portal is on.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
@@ -6477,6 +6519,7 @@ paths:
                         message: device limit reached,
                         limit: 5,
                         deviceCount: 5,
+                        manageUrl: "https://key.plrs.im/#/p/djdl/free-device?license=lic_djdl_1",
                       },
                   }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
@@ -6523,6 +6566,7 @@ paths:
             selects the browser flow over the device flow.
           schema: { type: string, format: uri }
       responses:
+        "303": { $ref: "#/components/responses/IdentityDisabledRedirect" }
         "302":
           description: Redirect to the IdP authorize endpoint.
           headers:
@@ -6884,8 +6928,12 @@ paths:
 
 
         The device id may come from the body, the `X-PKey-Device` header, or a `?device=`
-        query parameter, in that order. An empty body is legal. `deviceName` is trimmed and
-        truncated to 120 characters and is what the verify page shows the human.
+        query parameter, in that order. An empty body is legal. `deviceName` is the device label
+        (WIRE-CONTRACT-V4 §12.7.1, PX-W13): the Worker normalises it exactly as the SDK did
+        (whitespace controls to spaces, controls and zero-width and bidi code points removed,
+        spaces collapsed and trimmed, at most 64 code points), never rejects it, and echoes the
+        stored label as `deviceName` in the answer (`null` when none is left), so a UI kit shows
+        exactly what the sign-in page shows.
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - { $ref: "#/components/parameters/DeviceHeader" }
@@ -6924,6 +6972,7 @@ paths:
                     expiresIn: 600
                     interval: 2
                     pollUrl: https://key.plrs.im/djdl/identity/auth/device/poll
+                    deviceName: Studio Mac
         "400":
           description: Unparseable body, or no device id from any of the three sources — LEGACY FLAT.
           content:
@@ -7017,6 +7066,7 @@ paths:
           schema: { type: string }
           example: WDJB-MJHT
       responses:
+        "303": { $ref: "#/components/responses/IdentityDisabledRedirect" }
         "200":
           description: "The entry form, or the confirmation page. `text/html; charset=utf-8`, `cache-control: no-store`."
           content:
@@ -7167,6 +7217,7 @@ paths:
         methods. Served under the strict script-free static-HTML CSP with `no-store` and
         `referrer-policy: no-referrer`, so the device code never leaks in a Referer.
       responses:
+        "303": { $ref: "#/components/responses/IdentityDisabledRedirect" }
         "200":
           description: "HTML confirmation page. `text/html; charset=utf-8`, `cache-control: no-store`."
           content:
@@ -11085,6 +11136,110 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
         "404": { $ref: "#/components/responses/NotFound" }
+  /api/signin/requests/{request}:
+    get:
+      operationId: getSignInRequest
+      tags: [portal]
+      summary: One app sign-in request, as the sign-in card renders it
+      description: >
+        PX-W13 (WIRE-CONTRACT-V4 §12.7.2, docs/design/PORTAL.md §4.7, G28). The card behind
+        "<App> wants you to sign in" reads the request ONLY through this route: the client
+        record (`appName`, `developerName`, a same-origin `iconUrl`, the client `kind`, the
+        product's registered `origins` and the services the sign-in reaches), the device's
+        normalised label and the device-code user code. No display query parameter (`appName`,
+        `name`, `icon`, `developer`, `origin`, `device`) is read anywhere. An app name that
+        fails the display-name rules at render time is replaced by the product slug with
+        `nameVerified: false`. The handle is bound to the browser that created it by the
+        `__Host-pk_req` binder cookie; no portal session is needed. A handle that is unknown,
+        expired, presented without its binder, or for a product whose Identity toggle is off
+        answers 404. `cache-control: no-store`.
+      parameters:
+        - name: request
+          in: path
+          required: true
+          description: The opaque handle, `rq_` and 22 base64url characters.
+          schema: { type: string, pattern: "^rq_[A-Za-z0-9_-]{22}$" }
+      responses:
+        "200":
+          description: The request.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SignInRequestView" }
+              examples:
+                deviceCode:
+                  summary: A device-code sign-in
+                  value:
+                    request: rq_3q2Lk0bW9xV1mZp8RtYc4A
+                    client:
+                      product: mossgarden
+                      kind: device
+                      appName: Mossgarden
+                      developerName: Fennick Studio
+                      iconUrl: /media/mossgarden/icon?v=3f9a0c2d1e4b5a6c
+                      origins: []
+                      services: { license: true, cloudSync: false }
+                      nameVerified: true
+                    deviceLabel: Living room TV
+                    userCode: WDJB-MJHT
+                    expiresAt: 1780000600
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+  /api/signin/requests/{request}/consent:
+    get:
+      operationId: getSignInConsent
+      tags: [portal]
+      summary: What the app gets if the signed-in person continues (app consent)
+      description: >
+        PX-W13 (WIRE-CONTRACT-V4 §12.7.3, D19, D22). Needs the portal session AND the request's
+        binder cookie. `items` lists the licence line (the anchor licence the device would draw
+        on, a dry run that writes nothing, and how many others the account holds for this
+        product: 0 under the `legacy` entitlement model), Cloud Sync when the product runs it,
+        and the profile claims. `scopeHash` is the SHA-256 of the canonical JSON
+        `{claims, services, v: 1}`; `firstTime` and `changed` compare it with the app consent
+        already recorded (`account_product_grants.scope_hash`): only a change of claims or
+        services asks again. `person` is shown to the person only. 404 as for the request
+        itself. `cache-control: no-store`.
+      parameters:
+        - name: request
+          in: path
+          required: true
+          description: The opaque handle, `rq_` and 22 base64url characters.
+          schema: { type: string, pattern: "^rq_[A-Za-z0-9_-]{22}$" }
+      responses:
+        "200":
+          description: The app-consent view.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AppConsentView" }
+              examples:
+                firstTime:
+                  summary: A first sign-in to the app, with a licence
+                  value:
+                    request: rq_3q2Lk0bW9xV1mZp8RtYc4A
+                    person:
+                      displayName: Ada
+                      email: ada@example.com
+                      avatarUrl: null
+                    items:
+                      - kind: license
+                        anchor:
+                          name: Pro
+                          tierName: Pro
+                          term: perpetual
+                          seat: { position: 2, limit: 5 }
+                        more: 0
+                      - kind: profile
+                        claims: [name, picture, email]
+                    scopeHash: 6b0f7d0a4c8e2f9b1d3a5c7e9f0b2d4a6c8e0f1b3d5a7c9e1f3b5d7a9c0e2f4b
+                    firstTime: true
+                    changed: false
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
   /api/discover:
     get:
       operationId: getPortalDiscover
@@ -13296,8 +13451,10 @@ components:
       name: X-PKey-Platform
       in: header
       description: >
-        The OS family of the running binary (WIRE-CONTRACT-V3 §5.2): `macos`, `ios` (iPadOS
-        too), `android`, `windows`, `linux` or `web`. An SDK omits it when its runtime's
+        The OS family of the running binary (WIRE-CONTRACT-V4 §5.2): `macos`, `ios` (iPadOS
+        too), `tvos`, `visionos`, `watchos`, `android`, `windows`, `linux` or `web`. `tvos`,
+        `visionos` and `watchos` are header values only: the feed's `platform` stays one of
+        the six build targets (§5.2 rule 5). An SDK omits it when its runtime's
         spelling has no value. Recorded on the device row and echoed back as `platform`; an
         older spelling (`darwin`, `win32`, `browser`, …) is stored as its canonical value, any
         other value as sent, and an empty value as absent.
@@ -13477,6 +13634,23 @@ components:
       content:
         application/json:
           schema: { $ref: "#/components/schemas/AdminError" }
+    IdentityDisabledRedirect:
+      description: >
+        PX-W17 (WIRE-CONTRACT-V4 §12.8): the product's Identity service is off and the request is
+        a person's browser NAVIGATION (`GET`/`HEAD` with `Sec-Fetch-Mode: navigate`, or an
+        `Accept` header that lists `text/html`). The person is sent to the root portal's friendly
+        card; nothing is rendered here. Every other caller — every SDK, a JSON `Accept`, a
+        `fetch` — gets the registry's nested `404 not_found` instead, so the JSON API never
+        tells "Identity is off" from "no such route". Discloses nothing discovery does not
+        already publish (`identity: {enabled:false}`); an unknown product keeps its 404. The
+        same refusal covers `/{product}/identity/authorize`, reserved ahead of its route.
+      headers:
+        Location:
+          description: "`<origin>/signin?product=<slug>&error=identity_disabled`."
+          schema: { type: string, format: uri }
+          example: https://key.plrs.im/signin?product=djdl&error=identity_disabled
+        Cache-Control:
+          schema: { type: string, const: no-store }
     OciError:
       description: >
         OCI's error JSON (distribution-spec "Error Codes"): `NAME_UNKNOWN`, `MANIFEST_UNKNOWN`,
@@ -14432,6 +14606,92 @@ components:
               revokedAt: { type: [integer, "null"] }
               flag: { type: [string, "null"] }
               label: { type: [string, "null"] }
+    ClientRecord:
+      type: object
+      description: >
+        PX-W13 (WIRE-CONTRACT-V4 §12.7.2): the server-side view of the app asking to sign the
+        person in. Built from the product's listing (through Distribution), its registered
+        `web.origins` and its service toggles; never from a query parameter.
+      required:
+        [
+          product,
+          kind,
+          appName,
+          developerName,
+          iconUrl,
+          origins,
+          services,
+          nameVerified,
+        ]
+      properties:
+        product: { type: string }
+        kind: { type: string, enum: [web, native, device] }
+        appName:
+          type: string
+          description: The listing name, else the product name; the product slug when `nameVerified` is false.
+        developerName: { type: [string, "null"] }
+        iconUrl:
+          type: [string, "null"]
+          description: Same-origin `/media/<product>/icon?v=…`, or null.
+        origins: { type: array, items: { type: string } }
+        services:
+          type: object
+          description: Both members are always present.
+          properties:
+            license: { type: boolean }
+            cloudSync: { type: boolean }
+        nameVerified:
+          type: boolean
+          description: False when the app name failed the display-name rules at render time; render the neutral frame.
+    SignInRequestView:
+      type: object
+      required: [request, client, deviceLabel, userCode, expiresAt]
+      properties:
+        request: { type: string, pattern: "^rq_[A-Za-z0-9_-]{22}$" }
+        client: { $ref: "#/components/schemas/ClientRecord" }
+        deviceLabel:
+          type: [string, "null"]
+          description: The device's normalised label (§12.7.1), as reported by the device.
+        userCode: { type: [string, "null"] }
+        expiresAt: { type: integer, description: Epoch seconds. }
+    AppConsentView:
+      type: object
+      required: [request, person, items, scopeHash, firstTime, changed]
+      properties:
+        request: { type: string, pattern: "^rq_[A-Za-z0-9_-]{22}$" }
+        person:
+          type: object
+          required: [displayName, email, avatarUrl]
+          properties:
+            displayName: { type: [string, "null"] }
+            email: { type: [string, "null"] }
+            avatarUrl: { type: [string, "null"] }
+        items:
+          type: array
+          items:
+            type: object
+            required: [kind]
+            properties:
+              kind: { type: string, enum: [license, cloudSync, profile] }
+              anchor:
+                type: [object, "null"]
+                properties:
+                  name: { type: string }
+                  tierName: { type: [string, "null"] }
+                  term:
+                    description: "`perpetual`, or the licence's end as epoch seconds."
+                    oneOf:
+                      [{ type: string, const: perpetual }, { type: integer }]
+                  seat:
+                    type: [object, "null"]
+                    properties:
+                      position: { type: integer }
+                      limit: { type: integer }
+              more: { type: integer, minimum: 0 }
+              claims: { type: array, items: { type: string } }
+        scopeHash: { type: string, pattern: "^[0-9a-f]{64}$" }
+        firstTime: { type: boolean }
+        changed: { type: boolean }
     PortalDiscover:
       type: object
       required: [offers]
@@ -14710,6 +14970,18 @@ components:
         deviceCount:
           type: integer
           description: On `device_limit` — how many seats are already taken.
+        manageUrl:
+          type: string
+          format: uri
+          maxLength: 2048
+          description: >
+            On `device_limit` (PX-W8, WIRE-CONTRACT-V4 §5.3) — the customer-portal link that
+            frees a seat: `<portal>/#/p/<product>/free-device?license=<id>[&for=<label>]` for a
+            licence attached to an account, else
+            `<portal>/activate?product=<product>&next=free-device[&for=<label>]`. Present only
+            while the product's portal is on. Never carries the key, an account id or a device
+            id; a client may add `return=` and, on an `/activate` link, the fragment `#key=`.
+            Not an auth failure.
         drift:
           type: integer
           description: On `hardware_mismatch` — how many fingerprint components changed.
@@ -14780,7 +15052,13 @@ components:
         fingerprint. A client-sent `hwid` is accepted and DISCARDED — the server recomputes
         it, because a forged one would let a caller collide with another device's dedupe key.
         The whole body is capped at 4 KiB; exceeding it means "no fingerprint", not an error.
+        `deviceName` (PX-W13) is the device's label on activate and register: normalised as
+        WIRE-CONTRACT-V4 §12.7.1 says, never rejected, and stored only while the device row has
+        no label, so a console or portal rename always wins. Enroll ignores it.
       properties:
+        deviceName:
+          type: string
+          description: The device label (WIRE-CONTRACT-V4 §12.7.1), display data only.
         fingerprint:
           type: object
           required: [components]
@@ -14902,9 +15180,11 @@ components:
             below; test/serviceTable.test.ts pins it to tools/services.json). Core knows the
             shape of no service: an enabled one contributes its own fragment verbatim, a
             disabled one is exactly `{"enabled": false}` and nothing else.
-          required: [license, config, release, distribution, update, identity]
+          required:
+            [license, config, release, distribution, update, identity, sync]
           properties:
             distribution: { $ref: "#/components/schemas/DistributionFragment" }
+            sync: { $ref: "#/components/schemas/SyncFragment" }
           additionalProperties: { $ref: "#/components/schemas/ServiceFragment" }
     ServiceFragment:
       type: object
@@ -14967,6 +15247,41 @@ components:
             install: https://key.plrs.im/acme/distribution/install.sh
             builds: https://key.plrs.im/acme/distribution/builds/{selector}/{buildId}
             blobs: https://key.plrs.im/acme/distribution/blobs/sha256/{sha256}
+    SyncFragment:
+      description: >
+        Cloud Sync's fragment (U-04; plans/U-01.md §2.5). `{"enabled": false}` when off. When on,
+        `settings`, `collections` and `saves` say which kinds of Cloud Sync data the product
+        serves, and each endpoint is a URL or `null`: an SDK uses an endpoint only when it is
+        present. Each capability turns true, and its endpoint appears, when the package serving
+        it ships (settings and pull/push with U-05, which also adds `limits`).
+      oneOf:
+        - type: object
+          required: [enabled]
+          additionalProperties: false
+          properties:
+            enabled: { type: boolean, const: false }
+        - type: object
+          required: [enabled, settings, collections, saves, endpoints]
+          additionalProperties: true
+          properties:
+            enabled: { type: boolean, const: true }
+            settings: { type: boolean }
+            collections: { type: boolean }
+            saves: { type: boolean }
+            endpoints:
+              type: object
+              required: [pull, push, saves]
+              properties:
+                pull: { type: [string, "null"] }
+                push: { type: [string, "null"] }
+                saves: { type: [string, "null"] }
+      examples:
+        - { enabled: false }
+        - enabled: true
+          settings: false
+          collections: false
+          saves: false
+          endpoints: { pull: null, push: null, saves: null }
     Jwks:
       type: object
       description: >
@@ -15578,6 +15893,42 @@ components:
         entries:
           type: array
           items: { $ref: "#/components/schemas/ConfigEntry" }
+        cloudSync:
+          type: object
+          description: >
+            The data shape of the product's Cloud Sync data (U-04): `collections`, `open`,
+            `saves` and `migrations`. Limits and access policy are product settings, never here.
+            A console publish that omits it keeps the active version's block.
+          properties:
+            collections:
+              type: array
+              items:
+                type: object
+                required: [name, access]
+                properties:
+                  name: { type: string }
+                  access: { type: string, enum: [owner, ownerRead, server] }
+                  conflict:
+                    { type: string, enum: [revision, lastWrite, merge, union] }
+                  schema: { type: object, additionalProperties: true }
+                  onAttach:
+                    {
+                      type: string,
+                      enum: [keepCloud, keepLocal, merge, prompt],
+                    }
+            open: { type: boolean }
+            saves: { type: object, additionalProperties: true }
+            migrations:
+              type: array
+              items:
+                type: object
+                required: [toSchemaVersion]
+                properties:
+                  toSchemaVersion: { type: integer }
+                  rename:
+                    { type: object, additionalProperties: { type: string } }
+                  mapValues: { type: object, additionalProperties: true }
+                  drop: { type: array, items: { type: string } }
     ConfigEntry:
       type: object
       description: >
@@ -15618,7 +15969,7 @@ components:
             scopes:
               {
                 type: array,
-                items: { type: string, enum: [profile, license, device] },
+                items: { type: string, enum: [profile, license, device, user] },
               }
             advanced: { type: boolean }
             unit: { type: string }
@@ -15639,6 +15990,18 @@ components:
           }
         deprecated: { type: boolean }
         since: { type: string }
+        user:
+          type: object
+          description: >
+            CONFIG entries only: makes the key a user setting (U-04). `sync` says where its value
+            roams; `conflict` how concurrent writes resolve (default `lastWrite`); `listed`
+            whether settings panels show it (default true).
+          required: [sync]
+          additionalProperties: false
+          properties:
+            sync: { type: string, enum: [user, platform, device, local] }
+            conflict: { type: string, enum: [lastWrite, max, min, merge] }
+            listed: { type: boolean }
     MintedToken:
       type: object
       description: >
@@ -15860,8 +16223,7 @@ components:
         deviceId: { type: string }
         deviceName:
           type: string
-          description: Trimmed and truncated to 120 characters; shown to the human on the verify page.
-          maxLength: 120
+          description: The device label (WIRE-CONTRACT-V4 §12.7.1), normalised and never rejected; shown to the human on the sign-in page as reported by the device.
     DeviceAuthStartResult:
       type: object
       description: >
@@ -15898,6 +16260,12 @@ components:
         expiresIn: { type: integer, description: Seconds — 600. }
         interval: { type: integer, description: Seconds between polls — 2. }
         pollUrl: { type: string, format: uri }
+        deviceName:
+          type: [string, "null"]
+          description: >
+            PX-W13: the stored, normalised device label (WIRE-CONTRACT-V4 §12.7.1), or null when
+            the device sent none. An older Worker omits the member; a client then shows its own
+            label.
     DeviceAuthConfirmRequest:
       type: object
       description: >

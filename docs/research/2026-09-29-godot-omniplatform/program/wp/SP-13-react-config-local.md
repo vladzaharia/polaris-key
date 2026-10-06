@@ -56,10 +56,10 @@ React shows only delivered values (`ConfigPanel`); Node, Python and Swift persis
 
 ## Acceptance criteria
 
-- [ ] `@pkey-feature config.local` unit tests: persist and reload, clear and clearAll, a type mismatch refused, an admin-managed key refused, a change event per write, and the bridge forwarding path.
-- [ ] Every row this package owns reads `implemented` in its manifest, with `wp` and `unowned` removed and the note rewritten to say what was built (or a typed `except` where the registry allows an N/A for one runtime).
-- [ ] `mise exec node@22 -- pnpm parity:check` passes, and the generated parity page is current (`pnpm --filter @polaris-key/docs gen -- --check`).
-- [ ] The green gate passes (`AGENTS.md`), scoped to the SDKs this package touches.
+- [x] `@pkey-feature config.local` unit tests: persist and reload, clear and clearAll, a type mismatch refused, an admin-managed key refused, a change event per write, and the bridge forwarding path.
+- [x] Every row this package owns reads `implemented` in its manifest, with `wp` and `unowned` removed and the note rewritten to say what was built (or a typed `except` where the registry allows an N/A for one runtime).
+- [x] `mise exec node@22 -- pnpm parity:check` passes, and the generated parity page is current (`pnpm --filter @polaris-key/docs gen -- --check`).
+- [x] The green gate passes (`AGENTS.md`), scoped to the SDKs this package touches.
 
 ## Verify
 

@@ -21,8 +21,9 @@ canonical glossary).
 
 - [ ] Run `pkey init` in the product repo root. It creates `.pkey/` and writes YAML:
       `product.yaml` and `schema.yaml` always (ingest requires both, even with Config off; without
-      `config` the schema is an empty catalog, `schemaVersion: 1` and `catalog: []`); `release.yaml`
-      when Release is selected. The scaffolded tier is `policyDeviceLimit: 5` with no expiry.
+      `config` the schema is an empty catalog, `schemaVersion: 1` and `entries: []`); `release.yaml`
+      when Release is selected. The scaffolded tier names its profile with `profileId` and is
+      `policyDeviceLimit: 5` with no expiry.
 - [ ] Other flags: `--admin-group`, `--release-owner`, `--release-repo`, `--force` (overwrite).
       With no `--modules`, the default is `license,config`.
 - [ ] Do **not** hand-create the directory if `pkey init` will do it — the scaffold writes the
@@ -47,11 +48,29 @@ pkey init --product <slug> --name "<Name>" --modules license,config
 
 ### 3. Know what each of the four files owns
 
-- [ ] **`schema`** (required) — the config catalog: `{ schemaVersion, entries[] }`. Maps to the
-      `product_schema` row. For an entry's fields, use the `adding-a-catalog-entry` skill.
+- [ ] **Write the canonical spellings** — the layout `pkey init` writes: `product:` holds
+      identity and compatibility (`slug`, `name`, `adminGroup`, `compatMin`, `compatMax`),
+      `licensing:` holds the licence defaults, `tiers` and `profiles`, a tier names its profile
+      with `profileId`, the catalog is `entries`, and `.pkey/release` puts its body under
+      `release:` with `provider: { type: github, owner, repo }`. The old spellings (a flat product
+      document, root `tiers`, `catalog`, `ghOwner`/`ghRepo`, legacy `modules:` names, …) still
+      validate with their old precedence, but `pkey validate` warns `deprecated_spelling` (or
+      `conflicting_spelling` when both are set). The full table is
+      `build/manifest/authoring.md` → "Deprecated spellings"; the source of truth is
+      `DEPRECATED_SPELLINGS` in `packages/shared-manifest/src/spellings.ts`.
+- [ ] Keep **one file per document** (`product.yaml` or `product.json`, not both): only the first
+      of `json`, `yaml`, `yml` is read, and `pkey validate` warns when there are more.
+
+- [ ] **`schema`** (required) — the config catalog: `{ schemaVersion, entries[] }`, plus an
+      optional top-level `cloudSync` block (Cloud Sync's data shape: `collections`, `open`,
+      `saves`, `migrations`). Maps to the `product_schema` row. For an entry's fields, including
+      the `user` block that makes a config key a user setting, use the `adding-a-catalog-entry`
+      skill.
 - [ ] **`product`** (required) — product metadata, the `modules` block (enabled services),
       `devices.registration`, `web.origins`, OIDC, profiles, tiers, provisioning hooks,
-      `fingerprint`, `autoIssue`, `secrets.required`. Maps to `products` (incl. `services_json`,
+      `fingerprint`, `autoIssue`, `secrets.required`, and `cloudSync` (Cloud Sync's `limits`,
+      `unlicensed` and `writes`, within the platform ceilings; `byTier` keys must name declared
+      tiers, `byEntitlement` values numeric `combine: max` flags). Maps to `products` (incl. `services_json`,
       `web_origins_json`) plus
       `oidc_config`, `profiles`, `tiers`, `provisioning_config`.
 - [ ] **`release`** (required only when releases are enabled) — release-provider coordinates,
@@ -63,7 +82,8 @@ pkey init --product <slug> --name "<Name>" --modules license,config
       `ignoreTags` lists exact tag names that never resolve on a moving channel. Undeclared, any
       semver tag with an optional leading `v` is a candidate, and the highest semver wins — not
       the newest by creation order. The same two fields may instead sit under
-      `deliverables.app.versioning`; never in both places (`conflicting_versioning`).
+      `deliverables.app.versioning`, which is the canonical place (the body spelling is marked
+      deprecated in the schema); never in both places (`conflicting_versioning`).
 - [ ] If the product ships more than a CLI and a DMG (Windows, Linux, Android, iOS, web, a
       universal binary…), declare the files instead of relying on name sniffing:
       `deliverables.app` with `kind: app`, optional `versioning` (`scheme`: `semver` |
@@ -170,7 +190,8 @@ pkey init --product <slug> --name "<Name>" --modules license,config
 ### 4. Pick module names (both vocabularies parse)
 
 - [ ] Canonical service slugs: `license`, `config`, `release`, `distribution`, `update`,
-      `identity`. Every entry
+      `identity`, `sync` (Cloud Sync, which needs `config` and `identity` on:
+      `sync_requires_config`, `sync_requires_identity`). Every entry
       is `{ "enabled": <boolean> }`; anything other than literal `true` counts as off.
 - [ ] The pre-suite vocabulary is still accepted and translated at ingest — only slugs are
       stored, and one block may mix both spellings (table below).
@@ -193,7 +214,8 @@ pkey init --product <slug> --name "<Name>" --modules license,config
       `distribution` needs `release`. The legacy `releases` name enables all three at once.
 
 `pkey init --modules` takes either vocabulary (service slugs or the old names above) and always
-scaffolds the `modules` block in service slugs. The slugs and the legacy mapping are the service
+scaffolds the `modules` block in service slugs. In a manifest, the old names are deprecated:
+they still enable their services, and `pkey validate` warns `deprecated_spelling`. The slugs and the legacy mapping are the service
 table, `tools/services.json`.
 
 - [ ] `web.origins` is optional: up to 16 exact browser origins that may read this product's
@@ -230,6 +252,18 @@ table, `tools/services.json`.
       `reserved_slug` and the console's manual-create path checks the same lists.
 - [ ] The slug's shape is `^[a-z0-9][a-z0-9-]{0,63}$` (`PRODUCT_SLUG_PATTERN`): no leading hyphen,
       at most 64 characters. Otherwise the validator emits `invalid_slug`.
+
+### 6a. Name the product as itself (display names, PX-W13)
+
+- [ ] `product.name`, `listing.name` and `listing.developerName` are what the customer's sign-in
+      card shows ("<App> wants you to sign in"). A control, zero-width or bidi character, or a
+      leading or trailing space, is `invalid_display_text` (an error, also in the JSON Schemas).
+- [ ] A platform or store name as whole words (Polaris Key, plrs, Apple, App Store, Google,
+      Google Play, Steam, Valve, Epic Games, Microsoft, Xbox, PlayStation, Nintendo, itch.io,
+      after folding case, width, accents, look-alikes and separators) is `reserved_display_name`:
+      a warning today, an error once the platform setting `IDENTITY_RESERVED_DISPLAY_NAMES` says
+      `error`. Either way the card shows such a product by its slug. Only the system product
+      `polaris-key` is exempt.
 
 ### 7. Register the product
 

@@ -4,8 +4,9 @@
 //
 // @pkey-feature core.discover core.sync core.cache license.activate license.enroll
 // @pkey-feature license.deactivate license.reregister devices.register devices.report
+// @pkey-feature license.manage
 // @pkey-feature config.schema release.changelog release.download
-// @pkey-feature identity.devicecode config.mint
+// @pkey-feature identity.devicecode identity.devicelabel config.mint
 // @pkey-feature update.feed release.record update.decide
 // @pkey-feature packs.apply.chunk commerce.receipt
 // @pkey-feature license.refusals ui.boot release.fetch release.distribution telemetry.updates
@@ -194,9 +195,14 @@ function payloadPrefix(t: Transcript, path: string, n: number): Buffer {
 }
 
 /** Map an activation/enrolment result onto `result` and, for a refusal, `code`. */
-function activation(out: Observed, r: { kind: string; code?: string }): void {
+function activation(
+  out: Observed,
+  r: { kind: string; code?: string; manageUrl?: string },
+): void {
   out.result = r.kind;
   if (r.kind !== "ok" && typeof r.code === "string") out.code = r.code;
+  // PX-W8: the refusal link, exactly as served; null when the result carries none.
+  if (r.kind === "device-limit") out.manageUrl = r.manageUrl ?? null;
 }
 
 /** THE mapping from transcript verbs and `expect` keys onto the Node SDK. Kept in one place. */
@@ -220,6 +226,7 @@ async function act(
         verificationUriComplete: p.verificationUriComplete,
         expiresIn: p.expiresIn,
         interval: p.interval,
+        deviceName: p.deviceName,
       };
       break;
     }
@@ -514,6 +521,8 @@ async function replay(t: Transcript): Promise<void> {
     store,
     fetchImpl,
     requestTimeoutMs: 0,
+    // PX-W13: `initial.deviceName` stands in for the platform's device name; absent = none.
+    deviceName: t.initial.deviceName ?? "",
     stateDir,
     ...(services ? { expectedServices: services as never } : {}),
     ...(u

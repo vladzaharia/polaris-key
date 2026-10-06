@@ -14,7 +14,10 @@
  * Adding an entry is a THREAT-MODEL §9 review trigger.
  */
 
-import { DEFAULT_RESERVED_NAMES_MODE } from "@polaris-key/manifest";
+import {
+  DEFAULT_RESERVED_DISPLAY_NAMES_MODE,
+  DEFAULT_RESERVED_NAMES_MODE,
+} from "@polaris-key/manifest";
 import { setting } from "./define.js";
 import type { SettingDef } from "./types.js";
 
@@ -175,6 +178,58 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     since: "LX-05",
   }),
 
+  // ── Identity: reserved display names (PX-W13, plans/PX-W13.md §8 Q4 as amended) ─────────
+  // How an app or developer name that uses a platform or store name (`reserved_display_name`) is
+  // treated at manifest ingest and on console listing claims. `warn` for the S-19 decision-15
+  // window (two minor releases or 60 days after PX-W13 ships, whichever is later); then the lead
+  // flips it to `error`. Either way the sign-in card's render-time re-check shows such a name in
+  // the neutral frame. Platform-only (no productLink).
+  setting({
+    key: "identity.reservedDisplayNames",
+    aliases: ["IDENTITY_RESERVED_DISPLAY_NAMES"],
+    scope: "platform",
+    service: "platform",
+    area: "identity",
+    label: "Reserved display names",
+    description:
+      "How a product name or listing name that uses a platform or store name (Polaris Key, Apple, Google Play, Steam and others) is treated: warn and accept it, or refuse the manifest or listing.",
+    keywords: ["reserved", "display name", "spoofing", "sign-in"],
+    docs: "/docs/admin/platform-settings/",
+    // Ordered: `up` is toward `error`. Refusing can stop a product's next resync, so it is
+    // confirmed; relaxing is not.
+    value: { kind: "enum", values: ["warn", "error"] },
+    defaultValue: DEFAULT_RESERVED_DISPLAY_NAMES_MODE,
+    merge: "cascade",
+    varName: "IDENTITY_RESERVED_DISPLAY_NAMES",
+    precedence: "runtime",
+    ownership: "operator",
+    confirm: { up: "L1", down: "L0" },
+    readers: ["core/reservedDisplayNames.ts"],
+    storage: { kind: "scalar", storedAs: "IDENTITY_RESERVED_DISPLAY_NAMES" },
+    since: "PX-W13",
+  }),
+
+  // PX-W13 (§8 Q4, as amended): terms the platform reserves on top of the code's floor
+  // (`RESERVED_DISPLAY_TERMS` in @polaris-key/manifest). It can only add terms, never remove one.
+  setting({
+    key: "identity.reservedDisplayTerms",
+    scope: "platform",
+    service: "platform",
+    area: "identity",
+    label: "Extra reserved display terms",
+    description:
+      "Platform or store names, beyond the built-in list, that a product or developer name may not use.",
+    keywords: ["reserved", "display name", "spoofing"],
+    docs: "/docs/admin/platform-settings/",
+    value: { kind: "list", of: { kind: "string", maxLength: 64 }, max: 64 },
+    defaultValue: [],
+    merge: "cascade",
+    ownership: "operator",
+    confirm: { change: "L1" },
+    storage: { kind: "scalar" },
+    pending: { wp: "ST-04" },
+  }),
+
   // ── Identity (registered for I-09 and I-10a; I-04 §7 step 3, S-18 §5.5) ────────────────
   setting({
     key: "identity.keyEntryRefusals",
@@ -225,6 +280,29 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     confirm: { up: "L1", down: "L2" },
     storage: { kind: "scalar" },
     pending: { wp: "ST-16" },
+  }),
+
+  // ── The Polaris Key storefront (PS-02, notes/S-21 §6.2) ─────────────────────────────────
+  setting({
+    key: "storefront.polarisKey.enabled",
+    scope: "platform",
+    service: "platform",
+    area: "storefront",
+    label: "Polaris Key storefront",
+    description:
+      "Lets products be listed in the Polaris Key library (Discover and the storefront page). Off hides every listing on this deployment; licences, sign-in and auto-issue keep working.",
+    keywords: ["discover", "library", "storefront", "kill switch"],
+    docs: "/docs/services/identity/portal/",
+    value: { kind: "switch" },
+    defaultValue: "on",
+    merge: "cascade",
+    widensWhen: "on",
+    ownership: "operator",
+    confirm: { on: "L2", off: "L2" },
+    storage: { kind: "scalar" },
+    since: "PS-02",
+    // PS-03's candidate query is the first reader (S-21 §6.3 "Candidates").
+    pending: { wp: "PS-03" },
   }),
 
   // ── Product defaults (ST-16 wires them; owner decision 2: live inheritance) ─────────────

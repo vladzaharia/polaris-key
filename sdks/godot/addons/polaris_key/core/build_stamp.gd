@@ -146,7 +146,7 @@ static func fallback(channel: String, product := "", version := "") -> Dictionar
 		"channel": channel,
 		"engine": engine_id(),
 		"engineVersion": str(info.get("string", "")),
-		"platform": PKeyHeaders.platform(),
+		"platform": PKeyHeaders.update_platform(),
 		"arch": PKeyHeaders.arch(),
 		"packSources": PACK_SOURCES,
 		"embeddedPacks": [],

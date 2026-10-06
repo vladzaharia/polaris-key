@@ -8,6 +8,7 @@ Body/Instructions: Label "Scan the code, or go to key.plrs.im/device and enter:"
 Body/UserCode: Label "WDJB-MJHT"
 Body/QrCode: PKeyQrRect "https://key.plrs.im/device?user_code=WDJB-MJHT"
 Body/Expires: Label "The code expires in 2:05."
+Body/DeviceLabel: Label "The sign-in page will show “Living room TV”."
 Body/Links/OpenBrowser: Button "Open browser" [focus 1]
 Body/Links/CopyLink: Button "Copy link" [focus 2]
 Body/Actions/Cancel: Button "Cancel" [focus 3]
@@ -18,6 +19,7 @@ Body/Instructions: Label "Scan the code, or go to key.plrs.im/device and enter:"
 Body/UserCode: Label "WDJB-MJHT"
 Body/QrCode: PKeyQrRect "https://key.plrs.im/device?user_code=WDJB-MJHT"
 Body/Expires: Label "The code expires in 2:05."
+Body/DeviceLabel: Label "The sign-in page will show “Living room TV”."
 Body/Links/OpenBrowser: Button "Open browser" [focus 1]
 Body/Links/CopyLink: Button "Copy link" [focus 2]
 Body/Actions/Cancel: Button "Cancel" [focus 3]

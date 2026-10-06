@@ -361,9 +361,35 @@ describe("prepareLink (the dry run)", () => {
     });
     expect(manifest.ok).toBe(true);
     if (!manifest.ok) return;
-    const plan = await planRepoManifest(db, "tonebox", manifest.manifest);
+    const plan = await planRepoManifest(db, "tonebox", manifest.manifest, NOW);
     expect(plan.skipClaimed.map((i) => i.area)).toContain("services");
     expect(plan.apply.map((i) => i.area)).not.toContain("services");
+  });
+  it("console-owned tiers are planned as kept, as the apply keeps them (ST-01b)", async () => {
+    const { db } = await manualProduct();
+    await seedTier(db, "tonebox", "pro");
+    await seedTier(db, "tonebox", "custom");
+    await db.run(
+      "UPDATE tiers SET source = 'console' WHERE product = ? AND id IN ('pro', 'custom')",
+      "tonebox",
+    );
+    const manifest = parseManifest({
+      schema: SCHEMA,
+      product: productJson(),
+    });
+    expect(manifest.ok).toBe(true);
+    if (!manifest.ok) return;
+    const plan = await planRepoManifest(db, "tonebox", manifest.manifest, NOW);
+    // The manifest's "pro" is not applied over the console's row; it is reported as kept.
+    expect(
+      plan.skipClaimed.filter((i) => i.area === "tiers").map((i) => i.id),
+    ).toEqual(["pro"]);
+    expect(
+      plan.apply.filter((i) => i.area === "tiers").map((i) => i.id),
+    ).toEqual([]);
+    // A console-only tier the manifest omits is neither deleted nor a conflict.
+    expect(plan.delete.map((i) => i.id)).not.toContain("custom");
+    expect(plan.conflicts).toEqual([]);
   });
 });
 

@@ -1,4 +1,5 @@
 // @pkey-feature license.entitlements license.channels license.activate license.enroll license.deactivate license.refusals
+// @pkey-feature license.manage
 //
 // The licence client over a signed document it verified itself: entitlements, the profile and the
 // licence id are read off the VERIFIED licence document only; `entitledChannels()` is the
@@ -37,12 +38,18 @@ class LicenseClientTest {
     private val now = 1_700_000_000L
     private val signer = TestSigner()
 
-    private fun core(store: InMemoryStore, handler: (PolarisRequest) -> PolarisResponse): Pair<CoreContext, ScriptedTransport> {
+    private fun core(
+        store: InMemoryStore,
+        deviceName: String? = "Test Device",
+        handler: (PolarisRequest) -> PolarisResponse,
+    ): Pair<CoreContext, ScriptedTransport> {
         val transport = ScriptedTransport(handler)
         val core = CoreContext(
             CoreOptions(
                 productSlug = "djdl", version = "1.0.0", pinnedKeys = signer.trust, trustRefresh = false,
                 store = store, transport = transport, clock = { now },
+                // PX-W13: a fixed device label, so request bodies do not depend on the host name.
+                deviceName = deviceName,
             ),
         )
         return core to transport
@@ -98,11 +105,15 @@ class LicenseClientTest {
 
     private val fingerprint = HardwareFingerprint(mapOf("machineUuid" to "abc"), "hwid")
 
-    private fun activateAgainst(response: PolarisResponse, options: LicenseClientOptions = LicenseClientOptions(fingerprintSource = { fingerprint })) =
+    private fun activateAgainst(
+        response: PolarisResponse,
+        options: LicenseClientOptions = LicenseClientOptions(fingerprintSource = { fingerprint }),
+        deviceName: String? = "Test Device",
+    ) =
         runBlocking {
             val store = InMemoryStore("djdl", "dev1")
             var acquired = 0
-            val (core, transport) = core(store) { response }
+            val (core, transport) = core(store, deviceName) { response }
             core.start()
             val result = LicenseClient(core, options) { acquired++ }.activate("pkey_djdl_key")
             Triple(result, transport.requests().single(), Triple(store.getToken(), core.tokenSource(), acquired))
@@ -114,18 +125,58 @@ class LicenseClientTest {
         assertEquals(ActivationResult.Ok("pkeyt_new", 1), result)
         assertEquals("Bearer pkey_djdl_key", request.headers["authorization"])
         assertEquals("application/json", request.headers["content-type"])
-        assertEquals("""{"fingerprint":{"components":{"machineUuid":"abc"},"hwid":"hwid"}}""", request.body!!.toString(Charsets.UTF_8))
+        // PX-W13 §8 Q2: the device label rides along on activation.
+        assertEquals(
+            """{"fingerprint":{"components":{"machineUuid":"abc"},"hwid":"hwid"},"deviceName":"Test Device"}""",
+            request.body!!.toString(Charsets.UTF_8),
+        )
         assertEquals(Triple("pkeyt_new", TokenSource.activate, 1), state)
         assertFalse(result.toString().contains("pkeyt_new"))
     }
 
     @Test
-    fun anOptedOutFingerprintSendsNoBody() {
+    fun anOptedOutFingerprintAndLabelSendNoBody() {
         val (_, request, _) = activateAgainst(
-            respond(200, """{"token":"pkeyt_new","schemaVersion":1}"""), LicenseClientOptions(fingerprint = false, fingerprintSource = { fingerprint }),
+            respond(200, """{"token":"pkeyt_new","schemaVersion":1}"""),
+            LicenseClientOptions(fingerprint = false, fingerprintSource = { fingerprint }),
+            deviceName = "",
         )
         assertNull(request.body)
         assertNull(request.headers["content-type"])
+    }
+
+    // @pkey-feature license.manage
+    /** PX-W8: device-limit carries the validated portal link from either envelope; an invalid or
+     *  absent one (or an unknown member) keeps the counts and is never an auth failure. */
+    @Test
+    fun deviceLimitCarriesTheManageUrl() {
+        val activate = "https://key.plrs.im/activate?product=djdl"
+        val free = "https://key.plrs.im/#/p/djdl/free-device?license=lic_1"
+        assertEquals(
+            ActivationResult.DeviceLimit(1, 1, activate),
+            activateAgainst(respond(403, """{"error":"device_limit","limit":1,"deviceCount":1,"manageUrl":"$activate"}""")).first,
+        )
+        assertEquals(
+            ActivationResult.DeviceLimit(2, 2, free),
+            activateAgainst(respond(403, """{"error":{"code":"device_limit","limit":2,"deviceCount":2,"manageUrl":"$free"}}""")).first,
+        )
+        assertEquals(
+            ActivationResult.DeviceLimit(3, 3, null),
+            activateAgainst(respond(403, """{"error":"device_limit","limit":3,"deviceCount":3,"manageUrl":"javascript:x"}""")).first,
+        )
+        assertEquals(
+            ActivationResult.DeviceLimit(4, 4, null),
+            activateAgainst(respond(403, """{"error":"device_limit","limit":4,"deviceCount":4,"manageUrl":7,"future":true}""")).first,
+        )
+    }
+
+    @Test
+    fun anOptedOutFingerprintSendsTheLabelAlone() {
+        val (_, request, _) = activateAgainst(
+            respond(200, """{"token":"pkeyt_new","schemaVersion":1}"""),
+            LicenseClientOptions(fingerprint = false, fingerprintSource = { fingerprint }),
+        )
+        assertEquals("""{"deviceName":"Test Device"}""", request.body!!.toString(Charsets.UTF_8))
     }
 
     @Test

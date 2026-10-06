@@ -35,7 +35,7 @@ public struct ProbeDeclaration: Sendable, Equatable {
 
     var targetForCurrentPlatform: String? {
         switch PlatformFamily.current {
-        case "darwin", "ios": return macos
+        case "darwin", "ios", "tvos", "visionos", "watchos": return macos
         case "win32": return windows
         default: return linux
         }

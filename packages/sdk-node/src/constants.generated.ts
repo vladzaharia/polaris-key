@@ -38,6 +38,7 @@ export const ErrorCode = {
   disabled: "disabled",
   oidcError: "oidc_error",
   unavailable: "unavailable",
+  identityDisabled: "identity_disabled",
   authMethodDisabled: "auth_method_disabled",
   emailUnavailable: "email_unavailable",
   turnstileFailed: "turnstile_failed",
@@ -193,6 +194,7 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "disabled",
   "oidc_error",
   "unavailable",
+  "identity_disabled",
   "auth_method_disabled",
   "email_unavailable",
   "turnstile_failed",
@@ -350,6 +352,7 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   disabled: "wire",
   oidc_error: "wire",
   unavailable: "wire",
+  identity_disabled: "wire",
   auth_method_disabled: "wire",
   email_unavailable: "wire",
   turnstile_failed: "wire",
@@ -488,6 +491,7 @@ export const Feature = {
   licenseActivate: "license.activate",
   licenseEnroll: "license.enroll",
   licenseDeactivate: "license.deactivate",
+  licenseManage: "license.manage",
   licenseEntitlements: "license.entitlements",
   licenseChannels: "license.channels",
   licenseReregister: "license.reregister",
@@ -508,6 +512,8 @@ export const Feature = {
   devicesAttest: "devices.attest",
   identityOidc: "identity.oidc",
   identityDevicecode: "identity.devicecode",
+  identityDevicelabel: "identity.devicelabel",
+  identityToggle: "identity.toggle",
   releaseChangelog: "release.changelog",
   releaseDownload: "release.download",
   releaseRecord: "release.record",
@@ -549,6 +555,7 @@ export const Feature = {
   uiStages: "ui.stages",
   uiBoot: "ui.boot",
   uiKit: "ui.kit",
+  uiKitManage: "ui.kit.manage",
   uiCli: "ui.cli",
   commerceReceipt: "commerce.receipt",
 } as const;
@@ -571,6 +578,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "license.activate",
   "license.enroll",
   "license.deactivate",
+  "license.manage",
   "license.entitlements",
   "license.channels",
   "license.reregister",
@@ -591,6 +599,8 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "devices.attest",
   "identity.oidc",
   "identity.devicecode",
+  "identity.devicelabel",
+  "identity.toggle",
   "release.changelog",
   "release.download",
   "release.record",
@@ -632,6 +642,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "ui.stages",
   "ui.boot",
   "ui.kit",
+  "ui.kit.manage",
   "ui.cli",
   "commerce.receipt",
 ];
@@ -656,7 +667,7 @@ export const UNSUPPORTED_REASON_VALUES: readonly UnsupportedReason[] = [
   "version",
 ];
 
-/** OS family, the canonical `X-PKey-Platform` value (README §3.1). iPadOS is `ios`. */
+/** OS family, the canonical `X-PKey-Platform` value (README §3.1). iPadOS is `ios`. `tvos`, `visionos` and `watchos` are header values only; build targets are `RELEASE_PLATFORMS` (WIRE-CONTRACT-V4 §5.2 rule 5). */
 export const Platform = {
   macos: "macos",
   ios: "ios",
@@ -664,6 +675,9 @@ export const Platform = {
   windows: "windows",
   linux: "linux",
   web: "web",
+  tvos: "tvos",
+  visionos: "visionos",
+  watchos: "watchos",
 } as const;
 export type Platform = (typeof Platform)[keyof typeof Platform];
 
@@ -675,6 +689,9 @@ export const PLATFORM_VALUES: readonly Platform[] = [
   "windows",
   "linux",
   "web",
+  "tvos",
+  "visionos",
+  "watchos",
 ];
 
 /** CPU architecture, the canonical `X-PKey-Arch` value (README §3.1). `universal` and `any` are artifact values, not header values, and are not listed. */
@@ -1209,6 +1226,7 @@ export const ServiceSlug = {
   distribution: "distribution",
   update: "update",
   identity: "identity",
+  sync: "sync",
 } as const;
 export type ServiceSlug = (typeof ServiceSlug)[keyof typeof ServiceSlug];
 
@@ -1220,6 +1238,7 @@ export const SERVICE_SLUG_VALUES: readonly ServiceSlug[] = [
   "distribution",
   "update",
   "identity",
+  "sync",
 ];
 
 /** The wire contract version (`@polaris-key/protocol/core`). */
@@ -1245,6 +1264,12 @@ export const OUTLET_MATRIX_VERSION = 1;
 
 /** `planMatrixVersion` of conformance/corpus/v2/plan-matrix.json. */
 export const PLAN_MATRIX_VERSION = 2;
+
+/** `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json. */
+export const SYNC_SCENARIOS_VERSION = 1;
+
+/** `deviceLabelVersion` of conformance/corpus/v2/device-label.json. */
+export const DEVICE_LABEL_VERSION = 1;
 
 /** `contentCorpusVersion` of conformance/corpus/v2/content/cases.json. */
 export const CONTENT_CORPUS_VERSION = 2;
@@ -1330,6 +1355,15 @@ export const MAX_CHUNK_INDEX_BYTES = 16777216;
 /** Packs on the wire: `MAX_CHUNK_BYTES` (plans/P4-10.md §2.3, `@polaris-key/protocol/core`). */
 export const MAX_CHUNK_BYTES = 4194304;
 
+/** Identity passthrough: `DEVICE_LABEL_MAX_CODEPOINTS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`). */
+export const DEVICE_LABEL_MAX_CODEPOINTS = 64;
+
+/** Identity passthrough: `REQUEST_HANDLE_PATTERN` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`). */
+export const REQUEST_HANDLE_PATTERN = "^rq_[A-Za-z0-9_-]{22}$";
+
+/** Identity passthrough: `REQUEST_HANDLE_TTL_SECONDS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`). */
+export const REQUEST_HANDLE_TTL_SECONDS = 600;
+
 /** Channel constant `CHANNEL_ALIASES` (`@polaris-key/protocol/core`). */
 export const CHANNEL_ALIASES = {
   staging: "beta",
@@ -1387,6 +1421,9 @@ export const PLATFORM_SPELLINGS = {
   linux: "linux",
   web: "web",
   browser: "web",
+  tvos: "tvos",
+  visionos: "visionos",
+  watchos: "watchos",
 } as const;
 
 /** The parity-registry id of the SDK this module belongs to. */
@@ -1429,6 +1466,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "license.activate": { status: "implemented", service: "license", na: [] },
   "license.enroll": { status: "implemented", service: "license", na: [] },
   "license.deactivate": { status: "implemented", service: "license", na: [] },
+  "license.manage": { status: "implemented", service: "license", na: [] },
   "license.entitlements": { status: "implemented", service: "license", na: [] },
   "license.channels": { status: "implemented", service: "license", na: [] },
   "license.reregister": { status: "implemented", service: "license", na: [] },
@@ -1453,6 +1491,12 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   },
   "identity.oidc": { status: "planned", service: "identity", na: [] },
   "identity.devicecode": { status: "implemented", service: "identity", na: [] },
+  "identity.devicelabel": {
+    status: "implemented",
+    service: "identity",
+    na: [],
+  },
+  "identity.toggle": { status: "planned", service: "identity", na: [] },
   "release.changelog": { status: "implemented", service: "release", na: [] },
   "release.download": { status: "implemented", service: "release", na: [] },
   "release.record": { status: "implemented", service: "release", na: [] },
@@ -1534,10 +1578,15 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     service: "sdk",
     na: [{ runtime: "node", reason: "runtime" }],
   },
+  "ui.kit.manage": {
+    status: "na",
+    service: "sdk",
+    na: [{ runtime: "node", reason: "runtime" }],
+  },
   "ui.cli": { status: "implemented", service: "sdk", na: [] },
   "commerce.receipt": { status: "implemented", service: "license", na: [] },
 };
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "5ab33251bf4d5dc88ef0725aa02f7401a16e3e93ec2050e2f7f68752fbbb204a";
+  "84b638a95e378c82317d8a08ffe4386303b4cfe54964e7ebc53bc6eef7cfbec9";

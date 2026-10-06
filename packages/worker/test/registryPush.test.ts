@@ -75,6 +75,7 @@ const ON: ServicesMap = {
   distribution: { enabled: true },
   update: { enabled: false },
   identity: { enabled: false },
+  sync: { enabled: false },
 };
 
 const OCI_INDEX = "application/vnd.oci.image.index.v1+json";

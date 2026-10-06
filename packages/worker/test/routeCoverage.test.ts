@@ -113,6 +113,9 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/api/device-login/lookup", ["post"]],
     ["/api/device-login/approve", ["post"]],
     ["/api/device-login/{requestId}", ["get"]],
+    // PX-W13 (G28): the sign-in request the card renders, and its app-consent view.
+    ["/api/signin/requests/{request}", ["get"]],
+    ["/api/signin/requests/{request}/consent", ["get"]],
   ],
 };
 
@@ -527,10 +530,9 @@ const CORS_EXCLUDED = new Set([
   "/{product}/devices/attest",
   // P6-03: the Sentry alert webhook, called server-to-server by Sentry.
   "/{product}/distribution/hooks/sentry",
-  // P6-01: the commerce bridge. The claim and binding routes serve store builds (App Store,
-  // Play, Steam), never a browser page; the two hooks are called server-to-server by the stores.
-  "/{product}/distribution/commerce/binding",
-  "/{product}/distribution/commerce/claim",
+  // P6-01: the commerce bridge's two store hooks, called server-to-server by the stores. (The
+  // binding and claim routes take the device bearer and are covered since SP-16, for a
+  // bearer-mode page.)
   "/{product}/distribution/hooks/app-store",
   "/{product}/distribution/hooks/play-rtdn",
   // P2b-05: the F-Droid CI route, authenticated by a `pkeyci_` bearer.
@@ -581,6 +583,7 @@ function concrete(template: string): string {
     key: "0123456789abcdef0123456789abcdef",
     sessionId: "f".repeat(64),
     requestId: `dl_${"A".repeat(43)}`,
+    request: `rq_${"A".repeat(22)}`,
   };
   return template.replace(/\{(\w+)\}/g, (_, name: string) => {
     const value = samples[name];

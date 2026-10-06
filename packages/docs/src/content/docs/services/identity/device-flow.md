@@ -24,7 +24,11 @@ is the OAuth device-authorization grant (RFC 8628), spelled in camelCase.
 
 Begins the flow. The caller supplies a device id — from a JSON body field `deviceId`, the
 `X-PKey-Device` header, or a `device` query parameter, checked in that order — and an optional
-`deviceName`, trimmed and capped at 120 characters for display on the confirmation page.
+`deviceName`, the device label the sign-in page shows. The Worker normalises it exactly as every
+SDK does (WIRE-CONTRACT-V4 §12.7.1): whitespace controls become spaces; controls, zero-width and
+bidi characters are removed; spaces collapse and trim; at most 64 code points stay. It never
+rejects one, and echoes the stored label as `deviceName` in the response (`null` when none is
+left). The SDKs send the platform's device name when the host passes none.
 Rate-limited to 60 requests per minute per IP.
 
 The response:
@@ -38,7 +42,8 @@ The response:
   "verificationUriComplete": "https://…/<product>/identity/auth/device?user_code=WDJB-MJHT",
   "expiresIn": 600,
   "interval": 2,
-  "pollUrl": "https://…/<product>/identity/auth/device/poll"
+  "pollUrl": "https://…/<product>/identity/auth/device/poll",
+  "deviceName": "Living room TV"
 }
 ```
 
@@ -55,6 +60,8 @@ What a client does with the response:
   platform can open a browser. It is the entry page with the code filled in, so a scan skips the
   typing.
 - Show `verificationUri` as the short URL to type on a phone. It is the entry page alone.
+- Show `deviceName` ("The sign-in page will show …") so the person can check the page is for this
+  device.
 - Poll `pollUrl` at `interval` (below).
 
 A client that opens `verificationUri` rather than `verificationUriComplete` still works, but the

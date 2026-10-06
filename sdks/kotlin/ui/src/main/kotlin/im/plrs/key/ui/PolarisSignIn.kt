@@ -226,6 +226,16 @@ public fun PolarisSignInScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
                     )
+                    // PX-W13: the label the sign-in page will show (the Worker's echo), so the
+                    // player can check the page belongs to this device.
+                    ui.prompt.deviceName?.let { label ->
+                        Text(
+                            text = copy.format(copy.signInDeviceLabel, label),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
                 }
                 Spacer(Modifier.height(28.dp))
                 PolarisPrimaryButton(copy.signInOpenBrowser, onClick = { open(ui.prompt.verificationUriComplete) })

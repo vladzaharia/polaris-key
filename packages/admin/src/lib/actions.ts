@@ -56,6 +56,8 @@ export const ACTION_LEVELS = {
   "channel.promote": 1,
   "channel.pin": 1,
   "manifest.revert": 1,
+  // ST-01b: saving a manifest-declared value claims it for the console.
+  "setting.claim": 1,
   "service.disable": 1,
   "repo.resync": 1,
   "sentry.dismiss": 1,

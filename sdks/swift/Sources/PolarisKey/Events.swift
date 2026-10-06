@@ -11,7 +11,8 @@
 //   entitlement     one entitlement's value changed (`name`, `value`, `previous`); a revoked or
 //                   expired gate reads every entitlement as nil (S-19 G11)
 //   config          one setting's effective value changed (`key`, `value`, `previous`,
-//                   `source`), from a sync or from `config.set` / `config.clear`
+//                   `source`), from a sync or from `config.set` / `config.clear`; the same
+//                   diff reaches `config.onConfigChange(key, listener)` listeners
 //   updateAvailable `client.update.decide()` offers a newer build (`version`, `action`,
 //                   `mandatory`, `channel`; PolarisKeyUpdate emits it)
 //   packs           pack install progress (`pack`, `phase`, `done`, `total`)
@@ -110,17 +111,20 @@ actor ChangePublisher {
     let hub: PolarisEventHub
     private let observe: @Sendable () async -> ChangeObservation
     private let source: @Sendable (String) async -> ConfigSource
+    private let deliver: @Sendable (ConfigChange) -> Void
     private var observed: ChangeObservation?
     private var tail: Task<Void, Never>?
 
     init(
         hub: PolarisEventHub,
         observe: @escaping @Sendable () async -> ChangeObservation,
-        source: @escaping @Sendable (String) async -> ConfigSource
+        source: @escaping @Sendable (String) async -> ConfigSource,
+        deliver: @escaping @Sendable (ConfigChange) -> Void = { _ in }
     ) {
         self.hub = hub
         self.observe = observe
         self.source = source
+        self.deliver = deliver
     }
 
     /// Take the baseline without emitting (the client's `start()`).
@@ -158,7 +162,9 @@ actor ChangePublisher {
             let a = after.config[key]
             let b = before.config[key]
             if a != b {
-                hub.emit(.config(key: key, value: a, previous: b, source: await source(key)))
+                let src = await source(key)
+                hub.emit(.config(key: key, value: a, previous: b, source: src))
+                deliver(ConfigChange(key: key, value: a, previous: b, source: src))
             }
         }
         if let failure = after.storeFailure, failure != before.storeFailure {

@@ -111,7 +111,12 @@ export function useEdgeMint(
 export function catalogSource(
   product: ProductDetail | undefined,
 ): Extract<Source, "manifest" | "admin"> {
-  return product?.releaseSource === "github" ? "manifest" : "admin";
+  // ST-01b: a console publish claims the catalog (`config.catalog`), so a repo-linked product's
+  // catalog is the console's once claimed, and the manifest's until then.
+  if (product?.releaseSource !== "github") return "admin";
+  return (product.claims ?? []).some((c) => c.key === "config.catalog")
+    ? "admin"
+    : "manifest";
 }
 
 /** The catalog file a manifest-owned catalog comes from. */

@@ -92,6 +92,8 @@ export interface OpenOptions {
   height?: number;
   /** Replace or add portal routes (`"GET /api/x"` or `"/api/x"` keys) for this page. */
   routes?: Record<string, Override>;
+  /** Motion is off by default so every check sees final states (S-23 §6.8); the motion suite turns it on. */
+  reducedMotion?: "reduce" | "no-preference";
 }
 
 export interface PortalHarness {
@@ -133,7 +135,7 @@ export async function startPortal(): Promise<PortalHarness> {
       userAgent: USER_AGENT,
       locale: "en-US",
       timezoneId: "UTC",
-      reducedMotion: "reduce",
+      reducedMotion: opts.reducedMotion ?? "reduce",
     });
     await ctx.clock.setFixedTime(FIXTURE_NOW * 1000);
     await ctx.addInitScript((t) => {

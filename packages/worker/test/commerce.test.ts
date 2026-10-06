@@ -152,6 +152,7 @@ describe("commerce: binding and the licence-document grant layer", () => {
           distribution: { enabled: true },
           update: { enabled: true },
           identity: { enabled: false },
+          sync: { enabled: false },
         },
       }),
       "admin",
@@ -1129,6 +1130,7 @@ describe("commerce: the seams", () => {
       distribution: { enabled: true },
       update: { enabled: true },
       identity: { enabled: false },
+      sync: { enabled: false },
     };
     const ctx = {
       env: cw.env,

@@ -44,7 +44,7 @@ const NATIVE_CLASS := "PolarisKeyApple"
 ## The AppDistributor deadline (OUTLET_PLATFORM_DATA.deadlineMs; notes/S-06 rule 5).
 const DISTRIBUTOR_DEADLINE := 2.0
 
-## The platform this answers for ("" means PKeyHeaders.platform()). Tests set it.
+## The platform this answers for ("" means PKeyHeaders.update_platform()). Tests set it.
 var platform := ""
 ## The native object to call instead of the GDExtension class: anything with
 ## `cmd(json: String) -> String` (tests).
@@ -128,7 +128,7 @@ static func reset_launch() -> void:
 
 
 func _platform() -> String:
-	return platform if platform != "" else PKeyHeaders.platform()
+	return platform if platform != "" else PKeyHeaders.update_platform()
 
 
 func _native_present() -> bool:

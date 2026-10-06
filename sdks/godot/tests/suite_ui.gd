@@ -1,5 +1,6 @@
 extends RefCounted
 # @pkey-feature ui.kit
+# @pkey-feature ui.kit.manage
 # The UI kit v1 (P1-10), headless. There is no renderer, so the scenes are pinned as structural
 # text: every scene in every state of tests/ui/scenarios.gd against the committed fixtures in
 # tests/ui/snapshots/<scene>.txt (visible controls, texts, disabled flags, focus order). Then, for
@@ -517,6 +518,21 @@ func _dev_menu(t: PKeyTestContext) -> void:
 
 
 func _controllers(t: PKeyTestContext) -> void:
+	# PX-W8: "Replace a device" — a button where a browser is at hand, a QR code where a joypad is
+	# the only input; the link carries the key fragment (on /activate only) and the game's return.
+	t.check("manage: desktop, web and touch phones get a button", PKeyActivationController.manage_presentation("Windows", false, 1) == "button" and PKeyActivationController.manage_presentation("Web", false, 0) == "button" and PKeyActivationController.manage_presentation("Android", true, 1) == "button")
+	t.check("manage: a TV or console gets a QR code", PKeyActivationController.manage_presentation("Android", false, 1) == "qr" and PKeyActivationController.manage_presentation("Switch", false, 1) == "qr")
+	var limited := PKeyActivationResult.of(PKeyActivationResult.KIND_DEVICE_LIMIT, PKeyErrors.DEVICE_LIMIT, "", 403)
+	limited.manage_url = "https://key.plrs.im/activate?product=djdl&next=free-device"
+	var link := PKeyActivationController.manage_link(limited, "pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV", "mygame://done")
+	t.check("manage: the offered link", link == "https://key.plrs.im/activate?product=djdl&next=free-device&return=mygame%3A%2F%2Fdone#key=pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV", link)
+	t.check("manage: a QR link never carries the key", PKeyActivationController.manage_link(limited, "pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV", "mygame://done", true) == "https://key.plrs.im/activate?product=djdl&next=free-device&return=mygame%3A%2F%2Fdone")
+	limited.manage_url = "https://key.plrs.im/#/p/djdl/free-device?license=lic_1"
+	t.check("manage: the key never rides on a free-device link", PKeyActivationController.manage_link(limited, "pkey_x") == "https://key.plrs.im/#/p/djdl/free-device?license=lic_1")
+	limited.manage_url = null
+	t.check("manage: no link, no offer", PKeyActivationController.manage_link(limited, "k") == "" and PKeyActivationController.manage_link(PKeyActivationResult.of(PKeyActivationResult.KIND_UNAUTHORIZED, &"x", ""), "k") == "")
+	var copy := PKeyUiCopy.DEFAULTS
+	t.check("manage: copy", copy.get("free_device") == "Replace a device" and copy.has("free_device_scan"))
 	var caps := PKeyActivationController.capabilities(true, true, true, true)
 	t.check("activation: Continue free is never offered on web", not caps["continue_free"] and caps["key_entry"] and caps["sign_in"] and caps["offline"])
 	t.check("activation: without License there is no key entry, no enrolment, no offline file", PKeyActivationController.capabilities(false, false, true, false) == {"key_entry": false, "sign_in": false, "continue_free": false, "offline": false})
@@ -531,7 +547,7 @@ func _controllers(t: PKeyTestContext) -> void:
 	panel.auto_sdk = false
 	_sc.add(panel)
 	panel.show_result(PKeyActivationResult.of(PKeyActivationResult.KIND_DEVICE_LIMIT, PKeyErrors.DEVICE_LIMIT, "", 403))
-	t.check("activation: device-limit without an SDK offers no Manage devices link", panel.last_kind == PKeyActivationResult.KIND_DEVICE_LIMIT and not panel._manage.visible)
+	t.check("activation: device-limit without a served link offers no Replace a device", panel.last_kind == PKeyActivationResult.KIND_DEVICE_LIMIT and not panel._manage.visible)
 	_free(panel)
 	var screens := {}
 	for st in ["ok", "grace", "expired", "revoked", "needs-activation", "version-too-old", "version-too-new", "channel-not-entitled", "not-applicable"]:

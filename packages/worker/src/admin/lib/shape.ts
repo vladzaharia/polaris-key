@@ -3,6 +3,7 @@
  * the active-catalog loader used for value validation + redaction.
  */
 
+import { listClaims } from "../../core/settingsClaims.js";
 import { Catalog } from "@polaris-key/catalog";
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../env.js";
@@ -27,6 +28,7 @@ import { latestReleaseHasDmg } from "../../services/release/store.js";
 import { readAppDeliverable } from "../../services/release/descriptor.js";
 import { hasArtifactMap } from "../../services/release/artifactMap.js";
 import { countKeysByLicense } from "../repo.js";
+import { subjectFor } from "../../core/accountSubjects.js";
 import {
   approvalMismatch,
   listEdgeMintRecipesWithApprovals,
@@ -132,6 +134,17 @@ export async function licenseSummary(
   const keyCounts = await countKeysByLicense(db, product, row.id);
   const devices = await listDevicesByLicense(db, product, row.id);
   const profiles = await listLicenseProfiles(db, product, row.id);
+  // PX-W17: the owner as this product sees them — the pairwise subject, never the account id
+  // (S-16 §5.1). Subjects are platform-wide, so this is set for every product whatever its
+  // Identity toggle; `null` for a floating licence.
+  const ownerSubject = row.account_id
+    ? await subjectFor(
+        db,
+        row.account_id,
+        product,
+        Math.floor(Date.now() / 1000),
+      )
+    : null;
   return {
     id: row.id,
     name: row.name ?? "",
@@ -149,6 +162,7 @@ export async function licenseSummary(
     channels: parseJsonList(row.channels_json),
     minVersion: row.min_version,
     maxVersion: row.max_version,
+    ownerSubject,
     identityProvider: row.sub ? "oidc" : "manual",
     // How the row was minted (`admin`, `oidc`, `enroll`): decides whether it may be deleted.
     origin: row.origin ?? "admin",
@@ -163,6 +177,7 @@ export async function productView(
   env: Env,
   db: Db,
   p: ProductRow,
+  now: number = Math.floor(Date.now() / 1000),
 ): Promise<Record<string, unknown>> {
   const activeKey = await loadPublicSigningKey(db, p.slug);
   const signingKid = activeKey?.kid ?? p.signing_kid;
@@ -235,6 +250,9 @@ export async function productView(
     defaultMaxOfflineDays: p.default_max_offline_days,
     defaultDeviceLimit: p.default_device_limit,
     adminGroup: p.admin_group,
+    // ST-01b: the column-backed settings the console has claimed from the manifest (the resync
+    // leaves these alone until a Revert). Empty for a product with no manifest to claim from.
+    claims: await listClaims(db, p.slug, now),
     createdAt: p.created_at,
     modifiedAt: p.modified_at,
   };

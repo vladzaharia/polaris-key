@@ -7,6 +7,8 @@
  *   console). A deploy-time `off` on a kill switch is a hard off: the row is locked and says why.
  *   Every write carries `expectedVersion`; a 409 shows a reload-and-retry flow. Confirm levels
  *   come from the registry (`confirm`), per direction of change (ADMIN.md §5.2).
+ * - **Identity & access**: the reserved display-name severity (`IDENTITY_RESERVED_DISPLAY_NAMES`,
+ *   PX-W13) as an editable row, then the deploy-time identity values.
  * - **Licensing**: the reserved entitlement-name severity (`LICENSING_RESERVED_NAMES`, S-19 §7.4,
  *   LX-05) and, read-only, every registered product whose catalog declares a reserved name and
  *   whether the declaration is compatible (`GET /platform/reserved-names`).
@@ -211,6 +213,14 @@ function consequencesOf(
             "Incompatible reserved-name declarations are accepted again, with a warning.",
             reach,
           ];
+    case "IDENTITY_RESERVED_DISPLAY_NAMES":
+      return after === "error"
+        ? [
+            "A product or listing name that uses a platform or store name is refused at link, resync and console listing edits.",
+            "A product whose current name is reserved fails its next resync until it is renamed. The sign-in card already shows such a name as the product slug.",
+            reach,
+          ]
+        : ["Reserved display names are accepted again, with a warning.", reach];
     case "LAZY_DELTA_MAX_BYTES":
       return [
         `The delta consumer encodes payloads up to ${next} on either side of a pair (was ${before}).`,
@@ -292,7 +302,10 @@ export function PlatformSettingsPage(): React.ReactElement {
   const deploy = new Map(view.deployTime.map((d) => [d.name, d]));
   const secrets = new Map(view.secrets.map((s) => [s.name, s.set]));
   const kekWarning = view.warnings.find((w) => w.code === "kek_id_set");
+  // PX-W13: the editable identity settings (the reserved display-name severity) live here too.
+  const identitySettings = view.settings.filter((s) => s.area === "identity");
   const showIdentity =
+    identitySettings.length > 0 ||
     IDENTITY_VARS.some((n) => deploy.has(n)) ||
     view.constants.some((c) => c.name === "ADMIN_SESSION_TTL_SECONDS");
   const showDelivery = DELIVERY_VARS.some((n) => deploy.has(n));
@@ -342,7 +355,7 @@ export function PlatformSettingsPage(): React.ReactElement {
           </div>
         ) : null}
         {view.settings
-          .filter((s) => s.area !== "licensing")
+          .filter((s) => s.area === "background-jobs")
           .map((s) => (
             <EditableRow
               key={s.key}
@@ -360,8 +373,16 @@ export function PlatformSettingsPage(): React.ReactElement {
         <SettingsSection
           id="platform-identity"
           title="Identity & access"
-          description="Deploy-time: a console session can never widen its own access."
+          description="Reserved display names save on their own; everything else is deploy-time, and a console session can never widen its own access."
         >
+          {identitySettings.map((s) => (
+            <EditableRow
+              key={s.key}
+              setting={s}
+              storeAvailable={view.storeAvailable}
+              propagationSeconds={view.propagationSeconds}
+            />
+          ))}
           {IDENTITY_VARS.map((n) => (
             <DeployRow key={n} item={deploy.get(n)} />
           ))}
@@ -1573,8 +1594,10 @@ function KeyringSection({
         </ul>
       </SettingsRow>
       {kek.isPending ? (
-        <div className="px-5 py-4" aria-hidden>
-          <div className="h-24 animate-pulse rounded-md bg-surface-sunken motion-reduce:animate-none" />
+        <div className="pk-skeleton-group space-y-3 px-5 py-4" aria-hidden>
+          <div className="pk-skeleton h-5 w-48 rounded-md" />
+          <div className="pk-skeleton h-4 w-full rounded-md" />
+          <div className="pk-skeleton h-4 w-2/3 rounded-md" />
         </div>
       ) : !k ? (
         <div className="px-5 py-4">
@@ -1870,10 +1893,14 @@ function HistorySection({
     <SettingsSection id="platform-history" title="History">
       <div className="px-5 py-4">
         {history.isPending ? (
-          <div
-            aria-hidden
-            className="h-24 animate-pulse rounded-md bg-surface-sunken motion-reduce:animate-none"
-          />
+          <div aria-hidden className="pk-skeleton-group space-y-3">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="flex items-center gap-4">
+                <div className="pk-skeleton h-4 w-24 rounded-md" />
+                <div className="pk-skeleton h-4 flex-1 rounded-md" />
+              </div>
+            ))}
+          </div>
         ) : history.isError && !first ? (
           <ErrorState
             compact

@@ -541,6 +541,8 @@
   "core.codes.oidc_error.message": "Die Anmeldung wurde nicht abgeschlossen. Versuchen Sie es erneut.",
   "core.codes.unavailable.title": "Anmeldung nicht verfügbar",
   "core.codes.unavailable.message": "Die Anmeldung ist derzeit nicht verfügbar. Versuchen Sie es in einigen Minuten erneut.",
+  "core.codes.identity_disabled.title": "Anmeldung nicht verfügbar",
+  "core.codes.identity_disabled.message": "Die Anmeldung über diese App ist deaktiviert. Ihre Installationen und Lizenzen funktionieren weiterhin.",
   "core.codes.auth_method_disabled.title": "Anmeldemethode nicht verfügbar",
   "core.codes.auth_method_disabled.message": "Diese Anmeldemethode ist deaktiviert. Wählen Sie eine andere.",
   "core.codes.email_unavailable.title": "Anmeldung per E-Mail nicht verfügbar",

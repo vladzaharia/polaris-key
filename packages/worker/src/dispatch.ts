@@ -20,6 +20,7 @@ import { corsPreflight, isCorsCoveredRoute, withCors } from "./core/cors.js";
 import { handleDiscovery } from "./core/discovery.js";
 import { handleJwks, handleTrustManifest } from "./core/trust.js";
 import { dispatchService } from "./core/registry.js";
+import { identityNavigationRedirect } from "./core/identityGate.js";
 import {
   BYTE_ROUTES,
   REGISTRY_OWNERLESS_ROUTES,
@@ -234,6 +235,13 @@ async function dispatchProductRoute(
   // its own code and is indistinguishable from one that does not exist (see
   // `core/registry.ts`). Everything below is a core route — every service is carved.
   if (route.kind === "service") {
+    // PX-W17: a person following a sign-in link of an Identity-off product is sent to the
+    // friendly card instead of a JSON 404. Core code, before dispatch, so no Identity code runs;
+    // every non-navigation caller falls through to `dispatchService`'s `404 not_found`.
+    if (route.slug === "identity") {
+      const redirect = identityNavigationRedirect(req, product, route.rest);
+      if (redirect) return redirect;
+    }
     return dispatchService(SERVICES, route.slug, product.services, {
       req,
       env,

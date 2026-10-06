@@ -151,6 +151,13 @@ SERVICE_ACCENTS = {
             "subtle": "#1f172d",
             "bit": "#d77df2",
         },
+        "sync": {
+            "solid": "#14f8e1",
+            "fg": "#14f8e1",
+            "on": "#060912",
+            "subtle": "#08262b",
+            "bit": "#14f8e1",
+        },
     },
     "light": {
         "core": {
@@ -201,6 +208,13 @@ SERVICE_ACCENTS = {
             "on": "#ffffff",
             "subtle": "#ede4f7",
             "bit": "#9e34ae",
+        },
+        "sync": {
+            "solid": "#086260",
+            "fg": "#086260",
+            "on": "#ffffff",
+            "subtle": "#dee9ef",
+            "bit": "#086260",
         },
     },
 }

@@ -28,14 +28,20 @@
  */
 
 import { Catalog } from "@polaris-key/catalog";
+import { validateCatalogCloudSync } from "@polaris-key/manifest";
 import { ErrorCode } from "../../../core/errors.js";
-import { getActiveSchema, insertSchema } from "../../../core/data.js";
+import { getActiveSchema } from "../../../core/data.js";
+import {
+  claimFacts,
+  claimsApply,
+  stmtClaim,
+  systemClaimRefusal,
+} from "../../../core/settingsClaims.js";
 import {
   catalogRepresentabilityResponse,
   adminJson,
   adminNotFound,
   audit,
-  deactivateSchemas,
   err,
   getSchemaVersion,
   listLicenses,
@@ -47,6 +53,7 @@ import {
   parsePayload,
   readBody,
   reservedNamesResponse,
+  stmtInsertSchema,
 } from "../../../core/adminApi.js";
 import { reservedNamesMode } from "../../../core/reservedNames.js";
 import type { ConfigAdminContext } from "./index.js";
@@ -113,6 +120,7 @@ async function handleActive(ctx: ConfigAdminContext): Promise<Response> {
       await reservedNamesMode(ctx.env, db),
     );
     if (reserved) return reserved;
+    const active = await getActiveSchema(db, slug);
     if (body.expectedVersion !== undefined) {
       const expected = body.expectedVersion;
       if (
@@ -124,7 +132,6 @@ async function handleActive(ctx: ConfigAdminContext): Promise<Response> {
           fields: ["expectedVersion"],
         });
       }
-      const active = await getActiveSchema(db, slug);
       const current = active?.catalog_version ?? 0;
       if (current !== expected) {
         return err(
@@ -135,18 +142,56 @@ async function handleActive(ctx: ConfigAdminContext): Promise<Response> {
         );
       }
     }
-    const version = await nextSchemaVersion(db, slug);
-    await deactivateSchemas(db, slug);
-    await insertSchema(db, {
-      product: slug,
-      catalog_version: version,
-      catalog_json: JSON.stringify({
-        schemaVersion: version,
-        entries: catalog.entries,
-      }),
-      active: 1,
-      created_at: now,
+    // Cloud Sync (U-04, plans/U-01.md §3): the `user` blocks and the catalog's `cloudSync` block
+    // pass the manifest's own rules. The console's editor edits entries only, so a body without
+    // `cloudSync` carries the active version's block forward rather than dropping it; it is
+    // checked against the new entries either way (a removed flag or rename target refuses).
+    const cloudSync =
+      typeof catalogJson === "object" &&
+      catalogJson !== null &&
+      "cloudSync" in catalogJson
+        ? (catalogJson as { cloudSync?: unknown }).cloudSync
+        : activeCloudSync(active?.catalog_json);
+    const syncIssues = validateCatalogCloudSync({
+      entries: catalog.entries,
+      cloudSync,
+      tierIds: new Set((await listTiers(db, slug)).map((t) => t.id)),
     });
+    if (syncIssues.length > 0) {
+      return err(422, ErrorCode.BadRequest, "invalid catalog", {
+        fields: syncIssues.map((i) => `${i.path}: ${i.message}`),
+      });
+    }
+    // ST-01b: a console publish claims the whole catalog (`config.catalog`, one claimable unit)
+    // on a repo-linked product, so the next resync leaves it alone; the system product's catalog
+    // is manifest-authoritative and refused until ST-20.
+    const facts = await claimFacts(db, slug);
+    const refusal = facts ? systemClaimRefusal(facts) : null;
+    if (refusal)
+      return err(409, ErrorCode.BadRequest, refusal, {
+        reason: "manifest_authoritative",
+      });
+    const version = await nextSchemaVersion(db, slug);
+    await db.batch([
+      {
+        sql: "UPDATE product_schema SET active = 0 WHERE product = ?",
+        params: [slug],
+      },
+      stmtInsertSchema({
+        product: slug,
+        catalog_version: version,
+        catalog_json: JSON.stringify({
+          schemaVersion: version,
+          entries: catalog.entries,
+          ...(cloudSync === undefined ? {} : { cloudSync }),
+        }),
+        active: 1,
+        created_at: now,
+      }),
+      ...(facts && claimsApply(facts)
+        ? [stmtClaim(slug, "config.catalog", session.sub, now)]
+        : []),
+    ]);
     await audit(
       db,
       slug,
@@ -159,6 +204,16 @@ async function handleActive(ctx: ConfigAdminContext): Promise<Response> {
     return adminJson({ ok: true, schemaVersion: version });
   }
   return err(405, ErrorCode.BadRequest, "method not allowed");
+}
+
+/** The `cloudSync` block of a stored catalog, or `undefined`. */
+function activeCloudSync(json: string | undefined): unknown {
+  if (json === undefined) return undefined;
+  try {
+    return (JSON.parse(json) as { cloudSync?: unknown }).cloudSync;
+  } catch {
+    return undefined;
+  }
 }
 
 function entryCount(json: string): number {

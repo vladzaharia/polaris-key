@@ -50,6 +50,22 @@ The owner: "`direct` really becomes `Polaris Key`" ([S-21 §6.8](../../notes/S-2
 3. Add the tests named in the acceptance criteria.
 4. Run the green gate and the gates in the header; set `--set PS-10 in-review`.
 
+## Corrections from the code (2026-10-05, implementer)
+
+- The download page's "Direct download" was the head of each build entry under "Other ways to
+  get it" (`page/render.ts` `way()`), not a page heading. It now reads "Download from Polaris
+  Key"; the primary buttons already read "Download for <platform>".
+- The console renders no outlet subkind today. `outletLabel(kind, subkind)` and
+  `OUTLET_SUBKIND_LABELS` (`lib/labels.ts`, covering every `OUTLET_SUBKINDS` value) give
+  "Polaris Key · via Homebrew" for the first view that shows one; `outletKindLabel` takes the
+  optional subkind.
+- Two console empty states (Matrix, Outlets) said "the direct download"; the source-scan test
+  found them and they now say "Polaris Key downloads".
+- Views that show an outlet **id** (rollouts, update health, matrix cell names) keep showing the
+  id (`direct`): it is the owner's identifier, not a label.
+- Decided (delegated): `plans/LX-01.md` is an approved plan and stays as written; the LX-08
+  amendment and the S-19 owner-decisions block (item 6) carry `polaris-key`.
+
 ## Acceptance criteria
 
 - [ ] Label test passes; console and download-page snapshots updated.

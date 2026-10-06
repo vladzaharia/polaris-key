@@ -16,7 +16,7 @@ import { RELEASE_TAG } from "./platformOps.js";
  * `*_index_assertion.sql`), so adding a migration without bumping this fails the suite. Compared
  * with `d1_migrations` to say whether the database has caught up with the code.
  */
-export const LATEST_MIGRATION = "0084_license_device_limit.sql";
+export const LATEST_MIGRATION = "0088_apple_platform_values.sql";
 
 const GIT_SHA = /^[0-9a-f]{40}$/;
 

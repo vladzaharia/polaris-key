@@ -314,8 +314,9 @@ final class TransportTests: XCTestCase {
     }
 
     // @pkey-feature license.activate
-    /// A host that opted out of fingerprinting sends a byte-identical request to one that has
-    /// nothing to report: the body is omitted entirely rather than sent as `{}`.
+    /// A host that opted out of fingerprinting and of the device label (`deviceName: ""`,
+    /// §12.7.1) sends a byte-identical request to one that has nothing to report: the body is
+    /// omitted entirely rather than sent as `{}`.
     func testActivationWithoutAFingerprintSendsNoBody() async throws {
         await server.reply(
             "/djdl/license/activate", body: #"{"token":"pkeyt_x","schemaVersion":1}"#)
@@ -323,13 +324,33 @@ final class TransportTests: XCTestCase {
             options: CoreOptions(
                 productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0",
                 pinnedKeys: [:], store: InMemoryStore(deviceId: "dev"),
-                transport: server.transport))
+                transport: server.transport, deviceName: ""))
         try await core.start()
         _ = await LicenseEndpoints.activate(core, key: "PKEY-KEY", fingerprint: nil)
         let request = await server.requests(forPath: "/djdl/license/activate").last
         XCTAssertNil(request?.body)
         XCTAssertNil(request?.headers["content-type"])
         XCTAssertEqual(request?.headers["authorization"], "Bearer PKEY-KEY")
+    }
+
+    // @pkey-feature identity.devicelabel
+    /// PX-W13 §8 Q2: without a fingerprint, activation still carries the device label, and only it.
+    func testActivationWithoutAFingerprintSendsTheDeviceLabel() async throws {
+        await server.reply(
+            "/djdl/license/activate", body: #"{"token":"pkeyt_x","schemaVersion":1}"#)
+        let core = try CoreContext(
+            options: CoreOptions(
+                productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0",
+                pinnedKeys: [:], store: InMemoryStore(deviceId: "dev"),
+                transport: server.transport, deviceName: "Den PC"))
+        try await core.start()
+        _ = await LicenseEndpoints.activate(core, key: "PKEY-KEY", fingerprint: nil)
+        let request = await server.requests(forPath: "/djdl/license/activate").last
+        let body = try XCTUnwrap(request?.body)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+        XCTAssertEqual(json["deviceName"] as? String, "Den PC")
+        XCTAssertNil(json["fingerprint"])
+        XCTAssertEqual(request?.headers["content-type"], "application/json")
     }
 
     // @pkey-feature license.activate

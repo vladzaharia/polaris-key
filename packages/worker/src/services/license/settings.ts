@@ -136,7 +136,7 @@ const LICENSE_SETTINGS: readonly SettingDef[] = [
     defaultValue: [],
     merge: "cascade",
     ownership: "claimable",
-    manifest: { path: "product:tiers" },
+    manifest: { path: "product:licensing.tiers" },
     confirm: { change: "L1" },
     visibleWhen: VISIBLE,
     wire: ["document"],

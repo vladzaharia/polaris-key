@@ -93,9 +93,12 @@ export const CHANNEL_DESCRIPTIONS: Record<string, string> = {
   dev: "Skips the version window and channel checks",
 };
 
-/** Outlet kinds (Distribution). */
+/**
+ * Outlet kinds (Distribution). The `direct` kind reads "Polaris Key" (S-21 §6.8): the id stays
+ * `direct` on the wire, in the corpus and in every SDK; only the label changes.
+ */
 export const OUTLET_KIND_LABELS: Record<string, string> = {
-  direct: "Direct download",
+  direct: "Polaris Key",
   appstore: "App Store",
   "app-store": "App Store",
   testflight: "TestFlight",
@@ -110,6 +113,26 @@ export const OUTLET_KIND_LABELS: Record<string, string> = {
   steam: "Steam",
   itch: "itch.io",
 };
+
+/** How a `direct` install was put on the device (`OUTLET_SUBKINDS`). */
+export const OUTLET_SUBKIND_LABELS: Record<string, string> = {
+  homebrew: "Homebrew",
+  npm: "npm",
+  pnpm: "pnpm",
+  npx: "npx",
+  scoop: "Scoop",
+  chocolatey: "Chocolatey",
+  flatpak: "Flatpak",
+  appimage: "AppImage",
+};
+
+/** An outlet kind's label, with its subkind when there is one: "Polaris Key · via Homebrew". */
+export function outletLabel(kind: string, subkind?: string | null): string {
+  const head = label(OUTLET_KIND_LABELS, kind);
+  return subkind
+    ? `${head} · via ${label(OUTLET_SUBKIND_LABELS, subkind)}`
+    : head;
+}
 
 /** Deliverable bindings (packs). */
 export const BINDING_LABELS: Record<string, string> = {
@@ -126,6 +149,9 @@ export const PLATFORM_LABELS: Record<string, string> = {
   linux: "Linux",
   android: "Android",
   web: "Web",
+  tvos: "tvOS",
+  visionos: "visionOS",
+  watchos: "watchOS",
 };
 
 /** Environments (`/me.environment`). */

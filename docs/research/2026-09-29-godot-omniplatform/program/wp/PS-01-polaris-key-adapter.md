@@ -48,6 +48,29 @@ The owner asked for the portal Library to become a distribution channel shown in
 - Do not add `polaris-key` to the console's hard-coded Store connections list: there is nothing to connect.
 - No "coming soon" copy in any reason string.
 
+## Corrections and decisions (as built, 2026-10-05)
+
+Decided by the implementer under the owner's delegation, on the recommended option:
+
+- **Handlers are dispatchers over ports.** `core/storefront/firstParty.ts` holds one handler per
+  first-party op (`polaris-key.<op>`), each `{writes, run}` over `FirstPartyPorts` (`readListing`,
+  `writeListing`, `setListing`, `status`, `audit`). PS-02, PS-03 and PS-06 supply the ports; the
+  handlers stay pure, so they sit in the declaration layer `test/boundaries.test.ts` allows.
+- **The conformance branch also checks the audit row** (S-21 §6.1): a read writes none, a write
+  exactly one. `identifiers` is not in `READ_OPS` (Apple registers bundle ids), but on Polaris Key
+  it only answers the product slug, so its handler is declared `writes: false`.
+- **`submit` (List) is typed for every audience.** S-21 §6.1's table says a plain confirm for
+  `auto`/`listed`; the owner's rule that submit, release and price are typed on every store
+  (`TYPED_OPS`) wins. The handler refuses without `typedConfirmation`; the level-2 confirmation
+  for audience `everyone` stays PS-02/PS-06's.
+- **A first-party adapter mixes in no vendor op**: no `api`, `ci` or `pr`, and no spec pin.
+- **`notificationsUrl` has a reason** (S-21 left it blank; conformance item 3 needs one).
+- **Image slots.** `ListingImageSlot` gains an optional `aspect`; icon 1:1 (exactly one), header
+  16:9 (0–1), screenshots 0–8; PNG, JPEG or WebP, at most 8 MiB each.
+- **Readiness check 3** passes audience `everyone` as a warning that names it (S-21 threat S7).
+- **THREAT-MODEL** gains control (h) under "Storefront adapters: the common layer"; S1–S11 stay
+  PS-11's.
+
 ## Steps
 
 1. Re-read the S-21 sections above; verify this brief against the code and record any correction here.
@@ -57,11 +80,11 @@ The owner asked for the portal Library to become a distribution channel shown in
 
 ## Acceptance criteria
 
-- [ ] `storefrontAdapter("polaris-key")` returns the declaration; the conformance suite passes for every adapter, with the first-party branch.
-- [ ] A test registers a fake first-party op on an adapter with a credential and the suite fails.
-- [ ] The fit report projects the shared listing for `polaris-key` (test).
-- [ ] `polarisKeyReadiness` has a test per check.
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+- [x] `storefrontAdapter("polaris-key")` returns the declaration; the conformance suite passes for every adapter, with the first-party branch.
+- [x] A test registers a fake first-party op on an adapter with a credential and the suite fails.
+- [x] The fit report projects the shared listing for `polaris-key` (test).
+- [x] `polarisKeyReadiness` has a test per check.
+- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
 

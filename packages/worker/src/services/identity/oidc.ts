@@ -20,6 +20,8 @@
 // carried over: a compatibility alias for a path nobody can still be calling is a second code
 // path for free.
 
+import { normalizeDeviceLabel } from "@polaris-key/client-core";
+import { createSignInRequest } from "./passthrough/request.js";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import {
   ALLOWED_ID_TOKEN_ALGS,
@@ -1347,10 +1349,9 @@ export async function handleAuthDeviceStart(
     req.headers.get(HEADER_DEVICE) ||
     url.searchParams.get("device");
   if (!deviceId) return errorResponse(400, "bad_request", "missing device id");
-  const deviceName =
-    typeof body.deviceName === "string" && body.deviceName.trim()
-      ? body.deviceName.trim().slice(0, 120)
-      : undefined;
+  // WIRE-CONTRACT-V4 §12.7.1 (PX-W13): display data only, normalised exactly as the SDK
+  // normalised it, never rejected. Absent when nothing is left.
+  const deviceName = normalizeDeviceLabel(body.deviceName) ?? undefined;
   const flow = await beginAuthFlow(
     req,
     env,
@@ -1407,6 +1408,8 @@ export async function handleAuthDeviceStart(
     expiresIn: FLOW_TTL_SECONDS,
     interval: DEVICE_POLL_INTERVAL_SECONDS,
     pollUrl: `${new URL(req.url).origin}/${product.slug}/identity/auth/device/poll`,
+    // §12.7.1: the label as stored, so a UI kit shows exactly what the sign-in page will.
+    deviceName: deviceName ?? null,
   });
 }
 
@@ -1551,12 +1554,14 @@ function deviceHtmlHeaders(formTarget?: string): Headers {
  *  the form posts back alongside `csrf` — the user code on `/device`, nothing on `/verify`
  *  (whose action URL already carries the device code). */
 async function renderDeviceConfirmation(
+  req: Request,
   env: Env,
   product: Product,
   deviceCode: string,
   record: DeviceFlowRecord,
   action: string,
   hidden: Record<string, string>,
+  now: number,
 ): Promise<Response> {
   const csrf = b64url(randomBytes(16));
   record.csrf = csrf;
@@ -1569,7 +1574,25 @@ async function renderDeviceConfirmation(
   if (!minted.ok) return errorResponse(404, "not_found", "device code expired");
   // Never the raw device id: with `state` it is half of what `/identity/auth/poll` checks, so
   // the page would hand it to anyone who holds the user code (R8-02, P1-06).
-  const deviceLabel = record.deviceName || "Unnamed device";
+  // §12.7.1: the label is stored normalised at `/device/start`; it is normalised again here so a
+  // record written by an older Worker (sliced, not normalised) renders the same way.
+  const deviceLabel =
+    normalizeDeviceLabel(record.deviceName) ?? "Unnamed device";
+  // PX-W13 (§12.7.2): the request handle the new sign-in card reads this request through, bound
+  // to this browser. PX-14 turns this page into a 303 to `/signin?request=<handle>`; until then
+  // the handle rides on the form, and the page keeps rendering the stored label itself.
+  const signInRequest = await createSignInRequest(
+    env,
+    req,
+    {
+      product: product.slug,
+      kind: "device",
+      deviceLabel: normalizeDeviceLabel(record.deviceName),
+      userCode: record.userCode,
+      flowRef: (await deviceFlowKey(env, product.slug, deviceCode)).id,
+    },
+    now,
+  );
   const hiddenInputs = Object.entries(hidden)
     .map(
       ([name, value]) =>
@@ -1584,14 +1607,14 @@ async function renderDeviceConfirmation(
       `<dl><dt>Code</dt><dd class="code">${escapeHtml(record.userCode)}</dd>` +
       `<dt>Device</dt><dd>${escapeHtml(deviceLabel)}</dd>` +
       `<dt>Product</dt><dd>${escapeHtml(product.slug)}</dd></dl>` +
-      `<form method="post" action="${escapeHtml(action)}">${hiddenInputs}` +
+      `<form method="post" action="${escapeHtml(action)}" data-request="${escapeHtml(signInRequest.handle)}">${hiddenInputs}` +
       `<input type="hidden" name="csrf" value="${escapeHtml(csrf)}">` +
       `<button class="button" type="submit">Continue to sign in</button></form>`,
   });
-  return new Response(html, {
-    status: 200,
-    headers: deviceHtmlHeaders(record.authorizeUrl),
-  });
+  const headers = deviceHtmlHeaders(record.authorizeUrl);
+  if (signInRequest.setCookie)
+    headers.append("set-cookie", signInRequest.setCookie);
+  return new Response(html, { status: 200, headers });
 }
 
 /** The code-entry form: one text field, posted back to `/device`. `error` renders the single
@@ -1724,9 +1747,16 @@ export async function handleAuthDeviceEntry(
 
   if (csrf !== undefined)
     return confirmDeviceFlow(req, env, product, deviceCode, record, csrf, now);
-  return renderDeviceConfirmation(env, product, deviceCode, record, action, {
-    user_code: formatUserCode(userCode),
-  });
+  return renderDeviceConfirmation(
+    req,
+    env,
+    product,
+    deviceCode,
+    record,
+    action,
+    { user_code: formatUserCode(userCode) },
+    now,
+  );
 }
 
 /** GET /<product>/identity/auth/device/verify — render the confirmation page.
@@ -1764,12 +1794,14 @@ export async function handleAuthDeviceVerify(
     return confirmDeviceFlow(req, env, product, deviceCode, record, token, now);
   }
   return renderDeviceConfirmation(
+    req,
     env,
     product,
     deviceCode,
     record,
     url.toString(),
     {},
+    now,
   );
 }
 

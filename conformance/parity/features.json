@@ -366,6 +366,22 @@
       "allowedNa": []
     },
     {
+      "id": "license.manage",
+      "family": "license",
+      "title": "Refusal link: manageUrl on device-limit, withManageReturn, withManageKey",
+      "service": "license",
+      "proof": [
+        {
+          "kind": "transcript"
+        },
+        {
+          "kind": "unit"
+        }
+      ],
+      "allowedNa": [],
+      "note": "PX-W8 (WIRE-CONTRACT-V4 §5.3): the result of a device-limit activation or enrolment exposes the Worker's manageUrl, validated (https, no userinfo, at most 2048 characters); the helpers add the app's return= and, on an /activate link, the fragment #key=. Never an auth failure. I-10a and I-10b extend this to key-entry-limit."
+    },
+    {
       "id": "license.entitlements",
       "family": "license",
       "title": "Entitlements, profile, licence id",
@@ -764,6 +780,31 @@
           "why": "Device-code sign-in (RFC 8628) exists for inputs that cannot run a browser redirect; a browser is one, and signs in with the OIDC redirect (identity.oidc) instead."
         }
       ]
+    },
+    {
+      "id": "identity.devicelabel",
+      "family": "devices",
+      "title": "Device label sent on device-code sign-in, activation and registration (WIRE-CONTRACT-V4 §12.7.1)",
+      "service": "identity",
+      "proof": [
+        { "kind": "corpus", "file": "device-label.json" },
+        { "kind": "transcript" }
+      ],
+      "allowedNa": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "A browser has no device name to report: the sign-in card shows the registered origin instead, and a web app signs in with the OIDC redirect."
+        }
+      ]
+    },
+    {
+      "id": "identity.toggle",
+      "family": "devices",
+      "title": "Identity off for a product: every sign-in entry fails fast, licences keep working",
+      "service": "identity",
+      "proof": [{ "kind": "transcript", "wp": "PX-W17" }],
+      "allowedNa": []
     },
     {
       "id": "release.changelog",
@@ -1718,6 +1759,24 @@
           "runtime": "headless",
           "reason": "runtime",
           "why": "A headless SDK ships no widget kit; its UI expectation is ui.cli, and hosts render ui.stages themselves."
+        }
+      ]
+    },
+    {
+      "id": "ui.kit.manage",
+      "family": "ui",
+      "title": "Device-limit screen: Replace a device (button, or a QR on TV and console) and Try again",
+      "service": "sdk",
+      "proof": [
+        {
+          "kind": "snapshot"
+        }
+      ],
+      "allowedNa": [
+        {
+          "runtime": "headless",
+          "reason": "runtime",
+          "why": "A headless SDK ships no UI toolkit; hosts read manageUrl from the activation result (license.manage)."
         }
       ]
     },

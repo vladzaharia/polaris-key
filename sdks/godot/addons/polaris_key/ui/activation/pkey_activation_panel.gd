@@ -20,6 +20,13 @@ signal activated()
 ## stores' payment rules require; PKeyActivationController.STORE_OUTLETS).
 @export var allow_key_entry_on_store := false
 
+## Where the portal sends the player back once a seat is free (PX-W8): one of the product's
+## declared return targets, or "" for none.
+@export var return_url := ""
+## How "Replace a device" is offered: "auto" (a button, or a QR code where a joypad is the only
+## input), "button" or "qr".
+@export_enum("auto", "button", "qr") var manage_mode := "auto"
+
 ## Show the panel's own "Activate" title (off when a host card already has one).
 var show_title := true:
 	set(value):
@@ -30,6 +37,8 @@ var mode := "main"
 var busy := false
 var message := ""
 var message_ok := false
+## The link "Replace a device" opens, or "" (PX-W8). Never an auth failure: it is only offered.
+var manage_url := ""
 
 var _caps_override: Variant = null
 var _title: Label
@@ -42,7 +51,9 @@ var _free: Button
 var _offline: Button
 var _message: Label
 var _manage: Button
-## The last result's kind (device-limit shows "Manage devices": the portal's free-device flow).
+var _manage_qr: PKeyQrRect
+var _manage_caption: Label
+## The last result's kind.
 var last_kind: StringName = &""
 var _main: VBoxContainer
 var sign_in_dialog: PKeySignInDialog
@@ -69,7 +80,13 @@ func _build() -> void:
 	_free = button(_main, "ContinueFree", _on_free)
 	_offline = button(_main, "OfflineActivation", _on_offline)
 	_message = label(_main, "Message")
-	_manage = button(_main, "ManageDevices", _on_manage)
+	_manage = button(_main, "FreeDevice", _on_manage)
+	_manage_qr = PKeyQrRect.new()
+	_manage_qr.name = "FreeDeviceQr"
+	_manage_qr.custom_minimum_size = Vector2(220, 220)
+	_manage_qr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_main.add_child(_manage_qr)
+	_manage_caption = label(_main, "FreeDeviceCaption", "PKeyMuted")
 	sign_in_dialog = PKeySignInDialog.new()
 	sign_in_dialog.auto_sdk = false
 	sign_in_dialog.closed.connect(_back)
@@ -135,9 +152,13 @@ func _render() -> void:
 	_offline.disabled = busy
 	show_text(_message, message)
 	_message.theme_type_variation = "PKeyMuted" if message_ok else "PKeyError"
-	_manage.text = t.text("activation_manage_devices")
-	_manage.visible = last_kind == PKeyActivationResult.KIND_DEVICE_LIMIT and manage_url() != ""
+	var how := manage_presentation()
+	_manage.text = t.text("free_device")
+	_manage.visible = manage_url != "" and how == "button"
 	_manage.disabled = busy
+	_manage_qr.text = manage_url if how == "qr" else ""
+	_manage_qr.visible = manage_url != "" and how == "qr" and not _manage_qr.encode_failed
+	show_text(_manage_caption, t.text("free_device_scan") if _manage_qr.visible else "")
 
 
 func _focus_chain() -> Array:
@@ -145,11 +166,20 @@ func _focus_chain() -> Array:
 		return sign_in_dialog._focus_chain()
 	if mode == "offline":
 		return offline_dialog._focus_chain()
-	return [_key, _submit, _sign_in, _free, _offline, _manage]
+	return [_key, _submit, _manage, _sign_in, _free, _offline]
 
 
-## Render an activation result (also used by snapshots).
-func show_result(r: PKeyActivationResult) -> void:
+## "button" or "qr" for "Replace a device" here (manage_mode, else the device).
+func manage_presentation() -> String:
+	if manage_mode == "button" or manage_mode == "qr":
+		return manage_mode
+	return PKeyActivationController.manage_presentation_here()
+
+
+## Render an activation result (also used by snapshots). `key` is the key just tried, which a
+## device-limit button link to the portal's activate page carries as a fragment (a QR code never).
+func show_result(r: PKeyActivationResult, key := "") -> void:
+	manage_url = PKeyActivationController.manage_link(r, key, return_url, manage_presentation() == "qr")
 	var m := PKeyActivationController.message_for(r)
 	last_kind = r.kind if r != null else &""
 	message = c().text(m[0], m[1])
@@ -176,20 +206,12 @@ func _on_submit() -> void:
 	busy = false
 	if r.ok:
 		_key.text = ""
-	show_result(r)
-
-
-## Where "Manage devices" goes on a device-limit refusal: only a link the server supplies
-## (`manageUrl`, PX-W8), never one built here (owner decision Q6). The Worker does not send one
-## yet, so this is "" and the button stays hidden.
-func manage_url() -> String:
-	return ""
+	show_result(r, key)
 
 
 func _on_manage() -> void:
-	var u := manage_url()
-	if u != "":
-		OS.shell_open(u)
+	if manage_url != "":
+		OS.shell_open(manage_url)
 
 
 func _on_free() -> void:

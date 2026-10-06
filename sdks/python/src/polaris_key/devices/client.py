@@ -227,13 +227,20 @@ class DevicesClient:
         # Outside the try — a local-only refusal is a configuration error the host can
         # fix, not a transport outcome to be reported as one.
         self._ctx.http()
+        # PX-W13 §8 Q2: the device label rides along, seeding the device's name in the lists.
+        label = self._ctx.device_label()
+        body: dict = {}
+        if fingerprint:
+            body["fingerprint"] = fingerprint
+        if label:
+            body["deviceName"] = label
         try:
-            if fingerprint:
+            if body:
                 res = self._ctx.request(
                     "POST",
                     self._ctx.url(REGISTER_PATH),
                     headers=self._ctx.headers({"content-type": "application/json"}),
-                    json={"fingerprint": fingerprint},
+                    json=body,
                 )
             else:
                 res = self._ctx.request(

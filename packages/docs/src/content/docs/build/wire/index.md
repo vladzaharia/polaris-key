@@ -140,6 +140,7 @@ them is the most common way to misread a document (spec §9).
 | `planMatrixVersion`    | `2`   | The install planner, variant selection and target mapping (client behaviour), `plan-matrix.json`.            |
 | `feedUrlMatrixVersion` | `1`   | The native updater feed URLs (client behaviour), `feed-url-matrix.json`.                                     |
 | `contentCorpusVersion` | `2`   | The content corpus, `content/cases.json`: pack byte formats and appliers (spec §2.6).                        |
+| `syncScenariosVersion` | `1`   | The Cloud Sync client state machine (client behaviour), `sync-scenarios.json`.                               |
 
 Two more `schemaVersion` fields exist and neither is a wire version:
 

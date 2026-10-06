@@ -1,7 +1,7 @@
 {
   "transcriptVersion": 1,
   "id": "devicecode-expired",
-  "description": "A device-code flow nobody completes. beginSignIn() with no device name posts the device id alone; one poll is pending. Ten minutes later the flow's records have lapsed and the Worker answers the next poll with timeout, which the client reports as expired, holding no token. waitForSignIn() on the same prompt then makes no request at all: the prompt's expiresIn has passed, and a client stops polling at expiry rather than asking a server that can only say timeout.",
+  "description": "A device-code flow nobody completes. beginSignIn() with no device name, on a host with no platform device name, posts the device id alone, and the echoed label is null; one poll is pending. Ten minutes later the flow's records have lapsed and the Worker answers the next poll with timeout, which the client reports as expired, holding no token. waitForSignIn() on the same prompt then makes no request at all: the prompt's expiresIn has passed, and a client stops polling at expiry rather than asking a server that can only say timeout.",
   "features": ["identity.devicecode"],
   "requires": ["core.store"],
   "product": "djdl",
@@ -59,7 +59,8 @@
                 "verificationUriComplete": "https://key.plrs.im/djdl/identity/auth/device?user_code=MWBX-TMQB",
                 "expiresIn": 600,
                 "interval": 2,
-                "pollUrl": "https://key.plrs.im/djdl/identity/auth/device/poll"
+                "pollUrl": "https://key.plrs.im/djdl/identity/auth/device/poll",
+                "deviceName": null
               }
             }
           }
@@ -71,7 +72,8 @@
           "verificationUri": "https://key.plrs.im/djdl/identity/auth/device",
           "verificationUriComplete": "https://key.plrs.im/djdl/identity/auth/device?user_code=MWBX-TMQB",
           "expiresIn": 600,
-          "interval": 2
+          "interval": 2,
+          "deviceName": null
         },
         "tokenHeld": false
       }

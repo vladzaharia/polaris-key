@@ -44,6 +44,7 @@ import {
 } from "./services/distribution/index.js";
 import { updateService } from "./services/update/index.js";
 import { identityService } from "./services/identity/index.js";
+import { syncService } from "./services/sync/index.js";
 
 export const SERVICES: ServiceRegistry = new Map([
   [licenseService.slug, licenseService],
@@ -52,6 +53,7 @@ export const SERVICES: ServiceRegistry = new Map([
   [distributionService.slug, distributionService],
   [updateService.slug, updateService],
   [identityService.slug, identityService],
+  [syncService.slug, syncService],
 ]);
 
 /**

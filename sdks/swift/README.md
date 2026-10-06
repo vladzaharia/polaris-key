@@ -228,9 +228,11 @@ the verdict is the same as everywhere else. Supply `localOverrides` / `envPrefix
 `ConfigResolution`.
 
 Every request carries `X-PKey-Platform` and `X-PKey-Arch` as the canonical §5.2 values of the
-binary's compilation conditions (`macos`, `ios` — a Catalyst build sends `macos` — `linux`,
-`windows`, `android`; `arm64`, `x86_64`, `armv7`, `wasm32`), omitted when there is none, and
-`X-PKey-SDK: swift` (`POLARIS_SDK_NAME`, the generated `SdkId.swift`).
+binary's compilation conditions (`macos`, `ios` — a Catalyst build sends `macos` — `tvos`,
+`visionos`, `watchos`, `linux`, `windows`, `android`; `arm64`, `x86_64`, `armv7`, `wasm32`),
+omitted when there is none, and `X-PKey-SDK: swift` (`POLARIS_SDK_NAME`, the generated
+`SdkId.swift`). `tvos`, `visionos` and `watchos` are header values only (WIRE-CONTRACT-V4 §5.2
+rule 5): on those OSes the update client needs `UpdateClientOptions.platform`.
 
 ### Device-code sign-in
 
@@ -333,6 +335,26 @@ keyed by its SHA-256, kept only while a committed feed pins it). Every JWS is re
 floor, `lastVerifiedAt`, each channel's feed `seq` floor) is derived from that re-verified
 content; `core.feedFloors` shows the floors. A record from any other cache
 version is **discarded, never migrated**.
+
+## When every seat is taken
+
+A refused activation returns `.deviceLimit(limit:deviceCount:manageURL:)`. `manageURL` is the
+customer-portal link that frees a seat (WIRE-CONTRACT-V4 §5.3), present while the product's portal
+is on and already validated by `ManageLink.read`. It is never an auth failure.
+
+```swift
+if case .deviceLimit(_, _, let manageURL?) = await client.activate(key: key) {
+    let link = ManageLink.withReturn(ManageLink.withKey(manageURL, key), "myapp://activated")
+    // offer "Replace a device", opening `link`
+}
+```
+
+`PolarisLoginView` does this for you: pass `returnURL:` to `PolarisGateModel` and the gate shows
+**Replace a device** under the error (a button on macOS and iOS, a QR code on tvOS). The tvOS QR
+code never carries the key (anyone who can see the screen can scan it), so the phone's page asks
+for it; leave `withKey` out of any QR you draw yourself. Release note:
+the case gained a third associated value, so an exhaustive `case .deviceLimit(let l, let c)`
+binding needs a third pattern.
 
 ## supports() and capabilities
 
@@ -529,18 +551,18 @@ The answer is an `UpdateCheck`: `channel` (the canonical channel — record it a
 (`.network`, `.cache` or `.none`) and `errors` (`[UpdateCheckError]`, each a `code` and a
 `detail`). `check.json` spells it as the transcripts and the other SDKs do.
 
-| `UpdateClientOptions` | Notes                                                                                                                                                                                     |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pinnedReleaseKeys`   | `[kid: raw Ed25519 key, base64url]`: the **only** keys a release record verifies against. Compiled in; never merged with the trust pins, never persisted, never learned from the network. |
-| `outlet`              | `.kind("direct")`, or `.outlet(id:kind:subkind:)` for a product outlet id. Wins over `stamp` and `detected`; without it the client detects the outlet (`detect`).                         |
-| `stamp`, `detected`   | The build stamp's outlet fields (with `outletIds`) and a detection result the host computed itself, through `resolveUpdateOutlet`.                                                        |
-| `detect`              | Default `true`: at the first decision, `readOutletSignals()` and `detectOutlet` run over this install and the stamp. `outlet()` and `detected()` expose the answer.                       |
-| `buildNumber`         | Informational in v4. Default: the main bundle's `CFBundleVersion`.                                                                                                                        |
-| `format`              | The installed build's format; a binary build of another format is never offered. Default nil (any).                                                                                       |
-| `methods`             | What the host can do with a `binary` answer: a subset of `native`, `download`, `sidecar-pck`. Default `["native", "download"]` on macOS, where Sparkle is linked; `["download"]` on iOS.  |
-| `binaryVersion`       | The executable's version when it differs from `CoreOptions.version`. Defaults to `version`.                                                                                               |
-| `engine`              | `godot-<major>.<minor>` for a host that runs Godot code packs; nil otherwise.                                                                                                             |
-| `platform`, `arch`    | Default to this binary's (`macos`/`ios`, `arm64`/`x86_64`).                                                                                                                               |
+| `UpdateClientOptions` | Notes                                                                                                                                                                                      |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pinnedReleaseKeys`   | `[kid: raw Ed25519 key, base64url]`: the **only** keys a release record verifies against. Compiled in; never merged with the trust pins, never persisted, never learned from the network.  |
+| `outlet`              | `.kind("direct")` (the Polaris Key outlet), or `.outlet(id:kind:subkind:)` for a product outlet id. Wins over `stamp` and `detected`; without it the client detects the outlet (`detect`). |
+| `stamp`, `detected`   | The build stamp's outlet fields (with `outletIds`) and a detection result the host computed itself, through `resolveUpdateOutlet`.                                                         |
+| `detect`              | Default `true`: at the first decision, `readOutletSignals()` and `detectOutlet` run over this install and the stamp. `outlet()` and `detected()` expose the answer.                        |
+| `buildNumber`         | Informational in v4. Default: the main bundle's `CFBundleVersion`.                                                                                                                         |
+| `format`              | The installed build's format; a binary build of another format is never offered. Default nil (any).                                                                                        |
+| `methods`             | What the host can do with a `binary` answer: a subset of `native`, `download`, `sidecar-pck`. Default `["native", "download"]` on macOS, where Sparkle is linked; `["download"]` on iOS.   |
+| `binaryVersion`       | The executable's version when it differs from `CoreOptions.version`. Defaults to `version`.                                                                                                |
+| `engine`              | `godot-<major>.<minor>` for a host that runs Godot code packs; nil otherwise.                                                                                                              |
+| `platform`, `arch`    | Default to this binary's (`macos`/`ios`, `arm64`/`x86_64`).                                                                                                                                |
 
 **Outlet detection** (plans/P3-01.md §2.9). With no `outlet`, the update client detects one at its
 first decision. `readOutletSignals()` reads, on iOS, MarketplaceKit's `AppDistributor.current`

@@ -53,7 +53,7 @@ import { authorizeRegistration, type ServiceRegistry } from "./registry.js";
 import {
   deviceMetadata,
   NO_LICENSE_ID,
-  readFingerprint,
+  readDeviceBody,
   registerDeviceBinding,
 } from "./devices.js";
 
@@ -159,10 +159,11 @@ export async function handleRegister(
     return registrationClosed();
   }
 
-  // Optional, exactly as §6 says. `readFingerprint` treats an absent, empty, oversized or
+  // Optional, exactly as §6 says. `readDeviceBody` treats an absent, empty, oversized or
   // unparseable body as "no fingerprint" rather than an error, so a client that sends nothing at
   // all registers fine. There is no tier here to demand one.
-  const presented = await readFingerprint(req);
+  // PX-W13 §8 Q2: the body may also carry the device label, seeded onto a row that has none.
+  const { fingerprint: presented, label } = await readDeviceBody(req);
 
   const { token, device } = await registerDeviceBinding(
     env,
@@ -173,7 +174,7 @@ export async function handleRegister(
     {
       existing,
       presented,
-      metadata: deviceMetadata(req),
+      metadata: { ...deviceMetadata(req), label },
       boundBy: "register",
     },
   );

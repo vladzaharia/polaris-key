@@ -49,6 +49,7 @@ import {
   normalizePlatformHeader,
   normalizeSdkHeader,
 } from "./clientMetadata.js";
+import { normalizeDeviceLabel } from "@polaris-key/client-core";
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import type { Product, ProductPublic } from "./products.js";
@@ -102,6 +103,7 @@ import {
   updateScope,
 } from "./updateHealth.js";
 import type { ServiceHooks } from "./hooks.js";
+import { assertIdentityBindable } from "./identityGate.js";
 import { boundedPackInstalls, recordPackInstalls } from "./deltaDemand.js";
 
 /**
@@ -390,6 +392,9 @@ export async function bindDevice(
       appVersion?: string | null;
       sdkName?: string | null;
       sdkVersion?: string | null;
+      /** PX-W13 §8 Q2: the normalised label the device reported. Seeds `devices.label` only
+       *  while it is NULL; a rename (console or portal) always wins. */
+      label?: string | null;
     };
     /** I-05: how this bind happened (`devices.bound_by`). Omitted = keep the stored value. */
     boundBy?: DeviceBoundBy;
@@ -400,6 +405,8 @@ export async function bindDevice(
 ): Promise<{ token: string; device: DeviceRow }> {
   const { existing, presented, hwid, mode, drift } = opts;
   const meta = opts.metadata ?? {};
+  // PX-W17: the bind guard, before any write — a binding on an Identity-off product throws.
+  if (opts.subject) await assertIdentityBindable(db, product.slug);
 
   const token = mintDeviceToken();
   const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
@@ -416,7 +423,7 @@ export async function bindDevice(
     first_seen: existing?.first_seen ?? now,
     last_seen: now,
     ua: meta.userAgent ?? existing?.ua ?? null,
-    label: existing?.label ?? null,
+    label: existing?.label ?? meta.label ?? null,
     overrides_json: existing?.overrides_json ?? null,
     reported_json: existing?.reported_json ?? null,
     token_hash: tokenHash,
@@ -499,7 +506,10 @@ export async function bindDevice(
 }
 
 /** What the presented request tells us about the machine, as `deviceMetadata` reads it. */
-export type PresentedDeviceMetadata = ReturnType<typeof deviceMetadata>;
+export type PresentedDeviceMetadata = ReturnType<typeof deviceMetadata> & {
+  /** PX-W13 §8 Q2: the normalised label from the registration body (`readDeviceBody`). */
+  label?: string | null;
+};
 
 /**
  * Mint a device token for a device that has NO licence — the `POST /<p>/devices/register` half
@@ -540,6 +550,8 @@ export async function registerDeviceBinding(
   },
 ): Promise<{ token: string; device: DeviceRow }> {
   const { existing, presented, metadata: meta } = opts;
+  // PX-W17: the bind guard, before any write — a binding on an Identity-off product throws.
+  if (opts.subject) await assertIdentityBindable(db, product.slug);
 
   const token = mintDeviceToken();
   const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
@@ -556,7 +568,7 @@ export async function registerDeviceBinding(
     first_seen: existing?.first_seen ?? now,
     last_seen: now,
     ua: meta.userAgent ?? existing?.ua ?? null,
-    label: existing?.label ?? null,
+    label: existing?.label ?? meta.label ?? null,
     overrides_json: existing?.overrides_json ?? null,
     reported_json: existing?.reported_json ?? null,
     token_hash: tokenHash,
@@ -768,20 +780,37 @@ const MAX_ACTIVATE_BODY = 4 * 1024;
 export async function readFingerprint(
   req: Request,
 ): Promise<PresentedFingerprint | null> {
+  return (await readDeviceBody(req)).fingerprint;
+}
+
+/**
+ * The optional activation / registration body: the fingerprint, and the device label the SDK
+ * sends as `deviceName` (WIRE-CONTRACT-V4 §12.7.1, PX-W13 §8 Q2), normalised here exactly as the
+ * SDK normalised it. Absent, empty, oversized or unparseable reads as neither, never an error.
+ */
+export async function readDeviceBody(req: Request): Promise<{
+  fingerprint: PresentedFingerprint | null;
+  label: string | null;
+}> {
+  const none = { fingerprint: null, label: null };
   const declared = req.headers.get("content-length");
-  if (declared && Number(declared) > MAX_ACTIVATE_BODY) return null;
+  if (declared && Number(declared) > MAX_ACTIVATE_BODY) return none;
   let raw: string;
   try {
     raw = await req.text();
   } catch {
-    return null;
+    return none;
   }
-  if (!raw.trim() || raw.length > MAX_ACTIVATE_BODY) return null;
+  if (!raw.trim() || raw.length > MAX_ACTIVATE_BODY) return none;
   try {
-    const body = JSON.parse(raw) as Record<string, unknown>;
-    return parseFingerprint(body.fingerprint);
+    const body = JSON.parse(raw) as Record<string, unknown> | null;
+    if (body === null || typeof body !== "object") return none;
+    return {
+      fingerprint: parseFingerprint(body.fingerprint),
+      label: normalizeDeviceLabel(body.deviceName),
+    };
   } catch {
-    return null;
+    return none;
   }
 }
 

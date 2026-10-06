@@ -38,6 +38,25 @@ export const FINGERPRINT_EXPECT: RequestBody = {
   allowedKeys: ["fingerprint"],
 };
 
+/** The platform device name the recorded client stands in for (`initial.deviceName`, PX-W13). */
+export const TRANSCRIPT_DEVICE_NAME = "Transcript Device";
+
+/** A fingerprint body that also carries the device label (`license/activate` and
+ *  `devices/register`, PX-W13 §8 Q2). */
+export const LABELLED_FINGERPRINT = {
+  ...FINGERPRINT,
+  deviceName: TRANSCRIPT_DEVICE_NAME,
+};
+
+/** What a replaying SDK's activation or registration body is held to: some hashed fingerprint
+ *  and a device label. The label's value is pinned by `device-label.json` and the device-code
+ *  transcripts; here only its presence and type are. */
+export const LABELLED_FINGERPRINT_EXPECT: RequestBody = {
+  json: { fingerprint: { components: {}, hwid: "" }, deviceName: "" },
+  match: "shape",
+  allowedKeys: ["fingerprint", "deviceName"],
+};
+
 /** The report allowlist, straight from the handler that enforces it. A replaying SDK that sends
  *  any other top-level key fails: the Worker would drop it silently, which is exactly the kind
  *  of drift a transcript exists to surface. */

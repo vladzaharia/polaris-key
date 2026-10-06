@@ -56,10 +56,11 @@ const table = (headers, rows) =>
 
 // ── 1. Manifest validation codes ───────────────────────────────────────────────
 function manifestValidationCodes() {
-  // `.pkey/distribution`'s rules (P2b-02) live in their own module of the same validator.
-  // Each module is scanned on its own: the helper regex is lazy across lines, so running it over
-  // concatenated sources lets a match start in one file and end in the next.
-  const sources = ["index.ts", "distribution.ts"].map((f) =>
+  // `.pkey/distribution`'s rules (P2b-02) and the duplicate-spelling pass (ST-19) live in their
+  // own modules of the same validator. Each module is scanned on its own: the helper regex is lazy
+  // across lines, so running it over concatenated sources lets a match start in one file and end
+  // in the next.
+  const sources = ["index.ts", "distribution.ts", "spellings.ts"].map((f) =>
     read("packages", "shared-manifest", "src", f),
   );
   const rows = [];
@@ -328,6 +329,7 @@ const TABLE_OWNERS = {
     "audit",
     "product_sync_state",
     "product_manifest_snapshot",
+    "product_settings",
     "schema_index_assertion",
     "blob_objects",
     "blob_refs",
@@ -559,6 +561,12 @@ function corpusInventory() {
   const planMatrix = JSON.parse(
     read("conformance", "corpus", "v2", "plan-matrix.json"),
   );
+  const syncScenarios = JSON.parse(
+    read("conformance", "corpus", "v2", "sync-scenarios.json"),
+  );
+  const deviceLabel = JSON.parse(
+    read("conformance", "corpus", "v2", "device-label.json"),
+  );
   const content = JSON.parse(
     read("conformance", "corpus", "v2", "content", "cases.json"),
   );
@@ -586,7 +594,8 @@ only corpus. \`corpusVersion ${cases.corpusVersion}\`,
 \`stageMatrixVersion ${stages.stageMatrixVersion}\`, \`headersVersion ${headers.headersVersion}\`,
 \`configMatrixVersion ${configMatrix.configMatrixVersion}\`,
 \`updateMatrixVersion ${updateMatrix.updateMatrixVersion}\`, \`outletMatrixVersion ${outletMatrix.outletMatrixVersion}\`,
-\`planMatrixVersion ${planMatrix.planMatrixVersion}\`, \`contentCorpusVersion ${content.contentCorpusVersion}\`.
+\`planMatrixVersion ${planMatrix.planMatrixVersion}\`, \`deviceLabelVersion ${deviceLabel.deviceLabelVersion}\`,
+\`contentCorpusVersion ${content.contentCorpusVersion}\`, \`syncScenariosVersion ${syncScenarios.syncScenariosVersion}\`.
 Wire contract v4 (\`docs/security/WIRE-CONTRACT-V4.md\`) adds the \`feedCases\` and
 \`releaseRecordCases\` families, the strict-verifier \`jwsCases\`, a \`nonWireIntegers\` member
 beside \`expect\` on every case whose payload holds a number that cannot be a wire integer, and the
@@ -629,6 +638,14 @@ runners of SDKs predating packs never read, and the content corpus and \`plan-ma
       `## Install planner (\`plan-matrix.json\`): ${planMatrix.rows?.length ?? "?"} planner rows, ${planMatrix.variantCases?.length ?? "?"} variant and ${planMatrix.targetCases?.length ?? "?"} target cases`,
       "",
       `WIRE-CONTRACT-V4 §11.4: \`plan\` (request weight ${planMatrix.requestWeight ?? "?"}), \`selectVariant\` and \`planTarget\`. Chunk targets are inline, so the planner never parses an index; the \`plan-real-*\` rows are the content set's own menu. The generator recomputes every row and case.`,
+      "",
+      `## Cloud Sync scenarios (\`sync-scenarios.json\`): ${syncScenarios.scenarios?.length ?? "?"} scenarios over ${syncScenarios.rules?.length ?? "?"} rules`,
+      "",
+      "WIRE-CONTRACT-V4 §11.5, client behaviour beside the contract: the journal, the debounce, the HLC and pre-contact re-stamping, conflict rebase, one outstanding compare-and-swap per record, the per-subject partitions, the first-sign-in move, sign-out with pending operations, principal changes, `account_required` and a `/sync` 401, each scenario a run of SDK calls, clock moves and scripted server answers. Literal data (`tools/sync-scenarios.ts`), not computed by an implementation; `@polaris-key/client-core/cloud-sync` is checked against it like every SDK, by the Node runner `conformance/runners/node/syncScenarios.test.ts`.",
+      "",
+      `## Device labels (\`device-label.json\`): ${deviceLabel.cases?.length ?? "?"} cases`,
+      "",
+      "WIRE-CONTRACT-V4 §12.7.1 (PX-W13): the one normalisation of the device label every SDK sends as `deviceName` and the Worker stores. Every SDK runs every row, and the Worker runs them through `/identity/auth/device/start`. Non-ASCII code points are written escaped.",
       "",
       `## Content corpus (\`content/cases.json\`): ${Object.keys(content.blobs ?? {}).length} blobs, ${blobBytes.toLocaleString("en-US")} bytes`,
       "",

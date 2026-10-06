@@ -95,6 +95,8 @@ async function makeCtx(impl: typeof fetch): Promise<CoreContext> {
     trust: { pinnedKeys: {} },
     store: new InMemoryStore("djdl"),
     fetchImpl: impl,
+    // PX-W13: a fixed device label, so request bodies do not depend on the host name.
+    deviceName: "Test Device",
   });
   await ctx.init();
   return ctx;
@@ -141,8 +143,10 @@ describe("activateWithKey — POST /<p>/license/activate", () => {
     expect(headersOf(calls[0]!.init).get("content-type")).toBe(
       "application/json",
     );
+    // PX-W13 §8 Q2: the device label rides along on activation.
     expect(JSON.parse(String(calls[0]!.init.body))).toEqual({
       fingerprint: FINGERPRINT,
+      deviceName: "Test Device",
     });
   });
 
@@ -176,6 +180,56 @@ describe("activateWithKey — POST /<p>/license/activate", () => {
       code: "device_limit",
       limit: 3,
       deviceCount: 3,
+    });
+  });
+
+  // @pkey-feature license.manage
+  // PX-W8: the refusal link rides on device-limit; an invalid one is dropped, and an unknown
+  // member never changes the outcome.
+  it("surfaces manageUrl on device-limit, flat or nested, and drops an invalid one", async () => {
+    const url =
+      "https://key.plrs.im/activate?product=djdl&next=free-device&for=Linux%20x86_64";
+    for (const body of [
+      { error: "device_limit", limit: 1, deviceCount: 1, manageUrl: url },
+      {
+        error: {
+          code: "device_limit",
+          limit: 1,
+          deviceCount: 1,
+          manageUrl: url,
+        },
+      },
+    ]) {
+      const { impl } = fakeFetch([{ status: 403, json: body }]);
+      expect(
+        await activateWithKey(await makeCtx(impl), "pkey_djdl_AAA", null),
+      ).toEqual({
+        kind: "device-limit",
+        code: "device_limit",
+        limit: 1,
+        deviceCount: 1,
+        manageUrl: url,
+      });
+    }
+    const { impl } = fakeFetch([
+      {
+        status: 403,
+        json: {
+          error: "device_limit",
+          limit: 1,
+          deviceCount: 1,
+          manageUrl: "javascript:alert(1)",
+          somethingNew: true,
+        },
+      },
+    ]);
+    expect(
+      await activateWithKey(await makeCtx(impl), "pkey_djdl_AAA", null),
+    ).toEqual({
+      kind: "device-limit",
+      code: "device_limit",
+      limit: 1,
+      deviceCount: 1,
     });
   });
 

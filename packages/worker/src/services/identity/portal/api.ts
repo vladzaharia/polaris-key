@@ -78,6 +78,7 @@ import {
 import { avatarUrl, handleCardApi, turnstileSiteKey } from "../card/index.js";
 import { clearDeviceSubjects } from "../../../core/subjectHooks.js";
 import { libraryView, productView } from "./library.js";
+import { signInConsentView, signInRequestView } from "../passthrough/routes.js";
 import {
   handleActivatePreview,
   handleClaimKey,
@@ -1276,8 +1277,29 @@ export async function handlePortalApi(
   if (segments[0] === "magic" && segments[1] === "start") {
     return handleMagicStart(req, env, db, now);
   }
+  // PX-W13 (WIRE-CONTRACT-V4 §12.7.2): the sign-in request the card renders. The binder cookie,
+  // not a session: the card shows it before anyone signs in (`passthrough/routes.ts`).
+  if (
+    segments[0] === "signin" &&
+    segments[1] === "requests" &&
+    segments[2] &&
+    segments.length === 3
+  ) {
+    if (req.method !== "GET") return err(405, "method_not_allowed");
+    const view = await signInRequestView(
+      env,
+      db,
+      req,
+      segments[2],
+      now,
+      hooksFor,
+    );
+    return view.status === 200 ? portalJson(view.body) : notFound();
+  }
   // I-07: the login card's pre-authentication routes (email code and link, the email gate).
-  if (segments[0] === "signin") {
+  // `signin/requests/*` is PX-W13's: the request view above, and its app-consent view below,
+  // which needs the session.
+  if (segments[0] === "signin" && segments[1] !== "requests") {
     return handleCardApi(req, env, db, segments, now);
   }
   // PX-W14 (G29): the new device's half of "Sign in with another device" is pre-auth: it has no
@@ -1338,6 +1360,25 @@ export async function handlePortalApi(
   if (head === "me") return handleMe(db, session, now);
   if (head === "sessions") {
     return handleSessions(req, env, db, session, sessionIdHash, rest, now);
+  }
+  // PX-W13 (§12.7.3): app consent for a sign-in request, for the signed-in account.
+  if (
+    head === "signin" &&
+    rest[0] === "requests" &&
+    rest[1] &&
+    rest[2] === "consent" &&
+    rest.length === 3
+  ) {
+    if (req.method !== "GET") return err(405, "method_not_allowed");
+    const view = await signInConsentView(
+      env,
+      db,
+      req,
+      rest[1],
+      session.accountId,
+      now,
+    );
+    return view.status === 200 ? portalJson(view.body) : notFound();
   }
   if (
     head === "licenses" &&

@@ -53,6 +53,12 @@ export interface SignInPrompt {
   /** When the code expires on THIS client's clock (epoch seconds): `beginSignIn`'s now plus
    *  `expiresIn`. `waitForSignIn` stops here without asking the server again. */
   expiresAt: number;
+  /**
+   * The device label the sign-in page shows (WIRE-CONTRACT-V4 §12.7.1): the Worker's echo of the
+   * label it stored, else (an older Worker) the label this client sent; `null` when there is none.
+   * Show it under the code: "The sign-in page will show '<label>'".
+   */
+  deviceName: string | null;
 }
 
 /** One poll's answer. */
@@ -176,6 +182,7 @@ const TRANSIENT = new Set(["network-error", "server-error"]);
 export type SignInAcquiredListener = () => Promise<void>;
 
 interface StartBody {
+  deviceName?: unknown;
   deviceCode?: unknown;
   userCode?: unknown;
   verificationUri?: unknown;
@@ -252,8 +259,10 @@ export class IdentityClient {
   async beginSignIn(opts: { deviceName?: string } = {}): Promise<SignInPrompt> {
     this.ctx.requireService("identity", Feature.identityDevicecode);
     const body: Record<string, string> = { deviceId: this.ctx.deviceId };
-    const name = opts.deviceName?.trim();
-    if (name) body.deviceName = name;
+    // §12.7.1: the per-call name, else the client's `deviceName`, else the platform default,
+    // normalised exactly as the Worker will store it. `""` sends none.
+    const label = this.ctx.deviceLabel(opts.deviceName);
+    if (label) body.deviceName = label;
     const res = await this.post("identity/auth/device/start", body);
     if (res.status !== 200) {
       throw new PolarisError(
@@ -284,6 +293,13 @@ export class IdentityClient {
         expiresIn: wholeSeconds(b.expiresIn),
         interval: wholeSeconds(b.interval),
         expiresAt: this.ctx.now() + wholeSeconds(b.expiresIn),
+        // The echo is what the page shows; an older Worker sends none, so show what was sent.
+        deviceName:
+          "deviceName" in b
+            ? typeof b.deviceName === "string"
+              ? b.deviceName
+              : null
+            : label,
       },
       ["deviceCode"],
     );

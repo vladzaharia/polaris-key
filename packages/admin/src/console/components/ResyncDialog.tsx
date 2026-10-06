@@ -20,6 +20,7 @@
 import * as React from "react";
 import {
   ApiError,
+  type ClaimKey,
   type ManifestPlanItem,
   type ResyncPlanResult,
   type ResyncResult,
@@ -33,6 +34,7 @@ import { ConfirmDialog } from "../../ui/ConfirmDialog.js";
 import { announce } from "../../ui/LiveRegion.js";
 import { Skeleton } from "../../ui/Skeleton.js";
 import { mutate } from "../data/mutations.js";
+import { CLAIM_LABELS } from "./RevertClaimDialog.js";
 
 /** The product a resync is for. */
 export interface ResyncTarget {
@@ -336,6 +338,14 @@ function otherDialogOpen(el: HTMLElement): boolean {
   ].some((d) => !d.contains(el));
 }
 
+/** A resync's `claimed` entry in words: a setting's label, or "tier gold" (ST-01b). */
+function claimedLabel(entry: string): string {
+  const [kind, id] = entry.split(":", 2);
+  if (id !== undefined && (kind === "tier" || kind === "profile"))
+    return `${kind} ${id}`;
+  return CLAIM_LABELS[entry as ClaimKey] ?? entry;
+}
+
 /** The panel's title: a verified fact, the product's name first. */
 export function resultTitle(
   result: ResyncResult,
@@ -352,7 +362,8 @@ export function resultTitle(
 }
 
 /**
- * What a resync did (RSY-3): updated sections, refused parts, pack sets. It takes focus once the
+ * What a resync did (RSY-3): updated sections, refused parts, the console rows that conflicted and
+ * what it kept because the console claimed it (ST-01b), pack sets. It takes focus once the
  * dialog that produced it has closed, scrolls into view, and announces its title.
  */
 export function ResyncResultPanel({
@@ -372,6 +383,8 @@ export function ResyncResultPanel({
   const ref = React.useRef<HTMLDivElement>(null);
   const updated = result.updated ?? [];
   const refused = result.refused ?? [];
+  const claimed = result.claimed ?? [];
+  const conflicts = result.conflicts ?? [];
   const packs = result.packSets;
   const heading = title ?? resultTitle(result, productName, repository);
 
@@ -410,7 +423,11 @@ export function ResyncResultPanel({
       className="rounded-lg outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
     >
       <Callout
-        tone={refused.length || (packs && !packs.ok) ? "warning" : "success"}
+        tone={
+          refused.length || conflicts.length || (packs && !packs.ok)
+            ? "warning"
+            : "success"
+        }
         title={heading}
         action={
           <Button variant="ghost" size="sm" onClick={onDismiss}>
@@ -433,6 +450,22 @@ export function ResyncResultPanel({
                 </li>
               ))}
             </ul>
+          ) : null}
+          {conflicts.length ? (
+            <ul className="list-disc space-y-1 pl-5" aria-label="Conflicts">
+              {conflicts.map((x) => (
+                <li key={x.path}>
+                  <span className="font-mono text-xs">{x.path}</span>:{" "}
+                  {x.message}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {claimed.length ? (
+            <p>
+              Kept as set in the console: {claimed.map(claimedLabel).join(", ")}
+              .
+            </p>
           ) : null}
           {packs ? (
             <p>

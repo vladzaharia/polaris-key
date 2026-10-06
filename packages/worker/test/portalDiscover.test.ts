@@ -109,6 +109,7 @@ async function services(
         distribution: { enabled: false },
         update: { enabled: false },
         identity: { enabled: true },
+        sync: { enabled: false },
         ...over,
       },
     }),
@@ -364,6 +365,46 @@ describe("GET /api/discover (G24)", () => {
     const { body } = await list(env, db, who);
     expect(body.offers.map((o: { product: string }) => o.product)).toEqual([
       "mossgarden",
+    ]);
+  });
+
+  it("PS-02: auto and listed keep today's offers; unlisted hides them, from either column", async () => {
+    const env = portalEnv();
+    const db = makeTestDb();
+    for (const slug of ["auto", "listed", "unlisted", "legacyoff", "stale"])
+      await freeProduct(db, slug);
+    await upsertPortalProductSettings(
+      db,
+      "listed",
+      { storeListed: "listed" },
+      NOW,
+    );
+    await upsertPortalProductSettings(
+      db,
+      "unlisted",
+      { storeListed: "unlisted" },
+      NOW,
+    );
+    // A pre-0085 Worker turned Discover off: store_listed still says auto (dual-read).
+    await upsertPortalProductSettings(db, "legacyoff", {}, NOW);
+    await db.run(
+      "UPDATE portal_product_settings SET discover_enabled = 0 WHERE product = 'legacyoff'",
+    );
+    // A pre-0085 Worker turned Discover back on for a product the new one had unlisted.
+    await upsertPortalProductSettings(
+      db,
+      "stale",
+      { storeListed: "unlisted" },
+      NOW,
+    );
+    await db.run(
+      "UPDATE portal_product_settings SET discover_enabled = 1 WHERE product = 'stale'",
+    );
+    const who = await platformAccount(env, db);
+    const { body } = await list(env, db, who);
+    expect(body.offers.map((o: { product: string }) => o.product)).toEqual([
+      "auto",
+      "listed",
     ]);
   });
 

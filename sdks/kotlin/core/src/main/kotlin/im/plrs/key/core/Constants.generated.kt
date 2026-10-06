@@ -44,6 +44,7 @@ public object ErrorCode {
     public const val disabled: String = "disabled"
     public const val oidcError: String = "oidc_error"
     public const val unavailable: String = "unavailable"
+    public const val identityDisabled: String = "identity_disabled"
     public const val authMethodDisabled: String = "auth_method_disabled"
     public const val emailUnavailable: String = "email_unavailable"
     public const val turnstileFailed: String = "turnstile_failed"
@@ -198,6 +199,7 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "disabled",
     "oidc_error",
     "unavailable",
+    "identity_disabled",
     "auth_method_disabled",
     "email_unavailable",
     "turnstile_failed",
@@ -352,6 +354,7 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "disabled" to "wire",
     "oidc_error" to "wire",
     "unavailable" to "wire",
+    "identity_disabled" to "wire",
     "auth_method_disabled" to "wire",
     "email_unavailable" to "wire",
     "turnstile_failed" to "wire",
@@ -490,6 +493,7 @@ public object Feature {
     public const val licenseActivate: String = "license.activate"
     public const val licenseEnroll: String = "license.enroll"
     public const val licenseDeactivate: String = "license.deactivate"
+    public const val licenseManage: String = "license.manage"
     public const val licenseEntitlements: String = "license.entitlements"
     public const val licenseChannels: String = "license.channels"
     public const val licenseReregister: String = "license.reregister"
@@ -510,6 +514,8 @@ public object Feature {
     public const val devicesAttest: String = "devices.attest"
     public const val identityOidc: String = "identity.oidc"
     public const val identityDevicecode: String = "identity.devicecode"
+    public const val identityDevicelabel: String = "identity.devicelabel"
+    public const val identityToggle: String = "identity.toggle"
     public const val releaseChangelog: String = "release.changelog"
     public const val releaseDownload: String = "release.download"
     public const val releaseRecord: String = "release.record"
@@ -551,6 +557,7 @@ public object Feature {
     public const val uiStages: String = "ui.stages"
     public const val uiBoot: String = "ui.boot"
     public const val uiKit: String = "ui.kit"
+    public const val uiKitManage: String = "ui.kit.manage"
     public const val uiCli: String = "ui.cli"
     public const val commerceReceipt: String = "commerce.receipt"
 }
@@ -572,6 +579,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "license.activate",
     "license.enroll",
     "license.deactivate",
+    "license.manage",
     "license.entitlements",
     "license.channels",
     "license.reregister",
@@ -592,6 +600,8 @@ public val FEATURE_VALUES: List<String> = listOf(
     "devices.attest",
     "identity.oidc",
     "identity.devicecode",
+    "identity.devicelabel",
+    "identity.toggle",
     "release.changelog",
     "release.download",
     "release.record",
@@ -633,6 +643,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "ui.stages",
     "ui.boot",
     "ui.kit",
+    "ui.kit.manage",
     "ui.cli",
     "commerce.receipt",
 )
@@ -655,7 +666,7 @@ public val UNSUPPORTED_REASON_VALUES: List<String> = listOf(
     "version",
 )
 
-/** OS family, the canonical `X-PKey-Platform` value (README §3.1). iPadOS is `ios`. */
+/** OS family, the canonical `X-PKey-Platform` value (README §3.1). iPadOS is `ios`. `tvos`, `visionos` and `watchos` are header values only; build targets are `RELEASE_PLATFORMS` (WIRE-CONTRACT-V4 §5.2 rule 5). */
 public object Platform {
     public const val macos: String = "macos"
     public const val ios: String = "ios"
@@ -663,6 +674,9 @@ public object Platform {
     public const val windows: String = "windows"
     public const val linux: String = "linux"
     public const val web: String = "web"
+    public const val tvos: String = "tvos"
+    public const val visionos: String = "visionos"
+    public const val watchos: String = "watchos"
 }
 
 /** Every `Platform` value, in source order. */
@@ -673,6 +687,9 @@ public val PLATFORM_VALUES: List<String> = listOf(
     "windows",
     "linux",
     "web",
+    "tvos",
+    "visionos",
+    "watchos",
 )
 
 /** CPU architecture, the canonical `X-PKey-Arch` value (README §3.1). `universal` and `any` are artifact values, not header values, and are not listed. */
@@ -1199,6 +1216,12 @@ public const val OUTLET_MATRIX_VERSION: Int = 1
 /** `planMatrixVersion` of conformance/corpus/v2/plan-matrix.json. */
 public const val PLAN_MATRIX_VERSION: Int = 2
 
+/** `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json. */
+public const val SYNC_SCENARIOS_VERSION: Int = 1
+
+/** `deviceLabelVersion` of conformance/corpus/v2/device-label.json. */
+public const val DEVICE_LABEL_VERSION: Int = 1
+
 /** `contentCorpusVersion` of conformance/corpus/v2/content/cases.json. */
 public const val CONTENT_CORPUS_VERSION: Int = 2
 
@@ -1283,6 +1306,15 @@ public const val MAX_CHUNK_INDEX_BYTES: Int = 16777216
 /** Packs on the wire: `MAX_CHUNK_BYTES` (plans/P4-10.md §2.3, `@polaris-key/protocol/core`). */
 public const val MAX_CHUNK_BYTES: Int = 4194304
 
+/** Identity passthrough: `DEVICE_LABEL_MAX_CODEPOINTS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`). */
+public const val DEVICE_LABEL_MAX_CODEPOINTS: Int = 64
+
+/** Identity passthrough: `REQUEST_HANDLE_PATTERN` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`). */
+public const val REQUEST_HANDLE_PATTERN: String = "^rq_[A-Za-z0-9_-]{22}\$"
+
+/** Identity passthrough: `REQUEST_HANDLE_TTL_SECONDS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`). */
+public const val REQUEST_HANDLE_TTL_SECONDS: Int = 600
+
 /** Channel constant `CHANNEL_ALIASES` (`@polaris-key/protocol/core`). */
 public val CHANNEL_ALIASES: Map<String, String> = mapOf(
     "staging" to "beta",
@@ -1340,6 +1372,9 @@ public val PLATFORM_SPELLINGS: Map<String, String> = mapOf(
     "linux" to "linux",
     "web" to "web",
     "browser" to "web",
+    "tvos" to "tvos",
+    "visionos" to "visionos",
+    "watchos" to "watchos",
 )
 
 /** One declared N/A: on `runtime`, the feature is unsupported for `reason`. */
@@ -1371,6 +1406,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "license.activate" to CapabilityRow("implemented", "license", listOf()),
     "license.enroll" to CapabilityRow("implemented", "license", listOf()),
     "license.deactivate" to CapabilityRow("implemented", "license", listOf()),
+    "license.manage" to CapabilityRow("implemented", "license", listOf()),
     "license.entitlements" to CapabilityRow("implemented", "license", listOf()),
     "license.channels" to CapabilityRow("implemented", "license", listOf()),
     "license.reregister" to CapabilityRow("implemented", "license", listOf()),
@@ -1391,6 +1427,8 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "devices.attest" to CapabilityRow("implemented", "core", listOf(CapabilityNa("jvm", "runtime"), CapabilityNa("android", "outlet"))),
     "identity.oidc" to CapabilityRow("planned", "identity", listOf()),
     "identity.devicecode" to CapabilityRow("implemented", "identity", listOf()),
+    "identity.devicelabel" to CapabilityRow("implemented", "identity", listOf()),
+    "identity.toggle" to CapabilityRow("planned", "identity", listOf()),
     "release.changelog" to CapabilityRow("implemented", "release", listOf()),
     "release.download" to CapabilityRow("implemented", "release", listOf()),
     "release.record" to CapabilityRow("implemented", "release", listOf()),
@@ -1432,9 +1470,10 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "ui.stages" to CapabilityRow("implemented", "sdk", listOf()),
     "ui.boot" to CapabilityRow("implemented", "sdk", listOf()),
     "ui.kit" to CapabilityRow("implemented", "sdk", listOf()),
+    "ui.kit.manage" to CapabilityRow("implemented", "sdk", listOf()),
     "ui.cli" to CapabilityRow("na", "sdk", listOf(CapabilityNa("android", "runtime"), CapabilityNa("jvm", "runtime"))),
     "commerce.receipt" to CapabilityRow("implemented", "license", listOf()),
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "c1e6e41b771241ed799902ef367ae7d6f51b2a79fca7dfa970917fefad9b1a37"
+public const val CAPABILITY_DIGEST: String = "2a218d5c4d3edd79eb1a2384ecc616357b864e4b7fe9b28f9b24bb03f139c186"

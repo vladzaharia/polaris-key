@@ -10,6 +10,27 @@
 
 import { setting } from "./define.js";
 import type { SettingDef } from "./types.js";
+import {
+  GROUP_LABELS_MAX,
+  LISTING_AUDIENCES,
+  LISTING_STATES,
+  OBTAIN_PATH_KINDS,
+} from "../storefront/polarisKeyListing.js";
+
+/**
+ * The Polaris Key storefront's product settings (PS-02, notes/S-21 §6.2). Core's, not
+ * Distribution's: every product can be listed whether or not it runs the distribution service.
+ * Columns on Identity's `portal_product_settings` (migration 0085), beside `discover_enabled`,
+ * which still forces `unlisted` until PS-11 (`core/storefront/polarisKeyListing.ts`).
+ */
+const STOREFRONT_DOCS = "/docs/services/identity/portal/";
+const STOREFRONT_READERS = [
+  "core/storefront/polarisKeyListing.ts",
+  "services/identity/portal/storefrontListing.ts",
+  "services/identity/admin.ts",
+] as const;
+const storefrontColumn = (column: string) =>
+  ({ kind: "column", table: "portal_product_settings", column }) as const;
 
 export const CORE_SLICE: readonly SettingDef[] = [
   setting({
@@ -25,7 +46,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
     defaultValue: "",
     merge: "cascade",
     ownership: "claimable",
-    manifest: { path: "product:name" },
+    manifest: { path: "product:product.name" },
     confirm: { change: "L0" },
     wire: ["discovery"],
     readers: ["core/products.ts", "core/discovery.ts"],
@@ -45,7 +66,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
     allowUnset: true,
     merge: "cascade",
     ownership: "manifest",
-    manifest: { path: "product:adminGroup" },
+    manifest: { path: "product:product.adminGroup" },
     securityWidening: true,
     widensWhen: "any",
     critical: true,
@@ -152,5 +173,97 @@ export const CORE_SLICE: readonly SettingDef[] = [
       table: "products",
       column: "trust_policy_json",
     },
+  }),
+
+  setting({
+    key: "storefront.polarisKey.listed",
+    scope: "product",
+    service: "core",
+    area: "storefront",
+    label: "Listing",
+    description:
+      "Whether the Polaris Key library lists this product. Auto lists it where auto-issue or a mapped group would give it to the person (today's Discover); Listed adds every other way to obtain it; Unlisted hides it in the portal while every policy keeps working.",
+    keywords: ["discover", "library", "storefront", "unlisted", "visibility"],
+    docs: STOREFRONT_DOCS,
+    value: { kind: "enum", values: LISTING_STATES },
+    defaultValue: "auto",
+    merge: "cascade",
+    // Operator-only: a manifest must not publish a product to the storefront behind the
+    // operator's back (S-18 D22's reasoning, which this entry supersedes).
+    ownership: "operator",
+    confirm: { change: "L1" },
+    readers: STOREFRONT_READERS,
+    storage: storefrontColumn("store_listed"),
+    since: "PS-02",
+  }),
+  setting({
+    key: "storefront.polarisKey.audience",
+    scope: "product",
+    service: "core",
+    area: "storefront",
+    label: "Audience",
+    description:
+      "Who sees the listing. Eligible shows it only to a person who can obtain it now; Everyone shows it to every signed-in person, the one exception to never revealing a product a person cannot get.",
+    keywords: ["discover", "visibility", "enumeration", "everyone"],
+    docs: STOREFRONT_DOCS,
+    value: { kind: "enum", values: LISTING_AUDIENCES },
+    defaultValue: "eligible",
+    merge: "cascade",
+    widensWhen: "higher",
+    critical: true,
+    ownership: "operator",
+    // An ordered enum: up (toward everyone) is the typed, level-2 change (owner decision 5).
+    confirm: { up: "L2", down: "L0" },
+    readers: STOREFRONT_READERS,
+    storage: storefrontColumn("store_audience"),
+    since: "PS-02",
+  }),
+  setting({
+    key: "storefront.polarisKey.offerPaths",
+    scope: "product",
+    service: "core",
+    area: "storefront",
+    label: "Ways to obtain",
+    description:
+      "Which reasons may list the product for a person (a mapped group, auto-issue, an open product, store ownership, the product's own sign-in, an email domain). Unset offers every one, including ways added later.",
+    keywords: ["obtain paths", "eligibility", "discover"],
+    docs: STOREFRONT_DOCS,
+    value: {
+      kind: "list",
+      of: { kind: "enum", values: OBTAIN_PATH_KINDS },
+      max: OBTAIN_PATH_KINDS.length,
+    },
+    defaultValue: null,
+    allowUnset: true,
+    merge: "cascade",
+    ownership: "operator",
+    confirm: { change: "L1" },
+    readers: STOREFRONT_READERS,
+    storage: storefrontColumn("store_offer_paths_json"),
+    since: "PS-02",
+  }),
+  setting({
+    key: "storefront.polarisKey.groupLabels",
+    scope: "product",
+    service: "core",
+    area: "storefront",
+    label: "Group labels",
+    description:
+      'How an identity-provider group is named on the listing ("Included with Aperture Seven"), at most 40 characters. A group without a label shows as "For members of <group>".',
+    keywords: ["groups", "copy", "discover"],
+    docs: STOREFRONT_DOCS,
+    value: {
+      kind: "json",
+      schema: `GroupLabels (core/storefront/polarisKeyListing.ts, ≤ ${GROUP_LABELS_MAX})`,
+    },
+    defaultValue: {},
+    merge: "cascade",
+    // S-21 §6.2 makes this claimable once `.pkey/product` carries `storefront.groupLabels`; until
+    // the manifest has that field there is nothing to claim from, so it is operator-owned.
+    ownership: "operator",
+    confirm: { change: "L0" },
+    readers: STOREFRONT_READERS,
+    storage: storefrontColumn("store_group_labels_json"),
+    since: "PS-02",
   }),
 ];

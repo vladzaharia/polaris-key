@@ -49,7 +49,7 @@ function entries() {
       name: "Diceroll",
       modules: { release: { enabled: true } },
     }),
-    schema: JSON.stringify({ schemaVersion: 1, catalog: [] }),
+    schema: JSON.stringify({ schemaVersion: 1, entries: [] }),
     release: RELEASE_YAML,
   });
   if (!res.ok) throw new Error(res.errors.join("\n"));

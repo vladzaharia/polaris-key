@@ -34,6 +34,7 @@ import {
   platformSettingDef,
 } from "../src/core/platformSettings.js";
 import { MAX_OFFLINE_DAYS } from "../src/admin/lib/writeChecks.js";
+import { DEPRECATED_SPELLINGS, spellingPath } from "@polaris-key/manifest";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SRC = join(HERE, "..", "src");
@@ -113,8 +114,11 @@ function issuesWith(
   );
 }
 
-/** Follow a manifest path (`product:web.origins`) through a JSON Schema's properties and refs. */
-function schemaHasPath(path: string): boolean {
+/**
+ * Follow a manifest path (`product:web.origins`) through a JSON Schema's properties and refs.
+ * `"deprecated"` when a step of it is a property the schema marks deprecated (ST-19).
+ */
+function schemaHasPath(path: string): boolean | "deprecated" {
   const [doc, dotted] = path.split(":") as [string, string];
   const root = JSON.parse(
     readFileSync(join(SCHEMAS, `${doc}.schema.json`), "utf8"),
@@ -135,6 +139,7 @@ function schemaHasPath(path: string): boolean {
     return out;
   };
   let nodes = deref(root);
+  let deprecated = false;
   for (const seg of dotted.split(".")) {
     const next: Record<string, unknown>[] = [];
     for (const n of nodes) {
@@ -142,9 +147,10 @@ function schemaHasPath(path: string): boolean {
       if (props && seg in props) next.push(...deref(props[seg]));
     }
     if (next.length === 0) return false;
+    if (next.some((n) => n.deprecated === true)) deprecated = true;
     nodes = next;
   }
-  return true;
+  return deprecated ? "deprecated" : true;
 }
 
 function docsPageExists(link: string): boolean {
@@ -187,6 +193,8 @@ describe("the settings registry (ST-03)", () => {
       ["BLOB_GC_MODE", "blobs.gc.mode"],
       ["BLOB_GC_GRACE_DAYS", "blobs.gc.graceDays"],
       ["LICENSING_RESERVED_NAMES", "licensing.reservedNames"],
+      // PX-W13: the reserved display-name severity, an ordered enum like LX-05's.
+      ["IDENTITY_RESERVED_DISPLAY_NAMES", "identity.reservedDisplayNames"],
     ];
     for (const [alias, key] of pairs) {
       expect(SETTINGS.canonicalKey(alias)).toBe(key);
@@ -268,6 +276,128 @@ describe("the settings registry (ST-03)", () => {
     for (const e of SETTINGS.entries) expect("accountMerge" in e).toBe(false);
   });
 
+  it("registers the Polaris Key storefront's listing settings (PS-02, S-21 §6.2)", () => {
+    const keys = SETTINGS.entries
+      .filter((e) => e.key.startsWith("storefront."))
+      .map((e) => `${e.scope} ${e.key}`);
+    expect(keys).toEqual([
+      "platform storefront.polarisKey.enabled",
+      "product storefront.polarisKey.listed",
+      "product storefront.polarisKey.audience",
+      "product storefront.polarisKey.offerPaths",
+      "product storefront.polarisKey.groupLabels",
+    ]);
+    // Core's slice owns the namespace: every product can list, Distribution on or off.
+    const core = SETTINGS.slices.find((s) => s.owner === "core")!;
+    expect(core.namespaces).toContain("storefront");
+
+    const enabled = SETTINGS.get("storefront.polarisKey.enabled", "platform")!;
+    expect(enabled).toMatchObject({
+      value: { kind: "switch" },
+      defaultValue: "on",
+      ownership: "operator",
+      confirm: { on: "L2", off: "L2" },
+      pending: { wp: "PS-03" },
+    });
+    expect(enabled.productLink).toBeUndefined(); // platform-only
+    // Not an A-13 store key: it has no row alias, so the A-13 route cannot write it.
+    expect(platformSettingDef("storefront.polarisKey.enabled")).toBeUndefined();
+
+    const listed = SETTINGS.get("storefront.polarisKey.listed", "product")!;
+    expect(listed).toMatchObject({
+      service: "core",
+      value: { kind: "enum", values: ["auto", "listed", "unlisted"] },
+      defaultValue: "auto",
+      ownership: "operator",
+      confirm: { change: "L1" },
+      storage: {
+        kind: "column",
+        table: "portal_product_settings",
+        column: "store_listed",
+      },
+    });
+    expect(listed.manifest).toBeUndefined();
+
+    const audience = SETTINGS.get("storefront.polarisKey.audience", "product")!;
+    expect(audience).toMatchObject({
+      value: { kind: "enum", values: ["eligible", "everyone"] },
+      defaultValue: "eligible",
+      ownership: "operator",
+      widensWhen: "higher",
+      critical: true,
+      confirm: { up: "L2", down: "L0" },
+      storage: { column: "store_audience" },
+    });
+
+    const paths = SETTINGS.get("storefront.polarisKey.offerPaths", "product")!;
+    expect(paths).toMatchObject({
+      defaultValue: null,
+      allowUnset: true,
+      ownership: "operator",
+      confirm: { change: "L1" },
+      storage: { column: "store_offer_paths_json" },
+    });
+    expect(paths.value).toEqual({
+      kind: "list",
+      of: {
+        kind: "enum",
+        values: [
+          "group",
+          "auto_issue",
+          "open",
+          "store_owned",
+          "product_idp",
+          "email_domain",
+        ],
+      },
+      max: 6,
+    });
+
+    const labels = SETTINGS.get(
+      "storefront.polarisKey.groupLabels",
+      "product",
+    )!;
+    expect(labels).toMatchObject({
+      value: { kind: "json" },
+      defaultValue: {},
+      confirm: { change: "L0" },
+      storage: { column: "store_group_labels_json" },
+    });
+    // Operator-owned until `.pkey/product` carries `storefront.groupLabels` (S-21 §6.2).
+    expect(labels.ownership).toBe("operator");
+
+    for (const e of [listed, audience, paths, labels]) {
+      expect(e.since).toBe("PS-02");
+      expect(e.pending).toBeUndefined();
+      expect(e.readers).toContain(
+        "services/identity/portal/storefrontListing.ts",
+      );
+    }
+    // S-18 D22's `identity.discover.listed` is superseded and never registered.
+    expect(SETTINGS.canonicalKey("identity.discover.listed")).toBeUndefined();
+  });
+
+  it("names only canonical manifest spellings (ST-19 registry ↔ manifest parity)", () => {
+    const deprecated = new Set(DEPRECATED_SPELLINGS.map(spellingPath));
+    for (const e of SETTINGS.entries) {
+      if (!e.manifest) continue;
+      expect(
+        deprecated.has(e.manifest.path),
+        `${e.key} ${e.manifest.path}`,
+      ).toBe(false);
+      // No step of the path is an old spelling either (a pending entry's path may not exist in
+      // the schema yet, but it must not run through a deprecated property).
+      expect(
+        schemaHasPath(e.manifest.path),
+        `${e.key} ${e.manifest.path}`,
+      ).not.toBe("deprecated");
+    }
+    // The check has teeth: an old spelling is caught.
+    expect(schemaHasPath("product:tiers")).toBe("deprecated");
+    expect(schemaHasPath("release:release.ghOwner")).toBe("deprecated");
+    expect(deprecated.has("product:tiers")).toBe(true);
+  });
+
   it("names readers that exist, docs pages that exist and manifest paths the schema has", () => {
     for (const e of SETTINGS.entries) {
       for (const r of e.readers)
@@ -276,7 +406,7 @@ describe("the settings registry (ST-03)", () => {
       if (e.manifest && !e.pending)
         expect(
           schemaHasPath(e.manifest.path),
-          `${e.key} ${e.manifest.path}`,
+          `${e.key} ${e.manifest.path} (a canonical spelling, ST-19)`,
         ).toBe(true);
     }
     expect(OFFLINE_DAYS_MAX).toBe(MAX_OFFLINE_DAYS);

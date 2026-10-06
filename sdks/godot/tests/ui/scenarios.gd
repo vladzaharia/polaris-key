@@ -62,6 +62,8 @@ func all() -> Array:
 				for web in [false, true]:
 					out.append(["activation", "license %s, identity %s, enrolment %s, %s" % [_on(lic), _on(idn), _on(enr), "web" if web else "native"], activation.bind(lic, idn, enr, web)])
 	out.append(["activation", "device limit", activation_result])
+	out.append(["activation", "device limit, replace a device (button)", activation_manage.bind("button")])
+	out.append(["activation", "device limit, replace a device (QR)", activation_manage.bind("qr")])
 	# ── PKeySignInDialog.
 	out.append(["sign_in", "starting", sign_in.bind("starting")])
 	out.append(["sign_in", "pending", sign_in.bind("pending")])
@@ -156,6 +158,21 @@ func activation_result() -> Control:
 	return p
 
 
+## PX-W8: a device-limit refusal that carries the portal link, offered as a button or a QR code.
+func activation_manage(how: String) -> Control:
+	var p := PKeyActivationPanel.new()
+	p.manage_mode = how
+	p.return_url = "mygame://activated"
+	p.set_capabilities(PKeyActivationController.capabilities(true, false, false, false))
+	add(p)
+	var r := PKeyActivationResult.of(PKeyActivationResult.KIND_DEVICE_LIMIT, PKeyErrors.DEVICE_LIMIT, "", 403)
+	r.limit = 1
+	r.device_count = 1
+	r.manage_url = "https://key.plrs.im/activate?product=djdl&next=free-device&for=Linux%20x86_64"
+	p.show_result(r, "pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV")
+	return p
+
+
 func prompt_fixture() -> PKeySignInPrompt:
 	var p := PKeySignInPrompt.new(true)
 	p.device_code = "dc_fixture"
@@ -165,6 +182,7 @@ func prompt_fixture() -> PKeySignInPrompt:
 	p.expires_in = 600
 	p.interval = 5
 	p.expires_at = NOW + 125
+	p.device_name = "Living room TV"
 	return p
 
 

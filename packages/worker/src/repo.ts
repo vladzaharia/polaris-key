@@ -176,7 +176,15 @@ export interface ProfileRow {
   payload_json: string;
   modified_by: string | null;
   modified_at: number;
+  /** ST-01b (0079): who owns the row. Absent on rows read before the migration ran. */
+  source?: RowSource;
 }
+
+/**
+ * ST-01b (migrations/0079): who owns a tier or profile row. A resync upserts only `manifest` rows
+ * and leaves `console` rows (created or edited in the console) alone.
+ */
+export type RowSource = "manifest" | "console";
 
 export interface TierRow {
   product: string;
@@ -193,6 +201,8 @@ export interface TierRow {
   policy_fingerprint?: string | null;
   modified_by: string | null;
   modified_at: number;
+  /** ST-01b (0079): who owns the row. */
+  source?: RowSource;
 }
 
 // Current hardware fingerprint per device (migrations/0010_fingerprint.sql). One row per
@@ -600,6 +610,72 @@ export function stmtInsertTier(t: TierInput): DbStatement {
       t.policyFingerprint ?? null,
       t.modifiedAt,
     ],
+  };
+}
+
+/**
+ * ST-01b: the resync's write of one manifest-declared tier. Inserts it as a `manifest` row, or
+ * updates the stored row only while it is still manifest-owned — the guard is the upsert's own
+ * WHERE, so a console edit that lands after the resync's reads is never overwritten.
+ */
+export function stmtUpsertManifestTier(t: TierInput): DbStatement {
+  return {
+    sql: `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_device_limit,
+             channels_json, min_version, max_version, policy_fingerprint, modified_by, modified_at,
+             source)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 'manifest')
+          ON CONFLICT(product, id) DO UPDATE SET
+            label = excluded.label, profile_id = excluded.profile_id,
+            policy_expiry_days = excluded.policy_expiry_days,
+            policy_device_limit = excluded.policy_device_limit,
+            channels_json = excluded.channels_json, min_version = excluded.min_version,
+            max_version = excluded.max_version, policy_fingerprint = excluded.policy_fingerprint,
+            modified_by = NULL, modified_at = excluded.modified_at
+          WHERE tiers.source = 'manifest'`,
+    params: stmtInsertTier(t).params,
+  };
+}
+
+/** ST-01b: the resync's write of one manifest-declared profile, under the same guard. */
+export function stmtUpsertManifestProfile(p: ProfileInput): DbStatement {
+  return {
+    sql: `INSERT INTO profiles (product, id, name, description, payload_json, modified_by, modified_at, source)
+          VALUES (?, ?, ?, ?, ?, NULL, ?, 'manifest')
+          ON CONFLICT(product, id) DO UPDATE SET
+            name = excluded.name, description = excluded.description,
+            payload_json = excluded.payload_json, modified_by = NULL,
+            modified_at = excluded.modified_at
+          WHERE profiles.source = 'manifest'`,
+    params: [
+      p.product,
+      p.id,
+      p.name,
+      p.description ?? null,
+      p.payloadJson,
+      p.modifiedAt,
+    ],
+  };
+}
+
+/** ST-01b: drop a manifest tier the manifest no longer declares (never a console row). */
+export function stmtDeleteManifestTier(
+  product: string,
+  id: string,
+): DbStatement {
+  return {
+    sql: "DELETE FROM tiers WHERE product = ? AND id = ? AND source = 'manifest'",
+    params: [product, id],
+  };
+}
+
+/** ST-01b: drop a manifest profile the manifest no longer declares (never a console row). */
+export function stmtDeleteManifestProfile(
+  product: string,
+  id: string,
+): DbStatement {
+  return {
+    sql: "DELETE FROM profiles WHERE product = ? AND id = ? AND source = 'manifest'",
+    params: [product, id],
   };
 }
 
@@ -1381,7 +1457,9 @@ export async function upsertDevice(db: Db, row: DeviceRow): Promise<void> {
   // I-05: `subject` is written on INSERT only (a first-ever bind through a sign-in) and otherwise
   // preserved, like `seat_no`: the binding changes only through `core/accountSubjects.ts`, so a
   // metadata touch or a token rotation can never set or drop it. `bound_by` keeps the stored
-  // value unless the caller names one (a fresh bind does; a touch does not).
+  // value unless the caller names one (a fresh bind does; a touch does not). PX-W13 §8 Q2:
+  // `label` is seeded from the device's reported label only while the row has none, so a
+  // console or portal rename always wins over what the device reports.
   await db.run(
     `INSERT INTO devices (product, device_id, customer_id, license_id, status, first_seen, last_seen, ua, label,
        overrides_json, reported_json, token_hash, platform, arch, app_version, sdk_name, sdk_version,
@@ -1393,7 +1471,8 @@ export async function upsertDevice(db: Db, row: DeviceRow): Promise<void> {
        ua = excluded.ua, token_hash = excluded.token_hash, platform = excluded.platform,
        arch = excluded.arch, app_version = excluded.app_version, sdk_name = excluded.sdk_name,
        sdk_version = excluded.sdk_version,
-       bound_by = COALESCE(excluded.bound_by, devices.bound_by)`,
+       bound_by = COALESCE(excluded.bound_by, devices.bound_by),
+       label = COALESCE(devices.label, excluded.label)`,
     row.product,
     row.device_id,
     row.customer_id,
@@ -1538,23 +1617,28 @@ export async function setFingerprintPolicy(
   source: "manifest" | "admin",
   at: number,
 ): Promise<void> {
-  if (source === "manifest") {
-    await db.run(
-      `UPDATE products SET fingerprint_policy_json = ?, modified_at = ?
+  const stmt = stmtSetFingerprintPolicy(product, policyJson, source, at);
+  await db.run(stmt.sql, ...stmt.params);
+}
+
+/** `setFingerprintPolicy` as a statement, for a batch (ST-01b: the resync applies in one batch). */
+export function stmtSetFingerprintPolicy(
+  product: string,
+  policyJson: string | null,
+  source: "manifest" | "admin",
+  at: number,
+): DbStatement {
+  if (source === "manifest")
+    return {
+      sql: `UPDATE products SET fingerprint_policy_json = ?, modified_at = ?
          WHERE slug = ? AND COALESCE(fingerprint_policy_source, 'manifest') = 'manifest'`,
-      policyJson,
-      at,
-      product,
-    );
-    return;
-  }
-  await db.run(
-    `UPDATE products SET fingerprint_policy_json = ?, fingerprint_policy_source = 'admin',
+      params: [policyJson, at, product],
+    };
+  return {
+    sql: `UPDATE products SET fingerprint_policy_json = ?, fingerprint_policy_source = 'admin',
        modified_at = ? WHERE slug = ?`,
-    policyJson,
-    at,
-    product,
-  );
+    params: [policyJson, at, product],
+  };
 }
 
 /** Hand a product's fingerprint policy back to manifest control (the "revert" action). */
@@ -1580,23 +1664,28 @@ export async function setAutoIssuePolicy(
   source: "manifest" | "admin",
   at: number,
 ): Promise<void> {
-  if (source === "manifest") {
-    await db.run(
-      `UPDATE products SET auto_issue_json = ?, modified_at = ?
+  const stmt = stmtSetAutoIssuePolicy(product, policyJson, source, at);
+  await db.run(stmt.sql, ...stmt.params);
+}
+
+/** `setAutoIssuePolicy` as a statement, for a batch (ST-01b: the resync applies in one batch). */
+export function stmtSetAutoIssuePolicy(
+  product: string,
+  policyJson: string | null,
+  source: "manifest" | "admin",
+  at: number,
+): DbStatement {
+  if (source === "manifest")
+    return {
+      sql: `UPDATE products SET auto_issue_json = ?, modified_at = ?
          WHERE slug = ? AND COALESCE(auto_issue_source, 'manifest') = 'manifest'`,
-      policyJson,
-      at,
-      product,
-    );
-    return;
-  }
-  await db.run(
-    `UPDATE products SET auto_issue_json = ?, auto_issue_source = 'admin',
+      params: [policyJson, at, product],
+    };
+  return {
+    sql: `UPDATE products SET auto_issue_json = ?, auto_issue_source = 'admin',
        modified_at = ? WHERE slug = ?`,
-    policyJson,
-    at,
-    product,
-  );
+    params: [policyJson, at, product],
+  };
 }
 
 /**
@@ -1616,23 +1705,28 @@ export async function setServices(
   source: "manifest" | "admin",
   at: number,
 ): Promise<void> {
-  if (source === "manifest") {
-    await db.run(
-      `UPDATE products SET services_json = ?, modified_at = ?
+  const stmt = stmtSetServices(product, servicesJson, source, at);
+  await db.run(stmt.sql, ...stmt.params);
+}
+
+/** `setServices` as a statement, for a batch (ST-01b: the resync applies in one batch). */
+export function stmtSetServices(
+  product: string,
+  servicesJson: string | null,
+  source: "manifest" | "admin",
+  at: number,
+): DbStatement {
+  if (source === "manifest")
+    return {
+      sql: `UPDATE products SET services_json = ?, modified_at = ?
          WHERE slug = ? AND COALESCE(services_source, 'manifest') = 'manifest'`,
-      servicesJson,
-      at,
-      product,
-    );
-    return;
-  }
-  await db.run(
-    `UPDATE products SET services_json = ?, services_source = 'admin',
+      params: [servicesJson, at, product],
+    };
+  return {
+    sql: `UPDATE products SET services_json = ?, services_source = 'admin',
        modified_at = ? WHERE slug = ?`,
-    servicesJson,
-    at,
-    product,
-  );
+    params: [servicesJson, at, product],
+  };
 }
 
 /**

@@ -2,6 +2,7 @@
 // an app goes from the client to a verified update and a mounted pack with SDK modules only.
 //
 //   core.store            AndroidKeystoreStore (unless CoreOptions.store is set)
+//   core.defaultDeviceName  Settings.Global.DEVICE_NAME, else Build.MODEL (unless set; PX-W13)
 //   devices.fingerprint   AndroidFingerprintSource (unless LicenseClientOptions.fingerprintSource is set)
 //   devices.facts         AndroidDeviceFactsSource (unless PolarisKeyClientOptions.factsSource is set)
 //   outlet.detect         AndroidOutletSignalReader (unless UpdateClientOptions.signals is set)
@@ -75,7 +76,11 @@ public object PolarisKeyAndroid {
         val self = AtomicReference<PolarisKeyClient>()
         fun client(): PolarisKeyClient = self.get() ?: error("the client is still being constructed")
 
-        val core = options.core.copy(store = options.core.store ?: AndroidKeystoreStore(ctx, product, android.legacyStore))
+        val core = options.core.copy(
+            store = options.core.store ?: AndroidKeystoreStore(ctx, product, android.legacyStore),
+            // PX-W13 (§12.7.1): the device name the user set, else the model.
+            defaultDeviceName = options.core.defaultDeviceName ?: { androidDeviceName(ctx) },
+        )
         val license = options.license.copy(fingerprintSource = options.license.fingerprintSource ?: AndroidFingerprintSource(ctx, product))
         val update = options.update?.let { u ->
             u.copy(
@@ -130,4 +135,15 @@ public object PolarisKeyAndroid {
 
     /** UpdateClientOptions' default methods, which the flavour's replace. */
     private val DEFAULT_METHODS = listOf(BinaryMethod.download)
+}
+
+
+/** The device's user-visible name (`Settings.Global.DEVICE_NAME`), else `Build.MODEL` (PX-W13). */
+internal fun androidDeviceName(context: Context): String? {
+    val named = try {
+        android.provider.Settings.Global.getString(context.contentResolver, android.provider.Settings.Global.DEVICE_NAME)
+    } catch (e: Exception) {
+        null
+    }
+    return named?.takeIf { it.isNotBlank() } ?: Build.MODEL?.takeIf { it.isNotBlank() }
 }

@@ -1,0 +1,87 @@
+{
+  "transcriptVersion": 1,
+  "id": "devicecode-label",
+  "description": "The device label (WIRE-CONTRACT-V4 §12.7.1). beginSignIn() is passed a raw name carrying a right-to-left override, a tab and 70 code points; the SDK normalises it before sending (the override deleted, the tab a space, cut to 64 code points), so the body holds exactly the normalised label, and the prompt's deviceName is the Worker's echo of it.",
+  "features": ["identity.devicecode", "identity.devicelabel"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "version": "1.0.0",
+    "services": ["license", "config", "identity"]
+  },
+  "steps": [
+    {
+      "action": "beginSignIn",
+      "args": {
+        "deviceName": "Living room TV\u202egnp.exe\txxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/auth/device/start",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+                  "deviceName": "Living room TVgnp.exe xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "status": "pending",
+                "deviceCode": "E8HsYoCK-5ApSLmaGLdprg",
+                "userCode": "MVMN-CFVK",
+                "verificationUri": "https://key.plrs.im/djdl/identity/auth/device",
+                "verificationUriComplete": "https://key.plrs.im/djdl/identity/auth/device?user_code=MVMN-CFVK",
+                "expiresIn": 600,
+                "interval": 2,
+                "pollUrl": "https://key.plrs.im/djdl/identity/auth/device/poll",
+                "deviceName": "Living room TVgnp.exe xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "prompt": {
+          "userCode": "MVMN-CFVK",
+          "verificationUri": "https://key.plrs.im/djdl/identity/auth/device",
+          "verificationUriComplete": "https://key.plrs.im/djdl/identity/auth/device?user_code=MVMN-CFVK",
+          "expiresIn": 600,
+          "interval": 2,
+          "deviceName": "Living room TVgnp.exe xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        },
+        "tokenHeld": false
+      }
+    }
+  ]
+}

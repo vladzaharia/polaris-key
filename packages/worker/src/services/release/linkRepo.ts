@@ -66,6 +66,7 @@ import { stmtUpsertManifestPublisher } from "../../core/publisher.js";
 import { manifestSnapshotStatement } from "../../core/manifestSnapshot.js";
 import { reservedNamesMode } from "../../core/reservedNames.js";
 import type { LinkCheck } from "./linkExisting.js";
+import { reservedDisplayNamesMode } from "../../core/reservedDisplayNames.js";
 
 export type LinkRepoResult =
   | {
@@ -736,6 +737,7 @@ export async function linkRepo(
 
   const result = parseManifest(files, {
     reservedNames: await reservedNamesMode(env, db),
+    reservedDisplayNames: await reservedDisplayNamesMode(env, db),
   });
   if (!result.ok)
     return {

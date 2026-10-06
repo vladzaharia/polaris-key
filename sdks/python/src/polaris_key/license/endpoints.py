@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 from ..constants_generated import ErrorCode
 from ..core.context import DocumentResult
 from ..core.errors import PolarisError
+from ..core.manage import read_manage_url
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from ..core.context import CoreContext
@@ -61,13 +62,17 @@ class ActivationOk:
 @dataclass(frozen=True)
 class ActivationDeviceLimit:
     """403 ``device_limit``: the licence has no free seat. ``limit`` and ``deviceCount`` when
-    the server sent them. The SDK builds no portal URL here (owner decision Q6): the
-    "Manage devices" link is the server-supplied ``manageUrl`` once the Worker sends it."""
+    the server sent them. The SDK builds no portal URL (owner decision Q6): ``manage_url``
+    (PX-W8) is the server-supplied customer-portal link that frees a seat, present while the
+    product's portal is on; add the app's return with :func:`polaris_key.with_manage_return`
+    and, on an ``/activate`` link, the key with :func:`polaris_key.with_manage_key`. Never an
+    auth failure."""
 
     limit: Optional[int] = None
     deviceCount: Optional[int] = None
     kind: str = "device-limit"
     code: str = "device_limit"
+    manage_url: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -250,6 +255,7 @@ def activation_result_from(status: int, body: Dict[str, Any], res: Any = None) -
         return ActivationDeviceLimit(
             limit=_int_or_none(_field(body, "limit")),
             deviceCount=_int_or_none(_field(body, "deviceCount")),
+            manage_url=read_manage_url(body),
         )
     if code == "hardware_mismatch" or (code is None and status == 409):
         changed = _field(body, "changed")
@@ -286,6 +292,7 @@ def _activation_like(
     path: str,
     headers: Dict[str, str],
     fingerprint: Optional[dict] = None,
+    device_name: Optional[str] = None,
 ) -> ActivationResult:
     """The three mint/rotate endpoints share a response ladder, so they share a reader
     (:func:`activation_result_from`).
@@ -301,13 +308,17 @@ def _activation_like(
     # connection, so the caller could never branch on the one thing it can actually fix.
     ctx.http()
     try:
+        body: Dict[str, object] = {}
         if fingerprint:
-            res = ctx.request(
-                "POST", ctx.url(path), headers=headers, json={"fingerprint": fingerprint}
-            )
+            body["fingerprint"] = fingerprint
+        if device_name:
+            # PX-W13 §8 Q2: activation only (never enroll or token rotation).
+            body["deviceName"] = device_name
+        if body:
+            res = ctx.request("POST", ctx.url(path), headers=headers, json=body)
         else:
-            # No body at all when there is no fingerprint, so a host that opted out sends
-            # a byte-identical request to one that has nothing to report.
+            # No body at all when there is neither a fingerprint nor a label, so a host that
+            # opted out sends a byte-identical request to one that has nothing to report.
             res = ctx.request("POST", ctx.url(path), headers=headers)
     except PolarisError:
         raise
@@ -350,6 +361,7 @@ def activate_with_key(
         "license/activate",
         ctx.headers({"authorization": f"Bearer {key}"}),
         fingerprint,
+        ctx.device_label(),
     )
 
 

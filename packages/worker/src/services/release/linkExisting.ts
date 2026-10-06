@@ -31,13 +31,15 @@
 import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import type { Db, Env } from "../../core/platform.js";
 import {
-  countLicensesUsingProfile,
+  claimedKeys,
   countLicensesUsingTier,
   getActiveSchema,
+  getManifestSnapshot,
   getProduct,
   listProfiles,
   listTiers,
   stmtInsertReleaseConfig,
+  type ClaimKey,
 } from "../../core/ingest.js";
 import { parseServices } from "../../core/services.js";
 import { reservedNamesMode } from "../../core/reservedNames.js";
@@ -52,11 +54,13 @@ import {
 import { digestManifestFiles, parseRepoUrl } from "./linkRepo.js";
 import { fetchPinnedManifestFiles } from "./manifestFetch.js";
 import {
+  countLicensesListingProfile,
   issuerChangeRefusal,
   readLinkedManifest,
   resolveManifestPublisher,
   resyncRepo,
   screenCatalog,
+  snapshotRowIds,
   unsafeBinaryNameRefusal,
   type ResyncResult,
 } from "./resync.js";
@@ -249,10 +253,17 @@ export async function prepareLink(
 
   // The refusals `applyRepoManifest` reaches only after its first write, run here first so a
   // link either applies whole or not at all.
-  const policy = await manifestPolicyRefusal(env, db, slug, repo, manifest);
+  const policy = await manifestPolicyRefusal(
+    env,
+    db,
+    slug,
+    repo,
+    manifest,
+    now,
+  );
   if (policy) return refuse("policy", policy.summary);
 
-  const plan = await planRepoManifest(db, slug, manifest);
+  const plan = await planRepoManifest(db, slug, manifest, now);
   plan.apply.unshift({
     area: "source",
     summary: `Source becomes ${owner}/${repo}: pushes to its default branch re-apply .pkey/`,
@@ -412,17 +423,20 @@ async function manifestPolicyRefusal(
   slug: string,
   repo: string,
   manifest: ParsedManifest,
+  now: number,
 ): Promise<PlanItem | null> {
   const binary = unsafeBinaryNameRefusal(manifest, repo);
   if (binary) return { area: "release", summary: binary };
   const issuer = await issuerChangeRefusal(env, db, slug, manifest);
   if (issuer) return { area: "oidc", summary: issuer };
-  // Screened only when it changed, as resync does: an unchanged catalog is already stored and
-  // resync will not publish it again.
+  // Screened only when it changed and the console has not claimed it (ST-01b), as resync does: an
+  // unchanged or claimed catalog is not published by the resync.
   const active = await getActiveSchema(db, slug);
+  const claims = await claimedKeys(db, slug, now);
   const screened = screenCatalog(
     manifest,
-    active?.catalog_json !== JSON.stringify(manifest.catalog),
+    !claims.has("config.catalog") &&
+      active?.catalog_json !== JSON.stringify(manifest.catalog),
   );
   if (!screened.ok) return { area: "catalog", summary: screened.error };
   return null;
@@ -459,8 +473,15 @@ export async function planResync(
   if (!read.ok) return refuse(read.check, read.error, read.errors);
   const { owner, repo, token, commit, manifest } = read;
 
-  const plan = await planRepoManifest(db, slug, manifest);
-  const policy = await manifestPolicyRefusal(env, db, slug, repo, manifest);
+  const plan = await planRepoManifest(db, slug, manifest, now);
+  const policy = await manifestPolicyRefusal(
+    env,
+    db,
+    slug,
+    repo,
+    manifest,
+    now,
+  );
   // The resync resolves the trusted publisher's repository ids before its first write and
   // refuses the push when GitHub cannot answer; the dry run makes the same lookup.
   const publisher = await resolveManifestPublisher(
@@ -531,11 +552,16 @@ const list = (ids: string[]): string =>
  * What applying `manifest` to `slug` will do, read from the same ownership columns
  * `applyRepoManifest` honours. Read-only. A row the manifest drops that licences still use is a
  * conflict (resync refuses it), not a deletion.
+ *
+ * ST-01b (S-18 model C): a console claim (`product_settings`) on a product field or the catalog,
+ * and a tier or profile with `source = 'console'`, are kept by the apply, so they are listed under
+ * `skipClaimed`; only `manifest` rows the manifest drops are deleted (or block, when referenced).
  */
 export async function planRepoManifest(
   db: Db,
   slug: string,
   manifest: ParsedManifest,
+  now: number,
 ): Promise<ManifestPlan> {
   const plan: ManifestPlan = {
     apply: [],
@@ -548,20 +574,50 @@ export async function planRepoManifest(
   const m = manifest.product;
 
   // ── the product row ────────────────────────────────────────────────────────
+  const claims = await claimedKeys(db, slug, now);
   const fields: string[] = [];
-  if (product.name !== m.name) fields.push(`name "${m.name}"`);
-  if (product.default_max_offline_days !== m.defaultMaxOfflineDays)
-    fields.push(`offline grace ${m.defaultMaxOfflineDays} days`);
-  if (product.default_device_limit !== m.defaultDeviceLimit)
-    fields.push(`device limit ${m.defaultDeviceLimit}`);
+  const kept: string[] = [];
+  const field = (
+    key: ClaimKey,
+    differs: boolean,
+    sets: string,
+    label: string,
+  ) => {
+    if (!differs) return;
+    if (claims.has(key)) kept.push(label);
+    else fields.push(sets);
+  };
+  field("core.name", product.name !== m.name, `name "${m.name}"`, "name");
+  field(
+    "license.defaults.maxOfflineDays",
+    product.default_max_offline_days !== m.defaultMaxOfflineDays,
+    `offline grace ${m.defaultMaxOfflineDays} days`,
+    "offline grace",
+  );
+  field(
+    "license.defaults.deviceLimit",
+    product.default_device_limit !== m.defaultDeviceLimit,
+    `device limit ${m.defaultDeviceLimit}`,
+    "device limit",
+  );
+  // The admin group is manifest-only (never claimable).
   if ((product.admin_group ?? null) !== (m.adminGroup ?? null))
     fields.push(
       m.adminGroup ? `admin group ${m.adminGroup}` : "no admin group",
     );
-  if (!sameJson(parseJson(product.web_origins_json) ?? [], manifest.webOrigins))
-    fields.push(`${manifest.webOrigins.length} web origins`);
+  field(
+    "core.web.origins",
+    !sameJson(parseJson(product.web_origins_json) ?? [], manifest.webOrigins),
+    `${manifest.webOrigins.length} web origins`,
+    "web origins",
+  );
   if (fields.length)
     plan.apply.push({ area: "product", summary: `Sets ${fields.join(", ")}` });
+  if (kept.length)
+    plan.skipClaimed.push({
+      area: "product",
+      summary: `${kept.join(", ")} ${kept.length === 1 ? "stays" : "stay"} as set in the console`,
+    });
 
   const compatDiffers =
     product.compat_min !== m.compatMin || product.compat_max !== m.compatMax;
@@ -626,7 +682,17 @@ export async function planRepoManifest(
   const active = await getActiveSchema(db, slug);
   const before = catalogKeys(parseJson(active?.catalog_json));
   const after = catalogKeys(manifest.catalog);
-  if ((active?.catalog_json ?? null) !== JSON.stringify(manifest.catalog)) {
+  if (
+    claims.has("config.catalog") &&
+    (active?.catalog_json ?? null) !== JSON.stringify(manifest.catalog)
+  )
+    plan.skipClaimed.push({
+      area: "catalog",
+      summary: "The catalog stays as set in the console",
+    });
+  else if (
+    (active?.catalog_json ?? null) !== JSON.stringify(manifest.catalog)
+  ) {
     const added = [...after.keys()].filter((k) => !before.has(k));
     const changed = [...after.keys()].filter(
       (k) => before.has(k) && before.get(k) !== after.get(k),
@@ -648,20 +714,45 @@ export async function planRepoManifest(
         });
   }
 
-  // ── tiers and profiles: replaced; a dropped row in use blocks ──────────────
+  // ── tiers and profiles, per row (resync's ST-01b rules) ────────────────────
+  // A `manifest` row the manifest declares is replaced; a `console` row is never touched (a
+  // manifest row with its id is not applied); a dropped `manifest` row is deleted, or blocks when
+  // licences (or, for a profile, a surviving tier) still use it.
+  const previousIds = snapshotRowIds(
+    (await getManifestSnapshot(db, slug))?.manifest_json,
+  );
   const tiers = await listTiers(db, slug);
+  const consoleTiers = new Set(
+    tiers.filter((t) => t.source === "console").map((t) => t.id),
+  );
   const tierIds = new Set(tiers.map((t) => t.id));
+  const keptRow = (
+    kind: "tier" | "profile",
+    id: string,
+    before: Set<string>,
+  ) =>
+    before.has(id)
+      ? `${kind === "tier" ? "Tier" : "Profile"} ${id} stays as set in the console`
+      : `${kind === "tier" ? "Tier" : "Profile"} ${id} was created in the console and stays; the manifest's ${kind} ${id} is not applied until one of them is renamed`;
+  const appliedTiers = manifest.tiers.filter((t) => !consoleTiers.has(t.id));
   for (const t of manifest.tiers)
-    plan.apply.push({
-      area: "tiers",
-      id: t.id,
-      summary: tierIds.has(t.id)
-        ? `Tier ${t.id} replaced from the manifest`
-        : `Tier ${t.id} added`,
-    });
+    if (consoleTiers.has(t.id))
+      plan.skipClaimed.push({
+        area: "tiers",
+        id: t.id,
+        summary: keptRow("tier", t.id, previousIds.tiers),
+      });
+    else
+      plan.apply.push({
+        area: "tiers",
+        id: t.id,
+        summary: tierIds.has(t.id)
+          ? `Tier ${t.id} replaced from the manifest`
+          : `Tier ${t.id} added`,
+      });
   const nextTiers = new Set(manifest.tiers.map((t) => t.id));
   for (const t of tiers) {
-    if (nextTiers.has(t.id)) continue;
+    if (consoleTiers.has(t.id) || nextTiers.has(t.id)) continue;
     const refs = await countLicensesUsingTier(db, slug, t.id);
     if (refs > 0)
       plan.conflicts.push({
@@ -673,24 +764,44 @@ export async function planRepoManifest(
   }
 
   const profiles = await listProfiles(db, slug);
+  const consoleProfiles = new Set(
+    profiles.filter((p) => p.source === "console").map((p) => p.id),
+  );
   const profileIds = new Set(profiles.map((p) => p.id));
   for (const p of manifest.profiles)
-    plan.apply.push({
-      area: "profiles",
-      id: p.id,
-      summary: profileIds.has(p.id)
-        ? `Profile ${p.id} replaced from the manifest (secret values set in the console are kept)`
-        : `Profile ${p.id} added`,
-    });
+    if (consoleProfiles.has(p.id))
+      plan.skipClaimed.push({
+        area: "profiles",
+        id: p.id,
+        summary: keptRow("profile", p.id, previousIds.profiles),
+      });
+    else
+      plan.apply.push({
+        area: "profiles",
+        id: p.id,
+        summary: profileIds.has(p.id)
+          ? `Profile ${p.id} replaced from the manifest (secret values set in the console are kept)`
+          : `Profile ${p.id} added`,
+      });
+  // The tiers that survive the apply: the console's, plus the manifest's applied ones.
+  const survivingTierProfiles = [
+    ...tiers.filter((t) => consoleTiers.has(t.id)).map((t) => t.profile_id),
+    ...appliedTiers.map((t) => t.profileId ?? null),
+  ];
   const nextProfiles = new Set(manifest.profiles.map((p) => p.id));
   for (const p of profiles) {
-    if (nextProfiles.has(p.id)) continue;
-    const refs = await countLicensesUsingProfile(db, slug, p.id);
-    if (refs > 0)
+    if (consoleProfiles.has(p.id) || nextProfiles.has(p.id)) continue;
+    const licences = await countLicensesListingProfile(db, slug, p.id);
+    const usedByTiers = survivingTierProfiles.filter((x) => x === p.id).length;
+    if (licences + usedByTiers > 0)
       plan.conflicts.push({
         area: "profiles",
         id: p.id,
-        summary: `Profile ${p.id} is not in the manifest but ${refs} ${refs === 1 ? "license uses" : "licenses use"} it: add it to .pkey/schema or move them first`,
+        summary: `Profile ${p.id} is not in the manifest but ${
+          licences
+            ? `${licences} ${licences === 1 ? "license uses" : "licenses use"} it`
+            : `${usedByTiers === 1 ? "a tier uses" : `${usedByTiers} tiers use`} it`
+        }: add it to .pkey/schema or move them first`,
       });
     else
       plan.delete.push({

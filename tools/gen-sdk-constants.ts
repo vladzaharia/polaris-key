@@ -32,8 +32,10 @@
 //                                       carry them
 //   conformance/corpus/v2/*.json        corpusVersion, gateMatrixVersion, fingerprintVersion,
 //                                       stageMatrixVersion, updateMatrixVersion,
-//                                       outletMatrixVersion, planMatrixVersion, and
+//                                       outletMatrixVersion, planMatrixVersion,
+//                                       syncScenariosVersion, deviceLabelVersion, and
 //                                       content/cases.json's contentCorpusVersion
+//   @polaris-key/protocol/identity      the IDENTITY_EXPORTS (WIRE-CONTRACT-V4 §12.7, PX-W13)
 //
 // Outputs, each with a GENERATED banner (TypeScript is prettier-formatted, as sign-corpus.ts
 // does): see TARGETS. The GDScript module is written only while `sdks/godot/addons/polaris_key`
@@ -70,6 +72,7 @@ import {
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as protocolCore from "@polaris-key/protocol/core";
+import * as protocolIdentity from "@polaris-key/protocol/identity";
 import Ajv2020Module from "ajv/dist/2020.js";
 import * as prettier from "prettier";
 import {
@@ -158,6 +161,8 @@ export interface Sources {
     updateMatrixVersion: number;
     outletMatrixVersion: number;
     planMatrixVersion: number;
+    syncScenariosVersion: number;
+    deviceLabelVersion: number;
     contentCorpusVersion: number;
   };
 }
@@ -617,7 +622,8 @@ export function loadSources(root = ROOT): Sources {
     services: loadTable(join(root, "tools", "services.json")).services.map(
       (r) => r.slug,
     ),
-    protocol: { ...protocolCore },
+    // The identity subpath's exports join core's; only the names in IDENTITY_EXPORTS are read.
+    protocol: { ...protocolCore, ...protocolIdentity },
     copy,
     corpus: {
       corpusVersion: corpus("cases.json", "corpusVersion"),
@@ -627,6 +633,11 @@ export function loadSources(root = ROOT): Sources {
       updateMatrixVersion: corpus("update-matrix.json", "updateMatrixVersion"),
       outletMatrixVersion: corpus("outlet-matrix.json", "outletMatrixVersion"),
       planMatrixVersion: corpus("plan-matrix.json", "planMatrixVersion"),
+      syncScenariosVersion: corpus(
+        "sync-scenarios.json",
+        "syncScenariosVersion",
+      ),
+      deviceLabelVersion: corpus("device-label.json", "deviceLabelVersion"),
       contentCorpusVersion: corpus(
         "content/cases.json",
         "contentCorpusVersion",
@@ -854,6 +865,14 @@ export const PACK_LIMIT_EXPORTS = [
   "MAX_CHUNK_BYTES",
 ] as const;
 
+/** The device-label and request-handle constants every SDK carries (WIRE-CONTRACT-V4 §12.7,
+ *  plans/PX-W13.md §2; `@polaris-key/protocol/identity`). */
+export const IDENTITY_EXPORTS = [
+  "DEVICE_LABEL_MAX_CODEPOINTS",
+  "REQUEST_HANDLE_PATTERN",
+  "REQUEST_HANDLE_TTL_SECONDS",
+] as const;
+
 /** The three P4-10 entries of `PACK_LIMIT_EXPORTS`, documented against plans/P4-10.md. */
 const CHUNK_LIMIT_EXPORTS: ReadonlySet<string> = new Set([
   "CHUNKS_FORMAT",
@@ -995,6 +1014,16 @@ export function buildModel(sources: Sources): Model {
       value: sources.corpus.planMatrixVersion,
     },
     {
+      name: "SYNC_SCENARIOS_VERSION",
+      doc: "`syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json.",
+      value: sources.corpus.syncScenariosVersion,
+    },
+    {
+      name: "DEVICE_LABEL_VERSION",
+      doc: "`deviceLabelVersion` of conformance/corpus/v2/device-label.json.",
+      value: sources.corpus.deviceLabelVersion,
+    },
+    {
       name: "CONTENT_CORPUS_VERSION",
       doc: "`contentCorpusVersion` of conformance/corpus/v2/content/cases.json.",
       value: sources.corpus.contentCorpusVersion,
@@ -1023,6 +1052,21 @@ export function buildModel(sources: Sources): Model {
       return {
         name,
         doc: `Packs on the wire: \`${name}\` (${CHUNK_LIMIT_EXPORTS.has(name) ? "plans/P4-10.md §2.3" : "plans/P4-01.md §2.13"}, \`@polaris-key/protocol/core\`).`,
+        value,
+      };
+    }),
+    ...IDENTITY_EXPORTS.map((name) => {
+      const value = protocol[name];
+      if (
+        typeof value !== "string" &&
+        (typeof value !== "number" || !Number.isSafeInteger(value))
+      )
+        throw new Error(
+          `@polaris-key/protocol/identity exports no integer or string ${name}`,
+        );
+      return {
+        name,
+        doc: `Identity passthrough: \`${name}\` (WIRE-CONTRACT-V4 §12.7, \`@polaris-key/protocol/identity\`).`,
         value,
       };
     }),
