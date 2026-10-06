@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 // Used only to measure the quadratic path we deliberately turned OFF, as a control.
 import { parse as parseYaml } from "yaml";
+import { globWork } from "./globWork.js";
 import {
   APP_DELIVERABLE_ID,
   ARTIFACT_ROLES,
@@ -2097,11 +2098,19 @@ describe("matchesArtifactGlob", () => {
   });
 
   it("stays linear on a pathological glob", () => {
+    // Counted (globWork.steps), not timed. With one backtrack point the matcher restarts at most
+    // once per name position for each glob position, so it never takes more than
+    // (|glob| + 1) x (|name| + 1) steps, and on this input it is linear (510 steps today); a
+    // matcher that backtracked into every earlier `*` (or a compiled `.*a.*a…` RegExp) grows
+    // exponentially with the stars instead.
     const glob = `${"*a".repeat(60)}b`;
     const name = "a".repeat(255);
-    const t0 = performance.now();
+    const before = globWork.steps;
     expect(matchesArtifactGlob(glob, name)).toBe(false);
-    expect(performance.now() - t0).toBeLessThan(50);
+    const steps = globWork.steps - before;
+    expect(steps).toBeGreaterThan(0);
+    expect(steps).toBeLessThanOrEqual((glob.length + 1) * (name.length + 1));
+    expect(steps).toBeLessThanOrEqual(4 * (glob.length + name.length));
   });
 
   it("validates a glob's shape", () => {
