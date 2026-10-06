@@ -1415,11 +1415,11 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "packs.transport.msix" to CapabilityRow("na", "distribution", listOf(CapabilityNa("android", "runtime"), CapabilityNa("jvm", "runtime"))),
     "packs.transport.flatpak" to CapabilityRow("na", "distribution", listOf(CapabilityNa("android", "runtime"), CapabilityNa("jvm", "runtime"))),
     "ui.stages" to CapabilityRow("implemented", "sdk", listOf()),
-    "ui.boot" to CapabilityRow("planned", "sdk", listOf()),
+    "ui.boot" to CapabilityRow("implemented", "sdk", listOf()),
     "ui.kit" to CapabilityRow("implemented", "sdk", listOf()),
     "ui.cli" to CapabilityRow("na", "sdk", listOf(CapabilityNa("android", "runtime"), CapabilityNa("jvm", "runtime"))),
     "commerce.receipt" to CapabilityRow("implemented", "license", listOf()),
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "e6595bde2260f03343df1123f46d6fe8d7477f9849d03bff07f7ba46d47c82b0"
+public const val CAPABILITY_DIGEST: String = "c1e6e41b771241ed799902ef367ae7d6f51b2a79fca7dfa970917fefad9b1a37"

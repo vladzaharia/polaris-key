@@ -39,64 +39,66 @@ import kotlinx.serialization.json.JsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-class StageMatrixTest : ConformanceSuite() {
-    private val matrix = Corpus.v2("stage-matrix.json")
+private fun stageStrings(e: JsonElement?) = e!!.arrayValue!!.map { it.stringValue!! }
 
+fun stageOptions(o: JsonObject) = BootOptions(
+    allowOffline = o["allowOffline"].boolValue ?: true,
+    allowGrace = o["allowGrace"].boolValue ?: true,
+    requiredPacks = o["requiredPacks"]?.let(::stageStrings) ?: emptyList(),
+    essentialPacks = o["essentialPacks"]?.let(::stageStrings) ?: emptyList(),
+)
+
+fun stageEvent(e: JsonObject): BootEvent = when (val type = e["type"].stringValue) {
+    "start" -> BootEvent.Start
+    "shell.done" -> BootEvent.ShellDone
+    "guard.done" -> BootEvent.GuardDone(BootEvent.GuardResult.entries.first { it.wire == e["result"].stringValue })
+    "sync.done" -> BootEvent.SyncDone(BootEvent.SyncResult.entries.first { it.wire == e["result"].stringValue })
+    "sync.timeout" -> BootEvent.SyncTimeout
+    "gate.status" -> BootEvent.GateStatus(LicenseStatus.of(e["status"].stringValue)!!)
+    "decide.done" -> BootEvent.DecideDone(BootEvent.Decision.entries.first { it.wire == e["decision"].stringValue })
+    "fetch.done" -> BootEvent.FetchDone(
+        BootEvent.FetchResult.entries.first { it.wire == e["result"].stringValue }, stageStrings(e["installed"]),
+    )
+    "mount.done" -> BootEvent.MountDone
+    "background.start" -> BootEvent.BackgroundStart
+    "background.done" -> BootEvent.BackgroundDone
+    "retry" -> BootEvent.Retry
+    "play-offline" -> BootEvent.PlayOffline
+    "fail" -> BootEvent.Fail(e["code"].stringValue!!)
+    "fetch.consent" -> BootEvent.FetchConsent(e["bytes"].longValue!!, e["metered"].boolValue!!)
+    "fetch.progress" -> BootEvent.FetchProgress(e["done"].longValue!!, e["total"].longValue!!)
+    else -> error("the Kotlin runner has no mapping for event $type")
+}
+
+/** An emit in the corpus's JSON vocabulary. */
+fun stageEmitJson(emit: BootEmit): JsonObject {
+    val m = linkedMapOf<String, JsonElement>("type" to JsonPrimitive(emit.type))
+    when (emit) {
+        is BootEmit.StageChanged -> {
+            m["stage"] = JsonPrimitive(emit.stage.wire)
+            m["previous"] = JsonPrimitive(emit.previous.wire)
+        }
+        is BootEmit.Waiting -> m["status"] = JsonPrimitive(emit.status.wire)
+        is BootEmit.Blocked -> m["reason"] = JsonPrimitive(emit.reason.wire)
+        is BootEmit.Offline -> m["canPlayOffline"] = JsonPrimitive(emit.canPlayOffline)
+        is BootEmit.Error -> m["code"] = JsonPrimitive(emit.code)
+        is BootEmit.ConsentNeeded -> {
+            m["bytes"] = jsonInt(emit.bytes)
+            m["metered"] = JsonPrimitive(emit.metered)
+        }
+        is BootEmit.FetchProgress -> {
+            m["done"] = jsonInt(emit.done)
+            m["total"] = jsonInt(emit.total)
+        }
+        else -> Unit
+    }
+    return JsonObject(m)
+}
+
+class StageMatrixTest : ConformanceSuite() {
     private fun strings(e: JsonElement?) = e!!.arrayValue!!.map { it.stringValue!! }
 
-    private fun options(o: JsonObject) = BootOptions(
-        allowOffline = o["allowOffline"].boolValue ?: true,
-        allowGrace = o["allowGrace"].boolValue ?: true,
-        requiredPacks = o["requiredPacks"]?.let(::strings) ?: emptyList(),
-        essentialPacks = o["essentialPacks"]?.let(::strings) ?: emptyList(),
-    )
-
-    private fun event(e: JsonObject): BootEvent = when (val type = e["type"].stringValue) {
-        "start" -> BootEvent.Start
-        "shell.done" -> BootEvent.ShellDone
-        "guard.done" -> BootEvent.GuardDone(BootEvent.GuardResult.entries.first { it.wire == e["result"].stringValue })
-        "sync.done" -> BootEvent.SyncDone(BootEvent.SyncResult.entries.first { it.wire == e["result"].stringValue })
-        "sync.timeout" -> BootEvent.SyncTimeout
-        "gate.status" -> BootEvent.GateStatus(LicenseStatus.of(e["status"].stringValue)!!)
-        "decide.done" -> BootEvent.DecideDone(BootEvent.Decision.entries.first { it.wire == e["decision"].stringValue })
-        "fetch.done" -> BootEvent.FetchDone(
-            BootEvent.FetchResult.entries.first { it.wire == e["result"].stringValue }, strings(e["installed"]),
-        )
-        "mount.done" -> BootEvent.MountDone
-        "background.start" -> BootEvent.BackgroundStart
-        "background.done" -> BootEvent.BackgroundDone
-        "retry" -> BootEvent.Retry
-        "play-offline" -> BootEvent.PlayOffline
-        "fail" -> BootEvent.Fail(e["code"].stringValue!!)
-        "fetch.consent" -> BootEvent.FetchConsent(e["bytes"].longValue!!, e["metered"].boolValue!!)
-        "fetch.progress" -> BootEvent.FetchProgress(e["done"].longValue!!, e["total"].longValue!!)
-        else -> error("the Kotlin runner has no mapping for event $type")
-    }
-
-    /** An emit in the corpus's JSON vocabulary. */
-    private fun json(emit: BootEmit): JsonObject {
-        val m = linkedMapOf<String, JsonElement>("type" to JsonPrimitive(emit.type))
-        when (emit) {
-            is BootEmit.StageChanged -> {
-                m["stage"] = JsonPrimitive(emit.stage.wire)
-                m["previous"] = JsonPrimitive(emit.previous.wire)
-            }
-            is BootEmit.Waiting -> m["status"] = JsonPrimitive(emit.status.wire)
-            is BootEmit.Blocked -> m["reason"] = JsonPrimitive(emit.reason.wire)
-            is BootEmit.Offline -> m["canPlayOffline"] = JsonPrimitive(emit.canPlayOffline)
-            is BootEmit.Error -> m["code"] = JsonPrimitive(emit.code)
-            is BootEmit.ConsentNeeded -> {
-                m["bytes"] = jsonInt(emit.bytes)
-                m["metered"] = JsonPrimitive(emit.metered)
-            }
-            is BootEmit.FetchProgress -> {
-                m["done"] = jsonInt(emit.done)
-                m["total"] = jsonInt(emit.total)
-            }
-            else -> Unit
-        }
-        return JsonObject(m)
-    }
+    private val matrix = Corpus.v2("stage-matrix.json")
 
     private fun acceptsKey(s: BootState): String = when {
         s.stage == BootStage.gate && s.outcome == BootOutcome.waiting -> "gate:waiting"
@@ -112,7 +114,7 @@ class StageMatrixTest : ConformanceSuite() {
         f.check(accepted != null) { "$where: accepts has no ${acceptsKey(state)}" }
         for (p in matrix["probes"]!!.arrayValue!!) {
             val e = p.obj
-            val result = bootTransition(state, event(e))
+            val result = bootTransition(state, stageEvent(e))
             val ignored = result.emits.isEmpty() && result.state == state
             val type = e["type"].stringValue!!
             f.equal(!(accepted ?: emptyList()).contains(type), ignored) { "$where: probe $type in ${acceptsKey(state)}" }
@@ -146,7 +148,7 @@ class StageMatrixTest : ConformanceSuite() {
         var states = 0
         for (row in rows) {
             val name = row["name"].stringValue!!
-            var state = initialBootState(options(row["init"]!!.obj))
+            var state = initialBootState(stageOptions(row["init"]!!.obj))
             val stages = ArrayList<String>()
             probe(state, "$name, initial state", f)
             states++
@@ -154,8 +156,8 @@ class StageMatrixTest : ConformanceSuite() {
                 val step = stepEl.obj
                 val e = step["event"]!!.obj
                 val where = "$name, step ${i + 1} (${e["type"].stringValue})"
-                val result = bootTransition(state, event(e))
-                val got = JsonArray(result.emits.map(::json))
+                val result = bootTransition(state, stageEvent(e))
+                val got = JsonArray(result.emits.map(::stageEmitJson))
                 f.check(jsonEquals(step["emits"], got)) { "$where: emits $got, expected ${step["emits"]}" }
                 for (emit in result.emits) if (emit is BootEmit.StageChanged) stages += emit.stage.wire
                 state = result.state
