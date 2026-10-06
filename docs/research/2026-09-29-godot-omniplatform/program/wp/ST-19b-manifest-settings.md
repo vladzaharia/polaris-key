@@ -90,6 +90,30 @@ the same count (21 in total).
 - **Wire.** None of these entries changes a signed document or discovery; set `wire` only where
   the value already reaches discovery or a document today.
 
+### Corrections from the build (the code is the fact)
+
+- **`core.secrets` has no storage of its own yet.** Nothing in the Worker reads
+  `secrets.required`: the validator collects it for `pkey validate`, and the console's setup check
+  (`admin/lib/shape.ts`) derives the required names from `oidc` and `edgeMint`. The values live in
+  `product_secrets`, whose `PENDING` entry belongs to ST-08. The entry is registered with
+  `storage: { kind: "none" }`, and ST-08 gives it the `product_secrets` adapter when it removes
+  its own entry. ST-08 should extend `core.secrets`, not register it again.
+- **`release.github` is stored from the link, not from the manifest.** `gh_owner`, `gh_repo` and
+  `gh_installation_id` come from the repository an operator links. The manifest's `provider` is
+  validated, and it is compared with the platform repository only for the system product
+  (`admin/systemProduct.ts`). The entry is `manifest`-owned, because the console has no write for
+  it besides Link and Unlink. Storage names `gh_owner`, because `storage` holds one column.
+- **Claimable, from the code:** `core.registration` (the Services page's PATCH claims
+  `services_json`), `release.channelPolicy` (console and CI operations claim the row) and
+  `release.publishing.trustedPublisher` (the console's `PUT …/ci-publisher` claims it; there is no
+  revert route yet). Everything else is `manifest`.
+- **`wire`** is set where a value already reaches a device: `core.registration` (discovery, and
+  the `registration_closed` refusal), `release.deliverables`, `release.channelPolicy`,
+  `distribution.transports` (the feed's pack sets, floors and pins), and `identity.provisioning`
+  (the entitlement a hook writes into the licence).
+- **`compatMax`** uses `manifest.alsoPaths`, which is checked by `rules.ts`, the registry test
+  and `settings-coverage.ts`, and is listed in the generated reference.
+
 ## Steps
 
 1. Release slice entries (the bulk).
@@ -99,9 +123,9 @@ the same count (21 in total).
 
 ## Acceptance criteria
 
-- [ ] No `PENDING` entry is owned by ST-19 or ST-19b.
-- [ ] `settings-registry.test.ts` and `settings-coverage.test.ts` pass; every new path is canonical.
-- [ ] `reference/settings.mdx` and the console search index are regenerated, not edited.
+- [x] No `PENDING` entry is owned by ST-19 or ST-19b.
+- [x] `settings-registry.test.ts` and `settings-coverage.test.ts` pass; every new path is canonical.
+- [x] `reference/settings.mdx` and the console search index are regenerated, not edited.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
