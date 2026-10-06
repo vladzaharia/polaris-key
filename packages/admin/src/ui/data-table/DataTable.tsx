@@ -333,10 +333,11 @@ export function changedRowIds<T>(
  * - **Motion** (notes/S-23 §6.1 "list"; MO-09): in client mode, up to VIRTUALIZE_ABOVE rows, a
  *   facet, chip or sort change (from the table, a page's own control or Back) and a refetch that
  *   adds, removes or reorders rows run as one `list` View Transition over the body (the layer
- *   names at most LIST_BUDGET rows, then only the rows on screen). React keeps keyed rows, so a surviving row moves rather than leaving
- *   and coming back. Typing in search never animates; the virtualised path never animates; a
- *   created or edited row is tinted (`highlight()`). The bulk-action bar enters and exits through
- *   `<Presence>`. Under reduced motion every change is an instant swap.
+ *   names at most LIST_BUDGET rows, then only the rows on screen). React keeps keyed rows, so a
+ *   surviving row moves rather than leaving and coming back. Typing in search never animates;
+ *   the virtualised path never animates; a created or edited row is tinted (`highlight()`). The
+ *   bulk-action bar enters and exits through `<Presence>`. Under reduced motion every change is
+ *   an instant swap.
  */
 export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   const {
@@ -488,8 +489,8 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   const loadedOnce = React.useRef(false);
 
   // A held view: start the transition. Created rows arrive, deleted and filtered-out rows leave,
-  // the rest move. A table scrolled sideways never animates (a row's snapshot is not clipped by
-  // its scroller).
+  // the rest move. A table wider than its scroller (one that can scroll sideways, scrolled or
+  // not) never animates: a row's snapshot is not clipped by the scroller.
   React.useLayoutEffect(() => {
     if (!moving || pending.current) return;
     const scroller = scrollRef.current;
@@ -861,7 +862,12 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
         ...o,
         count: counts ? (counts.get(o.value) ?? 0) : undefined,
       })),
-      selected: view.filters[f.id] ?? [],
+      // The controls (the menu's checkboxes, a chip's remove button) work on the live selection,
+      // so changes made while a transition holds the old view build on each other instead of on
+      // a stale copy; only the chips are drawn from the held view, since the chip row moves the
+      // table and must change inside the transition, not a frame before it.
+      selected: state.filters[f.id] ?? [],
+      chips: view.filters[f.id] ?? [],
       onChange: (next) =>
         update({ filters: { ...state.filters, [f.id]: next } }),
     };

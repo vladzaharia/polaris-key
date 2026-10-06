@@ -71,6 +71,41 @@ function withViewTransitions(): VtCall[] {
   return calls;
 }
 
+/**
+ * A View Transitions stand-in whose update waits until `release()`: the window in which the old
+ * view is held (one frame in a browser) stays open for as many interactions as a test needs.
+ */
+function withDeferredViewTransitions(): {
+  calls: () => number;
+  release: () => Promise<void>;
+} {
+  const updates: Array<() => void> = [];
+  let calls = 0;
+  doc.startViewTransition = (update: () => void) => {
+    calls++;
+    let ran!: () => void;
+    const done = new Promise<void>((r) => (ran = r));
+    updates.push(() => {
+      update();
+      ran();
+    });
+    return {
+      updateCallbackDone: done,
+      ready: done,
+      finished: done,
+      skipTransition: () => undefined,
+    };
+  };
+  return {
+    calls: () => calls,
+    release: async () => {
+      await act(async () => {
+        for (const run of updates.splice(0)) run();
+      });
+    },
+  };
+}
+
 /** jsdom has no Element.getAnimations: one running exit per element, finished by `finish()`. */
 function withExitAnimations(): { finish: () => Promise<void> } {
   let resolve: () => void = () => undefined;
@@ -397,6 +432,82 @@ describe("the list budget on both sides of the update", () => {
     finish();
     await handle.finished;
     list.remove();
+  });
+});
+
+describe("changes made while a list transition holds the old view", () => {
+  const chipValues = (): string[] =>
+    Array.from(
+      document.querySelectorAll<HTMLElement>(
+        '[aria-label="Active filters"] button[aria-label^="Remove filter"]',
+      ),
+    ).map((b) =>
+      b.getAttribute("aria-label")!.replace("Remove filter Status: ", ""),
+    );
+  const toggle = async (label: string): Promise<void> => {
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: new RegExp(`^${label}`) }),
+    );
+  };
+  const openMenu = (): Promise<void> =>
+    userEvent.click(
+      screen.getByRole("button", { name: /Filter by status|Status:/ }),
+    );
+
+  it("two facet toggles before the transition runs both apply", async () => {
+    const vt = withDeferredViewTransitions();
+    render(<Table />);
+    await openMenu();
+    await toggle("active");
+    await toggle("expired");
+    expect(vt.calls(), "one transition for the window").toBe(1);
+    // Inside the window the menu shows the live selection; the chip row (which moves the table)
+    // still draws the held one, and changes inside the transition.
+    expect(screen.getByRole("checkbox", { name: /^active/ })).toHaveProperty(
+      "checked",
+      true,
+    );
+    expect(chipValues()).toEqual([]);
+    await vt.release();
+    expect(ids()).toEqual(["r1", "r2", "r4", "r5", "r7", "r8"]);
+    expect(chipValues()).toEqual(["active", "expired"]);
+  });
+
+  it("two chip removals before the transition runs both apply", async () => {
+    const vt = withDeferredViewTransitions();
+    render(<Table initial={{ filters: { status: ["active", "expired"] } }} />);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove filter Status: active" }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove filter Status: expired" }),
+    );
+    expect(vt.calls()).toBe(1);
+    await vt.release();
+    expect(ids()).toHaveLength(8);
+    expect(chipValues()).toEqual([]);
+  });
+
+  it("a toggle on then off inside the window ends where it does under reduced motion", async () => {
+    const run = async (): Promise<string[]> => {
+      await openMenu();
+      await toggle("active");
+      await toggle("active");
+      return ids();
+    };
+    html.dataset.motion = "reduce";
+    const { unmount } = render(<Table />);
+    const reduced = await run();
+    unmount();
+    delete html.dataset.motion;
+
+    const vt = withDeferredViewTransitions();
+    render(<Table />);
+    await run();
+    await vt.release();
+    expect(ids()).toEqual(reduced);
+    expect(reduced).toHaveLength(8);
+    expect(chipValues()).toEqual([]);
   });
 });
 

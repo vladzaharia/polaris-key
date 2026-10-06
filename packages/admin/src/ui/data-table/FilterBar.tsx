@@ -14,6 +14,12 @@ export interface FilterBarFacet {
   label: string;
   options: (FacetOption & { count?: number })[];
   selected: string[];
+  /**
+   * The values drawn as chips (default `selected`). DataTable passes the selection it is still
+   * showing while a list transition holds the old view, so the chip row changes inside the
+   * transition; the menu and each chip's remove button still act on `selected`.
+   */
+  chips?: string[];
   onChange: (next: string[]) => void;
 }
 
@@ -215,7 +221,7 @@ export function FilterBar({
     search?.onChange ?? (() => undefined),
   );
   const chips: Chip[] = facets.flatMap((f) =>
-    f.selected.map((v) => ({
+    (f.chips ?? f.selected).map((v) => ({
       key: `${f.id}:${v}`,
       facet: f,
       value: v,
