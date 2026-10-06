@@ -1,0 +1,91 @@
+---
+/**
+ * A component's committed visual-QA baselines, one tab per kit that records any, each state in
+ * both themes side by side (docs/design/UI-KITS.md §6.2, §7.1). The images are the kit's own
+ * files (src/lib/baselines.ts), so this block always shows what the kit's tests compare against.
+ */
+import { Tabs, TabItem } from "@astrojs/starlight/components";
+import { BASELINES, DIRS, pairLabel, pairs } from "../../lib/baselines";
+import { CATALOG } from "../../lib/shots";
+import { UI_KITS } from "../../lib/uiKits";
+
+interface Props {
+  /** The component's catalog name, e.g. "Devices". */
+  component: string;
+}
+
+const { component } = Astro.props;
+const states = CATALOG[component];
+if (states === undefined) {
+  throw new Error(
+    `KitBaselines: "${component}" is not in packages/brand/kit-copy/components.json`,
+  );
+}
+const rank = (state: string): number =>
+  state === "" ? -1 : states.indexOf(state);
+
+const tabs = UI_KITS.map((kit) => ({
+  kit,
+  pairs: pairs(
+    BASELINES.filter((b) => b.kit === kit.id && b.component === component),
+  ).sort(
+    (a, b) =>
+      rank(a.state) - rank(b.state) || a.variant.localeCompare(b.variant),
+  ),
+})).filter((tab) => tab.pairs.length > 0);
+
+const THEMES = [
+  { id: "dark", label: "Dark" },
+  { id: "light", label: "Light" },
+] as const;
+---
+
+{
+  tabs.length === 0 ? (
+    <p class="pk-ui-muted">
+      No kit records a baseline for this component yet. Each kit's renders
+      appear here, in a tab of their own, as soon as its baselines are
+      committed.
+    </p>
+  ) : (
+    <Tabs syncKey="ui-kit">
+      {tabs.map(({ kit, pairs: kitPairs }) => (
+        <TabItem label={kit.label}>
+          <p class="pk-ui-muted">
+            From <code>{DIRS[kit.id]}/</code>, the {kit.label} kit's committed
+            baselines.
+          </p>
+          <div class="pk-ui-shots">
+            {kitPairs.map((pair) => (
+              <figure class="pk-ui-shot">
+                <figcaption class="pk-ui-shot__title">
+                  <code>{pairLabel(pair)}</code>
+                </figcaption>
+                <div class="pk-ui-shot__pair">
+                  {THEMES.map(({ id, label }) => {
+                    const shot = pair[id];
+                    return shot === undefined ? (
+                      <p class="pk-ui-shot__missing">No {id} baseline</p>
+                    ) : (
+                      <a class="pk-ui-shot__frame" href={shot.image.src}>
+                        <img
+                          src={shot.image.src}
+                          width={shot.image.width}
+                          height={shot.image.height}
+                          loading="lazy"
+                          decoding="async"
+                          alt={`${component}, ${pairLabel(pair)}, in the ${kit.label} kit, ${id} theme`}
+                        />
+                        <span class="pk-ui-shot__theme">{label}</span>
+                      </a>
+                    );
+                  })}
+                </div>
+              </figure>
+            ))}
+          </div>
+        </TabItem>
+      ))}
+    </Tabs>
+  )
+}

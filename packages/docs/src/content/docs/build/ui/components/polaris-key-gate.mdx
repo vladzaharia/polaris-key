@@ -1,0 +1,24 @@
+---
+title: "PolarisKeyGate"
+description: "The drop-in root: it boots, gates and runs every flow the product needs, renders the app once it is licensed, and adds the grace banner, the update prompt and toasts."
+sidebar:
+  order: 5
+---
+
+import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
+import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
+
+The drop-in root: it boots, gates and runs every flow the product needs, renders the app once it is licensed, and adds the grace banner, the update prompt and toasts. It starts itself, never flashes the sign-in form before the real state has loaded, and re-renders when the license changes in the background.
+
+## States and copy
+
+<ComponentStates component="PolarisKeyGate" />
+
+## Baselines
+
+<KitBaselines component="PolarisKeyGate" />
+
+## In each kit
+
+No kit documents PolarisKeyGate here yet. Each kit adds its tab when it ships the component: the drop-in,
+the styled part with its slots and restyle hooks, and the headless model.

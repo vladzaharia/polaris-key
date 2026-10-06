@@ -1,0 +1,84 @@
+---
+/**
+ * Which catalog components and states a kit has baselines for, linked to each component page,
+ * plus the kit's baselines whose names match no catalog component (so they show on no component
+ * page until the kit renames them to `<component>-<state>`).
+ */
+import { BASELINES, pairLabel, pairs } from "../../lib/baselines";
+import { CATALOG, kebab } from "../../lib/shots";
+import { kitById } from "../../lib/uiKits";
+
+interface Props {
+  /** The kit's id in src/lib/uiKits.ts, e.g. "compose". */
+  kit: string;
+}
+
+const kit = kitById(Astro.props.kit);
+const kitPairs = pairs(BASELINES.filter((b) => b.kit === kit.id));
+const rows = Object.entries(CATALOG).map(([component, states]) => {
+  const covered = kitPairs.filter((p) => p.component === component);
+  return {
+    component,
+    href: `/docs/build/ui/components/${kebab(component)}/`,
+    total: states.length,
+    states: [...new Set(covered.map((p) => pairLabel(p)))],
+    known: new Set(covered.map((p) => p.state).filter((s) => s !== "")).size,
+  };
+});
+const unmapped = [
+  ...new Set(
+    kitPairs.filter((p) => p.component === null).map((p) => p.name),
+  ),
+].sort();
+---
+
+<table class="pk-ui-coverage">
+  <thead>
+    <tr>
+      <th scope="col">Component</th>
+      <th scope="col">Catalog states with a baseline</th>
+      <th scope="col">Baselines</th>
+    </tr>
+  </thead>
+  <tbody>
+    {
+      rows.map((row) => (
+        <tr>
+          <td>
+            <a href={row.href}>{row.component}</a>
+          </td>
+          <td>
+            {row.known} of {row.total}
+          </td>
+          <td>
+            {row.states.length === 0 ? (
+              <span class="pk-ui-muted">None yet</span>
+            ) : (
+              row.states.map((s, i) => (
+                <>
+                  {i > 0 && ", "}
+                  <code>{s}</code>
+                </>
+              ))
+            )}
+          </td>
+        </tr>
+      ))
+    }
+  </tbody>
+</table>
+{
+  unmapped.length > 0 && (
+    <p>
+      Baselines whose names match no catalog component, so no component page
+      shows them yet:{" "}
+      {unmapped.map((name, i) => (
+        <>
+          {i > 0 && ", "}
+          <code>{name}</code>
+        </>
+      ))}
+      .
+    </p>
+  )
+}

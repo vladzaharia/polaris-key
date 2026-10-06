@@ -1,0 +1,24 @@
+---
+title: "EntitlementGate"
+description: "Renders its children only while an entitlement holds; otherwise a slot of the host's choosing or the paywall."
+sidebar:
+  order: 23
+---
+
+import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
+import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
+
+Renders its children only while an entitlement holds; otherwise a slot of the host's choosing or the paywall. It renders nothing of its own while the entitlement is loading.
+
+## States and copy
+
+<ComponentStates component="EntitlementGate" />
+
+## Baselines
+
+<KitBaselines component="EntitlementGate" />
+
+## In each kit
+
+No kit documents EntitlementGate here yet. Each kit adds its tab when it ships the component: the drop-in,
+the styled part with its slots and restyle hooks, and the headless model.

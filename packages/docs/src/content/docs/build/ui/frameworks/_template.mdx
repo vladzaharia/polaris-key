@@ -1,0 +1,56 @@
+---
+# The framework page template (build/ui/frameworks/). Starlight skips files whose names start
+# with "_", so this file is never published.
+#
+# For a kit's page: copy this file to <id>.mdx, where <id> is the kit's id in
+# src/lib/uiKits.ts (the same id names its sample folder, examples/ui/<id>/, and its baseline
+# directory in ui-qa's BASELINE_DIRS). Put the id in both component props, fill every section,
+# and add the kit's tab on the theming page and on each component page it implements. The kit
+# table on the overview and frameworks pages links the kit to this page by itself.
+#
+# Code blocks use the kit's real API and must run as written; every snippet in "The one-line
+# flow" is complete, imports and client construction included.
+title: "FrameworkName"
+description: "One sentence: the kit, the platforms it covers, and what it ships."
+sidebar:
+  order: 99
+---
+
+import KitCoverage from "../../../../../components/ui/KitCoverage.astro";
+import KitFacts from "../../../../../components/ui/KitFacts.astro";
+
+The lead: what the kit is, which platforms it covers, and which layers it ships.
+
+<KitFacts kit="kit-id" />
+
+## Install
+
+The package from Polaris Key's feeds, and the stylesheet or fonts the host loads, if any.
+
+## The one-line flow
+
+Layer (a): the drop-in, complete.
+
+## Piecemeal
+
+Layer (b): the styled parts on their own, their slots and restyle hooks.
+
+## Headless
+
+Layer (c): the models over the SDK primitives.
+
+## Theming
+
+The kit's theme entry point; the fields are on [Theming](/docs/build/ui/theming/).
+
+## Localisation
+
+How the kit loads its generated copy table and takes `copy` overrides.
+
+## Baselines
+
+<KitCoverage kit="kit-id" />
+
+## Sample
+
+What `examples/ui/kit-id/` shows, and how to run it against the fixtures or with `--live`.
