@@ -4,6 +4,7 @@ import { D1Db } from "./db/d1.js";
 import { dispatch } from "./dispatch.js";
 import { secureResponse } from "./securityHeaders.js";
 import { handleScheduled } from "./scheduled.js";
+import { handleAssetQueue } from "./assetQueue.js";
 
 export { RateLimitDO } from "./rateLimitDo.js";
 export { UpdateHealthDO } from "./updateHealthDo.js";
@@ -70,5 +71,13 @@ export default {
     // `handleScheduled` dispatches on `event.cron`; anything that is not the connector cron is
     // the sweep, so a trigger added without code still runs maintenance, never a poll.
     await handleScheduled(env, undefined, event.cron);
+  },
+
+  /**
+   * HA-05: the hosted-asset pull queue (`pkey-assets-<env>`, `src/assetQueue.ts`). The only queue
+   * this script consumes; the lazy-delta queue's consumer is its own script (`deltasEntry.ts`).
+   */
+  async queue(batch: MessageBatch<unknown>, env: Env): Promise<void> {
+    await handleAssetQueue(batch, env, new D1Db(env.DB));
   },
 } satisfies ExportedHandler<Env>;

@@ -125,6 +125,16 @@ export interface Env {
    */
   DELTA_DLQ?: Queue<unknown>;
   /**
+   * The hosted-asset pull queue (HA-05; `pkey-assets-<env>`, notes/S-20 §6.3). The main Worker is
+   * both producer (a register or resync enqueues the pulls its manifest owes; the nightly sweep
+   * re-checks failed ones) and consumer (`queue()` in `src/index.ts`, `core/hostedAssetPulls.ts`):
+   * pulls are I/O-bound, so they need no separate script. Failed deliveries go to
+   * `pkey-assets-dlq-<env>`. OPTIONAL: unbound, nothing is planned or pulled and manifest asset
+   * refs keep today's behaviour.
+   * @inventory binding jobs
+   */
+  HOSTED_ASSET_QUEUE?: Queue<unknown>;
+  /**
    * The consumer's per-side cap in bytes (default 33,554,432 = 32 MiB, notes/S-08 §4.2): a pair
    * with either payload larger is refused as `over-worker-cap`. A `[vars]` value; A-13: a console
    * value (1 MiB to the 32 MiB ceiling, so it can only lower it) wins over it.
