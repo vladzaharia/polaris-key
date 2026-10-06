@@ -70,10 +70,15 @@ The portal API serves the storefront: offers with all their paths, a storefront 
   any lookup), so probing it is bounded like the claim.
 - **Activation counting** needs a seam Core did not have: `core/authorizationListeners.ts`, a
   listener registry `authorizeDevice` notifies after a new authorization (total, `waitUntil`).
-  Identity's listener counts the first device on a licence whose `portal.discover.claim` row is at
-  most seven days old (PS-06's "within 7 days"), on the ADD's day and path kind, once per licence
-  (a marker row in the account's own `portal_audit`). The claim summary now carries
-  `path: <kind>`.
+  Identity's listener counts the licence's first device ever (Core's `firstOnLicense`: no other
+  device row names the licence and this device was never bound to it) when its
+  `portal.discover.claim` row is at most seven days old (PS-06's "within 7 days"), on the ADD's day
+  and path kind. It only reads the claim row and writes no per-person record (review B2). Two
+  devices binding at the same instant can double count (accepted). The claim summary now carries
+  `path: <kind>`; the last marker in it wins (review N4).
+- **Impressions** are written as one atomic batch per listing (review N3), and not at all without
+  `KEY_HASH_PEPPER` (review N2: no recomputable dedupe keys). docs/PRIVACY.md lists the three
+  tables (review B1).
 - **`path_kind = 'link'`** counts impressions of audience-`everyone` links (no path to name).
 - **Deletion and merge.** Account deletion deletes entries (the brief), a merge moves them to the
   survivor, and product deletion clears entries, `storefront_daily` and `storefront_seen`.

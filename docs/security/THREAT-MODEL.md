@@ -5908,18 +5908,25 @@ The storefront counts impressions, adds and first activations per product, UTC d
   so they do not link one person across days, and the nightly sweep deletes every row older than
   yesterday. **Residual:** within those two days, whoever holds both the database and the pepper
   can test whether a known account saw a known product that day. On a deployment without
-  `KEY_HASH_PEPPER` the salt is a plain SHA-256 of a public string, and the database alone answers
-  that test for the same two days; the pepper is a documented production secret.
+  `KEY_HASH_PEPPER` a key would be recomputable from the database alone, so none is made: no
+  `storefront_seen` row is written and no impression is counted there (adds and activations still
+  are). The impressions of one listing are written as one atomic batch.
 - **Only what was shown is counted.** An impression is written after the engine's dry run decided
   the product is visible to the account, so the counters never name a product the account could
   not see, and the evaluation itself still writes nothing. A count that fails to write is dropped:
   counting never fails a listing, a page, a claim or an activation.
-- **Activations without a new per-person record.** A first activation is counted when Core's
+- **Activations write nothing per person.** A first activation is counted when Core's
   `authorizeDevice` reports a new authorization (`core/authorizationListeners.ts`, after the bind,
-  total, off the response path with `waitUntil`) on a licence whose `portal.discover.claim` row
-  exists and is at most seven days old. The licence is counted once, by a marker row beside the
-  claim in the same account's own `portal_audit` history, which account deletion erases with it.
-  A listener can neither refuse nor change an activation.
+  total, off the response path with `waitUntil`) that is the licence's FIRST device ever (Core's
+  `firstOnLicense`: no other device row names the licence and this device was never bound to it;
+  device rows outlive a deauthorization), on a licence whose `portal.discover.claim` row exists and
+  is at most seven days old. The listener only READS that claim row (when, and by which path) and
+  bumps one counter; it writes no marker or other row about the person. **Residual (accepted):**
+  two devices binding one fresh licence at the same instant can both read first and count twice,
+  and a device moved off a licence leaves no row naming it; the aggregates are a trend, not a
+  ledger. The path kind is read from the claim's own summary, the last marker winning, so a
+  product name that spells the marker cannot choose it. A listener can neither refuse nor change
+  an activation.
 - **Who reads it.** Nothing in PS-04 serves the counters; PS-06's console card shows them to the
   product's operators as daily totals per path kind.
 

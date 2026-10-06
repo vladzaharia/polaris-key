@@ -7,23 +7,27 @@
  *                 storefront product page `GET /api/discover/<p>`. Once per account, product and
  *                 day: `storefront_seen` holds `HMAC(daily salt, account id)` for the day, and the
  *                 first sighting alone counts. Attributed to the first path's kind (`link` for an
- *                 audience-`everyone` listing with nothing to add).
+ *                 audience-`everyone` listing with nothing to add). Counted only on a deployment
+ *                 with `KEY_HASH_PEPPER` (see PRIVACY below).
  *   adds          a claim that created what its path implies (a licence or a library entry),
  *                 under the path's kind. A repeat or a racing double submit adds nothing.
- *   activations   the first device bound to a licence added from Discover, within seven days of
- *                 the add (Core's new-authorization listener, `core/authorizationListeners.ts`).
- *                 Counted on the ADD's day and path kind, so `activations / adds` is a rate.
+ *   activations   the licence's FIRST device ever, bound within seven days of an add from
+ *                 Discover (Core's new-authorization listener, `core/authorizationListeners.ts`,
+ *                 with its `firstOnLicense`). Counted on the ADD's day and path kind, so
+ *                 `activations / adds` is a rate. Two devices binding the same licence at the same
+ *                 instant can both read first and count twice; the aggregates accept that.
  *
- * ── PRIVACY (THREAT-MODEL "Storefront analytics (PS-04)") ───────────────────────────────────
+ * ── PRIVACY (THREAT-MODEL "Storefront analytics (PS-04)", docs/PRIVACY.md) ──────────────────
  *
  * Neither table has an account id. `account_key` is HMAC-SHA-256 of the account id under the
  * day's salt, and the salt is itself derived from the deployment's `KEY_HASH_PEPPER` and the day,
  * so it is never stored and a key cannot be recomputed without the pepper. Keys change every day
  * (two days' keys never match), and the nightly sweep deletes every row older than yesterday
- * (`pruneStorefrontSeen`). The activation count needs to know which licences were added from
- * Discover: it reads the `portal.discover.claim` row the claim already writes to the account's own
- * history (`portal_audit`), and marks the licence counted there, so no new per-person record
- * exists for it.
+ * (`pruneStorefrontSeen`). Without the pepper a key would be recomputable from the database alone,
+ * so none is written and no impression is counted. The activation count writes nothing per
+ * person: it READS the `portal.discover.claim` row the claim already wrote to the account's own
+ * history (`portal_audit`) to learn that, when and by which path the licence was added, and Core
+ * tells it whether the device is the licence's first.
  *
  * ── BEST EFFORT ─────────────────────────────────────────────────────────────────────────────
  *
@@ -32,7 +36,12 @@
  * aggregates are a trend, not a ledger.
  */
 
-import { hashKey, type Db, type Env } from "../../../../core/platform.js";
+import {
+  hashKey,
+  type Db,
+  type DbStatement,
+  type Env,
+} from "../../../../core/platform.js";
 import {
   registerAuthorizationListener,
   type AuthorizationListenerContext,
@@ -64,14 +73,15 @@ export function storefrontDay(now: number): string {
 /**
  * The day's dedupe key for one account: HMAC-SHA-256 of the account id under the day's salt,
  * truncated to 128 bits. The salt is HMAC-SHA-256 of a fixed label and the day under the
- * deployment's `KEY_HASH_PEPPER` (a plain SHA-256 on a deployment without one, where the keys are
- * only as private as the day is secret, which it is not: set the pepper).
+ * deployment's `KEY_HASH_PEPPER`. `null` on a deployment without the pepper: the salt would then
+ * be public, and the key recomputable from any account id, so no key is made at all.
  */
 export async function storefrontAccountKey(
   env: Env,
   accountId: string,
   day: string,
-): Promise<string> {
+): Promise<string | null> {
+  if (!env.KEY_HASH_PEPPER) return null;
   const salt = await hashKey(
     `pkey-storefront-seen/1|${day}`,
     env.KEY_HASH_PEPPER,
@@ -111,7 +121,10 @@ export interface Impression {
 
 /**
  * Count what the account was just shown: one impression per product per day, whichever surface
- * showed it first. Best effort (see the file comment).
+ * showed it first. ONE atomic batch for the whole listing: each product's dedupe insert is followed
+ * by its counter's upsert, which runs only when that insert wrote a row (`changes()` reads the
+ * statement just before it, inside the batch's transaction). Nothing is written without
+ * `KEY_HASH_PEPPER`. Best effort (see the file comment).
  */
 export async function recordImpressions(
   env: Env,
@@ -124,16 +137,25 @@ export async function recordImpressions(
   try {
     const day = storefrontDay(now);
     const key = await storefrontAccountKey(env, accountId, day);
+    if (key === null) return;
+    const statements: DbStatement[] = [];
     for (const { product, kind } of shown) {
-      const first = await db.runChanges(
-        `INSERT INTO storefront_seen (product, day, account_key) VALUES (?, ?, ?)
-         ON CONFLICT(product, day, account_key) DO NOTHING`,
-        product,
-        day,
-        key,
+      statements.push(
+        {
+          sql: `INSERT INTO storefront_seen (product, day, account_key) VALUES (?, ?, ?)
+                ON CONFLICT(product, day, account_key) DO NOTHING`,
+          params: [product, day, key],
+        },
+        {
+          sql: `INSERT INTO storefront_daily
+                  (product, day, path_kind, impressions, adds, activations)
+                SELECT ?, ?, ?, 1, 0, 0 WHERE changes() > 0
+                ON CONFLICT(product, day, path_kind) DO UPDATE SET impressions = impressions + 1`,
+          params: [product, day, kind],
+        },
       );
-      if (first > 0) await bump(db, product, day, kind, "impressions");
     }
+    await db.batch(statements);
   } catch {
     // Best effort: the listing answers the same without its count.
   }
@@ -153,57 +175,46 @@ export async function recordAdd(
   }
 }
 
+const PATH_RE = /\(source: discover; path: ([a-z_]+)[;)]/g;
+const LEGACY_REASON_RE = /\(source: discover; reason: ([^;)]+)[;)]/g;
+
 /**
- * The path kind a `portal.discover.claim` summary names (`… (source: discover; path: <kind>; …)`,
- * written by the claim since PS-04), or, for a claim written before PS-04, the kind its reason
- * implies (`group:<g>` → `group`, `free_with_account` → `auto_issue`). `null` when neither reads.
+ * The path kind a `portal.discover.claim` summary names (`Added <name> from Discover (source:
+ * discover; path: <kind>; reason: <code>)`, written by the claim since PS-04), or, for a claim
+ * written before PS-04, the kind its reason implies (`group:<g>` → `group`, `free_with_account` →
+ * `auto_issue`). `null` when neither reads. The LAST match wins: the product's name comes first in
+ * the summary and is the operator's text, so a name that spells the marker cannot choose the kind.
  */
 export function claimPathKind(summary: string | null): ObtainPathKind | null {
   if (!summary) return null;
-  const path = /\(source: discover; path: ([a-z_]+)[;)]/.exec(summary)?.[1];
+  const path = [...summary.matchAll(PATH_RE)].at(-1)?.[1];
   if (path !== undefined) return isObtainPathKind(path) ? path : null;
-  const reason = /\(source: discover; reason: ([^;)]+)[;)]/.exec(summary)?.[1];
+  const reason = [...summary.matchAll(LEGACY_REASON_RE)].at(-1)?.[1];
   if (reason === "free_with_account") return "auto_issue";
   if (reason?.startsWith("group:")) return "group";
   return null;
 }
 
 /**
- * Core's new-authorization listener: count the first device bound to a licence added from
- * Discover, within `ACTIVATION_WINDOW_SECONDS` of the add, on the add's day and path kind. The
- * claim behind the licence is its `portal.discover.claim` row (by primary key); the licence is
- * counted once, by a marker row beside it in the same account's history whose insert decides.
+ * Core's new-authorization listener: count the licence's first device ever, when the licence was
+ * added from Discover at most `ACTIVATION_WINDOW_SECONDS` before, on the add's day and path kind.
+ * Reads only, but for the counter: the claim behind the licence is its `portal.discover.claim` row
+ * (by primary key), and "first" is Core's `firstOnLicense`, so no per-person record is written.
  */
 export async function recordFirstActivation(
   ctx: AuthorizationListenerContext,
   event: NewAuthorization,
 ): Promise<void> {
+  if (!event.firstOnLicense) return;
   const { db, now } = ctx;
-  const claim = await db.first<{
-    account_id: string | null;
-    at: number;
-    summary: string | null;
-  }>(
-    "SELECT account_id, at, summary FROM portal_audit WHERE id = ? AND action = 'portal.discover.claim'",
+  const claim = await db.first<{ at: number; summary: string | null }>(
+    "SELECT at, summary FROM portal_audit WHERE id = ? AND action = 'portal.discover.claim'",
     discoverClaimAuditId(event.product, event.licenseId),
   );
   if (!claim || now - claim.at > ACTIVATION_WINDOW_SECONDS) return;
   const kind = claimPathKind(claim.summary);
   if (!kind) return;
-  const first = await db.runChanges(
-    `INSERT INTO portal_audit
-       (id, account_id, at, action, product, target_kind, target_id, summary)
-     VALUES (?, ?, ?, 'portal.discover.activation', ?, 'license', ?, ?)
-     ON CONFLICT(id) DO NOTHING`,
-    `${discoverClaimAuditId(event.product, event.licenseId)}_activated`,
-    claim.account_id,
-    now,
-    event.product,
-    event.licenseId,
-    "A first device was activated on a license added from Discover",
-  );
-  if (first > 0)
-    await bump(db, event.product, storefrontDay(claim.at), kind, "activations");
+  await bump(db, event.product, storefrontDay(claim.at), kind, "activations");
 }
 
 registerAuthorizationListener("storefront.activations", recordFirstActivation);

@@ -23,6 +23,14 @@ export interface NewAuthorization {
   product: string;
   licenseId: string;
   deviceId: string;
+  /**
+   * The licence's FIRST device ever: no other device row names the licence, and this device was
+   * never bound to it before (a re-authorization after a deauthorization is not first). Device
+   * rows are kept when a device is deauthorized and deleted only with the licence, so "ever" holds
+   * for the licence's life. Read after the bind, so two devices binding at the same instant can
+   * both read first: listeners that count must accept that (rare) double count.
+   */
+  firstOnLicense: boolean;
 }
 
 export interface AuthorizationListenerContext {
@@ -60,6 +68,11 @@ export function unregisterAuthorizationListener(name: string): void {
 /** The registered names, in registration order. */
 export function authorizationListenerNames(): string[] {
   return [...LISTENERS.keys()];
+}
+
+/** Is anyone listening? `authorizeDevice` reads `firstOnLicense` only when someone is. */
+export function hasAuthorizationListeners(): boolean {
+  return LISTENERS.size > 0;
 }
 
 /**

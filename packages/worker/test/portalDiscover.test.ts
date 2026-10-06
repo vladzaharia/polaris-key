@@ -453,6 +453,8 @@ describe("GET /api/discover (G24)", () => {
 
   it("writes nothing but its impression counts: every other table is identical before and after the listing", async () => {
     const env = portalEnv();
+    // Impressions are counted only with the pepper (no recomputable dedupe keys without it).
+    env.KEY_HASH_PEPPER = "test-pepper";
     const db = makeTestDb();
     await freeProduct(db, "mossgarden");
     await groupProduct(db, "aperture", "aperture-beta");

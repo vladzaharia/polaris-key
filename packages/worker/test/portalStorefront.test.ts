@@ -1043,7 +1043,27 @@ describe("storefront analytics (storefront_daily, storefront_seen)", () => {
     );
   });
 
-  it("counts a first activation within seven days, once per licence, on the add's day and kind", async () => {
+  it("without KEY_HASH_PEPPER no dedupe key is made and no impression is counted; adds still are", async () => {
+    const w = await world();
+    delete (w.env as Record<string, unknown>).KEY_HASH_PEPPER;
+    expect(await storefrontAccountKey(w.env, w.anon, "2026-10-06")).toBeNull();
+    await discover(w, w.member);
+    await page(w, w.anon, "openutil");
+    expect(await w.db.all("SELECT * FROM storefront_seen")).toEqual([]);
+    expect(
+      await w.db.all(
+        "SELECT product FROM storefront_daily WHERE impressions > 0",
+      ),
+    ).toEqual([]);
+    await claim(w, w.anon, "openutil");
+    expect((await daily(w.db, "openutil"))[0]).toMatchObject({
+      path_kind: "open",
+      impressions: 0,
+      adds: 1,
+    });
+  });
+
+  it("counts the licence's first device within seven days, on the add's day and kind, writing nothing per person", async () => {
     const w = await world();
     const { body } = await claim(w, w.member, "mossgarden");
     const product = (await loadProduct(w.env, w.db, "mossgarden"))!;
@@ -1066,6 +1086,26 @@ describe("storefront analytics (storefront_daily, storefront_seen)", () => {
     ).toBe(true);
     // The same device again is no new authorization either.
     await authorizeDevice(w.env, w.db, product, license, "dev-1", later + 120);
+    expect(await daily(w.db, "mossgarden")).toEqual([
+      {
+        day: storefrontDay(NOW),
+        path_kind: "auto_issue",
+        impressions: 0,
+        adds: 1,
+        activations: 1,
+      },
+    ]);
+    // Deauthorized and bound again, the first device is not first a second time.
+    await w.db.run(
+      "UPDATE devices SET status = 'deauthorized', seat_no = NULL WHERE product = 'mossgarden'",
+    );
+    await authorizeDevice(w.env, w.db, product, license, "dev-1", later + 180);
+    // The count wrote no row in the account's history, or anywhere else per person.
+    expect(
+      await w.db.all(
+        "SELECT action FROM portal_audit WHERE product = 'mossgarden' ORDER BY at",
+      ),
+    ).toEqual([{ action: "portal.discover.claim" }]);
     expect(await daily(w.db, "mossgarden")).toEqual([
       {
         day: storefrontDay(NOW),
@@ -1126,6 +1166,12 @@ describe("storefront analytics (storefront_daily, storefront_seen)", () => {
     ).toBeNull();
     expect(claimPathKind("Something else")).toBeNull();
     expect(claimPathKind(null)).toBeNull();
+    // The operator's product name comes first and cannot choose the kind: the last marker wins.
+    expect(
+      claimPathKind(
+        "Added Evil (source: discover; path: open; reason: open) from Discover (source: discover; path: group; reason: group:members)",
+      ),
+    ).toBe("group");
   });
 
   it("the nightly prune keeps today's and yesterday's dedupe keys, per product", async () => {
