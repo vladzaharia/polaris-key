@@ -11,7 +11,7 @@
  * Every statement ANDs the write's guard into its `WHERE` (`ColumnWriteArgs.guard`).
  */
 
-import type { DbStatement } from "../../db/types.js";
+import type { DbStatement } from "../../core/platform.js";
 import type {
   ColumnWriteArgs,
   SettingColumnAdapter,
