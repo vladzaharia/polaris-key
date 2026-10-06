@@ -258,8 +258,8 @@ export async function hasLinkedProductLicense(
 //
 // The portal authenticates a PERSON with linked licences, not a device, so each mode is asked of
 // those licences: `public` and `authenticated` need the linked licence every download already
-// requires; `licensed` needs one that is usable; `entitled` needs one whose own entitlement window
-// holds the release's channel and whose window holds its version (Core's `licenseEntitled`, the device
+// requires; `licensed` needs one that is usable; `entitled` needs one whose own grant holds the
+// release's channel and whose window holds its version (Core's `licenseEntitled`, the device
 // decision minus the device layer).
 
 /** Builds one product's descriptor hooks (the composition root does: `dispatch.ts`). */
@@ -338,7 +338,6 @@ export async function accountMayDownload(
 }
 
 /**
-/**
  * Where a download goes (R6-12, PX-W3). One of:
  *
  *   - `{kind: "redirect", url}`, tried in this order:
@@ -350,17 +349,19 @@ export async function accountMayDownload(
  *       2. Otherwise the artifact's own GitHub storage URL, but only when the repository is
  *          PUBLIC (`gate.repositoryPublic`). A private repository answers a browser's anonymous
  *          request with GitHub's 404.
- *   - `{kind: "ticket", base}`: a NON-public deliverable with no GitHub storage URL whose file
- *     Distribution serves on the bytes host, with a recorded SHA-256, on a deployment with
- *     download tickets configured (`DOWNLOAD_TICKET_KEY` and `BLOB_ORIGIN`). `base` is the
- *     file's canonical bytes-host URL; only `handlePortalDownload` appends a ticket to it, after
- *     every check (plans/PX-W3.md §6.2). Device trust does not apply to a portal download (the
- *     licence-only rule `entitledAccess.ts` names; Q4 (a)), so a product whose trust policy
+ *   - `{kind: "ticket", base}`: a NON-public deliverable that no redirect above can serve, whose
+ *     file Distribution serves on the bytes host, with a recorded SHA-256, on a deployment with
+ *     download tickets configured (`DOWNLOAD_TICKET_KEY` and `BLOB_ORIGIN`). That covers files
+ *     held on R2 and, because the bytes host streams a private repository's assets through the
+ *     installation token, licensed files in a PRIVATE GitHub repository too (plans/PX-W3.md Q7,
+ *     reopened at the merge with main's bytes-host-first order; the brief records it). `base`
+ *     is the file's canonical bytes-host URL; only `handlePortalDownload` appends a ticket to it,
+ *     after every check (plans/PX-W3.md §6.2). Device trust does not apply to a portal download
+ *     (the licence-only rule `entitledAccess.ts` names; Q4 (a)), so a product whose trust policy
  *     enforces `gatedDelivery: attested` is served here exactly like the GitHub branch serves it.
  *   - `null`: nothing here can hand the bytes to a browser. A non-public deliverable is never
- *     REDIRECTED to the bytes host (the browser holds no device token), and licensed files in a
- *     private GitHub repository stay `null` (PX-W3's plan, Q7: left out, a follow-up may reuse
- *     the ticket).
+ *     REDIRECTED to the bytes host (the browser holds no device token), so without tickets
+ *     configured, or without a SHA-256, it stays `null`.
  *
  * The listing and the token mint only test for non-null, so they offer exactly what redemption
  * serves.
@@ -376,27 +377,25 @@ export async function downloadTarget(
   mode: ReleaseAccess,
 ): Promise<DownloadTarget | null> {
   if (mode === "public") {
-    const hosted = await bytesHostUrl(artifact, gate);
-    if (hosted !== null && isAllowedDownloadRedirectHost(hosted.hostname, env))
-      return { kind: "redirect", url: hosted.toString() };
+    const hosted = await bytesHostTarget(env, artifact, gate);
+    if (hosted !== null) return { kind: "redirect", url: hosted.toString() };
   }
   const source = redirectableSourceUrl(artifact);
-  if (source !== null)
-    return (await gate.repositoryPublic())
-      ? { kind: "redirect", url: source }
-      : null;
+  if (source !== null && (await gate.repositoryPublic()))
+    return { kind: "redirect", url: source };
   if (mode === "public") return null;
   if (!artifact.sha256 || !downloadTicketsEnabled(env)) return null;
-  const hosted = await bytesHostUrl(artifact, gate);
+  const hosted = await bytesHostTarget(env, artifact, gate);
   // A ticket is honoured on the bytes host alone (origin isolation, THREAT-MODEL §3), so the
-  // GitHub storage hosts `isAllowedDownloadRedirectHost` also accepts are not enough here.
+  // URL must sit on it and carry no query of its own for the ticket to join.
   return hosted !== null && isBytesHost(hosted, env) && hosted.search === ""
     ? { kind: "ticket", base: hosted.toString() }
     : null;
 }
 
-/** Distribution's URL for a file, when it parses and is `https`; the caller checks the host. */
-async function bytesHostUrl(
+/** Distribution's bytes-host URL for a file, when it is `https` on the configured bytes host. */
+async function bytesHostTarget(
+  env: Env,
   artifact: PortalArtifactRow,
   gate: DeliveryGate,
 ): Promise<URL | null> {
@@ -411,7 +410,8 @@ async function bytesHostUrl(
   } catch {
     return null;
   }
-  return url.protocol === "https:" ? url : null;
+  if (url.protocol !== "https:") return null;
+  return isAllowedDownloadRedirectHost(url.hostname, env) ? url : null;
 }
 
 /**
@@ -1040,7 +1040,7 @@ async function handleReleases(
       "downloads are not served for this product",
     );
   // The delivery access every download surface reads (P2b-04): `licensed` needs a usable
-  // licence, `entitled` one whose entitlement window holds this release's channel and version.
+  // licence, `entitled` one whose grant holds this release's channel and version.
   if (
     !(await accountMayDownload(db, session.accountId, gate, mode, facts, now))
   )
@@ -1366,10 +1366,10 @@ export async function handlePortalDownload(
   const mode =
     gate && facts ? await gate.delivery.accessMode(facts.deliverable_id) : null;
   // R6-12: the ONLY value that may become a `Location` header. `null` here means the stored URL
-  // is absent, unparseable, not https, or not a GitHub storage host — and that Distribution has
-  // no bytes-host URL for it either: for a public deliverable, or (PX-W3) for a non-public one
-  // on a deployment with download tickets (`downloadTarget`) — all of which are refusals, never
-  // redirects.
+  // is absent, unparseable, not https, not a GitHub storage host or in a private repository —
+  // and that Distribution has no bytes-host URL for it either: for a public deliverable, or
+  // (PX-W3) a ticketable one for a non-public deliverable (`downloadTarget`) — all of which are
+  // refusals, never redirects.
   const target =
     artifact && gate && mode
       ? await downloadTarget(env, artifact, gate, mode)

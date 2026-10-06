@@ -1731,7 +1731,7 @@ const SECRET_NOTES: Record<string, { what: string; unset?: string }> = {
   DOWNLOAD_TICKET_KEY: {
     what: "Portal download ticket signing",
     unset:
-      "Licensed builds stored only on R2 cannot be downloaded from the portal",
+      "Licensed builds served from the bytes host cannot be downloaded from the portal",
   },
   DOWNLOAD_TICKET_KEY_PREVIOUS: {
     what: "Previous download ticket key, during a rotation",

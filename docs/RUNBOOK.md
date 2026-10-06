@@ -468,7 +468,8 @@ can pull public images but no non-public OCI feed can be reached.
 
 ### Download tickets (PX-W3)
 
-The customer portal's licensed R2 downloads go through a 120 s **download ticket** signed with
+The customer portal's licensed bytes-host downloads (files on R2 or in a private GitHub
+repository) go through a 120 s **download ticket** signed with
 `DOWNLOAD_TICKET_KEY` (docs/DEPLOYMENT.md, "Licensed portal downloads"). Without the key, those
 files read `not_hosted` in the portal and nothing else changes.
 
@@ -482,14 +483,15 @@ openssl rand -base64 32 > /tmp/new-key
 npx wrangler secret bulk --env prod <<EOF
 {"DOWNLOAD_TICKET_KEY_PREVIOUS": "<the current key>", "DOWNLOAD_TICKET_KEY": "$(cat /tmp/new-key)"}
 EOF
-# wait at least 120 seconds, then:
+# wait until every Worker instance serves the new key (a fresh deploy or a few minutes after
+# the bulk put), then at least 120 seconds more, then:
 npx wrangler secret delete DOWNLOAD_TICKET_KEY_PREVIOUS --env prod
 rm /tmp/new-key
 ```
 
 **A leaked key, or switching the feature off.** Delete `DOWNLOAD_TICKET_KEY` (and
 `DOWNLOAD_TICKET_KEY_PREVIOUS` if set): every live ticket stops verifying at once and licensed
-R2-only files go back to `not_hosted`. Put a fresh key to turn it back on. A leaked single ticket
+ticketed files go back to `not_hosted`. Put a fresh key to turn it back on. A leaked single ticket
 needs nothing: it opens one file for at most 120 s.
 
 ### Recovering the update feeds after a signer compromise

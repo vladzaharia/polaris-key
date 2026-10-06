@@ -31,14 +31,30 @@ sha256}, now)` as planned; the host is compared normalized (case, trailing dot).
 - **Licence vocabulary.** `licenses.status` is `active | disabled`; "revoked" and "suspended" in
   the plan's acceptance list are both `disabled`. The revocation test covers disabled, expired and
   detached licences.
-- **Inventory.** ST-02 has not landed (no `@inventory` annotations exist), so the two secrets are
-  added to `SECRET_NAMES` and given notes on the console's Platform → Secrets list
-  (`packages/admin/src/console/pages/platformSettings.tsx`), the existing pattern.
+- **Inventory.** ST-02 landed on main while this package was in review: `SECRET_NAMES` is now
+  generated from the `@inventory secret` tags in `env.ts` (`pnpm gen:platform-inventory`), so the
+  two secrets carry `@inventory secret keyring` there and the hand-added `SECRET_NAMES` entries
+  were dropped at the merge. They keep their notes on the console's Platform → Secrets list
+  (`packages/admin/src/console/pages/platformSettings.tsx`).
 - **Redemption order.** The ticket is minted before the single-use token is spent, so a failure
   (for example the key deleted between mint and click) leaves the user's token usable.
-- **`downloadTarget`** returns `{kind: "redirect", url} | {kind: "ticket", base} | null`; the
-  ticket branch requires the delivery URL on the bytes host itself (not merely an allowed redirect
-  host) and the file's SHA-256.
+- **`downloadTarget`** returns `{kind: "redirect", url} | {kind: "ticket", base} | null`, built
+  on main's order (fix/portal-download-404): a `public` file redirects to its bytes-host URL
+  (`bytesHostTarget`), any file to its GitHub storage URL only when `gate.repositoryPublic()`, and
+  otherwise a non-public file gets the ticket branch, which requires the delivery URL on the bytes
+  host itself (not merely an allowed redirect host), the file's SHA-256 and download tickets
+  configured.
+- **Q7 reopened and decided (lead, at the merge with main, 2026-10-05): licensed files in a
+  PRIVATE GitHub repository go through the ticket path.** The plan left them out only because
+  covering them reordered `downloadTarget`; main has since made that reorder itself, and the
+  bytes host already streams a private repository's assets through Release's installation token
+  for whoever clears the `files` route. So the same ticket, bound to the same name and SHA-256,
+  serves them with no further code; the `releaseArtifact` rate limit bounds the GitHub quota a
+  ticket holder can spend. Without `DOWNLOAD_TICKET_KEY` they stay `not_hosted`, as main's test
+  pins. A test (`portalLicensedDownloads.test.ts`, "private GitHub repository (Q7)") covers both
+  visibilities. THREAT-MODEL, DEPLOYMENT, RUNBOOK and the portal docs page say so.
+- **Ticket logging.** THREAT-MODEL no longer claims a ticket is never logged: Workers Logs
+  (`[observability.logs]`) record request URLs, `?ticket=` included, for the ticket's 120 s life.
 - **Q4 (a)** needs no code: neither `accountMayDownload` nor the ticketed byte route consults the
   device trust policy. A test pins it.
 

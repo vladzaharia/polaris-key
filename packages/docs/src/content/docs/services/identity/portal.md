@@ -244,7 +244,7 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
   license), `not_entitled` (the license's channels or update window do not reach the release) or
   `not_hosted` (covered, but nothing here can hand the bytes to a browser: no bytes-host copy
   and no GitHub storage URL in a public repository, or a licensed file on a deployment without
-  download tickets or whose only source is a private repository). When the newest release is not
+  download tickets or with no recorded SHA-256). When the newest release is not
   covered, the recommendation falls back to the newest one that is (`latest: false`). The
   product facts come from Distribution's `customerDownloads` hook, read through Core; whether the
   account may download is the same decision the token mint makes, so every file marked
@@ -256,8 +256,8 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
   spent with a single conditional `UPDATE … WHERE used_at IS NULL`, so two concurrent redemptions
   of the same token cannot both win; exactly one sees the row change. The redirect goes, for a
   `public` file, to its bytes-host URL, otherwise to the artifact's GitHub storage URL when the
-  repository is public. A non-public file
-  held only on R2 goes to its canonical bytes-host URL with a **download ticket** appended
+  repository is public. Any other non-public file
+  (held on R2, or in a private repository the bytes host streams) goes to its canonical bytes-host URL with a **download ticket** appended
   (`https://dl.plrs.im/<product>/distribution/files/<releaseId>/<name>?ticket=…`): minted only
   here, after every check, bound to that one file by name and SHA-256, valid for 120 seconds and
   reusable inside them, so `Range`, resume and `HEAD` work. The bytes host accepts it in place of

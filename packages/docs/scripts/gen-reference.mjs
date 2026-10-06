@@ -332,6 +332,7 @@ const TABLE_OWNERS = {
     "blob_objects",
     "blob_refs",
     "blob_gc_log",
+    "hosted_assets",
     "ci_publishers",
     "ci_tokens",
     "ci_upload_tickets",
@@ -388,6 +389,7 @@ const TABLE_OWNERS = {
     "release_delegated_records",
     "release_lazy_deltas",
     "release_packages",
+    "release_native_uploads",
   ],
   distribution: [
     "dist_outlets",

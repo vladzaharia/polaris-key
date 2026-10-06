@@ -23,48 +23,84 @@
       "status": "implemented",
       "note": "Desktop through the host bridge (protocol v3 importBundle); browser verified in-page by client-core inspectBundle against a random device id kept in IndexedDB. The browser runner drives inspectBundle over every bundleCases vector in Chromium, Firefox and WebKit."
     },
-    "core.discover": { "status": "implemented" },
-    "core.sync": { "status": "implemented" },
+    "core.discover": {
+      "status": "implemented"
+    },
+    "core.sync": {
+      "status": "implemented"
+    },
     "core.local": {
       "status": "planned",
       "unowned": true,
       "note": "No local-only client in React; P1b-07 leaves it unowned."
     },
-    "core.headers": { "status": "implemented" },
-    "core.errors": { "status": "implemented" },
-    "core.caps": { "status": "implemented" },
+    "core.headers": {
+      "status": "implemented"
+    },
+    "core.errors": {
+      "status": "implemented"
+    },
+    "core.caps": {
+      "status": "implemented"
+    },
     "core.store": {
       "status": "na",
       "runtime": ["web", "desktop-bridge"],
       "reason": "runtime",
       "note": "New desktop-bridge N/A (P1b-01). On desktop the host process's store holds the token."
     },
-    "license.gate": { "status": "implemented" },
-    "license.activate": { "status": "implemented" },
+    "core.copy": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-R03, SDK-PARITY-PASS §5.2."
+    },
+    "license.gate": {
+      "status": "implemented"
+    },
+    "license.activate": {
+      "status": "implemented"
+    },
     "license.enroll": {
       "status": "na",
       "runtime": ["web", "desktop-bridge"],
       "reason": "runtime",
       "note": "New desktop-bridge N/A (P1b-01). On desktop the host's Node SDK enrols."
     },
-    "license.deactivate": { "status": "implemented" },
-    "license.entitlements": { "status": "implemented" },
-    "license.channels": { "status": "implemented" },
+    "license.deactivate": {
+      "status": "implemented"
+    },
+    "license.entitlements": {
+      "status": "implemented"
+    },
+    "license.channels": {
+      "status": "implemented"
+    },
     "license.reregister": {
       "status": "na",
       "runtime": ["web", "desktop-bridge"],
       "reason": "runtime",
       "note": "New web and desktop-bridge N/As (P1b-01). On desktop the host's Node SDK re-registers inside its own sync (P1b-06); test/bridge.test.ts pins the renderer picking up the host's post-re-register state through refresh() and a pushed stateChanged."
     },
-    "config.resolve": { "status": "implemented" },
-    "config.list": { "status": "implemented" },
+    "license.refusals": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-R03, SDK-PARITY-PASS §5.2."
+    },
+    "config.resolve": {
+      "status": "implemented"
+    },
+    "config.list": {
+      "status": "implemented"
+    },
     "config.secret": {
       "status": "na",
       "runtime": ["web", "desktop-bridge"],
       "reason": "runtime",
       "note": "New desktop-bridge N/A (P1b-01). The desktop renderer never holds secrets either; the host reads them with the Node SDK."
     },
-    "config.schema": { "status": "implemented" },
+    "config.schema": {
+      "status": "implemented"
+    },
     "config.mint": {
       "status": "planned",
       "unowned": true,
@@ -73,6 +109,11 @@
     "config.mirror": {
       "status": "implemented",
       "note": "The TypeScript mirror is rendered by tools/gen-mirrors.ts."
+    },
+    "config.local": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-R05, SDK-PARITY-PASS §5.2."
     },
     "devices.fingerprint": {
       "status": "na",
@@ -94,13 +135,35 @@
     },
     "devices.manage": {
       "status": "implemented",
-      "except": [{ "runtime": "web", "reason": "runtime" }],
+      "except": [
+        {
+          "runtime": "web",
+          "reason": "runtime"
+        }
+      ],
       "note": "New web N/A (P1b-01). Through the desktop bridge only. A browser cookie session cannot call /<p>/devices, which authenticates with a device bearer; the browser adapter refuses with device-management-unsupported."
     },
     "devices.report": {
       "status": "implemented",
-      "except": [{ "runtime": "web", "reason": "runtime" }],
+      "except": [
+        {
+          "runtime": "web",
+          "reason": "runtime"
+        }
+      ],
       "note": "Desktop through invoke(\"devices\", \"report\"). POST /<p>/devices/report accepts only a device bearer, which a browser session does not hold; the browser adapter throws report-unsupported."
+    },
+    "telemetry.updates": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-R11, SDK-PARITY-PASS §5.2.",
+      "except": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "note": "No device bearer in a browser cookie session (as devices.report); SP-R02 removes it."
+        }
+      ]
     },
     "devices.attest": {
       "status": "na",
@@ -108,22 +171,57 @@
       "reason": "runtime",
       "note": "P6-02: neither a browser nor a desktop renderer has App Attest or Play Integrity; those devices stay at the basic trust level."
     },
-    "identity.oidc": { "status": "implemented" },
+    "identity.oidc": {
+      "status": "implemented"
+    },
     "identity.devicecode": {
       "status": "implemented",
-      "except": [{ "runtime": "web", "reason": "runtime" }],
+      "except": [
+        {
+          "runtime": "web",
+          "reason": "runtime"
+        }
+      ],
       "note": "New web N/A (P1b-01). Through the desktop bridge (beginSignIn/pollSignIn). A browser signs in with the OIDC redirect (identity.oidc)."
     },
-    "release.changelog": { "status": "implemented" },
-    "release.download": { "status": "implemented" },
+    "release.changelog": {
+      "status": "implemented"
+    },
+    "release.download": {
+      "status": "implemented"
+    },
     "release.record": {
       "status": "implemented",
       "note": "client-core verifyReleaseRecord (hash before signature, pinned release keys only); the browser adapter fetches by hash and persists releaseRecords in IndexedDB, desktop through the host's decide()."
     },
-    "update.check": { "status": "implemented" },
+    "release.fetch": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-R09, SDK-PARITY-PASS §5.2."
+    },
+    "release.distribution": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-R09, SDK-PARITY-PASS §5.2."
+    },
+    "update.check": {
+      "status": "implemented"
+    },
     "update.feed": {
       "status": "implemented",
       "note": "client-core verifyFeed with floors keyed by the canonical channel; the browser adapter fetches, verifies and persists the feeds slice in IndexedDB; desktop through invoke(\"update\", \"decide\")."
+    },
+    "update.feeds": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-R08 (desktop), SDK-PARITY-PASS §5.2.",
+      "except": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "note": "A browser has no native updater feed; the service worker is update.driver."
+        }
+      ]
     },
     "update.decide": {
       "status": "implemented",
@@ -146,6 +244,11 @@
     "outlet.detect": {
       "status": "implemented",
       "note": "client-core's detectOutlet, re-exported; the browser adapter reads the page's display mode (readOutletSignals) and detects over the synthesised web stamp when the host names no outlet. The desktop adapter defers to the host (Node's detection)."
+    },
+    "crash.tags": {
+      "status": "planned",
+      "unowned": true,
+      "note": "No task yet: the lead cuts a React crashTags() task (plans/SP-00.md §5; SDK-PARITY-PASS §5.2)."
     },
     "packs.record": {
       "status": "implemented",
@@ -199,7 +302,9 @@
       "status": "implemented",
       "note": "update.packs.registerHandler; files.tree, data.json and l10n.table built in; check(staged) refuses a staged payload with pack-type-check-failed before it commits (P4-16); custom.<name> through registerHandler."
     },
-    "packs.provides": { "status": "implemented" },
+    "packs.provides": {
+      "status": "implemented"
+    },
     "packs.type.godot.zip": {
       "status": "na",
       "runtime": ["web", "desktop-bridge"],
@@ -252,12 +357,27 @@
       "reason": "runtime",
       "note": "New desktop-bridge N/A (P1b-01). On desktop the host's Node SDK owns platform transports."
     },
-    "ui.stages": { "status": "implemented" },
-    "ui.kit": { "status": "implemented" },
-    "commerce.receipt": {
+    "ui.stages": {
+      "status": "implemented"
+    },
+    "ui.boot": {
       "status": "planned",
       "unowned": true,
-      "note": "P6-01 builds the Worker bridge and leaves the SDK side planned with no owner."
+      "note": "SP-R06, SDK-PARITY-PASS §5.2."
+    },
+    "ui.kit": {
+      "status": "implemented"
+    },
+    "ui.cli": {
+      "status": "na",
+      "runtime": ["web", "desktop-bridge"],
+      "reason": "runtime",
+      "note": "This SDK ships a widget kit (ui.kit); the terminal kit is the headless SDKs' expectation."
+    },
+    "commerce.receipt": {
+      "status": "planned",
+      "wp": "LX-20",
+      "note": "Required. LX-20 builds the client side through client-core over P6-01's Worker bridge."
     }
   }
 }

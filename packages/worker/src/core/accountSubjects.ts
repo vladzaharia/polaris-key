@@ -52,6 +52,28 @@ export async function existingSubjectFor(
   return row?.subject ?? null;
 }
 
+/** {@link existingSubjectFor} for many accounts at once: account id → subject, read-only. */
+export async function existingSubjectsFor(
+  db: Db,
+  accountIds: readonly string[],
+  product: string,
+): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  const ids = [...new Set(accountIds)];
+  // D1 binds at most 100 parameters; one is the product.
+  for (let i = 0; i < ids.length; i += 90) {
+    const batch = ids.slice(i, i + 90);
+    for (const r of await db.all<{ account_id: string; subject: string }>(
+      `SELECT account_id, subject FROM account_product_subjects
+        WHERE product = ? AND account_id IN (${batch.map(() => "?").join(", ")})`,
+      product,
+      ...batch,
+    ))
+      out.set(r.account_id, r.subject);
+  }
+  return out;
+}
+
 /**
  * The pairwise subject for (account, product), created on first contact: a licence of the
  * product attached, a sign-in through the product, or account × product data. Idempotent and

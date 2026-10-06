@@ -419,7 +419,9 @@ curl -s https://key.plrs.im/<slug>/.well-known/polaris.json | grep -o '"builds":
 
 ### Licensed portal downloads: `DOWNLOAD_TICKET_KEY` (PX-W3)
 
-Licensed builds held only on R2 download from the customer portal through a **download ticket**:
+Licensed builds served by the bytes host (held on R2, or in a private GitHub repository the
+bytes host streams through the installation token) download from the customer portal through a
+**download ticket**:
 the portal's `/download/<token>` redemption 302s to the file's bytes-host URL with
 `?ticket=<t>`, and the bytes host accepts the ticket in place of a device token
 (plans/PX-W3.md). The ticket is an HMAC under a dedicated Worker secret. Set it per environment,
@@ -431,7 +433,7 @@ openssl rand -base64 32 | npx wrangler secret put DOWNLOAD_TICKET_KEY --env <env
 ```
 
 No code change is needed: the next request reads it. Until it is set, every file answers exactly
-as before (licensed R2-only files read `not_hosted` in the portal and the bytes host ignores
+as before (licensed files with no public GitHub URL read `not_hosted` in the portal and the bytes host ignores
 `?ticket=`), so the Worker can ship first. Deleting the secret is the kill switch: live tickets
 stop verifying at once. `DOWNLOAD_TICKET_KEY_PREVIOUS` exists only during a rotation (RUNBOOK,
 "Rotating `DOWNLOAD_TICKET_KEY`"). Check it from outside after setting it, with a licensed

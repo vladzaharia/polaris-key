@@ -132,8 +132,8 @@ async function ok(res: Response): Promise<PortalDownloads> {
 }
 
 /** Give every Diceroll file a GitHub storage URL in a PUBLIC repository: a source the portal can
- *  hand a browser for a non-public deliverable (R2-only licensed bytes are PX-W3; a private
- *  repository's URLs answer a browser with GitHub's 404). */
+ *  hand a browser for a non-public deliverable (this suite runs without `DOWNLOAD_TICKET_KEY`, so
+ *  the PX-W3 ticket path is off; a private repository's URLs answer a browser with GitHub's 404). */
 async function githubSources(
   w: World,
   visibility: "public" | "private" = "public",
@@ -694,7 +694,7 @@ describe("the token mint answers every file the listing offers", () => {
     expect(location.origin).toBe(BYTES);
   });
 
-  it("a licensed file in a PRIVATE GitHub repository is not_hosted in the listing and at the mint", async () => {
+  it("without download tickets, a licensed file in a PRIVATE GitHub repository is not_hosted in the listing and at the mint", async () => {
     const w = await setup({ access: "licensed" });
     await githubSources(w, "private");
     const p = await account(w);
