@@ -44,6 +44,39 @@ Each service resolves its own settings today with different precedence ([S-18 §
 - `gen:transcripts --check` must stay unchanged: no wire effect.
 - A test asserts no handler writes a registry-backed column directly.
 
+### As built (2026-10-06), where the code corrected the brief
+
+- **Where it lives.** `packages/worker/src/core/settings/resolve.ts` (resolver: pure
+  `resolvePlatformValue` / `resolveProductValue`, loaders `resolvePlatformSetting` /
+  `resolveProductSettings`), `write.ts` (`writeSetting` / `writeSettings`), `columns.ts` (Core's
+  column adapters) and `snapshot.ts`; Release's tables are adapted in
+  `services/release/settingsColumns.ts`, contributed through the slices' new `columns` field.
+  Service handlers get the registry as `ServiceContext.settings` (built by both dispatchers,
+  `settingsRegistryFor`), the same pattern as `ingest` and `hooks`.
+- **Audit shape.** Migration `00XX_settings_audit.sql` (the lead numbers it) adds `before_json`,
+  `after_json`, `origin`, `reason` and `setting_key` to `audit`, and `origin`, `reason`,
+  `setting_key` to `platform_audit`, with a partial index per table on `setting_key`. Both sides
+  are stored as A-13's `{stored, version, effective, source}` so one renderer reads both tables.
+  The origin vocabulary is code (`SETTING_ORIGINS`), not a CHECK, so a new origin needs no
+  rebuild of an append-only table. One row per changed setting: a multi-field route writes
+  several rows under its existing action (`product.update`, `storefront.polarisKey.update`, …).
+- **Switched writers.** Product PATCH (name, licence defaults, admin group), Revert to manifest,
+  the catalog publish (`config.catalog`, rich: the caller's statements ride in the batch), the
+  licence policy (fingerprint, auto-issue) and its revert, services and its revert, device trust
+  policy, update settings (metadata access, compatibility window, operator policy) and their
+  revert, the portal listing (`storefront.polarisKey.*`), and feed retention. All bespoke routes
+  write in compatibility mode (`strict: false`: no version in their contracts); ST-05's generic
+  API is strict. A-13's platform-settings route keeps its own versioned write path for A-13's
+  keys (ST-05 folds it in); `writeSetting()` writes any other platform key.
+- **Claims.** On a repo-linked product a console write to a claimable key claims it; on a manual
+  product no claim row is written for a claimable or manifest key (ST-01b's rule, so a later
+  link still applies the manifest) and its version stays 0. Keys claimed through a legacy marker
+  (`services_source`, `access_source`, `compat_source`, the policy markers) keep their pre-ST-04
+  behaviour on the system product; every row-claimed key there is refused until ST-20.
+- **Not wired here.** `identity.reservedDisplayTerms` and `identity.displayNameApproved` stay
+  `pending: { wp: "ST-04" }`: wiring them needs the manifest validator to take extra terms and
+  an approval (a `shared-manifest` change), which is outside this scope. Proposed follow-up.
+
 ## Steps
 
 1. Resolver with property tests.

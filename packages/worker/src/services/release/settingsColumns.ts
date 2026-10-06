@@ -47,7 +47,7 @@ function parseObject(raw: unknown): Record<string, unknown> | undefined {
 export const RELEASE_COLUMN_ADAPTERS: Readonly<
   Record<string, SettingColumnAdapter>
 > = {
-  // Manifest-only (`.pkey/release`): decoded for the resolver, never written from the console.
+  // Manifest-only (`.pkey/release`): decoded for the resolver; no console write reaches them.
   "release.artifactPolicy": {
     table: "release_config",
     keyColumn: "product",

@@ -1785,7 +1785,11 @@ describe("R9-13 dynamic `SET ${col} = ?` builders", () => {
     expect(licenses).not.toMatch(
       /patchLicense\(\s*db,\s*slug,\s*id,\s*\{\s*\.\.\./,
     );
-    expect(products).toContain('name: typeof body.name === "string"');
+    // ST-04: the product PATCH writes through `writeSettings()`; every setting it names is a
+    // registry-key literal (the column comes from the key's adapter, never from the request).
+    expect(products).toContain('add("core.name", body.name.trim())');
+    expect(products).not.toMatch(/add\(\s*(body|req)\b/);
+    expect(products).not.toMatch(/key:\s*(body|req)\b/);
   });
 
   it("values are always bound, never interpolated (D1Db + SqliteDb both bind)", async () => {

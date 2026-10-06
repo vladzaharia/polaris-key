@@ -32,6 +32,15 @@ Grouped by what triggers them:
 | Offline bundles           | `bundle.minted` — see [Offline bundles](/docs/admin/bundles/#nothing-is-stored-but-the-audit-row)                                               |
 | Access                    | `access.denied`                                                                                                                                 |
 
+### Settings rows
+
+A change to a registered setting (the [settings reference](/docs/reference/settings/) lists
+them) writes **one row per setting**, in the same atomic write as the change: a product PATCH
+that renames the product and lowers its device limit appends two `product.update` rows, not
+one. Besides the summary, each settings row stores the setting's key, the value before and
+after, what caused it (`console`, `api`, `resync`, `revert`, …) and the operator's reason when
+one was given. The feed shows the summary today; the per-setting history view reads the rest.
+
 :::note[`key.create` / `key.revoke` name two different things]
 Those two action strings are written by **both** the license-key lifecycle and the
 product-signing-key lifecycle — a minted or revoked license key, and (for `key.revoke` only,
