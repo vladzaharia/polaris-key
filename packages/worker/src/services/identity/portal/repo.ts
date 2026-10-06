@@ -1294,20 +1294,50 @@ export async function getPlatformIdentity(
 }
 
 /**
- * The products Discover may consider for any account (PX-W10, G24), before the policy runs: live,
- * portal on, Discover on and not `unlisted` (PS-02: either column hides it until PS-11 retires
- * `discover_enabled`), and authenticating against the PLATFORM issuer with auto-linking on.
- * The last two are exactly `syncAccountLicenseLinks`'s subject predicates, for the same reasons
- * (R5-01/R5-02): a licence keyed by the account's platform subject is only meaningful, and is only
- * linked back into this account, on a product whose own sign-in uses that issuer.
+ * One product the Polaris Key storefront may consider for any account (PS-03, notes/S-21 §6.3
+ * "Candidates"), before any path is evaluated: its listing columns, resolved by the engine through
+ * `resolveListing`, and whether Identity's own paths (`group`, `auto_issue`) may run on it.
  */
-export async function listDiscoverCandidates(
+export interface StorefrontCandidateRow {
+  slug: string;
+  /**
+   * 1 when the product authenticates against the PLATFORM issuer with auto-linking on: exactly
+   * `syncAccountLicenseLinks`'s subject predicates (R5-01/R5-02). A licence keyed by the account's
+   * platform subject is only meaningful, and is only linked back into this account, on a product
+   * whose own sign-in uses that issuer, so the identity paths run only where this is 1.
+   */
+  identity_eligible: number;
+  discover_enabled: number;
+  store_listed: string | null;
+  store_audience: string | null;
+  store_offer_paths_json: string | null;
+  store_group_labels_json: string | null;
+}
+
+/**
+ * The products the storefront engine may consider for any account (PS-03, which rebuilt PX-W10's
+ * Discover candidates on it): live, portal on, and not `unlisted` (PS-02: `discover_enabled = 0`
+ * or `store_listed = 'unlisted'` hides it until PS-11 retires `discover_enabled`). The platform
+ * issuer and auto-link predicate no longer narrows the set: it rides along as
+ * `identity_eligible`, and stays on the identity paths unchanged, because a path that grants no
+ * licence (`open`) does not key anything by a subject. The deployment switch
+ * (`storefront.polarisKey.enabled`) is the caller's, read once per listing.
+ */
+export async function listStorefrontCandidates(
   db: Db,
-  /** Answer for this one product only (the claim's re-evaluation). */
+  /** Answer for this one product only (a claim's re-evaluation). */
   only?: string,
-): Promise<string[]> {
-  const rows = await db.all<{ slug: string }>(
-    `SELECT p.slug AS slug
+): Promise<StorefrontCandidateRow[]> {
+  return db.all<StorefrontCandidateRow>(
+    `SELECT p.slug AS slug,
+            CASE WHEN COALESCE(o.provider, 'platform') = 'platform'
+                  AND ${AUTO_LINK_ENABLED_SQL}
+                 THEN 1 ELSE 0 END AS identity_eligible,
+            COALESCE(s.discover_enabled, 1) AS discover_enabled,
+            s.store_listed AS store_listed,
+            s.store_audience AS store_audience,
+            s.store_offer_paths_json AS store_offer_paths_json,
+            s.store_group_labels_json AS store_group_labels_json
        FROM products p
        LEFT JOIN portal_product_settings s ON s.product = p.slug
        LEFT JOIN oidc_config o ON o.product = p.slug
@@ -1315,14 +1345,38 @@ export async function listDiscoverCandidates(
         AND COALESCE(s.portal_enabled, 1) = 1
         AND COALESCE(s.discover_enabled, 1) = 1
         AND COALESCE(s.store_listed, 'auto') <> 'unlisted'
-        AND COALESCE(o.provider, 'platform') = 'platform'
-        AND ${AUTO_LINK_ENABLED_SQL}
         AND (? IS NULL OR p.slug = ?)
       ORDER BY p.name ASC, p.slug ASC`,
     only ?? null,
     only ?? null,
   );
-  return rows.map((r) => r.slug);
+}
+
+/**
+ * The products in the account's library WITHOUT a licence (PS-04's `library_entries`, notes/S-21
+ * §6.4): an open product someone added. The storefront never offers or counts one of these, as
+ * it never offers a held product. PS-03 reads the table only if present: until PS-04's migration
+ * adds it, D1's "no such table" for exactly this table reads as an empty library, and any other
+ * error still throws.
+ */
+export async function listLibraryEntryProducts(
+  db: Db,
+  accountId: string,
+): Promise<Set<string>> {
+  try {
+    const rows = await db.all<{ product: string }>(
+      "SELECT product FROM library_entries WHERE account_id = ?",
+      accountId,
+    );
+    return new Set(rows.map((r) => r.product));
+  } catch (e) {
+    if (
+      e instanceof Error &&
+      /no such table: library_entries\b/i.test(e.message)
+    )
+      return new Set();
+    throw e;
+  }
 }
 
 /**

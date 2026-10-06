@@ -297,8 +297,13 @@ describe("the settings registry (ST-03)", () => {
       defaultValue: "on",
       ownership: "operator",
       confirm: { on: "L2", off: "L2" },
-      pending: { wp: "PS-03" },
     });
+    // PS-03 wired it: the storefront engine's candidate set reads it (no longer pending).
+    expect(enabled.pending).toBeUndefined();
+    expect(enabled.readers).toEqual([
+      "core/storefrontSwitch.ts",
+      "services/identity/portal/store/obtain.ts",
+    ]);
     expect(enabled.productLink).toBeUndefined(); // platform-only
     // Not an A-13 store key: it has no row alias, so the A-13 route cannot write it.
     expect(platformSettingDef("storefront.polarisKey.enabled")).toBeUndefined();

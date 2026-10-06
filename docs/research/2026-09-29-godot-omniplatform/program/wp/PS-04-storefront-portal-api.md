@@ -36,6 +36,7 @@ The portal API serves the storefront: offers with all their paths, a storefront 
 - `GET /api/discover/<p>`: listing (description, screenshots, platforms), paths with terms; `404 not_found` for anything not visible.
 - `POST /api/discover/<p>/claim` with optional `{path}`; `issueFromPath(path, account)` is the only issuance function.
 - Migration: `library_entries` (S-21 §6.4 DDL) and `storefront_daily`, `storefront_seen` (S-21 §6.6); owners: identity.
+  Remove `listLibraryEntryProducts`' no-such-table catch once this migration lands.
 - `libraryView` unions entries (`kind: "entry"`); `DELETE /api/library/<p>` removes an entry only; account deletion deletes entries.
 - Impression counting on `GET /api/discover` and the product page; add counting on claim; activation counting when a device first binds to a licence whose audit source is `discover`.
 

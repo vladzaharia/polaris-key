@@ -299,10 +299,14 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     widensWhen: "on",
     ownership: "operator",
     confirm: { on: "L2", off: "L2" },
+    // A `platform_settings` row under the registry key itself (no A-13 alias); ST-05 writes it.
     storage: { kind: "scalar" },
     since: "PS-02",
-    // PS-03's candidate query is the first reader (S-21 §6.3 "Candidates").
-    pending: { wp: "PS-03" },
+    // The storefront engine's candidate set (S-21 §6.3 "Candidates", PS-03).
+    readers: [
+      "core/storefrontSwitch.ts",
+      "services/identity/portal/store/obtain.ts",
+    ],
   }),
 
   // ── Product defaults (ST-16 wires them; owner decision 2: live inheritance) ─────────────

@@ -28,6 +28,8 @@ const STOREFRONT_READERS = [
   "core/storefront/polarisKeyListing.ts",
   "services/identity/portal/storefrontListing.ts",
   "services/identity/admin.ts",
+  // PS-03: the obtain-path engine resolves every candidate's listing from its candidate row.
+  "services/identity/portal/store/obtain.ts",
 ] as const;
 const storefrontColumn = (column: string) =>
   ({ kind: "column", table: "portal_product_settings", column }) as const;

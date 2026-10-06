@@ -159,6 +159,31 @@ export async function readAccessTable(
   };
 }
 
+/**
+ * PS-03 (`Delivery.openAccess`, notes/S-21 §6.3): can every deliverable of the product be
+ * downloaded without a licence? True only when the product has an `app` row and every row reads
+ * `public` or `authenticated` with no delivery gate. Every deliverable without a row of its own
+ * inherits the `app` row, so the rows are the whole answer. Fail-closed throughout, as
+ * `accessModeOf` is: no `app` row (nothing ingested) is `entitled`, a mode outside the four reads
+ * `entitled`, and a gated deliverable (an `entitlement` licence flag, P4-02) needs a licence
+ * whatever its mode says.
+ */
+export async function openAccessOf(db: Db, product: string): Promise<boolean> {
+  const rows = await db.all<
+    Pick<DistAccessRow, "deliverable_id" | "mode" | "entitlement">
+  >(
+    "SELECT deliverable_id, mode, entitlement FROM dist_access WHERE product = ?",
+    product,
+  );
+  if (!rows.some((r) => r.deliverable_id === APP_DELIVERABLE_ID)) return false;
+  return rows.every((r) => {
+    const mode = readMode(r.mode);
+    return (
+      (mode === "public" || mode === "authenticated") && r.entitlement === null
+    );
+  });
+}
+
 /** Set (and claim for the operator) one deliverable's mode. `entitlement` undefined = keep. */
 export async function setAccess(
   db: Db,

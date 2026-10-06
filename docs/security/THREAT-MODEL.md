@@ -5681,34 +5681,52 @@ keeps every subject-keyed store honest (plans/U-01.md §6.1).
   `export`; no claimed table has an `account_id` column. A store added without its hooks fails the
   gate instead of leaving data behind after a merge or a deletion.
 
-### Discover: free offers and "Add to library" (PX-W10)
+### Discover: free offers and "Add to library" (PX-W10, PS-03)
 
 `GET /api/discover` lists the products whose licence policy would auto-issue to the signed-in
 account and `POST /api/discover/<p>/claim` mints one (docs/design/PORTAL.md §10.2 G24, G25). Both
-sit behind the portal session; the claim also needs the CSRF header.
+sit behind the portal session; the claim also needs the CSRF header. Since PS-03 both run on the
+Polaris Key storefront's obtain-path engine (`services/identity/portal/store/obtain.ts`, notes/S-21
+§6.3): one dry-run evaluation answers whether, and by which paths, an account can add a product.
+Discover serves the engine's identity paths (`group`, `auto_issue`); the `open` path and
+audience-`everyone` link-only listings are evaluated but not served until PS-04 (PS-11 adds the
+storefront's full threat set, notes/S-21 §6.9 S1-S11).
 
 - **Discover grants nothing a sign-in would not.** The listing and the claim run the product
   sign-in's own policy function (`identityTier`) and the claim mints through its own path
   (`activateFromIdentity`), for the subject the account holds at the platform IdP. Anything the
-  claim can mint, the same person could already get by signing in to the product. Only products on
-  the platform issuer with auto-linking on are candidates, the same predicate the link sweep uses
-  (R5-01/R5-02), so a tenant-controlled issuer can neither be offered nor collide with a platform
-  subject.
+  claim can mint, the same person could already get by signing in to the product. The identity
+  paths run only on products on the platform issuer with auto-linking on, the same predicate the
+  link sweep uses (R5-01/R5-02), so a tenant-controlled issuer can neither be offered nor collide
+  with a platform subject. `identityTier` returns one grant, so a product has at most one identity
+  path, and it names the tier the claim would mint.
+- **`open` grants no licence.** The engine's `open` path needs License off for the product and
+  Distribution's `delivery().openAccess()` true: every deliverable `public` or `authenticated` with
+  no entitlement gate, fail-closed (no `app` row, an unknown mode or a gated pack is not open). It
+  never runs the licence policy and nothing it leads to mints a licence.
 - **Group membership is the platform IdP's assertion, as of the last portal sign-in.** The portal
   now keeps the `groups` claim (`account_links.groups_json`, on the link it signed in through). Residual: a group removed
   at the IdP still yields offers until the account signs in to the portal again (the product
   sign-in reads it fresh). The window is the portal session's lifetime, and a product that must
   revoke on group removal does so through the licence, not through Discover.
-- **The listing writes nothing.** It is a dry run (a test runs it against a database that refuses
-  every write), so browsing Discover cannot mint, link or audit anything.
-- **The claim is not a product oracle and not a minting loop.** An unknown slug, a product that is
-  not a candidate, and a withdrawn offer all answer the same `409 not_eligible`. The claim is
-  idempotent per account and product (the `idx_licenses_sub` unique index decides a racing double
-  submit; the loser answers the winner's licence), it spends the one per-account bucket the
-  activate preview and the key claim share (`portalClaimKey`, charged before any lookup), and it is
-  audited twice: `portal.discover.claim` in `portal_audit` and `license.create` in the product's
-  `audit`, both with `source: discover`.
-- **Developers can withhold an offer without changing the policy** (`discover_enabled = 0`).
+- **The listing writes nothing.** The engine is a dry run (tests run it, every path included,
+  against a database that refuses every write and compare the whole database before and after), so
+  browsing Discover cannot mint, link or audit anything.
+- **No enumeration.** Unknown, unlisted, ineligible and held products all get the engine's one
+  hidden verdict, and only visible products are listed or counted. The claim is not a product
+  oracle and not a minting loop: an unknown slug, a product that is not a candidate, a withdrawn
+  offer and a link-only listing all answer the same `409 not_eligible`. The claim is idempotent per
+  account and product (the `idx_licenses_sub` unique index decides a racing double submit; the
+  loser answers the winner's licence), it spends the one per-account bucket the activate preview
+  and the key claim share (`portalClaimKey`, charged before any lookup), and it is audited twice:
+  `portal.discover.claim` in `portal_audit` and `license.create` in the product's `audit`, both
+  with `source: discover`.
+- **Operators withhold or narrow without changing the policy.** `storefront.polarisKey.listed`
+  `unlisted` (or `discover_enabled = 0` until PS-11) hides a product, `offerPaths` drops path kinds
+  (the claim follows it), and the deployment switch `storefront.polarisKey.enabled` off hides every
+  listing. The switch reads fail-safe: any stored value other than `on` (a cleared value is the
+  default, on), or an unreadable store, is off. Audience `everyone` is the one deliberate exception to "only what you can obtain"
+  (level-2 confirmation, PS-02), and it shows a `listed` product as a link only, never an Add.
 
 ### Licensed portal downloads (PX-W3)
 

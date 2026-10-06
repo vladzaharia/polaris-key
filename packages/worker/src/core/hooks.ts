@@ -1016,6 +1016,14 @@ export interface Delivery {
    */
   accessMode(deliverable: string): Promise<ReleaseAccess>;
   /**
+   * PS-03 (notes/S-21 §6.3, the `open` obtain path): is EVERY deliverable of the product
+   * downloadable without a licence, i.e. is each one's `accessMode` `public` or `authenticated`?
+   * Fail-closed like `accessMode`: a product with no `app` row (no release configuration, nothing
+   * ingested) answers `false`, as does any stored mode outside the four. Identity's storefront
+   * engine asks it, with the licence service off, before it lists a product as free to use.
+   */
+  openAccess(): Promise<boolean>;
+  /**
    * The delivery GATE of one deliverable (P4-02, plans/P4-01.md decision 35): the licence flag in
    * the `entitlement` of the deliverable's OWN `dist_access` row, never the `app` row's (a pack
    * row is operator-owned from the start, P2b-04), or `null` when the deliverable is ungated.
