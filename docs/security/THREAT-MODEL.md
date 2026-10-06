@@ -4995,6 +4995,38 @@ rules and item 16's tenant-scoped lookup are enforced in the same code.
   not-yet-settled loser inline, so the scheduled catch-up (which copies a portal link onto a
   floating licence) can never hand it to that loser.
 
+### Identity as a per-product service (PX-W17)
+
+One account per person; a product's `identity` toggle gates only sign-in through that product
+(plans/PX-W17.md, WIRE-CONTRACT-V4 §12.7).
+
+- **Cross-product correlation (item 12), the control.** `test/accountIdBoundary.test.ts` proves
+  the I-05 rule for every developer surface PX-W17 adds or touches: no non-portal OpenAPI schema
+  declares an `accountId`/`account_id` property, and with one account owning a licence in two
+  products, every product-scoped console GET that shows the product, licences, devices or
+  activity, every device route, the signed licence document and the subject feed carry neither
+  the account id nor the other product's subject. The console shows `ownerSubject` on licences and
+  `subject` on devices, pairwise ids only.
+- **S-19 T1's precondition: no signed-in device on an Identity-off product.** LX-09's holder
+  resolver trusts `devices.subject` without reading the toggle, so the column must never be set
+  on such a product. Controls: the transition hook (`core/servicesTransitions.ts`) clears every
+  binding of the product on every write of `services_json` that leaves Identity off — the console
+  PATCH and revert and the manifest resync — idempotently, so a straggler written by a racing
+  sign-in heals at the next write; and the bind guard (`assertIdentityBindable`, called by
+  `setDeviceSubject`, `bindDevice` and `registerDeviceBinding`) throws before any write while the
+  toggle is off. The clear releases no seat and deauthorizes nothing, so turning Identity off
+  cannot be used to free seats; it is audited (`services.identity_disabled`) with the count, and
+  the console's dry run (`PATCH …/services?dryRun=1`) shows that count before the operator
+  confirms. Residual: a sign-in that passed the guard and is mid-flight when the toggle flips can
+  leave one binding until the next services write or resync.
+- **The `identity_disabled` redirect.** A person's navigation to an app-sign-in entry of an
+  Identity-off product gets `303` to the portal's card. It discloses only what discovery already
+  publishes (`identity: {enabled:false}`); an unknown product keeps its 404, and every device and
+  JSON caller keeps the registry's `404 not_found` (and `registration_closed`), so the JSON API
+  still cannot tell "off" from "absent". The sniffing (`Sec-Fetch-Mode: navigate`, or an `Accept`
+  listing `text/html`) can only widen the answer to a redirect to a fixed same-origin path built
+  from the product slug, never to a caller-chosen URL.
+
 ### Discover: free offers and "Add to library" (PX-W10)
 
 `GET /api/discover` lists the products whose licence policy would auto-issue to the signed-in

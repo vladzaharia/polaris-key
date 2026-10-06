@@ -190,6 +190,12 @@
       "description": "Device-code sign-in could not allocate a free user code after several attempts; try again."
     },
     {
+      "code": "identity_disabled",
+      "kind": "wire",
+      "service": "identity",
+      "description": "403, human-facing only: a sign-in through a product whose Identity service is off (PX-W17). A browser navigation to an app-sign-in entry is sent to `/signin?product=<slug>&error=identity_disabled`, and the portal's passthrough context answers the code; device and JSON routes answer `not_found`, and SDKs report `service-unavailable` (`service-disabled` in React)."
+    },
+    {
       "code": "auth_method_disabled",
       "kind": "wire",
       "service": "identity",

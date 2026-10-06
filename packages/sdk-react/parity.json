@@ -1,7 +1,10 @@
 {
   "$schema": "../../conformance/parity/manifest.schema.json",
   "sdk": "react",
-  "runtimes": ["web", "desktop-bridge"],
+  "runtimes": [
+    "web",
+    "desktop-bridge"
+  ],
   "testRoots": [
     "packages/sdk-react/test",
     "packages/client-core/test",
@@ -106,7 +109,10 @@
     },
     "config.secret": {
       "status": "na",
-      "runtime": ["web", "desktop-bridge"],
+      "runtime": [
+        "web",
+        "desktop-bridge"
+      ],
       "reason": "runtime",
       "note": "New desktop-bridge N/A (P1b-01). The desktop renderer never holds secrets either; the host reads them with the Node SDK."
     },
@@ -128,13 +134,19 @@
     },
     "devices.fingerprint": {
       "status": "na",
-      "runtime": ["web", "desktop-bridge"],
+      "runtime": [
+        "web",
+        "desktop-bridge"
+      ],
       "reason": "runtime",
       "note": "New desktop-bridge N/A (P1b-01). On desktop the host's Node SDK computes it."
     },
     "devices.facts": {
       "status": "na",
-      "runtime": ["web", "desktop-bridge"],
+      "runtime": [
+        "web",
+        "desktop-bridge"
+      ],
       "reason": "runtime",
       "note": "New desktop-bridge N/A (P1b-01). On desktop the host's Node SDK collects them."
     },
@@ -171,7 +183,10 @@
     },
     "devices.attest": {
       "status": "na",
-      "runtime": ["web", "desktop-bridge"],
+      "runtime": [
+        "web",
+        "desktop-bridge"
+      ],
       "reason": "runtime",
       "note": "P6-02: neither a browser nor a desktop renderer has App Attest or Play Integrity; those devices stay at the basic trust level."
     },
@@ -181,6 +196,10 @@
     "identity.devicecode": {
       "status": "implemented",
       "note": "Desktop through the bridge (beginSignIn/pollSignIn, v4 adds the expiry, interval and identity). Web in bearer mode (SP-R02): POST /<p>/identity/auth/device/{start,poll} through adapter.beginSignIn(); devicecode-happy and devicecode-expired replay through it. A cookie-session page signs in by the OIDC redirect (identity.oidc)."
+    },
+    "identity.toggle": {
+      "status": "planned",
+      "wp": "I-10a"
     },
     "release.changelog": {
       "status": "implemented"
@@ -301,7 +320,10 @@
     },
     "packs.type.godot.zip": {
       "status": "na",
-      "runtime": ["web", "desktop-bridge"],
+      "runtime": [
+        "web",
+        "desktop-bridge"
+      ],
       "reason": "runtime",
       "note": "P4-16: a godot.zip is mounted only by Godot's load_resource_pack."
     },
@@ -315,7 +337,10 @@
     },
     "packs.type.audio.bank": {
       "status": "na",
-      "runtime": ["web", "desktop-bridge"],
+      "runtime": [
+        "web",
+        "desktop-bridge"
+      ],
       "reason": "runtime",
       "note": "P4-16: audio banks load through a game engine's middleware."
     },
@@ -325,29 +350,44 @@
     },
     "packs.transport.apple": {
       "status": "na",
-      "runtime": ["web", "desktop-bridge"],
+      "runtime": [
+        "web",
+        "desktop-bridge"
+      ],
       "reason": "runtime"
     },
     "packs.transport.play": {
       "status": "na",
-      "runtime": ["web", "desktop-bridge"],
+      "runtime": [
+        "web",
+        "desktop-bridge"
+      ],
       "reason": "runtime"
     },
     "packs.transport.steam": {
       "status": "na",
-      "runtime": ["web", "desktop-bridge"],
+      "runtime": [
+        "web",
+        "desktop-bridge"
+      ],
       "reason": "runtime",
       "note": "New desktop-bridge N/A (P1b-01). On desktop the host's Node SDK owns platform transports."
     },
     "packs.transport.msix": {
       "status": "na",
-      "runtime": ["web", "desktop-bridge"],
+      "runtime": [
+        "web",
+        "desktop-bridge"
+      ],
       "reason": "runtime",
       "note": "New desktop-bridge N/A (P1b-01). On desktop the host's Node SDK owns platform transports."
     },
     "packs.transport.flatpak": {
       "status": "na",
-      "runtime": ["web", "desktop-bridge"],
+      "runtime": [
+        "web",
+        "desktop-bridge"
+      ],
       "reason": "runtime",
       "note": "New desktop-bridge N/A (P1b-01). On desktop the host's Node SDK owns platform transports."
     },
@@ -363,7 +403,10 @@
     },
     "ui.cli": {
       "status": "na",
-      "runtime": ["web", "desktop-bridge"],
+      "runtime": [
+        "web",
+        "desktop-bridge"
+      ],
       "reason": "runtime",
       "note": "This SDK ships a widget kit (ui.kit); the terminal kit is the headless SDKs' expectation."
     },

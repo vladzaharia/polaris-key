@@ -75,6 +75,15 @@ refused before anything is sent, and the message appears beside the controls inv
 switch and the registration choice. The registration policy is a choice of four rather than a
 switch, so it keeps its own **Save registration policy** action.
 
+**Turning Identity off** says how many devices it signs out. Before the dialog opens, the page
+sends the same body as a dry run, `PATCH .../services?dryRun=1`, which answers
+`{"changes": [...], "signedInDevicesToClear": n}` and writes nothing. When the save goes through,
+every device signed in through the product loses its sign-in: its install, token, licence and seat
+are untouched, nothing is deauthorized, and the change is audited as
+`services.identity_disabled` with the count. Accounts are not touched either: there is one Polaris
+Key account per person, and its licences of this product stay attached. Turning Identity back on
+asks nobody for consent again, but nobody is signed back in until they sign in.
+
 ## Manifest vs admin ownership
 
 `services_json` carries an owner, `services_source`, exactly like the fingerprint and auto-issue
@@ -135,7 +144,10 @@ A disabled service's routes 404 exactly like an unregistered slug or a typo'd pa
 indistinguishable, so probing which services a product runs isn't free), its discovery document
 entry becomes `{"enabled": false}` with no endpoint list, its console nav section drops instead
 of greying out (see [the disabled-service page](/docs/admin/console-tour/#when-a-link-goes-nowhere)),
-and the customer portal stops offering whatever that service backed. Read
+and the customer portal stops offering whatever that service backed. Identity has one more
+answer: a person who follows a sign-in link of the product in a browser is sent to the portal's
+sign-in page (`/signin?product=<slug>&error=identity_disabled`) instead of a JSON 404; apps and
+scripts still get the 404. Read
 [The service model](/docs/start/service-model/) for the four projections and the full coherence
 rule set this page's table is drawn from.
 

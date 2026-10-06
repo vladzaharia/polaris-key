@@ -133,6 +133,10 @@
       "title": "登录不可用",
       "message": "登录目前不可用。请几分钟后重试。"
     },
+    "identity_disabled": {
+      "title": "登录不可用",
+      "message": "已关闭通过此应用登录。你的安装和许可证仍可正常使用。"
+    },
     "auth_method_disabled": {
       "title": "登录方式不可用",
       "message": "该登录方式已关闭。请选择其他方式。"

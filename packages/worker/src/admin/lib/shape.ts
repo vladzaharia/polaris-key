@@ -27,6 +27,7 @@ import { latestReleaseHasDmg } from "../../services/release/store.js";
 import { readAppDeliverable } from "../../services/release/descriptor.js";
 import { hasArtifactMap } from "../../services/release/artifactMap.js";
 import { countKeysByLicense } from "../repo.js";
+import { subjectFor } from "../../core/accountSubjects.js";
 import {
   approvalMismatch,
   listEdgeMintRecipesWithApprovals,
@@ -132,6 +133,17 @@ export async function licenseSummary(
   const keyCounts = await countKeysByLicense(db, product, row.id);
   const devices = await listDevicesByLicense(db, product, row.id);
   const profiles = await listLicenseProfiles(db, product, row.id);
+  // PX-W17: the owner as this product sees them — the pairwise subject, never the account id
+  // (S-16 §5.1). Subjects are platform-wide, so this is set for every product whatever its
+  // Identity toggle; `null` for a floating licence.
+  const ownerSubject = row.account_id
+    ? await subjectFor(
+        db,
+        row.account_id,
+        product,
+        Math.floor(Date.now() / 1000),
+      )
+    : null;
   return {
     id: row.id,
     name: row.name ?? "",
@@ -149,6 +161,7 @@ export async function licenseSummary(
     channels: parseJsonList(row.channels_json),
     minVersion: row.min_version,
     maxVersion: row.max_version,
+    ownerSubject,
     identityProvider: row.sub ? "oidc" : "manual",
     // How the row was minted (`admin`, `oidc`, `enroll`): decides whether it may be deleted.
     origin: row.origin ?? "admin",

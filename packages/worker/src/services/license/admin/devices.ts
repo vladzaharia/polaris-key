@@ -48,6 +48,7 @@ export async function handleAdminDevices(
           appVersion: m.app_version ?? undefined,
           sdkName: m.sdk_name ?? undefined,
           sdkVersion: m.sdk_version ?? undefined,
+          subject: m.subject ?? null,
           fingerprint: shapeFingerprint(
             await getFingerprint(db, slug, m.device_id),
           ),

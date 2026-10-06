@@ -38,6 +38,7 @@ export const ErrorCode = {
   disabled: "disabled",
   oidcError: "oidc_error",
   unavailable: "unavailable",
+  identityDisabled: "identity_disabled",
   authMethodDisabled: "auth_method_disabled",
   emailNotConfigured: "email_not_configured",
   licenseOwned: "license_owned",
@@ -188,6 +189,7 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "disabled",
   "oidc_error",
   "unavailable",
+  "identity_disabled",
   "auth_method_disabled",
   "email_not_configured",
   "license_owned",
@@ -340,6 +342,7 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   disabled: "wire",
   oidc_error: "wire",
   unavailable: "wire",
+  identity_disabled: "wire",
   auth_method_disabled: "wire",
   email_not_configured: "wire",
   license_owned: "wire",
@@ -493,6 +496,7 @@ export const Feature = {
   devicesAttest: "devices.attest",
   identityOidc: "identity.oidc",
   identityDevicecode: "identity.devicecode",
+  identityToggle: "identity.toggle",
   releaseChangelog: "release.changelog",
   releaseDownload: "release.download",
   releaseRecord: "release.record",
@@ -576,6 +580,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "devices.attest",
   "identity.oidc",
   "identity.devicecode",
+  "identity.toggle",
   "release.changelog",
   "release.download",
   "release.record",
@@ -1438,6 +1443,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   },
   "identity.oidc": { status: "planned", service: "identity", na: [] },
   "identity.devicecode": { status: "implemented", service: "identity", na: [] },
+  "identity.toggle": { status: "planned", service: "identity", na: [] },
   "release.changelog": { status: "implemented", service: "release", na: [] },
   "release.download": { status: "implemented", service: "release", na: [] },
   "release.record": { status: "implemented", service: "release", na: [] },
@@ -1525,4 +1531,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "5ab33251bf4d5dc88ef0725aa02f7401a16e3e93ec2050e2f7f68752fbbb204a";
+  "18f570050662fe628bfe9f4b89e5798a0d6636e7af76af5a641d765595c0e086";

@@ -133,6 +133,10 @@
       "title": "Inicio de sesión no disponible",
       "message": "El inicio de sesión no está disponible en este momento. Vuelve a intentarlo en unos minutos."
     },
+    "identity_disabled": {
+      "title": "Inicio de sesión no disponible",
+      "message": "El inicio de sesión desde esta app está desactivado. Tus instalaciones y licencias siguen funcionando."
+    },
     "auth_method_disabled": {
       "title": "Método de inicio de sesión no disponible",
       "message": "Ese método de inicio de sesión está desactivado. Elige otro."

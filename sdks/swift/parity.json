@@ -1,7 +1,10 @@
 {
   "$schema": "../../conformance/parity/manifest.schema.json",
   "sdk": "swift",
-  "runtimes": ["macos", "ios"],
+  "runtimes": [
+    "macos",
+    "ios"
+  ],
   "testRoots": [
     "sdks/swift/Tests/PolarisKeyTests",
     "tools/gen-mirrors.test.ts"
@@ -131,6 +134,10 @@
     "identity.devicecode": {
       "status": "implemented"
     },
+    "identity.toggle": {
+      "status": "planned",
+      "wp": "I-10b"
+    },
     "release.changelog": {
       "status": "implemented"
     },
@@ -245,7 +252,10 @@
     },
     "packs.type.godot.zip": {
       "status": "na",
-      "runtime": ["macos", "ios"],
+      "runtime": [
+        "macos",
+        "ios"
+      ],
       "reason": "runtime",
       "note": "P4-16: a godot.zip is mounted only by Godot's load_resource_pack."
     },
@@ -259,7 +269,10 @@
     },
     "packs.type.audio.bank": {
       "status": "na",
-      "runtime": ["macos", "ios"],
+      "runtime": [
+        "macos",
+        "ios"
+      ],
       "reason": "runtime",
       "note": "P4-16: audio banks load through a game engine's middleware."
     },
@@ -273,7 +286,10 @@
     },
     "packs.transport.play": {
       "status": "na",
-      "runtime": ["macos", "ios"],
+      "runtime": [
+        "macos",
+        "ios"
+      ],
       "reason": "runtime"
     },
     "packs.transport.steam": {
@@ -289,12 +305,18 @@
     },
     "packs.transport.msix": {
       "status": "na",
-      "runtime": ["macos", "ios"],
+      "runtime": [
+        "macos",
+        "ios"
+      ],
       "reason": "runtime"
     },
     "packs.transport.flatpak": {
       "status": "na",
-      "runtime": ["macos", "ios"],
+      "runtime": [
+        "macos",
+        "ios"
+      ],
       "reason": "runtime"
     },
     "ui.stages": {
@@ -312,7 +334,10 @@
     },
     "ui.cli": {
       "status": "na",
-      "runtime": ["macos", "ios"],
+      "runtime": [
+        "macos",
+        "ios"
+      ],
       "reason": "runtime",
       "note": "This SDK ships a widget kit (ui.kit); the terminal kit is the headless SDKs' expectation."
     },

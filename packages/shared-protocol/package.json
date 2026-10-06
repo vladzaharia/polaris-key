@@ -41,6 +41,10 @@
     "./packs": {
       "types": "./dist/packs.d.ts",
       "default": "./dist/packs.js"
+    },
+    "./identity": {
+      "types": "./dist/identity.d.ts",
+      "default": "./dist/identity.js"
     }
   },
   "files": [
@@ -48,7 +52,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsup src/index.ts src/core.ts src/license.ts src/config.ts src/release.ts src/update.ts src/trust.ts src/distribution.ts src/packs.ts --format esm --dts --clean",
+    "build": "tsup src/index.ts src/core.ts src/license.ts src/config.ts src/release.ts src/update.ts src/trust.ts src/distribution.ts src/packs.ts src/identity.ts --format esm --dts --clean",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
     "lint": "prettier --check \"src/**/*.ts\"",

@@ -42,6 +42,7 @@ public enum ErrorCode {
     public static let disabled = "disabled"
     public static let oidcError = "oidc_error"
     public static let unavailable = "unavailable"
+    public static let identityDisabled = "identity_disabled"
     public static let authMethodDisabled = "auth_method_disabled"
     public static let emailNotConfigured = "email_not_configured"
     public static let licenseOwned = "license_owned"
@@ -191,6 +192,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "disabled",
     "oidc_error",
     "unavailable",
+    "identity_disabled",
     "auth_method_disabled",
     "email_not_configured",
     "license_owned",
@@ -340,6 +342,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "disabled": "wire",
     "oidc_error": "wire",
     "unavailable": "wire",
+    "identity_disabled": "wire",
     "auth_method_disabled": "wire",
     "email_not_configured": "wire",
     "license_owned": "wire",
@@ -493,6 +496,7 @@ public enum Feature {
     public static let devicesAttest = "devices.attest"
     public static let identityOidc = "identity.oidc"
     public static let identityDevicecode = "identity.devicecode"
+    public static let identityToggle = "identity.toggle"
     public static let releaseChangelog = "release.changelog"
     public static let releaseDownload = "release.download"
     public static let releaseRecord = "release.record"
@@ -575,6 +579,7 @@ public let FEATURE_VALUES: [String] = [
     "devices.attest",
     "identity.oidc",
     "identity.devicecode",
+    "identity.toggle",
     "release.changelog",
     "release.download",
     "release.record",
@@ -1354,6 +1359,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "devices.attest": CapabilityRow(status: "implemented", service: "core", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "outlet")]),
     "identity.oidc": CapabilityRow(status: "planned", service: "identity", na: []),
     "identity.devicecode": CapabilityRow(status: "implemented", service: "identity", na: []),
+    "identity.toggle": CapabilityRow(status: "planned", service: "identity", na: []),
     "release.changelog": CapabilityRow(status: "implemented", service: "release", na: []),
     "release.download": CapabilityRow(status: "implemented", service: "release", na: []),
     "release.record": CapabilityRow(status: "implemented", service: "release", na: []),
@@ -1400,4 +1406,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "bc364e4dcfaa6d0d031491c87665bc57457ba0753ede31e418d001732da1941f"
+public let CAPABILITY_DIGEST = "5f0948446b8133e0ea84f37abc63e4c7dd05acd36367d5cdb0528990c6dc4ae9"

@@ -1,8 +1,17 @@
 {
   "$schema": "../../conformance/parity/manifest.schema.json",
   "sdk": "godot",
-  "runtimes": ["linux", "macos", "windows", "android", "ios", "web"],
-  "testRoots": ["sdks/godot/tests"],
+  "runtimes": [
+    "linux",
+    "macos",
+    "windows",
+    "android",
+    "ios",
+    "web"
+  ],
+  "testRoots": [
+    "sdks/godot/tests"
+  ],
   "features": {
     "core.verify": {
       "status": "implemented"
@@ -159,6 +168,10 @@
       "status": "implemented",
       "note": "PolarisKey.identity (P1-07): begin_sign_in with background polling on the server's cadence, cancel, the opt-in confirm-identity step and licence attach, and a pure-GDScript QR encoder with PKeyQrRect for verification_uri_complete. On web it runs too (OS.shell_open becomes window.open; Worker CORS needed)."
     },
+    "identity.toggle": {
+      "status": "planned",
+      "wp": "I-10b"
+    },
     "release.changelog": {
       "status": "implemented"
     },
@@ -289,7 +302,14 @@
     },
     "packs.type.ml.model": {
       "status": "na",
-      "runtime": ["linux", "macos", "windows", "android", "ios", "web"],
+      "runtime": [
+        "linux",
+        "macos",
+        "windows",
+        "android",
+        "ios",
+        "web"
+      ],
       "reason": "runtime",
       "note": "P4-16: Godot has no ML runtime; a game that adds one registers its own handler."
     },
@@ -426,7 +446,14 @@
     },
     "ui.cli": {
       "status": "na",
-      "runtime": ["linux", "macos", "windows", "android", "ios", "web"],
+      "runtime": [
+        "linux",
+        "macos",
+        "windows",
+        "android",
+        "ios",
+        "web"
+      ],
       "reason": "runtime",
       "note": "This SDK ships a widget kit (ui.kit); the terminal kit is the headless SDKs' expectation."
     },

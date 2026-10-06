@@ -63,6 +63,7 @@ export type WriteMethod =
   | "revokeCiToken"
   | "updateServices"
   | "revertServices"
+  | "servicesDryRun"
   | "saveUpdateSettings"
   | "revertUpdateSettings"
   | "saveDeliveryAccess"
@@ -355,6 +356,11 @@ export const MUTATIONS: MutationTable = {
   revertServices: {
     label: "services revert to manifest",
     invalidates: (slug) => [exact(qk.products()), prefix(qk.product(slug))],
+  },
+  servicesDryRun: {
+    label: "services change dry run",
+    invalidates: () => [],
+    why: "A dry run (PATCH ?dryRun=1) only counts what the change would do; the Worker writes nothing.",
   },
   saveUpdateSettings: {
     label: "update feed settings save",

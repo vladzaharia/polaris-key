@@ -11,7 +11,11 @@ import {
 } from "./devices.js";
 import { discoveryCapabilities, discoveryFailure } from "./discovery.js";
 import { distributionDownloadModel } from "./distribution.js";
-import { devicecodeExpired, devicecodeHappy } from "./identity.js";
+import {
+  devicecodeExpired,
+  devicecodeHappy,
+  identityDisabled,
+} from "./identity.js";
 import { activateEnrollDeactivate, activateRefusals } from "./license.js";
 import { configSchemaFetch } from "./catalog.js";
 import {
@@ -40,6 +44,7 @@ export const SCENARIOS: Scenario[] = [
   releaseChangelogEntitled,
   devicecodeHappy,
   devicecodeExpired,
+  identityDisabled,
   edgeMint,
   updateFeedRollback,
   updateRecordByHash,

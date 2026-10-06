@@ -49,6 +49,7 @@ const COPY_CODES := {
 	"disabled": {"title": "Sign-in unavailable", "message": "Sign-in isn't turned on for this app."},
 	"oidc_error": {"title": "Sign-in failed", "message": "Sign-in didn't finish. Try again."},
 	"unavailable": {"title": "Sign-in unavailable", "message": "Sign-in isn't available right now. Try again in a few minutes."},
+	"identity_disabled": {"title": "Sign-in unavailable", "message": "Sign-in through this app is turned off. Your installs and licenses keep working."},
 	"auth_method_disabled": {"title": "Sign-in method unavailable", "message": "That sign-in method is turned off. Choose another one."},
 	"email_not_configured": {"title": "Email sign-in unavailable", "message": "Email sign-in isn't available right now. Choose another sign-in method."},
 	"license_owned": {"title": "License in another account", "message": "This {product} license is already in another Polaris Key account. A license never moves by its key."},

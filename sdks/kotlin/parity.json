@@ -1,7 +1,10 @@
 {
   "$schema": "../../conformance/parity/manifest.schema.json",
   "sdk": "kotlin",
-  "runtimes": ["android", "jvm"],
+  "runtimes": [
+    "android",
+    "jvm"
+  ],
   "testRoots": [
     "sdks/kotlin/core/src/test",
     "sdks/kotlin/license/src/test",
@@ -154,6 +157,10 @@
     "identity.devicecode": {
       "status": "implemented"
     },
+    "identity.toggle": {
+      "status": "planned",
+      "wp": "I-10b"
+    },
     "release.changelog": {
       "status": "implemented"
     },
@@ -274,7 +281,10 @@
     },
     "packs.type.godot.zip": {
       "status": "na",
-      "runtime": ["android", "jvm"],
+      "runtime": [
+        "android",
+        "jvm"
+      ],
       "reason": "runtime"
     },
     "packs.type.l10n.table": {
@@ -287,7 +297,10 @@
     },
     "packs.type.audio.bank": {
       "status": "na",
-      "runtime": ["android", "jvm"],
+      "runtime": [
+        "android",
+        "jvm"
+      ],
       "reason": "runtime"
     },
     "packs.type.ml.model": {
@@ -300,7 +313,10 @@
     },
     "packs.transport.apple": {
       "status": "na",
-      "runtime": ["android", "jvm"],
+      "runtime": [
+        "android",
+        "jvm"
+      ],
       "reason": "runtime"
     },
     "packs.transport.play": {
@@ -326,12 +342,18 @@
     },
     "packs.transport.msix": {
       "status": "na",
-      "runtime": ["android", "jvm"],
+      "runtime": [
+        "android",
+        "jvm"
+      ],
       "reason": "runtime"
     },
     "packs.transport.flatpak": {
       "status": "na",
-      "runtime": ["android", "jvm"],
+      "runtime": [
+        "android",
+        "jvm"
+      ],
       "reason": "runtime"
     },
     "ui.stages": {
@@ -348,7 +370,10 @@
     },
     "ui.cli": {
       "status": "na",
-      "runtime": ["android", "jvm"],
+      "runtime": [
+        "android",
+        "jvm"
+      ],
       "reason": "runtime",
       "note": "This SDK ships a widget kit (ui.kit); the terminal kit is the headless SDKs' expectation."
     },

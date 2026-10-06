@@ -6523,6 +6523,7 @@ paths:
             selects the browser flow over the device flow.
           schema: { type: string, format: uri }
       responses:
+        "303": { $ref: "#/components/responses/IdentityDisabledRedirect" }
         "302":
           description: Redirect to the IdP authorize endpoint.
           headers:
@@ -7017,6 +7018,7 @@ paths:
           schema: { type: string }
           example: WDJB-MJHT
       responses:
+        "303": { $ref: "#/components/responses/IdentityDisabledRedirect" }
         "200":
           description: "The entry form, or the confirmation page. `text/html; charset=utf-8`, `cache-control: no-store`."
           content:
@@ -7167,6 +7169,7 @@ paths:
         methods. Served under the strict script-free static-HTML CSP with `no-store` and
         `referrer-policy: no-referrer`, so the device code never leaks in a Referer.
       responses:
+        "303": { $ref: "#/components/responses/IdentityDisabledRedirect" }
         "200":
           description: "HTML confirmation page. `text/html; charset=utf-8`, `cache-control: no-store`."
           content:
@@ -12851,6 +12854,23 @@ components:
       content:
         application/json:
           schema: { $ref: "#/components/schemas/AdminError" }
+    IdentityDisabledRedirect:
+      description: >
+        PX-W17 (WIRE-CONTRACT-V4 §12.7): the product's Identity service is off and the request is
+        a person's browser NAVIGATION (`GET`/`HEAD` with `Sec-Fetch-Mode: navigate`, or an
+        `Accept` header that lists `text/html`). The person is sent to the root portal's friendly
+        card; nothing is rendered here. Every other caller — every SDK, a JSON `Accept`, a
+        `fetch` — gets the registry's nested `404 not_found` instead, so the JSON API never
+        tells "Identity is off" from "no such route". Discloses nothing discovery does not
+        already publish (`identity: {enabled:false}`); an unknown product keeps its 404. The
+        same refusal covers `/{product}/identity/authorize`, reserved ahead of its route.
+      headers:
+        Location:
+          description: "`<origin>/signin?product=<slug>&error=identity_disabled`."
+          schema: { type: string, format: uri }
+          example: https://key.plrs.im/signin?product=djdl&error=identity_disabled
+        Cache-Control:
+          schema: { type: string, const: no-store }
     OciError:
       description: >
         OCI's error JSON (distribution-spec "Error Codes"): `NAME_UNKNOWN`, `MANIFEST_UNKNOWN`,
