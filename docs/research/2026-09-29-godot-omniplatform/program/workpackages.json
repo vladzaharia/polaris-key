@@ -8449,7 +8449,7 @@
       "optional": false,
       "refs": ["docs/design/UI-KITS.md §6"],
       "brief": "wp/UK-16-ui-docs-scaffold.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "UK-17",
