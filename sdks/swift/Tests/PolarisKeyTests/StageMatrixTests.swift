@@ -1,4 +1,4 @@
-// @pkey-feature ui.stages packs.state update.bootguard
+// @pkey-feature ui.stages packs.state update.bootguard ui.boot
 // Cross-SDK boot stage machine conformance, driven off `conformance/corpus/v2`'s
 // `stage-matrix.json`, mirrored into this bundle's `Resources/v2/` by `pnpm gen:corpus`.
 //

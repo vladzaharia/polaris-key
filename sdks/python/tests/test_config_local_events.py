@@ -1,3 +1,4 @@
+# @pkey-feature config.local
 # @pkey-feature config.resolve core.sync
 """``config.local`` (persisted settings) and ``client.events`` (SDK parity pass §3.11, SP-P11)."""
 

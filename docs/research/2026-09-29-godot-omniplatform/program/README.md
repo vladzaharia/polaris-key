@@ -304,6 +304,14 @@ I-10b, I-13, I-15 and PX-W13, W5 I-13, I-14, I-21 and I-22, W6 phase U, W7 LX-11
 LX-25, W11 I-24a, I-24b and LX-24, W12 LX-13, I-25 and U-16). The note's non-wire task list (SP-01
 to SP-03 and the per-SDK SP-N, SP-R, SP-P, SP-S, SP-K and SP-G tasks) becomes packages when the lead
 schedules its waves (note §7). SP-K12 (Kotlin JVM desktop) is already in the graph as UK-40.
+**SP-12 to SP-30** (stage "SDK gaps", filed 2026-10-05) own every parity row still `planned` after
+`fix/sdk-parity-followups`, grouped by SDK and capability: React SP-12 to SP-16, Swift SP-17 to
+SP-19, Kotlin SP-20 and SP-21, Python SP-22, Godot SP-23 to SP-27, and the desktop pack transports
+SP-28 (Steam for Node, Python, Swift and Kotlin), SP-29 (MSIX and Flatpak for Node and Python, with
+the build generators) and SP-30 (MSIX and Flatpak for Godot). They take the next free `SP-NN` ids,
+as `plans/SP-00.md` D8 sets (the manifest `wp` pattern refuses the note's `SP-N05` form); each
+brief names the note tasks it absorbs. SP-16 takes React's `commerce.receipt` row from LX-20.
+`identity.oidc` rows point at I-15 and Swift `ui.kit` at UK-07.
 
 Phase UK (UI kits) follows [`docs/design/UI-KITS.md`](../../../design/UI-KITS.md) §10, approved with
 the owner decisions of 2026-10-05. One package per kit, ordered must → should → could (could items
@@ -332,21 +340,21 @@ these into packages when their phase approaches, using the next free id in the p
 
 **SDK parity**
 
-- React `core.local`.
+- React `core.local` (→ SP-15).
 - `identity.oidc` in Node, Python and Swift, and a registry decision on native Godot, which has no
   native completion path.
-- Swift `ui.kit`, React `<PolarisBoot>` and SwiftUI `PolarisBootView` (P1-09 follow-up).
+- Swift `ui.kit` (→ UK-07), React `<PolarisBoot>` and SwiftUI `PolarisBootView` (P1-09 follow-up).
 - Terminal boot renderers (Node `runBoot()`, Python `rich_boot()`) over the stage machine. They need
   the transport status on `DocOutcome.error` and `RegisterResult.error` in Node, Python and Swift
   first (P1-09 plan §8).
 - An adopter-facing docs page on the boot protocol (the stage machine and "What a host sends";
   P1-09 plan §8).
-- `update.driver` in Node, Python and React.
+- `update.driver` in Node, Python and React (React → SP-15).
 - Browser telemetry: `/devices/report` accepts only a bearer token today.
 - React `config.mint`.
 - `Retry-After` back-off in every SDK; the Worker's 429s do not send the header yet.
 - A fingerprint on the device-code path, so strict tiers work.
-- A desktop keyring store for Godot.
+- A desktop keyring store for Godot (→ SP-27).
 - Godot runs on web (headless Chromium) and on real devices. The runner legs on web, Android and
   iOS have no owner (P1-01 and P1-09 hand-offs).
 - Porting the prototype `lowend/sync.sh` to `sdks/godot` (P1-01 follow-up; it still copies the
@@ -373,7 +381,7 @@ these into packages when their phase approaches, using the next free id in the p
 - Microsoft Store add-ons and rollout controls.
 - ASC review-submission creation.
 - A macOS binding of the Apple plugin package, for Mac App Store builds.
-- The `msix-optional` and `flatpak-ext` transports.
+- The `msix-optional` and `flatpak-ext` transports (→ SP-29, SP-30).
 - A Tauri updater feed renderer.
 
 **Packs**

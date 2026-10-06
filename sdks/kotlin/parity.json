@@ -59,8 +59,8 @@
     },
     "core.copy": {
       "status": "planned",
-      "unowned": true,
-      "note": "SP-K01, SDK-PARITY-PASS §5.5."
+      "wp": "SP-21",
+      "note": "Copy.generated.kt (gen:constants) carries the tables, but there is no copy.message(code)/copy.title(code) API with the fallback and placeholder fill over them, and no unit test of one; the Android kit's PolarisCopy uses its own strings."
     },
     "license.gate": {
       "status": "implemented"
@@ -84,9 +84,8 @@
       "status": "implemented"
     },
     "license.refusals": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-K01, SDK-PARITY-PASS §5.5."
+      "status": "implemented",
+      "note": "ActivationResult's typed refusals by the body's code, each carrying the registry code (LicenseEndpoints, LicenseClientTest); the activate-refusals transcript replays."
     },
     "config.resolve": {
       "status": "implemented"
@@ -108,9 +107,8 @@
       "note": "The Kotlin mirror is rendered by tools/gen-mirrors.ts (--lang kotlin); the :config tests compile the committed sample."
     },
     "config.local": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-K07, SDK-PARITY-PASS §5.5."
+      "status": "implemented",
+      "note": "config.set/clear/clearAll persist device-local overrides in local-config.json beside the store, checked against the catalog (or the document's type), never over an enforced or hidden entry (managed_by_admin); config.setting(key) StateFlows and config.changes emit every change (ConfigLocalTest)."
     },
     "devices.fingerprint": {
       "status": "implemented",
@@ -131,9 +129,8 @@
       "note": "PolarisKeyClient.report(): the facts, the verified config and entitlement values, caps, content.packSetId, gate {status}, outlet, and the update-health journal (`updates`, at most 16 per report, marked sent once accepted; notes/SDK-PARITY-PASS.md §3.13). UpdateClient journals update_offered, the boot guard update_applied, update_reverted, boot_rolled_back and update_confirmed, PacksClient update_downloaded, update_applied and pack_failed, and both Android install drivers update_downloaded and update_applied (UpdateEventJournalTest, BootGuardEventsTest, DevicesTest, DirectInstallDriverTest)."
     },
     "telemetry.updates": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-K03, SDK-PARITY-PASS §5.5."
+      "status": "implemented",
+      "note": "The update-health journal rides devices/report, at most 16 events per report, dropped once accepted (UpdateEventJournalTest, DevicesTest); the telemetry-report-updates transcript replays."
     },
     "devices.attest": {
       "status": "implemented",
@@ -151,7 +148,7 @@
     },
     "identity.oidc": {
       "status": "planned",
-      "unowned": true,
+      "wp": "I-15",
       "note": "Only through a host-supplied sign-in closure, as in Swift; no work package gives the Kotlin SDK its own browser sign-in (P6-07)."
     },
     "identity.devicecode": {
@@ -168,14 +165,12 @@
       "status": "implemented"
     },
     "release.fetch": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-K13, SDK-PARITY-PASS §5.5."
+      "status": "implemented",
+      "note": "release.fetch(target, to, onProgress): the build of a verified record from discovery's builds template with the bearer, bounded Range windows (the last one open-ended) resumed with If-Range, nothing kept unless size and SHA-256 match (DeliveryHelpersTest); the release-fetch-gated transcript replays."
     },
     "release.distribution": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-K13, SDK-PARITY-PASS §5.5."
+      "status": "implemented",
+      "note": "distribution.downloadModel() and thisPlatform() type GET /<p>/distribution/download.json (DeliveryHelpersTest); the distribution-download-model transcript replays."
     },
     "update.check": {
       "status": "implemented",
@@ -186,9 +181,8 @@
       "note": ":core's verifyFeed, feedClaims, reloadFeeds and commitFeed (every feedCases vector, FeedCasesTest); UpdateClient.channelFeed() and decide() run them through runUpdateCheck, and Core keeps the feeds slice and its seq floors (the update-feed-rollback transcript). update.feedUrl(kind) and appcastUrl() expand discovery's appcast, winsparkle, velopack, appInstaller and zsync templates; a template the Worker does not advertise is the typed product N/A (DeliveryHelpersTest)."
     },
     "update.feeds": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-K13, SDK-PARITY-PASS §5.5."
+      "status": "implemented",
+      "note": "update.feedUrl(kind) and appcastUrl() over discovery's update.endpoints by feedUrlFrom; every feed-url-matrix.json row (FeedUrlMatrixTest); a missing template is the typed product N/A."
     },
     "update.decide": {
       "status": "implemented",
@@ -211,9 +205,8 @@
       "note": ":core's detectOutlet passes every outlet-matrix.json row in :conformance; on Android :android's AndroidOutletSignalReader turns :platform's InstallSource into android.installSource and android.installerMismatch, and every Android row of the matrix replays through it (AndroidOutletTest). A JVM desktop observes no signal (NoOutletSignals): detection falls to the stamp."
     },
     "crash.tags": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-K13, SDK-PARITY-PASS §5.5."
+      "status": "implemented",
+      "note": "client.crashTags(): release app@<version>[+<build>], environment the channel, pkey.outlet when known, as the Worker's Sentry hook reads them (DeliveryHelpersTest)."
     },
     "packs.record": {
       "status": "implemented",
@@ -322,7 +315,7 @@
     },
     "packs.transport.steam": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-28",
       "except": [
         {
           "runtime": "android",
@@ -347,8 +340,8 @@
     },
     "ui.boot": {
       "status": "planned",
-      "unowned": true,
-      "note": "SP-K06, SDK-PARITY-PASS §5.5."
+      "wp": "SP-20",
+      "note": "The one-call boot is :ui's PolarisBootState.launch over client.bootHost(), an Android library; there is no JVM boot API the :conformance replayer can drive, so boot-cold-register cannot replay yet."
     },
     "ui.kit": {
       "status": "implemented",
