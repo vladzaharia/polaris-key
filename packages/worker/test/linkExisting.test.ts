@@ -27,6 +27,7 @@ import {
   prepareLink,
 } from "../src/services/release/linkExisting.js";
 import { parseManifest } from "../src/services/release/manifest.js";
+import { resyncRepo } from "../src/services/release/resync.js";
 import { getReleaseConfig } from "../src/services/release/index.js";
 import { getActiveSchema, getProduct, setServices } from "../src/repo.js";
 import { handleAdmin } from "../src/admin/index.js";
@@ -618,6 +619,34 @@ describe("planResync (the resync dry run, UX-78)", () => {
     expect(res.ok).toBe(true);
     if (!res.ok) return;
     expect(res.plan.conflicts[0]).toMatchObject({ area: "oidc" });
+  });
+
+  it("a trusted-publisher lookup the resync would refuse on is a conflict, and the resync does refuse", async () => {
+    const { db, env } = await linkedProduct();
+    const publishing = JSON.stringify({
+      release: {
+        ghOwner: "acme",
+        ghRepo: "tonebox",
+        binaryName: "tonebox",
+        publishing: {
+          trustedPublisher: { workflow: ".github/workflows/release.yml" },
+        },
+      },
+    });
+    const fetchImpl = stubFetch(
+      { ...files(), ".pkey/release.json": publishing },
+      { identity: false },
+    );
+    const res = await planResync(env, db, "tonebox", NOW + 5, fetchImpl);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.plan.conflicts).toEqual([
+      expect.objectContaining({ area: "publisher" }),
+    ]);
+    // The same shared check refuses the real resync, before it writes.
+    const applied = await resyncRepo(env, db, "tonebox", NOW + 6, fetchImpl);
+    expect(applied.ok).toBe(false);
+    if (!applied.ok) expect(applied.error).toBe(res.plan.conflicts[0]!.summary);
   });
 
   it("refuses with the check the resync itself would fail", async () => {

@@ -37,8 +37,12 @@ import {
   stmtInsertProvisioning,
   stmtInsertTier,
 } from "../../core/ingest.js";
-import { getReleaseConfig } from "./config.js";
-import { parseManifest, type ManifestProfile } from "./manifest.js";
+import { getReleaseConfig, type ReleaseConfigRow } from "./config.js";
+import {
+  parseManifest,
+  type ManifestProfile,
+  type ParsedManifest,
+} from "./manifest.js";
 import {
   discoverInstallation,
   type FetchImpl,
@@ -150,130 +154,34 @@ async function applyRepoManifest(
   fetchImpl: FetchImpl,
   ingest: ManifestIngest | undefined,
 ): Promise<ResyncResult> {
-  const product = await getProduct(db, slug);
-  if (!product) return { ok: false, error: "unknown product" };
-  if (product.release_source !== "github")
-    return { ok: false, error: "product is not linked to a repo" };
-
-  const cfg = await getReleaseConfig(db, slug);
-  if (!cfg || !cfg.gh_owner || !cfg.gh_repo)
-    return { ok: false, error: "product has no linked repo coordinates" };
-  const owner = cfg.gh_owner;
-  const repo = cfg.gh_repo;
-
-  let token: string;
-  try {
-    const installId =
-      cfg.gh_installation_id ??
-      (await discoverInstallation(env, owner, repo, now, fetchImpl));
-    // Structured scope, not a bare repo name — the string form is the legacy path and
-    // yields an installation-wide token plus a second cache entry (R5-03).
-    token = await getInstallationToken(
-      env,
-      { owner, repo },
-      installId,
-      now,
-      fetchImpl,
-    );
-  } catch (err) {
+  const read = await readLinkedManifest(env, db, slug, now, fetchImpl);
+  if (!read.ok)
     return {
       ok: false,
-      error: err instanceof Error ? err.message : "github access failed",
+      error: read.error,
+      ...(read.errors ? { errors: read.errors } : {}),
     };
-  }
+  const { owner, repo, cfg, files, token, commit: appliedSha, manifest } = read;
 
-  // ST-01a: every document at one GitHub-resolved commit of the default branch (R6-05 kept).
-  let files: Record<string, string>;
-  let appliedSha: string;
-  try {
-    ({ files, sha: appliedSha } = await fetchPinnedManifestFiles(
-      token,
-      owner,
-      repo,
-      fetchImpl,
-    ));
-  } catch (err) {
-    return {
-      ok: false,
-      error:
-        err instanceof Error ? err.message : "github manifest fetch failed",
-    };
-  }
+  // R9-01, at ingest — see `issuerChangeRefusal`. Deliberately BEFORE the first write: everything
+  // below this point is a sequence of un-batched `db.run`s, so refusing later would leave half a
+  // manifest applied.
+  const issuerRefusal = await issuerChangeRefusal(env, db, slug, manifest);
+  if (issuerRefusal) return { ok: false, error: issuerRefusal };
 
-  const result = parseManifest(files, {
-    reservedNames: await reservedNamesMode(env, db),
-  });
-  if (!result.ok)
-    return {
-      ok: false,
-      error: "manifest validation failed",
-      errors: result.errors,
-    };
-  const manifest = result.manifest;
-  if (manifest.product.slug !== slug) {
-    return {
-      ok: false,
-      error: `manifest slug ${manifest.product.slug} does not match product ${slug}`,
-    };
-  }
-
-  // R9-01, at ingest. `oidc_config` is the one manifest-owned row with no admin-ownership
-  // flag: this function DELETEs and re-INSERTs it unconditionally, so a `.pkey/product` push
-  // can repoint the IdP that receives this product's OIDC `client_secret`. Only a NEW or
-  // CHANGED issuer is gated — an issuer already stored in D1 is re-applied untouched, because
-  // flipping the security posture of a running product on the deploy that ships this code is
-  // its own outage, and the attack is the *change*, not the status quo. `provider: "platform"`
-  // products (e.g. `djdl`) store no issuer and never reach the gate; a push that TRIES to move
-  // such a product to a custom issuer is a change from `""` and is gated like any other.
-  //
-  // Deliberately BEFORE the first write: everything below this point is a sequence of
-  // un-batched `db.run`s, so refusing later would leave half a manifest applied.
-  const nextOidc =
-    manifest.oidc?.provider === "custom" ? manifest.oidc : undefined;
-  if (nextOidc) {
-    const stored = await db.first<{ issuer: string | null }>(
-      "SELECT issuer FROM oidc_config WHERE product = ?",
-      slug,
-    );
-    // Raw string comparison, not host comparison: any edit to the value — a new host, a new
-    // path, a new port — is a change, and a change is what gets gated.
-    if ((stored?.issuer ?? "") !== nextOidc.issuer) {
-      const refusal = manifestIssuerRefusal(env, nextOidc.issuer);
-      if (refusal) return { ok: false, error: refusal };
-    }
-  }
-
-  // P2-02 — the trusted-publisher policy. Resolved BEFORE the first write for the same reason the
-  // issuer gate is: a GitHub failure here must refuse the push, not leave half a manifest
-  // applied. An operator-claimed policy (`source = 'admin'`) is never touched — no lookup, no
-  // write (`stmtUpsertManifestPublisher` is also guarded inside the statement).
-  const currentPublisher = await getPublisherPolicy(db, slug);
-  const publisherClaimed = currentPublisher?.source === "admin";
-  let nextPublisher: {
-    repositoryId: number;
-    repositoryOwnerId: number;
-    repository: string;
-    workflow: string;
-    environment: string;
-  } | null = null;
-  const declaredPublisher = manifest.release?.trustedPublisher ?? null;
-  if (declaredPublisher && !publisherClaimed) {
-    try {
-      const identity = await getRepoIdentity(token, owner, repo, fetchImpl);
-      nextPublisher = {
-        repositoryId: identity.id,
-        repositoryOwnerId: identity.ownerId,
-        repository: identity.fullName,
-        workflow: declaredPublisher.workflow,
-        environment: declaredPublisher.environment,
-      };
-    } catch (err) {
-      return {
-        ok: false,
-        error: `could not resolve the repository's ids for publishing.trustedPublisher: ${err instanceof Error ? err.message : "github lookup failed"}`,
-      };
-    }
-  }
+  // P2-02 — the trusted-publisher policy, resolved BEFORE the first write for the same reason.
+  const publisher = await resolveManifestPublisher(
+    db,
+    slug,
+    manifest,
+    token,
+    owner,
+    repo,
+    fetchImpl,
+  );
+  if (!publisher.ok) return { ok: false, error: publisher.error };
+  const { current: currentPublisher, claimed: publisherClaimed } = publisher;
+  const nextPublisher = publisher.next;
 
   // P0-12 — an edge-mint approval the product has WIDENED (public without acknowledgement,
   // License turned off, sign-in trust changed) is deleted by the ingest, not merely skipped by
@@ -372,19 +280,11 @@ async function applyRepoManifest(
   // manifest validator does not prove every entry is an object (a Config-off product's
   // `entries: [null]` gets through), and the constructor reads them. A throw here would escape
   // `resyncRepo` and, on a webhook, abort the whole per-product loop with no sync-state row.
-  let incomingCatalog: Catalog;
-  try {
-    incomingCatalog = new Catalog(manifest.catalog as never);
-    // Same screening the admin API applies before writing `product_schema`. A resync is
-    // triggered by a repo webhook, so without this the sync path installs catalogs the admin
-    // API would refuse — and the refusal is the only thing bounding `pattern` complexity.
-    if (catalogChanged) incomingCatalog.compileAll();
-  } catch (e) {
-    return {
-      ok: false,
-      error: `invalid catalog in manifest: ${e instanceof Error ? e.message : "unknown error"}`,
-    };
-  }
+  // The incoming catalog, built once (see `screenCatalog`): screened here when it changed, and
+  // asked by the profile carry-forward below (R2) which keys are still managed secrets.
+  const screened = screenCatalog(manifest, catalogChanged);
+  if (!screened.ok) return { ok: false, error: screened.error };
+  const incomingCatalog = screened.catalog;
   if (catalogChanged) {
     const version = await nextSchemaVersion(db, slug);
     await deactivateSchemas(db, slug);
@@ -402,13 +302,9 @@ async function applyRepoManifest(
   const rel = manifest.release;
   if (rel) {
     // Defence in depth for R6-01 (the repo-name fallback bypasses the manifest boundary).
+    const binaryRefusal = unsafeBinaryNameRefusal(manifest, repo);
+    if (binaryRefusal) return { ok: false, error: binaryRefusal };
     const binaryName = rel.binaryName || repo;
-    if (!isSafeBinaryName(binaryName)) {
-      return {
-        ok: false,
-        error: `unsafe binary name ${JSON.stringify(binaryName)}; set release.binaryName to match ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`,
-      };
-    }
     // `artifact_policy_json` is the MANIFEST half of the artifact policy only. The operator half
     // (requireSparkleSignature, minimumSystemVersion) lives in `operator_policy_json`, which this
     // function never names — so rewriting this blob whole can no longer drop an operator's keys.
@@ -822,4 +718,251 @@ function auditStatement(
                   ?, NULL, ?)`,
     params: [product, randomId("aud"), now, actor, product, summary],
   };
+}
+
+/**
+ * Which pre-write check refused a read of a linked product's manifest. A subset of
+ * `linkExisting.ts`'s `LinkCheck`, so the resync dry run can name it the way link does.
+ */
+export type LinkedManifestCheck = "product" | "app" | "manifest" | "slug";
+
+export type LinkedManifestRead =
+  | {
+      ok: true;
+      owner: string;
+      repo: string;
+      /** The product's `release_config` row the coordinates came from. */
+      cfg: ReleaseConfigRow;
+      /** The `.pkey/` documents as read (the manifest snapshot records them). */
+      files: Record<string, string>;
+      /** The repo-scoped installation token the read used. */
+      token: string;
+      /** The default-branch commit every document was read at (ST-01a). */
+      commit: string;
+      manifest: ParsedManifest;
+    }
+  | {
+      ok: false;
+      check: LinkedManifestCheck;
+      error: string;
+      errors?: string[];
+    };
+
+/**
+ * The read half of a resync, shared by `resyncRepo` and the console's dry run (`planResync`,
+ * UX-78) so the plan the operator confirms is read exactly as the resync reads it: the product
+ * must be linked, the coordinates come from `release_config`, the token is scoped to that one
+ * repository, every document is read at ONE GitHub-resolved commit of the default branch
+ * (ST-01a, R6-05: nothing caller-supplied chooses the ref), parsed with the platform's
+ * reserved-name severity, and the manifest must name this product. Writes nothing.
+ */
+export async function readLinkedManifest(
+  env: Env,
+  db: Db,
+  slug: string,
+  now: number,
+  fetchImpl: FetchImpl,
+): Promise<LinkedManifestRead> {
+  const product = await getProduct(db, slug);
+  if (!product)
+    return { ok: false, check: "product", error: "unknown product" };
+  if (product.release_source !== "github")
+    return {
+      ok: false,
+      check: "product",
+      error: "product is not linked to a repo",
+    };
+
+  const cfg = await getReleaseConfig(db, slug);
+  if (!cfg || !cfg.gh_owner || !cfg.gh_repo)
+    return {
+      ok: false,
+      check: "product",
+      error: "product has no linked repo coordinates",
+    };
+  const owner = cfg.gh_owner;
+  const repo = cfg.gh_repo;
+
+  let token: string;
+  try {
+    const installId =
+      cfg.gh_installation_id ??
+      (await discoverInstallation(env, owner, repo, now, fetchImpl));
+    // Structured scope, not a bare repo name — the string form is the legacy path and
+    // yields an installation-wide token plus a second cache entry (R5-03).
+    token = await getInstallationToken(
+      env,
+      { owner, repo },
+      installId,
+      now,
+      fetchImpl,
+    );
+  } catch (err) {
+    return {
+      ok: false,
+      check: "app",
+      error: err instanceof Error ? err.message : "github access failed",
+    };
+  }
+
+  let files: Record<string, string>;
+  let commit: string;
+  try {
+    ({ files, sha: commit } = await fetchPinnedManifestFiles(
+      token,
+      owner,
+      repo,
+      fetchImpl,
+    ));
+  } catch (err) {
+    return {
+      ok: false,
+      check: "manifest",
+      error:
+        err instanceof Error ? err.message : "github manifest fetch failed",
+    };
+  }
+
+  const result = parseManifest(files, {
+    reservedNames: await reservedNamesMode(env, db),
+  });
+  if (!result.ok)
+    return {
+      ok: false,
+      check: "manifest",
+      error: "manifest validation failed",
+      errors: result.errors,
+    };
+  const manifest = result.manifest;
+  if (manifest.product.slug !== slug)
+    return {
+      ok: false,
+      check: "slug",
+      error: `manifest slug ${manifest.product.slug} does not match product ${slug}`,
+    };
+  return { ok: true, owner, repo, cfg, files, token, commit, manifest };
+}
+
+/**
+ * R9-01, at ingest. `oidc_config` is the one manifest-owned row with no admin-ownership flag:
+ * `applyRepoManifest` DELETEs and re-INSERTs it unconditionally, so a `.pkey/product` push can
+ * repoint the IdP that receives this product's OIDC `client_secret`. Only a NEW or CHANGED issuer
+ * is gated — an issuer already stored in D1 is re-applied untouched, because flipping the security
+ * posture of a running product on the deploy that ships this code is its own outage, and the
+ * attack is the *change*, not the status quo. `provider: "platform"` products (e.g. `djdl`) store
+ * no issuer and never reach the gate; a push that TRIES to move such a product to a custom issuer
+ * is a change from `""` and is gated like any other. The refusal message, or `null`.
+ */
+export async function issuerChangeRefusal(
+  env: Env,
+  db: Db,
+  slug: string,
+  manifest: ParsedManifest,
+): Promise<string | null> {
+  if (manifest.oidc?.provider !== "custom") return null;
+  const stored = await db.first<{ issuer: string | null }>(
+    "SELECT issuer FROM oidc_config WHERE product = ?",
+    slug,
+  );
+  // Raw string comparison, not host comparison: any edit to the value — a new host, a new
+  // path, a new port — is a change, and a change is what gets gated.
+  if ((stored?.issuer ?? "") === manifest.oidc.issuer) return null;
+  return manifestIssuerRefusal(env, manifest.oidc.issuer);
+}
+
+/**
+ * R6-01 defence in depth: the release block's binary name (the repo name when the manifest
+ * leaves it out, which bypasses the manifest's own boundary) must be safe. The refusal message,
+ * or `null` (also when the manifest has no release block).
+ */
+export function unsafeBinaryNameRefusal(
+  manifest: ParsedManifest,
+  repo: string,
+): string | null {
+  if (!manifest.release) return null;
+  const binaryName = manifest.release.binaryName || repo;
+  if (isSafeBinaryName(binaryName)) return null;
+  return `unsafe binary name ${JSON.stringify(binaryName)}; set release.binaryName to match ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`;
+}
+
+/**
+ * Build the manifest's catalog and, when it changed, apply the same screening the admin API
+ * applies before writing `product_schema`. A resync is triggered by a repo webhook, so without
+ * this the sync path installs catalogs the admin API would refuse — and the refusal is the only
+ * thing bounding `pattern` complexity. Built INSIDE the try: the manifest validator does not
+ * prove every entry is an object (a Config-off product's `entries: [null]` gets through), and the
+ * constructor reads them; a throw would escape `resyncRepo` and, on a webhook, abort the whole
+ * per-product loop with no sync-state row.
+ */
+export function screenCatalog(
+  manifest: ParsedManifest,
+  catalogChanged: boolean,
+): { ok: true; catalog: Catalog } | { ok: false; error: string } {
+  try {
+    const catalog = new Catalog(manifest.catalog as never);
+    if (catalogChanged) catalog.compileAll();
+    return { ok: true, catalog };
+  } catch (e) {
+    return {
+      ok: false,
+      error: `invalid catalog in manifest: ${e instanceof Error ? e.message : "unknown error"}`,
+    };
+  }
+}
+
+export interface ManifestPublisher {
+  repositoryId: number;
+  repositoryOwnerId: number;
+  repository: string;
+  workflow: string;
+  environment: string;
+}
+
+/**
+ * P2-02 — the trusted-publisher policy the manifest asks for. An operator-claimed policy
+ * (`source = 'admin'`) is never touched: no lookup, and `next` stays `null`. Otherwise a declared
+ * `trustedPublisher` needs the repository's numeric ids from GitHub; a failed lookup refuses the
+ * push (it runs before the first write, so nothing is half-applied). Writes nothing.
+ */
+export async function resolveManifestPublisher(
+  db: Db,
+  slug: string,
+  manifest: ParsedManifest,
+  token: string,
+  owner: string,
+  repo: string,
+  fetchImpl: FetchImpl,
+): Promise<
+  | {
+      ok: true;
+      current: Awaited<ReturnType<typeof getPublisherPolicy>>;
+      claimed: boolean;
+      next: ManifestPublisher | null;
+    }
+  | { ok: false; error: string }
+> {
+  const current = await getPublisherPolicy(db, slug);
+  const claimed = current?.source === "admin";
+  const declared = manifest.release?.trustedPublisher ?? null;
+  if (!declared || claimed) return { ok: true, current, claimed, next: null };
+  try {
+    const identity = await getRepoIdentity(token, owner, repo, fetchImpl);
+    return {
+      ok: true,
+      current,
+      claimed,
+      next: {
+        repositoryId: identity.id,
+        repositoryOwnerId: identity.ownerId,
+        repository: identity.fullName,
+        workflow: declared.workflow,
+        environment: declared.environment,
+      },
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      error: `could not resolve the repository's ids for publishing.trustedPublisher: ${err instanceof Error ? err.message : "github lookup failed"}`,
+    };
+  }
 }
