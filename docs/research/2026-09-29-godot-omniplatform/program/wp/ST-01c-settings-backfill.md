@@ -123,7 +123,7 @@ reportId>` and refuses with 409 `backfill_stale` when the commit or the token ch
 - [x] After apply every declared field equals the manifest and every undeclared console row has `source = 'console'` (test).
 - [x] The dry-run report is stored and readable after apply (test).
 - [x] A second apply is a no-op (test).
-- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header. (Scoped lead gate: steps 1–9 and 11–25 green; step 10's one red test was `recordDeploy`'s migration-name check on the unnumbered placeholder, green since the migration is 0102.)
+- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header. (Scoped lead gate green, all 25 steps, Python, Swift and Godot included, after the batch-3 merge and the review fix round.)
 
 ## Verify
 
