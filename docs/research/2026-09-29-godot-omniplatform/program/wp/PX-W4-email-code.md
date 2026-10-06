@@ -61,6 +61,32 @@ Codes work across devices where links do not ([PORTAL.md §4.4](../../../../desi
 - [ ] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen:transcripts -- --check` stays green.
 - [ ] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
 
+## Corrections from the code (implementer, 2026-10-06)
+
+- **I-07 landed first and owns the shared code** (the overlap note above). The issue
+  (`POST /api/signin/email/start`) and the verify (`POST /api/signin/email/verify`) already run on
+  I-02's store in the `_portal` scope, with byte-identical start answers for known and unknown addresses
+  (`test/identityCardEmail.test.ts`), and both are in OpenAPI and `routeCoverage`. PX-W4 narrows to
+  what is left of PORTAL.md §4.4: the **Resend** the code step needs.
+- **What PX-W4 adds.** `POST /api/signin/email/resend` (`card/emailSignIn.ts`): a new code and
+  link for this browser's flow, to the address it started with, keeping `returnTo`. It needs no new
+  Turnstile token (the flow passed one), shares the start's per-address minute bucket
+  (`portalMagic`), waits `EMAIL_RESEND_AFTER_SECONDS` (60) after the last code, sends at most
+  `EMAIL_SENDS_PER_FLOW` (5) emails per flow, start included, and keeps every I-02 send limit with
+  the start's enumeration rule (a refused send answers like a sent one). It retires the flow
+  atomically, so the previous code and link stop working and two racing resends mail once. The
+  start and the resend now answer `resendIn` for the card's countdown.
+- **Rule 10 for portal routes is OpenAPI after all.** PORTAL.md §10.1 says the spec must not list
+  `/api/*`; the code moved on (PX-W1 and I-07 pinned portal routes in `PORTAL_KIND_PATHS`), so the
+  resend gets its OpenAPI operation and `routeCoverage` row, plus the docs portal page.
+- **Concurrency test.** The I-02 primitive already had one (`emailLimits.test.ts`, the workerd
+  `singleUse.test.ts`); PX-W4 adds the route-level race in both lanes (`test/portalEmailCode.test.ts`,
+  `test-workerd/emailCode.test.ts`).
+- **Left out (follow-up).** The expired-link Worker page's **Send a new code** (SIGN-IN.md §3.13,
+  §4.12) needs a flow that outlives its code (today both live 10 minutes, so the page never knows
+  the address) and a way for the SPA to land on the code step after a plain form `POST`. That is a
+  change to I-07's flow lifetime plus PX-12's landing, not an issue or verify route.
+
 ## Verify
 
 ```sh
