@@ -138,10 +138,11 @@ static func options(base_url: String, store: PKeyStore, clock: Array, product :=
 # around the call (`before := X.counter; call(); X.counter - before`): PKeyPck.type_reads,
 # scan_probes and scan_bytes, PKeyJson.path_bytes. Work that leaves the main thread or spans
 # frames asserts on what the code reports it did (PKeyJws.last_mode, last_slices, last_thread),
-# with any time budget driven by an injected clock (PKeyJws.slice_clock, like now_source). A
-# wall-clock bound is only a hang guard of at least 30 s, or the floor a real timeout must wait
-# (load can only lengthen the wait, so it cannot fail it: tests/updater/test_download.gd). Timings
-# and frame counts may still go to INFO lines.
+# with any time budget driven by an injected clock (PKeyJws.slice_clock, PKeyBoot.clock_msec,
+# like now_source). A wall-clock bound is only a hang guard of at least 30 s, or the floor a real
+# timeout must wait (load can only lengthen the wait, so it cannot fail it: test_download.gd's
+# 0.5 s deadline, suite_boot.gd's 0.3 s sync deadline). Timings and frame counts may still go to
+# INFO lines.
 
 
 ## Lets `frames` frames pass.
