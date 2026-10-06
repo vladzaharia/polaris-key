@@ -28,6 +28,9 @@ export function useFirstLoadStagger(
 } {
   const [on, setOn] = React.useState(firstLoad);
   const [initialView] = React.useState(view);
+  // A changed view ends it for good, also once the view is back where it started (React's
+  // "adjust state while rendering" pattern: this render is redone at once, before any commit).
+  if (on && view !== initialView) setOn(false);
   const ref = React.useCallback((el: HTMLElement | null) => {
     if (!el || typeof el.getAnimations !== "function") return;
     // getAnimations() resolves styles first, so the stagger's animations exist by now. Only the
