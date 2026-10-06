@@ -1086,12 +1086,62 @@ describe("I-26 Replace a device", () => {
 
 // ── origins (owner, 2026-10-05) ─────────────────────────────────────────────────────────────
 
+describe("I-26 chooser copy", () => {
+  const NOW_S = 1_780_000_000;
+  const full = {
+    id: "b",
+    tierName: "Edu",
+    origin: "From the developer",
+    fromSignIn: false,
+    seats: { used: 2, limit: 2 },
+    expiresAt: null,
+    activatedAt: NOW_S - 100,
+    state: "full" as const,
+    own: false,
+    replace: null,
+    freeDeviceUrl: null,
+  };
+  const body = (developerName?: string | null) =>
+    chooserBody({
+      productName: "Tidewater Studio",
+      deviceLabel: "Work laptop",
+      action: "/x",
+      token: "t",
+      now: NOW_S,
+      view: { rows: [full], preselected: null, create: null },
+      developerName,
+    });
+
+  it("names the developer in noneReplaceable when the listing has one (§5.2)", () => {
+    expect(body("Harbor Audio")).toContain(
+      "Harbor Audio manages devices for these licenses. Ask Harbor Audio to free one, or use another license.",
+    );
+    expect(body(null)).toContain(
+      "The developer manages devices for these licenses. Ask the developer to free one",
+    );
+  });
+
+  it("labels a full row's group by the product name alone (its tag describes it)", () => {
+    const html = body(null);
+    const m =
+      /role="group" aria-labelledby="([^"]+)" aria-describedby="([^"]+)"/.exec(
+        html,
+      )!;
+    expect(
+      new RegExp(`<span id="${m[1]}">Tidewater Studio</span>`).test(html),
+    ).toBe(true);
+    expect(html).toContain(`id="${m[2]}">No free devices</span>`);
+    expect(html).not.toContain("aria-disabled");
+  });
+});
+
 describe("I-26 row origins name the store with the key, never a licence type", () => {
   it("words every origin in plain words", () => {
     expect(originLabel("sign_in", null, false)).toBe("From signing in");
     expect(originLabel("store", "steam", true)).toBe("Steam key");
     expect(originLabel("store", "steam", false)).toBe("From Steam");
     expect(originLabel("store", "app-store", false)).toBe("From the App Store");
+    expect(originLabel("store", "app-store", true)).toBe("App Store key");
     expect(originLabel("developer", null, true)).toBe("Added with a key");
     expect(originLabel("developer", null, false)).toBe("From the developer");
     expect(originLabel("free", null, false)).toBe("Free");

@@ -208,7 +208,7 @@ export interface LegacyChoiceView {
 export const ACTIVE_NOW_SECONDS = 600;
 
 const STORE_NAMES: Record<string, string> = {
-  "app-store": "the App Store",
+  "app-store": "App Store",
   play: "Google Play",
   steam: "Steam",
 };
@@ -515,7 +515,7 @@ function rowHtml(
       : `<span class="choice-seats">${escapeHtml(devicesText(row.seats))}</span>`;
   const body =
     `<span class="choice-body">` +
-    `<span class="choice-title" id="${titleId}">${escapeHtml(ctx.productName)}${note}</span>` +
+    `<span class="choice-title"><span id="${titleId}">${escapeHtml(ctx.productName)}</span>${note}</span>` +
     `<span class="choice-title tiered"><span class="tag">${escapeHtml(row.tierName)}</span>${counter}</span>` +
     meta([row.origin, term]) + // signin.choice.meta
     reason +
@@ -572,8 +572,15 @@ export function chooserBody(input: {
   /** The label is client-supplied (`deviceName`), so the page says where it came from. Only the
    *  device-code flow has one; the browser flow signs in "this browser". */
   namedByDevice?: boolean;
+  /** The developer's name from the product's listing, when it has one (§5.2 `{developer}`). */
+  developerName?: string | null;
 }): string {
   const { view } = input;
+  // signin.choice.noneReplaceable
+  const dev = input.developerName?.trim() || null;
+  const noneReplaceable = `<p class="notice">${escapeHtml(
+    `${dev ?? "The developer"} manages devices for these licenses. Ask ${dev ?? "the developer"} to free one, or use another license.`,
+  )}</p>`;
   const ctx = {
     productName: input.productName,
     hideCounter: view.rows.some((r) => r.fromSignIn),
@@ -606,11 +613,8 @@ export function chooserBody(input: {
         }</p>`
       : view.create
         ? ""
-        : `<p class="notice">The developer manages devices for these licenses. Ask the developer to free one, or use another license.</p>`;
-  const empty =
-    view.rows.length === 0 && !view.create
-      ? `<p class="notice">The developer manages devices for these licenses. Ask the developer to free one, or use another license.</p>` // signin.choice.noneReplaceable
-      : "";
+        : noneReplaceable;
+  const empty = view.rows.length === 0 && !view.create ? noneReplaceable : "";
   // signin.choice.lede / signin.choice.ledeBrowser
   const lede = input.namedByDevice
     ? `${input.productName} will use it on ${input.deviceLabel}.`

@@ -2448,8 +2448,25 @@ async function renderChooser(
       notice: c.flow.choiceNotice ?? null,
       now,
       namedByDevice: Boolean(c.flow.viaDeviceCode),
+      developerName: await listingDeveloper(hooks),
     }),
   });
+}
+
+/** The developer's name from the product's listing (Distribution's hook), or null. */
+async function listingDeveloper(
+  hooks: ServiceHooks | undefined,
+): Promise<string | null> {
+  try {
+    const listing = (await hooks?.delivery()?.listing()) as
+      | Record<string, unknown>
+      | null
+      | undefined;
+    const name = listing?.developerName;
+    return typeof name === "string" && name.trim() ? name.trim() : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Record the person's choice and complete the flow (see `handleAuthChoose`). */
