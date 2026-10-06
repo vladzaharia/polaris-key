@@ -27,6 +27,17 @@
 >   rotation is needed (PX-W17 Q3). Cloud Sync requires Identity (PX-W17 Q4, I-04 §0, S-17).
 >   Subjects exist for every product, and product users only for Identity products (PX-W17 Q5).
 
+> **Floating keys and licence origins (S-24, 2026-10-06).** [notes/S-24](../research/2026-09-29-godot-omniplatform/notes/S-24-licence-holders.md) §10 amends §4.17 to §4.20 and
+> §4.26: adding a **floating** key (a licence in no account) that is already on devices says so on
+> Confirm ("It's on 2 devices already. They keep working and come with it.") and on Done ("Its 2
+> devices came with it. Sign in on them to turn on Cloud Sync.", the second sentence only with Cloud
+> Sync); the licence card's origin reads "Key ending 3WPLDA" for a key the person added, "<Store> key
+> ending 3WPLDA" for a store key and **"From <Developer>"** for a licence a developer assigned (even
+> though it has a key); **Remove from my library** adds "It becomes a floating license: anyone with
+> the key can add it, and it won't come back to this account by itself." Package PX-23; frames
+> [licenses/80](licenses/shots/80-portal-add-floating-desktop-dark.png) and
+> [81](licenses/shots/81-portal-license-card-desktop-dark.png).
+
 > **Sign-in is specified in [SIGN-IN.md](SIGN-IN.md) (2026-10-05).** It is the single source of
 > truth for every sign-in step: the login card's steps, license choice and **Replace a device**, the
 > key on-ramp, device approval, the Worker pages, the emails and the kits. It **supersedes this
@@ -722,7 +733,8 @@ page.
 2. **Confirm:** the product's key art across the top of the modal, the icon overlapping it, "Key
    recognised · Mossgarden · Little Fern", `h2` **Add Mossgarden to your account?**, the tier tag,
    the terms ("Lifetime · up to 5 devices") and platforms, the key echoed with **Change key**, and
-   **Back** / **Add Mossgarden**.
+   **Back** / **Add Mossgarden**. A floating key already on devices adds "It's on {n} devices
+   already. They keep working and come with it." (S-24 §10).
 3. **Done:** the art with **In your library**, "Mossgarden is in your library · Download it, see
    your license and manage devices on its page. You won't need the key again.", **Activate another**
    and **Open Mossgarden** (the product page; focus lands on its `h1`).

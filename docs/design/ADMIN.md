@@ -17,6 +17,12 @@
 > Storefronts catalogue with one page per storefront) and the empty states of every page it lists
 > in its §4.7.
 
+> **Licence holders and the New License wizard are specified in [notes/S-24](../research/2026-09-29-godot-omniplatform/notes/S-24-licence-holders.md) (2026-10-06).** It
+> supersedes §6.5.1's Create license dialog (now the five-step **New license** drawer, single or
+> batch, assigned or floating), adds the **Holder** column and filters to the licences list, and
+> replaces Edit holder with **Assign…**, **Send a new key…**, **Reassign…** and **Make floating…** on
+> the record (§6.5.2). Packages LX-26 to LX-30; mockups [licenses/](licenses/).
+
 > **Sign-in is specified in [SIGN-IN.md](SIGN-IN.md) (2026-10-05).** It supersedes this document's
 > sign-in parts where they differ: §2.7's Sign in row, T8's Session expired row (the console now
 > renders "Your session ended" in place on the shared card, not a dialog) and §6.10.1.
@@ -1574,20 +1580,29 @@ id moves to the record header.
 
 **Bulk.** Disable and Enable (L1, listing the count and the effect) and Export.
 
-**Create license** is a dialog with steps (T6):
+**New license** (S-24 §8, replacing the Create license dialog) is a drawer wizard over Licenses
+(`?setup=new-license&step=…`, SETUP.md §1.1), five steps, then Done:
 
-1. **Holder:** name, email.
-2. **Terms:**
-   - tier (combobox, showing each tier's policy summary);
-   - expiry (`DateInput`, or "Use tier default (365 days)");
-   - max offline days (nullable);
-   - channels (`ChannelPicker`);
-   - version window (`VersionInput` pair);
-   - **profiles** (`OrderedMultiSelect`, numbered, with order = precedence; LIC-3).
-   - Lookup failures are shown inline, not as "none defined" (LIC-6).
-   - The live "Effective policy" aside names where each value comes from (license, tier, product
-     default), and drops the false per-license device limit (LIC-4).
-3. **Result:** `OneTimeSecretPanel`, with Open license and Create another.
+1. **Product and tier:** the product as context (a picker only from Home or the palette), tier radio
+   cards by rank with each tier's summary, **New tier…**.
+2. **Who it's for:** **Someone specific** (Recommended: email required, name optional; "When
+   ada@example.com signs in with that email, it's in their library", never saying whether an account
+   exists) or **Anyone with the key** (floating; **How many keys**, 1–500, and a **Batch label**).
+3. **Limits:** devices (the tier's or set for this licence, LX-14a), expiry, offline days, **More
+   options** (channels, version window, profiles in order, LIC-3), and the effective-policy aside
+   naming each value's source (LIC-4).
+4. **Delivery:** Email the key and show it once (default for someone specific), Email the key, Show
+   it once; floating: Show it once or Download a CSV.
+5. **Review:** the summary with **Change** per row, the `AutoList` of what Polaris Key will do, and
+   an action-named primary ("Create and email license", "Create 50 keys").
+
+**Done** replaces the body: the `OneTimeSecretPanel` with the delivery result, or **Download CSV**
+for a batch (the drawer stays open until the keys are downloaded or copied), then Open license,
+Open batch, Create another and, for the first licence, Try it.
+
+**Holder column and filters (S-24 §8.8).** The list's Holder cell shows name and email, "Waiting for
+ada@…", or **Floating** (muted) with "anyone with the key"; filters **Holder** (Anyone, In an
+account, Waiting, Floating) and **Batch**.
 
 #### 6.5.2 License record
 
@@ -1616,7 +1631,10 @@ id moves to the record header.
 - **One "Terms" form** holds every policy field: tier, expiry, max offline, channels, versions and
   **profiles**. This ends the split between the Edit dialog and the Policy tab (LDT-1), and makes
   profiles editable (LDT-3).
-- The holder (name, email) is edited from "Edit holder…".
+- The holder line (S-24): "Ada Lovelace · ada@example.com · In an account", "Waiting for
+  ada@example.com", or "Floating · anyone with the key". **Assign…** on a floating licence; in the
+  overflow **Send a new key…** (assigned), **Reassign…** and **Make floating…** (I-12's relink tool:
+  step-up, reason, notice, 72-hour undo, typed confirmation). Edit holder edits the name only.
 - Cleared values send `null`. This needs **A-3**, the worker accepting `null` for `maxOfflineDays`
   (LDT-2), and the same for tiers (TIR-1).
 - The downgrade warning is a `Callout tone="warning"` using the server's `deviceCount` (LDT-12).

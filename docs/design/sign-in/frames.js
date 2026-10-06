@@ -1298,6 +1298,199 @@
     ),
   });
 
+  // ---------- S-24: activation without an account (notes/S-24-licence-holders.md §9) ----------
+  // A key-only activation keeps the license floating; Done recommends keeping it in an account with
+  // only the reasons the product has (D14); "Add your name and email" hands both to the card as hints
+  // and the code is still entered there (D15); afterwards the device keeps its license (D16).
+  const syncI = S(
+    '<path d="M4 12a8 8 0 0 1 13.7-5.7L20 8.5M20 4v4.5h-4.5M20 12a8 8 0 0 1-13.7 5.7L4 15.5M4 20v-4.5h4.5"/>',
+  );
+  const reasons = (os) => `<div class="reco">
+      <div class="rh"><b>${T(os, "Keep Tidewater Studio in Your Account", "Keep Tidewater Studio in your account")}</b><span class="tag new">Recommended</span></div>
+      <div class="rl">${syncI}<div><b>Cloud Sync</b> keeps your presets and settings on every device</div></div>
+      <div class="rl">${I.key}<div><b>Get your license back</b> if you lose the key or this Mac</div></div>
+      <div class="rl">${I.laptop}<div><b>Move it to a new device</b> yourself, without asking Harbor Audio</div></div>
+      ${db("secondary", T(os, "Add Your Name and Email", "Add your name and email"))}
+    </div>`;
+  const paneKeyDone = (os) => `${heroIcon("tidewater", true)}
+      <h2 class="big">Tidewater Studio is ready</h2>
+      <p>Pro · Lifetime · this Mac is device 1 of 3.</p>
+      ${reasons(os)}
+      <div class="dk-foot"><span class="fine">Or continue without an account. Tidewater Studio works the same.</span><span class="sp"></span>${db("primary", T(os, "Start Using Tidewater Studio", "Start using Tidewater Studio"))}</div>`;
+  const dkField = (label, value, focus) =>
+    `<div class="dkf"><label class="lab">${label}</label><div class="input ${focus ? "focus" : ""}">${value}</div></div>`;
+
+  // 42 macOS inline: Done after a key, with the recommendation (D14)
+  F({
+    id: "42-desk-mac-key-done",
+    only: "desktop",
+    desk: scene(
+      "mac",
+      macWin({
+        x: 200,
+        y: 70,
+        w: 1040,
+        h: 760,
+        body: splitWith("tidewater", paneKeyDone("mac"), "tight"),
+      }),
+    ),
+  });
+
+  // 43 macOS inline: Add your name and email; the code is entered on the card (D15, D17)
+  F({
+    id: "43-desk-mac-add-account",
+    only: "desktop",
+    desk: scene(
+      "mac",
+      macWin({
+        x: 200,
+        y: 70,
+        w: 1040,
+        h: 760,
+        body: splitWith(
+          "tidewater",
+          `${heroIcon("tidewater")}
+      <h2 class="big">Keep Tidewater Studio in your account</h2>
+      <p>Your license and its devices stay as they are. You'll confirm the email with a code in your browser.</p>
+      ${dkField("Name", "Mara Fennick")}
+      ${dkField("Email", "mara@fennick.studio", true)}
+      ${db("primary xl", "Continue in Browser", upRight)}
+      <div class="or">or</div>
+      ${dkProviders(["Apple", "Google", "Steam"])}
+      <p class="fine">${I.lock} We send a code to this email in your browser. Tidewater Studio never sees it.</p>
+      <div class="dk-foot"><span class="sp"></span>${db("secondary", "Back")}</div>`,
+          "tight",
+        ),
+      }),
+    ),
+  });
+
+  // 44 macOS inline: added to the account; same license, this Mac signed in, Cloud Sync on (D16, D22)
+  F({
+    id: "44-desk-mac-added",
+    only: "desktop",
+    desk: scene(
+      "mac",
+      macWin({
+        x: 200,
+        y: 90,
+        w: 1040,
+        h: 720,
+        body: splitWith(
+          "tidewater",
+          `${heroIcon("tidewater", true)}
+      <h2 class="big">Tidewater Studio is in your account</h2>
+      <p>Pro · Lifetime · the same license, on the same 1 of 3 devices.</p>
+      <div class="person dk-person"><div class="avatar">MF</div><div><div class="n">Mara Fennick</div><div class="e">mara@fennick.studio</div></div></div>
+      <div class="notice info">${syncI}<span>Cloud Sync is on for this Mac. Sign in on your other devices to sync them too.</span></div>
+      ${db("primary xl", "Start Using Tidewater Studio")}`,
+        ),
+      }),
+    ),
+  });
+
+  // 45 Windows inline: the key is in an account and key-entry refusals are on (D24, D17)
+  F({
+    id: "45-desk-win-key-owned",
+    only: "desktop",
+    desk: scene(
+      "w11",
+      winWin({
+        x: 200,
+        y: 70,
+        w: 1040,
+        h: 760,
+        title: "Tidewater Studio",
+        icon: "tidewater",
+        body: splitWith(
+          "tidewater",
+          `${heroIcon("tidewater")}
+      <h2 class="big">This license is in a Polaris Key account</h2>
+      <p>Sign in with the email it was sent to. Tidewater Studio starts on this PC as soon as you do.</p>
+      <div class="keycard"><div class="icon">${art.tidewater}</div><div style="flex:1"><div class="ln" style="color:var(--pk-text-strong);font-weight:500">Tidewater Studio · Pro</div><div class="small mono">pkey_tidewater_…3WPLDA</div></div></div>
+      ${db("primary xl", "Continue in browser", upRight)}
+      <div class="or">or</div>
+      ${dkProviders(["Google", "Steam"])}
+      <div class="dk-foot"><span class="link">${I.key} Use a different key</span></div>`,
+          "tight",
+        ),
+      }),
+    ),
+  });
+
+  // 46 macOS inline: signed in, but the key was sent to another email (email_mismatch, D18)
+  F({
+    id: "46-desk-mac-key-other-email",
+    only: "desktop",
+    desk: scene(
+      "mac",
+      macWin({
+        x: 200,
+        y: 70,
+        w: 1040,
+        h: 760,
+        body: splitWith(
+          "tidewater",
+          `${heroIcon("tidewater")}
+      <div class="who">Signed in as Mara Fennick · <span class="link">Not You?</span></div>
+      <h2 class="big">This license was sent to another email</h2>
+      <div class="notice warn">${I.warn}<span>It was sent to <b>m•••@proton.me</b>. Sign in with that email, or add it to this account and verify it.</span></div>
+      <div class="dk-foot"><span class="link">${I.key} Use a Different Key</span><span class="sp"></span>${db("secondary", "Verify That Email")}${db("primary", "Use Another Account")}</div>`,
+          "tight",
+        ),
+      }),
+    ),
+  });
+
+  // 47 iOS kit inline: Done after a key, the recommendation on a phone (Saltwind has Cloud Sync)
+  F({
+    id: "47-kit-key-done",
+    only: "phone",
+    kit: true,
+    kitInline: true,
+    body: `<div class="phead hero"><div class="icon">${art.saltwind}</div>Saltwind</div>
+      <h1>Saltwind is ready</h1>
+      <p class="lede">Pro · Yearly, until 2 Feb 2027 · this iPhone is device 1 of 3.</p>
+      <div class="reco">
+        <div class="rh"><b>Keep Saltwind in your account</b><span class="tag new">Recommended</span></div>
+        <div class="rl">${syncI}<div><b>Cloud Sync</b> keeps your routes and logbook on every device</div></div>
+        <div class="rl">${I.key}<div><b>Get your license back</b> if you lose the key or this iPhone</div></div>
+        <div class="rl">${I.phone}<div><b>Move it to a new device</b> yourself</div></div>
+        ${btn("secondary", "Add your name and email")}
+      </div>
+      <div class="grow"></div>
+      ${btn("primary", "Start using Saltwind")}
+      <p class="small center">Or continue without an account. Saltwind works the same.</p>`,
+  });
+
+  // 48 The hosted card's key on-ramp (SIGN-IN.md §3.9): reasons added, "Continue without an account" (D13)
+  F({
+    id: "48-key-onramp-reasons",
+    head: appHeader({
+      icon: "nightfall",
+      app: "Nightfall",
+      dev: "Lanternworks",
+      where: "on Mara's PC",
+      whereIcon: "desktop",
+    }),
+    body: `<div class="keycard"><div class="icon">${art.nightfall}</div><div style="flex:1"><div class="ln" style="color:var(--pk-text-strong);font-weight:500">Nightfall · Standard</div><div class="small mono">pkey_nightfall_…Tz4g</div></div><span class="tag new">Key works</span></div>
+      <h1>Keep Nightfall in an account</h1>
+      <div class="reco flat">
+        <div class="rl">${syncI}<div><b>Cloud Sync</b> keeps your saves on every device</div></div>
+        <div class="rl">${I.key}<div><b>Get your license back</b> if you lose the key</div></div>
+        <div class="rl">${I.desktop}<div><b>Move it to a new device</b> yourself</div></div>
+      </div>
+      <div><div class="segs"><i class="used"></i><i class="used"></i><i class="used"></i><i></i><i></i></div><div class="help">2 of 5 key entries left · This will be entry 3</div></div>
+      ${field("Email", "")}
+      ${btn("primary", "Create account")}
+      <div class="or">or</div>
+      ${providers(["Google", "Steam"])}
+      ${btn("ghost", "Continue without an account")}
+      <p class="small center">Nightfall works the same. Add it to an account any time.</p>
+      <p class="small center">Already have an account? <span class="link">Sign in</span></p>`,
+    foot: footer("Nightfall", "Lanternworks"),
+  });
+
   // ---------- render ----------
   const board = document.getElementById("board");
   for (const f of frames) {

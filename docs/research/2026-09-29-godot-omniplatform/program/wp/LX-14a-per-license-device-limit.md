@@ -5,12 +5,16 @@
 | Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase A: independent fixes)                        |
 | Size        | 0.4–0.6 engineer-weeks                                                                                         |
 | Depends on  | none                                                                                                           |
-| Unblocks    | [LX-14](LX-14-console-licensing.md)                                                                            |
+| Unblocks    | [LX-14](LX-14-console-licensing.md), [LX-27](LX-27-create-limit-delivery.md)                                   |
 | Role        | `pkey-implementer`                                                                                             |
 | Plan mode   | no                                                                                                             |
 | Gates       | D1 migration; rule 10 (OpenAPI + `routeCoverage`); `TABLE_OWNERS`; console CSP parity; THREAT-MODEL; docsLinks |
 | Human input | none                                                                                                           |
 | Repo        | `vladzaharia/polaris-key`                                                                                      |
+
+## S-24 amendment (2026-10-06)
+
+Refusing `deviceLimit` on create stays right for this package; [LX-27](LX-27-create-limit-delivery.md) lifts the refusal so the New License wizard can set a licence's device limit at creation, with the same validation and precedence ([S-24](../../notes/S-24-licence-holders.md) §8.4).
 
 ## Goal
 

@@ -61,6 +61,11 @@ CSP-safe and the layout lint stays at zero.
 
 ---
 
+> **Amended by S-24 (2026-10-06).** The launch path's **First license** and the Licenses empty
+> state's **Create license** open the **New license** wizard ([notes/S-24](../research/2026-09-29-godot-omniplatform/notes/S-24-licence-holders.md) §8): a drawer in this
+> document's pattern (§1.1) with five steps for you. The Licensing quick start (§4.2) still creates
+> tiers first when there are none, then hands over to it.
+
 ## Contents
 
 - [Owner decisions (delegated to Claude, 2026-10-05)](#owner-decisions-delegated-to-claude-2026-10-05),
@@ -1483,7 +1488,7 @@ the setup in §4.2, at its first open step, via the URL contract (§1.1).
 | Basics  | **Presentation** (new, optional)                       | HA-06 landed    | Presentation page                                                                   | Icon and accent                                                       |
 | License | Publish the catalog                                    | Config on       | Catalog's Config quick start                                                        | Catalog v1                                                            |
 | License | Create tiers                                           | License on      | `?setup=licensing&step=tiers` over Licenses                                         | A tier exists                                                         |
-| License | First license                                          | License on      | `?setup=licensing&step=first-license`                                               | First activation                                                      |
+| License | First license                                          | License on      | `?setup=new-license` over Licenses (S-24's New license wizard)                      | First activation                                                      |
 | Ship    | First signed release                                   | Release on      | `?setup=ci` over Releases                                                           | A release                                                             |
 | Ship    | Deliver updates                                        | Update on       | Update feed (inline)                                                                | A device checked the feed                                             |
 | Reach   | **Get on storefronts** (replaces "Add to storefronts") | Distribution on | The catalogue; the row reads "Live on 3 · 3 more for macOS and iOS", never "n of m" | Optional: one storefront live beyond Polaris Key and the implied ones |

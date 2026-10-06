@@ -2155,3 +2155,65 @@ label.lab {
   height: 32px;
   font-size: 13px;
 }
+
+/* ---- S-24: the recommendation after a key (notes/S-24-licence-holders.md §9.2) ---- */
+.reco {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--pk-border-subtle);
+  background: var(--pk-surface-sunken);
+}
+.reco.flat {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.reco .rh {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.reco .rh b {
+  color: var(--pk-text-strong);
+  font-size: 15px;
+}
+.reco .rl {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 10px;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--pk-text-muted);
+}
+.reco .rl svg {
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  color: var(--pk-accent-fg);
+}
+.reco .rl b {
+  color: var(--pk-text-strong);
+  font-weight: 600;
+}
+.desk .reco {
+  font-size: 13px;
+}
+.desk .reco .rl {
+  font-size: 13px;
+}
+.desk .reco .db {
+  align-self: flex-start;
+}
+.dkf {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.desk .dkf .input {
+  height: 36px;
+  font-size: 13px;
+}
