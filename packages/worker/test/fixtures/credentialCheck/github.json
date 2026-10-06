@@ -1,0 +1,54 @@
+{
+  "_source": "GitHub REST API GET /user and GET /repos/{owner}/{repo} answers with the headers GitHub sends for personal access tokens (x-oauth-scopes for classic tokens, github-authentication-token-expiration when the token expires), per docs.github.com/rest. Accounts are fictional.",
+  "userClassic": {
+    "status": 200,
+    "headers": {
+      "x-oauth-scopes": "public_repo, workflow",
+      "github-authentication-token-expiration": "2027-01-01 00:00:00 UTC"
+    },
+    "body": { "login": "acme-bot", "id": 9001, "type": "User" }
+  },
+  "userClassicNoScope": {
+    "status": 200,
+    "headers": { "x-oauth-scopes": "read:user" },
+    "body": { "login": "acme-bot", "id": 9001, "type": "User" }
+  },
+  "userFineGrained": {
+    "status": 200,
+    "headers": {
+      "github-authentication-token-expiration": "2026-10-10 00:00:00 UTC"
+    },
+    "body": { "login": "acme-bot", "id": 9001, "type": "User" }
+  },
+  "badCredentials": {
+    "status": 401,
+    "body": {
+      "message": "Bad credentials",
+      "documentation_url": "https://docs.github.com/rest",
+      "status": "401"
+    }
+  },
+  "fork": {
+    "status": 200,
+    "body": {
+      "full_name": "acme-bot/winget-pkgs",
+      "fork": true,
+      "parent": { "full_name": "microsoft/winget-pkgs" },
+      "permissions": {
+        "admin": true,
+        "maintain": true,
+        "push": true,
+        "triage": true,
+        "pull": true
+      }
+    }
+  },
+  "notFound": {
+    "status": 404,
+    "body": {
+      "message": "Not Found",
+      "documentation_url": "https://docs.github.com/rest/repos/repos#get-a-repository",
+      "status": "404"
+    }
+  }
+}

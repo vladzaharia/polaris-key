@@ -1,0 +1,30 @@
+{
+  "_source": "Steamworks Web API ISteamApps/GetPartnerAppListForWebAPIKey/v2 on partner.steam-api.com, in Valve's published shape (partner.steamgames.com/doc/webapi/ISteamApps). Steam answers an unknown or non-publisher key with an HTML 403. Ids and names are fictional.",
+  "applist": {
+    "status": 200,
+    "body": {
+      "applist": {
+        "apps": {
+          "app": [
+            {
+              "appid": 480,
+              "app_type": "game",
+              "app_name": "Dice",
+              "last_update": 1700000000
+            },
+            {
+              "appid": 481,
+              "app_type": "dlc",
+              "app_name": "Dice Soundtrack",
+              "last_update": 1700000000
+            }
+          ]
+        }
+      }
+    }
+  },
+  "forbidden": {
+    "status": 403,
+    "text": "<html><head><title>Forbidden</title></head><body><h1>Forbidden</h1>Access is denied. Retrying will not help. Please verify your <pre>key=</pre> parameter.</body></html>"
+  }
+}
