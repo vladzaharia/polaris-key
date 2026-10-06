@@ -561,6 +561,69 @@ describe("garbage collection and deletion", () => {
     expect(await w.db.all("SELECT asset FROM account_avatars")).toEqual([]);
   });
 
+  it("a merge keeps the survivor's explicit Initials; a survivor that never chose takes the absorbed picture", async () => {
+    const ctx = (w: World) => ({
+      db: w.db,
+      env: w.env,
+      now: NOW,
+      origin: "https://key.plrs.im",
+    });
+    /** Sam: an email account that picked an uploaded picture. */
+    async function samWithPicture(w: World, accountId: string) {
+      const sam = new Device(w, "203.0.113.78");
+      expect((await sam.signInWithCode("sam@example.com")).status).toBe(200);
+      await sam.me();
+      const up = await upload(w, sam, new Uint8Array([...PNG, 9]));
+      const asset = ((await up.json()) as { upload: { asset: string } }).upload
+        .asset;
+      expect((await patch(sam, { picture: { upload: asset } })).status).toBe(
+        200,
+      );
+      const samId = (await w.db.first<{ id: string }>(
+        "SELECT id FROM accounts WHERE id <> ?",
+        accountId,
+      ))!.id;
+      return { asset, samId };
+    }
+
+    // Ada chose Initials; Sam's picture does not override that choice.
+    {
+      const { w, d, accountId } = await ada();
+      expect((await patch(d, { picture: "initials" })).status).toBe(200);
+      const { samId } = await samWithPicture(w, accountId);
+      const merged = await mergeAccounts(ctx(w), {
+        survivor: { accountId, authenticatedAt: NOW },
+        absorbed: { accountId: samId, authenticatedAt: NOW },
+      });
+      expect(merged.ok).toBe(true);
+      const p = await profile(d);
+      expect(p.picture).toBeNull();
+      expect(p.pictureSource).toEqual({ kind: "initials" });
+      expect(p.explicitPicture).toBe(true);
+    }
+
+    // A survivor with no picture and no choice still fills in from the absorbed account.
+    {
+      const { w, accountId } = await ada();
+      const { asset, samId } = await samWithPicture(w, accountId);
+      await w.db.run(
+        "UPDATE accounts SET avatar_key = NULL, details_source_json = NULL WHERE id = ?",
+        accountId,
+      );
+      const merged = await mergeAccounts(ctx(w), {
+        survivor: { accountId, authenticatedAt: NOW },
+        absorbed: { accountId: samId, authenticatedAt: NOW },
+      });
+      expect(merged.ok).toBe(true);
+      expect(
+        (await w.db.first<{ avatar_key: string | null }>(
+          "SELECT avatar_key FROM accounts WHERE id = ?",
+          accountId,
+        ))!.avatar_key,
+      ).toBe(asset);
+    }
+  });
+
   it("a merge moves the absorbed account's pictures, so the survivor's deletion finds them", async () => {
     const { w, d, accountId } = await ada();
     await upload(w, d, PNG);
