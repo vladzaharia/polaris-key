@@ -320,6 +320,10 @@ describe("Overview: the first load staggers the attention list and the first rel
       // An interaction is an instant swap too.
       await banner.getByRole("button", { name: "Dismiss" }).click();
       expect(await banner.count()).toBe(0);
+      // The only banner: focus goes to the page heading, never the body.
+      expect(await page.evaluate(() => document.activeElement?.tagName)).toBe(
+        "H1",
+      );
       expect(await runningAnimations(page)).toBe(0);
       const p = await probe(page);
       expect(moving(p)).toEqual([]);

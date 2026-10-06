@@ -74,6 +74,7 @@ const { forgetFirstLoads } =
   await import("../src/console/templates/Dashboard.js");
 const { RECENT_SECONDS } = await import("../src/console/components/Moment.js");
 const { queryClient } = await import("../src/console/data/queryClient.js");
+const { announce, lastAnnouncement } = await import("../src/ui/LiveRegion.js");
 
 const NOW = Math.floor(Date.now() / 1000);
 const DAY = 86_400;
@@ -156,6 +157,7 @@ async function refetch(): Promise<void> {
 
 beforeEach(() => {
   resetCore();
+  announce("");
   window.localStorage.clear();
   forgetFirstLoads();
   forgetFilledRefreshLines();
@@ -241,6 +243,8 @@ describe("moments show once per product (EXPERIENCE §0.7)", () => {
     // Never the Polaris mark, never a pill.
     expect(card.querySelector("[data-pk-mark], .pk-pill")).toBeNull();
     expect(seen("first-release:djdl")).toBe(true);
+    // Found with the page's data, it is part of the page: not announced.
+    expect(lastAnnouncement()).not.toMatch(/is live/);
     // Its one next step: Release alone links the release itself.
     expect(
       within(card).getByRole("link", { name: /View release/ }),
@@ -284,6 +288,31 @@ describe("moments show once per product (EXPERIENCE §0.7)", () => {
     expect(seen("first-release:djdl")).toBe(true);
   });
 
+  it("Dismiss moves focus to the next banner's Dismiss, and from the last to the page heading", async () => {
+    fns.product.mockResolvedValue({
+      product: product({ services: enablement(["release", "config"]) }),
+    });
+    window.localStorage.setItem(
+      "pk-moment-before:first-catalog:djdl",
+      String(NOW - 60),
+    );
+    overview();
+    await screen.findByText("0.1.0 is live on stable");
+    await screen.findByText("Catalog v1 is live");
+    const dismissOf = (key: string): HTMLElement =>
+      within(banner(key)!).getByRole("button", { name: "Dismiss" });
+    await userEvent.click(dismissOf("first-release:djdl"));
+    expect(banner("first-release:djdl")).toBeNull();
+    expect(document.activeElement).not.toBe(document.body);
+    expect(document.activeElement).toBe(dismissOf("first-catalog:djdl"));
+    await userEvent.click(dismissOf("first-catalog:djdl"));
+    expect(banner("first-catalog:djdl")).toBeNull();
+    expect(document.activeElement).not.toBe(document.body);
+    expect(document.activeElement).toBe(
+      screen.getByRole("heading", { level: 1, name: "DJDL" }),
+    );
+  });
+
   it("a release the console could not see land is recorded silently, never celebrated late", async () => {
     fns.releases.mockResolvedValue({
       releases: [release({ publishedAt: NOW - 30 * DAY })],
@@ -318,6 +347,53 @@ describe("moments show once per product (EXPERIENCE §0.7)", () => {
     });
     await refetch();
     expect(await screen.findByText("0.1.0 is live on stable")).toBeTruthy();
+    // It appeared on its own, so it is said once in the polite live region.
+    expect(lastAnnouncement()).toBe(
+      "0.1.0 is live on stable: your first release.",
+    );
+  });
+
+  it("a tab left open past the week still celebrates what it saw happen", async () => {
+    fns.product.mockResolvedValue({
+      product: product({ services: enablement(["config"]) }),
+    });
+    fns.schema.mockRejectedValue(new ApiError(404));
+    overview();
+    await screen.findByText("No catalog yet");
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(Date.now() + RECENT_SECONDS * 1000 + DAY * 1000);
+      fns.schema.mockResolvedValue({
+        schemaVersion: 1,
+        entries: [{ key: "a" }],
+      });
+      await refetch();
+      expect(await screen.findByText("Catalog v1 is live")).toBeTruthy();
+      expect(lastAnnouncement()).toBe("Catalog v1 is live.");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("each commit keeps a stale 'before' sighting fresh, and leaves a fresh one alone", async () => {
+    fns.product.mockResolvedValue({
+      product: product({ services: enablement(["config"]) }),
+    });
+    fns.schema.mockRejectedValue(new ApiError(404));
+    const key = "pk-moment-before:first-catalog:djdl";
+    window.localStorage.setItem(key, String(NOW - 2 * DAY));
+    overview();
+    await screen.findByText("No catalog yet");
+    await waitFor(() =>
+      expect(Number(window.localStorage.getItem(key))).toBeGreaterThanOrEqual(
+        NOW,
+      ),
+    );
+    // Fresh now: later commits (a refetch) write nothing.
+    const setItem = vi.spyOn(Storage.prototype, "setItem");
+    await refetch();
+    expect(setItem.mock.calls.filter(([k]) => k === key)).toEqual([]);
+    setItem.mockRestore();
   });
 
   it("yanked releases are not a first release", async () => {

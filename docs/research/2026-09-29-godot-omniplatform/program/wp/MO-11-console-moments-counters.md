@@ -96,3 +96,14 @@ mise exec node@22 -- pnpm --filter @polaris-key/admin build && mise exec node@22
 ## Hand-off
 
 None. The role agent sets `--set MO-11 in-review` when it hands off. After review, the lead adds the last commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set MO-11 done`.
+
+Follow-ups left open by this package (review N4):
+
+- **First catalog publish: the snippet.** §0.7 says "with the snippet"; the banner says "Your app
+  reads it on its next launch" and links Catalog. A read-config snippet per SDK would come from
+  `sdkQuickStart.ts`.
+- **Store "Submitted for review"** with the store's answer later on Overview (§0.7 "Store
+  connected / submitted"): only "connected" is a moment here; submission state belongs to the
+  storefront flow (A-18j).
+- **Product launched** keys off Overview's setup checklist until UX-21's launch path lands; point
+  it at that model then.

@@ -16,23 +16,32 @@
  *
  * - its own time is within `RECENT_SECONDS` (a release's `publishedAt`), or
  * - with no time of its own, the console saw the product *before* the milestone within
- *   `RECENT_SECONDS` (a `pk-moment-before:<key>` entry holding when it last looked; it only ever
- *   enables a moment, never blocks one, and an old sighting simply stops counting).
+ *   `RECENT_SECONDS` (a `pk-moment-before:<key>` entry holding when it last looked, kept fresh
+ *   while a page shows the product before the milestone; it only ever enables a moment, never
+ *   blocks one, and an old sighting simply stops counting), or
+ * - the page saw it happen: it showed the product before the milestone and the milestone landed
+ *   while it was open (a refetch brought the release), however long the tab had been open. That
+ *   one is also announced, since it appears on its own.
  */
 
 import * as React from "react";
 import { cn } from "../../lib/cn.js";
 import { Button } from "../../ui/Button.js";
+import { announce } from "../../ui/LiveRegion.js";
 import {
   Celebration,
   markMomentSeen,
   momentSeen,
 } from "../../ui/motion/index.js";
+import { PREF_KEYS } from "../storage.js";
 
 /** How recent a milestone must be to be celebrated: a week. */
 export const RECENT_SECONDS = 7 * 86_400;
 
-const BEFORE_PREFIX = "pk-moment-before:";
+/** A commit rewrites the stored "before" sighting once it is this old (seconds), not every time. */
+const RESTAMP_SECONDS = 3600;
+
+const BEFORE_PREFIX = PREF_KEYS.momentBeforePrefix;
 
 /** The stored key of a console moment: once per product. */
 export function momentKey(moment: ConsoleMoment, slug: string): string {
@@ -92,15 +101,26 @@ function forgetBefore(key: string): void {
  * has happened: true when the moment is new (see the module comment) and has not been shown
  * before. Once true it stays true for the life of the mount (a refetch neither hides nor replays
  * it); the line marks the key seen as it mounts, so a remount or a later visit gets false. While
- * the milestone has not happened the page keeps watching: it can happen while the page is open (a
- * release lands), and then the moment shows there and then.
+ * the milestone has not happened the page keeps watching, and keeps its "before" sighting fresh:
+ * when the milestone lands while the page is open, the moment shows there and then, and
+ * `announcement` is said once in the polite live region (a moment found with the page's data is
+ * part of the page, and is not announced).
  */
-export function useMoment(key: string, seen: MomentObservation): boolean {
+export function useMoment(
+  key: string,
+  seen: MomentObservation,
+  announcement?: string,
+): boolean {
   const [shown, setShown] = React.useState<string | null>(null);
   const decided = React.useRef<string | null>(null);
+  // The key whose milestone this mount saw not yet happen: if it happens now, it happened here.
+  const watched = React.useRef<string | null>(null);
+  const message = React.useRef(announcement);
+  message.current = announcement;
   const state = seen.state;
   const at = seen.state === "after" ? (seen.at ?? null) : null;
-  // A layout effect, so a moment found with the data is in the first paint of it.
+  // Every commit (no dependency list): a layout effect, so a moment found with the data is in the
+  // first paint of it. It writes storage only when something changed or the sighting is stale.
   React.useLayoutEffect(() => {
     if (decided.current === key || state === "unknown") return;
     if (momentSeen(key)) {
@@ -108,19 +128,24 @@ export function useMoment(key: string, seen: MomentObservation): boolean {
       return;
     }
     if (state === "before") {
-      markBefore(key);
+      watched.current = key;
+      const last = lastSeenBefore(key);
+      if (last === null || nowSeconds() - last > RESTAMP_SECONDS)
+        markBefore(key);
       return;
     }
     decided.current = key;
+    const live = watched.current === key;
     const since = at ?? lastSeenBefore(key);
-    if (since !== null && nowSeconds() - since <= RECENT_SECONDS) {
+    if (live || (since !== null && nowSeconds() - since <= RECENT_SECONDS)) {
       setShown(key);
+      if (live && message.current) announce(message.current);
       return;
     }
     // Reached before the console could see it happen: recorded, never celebrated late.
     markMomentSeen(key);
     forgetBefore(key);
-  }, [key, state, at]);
+  });
   return shown === key;
 }
 
@@ -200,7 +225,12 @@ export function MomentBanner({
       </div>
       <div className="flex shrink-0 items-center gap-2">
         {action}
-        <Button variant="ghost" size="sm" onClick={onDismiss}>
+        <Button
+          variant="ghost"
+          size="sm"
+          data-moment-dismiss=""
+          onClick={onDismiss}
+        >
           Dismiss
         </Button>
       </div>

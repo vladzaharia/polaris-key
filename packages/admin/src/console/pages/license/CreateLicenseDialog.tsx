@@ -39,6 +39,8 @@ import { VersionInput } from "../../../ui/VersionInput.js";
 import { errorCopy } from "../../../lib/errorCopy.js";
 import { momentSeen } from "../../../ui/motion/index.js";
 import { MomentLine, momentKey } from "../../components/Moment.js";
+import { focusWhenReady } from "../../shell/palette/focus.js";
+import { SDK_QUICK_START_ID } from "../core/sdkQuickStart.js";
 import {
   EMAIL_RE,
   EffectivePolicy,
@@ -651,6 +653,8 @@ export function CreateLicenseDialog({
                   onClick={() => {
                     close();
                     navigate(r.overview(slug));
+                    // Lands on the SDK chooser, as the palette's "SDK quick start" does.
+                    focusWhenReady(SDK_QUICK_START_ID);
                   }}
                 >
                   Try it

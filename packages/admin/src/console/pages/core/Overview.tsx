@@ -136,7 +136,12 @@ export function OverviewPage({ slug }: { slug: string }): React.ReactElement {
     );
   }
   return (
-    <OverviewBody slug={slug} product={product.data} firstLoad={firstLoad} />
+    <OverviewBody
+      slug={slug}
+      product={product.data}
+      firstLoad={firstLoad}
+      placeholder={product.isPlaceholderData}
+    />
   );
 }
 
@@ -144,11 +149,14 @@ function OverviewBody({
   slug,
   product: p,
   firstLoad,
+  placeholder = false,
 }: {
   slug: string;
   product: ProductDetail;
   /** The page's first-load key (`useFirstLoad`), for the attention list's stagger. */
   firstLoad?: string;
+  /** The product is the products list's row standing in until its own read lands. */
+  placeholder?: boolean;
 }): React.ReactElement {
   const enabled = SERVICE_ORDER.filter((s) => on(p, s));
   const licenses = useQuery(
@@ -167,9 +175,10 @@ function OverviewBody({
   const [showChecklist, setShowChecklist] = React.useState(false);
   const complete = checklist.every((i) => i.state === "done");
   // Launched: every setup step done, judged only once every input has loaded (a list still
-  // loading is not a step done).
+  // loading is not a step done, and the products list's row is not the product's own read).
   const launched: MomentObservation =
     enabled.length > 0 &&
+    !placeholder &&
     settled &&
     (!on(p, "license") || licenses.data !== undefined)
       ? { state: complete ? "after" : "before" }
@@ -429,36 +438,6 @@ function OverviewMoments({
   const connected = stores.data?.stores?.find(
     (s) => s.connection.state === "connected",
   );
-  const keys = {
-    launched: momentKey("product-launched", slug),
-    release: momentKey("first-release", slug),
-    catalog: momentKey("first-catalog", slug),
-    store: momentKey("store-connected", slug),
-  };
-  const shows = {
-    launched: useMoment(keys.launched, launched),
-    release: useMoment(
-      keys.release,
-      releaseMoment(on(p, "release"), store.data?.releases),
-    ),
-    catalog: useMoment(keys.catalog, catalogMoment(on(p, "config"), catalog)),
-    store: useMoment(
-      keys.store,
-      !on(p, "distribution") || !Array.isArray(stores.data?.stores)
-        ? UNKNOWN
-        : connected
-          ? { state: "after" }
-          : BEFORE,
-    ),
-  };
-  const [dismissed, setDismissed] = React.useState<ReadonlySet<string>>(
-    () => new Set(),
-  );
-  const visible = (key: string, show: boolean): boolean =>
-    show && !dismissed.has(key);
-  const dismiss = (key: string) => () =>
-    setDismissed((d) => new Set(d).add(key));
-
   const latest = latestAppRelease(store.data?.releases);
   const channel = latest
     ? (latest.channel ??
@@ -466,13 +445,86 @@ function OverviewMoments({
         ?.channel ??
       null)
     : null;
+  const titles = {
+    launched: `${p.name} is launched`,
+    release: latest
+      ? channel
+        ? `${latest.version} is live on ${channel}`
+        : `${latest.version} is live`
+      : "",
+    catalog: catalog.data
+      ? `Catalog v${catalog.data.schemaVersion} is live`
+      : "",
+    store: connected ? `${connected.label} is connected` : "",
+  };
+  const keys = {
+    launched: momentKey("product-launched", slug),
+    release: momentKey("first-release", slug),
+    catalog: momentKey("first-catalog", slug),
+    store: momentKey("store-connected", slug),
+  };
+  // The announcement is said only for a moment that lands while the page is open.
+  const shows = {
+    launched: useMoment(keys.launched, launched, `${titles.launched}.`),
+    release: useMoment(
+      keys.release,
+      releaseMoment(on(p, "release"), store.data?.releases),
+      `${titles.release}: your first release.`,
+    ),
+    catalog: useMoment(
+      keys.catalog,
+      catalogMoment(on(p, "config"), catalog),
+      `${titles.catalog}.`,
+    ),
+    store: useMoment(
+      keys.store,
+      !on(p, "distribution") || !Array.isArray(stores.data?.stores)
+        ? UNKNOWN
+        : connected
+          ? { state: "after" }
+          : BEFORE,
+      `${titles.store}.`,
+    ),
+  };
+  const [dismissed, setDismissed] = React.useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const visible = (key: string, show: boolean): boolean =>
+    show && !dismissed.has(key);
+  // Dismissing a banner removes the focused button: focus moves to the next banner's Dismiss, or
+  // else to the page's heading, never to the body. Consumed by the commit that removes it.
+  const focusAfterDismiss = React.useRef<string | null>(null);
+  const dismiss = (key: string) => () => {
+    const banners = [
+      ...document.querySelectorAll<HTMLElement>("section[data-moment]"),
+    ];
+    const i = banners.findIndex((b) => b.dataset.moment === key);
+    focusAfterDismiss.current = banners[i + 1]?.dataset.moment ?? "";
+    setDismissed((d) => new Set(d).add(key));
+  };
+  React.useLayoutEffect(() => {
+    const next = focusAfterDismiss.current;
+    if (next === null) return;
+    focusAfterDismiss.current = null;
+    const banner = next
+      ? [
+          ...document.querySelectorAll<HTMLElement>("section[data-moment]"),
+        ].find((b) => b.dataset.moment === next)
+      : undefined;
+    const target =
+      banner?.querySelector<HTMLElement>("[data-moment-dismiss]") ??
+      document.querySelector<HTMLElement>("h1[data-page-title]");
+    if (target && target.tagName === "H1" && !target.hasAttribute("tabindex"))
+      target.setAttribute("tabindex", "-1");
+    target?.focus({ preventScroll: true });
+  }, [dismissed]);
 
   return (
     <>
       {visible(keys.launched, shows.launched) ? (
         <MomentBanner
           momentKey={keys.launched}
-          title={`${p.name} is launched`}
+          title={titles.launched}
           detail="Every setup step is done."
           onDismiss={dismiss(keys.launched)}
         />
@@ -480,11 +532,7 @@ function OverviewMoments({
       {visible(keys.release, shows.release) && latest ? (
         <MomentBanner
           momentKey={keys.release}
-          title={
-            channel
-              ? `${latest.version} is live on ${channel}`
-              : `${latest.version} is live`
-          }
+          title={titles.release}
           detail={
             <>
               Your first release
@@ -527,7 +575,7 @@ function OverviewMoments({
       {visible(keys.catalog, shows.catalog) && catalog.data ? (
         <MomentBanner
           momentKey={keys.catalog}
-          title={`Catalog v${catalog.data.schemaVersion} is live`}
+          title={titles.catalog}
           detail="Your app reads it on its next launch."
           action={
             <Link to={r.catalog(slug)} className={ACTION_LINK}>
@@ -541,7 +589,7 @@ function OverviewMoments({
       {visible(keys.store, shows.store) && connected ? (
         <MomentBanner
           momentKey={keys.store}
-          title={`${connected.label} is connected`}
+          title={titles.store}
           detail="Builds and the listing can go out to it from Storefronts."
           action={
             <Link to={r.storefronts(slug)} className={ACTION_LINK}>

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { resetConsole } from "./consoleHarness.js";
+import { PENDING, resetConsole } from "./consoleHarness.js";
 import { API, bootLicense, LICENSES } from "./licenseFixture.js";
 
 /**
@@ -77,6 +77,21 @@ describe("the first license (EXPERIENCE §0.7)", () => {
       within(dialog).getByRole("button", { name: "Try it" }),
     );
     await waitFor(() => expect(window.location.hash).toBe("#/p/djdl"));
+    // …and lands on the SDK chooser, as the palette's "SDK quick start" does.
+    await waitFor(() =>
+      expect(document.activeElement?.id).toBe("sdk-quick-start"),
+    );
+  });
+
+  it("licenses still loading when Create is pressed is not an empty list: no moment", async () => {
+    bootLicense("#/p/djdl/license/licenses", {
+      routes: { [`${API}/license/licenses`]: PENDING },
+    });
+    await openDialog();
+    const dialog = await createOne("Grace Hopper");
+    expect(dialog.querySelector("[data-moment]")).toBeNull();
+    expect(within(dialog).queryByRole("button", { name: "Try it" })).toBeNull();
+    expect(window.localStorage.getItem(KEY)).toBeNull();
   });
 
   it("a product that already has licenses gets no moment", async () => {
