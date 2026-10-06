@@ -16,6 +16,14 @@
 // id in a 0600 file. That store is unchanged here; the difference is raised for the Swift SDK's
 // owner (P5-05 report). On the iOS simulator items survive uninstall and reinstall while a
 // `user://` file does not; on a device that is undocumented (S-09 checklist row 6).
+//
+// The LOGIN keychain (`Keychain.login`, SP-27): a macOS desktop build of the Godot binding stores
+// its token in the file-based login keychain instead, because the data-protection keychain needs
+// a `keychain-access-groups` entitlement (and so a provisioning profile) that an unsigned, ad hoc
+// or plain Developer ID build does not have (-34018). Same service and account scheme, never
+// synchronizable, no accessibility class (the login keychain has none); the item's ACL trusts the
+// creating app. The desktop store names the account `device-token` (UK-40), so Python's, Kotlin's
+// and Godot's desktop builds of one product use the same item name.
 
 import Foundation
 
@@ -52,31 +60,42 @@ public struct SystemKeychainBackend: KeychainBackend {
 
 /// Keychain get / set / delete for one product.
 public struct SecureStore: Sendable {
+    /// Which keychain the items live in.
+    public enum Keychain: String, Sendable {
+        /// The data-protection keychain, `AfterFirstUnlockThisDeviceOnly` (iOS; the default).
+        case dataProtection
+        /// The macOS file-based login keychain (a desktop build without the entitlement).
+        case login
+    }
+
     /// Product slugs and account names: what a `pkey:<product>` service may carry.
     static let namePattern = "^[a-z0-9][a-z0-9._-]{0,63}$"
 
     public let product: String
+    public let keychain: Keychain
     private let backend: any KeychainBackend
 
-    public init(product: String, backend: any KeychainBackend = SystemKeychainBackend()) {
+    public init(product: String, backend: any KeychainBackend = SystemKeychainBackend(), keychain: Keychain = .dataProtection) {
         self.product = product
         self.backend = backend
+        self.keychain = keychain
     }
 
     public var service: String { "pkey:\(product)" }
 
     static func validName(_ s: String) -> Bool { s.range(of: namePattern, options: .regularExpression) != nil }
 
-    /// The item's identity: class, service, account, the data-protection keychain, never
-    /// synchronizable, and no access group.
+    /// The item's identity: class, service, account, the data-protection keychain (unless the
+    /// login keychain was asked for), never synchronizable, and no access group.
     func query(_ account: String) -> [String: Any] {
-        [
+        var q: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
-            kSecUseDataProtectionKeychain as String: true,
             kSecAttrSynchronizable as String: false,
         ]
+        if keychain == .dataProtection { q[kSecUseDataProtectionKeychain as String] = true }
+        return q
     }
 
     /// `{ok, value}` (`value` null when absent) or `{ok:false, error, status}`.
@@ -102,10 +121,10 @@ public struct SecureStore: Sendable {
     /// Update the item, or add it when absent. `{ok, op}` or `{ok:false, error, status}`.
     public func set(account: String, value: String) -> PlatformObject {
         guard Self.validName(product), Self.validName(account) else { return Self.invalid }
-        let attributes: [String: Any] = [
-            kSecValueData as String: Data(value.utf8),
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
-        ]
+        var attributes: [String: Any] = [kSecValueData as String: Data(value.utf8)]
+        if keychain == .dataProtection {
+            attributes[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        }
         var status = backend.update(query(account), attributes)
         var op = "update"
         if status == errSecItemNotFound {

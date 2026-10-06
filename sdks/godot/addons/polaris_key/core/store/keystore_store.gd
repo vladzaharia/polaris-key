@@ -43,13 +43,14 @@ func _init(p_product: String, p_android: PKeyAndroid = null, root := "user://pke
 
 
 ## The store PKeyCore uses when PKeyOptions.store is null: this one on Android with the plugin,
-## else the file store.
+## else PKeyKeyringStore.preferred() (the keyring store on macOS, Windows and Linux, SP-27; the
+## file store elsewhere).
 static func preferred(p_product: String, root := "user://pkey") -> PKeyStore:
 	if PKeyHeaders.platform() == PKeyConstants.Platform.ANDROID:
 		var android := PKeyAndroid.shared()
 		if android.is_available():
 			return PKeyKeystoreStore.new(p_product, android, root)
-	return PKeyFileStore.new(p_product, root)
+	return PKeyKeyringStore.preferred(p_product, root)
 
 
 func get_token() -> String:

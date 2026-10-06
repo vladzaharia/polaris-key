@@ -8,7 +8,8 @@
 # godot-cpp is built with exceptions on, because C++/WinRT reports errors as hresult_error. The
 # StoreContext file alone is compiled as C++20 (C++/WinRT under C++17 needs
 # <experimental/coroutine>, which the VS 2026 STL rejects); godot-cpp stays at C++17. No updater
-# library is linked: velopack_libc.dll and WinSparkle.dll are loaded at run time.
+# library is linked: velopack_libc.dll and WinSparkle.dll are loaded at run time. The Credential
+# Manager class (SP-27) links advapi32, part of Windows.
 import os
 
 godot_cpp = ARGUMENTS.get("godot_cpp", "../.deps/godot-cpp")
@@ -19,13 +20,13 @@ SConsignFile(os.path.join(os.path.abspath(godot_cpp), ".sconsign-pkey-win"))
 
 env = SConscript(os.path.join(godot_cpp, "SConstruct"))
 env.Append(CPPPATH=["src/", os.path.join(velopack, "include")])
-env.Append(LIBS=["WindowsApp", "ole32", "user32"])
+env.Append(LIBS=["WindowsApp", "ole32", "user32", "advapi32"])
 env.Append(CCFLAGS=["/bigobj"])
 
 cpp20 = env.Clone()
 cpp20["CXXFLAGS"] = [f for f in cpp20["CXXFLAGS"] if not str(f).startswith("/std:")] + ["/std:c++20"]
 
-objects = [env.SharedObject(s) for s in ["src/register.cpp", "velopack/pkey_velopack.cpp", "winsparkle/pkey_winsparkle.cpp"]]
+objects = [env.SharedObject(s) for s in ["src/register.cpp", "velopack/pkey_velopack.cpp", "winsparkle/pkey_winsparkle.cpp", "credman/pkey_credman.cpp"]]
 objects.append(cpp20.SharedObject("storecontext/pkey_storecontext.cpp"))
 library = env.SharedLibrary("bin/pkey_win{}".format(env["SHLIBSUFFIX"]), source=objects)
 Default(library)

@@ -11,6 +11,15 @@ as the GitHub Release notes, and the same text is the Asset Store version's chan
 
 The SDK parity pass (`notes/SDK-PARITY-PASS.md` §5.6).
 
+- **Desktop keyring store** (SP-27). On macOS, Windows and Linux the token is kept in the OS
+  keyring by default (`PKeyKeyringStore`): the login keychain, through the new macOS build of
+  `PolarisKeyApple`; Credential Manager, through `pkey_win.dll`; the Secret Service, through
+  `secret-tool`. The names are `pkey:<product>` and `device-token`, as in the Python and Kotlin
+  SDKs. Writes are verified, and a file-store token is migrated into the keyring. A write that
+  falls back to the 0600 file is surfaced as `store_error` and `keyring-error`. **Behaviour
+  change:** without the native piece, desktop `store_status()` is now
+  `{backend: file, degraded: {reason: keyring-unavailable}}`, where it used to be plain
+  `{backend: file}`. `PKEY_DESKTOP_KEYRING=0` keeps the file store.
 - **Behaviour change: `license.is_entitled(name)` answers `false` whenever the gate is not
   usable** (S-19 G11). A revoked, expired or blocked licence no longer unlocks a grant its last
   verified document still lists. `get_entitlements()` still reads the raw values.

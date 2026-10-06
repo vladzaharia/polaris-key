@@ -968,7 +968,7 @@ static func capabilities() -> Dictionary:
 		"core.headers": {"status": "implemented", "service": "core", "na": []},
 		"core.errors": {"status": "implemented", "service": "core", "na": []},
 		"core.caps": {"status": "implemented", "service": "core", "na": []},
-		"core.store": {"status": "planned", "service": "core", "na": []},
+		"core.store": {"status": "implemented", "service": "core", "na": []},
 		"core.copy": {"status": "implemented", "service": "sdk", "na": []},
 		"license.gate": {"status": "implemented", "service": "license", "na": []},
 		"license.activate": {"status": "implemented", "service": "license", "na": []},
@@ -1040,4 +1040,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "c524503bb9f13f840dfc3bd8fbffe41f424631d61999b40efed0ba49dcae8931"
+const CAPABILITY_DIGEST := "bde7467a5dc1558be99b835de956945fba747ab38a108d5a0297f1c89247aa95"

@@ -335,7 +335,7 @@ func _keystore(t: PKeyTestContext) -> void:
 	var s4b := PKeyKeystoreStore.new("diceroll", _android("android", f4), root + "_reset")
 	t.check("keystore: the device id survives a lost key through the device file", s4b.get_device_id() == id4)
 
-	t.check("keystore: off Android the preferred store is the file store", PKeyKeystoreStore.preferred("diceroll", root) is PKeyFileStore)
+	t.check("keystore: off Android the preferred store is not the Keystore store", not (PKeyKeystoreStore.preferred("diceroll", root) is PKeyKeystoreStore))
 	for r in [root, root2, root + "_fail", root + "_reset"]:
 		_rmrf(r)
 
