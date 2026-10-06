@@ -366,22 +366,6 @@ export async function reconcileDeviceHardware(
 }
 
 /**
- * U-02: the binding (`devices.subject`) a re-bind without a sign-in may keep. Only a device that
- * is authorized right now, on the same licence, keeps the account signed in on it; a device that
- * was deauthorized (a sign-out, a console revoke) or moves to another licence loses it. Without
- * this, key entry on a device id that once carried a sign-in would resurrect that account as the
- * device's Cloud Sync principal, and licence-key activation must never bind (plans/U-01.md §6.1).
- */
-function carriedDeviceSubject(
-  existing: DeviceRow | null,
-  licenseId: string,
-): string | null {
-  if (!existing || existing.status !== "authorized") return null;
-  if (existing.license_id !== licenseId) return null;
-  return existing.subject ?? null;
-}
-
-/**
  * Mint the device's token and write every row the binding consists of: the `devices` row, the
  * fingerprint row (verified, or `unverified` for a client that could have identified itself and
  * did not), and the KV token record. Called only once the licence side has granted a seat.
@@ -442,7 +426,10 @@ export async function bindDevice(
     sdk_name: meta.sdkName ?? existing?.sdk_name ?? null,
     sdk_version: meta.sdkVersion ?? existing?.sdk_version ?? null,
     bound_by: opts.boundBy ?? existing?.bound_by ?? null,
-    subject: carriedDeviceSubject(existing, license.id),
+    // U-02: a re-bind mints a new credential; only an account sign-in passing `opts.subject`
+    // binds it. Key entry or open re-registration of a known device id never inherits the
+    // previous binding (that would hand the caller another account's Cloud Sync principal).
+    subject: null,
   };
   await upsertDevice(db, device);
   if (opts.subject) {
@@ -584,7 +571,8 @@ export async function registerDeviceBinding(
     sdk_name: meta.sdkName ?? existing?.sdk_name ?? null,
     sdk_version: meta.sdkVersion ?? existing?.sdk_version ?? null,
     bound_by: opts.boundBy ?? existing?.bound_by ?? null,
-    subject: carriedDeviceSubject(existing, NO_LICENSE_ID),
+    // U-02: as in `bindDevice`: no binding without an account sign-in passing `opts.subject`.
+    subject: null,
   };
   await upsertDevice(db, device);
   if (opts.subject) {

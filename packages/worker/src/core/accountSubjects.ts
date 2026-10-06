@@ -268,18 +268,40 @@ export interface SyncPrincipal {
  * (owner, 2026-10-04, final answers), so there is NO licence-owner fallback: a device with no
  * binding (key-activated, floating licence, never signed in) has no principal and Cloud Sync
  * answers `account_required`. A merge alias resolves to the surviving subject (D21); a deleted
- * subject, a malformed value and a device that is not authorized all resolve to `null`.
+ * subject, a malformed value and a device that is not authorized all resolve to `null`. So does a
+ * device whose licence is floating (`account_id IS NULL AND email IS NULL`; S-24, owner
+ * 2026-10-06): a floating licence has no account features, whatever binding the device carries.
  *
  * The caller passes the D1 row `validateDeviceToken` returned, never a KV token record (a cache)
  * and never anything the request carried: no route accepts a subject or an account id.
  */
 export async function resolveSyncPrincipal(
   db: Db,
-  device: { product: string; status: string; subject?: string | null },
+  device: {
+    product: string;
+    status: string;
+    license_id?: string | null;
+    subject?: string | null;
+  },
 ): Promise<SyncPrincipal | null> {
   if (device.status !== "authorized") return null;
   const bound = device.subject ?? null;
   if (!bound || !PAIRWISE_SUBJECT_PATTERN.test(bound)) return null;
+  // S-24 (owner, 2026-10-06): a floating licence has no account features, Cloud Sync included,
+  // even when a binding survives on the device (a detach keeps it; it is hidden, not cleared).
+  // A device with no licence (`NO_LICENSE_ID`, a License-off product) is not floating.
+  if (device.license_id) {
+    const licence = await db.first<{
+      account_id: string | null;
+      email: string | null;
+    }>(
+      "SELECT account_id, email FROM licenses WHERE product = ? AND id = ?",
+      device.product,
+      device.license_id,
+    );
+    if (!licence) return null;
+    if (licence.account_id === null && licence.email === null) return null;
+  }
   const subject = await resolveSubject(db, device.product, bound);
   return subject ? { product: device.product, subject } : null;
 }

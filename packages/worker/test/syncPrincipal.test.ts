@@ -3,10 +3,13 @@
  *
  * `resolveSyncPrincipal(device)` is the device binding (`devices.subject`) and nothing else:
  * Cloud Sync needs sign-in, so a key-activated device has no principal even on a licence an
- * account owns, and a floating licence never has one. An alias resolves to the survivor (D21), a
- * deleted subject to nothing. Every clearing trigger (sign-out, sign out everywhere, disable,
- * deletion, per-product removal, relink) drops the binding; a plain detach does not. `syncAccess`
- * never falls back to the licence owner, and no answer carries an account id.
+ * account owns, and a floating licence never has one, not even with a binding on the device
+ * (S-24, owner 2026-10-06: a floating licence has no account features). An alias resolves to the
+ * survivor (D21), a deleted subject to nothing. Every clearing trigger (sign-out, sign out
+ * everywhere, disable, deletion, per-product removal, relink) drops the binding; a plain detach
+ * does not, but hides it while the licence is floating. Any re-bind without a sign-in (key
+ * re-entry, open re-registration) drops it. `syncAccess` never falls back to the licence owner,
+ * and no answer carries an account id.
  */
 import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
@@ -30,6 +33,8 @@ import {
 } from "../src/core/accountSubjects.js";
 import { clearDeviceSubjects } from "../src/core/subjectHooks.js";
 import { syncAccess } from "../src/core/syncAccess.js";
+import { handleRegister } from "../src/core/register.js";
+import { SERVICES } from "../src/mount.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import { signIn } from "../src/services/identity/accounts/signIn.js";
 import type { AccountContext } from "../src/services/identity/accounts/links.js";
@@ -154,15 +159,31 @@ describe("resolveSyncPrincipal: the binding only, never the licence owner", () =
     });
   });
 
-  it("a key-activated device on a floating licence has no principal until someone signs in", async () => {
+  it("a device on a floating licence has no principal, even after someone signs in on it (S-24)", async () => {
     const w = await world();
-    const { key } = await seedLicenseWithKey(w.db, SLUG);
+    const { key, licenseId } = await seedLicenseWithKey(w.db, SLUG);
+    // Floating: no account owns it and no email associates it with one.
+    await w.db.run(
+      "UPDATE licenses SET account_id = NULL, email = NULL WHERE product = ? AND id = ?",
+      SLUG,
+      licenseId,
+    );
     const device = await activateByKey(w, key, "dev-1");
     expect(await resolveSyncPrincipal(w.db, device)).toBeNull();
     expect(await syncAccess(w.db, w.product, device, NOW)).toBeNull();
     const bo = await account(w.db, "bo@example.com");
     await setDeviceSubject(w.env, w.db, SLUG, "dev-1", bo.subject);
-    expect((await principalOf(w, "dev-1"))?.subject).toBe(bo.subject);
+    // The binding is written, but a floating licence has no account features (S-24).
+    expect((await getDevice(w.db, SLUG, "dev-1"))?.subject).toBe(bo.subject);
+    expect(await principalOf(w, "dev-1")).toBeNull();
+    expect(
+      await syncAccess(
+        w.db,
+        w.product,
+        (await getDevice(w.db, SLUG, "dev-1"))!,
+        NOW,
+      ),
+    ).toBeNull();
     // The licence stays floating: signing in on a device does not claim its licence.
     expect(
       await w.db.first<{ account_id: string | null }>(
@@ -221,17 +242,21 @@ describe("resolveSyncPrincipal: the binding only, never the licence owner", () =
     ).toBeNull();
   });
 
-  it("re-entering a key never resurrects a binding the device lost, and keeps one it still holds", async () => {
+  it("re-entering a key never carries or resurrects a binding", async () => {
     const w = await world();
     const { key, licenseId } = await seedLicenseWithKey(w.db, SLUG);
     const ada = await account(w.db, "ada@example.com");
     await activateByKey(w, key, "dev-1");
     await setDeviceSubject(w.env, w.db, SLUG, "dev-1", ada.subject);
-    // Re-activating an authorized, signed-in device on the same licence keeps the sign-in.
-    expect((await activateByKey(w, key, "dev-1")).subject).toBe(ada.subject);
+    // Re-activating an authorized, signed-in device on the same licence mints a new credential
+    // without a sign-in: the binding is dropped (anyone holding the key could do this).
+    const reactivated = await activateByKey(w, key, "dev-1");
+    expect(reactivated.subject ?? null).toBeNull();
+    expect(await resolveSyncPrincipal(w.db, reactivated)).toBeNull();
 
     // The device is revoked without a sign-out (a console deauthorize), then the key is entered
     // again: the old account must not come back as this device's Cloud Sync principal.
+    await setDeviceSubject(w.env, w.db, SLUG, "dev-1", ada.subject);
     await w.db.run(
       "UPDATE devices SET status = 'deauthorized' WHERE product = ? AND device_id = ?",
       SLUG,
@@ -248,6 +273,56 @@ describe("resolveSyncPrincipal: the binding only, never the licence owner", () =
     const moved = await activateByKey(w, other.key, "dev-1");
     expect(moved.license_id).toBe("lic_other");
     expect(moved.subject ?? null).toBeNull();
+  });
+
+  it("open re-registration of a known device id never hands over the signed-in account's principal", async () => {
+    const w = await world();
+    await setServices(
+      w.db,
+      SLUG,
+      serializeServices({
+        services: {
+          license: { enabled: false },
+          config: { enabled: true },
+          release: { enabled: false },
+          distribution: { enabled: false },
+          update: { enabled: false },
+          identity: { enabled: true },
+        },
+        registration: "open",
+      }),
+      "manifest",
+      NOW,
+    );
+    const product = (await loadProduct(w.env, w.db, SLUG))!;
+    expect(product.registration).toBe("open");
+    const DEVICE = "AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH";
+    const register = () =>
+      handleRegister(
+        mkReq("POST", { "x-pkey-device": DEVICE }),
+        w.env,
+        w.db,
+        product,
+        NOW,
+        SERVICES,
+      );
+
+    // The victim registers and signs in: the device has a Cloud Sync principal.
+    expect((await register()).status).toBe(200);
+    const victim = await account(w.db, "victim@example.com");
+    expect(
+      await setDeviceSubject(w.env, w.db, SLUG, DEVICE, victim.subject),
+    ).toBe(true);
+    expect((await principalOf(w, DEVICE))?.subject).toBe(victim.subject);
+
+    // An attacker who knows the device id re-registers it and gets a fresh token. That token's
+    // device row must carry no binding, so it has no Cloud Sync principal.
+    const res = await register();
+    expect(res.status).toBe(200);
+    const row = (await getDevice(w.db, SLUG, DEVICE))!;
+    expect(row.subject ?? null).toBeNull();
+    expect(await resolveSyncPrincipal(w.db, row)).toBeNull();
+    expect(await syncAccess(w.db, product, row, NOW)).toBeNull();
   });
 });
 
@@ -348,7 +423,7 @@ describe("the clearing hook's Cloud Sync cases", () => {
     expect(await bindingOf(w)).toBeNull();
   });
 
-  it("a plain detach does not sign the device out", async () => {
+  it("a plain detach does not sign the device out, but the principal is hidden while the licence floats (S-24)", async () => {
     const w = await world();
     const { ada, licenseId } = await signedInDevice(w);
     expect(
@@ -359,7 +434,16 @@ describe("the clearing hook's Cloud Sync cases", () => {
       }),
     ).toEqual({ ok: true });
     expect(await bindingOf(w)).toBe(ada.subject);
+    // Still email-associated (the seed licence carries an email): the principal stands.
     expect((await principalOf(w, "dev-1"))?.subject).toBe(ada.subject);
+    // With no email either, the licence is floating: the binding is kept, the principal hidden.
+    await w.db.run(
+      "UPDATE licenses SET email = NULL WHERE product = ? AND id = ?",
+      SLUG,
+      licenseId,
+    );
+    expect(await bindingOf(w)).toBe(ada.subject);
+    expect(await principalOf(w, "dev-1")).toBeNull();
   });
 });
 

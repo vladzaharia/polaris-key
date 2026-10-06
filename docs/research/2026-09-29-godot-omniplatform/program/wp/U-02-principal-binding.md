@@ -34,8 +34,18 @@ decided with the recommended option (the owner delegated decisions to the lead).
   the hook before deauthorizing its device.
 - **Stale binding on re-bind (fixed).** `bindDevice`/`registerDeviceBinding` carried
   `existing.subject` into every re-bind, so a key re-entry on a revoked device, or a move to another
-  licence by key, resurrected the old account as the principal. A re-bind without a sign-in now
-  keeps the binding only on a device that is authorized and stays on the same licence.
+  licence by key, resurrected the old account as the principal. Fix round (review, 2026-10-06):
+  carrying it even on an authorized device on the same licence let open re-registration by device
+  id, or key re-entry, inherit the signed-in account's principal. Any re-bind without a sign-in now
+  writes `subject = NULL`; only `opts.subject` (an Identity sign-in) binds.
+- **Floating licences have no account features (S-24, owner ruling 2026-10-06).**
+  `resolveSyncPrincipal` also reads the device's `license_id` and returns `null` when that licence
+  is floating (`account_id IS NULL AND email IS NULL`), whatever binding the device holds. A
+  `NO_LICENSE_ID` device on a License-off product is unaffected. The check lives in
+  `core/accountSubjects.ts` (the scan test bans `account_id` in `core/syncAccess.ts`). A plain
+  detach still keeps the binding; the principal is hidden while the licence floats. This
+  supersedes the brief's and THREAT-MODEL's earlier "a floating licence has a principal once
+  someone signs in".
 - **`resolveSyncPrincipal` shape.** `(db, device) → {product, subject} | null`; a non-`authorized`
   device or a malformed value resolves to `null` as well.
 - **`syncAccess` shape.** `(db, product, device, now) → {subject, anchorUsable, licensed,
