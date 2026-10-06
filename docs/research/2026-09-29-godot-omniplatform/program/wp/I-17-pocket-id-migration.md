@@ -82,10 +82,14 @@ Operators and customers should not share a directory ([S-16 §5.4](../../notes/S
 
 ## Acceptance criteria
 
-- [ ] A platform user with a verified email lands on one account on next sign-in (test); a conflicting email gets the join offer (both accounts proven in one session, never joined silently) (test).
-- [ ] Email-less subjects keep signing in through the temporary link (test).
-- [ ] Runbook updated; the count is reported in the PR.
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+- [x] A platform user with a verified email lands on one account on next sign-in (test); a conflicting email gets the join offer (both accounts proven in one session, never joined silently) (test).
+- [x] Email-less subjects keep signing in through the temporary link (test).
+- [ ] Runbook updated; the count is reported in the PR. Runbook: done (RUNBOOK "Moving end users
+      off the platform IdP (I-17)"). The count: **pending**, it can only be read from production
+      (`GET /manage/api/platform/identity-migration` after deploying this build with both vars
+      unset); the owner reads it and the lead records it in the RUNBOOK's decision table.
+- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header (lead
+      gate, scoped: GREEN 2026-10-06; no D1 migration, so no `TABLE_OWNERS` change).
 
 ## Verify
 
