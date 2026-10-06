@@ -71,6 +71,10 @@ import { handleActivate } from "../src/services/license/activation.js";
 import { handleConfigDocument } from "../src/services/config/document.js";
 import { signIn } from "../src/services/identity/accounts/signIn.js";
 import { mergeAccounts } from "../src/services/identity/accounts/merge.js";
+import {
+  attachLicense,
+  detachLicense,
+} from "../src/services/identity/accounts/claim.js";
 import { handleAdmin } from "../src/admin/index.js";
 import { dryRunOnCopy } from "../scripts/override-migration-dry-run.js";
 import {
@@ -1179,6 +1183,65 @@ describe("U-03: the account override layer", () => {
     expect(
       await overrideSubject(w.db, SLUG, null, { ...device, status: "revoked" }),
     ).toBeNull();
+  });
+});
+
+describe("U-03: Remove from my library drops the account's layer for that licence (S-24 D19)", () => {
+  it("a device bound to the removing account loses its layer for the licence; other accounts keep theirs; re-adding restores it", async () => {
+    const w = await world();
+    const ada = await account(w.db, "ada@example.com");
+    const bo = await account(w.db, "bo@example.com");
+    const key = await licence(w, "lic-ada", {
+      owner: ada.id,
+      email: "ada@example.com",
+    });
+    const tAda = await activate(w, key, "dev-ada");
+    const tBo = await activate(w, key, "dev-bo");
+    await setDeviceSubject(w.env, w.db, SLUG, "dev-ada", ada.subject);
+    await setDeviceSubject(w.env, w.db, SLUG, "dev-bo", bo.subject);
+    for (const [subject, theme] of [
+      [ada.subject, "ada-blue"],
+      [bo.subject, "bo-green"],
+    ] as const)
+      await putAccountOverrides(
+        w.db,
+        SLUG,
+        subject,
+        { config: { theme: entry(theme) }, secrets: {} },
+        "op-1",
+        NOW,
+      );
+    expect((await configDoc(w, tAda)).doc.config.theme?.value).toBe("ada-blue");
+
+    const ctx = {
+      db: w.db,
+      env: w.env,
+      now: NOW,
+      origin: "https://key.plrs.im",
+    };
+    expect(
+      (
+        await detachLicense(ctx, {
+          accountId: ada.id,
+          product: SLUG,
+          licenseId: "lic-ada",
+        })
+      ).ok,
+    ).toBe(true);
+    // The licence keeps its email (assigned, waiting), so it is not floating; but for Ada's
+    // devices it is as if it were: no account layer from it, and no owner to fall back to.
+    expect((await configDoc(w, tAda)).doc.config.theme?.value).toBe("system");
+    expect((await configDoc(w, tBo)).doc.config.theme?.value).toBe("bo-green");
+
+    // Adding it back with its key lifts the block.
+    const back = await attachLicense(ctx, {
+      accountId: ada.id,
+      product: SLUG,
+      licenseId: "lic-ada",
+      via: "key",
+    });
+    expect(back.ok).toBe(true);
+    expect((await configDoc(w, tAda)).doc.config.theme?.value).toBe("ada-blue");
   });
 });
 

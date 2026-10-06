@@ -19,7 +19,8 @@
  *
  * The first line is exactly the Cloud Sync principal (`resolveSyncPrincipal`), with every one of
  * its checks: an authorized device, a live or aliased subject (D21), never a floating licence
- * (S-24), never a licence the bound account removed from its library (S-24 D19, PX-23). The second
+ * (S-24), never a licence the bound account removed from its library (S-24 D19, PX-23;
+ * `removedFromAccountLibrary`). The second
  * line is what keeps licence-key devices of owned licences whole after the migration (S-17 §5.12):
  * Cloud Sync has no such line (owner, final answers), and the registry guard's scan keeps it out
  * of Cloud Sync code. A device on a named-user seat (I-24, plans/I-24.md Q6) is signed in as the
@@ -232,11 +233,55 @@ export async function overrideSubject(
 ): Promise<string | null> {
   if (device) {
     const principal = await resolveSyncPrincipal(db, { ...device, product });
-    if (principal) return principal.subject;
+    if (
+      principal &&
+      !(
+        license &&
+        (await removedFromAccountLibrary(
+          db,
+          product,
+          license,
+          principal.subject,
+        ))
+      )
+    )
+      return principal.subject;
   }
   if (!license || isFloatingLicense(license)) return null;
   const accountId = license.account_id ?? null;
   return accountId ? existingSubjectFor(db, accountId, product) : null;
+}
+
+/**
+ * S-24 D19 (lead decision, 2026-10-06; PX-23): "Remove from my library" drops the removing
+ * account's layer for that licence. LX-26's auto-attach block (`license_auto_attach_blocks`,
+ * written by the removal and by a developer's move away) marks the (licence, account) pair; while
+ * the licence is not in that account, a device bound to that account's subject gets no account
+ * layer from it, and falls to the owner line (whoever holds the licence now, if anyone). Re-adding
+ * the key lifts the block. A block for the account that holds the licence again is inert.
+ *
+ * PX-23 adds the same check to the Cloud Sync principal itself; it is spelled out here as well so
+ * Config's rule holds whatever order the two land in (one indexed read, bound devices only).
+ */
+async function removedFromAccountLibrary(
+  db: Db,
+  product: string,
+  license: OverrideLicenseFacts,
+  subject: string,
+): Promise<boolean> {
+  const row = await db.first<{ one: number }>(
+    `SELECT 1 AS one
+       FROM license_auto_attach_blocks b
+       JOIN account_product_subjects s
+         ON s.account_id = b.account_id AND s.product = b.product
+      WHERE b.product = ? AND b.license_id = ? AND s.subject = ?
+        AND b.account_id IS NOT ?`,
+    product,
+    license.id,
+    subject,
+    license.account_id ?? null,
+  );
+  return row !== null;
 }
 
 /**

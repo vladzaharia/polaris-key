@@ -5872,10 +5872,11 @@ values onto it and drops unowned licences'.
   per key, copies keys only the absorbed account had (secrets copied sealed, never decrypted),
   deletes the absorbed row in the same batch, and lists every collision in the product's activity
   log (`user.overrides.merge`, non-secret values only). It is idempotent, as the registry requires.
-- **Remove from my library (S-24 D19, PX-23).** The signed-in line inherits the Cloud Sync
-  principal's auto-attach-block check, so a device bound to the account that removed the licence
-  gets no account layer for it; the owner line follows `licenses.account_id`, which the removal
-  cleared.
+- **Remove from my library (S-24 D19, PX-23).** A device bound to the account that removed the
+  licence from its library gets no account layer from that licence: `overrideSubject` reads
+  LX-26's auto-attach block for the (licence, account) pair itself (PX-23 adds the same check to
+  the Cloud Sync principal), and the owner line follows `licenses.account_id`, which the removal
+  cleared. Re-adding the key lifts the block; other accounts' devices are unaffected (a test).
 
 ### Discover: free offers and "Add to library" (PX-W10, PS-03)
 
