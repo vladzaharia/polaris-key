@@ -138,15 +138,18 @@ request (H5: `detachLicense` keeps `email`; `syncAccountLicenseLinks` re-attache
 
 ## Acceptance criteria
 
-- [ ] `holder` is correct for floating, waiting and in-account licences, including legacy rows
+- [x] `holder` is correct for floating, waiting and in-account licences, including legacy rows
       (tests).
-- [ ] A licence created for a verified account's email is attached in the same request; one for an
+- [x] A licence created for a verified account's email is attached in the same request; one for an
       unknown email waits and joins at the email's first verification (tests).
-- [ ] After **Remove from my library**, no portal request, sign-in or verification re-attaches it to
+- [x] After **Remove from my library**, no portal request, sign-in or verification re-attaches it to
       that account; another account that verifies the email still can (tests).
-- [ ] The create answer is the same shape whether or not an account exists (test).
-- [ ] OpenAPI and `routeCoverage` pass; THREAT-MODEL rows T-H2 and T-H4 added.
-- [ ] The green gate passes (AGENTS.md), including the migration and workerd checks.
+- [x] The create answer is the same shape whether or not an account exists (test).
+- [x] OpenAPI and `routeCoverage` pass; THREAT-MODEL rows T-H2 and T-H4 added.
+- [x] The green gate passes (AGENTS.md), including the migration and workerd checks. (With the
+      migration named `00XX_…`, `recordDeploy.test.ts` refuses the placeholder as
+      `LATEST_MIGRATION`; the gate is green with the lead's number in place, checked with a
+      provisional `0091`.)
 
 ## Verify
 
