@@ -95,7 +95,7 @@ export async function handlePortal(
   const clean =
     path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
 
-  if (clean === "/login") return handlePortalLogin(req, env, db);
+  if (clean === "/login") return handlePortalLogin(req, env, db, now);
   // I-06: Google, Apple and Steam on the login card (`../providers/flow.ts`).
   if (clean.startsWith("/login/")) {
     return handleProviderSignInPath(req, env, db, clean, { now });

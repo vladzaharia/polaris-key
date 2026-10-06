@@ -336,6 +336,20 @@ export const PLATFORM_INVENTORY: readonly PlatformInventoryEntry[] = [
     editable: null,
   },
   {
+    name: "PLATFORM_OIDC_MIGRATION",
+    kind: "var",
+    area: "identity",
+    optional: true,
+    editable: null,
+  },
+  {
+    name: "PLATFORM_OIDC_SUNSET",
+    kind: "var",
+    area: "identity",
+    optional: true,
+    editable: null,
+  },
+  {
     name: "ADMIN_OIDC_ISSUER",
     kind: "var",
     area: "identity",

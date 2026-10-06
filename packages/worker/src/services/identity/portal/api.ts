@@ -94,6 +94,7 @@ import {
 } from "./email.js";
 import { accountDeletedNotice, downloadLinkEmail } from "./notices.js";
 import { platformOidcConfig } from "../../../core/platform.js";
+import { platformSignInEnded } from "../accounts/platformMigration.js";
 import { portalSecurityHeaders } from "./headers.js";
 import { handleProductDownloads } from "./downloads.js";
 import {
@@ -611,15 +612,18 @@ async function handleMeDelete(
 async function handleCapabilities(
   env: Env,
   db: Db,
-  product?: string | null,
+  product: string | null | undefined,
+  now: number,
 ): Promise<Response> {
   const caps = await portalAuthCapabilities(db, product);
   return portalJson({
     auth: {
+      // I-17: past the platform IdP's sunset the card stops offering single sign-on.
       oidc:
         caps.portalEnabled &&
         caps.oidcEnabled &&
-        Boolean(platformOidcConfig(env)),
+        Boolean(platformOidcConfig(env)) &&
+        !platformSignInEnded(env, now),
       magic:
         caps.portalEnabled && caps.magicEnabled && portalEmailConfigured(env),
       // I-16: passkeys are an account sign-in method, platform-level (no product toggle).
@@ -1277,7 +1281,7 @@ export async function handlePortalApi(
   if (segments === null) return notFound();
   if (segments[0] === "capabilities") {
     const requested = new URL(req.url).searchParams.get("product");
-    return handleCapabilities(env, db, requested);
+    return handleCapabilities(env, db, requested, now);
   }
   if (segments[0] === "magic" && segments[1] === "start") {
     return handleMagicStart(req, env, db, now);

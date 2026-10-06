@@ -16,6 +16,10 @@
  *                                 — the reserved entitlement names and the registered products
  *                                   that declare one, compatible or not (LX-05,
  *                                   `reservedNames.ts`).
+ *   GET /api/platform/identity-migration
+ *                                 — moving end users off the platform IdP (I-17): the mode, the
+ *                                   sunset and the email-less count the sunset follows. Counts
+ *                                   only (`services/identity/accounts/platformMigration.ts`).
  *   GET /api/platform/operations  — the self-reported Operations snapshot (A-14,
  *                                   `core/operations.ts`): binding probes, queue and DLQ
  *                                   backlog, cron runs, heartbeats, storage, indexes,
@@ -55,6 +59,8 @@ import { ensureSystemProduct } from "../systemProduct.js";
 import { handleFeedsAdmin } from "./feeds.js";
 import { platformAudit } from "../audit.js";
 import { operationsSnapshot } from "../../core/operations.js";
+import { adminOidcIsDedicated } from "../../platformOidc.js";
+import { platformMigrationReport } from "../../services/identity/accounts/platformMigration.js";
 
 /** The bindings the Deployment page lists. Presence only. */
 const BINDINGS = [
@@ -217,6 +223,17 @@ export async function handlePlatform(
   // S-19 §7.4 (LX-05): the reserved entitlement-name report, read-only.
   if (rest.length === 1 && rest[0] === "reserved-names")
     return handleReservedNames(req, env, db);
+  // I-17: the platform IdP migration's email-less count, read-only.
+  if (rest.length === 1 && rest[0] === "identity-migration") {
+    if (req.method !== "GET")
+      return err(405, "method_not_allowed", "method not allowed");
+    return adminJson({
+      ...(await platformMigrationReport(db, env, now)),
+      // Whether the console has its own IdP client (I-03): Pocket ID is operator-only once end
+      // users are gone and the console no longer borrows the platform client.
+      consoleClientDedicated: adminOidcIsDedicated(env),
+    });
+  }
   if (rest[0] === "settings") {
     try {
       return await handlePlatformSettings(

@@ -102,6 +102,12 @@ import {
 } from "./licenseChoice.js";
 import { freeAccountDevice } from "./portal/freeDevice.js";
 import {
+  attachClaimedLicenses,
+  claimPlatformSubject,
+  platformSignInEnded,
+  PLATFORM_SIGNIN_ENDED,
+} from "./accounts/platformMigration.js";
+import {
   artefactRef,
   consumeArtefact,
   deleteArtefact,
@@ -202,6 +208,10 @@ interface FlowRecord {
   choiceReplace?: { licenseId: string; deviceId: string };
   /** I-26: a one-line notice the next chooser render shows, then drops. */
   choiceNotice?: ChoiceNotice;
+  /** I-17: the account the callback's claim signed this platform-IdP subject in to. The licence
+   *  the flow activates later (the device-code poll, the chooser) attaches to it. Server-side
+   *  only; never on a page. */
+  claimAccount?: string;
 }
 
 interface DeviceFlowRecord {
@@ -1891,6 +1901,14 @@ export async function handleAuthCallback(
     await deleteArtefact(env, stateKey);
     return errorResponse(400, "bad_request", "redirect_uri not allow-listed");
   }
+  // I-17: past the sunset the platform IdP signs no end user in; no code is exchanged for one.
+  if (
+    (oidc.row.provider ?? "platform") === "platform" &&
+    platformSignInEnded(env, now)
+  ) {
+    await deleteArtefact(env, stateKey);
+    return platformSignInEndedPage();
+  }
 
   const tokenRes = await fetch(
     `${oidc.issuer.replace(/\/$/, "")}/api/oidc/token`,
@@ -1959,6 +1977,20 @@ export async function handleAuthCallback(
     return errorResponse(401, "unauthorized", "id token invalid");
   }
 
+  // I-17: moving end users off the platform IdP. With `PLATFORM_OIDC_MIGRATION` off (the
+  // default) this writes nothing and the sign-in continues exactly as before.
+  const migration = await migratePlatformSubject(
+    env,
+    db,
+    product,
+    oidc,
+    stateKey,
+    flow,
+    identity,
+    now,
+  );
+  if (migration instanceof Response) return migration;
+
   // The callback never claims, migrates or disables an existing license (P1-06 security fix).
   // The only flows that carry a device id are device-code flows (`/device/start`; a record
   // with `deviceId` but no `viaDeviceCode` predates the marker and is the same kind of flow),
@@ -2003,7 +2035,7 @@ export async function handleAuthCallback(
     }
     flow.identity = identity;
     await updateArtefact(env, stateKey, { set: { identity } });
-    return signedInPage();
+    return signedInPage([], migration.notice);
   }
   const result = await activateFromIdentity(db, product, identity, now);
   if ("error" in result) {
@@ -2011,6 +2043,8 @@ export async function handleAuthCallback(
     await deleteArtefact(env, stateKey);
     return errorResponse(403, "forbidden", "not entitled");
   }
+  if (flow.claimAccount)
+    await attachClaimedLicenses(db, flow.claimAccount, now);
   return completeBrowserFlow(
     req,
     env,
@@ -2020,7 +2054,93 @@ export async function handleAuthCallback(
     flow,
     result.licenseId,
     now,
+    [],
+    migration.notice,
   );
+}
+
+/**
+ * I-17's claim at a product callback (`accounts/platformMigration.ts`). Only a `provider:
+ * platform` product's sign-in is the platform IdP's; a custom-issuer product never claims.
+ *
+ *   - past the sunset, or `operators-only` and the subject holds no method: the flow is dropped
+ *     and the browser told this way of signing in has ended (the poll then answers `timeout`);
+ *   - signed in: the account is kept on the flow, so the licence this flow activates attaches;
+ *   - a join offer: the sign-in completes as before, and the page offers the join on the portal,
+ *     where the email step asks for proof of the other account (product routes never see the
+ *     account realm's cookies, so the offer cannot open here);
+ *   - anything else (`off`, an ambiguous email, a disabled account): exactly as before.
+ */
+async function migratePlatformSubject(
+  env: Env,
+  db: Db,
+  product: Product,
+  oidc: ResolvedOidcConfig,
+  stateKey: ArtefactRef,
+  flow: FlowRecord,
+  identity: OidcIdentity,
+  now: number,
+): Promise<Response | { notice: string | null }> {
+  if ((oidc.row.provider ?? "platform") !== "platform") return { notice: null };
+  const groups = identity.claims.groups;
+  const claim = await claimPlatformSubject(
+    db,
+    env,
+    {
+      issuer: oidc.issuer,
+      sub: identity.sub,
+      // `mapClaims` keeps only a verified address, so its presence is the verification.
+      email: identity.email ?? null,
+      emailVerified: identity.email !== undefined,
+      displayName: identity.name ?? null,
+      groups: Array.isArray(groups)
+        ? groups.filter((g): g is string => typeof g === "string")
+        : undefined,
+      product: product.slug,
+    },
+    now,
+  );
+  switch (claim.status) {
+    case "ended":
+      await deleteArtefact(env, stateKey);
+      return platformSignInEndedPage();
+    case "signed_in":
+      flow.claimAccount = claim.result.account.id;
+      await updateArtefact(env, stateKey, {
+        set: { claimAccount: claim.result.account.id },
+      });
+      return { notice: null };
+    case "join_offer":
+      return { notice: joinOfferNotice(claim.email) };
+    default:
+      return { notice: null };
+  }
+}
+
+/** The platform IdP no longer signs this person in (I-17); 403, no retry on this route. */
+function platformSignInEndedPage(): Response {
+  return new Response(
+    renderBrandPage({
+      title: "Sign in",
+      heading: PLATFORM_SIGNIN_ENDED.heading,
+      body: `<p>${escapeHtml(PLATFORM_SIGNIN_ENDED.body)}</p><p class="actions"><a class="button" href="/">${escapeHtml(PLATFORM_SIGNIN_ENDED.action)}</a></p>`,
+    }),
+    {
+      status: 403,
+      headers: brandedHtmlSecurityHeaders(
+        new Headers({
+          "content-type": "text/html; charset=utf-8",
+          "cache-control": "no-store",
+        }),
+      ),
+    },
+  );
+}
+
+/** The signed-in page's join offer (I-17): the address is the one the person's own IdP just
+ *  asserted, so it names nothing they did not already prove. Nothing has joined. */
+function joinOfferNotice(email: string): string {
+  return `<p>A Polaris Key account already uses ${escapeHtml(email)}. To add this sign-in to it, <a href="/login">continue with single sign-on on Polaris Key</a>, then sign in to that account when asked.</p>`;
 }
 
 /**
@@ -2038,6 +2158,9 @@ async function completeBrowserFlow(
   licenseId: string,
   now: number,
   extraCookies: string[] = [],
+  /** I-17: TRUSTED markup the "signed in" page adds (the join offer); a `returnTo` flow has no
+   *  page to show it on. */
+  notice: string | null = null,
 ): Promise<Response> {
   flow.licenseId = licenseId;
   if (flow.returnTo) {
@@ -2073,11 +2196,14 @@ async function completeBrowserFlow(
     });
   }
   await updateArtefact(env, stateKey, { set: { licenseId } });
-  return signedInPage(extraCookies);
+  return signedInPage(extraCookies, notice);
 }
 
-/** The callback's "return to the app" page. */
-function signedInPage(cookies: string[] = []): Response {
+/** The callback's "return to the app" page. `notice` is TRUSTED markup (I-17's join offer). */
+function signedInPage(
+  cookies: string[] = [],
+  notice: string | null = null,
+): Response {
   // R1-09 — see the device-authorization page above: set the policy at the sink as well as in
   // the dispatcher backstop.
   const headers = brandedHtmlSecurityHeaders(
@@ -2091,7 +2217,7 @@ function signedInPage(cookies: string[] = []): Response {
     renderBrandPage({
       title: "Signed in",
       heading: "You're signed in",
-      body: `<p class="muted">You can close this tab and return to the app.</p>`,
+      body: `<p class="muted">You can close this tab and return to the app.</p>${notice ?? ""}`,
     }),
     { status: 200, headers },
   );
@@ -2558,6 +2684,9 @@ async function completeChoice(
       return errorResponse(403, "forbidden", "not entitled");
     }
     licenseId = result.licenseId;
+    // I-17: a licence this choice minted joins the account the callback's claim signed in to.
+    if (flow.claimAccount)
+      await attachClaimedLicenses(db, flow.claimAccount, now);
   } else {
     licenseId = (choice as LegacyChoiceRow).id;
   }
@@ -2806,6 +2935,9 @@ async function pollAuthFlow(
     // never runs the activation (or the merge) twice.
     flow.licenseId = licenseId;
     await updateArtefact(env, stateKey, { set: { licenseId } });
+    // I-17: the licence joins the account the callback's claim signed this subject in to.
+    if (flow.claimAccount)
+      await attachClaimedLicenses(db, flow.claimAccount, now);
   }
 
   // Redeem the flow atomically BEFORE minting (G15): of two racing polls, exactly one takes the
