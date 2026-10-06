@@ -9003,7 +9003,7 @@
       "optional": false,
       "refs": ["notes/S-23 §6.8", "notes/S-23 D9"],
       "brief": "wp/MO-03-e2e-motion-determinism.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "MO-04",
@@ -9110,7 +9110,7 @@
       "optional": false,
       "refs": ["notes/S-23 §6.1 enter, exit, press", "notes/S-23 §4.2"],
       "brief": "wp/MO-08-console-overlay-controls-motion.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "MO-09",
@@ -9150,7 +9150,7 @@
       "optional": false,
       "refs": ["notes/S-23 §4.2", "notes/S-23 §6.1"],
       "brief": "wp/MO-10-console-shell-motion.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "MO-11",
@@ -9190,7 +9190,7 @@
       "optional": false,
       "refs": ["notes/S-23 D3", "notes/S-23 §6.6"],
       "brief": "wp/MO-12-reduce-motion-preference.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "MO-13",
