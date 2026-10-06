@@ -80,8 +80,8 @@ The code is the fact; these are where it disagreed with the plan, and what was d
 - **`keyentry-limit.json` presupposes `license.deactivate`** (`requires`): "this device removed"
   is the client's own deactivation, so the refused step holds no token.
 - **The claim answers `keyEntries` on `already_yours` too** (no entry is recorded).
-- **`test/recordDeploy.test.ts` refuses the placeholder name** `00XX_license_key_entries.sql` until
-  the lead numbers the migration, by design (as with I-16 and PX-W12).
+- **The migration is `0100_license_key_entries.sql`** (numbered by the lead on 2026-10-06; it
+  was `00XX_…` while in progress), and `LATEST_MIGRATION` names it.
 
 ## Goal
 
