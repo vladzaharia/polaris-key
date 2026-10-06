@@ -51,8 +51,8 @@ enums, and the compatibility story for old Workers (an unknown value today) and 
   own rule bumps the version for a changed row, so it is 2, and every runner's pin (Node, React,
   Worker, Python, Swift, Godot, Kotlin) follows. Four rows are appended: `canonical-tvos`,
   `canonical-visionos`, `canonical-watchos` and `swift-watchos`. `PROTOCOL_VERSION` stays 4.
-- **Migration number is `0075`** (main's highest at the final gate was `0074_license_refusals`); `LATEST_MIGRATION`
-  follows. The 0040 replay test now applies 0040 and 0075 in order, because it compares against
+- **Migration number is `0078`** (main's highest at the final gate was `0077_go_registry_policy`); `LATEST_MIGRATION`
+  follows. The 0040 replay test now applies 0040 and 0078 in order, because it compares against
   today's normaliser, which maps `tvOS` and `visionOS` now.
 - **Python's rule 5 guard** lives in `update/client.py` as the module-level `update_platform()`.
 - **Portal:** `FreeDevicePage` had a second copy of `DeviceGlyph`. Both use the new
