@@ -14,14 +14,27 @@
 import { expect } from "vitest";
 import { dispatchWith } from "../../../src/dispatch.js";
 import { TranscriptRecorder, BASE_URL, type World } from "../recorder.js";
-import { DEVICE, document, syncReport, T0, trust, VERSION } from "../client.js";
+import {
+  DEVICE,
+  discovery,
+  document,
+  FINGERPRINT,
+  FINGERPRINT_EXPECT,
+  syncReport,
+  T0,
+  trust,
+  VERSION,
+} from "../client.js";
 import {
   pinned,
   PRODUCT,
   productWorld,
+  seedLicense,
   servicesOn,
   type Scenario,
 } from "../world.js";
+import { signIn } from "../../../src/services/identity/accounts/signIn.js";
+import { attachLicenseAccount } from "../../../src/core/accountSubjects.js";
 import type { ServicesMap } from "../../../src/core/services.js";
 import { seedTier } from "../../seed.js";
 import {
@@ -374,6 +387,150 @@ export const devicecodeExpired: Scenario = {
         async () => {},
         { result: "expired", tokenHeld: false },
       );
+      return r.transcript();
+    }),
+};
+
+// identity-disabled (PX-W17; plans/PX-W17.md §4): a product whose Identity service is off. One
+// account per person still owns licences of it; only sign-in THROUGH the product is refused.
+
+/** License and Config on, Identity off: the account-owned licence below still activates. */
+const IDENTITY_OFF: ServicesMap = servicesOn("license", "config");
+
+export const identityDisabled: Scenario = {
+  id: "identity-disabled",
+  record: () =>
+    pinned("identity-disabled", async (pin) => {
+      const world = await productWorld(IDENTITY_OFF);
+      const { key, licenseId } = await seedLicense(world);
+      // The licence belongs to a Polaris Key account: licences attach to accounts whatever the
+      // product's Identity toggle says.
+      const account = await signIn(
+        world.db,
+        { issuerKey: "email", subject: PLAYER.email, kind: "email" },
+        T0,
+      );
+      if (account.status !== "signed_in") throw new Error(account.status);
+      expect(
+        await attachLicenseAccount(
+          world.db,
+          PRODUCT,
+          licenseId,
+          account.account.id,
+          T0,
+        ),
+      ).toBe(true);
+
+      const r = new TranscriptRecorder({
+        id: "identity-disabled",
+        description:
+          "A product whose Identity service is off (WIRE-CONTRACT-V4 §12.7). The client starts out believing Identity is on (a discovery from before the toggle moved): beginSignIn() posts the device-code start and the Worker answers not_found — device and JSON routes never say 'identity is off' — which the client reports as service-unavailable (service-disabled in React), keeping every piece of state it holds. discover() then installs the real map, Identity off, and the next beginSignIn() fails the same way without sending a request. Licences still attach to accounts: activating a key of an account-owned licence works as on any product, and syncs.",
+        features: ["identity.toggle"],
+        requires: ["core.discover", "core.store", "license.activate"],
+        product: PRODUCT,
+        now: T0,
+        world,
+        pinned: pin,
+        initial: {
+          deviceId: DEVICE,
+          version: VERSION,
+          services: ["license", "config", "identity"],
+        },
+      });
+
+      await r.step(
+        {
+          action: "beginSignIn",
+          note: "Mid-session: the client still believes Identity is on. The Worker answers not_found.",
+        },
+        async (s) => {
+          const res = await s.send({
+            method: "POST",
+            path: START,
+            body: { deviceId: DEVICE },
+            expectBody: { json: { deviceId: DEVICE }, match: "exact" },
+          });
+          expect(res.status).toBe(404);
+          expect(await res.json()).toEqual({ error: { code: "not_found" } });
+        },
+        { result: "service-unavailable", tokenHeld: false },
+      );
+
+      await r.step(
+        {
+          action: "discover",
+          note: "Discovery is the authority: Identity is off.",
+        },
+        async (s) => {
+          const res = await discovery(s, PRODUCT);
+          expect(res.status).toBe(200);
+          const doc = (await res.json()) as {
+            services: Record<string, { enabled: boolean }>;
+          };
+          expect(doc.services.identity).toEqual({ enabled: false });
+        },
+        {
+          result: "ok",
+          services: {
+            license: true,
+            config: true,
+            release: false,
+            distribution: false,
+            update: false,
+            identity: false,
+          },
+        },
+      );
+
+      await r.step(
+        {
+          action: "beginSignIn",
+          note: "Discovery says Identity is off: fail fast, no request.",
+        },
+        async () => {},
+        { result: "service-unavailable", tokenHeld: false },
+      );
+
+      await r.step(
+        {
+          action: "activate",
+          args: { key },
+          note: "An account-owned licence activates by key as on any product, then syncs.",
+        },
+        async (s) => {
+          const res = await s.send({
+            method: "POST",
+            path: `/${PRODUCT}/license/activate`,
+            bearer: "key",
+            body: FINGERPRINT,
+            expectBody: FINGERPRINT_EXPECT,
+            capture: { token: "$.token" },
+          });
+          expect(res.status).toBe(200);
+          const body = (await res.clone().json()) as Record<string, unknown>;
+          expect(body).not.toHaveProperty("keyEntries");
+          await trust(s, PRODUCT);
+          expect((await document(s, PRODUCT, "license")).status).toBe(200);
+          expect((await document(s, PRODUCT, "config")).status).toBe(200);
+          expect(
+            (
+              await syncReport(s, PRODUCT, {
+                config: { "ui.theme": "dark" },
+                entitlements: { polarisVpn: true },
+              })
+            ).status,
+          ).toBe(200);
+        },
+        { result: "ok", licenseStatus: "ok", tokenHeld: true },
+      );
+
+      // The device was bound by its key: no sign-in binding on an Identity-off product.
+      const device = await world.db.first<{ subject: string | null }>(
+        "SELECT subject FROM devices WHERE product = ? AND device_id = ?",
+        PRODUCT,
+        DEVICE,
+      );
+      expect(device?.subject ?? null).toBeNull();
       return r.transcript();
     }),
 };

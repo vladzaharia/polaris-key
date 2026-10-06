@@ -323,7 +323,7 @@ export function OutletsPage({ slug }: { slug: string }): React.ReactElement {
           <EmptyState
             kind="first-run"
             title="No outlets declared"
-            description="Outlets are where a release reaches people: the direct download, the stores, AltStore, F-Droid, Flathub. Declare them under outlets in .pkey/distribution and resync."
+            description="Outlets are where a release reaches people: Polaris Key downloads, the stores, AltStore, F-Droid, Flathub. Declare them under outlets in .pkey/distribution and resync."
             docs="/docs/services/distribution/"
           />
         }

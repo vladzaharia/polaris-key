@@ -179,6 +179,56 @@ describe("activateWithKey — POST /<p>/license/activate", () => {
     });
   });
 
+  // @pkey-feature license.manage
+  // PX-W8: the refusal link rides on device-limit; an invalid one is dropped, and an unknown
+  // member never changes the outcome.
+  it("surfaces manageUrl on device-limit, flat or nested, and drops an invalid one", async () => {
+    const url =
+      "https://key.plrs.im/activate?product=djdl&next=free-device&for=Linux%20x86_64";
+    for (const body of [
+      { error: "device_limit", limit: 1, deviceCount: 1, manageUrl: url },
+      {
+        error: {
+          code: "device_limit",
+          limit: 1,
+          deviceCount: 1,
+          manageUrl: url,
+        },
+      },
+    ]) {
+      const { impl } = fakeFetch([{ status: 403, json: body }]);
+      expect(
+        await activateWithKey(await makeCtx(impl), "pkey_djdl_AAA", null),
+      ).toEqual({
+        kind: "device-limit",
+        code: "device_limit",
+        limit: 1,
+        deviceCount: 1,
+        manageUrl: url,
+      });
+    }
+    const { impl } = fakeFetch([
+      {
+        status: 403,
+        json: {
+          error: "device_limit",
+          limit: 1,
+          deviceCount: 1,
+          manageUrl: "javascript:alert(1)",
+          somethingNew: true,
+        },
+      },
+    ]);
+    expect(
+      await activateWithKey(await makeCtx(impl), "pkey_djdl_AAA", null),
+    ).toEqual({
+      kind: "device-limit",
+      code: "device_limit",
+      limit: 1,
+      deviceCount: 1,
+    });
+  });
+
   it("distinguishes fingerprint_required from device-limit (flat body)", async () => {
     const { impl } = fakeFetch([
       { status: 403, json: { error: "fingerprint_required" } },

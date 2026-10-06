@@ -284,6 +284,8 @@ async function replay(t: Transcript): Promise<void> {
           (c) => `-${c.toLowerCase()}`,
         );
         observed.code = r.code;
+        // PX-W8: the refusal link, validated, or null when the Worker sent none.
+        if (r.kind === "deviceLimit") observed.manageUrl = r.manageUrl ?? null;
         break;
       }
       case "deactivate":
@@ -573,8 +575,13 @@ describe("HTTP transcripts: @polaris-key/react", () => {
     );
     // Planned here, so their transcripts do not apply: commerce.receipt (LX-20; the Worker's CORS
     // list does not cover distribution/commerce yet) and telemetry.updates (the bearer engine
-    // drains a journal, but nothing in the adapter records update events yet).
-    const plannedHere = ["commerce.receipt", "telemetry.updates"];
+    // drains a journal, but nothing in the adapter records update events yet), and
+    // identity.toggle (PX-W17's identity-disabled transcript; React's port is I-10a).
+    const plannedHere = [
+      "commerce.receipt",
+      "telemetry.updates",
+      "identity.toggle",
+    ];
     const expected = TRANSCRIPTS.filter(
       (t) => !t.features.some((f) => plannedHere.includes(f)),
     ).map((t) => t.id);

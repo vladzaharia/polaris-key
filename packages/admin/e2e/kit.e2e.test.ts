@@ -61,7 +61,7 @@ async function open(
     viewport,
     colorScheme: theme,
     permissions: ["clipboard-read", "clipboard-write"],
-    ...(reducedMotion ? { reducedMotion } : {}),
+    reducedMotion: reducedMotion ?? "reduce",
   });
   await ctx.addInitScript(() => {
     (window as unknown as { __v: string[] }).__v = [];
@@ -337,10 +337,19 @@ describe("the kit gallery's overlays under the Worker's CSP", () => {
       page,
       "tooltip (disabled reason)",
       async () => {
-        await story(page, "button-states")
+        const trigger = story(page, "button-states")
           .locator("[aria-disabled=true]")
-          .first()
-          .focus();
+          .first();
+        // Focusing an off-screen trigger scrolls the page, and Radix closes a tooltip on scroll:
+        // a race the instant swaps of reduced motion lose. Bring it on screen first.
+        await trigger.scrollIntoViewIfNeeded();
+        await page.evaluate(
+          () =>
+            new Promise((r) =>
+              requestAnimationFrame(() => requestAnimationFrame(r)),
+            ),
+        );
+        await trigger.focus();
         await page.getByRole("tooltip").waitFor();
       },
       { modal: false },
@@ -460,15 +469,15 @@ async function readExitProbe(page: Page): Promise<ExitRecord[]> {
 }
 
 /**
- * Animations still running on the page, aside from the spinners (loading indicators that keep
- * turning) and the gallery's legacy `animate-pulse` skeletons (allowlisted until MO-09).
+ * Animations still running on the page, aside from the loading indicators that loop by design:
+ * the spinners and the skeleton sheen (`pk-shimmer`, gone under reduced motion).
  */
 const running = (page: Page): Promise<string[]> =>
   page.evaluate(() =>
     document
       .getAnimations()
       .map((a) => (a as CSSAnimation).animationName ?? "")
-      .filter((n) => !/spin/.test(n) && n !== "pulse"),
+      .filter((n) => !/spin/.test(n) && n !== "pk-shimmer"),
   );
 
 /**
@@ -494,10 +503,19 @@ describe("overlay exit animations (MO-02)", () => {
     {
       name: "tooltip",
       open: async (page) => {
-        await story(page, "button-states")
+        const trigger = story(page, "button-states")
           .locator("[aria-disabled=true]")
-          .first()
-          .focus();
+          .first();
+        // As in the CSP check above: focusing an off-screen trigger scrolls the page, and Radix
+        // closes a tooltip on scroll, so bring it on screen first.
+        await trigger.scrollIntoViewIfNeeded();
+        await page.evaluate(
+          () =>
+            new Promise((r) =>
+              requestAnimationFrame(() => requestAnimationFrame(r)),
+            ),
+        );
+        await trigger.focus();
         await page.getByRole("tooltip").waitFor();
       },
       content: { name: "pk-fade-out", duration: 120 },

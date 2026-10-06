@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 from ..constants_generated import ErrorCode
 from ..core.context import DocumentResult
 from ..core.errors import PolarisError
+from ..core.manage import read_manage_url
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from ..core.context import CoreContext
@@ -61,13 +62,17 @@ class ActivationOk:
 @dataclass(frozen=True)
 class ActivationDeviceLimit:
     """403 ``device_limit``: the licence has no free seat. ``limit`` and ``deviceCount`` when
-    the server sent them. The SDK builds no portal URL here (owner decision Q6): the
-    "Manage devices" link is the server-supplied ``manageUrl`` once the Worker sends it."""
+    the server sent them. The SDK builds no portal URL (owner decision Q6): ``manage_url``
+    (PX-W8) is the server-supplied customer-portal link that frees a seat, present while the
+    product's portal is on; add the app's return with :func:`polaris_key.with_manage_return`
+    and, on an ``/activate`` link, the key with :func:`polaris_key.with_manage_key`. Never an
+    auth failure."""
 
     limit: Optional[int] = None
     deviceCount: Optional[int] = None
     kind: str = "device-limit"
     code: str = "device_limit"
+    manage_url: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -250,6 +255,7 @@ def activation_result_from(status: int, body: Dict[str, Any], res: Any = None) -
         return ActivationDeviceLimit(
             limit=_int_or_none(_field(body, "limit")),
             deviceCount=_int_or_none(_field(body, "deviceCount")),
+            manage_url=read_manage_url(body),
         )
     if code == "hardware_mismatch" or (code is None and status == 409):
         changed = _field(body, "changed")

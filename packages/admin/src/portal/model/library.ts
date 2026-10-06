@@ -794,7 +794,7 @@ export function quickAction(
   if (p.status.kind === "deviceLimit") {
     return {
       kind: "link",
-      label: "Free up a device",
+      label: "Free a device",
       href: productHref("devices"),
       icon: "device",
     };
@@ -928,7 +928,7 @@ export interface AttentionItem {
 }
 
 /**
- * Only items the person can act on: a device limit (free up a device, G5), or an expiring,
+ * Only items the person can act on: a device limit (free a device, G5), or an expiring,
  * expired or suspended license with a renewal or contact link (G16). Without a link there is
  * nothing to press, so the item is not shown (never a dead-end "Needs attention"). Steam keys
  * join with G8.
@@ -944,7 +944,7 @@ export function attentionItems(
         product: p,
         text: `All ${devicesText(p.seats.limit)} are in use. Remove one to use ${p.name} on another.`,
         action: {
-          label: "Free up a device",
+          label: "Free a device",
           href: devicesHref(p.slug),
           external: false,
         },

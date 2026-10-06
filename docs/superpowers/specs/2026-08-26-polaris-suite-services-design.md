@@ -443,3 +443,55 @@ registry through which Config and Cloud Sync hear about merges and deletions), s
 The global account id never leaves the Worker's Identity and Core code: developers see pairwise
 subjects only. The wire stays v4 (`PROTOCOL_VERSION` 4): the device-facing additions are I-08's
 and I-09's, additive and feature-detected.
+
+---
+
+## Amendment A3 (2026-10-05): Cloud Sync and the account override
+
+**Adds a seventh service.** Cloud Sync (slug `sync`) stores and syncs a signed-in person's user
+settings, collections and saves for one product. Decided by the owner on 2026-10-04 (research note
+S-17, its final answers and §7.3), approved as the contract in
+`docs/research/2026-09-29-godot-omniplatform/program/plans/U-01.md` on 2026-10-05, and landed from
+U-04 on. The owner decisions this amendment records, quoted from that plan's §0:
+
+- **Cloud Sync is its own service** named "Cloud Sync" (slug `sync`), with its own toggle; it
+  depends on Config and on the product's Identity service, because Cloud Sync needs sign-in:
+  descriptor `requires: [config, identity]`, enforced by the console Services toggle.
+- **The principal is the account × product**, seen by the product only as its pairwise subject:
+  `resolveSyncPrincipal(device) = devices.subject`, set only by sign-in through the product; no
+  licence-owner fallback for Cloud Sync. Config's account override layer keeps its owner fallback
+  (`subjectFor(license.account_id, product)`), so owned licences on key-entry devices still get
+  account overrides.
+- **The licence-level config override layer is removed everywhere**, replaced by the account
+  override (user-level managed config per account × product). No exception for products without
+  Identity. **Floating (unowned) licences have no such layer** and are prompted to sign up.
+  **Overrides on licences with no owner are dropped at migration** with an operator-visible
+  report; no grace period.
+- **No Cloud Sync without signing in, ever.** Floating licences, key-activated devices and
+  products without Identity get local persistence only; settings upload at the first sign-in;
+  U-26 stays retired. SDKs and UI kits offer sign-in on `account_required`.
+- **Defaults confirmed:** MVP first, then the anonymous-to-signed-in merge and saves, then
+  collections; per-product ceilings 50 GiB, 100k users holding data, 2,000 pushes/s; 1 MiB with
+  saves off for signed-in users with no licence for the product; the platform pays Cloudflare
+  until per-product billing; web apps use a device token issued through I-08 to an origin on the
+  product's `core.web.origins` allowlist.
+- **S-17 decisions 20–24:** 20 entitlement overrides stay on the licence, only `config` and
+  `secrets` move; 21 a 30-day notice counted from I-07 and I-11 both live, and a 90-day report;
+  22 Cloud Sync needs sign-in; 23 web Cloud Sync uses I-08's web redirect; 24 the
+  developer-backend credential follows Identity.
+- **S-18:** ceilings and quotas are `product_settings` rows in the settings registry, not a
+  `sync_product_settings` table; developer limits are `claimable`; the account is not a settings
+  scope.
+- Fixed names: the binding column is I-05's `devices.subject`; the SDK namespace is `cloudSync`
+  (`cloud_sync` in Python and GDScript), never `sync`.
+
+**What it changes in this spec.** §2.1's service table gains its seventh row in
+`tools/services.json` (default off, `requires: ["config","identity"]`), and the coherence rules
+gain `sync_requires_config` and `sync_requires_identity`, refused both ways by the admin API and
+manifest ingest. The catalog (`@polaris-key/catalog`) gains the `user` block on `config` entries
+and a top-level `cloudSync` block (the data shape); `.pkey/product` gains `cloudSync` (limits and
+access policy, persisted through the settings registry). No new `ConfigKind`; the config
+document's shape, `PROTOCOL_VERSION` (4) and the signed corpus are unchanged: every addition is
+content or an unsigned, feature-detected route. §5's ownership table gains Cloud Sync's
+`sync_directory` and `sync_product_usage` and Config's `account_overrides` and
+`override_migration_report` as the packages that create them land (U-03, U-05).

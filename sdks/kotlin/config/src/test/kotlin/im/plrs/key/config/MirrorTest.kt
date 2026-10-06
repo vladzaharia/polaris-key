@@ -11,6 +11,7 @@ package im.plrs.key.config
 import im.plrs.key.config.mirror.ConfigKind
 import im.plrs.key.config.mirror.ManagementState
 import im.plrs.key.config.mirror.ProductCatalog
+import im.plrs.key.config.mirror.UserSettingPolicy
 import im.plrs.key.core.JsonText
 import im.plrs.key.core.arrayValue
 import im.plrs.key.core.jsonEquals
@@ -63,6 +64,14 @@ class MirrorTest {
         assertTrue(secret.isSecret)
         assertNull(secret.defaultJson)
         assertFalse(ProductCatalog.entries.any { it.defaultJson?.contains("never-a-default") == true })
+    }
+
+    @Test
+    fun userSettingsCarryTheirPoliciesWithDefaults() {
+        // U-04: a config key with a `user` block, in catalog order, `conflict` and `listed` filled in.
+        assertEquals(listOf("audio.musicVolume", "ui.theme"), ProductCatalog.userSettings.keys.toList())
+        assertEquals(UserSettingPolicy(sync = "user", conflict = "max", listed = true), ProductCatalog.userSettings["audio.musicVolume"])
+        assertEquals(UserSettingPolicy(sync = "device", conflict = "lastWrite", listed = false), ProductCatalog.userSettings["ui.theme"])
     }
 
     @Test

@@ -3,7 +3,7 @@
 // barrel re-exports core's values verbatim (`ISSUER` = `key.plrs.im`, the `X-PKey-*` headers),
 // so an import from here and an import from `@polaris-key/protocol/core` can never disagree.
 // Prefer the service subpaths (`/core`, `/license`, `/config`, `/release`, `/update`, `/trust`,
-// `/distribution`, `/packs`)
+// `/distribution`, `/packs`, `/identity`)
 // in new code; the barrel exists for consumers that want one import.
 
 export {
@@ -246,3 +246,5 @@ export type {
   TrustManifestKey,
   TrustManifestDoc,
 } from "./trust.js";
+
+export { IDENTITY_DISABLED_ERROR_PARAM } from "./identity.js";

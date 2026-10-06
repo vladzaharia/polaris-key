@@ -9,10 +9,10 @@ This guide is a template for bringing a product onto Polaris Key, using **djdl**
 first Polaris Key product — as the worked example throughout. Substitute your own product
 slug, repo, and secrets wherever djdl appears.
 
-Polaris Key is six opt-in services — **License**, **Config**, **Release**, **Distribution**,
-**Update**, **Identity** — over an always-on **Core** substrate (product registry, the device principal,
+Polaris Key is seven opt-in services — **License**, **Config**, **Release**, **Distribution**,
+**Update**, **Identity**, **Cloud Sync** — over an always-on **Core** substrate (product registry, the device principal,
 trust and signing, discovery, rate limiting, audit). So onboarding starts with two declarations
-rather than with code: which of the six this product runs, and how its devices get a credential.
+rather than with code: which of the seven this product runs, and how its devices get a credential.
 Which routes exist, what discovery says, and which SDK sub-clients answer are all projections of
 those two.
 

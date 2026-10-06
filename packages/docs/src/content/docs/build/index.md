@@ -11,7 +11,7 @@ write, what to run, and what to link against. If you want to know what a service
 on the wire, start at [Services](/docs/services/core/) instead; if you're operating an
 already-deployed Polaris Key instance, that's [Administer](/docs/admin/).
 
-Building on Polaris Key has one recurring shape, whichever of the six services you turn on: a
+Building on Polaris Key has one recurring shape, whichever of the seven services you turn on: a
 **product** is registered as data (a `.pkey/` manifest), the control plane signs documents
 against it, and a **client** — one of six SDKs, or a CLI built from the same core — verifies
 those documents and gates the app on them. Everything below is one of those three moving parts.
@@ -38,8 +38,8 @@ order — reach for them when something needs to match byte-for-byte.
 
 ## Before you start
 
-Two decisions precede any code: which of the six services — **License**, **Config**,
-**Release**, **Distribution**, **Update**, **Identity** — your product turns on, and how its devices get a
+Two decisions precede any code: which of the seven services — **License**, **Config**,
+**Release**, **Distribution**, **Update**, **Identity**, **Cloud Sync** — your product turns on, and how its devices get a
 credential (`devices.registration`). Both live in `.pkey/product`'s `modules` block, both are
 projected everywhere else a client or an operator looks — route mounting, the discovery
 document, every SDK's capability map — and neither has a default you should leave unexamined

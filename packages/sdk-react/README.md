@@ -188,6 +188,16 @@ All five are assembled from the exported primitives (`MessageScreen`, `Button`, 
 button, and an identity failure no longer reads as a license failure. `usePolarisKey()` still
 exposes the aggregates (`busy`, `error`) alongside `busyByService` / `errorByService`.
 
+## When every seat is taken
+
+On a device-limit refusal, `PolarisError.manageUrl` carries the customer-portal link that frees a
+seat (WIRE-CONTRACT-V4 §5.3), validated, and only while the product's portal is on. `<PolarisLogin>`
+(and `<LicenseGate>`, which renders it) shows **Replace a device** under the error: it opens the
+link in a new tab with the key fragment on an `/activate` link and `return=` set to `returnUrl`
+when you pass one. Activate again is the "try again". `openManageUrl(url, { key, returnUrl })` and
+the `withManageReturn` / `withManageKey` helpers are exported for a custom screen. The link is
+never an auth failure: nothing is wiped and nothing retries.
+
 ## Layered config
 
 `useManagedConfig().get(key, fallback)` resolves a config value through the **same precedence**
@@ -282,7 +292,8 @@ browserAdapter({
   `updateRevokedContentBody` ("Some of this game's content was withdrawn by its developer and
   can't be used. Update the app to keep playing."), with the offer's button when the answer is an
   offer and none for `blocked`; a content floor uses `updateContentFloorBody`.
-- **Outlet.** A host's `update.outlet` (a kind, or `{id, kind, subkind?}`) wins. Otherwise the
+- **Outlet.** A host's `update.outlet` (a kind such as `"direct"`, the Polaris Key outlet, or
+  `{id, kind, subkind?}`) wins. Otherwise the
   browser adapter detects in-page (`update.detect`, default true): `readOutletSignals()` reads
   the display mode (`matchMedia('(display-mode: standalone)')`, `navigator.standalone`, an
   `android-app://` referrer) and client-core's `detectOutlet` (re-exported here) maps it, with

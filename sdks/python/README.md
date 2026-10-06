@@ -337,8 +337,8 @@ if result.kind == "ok":
 ### Crash tags
 
 `client.crash_tags()` returns the release, environment and outlet tags to set on a crash
-reporter such as Sentry. The SDK builds no customer-portal URLs: a "Manage devices" link is the
-server-supplied `manageUrl` on a `device_limit` refusal, once the Worker sends it.
+reporter such as Sentry. The SDK builds no customer-portal URLs: the "Replace a device" link is
+the server-supplied `manageUrl` on a `device_limit` refusal (`manage_url`, PX-W8).
 
 ### `asyncio`
 
@@ -376,6 +376,24 @@ Ren'Py boot snippet).
 `not-applicable` is what a product that does not enable the License service reports: it has
 no licence to be missing, so it boots **usable** rather than sitting on `needs-activation`
 forever.
+
+## When every seat is taken
+
+A refused activation or enrolment returns `ActivationDeviceLimit(limit, deviceCount, manage_url)`.
+`manage_url` is the customer-portal link that frees a seat (WIRE-CONTRACT-V4 §5.3), present while
+the product's portal is on and already validated. It is never an auth failure.
+
+```python
+from polaris_key import with_manage_key, with_manage_return
+
+r = client.license.activate_with_key(key)
+if r.kind == "device-limit" and r.manage_url:
+    link = with_manage_return(with_manage_key(r.manage_url, key), "myapp://activated")
+    print(f"Every seat is taken. Free one up at {link}")
+```
+
+`with_manage_key` adds `#key=` only to an `/activate` link; `with_manage_return` adds `return=`,
+which the portal honours only for a declared return target. The CLI prints the link.
 
 ## Device-code sign-in
 
@@ -598,7 +616,7 @@ client = PolarisKeyClient.create(
     update=UpdateClientOptions(
         # kid -> raw Ed25519 release key (base64url). PLACEHOLDER: your product's release key.
         pinned_release_keys={"<your-release-key-id>": "<your-release-key-b64url>"},
-        outlet="direct",                   # where this install came from; turns offers on
+        outlet="direct",                   # the Polaris Key outlet (id direct); turns offers on
         format="dmg",                      # only builds of this format are offered (optional)
         methods=("download",),             # what this host can do with a `binary` decision
     ),

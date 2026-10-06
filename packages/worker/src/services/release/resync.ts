@@ -61,6 +61,10 @@ import { parseServices, serializeServices } from "../../core/services.js";
 import type { ManifestIngest } from "../../core/registry.js";
 import { serializeWebOrigins } from "../../core/cors.js";
 import {
+  applyServiceTransitions,
+  MANIFEST_RESYNC_ACTOR,
+} from "../../core/servicesTransitions.js";
+import {
   getPublisherPolicy,
   manifestPublisherChanged,
   stmtDeleteManifestPublisher,
@@ -270,6 +274,17 @@ async function applyRepoManifest(
     now,
   );
   updated.push("services");
+  // PX-W17: the consequences of the set now STORED (the manifest's, or the operator's when the
+  // row is admin-claimed and the write above was a no-op). Idempotent: an Identity-off product's
+  // stragglers heal here on every resync.
+  await applyServiceTransitions(
+    env,
+    db,
+    slug,
+    parseServices((await getProduct(db, slug))?.services_json).services,
+    MANIFEST_RESYNC_ACTOR,
+    now,
+  );
 
   // ── schema: publish a new active version only when the catalog changed ──────
   const nextCatalogJson = JSON.stringify(manifest.catalog);

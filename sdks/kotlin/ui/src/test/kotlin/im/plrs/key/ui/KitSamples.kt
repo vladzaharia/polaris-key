@@ -90,6 +90,8 @@ internal val samplePacks = PolarisPackProgressUi(
 internal fun bootUi(stage: BootStage, outcome: BootOutcome = BootOutcome.running, canPlayOffline: Boolean = false) =
     PolarisBootUi(state = initialBootState().copy(stage = stage, outcome = outcome, canPlayOffline = canPlayOffline))
 
+internal const val SAMPLE_MANAGE_URL = "https://key.plrs.im/activate?product=djdl&next=free-device&for=Android%20arm64"
+
 /** Every screen the kit ships, by snapshot name. */
 internal val kitScreens: List<Pair<String, @Composable () -> Unit>> = listOf(
     "boot-progress" to { PolarisBootScreen(bootUi(BootStage.sync)) },
@@ -106,6 +108,29 @@ internal val kitScreens: List<Pair<String, @Composable () -> Unit>> = listOf(
         PolarisGateScreen(
             gateUi(LicenseStatus.needsActivation),
             PolarisActivationUi(key = "pkey_9f2c-77ab", error = PolarisActivationError.Refused(ActivationResult.DeviceLimit(3, 3))),
+        )
+    },
+    // PX-W8: a device-limit refusal with the portal link — a button, and a QR code on a TV.
+    "gate-device-limit-manage" to {
+        PolarisGateScreen(
+            gateUi(LicenseStatus.needsActivation),
+            PolarisActivationUi(
+                key = "pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV",
+                error = PolarisActivationError.Refused(ActivationResult.DeviceLimit(1, 1, SAMPLE_MANAGE_URL)),
+                manageUrl = SAMPLE_MANAGE_URL,
+            ),
+        )
+    },
+    "gate-device-limit-manage-tv" to {
+        PolarisGateScreen(
+            gateUi(LicenseStatus.needsActivation),
+            PolarisActivationUi(
+                key = "pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV",
+                error = PolarisActivationError.Refused(ActivationResult.DeviceLimit(1, 1, SAMPLE_MANAGE_URL)),
+                manageUrl = "$SAMPLE_MANAGE_URL#key=pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV",
+                manageQrUrl = SAMPLE_MANAGE_URL,
+            ),
+            manageAsQr = true,
         )
     },
     "gate-revoked" to { PolarisGateScreen(gateUi(LicenseStatus.revoked), PolarisActivationUi(), onSignIn = {}) },

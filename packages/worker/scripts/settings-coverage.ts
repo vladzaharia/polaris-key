@@ -329,6 +329,13 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
     covers: { ids: ["column:dist_keys.source"] },
   },
   {
+    thing: "The Cloud Sync data shape (.pkey/schema's cloudSync block)",
+    reason:
+      "Catalog content, not behaviour: the collections, saves and migrations a client needs are published with the catalog (S-18 Q5). Cloud Sync's limits and access policy are the cloudSync.* settings.",
+    shows: "Config → Catalog; pkey validate",
+    covers: { ids: ["manifest:schema:cloudSync"] },
+  },
+  {
     thing: "Document versions (apiVersion, schemaVersion) and the product slug",
     reason:
       "The slug is the product's identity and never changes; apiVersion selects a manifest shape; schemaVersion stamps the catalog and is written with it (config.catalog) as one unit.",

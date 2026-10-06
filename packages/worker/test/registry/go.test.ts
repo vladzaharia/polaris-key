@@ -63,6 +63,7 @@ const ON: ServicesMap = {
   distribution: { enabled: true },
   update: { enabled: false },
   identity: { enabled: false },
+  sync: { enabled: false },
 };
 const ACTOR: PolicyActor = {
   kind: "admin",

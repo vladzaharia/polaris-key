@@ -5,6 +5,7 @@ extends RefCounted
 # @pkey-feature commerce.receipt
 # @pkey-feature packs.apply.chunk
 # @pkey-feature license.refusals ui.boot release.distribution telemetry.updates
+# @pkey-feature license.manage
 # The Godot transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read from the
 # generator-owned mirror res://tests/transcripts/ (written by `pnpm gen:transcripts`; never edit
 # it). Drives the `PolarisKey` root through every recorded conversation that
@@ -168,11 +169,17 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 			out["result"] = String(r.kind)
 			if not r.ok:
 				out["code"] = String(r.code)
+			# PX-W8: the refusal link, exactly as served; null when the result carries none.
+			if r.kind == PKeyActivationResult.KIND_DEVICE_LIMIT:
+				out["manageUrl"] = r.manage_url
 		"enroll":
 			var r: PKeyActivationResult = await sdk.license.enroll()
 			out["result"] = String(r.kind)
 			if not r.ok:
 				out["code"] = String(r.code)
+			# PX-W8: the refusal link, exactly as served; null when the result carries none.
+			if r.kind == PKeyActivationResult.KIND_DEVICE_LIMIT:
+				out["manageUrl"] = r.manage_url
 		"boot":
 			var view := PKeyBoot.new()
 			view.auto_sdk = false

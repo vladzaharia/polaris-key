@@ -11,7 +11,8 @@ export type ServiceSlug =
   | "release"
   | "distribution"
   | "update"
-  | "identity";
+  | "identity"
+  | "sync";
 
 /** Canonical order. Iterate this rather than `Object.keys` so output is stable. */
 export const SERVICE_SLUGS: readonly ServiceSlug[] = [
@@ -21,6 +22,7 @@ export const SERVICE_SLUGS: readonly ServiceSlug[] = [
   "distribution",
   "update",
   "identity",
+  "sync",
 ];
 
 /**
@@ -46,6 +48,7 @@ export const SERVICE_REQUIRES: Readonly<
   distribution: ["release"],
   update: ["distribution"],
   identity: [],
+  sync: ["config", "identity"],
 };
 
 /** A service section's `data-service` accent token (D-17). The platform section's `core` is
@@ -56,7 +59,8 @@ export type ServiceAccentToken =
   | "release"
   | "distribution"
   | "update"
-  | "identity";
+  | "identity"
+  | "sync";
 
 /** The lucide-react icon each service's row uses. `ServicesCard` maps every name to a
  *  component, so a new icon here is a type error until it is imported there. */
@@ -66,7 +70,8 @@ export type ServiceIconName =
   | "Package"
   | "Truck"
   | "CircleArrowUp"
-  | "UserRound";
+  | "UserRound"
+  | "Cloud";
 
 export interface ServiceTableRow {
   slug: ServiceSlug;
@@ -148,5 +153,16 @@ export const SERVICE_TABLE: readonly ServiceTableRow[] = [
     docs: "/docs/services/identity/",
     defaultEnabled: false,
     requires: [],
+  },
+  {
+    slug: "sync",
+    label: "Cloud Sync",
+    summary:
+      "A signed-in person's settings, collections and saves, synced across devices.",
+    accent: "sync",
+    icon: "Cloud",
+    docs: "/docs/services/sync/",
+    defaultEnabled: false,
+    requires: ["config", "identity"],
   },
 ];

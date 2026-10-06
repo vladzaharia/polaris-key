@@ -78,9 +78,9 @@ export function StatTile({
         )}
       </p>
       {loading ? (
-        <div aria-hidden className="mt-1 space-y-2">
-          <div className="h-7 w-24 animate-pulse rounded-md bg-surface-sunken motion-reduce:animate-none" />
-          <div className="h-3 w-32 animate-pulse rounded-md bg-surface-sunken motion-reduce:animate-none" />
+        <div aria-hidden className="pk-skeleton-group mt-1 space-y-2">
+          <div className="pk-skeleton h-7 w-24 rounded-md" />
+          <div className="pk-skeleton h-3 w-32 rounded-md" />
         </div>
       ) : error ? (
         <div className="mt-1 space-y-2">

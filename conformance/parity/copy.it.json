@@ -133,6 +133,10 @@
       "title": "Accesso non disponibile",
       "message": "L'accesso non è disponibile al momento. Riprova tra qualche minuto."
     },
+    "identity_disabled": {
+      "title": "Accesso non disponibile",
+      "message": "L'accesso tramite questa app è disattivato. Le tue installazioni e licenze continuano a funzionare."
+    },
     "auth_method_disabled": {
       "title": "Metodo di accesso non disponibile",
       "message": "Questo metodo di accesso è disattivato. Scegline un altro."

@@ -44,6 +44,17 @@ export type Support =
           }
         | "operator-assertion";
     }
+  /**
+   * Polaris Key performs it on its own tables (S-21 §6.1, PS-01): no credential, no gate, no vendor
+   * call. `handler` names the first-party handler (`core/storefront/firstParty.ts`). Only an
+   * adapter with no credential and no gate may declare it (the conformance suite's first-party
+   * branch); the console renders it as "Built in".
+   */
+  | {
+      readonly mode: "first-party";
+      readonly plane: "worker";
+      readonly handler: string;
+    }
   /** The protocol has no such operation (F-01's `unsupported_by_ecosystem`). */
   | { readonly mode: "unsupported"; readonly reason: string };
 
@@ -75,7 +86,7 @@ export interface Adapter<Id extends string, Op extends string> {
   readonly specPin?: SpecPin;
 }
 
-/** Does the adapter perform `op` at all (any mode but `unsupported`)? */
+/** Does the adapter perform `op` at all (any mode but `unsupported`; `first-party` counts)? */
 export function supports<Op extends string>(
   capabilities: Capabilities<Op>,
   op: Op,

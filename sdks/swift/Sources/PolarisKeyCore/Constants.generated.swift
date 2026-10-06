@@ -42,6 +42,7 @@ public enum ErrorCode {
     public static let disabled = "disabled"
     public static let oidcError = "oidc_error"
     public static let unavailable = "unavailable"
+    public static let identityDisabled = "identity_disabled"
     public static let authMethodDisabled = "auth_method_disabled"
     public static let emailUnavailable = "email_unavailable"
     public static let turnstileFailed = "turnstile_failed"
@@ -196,6 +197,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "disabled",
     "oidc_error",
     "unavailable",
+    "identity_disabled",
     "auth_method_disabled",
     "email_unavailable",
     "turnstile_failed",
@@ -350,6 +352,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "disabled": "wire",
     "oidc_error": "wire",
     "unavailable": "wire",
+    "identity_disabled": "wire",
     "auth_method_disabled": "wire",
     "email_unavailable": "wire",
     "turnstile_failed": "wire",
@@ -488,6 +491,7 @@ public enum Feature {
     public static let licenseActivate = "license.activate"
     public static let licenseEnroll = "license.enroll"
     public static let licenseDeactivate = "license.deactivate"
+    public static let licenseManage = "license.manage"
     public static let licenseEntitlements = "license.entitlements"
     public static let licenseChannels = "license.channels"
     public static let licenseReregister = "license.reregister"
@@ -508,6 +512,7 @@ public enum Feature {
     public static let devicesAttest = "devices.attest"
     public static let identityOidc = "identity.oidc"
     public static let identityDevicecode = "identity.devicecode"
+    public static let identityToggle = "identity.toggle"
     public static let releaseChangelog = "release.changelog"
     public static let releaseDownload = "release.download"
     public static let releaseRecord = "release.record"
@@ -549,6 +554,7 @@ public enum Feature {
     public static let uiStages = "ui.stages"
     public static let uiBoot = "ui.boot"
     public static let uiKit = "ui.kit"
+    public static let uiKitManage = "ui.kit.manage"
     public static let uiCli = "ui.cli"
     public static let commerceReceipt = "commerce.receipt"
 }
@@ -570,6 +576,7 @@ public let FEATURE_VALUES: [String] = [
     "license.activate",
     "license.enroll",
     "license.deactivate",
+    "license.manage",
     "license.entitlements",
     "license.channels",
     "license.reregister",
@@ -590,6 +597,7 @@ public let FEATURE_VALUES: [String] = [
     "devices.attest",
     "identity.oidc",
     "identity.devicecode",
+    "identity.toggle",
     "release.changelog",
     "release.download",
     "release.record",
@@ -631,6 +639,7 @@ public let FEATURE_VALUES: [String] = [
     "ui.stages",
     "ui.boot",
     "ui.kit",
+    "ui.kit.manage",
     "ui.cli",
     "commerce.receipt",
 ]
@@ -1159,6 +1168,9 @@ public let OUTLET_MATRIX_VERSION = 1
 /// `planMatrixVersion` of conformance/corpus/v2/plan-matrix.json.
 public let PLAN_MATRIX_VERSION = 2
 
+/// `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json.
+public let SYNC_SCENARIOS_VERSION = 1
+
 /// `contentCorpusVersion` of conformance/corpus/v2/content/cases.json.
 public let CONTENT_CORPUS_VERSION = 2
 
@@ -1349,6 +1361,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "license.activate": CapabilityRow(status: "implemented", service: "license", na: []),
     "license.enroll": CapabilityRow(status: "implemented", service: "license", na: []),
     "license.deactivate": CapabilityRow(status: "implemented", service: "license", na: []),
+    "license.manage": CapabilityRow(status: "implemented", service: "license", na: []),
     "license.entitlements": CapabilityRow(status: "implemented", service: "license", na: []),
     "license.channels": CapabilityRow(status: "implemented", service: "license", na: []),
     "license.reregister": CapabilityRow(status: "implemented", service: "license", na: []),
@@ -1369,6 +1382,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "devices.attest": CapabilityRow(status: "implemented", service: "core", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "outlet")]),
     "identity.oidc": CapabilityRow(status: "planned", service: "identity", na: []),
     "identity.devicecode": CapabilityRow(status: "implemented", service: "identity", na: []),
+    "identity.toggle": CapabilityRow(status: "planned", service: "identity", na: []),
     "release.changelog": CapabilityRow(status: "implemented", service: "release", na: []),
     "release.download": CapabilityRow(status: "implemented", service: "release", na: []),
     "release.record": CapabilityRow(status: "implemented", service: "release", na: []),
@@ -1410,9 +1424,10 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "ui.stages": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "ui.boot": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "ui.kit": CapabilityRow(status: "planned", service: "sdk", na: []),
+    "ui.kit.manage": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "ui.cli": CapabilityRow(status: "na", service: "sdk", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "commerce.receipt": CapabilityRow(status: "implemented", service: "license", na: []),
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "bc364e4dcfaa6d0d031491c87665bc57457ba0753ede31e418d001732da1941f"
+public let CAPABILITY_DIGEST = "7722b6ff479f46ec916388dba1fcd9008221e9a5ba5127bd79a6fc50a6395936"

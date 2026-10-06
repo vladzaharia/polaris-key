@@ -227,6 +227,29 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     pending: { wp: "ST-16" },
   }),
 
+  // ── The Polaris Key storefront (PS-02, notes/S-21 §6.2) ─────────────────────────────────
+  setting({
+    key: "storefront.polarisKey.enabled",
+    scope: "platform",
+    service: "platform",
+    area: "storefront",
+    label: "Polaris Key storefront",
+    description:
+      "Lets products be listed in the Polaris Key library (Discover and the storefront page). Off hides every listing on this deployment; licences, sign-in and auto-issue keep working.",
+    keywords: ["discover", "library", "storefront", "kill switch"],
+    docs: "/docs/services/identity/portal/#polaris-key-listing",
+    value: { kind: "switch" },
+    defaultValue: "on",
+    merge: "cascade",
+    widensWhen: "on",
+    ownership: "operator",
+    confirm: { on: "L2", off: "L2" },
+    storage: { kind: "scalar" },
+    since: "PS-02",
+    // PS-03's candidate query is the first reader (S-21 §6.3 "Candidates").
+    pending: { wp: "PS-03" },
+  }),
+
   // ── Product defaults (ST-16 wires them; owner decision 2: live inheritance) ─────────────
   setting({
     key: "license.defaults.deviceLimit",

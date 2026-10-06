@@ -11,7 +11,8 @@ export type ServiceSlug =
   | "release"
   | "distribution"
   | "update"
-  | "identity";
+  | "identity"
+  | "sync";
 
 /** Canonical order. Iterate this rather than `Object.keys` so output is stable. */
 export const SERVICE_SLUGS: readonly ServiceSlug[] = [
@@ -21,6 +22,7 @@ export const SERVICE_SLUGS: readonly ServiceSlug[] = [
   "distribution",
   "update",
   "identity",
+  "sync",
 ];
 
 /**
@@ -46,6 +48,7 @@ export const SERVICE_REQUIRES: Readonly<
   distribution: ["release"],
   update: ["distribution"],
   identity: [],
+  sync: ["config", "identity"],
 };
 
 /** The legacy `.pkey/product` `modules:` vocabulary (design spec §2.1). */
@@ -71,4 +74,5 @@ export const MODULE_SERVICES: Readonly<
   distribution: ["distribution"],
   update: ["update"],
   identity: ["identity"],
+  sync: ["sync"],
 };

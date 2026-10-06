@@ -33,6 +33,8 @@
  * Runtime behaviour (`connect`, `listApps`, `readListing`, `plan`, `runStep`, `status`) is
  * `StorefrontRuntime`, implemented per plane beside the existing connector
  * (`services/distribution/connectors/<store>/`); A-18c and A-18j add the first implementations.
+ * A FIRST-PARTY op (`polaris-key`, PS-01) has no connector: it names a handler in
+ * `firstParty.ts`, which works on Polaris Key's own tables through ports.
  */
 
 import type { OutletKind } from "@polaris-key/manifest";
@@ -52,6 +54,7 @@ import { SCOOP_ADAPTER } from "./stores/scoop.js";
 import { SNAP_ADAPTER } from "./stores/snap.js";
 import { STEAM_ADAPTER } from "./stores/steam.js";
 import { WINGET_ADAPTER } from "./stores/winget.js";
+import { POLARIS_KEY_ADAPTER } from "./stores/polarisKey.js";
 
 export type { ListingProfile } from "./listing.js";
 
@@ -66,7 +69,9 @@ export type StorefrontId =
   | "winget"
   | "homebrew"
   | "scoop"
-  | "flathub";
+  | "flathub"
+  /** The first-party storefront: the portal's Discover and Library (PS-01, notes/S-21 §6.1). */
+  | "polaris-key";
 
 /** The operations a storefront declares support for (S-15 §6.1). */
 export const STOREFRONT_OPS = [
@@ -185,6 +190,7 @@ export const STOREFRONT_ADAPTERS: readonly StorefrontAdapter[] = [
   HOMEBREW_ADAPTER,
   SCOOP_ADAPTER,
   FLATHUB_ADAPTER,
+  POLARIS_KEY_ADAPTER,
 ];
 
 /** An adapter by id, or null. */

@@ -99,6 +99,14 @@ from .core.context import (
     normalize_base_url,
 )
 from .core.errors import InsecureBaseUrlError, PolarisError
+from .core.manage import (
+    MANAGE_URL_MAX_LENGTH,
+    is_manage_url,
+    manage_form_encode,
+    read_manage_url,
+    with_manage_key,
+    with_manage_return,
+)
 from .core.jws import TrustSet, VerifiedJws, sign_jws, verify_jws
 from .core.models import (
     CLOCK_SKEW_SECONDS,
@@ -281,6 +289,13 @@ __all__ = [
     # client metadata header values (WIRE-CONTRACT-V3 §5.2)
     "canonical_platform",
     "canonical_arch",
+    # refusal links (PX-W8)
+    "MANAGE_URL_MAX_LENGTH",
+    "is_manage_url",
+    "manage_form_encode",
+    "read_manage_url",
+    "with_manage_key",
+    "with_manage_return",
     # facade
     "PolarisKeyClient",
     "BootOutcome",

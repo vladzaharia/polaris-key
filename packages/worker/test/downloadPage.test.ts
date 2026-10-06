@@ -718,6 +718,19 @@ describe("the page on the bytes host", () => {
       expect(html, needle).toContain(needle);
     expect(html).toContain("What&#39;s new in 1.2.0.");
   });
+
+  it("the direct outlet's builds read Polaris Key, never Direct download (S-21 §6.8)", async () => {
+    const w = await setup();
+    for (const ua of [UA.bot, UA.windows, UA.linux]) {
+      const html = await (
+        await onBytes(w, `/${SLUG}`, { headers: { "user-agent": ua } })
+      ).text();
+      expect(html).toContain(
+        '<span class="way-head">Download from Polaris Key</span>',
+      );
+      expect(html).not.toMatch(/direct download/i);
+    }
+  });
 });
 
 // ── Escaping ─────────────────────────────────────────────────────────────────────────────────

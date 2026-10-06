@@ -71,6 +71,7 @@ COPY_CODES: Mapping[str, CopyEntry] = MappingProxyType(
         "disabled": CopyEntry("Sign-in unavailable", "Sign-in isn't turned on for this app."),
         "oidc_error": CopyEntry("Sign-in failed", "Sign-in didn't finish. Try again."),
         "unavailable": CopyEntry("Sign-in unavailable", "Sign-in isn't available right now. Try again in a few minutes."),
+        "identity_disabled": CopyEntry("Sign-in unavailable", "Sign-in through this app is turned off. Your installs and licenses keep working."),
         "auth_method_disabled": CopyEntry("Sign-in method unavailable", "That sign-in method is turned off. Choose another one."),
         "email_unavailable": CopyEntry("Email sign-in unavailable", "Email sign-in isn't available right now. Choose another sign-in method."),
         "turnstile_failed": CopyEntry("Check didn't pass", "The security check didn't pass. Reload the page and try again."),

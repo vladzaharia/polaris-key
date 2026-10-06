@@ -73,7 +73,7 @@ describe("Products", () => {
     expect(within(acme).getByText("1 needs attention")).toBeTruthy();
     expect(
       within(acme).getByText(
-        "Runs License, Config, Release, Distribution, Update and Identity",
+        "Runs License, Config, Release, Distribution, Update, Identity and Cloud Sync",
       ),
     ).toBeTruthy();
     const djdl = rows().find((r) => r.textContent?.includes("djdl"))!;

@@ -3,6 +3,10 @@
  * boot. Each one says what is missing and offers the way out, rather than falling back to some
  * other page in silence (SH-8). The first three are the shared `ui/EmptyState` (kinds `not-found`
  * and `service-off`) under the page's `<h1>`, inside the product chrome.
+ *
+ * Motion (S-23 §6.1; MO-10): a state page and the boot error card enter (`animate-pk-enter`);
+ * they leave with their route, which owns the exit. "Loading console…" waits out the skeleton's
+ * 150 ms grace, so a fast boot never flashes it. All of it is an instant swap under reduced motion.
  */
 
 import * as React from "react";
@@ -75,7 +79,7 @@ export function NotFoundPage({
   onOpenPalette: () => void;
 }): React.ReactElement {
   return (
-    <section className="space-y-6">
+    <section className="space-y-6 animate-pk-enter">
       <StateHeading>Page not found</StateHeading>
       <EmptyState
         kind="not-found"
@@ -113,7 +117,7 @@ export function UnknownProductPage({
 }): React.ReactElement {
   const close = closestSlugs(slug, products);
   return (
-    <section className="space-y-6">
+    <section className="space-y-6 animate-pk-enter">
       <StateHeading>Unknown product</StateHeading>
       <EmptyState
         kind="not-found"
@@ -179,7 +183,10 @@ export function ServiceOffPage({
   productName: string;
 }): React.ReactElement {
   return (
-    <section className="space-y-6" data-service={section.accent}>
+    <section
+      className="space-y-6 animate-pk-enter"
+      data-service={section.accent}
+    >
       <StateHeading>{section.label}</StateHeading>
       <EmptyState
         kind="service-off"
@@ -221,7 +228,7 @@ export function BootScreen({
         {error ? (
           <section
             aria-labelledby="boot-error-title"
-            className="w-full rounded-lg border border-border bg-surface-raised p-6 shadow-pk-sm sm:p-8"
+            className="w-full rounded-lg border border-border bg-surface-raised p-6 shadow-pk-sm animate-pk-enter sm:p-8"
           >
             <div className="mb-4 flex size-10 items-center justify-center rounded-full bg-danger-subtle text-danger">
               <AlertTriangle aria-hidden className="size-5" />
@@ -246,7 +253,7 @@ export function BootScreen({
             </div>
           </section>
         ) : (
-          <div className="flex items-center gap-3 text-sm text-fg-muted">
+          <div className="pk-skeleton-group flex items-center gap-3 text-sm text-fg-muted">
             <Spinner className="size-5 text-fg-subtle" />
             <LiveRegion message="Loading console…" />
             <span aria-hidden>Loading console…</span>

@@ -2,6 +2,7 @@ import * as React from "react";
 import {
   Box,
   CircleArrowUp,
+  Cloud,
   KeyRound,
   Package,
   SlidersHorizontal,
@@ -28,6 +29,7 @@ const LUCIDE: Record<string, LucideIcon> = {
   release: Package,
   update: CircleArrowUp,
   identity: UserRound,
+  sync: Cloud,
 };
 
 const STAR_CUT = new Set(["distribution"]);

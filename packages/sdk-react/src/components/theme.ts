@@ -103,6 +103,8 @@ export interface PolarisThemeCopy {
   channelNotEntitledBody: string;
   loadingLabel: string;
   retryLabel: string;
+  /** The device-limit action (PX-W8): opens the customer portal to free a seat. */
+  freeDeviceLabel: string;
   signOutLabel: string;
   /** `not-applicable` never reaches a gate screen — a product without the license service
    *  renders children straight through — but the string exists for a host that wants to
@@ -310,6 +312,7 @@ export const defaultTheme: PolarisTheme = {
       "Your license doesn't include this release channel. Switch channels or contact your administrator.",
     loadingLabel: "Checking your license…",
     retryLabel: "Try again",
+    freeDeviceLabel: "Replace a device",
     signOutLabel: "Sign out",
     notApplicableLabel: "This product is not licensed separately.",
     configTitle: "Settings",

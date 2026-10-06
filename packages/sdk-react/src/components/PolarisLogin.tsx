@@ -31,6 +31,7 @@ import {
 } from "./primitives/card.js";
 import { TextField } from "./primitives/input.js";
 import { screenLogo, themePoweredBy } from "./brand.js";
+import { withManageKey, withManageReturn } from "@polaris-key/client-core";
 import { describeError } from "../core/copy.js";
 
 export interface PolarisLoginProps {
@@ -47,6 +48,27 @@ export interface PolarisLoginProps {
   /** Drop the card chrome (border, background, padding) when the form sits inside another
    *  card, such as the gate's "license expired" screen. */
   bare?: boolean;
+  /** Where the customer portal sends the person back after "Replace a device" (PX-W8), as
+   *  `return=`. The portal honours it only when it is one of the product's declared return
+   *  targets; leave it unset to add none. */
+  returnUrl?: string;
+}
+
+/**
+ * Open the device-limit refusal link (PX-W8) in a new tab: the app's return URL as `return=`
+ * and, on an `/activate` link, the typed key as the fragment `#key=` (a fragment never reaches
+ * a server). Only ever called from a click.
+ */
+export function openManageUrl(
+  manageUrl: string,
+  opts: { returnUrl?: string; key?: string } = {},
+): string {
+  let url = manageUrl;
+  if (opts.returnUrl) url = withManageReturn(url, opts.returnUrl);
+  if (opts.key) url = withManageKey(url, opts.key);
+  if (typeof window !== "undefined" && typeof window.open === "function")
+    window.open(url, "_blank", "noopener,noreferrer");
+  return url;
 }
 
 /** The user-facing sentence for a sign-in failure: the copy catalog's, chosen by the typed
@@ -90,6 +112,7 @@ export function PolarisLogin(props: PolarisLoginProps): JSX.Element {
   const auth = usePolarisAuth();
   const [key, setKey] = useState("");
   const [keyError, setKeyError] = useState<string | null>(null);
+  const [keyManageUrl, setKeyManageUrl] = useState<string | null>(null);
 
   const titleId = useId();
   const keyInputId = useId();
@@ -104,10 +127,12 @@ export function PolarisLogin(props: PolarisLoginProps): JSX.Element {
   async function onSubmitKey(e: FormEvent): Promise<void> {
     e.preventDefault();
     setKeyError(null);
+    setKeyManageUrl(null);
     try {
       await auth.submitKey(key.trim());
     } catch (err) {
       setKeyError(describeAuthError(err));
+      setKeyManageUrl((err as { manageUrl?: string }).manageUrl ?? null);
     }
   }
 
@@ -117,6 +142,12 @@ export function PolarisLogin(props: PolarisLoginProps): JSX.Element {
     : auth.error
       ? describeAuthError(auth.error)
       : null;
+  // PX-W8: the device-limit refusal's portal link, from the key entry just made or from the
+  // adapter's last error.
+  const manageUrl = keyError
+    ? keyManageUrl
+    : ((auth.error as { manageUrl?: string } | null | undefined)?.manageUrl ??
+      null);
 
   return (
     <Panel
@@ -197,6 +228,22 @@ export function PolarisLogin(props: PolarisLoginProps): JSX.Element {
         <p id={errorId} style={dangerText} role="alert">
           {errorText}
         </p>
+      ) : null}
+
+      {errorText && manageUrl ? (
+        <Button
+          variant="secondary"
+          label={theme.copy.freeDeviceLabel}
+          onClick={() => {
+            openManageUrl(manageUrl, {
+              ...(props.returnUrl ? { returnUrl: props.returnUrl } : {}),
+              ...(key.trim() ? { key: key.trim() } : {}),
+            });
+          }}
+          data-polaris-free-device=""
+        >
+          {theme.copy.freeDeviceLabel}
+        </Button>
       ) : null}
 
       {themePoweredBy(theme)}

@@ -268,6 +268,107 @@ describe("the settings registry (ST-03)", () => {
     for (const e of SETTINGS.entries) expect("accountMerge" in e).toBe(false);
   });
 
+  it("registers the Polaris Key storefront's listing settings (PS-02, S-21 §6.2)", () => {
+    const keys = SETTINGS.entries
+      .filter((e) => e.key.startsWith("storefront."))
+      .map((e) => `${e.scope} ${e.key}`);
+    expect(keys).toEqual([
+      "platform storefront.polarisKey.enabled",
+      "product storefront.polarisKey.listed",
+      "product storefront.polarisKey.audience",
+      "product storefront.polarisKey.offerPaths",
+      "product storefront.polarisKey.groupLabels",
+    ]);
+    // Core's slice owns the namespace: every product can list, Distribution on or off.
+    const core = SETTINGS.slices.find((s) => s.owner === "core")!;
+    expect(core.namespaces).toContain("storefront");
+
+    const enabled = SETTINGS.get("storefront.polarisKey.enabled", "platform")!;
+    expect(enabled).toMatchObject({
+      value: { kind: "switch" },
+      defaultValue: "on",
+      ownership: "operator",
+      confirm: { on: "L2", off: "L2" },
+      pending: { wp: "PS-03" },
+    });
+    expect(enabled.productLink).toBeUndefined(); // platform-only
+    // Not an A-13 store key: it has no row alias, so the A-13 route cannot write it.
+    expect(platformSettingDef("storefront.polarisKey.enabled")).toBeUndefined();
+
+    const listed = SETTINGS.get("storefront.polarisKey.listed", "product")!;
+    expect(listed).toMatchObject({
+      service: "core",
+      value: { kind: "enum", values: ["auto", "listed", "unlisted"] },
+      defaultValue: "auto",
+      ownership: "operator",
+      confirm: { change: "L1" },
+      storage: {
+        kind: "column",
+        table: "portal_product_settings",
+        column: "store_listed",
+      },
+    });
+    expect(listed.manifest).toBeUndefined();
+
+    const audience = SETTINGS.get("storefront.polarisKey.audience", "product")!;
+    expect(audience).toMatchObject({
+      value: { kind: "enum", values: ["eligible", "everyone"] },
+      defaultValue: "eligible",
+      ownership: "operator",
+      widensWhen: "higher",
+      critical: true,
+      confirm: { up: "L2", down: "L0" },
+      storage: { column: "store_audience" },
+    });
+
+    const paths = SETTINGS.get("storefront.polarisKey.offerPaths", "product")!;
+    expect(paths).toMatchObject({
+      defaultValue: null,
+      allowUnset: true,
+      ownership: "operator",
+      confirm: { change: "L1" },
+      storage: { column: "store_offer_paths_json" },
+    });
+    expect(paths.value).toEqual({
+      kind: "list",
+      of: {
+        kind: "enum",
+        values: [
+          "group",
+          "auto_issue",
+          "open",
+          "store_owned",
+          "product_idp",
+          "email_domain",
+        ],
+      },
+      max: 6,
+    });
+
+    const labels = SETTINGS.get(
+      "storefront.polarisKey.groupLabels",
+      "product",
+    )!;
+    expect(labels).toMatchObject({
+      value: { kind: "json" },
+      defaultValue: {},
+      confirm: { change: "L0" },
+      storage: { column: "store_group_labels_json" },
+    });
+    // Operator-owned until `.pkey/product` carries `storefront.groupLabels` (S-21 §6.2).
+    expect(labels.ownership).toBe("operator");
+
+    for (const e of [listed, audience, paths, labels]) {
+      expect(e.since).toBe("PS-02");
+      expect(e.pending).toBeUndefined();
+      expect(e.readers).toContain(
+        "services/identity/portal/storefrontListing.ts",
+      );
+    }
+    // S-18 D22's `identity.discover.listed` is superseded and never registered.
+    expect(SETTINGS.canonicalKey("identity.discover.listed")).toBeUndefined();
+  });
+
   it("names readers that exist, docs pages that exist and manifest paths the schema has", () => {
     for (const e of SETTINGS.entries) {
       for (const r of e.readers)

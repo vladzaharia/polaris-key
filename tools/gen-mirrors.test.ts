@@ -14,6 +14,7 @@ import {
   renderPython,
   renderSwift,
   renderTs,
+  userPolicies,
   sortedJson,
 } from "./gen-mirrors.js";
 
@@ -101,6 +102,75 @@ describe("gen-mirrors", () => {
     // A managementDefault of "default" emits an escaped member access, not `.default`.
     expect(out).toContain("managementDefault: .`default`");
     expect(out).not.toContain("managementDefault: .default");
+  });
+
+  describe("user settings (U-04)", () => {
+    const WITH_USER: ProductCatalog = {
+      ...CATALOG,
+      entries: [
+        { ...RUN, user: { sync: "user", conflict: "max" } },
+        VPN,
+        {
+          key: "ui.panel",
+          kind: "config",
+          category: "UI",
+          label: "Panel",
+          description: "",
+          schema: { type: "string" },
+          user: { sync: "local", listed: false },
+        },
+      ],
+    };
+
+    it("lists only config keys with a user block, defaults applied", () => {
+      expect(userPolicies(WITH_USER)).toEqual([
+        { key: "run.concurrency", sync: "user", conflict: "max", listed: true },
+        {
+          key: "ui.panel",
+          sync: "local",
+          conflict: "lastWrite",
+          listed: false,
+        },
+      ]);
+      expect(userPolicies(CATALOG)).toEqual([]);
+    });
+
+    it("every language names the typed user-setting keys and their policies", () => {
+      const ts = renderTs(WITH_USER);
+      expect(ts).toContain(
+        'export type UserSettingKey = "run.concurrency" | "ui.panel";',
+      );
+      expect(ts).toContain(
+        '"ui.panel": { sync: "local", conflict: "lastWrite", listed: false },',
+      );
+      expect(renderTs(CATALOG)).toContain(
+        "export type UserSettingKey = never;",
+      );
+      const py = renderPython(WITH_USER);
+      expect(py).toContain(
+        'UserSettingKey = Literal["run.concurrency", "ui.panel"]',
+      );
+      expect(py).toContain(
+        '"run.concurrency": UserSettingPolicy(sync="user", conflict="max", listed=True),',
+      );
+      // `Literal[]` does not parse.
+      expect(renderPython(CATALOG)).toContain("UserSettingKey = str\n");
+      expect(renderSwift(WITH_USER)).toContain(
+        '"ui.panel": UserSettingPolicy(sync: "local", conflict: "lastWrite", listed: false),',
+      );
+      expect(renderSwift(CATALOG)).toContain(
+        "static let userSettings: [String: UserSettingPolicy] = [:]",
+      );
+      expect(renderGdscript(WITH_USER)).toContain(
+        'const USER_SETTINGS := {\n\t"run.concurrency": {\n\t\t"conflict": "max",',
+      );
+      expect(renderKotlin(WITH_USER)).toContain(
+        '"run.concurrency" to UserSettingPolicy(sync = "user", conflict = "max", listed = true),',
+      );
+      expect(renderKotlin(CATALOG)).toContain(
+        "userSettings: Map<String, UserSettingPolicy> = emptyMap()",
+      );
+    });
   });
 
   describe("GDScript mirror", () => {

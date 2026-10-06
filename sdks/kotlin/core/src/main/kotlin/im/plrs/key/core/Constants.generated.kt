@@ -44,6 +44,7 @@ public object ErrorCode {
     public const val disabled: String = "disabled"
     public const val oidcError: String = "oidc_error"
     public const val unavailable: String = "unavailable"
+    public const val identityDisabled: String = "identity_disabled"
     public const val authMethodDisabled: String = "auth_method_disabled"
     public const val emailUnavailable: String = "email_unavailable"
     public const val turnstileFailed: String = "turnstile_failed"
@@ -198,6 +199,7 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "disabled",
     "oidc_error",
     "unavailable",
+    "identity_disabled",
     "auth_method_disabled",
     "email_unavailable",
     "turnstile_failed",
@@ -352,6 +354,7 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "disabled" to "wire",
     "oidc_error" to "wire",
     "unavailable" to "wire",
+    "identity_disabled" to "wire",
     "auth_method_disabled" to "wire",
     "email_unavailable" to "wire",
     "turnstile_failed" to "wire",
@@ -490,6 +493,7 @@ public object Feature {
     public const val licenseActivate: String = "license.activate"
     public const val licenseEnroll: String = "license.enroll"
     public const val licenseDeactivate: String = "license.deactivate"
+    public const val licenseManage: String = "license.manage"
     public const val licenseEntitlements: String = "license.entitlements"
     public const val licenseChannels: String = "license.channels"
     public const val licenseReregister: String = "license.reregister"
@@ -510,6 +514,7 @@ public object Feature {
     public const val devicesAttest: String = "devices.attest"
     public const val identityOidc: String = "identity.oidc"
     public const val identityDevicecode: String = "identity.devicecode"
+    public const val identityToggle: String = "identity.toggle"
     public const val releaseChangelog: String = "release.changelog"
     public const val releaseDownload: String = "release.download"
     public const val releaseRecord: String = "release.record"
@@ -551,6 +556,7 @@ public object Feature {
     public const val uiStages: String = "ui.stages"
     public const val uiBoot: String = "ui.boot"
     public const val uiKit: String = "ui.kit"
+    public const val uiKitManage: String = "ui.kit.manage"
     public const val uiCli: String = "ui.cli"
     public const val commerceReceipt: String = "commerce.receipt"
 }
@@ -572,6 +578,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "license.activate",
     "license.enroll",
     "license.deactivate",
+    "license.manage",
     "license.entitlements",
     "license.channels",
     "license.reregister",
@@ -592,6 +599,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "devices.attest",
     "identity.oidc",
     "identity.devicecode",
+    "identity.toggle",
     "release.changelog",
     "release.download",
     "release.record",
@@ -633,6 +641,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "ui.stages",
     "ui.boot",
     "ui.kit",
+    "ui.kit.manage",
     "ui.cli",
     "commerce.receipt",
 )
@@ -1199,6 +1208,9 @@ public const val OUTLET_MATRIX_VERSION: Int = 1
 /** `planMatrixVersion` of conformance/corpus/v2/plan-matrix.json. */
 public const val PLAN_MATRIX_VERSION: Int = 2
 
+/** `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json. */
+public const val SYNC_SCENARIOS_VERSION: Int = 1
+
 /** `contentCorpusVersion` of conformance/corpus/v2/content/cases.json. */
 public const val CONTENT_CORPUS_VERSION: Int = 2
 
@@ -1371,6 +1383,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "license.activate" to CapabilityRow("implemented", "license", listOf()),
     "license.enroll" to CapabilityRow("implemented", "license", listOf()),
     "license.deactivate" to CapabilityRow("implemented", "license", listOf()),
+    "license.manage" to CapabilityRow("implemented", "license", listOf()),
     "license.entitlements" to CapabilityRow("implemented", "license", listOf()),
     "license.channels" to CapabilityRow("implemented", "license", listOf()),
     "license.reregister" to CapabilityRow("implemented", "license", listOf()),
@@ -1391,6 +1404,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "devices.attest" to CapabilityRow("implemented", "core", listOf(CapabilityNa("jvm", "runtime"), CapabilityNa("android", "outlet"))),
     "identity.oidc" to CapabilityRow("planned", "identity", listOf()),
     "identity.devicecode" to CapabilityRow("implemented", "identity", listOf()),
+    "identity.toggle" to CapabilityRow("planned", "identity", listOf()),
     "release.changelog" to CapabilityRow("implemented", "release", listOf()),
     "release.download" to CapabilityRow("implemented", "release", listOf()),
     "release.record" to CapabilityRow("implemented", "release", listOf()),
@@ -1432,9 +1446,10 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "ui.stages" to CapabilityRow("implemented", "sdk", listOf()),
     "ui.boot" to CapabilityRow("implemented", "sdk", listOf()),
     "ui.kit" to CapabilityRow("implemented", "sdk", listOf()),
+    "ui.kit.manage" to CapabilityRow("implemented", "sdk", listOf()),
     "ui.cli" to CapabilityRow("na", "sdk", listOf(CapabilityNa("android", "runtime"), CapabilityNa("jvm", "runtime"))),
     "commerce.receipt" to CapabilityRow("implemented", "license", listOf()),
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "c1e6e41b771241ed799902ef367ae7d6f51b2a79fca7dfa970917fefad9b1a37"
+public const val CAPABILITY_DIGEST: String = "a846601e4e51cfefe8b5ebcf1f1fb65a9cb9dd0f070543572e8883f5a866df43"

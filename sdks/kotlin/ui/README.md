@@ -109,6 +109,12 @@ renders your content under an offline-grace banner. It shows the activation scre
 message, with Reconnect or Try again, for `expired`, `version-too-old`, `version-too-new` and
 `channel-not-entitled`. The server's allowed version window is appended when it sends one.
 
+When an activation is refused because every seat is taken and the Worker sent a portal link
+(`ActivationResult.DeviceLimit.manageUrl`, PX-W8), the activation screen shows **Replace a device**
+under the error. It is a button that opens the link, or a QR code with a "scan with your phone"
+line on Android TV. The link carries the key fragment on an `/activate` link and the `returnUrl`
+you pass to `PolarisGateState`.
+
 Every screen shares one scaffold, `PolarisScreen`. It applies the safe-drawing insets (bars,
 cutouts, the keyboard) and centres one column of at most 480 dp. That column scrolls rather than
 clipping when a large font scale or a landscape phone leaves too little height.

@@ -20,6 +20,7 @@ import im.plrs.key.core.CoreContext
 import im.plrs.key.core.ErrorCode
 import im.plrs.key.core.HardwareFingerprint
 import im.plrs.key.core.JsonText
+import im.plrs.key.core.ManageLink
 import im.plrs.key.core.PolarisResponse
 import im.plrs.key.core.arrayValue
 import im.plrs.key.core.longValue
@@ -43,8 +44,18 @@ public sealed interface ActivationResult {
         override fun toString(): String = "Ok(token=[redacted], schemaVersion=$schemaVersion)"
     }
 
-    /** 403 `device_limit`: every seat is taken. Free one (the portal's devices page) or deactivate elsewhere. */
-    public data class DeviceLimit(val limit: Long?, val deviceCount: Long?) : ActivationResult {
+    /**
+     * 403 `device_limit`: every seat is taken. Free one (the portal's devices page) or deactivate
+     * elsewhere. [manageUrl] (PX-W8, WIRE-CONTRACT-V4 §5.3) is the customer-portal link that frees
+     * one, present while the product's portal is on and already validated by [ManageLink.read].
+     * Add the app's return with [ManageLink.withReturn] and, on an `/activate` link, the key with
+     * [ManageLink.withKey]. Never an auth failure: open it only behind a user action.
+     */
+    public data class DeviceLimit(
+        val limit: Long?,
+        val deviceCount: Long?,
+        val manageUrl: String? = null,
+    ) : ActivationResult {
         override val code: String get() = ErrorCode.deviceLimit
     }
 
@@ -183,7 +194,11 @@ public object LicenseEndpoints {
         }
         if (status >= 500 || status < 400) return ActivationResult.Error("activation answered HTTP $status", ErrorCode.serverError, status)
         return when (code) {
-            ErrorCode.deviceLimit -> ActivationResult.DeviceLimit(long("limit"), long("deviceCount"))
+            ErrorCode.deviceLimit -> ActivationResult.DeviceLimit(
+                long("limit"),
+                long("deviceCount"),
+                manageUrl = ManageLink.read(o?.get("manageUrl").stringValue, nested?.get("manageUrl").stringValue),
+            )
             ErrorCode.fingerprintRequired -> ActivationResult.FingerprintRequired
             ErrorCode.hardwareMismatch -> ActivationResult.HardwareMismatch(
                 drift = long("drift"),

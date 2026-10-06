@@ -91,9 +91,15 @@ export function describeFailure(
     platform === "linux"
   )
     message += `\n${LINUX_NO_MACHINE_ID_HINT}`;
+  // PX-W8: the portal link that frees a seat, when the Worker sent one. Printed without the
+  // key: a terminal scrollback is a log.
+  const manage =
+    r.kind === "device-limit" && r.manageUrl
+      ? `\nFree a device: ${r.manageUrl}`
+      : "";
   return {
     ok: false,
-    message: `${verb} failed: ${message} [${r.code}]`,
+    message: `${verb} failed: ${message} [${r.code}]${manage}`,
     data: r,
   };
 }

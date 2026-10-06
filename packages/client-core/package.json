@@ -90,6 +90,14 @@
     "./packs": {
       "types": "./dist/packs/index.d.ts",
       "default": "./dist/packs/index.js"
+    },
+    "./manage": {
+      "types": "./dist/manage.d.ts",
+      "default": "./dist/manage.js"
+    },
+    "./cloud-sync": {
+      "types": "./dist/cloud-sync.d.ts",
+      "default": "./dist/cloud-sync.js"
     }
   },
   "files": [

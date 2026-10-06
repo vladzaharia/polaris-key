@@ -274,12 +274,12 @@ export function Home(): React.ReactElement {
           <ul
             aria-label="Products"
             aria-busy
-            className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
+            className="pk-skeleton-group grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
           >
             {[0, 1, 2].map((i) => (
               <li
                 key={i}
-                className="h-28 animate-pulse rounded-lg border border-border bg-surface-sunken motion-reduce:animate-none"
+                className="pk-skeleton h-28 rounded-lg border border-border"
               />
             ))}
           </ul>

@@ -1,8 +1,13 @@
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { LogOut, Mail, Trash2 } from "lucide-react";
+import {
+  useMotionPreference,
+  type MotionPreference,
+} from "../../components/motionPreference.js";
 import { useTheme, type ThemePreference } from "../../components/theme.js";
 import { Button } from "../../ui/Button.js";
+import { reducedMotion } from "../../ui/motion/index.js";
 import { RadioCards } from "../../ui/RadioCards.js";
 import { toast } from "../../ui/toast.js";
 import { cn } from "../../lib/cn.js";
@@ -44,9 +49,11 @@ export function AccountPage({
   }, [section]);
   const pick = (s: AccountSection): void => {
     setCurrent(s);
-    document
-      .getElementById(`section-${s}`)
-      ?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+    document.getElementById(`section-${s}`)?.scrollIntoView?.({
+      // Smooth scrolling becomes instant under reduced motion (notes/S-23 §6.6).
+      behavior: reducedMotion() ? "auto" : "smooth",
+      block: "start",
+    });
     window.history.replaceState(
       null,
       "",
@@ -198,22 +205,69 @@ const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
   { value: "light", label: "Light" },
 ];
 
-/** Appearance (§0.3): Match my device / Dark / Light, persisted and applied before paint. */
+const MOTION_OPTIONS: {
+  value: MotionPreference;
+  label: string;
+  description: string;
+}[] = [
+  {
+    value: "system",
+    label: "Match my device",
+    description: "Animates unless your device asks for reduced motion.",
+  },
+  {
+    value: "reduce",
+    label: "Reduced",
+    description: "Changes happen at once, with no animation.",
+  },
+];
+
+/**
+ * Appearance (§0.3): the theme (Match my device / Dark / Light, persisted and applied before
+ * paint) and Motion (notes/S-23 §6.6, MO-12: Match my device / Reduced, stored in this browser).
+ */
 function Appearance(): React.ReactElement {
   const { preference, setPreference } = useTheme();
+  const [motion, setMotion] = useMotionPreference();
   return (
     <SectionCard id="appearance" title="Appearance">
-      <RadioCards
-        aria-label="Theme"
-        columns={3}
-        value={preference}
-        onChange={setPreference}
-        options={THEME_OPTIONS.map((o) => ({
-          value: o.value,
-          label: o.label,
-          description: <ThemeSwatch preference={o.value} />,
-        }))}
-      />
+      <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-2">
+          <h3
+            id="appearance-theme-label"
+            className="text-sm font-bold text-fg-strong"
+          >
+            Theme
+          </h3>
+          <RadioCards
+            aria-labelledby="appearance-theme-label"
+            columns={3}
+            value={preference}
+            onChange={setPreference}
+            options={THEME_OPTIONS.map((o) => ({
+              value: o.value,
+              label: o.label,
+              description: <ThemeSwatch preference={o.value} />,
+            }))}
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <h3
+            id="appearance-motion-label"
+            className="text-sm font-bold text-fg-strong"
+          >
+            Motion
+          </h3>
+          <RadioCards
+            id="appearance-motion"
+            aria-labelledby="appearance-motion-label"
+            columns={2}
+            value={motion}
+            onChange={setMotion}
+            options={MOTION_OPTIONS}
+          />
+        </div>
+      </div>
     </SectionCard>
   );
 }

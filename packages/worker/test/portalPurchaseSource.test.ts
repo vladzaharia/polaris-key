@@ -100,6 +100,7 @@ function services(licenseOn: boolean): ServicesMap {
     distribution: { enabled: false },
     update: { enabled: false },
     identity: { enabled: false },
+    sync: { enabled: false },
   } as ServicesMap;
 }
 

@@ -1,9 +1,10 @@
 /**
  * EVERY STORE'S LISTING COLUMN (A-18b; notes/S-15 §7.3): which model field each store field is
  * projected from, at which limit, and how. One entry per store of S-15 §7.3's table: Apple, Play,
- * Microsoft, Steam, Flathub, Snap, winget and F-Droid. A store's adapter (A-18e–i, A-18m) declares
- * its `ListingProfile` from its column here (`adapterListingProfile`), so the conformance suite's
- * item 7 and the fit report read the same numbers.
+ * Microsoft, Steam, Flathub, Snap, winget and F-Droid, plus Polaris Key's own storefront (PS-01).
+ * A store's adapter (A-18e–i, A-18m, PS-01) declares its `ListingProfile` from its column here
+ * (`adapterListingProfile`), so the conformance suite's item 7 and the fit report read the same
+ * numbers.
  *
  * Pure data (`test/boundaries.test.ts`): the CLI's generated copy (A-18h) is a straight serialise.
  *
@@ -35,6 +36,8 @@ export const LISTING_STORES = [
   "snap",
   "winget",
   "fdroid",
+  /** The first-party storefront: the portal's Discover and Library (PS-01; notes/S-21 §6.1). */
+  "polaris-key",
 ] as const;
 export type ListingStore = (typeof LISTING_STORES)[number];
 
@@ -99,6 +102,10 @@ const text = (
 });
 const app = { perLocale: false } as const;
 const URL_MAX = 2048;
+
+/** The image types and per-image cap of the Polaris Key storefront's art (PS-01). */
+const PORTAL_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;
+const PORTAL_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
 
 export const STORE_LISTING_COLUMNS: Readonly<
   Record<ListingStore, StoreListingColumn>
@@ -264,6 +271,40 @@ export const STORE_LISTING_COLUMNS: Readonly<
       whatsNew: text("releaseNotesShort", 500),
     },
     images: {},
+  },
+  // PS-01 (notes/S-21 §6.1): the tile's line is the short description; the description is plain
+  // text with paragraphs, rendered escaped (A-18 control g). The icon is the `presentation.icon`
+  // slot (HA-04), the header the portal's 16:9 cover.
+  "polaris-key": {
+    store: "polaris-key",
+    label: "Polaris Key",
+    fields: {
+      name: text("name", 60, { required: true }),
+      shortDescription: text("shortDescription", 140, { required: true }),
+      description: text("description", 4000),
+    },
+    images: {
+      icon: {
+        contentTypes: PORTAL_IMAGE_TYPES,
+        maxBytes: PORTAL_IMAGE_MAX_BYTES,
+        min: 1,
+        max: 1,
+        aspect: [1, 1],
+      },
+      header: {
+        contentTypes: PORTAL_IMAGE_TYPES,
+        maxBytes: PORTAL_IMAGE_MAX_BYTES,
+        min: 0,
+        max: 1,
+        aspect: [16, 9],
+      },
+      screenshots: {
+        contentTypes: PORTAL_IMAGE_TYPES,
+        maxBytes: PORTAL_IMAGE_MAX_BYTES,
+        min: 0,
+        max: 8,
+      },
+    },
   },
 };
 

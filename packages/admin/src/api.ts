@@ -1363,6 +1363,16 @@ export interface ServicesResponse {
   source: string;
 }
 
+/**
+ * `PATCH …/services?dryRun=1` (PX-W17): what the same PATCH would change, with no write. The
+ * console confirms turning Identity off with `signedInDevicesToClear`: every such device is
+ * signed out (its install and licence keep working).
+ */
+export interface ServicesDryRun {
+  changes: Array<{ field: string; from: unknown; to: unknown }>;
+  signedInDevicesToClear: number;
+}
+
 /** A partial enablement patch: an omitted slug keeps its current value server-side. */
 export interface UpdateServicesBody {
   services?: Partial<Record<ServiceSlug, { enabled: boolean }>>;
@@ -1384,6 +1394,10 @@ export const SERVICE_ERROR_MESSAGES: Record<string, string> = {
     "Registration is set to “requires-identity”, but Identity is off; no device could ever register.",
   config_without_activation:
     "Config is on without License, but registration is set to “requires-license” — those devices could never obtain a token.",
+  sync_requires_config:
+    "Cloud Sync syncs Config’s user settings — enable Config first, or turn Cloud Sync off.",
+  sync_requires_identity:
+    "Cloud Sync needs people to sign in through this product — enable Identity first, or turn Cloud Sync off.",
 };
 
 // ── update settings (feed access + compat window) ─────────────────────────────
@@ -3939,6 +3953,12 @@ const rawApi = {
   services: (slug: string) => call<ServicesResponse>(`${p(slug)}/services`),
   updateServices: (slug: string, body: UpdateServicesBody) =>
     call<ServicesResponse>(`${p(slug)}/services`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  /** The same PATCH as a dry run: what it would change, and how many devices it signs out. */
+  servicesDryRun: (slug: string, body: UpdateServicesBody) =>
+    call<ServicesDryRun>(`${p(slug)}/services?dryRun=1`, {
       method: "PATCH",
       body: JSON.stringify(body),
     }),

@@ -312,6 +312,28 @@ needs a browser session) and lands on the hard 401.
 `client.getSyncState()` returns `{ activation, doc, lastSyncUnauthorized, blocked,
 lastVerifiedAt, highWaterMark }` — the snapshot the React bridge renders from.
 
+## When every seat is taken
+
+A refused activation or enrolment returns `{ kind: "device-limit", limit, deviceCount, manageUrl? }`.
+`manageUrl` is the customer-portal link that frees a seat (WIRE-CONTRACT-V4 §5.3), present while
+the product's portal is on and already validated. It is never an auth failure: nothing is wiped,
+and the app offers it behind a user action.
+
+```ts
+const r = await client.license.activateWithKey(key);
+if (r.kind === "device-limit" && r.manageUrl) {
+  const link = withManageReturn(
+    withManageKey(r.manageUrl, key),
+    "myapp://activated",
+  );
+  console.log(`Every seat is taken. Free one up at ${link}`);
+}
+```
+
+`withManageKey` adds `#key=` only to an `/activate` link (a fragment never reaches a server);
+`withManageReturn` adds `return=`, which the portal honours only for a declared return target. The
+CLI prints the link on a device-limit refusal.
+
 ## Device-code sign-in
 
 For a host that cannot complete a browser redirect — a CLI over SSH, a daemon, a game on a TV —
@@ -445,19 +467,19 @@ The answer is an `UpdateCheck`: `channel` (the canonical channel, the feed's own
 as `staged.channel` when you stage), `decision`, `feed` (`network` or `committed`), `record`
 (`network`, `cache` or `none`) and `errors`.
 
-| `update` option     | Notes                                                                                                                                                                            |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pinnedReleaseKeys` | `{ kid -> raw Ed25519 key, base64url }`: the **only** keys a release record verifies against. Never merged with the trust pins, never persisted, never learned from the network. |
-| `outlet`            | A kind (`"direct"`, `"steam"`, …) or `{ id, kind, subkind? }`. Wins over `stamp` and `detected`. A Node CLI is never store-installed: `"direct"` is the usual value.             |
-| `stamp`, `detected` | The build stamp's outlet fields (`outlet`, `outletKind`, `outletSubkind`, `outletIds`), and a detection result the host computed itself, through `resolveUpdateOutlet`.          |
-| `detect`            | Default `true`: with no `outlet` and no `detected`, the client reads this process's signals (`readOutletSignals`) and runs `detectOutlet` over them and the stamp (below).       |
-| `packageName`       | The product's npm package name, so an `npx`, `npm` or `pnpm` launch from `node_modules/<packageName>/` counts as the `node.packageManager` signal.                               |
-| `format`            | The installed build's format; a binary build of another format is never offered. Default `null`.                                                                                 |
-| `buildNumber`       | Informational in v4. Default `null`.                                                                                                                                             |
-| `methods`           | What the host can do with a `binary` answer: a subset of `native`, `download`, `sidecar-pck`. Default `["download"]`.                                                            |
-| `binaryVersion`     | The executable's version when it differs from `version` (after a code update). Defaults to `version`.                                                                            |
-| `engine`            | `godot-<major>.<minor>` for a host that runs Godot code packs; `null` otherwise.                                                                                                 |
-| `platform`, `arch`  | Default to `os.platform()` / `os.arch()`'s canonical values; set them on an OS with none.                                                                                        |
+| `update` option     | Notes                                                                                                                                                                                         |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pinnedReleaseKeys` | `{ kid -> raw Ed25519 key, base64url }`: the **only** keys a release record verifies against. Never merged with the trust pins, never persisted, never learned from the network.              |
+| `outlet`            | A kind (`"direct"`, `"steam"`, …) or `{ id, kind, subkind? }`. Wins over `stamp` and `detected`. A Node CLI is never store-installed: `"direct"` (the Polaris Key outlet) is the usual value. |
+| `stamp`, `detected` | The build stamp's outlet fields (`outlet`, `outletKind`, `outletSubkind`, `outletIds`), and a detection result the host computed itself, through `resolveUpdateOutlet`.                       |
+| `detect`            | Default `true`: with no `outlet` and no `detected`, the client reads this process's signals (`readOutletSignals`) and runs `detectOutlet` over them and the stamp (below).                    |
+| `packageName`       | The product's npm package name, so an `npx`, `npm` or `pnpm` launch from `node_modules/<packageName>/` counts as the `node.packageManager` signal.                                            |
+| `format`            | The installed build's format; a binary build of another format is never offered. Default `null`.                                                                                              |
+| `buildNumber`       | Informational in v4. Default `null`.                                                                                                                                                          |
+| `methods`           | What the host can do with a `binary` answer: a subset of `native`, `download`, `sidecar-pck`. Default `["download"]`.                                                                         |
+| `binaryVersion`     | The executable's version when it differs from `version` (after a code update). Defaults to `version`.                                                                                         |
+| `engine`            | `godot-<major>.<minor>` for a host that runs Godot code packs; `null` otherwise.                                                                                                              |
+| `platform`, `arch`  | Default to `os.platform()` / `os.arch()`'s canonical values; set them on an OS with none.                                                                                                     |
 
 - **Outlet detection** (plans/P3-01.md §2.9). When the host names no `outlet`, the client detects
   one at construction: `readOutletSignals()` reads the environment (Steam's `SteamAppId`, snap,

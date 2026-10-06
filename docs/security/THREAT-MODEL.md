@@ -1887,8 +1887,8 @@ whether it works.
 
 **What it is.** Every storefront is one `StorefrontAdapter` (`core/storefront/adapter.ts`), the
 same base the package feeds' `FeedAdapter` extends (`core/adapters/contract.ts`, notes/S-15 §6). An
-adapter declares its operations (`api` behind the gate, `ci`, `pr`, `deep-link` or `unsupported`
-with a reason), its rate limits, its listing profile, its never-list and its typed-confirmation
+adapter declares its operations (`api` behind the gate, `ci`, `pr`, `deep-link`, `first-party`
+on Polaris Key's own tables, or `unsupported` with a reason), its rate limits, its listing profile, its never-list and its typed-confirmation
 phrase; what is shared it cannot bypass: the **store-agnostic write gate** (`gate.ts`, the engine;
 `match/{jsonapi,json,form,multipart}.ts`, one body matcher per wire style;
 `rules/<store>.ts`, one rule table per adapter, classified against a pinned vendor spec), the
@@ -1926,6 +1926,17 @@ line.
   engine; A-17a's `hookOrigin` rule, generalised).
 - **(g) Imported listing text is data**: rendered escaped in the console, never as HTML (A-18b,
   A-18c, A-18j).
+- **(h) A first-party adapter never reaches a vendor** (PS-01; notes/S-21 §6.1 and threat S9).
+  The `polaris-key` adapter (`stores/polarisKey.ts`) is the portal's own storefront: its ops are
+  `first-party` (`{mode, plane: "worker", handler}`) and run against Polaris Key's tables through
+  the ports of `firstParty.ts`. Conformance item 11 requires that only an adapter with no
+  credential, no gate and no spec pin declares a `first-party` op, and that it mixes in no `api`,
+  `ci` or `pr` op; that every one names a registered handler; that each handler, run with `fetch`
+  replaced by a thrower, sends nothing, writes no audit row for a read and exactly one for a
+  write; and that the typed op (`submit`, which lists the product) refuses without the typed
+  confirmation, as the gate does for a vendor. A test shows a fake first-party op on an adapter
+  with a credential fails the suite. The handlers' real reads and writes (PS-02, PS-03, PS-06)
+  plug in as ports and inherit these checks.
 
 **Boundaries.** `core/adapters/` imports nothing; `core/storefront/` imports no service, and its
 declaration modules import only the adapter layer, so the CLI's copy is generated
@@ -5045,7 +5056,46 @@ is signed out it rides along in the OIDC `return_to` and the magic link's return
 the design (PORTAL.md §4.18); mitigated by `Referrer-Policy: no-referrer` on every page (the key
 never leaves in a `Referer`), by the SPA moving it into the hash (`#/?activate=`) on load, and by a
 key alone only ever adding a licence through the claim rules (no ownership move, verified-email
-gate, one rate bucket with the preview). Revisit when PX-17 or PX-W8 adds `manageUrl`.
+gate, one rate bucket with the preview). PX-W8's refusal links (below) do not use this query
+form: they carry the key only as a fragment.
+
+### Refusal links: `manageUrl` and the `#key=` fragment (PX-W8)
+
+A `device_limit` or `key_entry_limit` refusal carries `manageUrl`, a portal link an app offers as
+**Replace a device** (WIRE-CONTRACT-V4 §5.3). The Worker builds it, and the link itself never names
+the key, an account, a holder, a hostname, a device id or an IP. The licence id (on an attached
+licence) and a coarse `for` label (`macOS arm64`) are the only identifiers in it. Asset: the
+licence key, a bearer credential (whoever holds it can activate seats and add the licence through
+the claim rules), so A7 and, through the claim, the buyer's account (A6).
+
+- **The key never rides in a query string.** On an `/activate` link the UI kits (React, Swift,
+  Kotlin, Godot) add the key the person just typed as the fragment `#key=`, so the portal's page
+  can fill it in. A fragment never reaches a server, an edge log, a `Referer` or the OIDC
+  `return_to`. The query only ever gains `return=` (an app URL the portal checks against the
+  product's declared return targets). The `free-device` route of an attached licence never gets
+  the key at all.
+- **A fragment is still kept by the browser.** The opened URL, key included, lands in the
+  browser's history and in history sync to the person's other devices, and can be restored by a
+  session restore. Residual, accepted: it is the person's own browser, holding the person's own
+  key, which they just typed on the same machine. Required mitigation, owned by PX-17 (the portal
+  `/activate` page): read `#key=` once on load, then drop it with `history.replaceState` before
+  any other work, so the history entry and any later share of the address bar hold no key.
+- **A QR code never carries the key.** Where a joypad is the only input (tvOS, Android TV, a
+  console or joypad-only Godot) the link is drawn as a QR code on a screen others can see, and
+  anyone in the room can scan it into their own phone's history. So the QR form is built without
+  `#key=` in every kit (Swift `presentation: .qr`, Kotlin `manageQrUrl`, Godot
+  `manage_link(..., for_qr)`); the phone opens `/activate` with an empty field and the person types
+  or pastes the key there (plans/PX-W8.md Q2). The QR still holds the licence id (attached
+  licence) and the `for` label, which alone add or move nothing.
+- **The CLIs leave the key out too.** `pkey` (Node) and the Python CLI print the served link
+  without `#key=`: a terminal scrollback is a log.
+- **Untrusted input from the server.** Every SDK keeps `manageUrl` only if it is `https` (or
+  `http` to loopback), has a host and no userinfo, whitespace or control characters, and fits in
+  2048 characters; anything else is dropped, never repaired, and the link opens only on a user
+  action. Residual: the hand-written parsers (Godot, Kotlin, Swift) can disagree with
+  client-core's `new URL()` on odd but valid inputs (dot segments, percent normalisation); the
+  links come only from the Worker, so the disagreement decides at most whether a key fragment is
+  offered on a non-`/activate` path of the portal origin, never where the link points.
 
 ### Portal emails: security notices and "Email me the download" (PX-W7)
 
@@ -5302,6 +5352,38 @@ and 12 (cross-tenant correlation) are the deltas.
   developer who already holds a buyer email can still find that buyer's row by it: the email is
   the developer's own record. The step-up window is enforced server-side; the console's own check
   only decides whether to offer the form or "Sign in again".
+
+### Identity as a per-product service (PX-W17)
+
+One account per person; a product's `identity` toggle gates only sign-in through that product
+(plans/PX-W17.md, WIRE-CONTRACT-V4 §12.7).
+
+- **Cross-product correlation (item 12), the control.** `test/accountIdBoundary.test.ts` proves
+  the I-05 rule for every developer surface PX-W17 adds or touches: no non-portal OpenAPI schema
+  declares an `accountId`/`account_id` property, and with one account owning a licence in two
+  products, every product-scoped console GET that shows the product, licences, devices or
+  activity, every device route, the signed licence document and the subject feed carry neither
+  the account id nor the other product's subject. The console shows `ownerSubject` on licences and
+  `subject` on devices, pairwise ids only.
+- **S-19 T1's precondition: no signed-in device on an Identity-off product.** LX-09's holder
+  resolver trusts `devices.subject` without reading the toggle, so the column must never be set
+  on such a product. Controls: the transition hook (`core/servicesTransitions.ts`) clears every
+  binding of the product on every write of `services_json` that leaves Identity off — the console
+  PATCH and revert and the manifest resync — idempotently, so a straggler written by a racing
+  sign-in heals at the next write; and the bind guard (`assertIdentityBindable`, called by
+  `setDeviceSubject`, `bindDevice` and `registerDeviceBinding`) throws before any write while the
+  toggle is off. The clear releases no seat and deauthorizes nothing, so turning Identity off
+  cannot be used to free seats; it is audited (`services.identity_disabled`) with the count, and
+  the console's dry run (`PATCH …/services?dryRun=1`) shows that count before the operator
+  confirms. Residual: a sign-in that passed the guard and is mid-flight when the toggle flips can
+  leave one binding until the next services write or resync.
+- **The `identity_disabled` redirect.** A person's navigation to an app-sign-in entry of an
+  Identity-off product gets `303` to the portal's card. It discloses only what discovery already
+  publishes (`identity: {enabled:false}`); an unknown product keeps its 404, and every device and
+  JSON caller keeps the registry's `404 not_found` (and `registration_closed`), so the JSON API
+  still cannot tell "off" from "absent". The sniffing (`Sec-Fetch-Mode: navigate`, or an `Accept`
+  listing `text/html`) can only widen the answer to a redirect to a fixed same-origin path built
+  from the product slug, never to a caller-chosen URL.
 
 ### Discover: free offers and "Add to library" (PX-W10)
 

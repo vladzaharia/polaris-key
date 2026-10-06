@@ -233,6 +233,7 @@ export const packsChunkRange: Scenario = {
             distribution: true,
             update: false,
             identity: false,
+            sync: false,
           },
         },
       );

@@ -696,6 +696,7 @@ describe("linkRepo (GitHub-forward product creation)", () => {
         distribution: { enabled: true },
         update: { enabled: true },
         identity: { enabled: true },
+        sync: { enabled: false },
       });
     });
 
@@ -723,6 +724,7 @@ describe("linkRepo (GitHub-forward product creation)", () => {
         distribution: { enabled: false },
         update: { enabled: false },
         identity: { enabled: false },
+        sync: { enabled: false },
       });
     });
 
