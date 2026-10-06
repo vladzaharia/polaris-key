@@ -4,6 +4,7 @@ import { Device, seededWorld } from "./identityCardHarness.js";
 import {
   ACCOUNT_SESSION_COOKIE,
   EMAIL_GATE_COOKIE,
+  PASSKEY_FLOW_COOKIE,
   SIGNIN_FLOW_COOKIE,
   stripAccountCookies,
   withoutAccountCookies,
@@ -246,6 +247,10 @@ describe("the account realm never reaches a product route (unit)", () => {
         `a=1; ${ACCOUNT_SESSION_COOKIE}=s; ${SIGNIN_FLOW_COOKIE}=f; ${EMAIL_GATE_COOKIE}=g; b=2`,
       ),
     ).toBe("a=1; b=2");
+    // I-16: the passkey challenge's cookie is in the realm too.
+    expect(stripAccountCookies(`a=1; ${PASSKEY_FLOW_COOKIE}=p; b=2`)).toBe(
+      "a=1; b=2",
+    );
     expect(stripAccountCookies(`${ACCOUNT_SESSION_COOKIE}=s`)).toBeNull();
     const req = withoutAccountCookies(
       new Request("https://key.plrs.im/acme/license/token", {
@@ -258,6 +263,7 @@ describe("the account realm never reaches a product route (unit)", () => {
   it("drops a product's Set-Cookie for an account-realm cookie and keeps its own", () => {
     const headers = new Headers();
     headers.append("set-cookie", `${ACCOUNT_SESSION_COOKIE}=evil; Path=/`);
+    headers.append("set-cookie", `${PASSKEY_FLOW_COOKIE}=evil; Path=/`);
     headers.append("set-cookie", "app=1; Path=/acme");
     const out = withoutAccountSetCookies(
       new Response("ok", { headers }) as unknown as Response,

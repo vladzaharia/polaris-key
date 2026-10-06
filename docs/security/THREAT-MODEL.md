@@ -5600,10 +5600,15 @@ merge and deletion) apply to it unchanged.
   "Polaris Key" entry per authenticator. Nothing about passkeys reaches a developer: they are
   account methods, and a passkey sign-in on the card is the platform's, never a product's.
 - **Enumeration.** The sign-in challenge names no account (no credential list). Every failed
-  passkey sign-in answers one `401 unauthorized` body; `unknownCredential: true` says only that no
-  account holds that credential id (so the card can ask the browser to forget it), which reveals
-  nothing about any account. Both card routes share 30 requests a minute per client address and
-  fail closed; account changes are limited to 10 a minute per account.
+  verification (unknown credential, wrong RP id or user handle, a bad signature, origin,
+  challenge or flags, a counter that did not advance) answers one `401 unauthorized` body;
+  `unknownCredential: true` says only that no account holds that credential id (so the card can
+  ask the browser to forget it), which reveals nothing about any account. A malformed request
+  (`400 bad_request`) or a missing, used or expired challenge (`400 signin_expired`) is refused
+  before any passkey is looked up, so it says nothing about one. A disabled account answers
+  `403 forbidden` only after the passkey's own signature verified, so only the holder of that
+  passkey learns it. Both card routes share 30 requests a minute per client address and fail
+  closed; account changes are limited to 10 a minute per account.
 - **Residuals.** Whoever holds an unlocked device with a synced passkey, or the sync account
   behind it, can sign in as the person: that is the authenticator's security, as for any passkey
   site. Pocket ID passkeys (`rp_id = id.plrs.im`) cannot carry over; migrated users enrol again

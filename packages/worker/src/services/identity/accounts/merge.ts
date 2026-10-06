@@ -192,7 +192,9 @@ export async function mergeAccounts(
       sql: "UPDATE license_relinks SET to_account_id = ? WHERE to_account_id = ?",
       params: [S, A],
     },
-    // Personal details fill in where the survivor has none.
+    // Personal details fill in where the survivor has none. So does the WebAuthn user handle
+    // (I-16): a survivor without one takes the absorbed account's, so the passkeys that moved
+    // over and the next one added share one "Polaris Key" entry in an authenticator.
     {
       sql: `UPDATE accounts SET
               display_name = COALESCE(display_name, (SELECT display_name FROM accounts WHERE id = ?)),
@@ -202,9 +204,10 @@ export async function mergeAccounts(
                 THEN (SELECT primary_email_verified_at FROM accounts WHERE id = ?)
                 ELSE primary_email_verified_at END,
               primary_email = COALESCE(primary_email, (SELECT primary_email FROM accounts WHERE id = ?)),
+              passkey_user_handle = COALESCE(passkey_user_handle, (SELECT passkey_user_handle FROM accounts WHERE id = ?)),
               modified_at = ?
             WHERE id = ?`,
-      params: [A, A, A, A, A, now, S],
+      params: [A, A, A, A, A, A, now, S],
     },
     {
       sql: `INSERT OR REPLACE INTO account_tombstones (id, email_hash, merged_into, deleted_at)

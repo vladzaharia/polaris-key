@@ -2,13 +2,14 @@
  * I-16: a software WebAuthn authenticator for the passkey tests, in both lanes (Node and workerd:
  * WebCrypto only, no `node:` imports). It answers the options the Worker hands out the way a real
  * platform authenticator and browser would: `navigator.credentials.create` (a `none` attestation
- * over ES256 or Ed25519) and `navigator.credentials.get` (a signed assertion), returned in the
+ * over ES256, Ed25519, RS256 or ES384) and `navigator.credentials.get` (a signed assertion), in the
  * `PublicKeyCredential.toJSON()` shape the card posts. Every knob a test needs to forge a bad
  * response (origin, RP id, flags, counter, user handle, challenge) is an option.
  */
 import { isoBase64URL, isoCBOR } from "@simplewebauthn/server/helpers";
 
-type Alg = "ES256" | "Ed25519";
+/** ES384 is here to be REFUSED: the Worker accepts only EdDSA, ES256 and RS256. */
+type Alg = "ES256" | "Ed25519" | "RS256" | "ES384";
 /** Bytes backed by a plain `ArrayBuffer` (what WebCrypto and the base64url helpers take). */
 type Bytes = Uint8Array<ArrayBuffer>;
 
@@ -37,7 +38,7 @@ function u32(n: number): Bytes {
   return b;
 }
 
-/** An ECDSA P1363 (r || s) signature as DER, the form WebAuthn's ES256 carries. */
+/** An ECDSA P1363 (r || s) signature as DER, the form WebAuthn's ECDSA algorithms carry. */
 function derFromRaw(raw: Bytes): Bytes {
   const int = (x: Bytes): Bytes => {
     let i = 0;
@@ -46,7 +47,8 @@ function derFromRaw(raw: Bytes): Bytes {
     if (v[0]! & 0x80) v = concat(new Uint8Array([0]), v);
     return concat(new Uint8Array([0x02, v.length]), v);
   };
-  const body = concat(int(raw.slice(0, 32)), int(raw.slice(32)));
+  const half = raw.length / 2;
+  const body = concat(int(raw.slice(0, half)), int(raw.slice(half)));
   return concat(new Uint8Array([0x30, body.length]), body);
 }
 
@@ -99,13 +101,23 @@ export class SoftAuthenticator {
     opts: { alg?: Alg; synced?: boolean } = {},
   ): Promise<SoftAuthenticator> {
     const alg = opts.alg ?? "ES256";
-    const keys = (await crypto.subtle.generateKey(
+    const params =
       alg === "ES256"
         ? { name: "ECDSA", namedCurve: "P-256" }
-        : { name: "Ed25519" },
-      true,
-      ["sign", "verify"],
-    )) as CryptoKeyPair;
+        : alg === "ES384"
+          ? { name: "ECDSA", namedCurve: "P-384" }
+          : alg === "RS256"
+            ? {
+                name: "RSASSA-PKCS1-v1_5",
+                modulusLength: 2048,
+                publicExponent: new Uint8Array([1, 0, 1]),
+                hash: "SHA-256",
+              }
+            : { name: "Ed25519" };
+    const keys = (await crypto.subtle.generateKey(params, true, [
+      "sign",
+      "verify",
+    ])) as CryptoKeyPair;
     return new SoftAuthenticator(alg, keys, opts.synced ?? true);
   }
 
@@ -118,12 +130,19 @@ export class SoftAuthenticator {
       "jwk",
       this.keys.publicKey,
     )) as JsonWebKey;
-    const x = isoBase64URL.toBuffer(jwk.x!);
     const key = new Map<number, number | Uint8Array>();
-    if (this.alg === "ES256") {
+    if (this.alg === "RS256") {
+      key.set(1, 3); // kty: RSA
+      key.set(3, -257); // alg: RS256
+      key.set(-1, isoBase64URL.toBuffer(jwk.n!));
+      key.set(-2, isoBase64URL.toBuffer(jwk.e!));
+      return isoCBOR.encode(key);
+    }
+    const x = isoBase64URL.toBuffer(jwk.x!);
+    if (this.alg === "ES256" || this.alg === "ES384") {
       key.set(1, 2); // kty: EC2
-      key.set(3, -7); // alg: ES256
-      key.set(-1, 1); // crv: P-256
+      key.set(3, this.alg === "ES256" ? -7 : -35); // alg: ES256 / ES384
+      key.set(-1, this.alg === "ES256" ? 1 : 2); // crv: P-256 / P-384
       key.set(-2, x);
       key.set(-3, isoBase64URL.toBuffer(jwk.y!));
     } else {
@@ -146,10 +165,13 @@ export class SoftAuthenticator {
   }
 
   private async sign(data: Bytes): Promise<Bytes> {
-    if (this.alg === "ES256") {
+    if (this.alg === "ES256" || this.alg === "ES384") {
       const raw = new Uint8Array(
         await crypto.subtle.sign(
-          { name: "ECDSA", hash: "SHA-256" },
+          {
+            name: "ECDSA",
+            hash: this.alg === "ES256" ? "SHA-256" : "SHA-384",
+          },
           this.keys.privateKey,
           data as unknown as ArrayBuffer,
         ),
@@ -158,7 +180,9 @@ export class SoftAuthenticator {
     }
     return new Uint8Array(
       await crypto.subtle.sign(
-        { name: "Ed25519" },
+        this.alg === "RS256"
+          ? { name: "RSASSA-PKCS1-v1_5" }
+          : { name: "Ed25519" },
         this.keys.privateKey,
         data as unknown as ArrayBuffer,
       ),

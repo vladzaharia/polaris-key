@@ -18,6 +18,7 @@ import {
   type PasskeyRow,
 } from "../src/services/identity/passkeys/repo.js";
 import { counterRegressed } from "../src/services/identity/passkeys/webauthn.js";
+import { mergeAccounts } from "../src/services/identity/accounts/merge.js";
 
 // I-16: passkeys on key.plrs.im (S-16 §5.4 items 7, 14 and 17; PORTAL.md §4.1, §4.10, §4.26).
 // Enrolment only after email verification, one random account-level user handle, the card's
@@ -348,6 +349,18 @@ describe("passkey enrolment", () => {
     expect(after[0]).toEqual(before);
   });
 
+  it("refuses a key of an algorithm it did not offer (ES384)", async () => {
+    const w = await seededWorld();
+    const { d } = await emailAccount(w);
+    const res = await addPasskey(
+      d,
+      await SoftAuthenticator.create({ alg: "ES384" }),
+    );
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ error: "bad_request" });
+    expect(await passkeyRows(w)).toHaveLength(0);
+  });
+
   it(`caps an account at ${MAX_PASSKEYS_PER_ACCOUNT} passkeys`, async () => {
     const w = await seededWorld();
     const { d, accountId } = await emailAccount(w);
@@ -380,7 +393,7 @@ describe("passkey enrolment", () => {
 describe("passkey sign-in on the card", () => {
   async function enrolled(
     w: CardWorld,
-    opts: { synced?: boolean; alg?: "ES256" | "Ed25519" } = {},
+    opts: { synced?: boolean; alg?: "ES256" | "Ed25519" | "RS256" } = {},
   ): Promise<{ auth: SoftAuthenticator; accountId: string }> {
     const { d, accountId } = await emailAccount(w);
     const auth = await SoftAuthenticator.create(opts);
@@ -455,12 +468,14 @@ describe("passkey sign-in on the card", () => {
     expect(accounts?.n).toBe(1);
   });
 
-  it("signs in with an Ed25519 passkey too", async () => {
-    const w = await seededWorld();
-    const { auth } = await enrolled(w, { alg: "Ed25519" });
-    const { res } = await passkeySignIn(new Device(w), auth);
-    expect(res.status).toBe(200);
-  });
+  for (const alg of ["Ed25519", "RS256"] as const) {
+    it(`signs in with an ${alg} passkey too`, async () => {
+      const w = await seededWorld();
+      const { auth } = await enrolled(w, { alg });
+      const { res } = await passkeySignIn(new Device(w), auth);
+      expect(res.status).toBe(200);
+    });
+  }
 
   it("a challenge replay fails: the same answer twice, or an old answer to a new challenge", async () => {
     const w = await seededWorld();
@@ -895,5 +910,86 @@ describe("the post-sign-in nudge", () => {
       later,
     );
     expect(await again2.json()).toMatchObject({ nudge: false });
+  });
+});
+
+describe("merging accounts with passkeys", () => {
+  async function handleOf(
+    w: CardWorld,
+    accountId: string,
+  ): Promise<string | null> {
+    const row = await w.db.first<{ passkey_user_handle: string | null }>(
+      "SELECT passkey_user_handle FROM accounts WHERE id = ?",
+      accountId,
+    );
+    return row?.passkey_user_handle ?? null;
+  }
+
+  it("a survivor with no user handle takes the absorbed account's, and its passkeys keep signing in", async () => {
+    const w = await seededWorld();
+    const absorbed = await emailAccount(w, "old@example.com");
+    const auth = await SoftAuthenticator.create();
+    expect((await addPasskey(absorbed.d, auth)).status).toBe(201);
+    const handle = await handleOf(w, absorbed.accountId);
+    expect(handle).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    const survivor = await emailAccount(w, "new@example.com");
+    expect(await handleOf(w, survivor.accountId)).toBeNull();
+
+    const merged = await mergeAccounts(
+      { db: w.db, env: w.env, now: NOW, origin: "https://key.plrs.im" },
+      {
+        survivor: { accountId: survivor.accountId, authenticatedAt: NOW },
+        absorbed: { accountId: absorbed.accountId, authenticatedAt: NOW },
+      },
+    );
+    expect(merged).toMatchObject({ ok: true });
+    expect(await handleOf(w, survivor.accountId)).toBe(handle);
+    expect((await passkeyRows(w))[0]).toMatchObject({
+      account_id: survivor.accountId,
+      user_handle: handle,
+    });
+
+    // The moved passkey signs in to the survivor, and the next one lands under the same handle.
+    const browser = new Device(w);
+    expect((await passkeySignIn(browser, auth)).res.status).toBe(200);
+    expect(await (await browser.me()).json()).toMatchObject({
+      account: { email: "new@example.com" },
+    });
+    const start = await survivor.d.send("POST", `${MINE}/options`, {});
+    expect(start.status).toBe(200);
+    const { options } = (await start.json()) as {
+      options: {
+        user: { id: string };
+        excludeCredentials: Array<{ id: string }>;
+      };
+    };
+    expect(options.user.id).toBe(handle);
+    expect(options.excludeCredentials.map((c) => c.id)).toEqual([auth.id]);
+  });
+
+  it("a survivor that has a user handle keeps it", async () => {
+    const w = await seededWorld();
+    const absorbed = await emailAccount(w, "old@example.com");
+    expect(
+      (await addPasskey(absorbed.d, await SoftAuthenticator.create())).status,
+    ).toBe(201);
+    const survivor = await emailAccount(w, "new@example.com");
+    const own = await SoftAuthenticator.create();
+    expect((await addPasskey(survivor.d, own)).status).toBe(201);
+    const kept = await handleOf(w, survivor.accountId);
+    expect(kept).not.toBe(await handleOf(w, absorbed.accountId));
+
+    const merged = await mergeAccounts(
+      { db: w.db, env: w.env, now: NOW, origin: "https://key.plrs.im" },
+      {
+        survivor: { accountId: survivor.accountId, authenticatedAt: NOW },
+        absorbed: { accountId: absorbed.accountId, authenticatedAt: NOW },
+      },
+    );
+    expect(merged).toMatchObject({ ok: true });
+    expect(await handleOf(w, survivor.accountId)).toBe(kept);
+    expect(
+      (await passkeyRows(w)).every((r) => r.account_id === survivor.accountId),
+    ).toBe(true);
   });
 });
