@@ -231,27 +231,34 @@ describe("library cards: 16:9 art, the status inset on its plate, no byline", ()
   }
 });
 
-describe("Discover count (P6, FLOWS P-13): never counts what the page cannot show", () => {
-  it("the Worker counts 4 offers, the page lists none yet: no Discover in either nav, no library line", async () => {
+describe("Discover count (P6, FLOWS P-13): counts only what the page lists", () => {
+  // PX-16 made the Discover page list `GET /api/discover` (`DISCOVER_LISTS_OFFERS` is true), so
+  // the Worker's count shows in both navs and the page lists exactly the offers it counted.
+  it("the Worker counts 4 offers and the page lists them: Discover in either nav, with the count", async () => {
     for (const width of [1440, 390]) {
-      // The fixture's library carries `discoverCount: 4`, as `main`'s Worker does.
+      // The fixture's library carries `discoverCount: 4`, one per offer `GET /api/discover` sends.
       const o = await open("three", "/", { width });
       await h1(o.page, "Your library");
       const nav = o.page.getByRole("navigation", {
         name: width === 390 ? "Phone" : "Main",
       });
       await nav.getByRole("link", { name: /Library/ }).waitFor();
-      expect(await nav.getByRole("link", { name: /Discover/ }).count()).toBe(0);
-      expect(await o.page.getByText(/in Discover/).count()).toBe(0);
+      const discover = nav.getByRole("link", { name: /Discover/ });
+      await discover.waitFor();
+      expect(await discover.count()).toBe(1);
+      // The desktop count is visible; the phone bar's dot carries ", 4 offers" for readers.
+      expect(await discover.textContent()).toContain("4");
       expect(await o.violations()).toEqual([]);
       await o.close();
     }
   });
 
-  it("a typed #/discover is the honest empty state, with the way back", async () => {
+  it("a typed #/discover lists the four offers it counted", async () => {
     const o = await open("three", "/#/discover");
-    await h1(o.page, "Nothing to add right now");
-    await o.page.getByRole("link", { name: "Back to your library" }).waitFor();
+    await h1(o.page, "Discover");
+    for (const name of ["Quill", "Mossgarden", "Lumen RAW", "Pixel Forge SDK"])
+      await o.page.getByRole("article", { name }).waitFor();
+    expect(await o.page.getByRole("article").count()).toBe(4);
     expect(await o.violations()).toEqual([]);
     await o.close();
   });
@@ -274,7 +281,7 @@ describe("Library on GET /api/library (PX-08)", () => {
       [...document.images].map((i) => new URL(i.src).pathname),
     );
     expect(srcs.every((s) => s.startsWith("/media/"))).toBe(true);
-    expect(o.requests).toContain("GET /media/nightfall/header");
+    expect(o.requests).toContain("GET /media/nightfall/header?v=1");
     await o.page
       .getByRole("navigation", { name: "Main" })
       .getByRole("link", { name: /Library/ })
@@ -505,7 +512,35 @@ describe("main flows", () => {
     await o.close();
   });
 
-  it("opens /activate?key=… as the Library with the modal prefilled", async () => {
+  it("opens /activate#key=… as the Library with the modal prefilled", async () => {
+    const o = await open(
+      "three",
+      "/activate#key=pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w",
+      { width: 390, height: 844 },
+    );
+    const dialog = o.page.getByRole("dialog", { name: "Activate a license" });
+    await dialog.waitFor();
+    expect(
+      await dialog.getByRole("textbox", { name: "License key" }).inputValue(),
+    ).toBe("pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w");
+    await dialog.getByText("Filled in from your link").waitFor();
+    expect(await o.page.evaluate(() => location.pathname)).toBe("/");
+    // The fragment is gone from the address bar.
+    await expect
+      .poll(() => o.page.evaluate(() => location.href))
+      .not.toContain("pkey_");
+    await shoot(o.page, "activate-link-mobile-dark");
+    await o.page.keyboard.press("Escape");
+    await h1(o.page, "Your library");
+    // Every request the page made, the document navigation included (a fragment is never sent),
+    // has the key in neither its URL nor its Referer.
+    expect(o.all.length).toBeGreaterThan(1);
+    expect(o.all.filter((r) => r.includes("pkey_"))).toEqual([]);
+    expect(await o.violations()).toEqual([]);
+    await o.close();
+  });
+
+  it("opens a legacy /activate?key=… the same way, and no later request carries the key", async () => {
     const o = await open(
       "three",
       "/activate?key=pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w",
@@ -518,9 +553,21 @@ describe("main flows", () => {
     ).toBe("pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w");
     await dialog.getByText("Filled in from your link").waitFor();
     expect(await o.page.evaluate(() => location.pathname)).toBe("/");
-    await shoot(o.page, "activate-link-mobile-dark");
+    // The query is gone from the address bar.
+    await expect
+      .poll(() => o.page.evaluate(() => location.href))
+      .not.toContain("pkey_");
     await o.page.keyboard.press("Escape");
     await h1(o.page, "Your library");
+    // The document navigation is the legacy link itself, so it carries `?key=` by definition:
+    // it is the one request excluded, and only it. Every later request (the shell's own
+    // `/assets/*`, fonts and icons, which start before the rewrite, then the app's API calls)
+    // has the key in neither its URL nor its Referer, because the shell is served with
+    // `Referrer-Policy: no-referrer`.
+    const [navigation, ...later] = o.all;
+    expect(navigation).toMatch(/^GET \S+\/activate\?key=pkey_\S+ referer=$/);
+    expect(later.length).toBeGreaterThan(0);
+    expect(later.filter((r) => r.includes("pkey_"))).toEqual([]);
     expect(await o.violations()).toEqual([]);
     await o.close();
   });

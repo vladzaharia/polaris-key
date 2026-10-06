@@ -585,43 +585,56 @@ describe("Activate license modal (PX-06)", () => {
     ).toBe(true);
   });
 
-  it("opens from /activate?key=… as the Library with the key filled in", async () => {
-    window.history.replaceState(null, "", `/activate?key=${KEY}`);
-    mockFetch(routes());
-    renderPortal();
-    const dialog = await screen.findByRole("dialog", {
-      name: "Activate a license",
-    });
-    expect(
-      (
-        within(dialog).getByRole("textbox", {
-          name: "License key",
-        }) as HTMLTextAreaElement
-      ).value,
-    ).toBe(KEY);
-    expect(
-      within(dialog).getByText(
-        "Filled in from your link. Check it matches the key you have.",
-      ),
-    ).toBeTruthy();
-    expect(within(dialog).getByText("Key format is valid")).toBeTruthy();
-    expect(window.location.pathname).toBe("/");
-    // The parameter is consumed: a reload doesn't reopen it.
-    await waitFor(() => expect(window.location.hash).toBe("#/"));
-    expect(
-      screen.getByRole("heading", {
-        level: 1,
-        name: "Your library",
-        hidden: true,
-      }),
-    ).toBeTruthy();
-  });
+  // The deep link carries the key in the fragment, which no request carries (fix/keys-out-of-logs);
+  // the query form is the legacy one, in links already out. Both end the same way: the key in
+  // the modal, and in no URL and no request.
+  it.each([
+    ["the fragment, /activate#key=…", `/activate#key=${KEY}`],
+    ["the legacy query, /activate?key=…", `/activate?key=${KEY}`],
+  ])(
+    "opens from %s as the Library with the key filled in",
+    async (_form, link) => {
+      window.history.replaceState(null, "", link);
+      mockFetch(routes());
+      renderPortal();
+      const dialog = await screen.findByRole("dialog", {
+        name: "Activate a license",
+      });
+      expect(
+        (
+          within(dialog).getByRole("textbox", {
+            name: "License key",
+          }) as HTMLTextAreaElement
+        ).value,
+      ).toBe(KEY);
+      expect(
+        within(dialog).getByText(
+          "Filled in from your link. Check it matches the key you have.",
+        ),
+      ).toBeTruthy();
+      expect(within(dialog).getByText("Key format is valid")).toBeTruthy();
+      expect(window.location.pathname).toBe("/");
+      expect(window.location.search).toBe("");
+      // The parameter is consumed: a reload doesn't reopen it, and the address bar and the
+      // history entry no longer hold the key.
+      await waitFor(() => expect(window.location.hash).toBe("#/"));
+      expect(window.location.href).not.toContain("pkey_");
+      expect(fetchedRequests().filter((r) => r.includes("pkey_"))).toEqual([]);
+      expect(
+        screen.getByRole("heading", {
+          level: 1,
+          name: "Your library",
+          hidden: true,
+        }),
+      ).toBeTruthy();
+    },
+  );
 
   it("names the app that sent the key", async () => {
     window.history.replaceState(
       null,
       "",
-      `/activate?key=${KEY}&product=mossgarden`,
+      `/activate?product=mossgarden#key=${KEY}`,
     );
     mockFetch(routes());
     renderPortal();
@@ -632,7 +645,7 @@ describe("Activate license modal (PX-06)", () => {
   });
 
   it("survives the signed-out round trip: login card first, then the modal", async () => {
-    window.history.replaceState(null, "", `/activate?key=${KEY}`);
+    window.history.replaceState(null, "", `/activate#key=${KEY}`);
     let me: unknown = { status: 401 };
     mockFetch({
       ...routes(),
@@ -657,6 +670,8 @@ describe("Activate license modal (PX-06)", () => {
       .mock.calls.find(([u]) => String(u).includes("/api/signin/email/start"))!;
     const body = JSON.parse(String(call[1]!.body)) as { returnTo: string };
     expect(body.returnTo).not.toContain("pkey_");
+    expect(fetchedRequests().filter((r) => r.includes("pkey_"))).toEqual([]);
+    expect(window.location.search).toBe("");
     expect(window.location.hash).toContain(`activate=${KEY}`);
     me = { account: ACCOUNT, csrf: "c" };
     fireEvent.focus(window);

@@ -82,7 +82,8 @@ read the settings fresh at the start of each run.
 Platform → Settings has these sections, top to bottom.
 
 - **Warnings.** Each warning the API returns (the console still shares the customer sign-in
-  client, `PLATFORM_KEK_ID` set, `PORTAL_SESSION_SECRET` unset) is shown first.
+  client, `PLATFORM_KEK_ID` set, `PLATFORM_KEK` kept as a legacy key beside
+  `PLATFORM_KEK_KEYS`, `PORTAL_SESSION_SECRET` unset) is shown first.
 - **Background jobs.** The four background-job settings. Each row shows the effective value and a source
   badge: _Code default_, _Deploy var_ or _Set in console_ (with who set it and when). Each row
   saves on its own:
@@ -112,8 +113,11 @@ Platform → Settings has these sections, top to bottom.
 - **Keyring.** The KEK keyring, read-only: which KEK secrets are set, the `PLATFORM_KEK_ACTIVE`
   and `PLATFORM_KEK_ID` kid names, the active key, every key in the ring with how many values it
   seals, and the re-seal progress. Values under a key that has left the ring are flagged as
-  unopenable. When the ring does not parse, the section says the keyring is unusable. Rotation
-  and the re-seal sweep follow the [KEK runbook](/docs/admin/kek/).
+  unopenable. While `PLATFORM_KEK` is set beside `PLATFORM_KEK_KEYS`, its kid is marked
+  _Legacy, open only_, and a **Legacy key** row says how many values (and which sealed Worker
+  secrets) are still under it, or _Safe to delete PLATFORM_KEK_ once none are. When the ring does
+  not parse, the section says the keyring is unusable. Rotation and the re-seal sweep follow the
+  [KEK runbook](/docs/admin/kek/).
 - **Secrets.** Each platform secret as _Set_ or _Not set_, with what it is for and what being
   unset means.
 - **History.** Each settings change from the platform trail, with who made it and the value
@@ -152,8 +156,12 @@ Returns:
   retention;
 - `warnings`: `console_oidc_shared` while the console signs in through the platform client
   because `ADMIN_OIDC_ISSUER` or `ADMIN_OIDC_CLIENT_ID` is unset (`names` lists which);
-  `PLATFORM_KEK_ID` is set; or `PORTAL_SESSION_SECRET` is unset, so the portal signs its sessions
-  with the admin secret.
+  `PLATFORM_KEK_ID` is set; `kek_keyring_unusable` while the KEK keyring does not load (the
+  message gives the reason, naming kids only); `kek_legacy_open_only` while `PLATFORM_KEK` is set
+  beside `PLATFORM_KEK_KEYS` and is the only source of its kid, so it is kept as the legacy key,
+  open-only (the message names its kid; a same-bytes copy of a `PLATFORM_KEK_KEYS` entry is not
+  flagged); or `PORTAL_SESSION_SECRET` is unset, so the portal signs its sessions with the admin
+  secret.
 
 ```http
 PATCH /manage/api/platform/settings/<key>

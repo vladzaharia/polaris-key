@@ -24,6 +24,7 @@ import { parse as parseYaml } from "yaml";
 import { matchRoute } from "../src/router.js";
 import { CORS_SERVICE_PATHS, isCorsCoveredRoute } from "../src/core/cors.js";
 import { REGISTRY_OWNERLESS_ROUTES, REGISTRY_ROUTES } from "../src/mount.js";
+import { matchImgPath } from "../src/core/imgHost.js";
 import { FEED_ADAPTERS } from "../src/services/distribution/registry/index.js";
 import {
   RELEASE_PUBLISH_OPENAPI,
@@ -156,6 +157,8 @@ const SERVICE_PATHS: Array<[string, string[]]> = [
   ["/{product}/release/channels/{channel}/pin", ["post"]],
   ["/{product}/release/channels/{channel}/unpin", ["post"]],
   ["/{product}/release/releases/{releaseId}/yank", ["post"]],
+  // Feed retention: the backfill of the builds of main below each package's stable release.
+  ["/{product}/release/packages/prune", ["post"]],
   // P2-02: trusted publishing.
   ["/{product}/release/publish/token", ["post"]],
   ["/{product}/release/publish/uploads", ["post"]],
@@ -302,6 +305,21 @@ const REGISTRY_PATHS: Array<[string, string[], string[]]> = mergeRegistryRows([
   ...RELEASE_REGISTRY_OPENAPI,
 ]);
 
+/**
+ * The image host's paths (HA-02, notes/S-20 §6.5): `img.plrs.im` answers only these, each
+ * documented under a path-level `servers` override with tag `img`. They are Core's own routes
+ * (`core/imgHost.ts` `matchImgPath`), not a service's and not a route table's, so the check
+ * runs a concrete request path of each through the host's own parser and pins the parsed kind.
+ */
+const IMG_SERVER = "https://img.plrs.im";
+const IMG_PATHS: Array<[string, string[], "asset" | "alias"]> = [
+  ["/{product}/a/{sha256}", ["get", "head"], "asset"],
+  ["/{product}/a/{sha256}/{w}.webp", ["get", "head"], "asset"],
+  ["/{product}/icon", ["get", "head"], "alias"],
+  ["/{product}/header", ["get", "head"], "alias"],
+  ["/{product}/screenshots/{n}", ["get", "head"], "alias"],
+];
+
 function specMethods(path: string): string[] {
   const entry = spec.paths[path];
   if (!entry) return [];
@@ -398,6 +416,7 @@ describe("spec → router", () => {
         ...SERVICE_PATHS,
         ...ALIAS_PATHS,
         ...REGISTRY_PATHS,
+        ...IMG_PATHS,
         ...Object.values(PORTAL_KIND_PATHS).flat(),
         ...Object.values(ADMIN_KIND_PATHS).flat(),
       ].map(([path]) => path),
@@ -450,8 +469,17 @@ describe("registry host (F-02, rule 10)", () => {
 
   it("only registry paths carry the registry server or the registry tag", () => {
     const registry = new Set(REGISTRY_PATHS.map(([p]) => p));
+    const img = new Set(IMG_PATHS.map(([p]) => p));
     for (const [path, entry] of Object.entries(spec.paths)) {
       if (registry.has(path)) continue;
+      // The image host's paths carry their own server (checked below), never the registry's.
+      if (img.has(path)) {
+        for (const method of specMethods(path)) {
+          const op = entry[method] as { tags?: string[] };
+          expect(op.tags ?? [], `${method} ${path}`).not.toContain("registry");
+        }
+        continue;
+      }
       expect(entry.servers, path).toBeUndefined();
       for (const method of specMethods(path)) {
         const op = entry[method] as { tags?: string[] };
@@ -487,6 +515,64 @@ describe("registry host (F-02, rule 10)", () => {
   });
 });
 
+describe("image host (HA-02, rule 10)", () => {
+  it("every image path is documented on the image server with tag img and exactly its methods", () => {
+    for (const [path, methods] of IMG_PATHS) {
+      expect(spec.paths[path]?.servers, path).toEqual([
+        expect.objectContaining({ url: IMG_SERVER }),
+      ]);
+      expect(specMethods(path).sort(), path).toEqual([...methods].sort());
+      for (const method of methods) {
+        const op = spec.paths[path]![method] as { tags?: string[] };
+        expect(op.tags, `${method} ${path}`).toEqual(["img"]);
+      }
+      // A public image is a simple GET: no preflight is documented or answered.
+      expect(spec.paths[path]?.options, path).toBeUndefined();
+    }
+  });
+
+  it("only image paths carry the image server or the img tag", () => {
+    const img = new Set(IMG_PATHS.map(([p]) => p));
+    for (const [path, entry] of Object.entries(spec.paths)) {
+      if (img.has(path)) continue;
+      expect(JSON.stringify(entry.servers ?? []), path).not.toContain(
+        IMG_SERVER,
+      );
+      for (const method of specMethods(path)) {
+        const op = entry[method] as { tags?: string[] };
+        expect(op.tags ?? [], `${method} ${path}`).not.toContain("img");
+      }
+    }
+  });
+
+  it("IMG_PATHS and the host's own path parser agree in both directions", () => {
+    const samples: Record<string, string> = {
+      product: "acme",
+      sha256: "a".repeat(64),
+      w: "256",
+      n: "3",
+    };
+    for (const [path, , kind] of IMG_PATHS) {
+      const concretePath = path.replace(
+        /\{(\w+)\}/g,
+        (_, name: string) => samples[name]!,
+      );
+      expect(matchImgPath(concretePath)?.kind, path).toBe(kind);
+    }
+    // Every shape the parser accepts is one of the documented templates: a path one segment
+    // off any of them is refused.
+    for (const path of [
+      "/acme",
+      "/acme/a",
+      `/acme/a/${"a".repeat(64)}/256`,
+      "/acme/screenshots",
+      "/acme/icons",
+      "/acme/a/x/y/z",
+    ])
+      expect(matchImgPath(path), path).toBeNull();
+  });
+});
+
 /**
  * The product routes that must NEVER answer CORS (P0-05): they set or read the per-product
  * browser-session cookie, or they are top-level navigations to the IdP or an HTML page. They stay
@@ -507,6 +593,7 @@ const CORS_EXCLUDED = new Set([
   "/{product}/release/channels/{channel}/pin",
   "/{product}/release/channels/{channel}/unpin",
   "/{product}/release/releases/{releaseId}/yank",
+  "/{product}/release/packages/prune",
   // P2-02: the trusted-publishing routes, called by CI with an OIDC or `pkeyci_` credential.
   "/{product}/release/publish/token",
   "/{product}/release/publish/uploads",

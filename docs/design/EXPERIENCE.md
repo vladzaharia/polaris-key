@@ -668,7 +668,7 @@ Done step.
 - **Done** leads with **Download for macOS** (the detected build) and offers Open as secondary; a
   library that was empty gets "Your first product!" once; closing returns to the Library with the new
   tile ringed.
-- Signed out with `/activate?key=…`: the card header shows the product ("Sign in to add
+- Signed out with `/activate#key=…`: the card header shows the product ("Sign in to add
   Mossgarden").
 
 #### P3 · Download for my platform (PJ C, B5)
@@ -719,7 +719,7 @@ Done step.
 - Library load errors name Polaris Key (not "the developer") and give a reference id.
 - An expired or used code or link renders the **same card** server-side ("That code or link has
   expired") with **Send a new code** (POSTs to resend to the same address) and keeps `returnTo` and
-  `/activate?key=` context ([mockup](experience/04-signin-worker-desktop-dark.png)).
+  `/activate#key=` context ([mockup](experience/04-signin-worker-desktop-dark.png)).
 
 ### 0.7 Moments of delight
 

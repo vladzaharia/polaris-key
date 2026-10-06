@@ -147,7 +147,7 @@ function UsersCollection({ slug }: { slug: string }): React.ReactElement {
         id: "lastSignIn",
         header: "Last sign-in",
         accessorFn: (u) => u.lastSignInAt ?? 0,
-        meta: { priority: 2 },
+        meta: { priority: 2, numeric: true },
         cell: ({ row }) =>
           row.original.lastSignInAt ? (
             <Timestamp at={fromSeconds(row.original.lastSignInAt)} />
@@ -160,7 +160,7 @@ function UsersCollection({ slug }: { slug: string }): React.ReactElement {
       id: "createdAt",
       header: "First seen",
       accessorKey: "createdAt",
-      meta: { priority: 3 },
+      meta: { priority: 3, numeric: true },
       cell: ({ row }) => <Timestamp at={fromSeconds(row.original.createdAt)} />,
     });
     return cols;
