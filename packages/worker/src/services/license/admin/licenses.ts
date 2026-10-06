@@ -11,6 +11,9 @@
  * address in the same request (Core's `associateLicenseHolder`, implemented by Identity); the
  * answer has the same shape whether or not one did (D4). Clearing an assigned licence's email is
  * refused: making a licence floating is the relink tool's Make floating (LX-30, I-12).
+ *
+ * LX-28: every licence read carries `batchId` (the batch it was created in, or `null`) and the
+ * list filters on it (`?batch=`). Batches themselves are `batches.ts`.
  */
 
 import type { Db } from "../../../core/platform.js";
@@ -79,8 +82,9 @@ import { handleAdminDevices } from "./devices.js";
 import { deletionVerdicts, handleDeleteLicense } from "./deletion.js";
 
 /** Normalize a request-body `channels` field into a JSON string array column value.
- *  An array (even empty) is stored as JSON; anything else (absent/null) clears the column. */
-function parseChannels(raw: unknown): string | null {
+ *  An array (even empty) is stored as JSON; anything else (absent/null) clears the column.
+ *  Shared with the batch create (`batches.ts`, LX-28). */
+export function parseChannels(raw: unknown): string | null {
   if (!Array.isArray(raw)) return null;
   const channels = raw.filter((c) => typeof c === "string") as string[];
   return JSON.stringify(channels);
@@ -144,8 +148,11 @@ function licenseWriteChecks(body: Record<string, unknown>): Response | null {
  * LX-14a: a licence's own `deviceLimit` is a positive integer, or `null` to inherit; absent keeps
  * it. Anything else (zero, a fraction, a string) is refused rather than silently ignored, the
  * same rule `invalidDeviceLimit` applies to a tier and 0084's CHECK applies at the database.
+ * Shared with the batch create (`batches.ts`, LX-28).
  */
-function invalidLicenseDeviceLimit(body: Record<string, unknown>): boolean {
+export function invalidLicenseDeviceLimit(
+  body: Record<string, unknown>,
+): boolean {
   if (!("deviceLimit" in body) || body.deviceLimit === null) return false;
   const v = body.deviceLimit;
   return typeof v !== "number" || !Number.isInteger(v) || v <= 0;
@@ -221,7 +228,12 @@ export async function handleLicenses(
           `holder must be one of ${HOLDER_FILTERS.join(", ")}`,
           { fields: ["holder"] },
         );
-      const rows = await listLicenses(db, slug, holder ? { holder } : {});
+      // LX-28: `?batch=<id>` lists one batch's licences (an unknown id lists none).
+      const batch = new URL(req.url).searchParams.get("batch");
+      const rows = await listLicenses(db, slug, {
+        ...(holder ? { holder } : {}),
+        ...(batch ? { batch } : {}),
+      });
       const verdicts = await deletionVerdicts(ctx, rows);
       const licenses = await Promise.all(
         rows.map(async (r) => ({

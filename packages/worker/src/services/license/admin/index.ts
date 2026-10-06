@@ -2,7 +2,8 @@
 
 /**
  * License's admin surface — `/manage/api/products/<slug>/license/{licenses,tiers,policy}` (§R1),
- * and `license/deletions` (bulk licence deletion and the cleanup list, `deletion.ts`).
+ * `license/deletions` (bulk licence deletion and the cleanup list, `deletion.ts`) and
+ * `license/batches` (bulk floating keys and Disable unused keys, `batches.ts`, LX-28).
  *
  * These three resources used to hang off the admin dispatcher's own five-segment destructure as
  * `licenses`, `tiers` and `policy`. They are License's: a licence, the tier that shapes it, and
@@ -26,6 +27,7 @@ import { handleLicenses } from "./licenses.js";
 import { handleTiers } from "./tiers.js";
 import { handleFingerprintPolicy } from "./policy.js";
 import { handleDeletions } from "./deletion.js";
+import { handleBatches } from "./batches.js";
 
 /** What every handler under this directory is given. */
 export type LicenseAdminContext = ServiceContext & { session: AdminSession };
@@ -39,6 +41,7 @@ export async function handleLicenseAdmin(
   if (resource === "tiers") return handleTiers(ctx, rest[0]);
   if (resource === "policy") return handleFingerprintPolicy(ctx, rest[0]);
   if (resource === "deletions") return handleDeletions(ctx, rest[0]);
+  if (resource === "batches") return handleBatches(ctx, rest);
 
   // `null`, not a 404: only Core knows whether an unmatched path is a not-found, an alias or a
   // fall-through, and centralising that keeps the answer byte-identical however it was missed.

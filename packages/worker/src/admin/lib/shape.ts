@@ -172,6 +172,8 @@ export async function licenseSummary(
     // LX-26 (S-24 D1): floating or assigned, derived from the owner pointer and the licence's own
     // email; never the account's details.
     holder: licenseHolder(row),
+    // LX-28: the batch the licence was created in, `null` for a licence created on its own.
+    batchId: row.batch_id ?? null,
     identityProvider: row.sub ? "oidc" : "manual",
     // How the row was minted (`admin`, `oidc`, `enroll`): decides whether it may be deleted.
     origin: row.origin ?? "admin",
