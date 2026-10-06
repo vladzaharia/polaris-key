@@ -36,7 +36,8 @@ type Tab = "payload" | "used-by";
  * Config → Profiles → a profile (docs/design/ADMIN.md §6.6.3, T3). The id shows once, in the
  * meta line (PRF-3); **Edit details…** changes name and description (A-7, PRF-1); **Delete…** is
  * disabled with the reason while tiers or licenses use it (PRF-2). Tabs: Payload (the managed
- * payload editor) and Used by. Leaving with unsaved payload edits asks first (PRF-6).
+ * payload editor) and Used by. Leaving with unsaved payload edits asks first (PRF-6); switching to
+ * Used by does not, because the payload stays mounted under it (FLOWS.md C-33).
  */
 export function ProfilePage({
   slug,
@@ -56,6 +57,12 @@ export function ProfilePage({
     consequences: [
       "Your changes to its values are lost. Nothing has been saved.",
     ],
+    // The record's own tabs keep the draft: the payload panel stays mounted.
+    allow: (hash) => {
+      const record = r.profile(slug, id);
+      const path = hash.split("?")[0]!;
+      return path === record || path.startsWith(`${record}/`);
+    },
   });
   const current: Tab = tab === "used-by" ? "used-by" : "payload";
 
@@ -161,11 +168,10 @@ export function ProfilePage({
         }
       />
 
-      {current === "payload" ? (
+      <div hidden={current !== "payload"}>
         <PayloadTab slug={slug} profile={p} onDirtyChange={setDirty} />
-      ) : (
-        <UsedByTab slug={slug} profile={p} />
-      )}
+      </div>
+      {current === "used-by" ? <UsedByTab slug={slug} profile={p} /> : null}
 
       <EditProfileDrawer
         slug={slug}

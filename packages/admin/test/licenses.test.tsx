@@ -24,6 +24,7 @@ import {
   writes,
 } from "./licenseFixture.js";
 import { endOfLocalDay } from "../src/lib/format.js";
+import { lastAnnouncement } from "../src/ui/LiveRegion.js";
 
 beforeEach(resetConsole);
 afterEach(cleanup);
@@ -410,7 +411,9 @@ describe("Create license", () => {
       "Grace Hopper",
     );
     await userEvent.type(within(dialog).getByLabelText(/^Email/), "grace@x.io");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Next" }));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Continue to terms" }),
+    );
     await within(dialog).findByText("Effective policy");
   }
 
@@ -421,18 +424,63 @@ describe("Create license", () => {
 
   it("shows every holder error on Next, so none is unreachable (LIC-10)", async () => {
     const { log, dialog } = await open();
-    await userEvent.click(within(dialog).getByRole("button", { name: "Next" }));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Continue to terms" }),
+    );
     expect(
       await within(dialog).findByText("Enter the holder's name."),
     ).toBeTruthy();
     expect(within(dialog).getByText("Enter the holder's email.")).toBeTruthy();
     await userEvent.type(within(dialog).getByLabelText(/^Name/), "Grace");
     await userEvent.type(within(dialog).getByLabelText(/^Email/), "bad-email");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Next" }));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Continue to terms" }),
+    );
     expect(
       await within(dialog).findByText("Enter a valid email address."),
     ).toBeTruthy();
     expect(writes(log)).toEqual([]);
+  });
+
+  it("moves focus to each step, announces it, and asks before Escape drops the draft (C-17)", async () => {
+    const { dialog } = await open();
+    expect(within(dialog).getByText("Step 1 of 2 for you")).toBeTruthy();
+    await userEvent.type(
+      within(dialog).getByLabelText(/^Name/),
+      "Grace Hopper",
+    );
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    expect((await within(dialog).findByRole("alert")).textContent).toContain(
+      "Discard your changes?",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Keep editing" }),
+    );
+    expect(within(dialog).getByLabelText(/^Name/)).toHaveProperty(
+      "value",
+      "Grace Hopper",
+    );
+    await userEvent.type(within(dialog).getByLabelText(/^Email/), "grace@x.io");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Continue to terms" }),
+    );
+    const heading = await within(dialog).findByRole("heading", {
+      name: "Set the terms",
+    });
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+    expect(lastAnnouncement()).toBe("Step 2 of 2 for you: Set the terms");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Create license" }),
+    );
+    await within(dialog).findByText("PK-NEWKEY-ONESHOT");
+    await waitFor(() =>
+      expect(document.activeElement?.textContent).toBe("License created"),
+    );
+    expect(lastAnnouncement()).toBe("License created for Grace Hopper.");
+    // One "Shown once." line, from the panel.
+    expect(
+      within(dialog).getAllByText(/shown once|shown only once/i),
+    ).toHaveLength(1);
   });
 
   it("creates with every term and profiles in order, and shows the key once (LIC-2, LIC-3, LIC-5)", async () => {
@@ -483,7 +531,7 @@ describe("Create license", () => {
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Keep it open" }),
     );
-    await userEvent.click(within(dialog).getByLabelText(/I've stored this/));
+    await userEvent.click(within(dialog).getByLabelText(/I've stored it/));
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Open license" }),
     );
@@ -600,7 +648,9 @@ describe("license channel picker", () => {
     });
     await userEvent.type(within(dialog).getByLabelText(/^Name/), "G");
     await userEvent.type(within(dialog).getByLabelText(/^Email/), "g@x.io");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Next" }));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Continue to terms" }),
+    );
     // The field's group wraps the picker's own group; both carry the label.
     await within(dialog).findAllByRole("group", { name: "Release channels" });
     return within(dialog)

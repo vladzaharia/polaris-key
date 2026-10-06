@@ -5,7 +5,8 @@
  * - Rows are the union of what is stored and what the configuration requires (A-5), each with
  *   its usage, status, last update and what requires it (SEC-2).
  * - Set secret is a drawer: name, value and usage. Replacing a configured value needs "Replace the
- *   existing value" ticked (SEC-3). A required row's "Set…" preselects its name (SEC-4).
+ *   existing value" ticked (SEC-3). A required row's "Set…" preselects its name (SEC-4), and so
+ *   does a link with `?secret=<name>` (FLOWS.md C-7). One phrasing: "Never shown again."
  * - The usage choices live in `lib/secretUsage.ts`, not in a view (SEC-6).
  */
 
@@ -33,9 +34,13 @@ import { StatusPill } from "../../../ui/StatusPill.js";
 import { Timestamp } from "../../../ui/Timestamp.js";
 import { toast } from "../../../ui/toast.js";
 import { mutate } from "../../data/mutations.js";
+import { codecs } from "../../routes.js";
+import { useSearchParam } from "../../router.js";
 import { qk } from "../../data/queries.js";
 import { queryClient } from "../../data/queryClient.js";
 import { SettingsSection } from "../../templates/Settings.js";
+
+const SECRET_PARAM = codecs.string();
 
 const USAGE_TEXT: Record<string, string> = {
   general: "General",
@@ -58,6 +63,15 @@ export function SecretsSection({
     queryClient,
   );
   const [editing, setEditing] = React.useState<{ name: string } | null>(null);
+  // `?secret=<name>` opens Set secret with the name filled in; closing it drops the parameter.
+  const [linked, setLinked] = useSearchParam("secret", SECRET_PARAM);
+  React.useEffect(() => {
+    if (linked) setEditing({ name: linked });
+  }, [linked]);
+  const closeEditor = (): void => {
+    setEditing(null);
+    if (linked) setLinked("");
+  };
   // The setup projection names required secrets too: a stale inventory still shows them.
   const rows = React.useMemo(() => {
     const out = new Map<string, ProductSecretDto>();
@@ -134,7 +148,7 @@ export function SecretsSection({
     <SettingsSection
       id="keys-secrets"
       title="Secrets"
-      description="Values are write-only: Polaris Key never returns them. To check one, set it again."
+      description="Never shown again."
       actions={
         <Button
           size="sm"
@@ -195,7 +209,7 @@ export function SecretsSection({
         slug={slug}
         initialName={editing?.name ?? null}
         configured={configured}
-        onClose={() => setEditing(null)}
+        onClose={closeEditor}
       />
     </SettingsSection>
   );
@@ -257,9 +271,7 @@ function SetSecretDrawer({
         value,
         usage === "keep" ? undefined : usage,
       );
-      toast.success(`Secret ${secretName} saved`, {
-        description: "Its value is never shown again.",
-      });
+      toast.success(`Secret ${secretName} saved`);
       onClose();
     } catch (err) {
       setFailure(err);
@@ -275,8 +287,9 @@ function SetSecretDrawer({
         if (!o && !saving) onClose();
       }}
       dismissible={!saving}
+      unsaved={!saving && value !== ""}
       title={initialName ? `Set ${initialName}` : "Set secret"}
-      description="The value is sealed under the platform key and never returned."
+      description="Never shown again."
     >
       <form
         onSubmit={submit}
