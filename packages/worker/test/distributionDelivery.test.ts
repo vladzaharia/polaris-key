@@ -104,7 +104,10 @@ async function setup(): Promise<World> {
   return { env, db, r2, gh };
 }
 
-async function storeBlob(w: World): Promise<void> {
+async function storeBlob(
+  w: World,
+  holders: ReadonlyArray<[string, string]> = [["artifact", "x"]],
+): Promise<void> {
   const key = blobKey(BLOB_HEX);
   const put = await putVerified(asR2(w.r2), key, BLOB, {
     sha256: BLOB_HEX,
@@ -122,11 +125,12 @@ async function storeBlob(w: World): Promise<void> {
     },
     NOW,
   );
-  await recordRef(
-    w.db,
-    { product: SLUG, storageKey: key, refKind: "artifact", refId: "x" },
-    NOW,
-  );
+  for (const [refKind, refId] of holders)
+    await recordRef(
+      w.db,
+      { product: SLUG, storageKey: key, refKind, refId },
+      NOW,
+    );
 }
 
 const get = (w: World, url: string, init: RequestInit = {}) =>
@@ -260,6 +264,43 @@ describe("the canonical /distribution/… routes and their aliases answer the sa
     );
     expect(a.status).toBe(206);
     expect(b).toEqual(a);
+  });
+});
+
+// ── 1b. Listing art and hosted copies are not on the blob route (HA-07) ──────────────────────
+
+describe("listing art and hosted copies are never served by the blob route (HA-07, S-20 §4.6 #2)", () => {
+  for (const host of [CONSOLE, BYTES])
+    for (const [kind, id] of [
+      ["listing-asset", "play:icon@"],
+      ["hosted-asset", "listing.header@"],
+    ] as const)
+      it(`a ${kind} ref alone is the plain not-found on the ${host === CONSOLE ? "console" : "bytes"} host, under a public app`, async () => {
+        const w = await setup();
+        await storeBlob(w, [[kind, id]]);
+        for (const url of [
+          `${host}/${SLUG}/distribution/blobs/sha256/${BLOB_HEX}`,
+          `${host}/${SLUG}/release/blobs/sha256/${BLOB_HEX}`,
+        ]) {
+          const res = await get(w, url);
+          expect(res.status, url).toBe(404);
+          await res.body?.cancel();
+        }
+      });
+
+  it("an object an artifact also holds is served under the artifact's rule, as before", async () => {
+    const w = await setup();
+    await storeBlob(w, [
+      ["listing-asset", "play:icon@"],
+      ["hosted-asset", "listing.header@"],
+      ["artifact", "x"],
+    ]);
+    const res = await get(
+      w,
+      `${BYTES}/${SLUG}/distribution/blobs/sha256/${BLOB_HEX}`,
+    );
+    expect(res.status).toBe(200);
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(BLOB);
   });
 });
 
