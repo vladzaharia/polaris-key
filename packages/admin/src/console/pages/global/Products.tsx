@@ -1,13 +1,10 @@
 import * as React from "react";
 import { Plus } from "lucide-react";
 import type { ProductDetail } from "../../../api.js";
-import { confirmFor } from "../../../lib/actions.js";
-import { errorCopy } from "../../../lib/errorCopy.js";
 import { formatCount, fromSeconds } from "../../../lib/format.js";
 import { label, PROVIDER_LABELS } from "../../../lib/labels.js";
 import { releaseSourceOf } from "../../../lib/products.js";
 import { Button } from "../../../ui/Button.js";
-import { ConfirmDialog } from "../../../ui/ConfirmDialog.js";
 import {
   DataTable,
   type DataColumn,
@@ -18,11 +15,10 @@ import { EmptyState } from "../../../ui/EmptyState.js";
 import { ServiceGlyph } from "../../../ui/ServiceBadge.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
 import { Timestamp } from "../../../ui/Timestamp.js";
-import { toast } from "../../../ui/toast.js";
 import { DeleteProductDialog } from "../../components/DeleteProductDialog.js";
 import { PageHeader } from "../../components/PageHeader.js";
+import { useResyncFlow } from "../../components/ResyncDialog.js";
 import { useProducts } from "../../data/hooks.js";
-import { mutate } from "../../data/mutations.js";
 import { Link, navigate } from "../../router.js";
 import { r } from "../../routes.js";
 import { CollectionTemplate } from "../../templates/Collection.js";
@@ -187,15 +183,15 @@ const COLUMNS: DataColumn<ProductRow>[] = [
 export function Products(): React.ReactElement {
   const products = useProducts();
   const [state, setState] = useTableUrlState("products", { facets: FACETS });
-  const [resyncing, setResyncing] = React.useState<ProductRow | null>(null);
+  // The console's one resync flow (UX-78): the dry run's plan, then a focused result panel
+  // above the table, named for the row's product.
+  const resync = useResyncFlow();
   const [deleting, setDeleting] = React.useState<ProductRow | null>(null);
 
   const rows = React.useMemo(
     () => (products.data ?? []).map(toRow),
     [products.data],
   );
-  const resync = confirmFor("repo.resync");
-
   const rowActions = (row: ProductRow): RowActionItem[] => [
     { label: "Open overview", onSelect: () => navigate(r.overview(row.slug)) },
     { label: "Open settings", onSelect: () => navigate(r.settings(row.slug)) },
@@ -204,7 +200,12 @@ export function Products(): React.ReactElement {
       onSelect: () => navigate(r.keys(row.slug)),
     },
     ...(row.source === "github"
-      ? [{ label: "Resync from repo…", onSelect: () => setResyncing(row) }]
+      ? [
+          {
+            label: "Resync from repo…",
+            onSelect: () => resync.start({ slug: row.slug, name: row.name }),
+          },
+        ]
       : []),
     { type: "separator" },
     {
@@ -238,6 +239,7 @@ export function Products(): React.ReactElement {
         />
       }
     >
+      {resync.panel}
       <DataTable<ProductRow>
         id="products"
         caption="Products"
@@ -281,27 +283,7 @@ export function Products(): React.ReactElement {
         mobile="cards"
       />
 
-      <ConfirmDialog
-        open={resyncing !== null}
-        onOpenChange={(o) => !o && setResyncing(null)}
-        intent={resync.intent === "none" ? "caution" : resync.intent}
-        title={`Resync ${resyncing?.name ?? ""} from its repository?`}
-        description="Reads .pkey/ from the linked repository's default branch and re-applies it."
-        consequences={[
-          "Product metadata, catalog, tiers, profiles and sign-in settings follow the manifest.",
-          "Services and enrollment policies you changed in the console keep your values.",
-          "The release store re-syncs in the same step.",
-        ]}
-        confirmLabel="Resync from repo"
-        describeError={(e) => errorCopy(e, { thing: "Product" })}
-        onConfirm={async () => {
-          if (!resyncing) return;
-          await mutate("resyncProduct", resyncing.slug);
-          toast.success("Resynced from repo", {
-            description: `${resyncing.name} matches its repository's default branch.`,
-          });
-        }}
-      />
+      {resync.dialog}
 
       <DeleteProductDialog
         product={deleting}

@@ -7,7 +7,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { resetConsole } from "./consoleHarness.js";
+import { ALL_ON, productRow, resetConsole } from "./consoleHarness.js";
 import { API, axe, bootLicense, failing, writes } from "./licenseFixture.js";
 
 beforeEach(resetConsole);
@@ -151,6 +151,61 @@ describe("Enrollment", () => {
     await userEvent.click(resync);
     expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(writes(log)).toEqual([]);
+  });
+
+  it("a linked product resyncs through the shared flow; the result shows above the probes (UX-78)", async () => {
+    const log = bootLicense(HASH, {
+      routes: {
+        [POLICY]: policy(),
+        [API]: {
+          product: {
+            ...productRow("djdl", "DJDL", ALL_ON),
+            releaseSource: "github",
+          },
+        },
+        // One path answers both: the dry run reads `plan`, the resync `updated`.
+        [`${API}/release/resync`]: {
+          ok: true,
+          dryRun: true,
+          slug: "djdl",
+          repository: "acme/djdl",
+          commit: "0123456789abcdef",
+          plan: {
+            apply: [
+              {
+                area: "fingerprint",
+                summary: "Device fingerprint policy from .pkey/product",
+              },
+            ],
+            skipClaimed: [],
+            delete: [],
+            conflicts: [],
+          },
+          updated: ["fingerprint"],
+        },
+      },
+    });
+    const probes = await section("Probes");
+    const resync = within(probes).getByRole("button", {
+      name: /Resync from repo/,
+    });
+    await waitFor(() =>
+      expect(resync.getAttribute("aria-disabled")).not.toBe("true"),
+    );
+    await userEvent.click(resync);
+    const dialog = await screen.findByRole("alertdialog");
+    await userEvent.click(
+      await within(dialog).findByRole("button", { name: "Resync from repo" }),
+    );
+    const panel = await within(probes).findByTestId("resync-result");
+    expect(
+      within(panel).getByText("Updated: device fingerprint policy."),
+    ).toBeTruthy();
+    expect(
+      log.calls
+        .filter((c) => c.path === `${API}/release/resync`)
+        .map((c) => c.query),
+    ).toEqual(["dryRun=1", ""]);
   });
 
   it("says plainly when the manifest declares no probes", async () => {
