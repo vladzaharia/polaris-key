@@ -215,7 +215,11 @@ export function retentionLocked(product: string): boolean {
 export async function setPruneRetention(
   ctx: SettingsWriteContext,
   w: {
-    product: { slug: string; system?: number | null; release_source?: string | null };
+    product: {
+      slug: string;
+      system?: number | null;
+      release_source?: string | null;
+    };
     enabled: boolean;
     expectedVersion: number;
     actor: AuditActor;
