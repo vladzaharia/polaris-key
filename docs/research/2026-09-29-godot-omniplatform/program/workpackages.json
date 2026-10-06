@@ -8456,7 +8456,7 @@
       "optional": false,
       "refs": ["notes/S-21 §6.1", "notes/S-21 §9 PS-01"],
       "brief": "wp/PS-01-polaris-key-adapter.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "PS-02",
@@ -8474,7 +8474,7 @@
       "optional": false,
       "refs": ["notes/S-21 §6.2", "notes/S-18 §7.3 D22", "notes/S-21 §9 PS-02"],
       "brief": "wp/PS-02-storefront-listing-settings.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "PS-03",
@@ -8633,7 +8633,7 @@
       "optional": false,
       "refs": ["notes/S-21 §6.8", "notes/S-21 §9 PS-10"],
       "brief": "wp/PS-10-direct-shown-as-polaris-key.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "PS-11",
