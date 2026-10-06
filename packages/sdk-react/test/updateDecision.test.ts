@@ -190,6 +190,7 @@ function adapterFor(
   over: Partial<ConstructorParameters<typeof BrowserAdapter>[0]> = {},
 ): BrowserAdapter {
   return new BrowserAdapter({
+    auth: "cookie",
     productSlug: PRODUCT,
     baseUrl: BASE,
     fetchImpl: srv.fetchImpl,

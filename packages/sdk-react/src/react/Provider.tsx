@@ -12,7 +12,11 @@ import {
   type ReactNode,
 } from "react";
 import type { JSONValue } from "@polaris-key/protocol/core";
-import { browserAdapter } from "../browser/browserAdapter.js";
+import {
+  BrowserAdapter,
+  type BrowserAdapterOptions,
+} from "../browser/browserAdapter.js";
+import type { TrustSet } from "../browser/offline.js";
 import { desktopAdapter } from "../desktop/desktopAdapter.js";
 import { resolveBridge, type PolarisBridge } from "../desktop/bridge.js";
 import type { PolarisAdapter, PolarisMode } from "../core/index.js";
@@ -73,6 +77,18 @@ export interface PolarisKeyProviderProps {
    *  would silently add network traffic to every already-shipped integration. Set it to make a
    *  remote tier change land without a reload. */
   refreshIntervalSeconds?: number;
+  /**
+   * How a browser page authenticates (SDK-PARITY-PASS §3.17, owner decision Q1). "auto" (the
+   * default) is bearer when the page is cross-origin to `baseUrl` or inside Tauri, cookie when
+   * it is first-party. Ignored in desktop mode and when an `adapter` is injected.
+   */
+  auth?: "cookie" | "bearer" | "auto";
+  /** The pinned trust keys (kid → raw Ed25519 public key, base64url). Bearer mode needs them:
+   *  every document is verified in-page. Compared by value, so an inline literal is fine. */
+  trust?: { pinnedKeys: TrustSet };
+  /** Bearer mode's token/document store (defaults to IndexedDB). Pass a stable instance: a new
+   *  one rebuilds the adapter. */
+  store?: BrowserAdapterOptions["store"];
   /** Test seams forwarded to the constructed adapter. */
   fetchImpl?: typeof fetch;
   navigate?: (url: string) => void;
@@ -141,6 +157,9 @@ export function PolarisKeyProvider(
     adapter: injected,
     version,
     refreshIntervalSeconds,
+    auth,
+    trust,
+    store,
     fetchImpl,
     navigate,
     now,
@@ -164,6 +183,19 @@ export function PolarisKeyProvider(
     [expectKey],
   );
 
+  // Pinned keys by value, for the same reason: an inline `trust={{ pinnedKeys }}` literal must
+  // not rebuild the adapter (and drop its session) on every render.
+  const trustKey = trust ? JSON.stringify(trust.pinnedKeys) : "";
+  const pinned = useMemo<{ pinnedKeys: TrustSet } | undefined>(
+    () =>
+      trustKey === ""
+        ? undefined
+        : { pinnedKeys: JSON.parse(trustKey) as TrustSet },
+    [trustKey],
+  );
+
+  // Construction does no I/O: the browser adapter is built with `autoStart: false` and started
+  // from the effect below, so a render (including a server render) never touches the network.
   const adapter = useMemo<PolarisAdapter>(() => {
     if (injected) return injected;
     const resolved = resolveMode(mode, bridge);
@@ -175,7 +207,7 @@ export function PolarisKeyProvider(
         expectServices: expected,
       });
     }
-    return browserAdapter({
+    return new BrowserAdapter({
       productSlug,
       baseUrl,
       fetchImpl,
@@ -184,6 +216,10 @@ export function PolarisKeyProvider(
       localOverrides,
       version,
       expectServices: expected,
+      ...(auth ? { auth } : {}),
+      ...(pinned ? { trust: pinned } : {}),
+      ...(store ? { store } : {}),
+      autoStart: false,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -198,7 +234,16 @@ export function PolarisKeyProvider(
     localOverrides,
     version,
     expected,
+    auth,
+    pinned,
+    store,
   ]);
+
+  // Begin the first load once mounted (SP-R13). `start()` is idempotent, so StrictMode's double
+  // effect is harmless; an injected adapter that has no `start` is left alone.
+  useEffect(() => {
+    (adapter as { start?: () => void }).start?.();
+  }, [adapter]);
 
   // Dispose the adapter when it (or the provider) goes away.
   useEffect(() => () => adapter.dispose(), [adapter]);

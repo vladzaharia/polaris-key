@@ -7,9 +7,15 @@ extends VBoxContainer
 ##
 ## Pins are compiled in, never learned: "Fill from discovery" only pre-fills candidates, and Save
 ## stays disabled until the confirmation box says the pins match `pkey trust` or the console.
+##
+## Tools (PKeySetupTools, SP-G12): "Generate config" runs `pkey sdk --lang godot --write` into
+## res://polaris_key_config.gd (release keys too, from the nearest .pkey/release), "Generate
+## catalog mirror" runs `pkey mirror --lang gdscript`, and "Add pkey_packs/* to exports" adds the
+## embedded-pack filter to every export preset (Save does it too once res://pkey_packs exists).
 
 const Check := preload("res://addons/polaris_key/editor/setup_check.gd")
 const CONFIG_PATH := "res://polaris_key.tres"
+const Tools := preload("res://addons/polaris_key/editor/setup_tools.gd")
 
 var _product: LineEdit
 var _base_url: LineEdit
@@ -20,6 +26,10 @@ var _check_button: Button
 var _fill_button: Button
 var _save_button: Button
 var _status: RichTextLabel
+var _pkey_cmd: LineEdit
+var _gen_button: Button
+var _mirror_button: Button
+var _filter_button: Button
 var _candidates: Dictionary = {}
 var _busy := false
 
@@ -57,6 +67,16 @@ func _ready() -> void:
 	_status.selection_enabled = true
 	_status.custom_minimum_size = Vector2(0, 64)
 	add_child(_status)
+	add_child(HSeparator.new())
+	_pkey_cmd = _field("Polaris Key CLI command", Tools.DEFAULT_PKEY)
+	_pkey_cmd.text = Tools.DEFAULT_PKEY
+	_gen_button = _button("Generate config (pkey sdk)", _on_generate)
+	add_child(_gen_button)
+	_mirror_button = _button("Generate catalog mirror (pkey mirror)", _on_mirror)
+	add_child(_mirror_button)
+	_filter_button = _button("Add pkey_packs/* to exports", _on_filters)
+	add_child(_filter_button)
+	add_child(_label(Tools.cors_note("")))
 	_load()
 	_update_buttons()
 
@@ -108,6 +128,9 @@ func _update_buttons() -> void:
 	_check_button.disabled = _busy
 	_fill_button.disabled = _busy or _candidates.is_empty()
 	_save_button.disabled = _busy or not _confirm.button_pressed
+	for b in [_gen_button, _mirror_button, _filter_button]:
+		if b != null:
+			b.disabled = _busy
 
 
 func _say(bbcode: String) -> void:
@@ -156,8 +179,59 @@ func _on_save() -> void:
 			return
 		pins = p["pins"]
 	var r := Check.save(CONFIG_PATH, _product.text.strip_edges(), _base_url.text.strip_edges(), pins, _channel.text.strip_edges(), _confirm.button_pressed)
-	_say("[color=%s]%s[/color]" % ["green" if r["ok"] else "red", r["message"]])
-	if r["ok"] and Engine.is_editor_hint():
+	var msg: String = "[color=%s]%s[/color]" % ["green" if r["ok"] else "red", r["message"]]
+	if r["ok"] and DirAccess.dir_exists_absolute(Tools.PACKS_DIR):
+		var f := Tools.ensure_pack_filters()
+		if not f["changed"].is_empty() or not f["ok"]:
+			msg += "\n" + f["message"]
+	_say(msg)
+	if r["ok"]:
+		_refresh(CONFIG_PATH)
+
+
+func _refresh(path: String) -> void:
+	if Engine.is_editor_hint():
 		var fs = Engine.get_singleton("EditorInterface").get_resource_filesystem() if Engine.has_singleton("EditorInterface") else null
 		if fs != null:
-			fs.update_file(CONFIG_PATH)
+			fs.update_file(path)
+
+
+func _current_release_keys() -> Dictionary:
+	if not ResourceLoader.exists(CONFIG_PATH):
+		return {}
+	var opts = ResourceLoader.load(CONFIG_PATH, "", ResourceLoader.CACHE_MODE_IGNORE)
+	return opts.pinned_release_keys if opts is PKeyOptions else {}
+
+
+func _run_cli(args: PackedStringArray, cwd: String) -> Dictionary:
+	_busy = true
+	_update_buttons()
+	_say("Running %s %s…" % [_pkey_cmd.text.strip_edges(), " ".join(args)])
+	await get_tree().process_frame
+	var r := Tools.run(Tools.invocation(_pkey_cmd.text, args, cwd, OS.get_name() == "Windows"))
+	_busy = false
+	_update_buttons()
+	return r
+
+
+func _on_generate() -> void:
+	var project := ProjectSettings.globalize_path("res://")
+	var manifest := Tools.find_manifest_dir(project)
+	var args := Tools.sdk_args(_product.text.strip_edges(), _base_url.text.strip_edges(), ProjectSettings.globalize_path(Tools.CONFIG_MODULE), _current_release_keys(), manifest != "")
+	var r: Dictionary = await _run_cli(args, manifest if manifest != "" else project)
+	_say("[color=%s]%s[/color]\n%s" % ["green" if r["ok"] else "red", "Wrote %s." % Tools.CONFIG_MODULE if r["ok"] else "pkey sdk failed (exit %d)." % r["exit"], r["output"]])
+	if r["ok"]:
+		_refresh(Tools.CONFIG_MODULE)
+
+
+func _on_mirror() -> void:
+	var project := ProjectSettings.globalize_path("res://")
+	var r: Dictionary = await _run_cli(Tools.mirror_args(_product.text.strip_edges(), _base_url.text.strip_edges(), ProjectSettings.globalize_path(Tools.MIRROR_DIR)), project)
+	_say("[color=%s]%s[/color]\n%s" % ["green" if r["ok"] else "red", "Catalog mirror written." if r["ok"] else "pkey mirror failed (exit %d)." % r["exit"], r["output"]])
+	if r["ok"]:
+		_refresh("res://catalog_generated.gd")
+
+
+func _on_filters() -> void:
+	var f := Tools.ensure_pack_filters()
+	_say("[color=%s]%s[/color]" % ["green" if f["ok"] else "red", f["message"]])

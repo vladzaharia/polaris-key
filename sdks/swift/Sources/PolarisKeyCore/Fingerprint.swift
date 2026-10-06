@@ -92,8 +92,8 @@ public enum Fingerprint {
         put(&raw, .machineModel, sysctlString("hw.model"))
         put(&raw, .cpuModel, cpuModel())
         put(&raw, .bootVolumeUuid, bootVolumeUUID())
-        #elseif os(iOS)
-        // iOS gives no hardware serials to third-party apps; identifierForVendor is the only
+        #elseif os(iOS) || os(tvOS) || os(visionOS) || os(watchOS)
+        // iOS (and tvOS, visionOS, watchOS) gives no hardware serials to third-party apps; identifierForVendor is the only
         // stable handle, and it is already the device id. Report just the model + RAM so the
         // fingerprint stays honest rather than padded with values we cannot actually read.
         put(&raw, .machineUuid, DeviceID.rawDeviceId())

@@ -45,7 +45,8 @@
           "reason": "dependency",
           "note": "When @napi-rs/keyring cannot load (a single-executable build, no Secret Service) the token is in a 0600 file; supports() reports dependency (P1b-10)."
         }
-      ]
+      ],
+      "note": "KeyringStore by default; an Electron main process uses SafeStorageStore (@polaris-key/node/electron), whose status() reports keyring-unavailable when safeStorage cannot encrypt or falls back to basic_text, and keyring-error when the stored token no longer decrypts (SP-N11)."
     },
     "core.copy": {
       "status": "planned",
@@ -131,7 +132,7 @@
     "identity.oidc": {
       "status": "planned",
       "unowned": true,
-      "note": "No browser sign-in in the Node SDK, and no work package ports it."
+      "note": "Browser redirect sign-in for native hosts waits on I-15's redirect token route (wire item W4); /identity/auth/poll is deprecated and never used. The interim is identity.signInWithBrowser(): device code opened in the system browser (SDK parity pass §3.12)."
     },
     "identity.devicecode": {
       "status": "implemented"
@@ -181,18 +182,16 @@
       "note": "client-core decideUpdate with content (feedContent, selectPackRows, prestage, the content blocks and boot required for revoked required content); client.update.decide() builds content from the content stamp, the pack state, the variant preferences and the stored revocations (runUpdateCheck steps 10-14)."
     },
     "update.driver": {
-      "status": "planned",
-      "unowned": true,
-      "note": "Only appcastUrl() today; the Velopack, electron-updater or single-executable hand-off has no work package (P3-04 excludes it)."
+      "status": "implemented",
+      "note": "client.update.install(decision) answers an InstallOutcome (restartRequired, handedOff, storeOpened, unsupported{reason}) through the configured driver: electronUpdaterDriver (the found version must equal the signed decision's and the downloaded file must hash to an artifact of its record), velopackDriver (the discovery Velopack feed), seaSelfReplaceDriver (release.fetch-verified bytes, <exe>.previous kept as the boot guard's rollback) and storeLinkDriver, under @polaris-key/node/update/drivers/*; none imports its updater (SP-N09)."
     },
     "update.bootguard": {
-      "status": "planned",
-      "unowned": true,
-      "note": "P1-09 ported the launch decision (bootGuardAction and the guard cases in stage-matrix.json); the slots, the counting and the confirmation rows come from P3-10 and P3-02."
+      "status": "implemented",
+      "note": "client.update.markBootAttempt() / confirmBoot() over client-core's bootGuardAction: slots in <stateDir>/boot-guard.json, a rollback through the install driver's hook (else boot_rolled_back with code no-previous and the version kept as skipVersion), update_confirmed / update_reverted / boot_rolled_back in the update-health journal (SP-N06)."
     },
     "outlet.detect": {
       "status": "implemented",
-      "note": "client-core's detectOutlet over this process's signals (src/update/outlet.ts readOutletSignals: environment, executable and script path conventions, isSea, Electron's mas and windowsStore, product-named markers); the update client detects when the host names no outlet. Windows SignatureKind needs WinRT and is not read."
+      "note": "client-core's detectOutlet over this process's signals (src/update/outlet.ts readOutletSignals: environment, executable and script path conventions, isSea, Electron's mas and windowsStore, product-named markers); the update client detects when the host names no outlet. The P1-11 build stamp (.polaris_key/build.json) is autoloaded when the host passes none; Windows SignatureKind is read on request through PowerShell's WinRT projection (readWindowsSignatureKind, SP-N15)."
     },
     "crash.tags": {
       "status": "planned",
@@ -304,7 +303,8 @@
       "note": "No work package owns the Flatpak extension transport (P5-08 Out)."
     },
     "ui.stages": {
-      "status": "implemented"
+      "status": "implemented",
+      "note": "BOOT_STAGES, bootTransition, bootGuardAction and the rest re-exported from client-core; client.boot({onStage}) drives the machine end to end and client.ensureActivated() runs its first three stages (SP-N05)."
     },
     "ui.boot": {
       "status": "planned",
@@ -322,9 +322,8 @@
       "note": "SP-N14, SDK-PARITY-PASS §5.1."
     },
     "commerce.receipt": {
-      "status": "planned",
-      "wp": "LX-20",
-      "note": "Required (owner, 2026-10-05). LX-20 builds the client side (Steam claim) over P6-01's Worker bridge."
+      "status": "implemented",
+      "note": "client.commerce: binding(), claim(store, payload) and the store helpers claimSteam(ticketHex, dlcAppId), claimAppStore(jws), claimPlay(productId, token). No store SDK dependency: the host passes what its store handed it (SDK parity pass §3.9, SP-N04)."
     }
   }
 }

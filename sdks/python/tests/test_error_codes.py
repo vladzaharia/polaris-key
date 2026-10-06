@@ -25,6 +25,8 @@ SRC = Path(__file__).resolve().parent.parent / "src" / "polaris_key"
 _RAISED = (
     re.compile(r"\bPolarisError\(\s*(?:[^,]*?\bor\s+)?\"([a-z][a-z0-9_-]*)\""),
     re.compile(r"^\s*code\s*(?::\s*\w+\s*)?=\s*\"([a-z][a-z0-9_-]*)\"", re.MULTILINE),
+    # devices/client.py's roster refusals: the fallback code when the server names none.
+    re.compile(r"\b_refusal\(\s*\w+,\s*\"([a-z][a-z0-9_-]*)\""),
 )
 
 

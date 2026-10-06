@@ -72,6 +72,14 @@ public struct CoreOptions: Sendable {
     /// This device's label (WIRE-CONTRACT-V4 §12.7.1): what the sign-in page and the customer's
     /// device list call it. `nil`: the platform default (`defaultDeviceName()`); `""`: send none.
     public let deviceName: String?
+    /// A keychain access group (`<TeamID>.<group>`) the token item is written to, so an app and
+    /// its extensions share one credential (SP-S15). Nil: the app's default group.
+    public let keychainAccessGroup: String?
+    /// An app-group identifier (`group.<…>`): every directory not given explicitly (config,
+    /// data, cache, state) is placed in the group's shared container, so extensions read the
+    /// same cache. Nil, or (on iOS) a group this process is not entitled to: the per-app
+    /// defaults. macOS answers a container path for any group; entitle the app for it.
+    public let appGroup: String?
 
     public init(
         productSlug: String,
@@ -89,8 +97,12 @@ public struct CoreOptions: Sendable {
         dataDir: URL? = nil,
         cacheDir: URL? = nil,
         stateDir: URL? = nil,
-        deviceName: String? = nil
+        deviceName: String? = nil,
+        keychainAccessGroup: String? = nil,
+        appGroup: String? = nil
     ) {
+        self.keychainAccessGroup = keychainAccessGroup
+        self.appGroup = appGroup
         self.productSlug = productSlug
         self.baseUrl = baseUrl
         self.version = version
@@ -291,6 +303,22 @@ public actor CoreContext {
     /// Where the device report reads the active pack set's id (plans/P4-01.md §2.11): set by the
     /// packs facet (`update.packs`) when it is constructed; nil when no facet exists.
     private nonisolated let packSetIdSource = PackSetIdSource()
+    /// The update-health journal (P6-03): events queued for the next device report.
+    public nonisolated let journal: UpdateJournal
+    private nonisolated let eventSink = LockedValue<(@Sendable (CoreEvent) -> Void)?>(nil)
+
+    /// Where module events go (the facade's `client.events`).
+    public nonisolated func setEventSink(_ sink: (@Sendable (CoreEvent) -> Void)?) {
+        eventSink.set(sink)
+    }
+
+    /// Hand an event to the facade, if one listens.
+    public nonisolated func emit(_ event: CoreEvent) {
+        eventSink.current?(event)
+    }
+    /// The attest-and-retry hook (notes/SDK-PARITY-PASS.md §3.10), set by the facade when this
+    /// runtime can attest.
+    private nonisolated let attestor = LockedValue<(@Sendable () async -> Bool)?>(nil)
 
     // ── Live state ───────────────────────────────────────────────────────────────────────
     private var deviceIdValue = ""
@@ -325,12 +353,17 @@ public actor CoreContext {
         self.channel = options.channel ?? Semver.channelForVersion(options.version).rawValue
         self.pinnedTrust = options.pinnedKeys
         self.trustRefreshEnabled = options.trustRefresh
+        let groupRoots = options.appGroup.flatMap { ProductDirs.Roots.appGroup($0) }
         self.dirs = ProductDirs.resolve(
             productSlug: options.productSlug, configDir: options.configDir,
-            dataDir: options.dataDir, cacheDir: options.cacheDir, stateDir: options.stateDir)
+            dataDir: options.dataDir, cacheDir: options.cacheDir, stateDir: options.stateDir,
+            roots: groupRoots ?? .system())
         self.store =
             options.store
-            ?? KeychainStore(productSlug: options.productSlug, configDir: options.configDir)
+            ?? KeychainStore(
+                productSlug: options.productSlug, configDir: options.configDir ?? groupRoots?.config,
+                accessGroup: options.keychainAccessGroup)
+        self.journal = UpdateJournal(store: self.store)
         let transport = options.transport ?? URLSessionTransport()
         self.transport = transport
         self.localOnly = transport is NoNetworkTransport
@@ -999,6 +1032,21 @@ public actor CoreContext {
     /// interprets them.
     /// Register where `devices/report`'s `content.packSetId` comes from (the packs facet does this
     /// itself; a host never needs to). The latest registration wins.
+    /// Register how this client attests (`devices.attest()`), so a call refused with 403
+    /// `attestation_required` (edge-mint, gated delivery, a commerce claim) can attest ONCE and
+    /// retry ONCE. Unset — the default, and always on a runtime that cannot attest — the caller
+    /// gets the typed refusal.
+    public nonisolated func setAttestor(_ attest: (@Sendable () async -> Bool)?) {
+        attestor.set(attest)
+    }
+
+    /// Attest for a retry: true when an attestor is registered and it raised the device to
+    /// `attested`. The caller retries its request once on true and never loops.
+    public nonisolated func attestForRetry() async -> Bool {
+        guard let attest = attestor.current else { return false }
+        return await attest()
+    }
+
     public nonisolated func setPackSetIdSource(_ source: @escaping @Sendable () async -> String?) {
         packSetIdSource.set(source)
     }

@@ -25,7 +25,7 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
 **No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
 
-- Developer docs: the sign-in step model (SIGN-IN.md §3), license choice and what end users see, `status: "choose"` on the exchange, `license_choice_required` on the card's Continue, Replace a device and its shared rate budget, Account-wide licences; glossary entry "Account-wide" (`start/concepts.md`).
+- Developer docs: the sign-in step model (SIGN-IN.md §3), license choice and what end users see, `status: "choose"` on the exchange, `license_choice_required` on the card's Continue, Replace a device and its shared rate budget, sign-in licences; a glossary entry saying licences are not typed: every licence is account-bound and shows its origin in plain words ("From signing in", "Steam key ending 3WPLDA", "From Steam") (`start/concepts.md`; owner decision 2026-10-05: no 'Account-wide' label).
 
 ## Goal
 

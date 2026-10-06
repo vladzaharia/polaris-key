@@ -67,7 +67,13 @@ static func run(android: PKeyAndroid, request: Dictionary) -> PKeyApplyResult:
 	var opts := {"expected_size": size, "timeout": float(request.get("timeout", PKeyDownload.DEFAULT_TIMEOUT))}
 	if request.get("progress") is Callable:
 		opts["progress"] = request["progress"]
-	var r := await PKeyDownload.fetch(request.get("transport"), url, dest, request.get("headers", {}), opts)
+	var fetch := func() -> PKeyResult: return await PKeyDownload.fetch(request.get("transport"), url, dest, request.get("headers", {}), opts)
+	var attest: Callable = request.get("with_attestation", Callable())
+	var r: PKeyResult
+	if attest.is_valid():
+		r = await attest.call(fetch)
+	else:
+		r = await fetch.call()
 	if not r.ok:
 		return PKeyApplyResult.failed(r.code, r.message, r.detail)
 	var part: String = r.detail["path"]

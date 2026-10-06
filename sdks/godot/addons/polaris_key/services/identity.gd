@@ -14,6 +14,13 @@ extends RefCounted
 ##   open_in_browser(prompt), copy_link(prompt)
 ##                                         for the dialog's two buttons
 ##   signed_in_identity()                  who the device is signed in as, for the UI to show
+##   current()                             {name, email, activatedAt} of the signed-in person off
+##                                         the verified licence, or null (SDK parity §3.12)
+##   sign_out()                            cancel any sign-in, forget the identity and release
+##                                         this device (license.deactivate()); a PKeyResult
+##   sign_in_with_browser(device_name)     begin_sign_in, then open the verification page in the
+##                                         system browser (the interim "Sign in with browser"
+##                                         until a native redirect route exists, I-15)
 ##
 ## The pieces underneath, for a host that paces the flow itself (and for the transcript replays):
 ## `request_sign_in(device_name)` (the start alone), `poll_sign_in(prompt)` (exactly one poll)
@@ -189,6 +196,48 @@ func signed_in_identity() -> Dictionary:
 			if not shown.is_empty():
 				return shown
 	return _last_identity.duplicate()
+
+
+## The signed-in person, SDK parity §3.12's `identity.current()`: {name, email, activatedAt} off
+## the verified licence document's profile (a value the profile lacks is null), or null when the
+## device holds no profile naming someone.
+func current() -> Variant:
+	var core := _core()
+	if core == null or core.cache == null or core.cache.license == null:
+		return null
+	var doc = core.cache.license.get("doc")
+	if not (doc is Dictionary) or not (doc.get("profile") is Dictionary):
+		return null
+	var p: Dictionary = doc["profile"]
+	var name = p.get("name") if p.get("name") is String and p["name"] != "" else null
+	var email = p.get("email") if p.get("email") is String and p["email"] != "" else null
+	if name == null and email == null:
+		return null
+	var at = p.get("activatedAt")
+	return {"name": name, "email": email, "activatedAt": int(at) if PKeyClaims.is_number(at) else null}
+
+
+## Sign this device out (SDK parity §3.12's `identity.signOut()`): cancel a sign-in in progress,
+## forget the identity this session saw, and release the seat with license.deactivate() (its
+## best-effort server call, then the mandatory local wipe). The PKeyResult is deactivate()'s;
+## `state_changed` fires as for a deactivation. A coroutine.
+func sign_out() -> PKeyResult:
+	cancel()
+	_last_identity = {}
+	var license = _host.get("license") if _host != null and is_instance_valid(_host) else null
+	if license == null:
+		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call configure() and start() first.")
+	return await license.deactivate()
+
+
+## "Sign in with browser" (SDK parity §3.12): begin_sign_in, then open the verification page in
+## the system browser at once; the QR code and the code stay on screen for another device. The
+## prompt as begin_sign_in returns it. A coroutine.
+func sign_in_with_browser(device_name := "", confirm_identity := false) -> PKeySignInPrompt:
+	var prompt := await begin_sign_in(device_name, confirm_identity)
+	if prompt.ok:
+		open_in_browser(prompt)
+	return prompt
 
 
 ## The name a sign-in shows the human when the game gives none: the device model where the OS

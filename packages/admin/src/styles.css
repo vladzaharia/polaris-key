@@ -177,6 +177,14 @@
     cursor: pointer;
   }
 
+  /* Every table cell is vertically centred in its row (the owner's rule: a one-line cell beside a
+     two-line one sits on the row's middle, not its top). A cell's own utility class still wins;
+     none should set anything but align-middle (test/tableCells.test.ts). */
+  th,
+  td {
+    vertical-align: middle;
+  }
+
   input::placeholder,
   textarea::placeholder {
     color: var(--pk-text-subtle);

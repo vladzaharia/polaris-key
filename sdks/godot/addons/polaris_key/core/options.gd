@@ -102,8 +102,20 @@ const CONFIG_ENV_NEVER := 2
 ## (PolarisKey.devices.attest() on a Play install). Empty: the one the Worker's attestation
 ## challenge carries (`play.cloudProjectNumber`, set by the operator). Digits only.
 @export var play_cloud_project_number := ""
+## Attest and retry (SDK parity §3.10): when an edge-mint, a gated download or a commerce claim
+## answers 403 `attestation_required`, run PolarisKey.devices.attest() once and retry once. Only
+## iOS and Android store installs can attest; elsewhere the refusal comes back unchanged. Off: the
+## caller always gets the refusal.
+@export var auto_attest := true
 
 @export_group("Config")
+## Persist the player's settings by default (SDK parity §3.11): when the game has not installed its
+## own override store, PolarisKey.config keeps the local layer in a PKeyConfigFileStore at
+## `settings_path`, so a PKeySettingsPanel change survives a restart. Off: an in-memory layer
+## (the game installs its own store with config.set_override_store()).
+@export var persist_settings := true
+## Where the default settings store lives (a ConfigFile; your own settings.cfg works too).
+@export var settings_path := "user://pkey_settings.cfg"
 ## The config environment layer (`PKEY_CONFIG_*` variables and `--pkey-config key=value`
 ## arguments). Auto: on in debug builds and on desktop, off in release builds on mobile and web.
 @export_enum("Auto", "Always", "Never") var config_env_layer := CONFIG_ENV_AUTO

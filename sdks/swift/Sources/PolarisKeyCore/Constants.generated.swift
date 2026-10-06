@@ -1365,7 +1365,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "devices.manage": CapabilityRow(status: "implemented", service: "core", na: []),
     "devices.report": CapabilityRow(status: "implemented", service: "core", na: []),
     "telemetry.updates": CapabilityRow(status: "planned", service: "core", na: []),
-    "devices.attest": CapabilityRow(status: "planned", service: "core", na: [CapabilityNa(runtime: "macos", reason: "runtime")]),
+    "devices.attest": CapabilityRow(status: "implemented", service: "core", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "outlet")]),
     "identity.oidc": CapabilityRow(status: "planned", service: "identity", na: []),
     "identity.devicecode": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.devicelabel": CapabilityRow(status: "implemented", service: "identity", na: []),
@@ -1380,7 +1380,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "update.decide": CapabilityRow(status: "implemented", service: "update", na: []),
     "update.content": CapabilityRow(status: "implemented", service: "update", na: []),
     "update.driver": CapabilityRow(status: "implemented", service: "update", na: [CapabilityNa(runtime: "ios", reason: "outlet")]),
-    "update.bootguard": CapabilityRow(status: "planned", service: "update", na: []),
+    "update.bootguard": CapabilityRow(status: "implemented", service: "update", na: []),
     "outlet.detect": CapabilityRow(status: "implemented", service: "update", na: []),
     "crash.tags": CapabilityRow(status: "planned", service: "sdk", na: []),
     "packs.record": CapabilityRow(status: "implemented", service: "release", na: []),
@@ -1402,7 +1402,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "packs.type.audio.bank": CapabilityRow(status: "na", service: "release", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "packs.type.ml.model": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.provides": CapabilityRow(status: "implemented", service: "release", na: []),
-    "packs.transport.apple": CapabilityRow(status: "planned", service: "distribution", na: []),
+    "packs.transport.apple": CapabilityRow(status: "implemented", service: "distribution", na: []),
     "packs.transport.play": CapabilityRow(status: "na", service: "distribution", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "packs.transport.steam": CapabilityRow(status: "planned", service: "distribution", na: [CapabilityNa(runtime: "ios", reason: "runtime")]),
     "packs.transport.msix": CapabilityRow(status: "na", service: "distribution", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
@@ -1411,8 +1411,8 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "ui.boot": CapabilityRow(status: "planned", service: "sdk", na: []),
     "ui.kit": CapabilityRow(status: "planned", service: "sdk", na: []),
     "ui.cli": CapabilityRow(status: "na", service: "sdk", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
-    "commerce.receipt": CapabilityRow(status: "planned", service: "license", na: []),
+    "commerce.receipt": CapabilityRow(status: "implemented", service: "license", na: []),
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "f3182bb44e3810387d8809dc4d21b5b6c37f7848761aa85799f38d7f7ea138c3"
+public let CAPABILITY_DIGEST = "2be8a7c61c11bccf907a35ac951289948d6b64b1ebc6f56a942e6c56e1b173f5"

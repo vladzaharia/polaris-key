@@ -115,20 +115,23 @@
       "note": "SP-S05, SDK-PARITY-PASS §5.4."
     },
     "devices.attest": {
-      "status": "planned",
-      "unowned": true,
+      "status": "implemented",
       "except": [
         {
           "runtime": "macos",
           "reason": "runtime"
+        },
+        {
+          "runtime": "ios",
+          "reason": "outlet"
         }
       ],
-      "note": "P6-02 adds DCAppAttestService (generate, attest, assert) to PolarisKeyPlatform for native hosts; no work package wires attestation into the Swift SDK client."
+      "note": "client.devices.attest() (PolarisKey/DevicesClient.swift): POST devices/attest/challenge, DCAppAttestService.attestKey over SHA-256(UTF-8(requestHash)) through PolarisKeyPlatform's AppAttestClient, POST devices/attest; the key id kept in the Keychain (account app_attest_key) and re-attested with a fresh key when a reinstall, migration or restore killed it. Registered as Core's attestor so a 403 attestation_required edge-mint or commerce claim attests once and retries once. Unsupported runtime on macOS and where App Attest does not run (the simulator); outlet on an iOS build with an embedded provisioning profile."
     },
     "identity.oidc": {
       "status": "planned",
       "unowned": true,
-      "note": "Only through a host-supplied sign-in closure; no work package gives Swift its own browser sign-in."
+      "note": "No OIDC redirect flow yet: native browser sign-in waits on I-15. The interim is client.identity signInWithBrowser(), which opens the device-code verification URL in ASWebAuthenticationSession and polls identity.devicecode (never the deprecated /identity/auth/poll)."
     },
     "identity.devicecode": {
       "status": "implemented"
@@ -185,9 +188,8 @@
       "note": "Sparkle on macOS."
     },
     "update.bootguard": {
-      "status": "planned",
-      "unowned": true,
-      "note": "P1-09 ported the launch decision (bootGuardAction and the guard cases in stage-matrix.json); the slots, the counting and the confirmation rows come from P3-10 and P3-02."
+      "status": "implemented",
+      "note": "PolarisKeyCore AppBootGuard (client.bootGuard, client.markBootAttempt/confirmBoot with PolarisKeyUpdate): bootGuardAction over a launch counter kept beside the credential (Store record boot-guard); an Apple app has no previous build to roll back to, so after MAX_FAILED_BOOTS it journals P6-03 boot_rolled_back (code no-previous) once and answers rollBackUnavailable; the first confirmed launch of a new build journals update_confirmed. client.boot() marks the attempt and confirms BOOT_OK_SECONDS after ready."
     },
     "outlet.detect": {
       "status": "implemented",
@@ -278,9 +280,8 @@
       "note": "P4-16: MlModelHandler (host-registered): model.json runtime, quantisation and RAM/VRAM needs against the host budget, then the host load test before model(packId) swaps."
     },
     "packs.transport.apple": {
-      "status": "planned",
-      "unowned": true,
-      "note": "P5-05's PolarisKeyPlatform target carries the AssetPackManager client (iOS / macOS 26.4, behind #if compiler(>=6.3)) behind its C surface; P5-08 wires the transport for Godot only, and no package adopts it as a Swift SDK pack transport."
+      "status": "implemented",
+      "note": "SP-S08: PolarisKeyUpdate's AppleAssetPackTransport (a PackPlatformTransport over P5-05's AssetPackClient, set as PacksOptions.platformTransport): the level's asset pack <pack>-c<contentApi> (dots to hyphens), files under pkey/<asset pack>/ resolved with url(for:) on every call and never persisted, ensure with progress forwarded. The engine plans a carried pack only through the platform (plan-transport-unsupported while it is unavailable, never a CDN fallback), verifies the marker and the payload or treeDigest against the signed record, floats to a later unrevoked seq, and never commits the copy to the state. Unsupported version below iOS / macOS 26.4 and outlet without the Background Assets Info.plist keys. Stub-proven in PlatformTransportTests; the TestFlight device run is the owner's, as for Godot's P5-08."
     },
     "packs.transport.play": {
       "status": "na",
@@ -309,7 +310,8 @@
       "reason": "runtime"
     },
     "ui.stages": {
-      "status": "implemented"
+      "status": "implemented",
+      "note": "bootTransition and the stage-matrix replay (StageMatrixTests); client.boot() drives it end to end (discover, guard, sync, keyless reacquire under an open policy, gate, decide and fetch hooks installed by PolarisKeyUpdate, mount)."
     },
     "ui.boot": {
       "status": "planned",
@@ -319,7 +321,7 @@
     "ui.kit": {
       "status": "planned",
       "unowned": true,
-      "note": "PolarisLoginView only; no work package builds the rest of the Swift kit."
+      "note": "PolarisLoginView, PolarisGate, PolarisSignIn and PolarisOfflineActivation over the @Observable PolarisKeyModel; the rest of the kit (PARITY §5.9) belongs to the UI-kit program (UK-*)."
     },
     "ui.cli": {
       "status": "na",
@@ -328,9 +330,8 @@
       "note": "This SDK ships a widget kit (ui.kit); the terminal kit is the headless SDKs' expectation."
     },
     "commerce.receipt": {
-      "status": "planned",
-      "wp": "LX-20",
-      "note": "P5-05's PolarisKeyPlatform target carries the StoreKit 2 client (signed JWS, appAccountToken, deduplicated Transaction.updates, finish on demand); LX-20 wires it into the SDK client over P6-01's Worker bridge."
+      "status": "implemented",
+      "note": "client.commerce (PolarisKey/CommerceClient.swift): binding() and claim(store:payload:) with claimAppStore/claimSteam/claimPlay, a forced sync after a granted claim, attest-and-retry on attestation_required; purchase(productID:) runs binding, StoreKit 2 purchase(appAccountToken: bindingId), claim, finish only after the claim, sync; restore() and the Transaction.updates loop claim and finish after the claim. Without StoreKit purchase/restore answer the typed runtime N/A."
     }
   }
 }

@@ -67,15 +67,15 @@ enum Fixtures {
         issuedAt: Int,
         expiresAt: Int? = nil,
         graceUntil: Int? = nil,
-        entitlements: [String: ManagedEntry] = [:]
+        entitlements: [String: ManagedEntry] = [:],
+        profile: DocProfile = DocProfile(name: "Ada", firstName: "Ada", email: "a@e.com", activatedAt: 1)
     ) -> LicenseDoc {
         LicenseDoc(
             iss: iss, aud: aud, deviceId: deviceId, issuedAt: issuedAt,
             expiresAt: expiresAt ?? (issuedAt + DOC_EXPIRY_SECONDS),
             graceUntil: graceUntil ?? (issuedAt + 30 * SECONDS_PER_DAY),
             licenseId: licenseId,
-            profile: DocProfile(
-                name: "Ada", firstName: "Ada", email: "a@e.com", activatedAt: 1),
+            profile: profile,
             entitlements: entitlements)
     }
 

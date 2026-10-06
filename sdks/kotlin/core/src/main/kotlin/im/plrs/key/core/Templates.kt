@@ -30,7 +30,11 @@ public fun expandTemplate(template: String, baseUrl: String, values: Map<String,
     }
 }
 
-/** Whether [url] is on the control plane's own origin (scheme, host, port): the only place a bearer goes. */
+/**
+ * Whether [url] is on the control plane's own origin (scheme, host, port): the only place a bearer
+ * goes, with one exception: a verified build download (`fetchVerified`) also sends it to the bytes host
+ * discovery declares, the origin of its `builds` template (`CoreContext.bearerAllowed`).
+ */
 public fun sameOrigin(url: String, baseUrl: String): Boolean = try {
     val a = URI(url)
     val b = URI(baseUrl)

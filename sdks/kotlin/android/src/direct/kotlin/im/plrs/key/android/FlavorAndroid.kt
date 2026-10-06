@@ -10,6 +10,7 @@ import im.plrs.key.core.Feature
 import im.plrs.key.core.ReleaseRecordDoc
 import im.plrs.key.core.Unsupported
 import im.plrs.key.core.UnsupportedReason
+import im.plrs.key.core.UpdateEventJournal
 import im.plrs.key.packs.EmbeddedPack
 import im.plrs.key.update.InstallDriver
 import java.io.File
@@ -39,12 +40,16 @@ internal object FlavorAndroid {
         buildUrl: suspend (String, String) -> String?,
         download: () -> BuildDownload,
         play: PlayUpdatePolicy,
+        events: () -> UpdateEventJournal?,
+        runningVersion: String,
     ): InstallDriver = DirectInstallDriver(
         ApkInstallerSessions(context),
         records,
         buildUrl,
         { url, dest -> download().download(url, dest) },
         File(context.filesDir, "pkey/$productSlug/updates/apk"),
+        events = events,
+        runningVersion = runningVersion,
     )
 }
 

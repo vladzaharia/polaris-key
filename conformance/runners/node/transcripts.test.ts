@@ -7,7 +7,7 @@
 // @pkey-feature config.schema release.changelog release.download
 // @pkey-feature identity.devicecode identity.devicelabel config.mint
 // @pkey-feature update.feed release.record update.decide
-// @pkey-feature packs.apply.chunk
+// @pkey-feature packs.apply.chunk commerce.receipt
 //
 // Which transcripts run is DATA: `applies()` reads `packages/sdk-node/parity.json`, so a
 // transcript for a feature Node has not implemented is listed as skipped rather than failing,
@@ -34,7 +34,8 @@
 // TypeScript's `private` is compile-time only), against the blobs template the last discover
 // returned. `range` is the fetch's status; `bytes` the body it returned, as a string.
 
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import {
@@ -290,6 +291,34 @@ async function act(
         out.code = e.code;
       }
       break;
+    case "commerceBinding": {
+      const r = await client.commerce.binding();
+      if (r.kind === "ok") {
+        out.result = "ok";
+        out.bindingId = r.bindingId;
+        out.products = r.products as JsonValue;
+      } else {
+        out.result = r.code;
+        if (r.reason !== undefined) out.reason = r.reason;
+      }
+      break;
+    }
+    case "commerceClaim": {
+      const r = await client.commerce.claim(
+        String(step.args.store) as never,
+        (step.args.payload ?? {}) as Record<string, unknown>,
+      );
+      if (r.kind === "ok") {
+        out.result = "ok";
+        out.flag = r.flag;
+        out.state = r.state;
+        out.granted = r.granted;
+      } else {
+        out.result = r.code;
+        if (r.reason !== undefined) out.reason = r.reason;
+      }
+      break;
+    }
     case "downloadUrl":
       out.url = client.release.downloadUrl(
         String(step.args.version),
@@ -364,6 +393,9 @@ async function replay(t: Transcript): Promise<void> {
     requestTimeoutMs: 0,
     // PX-W13: `initial.deviceName` stands in for the platform's device name; absent = none.
     deviceName: t.initial.deviceName ?? "",
+    // The update-health journal and other persisted state live in a throwaway directory, so a
+    // replay never reads what an earlier one wrote (or writes into the developer's home).
+    stateDir: mkdtempSync(join(tmpdir(), "pkey-replay-state-")),
     ...(services ? { expectedServices: services as never } : {}),
     ...(u
       ? {

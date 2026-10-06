@@ -1,0 +1,685 @@
+{
+  "$schema": "./copy.schema.json",
+  "$comment": "zh-Hans translation of copy.en.json, produced against packages/brand/kit-copy/glossary.json and not yet reviewed by a native speaker (reviewed: false; a release follow-up, not a merge blocker). Register: “你”, concise modern software Chinese as in Apple and Google zh-Hans UI.",
+  "copyVersion": 1,
+  "locale": "zh-Hans",
+  "reviewed": false,
+  "fallback": {
+    "title": "出现问题",
+    "message": "出现问题（{code}）。请重试。"
+  },
+  "codes": {
+    "unauthorized": {
+      "title": "未登录",
+      "message": "此设备未登录，或其许可证已失效。请重新登录或激活。"
+    },
+    "not_found": {
+      "title": "未找到",
+      "message": "未找到该内容，它可能已被移除。"
+    },
+    "bad_request": {
+      "title": "请求被拒绝",
+      "message": "请求无效。请更新应用后重试。"
+    },
+    "forbidden": {
+      "title": "不允许",
+      "message": "你无权执行此操作。"
+    },
+    "attestation_required": {
+      "title": "需要设备验证",
+      "message": "此操作需要经过验证的设备。请允许应用验证此设备，然后重试。"
+    },
+    "attestation_rejected": {
+      "title": "设备验证失败",
+      "message": "无法验证此设备。请重试。"
+    },
+    "attestation_unavailable": {
+      "title": "设备验证不可用",
+      "message": "此应用目前无法进行设备验证。请几分钟后重试。"
+    },
+    "rate_limited": {
+      "title": "尝试次数过多",
+      "message": "尝试次数过多。请稍等片刻后重试。"
+    },
+    "body_too_large": {
+      "title": "内容过大",
+      "message": "内容过大，无法发送。"
+    },
+    "method_not_allowed": {
+      "title": "请求被拒绝",
+      "message": "请求无效。请更新应用后重试。"
+    },
+    "misconfigured": {
+      "title": "服务未设置",
+      "message": "此服务未正确设置。请联系开发者。"
+    },
+    "registration_closed": {
+      "title": "注册已关闭",
+      "message": "目前无法注册新设备。请使用许可证密钥激活或登录。"
+    },
+    "value_not_representable": {
+      "title": "值不被接受",
+      "message": "某个值无法保存。请修改后重试。"
+    },
+    "document_not_representable": {
+      "title": "服务出现问题",
+      "message": "服务无法准备你的设置。请联系开发者。"
+    },
+    "device_limit": {
+      "title": "已达到设备上限",
+      "message": "此许可证已用满所有设备。请替换一台设备以在此使用。"
+    },
+    "license_disabled": {
+      "title": "许可证已停用",
+      "message": "此许可证已被停用。请联系开发者。"
+    },
+    "license_expired": {
+      "title": "许可证已过期",
+      "message": "此许可证已过期。请续订以继续使用。"
+    },
+    "not_entitled": {
+      "title": "未包含",
+      "message": "你的许可证不包含此内容。"
+    },
+    "version_blocked": {
+      "title": "需要更新",
+      "message": "此版本无法与你的许可证一起使用。请更新应用以继续。"
+    },
+    "channel_not_allowed": {
+      "title": "渠道未包含",
+      "message": "你的许可证不包含此发布渠道。"
+    },
+    "hardware_mismatch": {
+      "title": "设备已更改",
+      "message": "此设备的硬件已更改。请重新激活以在此使用你的许可证。"
+    },
+    "fingerprint_required": {
+      "title": "设备验证失败",
+      "message": "此许可证需要硬件指纹，但无法在此设备上读取。"
+    },
+    "enroll_disabled": {
+      "title": "无免费许可证",
+      "message": "此应用不提供免费许可证。请输入许可证密钥或登录。"
+    },
+    "enroll_claimed": {
+      "title": "登录以继续",
+      "message": "此设备的免费许可证现已归属于某个账户。请登录以使用它。"
+    },
+    "enroll_failed": {
+      "title": "无法获取免费许可证",
+      "message": "无法发放免费许可证。请几分钟后重试。"
+    },
+    "managed_by_admin": {
+      "title": "由你的组织设置",
+      "message": "此设置由你的组织管理，无法在此更改。"
+    },
+    "catalog_unavailable": {
+      "title": "设置不可用",
+      "message": "目前无法加载设置。请几分钟后重试。"
+    },
+    "license_unusable": {
+      "title": "许可证已失效",
+      "message": "你的许可证已失效，因此无法加载设置。请重新登录或激活。"
+    },
+    "disabled": {
+      "title": "登录不可用",
+      "message": "此应用未开启登录功能。"
+    },
+    "oidc_error": {
+      "title": "登录失败",
+      "message": "登录未完成。请重试。"
+    },
+    "unavailable": {
+      "title": "登录不可用",
+      "message": "登录目前不可用。请几分钟后重试。"
+    },
+    "auth_method_disabled": {
+      "title": "登录方式不可用",
+      "message": "该登录方式已关闭。请选择其他方式。"
+    },
+    "email_not_configured": {
+      "title": "电子邮件登录不可用",
+      "message": "电子邮件登录目前不可用。请选择其他登录方式。"
+    },
+    "license_owned": {
+      "title": "许可证在另一个账户中",
+      "message": "此{product}许可证已在另一个Polaris Key账户中。许可证不会通过密钥转移。"
+    },
+    "email_mismatch": {
+      "title": "电子邮件未验证",
+      "message": "此许可证属于你的账户尚未验证的电子邮件地址。请添加并验证该电子邮件，然后重试。"
+    },
+    "link_conflict": {
+      "title": "已被关联",
+      "message": "该登录方式属于另一个Polaris Key账户。请登录那个账户，或将两个账户合并。"
+    },
+    "last_link": {
+      "title": "无法移除",
+      "message": "这是你账户唯一的登录方式。请先添加其他登录方式再移除它。"
+    },
+    "step_up_required": {
+      "title": "确认是你本人",
+      "message": "为了你的安全，请重新登录以继续。"
+    },
+    "not_eligible": {
+      "title": "优惠不可用",
+      "message": "此优惠已不再适用于你的账户。请刷新后重试。"
+    },
+    "download_auth_required": {
+      "title": "登录以下载",
+      "message": "请登录或激活许可证以下载此内容。"
+    },
+    "delivery_gate_missing": {
+      "title": "下载不可用",
+      "message": "此下载尚未设置。请联系开发者。"
+    },
+    "upstream_rate_limited": {
+      "title": "下载繁忙",
+      "message": "下载服务目前繁忙。请几分钟后重试。"
+    },
+    "server_misconfigured": {
+      "title": "服务未设置",
+      "message": "此服务未正确设置。请联系开发者。"
+    },
+    "internal_error": {
+      "title": "下载失败",
+      "message": "下载服务器出现问题。请几分钟后重试。"
+    },
+    "release_record_rejected": {
+      "title": "版本被拒绝",
+      "message": "由于某项检查未通过，此版本未发布。发布日志中写明了该检查。"
+    },
+    "release_tag_is_pack_release": {
+      "title": "版本已跳过",
+      "message": "由于标签与某个内容包版本相同，此版本已被跳过。请重命名该标签。"
+    },
+    "feed_not_composable": {
+      "title": "无法检查更新",
+      "message": "目前无法检查更新。请几分钟后重试。"
+    },
+    "service-unavailable": {
+      "title": "不可用",
+      "message": "此应用不使用此服务。"
+    },
+    "service-disabled": {
+      "title": "不可用",
+      "message": "此应用已关闭此服务。"
+    },
+    "local-only": {
+      "title": "离线模式",
+      "message": "此应用正以离线模式运行，因此未连接。"
+    },
+    "insecure-base-url": {
+      "title": "连接不安全",
+      "message": "应用拒绝了不安全的连接。请联系开发者。"
+    },
+    "bundle-jws-rejected": {
+      "title": "激活文件无效",
+      "message": "激活文件的签名无效。"
+    },
+    "bundle-claims-rejected": {
+      "title": "激活文件无效",
+      "message": "激活文件适用于其他产品或设备，或已过期。"
+    },
+    "bundle-trust-rejected": {
+      "title": "激活文件不受信任",
+      "message": "激活文件使用了此应用不信任的密钥签名。"
+    },
+    "inner-doc-rejected": {
+      "title": "激活文件无效",
+      "message": "激活文件中的许可证无效。"
+    },
+    "bundle": {
+      "title": "激活文件无效",
+      "message": "无法读取激活文件。"
+    },
+    "transport": {
+      "title": "连接出现问题",
+      "message": "请检查网络连接后重试。"
+    },
+    "network": {
+      "title": "无法连接",
+      "message": "无法连接到Polaris Key。请检查网络连接后重试。"
+    },
+    "refresh-failed": {
+      "title": "无法刷新",
+      "message": "无法刷新你的许可证和设置。请检查网络连接后重试。"
+    },
+    "sync-failed": {
+      "title": "无法检查你的许可证",
+      "message": "无法检查你的许可证，因此应用无法启动。请检查网络连接后重试。"
+    },
+    "fetch-failed": {
+      "title": "内容缺失",
+      "message": "无法下载必需的内容，因此应用无法启动。请检查网络连接后重试。"
+    },
+    "bridge-missing": {
+      "title": "应用出现问题",
+      "message": "应用的许可桥接组件缺失。请重新安装应用或联系开发者。"
+    },
+    "unknown": {
+      "title": "出现问题",
+      "message": "出现问题。请重试。"
+    },
+    "release-refused": {
+      "title": "未包含",
+      "message": "你的许可证不包含此版本。"
+    },
+    "bundle-rejected": {
+      "title": "激活文件无效",
+      "message": "激活文件被拒绝。"
+    },
+    "bundle-import-unsupported": {
+      "title": "此处不可用",
+      "message": "此处不支持离线激活。"
+    },
+    "report-unsupported": {
+      "title": "此处不可用",
+      "message": "此处不支持设备报告。"
+    },
+    "device-management-unsupported": {
+      "title": "此处不可用",
+      "message": "无法在此管理设备。请在你的账户中管理。"
+    },
+    "device_list_failed": {
+      "title": "无法加载设备",
+      "message": "无法加载你的设备。请检查网络连接后重试。"
+    },
+    "device_rename_failed": {
+      "title": "无法重命名",
+      "message": "无法重命名该设备。请重试。"
+    },
+    "device_deauthorize_failed": {
+      "title": "无法移除设备",
+      "message": "无法移除该设备。请重试。"
+    },
+    "key-entry-unsupported": {
+      "title": "此处不可用",
+      "message": "无法在此输入许可证密钥。请改为登录。"
+    },
+    "sign-in-failed": {
+      "title": "登录失败",
+      "message": "登录未完成。请重试。"
+    },
+    "sign-out-failed": {
+      "title": "退出登录失败",
+      "message": "退出登录未完成。请重试。"
+    },
+    "bad_response": {
+      "title": "意外的响应",
+      "message": "服务返回了应用无法使用的响应。请重试。"
+    },
+    "network-error": {
+      "title": "无法连接",
+      "message": "无法连接到Polaris Key。请检查网络连接后重试。"
+    },
+    "server-error": {
+      "title": "服务出现问题",
+      "message": "服务出现问题。请几分钟后重试。"
+    },
+    "cancelled": {
+      "title": "登录已取消",
+      "message": "登录已取消。"
+    },
+    "sign-in-expired": {
+      "title": "代码已过期",
+      "message": "代码在登录完成前已过期。请重新开始。"
+    },
+    "sign-in-denied": {
+      "title": "登录被拒绝",
+      "message": "登录被拒绝。请重新开始。"
+    },
+    "sign-in-unavailable": {
+      "title": "登录不可用",
+      "message": "登录目前不可用。请几分钟后重试。"
+    },
+    "invalid-options": {
+      "title": "应用未设置",
+      "message": "应用的许可功能未正确设置。请联系开发者。"
+    },
+    "not-configured": {
+      "title": "应用未设置",
+      "message": "应用的许可功能尚未设置。请联系开发者。"
+    },
+    "unsupported": {
+      "title": "此处不可用",
+      "message": "此处不支持此功能。"
+    },
+    "timeout": {
+      "title": "已超时",
+      "message": "服务响应时间过长。请检查网络连接后重试。"
+    },
+    "response-too-large": {
+      "title": "意外的响应",
+      "message": "服务返回了应用无法使用的响应。请重试。"
+    },
+    "too-many-redirects": {
+      "title": "连接出现问题",
+      "message": "连接被重定向的次数过多。请重试。"
+    },
+    "insecure-redirect": {
+      "title": "连接不安全",
+      "message": "应用拒绝了不安全的重定向。"
+    },
+    "http-error": {
+      "title": "服务出现问题",
+      "message": "服务返回了错误。请重试。"
+    },
+    "invalid-response": {
+      "title": "意外的响应",
+      "message": "服务返回了应用无法使用的响应。请重试。"
+    },
+    "store-failed": {
+      "title": "存储出现问题",
+      "message": "应用无法在此设备上读取或保存其许可证。请确认应用可以写入其数据文件夹。"
+    },
+    "platform-error": {
+      "title": "平台出现问题",
+      "message": "平台报告了一个错误。请重试。"
+    },
+    "no-token": {
+      "title": "未激活",
+      "message": "此设备尚未激活。请激活或登录。"
+    },
+    "mint-unavailable": {
+      "title": "不可用",
+      "message": "此功能不适用于此应用。"
+    },
+    "feed-rejected": {
+      "title": "更新检查失败",
+      "message": "无法验证更新信息，因此未安装任何内容。"
+    },
+    "feed-rollback": {
+      "title": "更新检查失败",
+      "message": "更新信息比此设备上已有的信息旧，因此被拒绝。"
+    },
+    "record-rejected": {
+      "title": "更新未通过验证",
+      "message": "无法验证此更新，因此未安装。"
+    },
+    "record-mismatch": {
+      "title": "更新未通过验证",
+      "message": "此更新与发布的内容不一致，因此未安装。"
+    },
+    "payload-mismatch": {
+      "title": "下载已损坏",
+      "message": "更新未能正确下载，因此未安装。请重试。"
+    },
+    "swap-refused": {
+      "title": "无法在此更新",
+      "message": "此安装无法自行更新。请通过你安装它的方式进行更新。"
+    },
+    "swap-failed": {
+      "title": "更新未完成",
+      "message": "无法应用此更新。将在下次启动时重试。"
+    },
+    "files-index-invalid": {
+      "title": "内容无效",
+      "message": "部分内容无法安装。下次将重新下载。"
+    },
+    "files-unsafe-path": {
+      "title": "内容被拒绝",
+      "message": "部分内容包含不安全的文件路径，因此被拒绝。"
+    },
+    "files-duplicate-path": {
+      "title": "内容无效",
+      "message": "部分内容无法安装。下次将重新下载。"
+    },
+    "files-case-collision": {
+      "title": "内容无效",
+      "message": "部分内容无法安装。下次将重新下载。"
+    },
+    "files-path-conflict": {
+      "title": "内容无效",
+      "message": "部分内容无法安装。下次将重新下载。"
+    },
+    "files-layout-mismatch": {
+      "title": "内容无效",
+      "message": "部分内容无法安装。下次将重新下载。"
+    },
+    "content-stamp-invalid": {
+      "title": "应用版本出现问题",
+      "message": "此版本的内容信息无效。请重新安装应用或联系开发者。"
+    },
+    "full-corrupt": {
+      "title": "下载已损坏",
+      "message": "部分内容无法安装。下次将重新下载。"
+    },
+    "delta-artifact-mismatch": {
+      "title": "下载已损坏",
+      "message": "部分内容无法安装。下次将重新下载。"
+    },
+    "delta-base-mismatch": {
+      "title": "内容已更改",
+      "message": "此设备上已安装的内容已更改，因此需要完整下载。"
+    },
+    "delta-apply-failed": {
+      "title": "更新未应用",
+      "message": "部分内容无法安装。下次将重新下载。"
+    },
+    "file-corrupt": {
+      "title": "下载已损坏",
+      "message": "部分内容无法安装。下次将重新下载。"
+    },
+    "file-source-missing": {
+      "title": "内容缺失",
+      "message": "部分内容无法安装。下次将重新下载。"
+    },
+    "payload-hash-mismatch": {
+      "title": "下载已损坏",
+      "message": "部分内容无法安装。下次将重新下载。"
+    },
+    "chunks-ref-mismatch": {
+      "title": "内容无效",
+      "message": "部分内容无法安装。下次将重新下载。"
+    },
+    "chunks-bad-length": {
+      "title": "内容无效",
+      "message": "部分内容无法安装。下次将重新下载。"
+    },
+    "chunks-bad-magic": {
+      "title": "内容无效",
+      "message": "部分内容无法安装。下次将重新下载。"
+    },
+    "chunks-unsupported-version": {
+      "title": "内容不受支持",
+      "message": "此内容需要更新版本的应用。请更新应用。"
+    },
+    "chunks-bad-record-size": {
+      "title": "内容无效",
+      "message": "部分内容无法安装。下次将重新下载。"
+    },
+    "chunks-bad-flags": {
+      "title": "内容无效",
+      "message": "部分内容无法安装。下次将重新下载。"
+    },
+    "chunks-reserved-nonzero": {
+      "title": "内容无效",
+      "message": "部分内容无法安装。下次将重新下载。"
+    },
+    "chunks-zero-length": {
+      "title": "内容无效",
+      "message": "部分内容无法安装。下次将重新下载。"
+    },
+    "chunks-bad-clen": {
+      "title": "内容无效",
+      "message": "部分内容无法安装。下次将重新下载。"
+    },
+    "chunks-bad-bundle-ref": {
+      "title": "内容无效",
+      "message": "部分内容无法安装。下次将重新下载。"
+    },
+    "chunks-bad-bundle-range": {
+      "title": "内容无效",
+      "message": "部分内容无法安装。下次将重新下载。"
+    },
+    "chunks-size-mismatch": {
+      "title": "内容无效",
+      "message": "部分内容无法安装。下次将重新下载。"
+    },
+    "chunks-payload-mismatch": {
+      "title": "内容无效",
+      "message": "部分内容无法安装。下次将重新下载。"
+    },
+    "chunk-bundle-truncated": {
+      "title": "下载中断",
+      "message": "下载被中断。请检查网络连接后重试。"
+    },
+    "chunk-corrupt": {
+      "title": "下载已损坏",
+      "message": "部分内容无法安装。下次将重新下载。"
+    },
+    "plan-transport-unsupported": {
+      "title": "无法在此下载",
+      "message": "此内容无法在此平台上下载。"
+    },
+    "plan-insufficient-disk": {
+      "title": "空间不足",
+      "message": "可用空间不足，无法存放此内容。请释放一些空间后重试。"
+    },
+    "plan-no-strategy": {
+      "title": "无法安装内容",
+      "message": "此内容无法安装在此设备上。"
+    },
+    "pack-no-variant": {
+      "title": "内容不可用",
+      "message": "此内容不适用于此设备。"
+    },
+    "pack-type-unsupported": {
+      "title": "内容不受支持",
+      "message": "此内容需要更新版本的应用。请更新应用。"
+    },
+    "pack-type-check-failed": {
+      "title": "内容无效",
+      "message": "部分内容未通过检查，未被安装。"
+    },
+    "pack-not-pinned": {
+      "title": "内容不可用",
+      "message": "此内容不属于此版本的应用。"
+    },
+    "pack-not-entitled": {
+      "title": "未包含",
+      "message": "你的许可证不包含此内容。"
+    },
+    "pack-state-unreadable": {
+      "title": "存储出现问题",
+      "message": "无法读取已安装的内容，因此未安装任何新内容。请重启应用。"
+    },
+    "pck-directory-refused": {
+      "title": "内容被拒绝",
+      "message": "部分内容包含内容包不允许包含的文件，因此被拒绝。"
+    },
+    "pck-engine-mismatch": {
+      "title": "内容不受支持",
+      "message": "此内容需要其他版本的游戏。请更新游戏。"
+    },
+    "pack-rolled-back": {
+      "title": "内容已恢复",
+      "message": "上次内容更新未能启动，已恢复到之前的版本。"
+    },
+    "pack-revoked": {
+      "title": "内容已撤回",
+      "message": "此内容已被其开发者撤回，无法使用。"
+    },
+    "pack-not-data-only": {
+      "title": "内容被拒绝",
+      "message": "部分内容包含数据包不允许包含的文件，因此被拒绝。"
+    },
+    "marker-rejected": {
+      "title": "应用版本出现问题",
+      "message": "此版本的内置内容无效。请重新安装应用或联系开发者。"
+    }
+  },
+  "gate": {
+    "ok": {
+      "title": "许可证有效",
+      "message": "你的许可证有效。"
+    },
+    "grace": {
+      "title": "离线宽限期",
+      "message": "无法连接许可服务。在宽限期结束前，你可以继续使用此应用。"
+    },
+    "expired": {
+      "title": "许可证已过期",
+      "message": "你的许可证已过期。请连接互联网或续订以继续使用。"
+    },
+    "revoked": {
+      "title": "已退出登录",
+      "message": "此设备已退出登录。请重新登录或激活以继续。"
+    },
+    "needs-activation": {
+      "title": "激活",
+      "message": "请输入许可证密钥或登录以继续。"
+    },
+    "version-too-old": {
+      "title": "需要更新",
+      "message": "此版本已不再受支持。请更新应用以继续。"
+    },
+    "version-too-new": {
+      "title": "此许可证不可用",
+      "message": "此版本比你的许可证允许的版本更新。"
+    },
+    "channel-not-entitled": {
+      "title": "渠道未包含",
+      "message": "你的许可证不包含此发布渠道。"
+    },
+    "not-applicable": {
+      "title": "无需许可证",
+      "message": "此应用无需许可证。"
+    }
+  },
+  "activation": {
+    "ok": {
+      "title": "已激活",
+      "message": "你的许可证已在此设备上激活。"
+    },
+    "device-limit": {
+      "title": "已达到设备上限",
+      "message": "此许可证已用满所有设备。请替换一台设备以在此使用。"
+    },
+    "fingerprint-required": {
+      "title": "设备验证失败",
+      "message": "此许可证需要硬件指纹，但无法在此设备上读取。"
+    },
+    "hardware-mismatch": {
+      "title": "设备已更改",
+      "message": "此设备的硬件已更改。请重新激活以在此使用你的许可证。"
+    },
+    "enroll-claimed": {
+      "title": "登录以继续",
+      "message": "此设备的免费许可证现已归属于某个账户。请登录以使用它。"
+    },
+    "license-disabled": {
+      "title": "许可证已停用",
+      "message": "此许可证已被停用。请联系开发者。"
+    },
+    "license-expired": {
+      "title": "许可证已过期",
+      "message": "此许可证已过期。请续订以继续使用。"
+    },
+    "attestation-required": {
+      "title": "需要设备验证",
+      "message": "此许可证需要经过验证的设备。请允许应用验证此设备，然后重试。"
+    },
+    "rate-limited": {
+      "title": "尝试次数过多",
+      "message": "尝试次数过多。请稍等片刻后重试。"
+    },
+    "unauthorized": {
+      "title": "密钥未被接受",
+      "message": "该许可证密钥未被接受。请检查后重试。"
+    },
+    "enroll-disabled": {
+      "title": "无免费许可证",
+      "message": "此应用不提供免费许可证。请输入许可证密钥或登录。"
+    },
+    "refused": {
+      "title": "激活被拒绝",
+      "message": "激活被拒绝（{code}）。"
+    },
+    "error": {
+      "title": "激活失败",
+      "message": "激活未完成。请检查网络连接后重试。"
+    }
+  }
+}
