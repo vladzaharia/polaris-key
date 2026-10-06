@@ -21,6 +21,7 @@
     "gen:services": "tsx tools/gen-services.ts",
     "gen:storefront-ci": "tsx packages/worker/scripts/gen-storefront-ci.ts",
     "gen:platform-inventory": "tsx packages/worker/scripts/gen-platform-inventory.ts",
+    "gen:settings": "tsx packages/worker/scripts/gen-settings.ts",
     "gen:constants": "tsx tools/gen-sdk-constants.ts",
     "gen:brand": "pnpm --filter @polaris-key/brand gen",
     "parity:check": "tsx tools/parity-check.ts",
