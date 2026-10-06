@@ -125,7 +125,8 @@ describe("the phone nav drawer slides from the inline start", () => {
     // The drawer's own reduced-motion block, after its rules (the stylesheet has other
     // `prefers-reduced-motion` blocks earlier, e.g. MO-12's motion-reduce variant).
     const drawer = css.slice(css.indexOf(".pk-nav-drawer.pk-nav-drawer"));
-    const media = drawer.split("@media (prefers-reduced-motion: reduce)")[1] ?? "";
+    const media =
+      drawer.split("@media (prefers-reduced-motion: reduce)")[1] ?? "";
     expect(media.slice(0, 200)).toMatch(
       /\.pk-nav-drawer\.pk-nav-drawer\.pk-nav-drawer \{\s*animation: none;/,
     );

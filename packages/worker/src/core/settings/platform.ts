@@ -292,7 +292,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     description:
       "Lets products be listed in the Polaris Key library (Discover and the storefront page). Off hides every listing on this deployment; licences, sign-in and auto-issue keep working.",
     keywords: ["discover", "library", "storefront", "kill switch"],
-    docs: "/docs/services/identity/portal/#polaris-key-listing",
+    docs: "/docs/services/identity/portal/",
     value: { kind: "switch" },
     defaultValue: "on",
     merge: "cascade",

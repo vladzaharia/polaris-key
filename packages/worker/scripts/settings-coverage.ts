@@ -144,7 +144,11 @@ export function declaredByEntry(e: SettingDef): string[] {
 export function declaredByRegistry(
   entries: readonly SettingDef[],
 ): (id: string) => boolean {
-  const declared = new Set<string>(REGISTRY_STORES.map((t) => `table:${t}`));
+  // A registry store's rows are the registry's too: `product_settings.source` (ST-01b) records
+  // whether a stored value came from the manifest or the console.
+  const declared = new Set<string>(
+    REGISTRY_STORES.flatMap((t) => [`table:${t}`, `rows:${t}`]),
+  );
   for (const e of entries) for (const d of declaredByEntry(e)) declared.add(d);
   return (id) => {
     if (declared.has(id)) return true;
@@ -383,8 +387,6 @@ export const PENDING: readonly PendingEntry[] = [
   { target: "column:dist_listing_overrides.source", owner: "ST-13" },
   { target: "column:dist_listing_release_notes.source", owner: "ST-13" },
   { target: "manifest:distribution:listing", owner: "ST-13" },
-  // Portal settings.
-  { target: "table:portal_product_settings", owner: "ST-14" },
   // Platform settings area.
   {
     target: "table:dist_registry_policy",
@@ -537,7 +539,7 @@ export const PENDING: readonly PendingEntry[] = [
 ];
 
 /** `PENDING.length`, written down: lower it with every removal; raising it needs a review. */
-export const PENDING_CEILING = 59;
+export const PENDING_CEILING = 58;
 
 export interface CoverageInputs {
   targets: readonly CoverageTarget[];

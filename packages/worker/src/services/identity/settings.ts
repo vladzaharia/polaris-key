@@ -118,7 +118,7 @@ export const IDENTITY_SETTINGS_SLICE: ServiceSettingsSlice = {
       description:
         "Lets this product's name or developer name use a reserved platform or store name. Only the platform operator can set it; the sign-in card then shows the name instead of the product slug.",
       keywords: ["reserved", "display name", "reserved_display_name"],
-      docs: "/docs/build/manifest/authoring/#display-names",
+      docs: "/docs/build/manifest/authoring/",
       value: { kind: "boolean" },
       defaultValue: false,
       merge: "cascade",

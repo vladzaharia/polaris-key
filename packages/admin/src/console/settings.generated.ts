@@ -215,7 +215,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Lets products be listed in the Polaris Key library (Discover and the storefront page). Off hides every listing on this deployment; licences, sign-in and auto-issue keep working.",
     keywords: ["discover", "library", "storefront", "kill switch"],
-    docs: "/docs/services/identity/portal/#polaris-key-listing",
+    docs: "/docs/services/identity/portal/",
     ownership: "operator",
     critical: false,
     secret: false,
@@ -377,7 +377,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Whether the Polaris Key library lists this product. Auto lists it where auto-issue or a mapped group would give it to the person (today's Discover); Listed adds every other way to obtain it; Unlisted hides it in the portal while every policy keeps working.",
     keywords: ["discover", "library", "storefront", "unlisted", "visibility"],
-    docs: "/docs/services/identity/portal/#polaris-key-listing",
+    docs: "/docs/services/identity/portal/",
     ownership: "operator",
     critical: false,
     secret: false,
@@ -395,7 +395,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Who sees the listing. Eligible shows it only to a person who can obtain it now; Everyone shows it to every signed-in person, the one exception to never revealing a product a person cannot get.",
     keywords: ["discover", "visibility", "enumeration", "everyone"],
-    docs: "/docs/services/identity/portal/#polaris-key-listing",
+    docs: "/docs/services/identity/portal/",
     ownership: "operator",
     critical: true,
     secret: false,
@@ -413,7 +413,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Which reasons may list the product for a person (a mapped group, auto-issue, an open product, store ownership, the product's own sign-in, an email domain). Unset offers every one, including ways added later.",
     keywords: ["obtain paths", "eligibility", "discover"],
-    docs: "/docs/services/identity/portal/#polaris-key-listing",
+    docs: "/docs/services/identity/portal/",
     ownership: "operator",
     critical: false,
     secret: false,
@@ -431,7 +431,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       'How an identity-provider group is named on the listing ("Included with Aperture Seven"), at most 40 characters. A group without a label shows as "For members of <group>".',
     keywords: ["groups", "copy", "discover"],
-    docs: "/docs/services/identity/portal/#polaris-key-listing",
+    docs: "/docs/services/identity/portal/",
     ownership: "operator",
     critical: false,
     secret: false,
@@ -935,7 +935,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Lets this product's name or developer name use a reserved platform or store name. Only the platform operator can set it; the sign-in card then shows the name instead of the product slug.",
     keywords: ["reserved", "display name", "reserved_display_name"],
-    docs: "/docs/build/manifest/authoring/#display-names",
+    docs: "/docs/build/manifest/authoring/",
     ownership: "operator",
     critical: false,
     secret: false,
