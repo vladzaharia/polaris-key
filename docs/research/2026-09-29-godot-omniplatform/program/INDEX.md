@@ -47,7 +47,7 @@ wait for the owner's go and are never listed by `--ready` (see `deferred` in wor
 | [P1-10](wp/P1-10-godot-ui-kit.md)         | Godot UI kit v1 and `PKeyBoot` shell                                                                                          | P1-03, P1-04, P1-07, P1-09, P1-08, P1-11 | godot-engineer | 1.5–2    | done      |
 | [P1-11](wp/P1-11-godot-export-plugin.md)  | Godot export plugin v1: build stamp and editor dock                                                                           | P1-01, P1-02                             | godot-engineer | 0.5–0.75 | done      |
 | [P1-12](wp/P1-12-godot-release.md) ✋     | Package, document and publish the Godot SDK (docs page, Asset Store, Asset Library)                                           | P1-05, P1-08, P1-10, P1-11, P0-05        | godot-engineer | 0.5–0.75 | in-review |
-| [P1-13](wp/P1-13-godot-timing-tests.md)   | Godot timing tests that hold under any load: replace wall-clock ratio and frame-count checks with deterministic work counters | —                                        | godot-engineer | 0.25–0.5 | todo      |
+| [P1-13](wp/P1-13-godot-timing-tests.md)   | Godot timing tests that hold under any load: replace wall-clock ratio and frame-count checks with deterministic work counters | —                                        | godot-engineer | 0.25–0.5 | in-review |
 
 ## P1b: SDK parity
 
