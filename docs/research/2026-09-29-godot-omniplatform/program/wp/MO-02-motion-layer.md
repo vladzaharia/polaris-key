@@ -53,9 +53,31 @@ Today no overlay animates out (Radix unmounts at once; `prototype/motion/shots/t
 - The page takes no input during a View Transition (§3.3): keep route and tab transitions at `base` + `micro`.
 - `Celebration` keys live in `localStorage` (`pk-moment:<key>`), wrapped in try/catch.
 
+## Corrections (as built, 2026-10-05)
+
+- **Tooltips never say `open`.** Radix Tooltip's states are `delayed-open`, `instant-open` and
+  `closed`, so the enter rules match `:not([data-state="closed"])`, not `[data-state="open"]`.
+- **The cascade.** Tailwind v4 puts `animate-pk-in` in the `utilities` layer, so the overlay rules
+  sit in `@layer utilities` with a higher specificity (an unlayered rule would also beat every
+  utility on the same element); the pattern classes sit in `@layer components`, so a utility still
+  wins over them; sonner's overrides and the View Transition rules are unlayered, like sonner's
+  stylesheet. Vite bundles `styles.css` and `motion.css` into one stylesheet per build.
+- **Enter animations fill `backwards`** (the prototype used `both`), so a finished enter leaves
+  nothing in `getAnimations()`; exits fill `forwards` and their nodes unmount.
+- **The overlay e2e check lives in `e2e/kit.e2e.test.ts`** (a new `describe`, plus an optional
+  `reducedMotion` argument to its `open()`), not a new file: the kit gallery already renders the
+  Dialog, Drawer, ActionMenu, Select, Popover and Tooltip, and a second kit build would race the
+  first over `dist-kit/`. The ⌘K palette, the portal's JumpPalette, the phone nav and the product
+  switcher use the same two classes; `test/motion/motionCss.test.ts` pins that each still does.
+  The checks pass `reducedMotion` explicitly, so MO-03's suite-wide default does not change them.
+- **sonner's promise icon, loading wrapper and loader** are on the tokens too; its spinner loop
+  (`sonner-spin`) keeps turning, like the console's.
+- **`main#flow`** (the portal's focused flows, `FocusedFlow.tsx`) is a main region as well as
+  `main#content`.
+
 ## Files it touches
 
-New: `src/motion.css`, `src/ui/motion/{index,viewTransition,reducedMotion,Presence,CountUp,meter,highlight,Celebration}.ts(x)`, `test/motion/*.test.ts(x)`, `test/motionLint.test.ts`. Edited: `src/main.tsx`, `src/portal/main.tsx` (one import each). No in-flight branch touches these.
+New: `src/motion.css`, `src/ui/motion/{index,viewTransition,reducedMotion,Presence,CountUp,meter,highlight,Celebration}.ts(x)`, `test/motion/*.test.ts(x)`, `test/motionLint.test.ts`. Edited: `src/main.tsx`, `src/portal/main.tsx` (one import each), `e2e/kit.e2e.test.ts` (the exit check; see Corrections). No in-flight branch touches these.
 
 ## Steps
 
@@ -67,12 +89,12 @@ New: `src/motion.css`, `src/ui/motion/{index,viewTransition,reducedMotion,Presen
 
 ## Acceptance criteria
 
-- [ ] Every Radix overlay (Dialog, Drawer, Popover, Tooltip, DropdownMenu, Select, the ⌘K palette, the portal's JumpPalette) has an exit animation from the tokens: a unit or e2e check reads `getAnimations()` on a closing node.
-- [ ] `.animate-pk-refetch` animates (and does not under reduced motion).
-- [ ] `viewTransition()` runs `update` synchronously and returns resolved promises when the API is missing or motion is reduced (unit tests).
-- [ ] `<CountUp>` exposes exactly one accessible number (axe and a test).
-- [ ] The motion lint passes on `main`'s code with the allowlist, and fails on a fixture containing each banned pattern.
-- [ ] Under `prefers-reduced-motion: reduce` (and `html[data-motion="reduce"]` once MO-12 lands) every change in scope is an instant swap: no View Transition starts and `document.getAnimations()` is empty after the interaction (checked in the motion smoke suite or a unit test).
+- [x] Every Radix overlay (Dialog, Drawer, Popover, Tooltip, DropdownMenu, Select, the ⌘K palette, the portal's JumpPalette) has an exit animation from the tokens: a unit or e2e check reads `getAnimations()` on a closing node.
+- [x] `.animate-pk-refetch` animates (and does not under reduced motion).
+- [x] `viewTransition()` runs `update` synchronously and returns resolved promises when the API is missing or motion is reduced (unit tests).
+- [x] `<CountUp>` exposes exactly one accessible number (axe and a test).
+- [x] The motion lint passes on `main`'s code with the allowlist, and fails on a fixture containing each banned pattern.
+- [x] Under `prefers-reduced-motion: reduce` (and `html[data-motion="reduce"]` once MO-12 lands) every change in scope is an instant swap: no View Transition starts and `document.getAnimations()` is empty after the interaction (checked in the motion smoke suite or a unit test).
 - [ ] The green gate passes (AGENTS.md), including `pnpm --filter @polaris-key/worker test adminCspParity` after the admin build and `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations.
 
 ## Verify
