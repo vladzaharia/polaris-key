@@ -25,14 +25,29 @@ export interface ExpandProps {
   onOpened?: (region: HTMLElement) => void;
 }
 
-/** Resolves when every animation on `el` and inside it has finished or been cancelled. */
-function settled(el: Element): Promise<void> {
-  if (typeof el.getAnimations !== "function") return Promise.resolve();
-  return Promise.all(
-    el
-      .getAnimations({ subtree: true })
-      .map((a) => a.finished.catch(() => undefined)),
-  ).then(() => undefined);
+/**
+ * Run `then` once every animation on `el` and inside it has finished or been cancelled: in this
+ * frame when nothing is running (no Web Animations API, reduced motion), so an instant swap never
+ * waits for a promise. Returns a cancel function.
+ */
+function whenSettled(el: Element, then: () => void): () => void {
+  const running =
+    typeof el.getAnimations === "function"
+      ? el.getAnimations({ subtree: true })
+      : [];
+  if (running.length === 0) {
+    then();
+    return () => undefined;
+  }
+  let cancelled = false;
+  void Promise.all(running.map((a) => a.finished.catch(() => undefined))).then(
+    () => {
+      if (!cancelled) then();
+    },
+  );
+  return () => {
+    cancelled = true;
+  };
 }
 
 export function Expand({
@@ -68,13 +83,7 @@ export function Expand({
     if (!open && mounted) {
       // The content leaves once the closing has run (at once with nothing to wait for). A
       // re-open before then cancels this, so nothing is left waiting to unmount it.
-      let cancelled = false;
-      void settled(el).then(() => {
-        if (!cancelled) setMounted(false);
-      });
-      return () => {
-        cancelled = true;
-      };
+      return whenSettled(el, () => setMounted(false));
     }
   }, [open, mounted, shown]);
 
@@ -84,13 +93,7 @@ export function Expand({
     const el = ref.current;
     if (!shown || was || !el) return;
     callbacks.current.onOpen?.();
-    let cancelled = false;
-    void settled(el).then(() => {
-      if (!cancelled) callbacks.current.onOpened?.(el);
-    });
-    return () => {
-      cancelled = true;
-    };
+    return whenSettled(el, () => callbacks.current.onOpened?.(el));
   }, [shown]);
 
   return (
