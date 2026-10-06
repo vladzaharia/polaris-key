@@ -25,8 +25,9 @@ seats and its active keys. The state is worked out from the license's status and
 The four tiles above the table count each state; a tile filters the table to that state. Search
 matches the name, the email and the license id. The **Status**, **Tier**, **Channel** and
 **Sign-in** filters, the search and the sort are all in the URL, so a filtered list can be
-bookmarked or shared. **Seats** is the device count against the effective limit: the tier's
-device limit, or the product default when the tier sets none. The **Channels**, **Sign-in**,
+bookmarked or shared. **Seats** is the device count against the effective limit, with its source
+under the meter ("set on this license", "from Pro", "product default"): see
+[The device limit](#the-device-limit). The **Channels**, **Sign-in**,
 **Email** and **Id** columns are hidden at first; **Columns** shows them, and **Export CSV**
 downloads what the filters show.
 
@@ -52,9 +53,10 @@ and list the effect.
      a later profile overrides an earlier one. Reorder them with the arrows.
 
    The **Effective policy** panel beside the form says what a device on these terms receives and
-   where each value comes from: this license, the tier, or the product default. There is no
-   per-license device limit; it always comes from the tier or the product. If the tiers or
-   profiles can't be loaded, the dialog says so where the field would be, with a retry.
+   where each value comes from: this license, the tier, or the product default. A new license
+   inherits its device limit; set one of its own afterwards with **Device limit…** on the
+   record. If the tiers or profiles can't be loaded, the dialog says so where the field would
+   be, with a retry.
 
 3. **Key**: the license is created **and its first key is minted in the same request**. The raw
    key is shown exactly once; the server keeps only its hash and can never show it again. The
@@ -116,6 +118,31 @@ authorization), but no new device can activate until the count drops back under 
 Terms form warns about this before you save, from the server's device count for the license; the
 `PATCH` response carries the authoritative version as `overLimit: { deviceCount, deviceLimit }`,
 and the confirmation says so. Existing devices are **grandfathered**, not force-deauthorized.
+
+### The device limit
+
+A license's device limit is resolved most specific first: the limit **set on this license**,
+else its **tier's** device limit, else a `deviceLimit` **entitlement** (from a profile, a store
+grant or a config override), else the **product default** (LX-14a). The same number is enforced
+at activation and signed into the license document's `deviceLimit` entitlement. The record's
+header, the **Effective policy** panel, the Devices tab's **Seats** meter and the licenses list
+all show the effective limit and where it comes from: "3 · set on this license", "5 · from
+Pro", "5 · product default".
+
+**Device limit…** (in **More actions**) opens a sheet to raise or lower it for this one license,
+seat or account-wide alike. The field's placeholder is the inherited value ("Inherits 5 from
+Pro"). **Save** sets the number; **Use inherited limit** clears it, so the tier or product value
+applies again. A limit set here beats any tier, so changing the tier later doesn't move it.
+Lowering it below the devices signed in warns first — "4 devices are signed in. None is signed
+out; new devices are refused until the count is under 3." — and, like a tier downgrade, signs
+nobody out: the `PATCH` answers `overLimit` and the next new device is refused. Each change is
+audited as `license.device_limit.set` with the old and new values.
+
+The API is the same `PATCH /manage/api/products/<slug>/license/licenses/<id>` with
+`deviceLimit`: a positive integer, or `null` to inherit; anything else is a `422`. Every license
+read answers `deviceLimit` (the stored value), `effectiveDeviceLimit` (`0`: no limit),
+`deviceLimitSource` (`license`, `tier`, `entitlement` or `product`) and the inherited pair
+`inheritedDeviceLimit` / `inheritedDeviceLimitSource`.
 
 ### Enable and disable
 
