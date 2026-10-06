@@ -11,6 +11,8 @@ import { describe, expect, it } from "vitest";
  *   2. arbitrary `duration-[…]`, `ease-[…]` and `delay-[…]` (use the token utilities,
  *      `duration-(--pk-duration-*)`, `ease-standard`…);
  *   3. a raw millisecond value inside a class token (`[transition-duration:150ms]`, `delay-150ms`…);
+ *   3a. Tailwind's numbered timing utilities (`duration-300`, `delay-150`), which bypass the
+ *      tokens and so never collapse under reduced motion;
  *   4. a JSX `style` that sets `transition*`, `animation*` or `transform` (D8: motion lives in
  *      the stylesheet; dynamic values go through the CSSOM in the motion layer);
  *   5. `animate-pulse`, beyond today's sites (D6: blocks do not pulse; MO-09 and MO-10 retire the
@@ -37,6 +39,7 @@ export interface MotionFinding {
     | "transition-all"
     | "arbitrary-timing"
     | "raw-ms-class"
+    | "numbered-timing"
     | "style-motion"
     | "animate-pulse";
   line: number;
@@ -47,6 +50,9 @@ export interface MotionFinding {
 const TRANSITION_ALL = new RegExp(`(^|[\\s"'\`:])${"transition"}-${"all"}\\b`);
 const ARBITRARY_TIMING = new RegExp(
   `(^|[\\s"'\`:])(${["duration", "ease", "delay"].join("|")})-\\[`,
+);
+const NUMBERED_TIMING = new RegExp(
+  `(^|[\\s"'\`:])(${["duration", "delay"].join("|")})-\\d+(?![\\w.-])`,
 );
 const PULSE = new RegExp(`\\b${"animate"}-${"pulse"}\\b`);
 const STYLE_MOTION_KEY =
@@ -138,6 +144,12 @@ export function lintMotion(source: string): MotionFinding[] {
         line: k + 1,
         text: text.trim(),
       });
+    if (NUMBERED_TIMING.test(text))
+      findings.push({
+        rule: "numbered-timing",
+        line: k + 1,
+        text: text.trim(),
+      });
     if (PULSE.test(text))
       findings.push({ rule: "animate-pulse", line: k + 1, text: text.trim() });
   });
@@ -177,7 +189,7 @@ describe("the motion lint", () => {
     );
   });
 
-  it("finds no transition-all, arbitrary timing, raw ms classes or motion in JSX style", () => {
+  it("finds no transition-all, arbitrary or numbered timing, raw ms classes or motion in JSX style", () => {
     const bad = files.flatMap((f) =>
       f.findings
         .filter((x) => x.rule !== "animate-pulse")
@@ -219,6 +231,8 @@ describe("the motion lint's fixture", () => {
     `export const G = () => <div style={{ "transform": "scale(2)" }} />;`,
     `export const H = () => <div className="h-4 animate-${"pulse"}" />;`,
     `export const I = () => <div className={cn("${de}-[80ms]", a)} />;`,
+    `export const J = () => <div className="transition-opacity ${du}-300" />;`,
+    `export const K = () => <div className={cn("hover:${de}-150", a)} />;`,
   ].join("\n");
 
   it("fails on each banned pattern", () => {
@@ -234,6 +248,8 @@ describe("the motion lint's fixture", () => {
     expect(byLine(7)).toEqual(["style-motion"]);
     expect(byLine(8)).toEqual(["animate-pulse"]);
     expect(byLine(9)).toContain("arbitrary-timing");
+    expect(byLine(10)).toEqual(["numbered-timing"]);
+    expect(byLine(11)).toEqual(["numbered-timing"]);
   });
 
   it("passes the token forms, geometry styles, comments and prose", () => {
@@ -245,6 +261,8 @@ describe("the motion lint's fixture", () => {
       `/* animate-${"pulse"} in a block comment */`,
       `const d = "Retry in 500ms";`,
       `el.style.setProperty("--pk-countdown", \`\${ms}ms\`);`,
+      `const e = <i className="delay-(--pk-delay-skeleton) duration-(--pk-duration-base)" />;`,
+      `const f = "Waits 300 ms"; // duration-300 in a comment, and the-duration-300 is not a utility`,
     ].join("\n");
     expect(lintMotion(ok)).toEqual([]);
   });
