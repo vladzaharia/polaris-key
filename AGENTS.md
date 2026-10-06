@@ -29,6 +29,9 @@ packages/
   docs/              @polaris-key/docs         the Astro Starlight docs site served at /docs
   brand/             @polaris-key/brand        design system: tokens, Rubik fonts, marks, launch-kit assets
                                                (spec: docs/design/BRAND.md)
+  ui-qa/             @polaris-key/ui-qa        UI-kit visual QA (private): pnpm ui:lint (the §7.3
+                                               modernity lint, string lint, per-kit source lints),
+                                               pnpm ui:report (spec: docs/design/UI-KITS.md §7)
 sdks/
   python/            polaris-key (PyPI)        full client + CLI adapters
   swift/             PolarisKey (SwiftPM)      native CryptoKit + SwiftUI login
@@ -109,6 +112,8 @@ pnpm gen:platform-inventory -- --check  # platform-inventory drift gate (Env ↔
 pnpm gen:settings -- --check     # settings drift gate (registry → settings reference page + console search index)
 pnpm gen:brand -- --check        # brand-token drift gate (packages/brand → CSS, Tailwind, TS, JSON, GDScript, Swift, Kotlin)
 pnpm --filter @polaris-key/cli bundle:action -- --check  # Action-bundle drift gate (after pnpm build)
+pnpm ui:lint                     # UI-kit modernity + string + kit-source lint (needs Chromium; CI job ui-kits)
+pnpm ui:report                   # UI kits side by side per state; fails only on a React/elements pixel drift
 pnpm parity:check                # every SDK's parity.json agrees with the feature registry
 pnpm typecheck
 pnpm test                        # all JS/TS suites (worker, SDKs, admin, conformance, shared)

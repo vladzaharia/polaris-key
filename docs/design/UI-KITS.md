@@ -1153,6 +1153,16 @@ contract, and a **cross-renderer pixel diff** fails when the two drift.
 A small rule set encoding §1.5, run on the web kits' DOM and, where practical, on the other kits'
 view trees.
 
+**Where it runs** (UK-15): `pnpm ui:lint` (`packages/ui-qa`) lints every mockup board in both
+themes, any kit stylesheet (`--css=`) or page (`--html=`), and the native kits' sources; a web kit's
+component tests call `lintPage()` from the same package. The mockups of native kits use the
+`native` profile, which leaves `colour-literal` and `interactive-states` to the kit's own lane. A
+board's platform chrome, captions and justified exceptions are listed, each with its reason, in
+`packages/ui-qa/src/boards.ts`. Copy that predates the string lint is recorded in
+`packages/ui-qa/rules/strings.debt.json` and the native kits' existing hits in `kit-debt.json`;
+both ledgers only shrink. The per-kit runtime helpers are `sdks/godot/tests/support/ui_lint.gd`
+(every engine icon themed) and `sdks/python/tests/ui_lint_qt.py` (the Qt widget tree).
+
 **Borders, focus and depth:**
 
 - no border wider than 1 px, and none of 1.5 px or more on a selected or resting control;
@@ -1207,7 +1217,9 @@ view trees.
 Each must kit's first full baseline set is reviewed against this document's mockups by a designer
 (or the lead with the role agents) before release; the review notes go in the PR. The mockups are
 the reference, so they must agree with this text. A disagreement between the two is a bug in one of
-them, and it is fixed before review.
+them, and it is fixed before review. The review follows the checklist in
+[ui-kits/REVIEW.md](ui-kits/REVIEW.md); `pnpm ui:report` lays the kit's baselines beside the
+mockups for it.
 
 ---
 

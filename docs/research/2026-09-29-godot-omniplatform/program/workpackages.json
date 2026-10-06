@@ -8344,7 +8344,7 @@
       "optional": false,
       "refs": ["docs/design/UI-KITS.md §7", "docs/design/UI-KITS.md §1.5"],
       "brief": "wp/UK-15-visual-qa-harness.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "UK-16",

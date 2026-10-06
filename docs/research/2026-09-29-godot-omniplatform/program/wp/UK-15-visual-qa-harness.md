@@ -71,3 +71,28 @@ Every kit adds `ui:lint` (or its per-kit equivalent) to its acceptance; the repo
 
 The role agent sets `--set UK-15 in-review` when it hands off. After review, the lead adds the last
 commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set UK-15 done`.
+
+## Corrections from implementation (2026-10-05)
+
+The code is the fact. Where the brief and the repository disagreed, this is what was built:
+
+- **Rule profiles.** Most mockup boards draw native kits (iOS glass, Mica, Adwaita, the Godot
+  panel) in HTML with the platform's literal colours, and their controls take their states from
+  the platform rather than from CSS. Those boards use a `native` profile that leaves
+  `colour-literal` and `interactive-states` to the native kit's own lane. The `web` board runs the
+  full set.
+- **Chrome and allowances live in config** (`packages/ui-qa/src/boards.ts`), each with its reason,
+  so the boards stay clean markup.
+- **String lint debt.** About 200 strings on the boards drift from `packages/brand/kit-copy/en.json`
+  or are missing from it. Reconciling all copy is outside this package, so it lands with a
+  shrink-only ledger (`rules/strings.debt.json`): any new drift fails, and so does a stale entry.
+- **Per-kit source rules ratchet.** Today's SwiftUI (`.buttonBorderShape(.roundedRectangle)`) and
+  Compose (`Icons.Filled`, `OutlinedTextField`, `AlertDialog`, the stock spinner) hits are recorded
+  in `rules/kit-debt.json` for UK-07 and UK-09. The branded Godot theme leaves 91 engine icons
+  stock: suite `ui_lint` reports this as INFO, and UK-11 makes it a check.
+- **Mockup fixes.** The lint broke on the committed boards, which counts as a bug in the boards
+  (§7.4). It found physical left/right properties, colour literals in the web kit CSS, missing
+  `:focus-visible` and `:disabled` styles on `.k-btn`, unstyled selectable rows, 11 px text,
+  fractional px sizes, glass on glass, an orphaned Windows hero and 32 px touch targets on the
+  phone settings. These were fixed in the boards, and only the shots that visibly changed were
+  re-rendered.

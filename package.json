@@ -30,8 +30,8 @@
     "format": "prettier --check \"**/*.{ts,tsx,md,json}\"",
     "format:fix": "prettier --write \"**/*.{ts,tsx,md,json}\"",
     "clean": "turbo run clean && rm -rf node_modules",
-    "ui:lint": "tsx packages/ui-qa/src/cli/lint.ts",
-    "ui:report": "tsx packages/ui-qa/src/cli/report.ts"
+    "ui:lint": "pnpm --filter @polaris-key/ui-qa exec tsx src/cli/lint.ts",
+    "ui:report": "pnpm --filter @polaris-key/ui-qa exec tsx src/cli/report.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
