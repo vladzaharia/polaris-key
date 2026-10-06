@@ -76,7 +76,9 @@ public suspend fun CoreContext.fetchVerified(
     while (offset < size || (size == 0L && !part.isFile)) {
         val end = minOf(size, offset + window) - 1
         val headers = linkedMapOf("accept-encoding" to "identity")
-        if (size > 0) headers["range"] = "bytes=$offset-$end"
+        // The last window is open-ended (`bytes=<offset>-`, the resume release-fetch-gated.json
+        // pins); the answer's Content-Range is still checked against the window below.
+        if (size > 0) headers["range"] = if (end == size - 1) "bytes=$offset-" else "bytes=$offset-$end"
         if (offset > 0) etag?.let { headers["if-range"] = it }
         if (sendBearer) token()?.let { headers["authorization"] = "Bearer $it" }
         val response = try {

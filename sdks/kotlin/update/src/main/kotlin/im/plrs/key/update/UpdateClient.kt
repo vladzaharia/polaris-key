@@ -141,6 +141,48 @@ public object FeedKind {
     public const val zsync: String = "zsync"
 }
 
+/**
+ * An app-updater feed URL from discovery's `update.endpoints` [endpoints] (feed-url-matrix.json,
+ * plans/SP-00.md D5), or null when the product publishes no template for [kind] (the typed
+ * `product` N/A). [channel] (`stable` when null) goes through CHANNEL_ALIASES first; `{channel}`,
+ * `{velopackChannel}` and `{buildId}` are filled encoded as encodeURIComponent. `appcast` reads
+ * `endpoints.appcast` (the stable feed) and, for any other channel, inserts the channel as a path
+ * segment before `/appcast.xml`; `velopack` without [velopackChannel] is the feed directory
+ * Velopack's UpdateManager opens (the template up to `releases.`); `zsync` needs [buildId].
+ */
+public fun feedUrlFrom(
+    endpoints: Map<String, String>?,
+    baseUrl: String,
+    kind: String,
+    channel: String? = null,
+    velopackChannel: String? = null,
+    buildId: String? = null,
+): String? {
+    val requested = channel ?: "stable"
+    val canonical = im.plrs.key.core.CHANNEL_ALIASES[requested] ?: requested
+    val values = linkedMapOf("channel" to canonical)
+    if (kind == FeedKind.appcast) {
+        val stable = endpoints?.get(FeedKind.appcast) ?: return null
+        if (canonical == "stable") return expandTemplate(stable, baseUrl, values)
+        val suffix = "/appcast.xml"
+        val template = if (stable.endsWith(suffix)) stable.dropLast(suffix.length) + "/{channel}" + suffix else endpoints["channelAppcast"] ?: return null
+        return expandTemplate(template, baseUrl, values)
+    }
+    if (kind !in setOf(FeedKind.winsparkle, FeedKind.velopack, FeedKind.appInstaller, FeedKind.zsync)) return null
+    var template = endpoints?.get(kind) ?: return null
+    if ("{velopackChannel}" in template) {
+        if (velopackChannel != null) {
+            values["velopackChannel"] = velopackChannel
+        } else {
+            val cut = template.indexOf("releases.")
+            if (cut < 0 || "{velopackChannel}" !in template.substring(cut)) return null
+            template = template.substring(0, cut)
+        }
+    }
+    if ("{buildId}" in template) values["buildId"] = buildId ?: return null
+    return expandTemplate(template, baseUrl, values)
+}
+
 /** `channelFeed()`'s answer: the verified feed `decide()` would decide from. */
 public data class FeedCheck(
     /** The canonical channel: the feed's own `channel` claim. */
@@ -325,26 +367,24 @@ public class UpdateClient private constructor(
     }
 
     /**
-     * An app-updater feed URL (notes/SDK-PARITY-PASS.md §3.7), expanded from discovery's
-     * `update.endpoints` template for [kind]: `appcast` (Sparkle; `channelAppcast` when [channel] is
-     * given), `winsparkle`, `velopack` (needs [velopackChannel], e.g. `win-x64`), `appInstaller`,
-     * `zsync` (needs [buildId]). [channel] defaults to this client's. Loads discovery first when this
-     * session has not. Throws [UnsupportedException] (`product`) when the Worker advertises no such
-     * template, or when a needed value is missing.
+     * An app-updater feed URL (notes/SDK-PARITY-PASS.md §3.7, `update.feeds`), expanded from
+     * discovery's `update.endpoints` template for [kind] by [feedUrlFrom] (feed-url-matrix.json):
+     * `appcast` (Sparkle; the channel as a path segment off the stable feed), `winsparkle`, `velopack`
+     * (with [velopackChannel], e.g. `win-x64`, the releases file; without, the feed directory),
+     * `appInstaller`, `zsync` (needs [buildId]). [channel] defaults to this client's; an alias is
+     * canonicalised. Loads discovery first when this session has not. Throws [UnsupportedException]
+     * (`product`) when the product runs no Update, the Worker advertises no such template, or a
+     * needed value is missing.
      */
     public suspend fun feedUrl(kind: String, channel: String? = null, velopackChannel: String? = null, buildId: String? = null): String {
-        core.requireService(ServiceSlug.update, Feature.updateFeed)
-        if (core.discoveryDocument() == null && !core.localOnly) core.discover()
-        val key = if (kind == FeedKind.appcast && channel != null) "channelAppcast" else kind
         fun none(why: String): Nothing = throw im.plrs.key.core.UnsupportedException(
-            im.plrs.key.core.Unsupported(Feature.updateFeed, im.plrs.key.core.UnsupportedReason.product, why),
+            im.plrs.key.core.Unsupported(Feature.updateFeeds, im.plrs.key.core.UnsupportedReason.product, why),
         )
-        val template = core.discoveryDocument()?.services?.get(ServiceSlug.update)?.endpoints?.get(key)
-            ?: none("this Worker advertises no $key feed for the product")
-        val values = linkedMapOf("channel" to (channel ?: core.channel))
-        if ("{velopackChannel}" in template) values["velopackChannel"] = velopackChannel ?: none("the velopack feed needs the channel the app was packed with")
-        if ("{buildId}" in template) values["buildId"] = buildId ?: none("the zsync feed needs the AppImage build id")
-        return expandTemplate(template, core.endpoints.baseUrl, values) ?: none("the $key template does not expand")
+        if (core.discoveryDocument() == null && !core.localOnly) core.discover()
+        if (!core.enabled(ServiceSlug.update)) none("the product does not run the update service")
+        val endpoints = core.discoveryDocument()?.services?.get(ServiceSlug.update)?.endpoints
+        return feedUrlFrom(endpoints, core.endpoints.baseUrl, kind, channel ?: core.channel, velopackChannel, buildId)
+            ?: none("this Worker advertises no $kind feed for the product, or the feed needs a value that was not given")
     }
 
     /** Sparkle's appcast URL (`feedUrl(appcast)`). */
