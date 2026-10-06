@@ -5753,12 +5753,14 @@ unknown". Controls:
   (fail closed: `503` on the keyring endpoint, every product route 404s) instead of picking one.
   A precedence rule would orphan one set of blobs, chosen by a rule an operator mid-rotation is
   unlikely to know. Equal keys, compared as decoded bytes, are accepted.
-- **No key material in diagnostics.** The configuration error, the `kek_legacy_open_only`
-  warning on Platform → Settings, the endpoint's `legacy` block and the console name kids and
-  counts only. The sealed `SIGNIN_*` Worker secrets are reported by name when their envelope
-  names the legacy kid; the kid is read from the envelope and nothing is opened.
-- **A bounded life.** The warning stays until `PLATFORM_KEK` is deleted, and the endpoint reports
-  `legacy.remaining` (stored values under the legacy kid), `legacy.workerSecrets` and
+- **No key material in diagnostics.** The configuration error (also raised on Platform →
+  Settings as `kek_keyring_unusable`), the `kek_legacy_open_only` warning, the endpoint's
+  `legacy` block and the console name kids and counts only. The sealed `SIGNIN_*` Worker
+  secrets are reported by name when their envelope names the legacy kid; the kid is read from
+  the envelope and nothing is opened.
+- **A bounded life.** The `kek_legacy_open_only` warning stays while `PLATFORM_KEK` is the only
+  source of its kid (not for a same-bytes copy of a `PLATFORM_KEK_KEYS` entry), and the endpoint
+  reports `legacy.remaining` (stored values under the legacy kid), `legacy.workerSecrets` and
   `safeToDelete`, the gate for deleting it.
 
 **Residual risk.** (1) Re-sealing does not erase old ciphertext: D1 backups and Time Travel from
@@ -5769,7 +5771,17 @@ old key is rotated as well. (2) Deleting `PLATFORM_KEK` while a value is still u
 that value dark (its product 404s, or a sign-in provider leaves the login card). `safeToDelete`
 is the gate, and the operator applies it; the Worker cannot stop a `wrangler secret delete`.
 (3) The legacy key adds no new writer: whoever can set Worker secrets could already replace the
-whole ring.
+whole ring. (4) A `PLATFORM_KEK` left beside a ring re-admits the key it holds for opening,
+under the legacy kid, even after that kid is retired from `PLATFORM_KEK_KEYS`. The kid stays
+open-capable until `PLATFORM_KEK` is deleted, and while it does, an early retirement reads
+`unopenable: 0`, so the re-check cannot catch it. The RUNBOOK's retirement step therefore
+deletes `PLATFORM_KEK` in the same `wrangler secret bulk` call that drops the kid ("Rotating
+PLATFORM_KEK", step 8), or, if that was missed, deletes it only once `legacy.safeToDelete` is
+true. In the KEK compromise case this matters more: while
+`PLATFORM_KEK` holds the leaked key, that key still opens, so whoever holds it and can write to
+D1 can plant a value the Worker accepts. The containment steps (RUNBOOK, "KEK compromise
+(containment)") delete `PLATFORM_KEK`, and containment is not complete until `legacy` is gone
+from the keyring endpoint.
 
 ### Boundaries that are weaker than they look
 

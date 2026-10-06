@@ -146,9 +146,12 @@ Returns:
   retention;
 - `warnings`: `console_oidc_shared` while the console signs in through the platform client
   because `ADMIN_OIDC_ISSUER` or `ADMIN_OIDC_CLIENT_ID` is unset (`names` lists which);
-  `PLATFORM_KEK_ID` is set; `kek_legacy_open_only` while `PLATFORM_KEK` is set beside
-  `PLATFORM_KEK_KEYS` and so kept as the legacy key, open-only (the message names its kid); or
-  `PORTAL_SESSION_SECRET` is unset, so the portal signs its sessions with the admin secret.
+  `PLATFORM_KEK_ID` is set; `kek_keyring_unusable` while the KEK keyring does not load (the
+  message gives the reason, naming kids only); `kek_legacy_open_only` while `PLATFORM_KEK` is set
+  beside `PLATFORM_KEK_KEYS` and is the only source of its kid, so it is kept as the legacy key,
+  open-only (the message names its kid; a same-bytes copy of a `PLATFORM_KEK_KEYS` entry is not
+  flagged); or `PORTAL_SESSION_SECRET` is unset, so the portal signs its sessions with the admin
+  secret.
 
 ```http
 PATCH /manage/api/platform/settings/<key>

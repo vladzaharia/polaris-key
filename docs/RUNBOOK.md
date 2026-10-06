@@ -225,9 +225,14 @@ Rules the Worker enforces (all fail closed — a bad keyring never falls back to
 - Every KEK must decode to exactly 32 bytes.
 - `PLATFORM_KEK_ACTIVE` must name an entry of `PLATFORM_KEK_KEYS`.
 - When `PLATFORM_KEK_KEYS` is set, a `PLATFORM_KEK` still set beside it joins the ring as the
-  legacy key, **open-only**, under its legacy kid (`PLATFORM_KEK_ID`, else `default`). Nothing is
-  ever sealed under it: `PLATFORM_KEK_ACTIVE` naming that kid fails closed. Any other kid you
-  leave out of the map is a kid you can no longer read.
+  legacy key, **open-only**, under its legacy kid (`PLATFORM_KEK_ID`, else `default`). It is
+  imported without the right to encrypt, so nothing is ever sealed with it. While
+  `PLATFORM_KEK_KEYS` has no entry under that kid, `PLATFORM_KEK_ACTIVE` naming it fails closed.
+  When `PLATFORM_KEK_KEYS` does hold it with the same bytes (next rule), `PLATFORM_KEK` is a
+  redundant copy, and that entry can be active like any other.
+- A kid you leave out of the map is a kid you can no longer read, **except** the legacy kid while
+  `PLATFORM_KEK` is still set: it stays open-only through `PLATFORM_KEK`. So retiring the legacy
+  kid from `PLATFORM_KEK_KEYS` and deleting `PLATFORM_KEK` happen in one call (step 8 below).
 - If `PLATFORM_KEK_KEYS` and `PLATFORM_KEK` define the **same kid with different bytes**, the
   keyring refuses to load rather than pick one. The same bytes under the same kid are fine.
 - A sealed blob is opened with the KEK its own `kekId` names. An unknown `kekId` is refused; no
@@ -253,7 +258,9 @@ absent in either single shape):
   "openOnly": true,         // false: PLATFORM_KEK_KEYS holds the same key under this kid
   "remaining": 4,           // stored values still sealed under it (every bucket below)
   "workerSecrets": [],      // sealed Worker secrets (SIGNIN_*) still under it: the sweep cannot move these
-  "safeToDelete": false     // true once remaining is 0 and workerSecrets is empty
+  "safeToDelete": false     // true once remaining is 0 and workerSecrets is empty, and always true
+                            // while openOnly is false (PLATFORM_KEK is a same-bytes copy of a
+                            // PLATFORM_KEK_KEYS entry)
 }
 ```
 
@@ -360,26 +367,61 @@ migration). Do not skip step 6.
 
 7. Soak for **24 hours** with both keys in the ring. Nothing should reference the old kid.
 
-8. **Drop the old key.** Only after `remaining` is 0.
+8. **Drop the old key and delete `PLATFORM_KEK` in the same call.** Only after `remaining` is 0.
+   `"PLATFORM_KEK": null` makes `wrangler secret bulk` delete that secret in the same new
+   version. It must not be left for later: while `PLATFORM_KEK` is set, the Worker keeps the key
+   it holds in the ring as the legacy key, open-only, under its legacy kid (`PLATFORM_KEK_ID`,
+   else `default`), even after that kid leaves `PLATFORM_KEK_KEYS`. A drop made too early would then still read
+   `unopenable: 0`, and the later delete would turn off everything still under the old kid. Leave
+   out the `PLATFORM_KEK` line only if Platform → Settings → Secrets shows `PLATFORM_KEK` as not
+   set.
 
    ```jsonc
+   // /tmp/kek.json — delete immediately afterwards
    {
      "PLATFORM_KEK_KEYS": "{\"k2\":\"<NEW_KEK>\"}",
      "PLATFORM_KEK_ACTIVE": "k2",
+     "PLATFORM_KEK": null,
    }
    ```
 
-   Re-check `unopenable` is 0 immediately afterwards, and delete the now-unused `PLATFORM_KEK`
-   secret so it cannot be silently re-adopted by a later rollback:
-   `npx wrangler secret delete PLATFORM_KEK --env prod`. Until it is deleted it sits in the ring
-   as the legacy key, open-only (harmless, and flagged on Platform → Settings).
+   ```sh
+   curl -fsS https://key.plrs.im/manage/api/products/kek -H "cookie: __Host-pkey_admin=…" \
+     | jq -e '.remaining == 0 and .unopenable == 0' \
+     && npx wrangler secret bulk /tmp/kek.json --env prod; rm -f /tmp/kek.json
+   ```
+
+   The bulk call runs only if the check prints `true`; a failed request or any value still under
+   the old kid stops it. Then re-check at once:
+
+   ```sh
+   curl -fsS https://key.plrs.im/manage/api/products/kek -H "cookie: __Host-pkey_admin=…" \
+     | jq '{active, kids, remaining, unopenable, legacy}'
+   # "kids": ["k2"], "remaining": 0, "unopenable": 0, and no "legacy"
+   ```
+
+   - `unopenable` above 0: the old key left too early. Put it back at once (step 5's call, which
+     needs only the escrowed old key), then return to step 6.
+   - `legacy` present: `PLATFORM_KEK` is still set, and the `kek_legacy_open_only` warning is on
+     Platform → Settings. Delete it only once `legacy.safeToDelete` is `true`, then re-check
+     `unopenable`:
+
+     ```sh
+     curl -fsS https://key.plrs.im/manage/api/products/kek -H "cookie: __Host-pkey_admin=…" \
+       | jq -e '.legacy.safeToDelete == true' \
+       && npx wrangler secret delete PLATFORM_KEK --env prod
+     ```
+
+     If it is `false`, run step 6's sweep until it is `true`: the legacy key still opens what is
+     under it, so the sweep can move those values.
 
 9. Update the escrowed copy of the KEK and destroy the old key material.
 
 **Rollback:** at any point before step 8, set `PLATFORM_KEK_ACTIVE` back to the previous kid
 while keeping **both** keys in `PLATFORM_KEK_KEYS`. Rows already re-sealed under the new kid
-still open, because the ring still holds it. After step 8 there is no rollback — that is what
-step 7 is for.
+still open, because the ring still holds it. After step 8 only the escrowed old key can bring
+back a value it left dark (step 8's first bullet). After step 9 there is no rollback at all.
+Step 7 is there so you never need one.
 
 **`wrangler rollback` un-rotates secrets.** A Worker version captures its bindings, and classic
 secrets are bindings, so rolling back to a pre-rotation version also restores the pre-rotation
@@ -394,6 +436,15 @@ not invalidate anything an attacker already decrypted: treat every product signi
 sealed under the leaked KEK as compromised and rotate those too (Product operations → keys
 prepare/activate/revoke), and re-enter every product secret.
 
+Containment is not complete until `PLATFORM_KEK` is deleted. If `PLATFORM_KEK` holds the leaked
+key, it stays in the ring for opening under its legacy kid even after step 8 drops that kid from
+`PLATFORM_KEK_KEYS`, so anyone who holds the leaked key and can write to D1 could plant a value
+the Worker still opens. Step 8's `"PLATFORM_KEK": null` deletes it. Confirm `legacy` is absent
+from `GET /manage/api/products/kek` afterwards; while it is present, the leaked key still opens.
+If you do not hold the leaked key yourself (it was never escrowed), contain with "Rotating when
+the old KEK is unknown" below instead: containment ends at its step 6, which deletes
+`PLATFORM_KEK`, so run its steps without pause.
+
 ### Rotating when the old KEK is unknown
 
 Worker secrets are write-only, so an environment whose current `PLATFORM_KEK` was never copied
@@ -403,36 +454,56 @@ keeps `PLATFORM_KEK` in the ring as the **legacy key**, open-only, under its leg
 (`PLATFORM_KEK_ID`, else `default`). Every blob sealed under it keeps opening, every new seal
 uses the new active key, and the sweep moves the old blobs across. Nobody handles the old key.
 
-Three rules, all enforced by the Worker (fail closed):
+Three rules. The Worker enforces the first two and fails closed; the third is yours to keep,
+because nothing can tell a changed `PLATFORM_KEK_ID` from a meant one:
 
 - `PLATFORM_KEK_ACTIVE` must name a `PLATFORM_KEK_KEYS` entry. The legacy key never seals.
 - Give the new key a kid of its own. If `PLATFORM_KEK_KEYS` holds the legacy kid with
   **different** bytes, the ring refuses to load: every product route 404s and
   `GET /manage/api/products/kek` answers `503` with _PLATFORM_KEK and PLATFORM_KEK_KEYS both
-  define kid default with different keys; refusing to choose_.
+  define kid default with different keys; refusing to choose_. Step 2 checks this before the
+  call.
 - Leave `PLATFORM_KEK_ID` exactly as it is, set or unset. It names the legacy kid; changing it
   orphans every legacy blob.
 
 Throughout, `<host>` is `key.plrs.im`, `key-staging.plrs.im` or `key-dev.plrs.im`, and the
 calls are a platform admin's: the console session cookie, plus the CSRF token from
-`GET /manage/api/me` on the `POST`.
+`GET /manage/api/me` on the `POST`. Every command that changes something runs only after the
+request it depends on succeeded; a `STOP` line means do not go on.
 
 ```sh
 BASE=https://<host>/manage/api
 COOKIE="cookie: __Host-pkey_admin=…"           # from a signed-in console tab
-CSRF=$(curl -fsS "$BASE/me" -H "$COOKIE" | jq -r .csrf)
+CSRF=$(curl -fsS "$BASE/me" -H "$COOKIE" | jq -er .csrf) || echo "STOP: no CSRF token; sign in again"
 ```
 
 0. **Preconditions.** The running Worker must support the legacy key: on an older build,
    `PLATFORM_KEK` is ignored once `PLATFORM_KEK_KEYS` is set, and step 2 would make every
-   existing blob unopenable at once. `curl -fsS "$BASE/platform/version" -H "$COOKIE" | jq .gitSha`
-   must be a commit that contains this section (Platform → Deployment shows the same; if it is
-   `null`, confirm from the deploy log which commit is live). Then record the legacy kid and the
+   existing blob unopenable at once. Check that the live commit descends from the commit that
+   added the legacy key. The commit is found by its content on `main`, so the check holds
+   however the change was merged. Run it from a clone of this repository:
+
+   ```sh
+   git fetch origin
+   SHA=$(curl -fsS "$BASE/platform/version" -H "$COOKIE" | jq -er .gitSha) &&
+   FIX=$(git log origin/main --reverse --format=%H -S'export interface LegacyKey' \
+           -- packages/worker/src/keyvault.ts | head -1) &&
+   git merge-base --is-ancestor "$FIX" "$SHA" &&
+   echo "OK: the live build has the legacy key" ||
+   echo "STOP: the live build predates the legacy key, or its commit is unknown"
+   ```
+
+   Platform → Deployment shows the same commit. If `gitSha` is `null`, take the live commit from
+   the deploy log and run the `git merge-base` line on it. Then record the legacy kid and the
    counts:
 
    ```sh
    curl -fsS "$BASE/products/kek" -H "$COOKIE" | jq '{active, kids, remaining, unopenable}'
    # { "active": "default", "kids": ["default"], "remaining": 0, "unopenable": 0 }
+   LEGACY_KID=$(curl -fsS "$BASE/products/kek" -H "$COOKIE" \
+                  | jq -er 'select(.kids == [.active]) | .active') &&
+   echo "legacy kid: $LEGACY_KID" ||
+   echo "STOP: the request failed, or the keyring is not the single PLATFORM_KEK shape"
    ```
 
    `active` is the legacy kid. Take a D1 Time Travel bookmark of the environment's database.
@@ -449,15 +520,21 @@ CSRF=$(curl -fsS "$BASE/me" -H "$COOKIE" | jq -r .csrf)
 
 2. **Set the new ring, leaving `PLATFORM_KEK` in place.** One `wrangler secret bulk` call (two
    `secret put`s would deploy a version where `PLATFORM_KEK_ACTIVE` names a kid that is not in
-   the ring). The kid must differ from the legacy kid; the key travels file → `jq` → wrangler's
-   stdin and never appears on a command line:
+   the ring). The kid must differ from the legacy kid, and from `default`; the guard refuses
+   either before anything is sent. The key travels file → `jq` → wrangler's stdin and never
+   appears on a command line:
 
    ```sh
    cd packages/worker
    NEW_KID=k2026-10                                   # any kid other than the legacy one
-   jq -n --arg kid "$NEW_KID" --rawfile key ~/.secrets/polaris-key/kek/<env>.key \
-     '{PLATFORM_KEK_KEYS: ({($kid): ($key | rtrimstr("\n"))} | tojson), PLATFORM_KEK_ACTIVE: $kid}' \
-     | npx wrangler secret bulk --env <env>
+   if [ -z "$NEW_KID" ] || [ -z "$LEGACY_KID" ] || [ "$NEW_KID" = "$LEGACY_KID" ] ||
+      [ "$NEW_KID" = default ]; then
+     echo "STOP: NEW_KID must differ from the legacy kid (${LEGACY_KID:-not recorded: step 0}) and from default"
+   else
+     jq -n --arg kid "$NEW_KID" --rawfile key ~/.secrets/polaris-key/kek/<env>.key \
+       '{PLATFORM_KEK_KEYS: ({($kid): ($key | rtrimstr("\n"))} | tojson), PLATFORM_KEK_ACTIVE: $kid}' \
+       | npx wrangler secret bulk --env <env>
+   fi
    ```
 
 3. **Deploy and verify.** The bulk call itself deploys a new version with the new secrets; there
@@ -472,9 +549,13 @@ CSRF=$(curl -fsS "$BASE/me" -H "$COOKIE" | jq -r .csrf)
 
    - `503` naming a kid conflict: re-run step 2 with another `NEW_KID`.
    - No `legacy` in the answer while `PLATFORM_KEK` is set, or product routes 404: the build
-     predates this change. Undo at once with
-     `echo '{"PLATFORM_KEK_KEYS":null,"PLATFORM_KEK_ACTIVE":null}' | npx wrangler secret bulk --env <env>`,
-     which returns to the single-key shape, then deploy a build that has it.
+     predates this change. Deploy forward at once: `npx wrangler deploy --env <env>` from a
+     checkout that passes step 0's check. Leave the secrets as they are. On the right build the
+     legacy blobs open again, and so does anything sealed under `$NEW_KID` meanwhile. Do not undo
+     by deleting the new ring: any admin write since step 2 is sealed under `$NEW_KID` and would
+     go dark (see Rollback below). Only if no forward deploy is possible, and `counts` shows
+     nothing under `$NEW_KID`, return to the single-key shape with
+     `echo '{"PLATFORM_KEK_KEYS":null,"PLATFORM_KEK_ACTIVE":null}' | npx wrangler secret bulk --env <env>`.
 
 4. **Rewrap.** The sweep is the same `POST` as above: bounded, idempotent and resumable, so it
    can be stopped and re-run at any time. Repeat until `legacy.remaining` is 0:
@@ -482,16 +563,21 @@ CSRF=$(curl -fsS "$BASE/me" -H "$COOKIE" | jq -r .csrf)
    ```sh
    while :; do
      R=$(curl -fsS -X POST "$BASE/products/kek" -H "$COOKIE" -H "X-PKey-CSRF: $CSRF" \
-           -H "content-type: application/json" -d '{"limit":200}')
-     echo "$R" | jq -c '{resealed, skipped, failed, remaining, legacy: .legacy.remaining}'
-     [ "$(echo "$R" | jq '.legacy.remaining')" = 0 ] && break
-     [ "$(echo "$R" | jq '.resealed + .skipped')" = 0 ] && { echo "$R" | jq .failures; break; }
+           -H "content-type: application/json" -d '{"limit":200}') ||
+       { echo "STOP: request failed"; break; }
+     echo "$R" | jq -c '{resealed, skipped, failed, remaining, legacy: .legacy.remaining}' ||
+       { echo "STOP: not a sweep answer"; break; }
+     echo "$R" | jq -e '.legacy.remaining == 0' >/dev/null && { echo "done"; break; }
+     echo "$R" | jq -e '.resealed + .skipped == 0' >/dev/null &&
+       { echo "STOP: stuck"; echo "$R" | jq .failures; break; }
+     sleep 1
    done
    ```
 
-   A pass that re-seals nothing while values remain is stuck: `failures` names each row (see
-   step 6 of the procedure above for what `failed` means). Each pass is one `kek.reseal` row on
-   the platform activity log.
+   The loop stops on the first failed request (an expired session, a lost CSRF token, a `503`
+   from the keyring): fix that, then run it again. A pass that re-seals nothing while values
+   remain is stuck: `failures` names each row (see step 6 of the procedure above for what
+   `failed` means). Each pass is one `kek.reseal` row on the platform activity log.
 
 5. **Verify zero legacy blobs.**
 
@@ -508,9 +594,12 @@ CSRF=$(curl -fsS "$BASE/me" -H "$COOKIE" | jq -r .csrf)
    ("Login-card providers"), and check again. Nothing can add a value under the legacy kid any
    more, so once this reads 0 it stays 0.
 
-6. **Delete the old key.**
+6. **Delete the old key.** The delete runs only if the check prints `true`; a failed request
+   stops it too.
 
    ```sh
+   curl -fsS "$BASE/products/kek" -H "$COOKIE" \
+     | jq -e '.unopenable == 0 and .legacy.safeToDelete == true' &&
    npx wrangler secret delete PLATFORM_KEK --env <env>
    curl -fsS "$BASE/products/kek" -H "$COOKIE" | jq '{active, kids, remaining, unopenable, legacy}'
    # "kids": ["k2026-10"], "remaining": 0, "unopenable": 0, and no "legacy"
