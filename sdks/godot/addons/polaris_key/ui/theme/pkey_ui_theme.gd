@@ -35,6 +35,37 @@ const LIGHT_PATH := "res://addons/polaris_key/ui/theme/pkey_brand_light.tres"
 const REGULAR_PATH := "res://addons/polaris_key/ui/theme/fonts/rubik_regular.tres"
 const BOLD_PATH := "res://addons/polaris_key/ui/theme/fonts/rubik_bold.tres"
 
+## The bundled fonts' licence texts (SIL OFL 1.1 requires them to travel with the fonts), keyed by
+## the font resources' path prefix under `fonts/`. They are `.txt` files, which an export preset
+## leaves out unless its include filter names them, so PKeyExportPlugin adds each one to any
+## export that carries a matching font resource (`font_licences`).
+const FONT_LICENCES := {
+	"res://addons/polaris_key/ui/theme/fonts/rubik_": [
+		"res://addons/polaris_key/ui/theme/fonts/OFL.txt",
+		"res://addons/polaris_key/ui/theme/fonts/FONT-NOTICE.txt",
+	],
+	"res://addons/polaris_key/ui/theme/fonts/jetbrains_mono_": [
+		"res://addons/polaris_key/ui/theme/fonts/OFL-JetBrainsMono.txt",
+	],
+}
+
+
+## The licence files that must ship beside the resource at `path`: empty unless it is one of the
+## bundled fonts.
+static func font_licences(path: String) -> Array:
+	for prefix in FONT_LICENCES:
+		if path.begins_with(prefix):
+			return FONT_LICENCES[prefix]
+	return []
+
+
+## True when `path` is one of the bundled fonts' licence files.
+static func is_font_licence(path: String) -> bool:
+	for files in FONT_LICENCES.values():
+		if files.has(path):
+			return true
+	return false
+
 ## `branding`: no Polaris Key branding; the game's theme and font (the default).
 const BRANDING_NONE := "none"
 ## `branding`: the Polaris Key design system.
