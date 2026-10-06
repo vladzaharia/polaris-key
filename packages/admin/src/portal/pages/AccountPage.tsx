@@ -7,7 +7,6 @@ import {
 } from "../../components/motionPreference.js";
 import { useTheme, type ThemePreference } from "../../components/theme.js";
 import { Button } from "../../ui/Button.js";
-import { reducedMotion } from "../../ui/motion/index.js";
 import { RadioCards } from "../../ui/RadioCards.js";
 import { toast } from "../../ui/toast.js";
 import { cn } from "../../lib/cn.js";
@@ -16,7 +15,12 @@ import { Avatar } from "../components/Avatar.js";
 import { SectionCard } from "../components/product/Card.js";
 import { signOutQuietly, useDeleteAccount } from "../data.js";
 import { portalErrorCopy } from "../errors.js";
-import { href, useDocumentTitle, type AccountSection } from "../router.js";
+import {
+  href,
+  scrollBehavior,
+  useDocumentTitle,
+  type AccountSection,
+} from "../router.js";
 
 /**
  * Account v1 (PORTAL.md §4.26, PX-07) on today's API: the sign-in email (the Sign-in methods
@@ -41,17 +45,20 @@ export function AccountPage({
   const [current, setCurrent] = React.useState<AccountSection>(
     SECTIONS.some((s) => s.id === section) ? section! : "methods",
   );
+  // A section deep link scrolls there once, as the page opens; the router scrolls to a section
+  // the URL names later (MO-05), so this does not undo its smooth scroll with an instant one.
   React.useEffect(() => {
     if (!section) return;
     document
       .getElementById(`section-${section}`)
       ?.scrollIntoView?.({ block: "start" });
-  }, [section]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const pick = (s: AccountSection): void => {
     setCurrent(s);
     document.getElementById(`section-${s}`)?.scrollIntoView?.({
       // Smooth scrolling becomes instant under reduced motion (notes/S-23 §6.6).
-      behavior: reducedMotion() ? "auto" : "smooth",
+      behavior: scrollBehavior(),
       block: "start",
     });
     window.history.replaceState(
@@ -66,7 +73,11 @@ export function AccountPage({
     <div className="space-y-6 desk:space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-[1.875rem] font-bold leading-tight text-fg-strong desk:text-[2.5rem]">
+          {/* Focus lands here after a navigation (the router, MO-05): no ring on a heading. */}
+          <h1
+            tabIndex={-1}
+            className="text-[1.875rem] font-bold leading-tight text-fg-strong outline-none desk:text-[2.5rem]"
+          >
             Account
           </h1>
           <p className="text-fg-muted">

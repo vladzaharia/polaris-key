@@ -8,7 +8,7 @@ import { cn } from "../../lib/cn.js";
 import type { LibraryProduct } from "../model/library.js";
 import { requestHeadingFocus } from "../focus.js";
 import { matches } from "../model/libraryView.js";
-import { href, navigate, resolveHash } from "../router.js";
+import { focusPageHeading, href, navigate, resolveHash } from "../router.js";
 import { ProductIcon } from "./ProductIcon.js";
 
 /**
@@ -76,8 +76,13 @@ export function JumpPalette({
   /*
    * Focus lands on the product's `h1` (FLOWS.md P-14, PORTAL.md §9.4), not on `body`: the
    * product page takes the request once its heading exists. Already on that product, the page
-   * does not mount again, so the heading is focused here, after the palette has closed and
-   * handed focus back.
+   * does not mount again, so the heading is focused here, after the palette has closed, without
+   * scrolling away from the section a "Manage devices" jump scrolls to.
+   *
+   * Motion (MO-05): the palette exits through motion.css (its `animate-pk-in` content and
+   * `animate-pk-overlay-in` scrim; MO-02) and the page swaps underneath it. The router starts no
+   * View Transition while a dialog is on screen (one would lift the page above the scrim), and
+   * the results never animate while typing: filtering only re-renders the list.
    */
   const go = (p: LibraryProduct, section?: "devices"): void => {
     pushRecent(p.slug);
@@ -86,11 +91,7 @@ export function JumpPalette({
     if (!here) requestHeadingFocus(p.slug);
     onOpenChange(false);
     navigate(href.product(p.slug, section));
-    if (here)
-      requestAnimationFrame(() => {
-        const h1 = document.querySelector<HTMLElement>("main h1");
-        h1?.focus();
-      });
+    if (here) focusPageHeading();
   };
 
   const item =
