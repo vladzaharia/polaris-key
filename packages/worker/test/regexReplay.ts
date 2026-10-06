@@ -17,8 +17,14 @@
  *
  * Syntax the engine does not model (lookaround, backreferences, the `i` flag, a loop whose body
  * can match the empty string) throws, so a new pattern fails the check loudly instead of
- * counting nothing. Wrapping `exec` invalidates V8's regexp fast paths for the rest of the
- * process; that costs speed, never results.
+ * counting nothing. The `u` flag is modelled as UTF-16 code units, not code points: a `.` or a
+ * class can match half a surrogate pair, which moves a count by at most the number of astral
+ * characters and never changes how it grows. `split` takes the spec's sticky slow path once
+ * `exec` is wrapped: one sticky exec per input position, the same order of work as one
+ * unanchored scan, and those are exactly the runs recorded and replayed. Captures follow
+ * ECMAScript (a repeated group's captures are cleared at each iteration), so the self-test can
+ * compare match positions and captures with `RegExp`. Wrapping `exec` invalidates V8's regexp
+ * fast paths for the rest of the process; that costs speed, never results.
  */
 
 /** One native regex execution: the pattern, and where in which input it was asked to look. */
@@ -29,7 +35,9 @@ export interface RegexRun {
   lastIndex: number;
 }
 
-/** Runs `fn` and returns what it returned together with every native regex run it made. */
+/** Runs `fn` and returns what it returned together with every native regex run it made.
+ *  Synchronous work only: a `fn` that returns a promise throws, because the regex runs it
+ *  awaits would happen after the recording stopped and the count would silently miss them. */
 export function recordRegexRuns<T>(fn: () => T): {
   result: T;
   runs: RegexRun[];
@@ -45,11 +53,21 @@ export function recordRegexRuns<T>(fn: () => T): {
     });
     return exec.call(this, s);
   };
+  let result: T;
   try {
-    return { result: fn(), runs };
+    result = fn();
   } finally {
     RegExp.prototype.exec = exec;
   }
+  if (
+    (typeof result === "object" || typeof result === "function") &&
+    result !== null &&
+    typeof (result as { then?: unknown }).then === "function"
+  )
+    throw new Error(
+      "regexReplay: recordRegexRuns records synchronous work only, and fn returned a promise",
+    );
+  return { result, runs };
 }
 
 /** Total backtracking steps to replay every run (a run that matched stops where it matched). */
@@ -68,14 +86,23 @@ export function replaySteps(runs: readonly RegexRun[]): number {
   return total;
 }
 
-/** Steps for one `exec` of `source` (with `flags`) against `input`, as `RegExp` would run it,
- *  and whether it found a match (the self-test compares that with `RegExp`). */
+/** One replayed `exec`: its steps and, when it matched, where (`index`) and what (`captures`,
+ *  the match then each group, `undefined` for a group that took no part), as `RegExp.exec`
+ *  reports them (the self-test compares the two). */
+export interface ReplayedExec {
+  steps: number;
+  matched: boolean;
+  index?: number;
+  captures?: Array<string | undefined>;
+}
+
+/** Steps for one `exec` of `source` (with `flags`) against `input`, as `RegExp` would run it. */
 export function regexSteps(
   source: string,
   flags: string,
   input: string,
   lastIndex = 0,
-): { steps: number; matched: boolean } {
+): ReplayedExec {
   return execRun(compile(source, flags), input, lastIndex);
 }
 
@@ -89,6 +116,7 @@ type Node =
   | { t: "seq"; items: Node[] }
   | { t: "alt"; opts: Node[] }
   | { t: "rep"; node: Node; min: number; max: number; greedy: boolean }
+  | { t: "cap"; idx: number; node: Node }
   | { t: "bol" }
   | { t: "eol" }
   | { t: "wordb"; neg: boolean };
@@ -100,10 +128,14 @@ type Inst =
   | { op: "bol" }
   | { op: "eol" }
   | { op: "wordb"; neg: boolean }
+  | { op: "save"; slot: number }
+  | { op: "reset"; from: number; to: number }
   | { op: "match" };
 
 interface Program {
   insts: Inst[];
+  /** The capturing groups, numbered from 1 in the order their `(` appears. */
+  groups: number;
   global: boolean;
   sticky: boolean;
   multiline: boolean;
@@ -138,6 +170,7 @@ function unsupported(source: string, what: string): never {
 
 class Parser {
   private i = 0;
+  groups = 0;
   constructor(
     private readonly src: string,
     private readonly dotAll: boolean,
@@ -206,15 +239,16 @@ class Parser {
           test: this.dotAll ? () => true : (x) => !isLineTerm(x),
         };
       case "(": {
+        let idx = 0;
         if (this.src[this.i] === "?") {
           if (this.src[this.i + 1] !== ":")
             unsupported(this.src, "lookaround or a named group");
           this.i += 2;
-        }
+        } else idx = ++this.groups;
         const inner = this.alt();
         if (this.src[this.i] !== ")") unsupported(this.src, "an unclosed `(`");
         this.i++;
-        return inner;
+        return idx === 0 ? inner : { t: "cap", idx, node: inner };
       }
       case "[":
         return this.cls();
@@ -355,14 +389,32 @@ function nullable(n: Node): boolean {
       return n.opts.some(nullable);
     case "rep":
       return n.min === 0 || nullable(n.node);
+    case "cap":
+      return nullable(n.node);
     default:
       return true;
   }
 }
 
+/** The capturing groups inside `n`, as `[first, last]`, or null when it has none. */
+function groupsIn(n: Node): [number, number] | null {
+  const found: number[] = [];
+  const walk = (m: Node): void => {
+    if (m.t === "cap") {
+      found.push(m.idx);
+      walk(m.node);
+    } else if (m.t === "seq") m.items.forEach(walk);
+    else if (m.t === "alt") m.opts.forEach(walk);
+    else if (m.t === "rep") walk(m.node);
+  };
+  walk(n);
+  return found.length === 0 ? null : [Math.min(...found), Math.max(...found)];
+}
+
 function compile(source: string, flags: string): Program {
   if (/[^gmsuyd]/.test(flags)) unsupported(source, `the flags "${flags}"`);
-  const ast = new Parser(source, flags.includes("s")).parse();
+  const parser = new Parser(source, flags.includes("s"));
+  const ast = parser.parse();
   const insts: Inst[] = [];
   const emit = (n: Node): void => {
     switch (n.t) {
@@ -379,6 +431,11 @@ function compile(source: string, flags: string): Program {
       case "seq":
         for (const item of n.items) emit(item);
         return;
+      case "cap":
+        insts.push({ op: "save", slot: 2 * n.idx });
+        emit(n.node);
+        insts.push({ op: "save", slot: 2 * n.idx + 1 });
+        return;
       case "alt": {
         const ends: number[] = [];
         for (let k = 0; k < n.opts.length; k++) {
@@ -394,22 +451,28 @@ function compile(source: string, flags: string): Program {
         return;
       }
       case "rep": {
-        for (let k = 0; k < n.min; k++) emit(n.node);
+        // ECMAScript clears a repeated atom's captures at the start of every iteration.
+        const inner = groupsIn(n.node);
+        const body = (): void => {
+          if (inner) insts.push({ op: "reset", from: inner[0], to: inner[1] });
+          emit(n.node);
+        };
+        for (let k = 0; k < n.min; k++) body();
         if (n.max === Infinity) {
           const loop = insts.push({ op: "split", x: -1, y: -1 }) - 1;
-          emit(n.node);
+          body();
           insts.push({ op: "jmp", x: loop });
-          const body = loop + 1;
+          const first = loop + 1;
           const exit = insts.length;
           insts[loop] = n.greedy
-            ? { op: "split", x: body, y: exit }
-            : { op: "split", x: exit, y: body };
+            ? { op: "split", x: first, y: exit }
+            : { op: "split", x: exit, y: first };
           return;
         }
         const splits: number[] = [];
         for (let k = n.min; k < n.max; k++) {
           splits.push(insts.push({ op: "split", x: -1, y: -1 }) - 1);
-          emit(n.node);
+          body();
         }
         const exit = insts.length;
         for (const s of splits)
@@ -424,6 +487,7 @@ function compile(source: string, flags: string): Program {
   insts.push({ op: "match" });
   return {
     insts,
+    groups: parser.groups,
     global: flags.includes("g"),
     sticky: flags.includes("y"),
     multiline: flags.includes("m"),
@@ -432,41 +496,65 @@ function compile(source: string, flags: string): Program {
 
 /** One `exec`: an anchored attempt at each start position until one matches (only at
  *  `lastIndex` when sticky), as RegExpBuiltinExec does. */
-function execRun(
-  p: Program,
-  input: string,
-  lastIndex: number,
-): { steps: number; matched: boolean } {
+function execRun(p: Program, input: string, lastIndex: number): ReplayedExec {
   const from = p.global || p.sticky ? lastIndex : 0;
   if (from > input.length) return { steps: 0, matched: false };
   let steps = 0;
   for (let start = from; start <= input.length; start++) {
     const r = attempt(p, input, start, MAX_STEPS - steps);
     steps += r.steps;
-    if (r.matched) return { steps, matched: true };
+    if (r.caps) {
+      const captures: Array<string | undefined> = [];
+      for (let g = 0; g <= p.groups; g++) {
+        const [a, b] = [r.caps[2 * g]!, r.caps[2 * g + 1]!];
+        captures.push(a < 0 || b < 0 ? undefined : input.slice(a, b));
+      }
+      return { steps, matched: true, index: start, captures };
+    }
     if (p.sticky) break;
   }
   return { steps, matched: false };
 }
 
+/** One anchored attempt at `start`. The backtracking stack holds (pc, pos) pairs for the
+ *  alternatives still to try, and (-1 - slot, old value) pairs that undo a capture on the way
+ *  back. Saving and clearing captures is bookkeeping, not a step: the counts are the same as
+ *  with no captures at all. `caps` (slot 2g and 2g + 1 bracket group g; group 0 is the match)
+ *  is set only when the attempt matched. */
 function attempt(
   p: Program,
   input: string,
   start: number,
   budget: number,
-): { steps: number; matched: boolean } {
+): { steps: number; caps?: number[] } {
   const { insts, multiline } = p;
   const len = input.length;
   const stack: number[] = [];
+  const caps = new Array<number>(2 * (p.groups + 1)).fill(-1);
+  const set = (slot: number, value: number): void => {
+    stack.push(-1 - slot, caps[slot]!);
+    caps[slot] = value;
+  };
   let pc = 0;
   let pos = start;
   let steps = 0;
   for (;;) {
+    const inst = insts[pc]!;
+    if (inst.op === "save") {
+      set(inst.slot, pos);
+      pc++;
+      continue;
+    }
+    if (inst.op === "reset") {
+      for (let slot = 2 * inst.from; slot <= 2 * inst.to + 1; slot++)
+        set(slot, -1);
+      pc++;
+      continue;
+    }
     if (++steps > budget)
       throw new Error(
         `regexReplay: past ${MAX_STEPS} steps; the pattern backtracks super-linearly here`,
       );
-    const inst = insts[pc]!;
     let ok = false;
     switch (inst.op) {
       case "set":
@@ -495,14 +583,25 @@ function attempt(
         break;
       }
       case "match":
-        return { steps, matched: true };
+        caps[0] = start;
+        caps[1] = pos;
+        return { steps, caps };
     }
     if (ok) {
       pc++;
       continue;
     }
-    if (stack.length === 0) return { steps, matched: false };
-    pos = stack.pop()!;
-    pc = stack.pop()!;
+    // Back to the newest alternative, undoing every capture made since it was pushed.
+    for (;;) {
+      if (stack.length === 0) return { steps };
+      const value = stack.pop()!;
+      const code = stack.pop()!;
+      if (code < 0) caps[-1 - code] = value;
+      else {
+        pc = code;
+        pos = value;
+        break;
+      }
+    }
   }
 }

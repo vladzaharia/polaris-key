@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Catalog, type ProductCatalog } from "./index.js";
+import { patternWork } from "./regex.js";
 import { validateWork } from "./validate.js";
 
 const CATALOG: ProductCatalog = {
@@ -353,6 +354,33 @@ describe("Catalog — ordering, dependsOn, idempotency", () => {
     for (let i = 0; i < 2000; i++) cat.validateEntryValue(entry, i % 10);
     cat.compileAll();
     expect(validateWork.prepares - before).toBe(KEYWORD_CATALOG.entries.length);
+  });
+
+  it("validates `pattern` through the counted linear matcher: 10x the value, at most 11x the steps", () => {
+    // End to end: a Catalog validation reaches the linear matcher (patternWork.steps moves) and
+    // stays linear on the R10-09 bomb, where a backtracking engine costs about 2^n.
+    const cat = new Catalog({
+      schemaVersion: 1,
+      entries: [
+        {
+          key: "k",
+          kind: "config",
+          category: "c",
+          label: "l",
+          description: "",
+          schema: { type: "string", pattern: "(x+x+)+y" },
+        },
+      ],
+    });
+    const steps = (n: number): number => {
+      const before = patternWork.steps;
+      expect(cat.validateKeyValue("k", "x".repeat(n)).ok).toBe(false);
+      return patternWork.steps - before;
+    };
+    const small = steps(400);
+    const large = steps(4000);
+    expect(small).toBeGreaterThan(0);
+    expect(large).toBeLessThanOrEqual(11 * small);
   });
 
   it("validateEntryValue agrees with validateKeyValue for a known entry", () => {

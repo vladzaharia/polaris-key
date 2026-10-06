@@ -182,7 +182,11 @@ describe("validate — `pattern` is matched in linear time (R10 residual 4)", ()
         { type: "string", pattern: "(x+x+)+y" },
         "x".repeat(41),
       );
+      // Positive control: a native run made here is seen, so an empty result below means none
+      // carried the pattern, not that the recorder saw nothing.
+      /pkey-control/.test("pkey-control");
     });
+    expect(native).toContain("pkey-control");
     expect(message).toMatch(/must match pattern/);
     expect(native.filter((source) => source.includes("x+x+"))).toEqual([]);
   });

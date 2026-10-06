@@ -1,7 +1,9 @@
 /**
  * The step-counting replay engine the ReDoS checks rest on (test/regexReplay.ts): it must agree
- * with `RegExp` on what matches, see every native run through `test`, `replace`, `split` and
- * `match`, count linear patterns as linear, and count catastrophic backtracking as such.
+ * with `RegExp` on where a match is and what it captures, see every native run through `test`,
+ * `replace`, `split` and `match`, count linear patterns as linear, and count catastrophic
+ * backtracking as such. The corpus holds every pattern the checks actually replay (the notes
+ * summary's and resolveChannel's) plus the syntax corners.
  */
 
 import { describe, expect, it } from "vitest";
@@ -26,7 +28,31 @@ const CORPUS: Array<[string, string, string[]]> = [
   ["^[ \\t]*[-*+][ \\t]+", "gm", ["- a", "  * b", "x\n+ c", "-x", "\t-\tx"]],
   ["^##[ \\t]", "m", ["## a", "x\n## b", "### c", "##"]],
   ["\\n[ \\t\\r]*\\n", "", ["a\n\nb", "a\n \t\nb", "a\nb"]],
+  [
+    "<!--[ \\t\\r\\n]*\\/pkey:summary[ \\t\\r\\n]*-->",
+    "",
+    [
+      "<!-- /pkey:summary -->",
+      "x<!--\n/pkey:summary-->y",
+      "<!-- pkey:summary -->",
+    ],
+  ],
+  ["[*_`]+", "g", ["**bold**", "a_b`c", "none", "x``y", ""]],
+  [
+    "^[ \\t]*#{1,6}[ \\t]+",
+    "gm",
+    ["# a", "  ### b", "x\n## c", "####### d", "#x"],
+  ],
+  [
+    "^pr-(\\d{1,7})$",
+    "",
+    ["pr-42", "pr-1234567", "pr-12345678", "pr-", "xpr-1"],
+  ],
+  ["^\\d+\\.\\d+\\.\\d+", "", ["1.2.3", "10.20.30-beta", "1.2", "v1.2.3"]],
+  ["^v", "", ["v1.2.3", "1.2.3", ""]],
   ["^(?:(x+x+)+y)$", "", ["xxy", "xxxxy", "xy", "xxxx"]],
+  ["(a|(b))+", "", ["ba", "ab", "bb", "c"]],
+  ["(a)?(b)?c|(d)", "", ["bc", "ac", "c", "d"]],
   ["a|bc|", "", ["", "bc", "zz"]],
   ["\\bfoo\\B", "", ["foobar", "foo", "a foox"]],
   ["[^]x|[]", "", ["ax", "x"]],
@@ -34,18 +60,23 @@ const CORPUS: Array<[string, string, string[]]> = [
 ];
 
 describe("regexReplay", () => {
-  it("agrees with RegExp on what matches", () => {
+  it("agrees with RegExp on where each match is and what it captures", () => {
     for (const [source, flags, inputs] of CORPUS)
-      for (const input of inputs)
+      for (const input of inputs) {
+        const replayed = regexSteps(source, flags, input);
+        const native = new RegExp(source, flags).exec(input);
         expect({
           source,
           input,
-          hit: regexSteps(source, flags, input).matched,
+          index: replayed.index ?? null,
+          captures: replayed.captures ?? null,
         }).toEqual({
           source,
           input,
-          hit: new RegExp(source, flags).test(input),
+          index: native?.index ?? null,
+          captures: native ? [...native] : null,
         });
+      }
   });
 
   it("records the runs test, replace, split and match make, then restores exec", () => {
@@ -71,6 +102,14 @@ describe("regexReplay", () => {
     const bomb = (n: number) =>
       regexSteps("^(?:(x+x+)+y)$", "", "x".repeat(n)).steps;
     expect(bomb(16)).toBeGreaterThan(16 * bomb(10));
+  });
+
+  it("refuses an async fn, whose regex runs would land after the recording stopped", () => {
+    const exec = RegExp.prototype.exec;
+    expect(() => recordRegexRuns(async () => /a/.test("a"))).toThrow(
+      /synchronous work only/,
+    );
+    expect(RegExp.prototype.exec).toBe(exec);
   });
 
   it("refuses syntax it does not model rather than counting nothing", () => {

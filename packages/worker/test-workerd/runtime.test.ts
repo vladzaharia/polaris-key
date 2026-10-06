@@ -184,9 +184,13 @@ describe("catalog validation under workerd (R10-01 regression)", () => {
     let ok = true;
     try {
       ok = catalog.validateKeyValue("redos", "x".repeat(41)).ok;
+      // Positive control: a native run made here is seen inside the isolate, so an empty result
+      // below means none carried the pattern, not that the recorder saw nothing.
+      /pkey-control/.test("pkey-control");
     } finally {
       RegExp.prototype.exec = exec;
     }
+    expect(native).toContain("pkey-control");
     expect(ok).toBe(false);
     expect(native.filter((source) => source.includes("x+x+"))).toEqual([]);
   });
