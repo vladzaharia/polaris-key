@@ -588,12 +588,13 @@ describe("Activate license modal (PX-06)", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: "Continue" }));
     await screen.findByRole("heading", { name: "Check your email" });
-    // The link returns here: the return URL carries the key.
+    // The key never leaves the browser: the return URL drops it, and this tab keeps it.
     const call = vi
       .mocked(fetch)
       .mock.calls.find(([u]) => String(u).includes("/api/signin/email/start"))!;
     const body = JSON.parse(String(call[1]!.body)) as { returnTo: string };
-    expect(body.returnTo).toContain(`#/?activate=${KEY}`);
+    expect(body.returnTo).not.toContain("pkey_");
+    expect(window.location.hash).toContain(`activate=${KEY}`);
     me = { account: ACCOUNT, csrf: "c" };
     fireEvent.focus(window);
     const dialog = await screen.findByRole("dialog", {

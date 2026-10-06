@@ -162,7 +162,9 @@
   @keyframes pk-step-forward {
     from {
       opacity: 0;
-      transform: translateX(var(--pk-motion-distance-lg));
+      transform: translateX(
+        calc(var(--pk-step-dir, 1) * var(--pk-motion-distance-lg))
+      );
     }
     to {
       opacity: 1;
@@ -172,7 +174,9 @@
   @keyframes pk-step-back {
     from {
       opacity: 0;
-      transform: translateX(calc(-1 * var(--pk-motion-distance-lg)));
+      transform: translateX(
+        calc(-1 * var(--pk-step-dir, 1) * var(--pk-motion-distance-lg))
+      );
     }
     to {
       opacity: 1;
@@ -187,6 +191,11 @@
 }
 
 @layer base {
+  /* The login card's step enter mirrors in RTL: forward comes from the inline end (SIGN-IN.md §3.18). */
+  [dir="rtl"] {
+    --pk-step-dir: -1;
+  }
+
   /* Tailwind v3 defaults the views were written against: a themed border colour, pointer
      buttons and a token placeholder colour (v4 uses currentColor, the default cursor and a
      half-opacity currentColor). */

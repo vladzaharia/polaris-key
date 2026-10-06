@@ -1,3 +1,5 @@
+import { returnUrl } from "./carriedKey.js";
+
 export interface PortalAccount {
   id: string;
   name: string;
@@ -515,7 +517,8 @@ export const portalApi = {
   startEmailSignIn: async (email: string) => {
     const out = await call<{ ok: true }>("/api/signin/email/start", {
       method: "POST",
-      body: JSON.stringify({ email, returnTo: window.location.href }),
+      // Never the carried license key (carriedKey.ts).
+      body: JSON.stringify({ email, returnTo: returnUrl() }),
     });
     signInPending = true;
     return out;

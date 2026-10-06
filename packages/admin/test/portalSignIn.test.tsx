@@ -23,6 +23,7 @@ import {
 
 beforeEach(() => {
   window.history.replaceState(null, "", "/");
+  window.sessionStorage.clear();
 });
 
 afterEach(() => {
@@ -52,7 +53,7 @@ describe("LoginCard (SIGN-IN.md §3.1–§3.4, §3.9)", () => {
       (await screen.findByRole("textbox", { name: "Email" })).getAttribute(
         "autocomplete",
       ),
-    ).toBe("email");
+    ).toBe("username webauthn");
     expect(
       screen.getByRole("heading", { level: 1, name: "Sign in to Polaris Key" }),
     ).toBeTruthy();
@@ -296,6 +297,99 @@ describe("LoginCard (SIGN-IN.md §3.1–§3.4, §3.9)", () => {
       }),
     ).toBeTruthy();
     expect(window.location.hash).not.toContain("activate");
+  });
+
+  it("never sends the carried key: not in the email start, the SSO link or a provider link", async () => {
+    const KEY = "pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w";
+    window.history.replaceState(null, "", `/#/?activate=${KEY}&tab=x`);
+    signedOut({
+      ...CAPS_ALL,
+      auth: { ...CAPS_ALL.auth, providers: ["apple", "google", "steam"] },
+    });
+    renderPortal();
+    await screen.findByRole("heading", {
+      level: 1,
+      name: "Sign in to add Mossgarden",
+    });
+    const sso = screen.getByRole("link", { name: /single sign-on/ });
+    expect(sso.getAttribute("href")).not.toContain("pkey_");
+    expect(decodeURIComponent(sso.getAttribute("href")!)).toContain("tab=x");
+    const providers = within(
+      screen.getByRole("group", { name: "Or continue with" }),
+    ).getAllByRole("link");
+    expect(providers).toHaveLength(3);
+    for (const p of providers)
+      expect(p.getAttribute("href")).not.toContain("pkey_");
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Email" }),
+      "mara@fennick.studio",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+    await screen.findByRole("heading", { name: "Check your email" });
+    const start = vi
+      .mocked(fetch)
+      .mock.calls.find(([u]) => String(u).includes("/api/signin/email/start"))!;
+    expect(String(start[1]!.body)).not.toContain("pkey_");
+    // Email-code sign-in stays in this tab, so the key stays in the tab's URL.
+    expect(window.location.hash).toContain(`activate=${KEY}`);
+  });
+
+  it("keeps the key in this tab across a navigating sign-in, then puts it back once", async () => {
+    const KEY = "pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w";
+    window.history.replaceState(null, "", `/#/?activate=${KEY}`);
+    const { stashCarriedKey, restoreCarriedKey } =
+      await import("../src/portal/carriedKey.js");
+    stashCarriedKey();
+    expect(window.sessionStorage.getItem("pk-portal-carried-key")).toBe(KEY);
+    // Back from the provider: the return URL had no key.
+    window.history.replaceState(null, "", "/#/");
+    restoreCarriedKey();
+    expect(window.location.hash).toBe(`#/?activate=${KEY}`);
+    expect(window.sessionStorage.getItem("pk-portal-carried-key")).toBeNull();
+    window.history.replaceState(null, "", "/#/");
+    restoreCarriedKey();
+    expect(window.location.hash).toBe("#/");
+  });
+
+  it("offers Send a new code at once when the tries run out", async () => {
+    signedOut(CAPS_ALL, {
+      "POST /api/signin/email/verify": {
+        status: 400,
+        body: { error: "invalid_code", message: "x", triesLeft: 0 },
+      },
+    });
+    renderPortal();
+    await userEvent.type(
+      await screen.findByRole("textbox", { name: "Email" }),
+      "mara@fennick.studio",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+    await userEvent.type(
+      await screen.findByRole("textbox", { name: "6-digit code" }),
+      "000000",
+    );
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "Too many tries. Send a new code.",
+    );
+    expect(
+      screen.getByRole("button", { name: "Send a new code" }),
+    ).toBeTruthy();
+    // The resent region stays in the tree while empty (visually hidden, never display:none).
+    expect(
+      screen.getAllByRole("status").some((el) => el.className === "sr-only"),
+    ).toBe(true);
+  });
+
+  it("does not treat the first load as a step change: no announcement", async () => {
+    signedOut();
+    renderPortal();
+    await screen.findByRole("textbox", { name: "Email" });
+    expect(document.querySelector("[data-step-announcer]")?.textContent).toBe(
+      "",
+    );
+    expect(document.querySelector("[data-step]")?.className).not.toMatch(
+      /animate-pk-step/,
+    );
   });
 
   it("goes Back from the key step to the methods", async () => {

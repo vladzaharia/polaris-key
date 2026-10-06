@@ -22,6 +22,7 @@ export function LoginCard({
   footer,
   stepKey,
   direction = "forward",
+  loadingKey = "loading",
   children,
 }: {
   header?: React.ReactNode;
@@ -30,12 +31,25 @@ export function LoginCard({
   stepKey: string;
   /** Which way the flow went: Back, Change and Use a different email enter from the start. */
   direction?: "forward" | "back";
+  /** The page-load placeholder's step key; leaving it is not a step change. */
+  loadingKey?: string;
   children: React.ReactNode;
 }): React.ReactElement {
   const bodyRef = React.useRef<HTMLDivElement>(null);
   const lastHeight = React.useRef<number | null>(null);
   const first = React.useRef(true);
   const [announce, setAnnounce] = React.useState("");
+  // Whether this step arrived by a step change. The first step after page load (the skeleton
+  // giving way to the methods) is not one: no slide, no focus move, no announcement.
+  const arrival = React.useRef<{ key: string; moved: boolean } | null>(null);
+  if (arrival.current === null)
+    arrival.current = { key: stepKey, moved: false };
+  else if (arrival.current.key !== stepKey)
+    arrival.current = {
+      key: stepKey,
+      moved: arrival.current.key !== loadingKey,
+    };
+  const moved = arrival.current.moved;
 
   // Keep the body's last laid-out height, so a step change can morph from it.
   React.useEffect(() => {
@@ -59,6 +73,7 @@ export function LoginCard({
     const from = lastHeight.current;
     const to = el.offsetHeight;
     lastHeight.current = to;
+    if (!moved) return;
     const ms = motionMs("--pk-duration-moderate");
     if (from !== null && from !== to && ms > 0 && el.animate) {
       el.animate([{ height: `${from}px` }, { height: `${to}px` }], {
@@ -89,7 +104,7 @@ export function LoginCard({
               data-step={stepKey}
               className={cn(
                 "space-y-5 px-5 py-6 sm:px-7 sm:py-8",
-                !first.current &&
+                moved &&
                   (direction === "back"
                     ? "animate-pk-step-back"
                     : "animate-pk-step-forward"),

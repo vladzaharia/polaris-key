@@ -13,6 +13,7 @@ import { portalErrorCopy } from "../errors.js";
 import { checkKey, formatVerdict, productLabel } from "../model/key.js";
 import { setParams, useDocumentTitle, useRoute } from "../router.js";
 import { useSessionRecheck } from "../session.js";
+import { returnUrl, stashCarriedKey } from "../carriedKey.js";
 
 /**
  * Sign in (SIGN-IN.md §3.1–§3.4, §3.9; PORTAL.md §4.1): the login card's steps, replacing each
@@ -46,8 +47,9 @@ function productFromUrl(): string | null {
   return hashQuery ? new URLSearchParams(hashQuery).get("product") : null;
 }
 
+/** The return URL every sign-in sends: never the carried license key (carriedKey.ts). */
 function returnTo(): string {
-  return window.location.href;
+  return returnUrl();
 }
 
 /** The key the on-ramp (or an `/activate?key=…` link) is carrying through sign-in, if valid. */
@@ -303,12 +305,12 @@ function MethodsStep({
   const carriedName =
     carriedCheck?.kind === "valid" ? productLabel(carriedCheck.slug) : null;
   const title = carriedName
-    ? `Sign in to add ${carriedName}`
+    ? `Sign in to add ${carriedName}` // signin.key.carriedTitle
     : context
       ? "Sign in" // signin.methods.titleApp
       : "Sign in to Polaris Key"; // signin.methods.title
   const lede = carriedName
-    ? `Your key is ready. Sign in or create an account, and ${carriedName} joins your library.`
+    ? `Your key is ready. Sign in or create an account, and ${carriedName} joins your library.` // signin.key.carriedLede
     : context
       ? `Use the email you bought ${context.name} with.` // signin.methods.ledeApp
       : null;
@@ -332,7 +334,7 @@ function MethodsStep({
               id="pk-signin-email"
               type="email"
               inputMode="email"
-              autoComplete="email"
+              autoComplete="username webauthn"
               value={email}
               onValueChange={(v) => {
                 setEmail(v);
@@ -367,6 +369,7 @@ function MethodsStep({
         hrefFor={(p) =>
           `/login/${p}?return_to=${encodeURIComponent(returnTo())}`
         }
+        onNavigate={() => stashCarriedKey()}
       />
       {oidc ? (
         <Button
@@ -375,7 +378,7 @@ function MethodsStep({
           size="lg"
           className="h-12 w-full"
         >
-          <a href={ssoHref}>
+          <a href={ssoHref} onClick={() => stashCarriedKey()}>
             <ShieldCheck aria-hidden />
             {ssoLabel}
           </a>
@@ -387,6 +390,7 @@ function MethodsStep({
             onClick={() => setParams({ activate: null })}
             icon={<KeyRound aria-hidden className="size-4" />}
           >
+            {/* signin.key.withoutKey */}
             Sign in without the key
           </QuietLink>
         </QuietLinks>
@@ -469,6 +473,13 @@ function CodeStep({
     } catch (err) {
       setError(codeErrorText(err));
       setCode("");
+      // Out of tries, or the code expired: "Send a new code" is the way on, at once.
+      if (
+        err instanceof PortalApiError &&
+        ((err.code === "invalid_code" && err.triesLeft === 0) ||
+          err.code === "signin_expired")
+      )
+        setWait(0);
     } finally {
       setVerifying(false);
     }
@@ -545,7 +556,11 @@ function CodeStep({
           Continue
         </Button>
       </form>
-      <div role="status" className="text-sm text-success empty:hidden">
+      {/* Always in the tree so the resend is announced; visually hidden while empty. */}
+      <div
+        role="status"
+        className={status ? "text-sm text-success" : "sr-only"}
+      >
         {status}
       </div>
       <QuietLinks>
@@ -645,6 +660,7 @@ function KeyStep({
         {/* signin.link.key: the on-ramp keeps the link's words as its title */}
         <Title>Have a license key?</Title>
         <p className="text-fg-muted">
+          {/* signin.key.onrampLede */}
           Paste the key from your receipt email. Sign in next, and it joins your
           library.
         </p>
