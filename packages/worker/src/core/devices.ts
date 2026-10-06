@@ -433,12 +433,17 @@ export async function bindDevice(
     sdk_name: meta.sdkName ?? existing?.sdk_name ?? null,
     sdk_version: meta.sdkVersion ?? existing?.sdk_version ?? null,
     bound_by: opts.boundBy ?? existing?.bound_by ?? null,
-    subject: existing?.subject ?? null,
+    // U-02: a re-bind mints a new credential; only an account sign-in passing `opts.subject`
+    // binds it. Key entry or open re-registration of a known device id never inherits the
+    // previous binding (that would hand the caller another account's Cloud Sync principal).
+    subject: null,
   };
   await upsertDevice(db, device);
   if (opts.subject) {
     await writeDeviceSubject(db, product.slug, deviceId, opts.subject);
     device.subject = opts.subject;
+  } else if (existing?.subject && !device.subject) {
+    await writeDeviceSubject(db, product.slug, deviceId, null);
   }
   // P6-02: a new credential minted without the old one is not the attested install.
   if (existing) await resetDeviceTrust(db, product.slug, deviceId);
@@ -578,12 +583,15 @@ export async function registerDeviceBinding(
     sdk_name: meta.sdkName ?? existing?.sdk_name ?? null,
     sdk_version: meta.sdkVersion ?? existing?.sdk_version ?? null,
     bound_by: opts.boundBy ?? existing?.bound_by ?? null,
-    subject: existing?.subject ?? null,
+    // U-02: as in `bindDevice`: no binding without an account sign-in passing `opts.subject`.
+    subject: null,
   };
   await upsertDevice(db, device);
   if (opts.subject) {
     await writeDeviceSubject(db, product.slug, deviceId, opts.subject);
     device.subject = opts.subject;
+  } else if (existing?.subject && !device.subject) {
+    await writeDeviceSubject(db, product.slug, deviceId, null);
   }
   // P6-02: a new credential minted without the old one is not the attested install.
   if (existing) await resetDeviceTrust(db, product.slug, deviceId);
