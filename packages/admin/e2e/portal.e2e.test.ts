@@ -505,10 +505,10 @@ describe("main flows", () => {
     await o.close();
   });
 
-  it("opens /activate?key=… as the Library with the modal prefilled", async () => {
+  it("opens /activate#key=… as the Library with the modal prefilled", async () => {
     const o = await open(
       "three",
-      "/activate?key=pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w",
+      "/activate#key=pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w",
       { width: 390, height: 844 },
     );
     const dialog = o.page.getByRole("dialog", { name: "Activate a license" });
@@ -518,6 +518,11 @@ describe("main flows", () => {
     ).toBe("pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w");
     await dialog.getByText("Filled in from your link").waitFor();
     expect(await o.page.evaluate(() => location.pathname)).toBe("/");
+    // The fragment is gone from the address bar, and no request carried the key.
+    await expect
+      .poll(() => o.page.evaluate(() => location.href))
+      .not.toContain("pkey_");
+    expect(o.requests.filter((r) => r.includes("pkey_"))).toEqual([]);
     await shoot(o.page, "activate-link-mobile-dark");
     await o.page.keyboard.press("Escape");
     await h1(o.page, "Your library");
