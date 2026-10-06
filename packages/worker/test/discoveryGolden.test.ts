@@ -24,8 +24,8 @@
  * P3-03 added Update's `endpoints.feed`, and P3-09 the four app-updater feed templates after it
  * (`winsparkle`, `velopack`, `appInstaller`, `zsync`): additive keys a client ignores.
  * I-01 removed Identity's `endpoints.authPoll` (S-16 §5.3: discovery response only, no SDK reads
- * it, owner decision D10). The `/identity/auth/poll` route still answers until I-13 retires it;
- * only its advertisement went.
+ * it, owner decision D10); only its advertisement went then. The `/identity/auth/poll` route
+ * itself is retired since (fix/followups-sweep-1006), which changes no discovery byte.
  * U-04 added the seventh service, Cloud Sync (plans/U-01.md §2.5, approved): each golden gained
  * `services.sync` after `identity`, `{"enabled":false}` when off; the everything product turns it
  * on and pins the fragment U-04 ships (every capability false, no endpoint until U-05, U-09 and

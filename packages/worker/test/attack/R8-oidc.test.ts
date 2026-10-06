@@ -17,6 +17,11 @@
  * cannot claim…` asserts it. P1-07 brought the merge back as an opt-in only the device-code
  * holder can make at `/device/poll`, after the device was shown the signed-in identity; the same
  * block asserts a user-code holder still cannot trigger it (claim and migrate).
+ *
+ * The `state`-keyed `/identity/auth/poll` (R8-01's surface) is retired: the attacks that ran
+ * through it now assert that Identity has no such route (Core answers its generic 404), and the
+ * guards it shared with `/device/poll` (`pollAuthFlow`: the flow's device binding and its
+ * confirmation) are asserted through `/device/poll`.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -49,12 +54,13 @@ import {
   handleAuthDeviceEntry,
   handleAuthDeviceStart,
   handleAuthDeviceVerify,
-  handleAuthPoll,
   handleAuthStart,
   flowKey,
   deviceFlowKey,
   deviceUserKey,
 } from "../../src/services/identity/oidc.js";
+import { handleIdentityRoutes } from "../../src/services/identity/routes.js";
+import type { ServiceContext } from "../../src/core/registry.js";
 import { handleLicenseDocument } from "../../src/services/license/document.js";
 // Wire v3 split `validateDeviceToken` in two: core answers "is this token a live device row",
 // and `requireLicensedDevice` adds back the licence-usability check core used to apply inline.
@@ -208,16 +214,49 @@ const callback = (ctx: Ctx, state: string, code = "auth-code") =>
     NOW,
   );
 
-const poll = (ctx: Ctx, state: string, device: string) =>
-  handleAuthPoll(
-    req(
-      `${ORIGIN}/djdl/auth/poll?state=${encodeURIComponent(state)}&device=${encodeURIComponent(device)}`,
-    ),
+/** The retired `GET /<p>/identity/auth/poll?<query>` through Identity's sub-router: `null` is
+ *  "no route here", which Core answers with its generic 404. */
+const retiredPoll = (ctx: Ctx, query: string) =>
+  handleIdentityRoutes({
+    req: req(`${ORIGIN}/djdl/identity/auth/poll?${query}`),
+    env: ctx.env,
+    db: ctx.db,
+    product: ctx.product,
+    rest: ["auth", "poll"],
+    now: NOW,
+  } as unknown as ServiceContext);
+
+/** Poll the flow under `state` through `/device/poll`, with a device code whose confirmed record
+ *  points at it for `device` (re-seeded per call, so the interval never answers `slow_down`).
+ *  The flow record's own device binding and confirmation still decide (R8-01). */
+const pollState = async (
+  ctx: Ctx,
+  state: string,
+  device: string,
+  product: Product = ctx.product,
+): Promise<Response> => {
+  const deviceCode = `dc-${state}-${device}`;
+  await artefacts(ctx.env).put(
+    await deviceFlowKey(ctx.env, product.slug, deviceCode),
+    JSON.stringify({
+      state,
+      deviceId: device,
+      userCode: "BCDF-GHJK",
+      authorizeUrl: `${ISSUER}/authorize?state=${state}`,
+      confirmedAt: NOW,
+    }),
+  );
+  return handleAuthDevicePoll(
+    req(`${ORIGIN}/${product.slug}/identity/auth/device/poll`, {
+      method: "POST",
+      body: JSON.stringify({ deviceCode, deviceId: device }),
+    }),
     ctx.env,
     ctx.db,
-    ctx.product,
+    product,
     NOW,
   );
+};
 
 const deviceStart = async (ctx: Ctx, deviceId: string): Promise<string> => {
   const res = await handleAuthDeviceStart(
@@ -300,26 +339,27 @@ describe("R8-01 /auth/poll device-id confusion", () => {
     );
     expect((await callback(ctx, state)).status).toBe(200);
 
-    // 4. FIXED: the poll is bound to the device that STARTED the flow, so a device id the
-    //    caller chose gets the generic error and no credential at all.
-    const stolen = (await (
-      await poll(ctx, state, "ATTACKER-DEVICE")
-    ).json()) as { status: string; token?: string };
-    expect(stolen.status).toBe("error");
-    expect(stolen.token).toBeUndefined();
+    // 4. FIXED: there is no `state`-keyed poll to present an attacker-chosen device id to: the
+    //    `/identity/auth/poll` surface is retired (Core's generic 404).
+    expect(
+      await retiredPoll(
+        ctx,
+        `state=${encodeURIComponent(state)}&device=ATTACKER-DEVICE`,
+      ),
+    ).toBeNull();
     // No seat was taken and no device row exists for the attacker's device.
     expect(await getDevice(ctx.db, "djdl", "ATTACKER-DEVICE")).toBeNull();
 
-    // 5. P1-06: a device-code flow does not redeem on /auth/poll at all, not even for the
-    //    device that started it — `state` plus the device id is not a credential. The
-    //    legitimate device completes where it always polled: /auth/device/poll, with the
-    //    secret device code. The fix closes the hole, not the flow.
-    const viaState = (await (await poll(ctx, state, "victim-cli")).json()) as {
-      status: string;
-      token?: string;
-    };
-    expect(viaState.status).toBe("error");
-    expect(viaState.token).toBeUndefined();
+    // 5. P1-06: `state` plus the device id is not a credential, not even for the device that
+    //    started the flow — that surface is gone. The legitimate device completes where it
+    //    always polled: /auth/device/poll, with the secret device code. The fix closes the
+    //    hole, not the flow.
+    expect(
+      await retiredPoll(
+        ctx,
+        `state=${encodeURIComponent(state)}&device=victim-cli`,
+      ),
+    ).toBeNull();
     const victim = (await (
       await handleAuthDevicePoll(
         req(`${ORIGIN}/djdl/auth/device/poll`, {
@@ -365,7 +405,8 @@ describe("R8-01 /auth/poll device-id confusion", () => {
     expect(doc!.payload.entitlements["license.tier"]?.value).toBe("pro");
   });
 
-  // R8-01 — /auth/poll enforces the same two guards as /auth/device/poll.
+  // R8-01 — /auth/poll is retired; the guards it was missing live in pollAuthFlow, which
+  // /auth/device/poll runs.
   it("ATTACK: /auth/poll is an unauthenticated bypass of BOTH guards /auth/device/poll enforces (device binding AND user confirmation)", async () => {
     // Seed a device flow that the user has NOT confirmed.
     await artefacts(ctx.env).put(
@@ -424,16 +465,21 @@ describe("R8-01 /auth/poll device-id confusion", () => {
     ).json()) as { status: string };
     expect(unconfirmed.status).toBe("pending");
 
-    // FIXED: /auth/poll now enforces BOTH. A foreign device gets the generic error…
-    const bypass = (await (await poll(ctx, "S", "ATTACKER")).json()) as {
+    // FIXED: the bypass is gone — there is no `state`-keyed poll at all…
+    expect(await retiredPoll(ctx, "state=S&device=ATTACKER")).toBeNull();
+    expect(await retiredPoll(ctx, "state=S&device=victim-cli")).toBeNull();
+
+    // …and the flow record's own guards hold even behind a device record that says otherwise:
+    // a record for another device id gets the generic error, never a token…
+    const foreign = (await (await pollState(ctx, "S", "ATTACKER")).json()) as {
       status: string;
       token?: string;
     };
-    expect(bypass.status).toBe("error");
-    expect(bypass.token).toBeUndefined();
+    expect(foreign.status).toBe("error");
+    expect(foreign.token).toBeUndefined();
 
-    // …and the right device on an unconfirmed flow is still only "pending".
-    const early = (await (await poll(ctx, "S", "victim-cli")).json()) as {
+    // …and the right device on a flow the human has not confirmed is still only "pending".
+    const early = (await (await pollState(ctx, "S", "victim-cli")).json()) as {
       status: string;
       token?: string;
     };
@@ -445,7 +491,7 @@ describe("R8-01 /auth/poll device-id confusion", () => {
       await flowKey(ctx.env, "djdl", "S"),
       JSON.stringify({ ...flow, confirmedAt: NOW }),
     );
-    const ok = (await (await poll(ctx, "S", "victim-cli")).json()) as {
+    const ok = (await (await pollState(ctx, "S", "victim-cli")).json()) as {
       status: string;
       token: string;
     };
@@ -455,13 +501,27 @@ describe("R8-01 /auth/poll device-id confusion", () => {
 
   // R8-10 — every oidc.ts handler now consults the Durable-Object limiter.
   it("ATTACK: repeated /auth/poll guesses are never rate limited (the Durable Object limiter is never consulted)", async () => {
+    // `/auth/poll` itself is retired; the poll that remains, `/auth/device/poll`, is swept here.
+    expect(await retiredPoll(ctx, "state=guess&device=ATTACKER")).toBeNull();
     const rlSpy = vi.spyOn(ctx.env.RL, "get");
     let throttled = 0;
     for (let i = 0; i < 200; i++) {
-      const res = await poll(ctx, `guess-${i}`, "ATTACKER");
+      const res = await handleAuthDevicePoll(
+        req(`${ORIGIN}/djdl/identity/auth/device/poll`, {
+          method: "POST",
+          body: JSON.stringify({
+            deviceCode: `guess-${i}`,
+            deviceId: "ATTACKER",
+          }),
+        }),
+        ctx.env,
+        ctx.db,
+        ctx.product,
+        NOW,
+      );
       if (res.status === 429) throttled++;
     }
-    // FIXED: the limiter runs on every call and an unbounded state sweep is cut off.
+    // FIXED: the limiter runs on every call and an unbounded code sweep is cut off.
     expect(rlSpy).toHaveBeenCalled();
     expect(throttled).toBeGreaterThan(0);
 
@@ -762,13 +822,13 @@ describe("R8-02 device-code flow weaknesses", () => {
     );
     expect((await callback(ctx, state)).status).toBe(200);
 
-    // 5. FIXED: /auth/poll refuses a device-code flow outright — generic error, no token.
-    const stolen = (await (await poll(ctx, state, "victim-cli")).json()) as {
-      status: string;
-      token?: string;
-    };
-    expect(stolen.status).toBe("error");
-    expect(stolen.token).toBeUndefined();
+    // 5. FIXED: the `state`-keyed /auth/poll that redeemed this pair is retired.
+    expect(
+      await retiredPoll(
+        ctx,
+        `state=${encodeURIComponent(state)}&device=victim-cli`,
+      ),
+    ).toBeNull();
 
     // 6. The flow is intact, and the real device — holding the device code — gets its token.
     const real = (await (
@@ -1288,19 +1348,15 @@ describe("R8-02 / P1-06 a user-code holder cannot claim the device's anonymous l
 
   it("ATTACK (claim, P1-07): a user-code holder with no licence who signed in as themselves can reach no surface that applies the attach", async () => {
     const { victimLicense, state } = await attackerConfirmsVictimFlow();
-    // The `state` surface — the one half of a credential the confirming browser holds — refuses
-    // a device-code flow outright, whatever the attach fields say.
+    // A `state`-keyed surface — the one half of a credential the confirming browser holds —
+    // no longer exists, whatever the attach fields say.
     for (const extra of ["", "&confirmIdentity=true&attachLicense=true"]) {
-      const res = await handleAuthPoll(
-        req(
-          `${ORIGIN}/djdl/identity/auth/poll?state=${encodeURIComponent(state)}&device=victim-game${extra}`,
+      expect(
+        await retiredPoll(
+          ctx,
+          `state=${encodeURIComponent(state)}&device=victim-game${extra}`,
         ),
-        ctx.env,
-        ctx.db,
-        ctx.product,
-        NOW,
-      );
-      expect(await res.json()).toEqual({ status: "error" });
+      ).toBeNull();
     }
     // `/device/poll` needs the device code, which never left the victim's game: a guessed one
     // with the attach fields and the attacker's own enrolled token is an unknown flow.
@@ -1331,16 +1387,12 @@ describe("R8-02 / P1-06 a user-code holder cannot claim the device's anonymous l
     const attackerLicense = (pre as { licenseId: string }).licenseId;
     const { victimLicense, deviceCode, state } =
       await attackerConfirmsVictimFlow();
-    const statePoll = await handleAuthPoll(
-      req(
-        `${ORIGIN}/djdl/identity/auth/poll?state=${encodeURIComponent(state)}&device=victim-game&attachLicense=true`,
+    expect(
+      await retiredPoll(
+        ctx,
+        `state=${encodeURIComponent(state)}&device=victim-game&attachLicense=true`,
       ),
-      ctx.env,
-      ctx.db,
-      ctx.product,
-      NOW,
-    );
-    expect(await statePoll.json()).toEqual({ status: "error" });
+    ).toBeNull();
     await expectNoMerge(victimLicense);
     expect(await countActiveDevices(ctx.db, "djdl", attackerLicense)).toBe(0);
 
@@ -2426,7 +2478,7 @@ describe("R8-05 claim trust", () => {
         licenseId: lic!.id,
       }),
     );
-    const { token } = (await (await poll(ctx, "S2", "dev-1")).json()) as {
+    const { token } = (await (await pollState(ctx, "S2", "dev-1")).json()) as {
       token: string;
     };
     const cfg = await handleLicenseDocument(
@@ -2925,7 +2977,7 @@ describe("R8 refuted", () => {
     expect(new URL(v).host).toBe("vpn.example");
   });
 
-  it("REFUTED: /auth/poll cannot mint on a license that is disabled or expired", async () => {
+  it("REFUTED: the poll cannot mint on a license that is disabled or expired", async () => {
     const r = await activateFromIdentity(
       ctx.db,
       ctx.product,
@@ -2950,7 +3002,7 @@ describe("R8 refuted", () => {
         licenseId: r.licenseId,
       }),
     );
-    const out = (await (await poll(ctx, "S", "dev-1")).json()) as {
+    const out = (await (await pollState(ctx, "S", "dev-1")).json()) as {
       status: string;
     };
     expect(out.status).toBe("error");
@@ -2967,7 +3019,7 @@ describe("R8 refuted", () => {
         error: "id-token-invalid",
       }),
     );
-    const res = await poll(ctx, "S", "ATTACKER");
+    const res = await pollState(ctx, "S", "ATTACKER");
     expect(await res.text()).not.toContain("id-token-invalid");
   });
 
@@ -3001,13 +3053,8 @@ describe("R8 refuted", () => {
         licenseId: r.licenseId,
       }),
     );
-    const res = await handleAuthPoll(
-      req(`${ORIGIN}/other/auth/poll?state=S&device=ATTACKER`),
-      ctx.env,
-      ctx.db,
-      other,
-      NOW,
-    );
+    // `other`'s device record points at `S`, but `other`'s flow namespace has no `S`.
+    const res = await pollState(ctx, "S", "ATTACKER", other);
     expect(((await res.json()) as { status: string }).status).toBe("timeout");
   });
 });

@@ -126,7 +126,7 @@ describe("matchRoute — service namespaces (every table slug)", () => {
     ["/djdl/identity/session/license", "identity", ["session", "license"]],
     ["/djdl/identity/auth/start", "identity", ["auth", "start"]],
     ["/djdl/identity/auth/callback", "identity", ["auth", "callback"]],
-    ["/djdl/identity/auth/poll", "identity", ["auth", "poll"]],
+    ["/djdl/identity/auth/choose", "identity", ["auth", "choose"]],
     ["/djdl/identity/auth/logout", "identity", ["auth", "logout"]],
     [
       "/djdl/identity/auth/device/start",

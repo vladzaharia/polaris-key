@@ -162,15 +162,16 @@ interface FlowRecord {
   licenseId?: string;
   error?: string;
   /** Stamped when the human confirms the device-code flow. A device flow may only mint after
-   *  this is set — the poll surfaces must not be able to skip the confirmation (R8-01). */
+   *  this is set — the poll must not be able to skip the confirmation (R8-01). */
   confirmedAt?: number;
   /** Stamped by the first callback that claims this state. A state is single-use: a second
    *  callback must never be able to rebind `licenseId` under a waiting poller (R8-04). */
   consumedAt?: number;
   /** Set on a flow `/device/start` began. Such a flow redeems ONLY through `/device/poll`, with
    *  the secret device code: `state` rides on the authorize URL the confirmation POST 303s to,
-   *  and the device id can be on the page, so on `/identity/auth/poll` the pair would be a
-   *  redemption handle for anyone who holds the user code (R8-02, P1-06). */
+   *  and the device id can be on the page, so a `state`-keyed poll would have been a redemption
+   *  handle for anyone who holds the user code (R8-02, P1-06). The one such surface,
+   *  `/identity/auth/poll`, is retired; `/device/poll` is the only poll. */
   viaDeviceCode?: boolean;
   /** A device-code flow's verified identity, stored by the callback INSTEAD of activating it
    *  (P1-07). Activation happens at `/device/poll`, where the device-code holder decides whether
@@ -1450,7 +1451,7 @@ async function confirmDeviceFlow(
   if (!record.csrf || !token || token !== record.csrf)
     return errorResponse(403, "forbidden", "confirmation failed");
 
-  // The confirmation is an authorization input for the poll surfaces, so it is recorded on
+  // The confirmation is an authorization input for the poll, so it is recorded on
   // the flow the pollers actually read, not only on the device record (R8-01). The flow must
   // still exist (checked first, so an expired flow spends nothing).
   const stateKey = await flowKey(env, product.slug, record.state);
@@ -1572,8 +1573,8 @@ async function renderDeviceConfirmation(
     { set: { csrf } },
   );
   if (!minted.ok) return errorResponse(404, "not_found", "device code expired");
-  // Never the raw device id: with `state` it is half of what `/identity/auth/poll` checks, so
-  // the page would hand it to anyone who holds the user code (R8-02, P1-06).
+  // Never the raw device id: with `state` it was half of what the retired `/identity/auth/poll`
+  // checked, and it is a device identifier the user-code holder has no need for (R8-02, P1-06).
   // §12.7.1: the label is stored normalised at `/device/start`; it is normalised again here so a
   // record written by an older Worker (sliced, not normalised) renders the same way.
   const deviceLabel =
@@ -1689,8 +1690,9 @@ async function readEntryForm(
  * it plus the device id could race the real device for the token once the user confirms. The
  * code → device-code lookup stays server-side, through the peppered `deviceUserKey` index.
  * What a user-code holder DOES get — `state`, in the authorize URL the confirmation 303s to —
- * redeems nothing: `/identity/auth/poll` refuses a device-code flow (`viaDeviceCode`). Once the
- * flow is confirmed the code stops resolving here at all.
+ * redeems nothing: the only poll is `/device/poll`, keyed by the device code (the `state`-keyed
+ * `/identity/auth/poll` is retired). Once the flow is confirmed the code stops resolving here at
+ * all.
  */
 export async function handleAuthDeviceEntry(
   req: Request,
@@ -2717,7 +2719,6 @@ async function pollAuthFlow(
   state: string | null,
   deviceId: string | null,
   now: number,
-  surface: "state" | "deviceCode",
   ask: DevicePollAsk = NO_ASK,
 ): Promise<Response> {
   if (!state || !deviceId)
@@ -2727,13 +2728,10 @@ async function pollAuthFlow(
   if (!raw) return json({ status: "timeout" });
   const flow = parseFlowRecord<FlowRecord>(raw);
   if (!flow) return json({ status: "timeout" });
-  // A device-code flow redeems only through `/device/poll`, with the device code. On the
-  // `state` surface, `state` (on the authorize URL a user-code holder is 303'd to) plus the
-  // device id would otherwise be a complete credential for the victim's token (R8-02, P1-06).
-  // Nothing a `state`-surface poll sends reaches the deferred activation below either: it never
-  // gets past this line (P1-07).
-  if (surface === "state" && flow.viaDeviceCode)
-    return json({ status: "error" });
+  // Only `/device/poll` gets here, with the secret device code: the `state`-keyed
+  // `/identity/auth/poll` is retired. `state` rides on the authorize URL a user-code holder is
+  // 303'd to, so a surface keyed by it alone (plus the device id) was a complete credential for
+  // the victim's token (R8-02, P1-06).
   // Generic error only — never echo an IdP failure reason a poller could enumerate (D8).
   if (flow.error) return json({ status: "error" });
   // I-26: the person is choosing a licence in the browser. The poll waits, with the same body
@@ -2742,9 +2740,8 @@ async function pollAuthFlow(
   if (!flow.licenseId && !flow.identity) return json({ status: "pending" });
   // `state` is a non-secret by construction (it rides on the authorize and callback URLs), so
   // it can never be the sole authorization input: the token is minted for the device that
-  // STARTED the flow and only after the human confirmed it — the same two guards
-  // handleAuthDevicePoll enforces, which this surface used to skip entirely (R8-01). The
-  // answers are the existing generic ones, so a prober learns nothing new.
+  // STARTED the flow and only after the human confirmed it (R8-01). The answers are the
+  // existing generic ones, so a prober learns nothing new.
   if (!flow.deviceId || flow.deviceId !== deviceId)
     return json({ status: "error" });
   if (!flow.confirmedAt) return json({ status: "pending" });
@@ -2752,9 +2749,8 @@ async function pollAuthFlow(
   let licenseId = flow.licenseId;
   let attached: "claimed" | "migrated" | undefined;
   if (!licenseId) {
-    // The deferred activation of a device-code flow (P1-07). Only the device-code surface gets
-    // here (the `state` surface refused above), so only the device-code holder, polling as the
-    // device the flow was started for, decides.
+    // The deferred activation of a device-code flow (P1-07). Only `/device/poll` gets here, so
+    // only the device-code holder, polling as the device the flow was started for, decides.
     const identity = flow.identity!;
     let enrolledLicenseId: string | null = null;
     if (ask.confirmIdentity || ask.attachLicense !== null) {
@@ -2840,37 +2836,6 @@ async function pollAuthFlow(
   });
 }
 
-/** GET /<product>/identity/auth/poll?state=&device= — return a token once a device-bound flow
- *  completes. A flow `/device/start` began is refused here (generic `error`): it redeems only on
- *  `/device/poll`, with the device code (R8-02, P1-06). */
-export async function handleAuthPoll(
-  req: Request,
-  env: Env,
-  db: Db,
-  product: Product,
-  now: number,
-): Promise<Response> {
-  const url = new URL(req.url);
-  const state = url.searchParams.get("state");
-  const limited = await rateLimited(
-    env,
-    product,
-    now,
-    { bucket: "authPoll", id: clientIp(req), limit: 120, windowSec: 60 },
-    { bucket: "authPollState", id: state ?? "-", limit: 40, windowSec: 60 },
-  );
-  if (limited) return limited;
-  return pollAuthFlow(
-    env,
-    db,
-    product,
-    state,
-    url.searchParams.get("device"),
-    now,
-    "state",
-  );
-}
-
 /** POST /<product>/identity/auth/device/poll — poll a confirmed device sign-in flow. */
 export async function handleAuthDevicePoll(
   req: Request,
@@ -2946,7 +2911,6 @@ export async function handleAuthDevicePoll(
     deviceFlow.state,
     deviceFlow.deviceId,
     now,
-    "deviceCode",
     {
       confirmIdentity: body.confirmIdentity === true,
       attachLicense:

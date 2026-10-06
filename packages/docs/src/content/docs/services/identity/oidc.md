@@ -39,13 +39,12 @@ must expose exactly those three paths at those exact suffixes.
 
 ## The browser PKCE flow
 
-Three routes, all under `/<product>/identity/auth`:
+Two routes, both under `/<product>/identity/auth`:
 
 | Route                             | What it does                                                                                                                                                           |
 | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GET /<p>/identity/auth/start`    | Begins PKCE and 302s to the IdP's `/authorize`.                                                                                                                        |
 | `GET /<p>/identity/auth/callback` | The registered redirect URI: exchanges the code, verifies the ID token, mints or locates the license (a device-code flow: stores the identity; the poll activates it). |
-| `GET /<p>/identity/auth/poll`     | Polls a device-bound flow by `state`; a device-code flow is refused here (see below).                                                                                  |
 
 **`/auth/start`** generates `state` and `nonce` (16 random bytes each, base64url) and a PKCE pair
 — a 32-byte random `verifier` and its SHA-256 `challenge`, method `S256` — and stores them in a
@@ -87,18 +86,16 @@ What happens next depends on whether the flow carries a `return_to` — see
 [Identity](/docs/services/identity/) for the full split between the cookie path and the
 device-token path.
 
-**`/auth/poll`** only ever completes for a flow that was started bound to a device id, and never
-for one the [device-code flow](/docs/services/identity/device-flow/) started: such a flow answers
-the generic `error` here and completes only on `/auth/device/poll`, with the secret device code.
-The reason is that `state` is not a secret — it rides on the authorize URL, which the device-code
-confirmation page hands to anyone holding the public user code — so `state` plus a device id must
-not redeem a device-code flow. Since the device-code flow is today the only thing that binds a
-flow to a device id, `/auth/poll` currently completes no flow; it keeps its generic
-`pending`/`error`/`timeout` answers and stays advertised in discovery.
+**There is no `state`-keyed poll.** `/auth/poll` once polled a device-bound flow by `state` and
+device id, both in the query string. It is retired: `state` is not a secret (it rides on the
+authorize URL, which the device-code confirmation page hands to anyone holding the public user
+code), so `state` plus a device id must never redeem a flow, and nothing it could still complete
+was started any more. A device completes the [device-code flow](/docs/services/identity/device-flow/)
+on `/auth/device/poll`, with the secret device code in the body; `/auth/poll` answers the generic `404` of a path that never existed.
 
 :::note[No aliases]
-These three routes, plus `/auth/logout` and the three `/auth/device/*` routes, are the _only_
-spellings. The pre-namespace paths (`/<p>/auth/…`, `/<p>/session`) are deleted outright, and
+These two routes, plus `/auth/logout`, `/auth/choose`, `/auth/device` and the three
+`/auth/device/*` routes, are the _only_ spellings. The pre-namespace paths (`/<p>/auth/…`, `/<p>/session`) are deleted outright, and
 `/auth/login` — a second spelling of `/auth/start` — is gone the same way. See
 [Identity](/docs/services/identity/) for why no compatibility alias was kept.
 :::

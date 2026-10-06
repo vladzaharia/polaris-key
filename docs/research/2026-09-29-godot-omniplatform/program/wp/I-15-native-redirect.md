@@ -68,7 +68,10 @@ Device code is a poor fit on a phone, and four native SDK rows are planned and u
 
 - Native redirect URI classes on the token route: loopback (any port, RFC 8252), claimed HTTPS on the product's domains, per-product registered schemes.
 - `signIn({redirect})`: Node and Python loopback, Swift `ASWebAuthenticationSession`, Kotlin Custom Tabs, Godot desktop OS browser plus loopback (device code elsewhere); React already has the web redirect.
-- Retire `/auth/poll` and its rate-limit buckets; transcripts.
+- Retire `/auth/poll` and its rate-limit buckets; transcripts. **Correction (2026-10-06):** done
+  early by fix/followups-sweep-1006 (route, `authPoll`/`authPollState` buckets, CORS row, OpenAPI
+  path and `routeCoverage` row removed; no transcript or SDK used it). Nothing is left for I-15
+  here beyond keeping it gone.
 
 **Out** (and where it belongs instead):
 

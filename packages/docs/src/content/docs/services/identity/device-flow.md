@@ -274,10 +274,10 @@ network ate my request."
 
 Use it wherever a client cannot receive a browser redirect at all — a headless CLI, a build
 agent, a device with no embedded or system browser reachable from the process doing the polling.
-A device-code flow completes only on `/identity/auth/device/poll`, with the device code: the
-`state`-keyed `/identity/auth/poll` in [Product OIDC](/docs/services/identity/oidc/) refuses it,
-because the user code is public by design and the confirmation page hands its holder the
-authorize URL, which carries `state`. What a user-code holder can and cannot do is set out in
+A device-code flow completes only on `/identity/auth/device/poll`, with the device code. There is
+no `state`-keyed poll (the old `/identity/auth/poll` is retired, see
+[Product OIDC](/docs/services/identity/oidc/)), because the user code is public by design and the
+confirmation page hands its holder the authorize URL, which carries `state`. What a user-code holder can and cannot do is set out in
 the security threat model.
 
 ### From an SDK

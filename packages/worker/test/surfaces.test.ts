@@ -310,7 +310,7 @@ describe("worker surfaces", () => {
     expect(
       (identity.endpoints as Record<string, unknown>).authLogin,
     ).toBeUndefined();
-    // I-01: `/auth/poll` still answers but is no longer advertised (I-13 retires the route).
+    // I-01 stopped advertising `/auth/poll`; the route itself is retired since.
     expect(
       (identity.endpoints as Record<string, unknown>).authPoll,
     ).toBeUndefined();
