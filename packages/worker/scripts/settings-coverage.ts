@@ -308,6 +308,17 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
   },
   {
     thing:
+      "Moving end users off the platform IdP (the migration mode and the sunset date)",
+    reason:
+      "Deploy-time (I-17): the owner's go/no-go and the sunset date, set only after the email-less count, are reviewed changes to wrangler.toml, so a console session cannot move people between sign-in paths or end anyone's sign-in.",
+    shows:
+      "Platform → Settings (the read-only inventory); the count at /manage/api/platform/identity-migration",
+    covers: {
+      ids: ["env:PLATFORM_OIDC_MIGRATION", "env:PLATFORM_OIDC_SUNSET"],
+    },
+  },
+  {
+    thing:
       "Key-encryption key identity (the active key id, and the legacy key id)",
     reason:
       "Key material (the AT-2 deny-list); rotated by the keyring runbook. PLATFORM_KEK_ID is the legacy PLATFORM_KEK's key id: beside PLATFORM_KEK_KEYS that key is legacy and open-only.",

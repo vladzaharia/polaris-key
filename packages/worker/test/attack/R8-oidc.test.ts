@@ -2231,7 +2231,7 @@ describe("R8-03 login CSRF / flow-fixation", () => {
     expect(res.headers.get("location")).toBe("/manage/");
   });
 
-  it("ATTACK: the PORTAL flow (/callback) is equally unbound", async () => {
+  it("FIXED (I-17): the PORTAL flow (/callback) is bound to the browser that started it", async () => {
     ctx.env.PORTAL_SESSION_SECRET = "portal-secret";
     ctx.env.PLATFORM_OIDC_ISSUER = ISSUER;
     ctx.env.PLATFORM_OIDC_CLIENT_ID = AUD;
@@ -2244,10 +2244,15 @@ describe("R8-03 login CSRF / flow-fixation", () => {
     const authorize = new URL(login.headers.get("location")!);
     const state = authorize.searchParams.get("state")!;
     const nonce = authorize.searchParams.get("nonce")!;
+    // `/login` set a `__Host-` binding on the starting browser; the flow holds only its hash.
+    expect(login.headers.get("set-cookie")).toMatch(
+      /^__Host-pkey_sso=[^;]+; Path=\/; HttpOnly; Secure; SameSite=Lax; Max-Age=600$/,
+    );
     const flow = JSON.parse(
       (await artefacts(ctx.env).get(await portalFlowKey(ctx.env, state)))!,
     ) as Record<string, unknown>;
     expect(Object.keys(flow).sort()).toEqual([
+      "bindingHash",
       "nonce",
       "redirectUri",
       "verifier",
@@ -2261,6 +2266,7 @@ describe("R8-03 login CSRF / flow-fixation", () => {
         nonce,
       }),
     );
+    // The attacker's callback URL, opened in the victim's browser: refused, with no cookie.
     const res = await handlePortalCallback(
       req(`${ORIGIN}/callback?code=c&state=${state}`, {
         headers: { cookie: "unrelated=1", "user-agent": "VictimBrowser/1.0" },
@@ -2269,8 +2275,8 @@ describe("R8-03 login CSRF / flow-fixation", () => {
       ctx.db,
       NOW,
     );
-    expect(res.status).toBe(302);
-    expect(res.headers.get("set-cookie")).toContain("pkey_portal=");
+    expect(res.status).toBe(401);
+    expect(res.headers.get("set-cookie")).toBeNull();
   });
 });
 

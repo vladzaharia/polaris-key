@@ -27,6 +27,12 @@ import {
 } from "./repo.js";
 import { signIn, type SignInResult } from "../accounts/signIn.js";
 import { rekeyLegacyAccountLinks } from "../accounts/repo.js";
+import {
+  claimPlatformSubject,
+  platformSignInEnded,
+  PLATFORM_SIGNIN_ENDED,
+} from "../accounts/platformMigration.js";
+import { beginProviderSignIn } from "../card/gate.js";
 import { buildPortalClearCookie, portalSessionFromRequest } from "./session.js";
 import {
   revokeSessionByHash,
@@ -48,7 +54,10 @@ import {
 import { escapeHtml, renderBrandPage } from "../../../core/brandHtml.js";
 import {
   LINK_FLOW_COOKIE,
+  PORTAL_SSO_COOKIE,
+  accountRealmCookie,
   clearAccountRealmCookie,
+  readCookie,
 } from "../../../core/accountCookies.js";
 
 const FLOW_TTL_SECONDS = 600;
@@ -78,6 +87,9 @@ interface FlowRecord {
   nonce: string;
   redirectUri: string;
   returnTo?: string;
+  /** I-17: the peppered hash of the `__Host-pkey_sso` cookie `/login` set on the browser that
+   *  started the flow. `/callback` completes only in that browser. */
+  bindingHash?: string;
 }
 
 /**
@@ -148,6 +160,13 @@ export const signInPage = {
   accountDisabled: (): Response =>
     htmlError(403, "This account can't sign in", {
       body: "<p>Contact Polaris Key support.</p>",
+    }),
+  /** I-17: the platform IdP no longer signs this person in (past the sunset, or
+   *  `operators-only` for a subject that never moved). **Sign in again** goes to the card. */
+  platformEnded: (): Response =>
+    htmlError(403, PLATFORM_SIGNIN_ENDED.heading, {
+      body: `<p>${escapeHtml(PLATFORM_SIGNIN_ENDED.body)}</p>`,
+      retry: true,
     }),
 };
 
@@ -278,12 +297,13 @@ export async function handlePortalLogin(
   req: Request,
   env: Env,
   db: Db,
+  now: number = Math.floor(Date.now() / 1000),
 ): Promise<Response> {
   const ok = await rateLimitOk(
     env,
     "_portal",
     { bucket: "portalLogin", id: clientIp(req), limit: 20, windowSec: 60 },
-    Math.floor(Date.now() / 1000),
+    now,
   );
   if (!ok) return signInPage.tooMany();
   const caps = await portalAuthCapabilities(db);
@@ -292,6 +312,8 @@ export async function handlePortalLogin(
   }
   const cfg = platformOidcConfig(env);
   if (!cfg) return signInPage.off();
+  // I-17: past the sunset nobody is sent to the platform IdP only to be refused on the way back.
+  if (platformSignInEnded(env, now)) return signInPage.platformEnded();
 
   const url = new URL(req.url);
   const rawReturnTo = url.searchParams.get("return_to");
@@ -302,7 +324,16 @@ export async function handlePortalLogin(
   const nonce = b64url(randomBytes(16));
   const { verifier, challenge } = await pkce();
   const redirectUri = `${url.origin}/callback`;
-  const flow: FlowRecord = { verifier, nonce, redirectUri, returnTo };
+  // I-17: the flow is bound to this browser. Pocket ID returns by a top-level GET, which carries a
+  // `SameSite=Lax` cookie, so the callback can require it (login CSRF, and a planted join offer).
+  const binding = b64url(randomBytes(32));
+  const flow: FlowRecord = {
+    verifier,
+    nonce,
+    redirectUri,
+    returnTo,
+    bindingHash: await hashKey(binding, env.KEY_HASH_PEPPER),
+  };
   await putArtefact(
     env,
     await portalFlowKey(env, state),
@@ -324,9 +355,25 @@ export async function handlePortalLogin(
     headers: portalSecurityHeaders(
       new Headers({
         location: authorize.toString(),
+        "set-cookie": accountRealmCookie(
+          PORTAL_SSO_COOKIE,
+          binding,
+          FLOW_TTL_SECONDS,
+        ),
         "cache-control": "no-store",
       }),
     ),
+  });
+}
+
+/** `res` with the spent single sign-on binding cleared (I-17). */
+function clearingBinding(res: Response): Response {
+  const headers = new Headers(res.headers);
+  headers.append("set-cookie", clearAccountRealmCookie(PORTAL_SSO_COOKIE));
+  return new Response(res.body, {
+    status: res.status,
+    statusText: res.statusText,
+    headers,
   });
 }
 
@@ -353,9 +400,37 @@ export async function handlePortalCallback(
   } catch {
     return signInPage.tookTooLong();
   }
+  // I-17: only the browser that started the flow may finish it. Without this, anyone could hand
+  // a victim the callback URL of their own sign-in: the victim's browser would get the
+  // attacker's session (login CSRF) or, in `claim` mode, the attacker's email gate, whose join
+  // the victim's own proof would complete onto the victim's account. Refused generically before
+  // the code is exchanged; a flow without a binding (minted before this check) is refused too.
+  const binding = readCookie(req.headers.get("cookie"), PORTAL_SSO_COOKIE);
+  if (
+    !binding ||
+    !flow.bindingHash ||
+    (await hashKey(binding, env.KEY_HASH_PEPPER)) !== flow.bindingHash
+  ) {
+    return signInPage.unverified();
+  }
+  return clearingBinding(
+    await completePortalCallback(req, env, db, flow, code, now),
+  );
+}
 
+/** The rest of `/callback`, once the flow is known to be this browser's. */
+async function completePortalCallback(
+  req: Request,
+  env: Env,
+  db: Db,
+  flow: FlowRecord,
+  code: string,
+  now: number,
+): Promise<Response> {
   const cfg = platformOidcConfig(env);
   if (!cfg) return signInPage.off();
+  // I-17: a flow started before the sunset is not completed after it (the flow is spent above).
+  if (platformSignInEnded(env, now)) return signInPage.platformEnded();
   const tokenRes = await fetch(
     `${cfg.issuer.replace(/\/$/, "")}/api/oidc/token`,
     {
@@ -399,23 +474,61 @@ export async function handlePortalCallback(
 
   const identity = mapClaims(claims);
   if (!identity.sub) return signInPage.unverified();
-  // Keyed by issuer (S-16 G14). Re-key any pre-I-01 rows first, so the lookup finds them.
-  const issuerKey = portalIdentityIssuerKey(cfg.issuer);
-  await rekeyLegacyPortalIdentities(db, issuerKey);
-  await rekeyLegacyAccountLinks(db, issuerKey);
-  // I-05: every front door ends in one `signIn(verifiedIdentity)`.
-  const result = await signIn(
+  // I-17: with `PLATFORM_OIDC_MIGRATION` on, the claim decides (it re-keys and signs in itself);
+  // off (the default), the sign-in below is exactly what it was.
+  const claim = await claimPlatformSubject(
     db,
+    env,
     {
-      issuerKey,
-      subject: identity.sub,
-      kind: "oidc",
-      email: identity.emailVerified ? identity.email : null,
-      emailVerified: Boolean(identity.emailVerified && identity.email),
+      issuer: cfg.issuer,
+      sub: identity.sub,
+      email: identity.email ?? null,
+      emailVerified: identity.emailVerified,
       displayName: identity.name ?? null,
+      groups: identity.groups,
     },
     now,
   );
+  let result: SignInResult;
+  switch (claim.status) {
+    case "off": {
+      // Keyed by issuer (S-16 G14). Re-key any pre-I-01 rows first, so the lookup finds them.
+      const issuerKey = portalIdentityIssuerKey(cfg.issuer);
+      await rekeyLegacyPortalIdentities(db, issuerKey);
+      await rekeyLegacyAccountLinks(db, issuerKey);
+      // I-05: every front door ends in one `signIn(verifiedIdentity)`.
+      result = await signIn(
+        db,
+        {
+          issuerKey,
+          subject: identity.sub,
+          kind: "oidc",
+          email: identity.emailVerified ? identity.email : null,
+          emailVerified: Boolean(identity.emailVerified && identity.email),
+          displayName: identity.name ?? null,
+        },
+        now,
+      );
+      break;
+    }
+    case "ended":
+      return signInPage.platformEnded();
+    case "join_offer":
+      // The email step (I-07's gate) offers the join: nothing is written until the person proves
+      // the account that uses the address in this browser and confirms (S-16, owner 2026-10-04).
+      return beginProviderSignIn(
+        req,
+        env,
+        db,
+        { identity: claim.identity, returnTo: flow.returnTo ?? null },
+        now,
+      );
+    case "ambiguous":
+      // More than one account uses the address: nothing is offered (the same page as before).
+      return emailInUsePage();
+    default:
+      result = claim.result;
+  }
   const refused = signInRefusal(result);
   if (refused) return refused;
   const signedIn = result as Extract<SignInResult, { status: "signed_in" }>;
@@ -440,6 +553,14 @@ export async function handlePortalCallback(
   );
 }
 
+/** An unknown identity whose verified email another account uses, where no join is offered. */
+function emailInUsePage(): Response {
+  return htmlError(
+    409,
+    "A Polaris Key account already uses this email address. Sign in with the method you used before. Adding another sign-in method to an account is not available yet; until it is, contact the product's support if you can no longer use that method.",
+  );
+}
+
 /**
  * The page a sign-in that did not complete answers with. A join offer (an unknown identity whose
  * verified email another account already uses) is never resolved silently: the login card (I-07)
@@ -453,10 +574,7 @@ export function signInRefusal(result: SignInResult): Response | null {
         ? null
         : signInPage.accountDisabled();
     case "join_offer":
-      return htmlError(
-        409,
-        "A Polaris Key account already uses this email address. Sign in with the method you used before. Adding another sign-in method to an account is not available yet; until it is, contact the product's support if you can no longer use that method.",
-      );
+      return emailInUsePage();
     case "refused":
       return result.reason === "account_disabled"
         ? signInPage.accountDisabled()

@@ -22,6 +22,11 @@ import {
 } from "../src/services/identity/portal/auth.js";
 import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
 import { artefacts } from "./singleUseMock.js";
+import { hashKey } from "../src/crypto.js";
+import {
+  PORTAL_SSO_COOKIE,
+  clearAccountRealmCookie,
+} from "../src/core/accountCookies.js";
 
 const idp = vi.hoisted(() => ({ jwks: { keys: [] as unknown[] } }));
 
@@ -36,6 +41,8 @@ vi.mock("jose", async (importOriginal) => {
 const ISSUER = "https://id.test";
 const CLIENT_ID = "portal-client";
 const STATE = "state-1";
+/** The browser binding `/login` would have set (I-17); the callback requires it. */
+const BINDING = "binding-of-this-browser-0123456789abcdef";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -60,6 +67,9 @@ function idClaims(over: Record<string, unknown> = {}): Record<string, unknown> {
 async function callbackWith(
   claims: Record<string, unknown>,
   db: SqliteDb = makeTestDb(),
+  /** The browser's `__Host-pkey_sso` value; `null` sends none. Default: the flow's own. */
+  binding: string | null = BINDING,
+  fetched: string[] = [],
 ): Promise<Response> {
   await seedProduct(db, "djdl");
   const kv = new KvMock();
@@ -74,6 +84,7 @@ async function callbackWith(
       verifier: "v".repeat(43),
       nonce: "nonce-1",
       redirectUri: "https://key.plrs.im/portal/auth/callback",
+      bindingHash: await hashKey(BINDING, env.KEY_HASH_PEPPER),
     }),
   );
 
@@ -100,6 +111,7 @@ async function callbackWith(
           ? input.toString()
           : input.url,
     );
+    fetched.push(u.toString());
     if (u.origin === ISSUER && u.pathname === "/api/oidc/token")
       return new Response(JSON.stringify({ id_token: idToken }), {
         headers: { "content-type": "application/json" },
@@ -110,6 +122,9 @@ async function callbackWith(
   return handlePortalCallback(
     new Request(
       `https://key.plrs.im/portal/auth/callback?code=abc&state=${STATE}`,
+      {
+        headers: binding ? { cookie: `${PORTAL_SSO_COOKIE}=${binding}` } : {},
+      },
     ),
     env,
     db,
@@ -135,6 +150,30 @@ describe("portal OIDC callback ID-token hardening (R8-05d)", () => {
   it("refuses a token missing the flow's nonce binding", async () => {
     const res = await callbackWith(idClaims({ nonce: undefined }));
     expect(res.status).toBe(401);
+  });
+});
+
+describe("the callback is bound to the browser that started it (I-17)", () => {
+  it("another browser, or none, is refused before the code is exchanged, and nothing is written", async () => {
+    for (const binding of [null, "someone-elses-binding-0123456789abcdef"]) {
+      const db = makeTestDb();
+      const fetched: string[] = [];
+      const res = await callbackWith(idClaims(), db, binding, fetched);
+      expect(res.status).toBe(401);
+      expect(res.headers.get("set-cookie")).toBeNull();
+      expect(fetched).toEqual([]);
+      expect(await db.all("SELECT id FROM accounts")).toEqual([]);
+    }
+  });
+
+  it("the starting browser signs in, and its binding is cleared", async () => {
+    const res = await callbackWith(idClaims());
+    expect(res.status).toBe(302);
+    const cookies = (
+      res.headers as unknown as { getSetCookie(): string[] }
+    ).getSetCookie();
+    expect(cookies.some((c) => c.startsWith("__Host-pkey_portal="))).toBe(true);
+    expect(cookies).toContain(clearAccountRealmCookie(PORTAL_SSO_COOKIE));
   });
 });
 
@@ -192,7 +231,10 @@ describe("the portal callback ends in signIn (I-05)", () => {
       db,
     );
     expect(res.status).toBe(409);
-    expect(res.headers.get("set-cookie")).toBeNull();
+    // No session: the only cookie is the spent single sign-on binding being cleared (I-17).
+    expect(res.headers.get("set-cookie")).toBe(
+      clearAccountRealmCookie(PORTAL_SSO_COOKIE),
+    );
     expect(await db.all("SELECT id FROM accounts")).toEqual([
       { id: existing.id },
     ]);

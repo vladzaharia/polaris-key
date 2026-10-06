@@ -391,6 +391,22 @@ export interface Env {
    */
   PLATFORM_OIDC_CLIENT_SECRET?: string;
   /**
+   * I-17: moving `provider: platform` end users off the platform IdP
+   * (`services/identity/accounts/platformMigration.ts`, RUNBOOK "Moving end users off the
+   * platform IdP"). `off` (unset, and anything unrecognised): as before. `claim`: each end-user
+   * sign-in lands on a Polaris Key account. `operators-only`: only people already moved sign in
+   * through it. Deploy-time only, so the owner's go/no-go is a reviewed change.
+   * @inventory var identity
+   */
+  PLATFORM_OIDC_MIGRATION?: string;
+  /**
+   * I-17: the day (`YYYY-MM-DD`, UTC) from which no end user signs in through the platform IdP,
+   * while `PLATFORM_OIDC_MIGRATION` is not `off`. Unset by default; the owner sets it only after
+   * reading the email-less count (`GET /manage/api/platform/identity-migration`).
+   * @inventory var identity
+   */
+  PLATFORM_OIDC_SUNSET?: string;
+  /**
    * The console's own operator sign-in client (I-03). Read by `adminOidcConfig` only; when the
    * issuer or client id is unset the console falls back to `PLATFORM_OIDC_*`. The portal and
    * `provider: platform` products never read these. Set all three in ONE `wrangler secret

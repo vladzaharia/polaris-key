@@ -253,6 +253,12 @@ PLATFORM_REPOSITORY_OWNER_ID = "79390"
 # here per environment and the secret with `wrangler secret put TURNSTILE_SECRET_KEY --env <env>`
 # (RUNBOOK "Login card"). Without the secret the card asks for no token.
 TURNSTILE_SITE_KEY = "0x4AAAAAAFPA8Ladne6enDdh"
+# I-17: moving `provider: platform` end users off the platform IdP (RUNBOOK "Moving end users off
+# the platform IdP"). Unset = "off": the platform IdP signs everyone in as before. The owner's go
+# sets "claim", then "operators-only"; the sunset day (UTC) is set only after the email-less count
+# at /manage/api/platform/identity-migration. Both are reviewed changes here, never console values.
+# PLATFORM_OIDC_MIGRATION = "claim"
+# PLATFORM_OIDC_SUNSET = "YYYY-MM-DD"
 # I-18: sign-in and account mail. The binding may send only from these addresses: today's
 # noreply@plrs.im, and the auth sending subdomain's noreply@auth.plrs.im, which the Worker uses
 # once EMAIL_SENDER_ADDRESS above names it (RUNBOOK "Sign-in email").
@@ -350,6 +356,12 @@ LAZY_DELTAS = "runtime"
 EMAIL_SENDER_ADDRESS = "noreply@auth.plrs.im"
 # I-07: Turnstile site key (public); the secret stays unset until the portal renders the widget.
 TURNSTILE_SITE_KEY = "0x4AAAAAAFPA8ouKFZ_KIKJO"
+# I-17: moving `provider: platform` end users off the platform IdP (RUNBOOK "Moving end users off
+# the platform IdP"). Unset = "off": the platform IdP signs everyone in as before. The owner's go
+# sets "claim", then "operators-only"; the sunset day (UTC) is set only after the email-less count
+# at /manage/api/platform/identity-migration. Both are reviewed changes here, never console values.
+# PLATFORM_OIDC_MIGRATION = "claim"
+# PLATFORM_OIDC_SUNSET = "YYYY-MM-DD"
 [[env.staging.send_email]]
 name = "EMAIL"
 allowed_sender_addresses = ["noreply@auth.plrs.im"]
@@ -440,6 +452,12 @@ BLOBS_BUCKET_NAME = "polaris-key-blobs-dev"
 LAZY_DELTAS = "runtime"
 # I-07: Turnstile site key (public); the secret stays unset until the portal renders the widget.
 TURNSTILE_SITE_KEY = "0x4AAAAAAFPA80GfFwEcAJOR"
+# I-17: moving `provider: platform` end users off the platform IdP (RUNBOOK "Moving end users off
+# the platform IdP"). Unset = "off": the platform IdP signs everyone in as before. The owner's go
+# sets "claim", then "operators-only"; the sunset day (UTC) is set only after the email-less count
+# at /manage/api/platform/identity-migration. Both are reviewed changes here, never console values.
+# PLATFORM_OIDC_MIGRATION = "claim"
+# PLATFORM_OIDC_SUNSET = "YYYY-MM-DD"
 
 # F-02: the LOCAL registry-client harness only (`wrangler dev --env test`, run by
 # scripts/registry-clients/run.mjs and .github/workflows/registry-clients.yml). It is never

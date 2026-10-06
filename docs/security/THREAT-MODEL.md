@@ -3401,7 +3401,8 @@ not a control.
 This is **not** inherent to the device-authorization grant. In RFC 8628 the user authenticates in
 the same browser session that entered the code; Polaris does not yet bind the IdP callback to
 the browser that confirmed, which is R8-03 (no flow on any surface is bound to the visitor's
-browser). R1-07 therefore stays **Fixed-partial** (2026-08-26 audit): R8-02 and P1-06 closed the
+browser; since I-17 the portal's single sign-on is the exception, see "Moving end users off the
+platform IdP"). R1-07 therefore stays **Fixed-partial** (2026-08-26 audit): R8-02 and P1-06 closed the
 GET self-confirm, the framable page and the device code in the URL, not the starter's ability to
 confirm. Fix direction, unowned: bind a `viaDeviceCode` flow's callback to the browser that
 confirmed it — e.g. a `__Host-` `SameSite=Lax` cookie set on the confirmation `303` and required
@@ -5126,7 +5127,72 @@ group-assignment mistake on that client crossed from customer to operator (notes
   restrict a client to user groups, allowing only the admin group on the console client adds a
   second check at the IdP.
 - **Residual.** Both clients live in one Pocket ID directory: a compromise of Pocket ID itself, or
-  of its admin account, still reaches both. Moving end users out of Pocket ID is I-09.
+  of its admin account, still reaches both. Moving end users out of Pocket ID is I-17 (below).
+
+### Moving end users off the platform IdP (I-17)
+
+End users of `provider: platform` products and the portal's **Continue with single sign-on** move
+from Pocket ID to their Polaris Key account by claim at next sign-in
+(`services/identity/accounts/platformMigration.ts`; S-16 §5.4 items 1 and 11, §9 risk 11). Each
+platform-IdP sign-in lands the subject on an account, keeping it as a temporary `oidc` method
+keyed by the issuer; once the sunset passes and the owner removes end users from Pocket ID, the
+directory holds operators only, which closes G5 (operator and customer in one directory).
+
+- **Takeover by email match (item 3).** A subject's verified email decides only where no account
+  exists yet: with no account using the address, a new account gets it; with one, nothing is
+  written and the portal opens the email step's join offer (I-07's gate), which joins only after
+  the person proves that account in the same browser (a code to its email method, or a fresh
+  session for it) and confirms; with two or more, nothing is written and nothing is offered
+  (`ambiguous`). The address counts only as `providerVouchesForEmail` allows: for the platform IdP,
+  its own `email_verified`. A product route never opens the offer, because it cannot set the
+  account realm's cookies (I-07); its "signed in" page links to the portal instead, naming only
+  the address the person's own IdP just asserted.
+- **Login CSRF, and a planted join (the I-17 review's B1).** The portal's single sign-on used to
+  find its flow by `state` alone, so anyone could finish their own Pocket ID sign-in in a victim's
+  browser by handing over the callback URL: the victim got the attacker's session (login CSRF,
+  R8-03 on this surface), and in `claim` mode the attacker's email gate, whose join the victim's
+  own proof (a code to their address, or their session) would complete onto the victim's account,
+  making the attacker's Pocket ID subject a way into it. The flow is now bound to the browser
+  that started it, in every mode: `/login` sets `__Host-pkey_sso` (random, `SameSite=Lax`, Secure,
+  HttpOnly, ten minutes; an account-realm cookie, so product routes never see it), whose
+  peppered hash the flow holds, and a callback without the matching cookie is refused with the
+  generic "We couldn't confirm that sign-in" before the code is exchanged; nothing is written and
+  no cookie is set. Unlike Apple's cross-site `form_post` (I-06, "Login CSRF without a Lax
+  cookie"), Pocket ID returns by a top-level GET, which carries a Lax cookie. The cookie opens
+  nothing by itself and is cleared once used. A flow minted before the binding existed is refused
+  too, and the person starts again.
+- **Trust in the platform IdP's `email_verified` (T5).** Unchanged in kind: the portal's
+  single sign-on already made accounts from it and attached licences waiting on that address
+  (R5-01). The claim extends it to every `provider: platform` sign-in. A Pocket ID that let a user
+  set an arbitrary address and reported it verified would let that user create an account under
+  someone else's address and receive the floating licences that name it; the RUNBOOK makes
+  checking this a precondition of the go. An address another account holds is never taken this
+  way: a new subject's address is a join offer, and when a subject that already has an account
+  later asserts an address another account uses, `signIn` keeps it on the method as unverified
+  (as the gate's `createAccount` does), so no address is verified on two accounts and no licence
+  waiting on it moves.
+- **Licences.** The subject's `sub`-keyed licences attach only through the link it now holds,
+  only on products whose provider is `platform` (R5-02), only while floating (an owned licence
+  never moves) and only where the product's auto-link resolves on; the portal's link sweep does
+  it, so the rules are the ones it already had. A custom-issuer product never claims.
+- **The switch is deploy-time (AT-2).** `PLATFORM_OIDC_MIGRATION` and `PLATFORM_OIDC_SUNSET` are
+  `[vars]`, explained in `NOT_A_SETTING`, never console values: a console session cannot move
+  people between sign-in paths or end anyone's sign-in. Off by default; an unrecognised mode reads
+  as `off` and an invalid date as unset, so a typo fails toward today's behaviour, and the report
+  flags both.
+- **Stranding (risk 11).** People with no verified email keep only the temporary method, so the
+  sunset follows the count (`GET /manage/api/platform/identity-migration`, platform admins only,
+  counts only: no subject, address or account id). In `operators-only` an unknown subject is
+  refused and nothing is written; past the sunset `/login` refuses, the card hides single sign-on
+  and both callbacks refuse before exchanging the code.
+- **The account id.** A product flow keeps the claimed account id on its record in the single-use
+  store (server-side, like I-26's chooser account), so the licence the device-code poll mints
+  attaches; it is never on a page or a response.
+- **Residual.** Until the owner removes end users from Pocket ID after the sunset, the directory
+  still holds customers (G5 stays open), and until I-03's console client is set the console still
+  shares the platform client. Until I-08 moves `provider: platform` apps to the login card,
+  `operators-only` also stops new users of those apps from signing in. A moved person's later app
+  sign-ins meet I-26's licence chooser, because their account now owns the licence.
 
 ### The portal's library and media proxy (PX-W1)
 
