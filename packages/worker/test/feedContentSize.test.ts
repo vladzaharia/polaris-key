@@ -17,6 +17,7 @@ import type {
 } from "@polaris-key/protocol/update";
 import {
   documentFor,
+  feedDocWork,
   feedSelfCheck,
   MAX_FEED_PAYLOAD_BYTES,
 } from "../src/services/update/feedDoc.js";
@@ -427,9 +428,21 @@ describe("feed content under the payload cap (plans/P4-13.md §6.3)", () => {
         pinnedBy: Object.fromEntries(PLATFORMS.map((p) => [p, recs])),
       },
     };
-    const t0 = performance.now();
+    // Counted work (feedDocWork), not milliseconds, so load cannot move it: building a document
+    // costs its whole-document serializations. Per platform that is at most 2 for the
+    // channel-wide try, 9 for the platform's build and its four shedding steps, 8 for the menu (a
+    // bisection over 64 entries is 7 measures, not 64, then the read-back) and 1 for the
+    // self-check: 20. Today it is 102 for the six (8.4 MB of JSON); a linear menu search would
+    // add 64 a platform.
+    const before = { ...feedDocWork };
     const docs = PLATFORMS.map((platform) => sign(c, platform));
-    expect(performance.now() - t0).toBeLessThan(1000);
+    const serializations = feedDocWork.serializations - before.serializations;
+    expect(serializations).toBeGreaterThan(0);
+    expect(serializations).toBeLessThanOrEqual(PLATFORMS.length * 20);
+    // None is bigger than the channel-wide document, about 3x the cap here.
+    expect(feedDocWork.chars - before.chars).toBeLessThanOrEqual(
+      serializations * 4 * MAX_FEED_PAYLOAD_BYTES,
+    );
     for (const d of docs) {
       expect(d.ok).toBe(true);
       expect(Object.values(d.doc.deltas ?? {}).flat().length).toBe(64);
