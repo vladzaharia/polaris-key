@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser, type Page } from "playwright";
@@ -25,6 +25,9 @@ import { CORE_ROUTES } from "./coreFixtures.js";
  *     and `document.getAnimations()` is empty right after each interaction;
  *   - zero `securitypolicyviolation` events throughout.
  *
+ * With `PK_SHOTS_DIR` set it also saves frame strips (animations slowed ×0.1 over the DevTools
+ * protocol) of the filter, Clear filters and the bulk bar, for review (MO-13 collects them).
+ *
  * Kept apart from e2e/motion.e2e.test.ts (as e2e/shellMotion.e2e.test.ts is) so the area packages
  * built in parallel do not collide in one file.
  */
@@ -32,6 +35,7 @@ import { CORE_ROUTES } from "./coreFixtures.js";
 const here = fileURLToPath(new URL("..", import.meta.url));
 const CSP = appSecurityHeaders().get("content-security-policy")!;
 const LIST_BUDGET = 30;
+const SHOTS = process.env.PK_SHOTS_DIR;
 
 const NOW = Math.floor(Date.now() / 1000);
 /** 60 licenses: every third one is disabled, the rest active. */
@@ -539,6 +543,53 @@ describe("motion on: the Licenses table under the Worker's CSP", () => {
     expect(await violations(page)).toEqual([]);
     await page.context().close();
   });
+});
+
+// ── Frame strips for review (PK_SHOTS_DIR) ──────────────────────────────────────────────────────
+
+describe.skipIf(!SHOTS)("frame strips", () => {
+  for (const theme of ["dark", "light"] as const) {
+    it(`saves the filter, Clear filters and bulk-bar frames (${theme})`, async () => {
+      mkdirSync(SHOTS!, { recursive: true });
+      const page = await openLicenses({ theme });
+      const cdp = await page.context().newCDPSession(page);
+      await cdp.send("Animation.enable");
+      const strip = async (
+        name: string,
+        act: () => Promise<void>,
+      ): Promise<void> => {
+        await atRest(page);
+        await cdp.send("Animation.setPlaybackRate", { playbackRate: 0.1 });
+        await act();
+        for (const [i, ms] of [30, 600, 1200, 1800, 2600, 3600].entries()) {
+          await page.waitForTimeout(
+            i === 0 ? ms : ms - [30, 600, 1200, 1800, 2600][i - 1]!,
+          );
+          await page.screenshot({
+            path: `${SHOTS}/console-data-${name}-${theme}-${i + 1}.png`,
+          });
+        }
+        await cdp.send("Animation.setPlaybackRate", { playbackRate: 1 });
+        await atRest(page, 6000);
+      };
+      await openStatusMenu(page);
+      await strip("filter", () =>
+        page.getByRole("checkbox", { name: /^Disabled/ }).click(),
+      );
+      await page.keyboard.press("Escape");
+      await strip("clear", () =>
+        page.getByRole("button", { name: "Clear filters" }).first().click(),
+      );
+      await strip("bulk-bar-in", () =>
+        page.getByRole("checkbox", { name: "Select Seat 01" }).click(),
+      );
+      await strip("bulk-bar-out", () =>
+        page.getByRole("button", { name: "Clear selection" }).click(),
+      );
+      expect(await violations(page)).toEqual([]);
+      await page.context().close();
+    });
+  }
 });
 
 // ── Reduced motion: instant swaps (S-23 D3) ──────────────────────────────────────────────────────
