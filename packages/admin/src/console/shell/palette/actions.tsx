@@ -1,5 +1,12 @@
 import * as React from "react";
-import { BookOpen, Plus, ToggleRight } from "lucide-react";
+import {
+  BookOpen,
+  Code2,
+  KeyRound,
+  Package,
+  Plus,
+  ToggleRight,
+} from "lucide-react";
 import type { ServiceSlug } from "../../../api.js";
 import { useTheme } from "../../../components/theme.js";
 import {
@@ -10,7 +17,12 @@ import { docsFor, navItems, SECTIONS, type ServiceState } from "../../nav.js";
 import { r } from "../../routes.js";
 import { THEME_OPTIONS } from "../ThemeMenu.js";
 import { focusWhenReady } from "./focus.js";
-import type { PaletteContext, PaletteItem, PaletteSource } from "./types.js";
+import type {
+  PaletteContext,
+  PaletteItem,
+  PaletteRunApi,
+  PaletteSource,
+} from "./types.js";
 
 /** The License area's create dialog, loaded with its chunk only when the action runs. */
 const CreateLicenseDialog = React.lazy(() =>
@@ -119,6 +131,58 @@ export function createActions(
   return items;
 }
 
+/** The DOM id of the SDK chooser in Overview's quick start (`pages/core/Overview.tsx`). */
+export const SDK_QUICK_START_ID = "sdk-quick-start";
+
+/**
+ * Connecting an app (UX-59; SETUP.md §3): the SDK quick start, its install from pkg.plrs.im and
+ * the trust pins, findable by the words a developer types ("sdk", "install", "pins"). The quick
+ * start rows open Overview with the SDK chooser focused; the pins row opens Keys & secrets.
+ * Shown on a match only, on a product.
+ */
+export function sdkActions(slug: string | null): PaletteItem[] {
+  if (!slug) return [];
+  const toQuickStart = (api: PaletteRunApi): void => {
+    api.navigate(r.overview(slug));
+    focusWhenReady(SDK_QUICK_START_ID);
+  };
+  return [
+    {
+      id: "action:sdk-quick-start",
+      group: "Actions",
+      label: "SDK quick start",
+      detail: "Overview · Trust & SDK",
+      keywords:
+        "sdk connect integrate app client snippet setup code node react web python swift ios kotlin android godot",
+      icon: <Code2 aria-hidden className="size-4" />,
+      matchOnly: true,
+      perform: toQuickStart,
+    },
+    {
+      id: "action:sdk-install",
+      group: "Actions",
+      label: "Install the SDK",
+      detail: "From pkg.plrs.im",
+      keywords:
+        "install sdk package registry feed pkg.plrs.im npm pnpm pip uv swiftpm gradle maven godot",
+      icon: <Package aria-hidden className="size-4" />,
+      matchOnly: true,
+      perform: toQuickStart,
+    },
+    {
+      id: "action:trust-pins",
+      group: "Actions",
+      label: "Trust pins",
+      detail: "Keys & secrets",
+      keywords:
+        "trust pins pinned keys signing key public key kid jwks rotation staged sdk",
+      icon: <KeyRound aria-hidden className="size-4" />,
+      matchOnly: true,
+      href: r.keys(slug),
+    },
+  ];
+}
+
 /**
  * The top bar's Docs and theme buttons, as palette rows (EXPERIENCE.md §5.1: both leave the top
  * bar for the account menu and the palette). Shown on a match only.
@@ -166,6 +230,7 @@ export const actionsPaletteSource: PaletteSource = {
     return [
       ...createActions(ctx.slug, ctx.services),
       ...turnOnActions(ctx.slug, ctx.services),
+      ...sdkActions(ctx.slug),
       ...chrome,
     ];
   },

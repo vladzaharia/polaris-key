@@ -169,6 +169,11 @@ describe("New product wizard", () => {
     expect(
       within(main()).getByRole("button", { name: /Copy signing key/ }),
     ).toBeTruthy();
+    // The key is for the app's trust pins; releases use the separate CI release key (UX-59).
+    expect(main().textContent).toContain(
+      "Pin this key in your app. Releases are signed by a separate CI release key.",
+    );
+    expect(main().textContent).not.toContain("release tooling");
     // Invalidation: the session (switcher, Home) refetches.
     await waitFor(() =>
       expect(

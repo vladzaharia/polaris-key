@@ -812,9 +812,9 @@ function ResultStep({ created }: { created: Created }): React.ReactElement {
           value={created.publicKey ?? undefined}
         />
         <p className="text-sm text-fg-muted">
-          Give this key to your SDK trust configuration and release tooling. The
-          private key never leaves the platform; the public key is also in the
-          product's JWKS.
+          Pin this key in your app. Releases are signed by a separate CI release
+          key. The private key never leaves the platform; the public key is also
+          in the product's JWKS.
         </p>
         {created.via === "github" ? (
           <Callout
