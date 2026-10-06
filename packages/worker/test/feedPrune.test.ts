@@ -2,8 +2,10 @@
  * Feed retention (owner request 2026-10-06): a stable publish prunes the package's builds of main
  * below it (`services/release/packages/prune.ts`). Per-ecosystem metadata after a prune, the
  * shared-blob refcount, idempotency, beta never prunes, newer prereleases are kept, the npm
- * dist-tag, dry run against apply, failure isolation, the setting, the tombstone, and the CI and
- * admin routes.
+ * dist-tag, dry run against apply, failure isolation, the setting and its defaults (off for a
+ * tenant product, locked on for the system product), the tombstone, and the safety points: the
+ * channel filter, other products, odd version spellings, a yanked stable, the per-run cap, a
+ * partial failure, versions held between plan and apply, and the blob collector's mark.
  */
 
 import { createHash } from "node:crypto";
@@ -27,7 +29,9 @@ import {
   compareRelease,
   finalRelease,
   mainPrerelease,
+  newestStable,
   planPackagePrune,
+  PRUNE_MAX_PER_RUN,
   pruneAfterStablePublish,
   prunePackages,
   pruneRetentionOf,
@@ -46,6 +50,8 @@ import {
   type RenderedObject,
 } from "../src/services/distribution/registry/materialise.js";
 import { stmtSetChannelPolicy } from "../src/services/release/model.js";
+import { markUnreferenced } from "../src/core/blobGc.js";
+import { SETTINGS } from "../src/mount.js";
 
 const P = "acme";
 const hex = (s: string) => createHash("sha256").update(s).digest("hex");
@@ -320,6 +326,35 @@ async function rendered(eco: PackageEcosystem): Promise<string> {
     .join("\n");
 }
 
+/** Feed retention is off by default for a tenant product: opt `product` in. */
+async function optIn(product = P): Promise<void> {
+  expect(await setPruneRetention(db, product, true, 0, "admin:u1", NOW)).toBe(
+    "written",
+  );
+}
+
+/** The automatic prune after `version` of `eco`'s package was published on `channel`. */
+const autoPrune = (
+  eco: PackageEcosystem,
+  version: string,
+  channel = "stable",
+  product = P,
+  on: Db = db,
+) =>
+  pruneAfterStablePublish(
+    on,
+    env,
+    product,
+    {
+      deliverableId: did(eco),
+      ecosystem: eco,
+      name: SHAPES[eco].name,
+      version,
+      channel,
+    },
+    NOW,
+  );
+
 beforeEach(async () => {
   db = makeTestDb();
   env = makeEnv(new KvMock(), [P]);
@@ -363,6 +398,7 @@ describe.each(ECOS)("a stable publish on the %s feed", (eco) => {
 
   it("prunes the builds of main at or below it and nothing else; the feed's metadata drops them", async () => {
     await declare(P, [eco]);
+    await optIn();
     await history(eco);
     await publishRow(eco, v.stable, "stable");
     const before = await rendered(eco);
@@ -398,6 +434,13 @@ describe.each(ECOS)("a stable publish on the %s feed", (eco) => {
         did(eco),
       ),
     ).toEqual({ reason: "prune" });
+    // Each deletion's audit row links the stable release that triggered it.
+    expect(
+      await db.all(
+        "SELECT DISTINCT parent_id FROM audit WHERE product = ? AND action = 'package.version.prune'",
+        P,
+      ),
+    ).toEqual([{ parent_id: `${did(eco)}@${v.stable}` }]);
   });
 });
 
@@ -516,6 +559,7 @@ describe("the shared-blob refcount", () => {
 describe("applying a prune", () => {
   beforeEach(async () => {
     await declare(P, ["npm", "pypi"]);
+    await optIn();
     await history("npm");
     await history("pypi");
     await publishRow("npm", "1.1.0", "stable");
@@ -534,6 +578,7 @@ describe("applying a prune", () => {
       bytes: 6000,
       freedBytes: 6000,
       failed: 0,
+      skipped: 0,
     });
     expect(await versionsOf("npm")).toHaveLength(7);
     expect(
@@ -573,16 +618,22 @@ describe("applying a prune", () => {
     const audit = await db.all<{
       actor_sub: string;
       target_id: string;
+      parent_id: string;
       summary: string;
     }>(
-      "SELECT actor_sub, target_id, summary FROM audit WHERE product = ? AND action = 'package.version.prune' ORDER BY target_id",
+      "SELECT actor_sub, target_id, parent_id, summary FROM audit WHERE product = ? AND action = 'package.version.prune' ORDER BY target_id",
       P,
     );
     expect(audit).toHaveLength(6);
     expect(audit[0]).toMatchObject({
       actor_sub: "ci:static:tok_1",
       target_id: "npm:@acme/sdk@1.0.0-main.9",
+      // The backfill links its ceiling: the package's newest live stable release.
+      parent_id: "npm.sdk@1.1.0",
     });
+    expect(audit.find((a) => a.target_id.startsWith("pypi:"))!.parent_id).toBe(
+      "pypi.sdk@1.1.0",
+    );
     expect(audit[0]!.summary).toContain("1000 bytes");
   });
 
@@ -685,6 +736,7 @@ describe("the automatic prune", () => {
   });
 
   it("a beta publish prunes nothing", async () => {
+    await optIn();
     await publishRow("npm", "1.1.0-rc.2", "beta");
     const out = await pruneAfterStablePublish(
       db,
@@ -703,45 +755,74 @@ describe("the automatic prune", () => {
     expect(await versionsOf("npm")).toHaveLength(7);
   });
 
-  it("respects the product's setting, which the system product cannot turn off", async () => {
-    expect((await pruneRetentionOf(db, P)).prunePrereleases).toBe(true);
+  it("is off by default for a tenant product: a stable publish prunes nothing until it opts in", async () => {
+    expect(await pruneRetentionOf(db, P)).toEqual({
+      prunePrereleases: false,
+      locked: false,
+      version: 0,
+      updatedAt: null,
+      updatedBy: null,
+    });
+    await publishRow("npm", "1.1.0", "stable");
+    expect(await autoPrune("npm", "1.1.0")).toEqual({ status: "off" });
+    expect(await versionsOf("npm")).toHaveLength(7);
+    expect(
+      await db.first("SELECT COUNT(*) AS n FROM release_package_prunes"),
+    ).toEqual({ n: 0 });
+
+    // Opting in (version 0 → 1), then turning it off again, each against the version read.
+    await optIn();
     expect(await setPruneRetention(db, P, false, 0, "admin:u1", NOW)).toBe(
-      "written",
-    );
-    expect(await setPruneRetention(db, P, true, 0, "admin:u1", NOW)).toBe(
       "stale",
     );
     expect(await pruneRetentionOf(db, P)).toMatchObject({
-      prunePrereleases: false,
+      prunePrereleases: true,
       locked: false,
       version: 1,
+      updatedBy: "admin:u1",
     });
-    await publishRow("npm", "1.1.0", "stable");
-    const out = await pruneAfterStablePublish(
-      db,
-      env,
-      P,
-      {
-        deliverableId: "npm.sdk",
-        ecosystem: "npm",
-        name: "@acme/sdk",
-        version: "1.1.0",
-        channel: "stable",
-      },
-      NOW,
+    expect(await setPruneRetention(db, P, false, 1, "admin:u1", NOW)).toBe(
+      "written",
     );
-    expect(out).toEqual({ status: "off" });
+    expect(await autoPrune("npm", "1.1.0")).toEqual({ status: "off" });
     expect(await versionsOf("npm")).toHaveLength(7);
+  });
 
+  it("is on by default for the system product, which cannot turn it off", async () => {
+    expect(await pruneRetentionOf(db, SYSTEM_PRODUCT_SLUG)).toEqual({
+      prunePrereleases: true,
+      locked: true,
+      version: 0,
+      updatedAt: null,
+      updatedBy: null,
+    });
     expect(
       await setPruneRetention(db, SYSTEM_PRODUCT_SLUG, false, 0, "u", NOW),
     ).toBe("locked");
+    // Even a row that says off (written around the API) does not turn it off.
+    await seedProduct(db, SYSTEM_PRODUCT_SLUG);
+    await db.run(
+      "INSERT INTO release_package_retention (product, prune_prereleases, version, updated_at) VALUES (?, 0, 1, ?)",
+      SYSTEM_PRODUCT_SLUG,
+      NOW,
+    );
     expect(
       (await pruneRetentionOf(db, SYSTEM_PRODUCT_SLUG)).prunePrereleases,
     ).toBe(true);
   });
 
+  it("registers the setting with the tenant default, off", () => {
+    const def = SETTINGS.get("release.packages.prunePrereleases", "product")!;
+    expect(def.defaultValue).toBe(false);
+    expect(def.storage).toEqual({
+      kind: "column",
+      table: "release_package_retention",
+      column: "prune_prereleases",
+    });
+  });
+
   it("never throws: a failing prune is audited, and the next run retries it", async () => {
+    await optIn();
     await publishRow("npm", "1.1.0", "stable");
     const failing: Db = new Proxy(db, {
       get(target, prop, receiver) {
@@ -849,5 +930,448 @@ describe("the render after a prune", () => {
     await materialise(deps, P, "go.sdk");
     for (const k of pruned) expect(await r2.head(k), k).toBeNull();
     expect(await r2.head(renderRecordKey("go", P, "go.sdk"))).not.toBeNull();
+  });
+});
+
+// ── Safety points (review of feed-prune, 2026-10-06) ─────────────────────────────────────────
+
+describe("the channel filter", () => {
+  it("a build of main published on beta, nightly or stable is never a candidate", async () => {
+    await declare(P, ["npm", "pypi"]);
+    await optIn();
+    const spellings = {
+      npm: ["1.1.0-main.1", "1.1.0-main.2", "1.1.0-main.3", "1.1.0-main.4"],
+      pypi: ["1.1.0.dev1", "1.1.0.dev2", "1.1.0.dev3", "1.1.0.dev4"],
+    } as const;
+    for (const eco of ["npm", "pypi"] as const) {
+      const [onBeta, onNightly, onStable, onMain] = spellings[eco];
+      await publishRow(eco, "1.0.0", "stable");
+      await publishRow(eco, onBeta, "beta");
+      await publishRow(eco, onNightly, "nightly");
+      await publishRow(eco, onStable, "stable");
+      await publishRow(eco, onMain, "main");
+      await publishRow(eco, "1.1.0", "stable");
+      // Every one of them is spelled as a build of main: only the channel tells them apart.
+      for (const v of spellings[eco])
+        expect(mainPrerelease(eco, v), v).toEqual([1, 1, 0]);
+
+      const plan = (await planPackagePrune(db, P, did(eco), "1.1.0"))!;
+      expect(plan.prune.map((p) => p.version)).toEqual([onMain]);
+      expect(plan.kept).toEqual([]);
+      await autoPrune(eco, "1.1.0");
+      expect(await versionsOf(eco)).toEqual(
+        ["1.0.0", "1.1.0", onBeta, onNightly, onStable].sort(),
+      );
+    }
+  });
+});
+
+describe("another product", () => {
+  it("with the same deliverable id and versions is untouched by the automatic prune and the backfill", async () => {
+    const O = "other";
+    await seedProduct(db, O);
+    await declare(P, ["npm"]);
+    await declare(O, ["npm"]);
+    await optIn(P);
+    await optIn(O);
+    await history("npm", P);
+    await history("npm", O);
+    await publishRow("npm", "1.1.0", "stable", { product: P });
+    await publishRow("npm", "1.1.0", "stable", { product: O });
+
+    const snapshot = async () => ({
+      versions: await versionsOf("npm", O),
+      ...Object.fromEntries(
+        await Promise.all(
+          [
+            "release_metadata",
+            "release_artifacts",
+            "release_packages",
+            "blob_refs",
+            "release_package_prunes",
+          ].map(
+            async (t) =>
+              [
+                t,
+                (await db.first<{ n: number }>(
+                  `SELECT COUNT(*) AS n FROM ${t} WHERE product = ?`,
+                  O,
+                ))!.n,
+              ] as const,
+          ),
+        ),
+      ),
+    });
+    const before = await snapshot();
+    expect(before.versions).toHaveLength(7);
+
+    expect((await autoPrune("npm", "1.1.0")).status).toBe("pruned");
+    const backfill = (await prunePackages(db, env, P, {
+      apply: true,
+      actor: SYSTEM_PRUNE_ACTOR,
+      now: NOW,
+    }))!;
+    expect(backfill.packages.map((p) => p.deliverableId)).toEqual(["npm.sdk"]);
+    expect(await versionsOf("npm", P)).toHaveLength(4);
+    expect(await snapshot()).toEqual(before);
+    expect(
+      await db.first(
+        "SELECT COUNT(*) AS n FROM audit WHERE product = ? AND action = 'package.version.prune'",
+        O,
+      ),
+    ).toEqual({ n: 0 });
+    // The two products hold the same content-addressed blobs, so P's prune freed nothing.
+    expect(
+      await db.all(
+        "SELECT DISTINCT freed_bytes FROM release_package_prunes WHERE product = ?",
+        P,
+      ),
+    ).toEqual([{ freed_bytes: 0 }]);
+  });
+});
+
+describe("odd version spellings", () => {
+  const FULLWIDTH_ONE = "１";
+  it.each([
+    ["npm", "1.1.0-main.1+b"],
+    ["npm", "1.1.0-MAIN.1"],
+    ["npm", "1.1.0-main.1.2"],
+    ["npm", "1.1.0-main"],
+    ["npm", "1.1.0-rc.1-main.1"],
+    ["npm", "1.1.0-main.1\n"],
+    ["npm", "1.1.0\n"],
+    ["npm", `1.1.0-main.${FULLWIDTH_ONE}`],
+    ["npm", `1.1.${FULLWIDTH_ONE}`],
+    ["go", "v1.1.0-main.1+b"],
+    ["pypi", "1!1.0.0.dev1"],
+    ["pypi", "1.0.0.post1.dev1"],
+    ["pypi", "1.0.0rc1.dev1"],
+    ["pypi", "1.0.0-dev1"],
+    ["pypi", "1.0.0dev1"],
+    ["pypi", "1.0.0.dev1\n"],
+    ["pypi", `1.0.0.dev${FULLWIDTH_ONE}`],
+    ["pypi", `1.0.${FULLWIDTH_ONE}`],
+  ])("%s %j is neither a build of main nor a final release", (eco, v) => {
+    expect(mainPrerelease(eco, v)).toBeNull();
+    expect(finalRelease(eco, v)).toBeNull();
+  });
+});
+
+describe("a yanked stable", () => {
+  it("is never the ceiling: a yanked 99.0.0 does not make current builds of main candidates", async () => {
+    await declare(P, ["npm"]);
+    await optIn();
+    await publishRow("npm", "1.0.0", "stable");
+    await publishRow("npm", "1.1.0-main.1", "main");
+    await publishRow("npm", "1.1.0-main.2", "main");
+    await publishRow("npm", "99.0.0", "stable");
+    await db.batch([
+      {
+        sql: "UPDATE release_packages SET state = 'yanked', state_message = 'oops' WHERE product = ? AND release_id = ?",
+        params: [P, "npm.sdk@99.0.0"],
+      },
+      {
+        sql: "INSERT INTO release_yanks (product, release_id, reason, at, by) VALUES (?, ?, 'oops', ?, 'admin:u1')",
+        params: [P, "npm.sdk@99.0.0", NOW],
+      },
+    ]);
+
+    expect(await newestStable(db, P, "npm.sdk")).toBe("1.0.0");
+    expect(await planPackagePrune(db, P, "npm.sdk", "99.0.0")).toBeNull();
+    const r = (await prunePackages(db, env, P, {
+      apply: true,
+      actor: SYSTEM_PRUNE_ACTOR,
+      now: NOW,
+    }))!;
+    expect(r.packages[0]).toMatchObject({ stable: "1.0.0", prune: [] });
+    expect(r.totals.versions).toBe(0);
+    expect(await versionsOf("npm")).toEqual(
+      ["1.0.0", "1.1.0-main.1", "1.1.0-main.2", "99.0.0"].sort(),
+    );
+  });
+});
+
+describe("the per-run cap", () => {
+  it(`more than ${PRUNE_MAX_PER_RUN} candidates across packages: exactly ${PRUNE_MAX_PER_RUN} go, more is set, the next run takes the rest`, async () => {
+    await declare(P, ["npm", "pypi"]);
+    for (const eco of ["npm", "pypi"] as const) {
+      await publishRow(eco, "1.0.0", "stable");
+      for (let n = 1; n <= 110; n++)
+        await publishRow(
+          eco,
+          eco === "npm" ? `1.0.0-main.${n}` : `1.0.0.dev${n}`,
+          "main",
+        );
+    }
+    const run = () =>
+      prunePackages(db, env, P, {
+        apply: true,
+        actor: SYSTEM_PRUNE_ACTOR,
+        now: NOW,
+      });
+    const tombstones = async () =>
+      (await db.first<{ n: number }>(
+        "SELECT COUNT(*) AS n FROM release_package_prunes WHERE product = ?",
+        P,
+      ))!.n;
+
+    const first = (await run())!;
+    expect(first.more).toBe(true);
+    expect(first.totals.versions).toBe(PRUNE_MAX_PER_RUN);
+    expect(first.packages.map((p) => p.prune.length)).toEqual([110, 90]);
+    expect(await tombstones()).toBe(PRUNE_MAX_PER_RUN);
+    expect(
+      (await versionsOf("npm")).length + (await versionsOf("pypi")).length,
+    ).toBe(2 + 220 - PRUNE_MAX_PER_RUN);
+
+    const second = (await run())!;
+    expect(second.more).toBe(false);
+    expect(second.totals.versions).toBe(220 - PRUNE_MAX_PER_RUN);
+    expect(await tombstones()).toBe(220);
+    expect(await versionsOf("pypi")).toEqual(["1.0.0"]);
+  });
+
+  it("records only the bytes this run's own deletions freed when the cap cuts it short", async () => {
+    await declare(P, ["npm"]);
+    await publishRow("npm", "1.0.0", "stable");
+    // Two builds share one blob; the cap lets only the first go this run.
+    await publishRow("npm", "1.1.0-main.1", "main", {
+      shared: "pair",
+      size: 700,
+    });
+    await publishRow("npm", "1.1.0-main.2", "main", {
+      shared: "pair",
+      size: 700,
+    });
+    await publishRow("npm", "1.1.0", "stable");
+    const plan = (await planPackagePrune(db, P, "npm.sdk", "1.1.0"))!;
+    // The plan counts against the WHOLE plan: the pair is freed, against the first.
+    expect(plan.prune.map((v) => v.freedBytes)).toEqual([700, 0]);
+
+    const first = await applyPackagePrune(
+      db,
+      env,
+      P,
+      plan,
+      SYSTEM_PRUNE_ACTOR,
+      NOW,
+      1,
+    );
+    // 1.1.0-main.2 still holds the blob: nothing was freed by this run.
+    expect(first.pruned).toMatchObject([
+      { version: "1.1.0-main.1", bytes: 700, freedBytes: 0 },
+    ]);
+    const tomb = (v: string) =>
+      db.first<{ freed_bytes: number }>(
+        "SELECT freed_bytes FROM release_package_prunes WHERE product = ? AND version = ?",
+        P,
+        v,
+      );
+    expect(await tomb("1.1.0-main.1")).toEqual({ freed_bytes: 0 });
+    const summary = await db.first<{ summary: string }>(
+      "SELECT summary FROM audit WHERE action = 'package.version.prune' AND target_id = ?",
+      "npm:@acme/sdk@1.1.0-main.1",
+    );
+    expect(summary!.summary).toContain(
+      "700 bytes, 0 bytes no longer referenced",
+    );
+
+    // The next run deletes the last holder, and its row carries the freed bytes.
+    const rest = (await prunePackages(db, env, P, {
+      apply: true,
+      actor: SYSTEM_PRUNE_ACTOR,
+      now: NOW,
+    }))!;
+    expect(rest.packages[0]!.prune).toMatchObject([
+      { version: "1.1.0-main.2", freedBytes: 700 },
+    ]);
+    expect(rest.totals.freedBytes).toBe(700);
+    expect(await tomb("1.1.0-main.2")).toEqual({ freed_bytes: 700 });
+  });
+});
+
+describe("a partial failure", () => {
+  it("commits the other batches, leaves the failed one whole, and the next run finishes it", async () => {
+    await declare(P, ["npm"]);
+    await publishRow("npm", "1.0.0", "stable");
+    for (let n = 1; n <= 50; n++)
+      await publishRow("npm", `1.0.0-main.${n}`, "main", {
+        // main.1 (first batch) shares its blob with main.25 (the second, failing, batch).
+        ...(n === 1 || n === 25 ? { shared: "split", size: 700 } : {}),
+      });
+    let batches = 0;
+    const flaky: Db = new Proxy(db, {
+      get(target, prop, receiver) {
+        if (prop === "batch")
+          return async (stmts: Parameters<Db["batch"]>[0]) => {
+            if (++batches === 2) throw new Error("D1 hiccup");
+            return target.batch(stmts);
+          };
+        return Reflect.get(target, prop, receiver) as unknown;
+      },
+    });
+    const r = (await prunePackages(flaky, env, P, {
+      apply: true,
+      actor: SYSTEM_PRUNE_ACTOR,
+      now: NOW,
+    }))!;
+    // Batches of 20: the first and third committed, the second failed as a whole.
+    expect(batches).toBe(3);
+    expect(r.totals).toMatchObject({ versions: 30, failed: 20, skipped: 0 });
+    const failed = r.packages[0]!.failed!.map((f) => f.version);
+    expect(failed).toHaveLength(20);
+    expect(failed[0]).toBe("1.0.0-main.21");
+    expect(new Set(r.packages[0]!.failed!.map((f) => f.error))).toEqual(
+      new Set(["D1 hiccup"]),
+    );
+    // The failed batch's versions are whole: rows, files and blob refs.
+    for (const v of failed) {
+      const id = `npm.sdk@${v}`;
+      for (const t of [
+        "release_metadata",
+        "release_artifacts",
+        "release_packages",
+      ])
+        expect(
+          await db.first(
+            `SELECT COUNT(*) AS n FROM ${t} WHERE product = ? AND release_id = ?`,
+            P,
+            id,
+          ),
+          `${t} ${v}`,
+        ).toEqual({ n: 1 });
+      expect(
+        await db.first(
+          "SELECT COUNT(*) AS n FROM blob_refs WHERE product = ? AND ref_id LIKE ?",
+          P,
+          `${id}/%`,
+        ),
+      ).toEqual({ n: 1 });
+    }
+    // main.1 went while main.25 (failed) still holds the shared blob: it freed nothing.
+    expect(
+      await db.first(
+        "SELECT freed_bytes FROM release_package_prunes WHERE version = '1.0.0-main.1'",
+      ),
+    ).toEqual({ freed_bytes: 0 });
+
+    const next = (await prunePackages(db, env, P, {
+      apply: true,
+      actor: SYSTEM_PRUNE_ACTOR,
+      now: NOW,
+    }))!;
+    expect(next.totals).toMatchObject({ versions: 20, failed: 0 });
+    expect(await versionsOf("npm")).toEqual(["1.0.0"]);
+    expect(
+      await db.first(
+        "SELECT freed_bytes FROM release_package_prunes WHERE version = '1.0.0-main.25'",
+      ),
+    ).toEqual({ freed_bytes: 700 });
+  });
+});
+
+describe("a version held between the plan and the deletion", () => {
+  const pinMain2 = () =>
+    stmtSetChannelPolicy(
+      { product: P, deliverableId: "npm.sdk", channel: "nightly" },
+      { pointerReleaseId: "npm.sdk@1.1.0-main.2", pinned: true },
+      { source: "admin", by: "admin:u1", now: NOW },
+    );
+
+  beforeEach(async () => {
+    await declare(P, ["npm"]);
+    await history("npm");
+    await publishRow("npm", "1.1.0", "stable");
+  });
+
+  it("is skipped and reported, never dropped silently", async () => {
+    const plan = (await planPackagePrune(db, P, "npm.sdk", "1.1.0"))!;
+    expect(plan.prune.map((v) => v.version)).toContain("1.1.0-main.2");
+    const pin = pinMain2();
+    await db.run(pin.sql, ...pin.params);
+    const applied = await applyPackagePrune(
+      db,
+      env,
+      P,
+      plan,
+      SYSTEM_PRUNE_ACTOR,
+      NOW,
+    );
+    expect(applied.skipped).toEqual([
+      {
+        releaseId: "npm.sdk@1.1.0-main.2",
+        version: "1.1.0-main.2",
+        reason: "pinned",
+      },
+    ]);
+    expect(applied.pruned.map((v) => v.version)).toEqual([
+      "1.0.0-main.9",
+      "1.1.0-main.1",
+    ]);
+    expect(await versionsOf("npm")).toContain("1.1.0-main.2");
+  });
+
+  it("shows in the backfill's report, per package and in the totals", async () => {
+    // The pin lands between the backfill's plan and its apply (the second holds read).
+    let holdsReads = 0;
+    const racing: Db = new Proxy(db, {
+      get(target, prop, receiver) {
+        if (prop === "all")
+          return async (sql: string, ...params: Parameters<Db["all"]>[1][]) => {
+            if (
+              sql.includes("FROM release_channel_policy") &&
+              ++holdsReads === 2
+            ) {
+              const pin = pinMain2();
+              await target.run(pin.sql, ...pin.params);
+            }
+            return target.all(sql, ...params);
+          };
+        return Reflect.get(target, prop, receiver) as unknown;
+      },
+    });
+    const r = (await prunePackages(racing, env, P, {
+      apply: true,
+      actor: SYSTEM_PRUNE_ACTOR,
+      now: NOW,
+    }))!;
+    expect(r.packages[0]!.skipped).toEqual([
+      {
+        releaseId: "npm.sdk@1.1.0-main.2",
+        version: "1.1.0-main.2",
+        reason: "pinned",
+      },
+    ]);
+    expect(r.totals).toMatchObject({ versions: 2, skipped: 1, failed: 0 });
+    expect(JSON.parse(JSON.stringify(r)).packages[0].skipped).toHaveLength(1);
+  });
+});
+
+describe("the blob collector after a prune", () => {
+  it("stamps a blob only the pruned version held and leaves a shared one unstamped", async () => {
+    await declare(P, ["npm"]);
+    await optIn();
+    await publishRow("npm", "1.0.0", "stable");
+    await publishRow("npm", "1.1.0-main.1", "main", { shared: "solo" });
+    await publishRow("npm", "1.1.0-main.2", "main", { shared: "both" });
+    await publishRow("npm", "1.2.0-main.1", "main", { shared: "both" });
+    await publishRow("npm", "1.1.0", "stable");
+    const stamp = async (seed: string) =>
+      (await db.first<{ unreferenced_since: number | null }>(
+        "SELECT unreferenced_since FROM blob_objects WHERE storage_key = ?",
+        `blobs/sha256/${hex(seed)}`,
+      ))!.unreferenced_since;
+
+    await markUnreferenced(db, NOW + 1);
+    expect(await stamp("solo")).toBeNull();
+    expect(await stamp("both")).toBeNull();
+
+    expect((await autoPrune("npm", "1.1.0")).status).toBe("pruned");
+    expect(await versionsOf("npm")).toEqual(
+      ["1.0.0", "1.1.0", "1.2.0-main.1"].sort(),
+    );
+    await markUnreferenced(db, NOW + 2);
+    expect(await stamp("solo")).toBe(NOW + 2);
+    expect(await stamp("both")).toBeNull();
   });
 });

@@ -13,31 +13,43 @@
  *          `X-main.N` and PEP 440 `X.devN` with X <= V. Never a stable or beta version, never a
  *          prerelease of a version newer than V, never another package. A `beta` publish (a
  *          prerelease tag) prunes nothing.
+ *          The ceiling is a LIVE stable row: a yanked or deprecated stable never is one, so it
+ *          cannot pull builds of main above the newest live release into the prune.
  *   KEPT   A candidate a channel policy points at (a promote or a pin), or that any other row
  *          still names (a revocation, a pack pin or hold, a download token, a legacy channel row),
- *          is kept and reported: retention never breaks a pointer.
- *   HOW    In atomic D1 batches of up to 20 versions (at most 200 per run): per version, the `release_packages`, `release_artifacts`,
- *          `release_yanks` and `release_metadata` rows go, the version's `artifact` blob refs are
- *          dropped (`core/blobs.ts` `stmtDropRefs`), a tombstone is written
- *          (`release_package_prunes`, which keeps the version unique forever: ingest refuses to
- *          republish it), the deletion is audited (`package.version.prune`: package, version,
- *          actor, bytes) and the package's render is enqueued. The feeds re-render from D1, so
- *          every ecosystem's metadata drops the version at once (npm `versions`/`time` and a
- *          dist-tag that named it, the PyPI simple index, Swift's release list, Maven's
- *          `maven-metadata.xml`, OCI tags, Godot's lists, the Cargo index and the Go list), and
- *          every read path is stamp-checked against D1, so a pruned version is a 404 everywhere
- *          before the drain has run.
+ *          is kept and reported: retention never breaks a pointer. One that became held between
+ *          the plan and its deletion is `skipped` and reported the same way, never dropped
+ *          silently.
+ *   HOW    In atomic D1 batches of up to 20 versions (at most 200 per run): per version, the
+ *          `release_packages`, `release_artifacts`, `release_yanks` and `release_metadata` rows
+ *          go, the version's `artifact` blob refs are dropped (`core/blobs.ts` `stmtDropRefs`), a
+ *          tombstone is written (`release_package_prunes`, which keeps the version unique
+ *          forever: ingest refuses to republish it), the deletion is audited
+ *          (`package.version.prune`: package, version, actor, bytes; its `parent_id` the stable
+ *          release that set the ceiling) and the package's render is enqueued. The feeds
+ *          re-render from D1, so every ecosystem's metadata drops the version at once (npm
+ *          `versions`/`time` and a dist-tag that named it, the PyPI simple index, Swift's release
+ *          list, Maven's `maven-metadata.xml`, OCI tags, Godot's lists, the Cargo index and the Go
+ *          list), and every read path is stamp-checked against D1, so the Worker stops serving a
+ *          pruned version before the drain has run. The residual is the edge Cache API: a data
+ *          centre whose cache already holds one of the version's immutable byte URLs can still
+ *          answer it until that copy is evicted, and the Worker cannot purge other data centres
+ *          (THREAT-MODEL "Feed retention").
  *   SPACE  Bytes are never deleted here. Dropping the refs leaves an object that NOTHING else
  *          references (no ref from any product, of any kind, including a remaining version that
  *          shares the content-addressed blob) for the blob collector (`core/blobGc.ts`) to
  *          reclaim after its grace period and the bucket lock's age; an object another ref holds
- *          stays. `freedBytes` is what the collector will reclaim; `bytes` the version's total.
+ *          stays. `bytes` is the version's total; `freedBytes` the part no remaining ref holds.
+ *          A plan counts it against the whole plan; an apply recounts it per batch against the
+ *          refs left after that batch, so a run the cap or a failure cuts short records (in the
+ *          tombstone, the audit and the report) only what its own deletions left unreferenced.
  *   WHEN   Automatically, right after a stable publish is committed (`pruneAfterStablePublish`,
- *          called by the ingest), for that package only, unless the product turned retention off
- *          (`release.packages.prunePrereleases`; the system product always prunes). A failure
- *          never fails the publish: it is audited (`package.prune.failed`), and the
- *          next stable publish retries it, as does the backfill (`prunePackages`, the admin and CI
- *          routes and `pkey feeds prune`), which dry-runs by default.
+ *          called by the ingest), for that package only, when the product turned retention on
+ *          (`release.packages.prunePrereleases`: off by default for a tenant product, which opts
+ *          in; the system product always prunes). A failure never fails the publish: it is
+ *          audited (`package.prune.failed`), and the next stable publish retries it, as does the
+ *          backfill (`prunePackages`, the admin and CI routes and `pkey feeds prune`), which
+ *          dry-runs by default.
  *   IDEMPOTENT  Every statement is idempotent, a pruned version is no longer a candidate, and a
  *          version whose batch failed is retried as a whole the next time.
  *
@@ -48,7 +60,12 @@ import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import type { Db, DbStatement, Env } from "../../../core/platform.js";
 import { randomId } from "../../../core/platform.js";
 import { appendAudit, auditStatement } from "../../../core/data.js";
-import { heldObjects, refsBeyond, stmtDropRefs } from "../../../core/blobs.js";
+import {
+  heldObjects,
+  refsBeyond,
+  stmtDropRefs,
+  type HeldObject,
+} from "../../../core/blobs.js";
 import { stmtEnqueuePackageRender } from "../../../core/registryQueue.js";
 import { bumpReleaseGeneration } from "../ghCache.js";
 
@@ -128,13 +145,16 @@ export interface PruneRetention {
   prunePrereleases: boolean;
   /** The system product always prunes; its value cannot be turned off. */
   locked: boolean;
-  /** 0 = never written (the default, on). */
+  /** 0 = never written (the default: off for a tenant product, on for the system product). */
   version: number;
   updatedAt: number | null;
   updatedBy: string | null;
 }
 
-/** `release.packages.prunePrereleases` for `product` (no row: on; the system product: on). */
+/**
+ * `release.packages.prunePrereleases` for `product`: no row is the default, OFF for a tenant
+ * product (it opts in); the system product is always on.
+ */
 export async function pruneRetentionOf(
   db: Db,
   product: string,
@@ -151,7 +171,7 @@ export async function pruneRetentionOf(
   );
   const locked = product === SYSTEM_PRODUCT_SLUG;
   return {
-    prunePrereleases: locked || !row || row.prune_prereleases === 1,
+    prunePrereleases: locked || row?.prune_prereleases === 1,
     locked,
     version: row?.version ?? 0,
     updatedAt: row?.updated_at ?? null,
@@ -216,6 +236,9 @@ export interface PruneKept {
   reason: "pinned" | "referenced";
 }
 
+/** A version the plan listed that became held before its batch: kept, and reported. */
+export type PruneSkipped = PruneKept;
+
 export interface PackagePrunePlan {
   deliverableId: string;
   ecosystem: string;
@@ -223,6 +246,8 @@ export interface PackagePrunePlan {
   nameNorm: string;
   /** The stable version the plan prunes below. */
   stable: string;
+  /** That stable version's release id (`<deliverable>@<stable>`): the audit rows' `parent_id`. */
+  stableReleaseId: string;
   prune: PruneVersion[];
   kept: PruneKept[];
   bytes: number;
@@ -235,8 +260,19 @@ interface CandidateRow {
   ecosystem: string;
   name: string;
   name_norm: string;
+  /** `live`, `yanked` or `deprecated`: only a live stable row is ever a ceiling. */
+  state: string;
   channel: string | null;
   published_at: number;
+}
+
+/** Is `row` a live final release on `stable`: a row that may set a prune's ceiling? */
+function isLiveStable(row: CandidateRow): boolean {
+  return (
+    row.channel === "stable" &&
+    row.state === "live" &&
+    finalRelease(row.ecosystem, row.version) !== null
+  );
 }
 
 async function packageRows(
@@ -245,7 +281,7 @@ async function packageRows(
   deliverableId: string,
 ): Promise<CandidateRow[]> {
   return db.all<CandidateRow>(
-    `SELECT p.release_id, p.version, p.ecosystem, p.name, p.name_norm, m.channel,
+    `SELECT p.release_id, p.version, p.ecosystem, p.name, p.name_norm, p.state, m.channel,
             p.published_at
        FROM release_packages p
        JOIN release_metadata m ON m.product = p.product AND m.release_id = p.release_id
@@ -339,9 +375,49 @@ async function artifactRefIdsOf(
 }
 
 /**
+ * Per version, its files' total size and the part no ref outside `excluded` holds (`freed`): the
+ * refcount. A key two of `versions` share is counted once, against the first; a key any ref
+ * beyond the exclusion holds (a version not in the set, another package, another product, a
+ * pack, an OCI push) is never freed.
+ */
+function sizeVersions(
+  versions: readonly { refIds: readonly string[] }[],
+  held: readonly HeldObject[],
+  beyond: ReadonlyMap<string, number>,
+): { bytes: number; freed: number }[] {
+  const byRef = new Map<string, HeldObject[]>();
+  for (const h of held) {
+    const list = byRef.get(h.refId) ?? [];
+    list.push(h);
+    byRef.set(h.refId, list);
+  }
+  const counted = new Set<string>();
+  return versions.map(({ refIds }) => {
+    let bytes = 0;
+    let freed = 0;
+    const seen = new Set<string>();
+    for (const id of refIds)
+      for (const h of byRef.get(id) ?? []) {
+        if (seen.has(h.storageKey)) continue;
+        seen.add(h.storageKey);
+        bytes += h.size;
+        if (
+          (beyond.get(h.storageKey) ?? 0) === 0 &&
+          !counted.has(h.storageKey)
+        ) {
+          counted.add(h.storageKey);
+          freed += h.size;
+        }
+      }
+    return { bytes, freed };
+  });
+}
+
+/**
  * What pruning `deliverableId` below `stable` would delete, and what it keeps. `null` when the
- * deliverable has no package version at all, or `stable` is not a final release of its
- * ecosystem. Reads only; nothing is written.
+ * deliverable has no package version at all, `stable` is not a final release of its ecosystem,
+ * or it is not a LIVE stable release of this deliverable (a yanked or deprecated stable is never
+ * a ceiling). Reads only; nothing is written.
  */
 export async function planPackagePrune(
   db: Db,
@@ -354,12 +430,15 @@ export async function planPackagePrune(
   if (!first) return null;
   const ceiling = finalRelease(first.ecosystem, stable);
   if (!ceiling) return null;
+  const ceilingRow = rows.find((r) => r.version === stable && isLiveStable(r));
+  if (!ceilingRow) return null;
   const plan: PackagePrunePlan = {
     deliverableId,
     ecosystem: first.ecosystem,
     name: first.name,
     nameNorm: first.name_norm,
     stable,
+    stableReleaseId: ceilingRow.release_id,
     prune: [],
     kept: [],
     bytes: 0,
@@ -394,9 +473,7 @@ export async function planPackagePrune(
     row,
     refIds: refIdsByRelease.get(row.release_id) ?? [],
   }));
-  // The refcount: a key is freed only when no ref outside the WHOLE plan holds it (a later
-  // version, another package, another product, a pack, an OCI push); a key two pruned versions
-  // share is counted once, against the first.
+  // The refcount, against the WHOLE plan: a key is freed only when no ref outside it holds it.
   const allRefIds = chosen.flatMap((c) => c.refIds);
   const held = await heldObjects(db, product, ARTIFACT_REF, allRefIds);
   const beyond = await refsBeyond(
@@ -404,30 +481,9 @@ export async function planPackagePrune(
     held.map((h) => h.storageKey),
     { product, refKind: ARTIFACT_REF, refIds: allRefIds },
   );
-  const byRef = new Map<string, typeof held>();
-  for (const h of held) {
-    const list = byRef.get(h.refId) ?? [];
-    list.push(h);
-    byRef.set(h.refId, list);
-  }
-  const counted = new Set<string>();
-  for (const { row, refIds } of chosen) {
-    let bytes = 0;
-    let freed = 0;
-    const seen = new Set<string>();
-    for (const id of refIds)
-      for (const h of byRef.get(id) ?? []) {
-        if (seen.has(h.storageKey)) continue;
-        seen.add(h.storageKey);
-        bytes += h.size;
-        if (
-          (beyond.get(h.storageKey) ?? 0) === 0 &&
-          !counted.has(h.storageKey)
-        ) {
-          counted.add(h.storageKey);
-          freed += h.size;
-        }
-      }
+  const sizes = sizeVersions(chosen, held, beyond);
+  chosen.forEach(({ row, refIds }, i) => {
+    const { bytes, freed } = sizes[i]!;
     plan.prune.push({
       releaseId: row.release_id,
       version: row.version,
@@ -437,11 +493,14 @@ export async function planPackagePrune(
     });
     plan.bytes += bytes;
     plan.freedBytes += freed;
-  }
+  });
   return plan;
 }
 
-/** The newest final release of a deliverable published on `stable`, or `null`. */
+/**
+ * The newest LIVE final release of a deliverable published on `stable`, or `null`: a yanked or
+ * deprecated stable is never the ceiling, so it cannot make newer builds of main candidates.
+ */
 export async function newestStable(
   db: Db,
   product: string,
@@ -449,7 +508,7 @@ export async function newestStable(
 ): Promise<string | null> {
   let best: { version: string; n: ReleaseNumber } | null = null;
   for (const row of await packageRows(db, product, deliverableId)) {
-    if (row.channel !== "stable") continue;
+    if (!isLiveStable(row)) continue;
     const n = finalRelease(row.ecosystem, row.version);
     if (n && (!best || compareRelease(n, best.n) > 0))
       best = { version: row.version, n };
@@ -473,8 +532,11 @@ export const SYSTEM_PRUNE_ACTOR: PruneActor = {
 };
 
 export interface PruneApplied {
+  /** What went, each `freedBytes` counted against the refs this run's deletions left. */
   pruned: PruneVersion[];
   failed: { version: string; error: string }[];
+  /** Planned versions a pin or another row took hold of before their batch: kept, reported. */
+  skipped: PruneSkipped[];
 }
 
 /** The statements that delete one version, tombstone it and audit it (the batch adds the render). */
@@ -536,7 +598,8 @@ function pruneStatements(
       action: "package.version.prune",
       target_kind: "package",
       target_id: `${plan.ecosystem}:${plan.name}@${v.version}`,
-      parent_id: null,
+      // The stable release that set the ceiling (the publish, or the backfill's newest stable).
+      parent_id: plan.stableReleaseId,
       summary: `Pruned ${plan.name} ${v.version} (a build of main below ${plan.stable}): ${v.files} file${v.files === 1 ? "" : "s"}, ${v.bytes} bytes, ${v.freedBytes} bytes no longer referenced`,
     }),
   ];
@@ -555,8 +618,11 @@ export const PRUNE_MAX_PER_RUN = 200;
 /**
  * Prune what `plan` lists, at most `limit` versions, in atomic batches of
  * `VERSIONS_PER_BATCH`: a failed batch leaves its versions whole for the next run and the others
- * done. A version some other writer pinned since the plan was read is kept (the holds are read
- * again just before the batches).
+ * done. A version some other writer pinned since the plan was read is kept and reported in
+ * `skipped` (the holds are read again just before the batches). Each version's `freedBytes` is
+ * recounted just before its batch against the refs that batch leaves, so the tombstone and the
+ * audit never claim a blob a version this run did not delete (cut off by `limit`, or in a later
+ * or failed batch) still holds.
  */
 export async function applyPackagePrune(
   db: Db,
@@ -567,24 +633,59 @@ export async function applyPackagePrune(
   now: number,
   limit: number = PRUNE_MAX_PER_RUN,
 ): Promise<PruneApplied> {
-  const out: PruneApplied = { pruned: [], failed: [] };
+  const out: PruneApplied = { pruned: [], failed: [], skipped: [] };
   const todo = plan.prune.slice(0, Math.max(0, limit));
-  let held: Map<string, PruneKept["reason"]>;
+  const go: PruneVersion[] = [];
+  const skipped: PruneSkipped[] = [];
   let refIds: Map<string, string[]>;
+  let objects: HeldObject[];
   try {
     const ids = todo.map((v) => v.releaseId);
-    held = await holdsOf(db, product, ids);
-    refIds = await artifactRefIdsOf(db, product, ids);
+    const held = await holdsOf(db, product, ids);
+    for (const v of todo) {
+      const reason = held.get(v.releaseId);
+      if (reason)
+        skipped.push({ releaseId: v.releaseId, version: v.version, reason });
+      else go.push(v);
+    }
+    refIds = await artifactRefIdsOf(
+      db,
+      product,
+      go.map((v) => v.releaseId),
+    );
+    objects = await heldObjects(
+      db,
+      product,
+      ARTIFACT_REF,
+      go.flatMap((v) => refIds.get(v.releaseId) ?? []),
+    );
   } catch (e) {
     const error = e instanceof Error ? e.message : String(e);
     for (const v of todo) out.failed.push({ version: v.version, error });
     return out;
   }
-  const go = todo.filter((v) => !held.has(v.releaseId));
+  out.skipped = skipped;
   for (const batch of chunks(go, VERSIONS_PER_BATCH)) {
     try {
+      const versions = batch.map((v) => ({
+        v,
+        refIds: refIds.get(v.releaseId) ?? [],
+      }));
+      const batchRefIds = versions.flatMap((x) => x.refIds);
+      const mine = new Set(batchRefIds);
+      const batchObjects = objects.filter((h) => mine.has(h.refId));
+      // Earlier batches' refs are gone by now; later and failed batches' refs still count.
+      const beyond = await refsBeyond(
+        db,
+        batchObjects.map((h) => h.storageKey),
+        { product, refKind: ARTIFACT_REF, refIds: batchRefIds },
+      );
+      const sizes = sizeVersions(versions, batchObjects, beyond);
+      const sized = versions.map(
+        ({ v }, i): PruneVersion => ({ ...v, freedBytes: sizes[i]!.freed }),
+      );
       await db.batch([
-        ...batch.flatMap((v) =>
+        ...sized.flatMap((v) =>
           pruneStatements(
             product,
             plan,
@@ -596,7 +697,7 @@ export async function applyPackagePrune(
         ),
         stmtEnqueuePackageRender(product, plan.deliverableId, "prune", now),
       ]);
-      out.pruned.push(...batch);
+      out.pruned.push(...sized);
     } catch (e) {
       const error = e instanceof Error ? e.message : String(e);
       for (const v of batch) out.failed.push({ version: v.version, error });
@@ -680,7 +781,7 @@ export async function pruneAfterStablePublish(
       return {
         status: "pruned",
         plan: emptyPlan(published),
-        applied: { pruned: [], failed: [] },
+        applied: { pruned: [], failed: [], skipped: [] },
       };
     const applied = await applyPackagePrune(
       db,
@@ -719,6 +820,7 @@ function emptyPlan(p: {
     name: p.name,
     nameNorm: p.name,
     stable: p.version,
+    stableReleaseId: `${p.deliverableId}@${p.version}`,
     prune: [],
     kept: [],
     bytes: 0,
@@ -729,8 +831,10 @@ function emptyPlan(p: {
 // ── The backfill ─────────────────────────────────────────────────────────────────────────────
 
 export interface PrunePackageReport extends PackagePrunePlan {
-  /** Only with `apply`: what went, and what failed (retry by running it again). */
+  /** Only with `apply`: what failed (retry by running it again). */
   failed?: { version: string; error: string }[];
+  /** Only with `apply`: planned versions that became held before their batch, so were kept. */
+  skipped?: PruneSkipped[];
 }
 
 export interface PruneReport {
@@ -739,13 +843,15 @@ export interface PruneReport {
   /** The product's retention setting (the backfill runs either way: it is an explicit act). */
   prunePrereleases: boolean;
   packages: PrunePackageReport[];
-  /** Packages with no stable release yet, which nothing is pruned below. */
+  /** Packages with no live stable release yet, which nothing is pruned below. */
   skipped: { deliverableId: string; reason: "no-stable" }[];
   totals: {
     versions: number;
     bytes: number;
     freedBytes: number;
     failed: number;
+    /** Versions skipped because they became held between the plan and the deletion. */
+    skipped: number;
   };
   /**
    * Only with `apply`: versions were left for another run (at most `PRUNE_MAX_PER_RUN` go per
@@ -787,7 +893,7 @@ export async function prunePackages(
     prunePrereleases: (await pruneRetentionOf(db, product)).prunePrereleases,
     packages: [],
     skipped: [],
-    totals: { versions: 0, bytes: 0, freedBytes: 0, failed: 0 },
+    totals: { versions: 0, bytes: 0, freedBytes: 0, failed: 0, skipped: 0 },
     more: false,
   };
   let budget = PRUNE_MAX_PER_RUN;
@@ -812,16 +918,18 @@ export async function prunePackages(
       );
       if (plan.prune.length > budget) report.more = true;
       budget = Math.max(0, budget - plan.prune.length);
-      const done = new Set(applied.pruned.map((v) => v.releaseId));
-      const pruned = plan.prune.filter((v) => done.has(v.releaseId));
+      // What this run deleted, with the freed bytes its own deletions left unreferenced.
+      const pruned = applied.pruned;
       entry = {
         ...plan,
         prune: pruned,
         bytes: pruned.reduce((a, v) => a + v.bytes, 0),
         freedBytes: pruned.reduce((a, v) => a + v.freedBytes, 0),
         failed: applied.failed,
+        skipped: applied.skipped,
       };
       report.totals.failed += applied.failed.length;
+      report.totals.skipped += applied.skipped.length;
     }
     report.packages.push(entry);
     report.totals.versions += entry.prune.length;

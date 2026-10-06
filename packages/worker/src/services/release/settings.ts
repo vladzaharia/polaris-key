@@ -92,7 +92,7 @@ export const RELEASE_SETTINGS_SLICE: ServiceSettingsSlice = {
       area: "release.packages",
       label: "Prune builds of main",
       description:
-        "Feed retention: when a package version is published on stable, delete that package's builds of main below it (X-main.N, PyPI X.devN) from every feed. Stable and beta versions are never touched; the bytes are reclaimed once nothing else references them. Always on for the platform's own feeds.",
+        "Feed retention: when a package version is published on stable, delete that package's builds of main below it (X-main.N, PyPI X.devN) from every feed. Stable and beta versions are never touched; the bytes are reclaimed once nothing else references them. Off by default: a product opts in. Always on for the platform's own feeds.",
       keywords: [
         "retention",
         "prerelease",
@@ -103,7 +103,8 @@ export const RELEASE_SETTINGS_SLICE: ServiceSettingsSlice = {
       ],
       docs: "/docs/build/install-from-feeds/",
       value: { kind: "boolean" },
-      defaultValue: true,
+      // Off for a tenant product, which opts in; the system product is locked on (`prune.ts`).
+      defaultValue: false,
       merge: "cascade",
       ownership: "operator",
       confirm: { on: "L1", off: "L0" },
