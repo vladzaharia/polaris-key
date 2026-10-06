@@ -53,7 +53,7 @@ Each service resolves its own settings today with different precedence ([S-18 §
   `services/release/settingsColumns.ts`, contributed through the slices' new `columns` field.
   Service handlers get the registry as `ServiceContext.settings` (built by both dispatchers,
   `settingsRegistryFor`), the same pattern as `ingest` and `hooks`.
-- **Audit shape.** Migration `00XX_settings_audit.sql` (the lead numbers it) adds `before_json`,
+- **Audit shape.** Migration `0101_settings_audit.sql` (the lead's number) adds `before_json`,
   `after_json`, `origin`, `reason` and `setting_key` to `audit`, and `origin`, `reason`,
   `setting_key` to `platform_audit`, with a partial index per table on `setting_key`. Both sides
   are stored as A-13's `{stored, version, effective, source}` so one renderer reads both tables.
@@ -90,9 +90,9 @@ Each service resolves its own settings today with different precedence ([S-18 §
 - [x] `gen:transcripts --check` is unchanged.
 - [x] No handler writes a registry-backed column outside `writeSetting()` (test:
       `test/settings-writes.test.ts`; discovery agreement: `test/settings-discovery.test.ts`).
-- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header. The
-      one red is record-deploy's migration-name check and `checkRepresentable`'s migration order
-      on the `00XX` placeholder; with the migration numbered, the test step is green too.
+- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header. Before
+      the lead numbered the migration (0101), its only red was record-deploy's migration-name
+      check and `checkRepresentable`'s migration order on the placeholder.
 
 ## Verify
 
