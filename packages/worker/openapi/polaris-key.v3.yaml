@@ -4269,7 +4269,9 @@ paths:
         AltStore refuses an install whose permissions differ), the legacy app-level `version`,
         `versionDate`, `versionDescription`, `downloadURL` and `size` beside `versions[]`
         (SideStore issue #735), and NO `marketplaceID` (SideStore refuses a source carrying one).
-        Lists the releases the channel serves (beta includes stable) that have the outlet's
+        `iconURL`, `headerURL` and `screenshots` name Polaris Key's hosted copies on the image host
+        (HA-07, the originals) when a copy was pulled for exactly the listing's ref, else the
+        listing's own URLs as before. Lists the releases the channel serves (beta includes stable) that have the outlet's
         build, are live on it, are not yanked and are not held back by a paused, halted or
         partial outlet rollout — the previous release stands in. Download URLs are immutable
         `files/<releaseId>/<name>` URLs on the bytes host when there is one. Exists only while
@@ -4563,8 +4565,10 @@ paths:
         `Content-Security-Policy` is checked by the bytes host before it leaves: `default-src
         'none'`, the one stylesheet by hash, `base-uri`, `form-action` and `frame-ancestors`
         `'none'`, and `sandbox allow-downloads allow-top-navigation-to-custom-protocols` (an
-        opaque origin, no script). `nosniff`, `Referrer-Policy: no-referrer`, no cookie read or
-        set, no CORS, `Vary` on the hints. The same not-found and rate-limit rules as the model.
+        opaque origin, no script). Since HA-07 the header shows the product's hosted icon, and while
+        there is one the policy adds `img-src` naming exactly the image host. `nosniff`,
+        `Referrer-Policy: no-referrer`, no cookie read or set, no CORS, `Vary` on the hints. The
+        same not-found and rate-limit rules as the model.
       parameters:
         - { $ref: "#/components/parameters/Product" }
       responses:
@@ -11179,8 +11183,11 @@ paths:
         One entry per product the portal account holds a licence for (portal-enabled products
         only): the product's presentation from its `.pkey/distribution` root `listing`, the
         status of its best licence, that licence's summary with seats, and the support links.
-        Art is only ever a same-origin `/media/…` URL, and only when the media proxy would serve
-        it. Session-authenticated by the portal cookie; `cache-control: no-store`.
+        Art is never a developer URL: it is Polaris Key's hosted copy on the image host
+        (`IMG_ORIGIN`, HA-07), the icon at the 128 px and the header at the 1280 px WebP width
+        (or the original when no such width exists), and null without a copy. With hosting off or
+        no image host it is the same-origin `/media/…` proxy URL instead, and only when the proxy
+        would serve it. Session-authenticated by the portal cookie; `cache-control: no-store`.
       responses:
         "200":
           description: The library.
@@ -11197,8 +11204,8 @@ paths:
                         developerName: Fennick Studio
                         tintColor: "#1f3b5c"
                         website: https://tidewater.example
-                        iconUrl: /media/tidewater/icon?v=3f9a0c2d1e4b5a6c
-                        headerUrl: /media/tidewater/header?v=8b7c6d5e4f3a2b1c
+                        iconUrl: https://img.plrs.im/tidewater/a/a3f1c9e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6/128.webp
+                        headerUrl: https://img.plrs.im/tidewater/a/c7e9a1b3d5f7091b3d5f7a9c1e3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e9b/1280.webp
                         support:
                           url: https://tidewater.example/help
                           email: help@tidewater.example
@@ -11252,7 +11259,7 @@ paths:
                     developerName: Fennick Studio
                     tintColor: "#1f3b5c"
                     website: https://tidewater.example
-                    iconUrl: /media/tidewater/icon?v=3f9a0c2d1e4b5a6c
+                    iconUrl: https://img.plrs.im/tidewater/a/a3f1c9e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6/256.webp
                     headerUrl: null
                     support:
                       { url: https://tidewater.example/help, email: null }
@@ -11353,7 +11360,7 @@ paths:
                       kind: device
                       appName: Mossgarden
                       developerName: Fennick Studio
-                      iconUrl: /media/mossgarden/icon?v=3f9a0c2d1e4b5a6c
+                      iconUrl: /media/mossgarden/icon?v=5b7d9f1a3c5e7b9d
                       origins: []
                       services: { license: true, cloudSync: false }
                       nameVerified: true
@@ -11450,7 +11457,7 @@ paths:
                         developerName: Fennick Studio
                         tintColor: "#2f5d3a"
                         website: https://mossgarden.example
-                        iconUrl: /media/mossgarden/icon?v=3f9a0c2d1e4b5a6c
+                        iconUrl: https://img.plrs.im/mossgarden/a/5b7d9f1a3c5e7b9d1f3a5c7e9b1d3f5a7c9e1b3d5f7a9c1e3b5d7f9a1c3e5b7d/128.webp
                         headerUrl: null
                         support: null
                         platforms: [macos, windows]
@@ -11765,9 +11772,17 @@ paths:
     get:
       operationId: getPortalMedia
       tags: [portal]
-      summary: A product's listing art, served same-origin
+      summary: A product's art, as a redirect to its hosted copy
       description: >
-        The customer portal's media proxy: the product's listing `icon` (`asset` = `icon`, at
+        HA-07: while Polaris Key serves hosted copies (an image host is configured and
+        `assets.hosting.enabled` is on), this route fetches nothing. It answers `302` to the image
+        host's stable alias (`https://img…/<product>/icon` or `/header`, which redirects on to the
+        content-addressed copy) when the product has a copy, with `cache-control: public,
+        max-age=300`, and the same `404` otherwise; `v` is ignored. The portal no longer links
+        here (its presentation names the image host), but URLs already handed out and the sign-in
+        card's client record do.
+
+        Otherwise (the rollback) it is the customer portal's media proxy: the product's listing `icon` (`asset` = `icon`, at
         most 1 MiB) or `header` (`header`, at most 5 MiB) when it is an https URL (or the
         deprecated `iconUrl` / `headerUrl` it was written as), fetched by the Worker
         and served from this origin, because the portal's CSP is `img-src 'self' data:`. Public
@@ -11795,8 +11810,12 @@ paths:
             description: "The source URL's version (the first 16 hex digits of its SHA-256), as `GET /api/library` hands it out. When it is the current one the answer is immutable for a year; otherwise it is cached for five minutes.",
           }
       responses:
+        "302":
+          description: "HA-07: to the image host's stable alias for this asset. `cache-control: public, max-age=300`."
+          headers:
+            Location: { schema: { type: string, format: uri } }
         "200":
-          description: "The image. `cache-control: public, max-age=31536000, immutable` with the current `v`, else `public, max-age=300`."
+          description: "The rollback's proxied image. `cache-control: public, max-age=31536000, immutable` with the current `v`, else `public, max-age=300`."
           content:
             image/png: { schema: { type: string, format: binary } }
             image/jpeg: { schema: { type: string, format: binary } }
@@ -15989,10 +16008,15 @@ components:
         website: { type: [string, "null"] }
         iconUrl:
           type: [string, "null"]
-          description: A same-origin `/media/<product>/icon?v=…` URL, or null.
+          description: >
+            The product's hosted icon on the image host (HA-07), `https://img…/<product>/a/<sha256>`
+            or one of its `/<w>.webp` widths, or null without a copy. With hosting off or no image
+            host, a same-origin `/media/<product>/icon?v=…` URL, or null.
         headerUrl:
           type: [string, "null"]
-          description: A same-origin `/media/<product>/header?v=…` URL, or null.
+          description: >
+            The product's hosted header art on the image host, like `iconUrl`; with hosting off or
+            no image host, a same-origin `/media/<product>/header?v=…` URL, or null.
         support:
           oneOf:
             - type: "null"
@@ -16128,7 +16152,9 @@ components:
         developerName: { type: [string, "null"] }
         iconUrl:
           type: [string, "null"]
-          description: Same-origin `/media/<product>/icon?v=…`, or null.
+          description: >
+            Same-origin `/media/<product>/icon?v=…`, or null. Since HA-07 that path 302s to the
+            product's hosted icon on the image host, and `v` is the copy's hash prefix.
         origins: { type: array, items: { type: string } }
         services:
           type: object
