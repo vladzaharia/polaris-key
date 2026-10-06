@@ -58,9 +58,8 @@
       "note": "Android: :android's AndroidKeystoreStore, the token and device id wrapped by :platform's SecureStore (an AndroidKeyStore AES-256-GCM key, StrongBox where present), the verified cache in a noBackup file; a FileStore's token and device id migrate in, a failed Keystore call throws and status() reports keyring-error, a lost key drops the token and keeps the device id (AndroidKeystoreStoreTest). JVM desktop (UK-40): :core's KeyringStore, Python's KeyringStore ported (the token in the OS keyring, Keychain, Credential Manager or Secret Service through java-keyring, service pkey:<product>; a verified write, else the 0600 file with status() saying keyring-error; file-first reads; a FileStore token moves in), wired by PolarisKeyDesktop; the storage contract runs against the real OS keyring on macOS, Windows and Linux in the kotlin-desktop CI matrix (KeyringStoreTest, PolarisKeyDesktopTest). java-keyring is compileOnly: without it, or with no reachable keyring (a headless Linux session with no Secret Service), the token stays in the 0600 file and supports() reports dependency, as it does for a plain FileStore."
     },
     "core.copy": {
-      "status": "planned",
-      "wp": "SP-21",
-      "note": "Copy.generated.kt (gen:constants) carries the tables, but there is no copy.message(code)/copy.title(code) API with the fallback and placeholder fill over them, and no unit test of one; the Android kit's PolarisCopy uses its own strings."
+      "status": "implemented",
+      "note": "im.plrs.key.core.Copy serves the generated Copy.generated.kt tables (from copy.en.json): message(code)/title(code) read COPY_CODES, then COPY_GATE, then COPY_ACTIVATION; activationMessage/activationTitle read COPY_ACTIVATION only (any kind spelling); an unknown code reads COPY_FALLBACK naming it; {name} placeholders fill from params or drop; registerLocale(\"en\", ...) is the host override layer and other locales fall back to English (CopyTest checks every table against copy.en.json). The Android kit's PolarisCopy keeps its own fields (host overrides and string resources still win) and reads Copy.message for every other refusal code the catalog knows (PolarisCopyMappingTest)."
     },
     "license.gate": {
       "status": "implemented"

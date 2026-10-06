@@ -6,6 +6,9 @@ package im.plrs.key.ui
 import im.plrs.key.core.AllowedRange
 import im.plrs.key.core.BootEmit
 import im.plrs.key.core.BootStage
+import im.plrs.key.core.COPY_CODES
+import im.plrs.key.core.Copy
+import im.plrs.key.core.CopyEntry
 import im.plrs.key.core.LicenseStatus
 import im.plrs.key.license.ActivationResult
 import org.junit.Assert.assertEquals
@@ -77,7 +80,30 @@ class PolarisCopyMappingTest {
         assertEquals(copy.activationNetwork, copy.activationMessage(ActivationResult.Error("offline", "network")))
         // A known code arriving as a bare refusal reads as its own copy; an unknown one names the code, never the body.
         assertEquals(copy.activationEnrollDisabled, copy.activationMessage(ActivationResult.Refused("registration_closed", 403, "raw body")))
-        assertEquals("The license server refused this activation (license_owned).", copy.activationMessage(ActivationResult.Refused("license_owned", 403, "raw body")))
+        assertEquals("The license server refused this activation (no_such_code).", copy.activationMessage(ActivationResult.Refused("no_such_code", 403, "raw body")))
+    }
+
+    @Test
+    fun refusalsTheKitHasNoFieldForReadTheCoreCatalog() {
+        // core.copy: a code the catalog knows reads Copy.message, never the raw body.
+        assertEquals(
+            "This Diceroll license is already in another Polaris Key account. A license never moves by its key.",
+            copy.activationMessage(ActivationResult.Refused("license_owned", 403, "raw body")),
+        )
+        // Without a product name the placeholder drops; the sentence is the catalog's.
+        assertEquals(Copy.message("license_owned"), PolarisCopy().errorCodeMessage("license_owned"))
+        assertEquals(COPY_CODES.getValue("not_entitled").message, PolarisCopy().errorCodeMessage("not_entitled"))
+        assertNull(copy.errorCodeMessage("no_such_code"))
+        // The kit's own field still wins for the codes it names, so its overrides keep working.
+        val custom = PolarisCopy(activationUnauthorized = "Nope.")
+        assertEquals("Nope.", custom.activationMessage(ActivationResult.Refused("unauthorized", 401, "raw body")))
+        // The host's Copy override layer reaches the kit.
+        try {
+            Copy.registerLocale("en", mapOf("license_owned" to CopyEntry("Taken", "Someone else owns this license.")))
+            assertEquals("Someone else owns this license.", copy.activationMessage(ActivationResult.Refused("license_owned", 403, "raw body")))
+        } finally {
+            Copy.resetOverrides()
+        }
     }
 
     @Test
