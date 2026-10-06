@@ -35,6 +35,9 @@ export const SDK_OPTIONS: readonly { value: SdkId; label: string }[] = [
   { value: "godot", label: "Godot" },
 ];
 
+/** The DOM id of the SDK chooser in Overview's quick start; the palette's SDK rows focus it. */
+export const SDK_QUICK_START_ID = "sdk-quick-start";
+
 /** Where every SDK is published, and nowhere else (RUNBOOK "Releasing our SDKs to the feeds"). */
 export const SDK_REGISTRY_ORIGIN = "https://pkg.plrs.im";
 
@@ -212,7 +215,7 @@ export function sdkInit(sdk: SdkId, o: SdkInitInput): SdkInit {
       };
     case "swift":
       return {
-        filename: "App.swift",
+        filename: "main.swift",
         language: "text",
         code: [
           "import PolarisKey",

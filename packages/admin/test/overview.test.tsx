@@ -324,6 +324,8 @@ describe("Core → Overview", () => {
     await pick("Python");
     expect(text()).toContain("https://pkg.plrs.im/pypi/polaris-key/simple/");
     expect(text()).toContain("from polaris_key import PolarisKeyClient");
+    // pip installs the package alone: its description says to install the dependencies first.
+    expect(text()).toContain("dependencies from your usual index");
     await pick("Kotlin and Android");
     expect(text()).toContain("https://pkg.plrs.im/maven/polaris-key/");
     expect(text()).toContain('"djdl-a" to "PUBKEY-A"');

@@ -59,7 +59,6 @@ import { qk } from "../../data/queries.js";
 import { queryClient } from "../../data/queryClient.js";
 import { Link, navigate } from "../../router.js";
 import { r } from "../../routes.js";
-import { SDK_QUICK_START_ID } from "../../shell/palette/actions.js";
 import {
   AttentionList,
   DashboardTemplate,
@@ -72,6 +71,7 @@ import { fetchDeviceSummary } from "./Devices.js";
 import { fetchSigningKeys } from "./Keys.js";
 import {
   SDK_OPTIONS,
+  SDK_QUICK_START_ID,
   sdkInit,
   sdkInstall,
   sdkInstallNote,
@@ -960,6 +960,9 @@ function TrustPanel({
             <div key={s.id} className="space-y-1.5">
               <p className="text-xs font-bold text-fg-muted">{s.title}</p>
               {s.warning ? <Callout tone="warning">{s.warning}</Callout> : null}
+              {s.description ? (
+                <p className="text-sm text-fg-muted">{s.description}</p>
+              ) : null}
               <CodeBlock
                 code={s.code}
                 language={s.language}

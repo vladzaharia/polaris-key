@@ -16,6 +16,7 @@ import {
 import { docsFor, navItems, SECTIONS, type ServiceState } from "../../nav.js";
 import { r } from "../../routes.js";
 import { THEME_OPTIONS } from "../ThemeMenu.js";
+import { SDK_QUICK_START_ID } from "../../pages/core/sdkQuickStart.js";
 import { focusWhenReady } from "./focus.js";
 import type {
   PaletteContext,
@@ -130,9 +131,6 @@ export function createActions(
   }
   return items;
 }
-
-/** The DOM id of the SDK chooser in Overview's quick start (`pages/core/Overview.tsx`). */
-export const SDK_QUICK_START_ID = "sdk-quick-start";
 
 /**
  * Connecting an app (UX-59; SETUP.md §3): the SDK quick start, its install from pkg.plrs.im and
