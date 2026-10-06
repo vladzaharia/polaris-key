@@ -1193,6 +1193,9 @@ public const val OUTLET_MATRIX_VERSION: Int = 1
 /** `planMatrixVersion` of conformance/corpus/v2/plan-matrix.json. */
 public const val PLAN_MATRIX_VERSION: Int = 2
 
+/** `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json. */
+public const val SYNC_SCENARIOS_VERSION: Int = 1
+
 /** `contentCorpusVersion` of conformance/corpus/v2/content/cases.json. */
 public const val CONTENT_CORPUS_VERSION: Int = 2
 

@@ -154,7 +154,8 @@ The committed `.husky/pre-commit` hook runs a lightweight subset (`pnpm gen:corp
 
 **1. Never hand-edit generated corpus files.** `conformance/corpus/v2/{cases.json,
 gate-matrix.json,fingerprint.json,stage-matrix.json,headers.json,config-matrix.json,
-update-matrix.json,outlet-matrix.json,plan-matrix.json,feed-url-matrix.json}`, `conformance/corpus/v2/content/cases.json`
+update-matrix.json,outlet-matrix.json,plan-matrix.json,feed-url-matrix.json,
+sync-scenarios.json}`, `conformance/corpus/v2/content/cases.json`
 and the generator-owned mirrors at
 `sdks/swift/Tests/PolarisKeyTests/Resources/v2/` and `sdks/godot/tests/corpus/v2/` are output
 (`content/` is not mirrored: every runner reads it from the checkout).
