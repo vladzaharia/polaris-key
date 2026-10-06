@@ -4,6 +4,7 @@ extends RefCounted
 # @pkey-feature release.changelog release.download update.feed release.record update.decide
 # @pkey-feature commerce.receipt
 # @pkey-feature packs.apply.chunk
+# @pkey-feature license.refusals ui.boot release.distribution telemetry.updates
 # @pkey-feature license.manage
 # The Godot transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read from the
 # generator-owned mirror res://tests/transcripts/ (written by `pnpm gen:transcripts`; never edit
@@ -37,6 +38,15 @@ extends RefCounted
 # pulled from PKeyFakeServer), against the blobs template the last discover returned, rebased
 # onto the loopback server (the recording names the transcript's base). `range` is the fetch's
 # status; `bytes` the body it returned, as a string.
+#
+# `activate` and `enroll` report the PKeyActivationResult's `kind` as `result` and, on a refusal,
+# its `code` (the body's wire code, activate-refusals). `boot` is PolarisKey.boot() with a
+# PKeyBoot view in the tree and the real PKeyBootHost (discovery on), its `outcome` as
+# `bootOutcome`. `downloadModel` is PolarisKey.distribution.download_model(): `platforms` the
+# model's group ids in order and `current` the group for `initial.platform`, by value. `report`
+# also says how many update events the updater still queues (`updatesPending`): with
+# `initial.updateJournal` the updater is forced active over a scratch store root and the journal
+# is its queue (state.json `events`), oldest first.
 
 const FLOOR := 4
 
@@ -88,12 +98,23 @@ static func replay(tr: Dictionary) -> Array:
 		opts.expected_services = PackedStringArray(tr["initial"]["services"])
 	if tr["initial"].get("update") is Dictionary:
 		_configure_update(opts, store, tr["initial"]["update"])
+	var journal = tr["initial"].get("updateJournal")
+	if journal is Array:
+		opts.store_root = PKeyTestFixtures.scratch_dir("transcript-journal")
 	var sdk := PKeyTestFixtures.new_sdk()
+	sdk.set_meta("pkey_platform", String(tr["initial"].get("platform", "")))
 	var fails: Array = []
 	var cr: PKeyResult = sdk.configure(opts)
 	if not cr.ok:
 		fails.append("configure: %s" % cr)
 	else:
+		if journal is Array:
+			var updater: PKeyUpdater = sdk.update.updater
+			updater.enabled = true
+			var st := updater.slots.load_state()
+			st["events"] = (journal as Array).duplicate(true)
+			if not updater.slots.save_state(st):
+				fails.append("the update journal could not be seeded")
 		await sdk.start()
 		for i in tr["steps"].size():
 			var step: Dictionary = engine.begin_step(i)
@@ -143,16 +164,42 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 				if r.documents[slice] != "skipped":
 					docs[slice] = r.documents[slice]
 			out["documents"] = docs
-		"activate", "enroll":
-			var r: PKeyActivationResult
-			if step["action"] == "activate":
-				r = await sdk.license.activate_with_key(step["args"]["key"])
-			else:
-				r = await sdk.license.enroll()
+		"activate":
+			var r: PKeyActivationResult = await sdk.license.activate_with_key(step["args"]["key"])
 			out["result"] = String(r.kind)
+			if not r.ok:
+				out["code"] = String(r.code)
 			# PX-W8: the refusal link, exactly as served; null when the result carries none.
 			if r.kind == PKeyActivationResult.KIND_DEVICE_LIMIT:
 				out["manageUrl"] = r.manage_url
+		"enroll":
+			var r: PKeyActivationResult = await sdk.license.enroll()
+			out["result"] = String(r.kind)
+			if not r.ok:
+				out["code"] = String(r.code)
+			# PX-W8: the refusal link, exactly as served; null when the result carries none.
+			if r.kind == PKeyActivationResult.KIND_DEVICE_LIMIT:
+				out["manageUrl"] = r.manage_url
+		"boot":
+			var view := PKeyBoot.new()
+			view.auto_sdk = false
+			(Engine.get_main_loop() as SceneTree).root.add_child(view)
+			var r: PKeyBootResult = await sdk.boot({"view": view, "host": PKeyBootHost.new(sdk)})
+			out["bootOutcome"] = r.outcome
+			view.queue_free()
+		"downloadModel":
+			var r: PKeyResult = await sdk.distribution.download_model()
+			out["result"] = "ok" if r.ok else String(r.code)
+			if r.ok:
+				var platforms: Array = []
+				var current = null
+				for g in r.detail["platforms"]:
+					if g is Dictionary:
+						platforms.append(g.get("platform"))
+						if current == null and g.get("platform") == sdk.get_meta("pkey_platform"):
+							current = g
+				out["platforms"] = platforms
+				out["current"] = current
 		"deactivate":
 			var r: PKeyResult = await sdk.license.deactivate()
 			out["result"] = "ok" if r.ok else String(r.code)
@@ -161,6 +208,7 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 			out["result"] = r.detail.get("kind", "") if r.detail is Dictionary else ""
 		"report":
 			out["result"] = await sdk.devices.report()
+			out["updatesPending"] = sdk.update.updater.events().size()
 		"beginSignIn":
 			var prompt: PKeySignInPrompt = await sdk.identity.request_sign_in(String(step["args"].get("deviceName", "")))
 			sdk.set_meta("pkey_prompt", prompt)
@@ -361,6 +409,14 @@ func _negative(t: PKeyTestContext) -> void:
 	outcome["steps"][1]["expect"]["documents"] = {"license": "applied", "config": "applied"}
 	f = await replay(outcome)
 	t.check("negative: a different outcome fails", _mentions(f, "step 1 (sync): documents"), "\n  ".join(f))
+
+	# telemetry-report-updates passes only when the seeded journal really drains (16, then 1).
+	var journal = PKeyTestFixtures.transcript("telemetry-report-updates")
+	if t.check("negative: telemetry-report-updates present", journal is Dictionary):
+		var drained: Dictionary = journal.duplicate(true)
+		drained["steps"][0]["expect"]["updatesPending"] = 0
+		f = await replay(drained)
+		t.check("negative: a journal that did not drain as recorded fails", _mentions(f, "step 0 (report): updatesPending"), "\n  ".join(f))
 
 	# packs-chunk-range passes only when the SDK reads the exact run: a recorded Content-Range
 	# altered to another range must be refused, so the step's `range` fails.

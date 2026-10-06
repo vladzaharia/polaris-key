@@ -1,5 +1,5 @@
 extends RefCounted
-# @pkey-feature ui.stages
+# @pkey-feature ui.stages ui.boot
 # PKeyBoot and PolarisKey.boot() (P1-10). Two halves:
 #
 #   rows    every stage-matrix.json row through PolarisKey.boot({view, host}) with a scripted host

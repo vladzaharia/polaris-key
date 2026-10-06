@@ -1,4 +1,5 @@
 extends RefCounted
+# @pkey-feature release.distribution
 # The public download model (SDK parity §3.8): GET /<p>/distribution/download.json, unsigned and
 # without a bearer, read into this platform's primary action, the rest and the builds.
 

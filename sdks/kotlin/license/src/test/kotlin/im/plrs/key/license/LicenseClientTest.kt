@@ -1,4 +1,4 @@
-// @pkey-feature license.entitlements license.channels license.activate license.enroll license.deactivate
+// @pkey-feature license.entitlements license.channels license.activate license.enroll license.deactivate license.refusals
 // @pkey-feature license.manage
 //
 // The licence client over a signed document it verified itself: entitlements, the profile and the

@@ -41,6 +41,8 @@ Only Godot can bind and claim today (G17, [S-19 §4.3](../../notes/S-19-licensin
 **Out** (and where it belongs instead):
 
 - Server changes (→ LX-11).
+- React's `commerce.receipt` row (→ SP-16, 2026-10-05): the bearer engine and the desktop bridge
+  already speak binding and claim, so what remains is the Worker CORS entry and React's replay.
 
 ## Design notes
 

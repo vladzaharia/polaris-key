@@ -1,3 +1,4 @@
+# @pkey-feature crash.tags
 # @pkey-feature core.errors
 """The copy catalog and ``crash_tags()`` (SDK parity pass §3.2, §3.14; SP-P14). There is no
 portal URL builder: owner decision Q6 (2026-10-05) drops §3.5's client-side builder."""

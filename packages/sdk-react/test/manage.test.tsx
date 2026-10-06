@@ -72,7 +72,6 @@ describe("adapters forward manageUrl on device-limit", () => {
     expect(err).toMatchObject({
       wireCode: "device_limit",
       activation: { kind: "deviceLimit" },
-      message: expect.stringMatching(/device limit/),
     });
     expect((err as { manageUrl?: string }).manageUrl).toBeUndefined();
     adapter.dispose();

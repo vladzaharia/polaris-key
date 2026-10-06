@@ -4,7 +4,7 @@
 // @pkey-feature packs.apply.chunk
 // @pkey-feature core.sync core.cache core.store license.activate license.enroll license.deactivate
 // @pkey-feature license.reregister devices.register devices.report identity.devicecode config.mint
-// @pkey-feature commerce.receipt
+// @pkey-feature commerce.receipt license.refusals
 //
 // BEARER MODE (SDK-PARITY-PASS §3.17, SP-R02). The transcripts that authenticate with a `pkeyt_`
 // device token run through the browser's bearer engine, `BearerSession`
@@ -221,11 +221,13 @@ async function replay(t: Transcript): Promise<void> {
             : await session.enroll();
         // The adapter syncs after an acquisition, as Node's facade does.
         if (r.kind === "ok") await session.sync();
-        // The transcripts spell the §3.1 kinds in kebab case (`deviceLimit` ↔ `device-limit`).
+        // license.refusals: the §3.1 kind in the shared activationResult vocabulary
+        // (`deviceLimit` → `device-limit`), and the server's code it was classified from.
         observed.result = r.kind.replace(
           /[A-Z]/g,
           (c) => `-${c.toLowerCase()}`,
         );
+        observed.code = r.code;
         // PX-W8: the refusal link, validated, or null when the Worker sent none.
         if (r.kind === "deviceLimit") observed.manageUrl = r.manageUrl ?? null;
         break;
@@ -456,11 +458,11 @@ describe("HTTP transcripts: @polaris-key/react", () => {
       (t) => t.id,
     );
     // Planned here, so their transcripts do not apply: commerce.receipt (LX-20; the Worker's CORS
-    // list does not cover distribution/commerce yet) and SP-00's newer ids, which this SDK's
-    // manifest still lists as planned (SP-R03, SP-R06, SP-R09, SP-R11).
+    // list does not cover distribution/commerce yet), ui.boot (no boot() in React), release.fetch
+    // and release.distribution (no licensed fetch or download model), and telemetry.updates (the
+    // bearer engine drains a journal, but nothing in the adapter records update events yet).
     const plannedHere = [
       "commerce.receipt",
-      "license.refusals",
       "ui.boot",
       "release.fetch",
       "release.distribution",

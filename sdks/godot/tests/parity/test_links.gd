@@ -1,4 +1,5 @@
 extends RefCounted
+# @pkey-feature crash.tags
 # Crash tags (SDK parity §3.14): the release/environment/outlet tags W/services/distribution/
 # sentry.ts maps. No portal URLs are built client-side (owner decision Q6): a server-supplied
 # manageUrl (PX-W8) is the only portal link.
@@ -26,5 +27,11 @@ func run(t: PKeyTestContext) -> void:
 	sdk.core.options.update_outlet = "steam"
 	t.check("crash tags: the reported outlet rides as pkey.outlet", sdk.crash_tags().get("pkey.outlet") == "steam", str(sdk.crash_tags()))
 	t.check("crash tags: a deliverable can be named", sdk.crash_tags("dlc.soundtrack")["release"].begins_with("dlc.soundtrack@"))
+	# sentry.ts reads `<deliverable>@<version>[+<build>]`: a stamped build number rides after `+`.
+	var stamp := PKeyBuildStamp.fallback(sdk.core.channel, sdk.core.product, "2.3.4")
+	stamp["build"] = 57
+	sdk.core.build_stamp = stamp
+	t.check("crash tags: a stamped build is app@<version>+<build>", sdk.crash_tags()["release"] == "app@2.3.4+57", str(sdk.crash_tags()))
+	sdk.core.build_stamp = null
 	sdk.queue_free()
 	h.free_server()

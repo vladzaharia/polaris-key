@@ -1,3 +1,4 @@
+# @pkey-feature release.fetch release.distribution
 # @pkey-feature release.download
 # @pkey-feature update.decide
 """``release.fetch``, ``update.feed_url()``, ``client.distribution`` and the discovery-based
@@ -203,8 +204,7 @@ def test_feed_url_expands_discovery_templates() -> None:
     )
     missing = c.update.feed_url("appInstaller")
     assert isinstance(missing, Unsupported) and missing.reason == "product"
-    with pytest.raises(PolarisError):
-        c.update.feed_url("velopack")
+    assert c.update.feed_url("velopack") == f"{base}/update/stable/velopack/"
     with pytest.raises(PolarisError):
         c.update.feed_url("nope")
     c.close()
