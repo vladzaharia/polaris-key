@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import { fileURLToPath } from "node:url";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { chromium, type Browser, type Page } from "playwright";
 import { preview, type PreviewServer } from "vite";
 import { appSecurityHeaders } from "../../worker/src/securityHeaders.js";
@@ -55,6 +55,7 @@ const PNG = Buffer.from(
 let server: PreviewServer;
 let browser: Browser;
 let base: string;
+/** What each test's page asked `/media` and the image host for (emptied before every test). */
 const mediaHits: string[] = [];
 const imgHits: string[] = [];
 
@@ -93,6 +94,11 @@ beforeAll(async () => {
       "--disable-features=LocalNetworkAccessChecks,BlockInsecurePrivateNetworkRequests,PrivateNetworkAccessSendPreflights,PrivateNetworkAccessRespectPreflightResults",
     ],
   });
+});
+
+beforeEach(() => {
+  mediaHits.length = 0;
+  imgHits.length = 0;
 });
 
 afterAll(async () => {
@@ -304,6 +310,12 @@ describe("portal art under the Worker's CSP (HA-07; PX-W1 as the rollback)", () 
       expect(r, src).toEqual({ ok: true, width: 1 });
     }
     expect(await violations(page), "proxied art").toEqual([]);
+    // The proxy answered both itself; the image host was never asked.
+    expect(mediaHits).toEqual([
+      "/media/tidewater/icon?v=3f9a0c2d1e4b5a6c",
+      "/media/tidewater/header?v=8b7c6d5e4f3a2b1c",
+    ]);
+    expect(imgHits).toEqual([]);
 
     const direct = await addImage(
       page,
