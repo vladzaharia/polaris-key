@@ -819,17 +819,19 @@ function scalarValue(name: string, value: unknown): ScalarValue {
   );
 }
 
-/** Build the language-neutral model. Throws on any identifier collision. */
-/** Enums every SDK already declares as its own type under the generated group's name (Swift's
- *  and Kotlin's `LicenseStatus` enums, every SDK's `ActivationResult` sum type), so a generated
- *  group of that name would clash or shadow it at the package root. They emit only their
- *  `*_VALUES` list, in every language alike; the copy generator checks its keys against them
- *  (plans/SP-00.md §4). */
+/** Enums whose PascalCase name an SDK already uses for its own type, so a generated group of that
+ *  name would clash with it or shadow it at the package root: `LicenseStatus` is a declared enum
+ *  in Swift (PolarisKeyCore/Models.swift) and Kotlin (:core Models.kt), and a type alias in Python
+ *  (core/models.py); `ActivationResult` is the activation sum type in Node (license/endpoints.ts),
+ *  Python (license/endpoints.py), Swift (PolarisKeyLicense/Endpoints.swift) and Kotlin (:license).
+ *  They emit only their `*_VALUES` list, in every language alike, and validateCopy checks the
+ *  copy's `gate` and `activation` keys against them (plans/SP-00.md §4). */
 export const VALUES_ONLY_ENUMS: ReadonlySet<string> = new Set([
   "licenseStatus",
   "activationResult",
 ]);
 
+/** Build the language-neutral model. Throws on any identifier collision. */
 export function buildModel(sources: Sources): Model {
   const { protocol } = sources;
   const exportNames = Object.keys(protocol).sort();

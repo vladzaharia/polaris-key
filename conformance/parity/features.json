@@ -821,7 +821,7 @@
         }
       ],
       "allowedNa": [],
-      "note": "Proven by release-fetch-gated.json: a licensed-delivery fetch (200), a resumed one (Range/If-Range, 206) and an unentitled refusal (SDK-PARITY-PASS §3.6)."
+      "note": "Proven by release-fetch-gated.json: a licensed-delivery fetch (200), a resumed one (Range/If-Range, 206) and, once the licence is disabled, the licensed mode's refusal (401 download_auth_required) (SDK-PARITY-PASS §3.6)."
     },
     {
       "id": "release.distribution",
