@@ -10123,6 +10123,28 @@
       "brief": "wp/UK-44-sdk-signin-hints.md",
       "status": "todo",
       "planRef": "PX-W18"
+    },
+    {
+      "id": "PX-24",
+      "title": "Library \"Added just now\": for 24 hours a newly added product carries a ring, the quiet text \"Added just now\" and its download as the tile's lead (EXPERIENCE §0.7, frame 7)",
+      "phase": "PX",
+      "stage": "phase B: new API, S-16, S-17",
+      "lane": "portal",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.2, 0.4],
+      "deps": ["PX-16", "MO-07"],
+      "planMode": false,
+      "gates": ["portal-e2e", "console-csp-parity"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "design/EXPERIENCE §0.6 P1 step 7 (frame 7), §0.7",
+        "design/PORTAL §4.13–4.16",
+        "wp/MO-07-portal-library-motion.md, Corrections found while building (2026-10-06)"
+      ],
+      "brief": "wp/PX-24-library-added-just-now.md",
+      "status": "todo"
     }
   ]
 }

@@ -27,6 +27,37 @@ differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US 
 
 - Copy per SIGN-IN.md §3.3–§3.4: no lede on portal direct; the logo-only provider row (Apple, Google, Steam); **Have a license key?** and **Sign in with another device** under a rule; six-cell code input as one field; "{n} tries left."; no "Polaris Key · key.plrs.im" footer. Skip only when an app sent the person (D-36).
 
+## Follow-ups from the 2026-10-06 reviews
+
+Checked against `main` at `148439c4f`. Each item names the package whose review raised it.
+
+- **Passkey button and conditional UI** ([I-16](I-16-passkeys.md)). I-16 shipped the Worker half
+  only: `POST /api/signin/passkey/options` and `/verify`, and `auth.passkey` in
+  `GET /api/capabilities`. The card has no passkey button yet. The email field already carries
+  `autocomplete="username webauthn"`. When verify refuses with `unknownCredential: true` (no account
+  holds that credential id), call `PublicKeyCredential.signalUnknownCredential({ rpId, credentialId })`
+  where the browser has it, so the authenticator stops offering a passkey that can no longer sign
+  in. Every other refusal stays the one `401 unauthorized`.
+- **Send a new code on the expired-link page** ([PX-W4](PX-W4-email-code.md), which left it out).
+  SIGN-IN.md §3.13 and §4.12 (frame 15) want the Worker's expired or used code/link page to offer
+  **Send a new code** to the masked address and land on CodeStep with `returnTo` and the request
+  handle intact. Today a flow lives exactly as long as its code (10 minutes), so `expiredLinkPage`
+  (`card/emailSignIn.ts`) knows no address and takes the spec's "without a known address" branch
+  (**Sign in again**). Three things are needed:
+  - a flow record that outlives its code (I-07's flow lifetime);
+  - a no-JS form `POST` path from that page into the resend;
+  - `GET /api/signin/flow`, so the SPA can read the flow (the masked address, `resendIn`) when it
+    lands on the code step after that plain `POST`.
+
+  Only `POST /api/signin/flow` (the asking browser's poll) exists today. A new route needs its
+  OpenAPI operation, a `PORTAL_KIND_PATHS` row in `routeCoverage.test.ts` (rule 10) and a line on
+  the docs site's portal page.
+
+- **Already done (PX-W4):** `SignInPage.tsx` resends through `POST /api/signin/email/resend`, counts
+  down from `resendIn`, shows a 429's `retryAfter`, handles the per-flow cap and returns to the
+  email step on `signin_expired`. `CodeEntry` keeps that behaviour; there is nothing left to build
+  for the resend itself.
+
 ## Goal
 
 The login card is identifier-first with the usual-method hint from the `pk_last_method` cookie, code entry, passkey button and conditional UI, the logo-only Apple/Google/Steam row per product, the license-key path, and `AccountUpgrade` (skippable while entries remain, forced at zero with the entries meter).

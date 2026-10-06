@@ -12,6 +12,23 @@
 | Human input | none                                                                                                                                                                                     |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                |
 
+## Follow-ups from the 2026-10-06 reviews
+
+Checked against `main` at `148439c4f`. Each item names the package whose review raised it.
+
+- **Profile copy comes from `reason`** ([PX-W16](PX-W16-profile-avatars.md)). PX-W16's profile
+  routes (`GET`/`PATCH /api/me/profile`, `POST /api/me/profile/picture`) refuse with the registered
+  codes `bad_request`, `not_found` and `body_too_large` plus a `reason` that names the case
+  (`invalid_name`, `unknown_source`, `no_name`, `no_picture`, `unknown_upload`, `too_large`,
+  `unsupported_type`, `unreadable_image`), not with eight new codes. `ProfileImport` picks its
+  refusal copy by `reason`, never by the code alone. The gate's own routes (`card/gate.ts`) answer no
+  `reason` today; a gate refusal that needs one adds it the same way.
+- **The platform `/callback` join offer** ([PX-W15](PX-W15-email-gate.md)). The platform-OIDC
+  callback still answers a `join_offer` with a 409 page (`signInRefusal` in `portal/auth.ts`)
+  instead of the gate's join step (SIGN-IN.md D-34). PX-W15 left it until the portal can render that
+  step, which this package builds. Routing the callback into the gate moves with this package or
+  with I-17 (recorded in both); whichever does it says so in its hand-off, and the other drops it.
+
 ## Goal
 
 The login card's `/signin/confirm-email` step renders `EmailGate` with `ProfileImport` in every §4.29 variant (verified, code, Steam empty, terms), plain and under the app header, with the `email_in_use` join hand-off and no skip path.

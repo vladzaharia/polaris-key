@@ -12,6 +12,20 @@
 | Human input | none (the sending domain is I-18's)                                                                                    |
 | Repo        | `vladzaharia/polaris-key`                                                                                              |
 
+## Follow-ups from the 2026-10-06 reviews
+
+Checked against `main` at `148439c4f`.
+
+- **A "from <Developer>" variant of the library notice** ([LX-26](LX-26-licence-holders-worker.md),
+  review note N1). `licenseAddedNotice` (`portal/notices.ts`, "<Product> is in your library") is
+  sent only on a portal key claim (`portal/selfService.ts`), and its copy says the licence was added
+  "with a license key", which is false for an association by email. So an email attach
+  (`via: "email"`) sends nothing today. When the account has already verified the address at
+  creation, this package's key email ("Your <Product> license", sent in the create request) is the
+  person's message. For an association that happens later, at the address's first verification
+  (`onAccountEmailVerified`), add a variant that says the licence came from the developer ("From
+  <Developer>", the origin wording of S-24 D21) and send it on that attach.
+
 ## Goal
 
 An operator creates a licence with its own device limit and, for an assigned licence, has Polaris

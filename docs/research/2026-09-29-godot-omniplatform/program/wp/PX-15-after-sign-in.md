@@ -21,6 +21,18 @@ differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US 
 
 - DeviceApproval outcomes and step-up copy per SIGN-IN.md §3.11 (`signin.approve.*`); the Add-another-way nudge is deferred out of passthrough to the next portal visit (D-40).
 
+## Follow-ups from the 2026-10-06 reviews
+
+Checked against `main` at `148439c4f`.
+
+- **Link an existing account under `license_owned`** ([PX-17](PX-17-activate-confirm.md)). PX-17 left
+  PORTAL.md §4.19's **Link an existing account** action, and its notice "If that account is yours
+  too, sign in to it and join the two.", out of the Activate dialog's `license_owned` refusal,
+  because `#/account/link` does not exist (the router's account sections are `profile`, `methods`,
+  `products`, `sessions`, `appearance` and `data`). When this package adds `#/account/link`
+  (`LinkAccounts`, on PX-W12), add the action and the notice to `RefusalActions` in
+  `ActivateDialog.tsx`, next to **Use a different key** and **Sign in to that account**.
+
 ## Goal
 
 After sign-in the person may be nudged to add another method, can link an existing account with proof of both, and can sign in on a new device by approving it from a signed-in one (both sides).
