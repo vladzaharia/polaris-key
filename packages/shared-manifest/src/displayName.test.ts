@@ -87,7 +87,10 @@ describe("reserved display names (PX-W13 §3)", () => {
   });
 
   it("the skeleton folds case, width, confusables and separators", () => {
-    expect(displayNameSkeleton("  G\u043e\u043egle_PLAY! ")).toEqual(["google", "play"]);
+    expect(displayNameSkeleton("  G\u043e\u043egle_PLAY! ")).toEqual([
+      "google",
+      "play",
+    ]);
   });
 });
 
@@ -106,7 +109,9 @@ describe("invalid display text (PX-W13 §3)", () => {
   });
 
   it("is an error in every mode", () => {
-    expect(codes("Acme\u200f", "warn").errors).toEqual(["invalid_display_text"]);
+    expect(codes("Acme\u200f", "warn").errors).toEqual([
+      "invalid_display_text",
+    ]);
   });
 
   it("allows ordinary non-Latin names", () => {
