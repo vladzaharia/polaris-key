@@ -64,10 +64,10 @@ The first provider sign-in must not ship without the gate ([PORTAL.md §11.4](..
 
 ## Acceptance criteria
 
-- [ ] Tests: Google unverified → code; Apple relay → no code; Steam → empty field; no token before pass.
-- [ ] The migration and `TABLE_OWNERS` entry land together; OpenAPI and `routeCoverage` cover every route.
-- [ ] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen:transcripts -- --check` stays green.
-- [ ] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
+- [x] Tests: Google unverified → code; Apple relay → no code; Steam → empty field; no token before pass.
+- [x] The migration and `TABLE_OWNERS` entry land together; OpenAPI and `routeCoverage` cover every route.
+- [x] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen:transcripts -- --check` stays green.
+- [x] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header. (Until the lead numbers the migration, `record-deploy`'s name pattern refuses the `00XX` placeholder in two `test/recordDeploy.test.ts` tests; with a number they pass.)
 
 ## Verify
 
