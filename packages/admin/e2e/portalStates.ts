@@ -537,9 +537,7 @@ export const SHIPPED: ShippedState[] = [
     path: "/#/p/orbit-survey/free-device?return=orbitsurvey%3A%2F%2Fretry",
     ready: async (p) => {
       await h1(p, "Your license is on 2 of 2 devices");
-      await p
-        .getByRole("button", { name: "Remove Work laptop and continue" })
-        .click();
+      await p.getByRole("button", { name: "Remove Work laptop" }).click();
       await h1(p, "Work laptop was removed");
     },
   },

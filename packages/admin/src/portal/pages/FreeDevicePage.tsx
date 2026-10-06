@@ -39,7 +39,9 @@ export function forLabel(raw: string | null): string | null {
 /**
  * Where "back" goes: the app when its return URL is declared, else the product page. Only an app
  * that sent the person (`return=` present and declared) is named "Back to <product>" (§0.6 P4,
- * §11.2); without one, the way back is the product's page here, and says so.
+ * §11.2); without one, the way back is the product's page here, and says so. At 390 px the
+ * header holds the lockup and about 16 characters, so the words after the product's name are a
+ * `tail` that phones drop ("See Orbit Survey"), instead of truncating the name (FLOWS.md P-6).
  */
 export function flowBack(
   product: string,
@@ -49,7 +51,8 @@ export function flowBack(
   return returnUrl
     ? { label: `Back to ${name}`, href: returnUrl, external: true }
     : {
-        label: `See ${name} in your library`,
+        label: `See ${name}`,
+        tail: "in your library",
         href: href.product(product),
         external: false,
       };
@@ -276,21 +279,19 @@ function FreeDevice({
           value: d.deviceId,
           icon: <DeviceGlyph platform={d.platform} />,
           label: (
-            <span className="flex flex-wrap items-center gap-2">
-              <span className="font-bold text-fg-strong">{deviceName(d)}</span>
-              {d.deviceId === leastRecent && holders.length > 1 ? (
-                <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-xs font-bold text-fg-strong">
-                  Least recent
-                </span>
-              ) : null}
-            </span>
+            <span className="font-bold text-fg-strong">{deviceName(d)}</span>
           ),
+          // "Least recent" is plain text in the meta, not a pill: pills are for issues
+          // (FLOWS.md §2 C20, P-6).
           description: [
             normalisePlatform(d.platform)
               ? osName(normalisePlatform(d.platform)!)
               : null,
             d.appVersion,
             lastSeenText(d.lastSeen),
+            d.deviceId === leastRecent && holders.length > 1
+              ? "least\u00a0recent"
+              : null,
           ]
             .filter(Boolean)
             .join(" · "),
@@ -324,9 +325,11 @@ function FreeDevice({
           }
           onClick={onRemove}
         >
+          {/* The primary names what it does (§2 C5): this flow only frees the seat, so
+              nothing "continues" (§4.25, FLOWS.md P-6). */}
           {pickedDevice
-            ? `Remove ${deviceName(pickedDevice)} and continue`
-            : "Remove a device and continue"}
+            ? `Remove ${deviceName(pickedDevice)}`
+            : "Remove a device"}
         </Button>
       </div>
       {support ? (

@@ -8,6 +8,22 @@ import {
   signedIn,
 } from "./portalHarness.js";
 import { discoverCountFrom, withoutHeld } from "../src/portal/model/owned.js";
+import type * as DiscoverModel from "../src/portal/model/discover.js";
+
+/*
+ * The shell's count rendering is tested as it will be once the Discover page lists offers
+ * (PX-16): `navDiscoverCount` answers as if `DISCOVER_LISTS_OFFERS` were true. Its own gate, and
+ * the nav on `main` today (no Discover while the page cannot show the offers), are tested below
+ * through `vi.importActual` and in `e2e/portal.e2e.test.ts`.
+ */
+vi.mock("../src/portal/model/discover.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof DiscoverModel>();
+  return {
+    ...actual,
+    DISCOVER_LISTS_OFFERS: true,
+    navDiscoverCount: (raw: unknown) => actual.navDiscoverCount(raw, true),
+  };
+});
 
 /**
  * Discover never offers or counts what the library already holds (G24). The Worker is the
@@ -67,6 +83,28 @@ describe("discoverCountFrom", () => {
   });
 });
 
+describe("navDiscoverCount (P6: count only what the page can show)", () => {
+  it("answers null while the Discover page cannot list offers, whatever the Worker counts", async () => {
+    const actual = await vi.importActual<typeof DiscoverModel>(
+      "../src/portal/model/discover.js",
+    );
+    expect(actual.DISCOVER_LISTS_OFFERS).toBe(false);
+    for (const v of [0, 1, 4, undefined])
+      expect(actual.navDiscoverCount(v)).toBeNull();
+    expect(actual.navDiscoverCount(4, false)).toBeNull();
+  });
+
+  it("passes the Worker's count through once the page lists offers", async () => {
+    const actual = await vi.importActual<typeof DiscoverModel>(
+      "../src/portal/model/discover.js",
+    );
+    expect(actual.navDiscoverCount(4, true)).toBe(4);
+    expect(actual.navDiscoverCount(0, true)).toBe(0);
+    expect(actual.navDiscoverCount(-1, true)).toBeNull();
+    expect(actual.navDiscoverCount(undefined, true)).toBeNull();
+  });
+});
+
 describe("the nav with nothing to discover", () => {
   it("count 0: Discover stays in the nav with no count pill and no phone-bar dot", async () => {
     mockFetch(
@@ -99,5 +137,25 @@ describe("the nav with nothing to discover", () => {
         .getByRole("link", { name: /^Discover\W+1 offer$/ })
         .querySelector(".rounded-full"),
     ).not.toBeNull();
+  });
+
+  it("count 4: the nav, the phone bar and the library say 4", async () => {
+    mockFetch(
+      signedIn([nightfall], { "/api/library": libraryFor([nightfall], 4) }),
+    );
+    renderPortal();
+    const main = await screen.findByRole("navigation", { name: "Main" });
+    const link = await within(main).findByRole("link", { name: /Discover/ });
+    expect(link.getAttribute("href")).toBe("#/discover");
+    expect(link.textContent).toBe("Discover4");
+    const phone = screen.getByRole("navigation", { name: "Phone" });
+    expect(
+      within(phone).getByRole("link", { name: /^Discover\W+4 offers$/ }),
+    ).toBeTruthy();
+    expect(
+      await screen.findByRole("link", {
+        name: "4 more you can add in Discover",
+      }),
+    ).toBeTruthy();
   });
 });
