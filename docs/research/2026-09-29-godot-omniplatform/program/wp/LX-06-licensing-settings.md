@@ -47,6 +47,15 @@ Where this brief and the plan met the code, the code won:
 - **Console.** Sign-in's `syncTierOnSignIn` row is on Identity → Sign-in (S-19 §7.13's table);
   the licensing keys are on the new License → Settings page.
 
+## Lead decisions (review, 2026-10-06)
+
+- **D1.** `COMBINED_ENTITLEMENT_MODEL_SINCE` stays as committed (2026-10-06T00:00Z). LX-09 moves it
+  to its own deploy time, so products registered before LX-09 read `legacy`; that direction is safe
+  because only the displayed default changes until LX-09 reads the setting.
+- **D2.** Accepted: a licensing setting (or `oidc.syncTierOnSignIn`) dropped from `.pkey/` returns
+  to its default, the per-descriptor omit-clears exception of S-18 §4.5 item 1, which now names
+  these keys beside `web.origins` so ST-04 and ST-05 implement the same rule.
+
 ## Goal
 
 S-19's per-product licensing settings (`licensing.entitlementModel`, `entitlementHolder`, `clampGraceToExpiry`, `anchorPolicy`, `reanchor`, `refundGraceHours`, `dunningGraceDays`) are claimable `product_settings` rows in S-18's registry, declarable in the manifest as `licensing.*` (plus `oidc.syncTierOnSignIn`), editable in License → Settings, and served by an admin API.
@@ -99,7 +108,20 @@ mise exec node@22 -- pnpm --filter @polaris-key/manifest test
 
 ## Hand-off
 
-- LX-07 onward read these settings through ST-04's resolver once it exists.
+- LX-07 onward read these settings through ST-04's resolver once it exists (until then through
+  `readLicensingSettings` and `readSyncTierOnSignIn`).
+- LX-09 moves `COMBINED_ENTITLEMENT_MODEL_SINCE` to its own deploy time, so products registered
+  before LX-09 read `legacy` (D1; the same line is in LX-09's brief).
+- ST-05: the resync dry run (`planRepoManifest`) must list row-setting applies and clears, not only
+  the claims it leaves alone (the release service cannot see the License and Identity entries
+  under rule 6, so this goes through the registry).
+- Follow-ups from review (not blocking):
+  - **N2 (ST-04):** Revert and reset delete the row, so its version returns to 0; keep a tombstone
+    row as platform settings do, so a version never goes backwards.
+  - **N4 (ST-07):** an L0 change saves without an Undo, and an L3 level maps to the danger intent
+    without a typed confirmation; the `SettingsRow` v2 confirmation should cover both.
+  - **N5 (ST-04):** the manifest-ingest audit rows use the "Manifest resync" actor and "set from the
+    manifest" label on a first link too; ST-04's `origin` column should tell link from resync.
 
 The role agent sets `--set LX-06 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:

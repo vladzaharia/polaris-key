@@ -40,6 +40,8 @@ import {
 } from "../src/services/license/licensingSettings.js";
 import { readSyncTierOnSignIn } from "../src/services/identity/settings.js";
 import { getProduct } from "../src/repo.js";
+import { revertRowSetting, writeRowSetting } from "../src/core/rowSettings.js";
+import type { Db, DbParam } from "../src/db/types.js";
 import { withDefaultHead } from "./githubHead.js";
 
 const SLUG = "acme";
@@ -212,6 +214,38 @@ const audits = (ctx: Ctx, action: string) =>
 // Products in these tests are registered after the cut-over unless a case says otherwise.
 const AFTER = COMBINED_ENTITLEMENT_MODEL_SINCE + 3600;
 
+const ACTOR = { sub: "u2", name: "Bea", email: null };
+
+/**
+ * `db`, with every batch held until `n` reads of one setting row have happened: two concurrent
+ * writers then both read the same version before either writes, the race the version guard and
+ * the `changes()`-guarded audit row exist for.
+ */
+function afterReads(db: Db, n: number): Db {
+  let reads = 0;
+  let release!: () => void;
+  const ready = new Promise<void>((r) => (release = r));
+  return {
+    all: (sql, ...p) => db.all(sql, ...p),
+    first: async <T>(sql: string, ...p: DbParam[]) => {
+      const row = await db.first<T>(sql, ...p);
+      if (/FROM product_settings WHERE product = \? AND key = \?/.test(sql))
+        if (++reads === n) release();
+      return row;
+    },
+    run: (sql, ...p) => db.run(sql, ...p),
+    runChanges: (sql, ...p) => db.runChanges(sql, ...p),
+    batch: async (stmts) => {
+      await ready;
+      return db.batch(stmts);
+    },
+    batchChanges: async (stmts) => {
+      await ready;
+      return db.batchChanges!(stmts);
+    },
+  };
+}
+
 describe("the manifest seeds the licensing settings (link and resync)", () => {
   it("declared settings become manifest rows; undeclared ones keep their defaults", async () => {
     const ctx = await linked(
@@ -338,7 +372,9 @@ describe("a console edit survives a resync, and Revert restores the manifest val
     expect((await settings(ctx)).anchorPolicy).toBe("most-free-seats");
 
     // Revert restores the last applied manifest's value at once, not at the next push.
-    const revert = await call(ctx, "DELETE", "licensing.anchorPolicy", {});
+    const revert = await call(ctx, "DELETE", "licensing.anchorPolicy", {
+      expectedVersion: 2,
+    });
     expect(revert.status).toBe(200);
     expect(revert.json).toMatchObject({
       ok: true,
@@ -362,12 +398,18 @@ describe("a console edit survives a resync, and Revert restores the manifest val
   it("a claim survives a resync that drops the key; Revert of an undeclared key restores the default", async () => {
     const ctx = await linked({ licensing: { refundGraceHours: 12 } }, AFTER);
     expect(
-      (await call(ctx, "PATCH", "licensing.refundGraceHours", { value: 72 }))
-        .status,
+      (
+        await call(ctx, "PATCH", "licensing.refundGraceHours", {
+          value: 72,
+          expectedVersion: 1,
+        })
+      ).status,
     ).toBe(200);
     await resync(ctx, {});
     expect((await settings(ctx)).refundGraceHours).toBe(72);
-    const revert = await call(ctx, "DELETE", "licensing.refundGraceHours");
+    const revert = await call(ctx, "DELETE", "licensing.refundGraceHours", {
+      expectedVersion: 2,
+    });
     expect(revert.json).toMatchObject({
       applied: true,
       setting: { value: 0, source: "default", version: 0 },
@@ -381,19 +423,25 @@ describe("a console edit survives a resync, and Revert restores the manifest val
       (
         await call(ctx, "PATCH", "identity.oidc.syncTierOnSignIn", {
           value: "upgradeOnly",
+          expectedVersion: 1,
           reason: "IdP groups now carry the tier",
         })
       ).status,
     ).toBe(200);
     await resync(ctx, { syncTier: "off" });
     expect(await syncTier(ctx)).toBe("upgradeOnly");
-    await call(ctx, "DELETE", "identity.oidc.syncTierOnSignIn");
+    await call(ctx, "DELETE", "identity.oidc.syncTierOnSignIn", {
+      expectedVersion: 2,
+    });
     expect(await syncTier(ctx)).toBe("off");
   });
 
   it("the resync dry run lists the claim under skipClaimed", async () => {
     const ctx = await linked({}, AFTER);
-    await call(ctx, "PATCH", "licensing.reanchor", { value: "never" });
+    await call(ctx, "PATCH", "licensing.reanchor", {
+      value: "never",
+      expectedVersion: 0,
+    });
     const docs = files({ licensing: { reanchor: "onActivation" } });
     const parsed = parseManifest({
       schema: docs[".pkey/schema.json"]!,
@@ -426,6 +474,7 @@ describe("the settings API refuses what the registry refuses", () => {
     ] as const) {
       const res = await call(ctx, "PATCH", key, {
         value,
+        expectedVersion: 0,
         reason: "test",
       });
       expect(res.status, `${key} = ${JSON.stringify(value)}`).toBe(422);
@@ -440,11 +489,13 @@ describe("the settings API refuses what the registry refuses", () => {
     const ctx = await linked({}, AFTER);
     const bare = await call(ctx, "PATCH", "licensing.entitlementHolder", {
       value: "owner",
+      expectedVersion: 0,
     });
     expect(bare.status).toBe(422);
     expect(bare.json.reason).toBe("reason_required");
     const ok = await call(ctx, "PATCH", "licensing.entitlementHolder", {
       value: "owner",
+      expectedVersion: 0,
       reason: "shared studio keys",
     });
     expect(ok.status).toBe(200);
@@ -467,6 +518,99 @@ describe("the settings API refuses what the registry refuses", () => {
     });
   });
 
+  it("expectedVersion is required on a save and on a revert", async () => {
+    const ctx = await linked({ licensing: { reanchor: "never" } }, AFTER);
+    const save = await call(ctx, "PATCH", "licensing.reanchor", {
+      value: "onActivation",
+    });
+    expect(save.status).toBe(422);
+    expect(save.json).toMatchObject({
+      reason: "invalid_expected_version",
+      fields: ["expectedVersion"],
+    });
+    const revert = await call(ctx, "DELETE", "licensing.reanchor", {});
+    expect(revert.status).toBe(422);
+    expect(revert.json.reason).toBe("invalid_expected_version");
+    // Nothing was written.
+    expect((await settings(ctx)).reanchor).toBe("never");
+    expect(await audits(ctx, "setting.claim")).toEqual([]);
+  });
+
+  it("two concurrent saves at the same version: one wins, the loser writes no audit row", async () => {
+    const ctx = await linked({ licensing: { anchorPolicy: "oldest" } }, AFTER);
+    const product = (await getProduct(ctx.db, SLUG))!;
+    const def = SETTINGS.get("licensing.anchorPolicy", "product")!;
+    // Both read version 1 before either batch runs.
+    const db = afterReads(ctx.db, 2);
+    const [a, b] = await Promise.all([
+      writeRowSetting(
+        db,
+        product,
+        def,
+        { value: "rank-first", expectedVersion: 1 },
+        ACTOR,
+        AFTER + 5,
+      ),
+      writeRowSetting(
+        db,
+        product,
+        def,
+        { value: "most-free-seats", expectedVersion: 1 },
+        ACTOR,
+        AFTER + 5,
+      ),
+    ]);
+    expect([a.ok, b.ok].sort()).toEqual([false, true]);
+    const loser = (a.ok ? b : a) as { status: number; reason: string };
+    expect(loser).toMatchObject({ status: 409, reason: "version_conflict" });
+    expect(await audits(ctx, "setting.claim")).toHaveLength(1);
+    expect((await settings(ctx)).anchorPolicy).toBe(
+      a.ok ? "rank-first" : "most-free-seats",
+    );
+  });
+
+  it("two concurrent reverts: one wins, the loser writes no audit row", async () => {
+    const ctx = await linked({ licensing: { anchorPolicy: "oldest" } }, AFTER);
+    await call(ctx, "PATCH", "licensing.anchorPolicy", {
+      value: "most-free-seats",
+      expectedVersion: 1,
+    });
+    const product = (await getProduct(ctx.db, SLUG))!;
+    const def = SETTINGS.get("licensing.anchorPolicy", "product")!;
+    const db = afterReads(ctx.db, 2);
+    const [a, b] = await Promise.all([
+      revertRowSetting(
+        db,
+        product,
+        def,
+        { expectedVersion: 2 },
+        ACTOR,
+        AFTER + 5,
+      ),
+      revertRowSetting(
+        db,
+        product,
+        def,
+        { expectedVersion: 2 },
+        ACTOR,
+        AFTER + 5,
+      ),
+    ]);
+    expect([a.ok, b.ok].sort()).toEqual([false, true]);
+    expect(a.ok ? b : a).toMatchObject({
+      status: 409,
+      reason: "version_conflict",
+    });
+    expect(await audits(ctx, "setting.revert")).toHaveLength(1);
+    expect(await rows(ctx)).toEqual([
+      {
+        key: "licensing.anchorPolicy",
+        value_json: '"oldest"',
+        source: "manifest",
+      },
+    ]);
+  });
+
   it("the pending billing-retry grace and keys this API does not serve", async () => {
     const ctx = await linked({ licensing: { dunningGraceDays: 5 } }, AFTER);
     // Stored from the manifest, but hidden until LX-23.
@@ -477,11 +621,15 @@ describe("the settings API refuses what the registry refuses", () => {
     ).not.toContain("licensing.dunningGraceDays");
     const write = await call(ctx, "PATCH", "licensing.dunningGraceDays", {
       value: 3,
+      expectedVersion: 1,
     });
     expect(write.status).toBe(409);
     expect(write.json.reason).toBe("setting_pending");
     for (const key of ["license.defaults.deviceLimit", "nope.missing"]) {
-      const res = await call(ctx, "PATCH", key, { value: 1 });
+      const res = await call(ctx, "PATCH", key, {
+        value: 1,
+        expectedVersion: 0,
+      });
       expect(res.status, key).toBe(404);
       expect(res.json.reason).toBe("unknown_setting");
     }
@@ -489,7 +637,9 @@ describe("the settings API refuses what the registry refuses", () => {
 
   it("Revert without a claim is a 409", async () => {
     const ctx = await linked({ licensing: { reanchor: "never" } }, AFTER);
-    const res = await call(ctx, "DELETE", "licensing.reanchor");
+    const res = await call(ctx, "DELETE", "licensing.reanchor", {
+      expectedVersion: 1,
+    });
     expect(res.status).toBe(409);
     expect(res.json.reason).toBe("not_claimed");
   });
@@ -499,6 +649,7 @@ describe("the settings API refuses what the registry refuses", () => {
     await ctx.db.run("UPDATE products SET system = 1 WHERE slug = ?", SLUG);
     const res = await call(ctx, "PATCH", "licensing.reanchor", {
       value: "never",
+      expectedVersion: 0,
     });
     expect(res.status).toBe(409);
     expect(res.json.reason).toBe("system_product");

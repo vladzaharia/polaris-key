@@ -32,6 +32,7 @@
 import type { Db, DbStatement } from "../db/types.js";
 import { randomId } from "./platform.js";
 import { getManifestSnapshot } from "./manifestSnapshot.js";
+import { onlyAfterAChange } from "./platformSettings.js";
 import {
   auditValue,
   claimsApply,
@@ -346,7 +347,8 @@ export type RowSettingRevertResult =
 
 export interface RowSettingWriteInput {
   value: unknown;
-  expectedVersion?: unknown;
+  /** Required: the row version the caller read (0 when there was no row). */
+  expectedVersion: unknown;
   reason?: unknown;
 }
 
@@ -414,7 +416,8 @@ function checkVersion(
   expected: unknown,
   view: RowSettingView,
 ): RowSettingRefusal | null {
-  if (expected === undefined) return null;
+  // Required, as platform settings require it: a write that names no version could overwrite a
+  // change it never saw.
   if (
     typeof expected !== "number" ||
     !Number.isSafeInteger(expected) ||
@@ -424,7 +427,8 @@ function checkVersion(
       ok: false,
       status: 422,
       reason: "invalid_expected_version",
-      message: "expectedVersion must be a non-negative integer",
+      message:
+        "expectedVersion is required: the version the setting was read at (0 when unset)",
     };
   if (expected !== view.version)
     return {
@@ -438,35 +442,18 @@ function checkVersion(
 }
 
 /**
- * Run a batch whose first statement is the guarded write; `false` when that write changed no row
- * (another writer got there first). An engine without per-statement counts runs it as given.
+ * Run a batch whose first statement is the guarded write and whose follow-ups are guarded on
+ * `changes()` (`onlyAfterAChange`, as platform settings do); `false` when that write changed no
+ * row (another writer got there first), in which case the follow-ups wrote nothing either. An
+ * engine without per-statement counts (a test double) runs the write, then the rest only if it
+ * changed a row.
  */
 async function guardedBatch(db: Db, stmts: DbStatement[]): Promise<boolean> {
-  if (!db.batchChanges) {
-    await db.batch(stmts);
-    return true;
-  }
-  const changes = await db.batchChanges(stmts);
-  return (changes[0] ?? 0) > 0;
-}
-
-/** An audit row written only if the row now holds `version`, so a lost race writes none. */
-function guardedAudit(
-  stmt: DbStatement,
-  product: string,
-  key: string,
-  condition: string,
-  params: (string | number | null)[],
-): DbStatement {
-  const m =
-    /^(\s*INSERT INTO audit[^(]*\([^)]*\))\s*VALUES\s*\(([^)]*)\)\s*$/s.exec(
-      stmt.sql,
-    );
-  if (!m) throw new Error("guardedAudit: not a single-row audit INSERT");
-  return {
-    sql: `${m[1]} SELECT ${m[2]} WHERE ${condition}`,
-    params: [...stmt.params, product, key, ...params],
-  };
+  if (db.batchChanges) return ((await db.batchChanges(stmts))[0] ?? 0) > 0;
+  const [first, ...rest] = stmts;
+  const changed = await db.runChanges(first!.sql, ...first!.params);
+  if (changed > 0) for (const st of rest) await db.run(st.sql, ...st.params);
+  return changed > 0;
 }
 
 /**
@@ -499,7 +486,6 @@ export async function writeRowSetting(
   if (conflict) return conflict;
 
   const json = JSON.stringify(input.value);
-  const version = (row?.version ?? 0) + 1;
   const write: DbStatement = row
     ? {
         sql: `UPDATE product_settings
@@ -533,7 +519,9 @@ export async function writeRowSetting(
         ],
       };
   const claimed = claimsApply(product);
-  const audit = guardedAudit(
+  // The audit row follows the write directly and inserts only if the write changed a row, so the
+  // loser of a race (whose guarded write matched nothing) records nothing.
+  const audit = onlyAfterAChange(
     stmtSettingAudit(
       product.slug,
       now,
@@ -543,11 +531,6 @@ export async function writeRowSetting(
       def.key,
       `${def.key} set in the console${claimed ? " (claimed from the manifest)" : ""}: ${auditValue(view.value)} → ${auditValue(input.value)}${reason ? ` (reason: ${reason})` : ""}`,
     ),
-    product.slug,
-    def.key,
-    `EXISTS (SELECT 1 FROM product_settings
-              WHERE product = ? AND key = ? AND version = ? AND source = 'console')`,
-    [version],
   );
   if (!(await guardedBatch(db, [write, audit]))) {
     const fresh = await readOne(db, product, def);
@@ -573,7 +556,7 @@ export async function revertRowSetting(
   db: Db,
   product: RowSettingProduct,
   def: SettingDef,
-  input: { expectedVersion?: unknown },
+  input: { expectedVersion: unknown },
   actor: AuditActor,
   now: number,
 ): Promise<RowSettingRevertResult> {
@@ -614,38 +597,21 @@ export async function revertRowSetting(
     }
   }
 
-  const stmts: DbStatement[] = [
-    {
-      sql: "DELETE FROM product_settings WHERE product = ? AND key = ? AND version = ? AND source = 'console'",
-      params: [product.slug, def.key, row.version],
-    },
-  ];
-  // Both follow-ups are guarded on the claim being gone, so a lost race (the DELETE matched no
-  // row because another write moved the version) writes nothing at all.
-  const claimGone = `NOT EXISTS (SELECT 1 FROM product_settings WHERE product = ? AND key = ?)`;
-  if (restore)
-    stmts.push({
-      sql: `INSERT INTO product_settings
-              (product, key, value_json, source, version, updated_at, updated_by, reason, expires_at)
-            SELECT ?, ?, ?, 'manifest', ?, ?, 'revert', NULL, NULL
-            WHERE ${claimGone}`,
-      params: [
-        product.slug,
-        def.key,
-        JSON.stringify(restore.value),
-        row.version + 1,
-        now,
-        product.slug,
-        def.key,
-      ],
-    });
   const after = restore
     ? auditValue(restore.value)
     : applied
       ? `${auditValue(rowSettingDefault(def, product))} (default)`
       : NEXT_RESYNC;
-  stmts.push(
-    guardedAudit(
+  // DELETE → audit → restore, each follow-up guarded on `changes()`: the audit row inserts only if
+  // the DELETE removed the claim, and the restore only if the audit row was written (and no row
+  // has appeared since). The loser of a race (two reverts, or a revert against a newer save) gets
+  // a 409 and writes nothing.
+  const stmts: DbStatement[] = [
+    {
+      sql: "DELETE FROM product_settings WHERE product = ? AND key = ? AND version = ? AND source = 'console'",
+      params: [product.slug, def.key, row.version],
+    },
+    onlyAfterAChange(
       stmtSettingAudit(
         product.slug,
         now,
@@ -657,13 +623,25 @@ export async function revertRowSetting(
           ? `Reverted ${def.key} to the manifest: ${auditValue(view.value)} → ${after}`
           : `Reset ${def.key} to its default: ${auditValue(view.value)} → ${after}`,
       ),
-      product.slug,
-      def.key,
-      `NOT EXISTS (SELECT 1 FROM product_settings
-                    WHERE product = ? AND key = ? AND source = 'console')`,
-      [],
     ),
-  );
+  ];
+  if (restore)
+    stmts.push({
+      sql: `INSERT INTO product_settings
+              (product, key, value_json, source, version, updated_at, updated_by, reason, expires_at)
+            SELECT ?, ?, ?, 'manifest', ?, ?, 'revert', NULL, NULL
+            WHERE changes() > 0
+              AND NOT EXISTS (SELECT 1 FROM product_settings WHERE product = ? AND key = ?)`,
+      params: [
+        product.slug,
+        def.key,
+        JSON.stringify(restore.value),
+        row.version + 1,
+        now,
+        product.slug,
+        def.key,
+      ],
+    });
   if (!(await guardedBatch(db, stmts))) {
     const fresh = await readOne(db, product, def);
     return {

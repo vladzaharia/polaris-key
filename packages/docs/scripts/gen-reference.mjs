@@ -77,8 +77,9 @@ function manifestValidationCodes() {
     ]);
   }
   // constrained/constrainedList/boundedText(errors, "<file>", value, <path>, "<code>", …, "<message>")
+  // The gaps stop at a `;` so a match cannot run past its own call into the next statement.
   const helperRe =
-    /(?:constrained|constrainedList|boundedText)\(\s*errors,\s*"(product|schema|release)",\s*[\s\S]*?,\s*(`[^`]*`|"[^"]*")\s*,\s*"([a-z_]+)",\s*[\s\S]*?(`[^`]*`|"(?:[^"\\]|\\.)*")\s*,?\s*\)/g;
+    /(?:constrained|constrainedList|boundedText)\(\s*errors,\s*"(product|schema|release)",\s*[^;]*?,\s*(`[^`]*`|"[^"]*")\s*,\s*"([a-z_]+)",\s*[^;]*?(`[^`]*`|"(?:[^"\\]|\\.)*")\s*,?\s*\)/g;
   for (const m of sources.flatMap((source) => [...source.matchAll(helperRe)])) {
     rows.push([
       `\`${m[3]}\``,

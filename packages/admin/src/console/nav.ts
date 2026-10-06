@@ -187,6 +187,12 @@ export interface NavPage {
   /** Sidebar and palette label, sentence case. */
   label: string;
   /**
+   * The palette's label when the sidebar's would be ambiguous there (the palette lists every
+   * section's pages in one list: License → Settings is "Licensing", Core's stays "Settings").
+   * Kept in the keywords, so typing the sidebar label still finds it.
+   */
+  paletteLabel?: string;
+  /**
    * The path after the scope prefix: `#/p/<slug>/<path>` for a product page (`""` is the product
    * root), `#/<path>` for a global page (`""` is Home).
    */
@@ -364,6 +370,7 @@ export const SECTIONS: NavSection[] = [
       {
         page: "license-settings",
         label: "Settings",
+        paletteLabel: "Licensing",
         path: "license/settings",
         icon: SlidersHorizontal,
         docs: "/docs/services/license/model/",

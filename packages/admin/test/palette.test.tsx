@@ -215,7 +215,7 @@ describe("the palette in the console", () => {
     boot("#/p/djdl", { services: ALL_ON });
     await screen.findByRole("navigation", { name: "Console" });
     let dialog = await openPalette();
-    // The product's Settings, not Platform → Settings nor License → Settings (LX-06).
+    // The product's Settings, not Platform → Settings nor License → Settings ("Licensing", LX-06).
     await userEvent.click(
       await within(dialog).findByRole("option", {
         name: /^Settings.*Core · DJDL/,

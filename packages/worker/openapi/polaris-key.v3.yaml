@@ -13317,9 +13317,10 @@ paths:
         LX-06 (notes/S-18 §4.5 model C, §4.7). Validates `value` against the registry entry and
         stores it as a console row: on a repo-linked product that claims the setting, and every
         later resync leaves it alone until Revert (audited `setting.claim`; `setting.update` on a
-        product no manifest feeds). A critical setting needs a `reason`. `expectedVersion` (the
-        row version the console read, 0 for none) turns a concurrent change into a `409
-        version_conflict` carrying the current value. `licensing.reanchor: onRefresh` is not a
+        product no manifest feeds). A critical setting needs a `reason`. `expectedVersion` is
+        required (the row version the console read, 0 for none; missing is `422
+        invalid_expected_version`), and a concurrent change is a `409 version_conflict` carrying
+        the current value. `licensing.reanchor: onRefresh` is not a
         value yet (LX-21), and `licensing.dunningGraceDays` is refused with `setting_pending`
         until LX-23. The system product is manifest-authoritative (`409 system_product`).
         Platform admins only; admin session cookie and CSRF header.
@@ -13379,17 +13380,19 @@ paths:
         re-applies the last applied manifest's value at once (`applied: true`); with no manifest
         snapshot yet the value returns at the next resync (`applied: false`, `message`). On a
         product no manifest feeds this resets the setting to its default. Audited
-        `setting.revert`. An optional `expectedVersion` body field guards against a concurrent
-        change. Platform admins only; admin session cookie and CSRF header.
+        `setting.revert`. The required `expectedVersion` body field (the version the console read)
+        guards against a concurrent change; missing is `422 invalid_expected_version`. Platform
+        admins only; admin session cookie and CSRF header.
       parameters:
         - { name: product, in: path, required: true, schema: { type: string } }
         - { name: key, in: path, required: true, schema: { type: string } }
       requestBody:
-        required: false
+        required: true
         content:
           application/json:
             schema:
               type: object
+              required: [expectedVersion]
               properties:
                 expectedVersion: { type: integer, minimum: 0 }
       responses:
@@ -13414,6 +13417,11 @@ paths:
               schema: { $ref: "#/components/schemas/AdminError" }
         "409":
           description: "`not_claimed`, `version_conflict`, `invalid_manifest_value`, `setting_pending` or `system_product`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "422":
+          description: "`invalid_expected_version`: the body names no (or no valid) `expectedVersion`."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
@@ -15775,7 +15783,7 @@ components:
         reason: { type: [string, "null"] }
     AdminProductSettingWrite:
       type: object
-      required: [value]
+      required: [value, expectedVersion]
       properties:
         value:
           description: A value of the setting's spec.

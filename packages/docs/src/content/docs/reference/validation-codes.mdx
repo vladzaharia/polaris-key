@@ -8,7 +8,7 @@ description: "Every error and warning validateManifestDocuments and validateInge
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 236 distinct emit sites.
+codes with their JSON-pointer paths. 235 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
@@ -97,7 +97,6 @@ the offending value, or the allowed set.
 | `invalid_licensing_dunning_grace_days` | error | product | `/licensing/dunningGraceDays` | licensing.dunningGraceDays must be an integer from 0 to 30. |
 | `invalid_licensing_entitlement_holder` | error | product | `/licensing/entitlementHolder` | licensing.entitlementHolder must be device or owner. |
 | `invalid_licensing_entitlement_model` | error | product | `/licensing/entitlementModel` | licensing.entitlementModel must be legacy or combined. |
-| `invalid_licensing_entitlement_model` | error | release | `/licensing/entitlementModel` | licensing.entitlementModel must be legacy or combined. |
 | `invalid_licensing_reanchor` | error | product | `/licensing/reanchor` | licensing.reanchor must be never or onActivation (onRefresh is not available yet). |
 | `invalid_licensing_refund_grace_hours` | error | product | `/licensing/refundGraceHours` | licensing.refundGraceHours must be an integer from 0 to 168. |
 | `invalid_listing` | error | distribution | `${at}` | $\{label\} $\{problem\}. |

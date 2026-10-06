@@ -2,8 +2,11 @@
  * The product settings admin API, first slice (LX-06; notes/S-18 §4.7, rule 10):
  *
  *   GET    /manage/api/products/<slug>/settings/effective[?area=<area>]
- *   PATCH  /manage/api/products/<slug>/settings/<key>   { value, expectedVersion?, reason? }
- *   DELETE /manage/api/products/<slug>/settings/<key>   { expectedVersion? }
+ *   PATCH  /manage/api/products/<slug>/settings/<key>   { value, expectedVersion, reason? }
+ *   DELETE /manage/api/products/<slug>/settings/<key>   { expectedVersion }
+ *
+ * `expectedVersion` is required on both, as on platform settings (`platformSettings.ts`): the row
+ * version the console read, 0 when there was no row.
  *
  * The paths and bodies are S-18 §4.7's generic ones, so nothing here needs an alias later. This
  * slice serves the ROW-BACKED claimable settings only (`core/rowSettings.ts`: `licensing.*` and
@@ -134,6 +137,16 @@ function refusal(r: RowSettingRefusal, product: ProductRow): Response {
   });
 }
 
+/** The 422 for a write that names no `expectedVersion` (`platformSettings.ts` refuses the same). */
+function missingVersion(): Response {
+  return err(
+    422,
+    ErrorCode.BadRequest,
+    "expectedVersion is required: the version the setting was read at (0 when unset)",
+    { reason: "invalid_expected_version", fields: ["expectedVersion"] },
+  );
+}
+
 export async function handleProductSettings(
   req: Request,
   db: Db,
@@ -184,6 +197,7 @@ export async function handleProductSettings(
         reason: "invalid_value",
         fields: ["value"],
       });
+    if (body.expectedVersion === undefined) return missingVersion();
     const res = await writeRowSetting(
       db,
       product,
@@ -206,6 +220,7 @@ export async function handleProductSettings(
 
   if (req.method === "DELETE") {
     const body = await readBody(req);
+    if (body.expectedVersion === undefined) return missingVersion();
     const res = await revertRowSetting(
       db,
       product,
