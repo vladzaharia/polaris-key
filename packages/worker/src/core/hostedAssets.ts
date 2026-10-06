@@ -66,7 +66,14 @@
  * as one buffer. Video and release-file slots are streamed into R2 without buffering, and so
  * need the hash and the length BEFORE the put (the key is named by the hash): a streamed ingest
  * without an expected SHA-256 and a known length is refused as `unverifiable`. Every release
- * file has one (GitHub's `digest` and the descriptor's `sha256`, S-20 §5).
+ * file has one (GitHub's `digest` and the descriptor's `sha256`, S-20 §5). A pull may name the
+ * length it expects (`expectedSize`): a source that declares another `Content-Length` is refused
+ * as `size-mismatch` before a byte is read, and one that declares none is held to it.
+ *
+ * A release file's pull (HA-08, `services/release/mirror.ts`) gets a longer time budget than an
+ * image's, scaled by its size (`releaseFileTimeoutMs`, at most `SAFE_FETCH_FILE_TIMEOUT_MS`): 30
+ * seconds cannot move a gigabyte. Its caller may also narrow the hosts a redirect may reach
+ * (`allowHost`, a GitHub asset's storage hosts), on top of the guard.
  */
 
 import type { Db, DbStatement } from "../db/types.js";
@@ -85,6 +92,8 @@ import {
   bodyFailureReason,
   cappedStream,
   safeFetch,
+  SAFE_FETCH_FILE_TIMEOUT_MS,
+  SAFE_FETCH_TIMEOUT_MS,
   type FetchImpl,
   type SafeFetchReason,
 } from "./safeFetch.js";
@@ -124,6 +133,23 @@ export const SLOT_CLASSES = {
 
 /** The largest slot whose bytes are read into memory; anything larger is streamed. */
 const BUFFER_MAX = 32 * MiB;
+
+/** The slowest transfer a release file's time budget allows for (10 MiB/s). */
+const RELEASE_FILE_MIN_BYTES_PER_SECOND = 10 * MiB;
+
+/**
+ * The time budget of a release file's pull (HA-08): the ordinary 30 s plus a second per 10 MiB of
+ * the file, at most `SAFE_FETCH_FILE_TIMEOUT_MS` (which an unknown size gets).
+ */
+export function releaseFileTimeoutMs(size: number | null): number {
+  if (size === null || !Number.isSafeInteger(size) || size < 0)
+    return SAFE_FETCH_FILE_TIMEOUT_MS;
+  return Math.min(
+    SAFE_FETCH_TIMEOUT_MS +
+      Math.ceil((size / RELEASE_FILE_MIN_BYTES_PER_SECOND) * 1000),
+    SAFE_FETCH_FILE_TIMEOUT_MS,
+  );
+}
 
 const PRODUCT_RE = /^[a-z0-9-]{1,64}$/;
 const LOCALE_RE = /^(?:[a-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,3})?$/;
@@ -219,6 +245,14 @@ export type IngestInput =
       headers?: Record<string, string>;
       /** Pull even when the source's validator says the stored copy is current. */
       force?: boolean;
+      /**
+       * The length the bytes must have, when the caller knows it (a release file's descriptor or
+       * GitHub size). A source declaring another `Content-Length` is refused unread
+       * (`size-mismatch`); one declaring none is held to this length.
+       */
+      expectedSize?: number | null;
+      /** A host rule on top of the guard, for every hop (`safeFetch`'s `allowHost`): only narrows. */
+      allowHost?: (host: string) => boolean;
     })
   | (IngestCommon & {
       kind: "stream";
@@ -1038,6 +1072,13 @@ export async function ingest(
   const expected = input.expectedSha256?.toLowerCase() ?? null;
   if (expected !== null && !/^[0-9a-f]{64}$/.test(expected))
     throw new HostedAssetError("expectedSha256 must be 64 hex characters");
+  const expectedSize =
+    input.kind === "pull" ? (input.expectedSize ?? null) : null;
+  if (
+    expectedSize !== null &&
+    (!Number.isSafeInteger(expectedSize) || expectedSize < 0)
+  )
+    throw new HostedAssetError("expectedSize must be a non-negative integer");
   const bucket = ctx.env.BLOBS;
   if (!bucket) {
     if (input.kind === "stream")
@@ -1072,6 +1113,10 @@ export async function ingest(
     const res = await safeFetch(input.url, {
       maxBytes: cls.maxBytes,
       etag: current,
+      ...(cls.name === "release-file"
+        ? { timeoutMs: releaseFileTimeoutMs(expectedSize) }
+        : {}),
+      ...(input.allowHost ? { allowHost: input.allowHost } : {}),
       headers: {
         "user-agent": PULL_USER_AGENT,
         ...(cls.accept === "image"
@@ -1100,8 +1145,25 @@ export async function ingest(
       ]);
       return { ok: true, status: "unchanged", sha256: prev?.sha256 ?? null };
     }
+    if (
+      expectedSize !== null &&
+      res.length !== null &&
+      res.length !== expectedSize
+    ) {
+      await res.body.cancel().catch(() => undefined);
+      return fail(
+        ctx,
+        product,
+        slot,
+        locale,
+        prev,
+        source,
+        actor,
+        "size-mismatch",
+      );
+    }
     body = res.body;
-    declared = res.length;
+    declared = res.length ?? expectedSize;
     source.etag = res.etag;
   } else {
     if (!Number.isSafeInteger(input.size) || input.size < 0)

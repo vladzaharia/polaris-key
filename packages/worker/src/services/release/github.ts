@@ -577,6 +577,74 @@ export async function resolveDefaultBranchHead(
   return { sha };
 }
 
+/** The REST URL of one release asset: its metadata as JSON, its bytes as `octet-stream`. */
+export function releaseAssetUrl(
+  owner: string,
+  repo: string,
+  assetId: number,
+): string {
+  return `${GITHUB_API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/releases/assets/${assetId}`;
+}
+
+/** An asset's metadata is a few hundred bytes of JSON; this bounds a pathological answer. */
+const MAX_ASSET_METADATA_BYTES = 64 * 1024;
+
+/**
+ * One release asset's metadata (`GET /repos/{o}/{r}/releases/assets/{id}`, JSON): its name, size
+ * and GitHub's own `digest` of the bytes (HA-08 verifies a mirrored copy against it). `null` on
+ * 404 (the asset was deleted), `NotFoundError` on any other refusal or an answer that is not an
+ * asset, `UpstreamRateLimitedError` on quota.
+ */
+export async function getReleaseAsset(
+  token: string,
+  owner: string,
+  repo: string,
+  assetId: number,
+  fetchImpl: FetchImpl = fetch,
+): Promise<ReleaseAsset | null> {
+  const res = await fetchImpl(releaseAssetUrl(owner, repo, assetId), {
+    headers: apiHeaders(token, "application/vnd.github+json"),
+    redirect: "manual",
+  });
+  throwIfRateLimited(res);
+  if (res.status === 404) {
+    await res.body?.cancel().catch(() => undefined);
+    return null;
+  }
+  if (!res.ok) {
+    await res.body?.cancel().catch(() => undefined);
+    throw new NotFoundError(`asset lookup failed: ${res.status}`);
+  }
+  let raw: unknown;
+  try {
+    raw = JSON.parse(
+      await readCapped(res, MAX_ASSET_METADATA_BYTES, "asset metadata"),
+    );
+  } catch (err) {
+    if (err instanceof NotFoundError) throw err;
+    throw new NotFoundError("asset lookup: not JSON");
+  }
+  const a = raw as Partial<ReleaseAsset> | null;
+  if (
+    !a ||
+    typeof a !== "object" ||
+    a.id !== assetId ||
+    typeof a.name !== "string" ||
+    !Number.isSafeInteger(a.size) ||
+    (a.size as number) < 0
+  )
+    throw new NotFoundError("asset lookup: unexpected shape");
+  return {
+    id: a.id,
+    name: a.name,
+    size: a.size as number,
+    content_type: typeof a.content_type === "string" ? a.content_type : "",
+    browser_download_url:
+      typeof a.browser_download_url === "string" ? a.browser_download_url : "",
+    digest: typeof a.digest === "string" ? a.digest : null,
+  };
+}
+
 /** Fetch a release asset's raw bytes, following (and SSRF-guarding) the storage redirect. */
 async function fetchAsset(
   token: string,

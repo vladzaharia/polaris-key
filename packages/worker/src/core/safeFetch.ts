@@ -27,8 +27,9 @@
  *
  *   - `redirect: "manual"`; at most `SAFE_FETCH_MAX_REDIRECTS` hops, each re-guarded before it
  *     is dialled. An `Authorization` header goes to the FIRST hop only, never to a `Location`.
- *   - One timeout (`SAFE_FETCH_TIMEOUT_MS` unless the caller sets a shorter one) covering every
- *     hop, the headers and the body.
+ *   - One timeout covering every hop, the headers and the body: `SAFE_FETCH_TIMEOUT_MS`, unless
+ *     the caller sets a shorter one, or, for a release file (HA-08, a pull of up to R2's
+ *     4.995 GiB single-put limit), a longer one up to `SAFE_FETCH_FILE_TIMEOUT_MS`.
  *   - A byte cap: a declared `Content-Length` over it is refused before the body is read, and the
  *     body the caller receives is counted and errors the moment it passes the cap, whatever the
  *     header said.
@@ -42,6 +43,12 @@
 export const SAFE_FETCH_MAX_REDIRECTS = 3;
 /** The budget for the whole fetch: every hop, the headers and the body. */
 export const SAFE_FETCH_TIMEOUT_MS = 30_000;
+/**
+ * The longest budget a caller may ask for: a release file's pull (HA-08), which `ingest` scales
+ * with the file's size (`releaseFileTimeoutMs`). It stays inside a queue consumer's 15-minute wall
+ * clock, and the byte cap still bounds what any one fetch can read.
+ */
+export const SAFE_FETCH_FILE_TIMEOUT_MS = 10 * 60_000;
 /** The longest URL dialled. */
 export const SAFE_FETCH_MAX_URL = 2048;
 
@@ -166,7 +173,10 @@ export type FetchImpl = (
 export interface SafeFetchOptions {
   /** The byte cap on the body (declared and streamed). */
   maxBytes: number;
-  /** At most `SAFE_FETCH_TIMEOUT_MS`; a shorter budget is allowed, a longer one is clamped. */
+  /**
+   * `SAFE_FETCH_TIMEOUT_MS` by default. A shorter budget is allowed; a longer one is clamped to
+   * `SAFE_FETCH_FILE_TIMEOUT_MS`, and only a release file's pull asks for one (HA-08).
+   */
   timeoutMs?: number;
   /** Request headers. `authorization` is sent to the first hop only. */
   headers?: Record<string, string>;
@@ -236,7 +246,7 @@ export async function safeFetch(
   const fetchImpl = opts.fetchImpl ?? fetch;
   const timeoutMs = Math.min(
     opts.timeoutMs ?? SAFE_FETCH_TIMEOUT_MS,
-    SAFE_FETCH_TIMEOUT_MS,
+    SAFE_FETCH_FILE_TIMEOUT_MS,
   );
   const signal = AbortSignal.timeout(timeoutMs);
   let current = url;
