@@ -68,8 +68,9 @@ export interface Env {
   BLOBS?: R2Bucket;
   /**
    * The Cloudflare Images binding (S-20 §6.3 step 6, §6.6). OPTIONAL: `core/hostedAssets.ts` reads
-   * an ingested image's dimensions with `.info()` when it is bound, and records none otherwise.
-   * HA-03 binds it in `wrangler.toml` and builds the variant ladder with it.
+   * an ingested image's dimensions with `.info()` and builds the WebP variant ladder with it at
+   * ingest (HA-03). Unbound (env.test), or out of transformations (9422): no dimensions, no
+   * variants, and the ingest still succeeds. Bound in `wrangler.toml` for prod, staging and dev.
    * @inventory binding delivery
    */
   IMAGES?: ImagesBinding;
@@ -170,6 +171,16 @@ export interface Env {
    * @inventory var delivery
    */
   PKG_ORIGIN?: string;
+  /**
+   * The image host's origin, e.g. `https://img.plrs.im` (HA-02, notes/S-20 §6.5). A request whose
+   * host is this origin's host reaches ONLY the hosted-image routes (`core/imgHost.ts`): the
+   * content-addressed `/<product>/a/<sha256>[/<w>.webp]` and the stable aliases `/<product>/icon`,
+   * `/<product>/header` and `/<product>/screenshots/<n>`; everything else answers not-found.
+   * Unset (or unparsable, or equal to the bytes or registry host) ⇒ there is no image host and
+   * routing is byte-identical to a Worker without it. A `[vars]` value, public, per environment.
+   * @inventory var delivery
+   */
+  IMG_ORIGIN?: string;
   /**
    * The console host's origin, e.g. `https://key.plrs.im` (P2b-06). The public download page on
    * the bytes host links the storefront feeds, which are served here, through it. Unset (or

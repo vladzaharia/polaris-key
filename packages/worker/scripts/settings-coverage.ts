@@ -260,11 +260,16 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
     covers: { inventoryKinds: ["secret"] },
   },
   {
-    thing: "Origins (console, blob and package hosts)",
+    thing: "Origins (console, blob, package and image hosts)",
     reason: "The S-13 §8.2 deny-list: an origin is deploy-time forever.",
     shows: "Platform → Settings (the read-only inventory)",
     covers: {
-      ids: ["env:CONSOLE_ORIGIN", "env:BLOB_ORIGIN", "env:PKG_ORIGIN"],
+      ids: [
+        "env:CONSOLE_ORIGIN",
+        "env:BLOB_ORIGIN",
+        "env:PKG_ORIGIN",
+        "env:IMG_ORIGIN",
+      ],
     },
   },
   {
