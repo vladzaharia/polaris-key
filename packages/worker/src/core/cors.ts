@@ -96,7 +96,8 @@ export const CORS_MAX_AGE = "600";
  * (`distribution/rollouts/{outlet}/{channel}[/{verb}]`) and its F-Droid route
  * (`distribution/feeds/fdroid/{channel}`) — which a CI job calls with a `pkeyci_`
  * bearer and no browser page ever should — and the store webhooks
- * (`distribution/hooks/asc`, P5-02), which only the store's servers call.
+ * (`distribution/hooks/asc`, P5-02; `distribution/hooks/app-store` and
+ * `distribution/hooks/play-rtdn`, P6-01), which only the store's servers call.
  *
  * The permanent aliases resolve to the same `{kind:"service"}` route as their targets
  * (`router.ts`), so they are covered exactly when their targets are.
@@ -138,6 +139,11 @@ export const CORS_SERVICE_PATHS: readonly string[] = [
   // P2b-06: the download page's model, for SDK "get it here" prompts and web pages. The page
   // itself (`distribution/download`, `/<p>`) is HTML on the bytes host and never answers CORS.
   "distribution/download.json",
+  // SP-16: the commerce bridge (P6-01) for a bearer-mode page. Both take the device bearer
+  // (never ambient), so a listed origin reaches only what that page's own device token already
+  // can (THREAT-MODEL, the commerce bridge's browser-pages note). The store hooks beside them stay uncovered.
+  "distribution/commerce/binding",
+  "distribution/commerce/claim",
   "update/appcast.xml",
   "update/{channel}/appcast.xml",
   "update/{channel}/feed.jws",

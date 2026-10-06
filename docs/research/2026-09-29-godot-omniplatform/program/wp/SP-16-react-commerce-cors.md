@@ -55,11 +55,11 @@ The bearer engine already speaks both routes and the desktop adapter already inv
 
 ## Acceptance criteria
 
-- [ ] A workerd test proves the preflight and the response headers for an allowed origin and their absence for another.
-- [ ] `@pkey-feature commerce.receipt` tests in `packages/sdk-react` replay the commerce transcript in bearer mode and through the bridge.
-- [ ] Every row this package owns reads `implemented` in its manifest, with `wp` and `unowned` removed and the note rewritten to say what was built (or a typed `except` where the registry allows an N/A for one runtime).
-- [ ] `mise exec node@22 -- pnpm parity:check` passes, and the generated parity page is current (`pnpm --filter @polaris-key/docs gen -- --check`).
-- [ ] The green gate passes (`AGENTS.md`), scoped to the SDKs this package touches.
+- [x] A workerd test proves the preflight and the response headers for an allowed origin and their absence for another.
+- [x] `@pkey-feature commerce.receipt` tests in `packages/sdk-react` replay the commerce transcript in bearer mode and through the bridge.
+- [x] Every row this package owns reads `implemented` in its manifest, with `wp` and `unowned` removed and the note rewritten to say what was built (or a typed `except` where the registry allows an N/A for one runtime).
+- [x] `mise exec node@22 -- pnpm parity:check` passes, and the generated parity page is current (`pnpm --filter @polaris-key/docs gen -- --check`).
+- [x] The green gate passes (`AGENTS.md`), scoped to the SDKs this package touches.
 
 ## Verify
 

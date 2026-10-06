@@ -1644,9 +1644,9 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
       { runtime: "desktop-bridge", reason: "runtime" },
     ],
   },
-  "commerce.receipt": { status: "planned", service: "license", na: [] },
+  "commerce.receipt": { status: "implemented", service: "license", na: [] },
 };
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "38e25205180e65dc5ff87bd2ad46eecfe3cae2c2104d87ee90dd758c6e48f82c";
+  "a37296a4bac0f4a1e945a081999bc8e91442138f3384ae4a3a2ad54016801d72";
