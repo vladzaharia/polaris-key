@@ -38,7 +38,7 @@ describe("OneTimeSecretPanel close guard", () => {
     await user.keyboard("{Escape}");
     expect(screen.getByTestId("state").textContent).toBe("open");
     expect(screen.getByRole("alert").textContent).toContain(
-      "Close without copying? The license key cannot be shown again.",
+      "Close without copying? It can't be shown again.",
     );
     await user.click(screen.getByRole("button", { name: "Keep it open" }));
     expect(screen.queryByRole("alert")).toBeNull();
@@ -76,9 +76,7 @@ describe("OneTimeSecretPanel close guard", () => {
   it("ticking the acknowledgement also unlocks Done", async () => {
     const user = userEvent.setup();
     render(<Harness />);
-    await user.click(
-      await screen.findByLabelText("I've stored this license key"),
-    );
+    await user.click(await screen.findByLabelText("I've stored it"));
     expect(
       screen
         .getByRole("button", { name: "Done" })

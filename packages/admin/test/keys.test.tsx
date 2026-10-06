@@ -175,6 +175,26 @@ describe("Keys & secrets → Secrets", () => {
     ).toBe("OIDC_CLIENT_SECRET");
   });
 
+  it("opens Set secret with the name from ?secret= (C-7)", async () => {
+    renderAt(
+      "#/p/djdl/keys?secret=OIDC_CLIENT_SECRET",
+      <KeysPage slug="djdl" />,
+    );
+    const drawer = await screen.findByRole("dialog", {
+      name: "Set OIDC_CLIENT_SECRET",
+    });
+    expect(
+      (within(drawer).getByLabelText(/^Name/) as HTMLInputElement).value,
+    ).toBe("OIDC_CLIENT_SECRET");
+    // The name is given, so first focus is on the value.
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(drawer).getByLabelText(/^Value/),
+      ),
+    );
+    expect(within(drawer).getByText("Never shown again.")).toBeTruthy();
+  });
+
   it("sets a write-only secret, sending no usage by default", async () => {
     const user = userEvent.setup();
     fns.putProductSecret.mockResolvedValue({ ok: true, name: "TOKEN" });

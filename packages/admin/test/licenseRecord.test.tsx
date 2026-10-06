@@ -252,6 +252,26 @@ describe("license record: header and tabs", () => {
     );
   });
 
+  it("asks before Escape drops unsaved holder changes (C-20)", async () => {
+    bootLicense(REC);
+    await header();
+    await userEvent.click(
+      screen.getAllByRole("button", { name: "Edit holder…" })[0]!,
+    );
+    const dialog = await screen.findByRole("dialog", { name: "Edit holder" });
+    await userEvent.type(within(dialog).getByLabelText(/^Name/), " Jr");
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    expect((await within(dialog).findByRole("alert")).textContent).toContain(
+      "Discard your changes?",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Discard" }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Edit holder" })).toBeNull(),
+    );
+  });
+
   it("links to this license's activity (LDT-17)", async () => {
     bootLicense(REC);
     await header();
@@ -730,6 +750,32 @@ describe("license record: offline bundle", () => {
     ).toBeTruthy();
     const download = within(dialog).getByRole("button", { name: /Download/ });
     expect(() => download.click()).not.toThrow();
+  });
+
+  it("keeps the minted bundle on Escape until it is saved (C-21)", async () => {
+    const { dialog } = await openBundle();
+    await userEvent.type(within(dialog).getByLabelText(/^Device ID/), CODE);
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Mint bundle" }),
+    );
+    await within(dialog).findByText("01JBUNDLEID0000000000000A");
+    await waitFor(() =>
+      expect(document.activeElement?.textContent).toBe("Bundle minted"),
+    );
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    expect(
+      await within(dialog).findByText(/Close without copying\?/),
+    ).toBeTruthy();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Keep it open" }),
+    );
+    await userEvent.click(within(dialog).getByLabelText(/I've stored it/));
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "Bundle minted" }),
+      ).toBeNull(),
+    );
   });
 
   it("refuses a request code that is not 32 characters", async () => {

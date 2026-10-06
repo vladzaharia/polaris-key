@@ -3,6 +3,8 @@
  * §6.5.3): one pane, not three tabs (TIR-8). Numbers are nullable (blank = the product default,
  * sent as `null` on a patch: A-3, TIR-1), checked on the client with min ≤ max (TIR-3); "No
  * profile" is `null`, never `""` (TIR-4); the one-profile-per-tier rule is said (TIR-7).
+ * Creating, the fields mark the surrounding drawer as unsaved once typed in, so Escape, Close and
+ * Back ask before the draft goes (FLOWS.md C-29).
  */
 
 import * as React from "react";
@@ -10,7 +12,8 @@ import type { TierBody, TierSummary } from "../../../api.js";
 import { useProduct } from "../../data/hooks.js";
 import { versionRangeError } from "../../../lib/version.js";
 import { ChannelPicker } from "../../../ui/ChannelPicker.js";
-import { diffValues, FormField } from "../../../ui/form.js";
+import { useDismissGuard } from "../../../ui/Dialog.js";
+import { diffValues, FormField, useFormContext } from "../../../ui/form.js";
 import { Input } from "../../../ui/Input.js";
 import { NumberInput } from "../../../ui/NumberInput.js";
 import { Select } from "../../../ui/Select.js";
@@ -142,6 +145,8 @@ export function TierFields({
   const manual = useManualChannels(slug);
   const product = useProduct(slug).data;
   const profiles = profilesQ.data?.profiles ?? [];
+  const form = useFormContext<TierValues>();
+  useDismissGuard(creating && !!form?.isDirty && !form.isSubmitting);
   return (
     <div className="grid gap-5 sm:grid-cols-2">
       {creating ? (
