@@ -814,6 +814,22 @@ else:
 - Options: `timeout` (seconds, default 600) and `progress` (`Callable(received, total)`). The
   updater's sidecar and Android APK paths use the same download.
 
+**Native updater feeds (SP-26, `update.feeds`).** `update.feed_url(kind, opts)` answers the URL
+a native updater polls, expanded from this session's discovery `update.endpoints` templates (no
+host is built client-side): `kind` is `appcast`, `winsparkle`, `velopack`, `appInstaller` or
+`zsync`, and `opts` takes `channel` (default: this build's, else `stable`), `velopack_channel`,
+`build_id` and `arch`.
+
+- An alias is rewritten first (`staging` reads the `beta` feed, `latest` the `stable` one), and
+  every value is encoded as encodeURIComponent. The channel name is not validated here.
+- `velopack` with a `velopack_channel` (`win-x64`) is that `releases.<channel>.json` file; without
+  one it is the feed directory Velopack's UpdateManager opens. `zsync` needs `build_id`.
+- The answer is ok with `detail = {kind, url}`, or the typed `unsupported` (reason `product`)
+  before `discover()`, with Update off, or when the document has no template for the kind (a
+  Worker before P3-09). An unknown kind or a missing `build_id` is `invalid-options`.
+- `PolarisKey.update.updater.feed_url(name)` is the same answer as a plain URL ("" on a refusal);
+  the native bridges read their feeds through it.
+
 ## Updates by outlet (P3-10)
 
 ```gdscript

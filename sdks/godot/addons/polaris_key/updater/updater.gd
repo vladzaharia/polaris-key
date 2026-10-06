@@ -311,24 +311,18 @@ func _configure_bridge(b: PKeyNativeBridge) -> void:
 
 
 ## The feed a native updater reads, from this session's discovery (P3-09's routes) for this
-## build's channel; "" without discovery.
-func feed_url(name: String) -> String:
-	var c := core()
-	if c == null or c.discovery_manifest == null:
-		return ""
-	match name:
-		"sparkle":
-			return PKeyDiscovery.appcast_url_from(c.discovery_manifest, c.channel, PKeyHeaders.arch())
-		"winsparkle":
-			var t := PKeyUpdate._endpoint(c.discovery_manifest, "update", "winsparkle")
-			return PKeyUpdate._expand(c, t, "channel", c.channel) if t != "" else ""
-		"velopack":
-			var t := PKeyUpdate._endpoint(c.discovery_manifest, "update", "velopack")
-			var at := t.find("releases.")
-			if t == "" or at < 0:
-				return ""
-			return PKeyUpdate._expand(c, t.substr(0, at), "channel", c.channel)
-	return ""
+## build's channel: PolarisKey.update.feed_url (PKeyUpdate.feed_url_for) as a plain URL, "" where
+## that answers unsupported or invalid-options. `name` is a bridge name (`sparkle` is the appcast
+## for this build's arch) or a feed kind (PKeyUpdate.FEED_KINDS); `opts` as feed_url's.
+func feed_url(name: String, opts := {}) -> String:
+	var kind := name
+	var o: Dictionary = opts.duplicate()
+	if name == "sparkle":
+		kind = "appcast"
+		if not o.has("arch"):
+			o["arch"] = PKeyHeaders.arch()
+	var r := PKeyUpdate.feed_url_for(core(), kind, o)
+	return String(r.detail["url"]) if r.ok else ""
 
 
 ## The download URL of build `build_id` of release `version` (PKeyRelease.builds_url, the same

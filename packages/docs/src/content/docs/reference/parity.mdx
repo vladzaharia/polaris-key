@@ -23,7 +23,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | React | `web`, `desktop-bridge` | 66 | 12 | 4 | 0 |
 | Python | `python` | 70 | 7 | 5 | 0 |
 | Swift | `macos`, `ios` | 72 | 6 | 4 | 0 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 74 | 2 | 6 | 0 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 75 | 2 | 5 | 0 |
 | Kotlin | `android`, `jvm` | 73 | 6 | 3 | 0 |
 
 ## Core
@@ -95,7 +95,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `release.distribution` | The distribution download model: platforms and the current build | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `update.check` | Today's version check | transcripts (not recorded) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `update.feed` | Verify pkey-feed+jws: freshness, seq | `cases.json` `feedCases` + transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `update.feeds` | Native updater feed URLs: appcast, WinSparkle, Velopack, App Installer, zsync | `feed-url-matrix.json` | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | planned (SP-26) | ✓ | web: runtime |
+| `update.feeds` | Native updater feed URLs: appcast, WinSparkle, Velopack, App Installer, zsync | `feed-url-matrix.json` | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | ✓ | ✓ | web: runtime |
 | `update.decide` | The update decision | `update-matrix.json` + transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `update.content` | The content decision: feed pack sets, floors and revocations, packs and prestage | `update-matrix.json` `contentRows` + `cases.json` `feedContentCases` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `update.driver` | Hand off to the native updater, or a store link | device tests | ✓ | planned (SP-15) | ✓ | ✓; N/A (ios: outlet) | ✓; N/A (ios: outlet) | ✓ | ios: outlet; jvm: runtime |
