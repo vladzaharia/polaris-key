@@ -127,7 +127,11 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
  * origin with the admin session cookie.
  */
 const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
-  adminApi: [["/manage/api/github/repositories", ["get"]]],
+  adminApi: [
+    ["/manage/api/github/repositories", ["get"]],
+    // Home's product cards: one fact per service for every product (A-8, sliced).
+    ["/manage/api/summary", ["get"]],
+  ],
   // `/manage/api/products[/…]` routes as its own kind (the product registry), narrative too.
   products: [
     // The registry read, with the console logo's `presentation.icon` (console product card).

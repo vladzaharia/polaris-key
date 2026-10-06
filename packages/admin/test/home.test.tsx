@@ -306,6 +306,116 @@ describe("Home", () => {
     expect(rows(card("DJDL"))).toHaveLength(0);
   });
 
+  it("shows each service's fact from the summary read", async () => {
+    boot("#/", {
+      extra: {
+        ...registry(),
+        "/manage/api/summary": {
+          products: {
+            djdl: {
+              license: { active: 1284 },
+              release: { version: "2.4.0", channel: "stable" },
+              distribution: { storefronts: 3 },
+              identity: { users: 312 },
+            },
+            acme: { license: { active: 1 }, release: null },
+          },
+        },
+      },
+    });
+    await home();
+    await waitFor(() =>
+      expect(row(card("DJDL"), "license").textContent).toBe(
+        "License1,284 active",
+      ),
+    );
+    const acme = card("Acme");
+    expect(row(acme, "license").textContent).toBe("License1 active");
+    expect(row(acme, "release").textContent).toBe("ReleaseNo releases");
+    // The seven-service card shows its three rows' facts; an issue still wins over a fact.
+    const djdl = card("DJDL");
+    expect(row(djdl, "config").textContent).toContain("Needs approval");
+    expect(row(djdl, "identity").textContent).toContain("Secret missing");
+  });
+
+  it("names the release version and its channel, and counts storefronts and users", async () => {
+    const quiet = {
+      ...productRow(
+        "djdl",
+        "DJDL",
+        only("release", "distribution", "identity"),
+      ),
+    };
+    boot("#/", {
+      extra: {
+        "/manage/api/products": { products: [quiet] },
+        "/manage/api/summary": {
+          products: {
+            djdl: {
+              release: { version: "2.4.0", channel: "beta" },
+              distribution: { storefronts: 1 },
+              identity: { users: 312 },
+            },
+          },
+        },
+      },
+    });
+    await home();
+    await waitFor(() =>
+      expect(row(card("DJDL"), "release").textContent).toBe(
+        "Release2.4.0 · beta",
+      ),
+    );
+    expect(row(card("DJDL"), "distribution").textContent).toBe(
+      "Distribution1 storefront",
+    );
+    expect(row(card("DJDL"), "identity").textContent).toBe("Identity312 users");
+  });
+
+  it("while the facts load, each is a skeleton and the card is otherwise complete", async () => {
+    boot("#/", {
+      extra: { ...registry(), "/manage/api/summary": PENDING },
+    });
+    await home();
+    await waitFor(() => expect(cards()).toHaveLength(2));
+    const acme = card("Acme");
+    expect(
+      row(acme, "license").querySelector("[data-fact-skeleton]"),
+    ).not.toBeNull();
+    expect(
+      row(acme, "release").querySelector("[data-fact-skeleton]"),
+    ).not.toBeNull();
+    // Config's fact rides /me, so it never waits on the summary.
+    expect(row(acme, "config").textContent).toBe("ConfigSchema v1");
+    expect(
+      within(acme)
+        .getByRole("list", { name: "Services" })
+        .getAttribute("aria-busy"),
+    ).toBe("true");
+    expect(within(acme).getByRole("link", { name: "Acme" })).toBeTruthy();
+  });
+
+  it("renders the card fully, without facts, when the summary read fails", async () => {
+    boot("#/", {
+      extra: {
+        ...registry(),
+        "/manage/api/summary": new Response(
+          JSON.stringify({ error: "internal" }),
+          { status: 500, headers: { "content-type": "application/json" } },
+        ),
+      },
+    });
+    await home();
+    await waitFor(() => expect(cards()).toHaveLength(2));
+    const acme = card("Acme");
+    await waitFor(() =>
+      expect(acme.querySelector("[data-fact-skeleton]")).toBeNull(),
+    );
+    expect(row(acme, "license").textContent).toBe("License");
+    expect(row(acme, "config").textContent).toBe("ConfigSchema v1");
+    expect(within(main()).queryByRole("alert")).toBeNull();
+  });
+
   it("says when a repository-linked product last synced, and when a manual one changed", async () => {
     boot("#/", { extra: registry() });
     await home();

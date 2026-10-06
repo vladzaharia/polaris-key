@@ -179,6 +179,35 @@ const ROUTES: Record<string, unknown> = {
   [`${P}/config/catalog/usage`]: { keys: {} },
   "/manage/api/me": ME,
   "/manage/api/products": { products: PRODUCTS },
+  // Home's product-card facts (`GET /summary`), long figures included.
+  "/manage/api/summary": {
+    products: {
+      djdl: {
+        license: { active: 1_284 },
+        release: { version: "12.40.3-beta.17", channel: "nightly-canary" },
+        distribution: { storefronts: 11 },
+        identity: { users: 128_406 },
+      },
+      acme: {
+        license: { active: 46 },
+        release: { version: "0.9.2", channel: "beta" },
+        identity: { users: 0 },
+      },
+      [LONG_SLUG]: {
+        license: { active: 9_412 },
+        release: null,
+        distribution: { storefronts: 1 },
+        identity: { users: 71 },
+      },
+      diceroll: { license: { active: 12 } },
+      empty: {
+        license: { active: 0 },
+        release: null,
+        distribution: { storefronts: 0 },
+        identity: { users: 0 },
+      },
+    },
+  },
   [P]: { product: PRODUCTS[0] },
 };
 

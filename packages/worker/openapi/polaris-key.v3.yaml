@@ -12292,6 +12292,30 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/summary:
+    get:
+      operationId: getAdminSummary
+      tags: [admin]
+      summary: One fact per service for every product, for Home's product cards
+      description: >
+        The slice of ADMIN.md's A-8 that Home's product cards need, keyed by product slug: the
+        active (not expired) licences, the newest app release a channel serves and that channel
+        (`stable` first on a tie; `null` when no channel serves one), the storefronts the product
+        has a live outlet for, and the users its Users page lists. A member is present only when
+        the product runs that service. Each fact is one grouped query across all products, so the
+        read costs the same however many products there are. Visibility is the registry list's:
+        exactly the products `GET /manage/api/products` returns to the session, never another's.
+        Config's fact (the catalog's schema version) is on `GET /manage/api/me`; Update has none,
+        and Cloud Sync has none until its usage is stored. Platform admins only; admin session
+        cookie.
+      responses:
+        "200":
+          description: The facts, by product slug.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminSummary" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
   /manage/api/products:
     get:
       operationId: listAdminProducts
@@ -14647,6 +14671,54 @@ components:
           type: integer
           description: Repositories matching `q`, across every page.
         nextCursor: { type: [string, "null"] }
+    AdminSummary:
+      type: object
+      required: [products]
+      properties:
+        products:
+          type: object
+          description: Each visible product's facts, keyed by slug.
+          additionalProperties:
+            type: object
+            properties:
+              license:
+                type: object
+                required: [active]
+                properties:
+                  active:
+                    {
+                      type: integer,
+                      minimum: 0,
+                      description: "Licences that are active and not expired.",
+                    }
+              release:
+                oneOf:
+                  - type: object
+                    required: [version, channel]
+                    properties:
+                      version: { type: string }
+                      channel: { type: string }
+                  - { type: "null" }
+              distribution:
+                type: object
+                required: [storefronts]
+                properties:
+                  storefronts:
+                    {
+                      type: integer,
+                      minimum: 0,
+                      description: "Storefronts the product has a live outlet for; storefronts that share one outlet kind (Homebrew, Scoop and Polaris Key ride `direct`) count once.",
+                    }
+              identity:
+                type: object
+                required: [users]
+                properties:
+                  users:
+                    {
+                      type: integer,
+                      minimum: 0,
+                      description: "Users the product's Users page lists.",
+                    }
     AdminProductList:
       type: object
       required: [products]

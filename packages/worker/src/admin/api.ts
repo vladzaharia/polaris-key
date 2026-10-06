@@ -66,6 +66,7 @@ import {
   unauthorized,
 } from "./lib/respond.js";
 import { handleMe } from "./handlers/me.js";
+import { handleSummary } from "./handlers/summary.js";
 import { handleGithub } from "./handlers/github.js";
 import { handlePlatformStoreConnections } from "./handlers/platformStoreConnections.js";
 import { handlePlatform } from "./handlers/platform.js";
@@ -366,6 +367,9 @@ export async function handleAdminApi(
   const [head, ...rest] = segments;
 
   if (head === "me") return handleMe(env, db, session);
+  // Home's product cards: one fact per service for every visible product.
+  if (head === "summary")
+    return handleSummary(req, env, db, session, rest, now);
   if (head === "platform" && rest[0] === "store-connections")
     return handlePlatformStoreConnections(
       req,

@@ -1,6 +1,10 @@
 import * as React from "react";
 import { ArrowRight, Github, Plus } from "lucide-react";
-import type { ProductDetail, ServiceSlug } from "../../../api.js";
+import type {
+  ProductDetail,
+  ProductSummary,
+  ServiceSlug,
+} from "../../../api.js";
 import { formatCount, fromSeconds } from "../../../lib/format.js";
 import { releaseSourceOf } from "../../../lib/products.js";
 import { SERVICE_TABLE } from "../../../services.generated.js";
@@ -10,10 +14,11 @@ import { EmptyState } from "../../../ui/EmptyState.js";
 import { ErrorState } from "../../../ui/ErrorState.js";
 import { ProductLogo } from "../../../ui/ProductLogo.js";
 import { ServiceGlyph, serviceLabel } from "../../../ui/ServiceBadge.js";
+import { Skeleton } from "../../../ui/Skeleton.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
 import { Timestamp } from "../../../ui/Timestamp.js";
 import { PageHeader } from "../../components/PageHeader.js";
-import { useMe, useProducts } from "../../data/hooks.js";
+import { useMe, useProducts, useSummary } from "../../data/hooks.js";
 import { Link } from "../../router.js";
 import { r } from "../../routes.js";
 import {
@@ -122,6 +127,7 @@ function worstTone(items: ProductAttention[]): AttentionTone {
 export function Home(): React.ReactElement {
   const products = useProducts();
   const me = useMe();
+  const summary = useSummary();
 
   const list = React.useMemo(() => products.data ?? [], [products.data]);
   const attention = React.useMemo(() => attentionAcross(list), [list]);
@@ -151,7 +157,10 @@ export function Home(): React.ReactElement {
         products.dataUpdatedAt
           ? {
               updatedAt: products.dataUpdatedAt,
-              onRefresh: () => void products.refetch(),
+              onRefresh: () => {
+                void products.refetch();
+                void summary.refetch();
+              },
               refreshing: products.isFetching,
             }
           : undefined
@@ -304,6 +313,8 @@ export function Home(): React.ReactElement {
                   product={p}
                   attention={byProduct.get(p.slug) ?? []}
                   schemaVersion={schemaVersions.get(p.slug)}
+                  facts={summary.data?.products[p.slug]}
+                  factsLoading={summary.isPending}
                 />
               </li>
             ))}
@@ -314,15 +325,56 @@ export function Home(): React.ReactElement {
   );
 }
 
+/** The services whose fact comes from the summary read (Config's rides `/me`). */
+const SUMMARY_FACTS: ReadonlySet<ServiceSlug> = new Set([
+  "license",
+  "release",
+  "distribution",
+  "identity",
+]);
+
+const plural = (n: number, one: string, many: string) =>
+  `${formatCount(n)} ${n === 1 ? one : many}`;
+
 /** One service's fact on the card, or `null` when it has none to show. */
 function serviceFact(
   service: ServiceSlug,
   schemaVersion: number | undefined,
-): string | null {
-  // Schema vN rides `/me`, which the shell has already loaded (`getActiveSchema`).
-  if (service === "config" && schemaVersion !== undefined)
-    return schemaVersion > 0 ? `Schema v${schemaVersion}` : "No catalog";
-  return null;
+  facts: ProductSummary | undefined,
+): React.ReactNode {
+  switch (service) {
+    case "config":
+      // Schema vN rides `/me`, which the shell has already loaded (`getActiveSchema`).
+      if (schemaVersion === undefined) return null;
+      return schemaVersion > 0 ? `Schema v${schemaVersion}` : "No catalog";
+    case "license":
+      return facts?.license
+        ? `${formatCount(facts.license.active)} active`
+        : null;
+    case "release":
+      if (!facts || !("release" in facts)) return null;
+      return facts.release ? (
+        <>
+          <span className="font-mono text-xs text-fg">
+            {facts.release.version}
+          </span>{" "}
+          · {facts.release.channel}
+        </>
+      ) : (
+        "No releases"
+      );
+    case "distribution":
+      return facts?.distribution
+        ? plural(facts.distribution.storefronts, "storefront", "storefronts")
+        : null;
+    case "identity":
+      return facts?.identity
+        ? plural(facts.identity.users, "user", "users")
+        : null;
+    default:
+      // Update has no fact; Cloud Sync has none until U-05 stores its usage.
+      return null;
+  }
 }
 
 /** A pill naming the issue, or counting several. */
@@ -358,10 +410,15 @@ export function ProductCard({
   product: p,
   attention,
   schemaVersion,
+  facts,
+  factsLoading = false,
 }: {
   product: ProductDetail;
   attention: ProductAttention[];
   schemaVersion?: number;
+  /** This product's summary facts (`GET /summary`); absent while loading or when it failed. */
+  facts?: ProductSummary;
+  factsLoading?: boolean;
 }): React.ReactElement {
   const services = runningServices(p);
   const running = new Set(services);
@@ -419,11 +476,13 @@ export function ProductCard({
       ) : (
         <ul
           aria-label="Services"
+          aria-busy={factsLoading || undefined}
           className="flex flex-col border-t border-border pt-2"
         >
           {rows.map((s) => {
             const issues = issuesOf.get(s) ?? [];
-            const fact = serviceFact(s, schemaVersion);
+            const fact = serviceFact(s, schemaVersion, facts);
+            const pending = factsLoading && SUMMARY_FACTS.has(s);
             return (
               <li key={s} className="-mx-2">
                 <Link
@@ -439,6 +498,8 @@ export function ProductCard({
                   <span className="truncate text-fg">{serviceLabel(s)}</span>
                   {issues.length > 0 ? (
                     <IssuePill items={issues} many={(n) => `${n} issues`} />
+                  ) : pending ? (
+                    <Skeleton data-fact-skeleton="" className="h-3 w-16" />
                   ) : fact ? (
                     <span className="whitespace-nowrap text-fg-muted tabular-nums">
                       {fact}

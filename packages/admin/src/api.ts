@@ -904,6 +904,19 @@ export interface ProductPresentation {
   accentDark?: string | null;
 }
 
+/** One product's facts for Home's card (`GET /manage/api/summary`; a member per service it runs). */
+export interface ProductSummary {
+  license?: { active: number };
+  /** The newest app release a channel serves and that channel; `null` when none is served yet. */
+  release?: { version: string; channel: string } | null;
+  distribution?: { storefronts: number };
+  identity?: { users: number };
+}
+
+export interface AdminSummary {
+  products: Record<string, ProductSummary>;
+}
+
 export interface ProductDetail {
   slug: string;
   name: string;
@@ -3766,6 +3779,8 @@ const rawApi = {
 
   // ── products (platform registry) ──────────────────────────────────────────────
   products: () => call<{ products: ProductDetail[] }>("/manage/api/products"),
+  /** Home's product-card facts, every product in one read (A-8, sliced). */
+  summary: () => call<AdminSummary>("/manage/api/summary"),
   product: (slug: string) => call<{ product: ProductDetail }>(p(slug)),
   createManualProduct: (body: CreateManualProductBody) =>
     call<CreateManualProductResult>("/manage/api/products", {
