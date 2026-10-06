@@ -3,6 +3,7 @@
  * the claim rules the preview and the claim now share (docs/design/PORTAL.md §4.19, §10.2).
  */
 
+import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
@@ -72,8 +73,9 @@ async function portalSession(
   issuedAt = NOW,
 ): Promise<Session> {
   const account = await getOrCreateAccountByEmail(db, email, issuedAt);
-  const { token, session } = await issuePortalSession(
+  const { token, session } = await issuePortalSessionRow(
     env,
+    db,
     {
       accountId: account.id,
       email: account.primary_email,

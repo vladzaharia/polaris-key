@@ -286,6 +286,9 @@ const PRESENTATION: Record<
     support: "https://kiln.example/renew",
   },
   mossgarden: { developerName: "Little Fern", deviceLimit: 5 },
+  quill: { developerName: "Inkwell Labs", deviceLimit: 0 },
+  "lumen-raw": { developerName: "Aperture Seven", deviceLimit: 2 },
+  "pixel-forge": { developerName: "Anvil Labs", deviceLimit: 0 },
   // At its limit: the 12-product shelf shows "Free up a device" (§4.15, mockup 35).
   quill: { developerName: "Inkwell", deviceLimit: 5 },
   "drift-kart": { developerName: "Tarmac Toys", deviceLimit: 3 },
@@ -351,6 +354,23 @@ const ART: Record<
     bands: [[242, 234, 216]],
     disc: [196, 72, 52],
     icon: false,
+  },
+  // PX-16: the Discover cast of mockup 23.
+  quill: {
+    bands: [[246, 241, 230]],
+    disc: [40, 38, 46],
+  },
+  mossgarden: {
+    bands: [
+      [232, 238, 214],
+      [150, 184, 96],
+      [92, 140, 64],
+    ],
+    disc: [242, 210, 96],
+  },
+  "lumen-raw": {
+    bands: [[26, 22, 20]],
+    disc: [240, 140, 60],
   },
 };
 
@@ -713,6 +733,83 @@ function emberDownloads() {
   };
 }
 
+/**
+ * PX-W10's `GET /api/discover` offers (mockup 23): what each would give and why. The empty,
+ * one- and three-product accounts get them; the twelve-product account has nothing to add
+ * (mockup 25).
+ */
+function discoverOffer(
+  product: string,
+  name: string,
+  offer: {
+    tier: string;
+    tierLabel: string;
+    deviceLimit: number;
+    expiryDays: number | null;
+  },
+  reason: string,
+  platforms: string[],
+) {
+  return {
+    product,
+    name,
+    developerName: PRESENTATION[product]?.developerName ?? null,
+    tintColor: product === "pixel-forge" ? "#7a2430" : null,
+    website: null,
+    iconUrl: ART[product] ? `/media/${product}/icon?v=1` : null,
+    headerUrl: ART[product] ? `/media/${product}/header?v=1` : null,
+    support: null,
+    platforms,
+    offer: {
+      ...offer,
+      expiresAt:
+        offer.expiryDays === null ? null : NOW + offer.expiryDays * DAY,
+    },
+    reason,
+  };
+}
+
+const OFFERS = [
+  discoverOffer(
+    "quill",
+    "Quill",
+    {
+      tier: "personal",
+      tierLabel: "Personal",
+      deviceLimit: 0,
+      expiryDays: null,
+    },
+    "free_with_account",
+    ["web", "macos", "ios"],
+  ),
+  discoverOffer(
+    "mossgarden",
+    "Mossgarden",
+    {
+      tier: "lifetime",
+      tierLabel: "Lifetime",
+      deviceLimit: 5,
+      expiryDays: null,
+    },
+    "free_with_account",
+    ["macos", "windows", "ios", "android"],
+  ),
+  discoverOffer(
+    "lumen-raw",
+    "Lumen RAW",
+    { tier: "beta", tierLabel: "Beta", deviceLimit: 2, expiryDays: 90 },
+    "group:Aperture Seven customers",
+    ["macos", "windows"],
+  ),
+  discoverOffer(
+    "pixel-forge",
+    "Pixel Forge SDK",
+    { tier: "indie", tierLabel: "Indie", deviceLimit: 0, expiryDays: null },
+    "group:fennick.studio",
+    ["macos", "windows", "linux"],
+  ),
+];
+
 const CAPS = {
   auth: { oidc: true, magic: true },
   modules: { licensing: true, claim: true, releases: true },
@@ -781,11 +878,15 @@ export function portalRoutes(s: PortalScenario): Record<string, Handler> {
     return {
       "/api/me": { status: 401, body: { error: "unauthorized" } },
       "/api/capabilities": { body: CAPS },
-      "POST /api/magic/start": { body: { ok: true } },
+      "POST /api/signin/email/start": { body: { ok: true } },
     };
   }
   let licenses = licensesFor(s);
   const removed = new Set<string>();
+  const openOffers = () =>
+    s === "twelve"
+      ? []
+      : OFFERS.filter((o) => !licenses.some((l) => l.product === o.product));
   const routes: Record<string, Handler> = {
     "/api/me": { body: { account: ACCOUNT, csrf: "csrf" } },
     "/api/capabilities": { body: CAPS },
@@ -797,9 +898,10 @@ export function portalRoutes(s: PortalScenario): Record<string, Handler> {
           ...libraryItem(l),
           licenseCount: licenses.filter((x) => x.product === l.product).length,
         })),
-        discoverCount: 4,
+        discoverCount: openOffers().length,
       },
     }),
+    "/api/discover": () => ({ body: { offers: openOffers() } }),
     "/api/products/nightfall/downloads": { body: nightfallDownloads() },
     "/api/products/tidewater/downloads": { body: tidewaterDownloads() },
     "/api/products/ember-tactics/downloads": { body: emberDownloads() },
@@ -1055,6 +1157,45 @@ export function portalRoutes(s: PortalScenario): Record<string, Handler> {
       removed.add("work");
       return { body: { ok: true, deviceId: "work" } };
     };
+  // PX-W10's claim: mints once (idempotent); Lumen RAW's offer ended (409 `not_eligible`).
+  for (const o of OFFERS) {
+    routes[`POST /api/discover/${o.product}/claim`] = () => {
+      if (o.product === "lumen-raw")
+        return {
+          status: 409,
+          body: {
+            error: "not_eligible",
+            message: "this product is no longer offered to your account",
+          },
+        };
+      const added = !licenses.some((l) => l.product === o.product);
+      const l =
+        o.product === "mossgarden"
+          ? MOSSGARDEN
+          : lic(o.product, o.name, {
+              tier: o.offer.tier,
+              identityProvider: "oidc",
+              activatedAt: NOW - 30,
+              deviceCount: 0,
+            });
+      if (added) licenses = [l, ...licenses];
+      return {
+        body: {
+          added,
+          product: o.product,
+          license: {
+            id: l.id,
+            tier: o.offer.tier,
+            tierLabel: o.offer.tierLabel,
+            status: "active",
+            usable: true,
+            expiresAt: o.offer.expiresAt,
+            deviceLimit: o.offer.deviceLimit,
+          },
+        },
+      };
+    };
+  }
   for (const [id, [deviceId]] of Object.entries(SIGN_IN_DEVICE)) {
     const product = id === "lic_quill" ? "quill" : "drift-kart";
     routes[`DELETE /api/licenses/${product}/${id}/devices/${deviceId}`] =

@@ -55,14 +55,15 @@
     transform: scale(var(--pk-motion-scale-pop));
   }
 }
+/* The drawer's edge: the inline end by default; a start-side drawer sets -100% (MO-08). */
 @keyframes pk-drawer-in {
   from {
-    transform: translateX(100%);
+    transform: translateX(var(--pk-drawer-from, 100%));
   }
 }
 @keyframes pk-drawer-out {
   to {
-    transform: translateX(100%);
+    transform: translateX(var(--pk-drawer-from, 100%));
   }
 }
 @keyframes pk-sheet-in {
@@ -211,7 +212,7 @@
   :is(.animate-pk-overlay-in, .pk-overlay)[data-state="closed"] {
     animation: pk-fade-out var(--pk-duration-base) var(--pk-ease-exit) forwards;
   }
-  /* The drawer slides from the inline end (MO-08 applies the class); below 640 px a dialog marked
+  /* The drawer slides from its edge (ui/Drawer.tsx; MO-08); below 640 px a dialog marked
      pk-sheet rises from the bottom edge (MO-10). */
   .pk-drawer:not([data-state="closed"]) {
     animation: pk-drawer-in var(--pk-duration-slow) var(--pk-ease-emphasized)
@@ -220,6 +221,9 @@
   .pk-drawer[data-state="closed"] {
     animation: pk-drawer-out var(--pk-duration-base) var(--pk-ease-exit)
       forwards;
+  }
+  .pk-drawer[data-drawer-side="start"] {
+    --pk-drawer-from: -100%;
   }
   @media (max-width: 639px) {
     .pk-sheet.pk-sheet:not([data-state="closed"]) {

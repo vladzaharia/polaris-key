@@ -111,6 +111,12 @@ describe("Library on today's data (PX-02)", () => {
       "Version 1.4.2 · Universal · 2.1 GB",
     );
     expect(within(hero).getByText("2 devices in use")).toBeTruthy();
+    // No cover: the banner is a bare tint field; the letter shows once, on the icon's tile.
+    expect(
+      [...hero.querySelectorAll("[data-art]")].filter(
+        (el) => el.textContent === "N",
+      ),
+    ).toHaveLength(1);
     expect(
       screen.getByText(/That's everything linked to mara@fennick.studio/),
     ).toBeTruthy();
@@ -155,6 +161,17 @@ describe("Library on today's data (PX-02)", () => {
     const emberTile = screen.getByRole("article", { name: "Ember Tactics" });
     expect(within(emberTile).getByText("Expired")).toBeTruthy();
     expect(within(emberTile).getByText(/^Ended /)).toBeTruthy();
+    // No cover art: the banner is a bare tint field, so the letter shows once (the icon's tile).
+    const banner = emberTile.querySelector(
+      "[data-art='fallback'].aspect-video",
+    );
+    expect(banner).not.toBeNull();
+    expect(banner!.querySelector(":scope > span[aria-hidden]")).toBeNull();
+    expect(
+      [...emberTile.querySelectorAll("[data-art]")].filter(
+        (el) => el.textContent === "E",
+      ),
+    ).toHaveLength(1);
     // No solid violet on a tile: every quick action is the quiet variant.
     expect(
       within(emberTile).getByRole("link", {
@@ -229,18 +246,6 @@ describe("Library on today's data (PX-02)", () => {
 });
 
 describe("Library on GET /api/library (PX-08)", () => {
-  it("keeps Discover and its count out while the Discover page can't show the offers (P6)", async () => {
-    // `main`'s Worker counts 4 offers; the page lists none until PX-16 (model/discover.ts).
-    mockFetch(
-      signedIn([nightfall], { "/api/library": libraryFor([nightfall], 4) }),
-    );
-    renderPortal();
-    await screen.findByRole("article", { name: "Nightfall" });
-    expect(screen.queryByRole("link", { name: /Discover/ })).toBeNull();
-    expect(screen.queryByText(/in Discover/)).toBeNull();
-    expect(await axeViolations()).toEqual([]);
-  });
-
   it("keeps Discover out of the nav while the Worker can't list offers", async () => {
     mockFetch(signedIn([nightfall]));
     renderPortal();

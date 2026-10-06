@@ -89,6 +89,27 @@ export async function cachedPlatformApps(
   return { ...fresh, cached: false };
 }
 
+/**
+ * The name of `appId` from the cached listing only (A-18j: the storefront flow shows the
+ * product's app without calling the store), or null on a miss.
+ */
+export async function peekPlatformAppName(
+  env: Env,
+  store: PlatformStore,
+  version: string,
+  appId: string,
+): Promise<string | null> {
+  try {
+    const raw = await env.HOT.get(cacheKey(store, version));
+    if (!raw) return null;
+    const hit = JSON.parse(raw) as Omit<PlatformAppsListing, "cached">;
+    if (!hit || hit.store !== store || !Array.isArray(hit.apps)) return null;
+    return hit.apps.find((a) => a.appId === appId)?.name ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** A store's lister could not be used: no usable team credential. */
 export class PlatformStoreNotConfigured extends Error {
   constructor(readonly store: PlatformStore) {

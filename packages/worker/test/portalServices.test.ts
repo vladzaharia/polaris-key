@@ -13,6 +13,7 @@
  * `portalEnabled` itself, so a repo-level test could pass while the response still said `true`.
  */
 
+import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
@@ -58,8 +59,9 @@ async function portalSession(
   email = "ada@example.com",
 ): Promise<{ cookie: string; csrf: string; accountId: string }> {
   const account = await getOrCreateAccountByEmail(db, email, NOW);
-  const { token, session } = await issuePortalSession(
+  const { token, session } = await issuePortalSessionRow(
     env,
+    db,
     {
       accountId: account.id,
       email: account.primary_email,

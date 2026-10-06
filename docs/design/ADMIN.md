@@ -17,6 +17,12 @@
 > Storefronts catalogue with one page per storefront) and the empty states of every page it lists
 > in its §4.7.
 
+> **Licence holders and the New License wizard are specified in [notes/S-24](../research/2026-09-29-godot-omniplatform/notes/S-24-licence-holders.md) (2026-10-06).** It
+> supersedes §6.5.1's Create license dialog (now the five-step **New license** drawer, single or
+> batch, assigned or floating), adds the **Holder** column and filters to the licences list, and
+> replaces Edit holder with **Assign…**, **Send a new key…**, **Reassign…** and **Make floating…** on
+> the record (§6.5.2). Packages LX-26 to LX-30; mockups [licenses/](licenses/).
+
 > **Sign-in is specified in [SIGN-IN.md](SIGN-IN.md) (2026-10-05).** It supersedes this document's
 > sign-in parts where they differ: §2.7's Sign in row, T8's Session expired row (the console now
 > renders "Your session ended" in place on the shared card, not a dialog) and §6.10.1.
@@ -266,6 +272,7 @@ re-scoped. A page is shown only when its section is shown, plus the conditions l
 | **Core** (violet, gold bit)        | Overview               | `` (root)                                                                                | T1 overview              | ProductOverview, rebuilt as the operational overview (§6.2)                                                                                                                                                                                                       |
 |                                    | Services               | `services`                                                                               | T4 settings              | Services, plus the **dependency graph** (Release → Distribution → Update) that replaces Distribution's ChainCard                                                                                                                                                  |
 |                                    | Devices                | `devices`, `devices/:deviceId` (drawer)                                                  | T2 collection            | Devices; drawer routed                                                                                                                                                                                                                                            |
+|                                    | Users                  | `users`, `users/:subject/[overview\|licenses\|devices\|activity\|data]`                  | T2, T3                   | New (I-12): every product, keyed by pairwise subject; sign-in history with Identity on; `data` only with Cloud Sync on                                                                                                                                            |
 |                                    | **Keys & secrets**     | `keys`                                                                                   | T4 settings (sections)   | Secrets, Settings → Signing key, Products → Prepare signing key. Holds signing keys (gold), product secrets and **CI publishing** (trusted publisher and CI tokens, an API with no UI today). Edge mint moves to Config; outlet credentials move to Distribution. |
 |                                    | Activity               | `activity`                                                                               | T2 collection (timeline) | Activity, with filters and target links                                                                                                                                                                                                                           |
 |                                    | Settings               | `settings`                                                                               | T4 settings              | Settings: General, License defaults (when License is on), **Repository** (link state, last sync, Resync from repo), **Storage** (blob GC dry run, API with no UI today), Danger zone                                                                              |
@@ -283,6 +290,8 @@ re-scoped. A page is shown only when its section is shown, plus the conditions l
 | **Distribution** (green, Star Cut) | **Matrix**             | `distribution/matrix?deliverable=app`                                                    | T5                       | Matrix; default page of the section                                                                                                                                                                                                                               |
 |                                    | **Rollouts**           | `distribution/rollouts`                                                                  | T2                       | Distribution overview's rollouts table, now live with controls                                                                                                                                                                                                    |
 |                                    | **Outlets & feeds**    | `distribution/outlets`                                                                   | T2 + T3 drawer           | New. Outlets and capabilities (API with no UI today), storefront feed URLs, distribution keys                                                                                                                                                                     |
+|                                    | **Storefronts**        | `distribution/storefronts?flow=add&step=&stores=`                                        | T2 tiles + T6            | A-18j. One tile per storefront adapter, capabilities rendered from its declaration; **Add to storefronts** (T6) provisions the product onto any of them, resumable from the ledger (notes/S-15 §8.1)                                                              |
+|                                    | **Listing**            | `distribution/listing?tab=&locale=&release=`                                             | T3 (tabs)                | A-18j. The shared listing model: text per locale, fit report with overrides, slot board, release notes, "Push listing" per store (notes/S-15 §8.2)                                                                                                                |
 |                                    | **App Store**          | `distribution/app-store?step=&build=&version=`                                           | T6 + aside               | A-17g. The App Store Distribute flow (notes/S-14 §8.2) beside App Store Connect's versions and review submissions                                                                                                                                                 |
 |                                    | **Commerce**           | `distribution/commerce`                                                                  | T2                       | A-17g. App Store products: the `app-store` commerce mappings beside Apple's In-App Purchases (S-14 §8.3)                                                                                                                                                          |
 |                                    | **Access**             | `distribution/access`                                                                    | T4                       | Delivery access moved from UpdateSettings, incl. **per-pack** gates (UPS-5, DLV-3)                                                                                                                                                                                |
@@ -310,7 +319,7 @@ that is not built yet carries `ready: false` in `nav.ts` and redirects to Deploy
 | **Settings**          | `#/platform/settings`          | T4             | Background jobs (the four runtime-editable job settings: `LAZY_DELTAS`, `LAZY_DELTA_MAX_BYTES` lower-only, `BLOB_GC_MODE`, `BLOB_GC_GRACE_DAYS`, each with its source; ceiling precedence for kill switches), Licensing (`LICENSING_RESERVED_NAMES` warn/error and the reserved-names list of registered products, LX-05), the read-only inventory, the KEK keyring (re-seal sweep, L3 "type reseal") and secrets presence. Needs A-13 |
 | **Deployment**        | `#/platform/deployment`        | T1 plus tables | The running build (tag, commit, Cloudflare version, protocol and discovery versions), deploy history (`platform_deploys`, keyset Load more), D1 migrations against the build's newest, required indexes, bindings (presence only), and **Platform activity** (`platform_audit`, A-12). Built in chunk 4                                                                                                                                |
 | **Operations**        | `#/platform/operations`        | T1             | Self-reported operations data (A-14), built in chunk 4P-3: a health state (Healthy, Degraded, Failed) per section, cron runs by step with recent history, heartbeats and staleness, queue and dead-letter backlog, D1 and R2 size, required indexes, connector aggregates; refreshes on an interval with a pause switch. Cloudflare analytics panels wait for A-15 and are absent until then                                           |
-| **Store connections** | `#/platform/store-connections` | T2             | Instance-wide store connector state                                                                                                                                                                                                                                                                                                                                                                                                    |
+| **Store connections** | `#/platform/store-connections` | T2             | Instance-wide store connector state; **Set up** on an assigned app opens that product's Add to storefronts, scoped to the store (A-18j)                                                                                                                                                                                                                                                                                                |
 | **Package feeds**     | `#/platform/feeds`             | T2 (S-12)      | S-12 owns the page and its API                                                                                                                                                                                                                                                                                                                                                                                                         |
 
 **Rejected moves, so they stay rejected:**
@@ -754,12 +763,12 @@ chunk 3. It is cheaper than Storybook, and needs no new tooling.
 Four levels. Every action in the console is assigned one in `lib/actions.ts`, and a test asserts the
 assignment.
 
-| Level                          | Meaning                                              | Confirmation                                                     | Examples                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| ------------------------------ | ---------------------------------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **L0 · reversible, local**     | No effect outside the console, or trivially undone   | none; toast with **Undo** where an inverse exists                | dismiss an attention item, save viewer preferences, clear filters                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| **L1 · reversible, impactful** | Changes what devices or customers see, can be undone | `ConfirmDialog intent="caution"` with a `consequences` list      | prepare signing key, activate signing key (after its trust window), disable license, pause rollout, resume, unpin, mark or clear critical, set minimum supported, promote, pin, revert to manifest, disable a service, resync from repo, mark Sentry candidate dismissed, set rollout percentage, assign or release a store app (Platform → Store connections); on the App Store page and Commerce (A-17g): create or reuse an App Store version, add a build to TestFlight groups, cancel a review submission, create an In-App Purchase, set its first price, and every other Distribute step that a later step or App Store Connect can change                                                                                                                                   |
-| **L2 · irreversible or broad** | Cannot be undone, or affects many devices            | `ConfirmDialog intent="danger"`; confirm button repeats the verb | revoke license key, deauthorize device, confirm Sentry candidate (halts the rollout), yank release, halt rollout, complete rollout, revoke edge-mint approval, delete tier, delete profile, delete outlet credential, revoke CI token, retire signing key, override readiness, publish a catalog that removes keys (with an acknowledgement checkbox listing referencing profiles), answer a build's export compliance (A-17g: it cannot be changed through the API afterwards)                                                                                                                                                                                                                                                                                                     |
-| **L3 · catastrophic**          | Destroys a product, an account or the trust root     | `ConfirmDialog intent="danger"` with **`typedConfirmation`**     | delete product (type the slug; this is the value sent as `confirmSlug`, fixing PRD-4), revoke a signing key (type the kid), break-glass activate (type the kid), re-seal KEK sweep on Platform (type "reseal"), delete portal account (customer types `delete`), release a held App Store version (type the app's name as App Store Connect shows it, sent as `confirm`; A-17a), complete an App Store phased release and change an In-App Purchase's availability (the same typed app name; owner decisions, 2026-10-04), submit an App Store version for App Review and change an existing In-App Purchase price (the same typed app name; notes/S-14 §7.1, A-17g), delete a license (type `delete <id>`; a bulk deletion types `delete <n> licenses`; owner request, 2026-10-05) |
+| Level                          | Meaning                                              | Confirmation                                                     | Examples                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ------------------------------ | ---------------------------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **L0 · reversible, local**     | No effect outside the console, or trivially undone   | none; toast with **Undo** where an inverse exists                | dismiss an attention item, save viewer preferences, clear filters                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| **L1 · reversible, impactful** | Changes what devices or customers see, can be undone | `ConfirmDialog intent="caution"` with a `consequences` list      | prepare signing key, activate signing key (after its trust window), disable license, pause rollout, resume, unpin, mark or clear critical, set minimum supported, promote, pin, revert to manifest, disable a service, resync from repo, mark Sentry candidate dismissed, set rollout percentage, assign or release a store app (Platform → Store connections); on the App Store page and Commerce (A-17g): create or reuse an App Store version, add a build to TestFlight groups, cancel a review submission, create an In-App Purchase, set its first price, and every other Distribute step that a later step or App Store Connect can change, undo a licence relink on Users (I-12, within 72 hours)                                                                                                                                                |
+| **L2 · irreversible or broad** | Cannot be undone, or affects many devices            | `ConfirmDialog intent="danger"`; confirm button repeats the verb | revoke license key, deauthorize device, confirm Sentry candidate (halts the rollout), yank release, halt rollout, complete rollout, revoke edge-mint approval, delete tier, delete profile, delete outlet credential, revoke CI token, retire signing key, override readiness, publish a catalog that removes keys (with an acknowledgement checkbox listing referencing profiles), answer a build's export compliance (A-17g: it cannot be changed through the API afterwards), detach or relink a user's licence on Users (I-12; a relink also needs a fresh sign-in and a reason)                                                                                                                                                                                                                                                                     |
+| **L3 · catastrophic**          | Destroys a product, an account or the trust root     | `ConfirmDialog intent="danger"` with **`typedConfirmation`**     | delete product (type the slug; this is the value sent as `confirmSlug`, fixing PRD-4), revoke a signing key (type the kid), break-glass activate (type the kid), re-seal KEK sweep on Platform (type "reseal"), delete portal account (customer types `delete`), release a held App Store version (type the app's name as App Store Connect shows it, sent as `confirm`; A-17a), complete an App Store phased release and change an In-App Purchase's availability (the same typed app name; owner decisions, 2026-10-04), submit an App Store version for App Review and change an existing In-App Purchase price (the same typed app name; notes/S-14 §7.1, A-17g), delete a license (type `delete <id>`; a bulk deletion types `delete <n> licenses`; owner request, 2026-10-05), delete a user's data of this product on Users (type `delete`; I-12) |
 
 **Rules.**
 
@@ -1557,8 +1566,10 @@ built, on A-17d's and A-17e's connector routes:
 **Status.** Computed client-side from `status` + `expiresAt` (LIC-1): Active, Expires in N days
 (≤ 14), Expired, Disabled. The **Expires** column is sortable.
 
-**Seats.** A `Meter` of `deviceCount` over the effective device limit (from the tier; "—" when
-unlimited).
+**Seats.** A `Meter` of `deviceCount` over the effective device limit ("—" when unlimited),
+with its source under it (LX-14a): the licence's own limit, else the tier's, else a `deviceLimit`
+entitlement, else the product default, as the Worker reports it (`effectiveDeviceLimit`,
+`deviceLimitSource`).
 
 **Other columns.** Channels and Sign-in (Manual, Single sign-on) are hidden by default (LIC-8). The
 id moves to the record header.
@@ -1574,20 +1585,29 @@ id moves to the record header.
 
 **Bulk.** Disable and Enable (L1, listing the count and the effect) and Export.
 
-**Create license** is a dialog with steps (T6):
+**New license** (S-24 §8, replacing the Create license dialog) is a drawer wizard over Licenses
+(`?setup=new-license&step=…`, SETUP.md §1.1), five steps, then Done:
 
-1. **Holder:** name, email.
-2. **Terms:**
-   - tier (combobox, showing each tier's policy summary);
-   - expiry (`DateInput`, or "Use tier default (365 days)");
-   - max offline days (nullable);
-   - channels (`ChannelPicker`);
-   - version window (`VersionInput` pair);
-   - **profiles** (`OrderedMultiSelect`, numbered, with order = precedence; LIC-3).
-   - Lookup failures are shown inline, not as "none defined" (LIC-6).
-   - The live "Effective policy" aside names where each value comes from (license, tier, product
-     default), and drops the false per-license device limit (LIC-4).
-3. **Result:** `OneTimeSecretPanel`, with Open license and Create another.
+1. **Product and tier:** the product as context (a picker only from Home or the palette), tier radio
+   cards by rank with each tier's summary, **New tier…**.
+2. **Who it's for:** **Someone specific** (Recommended: email required, name optional; "When
+   ada@example.com signs in with that email, it's in their library", never saying whether an account
+   exists) or **Anyone with the key** (floating; **How many keys**, 1–500, and a **Batch label**).
+3. **Limits:** devices (the tier's or set for this licence, LX-14a), expiry, offline days, **More
+   options** (channels, version window, profiles in order, LIC-3), and the effective-policy aside
+   naming each value's source (LIC-4).
+4. **Delivery:** Email the key and show it once (default for someone specific), Email the key, Show
+   it once; floating: Show it once or Download a CSV.
+5. **Review:** the summary with **Change** per row, the `AutoList` of what Polaris Key will do, and
+   an action-named primary ("Create and email license", "Create 50 keys").
+
+**Done** replaces the body: the `OneTimeSecretPanel` with the delivery result, or **Download CSV**
+for a batch (the drawer stays open until the keys are downloaded or copied), then Open license,
+Open batch, Create another and, for the first licence, Try it.
+
+**Holder column and filters (S-24 §8.8).** The list's Holder cell shows name and email, "Waiting for
+ada@…", or **Floating** (muted) with "anyone with the key"; filters **Holder** (Anyone, In an
+account, Waiting, Floating) and **Batch**.
 
 #### 6.5.2 License record
 
@@ -1595,7 +1615,8 @@ id moves to the record header.
 ┌ Licenses / Studio Pro ─────────────────────────────────────────────────────────────────┐
 │ H1 Studio Pro  [● Active]   Expires 30 Sep 2027 (in 361 days)       [ Mint key ] [⋯]  │
 │ ada@example.com · lic_01J9… ⧉ · Single sign-on · changed 2 h ago by Ada               │
-│ ⋯ = Edit holder… · Mint offline bundle… · View in activity · ─── · Disable license…   │
+│ ⋯ = Edit holder… · Device limit… · Mint offline bundle… · View in activity · ─── ·   │
+│     Disable license…                                                                   │
 ├ Overview · Keys (2) · Devices (3/5) · Config overrides · History ─────────────────────┤
 │ Terms                                     [From tier "Pro" ⓘ]          (T4 form)      │
 │  Tier            [ Pro ▾ ]       ▲ Downgrading to Edu: 3 devices > limit 1, grandfathered│
@@ -1616,10 +1637,25 @@ id moves to the record header.
 - **One "Terms" form** holds every policy field: tier, expiry, max offline, channels, versions and
   **profiles**. This ends the split between the Edit dialog and the Policy tab (LDT-1), and makes
   profiles editable (LDT-3).
-- The holder (name, email) is edited from "Edit holder…".
+- The holder line (S-24): "Ada Lovelace · ada@example.com · In an account", "Waiting for
+  ada@example.com", or "Floating · anyone with the key". **Assign…** on a floating licence; in the
+  overflow **Send a new key…** (assigned), **Reassign…** and **Make floating…** (I-12's relink tool:
+  step-up, reason, notice, 72-hour undo, typed confirmation). Edit holder edits the name only.
 - Cleared values send `null`. This needs **A-3**, the worker accepting `null` for `maxOfflineDays`
   (LDT-2), and the same for tiers (TIR-1).
 - The downgrade warning is a `Callout tone="warning"` using the server's `deviceCount` (LDT-12).
+  A limit set on the license beats any tier, so a tier change then raises no warning.
+
+**Device limit…** (LX-14a; SIGN-IN.md D-53) opens a side sheet for this one license, seat or
+Account-wide: a number field whose placeholder is the inherited value ("Inherits 5 from Pro"),
+**Save** and **Use inherited limit** (sends `deviceLimit: null`). Below the active device count it
+warns "4 devices are signed in. None is signed out; new devices are refused until the count is
+under 3." It never deauthorizes. Precedence: the license's own `device_limit`, else the tier's,
+else a `deviceLimit` entitlement (profiles, store grants, overrides), else the product default;
+the signed document's `deviceLimit` entitlement carries the same number. The header, the
+Effective policy row, the Seats meter and the list show the effective limit with its source
+("3 · set on this license", "5 · from Pro", "5 · product default"). Each change is audited as
+`license.device_limit.set`, old → new.
 
 **Disable license** is a danger-menu action with an L1 confirm, replacing the Switch (LDT-7).
 Enable is the primary action while disabled.

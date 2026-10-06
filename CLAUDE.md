@@ -48,6 +48,33 @@ Waves must finish in well under an hour per work package. Tests are a means, not
 - Reviewers never run the gate. Fix rounds rerun the failing steps plus affected tests only.
 - Integration batches run one gate; CI on `main` is the full matrix, and a deploy waits for it.
 
+## Integration and stalls
+
+Main moves every few minutes. Chasing it is what made waves run for hours, so:
+
+- A builder merges `main` into its branch **at most once**, right before hand-off. It never re-merges
+  after review because main moved.
+- Reviewers never block on merge conflicts with current `main` (see `.claude/agents/pkey-wp-reviewer.md`).
+  Conflicts are the lead's: the lead merges passed branches with `/Users/vlad/Repos/pk-wt/_lead/merge.sh`,
+  which auto-resolves only generated files and stops on anything else. Real conflicts go to **one**
+  integration agent for the whole batch, not back to each builder.
+- A review has **at most one fix round**. If the re-review still blocks, the branch goes back to the
+  lead, not into another loop.
+- Migration numbers are assigned by the lead at merge time. Builders name new files
+  `00XX_<name>.sql` and say so in their report.
+- The lead runs `/Users/vlad/Repos/pk-wt/_lead/stall-watch.sh` in the background whenever agents are
+  running. It reports any agent quiet for 30 minutes, any workflow running past 90, and any agent
+  that has handed back but was never closed; each report is acted on (resume, stop or re-scope),
+  never ignored.
+- **Every agent finishes clean.** Before your final report, wait for or kill every background job
+  you started (`run_in_background` shells, servers, Docker runs, watchers). Never hand back with
+  your own background work still running: an agent with live background work never closes and sits
+  on its last status line.
+- **The lead closes every agent it has finished with.** On each hand-back, once the report is
+  handled (merged, re-dispatched or filed), the lead stops the agent with TaskStop and removes it
+  from `/Users/vlad/Repos/pk-wt/_lead/active`, unless it is sending that agent more work. After
+  any batch of hand-backs the lead runs ListAgents and stops every entry shown as `completed`.
+
 ## Plan mode
 
 Enter plan mode before any wire-touching change — `shared-protocol`, `shared-jws`, `client-core`,

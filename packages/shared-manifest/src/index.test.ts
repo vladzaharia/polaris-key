@@ -34,6 +34,12 @@ import {
   MAX_PROVIDES,
   providesListProblem,
   SYSTEM_PRODUCT_SLUG,
+  PRODUCT_ROUTE_ACTIONS,
+  PRODUCT_SLUG_MAX,
+  PRODUCT_SLUG_PATTERN,
+  PRODUCT_SLUG_RE,
+  RESERVED_PRODUCT_SLUGS,
+  isReservedProductSlug,
   isPackageName,
   packageNameNorm,
   parseManifestPackageDeliverable,
@@ -1285,6 +1291,57 @@ describe("reserved product slugs", () => {
         schema: catalogWithSecretDelivery(),
       }).errors.map((e) => e.code),
     ).toEqual([]);
+  });
+
+  // P0-14: one slug rule. The admin API's one-segment actions are reserved like router paths.
+  it("refuses the admin API's route actions (reserved_slug)", () => {
+    expect(PRODUCT_ROUTE_ACTIONS).toEqual(["kek", "link-repo", "slug-check"]);
+    for (const slug of PRODUCT_ROUTE_ACTIONS)
+      expect(
+        validateManifestDocuments({
+          product: { slug, name: "X" },
+          schema: catalogWithSecretDelivery(),
+        }).errors.map((e) => e.code),
+        slug,
+      ).toContain("reserved_slug");
+  });
+});
+
+describe("product slug shape (P0-14)", () => {
+  const codes = (slug: string) =>
+    validateManifestDocuments({
+      product: { slug, name: "X" },
+      schema: catalogWithSecretDelivery(),
+    }).errors.map((e) => e.code);
+
+  it("refuses a leading hyphen and a 65-character slug (invalid_slug), naming the pattern", () => {
+    expect(codes("-acme")).toContain("invalid_slug");
+    expect(codes("a".repeat(PRODUCT_SLUG_MAX + 1))).toContain("invalid_slug");
+    const res = validateManifestDocuments({
+      product: { slug: "-acme", name: "X" },
+      schema: catalogWithSecretDelivery(),
+    });
+    expect(res.errors.find((e) => e.code === "invalid_slug")?.message).toBe(
+      `product.slug must match ${PRODUCT_SLUG_PATTERN}.`,
+    );
+  });
+
+  it("accepts what link-repo accepts: a digit or letter first, hyphens after, up to 64", () => {
+    for (const slug of ["a", "0", "acme-", "a-b-c", "9lives", "a".repeat(64)])
+      expect(codes(slug), slug).toEqual([]);
+  });
+
+  it("exports one shape and one reservation helper", () => {
+    expect(PRODUCT_SLUG_PATTERN).toBe("^[a-z0-9][a-z0-9-]{0,63}$");
+    expect(PRODUCT_SLUG_RE.source).toBe(PRODUCT_SLUG_PATTERN);
+    expect(PRODUCT_SLUG_MAX).toBe(64);
+    for (const slug of [
+      ...RESERVED_PRODUCT_SLUGS,
+      ...PRODUCT_ROUTE_ACTIONS,
+      SYSTEM_PRODUCT_SLUG,
+    ])
+      expect(isReservedProductSlug(slug), slug).toBe(true);
+    expect(isReservedProductSlug("docsy")).toBe(false);
   });
 });
 

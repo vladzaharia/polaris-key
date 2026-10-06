@@ -137,9 +137,29 @@
       "title": "Método de inicio de sesión no disponible",
       "message": "Ese método de inicio de sesión está desactivado. Elige otro."
     },
-    "email_not_configured": {
+    "email_unavailable": {
       "title": "Inicio de sesión por correo no disponible",
       "message": "El inicio de sesión por correo no está disponible en este momento. Elige otro método de inicio de sesión."
+    },
+    "turnstile_failed": {
+      "title": "La comprobación no se superó",
+      "message": "La comprobación de seguridad no se superó. Vuelve a cargar la página e inténtalo de nuevo."
+    },
+    "signin_expired": {
+      "title": "Inicio de sesión caducado",
+      "message": "Este inicio de sesión ha caducado. Empieza de nuevo."
+    },
+    "invalid_code": {
+      "title": "Código incorrecto",
+      "message": "Ese código no funcionó. Revisa el correo y vuelve a escribirlo."
+    },
+    "email_in_use": {
+      "title": "Correo ya en uso",
+      "message": "Otra cuenta de Polaris Key ya usa este correo. Une este inicio de sesión a esa cuenta o usa otro correo."
+    },
+    "terms_required": {
+      "title": "Condiciones no aceptadas",
+      "message": "Acepta las condiciones para continuar."
     },
     "license_owned": {
       "title": "Licencia en otra cuenta",

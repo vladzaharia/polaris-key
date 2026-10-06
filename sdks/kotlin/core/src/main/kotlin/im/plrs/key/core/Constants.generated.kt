@@ -45,7 +45,12 @@ public object ErrorCode {
     public const val oidcError: String = "oidc_error"
     public const val unavailable: String = "unavailable"
     public const val authMethodDisabled: String = "auth_method_disabled"
-    public const val emailNotConfigured: String = "email_not_configured"
+    public const val emailUnavailable: String = "email_unavailable"
+    public const val turnstileFailed: String = "turnstile_failed"
+    public const val signinExpired: String = "signin_expired"
+    public const val invalidCode: String = "invalid_code"
+    public const val emailInUse: String = "email_in_use"
+    public const val termsRequired: String = "terms_required"
     public const val licenseOwned: String = "license_owned"
     public const val emailMismatch: String = "email_mismatch"
     public const val linkConflict: String = "link_conflict"
@@ -194,7 +199,12 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "oidc_error",
     "unavailable",
     "auth_method_disabled",
-    "email_not_configured",
+    "email_unavailable",
+    "turnstile_failed",
+    "signin_expired",
+    "invalid_code",
+    "email_in_use",
+    "terms_required",
     "license_owned",
     "email_mismatch",
     "link_conflict",
@@ -343,7 +353,12 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "oidc_error" to "wire",
     "unavailable" to "wire",
     "auth_method_disabled" to "wire",
-    "email_not_configured" to "wire",
+    "email_unavailable" to "wire",
+    "turnstile_failed" to "wire",
+    "signin_expired" to "wire",
+    "invalid_code" to "wire",
+    "email_in_use" to "wire",
+    "terms_required" to "wire",
     "license_owned" to "wire",
     "email_mismatch" to "wire",
     "link_conflict" to "wire",

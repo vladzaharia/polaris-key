@@ -1426,11 +1426,6 @@
       "role": "body",
       "note": "Email code step (SIGN-IN.md §3.4). Arguments: {email} = an email address."
     },
-    "signin.code.wrong": {
-      "value": "That code isn't right. Check the email and try again.",
-      "role": "body",
-      "note": "Email code step (SIGN-IN.md §3.4)."
-    },
     "signin.code.triesLeft": {
       "value": "{n, plural, one {# try left.} other {# tries left.}}",
       "role": "body",

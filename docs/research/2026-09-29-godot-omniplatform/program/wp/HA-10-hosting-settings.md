@@ -43,6 +43,14 @@ Quotas and the kill switch are knobs, and S-18 makes knobs registry settings ([S
 
 - Over quota: ingest fails with `quota` and the old copy keeps serving; mirroring stops and GitHub keeps serving.
 
+## From the approved [`plans/HA-11.md`](../plans/HA-11.md) (2026-10-06)
+
+- **The switch hides the discovery icon.** `assets.hosting.enabled` also gates the icon in
+  discovery's `core.presentation`. Register `core/presentation.ts` among the setting's readers.
+- **What off means there.** With the switch off, the member carries no `icon`, while the name and
+  accent remain.
+- **If HA-12 lands first.** HA-12 then reads nothing, and this package adds the read with a test.
+
 ## Steps
 
 1. Entries.

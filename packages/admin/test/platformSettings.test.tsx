@@ -171,7 +171,7 @@ const RESERVED = {
     {
       key: "deviceLimit",
       type: "integer",
-      rule: "The tier's device limit, else the license's, else the product default.",
+      rule: "The license's own device limit, else the tier's, else the license's deviceLimit entitlement, else the product default.",
     },
   ],
   prefixes: ["license.", "app.", "pkey."],

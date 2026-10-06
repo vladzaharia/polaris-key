@@ -176,8 +176,16 @@ const FR: CopyBundle = {
     unavailable:
       "La connexion est saturée pour le moment. Réessayez dans un instant.",
     auth_method_disabled: "Cette méthode de connexion est désactivée.",
-    email_not_configured:
+    email_unavailable:
       "La connexion par e-mail n'est pas disponible pour le moment.",
+    turnstile_failed:
+      "La vérification de sécurité a échoué. Rechargez la page et réessayez.",
+    signin_expired: "Cette connexion a expiré. Recommencez.",
+    invalid_code:
+      "Ce code n'a pas fonctionné. Vérifiez l'e-mail et saisissez-le à nouveau.",
+    email_in_use:
+      "Un autre compte Polaris Key utilise déjà cette adresse e-mail. Associez cette connexion à ce compte, ou utilisez une autre adresse.",
+    terms_required: "Acceptez les conditions pour continuer.",
     license_owned:
       "Cette licence appartient à un autre compte. Connectez-vous avec ce compte.",
     email_mismatch: "Cette licence a été vendue à une autre adresse e-mail.",

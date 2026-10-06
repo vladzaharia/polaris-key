@@ -1,5 +1,7 @@
 /**
- * A QR code encoder for the public download page (P2b-06), rendered server-side as inline SVG.
+ * A QR code encoder, rendered server-side as inline SVG: the public download page's (P2b-06) and
+ * the portal's "Sign in with another device" code (PX-W14). It lives in Core because both
+ * Distribution and Identity draw one, and neither may import the other (rule 6).
  *
  * ISO/IEC 18004, byte mode, error-correction level M, versions 1-10 (up to 213 bytes, enough for
  * every link the page encodes: a feed URL, an `altstore://source?url=…` deep link, an F-Droid

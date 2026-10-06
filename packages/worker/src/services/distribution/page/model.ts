@@ -72,7 +72,7 @@ import {
   PLATFORM_LABELS,
   type PagePlatform,
 } from "./detect.js";
-import { QR_MAX_VERSION, qrCapacity } from "./qr.js";
+import { QR_MAX_VERSION, qrCapacity } from "../../../core/qr.js";
 
 /** The model's own version: bumped when a field changes meaning (SDKs read this document). */
 export const DOWNLOAD_MODEL_VERSION = 1;

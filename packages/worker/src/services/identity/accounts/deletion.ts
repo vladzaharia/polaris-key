@@ -13,6 +13,7 @@
  * is the "also remove the licence from my Library" choice the removal screen offers.
  */
 
+import { deleteAccountAvatars } from "../card/avatars.js";
 import {
   accountLicenses,
   stmtDetachAccountLicenses,
@@ -178,6 +179,9 @@ export async function deleteAccount(
       now,
     });
   }
+  // I-07: the copied provider pictures go before the rows that name them (R2 objects have no
+  // foreign key; once the rows are gone nothing could find them).
+  await deleteAccountAvatars(env, db, accountId);
   const stmts: DbStatement[] = [];
   for (const s of subjects) {
     stmts.push(
@@ -220,6 +224,16 @@ export async function deleteAccount(
     },
     {
       sql: "DELETE FROM account_passkeys WHERE account_id = ?",
+      params: [accountId],
+    },
+    // I-12: the relink history keeps its pairwise subjects (the developer's record) and loses the
+    // account id; undoing a relink away from this account then leaves the licence floating.
+    {
+      sql: "UPDATE license_relinks SET from_account_id = NULL WHERE from_account_id = ?",
+      params: [accountId],
+    },
+    {
+      sql: "UPDATE license_relinks SET to_account_id = NULL WHERE to_account_id = ?",
       params: [accountId],
     },
     { sql: "DELETE FROM accounts WHERE id = ?", params: [accountId] },

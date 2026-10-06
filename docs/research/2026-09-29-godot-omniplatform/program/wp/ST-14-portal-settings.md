@@ -36,6 +36,12 @@ Portal settings are split across tables and hidden behind Identity ([S-18 §4.10
 
 - `products.branding_json` drop (→ ST-25).
 
+## PENDING entries to remove
+
+ST-06 left a shrinking allow-list in `packages/worker/scripts/settings-coverage.ts`. Its "PENDING owners" decision ([ST-06](ST-06-settings-docs-coverage.md#design-notes)) assigns this package the 1 entry below. Register each one in the settings registry (the note names the intended key, where there is one), then delete it from `PENDING` and lower `PENDING_CEILING` by the same count. `checkCoverage` refuses an entry that is both pending and registered, so the two edits land together.
+
+- `table:portal_product_settings`
+
 ## Design notes
 
 - Take the non-NULL portal branding value.
@@ -48,6 +54,7 @@ Portal settings are split across tables and hidden behind Identity ([S-18 §4.10
 
 ## Acceptance criteria
 
+- [ ] Every `PENDING` entry listed under "PENDING entries to remove" is registered and gone from `settings-coverage.ts`, `PENDING_CEILING` is 1 lower, and `settings-coverage.test.ts` passes.
 - [ ] Branding reads from one store (test).
 - [ ] The area is visible with Identity off (e2e).
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.

@@ -124,7 +124,19 @@ export const STORE_LISTING_COLUMNS: Readonly<
       marketingUrl: text("marketingUrl", URL_MAX),
       privacyPolicyUrl: text("privacyUrl", URL_MAX),
     },
-    images: {},
+    // A-18m: the screenshot sets the Apple adapter pushes, one per size class (S-15 §7.4: iPhone
+    // 6.9″, iPad 13″, Mac 16:10; PNG or JPEG without alpha; at most 10 per set).
+    images: Object.fromEntries(
+      ["phone-portrait", "tablet", "desktop-16x10"].map((c) => [
+        `screenshot:${c}`,
+        {
+          contentTypes: ["image/png", "image/jpeg"],
+          maxBytes: 32 * 1024 * 1024,
+          min: 1,
+          max: 10,
+        },
+      ]),
+    ),
   },
   play: {
     store: "play",

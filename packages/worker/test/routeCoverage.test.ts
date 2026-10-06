@@ -47,6 +47,7 @@ const NARRATIVE_ONLY = new Set([
   "portalSpa",
   "portalApi",
   "portalLogin",
+  "portalProviderSignIn",
   "portalCallback",
   "portalLogout",
   "portalMagicVerify",
@@ -84,13 +85,34 @@ const CORE_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
  * portal session cookie.
  */
 const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
-  portalMedia: [["/media/{product}/{asset}", ["get"]]],
+  portalMedia: [
+    ["/media/{product}/{asset}", ["get"]],
+    // I-07: copied provider avatars (`avatar` is a reserved product slug).
+    ["/media/avatar/{key}", ["get"]],
+  ],
   portalApi: [
     ["/api/library", ["get"]],
     ["/api/products/{product}", ["get"]],
     // PX-W10 (G24, G25): Discover's offers and "Add to library".
     ["/api/discover", ["get"]],
     ["/api/discover/{product}/claim", ["post"]],
+    // I-07: the login card's pre-authentication routes and the account sessions.
+    ["/api/signin/email/start", ["post"]],
+    ["/api/signin/email/verify", ["post"]],
+    ["/api/signin/flow", ["post"]],
+    ["/api/signin/confirm-email", ["get", "post"]],
+    ["/api/signin/confirm-email/verify", ["post"]],
+    ["/api/signin/confirm-email/join", ["post"]],
+    ["/api/signin/confirm-email/cancel", ["post"]],
+    ["/api/signin/confirm-email/picture", ["get"]],
+    ["/api/sessions", ["get"]],
+    ["/api/sessions/{sessionId}", ["delete"]],
+    ["/api/sessions/sign-out-everywhere", ["post"]],
+    // PX-W14 (G29): sign in with another device.
+    ["/api/device-login/start", ["post"]],
+    ["/api/device-login/lookup", ["post"]],
+    ["/api/device-login/approve", ["post"]],
+    ["/api/device-login/{requestId}", ["get"]],
   ],
 };
 
@@ -556,6 +578,9 @@ function concrete(template: string): string {
     pack: "acme.core",
     variant: "default",
     store: "snap",
+    key: "0123456789abcdef0123456789abcdef",
+    sessionId: "f".repeat(64),
+    requestId: `dl_${"A".repeat(43)}`,
   };
   return template.replace(/\{(\w+)\}/g, (_, name: string) => {
     const value = samples[name];

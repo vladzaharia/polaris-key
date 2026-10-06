@@ -31,10 +31,8 @@ import {
   getOrCreateAccountByEmail,
   linkLicense,
 } from "../src/services/identity/portal/repo.js";
-import {
-  PORTAL_COOKIE,
-  issuePortalSession,
-} from "../src/services/identity/portal/session.js";
+import { PORTAL_COOKIE } from "../src/services/identity/portal/session.js";
+import { issuePortalSessionRow } from "./portalSessionRow.js";
 import type { PortalDownloads } from "../src/services/identity/portal/downloads.js";
 import type { Env } from "../src/env.js";
 import { dispatch } from "../src/dispatch.js";
@@ -229,8 +227,9 @@ async function account(
   const { licenseId } = await seedLicenseWithKey(w.db, SLUG, license);
   const acct = await getOrCreateAccountByEmail(w.db, "ada@example.com", NOW);
   await linkLicense(w.db, acct.id, SLUG, licenseId, "license-key", NOW);
-  const { token } = await issuePortalSession(
+  const { token } = await issuePortalSessionRow(
     w.env,
+    w.db,
     { accountId: acct.id, email: acct.primary_email, name: acct.display_name },
     NOW,
   );

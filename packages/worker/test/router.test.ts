@@ -38,6 +38,16 @@ describe("matchRoute — platform + manage + portal (matched before product slug
     expect(matchRoute("/api").kind).toBe("portalApi");
     expect(matchRoute("/api/me").kind).toBe("portalApi");
     expect(matchRoute("/login").kind).toBe("portalLogin");
+    // I-06: every shape under `/login/` is the provider handler's (which validates provider and
+    // step), never a product route — `login` is a reserved slug.
+    expect(matchRoute("/login/google").kind).toBe("portalProviderSignIn");
+    expect(matchRoute("/login/steam/callback").kind).toBe(
+      "portalProviderSignIn",
+    );
+    expect(matchRoute("/login/apple/notifications").kind).toBe(
+      "portalProviderSignIn",
+    );
+    expect(matchRoute("/login/unknown/x/y").kind).toBe("portalProviderSignIn");
     expect(matchRoute("/callback").kind).toBe("portalCallback");
     expect(matchRoute("/logout").kind).toBe("portalLogout");
     expect(matchRoute("/magic/verify").kind).toBe("portalMagicVerify");

@@ -288,7 +288,6 @@
     "signin.code.resend": "Envoyer un nouveau code",
     "signin.code.resendIn": "Envoyer un nouveau code dans {time}",
     "signin.code.resent": "Nous avons envoyé un nouveau code et un nouveau lien à {email}.",
-    "signin.code.wrong": "Ce code est incorrect. Vérifiez l’e-mail et réessayez.",
     "signin.code.triesLeft": "{n, plural, one {# essai restant.} many {# d’essais restants.} other {# essais restants.}}",
     "signin.code.tooMany": "Trop d’essais. Envoyez un nouveau code.",
     "signin.code.expired": "Ce code a expiré. Envoyez un nouveau code.",

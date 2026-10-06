@@ -38,6 +38,14 @@ These settings can be changed only with SQL today ([S-18 §2.2](../../notes/S-18
 
 - Legacy retirement (→ ST-25).
 
+## PENDING entries to remove
+
+ST-06 left a shrinking allow-list in `packages/worker/scripts/settings-coverage.ts`. Its "PENDING owners" decision ([ST-06](ST-06-settings-docs-coverage.md#design-notes)) assigns this package the 3 entries below. Register each one in the settings registry (the note names the intended key, where there is one), then delete it from `PENDING` and lower `PENDING_CEILING` by the same count. `checkCoverage` refuses an entry that is both pending and registered, so the two edits land together.
+
+- `table:lazy_delta_settings`
+- `table:email_product_caps`
+- `env:EMAIL_PRODUCT_DAILY_CAP` (`email.dailyCapDefault`)
+
 ## Design notes
 
 - Each column is moved once and never touched again.
@@ -50,8 +58,8 @@ These settings can be changed only with SQL today ([S-18 §2.2](../../notes/S-18
 
 ## Acceptance criteria
 
+- [ ] Every `PENDING` entry listed under "PENDING entries to remove" is registered and gone from `settings-coverage.ts`, `PENDING_CEILING` is 3 lower, and `settings-coverage.test.ts` passes.
 - [ ] Every moved value reads back identically through the resolver (test).
-- [ ] `PENDING` is smaller.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify

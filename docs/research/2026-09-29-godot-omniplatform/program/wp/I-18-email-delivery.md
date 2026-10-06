@@ -5,7 +5,7 @@
 | Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, phase-0–1a)                                                                                                      |
 | Size        | 0.6–0.85 engineer-weeks                                                                                                                                                                       |
 | Depends on  | [I-02](I-02-single-use-store.md)                                                                                                                                                              |
-| Unblocks    | [I-07](I-07-login-card-email.md), [CM-13](CM-13-commerce-emails.md)                                                                                                                           |
+| Unblocks    | [I-07](I-07-login-card-email.md), [CM-13](CM-13-commerce-emails.md), [LX-27](LX-27-create-limit-delivery.md)                                                                                  |
 | Role        | `pkey-implementer`                                                                                                                                                                            |
 | Plan mode   | no: follows the approved [`plans/I-04.md`](../plans/I-04.md) where it names this package                                                                                                      |
 | Gates       | `wrangler.toml`; THREAT-MODEL; D1 migration; `TABLE_OWNERS`; deliverability check on staging                                                                                                  |

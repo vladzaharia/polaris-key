@@ -5,12 +5,16 @@
 | Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase A: independent fixes)                        |
 | Size        | 0.4–0.6 engineer-weeks                                                                                         |
 | Depends on  | none                                                                                                           |
-| Unblocks    | [LX-14](LX-14-console-licensing.md)                                                                            |
+| Unblocks    | [LX-14](LX-14-console-licensing.md), [LX-27](LX-27-create-limit-delivery.md)                                   |
 | Role        | `pkey-implementer`                                                                                             |
 | Plan mode   | no                                                                                                             |
 | Gates       | D1 migration; rule 10 (OpenAPI + `routeCoverage`); `TABLE_OWNERS`; console CSP parity; THREAT-MODEL; docsLinks |
 | Human input | none                                                                                                           |
 | Repo        | `vladzaharia/polaris-key`                                                                                      |
+
+## S-24 amendment (2026-10-06)
+
+Refusing `deviceLimit` on create stays right for this package; [LX-27](LX-27-create-limit-delivery.md) lifts the refusal so the New License wizard can set a licence's device limit at creation, with the same validation and precedence ([S-24](../../notes/S-24-licence-holders.md) §8.4).
 
 ## Goal
 
@@ -88,6 +92,18 @@ temporary raise through seat-pack grants).
   change.
 - THREAT-MODEL: one line under licence administration (an operator with licence write can raise one
   licence's seats; audited).
+
+**Corrections from the code (implementation, 2026-10-05):**
+
+- Rule 10 does not apply: `packages/worker/openapi/polaris-key.v3.yaml` documents the device and
+  portal surfaces only, never `/manage/api/*`, and this package adds no route (the field rides
+  the existing licence `PATCH`). `routeCoverage` is unchanged; the admin API is documented in
+  `admin/licenses-and-devices.md` instead.
+- `TABLE_OWNERS` needs no entry: `licenses` is already License's; the generated data-model page
+  picks up the column (`device_limit (0084)`).
+- The licence read also answers `inheritedDeviceLimit` and `inheritedDeviceLimitSource`, which
+  the sheet's placeholder ("Inherits 5 from Pro") and **Use inherited limit** need.
+- `reservedNames.ts` is bundled into `actions/publish/dist`, so the bundle is regenerated with it.
 
 ## Steps
 

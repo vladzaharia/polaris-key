@@ -56,8 +56,8 @@ import {
 import {
   PORTAL_COOKIE,
   PORTAL_CSRF_HEADER,
-  issuePortalSession,
 } from "../src/services/identity/portal/session.js";
+import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { rateLimitOk } from "../src/core/rateLimit.js";
 import { hashKey } from "../src/crypto.js";
 import type { Env } from "../src/env.js";
@@ -454,11 +454,17 @@ describe("I-26 device-code flow", () => {
     const page = await readChooser(flow.binder!);
     expect(page.res.status).toBe(200);
     expect(page.html).toContain("Choose a license for this device");
-    expect(page.html).toContain("Steam Deck");
+    // SIGN-IN.md §3.6: the lede names the product and the device; no eyebrow (D-32).
+    expect(page.html).toContain("djdl will use it on Steam Deck.");
+    expect(page.html).not.toContain('class="eyebrow"');
     expect(page.html).toContain('<span class="tag">Standard</span>');
     expect(page.html).toContain("Named by the device");
     expect(page.html).toContain("0 of 3 devices");
     expect(page.html).toContain("Lifetime");
+    expect(page.html).toContain(
+      '<legend class="sr-only">Licenses for djdl</legend>',
+    );
+    expect(page.html).toContain(">Use this license and continue</button>");
     // The page never names the flow.
     expect(page.html).not.toContain(flow.state);
     expect(page.rows).toEqual([
@@ -502,7 +508,7 @@ describe("I-26 device-code flow", () => {
     });
     expect(foreign.status).toBe(303);
     page = await readChooser(flow.binder!);
-    expect(page.html).toContain("That license can't take this device any more");
+    expect(page.html).toContain("That seat was just taken. Choose again.");
     expect((await devicePoll(flow, NOW + 10)).status).toBe("pending");
 
     // Disabled between the render and the submit: re-checked, refused.
@@ -587,7 +593,7 @@ describe("I-26 browser and state-poll flows", () => {
     expect(await licenseCount()).toBe(before);
 
     const page = await readChooser(binder);
-    expect(page.html).toContain("This browser");
+    expect(page.html).toContain("djdl will use it in this browser.");
     const done = await postChooser(binder, {
       choice: page.token,
       action: "use",
@@ -662,17 +668,29 @@ describe("I-26 rows", () => {
     const flow = await startDeviceFlow();
     await callback(flow.state, flow.nonce, flow.binder);
     const page = await readChooser(flow.binder!);
-    // Rank-first: no expiry first, but the full one cannot be preselected.
+    // Rank-first: no expiry first, but the full one cannot be preselected. A full row is not a
+    // radio: it is a labelled group described by its tag, never aria-disabled (§3.14, D-94).
     expect(page.rows).toEqual([
-      { id: "lic_start", checked: false, disabled: true },
       { id: "lic_std", checked: true, disabled: false },
     ]);
-    expect(page.html).toContain("No free devices");
+    expect(page.html).toContain(
+      '<div role="group" aria-labelledby="lic-lic_start" aria-describedby="lic-note-lic_start">',
+    );
+    expect(page.html).toContain(
+      '<span class="tag" id="lic-note-lic_start">No free devices</span>',
+    );
+    expect(page.html).not.toContain("aria-disabled");
+    expect(page.html).not.toContain('value="lic_start"');
+    expect(page.html).toMatch(/Until \d{1,2} \w{3} \d{4}/);
     expect(page.html).toContain("1 of 1 device");
     expect(page.html).toContain(
       `href="${ORIGIN}/#/p/djdl/free-device?license=lic_start&amp;for=Steam%20Deck"`,
     );
     expect(page.html).toContain("<summary>Replace a device</summary>");
+    expect(page.html).toContain(
+      "Choose a device to sign out. Steam Deck takes its seat.",
+    );
+    expect(page.html).toContain(">Replace…</button>");
     expect(page.html).not.toContain("Create a new free license");
   });
 
@@ -683,8 +701,15 @@ describe("I-26 rows", () => {
     const flow = await startDeviceFlow();
     await callback(flow.state, flow.nonce, flow.binder);
     const page = await readChooser(flow.binder!);
-    expect(page.html).toContain("Create a new free license");
-    expect(page.html).toContain("A new free license for this device");
+    expect(page.html).toContain(
+      'Create a new free license<span class="tag">New</span>',
+    );
+    expect(page.html).toContain(
+      "A separate license · created when you continue",
+    );
+    expect(page.html).toContain(
+      "Your licenses are on all their devices. Replace a device, or create a new free license.",
+    );
     expect(page.html).not.toContain("free free");
     expect(page.rows).toContainEqual({
       id: "create",
@@ -701,7 +726,7 @@ describe("I-26 rows", () => {
     expect(await licenseCount()).toBe(before + 1);
   });
 
-  it('a grant with no tier reads "A new free license for this device"', async () => {
+  it("a grant with no tier shows the Create row without a tier pill", async () => {
     await db.run(
       "UPDATE oidc_config SET group_role_map_json = ? WHERE product = 'djdl'",
       JSON.stringify({ members: { role: "user" } }),
@@ -711,10 +736,13 @@ describe("I-26 rows", () => {
     const flow = await startDeviceFlow();
     await callback(flow.state, flow.nonce, flow.binder);
     const page = await readChooser(flow.binder!);
+    // No tier: no pill, the counter alone beside the New tag.
     expect(page.html).toContain(
-      '<span class="choice-seats">Create a new free license</span>',
+      '<span class="choice-title">Create a new free license<span class="tag">New</span></span><span class="choice-title tiered"><span class="choice-seats">1 of',
     );
-    expect(page.html).toContain("A new free license for this device");
+    expect(page.html).toContain(
+      "A separate license · created when you continue",
+    );
     expect(page.html).not.toContain("free free");
   });
 
@@ -941,7 +969,14 @@ describe("I-26 Replace a device", () => {
     expect(staged.status).toBe(303);
     page = await readChooser(flow.binder!);
     expect(page.html).toContain("Replace Work laptop?");
-    expect(page.html).toContain("Work laptop will need to sign in again.");
+    // SIGN-IN.md §3.7: the consequence names both devices; in use now, it warns.
+    expect(page.html).toContain(
+      "Work laptop signs out of djdl and Steam Deck takes its seat. Work laptop can sign in again later if a seat is free. We'll email you about it.",
+    );
+    expect(page.html).toContain("Work laptop is in use right now.");
+    expect(page.html).toContain(
+      '<button class="button" type="submit" name="action" value="replace">Replace and continue</button>',
+    );
     // Nothing is written before Replace and continue.
     expect(
       (await db.first<{ status: string }>(
@@ -1024,8 +1059,9 @@ describe("I-26 Replace a device", () => {
     ).toBe("authorized");
 
     // …and the portal's own DELETE is out of budget too: one budget for both surfaces.
-    const { token: portalToken, session } = await issuePortalSession(
+    const { token: portalToken, session } = await issuePortalSessionRow(
       env,
+      db,
       { accountId, email: "ada@example.com", name: "Ada" },
       NOW,
     );
@@ -1050,12 +1086,62 @@ describe("I-26 Replace a device", () => {
 
 // ── origins (owner, 2026-10-05) ─────────────────────────────────────────────────────────────
 
+describe("I-26 chooser copy", () => {
+  const NOW_S = 1_780_000_000;
+  const full = {
+    id: "b",
+    tierName: "Edu",
+    origin: "From the developer",
+    fromSignIn: false,
+    seats: { used: 2, limit: 2 },
+    expiresAt: null,
+    activatedAt: NOW_S - 100,
+    state: "full" as const,
+    own: false,
+    replace: null,
+    freeDeviceUrl: null,
+  };
+  const body = (developerName?: string | null) =>
+    chooserBody({
+      productName: "Tidewater Studio",
+      deviceLabel: "Work laptop",
+      action: "/x",
+      token: "t",
+      now: NOW_S,
+      view: { rows: [full], preselected: null, create: null },
+      developerName,
+    });
+
+  it("names the developer in noneReplaceable when the listing has one (§5.2)", () => {
+    expect(body("Harbor Audio")).toContain(
+      "Harbor Audio manages devices for these licenses. Ask Harbor Audio to free one, or use another license.",
+    );
+    expect(body(null)).toContain(
+      "The developer manages devices for these licenses. Ask the developer to free one",
+    );
+  });
+
+  it("labels a full row's group by the product name alone (its tag describes it)", () => {
+    const html = body(null);
+    const m =
+      /role="group" aria-labelledby="([^"]+)" aria-describedby="([^"]+)"/.exec(
+        html,
+      )!;
+    expect(
+      new RegExp(`<span id="${m[1]}">Tidewater Studio</span>`).test(html),
+    ).toBe(true);
+    expect(html).toContain(`id="${m[2]}">No free devices</span>`);
+    expect(html).not.toContain("aria-disabled");
+  });
+});
+
 describe("I-26 row origins name the store with the key, never a licence type", () => {
   it("words every origin in plain words", () => {
     expect(originLabel("sign_in", null, false)).toBe("From signing in");
     expect(originLabel("store", "steam", true)).toBe("Steam key");
     expect(originLabel("store", "steam", false)).toBe("From Steam");
     expect(originLabel("store", "app-store", false)).toBe("From the App Store");
+    expect(originLabel("store", "app-store", true)).toBe("App Store key");
     expect(originLabel("developer", null, true)).toBe("Added with a key");
     expect(originLabel("developer", null, false)).toBe("From the developer");
     expect(originLabel("free", null, false)).toBe("Free");

@@ -703,6 +703,39 @@ describe("Store connections: assign and release", () => {
     expect(dialog.textContent).toContain("Held through this product's own key");
   });
 
+  it("Set up opens the holding product's storefront flow, scoped to the store (A-18j)", async () => {
+    boot(`#/platform/store-connections`, {
+      extra: routes({
+        [BASE]: {
+          ok: true,
+          stores: STORES.map((s) =>
+            s.store === "app-store" ? { ...s, storefront: true } : s,
+          ),
+        },
+      }),
+    });
+    await storesPage();
+    await appsTable();
+    await openRowMenu("Acme Game");
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Set up" }),
+    );
+    await waitFor(() =>
+      expect(window.location.hash).toBe(
+        "#/p/acme/distribution/storefronts?flow=add&stores=app-store&step=prerequisites",
+      ),
+    );
+  });
+
+  it("no Set up for a store without a storefront adapter", async () => {
+    boot(`#/platform/store-connections`, { extra: routes() });
+    await storesPage();
+    await appsTable();
+    await openRowMenu("Acme Game");
+    await screen.findByRole("menuitem", { name: "Release from Acme" });
+    expect(screen.queryByRole("menuitem", { name: "Set up" })).toBeNull();
+  });
+
   it("releases behind the L1 caution confirm", async () => {
     expect(confirmFor("storeApp.release").level).toBe(1);
     const log = boot(`#/platform/store-connections`, { extra: routes() });

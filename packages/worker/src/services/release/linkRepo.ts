@@ -19,8 +19,10 @@
 
 import { Catalog } from "@polaris-key/catalog";
 import {
-  RESERVED_PRODUCT_SLUGS,
+  PRODUCT_SLUG_MAX,
+  PRODUCT_SLUG_RE,
   SYSTEM_PRODUCT_SLUG,
+  isReservedProductSlug,
   type ManifestDocumentName,
 } from "@polaris-key/manifest";
 import {
@@ -154,33 +156,10 @@ export function manifestIssuerRefusal(env: Env, issuer: string): string | null {
 
 // ── create probes (UX-72: FLOWS.md §3.11 W23, W24) ─────────────────────────────────────────
 
-/**
- * The slug shape both create paths and the console accept: the manifest's `^[a-z0-9-]{1,64}$`
- * narrowed to start with a letter or digit, as the console's `slugError` already asks. A slug
- * the check calls `available` is one every create path will take.
- */
-const SLUG_SHAPE = /^[a-z0-9][a-z0-9-]{0,63}$/;
-const SLUG_MAX = 64;
-
-/**
- * One-segment admin actions under `/manage/api/products/`, matched before the segment is read as
- * a product slug (`admin/handlers/products.ts`): a product slugged like one would have its
- * console record shadowed, so the slug check and both create paths treat them as reserved.
- */
-export const PRODUCT_ROUTE_ACTIONS: readonly string[] = [
-  "kek",
-  "link-repo",
-  "slug-check",
-];
-
-/** True for a slug no product may take: router paths, admin actions, the system product. */
-export function isReservedSlug(slug: string): boolean {
-  return (
-    slug === SYSTEM_PRODUCT_SLUG ||
-    RESERVED_PRODUCT_SLUGS.includes(slug) ||
-    PRODUCT_ROUTE_ACTIONS.includes(slug)
-  );
-}
+// The slug shape, the router and admin-action reservations and the system product all come
+// from `@polaris-key/manifest` (P0-14: one slug rule): `PRODUCT_SLUG_RE`, `PRODUCT_SLUG_MAX`
+// and `isReservedProductSlug`. A slug the check calls `available` is one every create path,
+// and the manifest validator, will take.
 
 /**
  * The slug a name derives, as the console's `slugFromName` does: lowercase ASCII letters and
@@ -193,7 +172,7 @@ export function slugFromName(name: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
-    .slice(0, SLUG_MAX)
+    .slice(0, PRODUCT_SLUG_MAX)
     .replace(/-+$/, "");
 }
 
@@ -218,10 +197,10 @@ async function freeVariant(db: Db, base: string): Promise<string | null> {
   );
   const taken = new Set(rows.map((r) => r.slug));
   const free = (s: string) =>
-    SLUG_SHAPE.test(s) && !taken.has(s) && !isReservedSlug(s);
+    PRODUCT_SLUG_RE.test(s) && !taken.has(s) && !isReservedProductSlug(s);
   if (free(base)) return base;
   const fit = (suffix: string) =>
-    `${base.slice(0, SLUG_MAX - suffix.length).replace(/-+$/, "")}${suffix}`;
+    `${base.slice(0, PRODUCT_SLUG_MAX - suffix.length).replace(/-+$/, "")}${suffix}`;
   if (free(fit("-app"))) return fit("-app");
   for (let i = 2; i < 1000; i++) if (free(fit(`-${i}`))) return fit(`-${i}`);
   return null;
@@ -233,19 +212,19 @@ async function freeVariant(db: Db, base: string): Promise<string | null> {
  * path, an admin action or the system product), `taken` (a product has it).
  */
 export async function checkSlug(db: Db, slug: string): Promise<SlugCheck> {
-  if (!SLUG_SHAPE.test(slug)) {
+  if (!PRODUCT_SLUG_RE.test(slug)) {
     const derived = slugFromName(slug);
     return {
       slug,
       status: "invalid",
       message:
-        slug.length > SLUG_MAX
-          ? `A slug has at most ${SLUG_MAX} characters.`
+        slug.length > PRODUCT_SLUG_MAX
+          ? `A slug has at most ${PRODUCT_SLUG_MAX} characters.`
           : "Use lowercase letters, digits and hyphens, starting with a letter or digit.",
       suggestion: derived ? await freeVariant(db, derived) : null,
     };
   }
-  if (isReservedSlug(slug))
+  if (isReservedProductSlug(slug))
     return {
       slug,
       status: "reserved",

@@ -51,6 +51,11 @@ import {
   packageNameNorm,
   type PackageEcosystem,
 } from "./packages.js";
+import {
+  PRODUCT_ROUTE_ACTIONS,
+  PRODUCT_SLUG_RE,
+  RESERVED_PRODUCT_SLUGS,
+} from "./productSlug.js";
 
 import {
   DEFAULT_ENABLED_SERVICES,
@@ -539,7 +544,6 @@ const MODULES = Object.keys(MODULE_SERVICES) as ProductModule[];
 /** What a manifest that declares nothing runs: licensing + settings delivery, which is
  *  today's behaviour for every product (design spec §2.2). The table's `defaultEnabled`. */
 const DEFAULT_ENABLED: readonly ServiceSlug[] = DEFAULT_ENABLED_SERVICES;
-const SLUG_RE = /^[a-z0-9-]{1,64}$/;
 /** Tier, profile and probe ids. Exported (P3-12) so the Worker's admin handlers check the same
  *  values the same way (plans/P3-01.md §2.2's inventory); no rule is added by exporting it. */
 export const ID_RE = /^[A-Za-z0-9._:-]{1,64}$/;
@@ -1188,32 +1192,6 @@ const OIDC_PROVIDER_VALUES = ["platform", "custom"] as const;
 const FINGERPRINT_MODE_VALUES = ["off", "lenient", "normal", "strict"] as const;
 const AUTO_ISSUE_MODE_VALUES = ["anonymous", "oidcDefault", "both"] as const;
 
-/**
- * Product slugs the platform router reserves ahead of tenant routing. Every one of these is
- * (or fronts) a root path the worker matches before `/<product>/…` — a product registered
- * under such a slug would be permanently shadowed. `validateManifestDocuments` refuses them
- * (`reserved_slug`), and the worker's manual-create admin path checks the same list.
- */
-export const RESERVED_PRODUCT_SLUGS: readonly string[] = [
-  "docs",
-  "manage",
-  "api",
-  "assets",
-  "login",
-  "logout",
-  "callback",
-  "magic",
-  "download",
-  "webhooks",
-  "well-known",
-  // PX-W1: the customer portal's same-origin media proxy, `/media/<product>/<asset>`.
-  "media",
-  // PX-01: the portal's `/activate?key=` deep link.
-  "activate",
-  // PX-W16 (G33): avatars will be served at `/media/avatar/<asset>`, which the media proxy's
-  // `/media/<product>/<asset>` would read as a product slugged `avatar`; reserved now.
-  "avatar",
-];
 const SECRET_DELIVERY_VALUES = [
   "serverOnly",
   "clientScoped",
@@ -1361,19 +1339,26 @@ function validateDocuments(
   }
   const productSlug =
     typeof productNode.slug === "string" ? productNode.slug : "";
-  if (!productSlug || !SLUG_RE.test(productSlug)) {
+  if (!productSlug || !PRODUCT_SLUG_RE.test(productSlug)) {
+    // The message is a literal (not an interpolation) so the generated validation-codes page
+    // shows the pattern; index.test.ts pins it to PRODUCT_SLUG_PATTERN.
     add(
       errors,
       "product",
       "/product/slug",
       "invalid_slug",
-      "product.slug must match ^[a-z0-9-]{1,64}$.",
+      "product.slug must match ^[a-z0-9][a-z0-9-]{0,63}$.",
     );
-  } else if (RESERVED_PRODUCT_SLUGS.includes(productSlug)) {
+  } else if (
+    RESERVED_PRODUCT_SLUGS.includes(productSlug) ||
+    PRODUCT_ROUTE_ACTIONS.includes(productSlug)
+  ) {
     // The worker's root router reserves these ahead of product slugs (`/manage`, `/docs`,
     // the portal paths, `/.well-known/*`, …) — a product registered under one of them would
-    // be permanently shadowed, its every route unreachable. Refuse at authoring time; the
-    // admin manual-create path enforces the same list.
+    // be permanently shadowed, its every route unreachable. The admin API's one-segment
+    // actions (`kek`, `link-repo`, `slug-check`) would shadow its console record the same way.
+    // Refuse at authoring time; the slug check and manual create apply the same lists
+    // (P0-14). The system product's slug is not refused here: its own manifest carries it.
     add(
       errors,
       "product",
@@ -5486,6 +5471,8 @@ function add(
 // The release descriptor (P2-04): its contract, validator and helpers.
 export * from "./descriptor.js";
 export * from "./packages.js";
+// The one product slug rule (P0-14).
+export * from "./productSlug.js";
 export * from "./feedSetup.js";
 // `.pkey/distribution` (P2b-02): outlets, identities, transports and listing.
 export * from "./distribution.js";

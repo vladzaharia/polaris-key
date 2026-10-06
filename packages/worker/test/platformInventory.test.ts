@@ -109,7 +109,12 @@ describe("the platform inventory (ST-02)", () => {
     // only (THREAT-MODEL "The inventory never reveals a secret"), so a mis-tag is a leak.
     const credential =
       /(_SECRET|_PEPPER|PRIVATE_KEY|_KEY|_KEYS|_KEY_PREVIOUS|_SERVICE_ACCOUNT|_PARTNER_CENTER|_ACCESS_KEY_ID)$|^PLATFORM_KEK$/;
-    const shaped = PLATFORM_INVENTORY.filter((e) => credential.test(e.name));
+    // Public by design, though credential-shaped: a Turnstile site key is embedded in the page
+    // the widget renders on (I-07; the portal reads it from `/api/capabilities`).
+    const publicByDesign = new Set(["TURNSTILE_SITE_KEY"]);
+    const shaped = PLATFORM_INVENTORY.filter(
+      (e) => credential.test(e.name) && !publicByDesign.has(e.name),
+    );
     for (const e of shaped) expect(e.kind, e.name).toBe("secret");
     // The two sets coincide: a new secret whose name is not credential-shaped widens the pattern.
     expect(shaped.map((e) => e.name)).toEqual(

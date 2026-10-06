@@ -1,16 +1,16 @@
 # MO-02 The motion layer in the console app: `src/ui/motion/` (`viewTransition`, `useReducedMotion`, `Presence`, `CountUp`, `setMeter`, `highlight`, `Celebration`) and `src/motion.css` (keyframes, the nine patterns, gated View Transition rules), exit animations for every Radix overlay, sonner on the tokens, the missing `pk-refetch`, and a motion lint
 
-| Field       | Value                                                                                                                                                                              |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | MO: Motion system (notes/S-23) (wave 1: foundation)                                                                                                                                |
-| Size        | 0.6–1 engineer-weeks                                                                                                                                                               |
-| Depends on  | [MO-01](MO-01-brand-motion-tokens.md)                                                                                                                                              |
-| Unblocks    | [MO-03](MO-03-e2e-motion-determinism.md), [MO-08](MO-08-console-overlay-controls-motion.md), [MO-10](MO-10-console-shell-motion.md), [MO-12](MO-12-reduce-motion-preference.md)    |
-| Role        | `pkey-implementer`                                                                                                                                                                 |
-| Plan mode   | no                                                                                                                                                                                 |
-| Gates       | `adminCspParity` after the admin build; `pnpm --filter @polaris-key/admin test` (unit + the new motion lint); `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations |
-| Human input | none                                                                                                                                                                               |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                          |
+| Field       | Value                                                                                                                                                                                                                 |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | MO: Motion system (notes/S-23) (wave 1: foundation)                                                                                                                                                                   |
+| Size        | 0.6–1 engineer-weeks                                                                                                                                                                                                  |
+| Depends on  | [MO-01](MO-01-brand-motion-tokens.md)                                                                                                                                                                                 |
+| Unblocks    | [MO-03](MO-03-e2e-motion-determinism.md), [MO-08](MO-08-console-overlay-controls-motion.md), [MO-10](MO-10-console-shell-motion.md), [MO-12](MO-12-reduce-motion-preference.md), [LX-29](LX-29-new-license-wizard.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                                                    |
+| Plan mode   | no                                                                                                                                                                                                                    |
+| Gates       | `adminCspParity` after the admin build; `pnpm --filter @polaris-key/admin test` (unit + the new motion lint); `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations                                    |
+| Human input | none                                                                                                                                                                                                                  |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                             |
 
 ## Goal
 

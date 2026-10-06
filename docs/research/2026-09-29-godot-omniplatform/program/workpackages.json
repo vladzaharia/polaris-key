@@ -371,6 +371,26 @@
       "status": "done"
     },
     {
+      "id": "P0-14",
+      "title": "One product slug rule in `shared-manifest`: `SLUG_SHAPE` and the reserved admin route actions (`kek`, `link-repo`, `slug-check`) in the validator, the mutation table and the schema, used by manual create, link-repo and the slug check",
+      "phase": "P0",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.25, 0.5],
+      "deps": [],
+      "planMode": false,
+      "gates": ["rule-9", "docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "UX-72 (wp/UX-72-create-probes, merged a1e5a898e): packages/worker/src/services/release/linkRepo.ts SLUG_SHAPE, PRODUCT_ROUTE_ACTIONS",
+        "AGENTS.md rule 9"
+      ],
+      "brief": "wp/P0-14-slug-rule-shared-manifest.md",
+      "status": "done"
+    },
+    {
       "id": "P1-01",
       "title": "Create `sdks/godot` from the prototype, with a corpus mirror and CI runner",
       "phase": "P1",
@@ -585,6 +605,27 @@
       "brief": "wp/P1-12-godot-release.md",
       "status": "in-review",
       "milestone": "Diceroll can adopt managed config, licensing and identity"
+    },
+    {
+      "id": "P1-13",
+      "title": "Godot timing tests that hold under any load: replace wall-clock ratio and frame-count checks with deterministic work counters",
+      "phase": "P1",
+      "lane": "godot",
+      "role": "pkey-godot-engineer",
+      "estimateWeeks": [0.25, 0.5],
+      "deps": [],
+      "planMode": false,
+      "gates": [],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "sdks/godot/tests/support/fixtures.gd fastest_ms",
+        "sdks/godot/tests/packs/test_pck.gd _scan_scaling, tests/core/test_json.gd, tests/core/test_offload.gd",
+        "CLAUDE.md Test budget"
+      ],
+      "brief": "wp/P1-13-godot-timing-tests.md",
+      "status": "todo"
     },
     {
       "id": "P1b-01",
@@ -2444,7 +2485,7 @@
         "notes/S-16 §8 I-06"
       ],
       "brief": "wp/I-06-login-providers.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "I-07",
@@ -2478,7 +2519,7 @@
         "notes/S-16 §8 I-07"
       ],
       "brief": "wp/I-07-login-card-email.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "I-08",
@@ -2694,7 +2735,7 @@
         "notes/S-16 §10 D15 D19"
       ],
       "brief": "wp/I-12-console-users.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "I-13",
@@ -4833,7 +4874,7 @@
         "notes/S-15 §13 decision 5"
       ],
       "brief": "wp/A-18g-steam-adapter.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "A-18h",
@@ -4906,7 +4947,7 @@
       "optional": false,
       "refs": ["notes/S-15 §8", "notes/S-15 §6.1", "notes/S-15 §11 (A-18j)"],
       "brief": "wp/A-18j-console-storefronts.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "A-18k",
@@ -4956,7 +4997,7 @@
         "notes/S-15 §13 decisions 1, 2"
       ],
       "brief": "wp/A-18m-apple-listing-push.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "PX-01",
@@ -5426,7 +5467,7 @@
         "design/PORTAL §11.2 PX-W14"
       ],
       "brief": "wp/PX-W14-approve-device.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "PX-W15",
@@ -5707,7 +5748,7 @@
       "optional": false,
       "refs": ["design/PORTAL §4.16", "design/PORTAL §11.3 PX-16"],
       "brief": "wp/PX-16-discover-page.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "PX-17",
@@ -6282,7 +6323,7 @@
       "lane": "cli-ci",
       "role": "pkey-implementer",
       "estimateWeeks": [1, 1.4],
-      "deps": ["ST-17"],
+      "deps": ["ST-17", "ST-19"],
       "planMode": false,
       "gates": ["rule-10", "threat-model", "cli-bundle"],
       "humanInputs": [],
@@ -6310,8 +6351,35 @@
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["notes/S-18 §4.14.3", "notes/S-18 §6.2 ST-19"],
+      "refs": [
+        "notes/S-18 §4.14.3",
+        "notes/S-18 §6.2 ST-19",
+        "plans/ST-19.md (approved 2026-10-06)"
+      ],
       "brief": "wp/ST-19-manifest-cleanup.md",
+      "status": "todo"
+    },
+    {
+      "id": "ST-19b",
+      "title": "Manifest-declared settings into the registry: the release GitHub block, binary name, channel workflow, beta branch, summary marker, manual channels, deliverables, trusted publisher, channel policy, release keys, compat window, registration, secret names, provisioning and transports; their `PENDING` entries removed",
+      "phase": "ST",
+      "stage": "phase 4: manifest round trip",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["ST-19"],
+      "planMode": false,
+      "gates": ["rule-6", "drift-gate", "docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "plans/ST-19.md Owner decisions Q1 and §3.5",
+        "notes/S-18 §4.2",
+        "notes/S-18 §4.13 item 2",
+        "wp/ST-06-settings-docs-coverage.md PENDING owners"
+      ],
+      "brief": "wp/ST-19b-manifest-settings.md",
       "status": "todo"
     },
     {
@@ -6412,7 +6480,7 @@
       "lane": "worker",
       "role": "pkey-implementer",
       "estimateWeeks": [0.4, 0.55],
-      "deps": ["ST-11", "ST-14", "ST-17"],
+      "deps": ["ST-11", "ST-14", "ST-17", "ST-19b"],
       "planMode": false,
       "gates": ["migration", "table-owners", "rule-10"],
       "humanInputs": [],
@@ -6793,7 +6861,7 @@
         "notes/S-19 §7.2 (seat packs), C2 (licence value over tier)"
       ],
       "brief": "wp/LX-14a-per-license-device-limit.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "LX-14",
@@ -7571,6 +7639,28 @@
       "status": "todo"
     },
     {
+      "id": "SP-31",
+      "title": "Node Electron host speaks PolarisBridge v4: `exposePolarisBridge` reports version 4 and answers every v4 `invoke` verb, sign-in field and activation kind over the Node client; `bridge.ts` documents the v4 contract",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.75, 1.25],
+      "deps": ["SP-12"],
+      "planMode": false,
+      "gates": ["docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (SP-N10, SP-R07) and §6 (bridge v4 contract)",
+        "packages/sdk-node/src/electron/protocol.ts DEFAULT_INVOKE_VERBS, POLARIS_BRIDGE_VERSION",
+        "packages/sdk-react/src/desktop/bridge.ts WHAT v4 ADDS"
+      ],
+      "brief": "wp/SP-31-node-bridge-v4.md",
+      "status": "todo"
+    },
+    {
       "id": "HA-01",
       "title": "Hosted-asset core: `hosted_assets` table, `core/safeFetch.ts` guard, `core/hostedAssets.ts` ingest (cap, sniff, SHA-256, put, ref) and Content-Type on every R2 put",
       "phase": "HA",
@@ -7595,7 +7685,7 @@
     },
     {
       "id": "HA-02",
-      "title": "Media host `media*.plrs.im`: fourth custom domain, `MEDIA_ORIGIN`, `core/mediaHost.ts` confinement, content-addressed immutable routes and stable aliases",
+      "title": "Image host `img.plrs.im` (`img-staging`, `img-dev`): fourth custom domain, `IMG_ORIGIN`, `core/imgHost.ts` confinement, content-addressed immutable routes and stable aliases",
       "phase": "HA",
       "stage": "phase 1: substrate",
       "lane": "worker",
@@ -7604,9 +7694,7 @@
       "deps": ["HA-01"],
       "planMode": false,
       "gates": ["wrangler", "rule-10", "threat-model", "workerd"],
-      "humanInputs": [
-        "a deploy that attaches the custom domains img.plrs.im, img-staging.plrs.im and img-dev.plrs.im (the Worker routes create the DNS records)"
-      ],
+      "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
       "refs": [
@@ -7614,7 +7702,7 @@
         "notes/S-20 owner decision 2",
         "notes/S-20 §9 HA-02"
       ],
-      "brief": "wp/HA-02-media-host.md",
+      "brief": "wp/HA-02-img-host.md",
       "status": "todo"
     },
     {
@@ -7628,9 +7716,7 @@
       "deps": ["HA-01"],
       "planMode": false,
       "gates": ["wrangler", "workerd", "threat-model"],
-      "humanInputs": [
-        "the Images binding enabled for the Worker on the Cloudflare account (free tier: 5,000 unique transformations a month)"
-      ],
+      "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
       "refs": ["notes/S-20 §6.6", "notes/S-20 owner decision 4"],
@@ -7818,7 +7904,7 @@
         "notes/S-20 owner decision 10"
       ],
       "brief": "wp/HA-11-presentation-discovery-plan.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "HA-12",
@@ -7827,7 +7913,7 @@
       "stage": "phase 5: presentation in SDKs",
       "lane": "corpus",
       "role": "pkey-implementer",
-      "estimateWeeks": [0.4, 0.6],
+      "estimateWeeks": [0.6, 0.9],
       "deps": ["HA-11", "HA-02", "HA-07"],
       "planMode": true,
       "gates": ["plan-mode", "corpus", "drift-gate", "docs-generated"],
@@ -9024,7 +9110,7 @@
       "optional": false,
       "refs": ["notes/S-23 §6.1 enter, exit, press", "notes/S-23 §4.2"],
       "brief": "wp/MO-08-console-overlay-controls-motion.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "MO-09",
@@ -9797,6 +9883,245 @@
       "brief": "wp/CM-19-own-account-mode.md",
       "status": "todo",
       "deferred": "owner go (S-22, 2026-10-05): not dispatched until the owner says go"
+    },
+    {
+      "id": "LX-26",
+      "title": "Licence holders on the Worker: a derived `holder` (floating or assigned, in an account or waiting) on licence reads and list filters, association at creation when an account verified the email, one `onAccountEmailVerified` Core hook, `license_auto_attach_blocks` so a removed licence stays removed, holder audit",
+      "phase": "LX",
+      "stage": "S-24: licence holders",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.6, 1],
+      "deps": ["I-05"],
+      "planMode": false,
+      "gates": [
+        "migration",
+        "table-owners",
+        "rule-10",
+        "threat-model",
+        "workerd"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-24-licence-holders.md §5, §6.1, §6.3, §7 (D1–D4, D19)",
+        "notes/S-16 §5.1 (claim rules)"
+      ],
+      "brief": "wp/LX-26-licence-holders-worker.md",
+      "status": "todo"
+    },
+    {
+      "id": "LX-27",
+      "title": "Create a licence with a device limit and delivery: `deviceLimit` and `delivery.email` on create (lifting LX-14a's create refusal), the \"Your <Product> license\" key email sent in the create request, and **Send a new key** (`POST …/licenses/<id>/send-key`)",
+      "phase": "LX",
+      "stage": "S-24: licence holders",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.5, 0.8],
+      "deps": ["LX-14a", "LX-26", "I-18"],
+      "planMode": false,
+      "gates": ["rule-10", "threat-model", "email-snapshots", "workerd"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["notes/S-24-licence-holders.md §6.3, §8.4 (D11, D12)"],
+      "brief": "wp/LX-27-create-limit-delivery.md",
+      "status": "todo"
+    },
+    {
+      "id": "LX-28",
+      "title": "Bulk floating keys: `license_batches` and `licenses.batch_id`, `POST …/license/batches` (up to 500, labelled, keys returned once with `no-store`), batch reads with used counts, and **Disable unused keys**",
+      "phase": "LX",
+      "stage": "S-24: licence holders",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.5, 0.8],
+      "deps": ["LX-26"],
+      "planMode": false,
+      "gates": [
+        "migration",
+        "table-owners",
+        "rule-10",
+        "threat-model",
+        "workerd"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["notes/S-24-licence-holders.md §6.1, §6.3, §7.1, §8.5 (D10)"],
+      "brief": "wp/LX-28-bulk-floating-keys.md",
+      "status": "todo"
+    },
+    {
+      "id": "LX-29",
+      "title": "Console New License wizard: a five-step drawer (Product and tier, Who it's for, Limits, Delivery, Review) replacing `CreateLicenseDialog`, single and batch, Done with the key shown once or a CSV, S-23 motion",
+      "phase": "LX",
+      "stage": "S-24: licence holders",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1, 1.5],
+      "deps": ["LX-27", "LX-28", "MO-02"],
+      "planMode": false,
+      "gates": ["console-csp-parity", "docs-links", "portal-e2e"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-24-licence-holders.md §8 (D8–D11)",
+        "docs/design/FLOWS.md C-17",
+        "docs/design/SETUP.md §1",
+        "docs/design/licenses/ frames 70–75b"
+      ],
+      "brief": "wp/LX-29-new-license-wizard.md",
+      "status": "todo"
+    },
+    {
+      "id": "LX-30",
+      "title": "Console holder surfaces: Holder column and filters (holder, batch) on Licenses, the record's holder line with **Assign…**, **Send a new key…**, **Reassign…** and **Make floating…** (I-12's relink tool, typed confirmation), and the batch page with **Disable unused keys…**",
+      "phase": "LX",
+      "stage": "S-24: licence holders",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.6, 1],
+      "deps": ["LX-26", "LX-28", "I-12"],
+      "planMode": false,
+      "gates": ["console-csp-parity", "rule-10", "threat-model", "docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-24-licence-holders.md §5.5, §8.8 (D5, D20)",
+        "docs/design/licenses/ frames 76–77"
+      ],
+      "brief": "wp/LX-30-console-holder-surfaces.md",
+      "status": "todo"
+    },
+    {
+      "id": "LX-31",
+      "title": "Licence holders close-out: glossary (floating, assigned), the New License and bulk-keys docs pages, THREAT-MODEL T-H1–T-H5, and one e2e path from the console wizard through a kit activation to the portal",
+      "phase": "LX",
+      "stage": "S-24: licence holders",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["LX-29", "LX-30", "PX-23", "UK-42"],
+      "planMode": false,
+      "gates": ["docs-links", "docs-generated", "threat-model", "portal-e2e"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["notes/S-24-licence-holders.md §7.5, §13"],
+      "brief": "wp/LX-31-holders-closeout.md",
+      "status": "todo"
+    },
+    {
+      "id": "PX-W18",
+      "title": "Sign-in hints on the identity request: optional `loginHint`, `nameHint` and `purpose: \"signin\" | \"attach\"` on the pushed request and `login_hint` on `authorize`; the card prefills CodeStep and RegisterStep and never skips verification; new transcripts and the `identity.signin.hints` parity row",
+      "phase": "PX",
+      "stage": "phase W: Worker additions",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["PX-W13", "I-08", "I-07"],
+      "planMode": true,
+      "gates": ["plan-mode", "rule-10", "threat-model", "all-sdks", "workerd"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-24-licence-holders.md §6.4, §7.2 (D15, D23)",
+        "docs/design/SIGN-IN.md §6.6"
+      ],
+      "brief": "wp/PX-W18-signin-hints.md",
+      "status": "todo"
+    },
+    {
+      "id": "PX-23",
+      "title": "Portal: add a floating key with its devices (\"It's on 2 devices already. They come with it.\"), the licence card's origin wording (\"Key ending …\", \"<Store> key ending …\", \"From <Developer>\"), and **Remove from my library** saying it becomes floating and stays out",
+      "phase": "PX",
+      "stage": "phase B: new API, S-16, S-17",
+      "lane": "portal",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["PX-17", "LX-26"],
+      "planMode": false,
+      "gates": ["portal-e2e", "console-csp-parity"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-24-licence-holders.md §10 (D19, D21, D22)",
+        "docs/design/PORTAL.md §4.17, §4.20, §4.26",
+        "docs/design/licenses/ frames 80–81"
+      ],
+      "brief": "wp/PX-23-portal-floating-keys.md",
+      "status": "todo"
+    },
+    {
+      "id": "UK-42",
+      "title": "Activation without an account in ui-core, the elements and React: the Done step after a key with the capability-aware recommendation, **Add your name and email** (hints, then keep and attach), the owned, waiting and other-email states, the AccountAndLicense row, copy keys and UI fixtures",
+      "phase": "UK",
+      "stage": "must",
+      "lane": "ui",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.8, 1.2],
+      "deps": ["UK-03", "UK-05", "UK-44", "I-10a"],
+      "planMode": false,
+      "gates": ["ui-snapshots", "modernity-lint", "drift-gate", "all-sdks"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-24-licence-holders.md §9 (D13–D18)",
+        "docs/design/SIGN-IN.md §3.9, §3.17",
+        "docs/design/sign-in/ frames 42–48"
+      ],
+      "brief": "wp/UK-42-activation-holders-web.md",
+      "status": "todo"
+    },
+    {
+      "id": "UK-43",
+      "title": "Activation without an account in the native kits: SwiftUI, Compose, Godot, Qt and the terminals adopt UK-42's Done step, recommendation, **Add your name and email** and the key-ownership states with native controls",
+      "phase": "UK",
+      "stage": "must",
+      "lane": "ui",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1, 1.5],
+      "deps": ["UK-42", "UK-07", "UK-09", "UK-11", "UK-12", "I-10b"],
+      "planMode": false,
+      "gates": ["ui-snapshots", "modernity-lint", "all-sdks"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-24-licence-holders.md §9",
+        "docs/design/UI-KITS.md §4.3"
+      ],
+      "brief": "wp/UK-43-activation-holders-native.md",
+      "status": "todo"
+    },
+    {
+      "id": "UK-44",
+      "title": "SDK sign-in hints: `signIn.start({loginHint, nameHint, purpose})` in Node, React (over `client-core`), Python, Swift, Kotlin and Godot, replaying PX-W18's transcripts, with `identity.signin.hints` in every `parity.json`",
+      "phase": "UK",
+      "stage": "must",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.5, 0.8],
+      "deps": ["PX-W18", "I-10a", "I-10b"],
+      "planMode": true,
+      "gates": ["plan-mode", "all-sdks", "corpus-runner", "drift-gate"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-24-licence-holders.md §6.4",
+        "plans/PX-W18.md (to be written)"
+      ],
+      "brief": "wp/UK-44-sdk-signin-hints.md",
+      "status": "todo",
+      "planRef": "PX-W18"
     }
   ]
 }

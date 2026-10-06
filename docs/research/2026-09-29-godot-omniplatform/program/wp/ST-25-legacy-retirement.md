@@ -1,16 +1,16 @@
 # ST-25 Legacy settings retirement: `artifacts_access`, `products.branding_json`, bespoke route aliases, access-mode copy; coverage allow-list empty
 
-| Field       | Value                                                                                                    |
-| ----------- | -------------------------------------------------------------------------------------------------------- |
-| Phase       | ST: Settings architecture (S-18) (phase 5: governance and environments)                                  |
-| Size        | 0.4–0.55 engineer-weeks                                                                                  |
-| Depends on  | [ST-11](ST-11-sql-only-settings.md), [ST-14](ST-14-portal-settings.md), [ST-17](ST-17-resync-dry-run.md) |
-| Unblocks    | none                                                                                                     |
-| Role        | `pkey-implementer`                                                                                       |
-| Plan mode   | no                                                                                                       |
-| Gates       | D1 migration (replayable, scratch-SQLite rehearsal); `TABLE_OWNERS`; rule 10 (OpenAPI + `routeCoverage`) |
-| Human input | none                                                                                                     |
-| Repo        | `vladzaharia/polaris-key`                                                                                |
+| Field       | Value                                                                                                                                           |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | ST: Settings architecture (S-18) (phase 5: governance and environments)                                                                         |
+| Size        | 0.4–0.55 engineer-weeks                                                                                                                         |
+| Depends on  | [ST-11](ST-11-sql-only-settings.md), [ST-14](ST-14-portal-settings.md), [ST-17](ST-17-resync-dry-run.md), [ST-19b](ST-19b-manifest-settings.md) |
+| Unblocks    | none                                                                                                                                            |
+| Role        | `pkey-implementer`                                                                                                                              |
+| Plan mode   | no                                                                                                                                              |
+| Gates       | D1 migration (replayable, scratch-SQLite rehearsal); `TABLE_OWNERS`; rule 10 (OpenAPI + `routeCoverage`)                                        |
+| Human input | none                                                                                                                                            |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                       |
 
 ## Goal
 

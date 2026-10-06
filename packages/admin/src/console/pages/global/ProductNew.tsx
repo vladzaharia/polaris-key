@@ -1,5 +1,5 @@
 import * as React from "react";
-import { RESERVED_PRODUCT_SLUGS } from "@polaris-key/manifest";
+import { isReservedProductSlug } from "@polaris-key/manifest";
 import { ArrowRight, Check, ChevronRight, Github, Plus } from "lucide-react";
 import {
   type CreateManualProductResult,
@@ -126,8 +126,8 @@ export type SlugVerdict =
   /** The registry hasn't loaded: the server decides on Create. */
   | { kind: "unknown" };
 
-const isReserved = (slug: string): boolean =>
-  RESERVED_PRODUCT_SLUGS.includes(slug);
+/** The server's reservations (P0-14): router paths, admin actions, the system product. */
+const isReserved = (slug: string): boolean => isReservedProductSlug(slug);
 
 /** The first free variant of a taken slug: `-app`, then `-2`, `-3`… */
 export function suggestSlug(slug: string, taken: ReadonlySet<string>): string {

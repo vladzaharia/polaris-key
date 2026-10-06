@@ -1,3 +1,4 @@
+import { PRODUCT_SLUG_MAX, PRODUCT_SLUG_RE } from "@polaris-key/manifest";
 import type {
   CreateManualProductBody,
   CreateManualProductResult,
@@ -248,13 +249,15 @@ export function intOrUndefined(value: string): number | undefined {
 
 /**
  * Best-effort detection of a likely-valid slug. The server is the authority, but catching the
- * obvious cases (blank, spaces, uppercase, illegal chars) before the round-trip gives a fast,
- * inline error.
+ * obvious cases (blank, spaces, uppercase, illegal chars, too long) before the round-trip gives
+ * a fast, inline error. Mirrors the one product slug shape in `@polaris-key/manifest` (P0-14).
  */
 export function slugError(slug: string): string | null {
   const t = slug.trim();
   if (t === "") return "A slug is required.";
-  if (!/^[a-z0-9][a-z0-9-]*$/.test(t))
+  if (t.length > PRODUCT_SLUG_MAX)
+    return `A slug has at most ${PRODUCT_SLUG_MAX} characters.`;
+  if (!PRODUCT_SLUG_RE.test(t))
     return "Use lowercase letters, digits, and hyphens.";
   return null;
 }

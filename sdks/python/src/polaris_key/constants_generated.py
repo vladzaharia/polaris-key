@@ -165,7 +165,12 @@ class ErrorCode:
     OIDC_ERROR: Final = "oidc_error"
     UNAVAILABLE: Final = "unavailable"
     AUTH_METHOD_DISABLED: Final = "auth_method_disabled"
-    EMAIL_NOT_CONFIGURED: Final = "email_not_configured"
+    EMAIL_UNAVAILABLE: Final = "email_unavailable"
+    TURNSTILE_FAILED: Final = "turnstile_failed"
+    SIGNIN_EXPIRED: Final = "signin_expired"
+    INVALID_CODE: Final = "invalid_code"
+    EMAIL_IN_USE: Final = "email_in_use"
+    TERMS_REQUIRED: Final = "terms_required"
     LICENSE_OWNED: Final = "license_owned"
     EMAIL_MISMATCH: Final = "email_mismatch"
     LINK_CONFLICT: Final = "link_conflict"
@@ -314,7 +319,12 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "oidc_error",
     "unavailable",
     "auth_method_disabled",
-    "email_not_configured",
+    "email_unavailable",
+    "turnstile_failed",
+    "signin_expired",
+    "invalid_code",
+    "email_in_use",
+    "terms_required",
     "license_owned",
     "email_mismatch",
     "link_conflict",
@@ -465,7 +475,12 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "oidc_error": "wire",
         "unavailable": "wire",
         "auth_method_disabled": "wire",
-        "email_not_configured": "wire",
+        "email_unavailable": "wire",
+        "turnstile_failed": "wire",
+        "signin_expired": "wire",
+        "invalid_code": "wire",
+        "email_in_use": "wire",
+        "terms_required": "wire",
         "license_owned": "wire",
         "email_mismatch": "wire",
         "link_conflict": "wire",

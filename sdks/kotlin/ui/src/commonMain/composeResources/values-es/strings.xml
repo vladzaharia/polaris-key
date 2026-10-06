@@ -671,8 +671,6 @@
     <string name="signin_code_resendIn__macos">Enviar un código nuevo en %1$s</string>
     <!-- Email code step (SIGN-IN.md §3.4). Arguments: {email} = an email address. Arguments: 1=email. -->
     <string name="signin_code_resent">Enviamos un código y un enlace nuevos a %1$s.</string>
-    <!-- Email code step (SIGN-IN.md §3.4). -->
-    <string name="signin_code_wrong">Ese código no es correcto. Revisa el correo y vuelve a intentarlo.</string>
     <!-- Email code step (SIGN-IN.md §3.4). Arguments: {n} = a number. Arguments: 1=n. -->
     <plurals name="signin_code_triesLeft">
         <item quantity="one">Queda %1$d intento.</item>
@@ -1256,9 +1254,29 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_auth_method_disabled_message">Ese método de inicio de sesión está desactivado. Elige otro.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_email_not_configured_title">Inicio de sesión por correo no disponible</string>
+    <string name="core_codes_email_unavailable_title">Inicio de sesión por correo no disponible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_email_not_configured_message">El inicio de sesión por correo no está disponible en este momento. Elige otro método de inicio de sesión.</string>
+    <string name="core_codes_email_unavailable_message">El inicio de sesión por correo no está disponible en este momento. Elige otro método de inicio de sesión.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_turnstile_failed_title">La comprobación no se superó</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_turnstile_failed_message">La comprobación de seguridad no se superó. Vuelve a cargar la página e inténtalo de nuevo.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_signin_expired_title">Inicio de sesión caducado</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_signin_expired_message">Este inicio de sesión ha caducado. Empieza de nuevo.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_code_title">Código incorrecto</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_code_message">Ese código no funcionó. Revisa el correo y vuelve a escribirlo.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_email_in_use_title">Correo ya en uso</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_email_in_use_message">Otra cuenta de Polaris Key ya usa este correo. Une este inicio de sesión a esa cuenta o usa otro correo.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_terms_required_title">Condiciones no aceptadas</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_terms_required_message">Acepta las condiciones para continuar.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_owned_title">Licencia en otra cuenta</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->

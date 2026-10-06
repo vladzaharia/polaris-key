@@ -39,6 +39,23 @@ import {
   type AccountRow,
 } from "./repo.js";
 
+/** The `portal_audit` action of a sign-in; with a `product` it is a sign-in through that product. */
+export const PRODUCT_SIGNIN_ACTION = "account.signin";
+
+const SIGNIN_SUMMARY_PREFIX = "Signed in with ";
+
+/** The audit summary of a sign-in: the method kind only. */
+export function signInSummary(kind: string): string {
+  return `${SIGNIN_SUMMARY_PREFIX}${kind}`;
+}
+
+/** The method kind back out of a sign-in summary, or `null` for a row of another shape. */
+export function signInKindOf(summary: string | null): string | null {
+  if (!summary?.startsWith(SIGNIN_SUMMARY_PREFIX)) return null;
+  const kind = summary.slice(SIGNIN_SUMMARY_PREFIX.length).trim();
+  return /^[a-z][a-z0-9_-]{0,31}$/.test(kind) ? kind : null;
+}
+
 /** A credential a front door has already verified. */
 export interface VerifiedIdentity {
   /** The issuer URL for OIDC, `email` for an email method, a provider kind otherwise. */
@@ -152,12 +169,15 @@ export async function signIn(
       now,
     );
     await touchAccountSignIn(db, account.id, now);
+    // Through a product, the row carries the product: it is that product's sign-in history on the
+    // console Users page (I-12), which shows only the method KIND, never the link or its subject.
     await portalAudit(db, {
       accountId: account.id,
-      action: "account.signin",
+      action: PRODUCT_SIGNIN_ACTION,
+      product: opts.product?.slug ?? null,
       targetKind: "link",
       targetId: existing.id,
-      summary: `Signed in with ${id.kind}`,
+      summary: signInSummary(id.kind),
       now,
     });
     return {
@@ -240,6 +260,17 @@ export async function signIn(
   });
   const fresh = (await getAccountRow(db, account.id)) ?? account;
   const link = await findLink(db, key);
+  if (opts.product) {
+    await portalAudit(db, {
+      accountId: account.id,
+      action: PRODUCT_SIGNIN_ACTION,
+      product: opts.product.slug,
+      targetKind: "link",
+      targetId: link?.id ?? null,
+      summary: signInSummary(id.kind),
+      now,
+    });
+  }
   return {
     status: "signed_in",
     account: fresh,

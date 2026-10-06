@@ -137,9 +137,29 @@
       "title": "Anmeldemethode nicht verfügbar",
       "message": "Diese Anmeldemethode ist deaktiviert. Wählen Sie eine andere."
     },
-    "email_not_configured": {
+    "email_unavailable": {
       "title": "Anmeldung per E-Mail nicht verfügbar",
       "message": "Die Anmeldung per E-Mail ist derzeit nicht verfügbar. Wählen Sie eine andere Anmeldemethode."
+    },
+    "turnstile_failed": {
+      "title": "Prüfung nicht bestanden",
+      "message": "Die Sicherheitsprüfung wurde nicht bestanden. Laden Sie die Seite neu und versuchen Sie es erneut."
+    },
+    "signin_expired": {
+      "title": "Anmeldung abgelaufen",
+      "message": "Diese Anmeldung ist abgelaufen. Beginnen Sie erneut."
+    },
+    "invalid_code": {
+      "title": "Falscher Code",
+      "message": "Dieser Code hat nicht funktioniert. Prüfen Sie die E-Mail und geben Sie ihn erneut ein."
+    },
+    "email_in_use": {
+      "title": "E-Mail-Adresse bereits verwendet",
+      "message": "Ein anderes Polaris Key-Konto verwendet diese E-Mail-Adresse bereits. Verbinden Sie diese Anmeldung mit jenem Konto, oder verwenden Sie eine andere E-Mail-Adresse."
+    },
+    "terms_required": {
+      "title": "Bedingungen nicht akzeptiert",
+      "message": "Stimmen Sie den Bedingungen zu, um fortzufahren."
     },
     "license_owned": {
       "title": "Lizenz in einem anderen Konto",

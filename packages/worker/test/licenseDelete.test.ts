@@ -50,6 +50,7 @@ const LICENSE_KEYED = [
   "keys_index",
   "license_profiles",
   "license_refusals",
+  "license_relinks",
   "license_store_grants",
   "portal_license_links",
   "registry_tokens",
@@ -190,6 +191,14 @@ async function seedEverything(
     licenseId,
     NOW,
     NOW,
+  );
+  await db.run(
+    `INSERT INTO license_relinks (product, id, license_id, to_subject, reason, actor_sub, created_at, undo_until)
+     VALUES (?, 'rl_1', ?, 'ps_to', 'support ticket', 'u1', ?, ?)`,
+    SLUG,
+    licenseId,
+    NOW,
+    NOW + 3 * DAY,
   );
   await db.run(
     "INSERT INTO dist_purchase_bindings (product, binding_id, license_id, created_at) VALUES (?, 'bind_1', ?, ?)",

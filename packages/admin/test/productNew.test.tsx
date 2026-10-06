@@ -104,6 +104,15 @@ describe("slug and repository helpers", () => {
     expect(slugVerdict("", taken)).toEqual({ kind: "empty" });
     expect(slugVerdict("Not A Slug", taken).kind).toBe("invalid");
     expect(slugVerdict("docs", taken)).toEqual({ kind: "reserved" });
+    // P0-14: the server's one slug rule — admin actions and the system product are reserved,
+    // a leading hyphen and a 65th character are invalid.
+    expect(slugVerdict("slug-check", taken)).toEqual({ kind: "reserved" });
+    expect(slugVerdict("polaris-key", taken)).toEqual({ kind: "reserved" });
+    expect(slugVerdict("-acme", taken).kind).toBe("invalid");
+    expect(slugVerdict("a".repeat(65), taken)).toEqual({
+      kind: "invalid",
+      message: "A slug has at most 64 characters.",
+    });
     expect(slugVerdict("tonebox", taken)).toEqual({
       kind: "taken",
       suggestion: "tonebox-2",
