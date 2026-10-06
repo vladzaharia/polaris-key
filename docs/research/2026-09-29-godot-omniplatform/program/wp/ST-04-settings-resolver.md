@@ -103,8 +103,10 @@ Each service resolves its own settings today with different precedence ([S-18 §
   `source = 'manifest'` row back). The inlined `system_product` refusal is gone: the system
   product and any manifest-authoritative customer product are decided like every other governed
   key (break-glass). The resolver applies `legacyDefault` (by `products.created_at`) and
-  `systemLock`; `entitlementModelFor` reads `licensing.entitlementModel` through it (the settings
-  registry reaches the portal's consent view from `dispatch.ts`).
+  `systemLock`. The settings registry reaches the portal's consent view from `dispatch.ts`, and
+  `resolvedEntitlementModel` reads `licensing.entitlementModel` through the resolver; by the
+  lead's decision D1 on LX-06, `entitlementModelFor` stays `legacy` until LX-09 switches it (a
+  test pins that a product registered after the cut-over still reads legacy in the consent view).
 - **ST-19b.** `core.registration`'s adapter and probe were in place; the `.pkey/release` block's
   column entries got decode-only adapters (`release.github`, `binaryName`, `channelWorkflow`,
   `betaBranch`, `summaryMarker`, `manualChannels`, `keys`), and the four discovery-carried ones

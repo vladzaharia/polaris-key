@@ -88,8 +88,7 @@ export const LICENSING_SETTINGS: readonly SettingDef[] = [
     confirm: { up: "L2", down: "L1" },
     visibleWhen: VISIBLE,
     wire: ["document"],
-    // ST-04: the app-consent view's licence line reads it through the resolver.
-    readers: [...READERS, "services/identity/passthrough/anchor.ts"],
+    readers: READERS,
     storage: { kind: "scalar" },
     since: "LX-06",
   }),

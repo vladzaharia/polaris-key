@@ -80,6 +80,10 @@ mise exec node@22 -- pnpm gen:corpus -- --check
 - LX-09 moves `COMBINED_ENTITLEMENT_MODEL_SINCE` (`services/license/licensingSettings.ts`) to its
   own deploy time, so products registered before LX-09 read `legacy` (lead decision D1 on LX-06,
   2026-10-06; safe in that direction because only the displayed default changes until LX-09).
+- Switch `entitlementModelFor` to the resolver's value: in
+  `services/identity/passthrough/anchor.ts` it returns `legacy` until LX-09 (D1); return
+  `resolvedEntitlementModel(ctx, product)` instead (ST-04 wired the settings registry through), and
+  add `services/identity/passthrough/anchor.ts` to `licensing.entitlementModel`'s `readers`.
 
 The role agent sets `--set LX-09 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:

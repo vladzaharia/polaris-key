@@ -11,10 +11,11 @@
  * steps (and LX-10's `chooseAnchor`) land, it is the best usable licence in the portal's own order
  * (status, then no expiry, then the later expiry, then the newer activation). `more` counts the
  * account's other usable licences for THIS product under `combined`, never names and never other
- * products; under `legacy` it is 0. The model is the product's `licensing.entitlementModel`
- * (LX-06), read through ST-04's resolver: `legacy` for a product registered before LX-06's
- * cut-over (its `legacyDefault`), `combined` after, unless the manifest or a console claim says
- * otherwise.
+ * products; under `legacy` it is 0. The model is `legacy` for every product until LX-09 ships
+ * (the lead's decision D1 on LX-06: the combined model changes behaviour only with LX-09, which
+ * moves `COMBINED_ENTITLEMENT_MODEL_SINCE` to its own deploy time). The plumbing is in place:
+ * `resolvedEntitlementModel` reads the product's `licensing.entitlementModel` through ST-04's
+ * resolver, and LX-09 switches `entitlementModelFor` to it.
  */
 
 import type { ConsentItem } from "@polaris-key/protocol/identity";
@@ -32,11 +33,25 @@ export type EntitlementModel = "legacy" | "combined";
 const ENTITLEMENT_MODEL_KEY = "licensing.entitlementModel";
 
 /**
- * The product's entitlement model, resolved (`licensing.entitlementModel`, ST-04's resolver). A
- * caller without the settings registry (a context built by hand) reads `legacy`, which
- * reproduces today's documents byte for byte, as does any value the registry does not know.
+ * The product's entitlement model as the licence line uses it: `legacy`, for every product, until
+ * LX-09 ships (decision D1 on LX-06: until then only the displayed default changes, and LX-09
+ * moves the cut-over to its own deploy time). LX-09 returns `resolvedEntitlementModel(ctx,
+ * product)` here.
  */
 export async function entitlementModelFor(
+  _ctx: { env: Env; db: Db; registry?: SettingsRegistry },
+  _product: ProductPublic,
+): Promise<EntitlementModel> {
+  return "legacy";
+}
+
+/**
+ * The product's `licensing.entitlementModel`, resolved (ST-04's resolver: its `legacyDefault`
+ * before the cut-over, the manifest or a console claim over it). A caller without the settings
+ * registry (a context built by hand) reads `legacy`, which reproduces today's documents byte for
+ * byte, as does any value the registry does not know. Not read until LX-09 (see above).
+ */
+export async function resolvedEntitlementModel(
   ctx: { env: Env; db: Db; registry?: SettingsRegistry },
   product: ProductPublic,
 ): Promise<EntitlementModel> {
