@@ -34,6 +34,7 @@ const SPEC: Record<0 | 1 | 2 | 3, ActionId[]> = {
     "connector.iapCreate",
     "connector.iapPrice",
     "user.undoRelink",
+    "setting.manifestAuthoritative",
   ],
   2: [
     "key.revoke",
@@ -53,6 +54,7 @@ const SPEC: Record<0 | 1 | 2 | 3, ActionId[]> = {
     "connector.exportCompliance",
     "user.detachLicense",
     "user.relink",
+    "setting.breakGlass",
   ],
   3: [
     "product.delete",

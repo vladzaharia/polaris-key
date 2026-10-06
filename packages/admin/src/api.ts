@@ -977,6 +977,12 @@ export interface ProductDetail {
    * until it is reverted). Empty, or absent from an older Worker, when nothing is claimed.
    */
   claims?: ProductClaim[];
+  /**
+   * ST-20: manifest-authoritative mode. On, console edits to manifest-declared settings are
+   * break-glass claims only (a reason, at most 7 days). Locked on for the system product. Absent
+   * from an older Worker.
+   */
+  manifestAuthoritative?: { value: boolean; locked: boolean };
   createdAt: number;
   modifiedAt: number;
 }
@@ -1110,6 +1116,20 @@ export interface ProductClaim {
   claimedBy: string;
   claimedAt: number;
   version: number;
+  /**
+   * ST-20: a break-glass claim's reason and latest expiry (epoch seconds). It also ends at the
+   * first resync or deploy that changes the field. Absent on an ordinary claim.
+   */
+  breakGlass?: { reason: string; expiresAt: number };
+}
+
+/** A live break-glass claim, as a resync lists it (ST-20). */
+export interface BreakGlassClaim {
+  key: ClaimKey;
+  claimedBy: string;
+  claimedAt: number;
+  reason: string;
+  expiresAt: number;
 }
 
 /** What Revert to manifest did: re-applied the snapshot now, or left it to the next resync. */
@@ -1179,6 +1199,10 @@ export interface UpdateProductBody {
   defaultDeviceLimit?: number;
   /** `null` (or blank) clears the group (A-3). */
   adminGroup?: string | null;
+  /** ST-20: turn manifest-authoritative mode on or off (a repository-linked product only). */
+  manifestAuthoritative?: boolean;
+  /** ST-20: on a manifest-authoritative product, the claimable fields' break-glass reason. */
+  breakGlass?: { reason: string };
 }
 
 export interface RotateKeyResult {
@@ -1204,6 +1228,10 @@ export interface ResyncResult {
   claimed?: string[];
   /** ST-01b: console rows holding an id the manifest newly declares; kept, manifest row skipped. */
   conflicts?: { path: string; message: string }[];
+  /** ST-20: the live break-glass claims after the resync. */
+  breakGlass?: BreakGlassClaim[];
+  /** ST-20: the break-glass claims it ended (their 7 days ran out, or the manifest changed them). */
+  breakGlassEnded?: { key: ClaimKey; why: "expired" | "changed" }[];
   /** The pack-set re-resolution, when it stored sets or failed (P4-12). */
   packSets?:
     | { ok: true; sets: number }
@@ -1255,6 +1283,8 @@ export interface ResyncPlanResult {
   /** The default-branch commit the manifest was read at. */
   commit: string;
   plan: ManifestPlan;
+  /** ST-20: the break-glass claims the resync would keep (absent when none). */
+  breakGlass?: BreakGlassClaim[];
 }
 
 /** `POST …/release/link`: linked and applied. */

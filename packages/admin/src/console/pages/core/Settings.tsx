@@ -15,8 +15,12 @@
  *   carry a SourceBadge. Saving one claims it for the console (an L1 confirm says so) and every
  *   resync leaves it alone until Revert to manifest, which restores the last applied manifest's
  *   value at once (or at the next resync when there is no snapshot yet). The admin group is
- *   manifest-only there and shown read-only. The system product is manifest-authoritative, so its
- *   fields are read-only until ST-20's break-glass claims.
+ *   manifest-only there and shown read-only.
+ * - ST-20 (S-18 §4.5 items 7–8): a manifest-authoritative product (the switch in Repository; on
+ *   and locked for the system product) takes a save of a manifest-declared value only as a
+ *   break-glass claim: an L2 confirm with a reason, and the claim ends after 7 days or at the
+ *   first resync or deploy that changes the value. Each such row says when its claim ends. The
+ *   system product keeps its name, and it has no Resync: the deploy hook is its only writer.
  * - A manual product offers Link repository… instead (EXPERIENCE.md §0.4 S1, AS 1.5): the drawer
  *   checks the repository, shows the plan, then links and applies; the same result panel
  *   follows.
@@ -38,6 +42,7 @@ import {
 import { errorCopy } from "../../../lib/errorCopy.js";
 import {
   formatCount,
+  formatDateTime,
   formatDuration,
   fromSeconds,
 } from "../../../lib/format.js";
@@ -52,10 +57,12 @@ import { SaveBar } from "../../../ui/SaveBar.js";
 import { PageSkeleton, Skeleton } from "../../../ui/Skeleton.js";
 import { SourceBadge } from "../../../ui/SourceBadge.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
+import { Switch } from "../../../ui/Switch.js";
 import { Timestamp } from "../../../ui/Timestamp.js";
 import { toast } from "../../../ui/toast.js";
 import { useLoadingAnnouncement } from "../../../ui/loading.js";
 import { useUnsavedChangesGuard } from "../../../ui/useUnsavedChangesGuard.js";
+import { BreakGlassDialog } from "../../components/BreakGlassDialog.js";
 import { DeleteProductDialog } from "../../components/DeleteProductDialog.js";
 import {
   ResyncDialog,
@@ -168,13 +175,27 @@ function SettingsBody({
   const licenseOn = product.services?.license?.enabled ?? true;
   const linked = product.releaseSource === "github";
   const system = product.system === true;
-  // Only a repo-linked product has a manifest to claim from; the system product refuses claims.
-  const claimable = linked && !system;
+  // ST-20: manifest-authoritative mode (an older Worker omits it: the system product is on).
+  const authoritative = product.manifestAuthoritative?.value ?? system;
+  // A repo-linked product, or the system product (whose manifest the deploy hook applies), has a
+  // manifest to claim from.
+  const claimable = linked || system;
   const claims = React.useMemo(
     () => new Set((product.claims ?? []).map((c) => c.key)),
     [product.claims],
   );
+  const breakGlassOf = React.useMemo(
+    () =>
+      new Map(
+        (product.claims ?? []).flatMap((c) =>
+          c.breakGlass ? [[c.key, c.breakGlass] as const] : [],
+        ),
+      ),
+    [product.claims],
+  );
   const gate = useConfirmGate<string[]>();
+  const breakGlassGate = useConfirmGate<string[]>();
+  const breakGlassReason = React.useRef("");
   const [reverting, setReverting] = React.useState<ClaimKey | null>(null);
   const values = React.useMemo(() => draftOf(product), [product]);
   const form = useAdminForm<Draft>({
@@ -183,17 +204,29 @@ function SettingsBody({
     validate: validateSettings,
     onSubmit: async (draft, { server }) => {
       const body = diffValues(server, draft, { nullable: ["adminGroup"] });
-      // ST-01b: saving a manifest-owned value claims it; the operator confirms that first.
-      const newClaims = claimable
+      const claimed = claimable
         ? (Object.keys(CLAIM_OF_FIELD) as (keyof Draft)[])
             .filter((f) => body[f] !== undefined)
             .map((f) => CLAIM_OF_FIELD[f]!)
-            .filter((key) => !claims.has(key))
-            .map((key) => CLAIM_LABELS[key])
         : [];
+      // ST-20: on a manifest-authoritative product every such save is a break-glass claim (L2,
+      // with a reason), even over a live claim: a second one restarts its 7 days.
+      let breakGlass: { reason: string } | undefined;
+      if (authoritative && claimed.length > 0) {
+        if (!(await breakGlassGate.ask(claimed.map((k) => CLAIM_LABELS[k]))))
+          throw new SaveCancelled();
+        breakGlass = { reason: breakGlassReason.current };
+      }
+      // ST-01b: saving a manifest-owned value claims it; the operator confirms that first.
+      const newClaims = authoritative
+        ? []
+        : claimed
+            .filter((key) => !claims.has(key))
+            .map((key) => CLAIM_LABELS[key]);
       if (newClaims.length > 0 && !(await gate.ask(newClaims)))
         throw new SaveCancelled();
       await mutate("updateProduct", slug, {
+        ...(breakGlass ? { breakGlass } : {}),
         ...(body.name !== undefined ? { name: draft.name.trim() } : {}),
         ...(!linked && body.adminGroup !== undefined
           ? {
@@ -224,9 +257,17 @@ function SettingsBody({
         onRevert={claims.has(key) ? () => setReverting(key) : undefined}
       />
     ) : undefined;
-  const systemHelp = system
-    ? "Set by the monorepo's .pkey/product: the system product follows its manifest."
-    : undefined;
+  /** A row's help: when its break-glass claim ends, or how a change here is taken. */
+  const claimHelp = (key: ClaimKey, fallback?: string): string | undefined => {
+    const bg = breakGlassOf.get(key);
+    if (bg)
+      return `Break-glass claim until ${formatDateTime(fromSeconds(bg.expiresAt))}, or the first ${system ? "deploy" : "resync"} that changes it in .pkey/: ${bg.reason}`;
+    if (authoritative)
+      return system
+        ? "Set by the monorepo's .pkey/product, which the deploy hook applies. A change here is a break-glass claim."
+        : "Set by .pkey/product: this product is manifest-authoritative, so a change here is a break-glass claim.";
+    return fallback;
+  };
 
   const sections = [
     { id: "settings-general", title: "General" },
@@ -251,7 +292,11 @@ function SettingsBody({
           <SettingsRow
             label="Display name"
             source={source("core.name")}
-            help={systemHelp}
+            help={
+              system
+                ? "The system product keeps its name."
+                : claimHelp("core.name")
+            }
           >
             <FormField
               className="w-full sm:w-80"
@@ -304,8 +349,10 @@ function SettingsBody({
                 name="defaultMaxOfflineDays"
                 label="Default max offline days"
                 required
-                disabled={system}
-                help={systemHelp ?? "From 1 to 365 days."}
+                help={claimHelp(
+                  "license.defaults.maxOfflineDays",
+                  "From 1 to 365 days.",
+                )}
               >
                 {(f) => (
                   <NumberInput {...f} integer min={1} max={365} unit="days" />
@@ -322,8 +369,7 @@ function SettingsBody({
                 name="defaultDeviceLimit"
                 label="Default device limit"
                 required
-                disabled={system}
-                help={systemHelp}
+                help={claimHelp("license.defaults.deviceLimit")}
               >
                 {(f) => <NumberInput {...f} integer min={1} unit="devices" />}
               </FormField>
@@ -386,6 +432,16 @@ function SettingsBody({
         confirmLabel="Save and claim"
         onConfirm={gate.confirm}
       />
+      <BreakGlassDialog
+        open={breakGlassGate.open}
+        settings={breakGlassGate.payload ?? []}
+        system={system}
+        onConfirm={(reason) => {
+          breakGlassReason.current = reason;
+          breakGlassGate.confirm();
+        }}
+        onCancel={breakGlassGate.cancel}
+      />
       {reverting ? (
         <RevertClaimDialog
           slug={slug}
@@ -415,13 +471,14 @@ function RepositorySection({
     result: ResyncResult;
   } | null>(null);
   const linked = product.releaseSource === "github";
+  const system = product.system === true;
   const sync = product.setup?.sync ?? null;
   return (
     <SettingsSection
       id="settings-repository"
       title="Repository"
       actions={
-        linked ? (
+        system ? undefined : linked ? (
           <Button
             variant="outline"
             size="sm"
@@ -445,13 +502,22 @@ function RepositorySection({
       <SettingsRow
         label="Source"
         help={
-          linked
-            ? "Pushes to the repository re-apply its .pkey/ manifest."
-            : "Set in the console. Link a repository to manage it from .pkey/ instead."
+          system
+            ? "Every production deploy applies the monorepo's .pkey/ at the deployed commit. Pushes and Resync do not: the deploy hook is the only writer."
+            : linked
+              ? "Pushes to the repository re-apply its .pkey/ manifest."
+              : "Set in the console. Link a repository to manage it from .pkey/ instead."
         }
       >
-        {linked ? "Linked GitHub repository" : "Manual"}
+        {system
+          ? "The deploy hook"
+          : linked
+            ? "Linked GitHub repository"
+            : "Manual"}
       </SettingsRow>
+      {linked || system ? (
+        <ManifestAuthorityRow slug={slug} product={product} />
+      ) : null}
       <SettingsRow label="Last sync">
         {sync?.lastSyncedAt ? (
           <Timestamp at={fromSeconds(sync.lastSyncedAt)} format="detail" />
@@ -503,6 +569,82 @@ function RepositorySection({
         />
       ) : null}
     </SettingsSection>
+  );
+}
+
+/**
+ * ST-20: manifest-authoritative mode (S-18 §4.5 item 7, D14). A switch with an L1 confirm on a
+ * repository-linked product; on and locked for the system product.
+ */
+function ManifestAuthorityRow({
+  slug,
+  product,
+}: {
+  slug: string;
+  product: ProductDetail;
+}): React.ReactElement {
+  const system = product.system === true;
+  const mode = product.manifestAuthoritative ?? {
+    value: system,
+    locked: system,
+  };
+  const [asking, setAsking] = React.useState<boolean | null>(null);
+  return (
+    <SettingsRow
+      label="Manifest-authoritative"
+      help={
+        mode.locked
+          ? "Always on for the system product: a console change is a break-glass claim with a reason, which ends within 7 days."
+          : "When on, .pkey/ is the only writer of the settings it declares: a console change is a break-glass claim with a reason, which ends after 7 days or at the first resync that changes it."
+      }
+    >
+      {mode.locked ? (
+        <StatusPill tone="info">On, locked</StatusPill>
+      ) : (
+        <Switch
+          aria-label="Manifest-authoritative"
+          checked={mode.value}
+          onCheckedChange={(next) => setAsking(next)}
+        />
+      )}
+      <ConfirmDialog
+        open={asking !== null}
+        onOpenChange={(open) => {
+          if (!open) setAsking(null);
+        }}
+        intent={intentOf("setting.manifestAuthoritative")}
+        title={
+          asking
+            ? "Make .pkey/ the only writer?"
+            : "Let the console claim settings again?"
+        }
+        description={
+          asking
+            ? `Console changes to the settings ${product.name}'s .pkey/ declares are refused, except as break-glass claims.`
+            : `A console change to a setting ${product.name}'s .pkey/ declares claims it again, until it is reverted.`
+        }
+        consequences={
+          asking
+            ? [
+                "A break-glass claim needs a reason and ends after 7 days, or at the first resync that changes the value.",
+                "Settings already claimed in the console stay claimed until you revert them.",
+              ]
+            : ["Live break-glass claims keep their expiry."]
+        }
+        confirmLabel={asking ? "Turn on" : "Turn off"}
+        describeError={(e) => errorCopy(e)}
+        onConfirm={async () => {
+          await mutate("updateProduct", slug, {
+            manifestAuthoritative: asking === true,
+          });
+          toast.success(
+            asking
+              ? "Manifest-authoritative mode is on"
+              : "Manifest-authoritative mode is off",
+          );
+        }}
+      />
+    </SettingsRow>
   );
 }
 
