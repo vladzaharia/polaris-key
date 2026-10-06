@@ -337,10 +337,19 @@ describe("the kit gallery's overlays under the Worker's CSP", () => {
       page,
       "tooltip (disabled reason)",
       async () => {
-        await story(page, "button-states")
+        const trigger = story(page, "button-states")
           .locator("[aria-disabled=true]")
-          .first()
-          .focus();
+          .first();
+        // Focusing an off-screen trigger scrolls the page, and Radix closes a tooltip on scroll:
+        // a race the instant swaps of reduced motion lose. Bring it on screen first.
+        await trigger.scrollIntoViewIfNeeded();
+        await page.evaluate(
+          () =>
+            new Promise((r) =>
+              requestAnimationFrame(() => requestAnimationFrame(r)),
+            ),
+        );
+        await trigger.focus();
         await page.getByRole("tooltip").waitFor();
       },
       { modal: false },
