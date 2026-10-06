@@ -2444,6 +2444,11 @@ msgid_plural "signin.key.entriesLeftShort"
 msgstr[0] "{left} key entry left"
 msgstr[1] "{left} key entries left"
 
+#. This key has no entries left in {product}. Add it to your account and {product} signs you in instead.
+#. License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.key.noEntries"
+msgstr "This key has no entries left in {product}. Add it to your account and {product} signs you in instead."
+
 #. Skip for now
 #. License key step (SIGN-IN.md §3.9).
 msgid "signin.key.skip"
@@ -3162,10 +3167,10 @@ msgstr "This license is already on all its devices. Replace a device to use it h
 msgid "core.codes.key_entry_limit.title"
 msgstr "No key entries left"
 
-#. This key has no entries left in {product}. Add it to your account and {product} signs you in instead.
+#. This key has no entries left. Add it to your account and sign in instead.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.key_entry_limit.message"
-msgstr "This key has no entries left in {product}. Add it to your account and {product} signs you in instead."
+msgstr "This key has no entries left. Add it to your account and sign in instead."
 
 #. License disabled
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -4742,10 +4747,10 @@ msgstr "This app doesn't offer a free license. Enter a license key or sign in."
 msgid "core.activation.key-entry-limit.title"
 msgstr "No key entries left"
 
-#. This key has no entries left in {product}. Add it to your account and {product} signs you in instead.
+#. This key has no entries left. Add it to your account and sign in instead.
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.key-entry-limit.message"
-msgstr "This key has no entries left in {product}. Add it to your account and {product} signs you in instead."
+msgstr "This key has no entries left. Add it to your account and sign in instead."
 
 #. Activation refused
 #. Core copy (conformance/parity/copy.en.json, activation).

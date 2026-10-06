@@ -914,6 +914,8 @@
         <item quantity="many">%1$d de saisies de clé restantes</item>
         <item quantity="other">%1$d saisies de clé restantes</item>
     </plurals>
+    <!-- License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_key_noEntries">Cette clé n’a plus de saisies disponibles dans %1$s. Ajoutez-la à votre compte et %1$s vous connectera à la place.</string>
     <!-- License key step (SIGN-IN.md §3.9). -->
     <string name="signin_key_skip">Passer pour l’instant</string>
     <string name="signin_key_skip__macos">Passer pour l’instant</string>
@@ -1185,8 +1187,8 @@
     <string name="core_codes_device_limit_message">This license is already on all its devices. Replace a device to use it here.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_title">No key entries left</string>
-    <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
-    <string name="core_codes_key_entry_limit_message">This key has no entries left in %1$s. Add it to your account and %1$s signs you in instead.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_key_entry_limit_message">This key has no entries left. Add it to your account and sign in instead.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_disabled_title">License disabled</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1817,8 +1819,8 @@
     <string name="core_activation_enroll_disabled_message">This app doesn't offer a free license. Enter a license key or sign in.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_key_entry_limit_title">No key entries left</string>
-    <!-- Core copy (conformance/parity/copy.en.json, activation). Arguments: 1=product. -->
-    <string name="core_activation_key_entry_limit_message">This key has no entries left in %1$s. Add it to your account and %1$s signs you in instead.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_key_entry_limit_message">This key has no entries left. Add it to your account and sign in instead.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_refused_title">Activation refused</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). Arguments: 1=code. -->

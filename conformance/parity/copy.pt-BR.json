@@ -71,7 +71,7 @@
     },
     "key_entry_limit": {
       "title": "Nenhum uso restante da chave",
-      "message": "Esta chave não tem mais usos em {product}. Adicione-a à sua conta e {product} faz seu acesso no lugar dela."
+      "message": "Esta chave não tem mais usos. Adicione-a à sua conta e entre em vez disso."
     },
     "license_disabled": {
       "title": "Licença desativada",
@@ -707,7 +707,7 @@
     },
     "key-entry-limit": {
       "title": "Nenhum uso restante da chave",
-      "message": "Esta chave não tem mais usos em {product}. Adicione-a à sua conta e {product} faz seu acesso no lugar dela."
+      "message": "Esta chave não tem mais usos. Adicione-a à sua conta e entre em vez disso."
     },
     "refused": {
       "title": "Ativação recusada",

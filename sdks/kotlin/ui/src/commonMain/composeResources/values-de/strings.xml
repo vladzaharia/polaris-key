@@ -905,6 +905,8 @@
         <item quantity="one">Noch %1$d Schlüsseleingabe</item>
         <item quantity="other">Noch %1$d Schlüsseleingaben</item>
     </plurals>
+    <!-- License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_key_noEntries">Für diesen Schlüssel sind in %1$s keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu, dann meldet %1$s Sie stattdessen an.</string>
     <!-- License key step (SIGN-IN.md §3.9). -->
     <string name="signin_key_skip">Vorerst überspringen</string>
     <string name="signin_key_skip__macos">Vorerst überspringen</string>
@@ -1175,8 +1177,8 @@
     <string name="core_codes_device_limit_message">Diese Lizenz ist bereits auf allen zulässigen Geräten in Gebrauch. Ersetzen Sie ein Gerät, um sie hier zu verwenden.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_title">Keine Schlüsseleingaben mehr</string>
-    <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
-    <string name="core_codes_key_entry_limit_message">Für diesen Schlüssel sind in %1$s keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu, dann meldet %1$s Sie stattdessen an.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_key_entry_limit_message">Für diesen Schlüssel sind keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu und melden Sie sich stattdessen an.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_disabled_title">Lizenz deaktiviert</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1807,8 +1809,8 @@
     <string name="core_activation_enroll_disabled_message">Diese App bietet keine kostenlose Lizenz an. Geben Sie einen Lizenzschlüssel ein oder melden Sie sich an.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_key_entry_limit_title">Keine Schlüsseleingaben mehr</string>
-    <!-- Core copy (conformance/parity/copy.en.json, activation). Arguments: 1=product. -->
-    <string name="core_activation_key_entry_limit_message">Für diesen Schlüssel sind in %1$s keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu, dann meldet %1$s Sie stattdessen an.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_key_entry_limit_message">Für diesen Schlüssel sind keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu und melden Sie sich stattdessen an.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_refused_title">Aktivierung abgelehnt</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). Arguments: 1=code. -->

@@ -32,7 +32,7 @@ import {
 } from "../src/core/keyEntries.js";
 import { serializeServices } from "../src/core/services.js";
 import { invalidatePlatformSettings } from "../src/core/platformSettings.js";
-import { getLicense, setServices } from "../src/repo.js";
+import { claimDeviceSeat, getLicense, setServices } from "../src/repo.js";
 import { authorizeDevice } from "../src/core/authz.js";
 import {
   handleActivate,
@@ -295,6 +295,30 @@ describe("app entries (POST /<p>/license/activate)", () => {
     expect((await rows(licenseId)).map((r) => r.device_id).sort()).toEqual(
       seated.map((d) => d.device_id),
     );
+  });
+
+  it("a seat claim retries only a lost ordinal race: a failed entry write is an error, not device_limit", async () => {
+    await setIdentity(true);
+    const { licenseId } = await seedLicenseWithKey(db, SLUG, SEATS(5));
+    // A write the table refuses (a CHECK, not a UNIQUE loss) must not be read as "every seat is
+    // taken" and retried into a `device_limit`.
+    await expect(
+      claimDeviceSeat(db, SLUG, licenseId, "dev-1", 5, NOW, {
+        withClaim: () => ({
+          sql: `INSERT INTO license_key_entries (product, license_id, id, surface, device_id, created_at)
+                VALUES (?, ?, 'ke_bad', 'bogus', 'dev-1', ?)`,
+          params: [SLUG, licenseId, NOW],
+        }),
+      }),
+    ).rejects.toThrow(/CHECK constraint failed/i);
+    // The batch rolled back: no seat, no entry.
+    expect(
+      await db.first(
+        "SELECT 1 FROM devices WHERE product = ? AND device_id = 'dev-1'",
+        SLUG,
+      ),
+    ).toBeNull();
+    expect(await countKeyEntries(db, SLUG, licenseId)).toBe(0);
   });
 
   it("a refused or failed attempt writes nothing", async () => {

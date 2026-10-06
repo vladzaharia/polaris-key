@@ -399,6 +399,7 @@ export type KitCopyKey =
   | "signin.key.keep"
   | "signin.key.entries"
   | "signin.key.entriesLeftShort"
+  | "signin.key.noEntries"
   | "signin.key.skip"
   | "signin.key.ownedSignIn"
   | "signin.key.differentKey"

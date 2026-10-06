@@ -71,7 +71,7 @@
     },
     "key_entry_limit": {
       "title": "No quedan usos de la clave",
-      "message": "A esta clave no le quedan usos en {product}. Añádela a tu cuenta y {product} iniciará tu sesión."
+      "message": "A esta clave no le quedan usos. Añádela a tu cuenta e inicia sesión en su lugar."
     },
     "license_disabled": {
       "title": "Licencia desactivada",
@@ -707,7 +707,7 @@
     },
     "key-entry-limit": {
       "title": "No quedan usos de la clave",
-      "message": "A esta clave no le quedan usos en {product}. Añádela a tu cuenta y {product} iniciará tu sesión."
+      "message": "A esta clave no le quedan usos. Añádela a tu cuenta e inicia sesión en su lugar."
     },
     "refused": {
       "title": "Activación rechazada",

@@ -41,7 +41,7 @@ public let COPY_CODES: [String: CopyEntry] = [
     "value_not_representable": CopyEntry(title: "Value not accepted", message: "A value couldn't be saved. Change it and try again."),
     "document_not_representable": CopyEntry(title: "Service problem", message: "The service couldn't prepare your settings. Contact the developer."),
     "device_limit": CopyEntry(title: "Device limit reached", message: "This license is already on all its devices. Replace a device to use it here."),
-    "key_entry_limit": CopyEntry(title: "No key entries left", message: "This key has no entries left in {product}. Add it to your account and {product} signs you in instead."),
+    "key_entry_limit": CopyEntry(title: "No key entries left", message: "This key has no entries left. Add it to your account and sign in instead."),
     "license_disabled": CopyEntry(title: "License disabled", message: "This license has been disabled. Contact the developer."),
     "license_expired": CopyEntry(title: "License expired", message: "This license has expired. Renew it to continue."),
     "not_entitled": CopyEntry(title: "Not included", message: "Your license doesn't include this."),
@@ -207,7 +207,7 @@ public let COPY_ACTIVATION: [String: CopyEntry] = [
     "rate-limited": CopyEntry(title: "Too many attempts", message: "Too many attempts. Wait a moment and try again."),
     "unauthorized": CopyEntry(title: "Key not accepted", message: "That license key wasn't accepted. Check it and try again."),
     "enroll-disabled": CopyEntry(title: "No free license", message: "This app doesn't offer a free license. Enter a license key or sign in."),
-    "key-entry-limit": CopyEntry(title: "No key entries left", message: "This key has no entries left in {product}. Add it to your account and {product} signs you in instead."),
+    "key-entry-limit": CopyEntry(title: "No key entries left", message: "This key has no entries left. Add it to your account and sign in instead."),
     "refused": CopyEntry(title: "Activation refused", message: "Activation was refused ({code})."),
     "error": CopyEntry(title: "Activation failed", message: "Activation didn't finish. Check your connection and try again."),
 ]

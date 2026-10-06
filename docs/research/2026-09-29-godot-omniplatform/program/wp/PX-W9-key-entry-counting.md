@@ -66,10 +66,12 @@ The code is the fact; these are where it disagreed with the plan, and what was d
 - **Step 4 refuses only a usable licence.** A disabled or expired licence keeps its `401` from
   `authorizeDevice`, so `key_entry_limit` never invites someone to add a dead licence to an
   account. The signed-out preview's `upgrade` is `forced` exactly when step 4 would refuse.
-- **The kit catalog's `signin.key.noEntries` is removed.** `pnpm gen:brand` refuses a kit string
-  that duplicates core copy, and the new core copy is that sentence. Kits read
-  `core.codes.key_entry_limit` instead. French keeps it only in English until a `copy.fr.json`
-  exists.
+- **The core copy reads correctly without `{product}`** (review B1). Node's and Python's copy
+  readers cannot pass a product name and drop an unfilled placeholder, so `key_entry_limit` is
+  "This key has no entries left. Add it to your account and sign in instead." in all eight packs.
+  The kit key `signin.key.noEntries`, which names the product (SIGN-IN.md §5.2), stays in the kit
+  catalog for PX-W9b's kits; it no longer duplicates the core text, which `pnpm gen:brand`
+  refuses.
 - **SDK test fixtures changed, no SDK source except one table.** Tests in React, Swift, Godot and
   Node used `key_entry_limit` as their example of an unknown code. They now use a code no catalog
   has, and assert that `key_entry_limit` reads its own sentence. Godot's activation-table size pin
@@ -223,6 +225,11 @@ mise exec node@22 -- pnpm --filter @polaris-key/worker test -- keyEntries portal
 - PX-12 renders the card's meter and forced upgrade from `POST /api/key/preview`.
 - I-09 inserts `license_owned` as step 3 of §12.2.
 - ST-04 replaces `keyEntryLimit()`.
+- **Follow-up (review N4, the I-04 Q5 class):** switching licences can count twice. A device
+  enrolled on licence A that enters licence B's key moves to B (one entry on B); entering A's key
+  again is then a new enrolment on A and counts on A a second time. Accepted for now, as with the
+  overshoot at the last entry; I-09 or LX-10 may treat a device's return to a licence it held as
+  not new.
 
 The role agent sets `--set PX-W9 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set PX-W9 done`.

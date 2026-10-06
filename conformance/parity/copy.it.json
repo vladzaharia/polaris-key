@@ -71,7 +71,7 @@
     },
     "key_entry_limit": {
       "title": "Nessun inserimento rimasto",
-      "message": "Questa chiave non ha più inserimenti disponibili in {product}. Aggiungila al tuo account e {product} ti farà accedere in quel modo."
+      "message": "Questa chiave non ha più inserimenti disponibili. Aggiungila al tuo account e accedi invece."
     },
     "license_disabled": {
       "title": "Licenza disattivata",
@@ -707,7 +707,7 @@
     },
     "key-entry-limit": {
       "title": "Nessun inserimento rimasto",
-      "message": "Questa chiave non ha più inserimenti disponibili in {product}. Aggiungila al tuo account e {product} ti farà accedere in quel modo."
+      "message": "Questa chiave non ha più inserimenti disponibili. Aggiungila al tuo account e accedi invece."
     },
     "refused": {
       "title": "Attivazione rifiutata",

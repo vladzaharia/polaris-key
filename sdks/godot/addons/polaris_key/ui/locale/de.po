@@ -2444,6 +2444,11 @@ msgid_plural "signin.key.entriesLeftShort"
 msgstr[0] "Noch {left} Schlüsseleingabe"
 msgstr[1] "Noch {left} Schlüsseleingaben"
 
+#. This key has no entries left in {product}. Add it to your account and {product} signs you in instead.
+#. License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.key.noEntries"
+msgstr "Für diesen Schlüssel sind in {product} keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu, dann meldet {product} Sie stattdessen an."
+
 #. Skip for now
 #. License key step (SIGN-IN.md §3.9).
 msgid "signin.key.skip"
@@ -3162,10 +3167,10 @@ msgstr "Diese Lizenz ist bereits auf allen zulässigen Geräten in Gebrauch. Ers
 msgid "core.codes.key_entry_limit.title"
 msgstr "Keine Schlüsseleingaben mehr"
 
-#. This key has no entries left in {product}. Add it to your account and {product} signs you in instead.
+#. This key has no entries left. Add it to your account and sign in instead.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.key_entry_limit.message"
-msgstr "Für diesen Schlüssel sind in {product} keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu, dann meldet {product} Sie stattdessen an."
+msgstr "Für diesen Schlüssel sind keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu und melden Sie sich stattdessen an."
 
 #. License disabled
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -4742,10 +4747,10 @@ msgstr "Diese App bietet keine kostenlose Lizenz an. Geben Sie einen Lizenzschl�
 msgid "core.activation.key-entry-limit.title"
 msgstr "Keine Schlüsseleingaben mehr"
 
-#. This key has no entries left in {product}. Add it to your account and {product} signs you in instead.
+#. This key has no entries left. Add it to your account and sign in instead.
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.key-entry-limit.message"
-msgstr "Für diesen Schlüssel sind in {product} keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu, dann meldet {product} Sie stattdessen an."
+msgstr "Für diesen Schlüssel sind keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu und melden Sie sich stattdessen an."
 
 #. Activation refused
 #. Core copy (conformance/parity/copy.en.json, activation).

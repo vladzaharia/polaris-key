@@ -110,16 +110,12 @@ describe("copy catalog (§3.2)", () => {
     expect(copyMessage("brand_new_code", { locale: "fr-CA" })).toMatch(
       /brand_new_code/,
     );
-    // PX-W9: `key_entry_limit` is registered, so a bare one reads its own sentence.
-    expect(
-      copyMessage("key_entry_limit", { params: { product: "DJDL" } }),
-    ).toBe(COPY_CODES.key_entry_limit!.message.replaceAll("{product}", "DJDL"));
-  });
-
-  it("locales resolve by language and fall back to English per key", () => {
-    expect(copyMessage("device_limit", { locale: "fr-CA" })).toMatch(
-      /limite d'appareils/,
+    // PX-W9: `key_entry_limit` is registered, so a bare one reads its own sentence, which needs
+    // no product name.
+    expect(copyMessage("key_entry_limit")).toBe(
+      COPY_CODES.key_entry_limit!.message,
     );
+    expect(copyMessage("key_entry_limit")).not.toMatch(/[{}]/);
     expect(copyTitle("device_limit", "fr")).toBe("Limite d'appareils atteinte");
     registerCopyLocale("de", {
       generic: "Fehler ({code}).",

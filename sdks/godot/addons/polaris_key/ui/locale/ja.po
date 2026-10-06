@@ -2435,6 +2435,11 @@ msgid "signin.key.entriesLeftShort"
 msgid_plural "signin.key.entriesLeftShort"
 msgstr[0] "キー入力の残り{left}回"
 
+#. This key has no entries left in {product}. Add it to your account and {product} signs you in instead.
+#. License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.key.noEntries"
+msgstr "このキーは{product}での入力回数が残っていません。アカウントに追加すると、代わりに{product}がサインインします。"
+
 #. Skip for now
 #. License key step (SIGN-IN.md §3.9).
 msgid "signin.key.skip"
@@ -3152,10 +3157,10 @@ msgstr "このライセンスはすべてのデバイス枠が使用中です。
 msgid "core.codes.key_entry_limit.title"
 msgstr "キーの入力回数が残っていません"
 
-#. This key has no entries left in {product}. Add it to your account and {product} signs you in instead.
+#. This key has no entries left. Add it to your account and sign in instead.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.key_entry_limit.message"
-msgstr "このキーは{product}での入力回数が残っていません。アカウントに追加すると、代わりに{product}がサインインします。"
+msgstr "このキーは入力回数が残っていません。アカウントに追加して、代わりにサインインしてください。"
 
 #. License disabled
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -4732,10 +4737,10 @@ msgstr "このアプリは無料ライセンスを提供していません。ラ
 msgid "core.activation.key-entry-limit.title"
 msgstr "キーの入力回数が残っていません"
 
-#. This key has no entries left in {product}. Add it to your account and {product} signs you in instead.
+#. This key has no entries left. Add it to your account and sign in instead.
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.key-entry-limit.message"
-msgstr "このキーは{product}での入力回数が残っていません。アカウントに追加すると、代わりに{product}がサインインします。"
+msgstr "このキーは入力回数が残っていません。アカウントに追加して、代わりにサインインしてください。"
 
 #. Activation refused
 #. Core copy (conformance/parity/copy.en.json, activation).

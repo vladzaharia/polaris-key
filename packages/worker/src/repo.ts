@@ -1439,12 +1439,20 @@ export async function claimDeviceSeat(
       if (opts.withClaim) await db.batch([opts.withClaim(), seat]);
       else await db.runChanges(seat.sql, ...seat.params);
       return true;
-    } catch {
-      // UNIQUE constraint on idx_devices_seat: another isolate took this ordinal first.
+    } catch (e) {
+      // UNIQUE constraint on idx_devices_seat: another isolate took this ordinal first, so try
+      // again. Anything else (a failed `withClaim` write, a database error) is not a full licence
+      // and surfaces as an error rather than as `device_limit`.
+      if (!isUniqueViolation(e)) throw e;
       continue;
     }
   }
   return false;
+}
+
+/** A UNIQUE-constraint failure, as better-sqlite3 and D1 both word it. */
+function isUniqueViolation(e: unknown): boolean {
+  return e instanceof Error && /UNIQUE constraint failed/i.test(e.message);
 }
 
 /** Free the seat a device was holding, so a deauthorized install stops occupying capacity. */

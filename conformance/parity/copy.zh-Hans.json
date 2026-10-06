@@ -71,7 +71,7 @@
     },
     "key_entry_limit": {
       "title": "密钥已无剩余输入次数",
-      "message": "此密钥在{product}中已没有剩余的输入次数。将它添加到你的账户后，{product}会改为让你登录。"
+      "message": "此密钥已没有剩余的输入次数。请将它添加到你的账户，然后改为登录。"
     },
     "license_disabled": {
       "title": "许可证已停用",
@@ -707,7 +707,7 @@
     },
     "key-entry-limit": {
       "title": "密钥已无剩余输入次数",
-      "message": "此密钥在{product}中已没有剩余的输入次数。将它添加到你的账户后，{product}会改为让你登录。"
+      "message": "此密钥已没有剩余的输入次数。请将它添加到你的账户，然后改为登录。"
     },
     "refused": {
       "title": "激活被拒绝",

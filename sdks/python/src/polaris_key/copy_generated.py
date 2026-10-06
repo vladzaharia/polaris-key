@@ -55,7 +55,7 @@ COPY_CODES: Mapping[str, CopyEntry] = MappingProxyType(
         "value_not_representable": CopyEntry("Value not accepted", "A value couldn't be saved. Change it and try again."),
         "document_not_representable": CopyEntry("Service problem", "The service couldn't prepare your settings. Contact the developer."),
         "device_limit": CopyEntry("Device limit reached", "This license is already on all its devices. Replace a device to use it here."),
-        "key_entry_limit": CopyEntry("No key entries left", "This key has no entries left in {product}. Add it to your account and {product} signs you in instead."),
+        "key_entry_limit": CopyEntry("No key entries left", "This key has no entries left. Add it to your account and sign in instead."),
         "license_disabled": CopyEntry("License disabled", "This license has been disabled. Contact the developer."),
         "license_expired": CopyEntry("License expired", "This license has expired. Renew it to continue."),
         "not_entitled": CopyEntry("Not included", "Your license doesn't include this."),
@@ -227,7 +227,7 @@ COPY_ACTIVATION: Mapping[str, CopyEntry] = MappingProxyType(
         "rate-limited": CopyEntry("Too many attempts", "Too many attempts. Wait a moment and try again."),
         "unauthorized": CopyEntry("Key not accepted", "That license key wasn't accepted. Check it and try again."),
         "enroll-disabled": CopyEntry("No free license", "This app doesn't offer a free license. Enter a license key or sign in."),
-        "key-entry-limit": CopyEntry("No key entries left", "This key has no entries left in {product}. Add it to your account and {product} signs you in instead."),
+        "key-entry-limit": CopyEntry("No key entries left", "This key has no entries left. Add it to your account and sign in instead."),
         "refused": CopyEntry("Activation refused", "Activation was refused ({code})."),
         "error": CopyEntry("Activation failed", "Activation didn't finish. Check your connection and try again."),
     }

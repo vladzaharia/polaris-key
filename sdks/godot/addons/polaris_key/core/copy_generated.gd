@@ -33,7 +33,7 @@ const COPY_CODES := {
 	"value_not_representable": {"title": "Value not accepted", "message": "A value couldn't be saved. Change it and try again."},
 	"document_not_representable": {"title": "Service problem", "message": "The service couldn't prepare your settings. Contact the developer."},
 	"device_limit": {"title": "Device limit reached", "message": "This license is already on all its devices. Replace a device to use it here."},
-	"key_entry_limit": {"title": "No key entries left", "message": "This key has no entries left in {product}. Add it to your account and {product} signs you in instead."},
+	"key_entry_limit": {"title": "No key entries left", "message": "This key has no entries left. Add it to your account and sign in instead."},
 	"license_disabled": {"title": "License disabled", "message": "This license has been disabled. Contact the developer."},
 	"license_expired": {"title": "License expired", "message": "This license has expired. Renew it to continue."},
 	"not_entitled": {"title": "Not included", "message": "Your license doesn't include this."},
@@ -199,7 +199,7 @@ const COPY_ACTIVATION := {
 	"rate-limited": {"title": "Too many attempts", "message": "Too many attempts. Wait a moment and try again."},
 	"unauthorized": {"title": "Key not accepted", "message": "That license key wasn't accepted. Check it and try again."},
 	"enroll-disabled": {"title": "No free license", "message": "This app doesn't offer a free license. Enter a license key or sign in."},
-	"key-entry-limit": {"title": "No key entries left", "message": "This key has no entries left in {product}. Add it to your account and {product} signs you in instead."},
+	"key-entry-limit": {"title": "No key entries left", "message": "This key has no entries left. Add it to your account and sign in instead."},
 	"refused": {"title": "Activation refused", "message": "Activation was refused ({code})."},
 	"error": {"title": "Activation failed", "message": "Activation didn't finish. Check your connection and try again."},
 }

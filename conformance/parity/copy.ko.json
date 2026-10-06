@@ -71,7 +71,7 @@
     },
     "key_entry_limit": {
       "title": "남은 키 등록 횟수 없음",
-      "message": "이 키는 {product}에서 남은 등록 횟수가 없어요. 계정에 추가하면 {product}에서 로그인으로 사용할 수 있어요."
+      "message": "이 키는 남은 등록 횟수가 없어요. 계정에 추가하고 대신 로그인하세요."
     },
     "license_disabled": {
       "title": "라이선스 비활성화됨",
@@ -707,7 +707,7 @@
     },
     "key-entry-limit": {
       "title": "남은 키 등록 횟수 없음",
-      "message": "이 키는 {product}에서 남은 등록 횟수가 없어요. 계정에 추가하면 {product}에서 로그인으로 사용할 수 있어요."
+      "message": "이 키는 남은 등록 횟수가 없어요. 계정에 추가하고 대신 로그인하세요."
     },
     "refused": {
       "title": "활성화 거부됨",

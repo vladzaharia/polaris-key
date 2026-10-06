@@ -5392,7 +5392,9 @@ of its holder), and the platform switch (AT-2).
   email, licence id, device or account: the product's public presentation, the tier name, the term,
   the meter, and `license_owned` as a bare "in an account". Activating the key already tells its
   holder more than that (S-24 H6). It needs no CSRF token because it changes nothing; a cross-site
-  page can only preview a key it already has.
+  page can only preview a key it already has. It is also the first route that confirms a key is
+  valid without leaving any trace (no device row, audit row or refusal log), so its rate limit is
+  the only control on it.
 - **The switch is a platform setting** (A-13 store, `runtime`, confirm L1 both ways, audited in
   `platform_audit`). Off is the permissive side and the default. A stolen console session could
   turn it on, which refuses new key entries on Identity products until it is turned off again;

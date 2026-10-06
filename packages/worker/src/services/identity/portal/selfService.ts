@@ -463,8 +463,11 @@ export async function handleClaimKey(
     }
     return err(401, ErrorCode.Unauthorized, "license key not found");
   }
-  // PX-W9 (§12.2 rule 1): the attach committed, so this is a `portal` key entry (Identity on only).
-  await recordPortalKeyEntry(db, product.slug, license.id, now);
+  // PX-W9 (§12.2 rules 1 and 4): this claim's attach committed, so it is a `portal` key entry
+  // (Identity on only). A concurrent claim by the same account that got there first answers
+  // `attached: false` here: a late "already yours", never counted.
+  if (attached.attached)
+    await recordPortalKeyEntry(db, product.slug, license.id, now);
   await portalAudit(db, {
     accountId: session.accountId,
     action: "portal.license.claim",

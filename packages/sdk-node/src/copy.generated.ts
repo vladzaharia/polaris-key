@@ -98,7 +98,7 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
   key_entry_limit: {
     title: "No key entries left",
     message:
-      "This key has no entries left in {product}. Add it to your account and {product} signs you in instead.",
+      "This key has no entries left. Add it to your account and sign in instead.",
   },
   license_disabled: {
     title: "License disabled",
@@ -806,7 +806,7 @@ export const COPY_ACTIVATION: Readonly<Record<string, CopyEntry>> = {
   "key-entry-limit": {
     title: "No key entries left",
     message:
-      "This key has no entries left in {product}. Add it to your account and {product} signs you in instead.",
+      "This key has no entries left. Add it to your account and sign in instead.",
   },
   refused: {
     title: "Activation refused",

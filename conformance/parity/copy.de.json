@@ -71,7 +71,7 @@
     },
     "key_entry_limit": {
       "title": "Keine Schlüsseleingaben mehr",
-      "message": "Für diesen Schlüssel sind in {product} keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu, dann meldet {product} Sie stattdessen an."
+      "message": "Für diesen Schlüssel sind keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu und melden Sie sich stattdessen an."
     },
     "license_disabled": {
       "title": "Lizenz deaktiviert",
@@ -707,7 +707,7 @@
     },
     "key-entry-limit": {
       "title": "Keine Schlüsseleingaben mehr",
-      "message": "Für diesen Schlüssel sind in {product} keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu, dann meldet {product} Sie stattdessen an."
+      "message": "Für diesen Schlüssel sind keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu und melden Sie sich stattdessen an."
     },
     "refused": {
       "title": "Aktivierung abgelehnt",

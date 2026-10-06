@@ -471,6 +471,8 @@ export const KIT_COPY: Readonly<
       "{left} of {limit} key entries left · This will be entry {n}",
     "signin.key.entriesLeftShort":
       "{left, plural, one {# key entry left} other {# key entries left}}",
+    "signin.key.noEntries":
+      "This key has no entries left in {product}. Add it to your account and {product} signs you in instead.",
     "signin.key.skip": "Skip for now",
     "signin.key.ownedSignIn": "Sign in to that account",
     "signin.key.differentKey": "Use a different key",
@@ -629,7 +631,7 @@ export const KIT_COPY: Readonly<
       "This license is already on all its devices. Replace a device to use it here.",
     "core.codes.key_entry_limit.title": "No key entries left",
     "core.codes.key_entry_limit.message":
-      "This key has no entries left in {product}. Add it to your account and {product} signs you in instead.",
+      "This key has no entries left. Add it to your account and sign in instead.",
     "core.codes.license_disabled.title": "License disabled",
     "core.codes.license_disabled.message":
       "This license has been disabled. Contact the developer.",
@@ -1086,7 +1088,7 @@ export const KIT_COPY: Readonly<
       "This app doesn't offer a free license. Enter a license key or sign in.",
     "core.activation.key-entry-limit.title": "No key entries left",
     "core.activation.key-entry-limit.message":
-      "This key has no entries left in {product}. Add it to your account and {product} signs you in instead.",
+      "This key has no entries left. Add it to your account and sign in instead.",
     "core.activation.refused.title": "Activation refused",
     "core.activation.refused.message": "Activation was refused ({code}).",
     "core.activation.error.title": "Activation failed",
@@ -1570,6 +1572,8 @@ export const KIT_COPY: Readonly<
       "Noch {left} von {limit} Schlüsseleingaben · Dies wird Eingabe {n}",
     "signin.key.entriesLeftShort":
       "{left, plural, one {Noch # Schlüsseleingabe} other {Noch # Schlüsseleingaben}}",
+    "signin.key.noEntries":
+      "Für diesen Schlüssel sind in {product} keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu, dann meldet {product} Sie stattdessen an.",
     "signin.key.skip": "Vorerst überspringen",
     "signin.key.ownedSignIn": "Bei diesem Konto anmelden",
     "signin.key.differentKey": "Anderen Schlüssel verwenden",
@@ -1742,7 +1746,7 @@ export const KIT_COPY: Readonly<
       "Diese Lizenz ist bereits auf allen zulässigen Geräten in Gebrauch. Ersetzen Sie ein Gerät, um sie hier zu verwenden.",
     "core.codes.key_entry_limit.title": "Keine Schlüsseleingaben mehr",
     "core.codes.key_entry_limit.message":
-      "Für diesen Schlüssel sind in {product} keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu, dann meldet {product} Sie stattdessen an.",
+      "Für diesen Schlüssel sind keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu und melden Sie sich stattdessen an.",
     "core.codes.license_disabled.title": "Lizenz deaktiviert",
     "core.codes.license_disabled.message":
       "Diese Lizenz wurde deaktiviert. Wenden Sie sich an den Entwickler.",
@@ -2217,7 +2221,7 @@ export const KIT_COPY: Readonly<
       "Diese App bietet keine kostenlose Lizenz an. Geben Sie einen Lizenzschlüssel ein oder melden Sie sich an.",
     "core.activation.key-entry-limit.title": "Keine Schlüsseleingaben mehr",
     "core.activation.key-entry-limit.message":
-      "Für diesen Schlüssel sind in {product} keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu, dann meldet {product} Sie stattdessen an.",
+      "Für diesen Schlüssel sind keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu und melden Sie sich stattdessen an.",
     "core.activation.refused.title": "Aktivierung abgelehnt",
     "core.activation.refused.message":
       "Die Aktivierung wurde abgelehnt ({code}).",
@@ -2693,6 +2697,8 @@ export const KIT_COPY: Readonly<
       "Saisies de clé restantes : {left} sur {limit} · Ce sera la saisie {n}",
     "signin.key.entriesLeftShort":
       "{left, plural, one {# saisie de clé restante} many {# de saisies de clé restantes} other {# saisies de clé restantes}}",
+    "signin.key.noEntries":
+      "Cette clé n’a plus de saisies disponibles dans {product}. Ajoutez-la à votre compte et {product} vous connectera à la place.",
     "signin.key.skip": "Passer pour l’instant",
     "signin.key.ownedSignIn": "Se connecter à ce compte",
     "signin.key.differentKey": "Utiliser une autre clé",
@@ -2862,7 +2868,7 @@ export const KIT_COPY: Readonly<
       "This license is already on all its devices. Replace a device to use it here.",
     "core.codes.key_entry_limit.title": "No key entries left",
     "core.codes.key_entry_limit.message":
-      "This key has no entries left in {product}. Add it to your account and {product} signs you in instead.",
+      "This key has no entries left. Add it to your account and sign in instead.",
     "core.codes.license_disabled.title": "License disabled",
     "core.codes.license_disabled.message":
       "This license has been disabled. Contact the developer.",
@@ -3319,7 +3325,7 @@ export const KIT_COPY: Readonly<
       "This app doesn't offer a free license. Enter a license key or sign in.",
     "core.activation.key-entry-limit.title": "No key entries left",
     "core.activation.key-entry-limit.message":
-      "This key has no entries left in {product}. Add it to your account and {product} signs you in instead.",
+      "This key has no entries left. Add it to your account and sign in instead.",
     "core.activation.refused.title": "Activation refused",
     "core.activation.refused.message": "Activation was refused ({code}).",
     "core.activation.error.title": "Activation failed",
@@ -3785,6 +3791,8 @@ export const KIT_COPY: Readonly<
       "Quedan {left} de {limit} usos de la clave · Este será el uso {n}",
     "signin.key.entriesLeftShort":
       "{left, plural, one {Queda # uso de la clave} many {Quedan # de usos de la clave} other {Quedan # usos de la clave}}",
+    "signin.key.noEntries":
+      "A esta clave no le quedan usos en {product}. Añádela a tu cuenta y {product} iniciará tu sesión.",
     "signin.key.skip": "Omitir por ahora",
     "signin.key.ownedSignIn": "Iniciar sesión en esa cuenta",
     "signin.key.differentKey": "Usar otra clave",
@@ -3956,7 +3964,7 @@ export const KIT_COPY: Readonly<
       "Esta licencia ya está en todos sus dispositivos. Reemplaza un dispositivo para usarla aquí.",
     "core.codes.key_entry_limit.title": "No quedan usos de la clave",
     "core.codes.key_entry_limit.message":
-      "A esta clave no le quedan usos en {product}. Añádela a tu cuenta y {product} iniciará tu sesión.",
+      "A esta clave no le quedan usos. Añádela a tu cuenta e inicia sesión en su lugar.",
     "core.codes.license_disabled.title": "Licencia desactivada",
     "core.codes.license_disabled.message":
       "Esta licencia se desactivó. Contacta con el desarrollador.",
@@ -4432,7 +4440,7 @@ export const KIT_COPY: Readonly<
       "Esta app no ofrece una licencia gratuita. Escribe una clave de licencia o inicia sesión.",
     "core.activation.key-entry-limit.title": "No quedan usos de la clave",
     "core.activation.key-entry-limit.message":
-      "A esta clave no le quedan usos en {product}. Añádela a tu cuenta y {product} iniciará tu sesión.",
+      "A esta clave no le quedan usos. Añádela a tu cuenta e inicia sesión en su lugar.",
     "core.activation.refused.title": "Activación rechazada",
     "core.activation.refused.message": "Se rechazó la activación ({code}).",
     "core.activation.error.title": "Error de activación",
@@ -4900,6 +4908,8 @@ export const KIT_COPY: Readonly<
       "{left} de {limit} usos da chave restantes · Este será o uso {n}",
     "signin.key.entriesLeftShort":
       "{left, plural, one {# uso da chave restante} many {# de usos da chave restantes} other {# usos da chave restantes}}",
+    "signin.key.noEntries":
+      "Esta chave não tem mais usos em {product}. Adicione-a à sua conta e {product} faz seu acesso no lugar dela.",
     "signin.key.skip": "Pular por enquanto",
     "signin.key.ownedSignIn": "Entrar nessa conta",
     "signin.key.differentKey": "Usar outra chave",
@@ -5063,7 +5073,7 @@ export const KIT_COPY: Readonly<
       "Esta licença já está em todos os dispositivos permitidos. Substitua um dispositivo para usá-la aqui.",
     "core.codes.key_entry_limit.title": "Nenhum uso restante da chave",
     "core.codes.key_entry_limit.message":
-      "Esta chave não tem mais usos em {product}. Adicione-a à sua conta e {product} faz seu acesso no lugar dela.",
+      "Esta chave não tem mais usos. Adicione-a à sua conta e entre em vez disso.",
     "core.codes.license_disabled.title": "Licença desativada",
     "core.codes.license_disabled.message":
       "Esta licença foi desativada. Contate o desenvolvedor.",
@@ -5531,7 +5541,7 @@ export const KIT_COPY: Readonly<
       "Este app não oferece licença gratuita. Digite uma chave de licença ou entre.",
     "core.activation.key-entry-limit.title": "Nenhum uso restante da chave",
     "core.activation.key-entry-limit.message":
-      "Esta chave não tem mais usos em {product}. Adicione-a à sua conta e {product} faz seu acesso no lugar dela.",
+      "Esta chave não tem mais usos. Adicione-a à sua conta e entre em vez disso.",
     "core.activation.refused.title": "Ativação recusada",
     "core.activation.refused.message": "A ativação foi recusada ({code}).",
     "core.activation.error.title": "Falha na ativação",
@@ -5995,6 +6005,8 @@ export const KIT_COPY: Readonly<
       "{left} di {limit} inserimenti della chiave rimasti · Questo sarà l'inserimento {n}",
     "signin.key.entriesLeftShort":
       "{left, plural, one {# inserimento della chiave rimasto} many {# di inserimenti della chiave rimasti} other {# inserimenti della chiave rimasti}}",
+    "signin.key.noEntries":
+      "Questa chiave non ha più inserimenti disponibili in {product}. Aggiungila al tuo account e {product} ti farà accedere in quel modo.",
     "signin.key.skip": "Salta per ora",
     "signin.key.ownedSignIn": "Accedi a quell'account",
     "signin.key.differentKey": "Usa una chiave diversa",
@@ -6164,7 +6176,7 @@ export const KIT_COPY: Readonly<
       "Questa licenza è già in uso su tutti i dispositivi consentiti. Sostituisci un dispositivo per usarla qui.",
     "core.codes.key_entry_limit.title": "Nessun inserimento rimasto",
     "core.codes.key_entry_limit.message":
-      "Questa chiave non ha più inserimenti disponibili in {product}. Aggiungila al tuo account e {product} ti farà accedere in quel modo.",
+      "Questa chiave non ha più inserimenti disponibili. Aggiungila al tuo account e accedi invece.",
     "core.codes.license_disabled.title": "Licenza disattivata",
     "core.codes.license_disabled.message":
       "Questa licenza è stata disattivata. Contatta lo sviluppatore.",
@@ -6637,7 +6649,7 @@ export const KIT_COPY: Readonly<
       "Questa app non offre una licenza gratuita. Inserisci una chiave di licenza o accedi.",
     "core.activation.key-entry-limit.title": "Nessun inserimento rimasto",
     "core.activation.key-entry-limit.message":
-      "Questa chiave non ha più inserimenti disponibili in {product}. Aggiungila al tuo account e {product} ti farà accedere in quel modo.",
+      "Questa chiave non ha più inserimenti disponibili. Aggiungila al tuo account e accedi invece.",
     "core.activation.refused.title": "Attivazione rifiutata",
     "core.activation.refused.message":
       "L'attivazione è stata rifiutata ({code}).",
@@ -7107,6 +7119,8 @@ export const KIT_COPY: Readonly<
     "signin.key.entries":
       "キー入力の残り：{limit}回中{left}回 · 今回は{n}回目です",
     "signin.key.entriesLeftShort": "{left, plural, other {キー入力の残り#回}}",
+    "signin.key.noEntries":
+      "このキーは{product}での入力回数が残っていません。アカウントに追加すると、代わりに{product}がサインインします。",
     "signin.key.skip": "今はスキップ",
     "signin.key.ownedSignIn": "そのアカウントにサインイン",
     "signin.key.differentKey": "別のキーを使う",
@@ -7278,7 +7292,7 @@ export const KIT_COPY: Readonly<
       "このライセンスはすべてのデバイス枠が使用中です。ここで使うにはデバイスを置き換えてください。",
     "core.codes.key_entry_limit.title": "キーの入力回数が残っていません",
     "core.codes.key_entry_limit.message":
-      "このキーは{product}での入力回数が残っていません。アカウントに追加すると、代わりに{product}がサインインします。",
+      "このキーは入力回数が残っていません。アカウントに追加して、代わりにサインインしてください。",
     "core.codes.license_disabled.title": "ライセンスが無効です",
     "core.codes.license_disabled.message":
       "このライセンスは無効化されています。開発者に問い合わせてください。",
@@ -7756,7 +7770,7 @@ export const KIT_COPY: Readonly<
       "このアプリは無料ライセンスを提供していません。ライセンスキーを入力するか、サインインしてください。",
     "core.activation.key-entry-limit.title": "キーの入力回数が残っていません",
     "core.activation.key-entry-limit.message":
-      "このキーは{product}での入力回数が残っていません。アカウントに追加すると、代わりに{product}がサインインします。",
+      "このキーは入力回数が残っていません。アカウントに追加して、代わりにサインインしてください。",
     "core.activation.refused.title": "アクティベーションが拒否されました",
     "core.activation.refused.message":
       "アクティベーションが拒否されました（{code}）。",
@@ -8208,6 +8222,8 @@ export const KIT_COPY: Readonly<
     "signin.key.entries":
       "키 등록 {limit}회 중 {left}회 남음 · 이번이 {n}번째 등록이에요",
     "signin.key.entriesLeftShort": "{left, plural, other {키 등록 #회 남음}}",
+    "signin.key.noEntries":
+      "이 키는 {product}에서 남은 등록 횟수가 없어요. 계정에 추가하면 {product}에서 로그인으로 사용할 수 있어요.",
     "signin.key.skip": "지금은 건너뛰기",
     "signin.key.ownedSignIn": "그 계정으로 로그인",
     "signin.key.differentKey": "다른 키 사용",
@@ -8368,7 +8384,7 @@ export const KIT_COPY: Readonly<
       "이 라이선스는 이미 모든 기기에서 사용 중이에요. 여기에서 사용하려면 기기를 교체하세요.",
     "core.codes.key_entry_limit.title": "남은 키 등록 횟수 없음",
     "core.codes.key_entry_limit.message":
-      "이 키는 {product}에서 남은 등록 횟수가 없어요. 계정에 추가하면 {product}에서 로그인으로 사용할 수 있어요.",
+      "이 키는 남은 등록 횟수가 없어요. 계정에 추가하고 대신 로그인하세요.",
     "core.codes.license_disabled.title": "라이선스 비활성화됨",
     "core.codes.license_disabled.message":
       "이 라이선스는 비활성화되었어요. 개발자에게 문의하세요.",
@@ -8830,7 +8846,7 @@ export const KIT_COPY: Readonly<
       "이 앱은 무료 라이선스를 제공하지 않아요. 라이선스 키를 입력하거나 로그인하세요.",
     "core.activation.key-entry-limit.title": "남은 키 등록 횟수 없음",
     "core.activation.key-entry-limit.message":
-      "이 키는 {product}에서 남은 등록 횟수가 없어요. 계정에 추가하면 {product}에서 로그인으로 사용할 수 있어요.",
+      "이 키는 남은 등록 횟수가 없어요. 계정에 추가하고 대신 로그인하세요.",
     "core.activation.refused.title": "활성화 거부됨",
     "core.activation.refused.message": "활성화가 거부됐어요({code}).",
     "core.activation.error.title": "활성화 실패",
@@ -9252,6 +9268,8 @@ export const KIT_COPY: Readonly<
     "signin.key.entries": "还剩{left}/{limit}次密钥输入机会 · 这将是第{n}次",
     "signin.key.entriesLeftShort":
       "{left, plural, other {还剩#次密钥输入机会}}",
+    "signin.key.noEntries":
+      "此密钥在{product}中已没有剩余的输入次数。将它添加到你的账户后，{product}会改为让你登录。",
     "signin.key.skip": "暂时跳过",
     "signin.key.ownedSignIn": "登录那个账户",
     "signin.key.differentKey": "使用其他密钥",
@@ -9396,7 +9414,7 @@ export const KIT_COPY: Readonly<
       "此许可证已用满所有设备。请替换一台设备以在此使用。",
     "core.codes.key_entry_limit.title": "密钥已无剩余输入次数",
     "core.codes.key_entry_limit.message":
-      "此密钥在{product}中已没有剩余的输入次数。将它添加到你的账户后，{product}会改为让你登录。",
+      "此密钥已没有剩余的输入次数。请将它添加到你的账户，然后改为登录。",
     "core.codes.license_disabled.title": "许可证已停用",
     "core.codes.license_disabled.message": "此许可证已被停用。请联系开发者。",
     "core.codes.license_expired.title": "许可证已过期",
@@ -9809,7 +9827,7 @@ export const KIT_COPY: Readonly<
       "此应用不提供免费许可证。请输入许可证密钥或登录。",
     "core.activation.key-entry-limit.title": "密钥已无剩余输入次数",
     "core.activation.key-entry-limit.message":
-      "此密钥在{product}中已没有剩余的输入次数。将它添加到你的账户后，{product}会改为让你登录。",
+      "此密钥已没有剩余的输入次数。请将它添加到你的账户，然后改为登录。",
     "core.activation.refused.title": "激活被拒绝",
     "core.activation.refused.message": "激活被拒绝（{code}）。",
     "core.activation.error.title": "激活失败",

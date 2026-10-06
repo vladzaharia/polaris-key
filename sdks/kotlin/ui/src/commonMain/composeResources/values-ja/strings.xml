@@ -896,6 +896,8 @@
     <plurals name="signin_key_entriesLeftShort">
         <item quantity="other">キー入力の残り%1$d回</item>
     </plurals>
+    <!-- License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_key_noEntries">このキーは%1$sでの入力回数が残っていません。アカウントに追加すると、代わりに%1$sがサインインします。</string>
     <!-- License key step (SIGN-IN.md §3.9). -->
     <string name="signin_key_skip">今はスキップ</string>
     <string name="signin_key_skip__macos">今はスキップ</string>
@@ -1165,8 +1167,8 @@
     <string name="core_codes_device_limit_message">このライセンスはすべてのデバイス枠が使用中です。ここで使うにはデバイスを置き換えてください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_title">キーの入力回数が残っていません</string>
-    <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
-    <string name="core_codes_key_entry_limit_message">このキーは%1$sでの入力回数が残っていません。アカウントに追加すると、代わりに%1$sがサインインします。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_key_entry_limit_message">このキーは入力回数が残っていません。アカウントに追加して、代わりにサインインしてください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_disabled_title">ライセンスが無効です</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1797,8 +1799,8 @@
     <string name="core_activation_enroll_disabled_message">このアプリは無料ライセンスを提供していません。ライセンスキーを入力するか、サインインしてください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_key_entry_limit_title">キーの入力回数が残っていません</string>
-    <!-- Core copy (conformance/parity/copy.en.json, activation). Arguments: 1=product. -->
-    <string name="core_activation_key_entry_limit_message">このキーは%1$sでの入力回数が残っていません。アカウントに追加すると、代わりに%1$sがサインインします。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_key_entry_limit_message">このキーは入力回数が残っていません。アカウントに追加して、代わりにサインインしてください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_refused_title">アクティベーションが拒否されました</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). Arguments: 1=code. -->

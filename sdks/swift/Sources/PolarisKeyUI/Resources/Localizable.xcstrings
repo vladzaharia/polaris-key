@@ -6332,61 +6332,61 @@
       }
     },
     "core.activation.key-entry-limit.message": {
-      "comment": "Core copy (conformance/parity/copy.en.json, activation). Arguments: 1=product.",
+      "comment": "Core copy (conformance/parity/copy.en.json, activation).",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This key has no entries left in %1$@. Add it to your account and %1$@ signs you in instead."
+            "value": "This key has no entries left. Add it to your account and sign in instead."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Für diesen Schlüssel sind in %1$@ keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu, dann meldet %1$@ Sie stattdessen an."
+            "value": "Für diesen Schlüssel sind keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu und melden Sie sich stattdessen an."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This key has no entries left in %1$@. Add it to your account and %1$@ signs you in instead."
+            "value": "This key has no entries left. Add it to your account and sign in instead."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "A esta clave no le quedan usos en %1$@. Añádela a tu cuenta y %1$@ iniciará tu sesión."
+            "value": "A esta clave no le quedan usos. Añádela a tu cuenta e inicia sesión en su lugar."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esta chave não tem mais usos em %1$@. Adicione-a à sua conta e %1$@ faz seu acesso no lugar dela."
+            "value": "Esta chave não tem mais usos. Adicione-a à sua conta e entre em vez disso."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Questa chiave non ha più inserimenti disponibili in %1$@. Aggiungila al tuo account e %1$@ ti farà accedere in quel modo."
+            "value": "Questa chiave non ha più inserimenti disponibili. Aggiungila al tuo account e accedi invece."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "このキーは%1$@での入力回数が残っていません。アカウントに追加すると、代わりに%1$@がサインインします。"
+            "value": "このキーは入力回数が残っていません。アカウントに追加して、代わりにサインインしてください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이 키는 %1$@에서 남은 등록 횟수가 없어요. 계정에 추가하면 %1$@에서 로그인으로 사용할 수 있어요."
+            "value": "이 키는 남은 등록 횟수가 없어요. 계정에 추가하고 대신 로그인하세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "此密钥在%1$@中已没有剩余的输入次数。将它添加到你的账户后，%1$@会改为让你登录。"
+            "value": "此密钥已没有剩余的输入次数。请将它添加到你的账户，然后改为登录。"
           }
         }
       }
@@ -16532,61 +16532,61 @@
       }
     },
     "core.codes.key_entry_limit.message": {
-      "comment": "Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product.",
+      "comment": "Core copy (conformance/parity/copy.en.json, codes).",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This key has no entries left in %1$@. Add it to your account and %1$@ signs you in instead."
+            "value": "This key has no entries left. Add it to your account and sign in instead."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Für diesen Schlüssel sind in %1$@ keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu, dann meldet %1$@ Sie stattdessen an."
+            "value": "Für diesen Schlüssel sind keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu und melden Sie sich stattdessen an."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This key has no entries left in %1$@. Add it to your account and %1$@ signs you in instead."
+            "value": "This key has no entries left. Add it to your account and sign in instead."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "A esta clave no le quedan usos en %1$@. Añádela a tu cuenta y %1$@ iniciará tu sesión."
+            "value": "A esta clave no le quedan usos. Añádela a tu cuenta e inicia sesión en su lugar."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esta chave não tem mais usos em %1$@. Adicione-a à sua conta e %1$@ faz seu acesso no lugar dela."
+            "value": "Esta chave não tem mais usos. Adicione-a à sua conta e entre em vez disso."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Questa chiave non ha più inserimenti disponibili in %1$@. Aggiungila al tuo account e %1$@ ti farà accedere in quel modo."
+            "value": "Questa chiave non ha più inserimenti disponibili. Aggiungila al tuo account e accedi invece."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "このキーは%1$@での入力回数が残っていません。アカウントに追加すると、代わりに%1$@がサインインします。"
+            "value": "このキーは入力回数が残っていません。アカウントに追加して、代わりにサインインしてください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이 키는 %1$@에서 남은 등록 횟수가 없어요. 계정에 추가하면 %1$@에서 로그인으로 사용할 수 있어요."
+            "value": "이 키는 남은 등록 횟수가 없어요. 계정에 추가하고 대신 로그인하세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "此密钥在%1$@中已没有剩余的输入次数。将它添加到你的账户后，%1$@会改为让你登录。"
+            "value": "此密钥已没有剩余的输入次数。请将它添加到你的账户，然后改为登录。"
           }
         }
       }
@@ -44937,6 +44937,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "将%1$@保存在账户中"
+          }
+        }
+      }
+    },
+    "signin.key.noEntries": {
+      "comment": "License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This key has no entries left in %1$@. Add it to your account and %1$@ signs you in instead."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Für diesen Schlüssel sind in %1$@ keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu, dann meldet %1$@ Sie stattdessen an."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette clé n’a plus de saisies disponibles dans %1$@. Ajoutez-la à votre compte et %1$@ vous connectera à la place."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A esta clave no le quedan usos en %1$@. Añádela a tu cuenta y %1$@ iniciará tu sesión."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta chave não tem mais usos em %1$@. Adicione-a à sua conta e %1$@ faz seu acesso no lugar dela."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questa chiave non ha più inserimenti disponibili in %1$@. Aggiungila al tuo account e %1$@ ti farà accedere in quel modo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このキーは%1$@での入力回数が残っていません。アカウントに追加すると、代わりに%1$@がサインインします。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 키는 %1$@에서 남은 등록 횟수가 없어요. 계정에 추가하면 %1$@에서 로그인으로 사용할 수 있어요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此密钥在%1$@中已没有剩余的输入次数。将它添加到你的账户后，%1$@会改为让你登录。"
           }
         }
       }

@@ -2435,6 +2435,11 @@ msgid "signin.key.entriesLeftShort"
 msgid_plural "signin.key.entriesLeftShort"
 msgstr[0] "还剩{left}次密钥输入机会"
 
+#. This key has no entries left in {product}. Add it to your account and {product} signs you in instead.
+#. License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.key.noEntries"
+msgstr "此密钥在{product}中已没有剩余的输入次数。将它添加到你的账户后，{product}会改为让你登录。"
+
 #. Skip for now
 #. License key step (SIGN-IN.md §3.9).
 msgid "signin.key.skip"
@@ -3152,10 +3157,10 @@ msgstr "此许可证已用满所有设备。请替换一台设备以在此使用
 msgid "core.codes.key_entry_limit.title"
 msgstr "密钥已无剩余输入次数"
 
-#. This key has no entries left in {product}. Add it to your account and {product} signs you in instead.
+#. This key has no entries left. Add it to your account and sign in instead.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.key_entry_limit.message"
-msgstr "此密钥在{product}中已没有剩余的输入次数。将它添加到你的账户后，{product}会改为让你登录。"
+msgstr "此密钥已没有剩余的输入次数。请将它添加到你的账户，然后改为登录。"
 
 #. License disabled
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -4732,10 +4737,10 @@ msgstr "此应用不提供免费许可证。请输入许可证密钥或登录。
 msgid "core.activation.key-entry-limit.title"
 msgstr "密钥已无剩余输入次数"
 
-#. This key has no entries left in {product}. Add it to your account and {product} signs you in instead.
+#. This key has no entries left. Add it to your account and sign in instead.
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.key-entry-limit.message"
-msgstr "此密钥在{product}中已没有剩余的输入次数。将它添加到你的账户后，{product}会改为让你登录。"
+msgstr "此密钥已没有剩余的输入次数。请将它添加到你的账户，然后改为登录。"
 
 #. Activation refused
 #. Core copy (conformance/parity/copy.en.json, activation).

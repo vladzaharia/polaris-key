@@ -62,15 +62,9 @@ describe("core.copy: the generated English catalog", () => {
   });
 
   it("an activation result reads the activation table, never the error-code table", () => {
-    // What `fill` does with no params: `{code}` becomes the code, and every other placeholder
-    // (and the space before it) is dropped — `key-entry-limit` names `{product}` (PX-W9).
     for (const [kind, entry] of Object.entries(COPY_ACTIVATION))
       expect(copy.activation(kind, { code: "x_code" })).toBe(
-        entry.message.replace(
-          /( ?)\{(\w+)\}/g,
-          (_m, space: string, name: string) =>
-            name === "code" ? `${space}x_code` : "",
-        ),
+        entry.message.replace("{code}", "x_code"),
       );
     // The two `unauthorized` entries differ on purpose.
     expect(copy.activation("unauthorized")).toBe(

@@ -392,6 +392,7 @@
     "signin.key.keep": "{product}をアカウントで管理",
     "signin.key.entries": "キー入力の残り：{limit}回中{left}回 · 今回は{n}回目です",
     "signin.key.entriesLeftShort": "{left, plural, other {キー入力の残り#回}}",
+    "signin.key.noEntries": "このキーは{product}での入力回数が残っていません。アカウントに追加すると、代わりに{product}がサインインします。",
     "signin.key.skip": "今はスキップ",
     "signin.key.ownedSignIn": "そのアカウントにサインイン",
     "signin.key.differentKey": "別のキーを使う",
