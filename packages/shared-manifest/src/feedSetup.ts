@@ -16,8 +16,10 @@
  * STRICT ROUTERS ONLY (plans/F-01.md §6.7 point 4, notes/S-12 §8.3). Every snippet sends only the
  * feed's own names to the feed: the npm scope, uv `explicit = true`, Poetry `priority = "explicit"`,
  * Gradle `exclusiveContent`, SwiftPM `--scope`, a fully qualified OCI reference, the Godot
- * editor's settings name per editor version. Where a client has no router (pip, Maven) the
- * snippet carries a `warning` saying so; pip's warns against `--extra-index-url`.
+ * editor's settings name per editor version, Cargo's `registry =` per dependency, and Go's module
+ * paths (the feed answers only for its own prefixes; GOPROXY falls through to the public proxy on
+ * its 404). Where a client has no router (pip, Maven) the snippet carries a `warning` saying so;
+ * pip's warns against `--extra-index-url`.
  *
  * CREDENTIALS (plans/F-20.md §3): `{kind: "none"}` is a public feed's setup; `env` names an
  * environment variable holding a registry token (the docs, `pkey feeds setup --token-env`);
@@ -602,6 +604,145 @@ const GODOT_SETUP: FeedSetupDeclaration = {
   },
 };
 
+/** Cargo's `CARGO_REGISTRIES_<NAME>_TOKEN`: the registry name upper-cased, `-` as `_`. */
+function cargoEnvName(registry: string): string {
+  return registry.toUpperCase().replace(/[^A-Z0-9]/g, "_");
+}
+
+const CARGO_SETUP: FeedSetupDeclaration = {
+  clients: ["Cargo"],
+  inputs: ["baseUrl", "owner", "package.name", "package.version"],
+  feedPath: (owner) => `/cargo/${owner}/`,
+  render(v) {
+    const baseUrl = v.get("baseUrl") as string;
+    // The registry's name in `.cargo/config.toml`: the owner slug, which Cargo's grammar takes.
+    const registry = v.get("owner") as string;
+    const name = str(v.get("package.name")) ?? "<crate>";
+    const version = str(v.get("package.version"));
+    const envVar = `CARGO_REGISTRIES_${cargoEnvName(registry)}_TOKEN`;
+    const authed = v.credential.kind === "env" || v.credential.kind === "token";
+    const snippets: FeedSnippet[] = [
+      {
+        id: "config",
+        clients: "Cargo",
+        title: "Cargo: name the feed as a registry",
+        description: authed
+          ? "A sparse index; Cargo 1.74 and later for a private one, which needs a credential provider named. Nothing comes from it unless a dependency names it with registry =."
+          : "A sparse index (Cargo 1.68 and later). Nothing comes from it unless a dependency names it with registry =.",
+        filename: ".cargo/config.toml",
+        language: "toml",
+        code: lines(
+          `[registries.${registry}]`,
+          `index = ${JSON.stringify(`sparse+${baseUrl}`)}`,
+          authed && `credential-provider = "cargo:token"`,
+        ),
+      },
+    ];
+    if (v.credential.kind === "env")
+      snippets.push({
+        id: "token",
+        clients: "Cargo",
+        title: "Cargo: the registry token",
+        description:
+          "Cargo sends it on every request to a feed whose config.json says auth-required.",
+        language: "sh",
+        code: `export ${envVar}="$${v.credential.name}"`,
+      });
+    else if (v.credential.kind === "token")
+      snippets.push({
+        id: "token",
+        clients: "Cargo",
+        title: "Cargo: the registry token",
+        description:
+          "Stored in ~/.cargo/credentials.toml. Cargo sends it on every request to a feed whose config.json says auth-required.",
+        language: "sh",
+        code: `echo ${v.credential.value} | cargo login --registry ${registry}`,
+      });
+    snippets.push({
+      id: "dependency",
+      clients: "Cargo",
+      title: "Depend on the crate from this registry",
+      filename: "Cargo.toml",
+      language: "toml",
+      code: lines(
+        "[dependencies]",
+        `${name} = { version = ${JSON.stringify(version ?? "*")}, registry = ${JSON.stringify(registry)} }`,
+      ),
+    });
+    return snippets;
+  },
+};
+
+const GO_SETUP: FeedSetupDeclaration = {
+  clients: ["the go command"],
+  inputs: [
+    "baseUrl",
+    "registryHost",
+    "namespace.modulePrefixes",
+    "package.name",
+    "package.version",
+  ],
+  feedPath: (owner) => `/go/${owner}/`,
+  render(v) {
+    const proxy = noSlash(v.get("baseUrl") as string);
+    const host = v.get("registryHost") as string;
+    const name = str(v.get("package.name"));
+    const version = str(v.get("package.version"));
+    const prefixes = list(v.get("namespace.modulePrefixes"));
+    const private_ = prefixes.length
+      ? prefixes.join(",")
+      : (name ?? "<module/prefix>");
+    const snippets: FeedSnippet[] = [
+      {
+        id: "goproxy",
+        clients: "the go command",
+        title: "Go: this feed first, then the public proxy",
+        description: `The feed answers only for its own modules (${private_}) and 404s every other path, so Go moves on to the public proxy for everything else. GONOSUMDB keeps these modules away from the public checksum database, which cannot see them; go.sum still pins every hash.`,
+        warning:
+          "Do not list these modules in GOPRIVATE: it sets GONOPROXY too, so Go skips every proxy, this feed included, and goes to the module path's host directly.",
+        language: "sh",
+        code: lines(
+          `go env -w GOPROXY=${proxy},https://proxy.golang.org,direct`,
+          `go env -w GONOSUMDB=${private_}`,
+        ),
+      },
+    ];
+    if (v.credential.kind === "env")
+      snippets.push({
+        id: "netrc",
+        clients: "the go command",
+        title: "Go: the feed credentials",
+        description:
+          "The go command sends a .netrc entry's login and password as HTTP Basic credentials to the proxy's host.",
+        language: "sh",
+        code: `printf 'machine %s login __token__ password %s\\n' ${host} "$${v.credential.name}" >> ~/.netrc`,
+      });
+    else if (v.credential.kind === "token")
+      snippets.push({
+        id: "netrc",
+        clients: "the go command",
+        title: "Go: the feed credentials",
+        description:
+          "The go command sends a .netrc entry's login and password as HTTP Basic credentials to the proxy's host.",
+        filename: "~/.netrc",
+        language: "text",
+        code: lines(
+          `machine ${host}`,
+          "login __token__",
+          `password ${v.credential.value}`,
+        ),
+      });
+    snippets.push({
+      id: "go-get",
+      clients: "the go command",
+      title: "Depend on the module",
+      language: "sh",
+      code: `go get ${name ?? `${prefixes[0] ?? "<module/prefix>"}/<module>`}@${version ? `v${version}` : "latest"}`,
+    });
+    return snippets;
+  },
+};
+
 /**
  * Every ecosystem's setup declaration. The mapped type makes a new `PACKAGE_ECOSYSTEMS` entry a
  * compile error until its setup exists. The Worker's feed adapters point their `setup` here.
@@ -615,6 +756,8 @@ export const FEED_SETUP: {
   maven: MAVEN_SETUP,
   oci: OCI_SETUP,
   godot: GODOT_SETUP,
+  cargo: CARGO_SETUP,
+  go: GO_SETUP,
 };
 
 /** A feed's base URL on the registry host (the console's and the admin API's `baseUrl`). */

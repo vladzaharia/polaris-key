@@ -2535,14 +2535,17 @@ export interface TierBody {
 
 // ── package feeds (F-11; worker `admin/handlers/feeds.ts`) ───────────────────────────
 
-/** The six tier-1 ecosystems a package feed serves (`@polaris-key/manifest` PACKAGE_ECOSYSTEMS). */
+/** The ecosystems a package feed serves (`@polaris-key/manifest` PACKAGE_ECOSYSTEMS): the six of
+ *  tier 1, then tier 3's Cargo (F-30) and Go (F-31). */
 export type FeedEcosystem =
   | "npm"
   | "pypi"
   | "swift"
   | "maven"
   | "oci"
-  | "godot";
+  | "godot"
+  | "cargo"
+  | "go";
 
 /** Why a feed does not answer, in the order the registry's access ladder checks it. */
 export type FeedOffReason =
@@ -2710,6 +2713,10 @@ export interface RegistryTokensDto {
     urlDefaultDays: number;
     perOwner: number;
     perLicense: number;
+    /** F-22: a publish token's default and longest expiry, and the ecosystems it may name. */
+    publishDefaultDays?: number;
+    publishMaxDays?: number;
+    publishEcosystems?: FeedEcosystem[];
   };
 }
 
@@ -2720,6 +2727,9 @@ export interface MintRegistryTokenBody {
   binding: "owner" | "license";
   licenseId?: string;
   presentation?: "header" | "url";
+  /** `["publish"]` for a publish token (owner-bound, named ecosystems): F-22's native clients and
+   *  F-23's `docker push`. */
+  scopes?: ("read" | "publish")[];
 }
 
 export interface MintedRegistryToken {
@@ -2785,10 +2795,14 @@ export interface FeedPackageVersion {
   stateMessage: string | null;
   publishedAt: number;
   source: {
-    kind: "oidc" | "static" | "console" | "unknown";
+    kind: "oidc" | "static" | "console" | "registry" | "unknown";
     publisher: string | null;
     runUrl: string | null;
     tokenId: string | null;
+    /** F-22: the native client that published (`npm`, `twine`, `swift`, `maven`), or null. */
+    client?: string | null;
+    /** F-23: `oci-push` when the version came through `docker push`. */
+    via?: "oci-push" | null;
   };
   size: number;
   files: FeedPackageFile[];

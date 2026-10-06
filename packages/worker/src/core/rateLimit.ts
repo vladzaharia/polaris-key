@@ -87,6 +87,8 @@ const FAIL_MODE: Record<string, FailMode> = {
   authPollState: "closed",
   authDevicePoll: "closed",
   authDevicePollCode: "closed",
+  // I-26: the legacy sign-in's licence chooser, a step of the sign-in that binds a licence.
+  authChoose: "closed",
   adminLogin: "closed",
   adminCallback: "closed",
   portalLogin: "closed",
@@ -148,6 +150,10 @@ const FAIL_MODE: Record<string, FailMode> = {
   registryLogin: "closed",
   registryCredentialMiss: "closed",
   portalRegistryToken: "closed",
+  // F-22: native-client publishes (`npm publish`, `twine`, `swift package-registry publish`,
+  // Maven PUTs), per publishing token. Each one writes to the blob store, so it fails closed: a
+  // limiter outage must not become unmetered storage writes; a refused publish is a retry.
+  registryPublish: "closed",
 
   // ── authenticated, non-credential surfaces — fail open ─────────────────────
   adminApi: "open",

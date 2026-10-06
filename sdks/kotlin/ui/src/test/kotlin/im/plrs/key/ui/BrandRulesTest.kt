@@ -23,7 +23,7 @@ class BrandRulesTest {
     @Test
     fun noColourLiteralsOutsideTheGeneratedTokens() {
         val literal = Regex("""Color\(\s*0x|Color\(\s*(red|[0-9])|#[0-9A-Fa-f]{6}\b|Color\.(Black|White|Red|Green|Blue|Gray|Grey|DarkGray|LightGray|Yellow|Cyan|Magenta)\b""")
-        val problems = sources.filterNot { it.name == "PolarisBrandTokens.generated.kt" }.flatMap { file ->
+        val problems = sources.filterNot { it.name.endsWith(".generated.kt") }.flatMap { file ->
             file.readLines().mapIndexedNotNull { i, line ->
                 if (literal.containsMatchIn(line) && !line.contains("polaris-lint: allow-colour")) "${file.name}:${i + 1}: ${line.trim()}" else null
             }
@@ -35,7 +35,7 @@ class BrandRulesTest {
     @Test
     fun fontsAndShapesComeFromTheTheme() {
         val font = Regex("""\bFont\(|FontFamily\((?!\))|RoundedCornerShape\(|CutCornerShape\(""")
-        val allowed = setOf("PolarisTypography.kt", "PolarisTheme.kt", "PolarisBrandTokens.generated.kt")
+        val allowed = setOf("PolarisTypography.kt", "PolarisTheme.kt", "PolarisBrandTokens.generated.kt", "PolarisKitTokens.generated.kt")
         val problems = sources.filterNot { it.name in allowed }.flatMap { file ->
             file.readLines().mapIndexedNotNull { i, line -> if (font.containsMatchIn(line)) "${file.name}:${i + 1}: ${line.trim()}" else null }
         }

@@ -9,6 +9,12 @@
  *   exec <store> <command> any allow-listed command of a CI-plane store, its argv after `--`
  *                          (steamcmd, msstore, BuildPatchTool until their adapters add planners)
  *   allow-list             print the allow-lists (--json for the declaration)
+ *
+ * The PR plane (A-18i, `prRun.ts`): winget, the own Homebrew tap, the own Scoop bucket, Flathub.
+ *   <store> pr             generate the outlet's manifest for the channel's newest release and
+ *                          open the pull request (GitHub token in PKEY_PR_TOKEN, never argv)
+ *   <store> status         the verifier: the pull request's state and review labels
+ *   flathub init           the first submission's files, for a person to open that PR
  */
 
 import { readdir, stat } from "node:fs/promises";
@@ -18,6 +24,13 @@ import type { CiEnv } from "../oidc.js";
 import { CI_PLANE } from "./ciPlane.generated.js";
 import { bindsIdentity, ciAdapter, ciStore, ciStoreIds } from "./allowList.js";
 import { itchPushStep } from "./itch.js";
+import { prStore, prStoreIds } from "./prPlane.js";
+import {
+  runPrStatus,
+  runPrStep,
+  writeFlathubInit,
+  type PrGeneratorOptions,
+} from "./prRun.js";
 import { loadStepProduct, pickOutlet, type StepOutlet } from "./outlets.js";
 import { commandLine, runStoreSteps, type StoreStep } from "./run.js";
 import {
@@ -33,6 +46,10 @@ export const STOREFRONT_USAGE =
   "       pkey storefront snap upload-metadata --snap <file.snap>\n" +
   "       pkey storefront exec <store> <command> --op <operation> [--outlet id] [--tool-path p] -- <argv...>\n" +
   "       pkey storefront allow-list [--store s] [--json]\n" +
+  "       pkey storefront winget|homebrew|scoop|flathub pr [--channel c] [--outlet id] [--out dir]\n" +
+  "              [--portable path] [--command name] [--license l] [--app name] [--project-license spdx]\n" +
+  "       pkey storefront winget|homebrew|scoop|flathub status [--channel c] [--version v] [--outlet id]\n" +
+  "       pkey storefront flathub init [--out dir] [--channel c] [--outlet id] [--command path] [--runtime-version v]\n" +
   "  (each step also takes --product slug, --base-url url, --dry-run, --no-report)";
 
 export interface StorefrontArgs {
@@ -221,6 +238,54 @@ export async function cmdStorefront(
     default:
       break;
   }
+  const pr = store ? prStore(store) : null;
+  if (
+    pr &&
+    (step === "pr" ||
+      step === "status" ||
+      (step === "init" && pr.store === "flathub"))
+  ) {
+    const generator: PrGeneratorOptions = {
+      ...(str(a, "portable") ? { portable: str(a, "portable")! } : {}),
+      ...(str(a, "command") ? { command: str(a, "command")! } : {}),
+      ...(str(a, "license") ? { license: str(a, "license")! } : {}),
+      ...(str(a, "app") ? { app: str(a, "app")! } : {}),
+      ...(str(a, "project-license")
+        ? { projectLicense: str(a, "project-license")! }
+        : {}),
+      ...(str(a, "runtime-version")
+        ? { runtimeVersion: str(a, "runtime-version")! }
+        : {}),
+    };
+    const slug = productFlag ?? (await loadStepProduct(io.cwd)).slug;
+    const common = {
+      store: pr.store,
+      product: slug,
+      channel: str(a, "channel") ?? "stable",
+      ...(str(a, "outlet") ? { outlet: str(a, "outlet")! } : {}),
+      ...(str(a, "version") ? { version: str(a, "version")! } : {}),
+      generator,
+      baseUrl: str(a, "base-url"),
+      env: io.env,
+      stdout: io.stdout,
+      stderr: io.stderr,
+      fetchImpl: io.fetchImpl,
+      sleep: io.sleep,
+      dryRun: bool(a, "dry-run"),
+      report: !bool(a, "no-report"),
+      ...(str(a, "out") ? { outDir: str(a, "out")! } : {}),
+      cwd: io.cwd,
+    };
+    if (step === "pr") await runPrStep(common);
+    else if (step === "status") await runPrStatus(common);
+    else
+      await writeFlathubInit({ ...common, outDir: str(a, "out") ?? "flathub" });
+    return 0;
+  }
+  if (store && !pr && (step === "pr" || step === "status"))
+    throw new Error(
+      `${store} is not a PR-plane store: ${prStoreIds().join(", ")}.\n${STOREFRONT_USAGE}`,
+    );
   if (store === "exec") {
     const [, storeId, command] = a.positional;
     const s = storeId ? ciStore(storeId) : null;

@@ -1,9 +1,12 @@
 // The install driver port (registry `update.driver`; P6-08 defines it, P6-12 implements it on
-// Android): what hands an update decision to the platform's installer. On Android that is Play's
-// In-App Updates for a Play install and PackageInstaller for a direct one (:platform's
-// `InAppUpdates`, `ApkInstaller`, wired by :android). A JVM desktop build has no install source to
-// update through (registry `update.driver` jvm `runtime`): [JvmInstallDriver] refuses with the typed
-// N/A, and the host offers `UpdateClient.buildUrl` as a download link instead.
+// Android, UK-40 on a JVM desktop): what hands an update decision to the platform's installer. On
+// Android that is Play's In-App Updates for a Play install and PackageInstaller for a direct one
+// (:platform's `InAppUpdates`, `ApkInstaller`, wired by :android). On a JVM desktop it is
+// [DesktopInstallDriver]: the installer for the OS and arch, downloaded, verified against the
+// signed release record and opened. [JvmInstallDriver] is the options' default MARKER:
+// `UpdateClient.install` replaces it with the desktop driver on a JVM and :android replaces it with
+// the flavour's driver; called directly (an Android build without :android) it is the typed
+// `runtime` N/A.
 
 package im.plrs.key.update
 
@@ -33,9 +36,9 @@ public fun interface InstallDriver {
     public suspend fun install(check: UpdateCheck): InstallResult
 }
 
-/** A JVM desktop build: no installer the SDK can drive (the typed `runtime` N/A). */
+/** The default marker (see the file comment); installing through it directly is the typed `runtime` N/A. */
 public object JvmInstallDriver : InstallDriver {
     override suspend fun install(check: UpdateCheck): InstallResult = throw UnsupportedException(
-        Unsupported(Feature.updateDriver, UnsupportedReason.runtime, "a JVM desktop build has no install source to update through; offer UpdateClient.buildUrl as a download link"),
+        Unsupported(Feature.updateDriver, UnsupportedReason.runtime, "no platform install driver is wired here; use UpdateClient.install, or offer UpdateClient.buildUrl as a download link"),
     )
 }

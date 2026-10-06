@@ -2,7 +2,6 @@ import { RELEASE_PLATFORMS, platformFromFileName } from "@polaris-key/manifest";
 import { CHANNEL_STABLE } from "@polaris-key/protocol";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import {
-  deleteTokenRecord,
   isAllowedDownloadRedirectHost,
   isAllowedStorageHost,
   type Db,
@@ -15,9 +14,9 @@ import {
 } from "../../../core/products.js";
 import { licenseEntitled } from "../../../core/entitledAccess.js";
 import { ErrorCode } from "../../../core/errors.js";
-import { getDevice, getProduct, setDeviceStatus } from "../../../core/data.js";
+import { getProduct } from "../../../core/data.js";
 import { licenseUsable } from "../../../core/devices.js";
-import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
+import { rateLimitOk } from "../../../core/rateLimit.js";
 import { registryOrigin } from "../../../core/registryHostname.js";
 import {
   MAX_LIVE_TOKENS_PER_LICENSE,
@@ -76,11 +75,7 @@ import {
   sendNotice,
   sendSecurityNotice,
 } from "./email.js";
-import {
-  accountDeletedNotice,
-  deviceRemovedNotice,
-  downloadLinkEmail,
-} from "./notices.js";
+import { accountDeletedNotice, downloadLinkEmail } from "./notices.js";
 import { platformOidcConfig } from "../../../core/platform.js";
 import { portalSecurityHeaders } from "./headers.js";
 import { handleProductDownloads } from "./downloads.js";
@@ -89,6 +84,7 @@ import {
   handleDiscover,
   handleDiscoverClaim,
 } from "./discover.js";
+import { freeAccountDevice, portalActionLimit } from "./freeDevice.js";
 
 export function portalJson(
   body: unknown,
@@ -454,17 +450,15 @@ export async function requireActionRateLimit(
   product?: string,
   windowSec = 60,
 ): Promise<Response | null> {
-  const ok = await rateLimitOk(
-    env,
-    product ?? "_portal",
-    {
-      bucket,
-      id: `${product ?? "_"}:${session.accountId}:${clientIp(req)}`,
-      limit,
-      windowSec,
-    },
-    now,
+  const { shard, rl } = portalActionLimit(
+    req,
+    session.accountId,
+    bucket,
+    limit,
+    product,
+    windowSec,
   );
+  const ok = await rateLimitOk(env, shard, rl, now);
   return ok ? null : err(429, "rate_limited", "too many attempts");
 }
 
@@ -817,56 +811,23 @@ async function handleDeviceDelete(
   now: number,
 ): Promise<Response> {
   if (req.method !== "DELETE") return err(405, "method_not_allowed");
-  const settings = await getPortalProductSettings(db, product);
-  if (settings.portal_enabled !== 1) return notFound();
-  const license = await getPortalLicense(
-    db,
-    session.accountId,
-    product,
-    licenseId,
-  );
-  if (!license) return notFound();
-  // R5-05: charged AFTER ownership is proven, so a caller who owns no license on this product
-  // cannot spend a budget at all — and the budget they do spend is scoped to this product.
-  const limited = await requireActionRateLimit(
+  // The shared operation (`freeAccountDevice`): the sign-in chooser's Replace runs the same
+  // checks, audit, email and rate-limit budget (plans/I-04.md, owner decision 2026-10-05 §B).
+  const freed = await freeAccountDevice(
     req,
     env,
-    session,
-    "portalDeviceDisconnect",
-    now,
-    20,
-    product,
-  );
-  if (limited) return limited;
-  const device = await getDevice(db, product, deviceId);
-  if (!device || device.license_id !== licenseId) return notFound();
-  await setDeviceStatus(db, product, deviceId, "deauthorized");
-  if (device.token_hash)
-    await deleteTokenRecord(env, product, device.token_hash);
-  await portalAudit(db, {
-    accountId: session.accountId,
-    action: "portal.device.disconnect",
-    product,
-    targetKind: "device",
-    targetId: deviceId,
-    summary: `Disconnected device ${deviceId}`,
-    now,
-  });
-  // A security notice (PORTAL.md §6.3): every verified address, the device by its label and
-  // the product by its name, never the ids.
-  await sendSecurityNotice(
-    env,
     db,
-    session.accountId,
-    session.email,
-    deviceRemovedNotice({
-      deviceLabel: device.label,
-      productName: (await getProduct(db, product))?.name,
-      productSlug: product,
-      origin: new URL(req.url).origin,
-    }),
+    { accountId: session.accountId, email: session.email },
+    product,
+    licenseId,
+    deviceId,
     now,
   );
+  if (!freed.ok) {
+    if (freed.reason === "rate_limited")
+      return err(429, "rate_limited", "too many attempts");
+    return notFound();
+  }
   return portalJson({ ok: true, deviceId });
 }
 

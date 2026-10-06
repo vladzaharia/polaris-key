@@ -74,7 +74,7 @@
         "properties": {
           "id": {
             "type": "string",
-            "pattern": "^(?:(?:P0|P1|P1b|P2|P2b|P3|P4|P5|P6|X|S|D|F|A|I|U|ST|LX|SP|HA|UK)-\\d{2}[a-z]?|PX-(?:\\d{2}|W\\d{1,2}))$"
+            "pattern": "^(?:(?:P0|P1|P1b|P2|P2b|P3|P4|P5|P6|X|S|D|F|A|I|U|ST|LX|SP|HA|UK|PS|CM)-\\d{2}[a-z]?|PX-(?:\\d{2}|W\\d{1,2}))$"
           },
           "title": {
             "type": "string",
@@ -156,6 +156,11 @@
           },
           "milestone": {
             "type": "string"
+          },
+          "deferred": {
+            "type": "string",
+            "minLength": 1,
+            "description": "what the package waits for before it may be dispatched (e.g. the owner's go); --ready never lists it without --deferred"
           },
           "planRef": {
             "type": "string",

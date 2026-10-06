@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The OCI pull contract over real HTTP (F-08, plans/F-01.md §6.7 and §6.8), with curl: the tag
 # list and its pagination, manifests by tag and by digest with their headers, Range on blobs, the
-# yank and channel-tag rules, the reserved token endpoint and the refused push.
+# yank and channel-tag rules, the token endpoint, the push challenge (F-23) and the refused delete.
 set -euo pipefail
 . "$(dirname "$0")/oci.inc"
 tmp="$(mktemp -d)"
@@ -69,7 +69,11 @@ if [ -n "${REGISTRY_AUTH:-}" ]; then
   code="$(curl -q -sS -o /dev/null -w '%{http_code}' "$REGISTRY/v2/token?scope=repository:$NAME:pull")"
   [ "$code" = 401 ] && ok "/v2/token refuses an anonymous caller a private repository" || bad "/v2/token anonymous ($code)"
 fi
-code="$(curl -sS -o "$tmp/b" -w '%{http_code}' -X PUT "$REGISTRY/v2/$NAME/manifests/x")"
-if [ "$code" = 405 ] && grep -q UNSUPPORTED "$tmp/b"; then ok "push is refused"; else bad "push ($code)"; fi
+# F-23: a push without a push token is the Bearer challenge naming pull,push (in --auth mode
+# curl sends the read token, which is no push token either); a delete is never answered.
+code="$(curl -sS -D "$tmp/h" -o "$tmp/b" -w '%{http_code}' -X PUT "$REGISTRY/v2/$NAME/manifests/x")"
+if [ "$code" = 401 ] && grep -qi "scope=\"repository:$NAME:pull,push\"" "$tmp/h"; then ok "a push without a push token is challenged"; else bad "push ($code)"; fi
+code="$(curl -sS -o "$tmp/b" -w '%{http_code}' -X DELETE "$REGISTRY/v2/$NAME/manifests/1.0.0")"
+if [ "$code" = 405 ] && grep -q UNSUPPORTED "$tmp/b"; then ok "delete is refused"; else bad "delete ($code)"; fi
 
 exit "$fail"

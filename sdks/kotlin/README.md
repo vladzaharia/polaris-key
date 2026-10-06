@@ -104,9 +104,13 @@ Maven, the coordinate table and the other SDKs:
   `sync()` refreshes trust on Core's cadence, fetches the enabled documents in parallel with their
   ETags, takes at most one shared re-acquire, escalates a 304 past the half-life, writes the cache
   once and reports. `discover()` installs the product's capability map (fail closed).
-- **Stores.** `InMemoryStore` and the 0600 `FileStore`. On the JVM there is no OS keyring without
-  a native library, so `FileStore.status()` reports `file` / `keyring-unavailable`; on Android,
-  `:android`'s `AndroidKeystoreStore` (below).
+- **Stores.** `InMemoryStore`, the 0600 `FileStore` (`status()` reports `file` /
+  `keyring-unavailable`) and, on a JVM desktop, `KeyringStore` (UK-40): the token in the OS keyring
+  (Keychain, Credential Manager, Secret Service) through java-keyring, the device id and cache in
+  0600 files, Python's `KeyringStore` rules (a verified write else the file, file-first reads, a
+  `FileStore` token moves in). java-keyring is `compileOnly`: without it at runtime, or with no
+  reachable keyring, the token stays in the file and `supports(core.store)` says `dependency`. On
+  Android, `:android`'s `AndroidKeystoreStore` (below).
 - **Capabilities.** `Capabilities.sdk().supports(feature, services)` answers from the generated
   table (`Constants.generated.kt`, from `parity.json`), with typed reasons.
 - **Pure functions.** `bootTransition` (the boot stage machine), `licenseState`,
@@ -181,12 +185,14 @@ client.packs.ensure(listOf("djdl.levels"))   // the stamp's pinned release, by t
 
 - **`:update`**: `check()` (`update/version`), `channelFeed()`, `decide(channel, staged,
 skipVersion)`, `releaseRecord(hash)`, `buildUrl(version, buildId)` and `install(check)` through the
-  `InstallDriver` port (Play In-App Updates and PackageInstaller are `:android`'s; a JVM desktop build has
-  none, `JvmInstallDriver` throws the typed `runtime` N/A). The decision logic is `:core`'s
+  `InstallDriver` port (Play In-App Updates and PackageInstaller are `:android`'s; on a JVM desktop the
+  default is `DesktopInstallDriver`, UK-40: the record's payload for the decision's build, fetched
+  resumably by `OkHttpArtifactFetch`, size and SHA-256 checked before the OS opens it). The decision logic is `:core`'s
   (`verifyFeed`, `decideUpdate`, `runUpdateCheck`, the content decision), as in Swift's
   `PolarisKeyCore`. `BootGuard` is the GUARD stage over a host's `UpdateSlots` (apply a staged update,
-  count unconfirmed launches, roll back after two with `skipVersion`, the confirmation rows); outlet
-  signals come through `OutletSignalReader` (Android's reader is `:android`'s).
+  count unconfirmed launches, roll back after two with `skipVersion`, the confirmation rows), with
+  `DirUpdateSlots` and `FileBootGuardStore` as the default JVM slots and state; outlet signals come
+  through `OutletSignalReader` (Android's reader is `:android`'s).
 - **`:packs`**: `PackEngine` (`load`, `ensure`, `ensureReleases`, `estimate`, `state`, `rollback`,
   `confirm`, `recoverState`, `revocations`, `isAvailable`, `packFor`, `registerHandler`, progress
   events) over the `PackStorage` port (`DirPackStorage` under the store's data directory, never a
@@ -209,6 +215,25 @@ skipVersion)`, `releaseRecord(hash)`, `buildUrl(version, buildId)` and `install(
 --kotlin-package com.example.catalog` writes `ConfigSchema.generated.kt`, a dependency-free
 `ProductCatalog` object (keys, entries, each entry's JSON schema and default; a secret's default is
 never compiled in). The `:config` tests compile a sample of it.
+
+## JVM desktop
+
+`PolarisKeyDesktop` (in `:sdk`, UK-40) is the desktop entry point, as `PolarisKeyAndroid` is
+Android's. It fills in the keyring store, the desktop install driver and the default slots:
+
+```kotlin
+// build.gradle.kts: implementation("im.plrs.key:polaris-key-sdk:…")
+//                   runtimeOnly("com.github.javakeyring:java-keyring:1.0.4")   // the OS keyring
+val client = PolarisKeyDesktop.create(options)            // KeyringStore, DesktopInstallDriver
+val guard = PolarisKeyDesktop.bootGuard("djdl", "1.4.0")  // the GUARD stage over DirUpdateSlots
+val check = client.update.decide()
+client.update.install(check)                              // download, verify, open the installer
+```
+
+Everything lives under `FileStore.defaultDirectory(product)` unless `DesktopOptions.dataDirectory`
+says otherwise; `DesktopOptions` also takes the keyring binding, the installer opener and download
+progress. The `kotlin-desktop` CI job runs the keyring store's contract against the real OS keyring
+on macOS, Windows and Linux (`PKEY_KEYRING_TESTS=1`).
 
 ## :platform
 
