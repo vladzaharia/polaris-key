@@ -17,12 +17,16 @@ import {
   renditionKey,
   sweepAvatars,
 } from "../src/services/identity/card/avatars.js";
-import type { ProfileView } from "../src/services/identity/card/profile.js";
+import {
+  updateProfile,
+  type ProfileView,
+} from "../src/services/identity/card/profile.js";
 import { AVATAR_UPLOADS_PER_HOUR } from "../src/services/identity/portal/profile.js";
 import { insertLink } from "../src/services/identity/accounts/repo.js";
 import { mergeAccounts } from "../src/services/identity/accounts/merge.js";
 import { deleteAccount } from "../src/services/identity/accounts/deletion.js";
 import { handlePortal } from "../src/services/identity/portal/index.js";
+import type { DbParam } from "../src/db/types.js";
 import { portalHooksFor } from "./portalHarness.js";
 
 // PX-W16 (PORTAL.md §4.30, G32, G33): Account → Profile. `GET/PATCH /api/me/profile` and
@@ -487,6 +491,46 @@ describe("garbage collection and deletion", () => {
         accountId,
       ),
     ).toHaveLength(1);
+  });
+
+  it("an upload picked between the sweep's select and its delete is kept", async () => {
+    const { w, d, accountId } = await ada();
+    const up = await upload(w, d, PNG);
+    const { upload: pending } = (await up.json()) as {
+      upload: { asset: string };
+    };
+    const later = NOW + AVATAR_GC_GRACE_SECONDS + 1;
+    // The person saves the day-old upload just after the sweep listed it as unused.
+    const racing = new Proxy(w.db, {
+      get(target, prop) {
+        if (prop === "all")
+          return async (sql: string, ...params: DbParam[]) => {
+            const rows = await target.all(sql, ...params);
+            if (/FROM account_avatars a/.test(sql))
+              expect(
+                await updateProfile(
+                  w.env,
+                  target,
+                  accountId,
+                  { picture: { upload: pending.asset } },
+                  later,
+                ),
+              ).toEqual({ ok: true });
+            return rows;
+          };
+        const v = Reflect.get(target, prop) as unknown;
+        return typeof v === "function" ? v.bind(target) : v;
+      },
+    });
+    expect(await sweepAvatars(w.env, racing, later)).toBe(0);
+    expect(w.r2.keys()).toContain(renditionKey(pending.asset, 256, "png"));
+    expect(
+      await w.db.first(
+        "SELECT 1 FROM account_avatars WHERE asset = ?",
+        pending.asset,
+      ),
+    ).not.toBeNull();
+    expect((await profile(d)).picture?.asset).toBe(pending.asset);
   });
 
   it("a disconnected method's picture the account still uses is kept (SIGN-IN.md §3.16)", async () => {

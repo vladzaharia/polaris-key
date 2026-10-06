@@ -40,9 +40,11 @@
  *
  * ── CONTENT-ADDRESSED, PER ACCOUNT ──────────────────────────────────────────────────────────
  *
- * The asset id is `HMAC(KEY_HASH_PEPPER, "avatar:v1:" ‖ account ‖ SHA-256 of the source bytes)`:
- * the same picture is stored once per account and its URL never changes, but the id names nobody
- * and cannot be computed from a public provider picture, so it is no join key. One
+ * The asset id is `HMAC(KEY_HASH_PEPPER, "avatar:v1:" ‖ account ‖ SHA-256 of the source bytes)`
+ * (`hashKey`; a deployment without the pepper falls back to a plain SHA-256 of the same string,
+ * which still needs the internal account id): the same picture is stored once per account and its
+ * URL never changes, but the id names nobody and cannot be computed from a public provider picture
+ * alone, so it is no join key. One
  * `account_avatars` row per asset records whose it is; what USES an asset is
  * `accounts.avatar_key` (the picture in use) and each link's `profile_json.avatarKey` (that
  * provider's copy).
@@ -71,6 +73,7 @@ import {
   type FetchImpl,
   type SafeFetchReason,
 } from "../../../core/safeFetch.js";
+import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
 import { sniffContentType, SNIFF_BYTES } from "../../../core/sniff.js";
 import { portalSecurityHeaders } from "../portal/headers.js";
 
@@ -567,19 +570,31 @@ export async function sweepAvatars(
   );
   let n = 0;
   for (const r of rows) {
+    // Again, for this row alone, right before its objects go: a PATCH that picked this (day-old)
+    // upload, or a sign-in that re-stored it, since the select keeps it.
+    const still = await db.first<{ unused: number }>(
+      `SELECT NOT ${OWNER_USES} AS unused FROM account_avatars a
+        WHERE a.asset = ? AND a.created_at < ?`,
+      r.asset,
+      cutoff,
+    );
+    if (!still?.unused) continue;
     try {
       await deleteObjects(env, r.asset);
     } catch {
       continue;
     }
-    // Only while it is still old: a re-store since the select reset its clock and keeps the row.
-    // (Its objects may just have gone with this delete; the person then sees initials until the
-    // picture next changes. Benign, and it needs a byte-identical re-store within milliseconds of
-    // the nightly sweep reaching a picture nothing used for a day.)
+    // The row goes only while it is still old and unused, so whatever claimed it in the
+    // milliseconds since the check keeps its row (its objects are gone: the person sees initials
+    // until the picture next changes, a residual in THREAT-MODEL).
     await db.run(
-      "DELETE FROM account_avatars WHERE asset = ? AND created_at < ?",
+      `DELETE FROM account_avatars
+        WHERE asset = ? AND created_at < ?
+          AND asset IN (SELECT a.asset FROM account_avatars a
+                         WHERE a.asset = ? AND NOT ${OWNER_USES})`,
       r.asset,
       cutoff,
+      r.asset,
     );
     n++;
   }
@@ -656,6 +671,21 @@ export function avatarResponseHeaders(
   });
 }
 
+function rateLimited(): Response {
+  return new Response(
+    JSON.stringify({ error: "rate_limited", message: "too many attempts" }),
+    {
+      status: 429,
+      headers: portalSecurityHeaders(
+        new Headers({
+          "content-type": "application/json; charset=utf-8",
+          "cache-control": "no-store",
+        }),
+      ),
+    },
+  );
+}
+
 function notFound(): Response {
   return new Response(JSON.stringify({ error: "not_found" }), {
     status: 404,
@@ -707,17 +737,51 @@ export async function serveAvatar(
   });
 }
 
+/** Gate previews per client address per minute (each is a provider fetch and a re-encode). */
+export const PREVIEW_PER_IP_PER_MINUTE = 30;
+/** Gate previews per gate over its life (`GATE_TTL_SECONDS`, 15 minutes). */
+export const PREVIEW_PER_GATE = 20;
+const GATE_LIFE_SECONDS = 15 * 60;
+
 /**
  * `GET /api/signin/confirm-email/picture`: the provider's picture for the email gate, before any
  * account exists. Fetched under rules 1–4 and re-encoded like a stored one (256 px, the
- * negotiated format), but stored nowhere and never cached.
+ * negotiated format), but stored nowhere and never cached. Limited per client address and per
+ * gate (`429 rate_limited`), both failing OPEN like the other cost budgets: the gate itself is
+ * the expensive thing to obtain (a provider sign-in), and a limiter outage must not blank it.
  */
 export async function serveProviderPreview(
   req: Request,
   env: Env,
   url: string | null | undefined,
+  limit: { gateId: string; now: number },
 ): Promise<Response> {
   if (!url || !env.IMAGES || !isAllowedAvatarUrl(url)) return notFound();
+  const perGate = await rateLimitOk(
+    env,
+    "_portal",
+    {
+      bucket: "portalGatePictureGate",
+      id: limit.gateId,
+      limit: PREVIEW_PER_GATE,
+      windowSec: GATE_LIFE_SECONDS,
+    },
+    limit.now,
+  );
+  const perIp =
+    perGate &&
+    (await rateLimitOk(
+      env,
+      "_portal",
+      {
+        bucket: "portalGatePicture",
+        id: clientIp(req),
+        limit: PREVIEW_PER_IP_PER_MINUTE,
+        windowSec: 60,
+      },
+      limit.now,
+    ));
+  if (!perGate || !perIp) return rateLimited();
   const picture = await fetchProviderPicture(url);
   if (!picture.ok) return notFound();
   const format = negotiateFormat(req.headers.get("accept"));

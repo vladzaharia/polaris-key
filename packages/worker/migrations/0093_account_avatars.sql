@@ -2,8 +2,9 @@
 --
 -- One row per stored picture ("asset"): the four renditions (WebP and PNG at 256 and 96 px) live
 -- in the BLOBS bucket under `avatars/<asset>/<size>.<format>` and are served at
--- `/media/avatar/<asset>`. `asset` is a peppered HMAC of the account and the source picture's
--- SHA-256, so the same picture is stored once per account and the id names nobody.
+-- `/media/avatar/<asset>`. `asset` is an HMAC under KEY_HASH_PEPPER of the account and the source
+-- picture's SHA-256 (a plain SHA-256 of the same string on a deployment without the pepper), so
+-- the same picture is stored once per account and the id names nobody.
 --
 --   account_id   whose picture it is. Not a foreign key: account deletion deletes the objects
 --                first and these rows after (`deleteAccountAvatars`), and a merge moves them to

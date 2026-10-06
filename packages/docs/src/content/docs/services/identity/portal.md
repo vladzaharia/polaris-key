@@ -116,9 +116,9 @@ sign-ins; a name typed in the gate sticks, and so does every choice made in Acco
 providers' hosts only (https, every redirect hop re-checked, 5 s, at most 2 MiB, PNG, JPEG, WebP
 or GIF by their magic numbers). They are then decoded and re-encoded by the Cloudflare Images
 binding into WebP and PNG at 256 and 96 px (square, one frame, metadata discarded; the original
-is never kept) and stored in R2 under `avatars/<asset>/`, where `<asset>` is a peppered hash of
-the account and the picture: the same picture is stored once per account, and the id names
-nobody. They are served same-origin at `/media/avatar/<asset>` (`-96` for the small one; `.webp`
+is never kept) and stored in R2 under `avatars/<asset>/`, where `<asset>` is a hash of the account
+and the picture, peppered with `KEY_HASH_PEPPER` (a plain SHA-256 when a deployment has no
+pepper): the same picture is stored once per account, and the id names nobody. They are served same-origin at `/media/avatar/<asset>` (`-96` for the small one; `.webp`
 or `.png` to name a format, otherwise `Accept` decides), only when the stored bytes are the type
 the name says, with `nosniff` and a sandboxing policy, so the portal's CSP keeps `img-src 'self'`.
 Without the Images binding nothing is copied and the account shows initials. A picture nothing

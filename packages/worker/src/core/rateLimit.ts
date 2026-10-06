@@ -174,6 +174,11 @@ const FAIL_MODE: Record<string, FailMode> = {
   portalDeviceDisconnect: "open",
   // PX-W16: Account → Profile edits. Writes the account's own row only; nothing to guard.
   portalProfileEdit: "open",
+  // PX-W16: the email gate's picture preview, per client address and per gate. A cost budget (a
+  // provider fetch and a re-encode each), nothing secret behind it; an outage must not blank the
+  // gate.
+  portalGatePicture: "open",
+  portalGatePictureGate: "open",
   portalDownloadToken: "open",
   // PX-W2: the product page's downloads listing. A read charged only after ownership is
   // proven; it mints no URL (the token mint above re-checks everything), so nothing to guard.

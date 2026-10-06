@@ -12053,7 +12053,8 @@ paths:
         hosts only, over https, every redirect hop re-checked, 5 s, 2 MiB, PNG/JPEG/WebP/GIF by
         magic number), then re-encoded like a stored picture (256 px, WebP or PNG by `Accept`) and
         served same-origin with `nosniff`, `default-src 'none'; sandbox` and `no-store`; copied
-        into R2 only once the gate passes. `404` without the Images binding.
+        into R2 only once the gate passes. `404` without the Images binding. Limited to 20 per
+        gate and 30 a minute per client address (`429 rate_limited`; both fail open).
       responses:
         "200":
           description: The image.
@@ -12062,6 +12063,11 @@ paths:
             image/png: { schema: { type: string, format: binary } }
         "400": { $ref: "#/components/responses/CardError" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "429":
+          description: "`rate_limited`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
   # ── Account sessions (I-07, S-16 §5.4 item 7). Session-authenticated by the portal cookie, which
   # names a server-side `account_sessions` row; a cookie whose row is revoked or expired is refused.
   /api/sessions:
@@ -12348,8 +12354,9 @@ paths:
       description: >
         I-07, PX-W16 (PORTAL.md §4.30, G33). A provider's picture (fetched server-side from the
         providers' hosts only) or an upload, decoded and re-encoded to WebP and PNG at 256 and 96
-        px (square, one frame, metadata discarded) and stored under a content address: a peppered
-        HMAC of the account and the source picture, so the id names nobody. `{asset}` is the id,
+        px (square, one frame, metadata discarded) and stored under a content address: an HMAC
+        under the deployment's pepper of the account and the source picture (a plain SHA-256 of
+        the same input where no pepper is set), so the id names nobody. `{asset}` is the id,
         optionally `-96` (or `-256`, the default) and `.webp` or `.png`; without an extension the
         format follows `Accept` (WebP when the browser takes it, else PNG) with `Vary: Accept`.
         A rendition is served only when its bytes are the type its name says, with `nosniff`,

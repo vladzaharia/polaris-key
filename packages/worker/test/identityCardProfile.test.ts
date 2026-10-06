@@ -19,6 +19,8 @@ import {
   isAllowedAvatarUrl,
   negotiateFormat,
   parseAvatarSegment,
+  PREVIEW_PER_GATE,
+  PREVIEW_PER_IP_PER_MINUTE,
   renditionKey,
 } from "../src/services/identity/card/avatars.js";
 import {
@@ -360,6 +362,59 @@ describe("profile import", () => {
     expect((await d.send("GET", `/media/avatar/${asset}.png`)).status).toBe(
       404,
     );
+  });
+});
+
+describe("the gate's preview is a cost budget", () => {
+  /** A first Google sign-in by `subject`, from `d`: an open gate with a picture. */
+  async function gateFor(w: World, d: Device, subject: string): Promise<void> {
+    const input = googleWith({ pictureUrl: `${PICTURE}-${subject}` });
+    input.identity.subject = subject;
+    input.identity.email = `${subject}@gmail.com`;
+    await arrive(w, d, input);
+  }
+
+  it("is limited per gate, then per client address (429 rate_limited)", async () => {
+    const w = await world();
+    stubPictureFetch();
+    const ip = "198.51.100.40";
+    const a = new Device(w, ip);
+    await gateFor(w, a, "g-a");
+    for (let i = 0; i < PREVIEW_PER_GATE; i++)
+      expect((await a.send("GET", `${GATE}/picture`)).status, `a ${i}`).toBe(
+        200,
+      );
+    const capped = await a.send("GET", `${GATE}/picture`);
+    expect(capped.status).toBe(429);
+    expect(await capped.json()).toMatchObject({ error: "rate_limited" });
+    // A second gate from the same address: its own 20, but the address has spent 20 of its 30
+    // (a request the gate's cap refused is not charged to the address).
+    const b = new Device(w, ip);
+    await gateFor(w, b, "g-b");
+    const left = PREVIEW_PER_IP_PER_MINUTE - PREVIEW_PER_GATE;
+    for (let i = 0; i < left; i++)
+      expect((await b.send("GET", `${GATE}/picture`)).status, `b ${i}`).toBe(
+        200,
+      );
+    expect((await b.send("GET", `${GATE}/picture`)).status).toBe(429);
+    // Another address is not held back by this one.
+    const c = new Device(w, "203.0.113.41");
+    await gateFor(w, c, "g-c");
+    expect((await c.send("GET", `${GATE}/picture`)).status).toBe(200);
+  });
+
+  it("fails open when the limiter is unavailable", async () => {
+    const w = await world();
+    stubPictureFetch();
+    w.env.RL = {
+      idFromName: () => ({}),
+      get: () => {
+        throw new Error("Durable Object reset because its code was updated");
+      },
+    } as unknown as typeof w.env.RL;
+    const d = new Device(w);
+    await gateFor(w, d, "g-open");
+    expect((await d.send("GET", `${GATE}/picture`)).status).toBe(200);
   });
 });
 

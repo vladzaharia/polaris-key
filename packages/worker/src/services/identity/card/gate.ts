@@ -472,7 +472,7 @@ export async function handleEmailGate(
   }
   if (rest.length !== 1) return cardJson({ error: "not_found" }, 404);
   if (action === "picture" && req.method === "GET")
-    return gatePicture(req, env, gate);
+    return gatePicture(req, env, ref, gate, now);
   if (req.method !== "POST")
     return cardJson({ error: "method_not_allowed" }, 405);
   switch (action) {
@@ -495,9 +495,14 @@ export async function handleEmailGate(
 async function gatePicture(
   req: Request,
   env: Env,
+  ref: ArtefactRef,
   gate: GateRecord,
+  now: number,
 ): Promise<Response> {
-  return serveProviderPreview(req, env, gate.profile.pictureUrl);
+  return serveProviderPreview(req, env, gate.profile.pictureUrl, {
+    gateId: ref.id,
+    now,
+  });
 }
 
 /** `POST /api/signin/confirm-email {choice, email?, name?, termsVersion?}`. */

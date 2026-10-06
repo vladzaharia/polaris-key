@@ -6193,15 +6193,21 @@ and the console's `e2e/portalAvatar.e2e.test.ts`.
   fetched. The gate's preview is fetched and re-encoded the same way and stored nowhere.
 - **CSP.** The portal keeps `img-src 'self'`: every picture is same-origin. The console's browser
   test loads proxied avatars with zero violations and shows the provider's own host blocked.
+- **Cost of the gate's preview.** `GET /api/signin/confirm-email/picture` fetches and re-encodes
+  on every request (nothing is stored before the gate passes), so it is limited to 20 per gate
+  over the gate's 15 minutes and 30 a minute per client address (`429 rate_limited`). Both fail
+  open, like the other cost budgets: obtaining a gate already takes a provider sign-in.
 - **Storage abuse.** Uploads are rate-limited per account (10 an hour, counted before a byte is
   read, failing closed), capped at 5 MB declared or counted, and at most three uploads not in use
   are kept per account (older ones are deleted at once). Provider copies are re-fetched only when
   the provider's URL changes. A picture nothing uses (`accounts.avatar_key`, a link's
   `profile_json.avatarKey`) is deleted at once when replaced, and the nightly sweep deletes the
   rest after a day, at most 200 a night.
-- **Privacy of the URL.** The asset id is a peppered HMAC of the account and the source picture's
-  SHA-256: stable per picture (content-addressed, so a URL never changes under a page) but not
-  computable from a public provider picture, and it names nobody. The route is public, as a
+- **Privacy of the URL.** The asset id is an HMAC under `KEY_HASH_PEPPER` of the account and the
+  source picture's SHA-256: stable per picture (content-addressed, so a URL never changes under a
+  page) but not computable from a public provider picture, and it names nobody. Without the pepper
+  (`hashKey`'s fallback) it is a plain SHA-256 of the same string, which still needs the internal
+  account id, so a public picture alone does not give it. The route is public, as a
   capability URL: anyone holding it sees the picture, which is display data the person shows in
   the portal and, through the consent step, to apps. Responses are `private, max-age=86400`, so
   no shared cache keeps a deleted account's picture, and revalidation of a deleted picture is a
@@ -6214,9 +6220,11 @@ and the console's `e2e/portalAvatar.e2e.test.ts`.
 - **Untrusted display data.** Names and locales from providers, and typed names, are made safe
   as in "Login card (I-07)" above; `PATCH` accepts only this account's sign-in methods and uploads
   (a test tries another account's).
-- **Residual.** A byte-identical re-store of a picture within milliseconds of the nightly sweep
-  deleting it as unused can leave that asset without objects; the person sees initials until the
-  picture next changes. The Images binding is a Cloudflare dependency: while it is unbound or
+- **Residual.** The nightly sweep re-checks each asset just before deleting it, and deletes the
+  row only if it is still unused, so a profile edit that picks a day-old upload keeps it. A claim
+  landing in the milliseconds between that check and the object delete (a PATCH or a
+  byte-identical re-store) keeps its row but loses the objects; the person sees initials until
+  the picture next changes. The Images binding is a Cloudflare dependency: while it is unbound or
   failing, new pictures are not copied (no fallback to storing originals).
 
 ### The platform KEK keyring and the legacy open-only key (R2-09)

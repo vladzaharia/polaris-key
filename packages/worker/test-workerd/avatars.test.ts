@@ -4,8 +4,8 @@
 // The Node lane (`test/identityCardProfile.test.ts`, `test/portalProfile.test.ts`) covers the
 // rules against `test/r2Mock.ts` and better-sqlite3. This file runs the store, the media route,
 // the sweep and the deletion against the real bindings, which is what proves the parts the fakes
-// could get wrong: that D1 accepts the migration's expression index and the reads that use it,
-// that R2 keeps each rendition's `httpMetadata.contentType`, that a multi-key delete removes all
+// could get wrong: that D1 accepts the migration and the owner-scoped "still in use?" reads
+// (`json_extract` over the owner's links, through `idx_account_links_account`), that R2 keeps each rendition's `httpMetadata.contentType`, that a multi-key delete removes all
 // four renditions, and that the route streams the stored bytes back byte for byte. The Images
 // binding is a stub here (the lane has no Images service): it answers fixed WebP and PNG bytes.
 
@@ -124,7 +124,7 @@ describe("account pictures on R2 and D1", LANE, () => {
     );
   });
 
-  it("the sweep reads through the expression index and deletes only what nothing uses", async () => {
+  it("the sweep's owner-scoped reads keep what a link uses and delete what nothing uses", async () => {
     const { env: e, db } = lane();
     await seedAccount(db, "acct_wd_sweep");
     const used = await storeAvatar(
@@ -149,7 +149,7 @@ describe("account pictures on R2 and D1", LANE, () => {
     );
     const usedAsset = (used as { asset: string }).asset;
     const unusedAsset = (unused as { asset: string }).asset;
-    // In use through a link's profile, the read the expression index serves.
+    // In use through a link's profile (the owner's links, by `idx_account_links_account`).
     await db.run(
       `INSERT INTO account_links (id, account_id, issuer_key, subject, kind, created_at,
          last_used_at, profile_json)
