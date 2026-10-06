@@ -421,7 +421,8 @@ async function armExitProbe(page: Page): Promise<void> {
       for (const r of records) {
         const el = r.target as Element;
         if (el.getAttribute("data-state") !== "closed") continue;
-        if (!el.matches(".animate-pk-in, .animate-pk-overlay-in")) continue;
+        if (!el.matches(".animate-pk-in, .animate-pk-overlay-in, .pk-drawer"))
+          continue;
         w.__exits.push({
           el,
           kind: el.matches(".animate-pk-overlay-in") ? "scrim" : "content",
@@ -520,7 +521,8 @@ describe("overlay exit animations (MO-02)", () => {
           .click();
         await page.getByRole("dialog").waitFor();
       },
-      content: { name: "pk-exit", duration: 200 },
+      // The drawer slides back to its edge (MO-08), not the dialog's fall.
+      content: { name: "pk-drawer-out", duration: 200 },
     },
     {
       name: "action menu",
@@ -618,5 +620,197 @@ describe("overlay exit animations (MO-02)", () => {
       expect(names, motion).toEqual(motion === "reduce" ? [] : ["pk-refetch"]);
       await page.context().close();
     }
+  });
+});
+
+/**
+ * MO-08 (notes/S-23 §6.1 enter and press, §4.2): the drawer slides in from its own edge; buttons,
+ * icon buttons, switches and radio cards press (0.98 on :active, never when disabled); a filled
+ * button's hover eases its background instead of snapping a filter; the copy swap pops. Under
+ * reduced motion each is an instant swap: no scale, no transition, nothing left running.
+ */
+describe("controls and the drawer (MO-08)", () => {
+  /** The animations on the open drawer panel, right after it mounts. */
+  async function drawerEnter(
+    page: Page,
+    side: "end" | "start",
+  ): Promise<{
+    animations: Array<{ name: string; duration: number }>;
+    from: string;
+  }> {
+    await story(page, "drawer")
+      .getByRole("button", { name: `Open drawer from the ${side}` })
+      .click();
+    const panel = page.getByRole("dialog");
+    await panel.waitFor();
+    const out = await panel.evaluate((el) => ({
+      animations: el.getAnimations().map((a) => ({
+        name: (a as CSSAnimation).animationName,
+        duration: Number(a.effect?.getTiming().duration ?? 0),
+      })),
+      from: getComputedStyle(el).getPropertyValue("--pk-drawer-from").trim(),
+    }));
+    await page.waitForTimeout(400);
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(400);
+    await settleFocus(page);
+    return out;
+  }
+
+  /** The press: the element's transform while the pointer is held down on it. */
+  async function pressed(page: Page, target: Locator): Promise<string> {
+    await target.scrollIntoViewIfNeeded();
+    await target.hover();
+    await page.mouse.down();
+    await page.waitForTimeout(200);
+    const transform = await target.evaluate(
+      (el) => getComputedStyle(el).transform,
+    );
+    await page.mouse.up();
+    await page.waitForTimeout(300);
+    return transform;
+  }
+
+  const SCALED = "matrix(0.98, 0, 0, 0.98, 0, 0)";
+
+  it("the drawer slides in from its edge on the tokens", async () => {
+    const page = await open("dark", undefined, undefined, "no-preference");
+    const end = await drawerEnter(page, "end");
+    expect(end.animations).toEqual([{ name: "pk-drawer-in", duration: 320 }]);
+    expect(end.from).toBe("");
+    const start = await drawerEnter(page, "start");
+    expect(start.animations).toEqual([{ name: "pk-drawer-in", duration: 320 }]);
+    expect(start.from).toBe("-100%");
+    expect(await running(page)).toEqual([]);
+    expect(await violations(page)).toEqual([]);
+    await page.context().close();
+  });
+
+  it("buttons, icon buttons, switches and radio cards press; disabled ones do not", async () => {
+    const page = await open("dark", undefined, undefined, "no-preference");
+    const variants = story(page, "button-variants");
+    for (const name of ["Primary", "Outline", "Ghost", "Delete product…"])
+      expect(
+        await pressed(page, variants.getByRole("button", { name })),
+        name,
+      ).toBe(SCALED);
+    expect(
+      await pressed(
+        page,
+        story(page, "icon-button").getByRole("button").first(),
+      ),
+      "icon button",
+    ).toBe(SCALED);
+    const choices = story(page, "form-choices");
+    expect(
+      await pressed(page, choices.getByRole("switch").first()),
+      "switch",
+    ).toBe(SCALED);
+    expect(
+      await pressed(page, choices.getByRole("radio", { name: /^Public/ })),
+      "radio card",
+    ).toBe(SCALED);
+    const states = story(page, "button-states");
+    expect(
+      await pressed(
+        page,
+        states.getByRole("button", { name: "Plain disabled" }),
+      ),
+      "disabled",
+    ).toBe("none");
+    expect(
+      await pressed(page, states.getByRole("button", { name: /^Saving/ })),
+      "busy",
+    ).toBe("none");
+    expect(
+      await pressed(page, states.getByRole("button", { name: "Retire" })),
+      "disabled with a reason",
+    ).toBe("none");
+    await settleFocus(page);
+    expect(await running(page)).toEqual([]);
+    expect(await violations(page)).toEqual([]);
+    await page.context().close();
+  });
+
+  it("a primary button's hover eases its background (no filter), and the copy swap pops", async () => {
+    const page = await open("dark", undefined, undefined, "no-preference");
+    const primary = story(page, "button-variants").getByRole("button", {
+      name: "Primary",
+    });
+    // Record what starts, rather than sampling: a `micro` transition can end before a sample.
+    await page.evaluate(() => {
+      const w = window as unknown as { __started: string[] };
+      w.__started = [];
+      document.addEventListener("transitionrun", (e) =>
+        w.__started.push(`transition:${e.propertyName}`),
+      );
+      document.addEventListener("animationstart", (e) =>
+        w.__started.push(
+          `animation:${e.animationName}:${(e.target as Element).textContent}`,
+        ),
+      );
+    });
+    const started = (): Promise<string[]> =>
+      page.evaluate(() =>
+        (window as unknown as { __started: string[] }).__started.splice(0),
+      );
+    const before = await primary.evaluate(
+      (el) => getComputedStyle(el).backgroundColor,
+    );
+    await started();
+    await primary.hover();
+    await page.waitForTimeout(300);
+    expect(await started()).toContain("transition:background-color");
+    expect(await primary.evaluate((el) => getComputedStyle(el).filter)).toBe(
+      "none",
+    );
+    expect(
+      await primary.evaluate((el) => getComputedStyle(el).backgroundColor),
+    ).not.toBe(before);
+    await page.mouse.move(0, 0);
+    await page.waitForTimeout(300);
+
+    const copy = story(page, "copy-button").getByRole("button", {
+      name: "Copy JWKS URL",
+    });
+    await started();
+    await copy.click();
+    await copy.getByText("Copied").waitFor();
+    await page.waitForTimeout(500);
+    expect(await started()).toContain("animation:pk-pop-in:Copied");
+    expect(await violations(page)).toEqual([]);
+    await page.context().close();
+  });
+
+  it("under reduced motion every one of them is an instant swap", async () => {
+    const page = await open("dark", undefined, undefined, "reduce");
+    const end = await drawerEnter(page, "end");
+    expect(end.animations).toEqual([]);
+    const primary = story(page, "button-variants").getByRole("button", {
+      name: "Primary",
+    });
+    expect(await pressed(page, primary)).toBe("none");
+    await primary.hover();
+    expect(await running(page), "hover").toEqual([]);
+    const choices = story(page, "form-choices");
+    const sw = choices.getByRole("switch").first();
+    expect(await pressed(page, sw)).toBe("none");
+    expect(await running(page), "switch pressed").toEqual([]);
+    await choices.getByRole("radio", { name: /^Authenticated/ }).click();
+    expect(await running(page), "radio card chosen").toEqual([]);
+    const copy = story(page, "copy-button").getByRole("button", {
+      name: "Copy JWKS URL",
+    });
+    await copy.click();
+    await copy.getByText("Copied").waitFor();
+    expect(await running(page), "copied").toEqual([]);
+    expect(
+      await page.evaluate(() =>
+        document.documentElement.hasAttribute("data-vt"),
+      ),
+      "no View Transition started",
+    ).toBe(false);
+    expect(await violations(page)).toEqual([]);
+    await page.context().close();
   });
 });

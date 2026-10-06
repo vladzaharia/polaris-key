@@ -45,6 +45,16 @@ There is no `active:` state anywhere; `hover:brightness-110` snaps because `filt
 
 - None of these files is in an in-flight branch on 2026-10-05.
 - Press scale never on a row of buttons that would shift neighbours (scale is visual only, no layout).
+- **Corrections against the code (2026-10-05, at implementation):** MO-02 already gives every
+  popper (Popover, Tooltip, ActionMenu, Select in its default `popper` position, Combobox through
+  `PopoverContent`) its side-aware entry and `fast` fade-out, keyed on `animate-pk-in` plus Radix's
+  `data-side`, and already gives the ⌘K palette its exit; step 2 and the palette's exit are pinned
+  by tests here rather than re-implemented. A start-side Drawer needs the opposite edge, so
+  `src/motion.css` gains one custom property (`--pk-drawer-from`, set by
+  `.pk-drawer[data-drawer-side="start"]`), the only edit outside the listed files. There is no
+  accent or danger hover token, so the filled Button variants mix their token colour with 10 %
+  white (`color-mix(in oklab, …)`) instead of `brightness-110`, and the motion lint gains a
+  `hover-filter` rule.
 
 ## Files it touches
 
