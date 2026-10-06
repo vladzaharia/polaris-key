@@ -71,6 +71,7 @@ async function open(
   const ctx = await browser.newContext({
     viewport: viewport ?? { width: 1440, height: SHOTS ? 2400 : 1000 },
     colorScheme: theme,
+    reducedMotion: "reduce",
   });
   await ctx.addInitScript((t) => {
     window.localStorage.setItem("pk-admin-theme", t);

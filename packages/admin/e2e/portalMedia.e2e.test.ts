@@ -58,6 +58,7 @@ afterAll(async () => {
 async function open(): Promise<Page> {
   const ctx = await browser.newContext({
     viewport: { width: 1280, height: 800 },
+    reducedMotion: "reduce",
   });
   await ctx.addInitScript(() => {
     (window as unknown as { __v: string[] }).__v = [];

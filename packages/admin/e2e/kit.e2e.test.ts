@@ -61,7 +61,7 @@ async function open(
     viewport,
     colorScheme: theme,
     permissions: ["clipboard-read", "clipboard-write"],
-    ...(reducedMotion ? { reducedMotion } : {}),
+    reducedMotion: reducedMotion ?? "reduce",
   });
   await ctx.addInitScript(() => {
     (window as unknown as { __v: string[] }).__v = [];
