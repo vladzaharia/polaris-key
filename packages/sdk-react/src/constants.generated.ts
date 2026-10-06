@@ -1439,7 +1439,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "config.schema": { status: "implemented", service: "config", na: [] },
   "config.mint": { status: "implemented", service: "config", na: [] },
   "config.mirror": { status: "implemented", service: "config", na: [] },
-  "config.local": { status: "planned", service: "sdk", na: [] },
+  "config.local": { status: "implemented", service: "sdk", na: [] },
   "devices.fingerprint": {
     status: "na",
     service: "core",
@@ -1593,4 +1593,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "cb5b71698d74a889518d3b584f9991b87898cba0bdd40537d571711bd8d82266";
+  "c3de26862c011ea40d6f2cdf80f044a0e5c2e9535de511acb3453853f369bab9";

@@ -140,6 +140,19 @@ export function projectState(
   };
 }
 
+/** The same snapshot with a new override map: the effective `config` re-resolved over the
+ *  unchanged documents (a local `config.set` never re-verifies anything). */
+export function withOverrides(
+  s: PolarisState,
+  localOverrides: Record<string, JSONValue>,
+): PolarisState {
+  return {
+    ...s,
+    localOverrides,
+    config: resolveConfig(s.configEntries, localOverrides),
+  };
+}
+
 export function currentDeviceFromState(s: PolarisState): DeviceInfo | null {
   if (!s.currentDeviceId) return null;
   const out: DeviceInfo = {

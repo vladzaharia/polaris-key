@@ -406,6 +406,11 @@ export interface PolarisAdapter {
    *  `distribution.endpoints.builds` template (`{selector}` = the version, `{buildId}` = the
    *  build id), or null when discovery has none. Optional: the desktop bridge has no such verb. */
   buildUrl?(version: string, buildId: string): Promise<string | null>;
+  /** Device-local overrides (`config.local`): `set`, `clear`, `clearAll`, `setting`,
+   *  `onConfigChange`. Browser: persisted in `localStorage` per product (memory when storage is
+   *  unusable, which `persistent()` reports). Desktop: forwarded to the host's `client.config`
+   *  over bridge v4; a v3 host refuses writes with the typed `UnsupportedError`. */
+  readonly config: import("./localConfig.js").LocalConfig;
   /** Read a single config value with a fallback, honoring v3 state + local overrides:
    *  `enforced`/`hidden` → remote value (locked); else `localOverrides[key] ?? remote ?? fallback`. */
   getConfig<T = JSONValue>(key: string, fallback: T): T;

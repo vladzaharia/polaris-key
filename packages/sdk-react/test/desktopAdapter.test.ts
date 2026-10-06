@@ -504,7 +504,7 @@ describe("DesktopAdapter — bridge v4 verbs are gated on the host's protocol ve
   it("a v3 host's supports()/caps() report the v4 features as a version N/A", async () => {
     const { adapter } = hostAt(3);
     await ready(adapter);
-    for (const f of ["config.mint", "commerce.receipt"]) {
+    for (const f of ["config.mint", "commerce.receipt", "config.local"]) {
       expect(adapter.supports(f)).toMatchObject({
         supported: false,
         reason: "version",

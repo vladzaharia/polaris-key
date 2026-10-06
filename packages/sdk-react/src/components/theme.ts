@@ -116,6 +116,8 @@ export interface PolarisThemeCopy {
   configLocalBadge: string;
   configRemoteBadge: string;
   configOverrideLabel: string;
+  /** The button that drops a device-local override (`config.clear`). */
+  configResetLabel: string;
   configDisabledTitle: string;
   configDisabledBody: string;
   // ── UpdatePrompt (./update) ──────────────────────────────────────────────
@@ -320,6 +322,7 @@ export const defaultTheme: PolarisTheme = {
     configLocalBadge: "Overridden",
     configRemoteBadge: "Default",
     configOverrideLabel: "Override",
+    configResetLabel: "Reset",
     configDisabledTitle: "Settings are not managed",
     configDisabledBody:
       "This product does not distribute managed settings, so there is nothing to show here.",
