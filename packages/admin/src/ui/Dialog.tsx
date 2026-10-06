@@ -167,6 +167,11 @@ export function useOverlayFocus(
       // The opener may still be disabled for a frame (a switch while its confirm was pending).
       let tries = 0;
       const attempt = (): void => {
+        // Yield to whatever took focus since the close (a result panel that focuses itself, a
+        // route change): the dialog's content is gone by now, so lost focus sits on <body>, and
+        // focus returns only when it was lost, never as a steal.
+        const active = document.activeElement;
+        if (active && active !== document.body && active !== target) return;
         if (focusable(target)) {
           target.focus({ preventScroll: true });
           if (document.activeElement === target) return;

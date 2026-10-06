@@ -4942,7 +4942,8 @@ bullet above. What is new are the per-OS protection choices.
   activates again. It is a nuisance, not an escalation; the token never leaves the user's keyring
   to do it.
 - **Fallback to the 0600 file, surfaced.** When the keyring piece is missing (no
-  `libpkey_apple.dylib` or `pkey_win.dll`, no `secret-tool` or session bus, or
+  `libpkey_apple.dylib` or `pkey_win.dll`, no `secret-tool` or session bus, an engine older than
+  Godot 4.5 on Linux, whose `OS.execute_with_pipe` does not deliver stdin, or
   `PKEY_DESKTOP_KEYRING=0`) or a write cannot be verified, the token stays in the 0600 token file,
   the same protection the file store gave before. It is never silent: `status()` reports
   `backend: file` with `keyring-unavailable` or `keyring-error`, and every keyring failure emits
