@@ -302,6 +302,20 @@ export interface Env {
    */
   REGISTRY_TOKEN_KEY_PREVIOUS?: string;
   /**
+   * PX-W3 (plans/PX-W3.md §6.1): the HMAC key of the portal's download tickets (32 random bytes,
+   * base64, used as string HMAC material like `REGISTRY_TOKEN_KEY`). With it unset, licensed
+   * files held only on R2 stay `not_hosted` in the portal and the bytes host ignores `?ticket=`.
+   * Set per environment: `wrangler secret put DOWNLOAD_TICKET_KEY --env <env>`.
+   * @inventory secret keyring
+   */
+  DOWNLOAD_TICKET_KEY?: string;
+  /**
+   * The previous `DOWNLOAD_TICKET_KEY`, still accepted for verification during a rotation
+   * (tickets live 120 s, so it can be removed two minutes after the new key is live).
+   * @inventory secret keyring
+   */
+  DOWNLOAD_TICKET_KEY_PREVIOUS?: string;
+  /**
    * Signs console sessions.
    * @inventory secret identity
    */

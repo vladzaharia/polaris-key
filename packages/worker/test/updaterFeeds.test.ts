@@ -949,10 +949,14 @@ function fileUrl(w: World, version: string, name: string): string {
 
 let devices = 0;
 /** A device token on a usable licence of the product (what `licensed` delivery asks for). */
-async function deviceToken(w: World): Promise<string> {
+async function deviceToken(
+  w: World,
+  licence: { channels?: string[]; maxVersion?: string } = {},
+): Promise<string> {
   devices += 1;
   const { key } = await seedLicenseWithKey(w.db, SLUG, {
     id: `lic_vp_${devices}`,
+    ...licence,
   });
   // The seed hashes the key unpeppered; this env peppers (the CI token needs a pepper).
   await w.db.run(
@@ -1168,6 +1172,162 @@ describe("updater feeds: the Velopack package route", () => {
     expect(
       (await call(w.env, w.db, noFetch, target, { headers: authz })).status,
     ).toBe(200);
+  });
+});
+
+// ── SP-09: a self-authorising redirect under non-public delivery ────────────────────────────
+
+const TICKET_KEY = "sp09-download-ticket-key-0123456789abcdef";
+
+/** A world whose deployment can mint download tickets (PX-W3's key and a bytes host). */
+async function ticketWorld(access?: string): Promise<World> {
+  const w = await world(access ? { access } : {});
+  w.env.DOWNLOAD_TICKET_KEY = TICKET_KEY;
+  return w;
+}
+
+describe("updater feeds: the Velopack package route under licensed or entitled delivery (SP-09)", () => {
+  const PKG = "Djdl-1.1.0-delta.nupkg";
+  const PATH = `update/stable/velopack/${PKG}`;
+
+  it("licensed: a ticketed bytes-host Location that carries no credential and is served without Authorization", async () => {
+    const w = await ticketWorld("licensed");
+    const token = await deviceToken(w);
+    const res = await get(w, PATH, { authorization: `Bearer ${token}` });
+    expect(res.status, await res.clone().text()).toBe(302);
+    const location = res.headers.get("location")!;
+    const url = new URL(location);
+    expect(`${url.origin}${url.pathname}`).toBe(fileUrl(w, "1.1.0", PKG));
+    expect([...url.searchParams.keys()]).toEqual(["ticket"]);
+    expect(url.searchParams.get("ticket")).toMatch(
+      /^v1\.[A-Za-z0-9_-]{8}\.[0-9]+\.[A-Za-z0-9_-]{43}$/,
+    );
+    // The bearer never travels in the Location.
+    expect(location).not.toContain(token);
+    expect(location).not.toContain("pkeyt_");
+    expect(location.toLowerCase()).not.toContain("bearer");
+    // Never cached, never sent onward as a referrer.
+    expect(res.headers.get("cache-control")).toBe("private, no-store");
+    expect(res.headers.get("referrer-policy")).toBe("no-referrer");
+    // The second hop, as Velopack makes it: no Authorization at all.
+    const bytes = await call(w.env, w.db, noFetch, location, {});
+    expect(bytes.status, await bytes.clone().text()).toBe(200);
+    expect(new Uint8Array(await bytes.arrayBuffer())).toEqual(bytesOf(PKG));
+    const ranged = await call(w.env, w.db, noFetch, location, {
+      headers: { range: "bytes=0-4" },
+    });
+    expect(ranged.status).toBe(206);
+    expect(await ranged.text()).toBe("bytes");
+  });
+
+  it("licensed: every package the feed lists gets a ticket for exactly its own bytes", async () => {
+    const w = await ticketWorld("licensed");
+    const authz = { authorization: `Bearer ${await deviceToken(w)}` };
+    const feed = await get(
+      w,
+      "update/stable/velopack/releases.win-x64.json",
+      authz,
+    );
+    const doc = (await feed.json()) as { Assets: Array<Record<string, any>> };
+    expect(doc.Assets.length).toBeGreaterThan(0);
+    for (const a of doc.Assets) {
+      const res = await get(w, `update/stable/velopack/${a.FileName}`, authz);
+      expect(res.status, a.FileName).toBe(302);
+      const location = res.headers.get("location")!;
+      expect(location, a.FileName).toContain("?ticket=");
+      const bytes = await call(w.env, w.db, noFetch, location, {});
+      expect(bytes.status, a.FileName).toBe(200);
+      expect(sha(new Uint8Array(await bytes.arrayBuffer())), a.FileName).toBe(
+        a.SHA256.toLowerCase(),
+      );
+    }
+  });
+
+  it("a ticket opens only its own file, only on the bytes host", async () => {
+    const w = await ticketWorld("licensed");
+    const authz = { authorization: `Bearer ${await deviceToken(w)}` };
+    const location = (await get(w, PATH, authz)).headers.get("location")!;
+    const ticket = new URL(location).searchParams.get("ticket")!;
+    // Another file of the same release.
+    const other = `${fileUrl(w, "1.1.0", "Djdl-1.1.0-full.nupkg")}?ticket=${ticket}`;
+    expect((await call(w.env, w.db, noFetch, other, {})).status).toBe(401);
+    // The same file on the console host.
+    const onConsole = location.replace(BYTES_ORIGIN, CONSOLE);
+    expect((await call(w.env, w.db, noFetch, onConsole, {})).status).toBe(401);
+  });
+
+  it("no credential: today's refusal at the route, with no Location", async () => {
+    const w = await ticketWorld("licensed");
+    const res = await get(w, PATH);
+    expect(res.status).toBe(401);
+    expect(((await res.json()) as { error: string }).error).toBe(
+      "download_auth_required",
+    );
+    expect(res.headers.get("location")).toBeNull();
+  });
+
+  it("entitled: inside the window a ticketed Location; outside it 403 version_blocked; an unentitled channel 403 channel_not_allowed", async () => {
+    const w = await ticketWorld("entitled");
+    const inside = await deviceToken(w, { maxVersion: "1.1.0" });
+    const ok = await get(w, PATH, { authorization: `Bearer ${inside}` });
+    expect(ok.status, await ok.clone().text()).toBe(302);
+    const location = ok.headers.get("location")!;
+    expect(location).toContain("?ticket=");
+    expect(location).not.toContain(inside);
+    expect((await call(w.env, w.db, noFetch, location, {})).status).toBe(200);
+
+    // The feed's channel check passes; the route's per-file check refuses the release.
+    const capped = await deviceToken(w, { maxVersion: "1.0.0" });
+    const blocked = await get(w, PATH, { authorization: `Bearer ${capped}` });
+    expect(blocked.status).toBe(403);
+    expect(
+      ((await blocked.json()) as { error: { code: string } }).error.code,
+    ).toBe("version_blocked");
+    expect(blocked.headers.get("location")).toBeNull();
+    expect(blocked.headers.get("cache-control") ?? "").not.toMatch(/^public/);
+
+    // A licence's grant always holds stable; beta is not in this one.
+    const stableOnly = await deviceToken(w, { maxVersion: "9.0.0" });
+    const denied = await get(
+      w,
+      "update/beta/velopack/Djdl-1.3.0-beta.1-delta.nupkg",
+      { authorization: `Bearer ${stableOnly}` },
+    );
+    expect(denied.status).toBe(403);
+    expect(
+      ((await denied.json()) as { error: { code: string } }).error.code,
+    ).toBe("channel_not_allowed");
+    expect(denied.headers.get("location")).toBeNull();
+  });
+
+  it("public delivery is unchanged by the key: the same headers, the bare URL, publicly cacheable", async () => {
+    const before = await world();
+    const after = await ticketWorld();
+    const a = await get(before, PATH);
+    const b = await get(after, PATH);
+    expect(b.status).toBe(302);
+    expect(b.headers.get("location")).toBe(a.headers.get("location"));
+    expect(b.headers.get("location")).toBe(fileUrl(after, "1.1.0", PKG));
+    expect([...b.headers.entries()]).toEqual([...a.headers.entries()]);
+    expect(b.headers.get("cache-control")).toBe("public, max-age=300");
+  });
+
+  it("fails closed to today's bare URL with no signing key or no bytes host", async () => {
+    // No key: the bare URL, whose second hop refuses an anonymous client as before.
+    const noKey = await world({ access: "licensed" });
+    const authz1 = { authorization: `Bearer ${await deviceToken(noKey)}` };
+    const bare = await get(noKey, PATH, authz1);
+    expect(bare.status).toBe(302);
+    expect(bare.headers.get("location")).toBe(fileUrl(noKey, "1.1.0", PKG));
+    expect(bare.headers.get("cache-control")).toBe("private, no-store");
+    expect(bare.headers.get("referrer-policy")).toBe("no-referrer");
+    // No bytes host: the same-origin path, no ticket.
+    const noHost = await ticketWorld("licensed");
+    delete (noHost.env as Partial<Env>).BLOB_ORIGIN;
+    const authz2 = { authorization: `Bearer ${await deviceToken(noHost)}` };
+    const local = await get(noHost, PATH, authz2);
+    expect(local.status).toBe(302);
+    expect(local.headers.get("location")).not.toContain("ticket=");
   });
 });
 
