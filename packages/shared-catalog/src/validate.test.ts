@@ -6,6 +6,7 @@ import {
   SUPPORTED_FORMATS,
   UnsupportedSchemaError,
   validatePrepared,
+  validateWork,
 } from "./validate.js";
 
 const ok = (schema: unknown, value: unknown): boolean =>
@@ -256,10 +257,15 @@ describe("validate — fail-closed schema policy", () => {
 
 describe("validate — resource bounds and hostile values", () => {
   it("gives up on uniqueItems past the scan cap instead of going quadratic", () => {
+    // Counted work, not a clock: past the cap not one item is canonicalised.
     const big = Array.from({ length: MAX_UNIQUE_ITEMS + 1 }, (_, i) => i);
-    const t0 = Date.now();
+    let before = validateWork.canonicalised;
     expect(ok({ type: "array", uniqueItems: true }, big)).toBe(false);
-    expect(Date.now() - t0).toBeLessThan(250);
+    expect(validateWork.canonicalised - before).toBe(0);
+    // At the cap the scan is one pass: each item is canonicalised once (a Set, not n^2 compares).
+    before = validateWork.canonicalised;
+    expect(ok({ type: "array", uniqueItems: true }, big.slice(1))).toBe(true);
+    expect(validateWork.canonicalised - before).toBe(MAX_UNIQUE_ITEMS);
   });
 
   it("a deeply nested value fails closed rather than exhausting the budget", () => {

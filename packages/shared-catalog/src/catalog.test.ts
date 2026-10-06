@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Catalog, type ProductCatalog } from "./index.js";
+import { validateWork } from "./validate.js";
 
 const CATALOG: ProductCatalog = {
   schemaVersion: 1,
@@ -341,6 +342,17 @@ describe("Catalog — ordering, dependsOn, idempotency", () => {
     // Validation still works after multiple compileAll() passes.
     expect(cat.validateKeyValue("k.enum", "pr").ok).toBe(true);
     expect(cat.validateKeyValue("k.enum", "bogus").ok).toBe(false);
+  });
+
+  it("prepares each entry's schema once, however many values it validates", () => {
+    // Counted (validateWork.prepares), not timed: the console's memoised `validate` relies on
+    // this, and its own test can only see that one Catalog serves every call.
+    const cat = new Catalog(KEYWORD_CATALOG);
+    const entry = cat.entryByKey("k.int")!;
+    const before = validateWork.prepares;
+    for (let i = 0; i < 2000; i++) cat.validateEntryValue(entry, i % 10);
+    cat.compileAll();
+    expect(validateWork.prepares - before).toBe(KEYWORD_CATALOG.entries.length);
   });
 
   it("validateEntryValue agrees with validateKeyValue for a known entry", () => {
