@@ -79,6 +79,16 @@ const kebab = (s: string) => s.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
 const snake = (s: string) => s.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
 const upper = (s: string) => snake(s).toUpperCase();
 
+/** The brand's motion durations in ms, `instant` left out (it is 0 everywhere). */
+const motionDurations = (): [string, number][] =>
+  Object.entries(MOTION.duration)
+    .filter(([k]) => k !== "instant")
+    .map(([k, v]) => [k, parseInt(v, 10)]);
+
+/** The brand's motion distances in px (pt, dp at the kits' scale). */
+const motionDistances = (): [string, number][] =>
+  Object.entries(MOTION.distance).map(([k, v]) => [k, parseInt(v, 10)]);
+
 /** One component token, flattened to a scalar: a name and a number, a capsule or a flag. */
 type Flat =
   | { name: string; kind: "number"; value: number }
@@ -466,11 +476,15 @@ public enum PolarisKit {
     public static let fontFamily = "Rubik"
     public static let monoFamily = "JetBrains Mono"
 
-    /// Motion durations in seconds (the kit's own animations; system sheets keep their springs).
+    /// Motion durations in seconds and distances in points (the kit's own animations; system
+    /// sheets keep their springs). notes/S-23 §5; zero them all under Reduce Motion.
     public enum Motion {
-        public static let fast: Double = ${parseInt(MOTION.duration.fast, 10) / 1000}
-        public static let base: Double = ${parseInt(MOTION.duration.base, 10) / 1000}
-        public static let slow: Double = ${parseInt(MOTION.duration.slow, 10) / 1000}
+${motionDurations()
+  .map(([k, ms]) => `        public static let ${k}: Double = ${ms / 1000}`)
+  .join("\n")}
+${motionDistances()
+  .map(([k, d]) => `        public static let distance${cap(k)}: Double = ${d}`)
+  .join("\n")}
         public static let pressScale: Double = ${KIT_MOTION_MEASURES.pressScale}
         public static let sheetScale: Double = ${KIT_MOTION_MEASURES.sheetScale}
     }
@@ -571,11 +585,17 @@ public object PolarisKitTokens {
     /** The inner radius of a surface of radius [outer] inset by [inset]. */
     public fun concentricRadius(outer: Float, inset: Float): Float = maxOf(CONCENTRIC_MIN, outer - inset)
 
-    /** Motion durations (ms) and measures. */
+    /** Motion durations (ms), distances (dp) and measures (notes/S-23 §5). */
     public object Motion {
-        public const val fast: Int = ${parseInt(MOTION.duration.fast, 10)}
-        public const val base: Int = ${parseInt(MOTION.duration.base, 10)}
-        public const val slow: Int = ${parseInt(MOTION.duration.slow, 10)}
+${motionDurations()
+  .map(([k, ms]) => `        public const val ${k}: Int = ${ms}`)
+  .join("\n")}
+${motionDistances()
+  .map(
+    ([k, d]) =>
+      `        public const val distance${cap(k)}: Float = ${ktFloat(d)}`,
+  )
+  .join("\n")}
         public const val pressScale: Float = ${ktFloat(KIT_MOTION_MEASURES.pressScale)}
     }
 
@@ -658,6 +678,14 @@ const JETBRAINS_MONO_VARIABLE_PATH := "res://addons/polaris_key/ui/theme/fonts/j
 
 ## Motion (ms; UI-KITS §4.8).
 ${motion}
+## Brand motion durations (ms) and distances (px at 720p; notes/S-23 §5). Zero the durations when
+## reduced motion is on.
+${motionDurations()
+  .map(([k, ms]) => `const DURATION_${upper(k)}_MS := ${ms}`)
+  .join("\n")}
+${motionDistances()
+  .map(([k, d]) => `const MOTION_DISTANCE_${upper(k)} := ${gdNum(d)}`)
+  .join("\n")}
 const PRESS_SCALE := ${gdNum(KIT_MOTION_MEASURES.pressScale)}
 const SHEET_RISE := ${gdNum(KIT_MOTION_MEASURES.sheetRise)}
 const OVERSHOOT := ${gdNum(KIT_MOTION_MEASURES.overshoot)}

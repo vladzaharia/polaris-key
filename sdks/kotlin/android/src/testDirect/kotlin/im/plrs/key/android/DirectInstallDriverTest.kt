@@ -99,6 +99,25 @@ class DirectInstallDriverTest {
         assertTrue(d.lastOutcome!!.committed)
     }
 
+    /** §3.13: a verified download and the hand-off each journal one event; a refusal journals no hand-off. */
+    @Test
+    fun theDriverJournalsTheDownloadAndTheHandOff() = runBlocking {
+        val events = im.plrs.key.core.UpdateEventJournal(im.plrs.key.core.MemoryStateSlot()) { 100 }
+        val d = DirectInstallDriver(
+            { _, _, _ -> outcome(emptyList(), committed = true) }, { record() }, { _, _ -> "https://x" },
+            { _, dest -> dest.writeBytes(served) }, dir, events = { events }, runningVersion = "1.3.0",
+        )
+        assertEquals(InstallResult.Started, d.install(binary()))
+        assertEquals(listOf("update_downloaded", "update_applied"), events.events().map { it.event })
+        assertTrue(events.events().all { it.release == "1.4.0" && it.fromRelease == "1.3.0" })
+        val refused = im.plrs.key.core.UpdateEventJournal(im.plrs.key.core.MemoryStateSlot()) { 100 }
+        DirectInstallDriver(
+            { _, _, _ -> outcome(listOf("signer_mismatch")) }, { record() }, { _, _ -> "https://x" },
+            { _, dest -> dest.writeBytes(served) }, dir, events = { refused },
+        ).install(binary())
+        assertEquals(listOf("update_downloaded"), refused.events().map { it.event })
+    }
+
     @Test
     fun everyInstallerRefusalIsSwapRefused() = runBlocking {
         // Every reason ApkVerifier gives, the streamed re-hash, and the two session failures.

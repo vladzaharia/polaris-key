@@ -159,6 +159,10 @@ const FAIL_MODE: Record<string, FailMode> = {
   // Maven PUTs), per publishing token. Each one writes to the blob store, so it fails closed: a
   // limiter outage must not become unmetered storage writes; a refused publish is a retry.
   registryPublish: "closed",
+  // UX-69: the live credential check, per operator. Each check sends a value the Worker has never
+  // seen to a store API and spends that store's quota, so an outage refuses (a 429 the form shows
+  // as "check again") rather than letting a loop through.
+  credentialCheck: "closed",
 
   // ── authenticated, non-credential surfaces — fail open ─────────────────────
   adminApi: "open",

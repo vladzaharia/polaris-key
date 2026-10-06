@@ -397,8 +397,7 @@ lists (`SP-*`), the shared spec for new helpers, and the items that need a wire 
 2. Returns raw bytes, with no decoded catalog model.
 3. No verb on either transport. The bridge could forward to the Node host, and bearer mode
    (pass §3.17) enables it on the web.
-4. The generator is the monorepo's `tools/gen-mirrors.ts`. Adopters cannot run it without the
-   repo (pass §3.19, `pkey mirror`). There are no typed accessors over the mirror either.
+4. `pkey mirror` (SP-02) runs the generator outside the monorepo; no typed accessors yet.
 5. `ConfigPanel` reports `onOverride(key, string)`. Persistence and type coercion are left to the
    host.
 6. `set_override_store` exists, but the default store is in memory.
@@ -518,12 +517,14 @@ any SDK. In the meantime, "sign in with browser" is device code opened in the sy
 | commerce v2        | AppTransaction, subscriptions, restore `transferred`, redeem codes                 | —                     | ○ ⚑   | ○ ⚑   | ○ ⚑    | ○ ⚑   | ○ ⚑    | ○ ⚑   | LX-11, LX-20, LX-23, LX-25 (pass W7)   |
 | Cloud Sync         | saves, collections, live pokes                                                     | —                     | ○ ⚑   | ○ ⚑   | ○ ⚑    | ○ ⚑   | ○ ⚑    | ○ ⚑   | U-09, U-10, U-13, U-14, U-22 (pass W6) |
 
-1. `parity.json` overclaims: the stage machine lives only in `client-core`. `@polaris-key/node`
-   and `@polaris-key/react` neither re-export nor drive it (pass SP-01, SP-N05, SP-R06).
+1. The stage machine lives only in `client-core`; `@polaris-key/node` and `@polaris-key/react`
+   neither re-export nor drive it. Manifest corrected to planned (SP-01); export and drive in
+   SP-N05/SP-R06.
 2. `bootHost()` leaves `fetch` as a no-op and `guard` always `ok`.
 3. Pass SP-00 proposes replacing the `headless` N/A with a CLI kit (`ui.cli`) for Node and
    Python. Python's optional Tk kit is owner question Q2.
-4. Android Compose only. There is nothing on the JVM, where `parity.json` overclaims (SP-01).
+4. Android Compose only. There is nothing on the JVM; the manifest note says so (SP-01), and a
+   `jvm` except waits on a registry `allowedNa` (SP-00). The desktop kit is SP-K12.
 5. LX-20 plans a Python `allowedNa`. Pass Q7 recommends reversing it.
 6. There is no `purchase()`/`restore()` one-call, no Play Billing or `claim_play()` helper, and
    no StoreKit on macOS.

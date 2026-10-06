@@ -25,7 +25,7 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
 **No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
 
-- No `tiers.device_access` column. **Owner decision (2026-10-05): account-wide licenses stay device-limited**, so Account-wide is a derived display label (held by an account, no key; `plans/I-04.md` §F.6, SIGN-IN.md D-53), not a tier policy. The console tier editor keeps "Devices: up to N" for every tier.
+- No `tiers.device_access` column. **Owner decision (2026-10-05): sign-in licenses stay device-limited**, so "issued by signing in" is a derived fact shown only as the origin "From signing in" (held by an account, no key; `plans/I-04.md` §F.6, SIGN-IN.md D-53), not a tier policy and never a licence type (owner decision 2026-10-05: no 'Account-wide' label). The console tier editor keeps "Devices: up to N" for every tier.
 
 ## Amendments from S-22 (2026-10-05)
 

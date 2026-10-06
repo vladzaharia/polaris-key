@@ -33,6 +33,7 @@ import {
   checkOutletCredentialPin,
   listOutletCredentials,
   openOutletCredential,
+  type TransientOutletCredential,
 } from "../../../core/outletCredentials.js";
 import {
   openPlatformCredential,
@@ -46,6 +47,14 @@ import type { SteamSettings } from "./settings.js";
 import type { VerifiedPurchase } from "./state.js";
 import { StoreUnavailable, storeJson } from "./http.js";
 import { platformFallback } from "../connectors/platformFallback.js";
+import {
+  appCount,
+  checked,
+  hiddenAssignedApps,
+  storeUnavailable,
+  type CheckFact,
+  type CredentialCheck,
+} from "../connectors/credentialCheck.js";
 import {
   cachedPlatformApps,
   PlatformStoreNotConfigured,
@@ -431,4 +440,84 @@ export async function listPlatformSteamApps(
       });
     }
   return { ...listing, apps };
+}
+
+// ── the live check (UX-69, SETUP.md D42) ────────────────────────────────────────────────────
+
+/**
+ * Check an unsaved Steamworks publisher key with the one read the listing already makes,
+ * `ISteamApps/GetPartnerAppListForWebAPIKey/v2` (read-only, on the publisher host). The key rides
+ * in the query string, so no error here ever carries the URL (`http.ts`). Steam answers 403 for a
+ * key it does not know or one that is not a publisher key.
+ */
+export async function checkSteamPublisherKey(o: {
+  cred: TransientOutletCredential<"steam-publisher-key">;
+  /** The app ids products are assigned on this connection. */
+  assigned: readonly string[];
+}): Promise<CredentialCheck> {
+  let res;
+  try {
+    res = await storeJson(
+      steamUrl("/ISteamApps/GetPartnerAppListForWebAPIKey/v2/", {
+        key: o.cred.reveal().key,
+      }),
+      { method: "GET", headers: { accept: "application/json" } },
+      "steam GetPartnerAppListForWebAPIKey",
+      [401, 403, 404],
+    );
+  } catch (e) {
+    return storeUnavailable(
+      "Steam",
+      e instanceof StoreUnavailable ? e.status : 0,
+    );
+  }
+  if (res.status !== 200)
+    return checked(
+      "invalid",
+      "rejected",
+      "Steam did not accept this as a publisher Web API key",
+      "Use the key from Steamworks → Users & Permissions → Manage Groups → your group → Web API key. A personal key from steamcommunity.com/dev/apikey cannot reach the publisher API.",
+      [],
+      { status: res.status },
+    );
+  const applist = res.body?.applist as { apps?: { app?: unknown } } | undefined;
+  const list = Array.isArray(applist?.apps?.app) ? applist.apps.app : [];
+  const apps = list
+    .slice(0, MAX_STEAM_APPS)
+    .map((a) => a as Record<string, unknown>)
+    .map((r) => ({
+      appId: typeof r.appid === "number" ? String(r.appid) : r.appid,
+      name: typeof r.app_name === "string" ? r.app_name.slice(0, 80) : null,
+      type: r.app_type,
+    }))
+    .filter(
+      (a): a is { appId: string; name: string | null; type: unknown } =>
+        typeof a.appId === "string" && APP_ID.test(a.appId),
+    );
+  const games = apps.filter((a) => a.type === "game");
+  const facts: CheckFact[] = [{ label: "Apps", value: String(apps.length) }];
+  const names = (games.length > 0 ? games : apps)
+    .map((a) => a.name)
+    .filter((n): n is string => n !== null)
+    .slice(0, 3);
+  if (names.length > 0)
+    facts.push({ label: "First apps", value: names.join(", ") });
+  const seen = new Set(apps.map((a) => a.appId));
+  const hidden = o.assigned.filter((id) => !seen.has(id));
+  if (hidden.length > 0) return hiddenAssignedApps(hidden, facts, "key");
+  if (apps.length === 0)
+    return checked(
+      "warning",
+      "permission",
+      "Steam accepted the key, but its group reaches no apps",
+      "Add your apps to the group in Steamworks → Users & Permissions → Manage Groups, or enter their app ids under Account below.",
+      facts,
+    );
+  return checked(
+    "valid",
+    "ok",
+    `Publisher key · ${appCount(apps.length)}`,
+    null,
+    facts,
+  );
 }

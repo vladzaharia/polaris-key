@@ -321,7 +321,7 @@ describe("customer portal", () => {
     expect(device?.status).toBe("deauthorized");
   });
 
-  it("lists and removes a device of an account-wide (signed-in, keyless) licence the account owns", async () => {
+  it("lists and removes a device of a sign-in (keyless) licence the account owns", async () => {
     const db = makeTestDb();
     const kv = new KvMock();
     const env = portalEnv(kv);

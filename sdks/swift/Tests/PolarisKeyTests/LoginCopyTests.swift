@@ -8,6 +8,7 @@
 
 #if canImport(SwiftUI)
 import PolarisKeyCore
+import PolarisKeyLicense
 import PolarisKeyUI
 import XCTest
 
@@ -72,6 +73,27 @@ final class LoginCopyTests: XCTestCase {
         XCTAssertEqual(copy.message(for: .versionTooOld)?.subtitle, copy.versionBlockSubtitle)
         let empty = copy.message(for: .versionTooOld, allowedRange: AllowedRange())
         XCTAssertEqual(empty?.subtitle, copy.versionBlockSubtitle)
+    }
+
+    /// §3.1/§3.2: the gate renders an activation outcome from the shared copy by code, a product
+    /// override wins, and an unknown refusal never reads as a device limit or as the raw body.
+    func testActivationMessagesComeFromTheSharedCopy() {
+        let copy = PolarisCopy()
+        XCTAssertNil(copy.activationMessage(.ok(token: "t", schemaVersion: 1)))
+        XCTAssertEqual(
+            copy.activationMessage(.deviceLimit(limit: 3, deviceCount: 3)),
+            ErrorCopy.message(ErrorCode.deviceLimit))
+        XCTAssertEqual(
+            copy.activationMessage(.enrollClaimed), ErrorCopy.message(ErrorCode.enrollClaimed))
+        let owned = copy.activationMessage(
+            .refused(code: "license_owned", status: 403, message: "{\"error\":\"license_owned\"}"))
+        XCTAssertEqual(owned, ErrorCopy.message(ErrorCode.licenseOwned))
+        XCTAssertNotEqual(owned, ErrorCopy.message(ErrorCode.deviceLimit))
+        var custom = PolarisCopy()
+        custom.activationMessages[ErrorCode.deviceLimit] = "All seats are taken."
+        XCTAssertEqual(
+            custom.activationMessage(.deviceLimit(limit: nil, deviceCount: nil)),
+            "All seats are taken.")
     }
 
     func testProductNameThreadsIntoWelcomeTitle() {

@@ -60,6 +60,11 @@
  *     GET  …/distribution/package-feeds                        the owner's packageFeeds switch
  *     PUT  …/distribution/package-feeds                        {enabled, expectedVersion} (F-03;
  *                                                              409 on a stale version)
+ *     POST …/distribution/storefronts/<id>/ci-secrets/<name>/check   the live check of a CI
+ *                                                              secret a storefront needs (UX-69:
+ *                                                              `BUTLER_API_KEY`, the snapcraft
+ *                                                              login, winget's `PKEY_PR_TOKEN`);
+ *                                                              nothing stored (`ciSecretCheck.ts`)
  *     GET|PUT …/distribution/listing[/…]                       the shared listing model (A-18b):
  *                                                              the model, overrides, per-release
  *                                                              store notes, the fit report and
@@ -168,6 +173,7 @@ import { listAssetPacks } from "./assetPacks.js";
 import { handleListingAdmin } from "./listing/admin.js";
 import { handleSteamStorefrontAdmin } from "./storefronts/steam/admin.js";
 import { handleStorefrontsAdmin } from "./storefronts/admin.js";
+import { handleCiSecretCheckAdmin } from "./ciSecretCheck.js";
 
 /** The console's view of one outlet. */
 export function outletView(
@@ -228,10 +234,13 @@ export async function handleDistributionAdmin(
   if (rest[0] === "package-feeds") return handlePackageFeedsAdmin(ctx);
   if (rest[0] === "listing") return handleListingAdmin(ctx);
   if (rest[0] === "storefronts") {
-    // A-18g's Steam routes (apps, builds, pack, checklist, branches) and A-18j's flow (the plan,
-    // steps, push-listing, slots) do not overlap; Steam's answer null for every path of the flow.
+    // UX-69's CI-secret check (storefronts/<store>/ci-secrets/<name>/check), A-18g's Steam routes
+    // (apps, builds, pack, checklist, branches) and A-18j's flow (the plan, steps, push-listing,
+    // slots) do not overlap; each answers null for the paths it does not own.
     return (
-      (await handleSteamStorefrontAdmin(ctx)) ?? handleStorefrontsAdmin(ctx)
+      (await handleCiSecretCheckAdmin(ctx)) ??
+      (await handleSteamStorefrontAdmin(ctx)) ??
+      handleStorefrontsAdmin(ctx)
     );
   }
   if (rest[0] !== "outlets") return null;

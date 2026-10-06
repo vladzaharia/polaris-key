@@ -49,7 +49,7 @@ differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US 
 
 - Kit and SDK copy to `signin.*` (US "license"); "{n} key entries left" (SIGN-IN.md D-25).
 - Native LicenseChoice on I-13's `choose` (SwiftUI `LicenseChoiceModel`, Compose `rememberLicenseChoiceState`, Godot `PKeyLicenseChoiceController`); Godot's P1-07 "Is this you?" attach confirm stays and shows only after **Keep** (D-10); StatusScreen **signed-out**; "Signed in · <Tier> license" after `ready`.
-- Replay `devicecode-account-wide.json` (I-04 §F.6) with no SDK change.
+- Replay `devicecode-sign-in.json` (I-04 §F.6) with no SDK change.
 
 ## One sign-in form (2026-10-05): `plans/I-04.md` §G and SIGN-IN.md §3.17
 

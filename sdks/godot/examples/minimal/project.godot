@@ -1,0 +1,19 @@
+; The Polaris Key minimal sample (SP-G17). Copy (or symlink) the SDK's addons/polaris_key into
+; this folder, open it in Godot 4.4+, fill in the Polaris Key dock and press F5. See README.md.
+
+config_version=5
+
+[application]
+
+config/name="Polaris Key minimal sample"
+config/version="1.0.0"
+run/main_scene="res://main.tscn"
+config/features=PackedStringArray("4.4")
+
+[autoload]
+
+PolarisKey="*res://addons/polaris_key/polaris_key.gd"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/polaris_key/plugin.cfg")

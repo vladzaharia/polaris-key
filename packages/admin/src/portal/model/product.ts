@@ -16,11 +16,12 @@ import {
   type ProductSection,
 } from "../router.js";
 import {
-  ACCOUNT_WIDE,
   devicesText,
   formatSize,
-  isAccountWide,
+  isSignInLicense,
   normalisePlatform,
+  shortOrigin,
+  type OriginFacts,
   tierLabel,
   type DeviceInHand,
   type LibraryProduct,
@@ -80,7 +81,7 @@ export function presentSections(
     set.add("new");
   }
   set.add("license");
-  // Every licence, key or account-wide, has devices to remove remotely (owner, 2026-10-05).
+  // Every licence, from a key or from signing in, has devices to remove remotely (owner, 2026-10-05).
   set.add("devices");
   if (extra.packageAccess) set.add("package");
   const pres = p.presentation;
@@ -576,19 +577,31 @@ export function tierName(l: Pick<PortalLicenseSummary, "tier">): string {
   return tierLabel(l.tier) ?? "Standard";
 }
 
-/** The licence picker's option: tier first, then how it's held ("Pro · Key", "Standard ·
- * Account-wide"), and the status only when it wants attention ("Pro · Key · Expired"). */
+/** The licence picker's option: tier first, then its short origin ("Pro · Key …3WPLDA",
+ * "Standard · Sign-in", "Standard · Steam key"), and the status only when it wants attention
+ * ("Pro · Key · Expired"). Never a licence type: every licence is account-bound (owner,
+ * 2026-10-05). */
 export function licenseOptionLabel(
   l: PortalLicenseSummary,
   status: { label: string; attention: boolean },
+  facts: OriginFacts = {},
 ): string {
   return [
     tierName(l),
-    isAccountWide(l) ? ACCOUNT_WIDE : "Key",
+    shortOrigin(l, facts),
     status.attention ? status.label : null,
   ]
     .filter(Boolean)
     .join(" · ");
+}
+
+/** The store of the active purchase on licence `id` (`purchase.store`, PX-W6), or null. */
+export function storeFor(
+  view: PortalProduct | undefined,
+  id: string,
+): string | null {
+  const p = view?.licenses.find((l) => l.id === id)?.purchase;
+  return p && p.source === "store" ? (p.store ?? null) : null;
 }
 
 /**
@@ -607,34 +620,28 @@ export function seatLimitFor(
 }
 
 /**
- * Whether licence `l`'s device counter is shown. A key licence's counter goes away when the
- * account also holds an account-wide licence for the product, which covers the devices it signs
- * in on (owner, 2026-10-05); the device list stays either way.
+ * Whether licence `l`'s device counter is shown. A key or seat licence's counter goes away when
+ * the account also holds a sign-in licence for the product, which covers the devices it signs in
+ * on (owner, 2026-10-05); the device list and Remove stay either way.
  */
 export function showsDeviceCount(
   p: Pick<LibraryProduct, "licenses">,
   l: PortalLicenseSummary,
 ): boolean {
-  return isAccountWide(l) || !p.licenses.some(isAccountWide);
+  return isSignInLicense(l) || !p.licenses.some(isSignInLicense);
 }
 
 /**
- * The words beside the tier pill on the License card: "0 of 5 devices" for a key licence,
- * "Account-wide · 1 of 5 devices" for an account-bound one ("Account-wide" alone while the limit
- * is unknown), and null when the counter is hidden.
+ * The words beside the tier pill on the License card: "0 of 5 devices" for every licence (no
+ * licence type beside it; owner, 2026-10-05), "1 device" while the limit is unknown, and null
+ * when the counter is hidden.
  */
 export function licenseCountLine(
-  l: PortalLicenseSummary,
   inUse: number,
   limit: number | null,
   showCount: boolean,
 ): string | null {
-  const count = showCount ? devicesText(inUse, limit) : null;
-  if (isAccountWide(l))
-    return [ACCOUNT_WIDE, limit != null ? count : null]
-      .filter(Boolean)
-      .join(" · ");
-  return count;
+  return showCount ? devicesText(inUse, limit) : null;
 }
 
 /** "1.x", "1.0 and later", "Up to 2.0", "All versions" from the license's version bounds. */

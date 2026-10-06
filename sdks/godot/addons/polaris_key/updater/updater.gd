@@ -93,6 +93,15 @@ func active() -> bool:
 	return not env.inert()
 
 
+## A gated download (SDK parity §3.10): `call` once, and when it answers 403
+## `attestation_required`, attest and retry once through PKeyCore.with_attestation. A coroutine.
+func with_attestation(call: Callable) -> PKeyResult:
+	var c := core()
+	if c == null:
+		return await call.call()
+	return await c.with_attestation(call)
+
+
 func transport() -> PKeyTransport:
 	var c := core()
 	return c.transport if c != null else null
@@ -407,6 +416,7 @@ func install_apk(check: PKeyUpdateCheck) -> PKeyApplyResult:
 		"timeout": download_timeout,
 		"space_ok": space_ok,
 		"progress": func(got: int, total: int) -> void: download_progress.emit(got, total),
+		"with_attestation": with_attestation,
 	})
 	if r.ok:
 		var st := slots.load_state()

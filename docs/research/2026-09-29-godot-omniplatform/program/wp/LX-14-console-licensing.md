@@ -41,7 +41,7 @@ The console shows and manages the licensing model: Entitlements and Grants tabs 
 
 ## Add seats (owner, 2026-10-05)
 
-The owner decided that account-wide (sign-in, OIDC) licences stay device-limited and that "an
+The owner decided that sign-in (OIDC) licences stay device-limited and that "an
 administrator can change the numbers as needed" (SIGN-IN.md D-53). The permanent per-licence limit
 (**Device limit…**, `licenses.device_limit`, a licence limit beating the tier, the effective limit
 and its source in the console) ships first in [LX-14a](LX-14a-per-license-device-limit.md). This

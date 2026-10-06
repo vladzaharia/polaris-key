@@ -68,9 +68,47 @@ When an assignment is refused, the dialog stays open and says why in plain words
 
 ### Adding a credential
 
-A store with no team credential shows how to add one. Add it as a Worker secret through the
-**Sync Worker secrets** workflow, so the key never passes through a terminal, a chat or the
-console. From the machine that holds the key file:
+A store with no team credential shows a connect form for its primary slot; a stored credential
+offers **Replace key** on its row. Paste the key (or choose the `.p8` or JSON key file). The form
+checks it with the store **the moment it is pasted**, before anything is saved, and **Save key**
+stays off until the check passes. Any edit after a pass takes the pass away.
+
+The check runs one minimal, read-only call at the store with the unsaved value, and says what it
+found:
+
+| Store           | What the check reads                                                     | What it can tell you                                                                                                             |
+| --------------- | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| App Store       | `GET /v1/apps` (names and bundle ids, one page)                          | The team and how many apps the key sees; a revoked or mismatched key; a role that cannot read apps (App Manager or Admin needed) |
+| Google Play     | Google's token exchange, then one page of the Reporting API's app search | The service account and its apps; a deleted key; not invited to the Play Console; the Reporting API turned off                   |
+| Microsoft Store | Entra's client-credentials token, then `GET /v1.0/my/applications`       | The seller and its apps; an expired or wrong client secret; no such app or tenant; the app not added to Partner Center           |
+| Steam           | `GetPartnerAppListForWebAPIKey`                                          | The group's apps; a personal (non-publisher) key                                                                                 |
+
+The answer is one of: **valid** ("Team 69a6de7f · 3 apps"), a **warning** you can still save
+through (the key cannot see an app a product is assigned, or it belongs to another team than the
+one connected now); the button then reads **Save anyway**, **invalid** with the reason and the fix (rejected, a missing permission,
+expired, on the field it concerns), or **unavailable** when the store did not answer (nothing is
+known, so nothing is saved; check again). The In-App Purchase key is format-checked only: every
+App Store Server API call is made for one app, so it is checked at its first use.
+
+Nothing is stored by a check: no credential row, no cached token, no audit row. The response
+carries what the store reported (the account, the apps), never the key. Checks are limited to 20
+per operator in 10 minutes; a mistyped field is caught before any call and costs nothing. The
+routes are `POST /manage/api/platform/store-connections/<store>/check` (the primary slot) and
+`…/<store>/credentials/<slot>/check`, with the same `{"value": …}` body as the `PUT`.
+
+The same check exists for the CI secrets a storefront needs, which Polaris Key never keeps:
+`POST /manage/api/products/<slug>/distribution/storefronts/<id>/ci-secrets/<name>/check` with
+`{"value": "…"}` for itch.io's `BUTLER_API_KEY` (whose key, and whether it can push to the
+outlet's game), the Snap Store's `SNAPCRAFT_STORE_CREDENTIALS` (the account, its permissions, the
+snaps it is scoped to and its expiry) and winget's `PKEY_PR_TOKEN` (the GitHub account, the
+token's scopes and expiry, and its `winget-pkgs` fork). Steam's builder login
+(`STEAM_USERNAME`, `STEAM_CONFIG_VDF`) cannot be checked outside SteamCMD and is answered as such.
+
+#### Or as a Worker secret
+
+To keep a key out of the browser entirely, add it as a Worker secret through the **Sync Worker
+secrets** workflow, so the key never passes through a terminal, a chat or the console. From the
+machine that holds the key file:
 
 ```sh
 gh secret set PLATFORM_ASC_API_KEY --env production < key.json   # the secret name of the slot
