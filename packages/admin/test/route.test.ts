@@ -50,6 +50,7 @@ const ALL_ON: ServiceState = {
   distribution: { enabled: true },
   update: { enabled: true },
   identity: { enabled: true },
+  sync: { enabled: true },
 };
 
 const withOff = (...off: ServiceSlug[]): ServiceState => ({
@@ -527,6 +528,7 @@ describe("the nav model (nav.ts)", () => {
       "feed",
       "portal",
       "sign-in",
+      "sync-data",
     ];
     expect(ALL_PAGES.map((p) => p.page).sort()).toEqual([...expected].sort());
   });
@@ -540,6 +542,7 @@ describe("the nav model (nav.ts)", () => {
       "distribution",
       "update",
       "identity",
+      "sync",
     ]);
     expect(SECTIONS[0]!.service).toBeNull();
     for (const s of SECTIONS.slice(1)) expect(s.service).toBe(s.key);
@@ -554,6 +557,7 @@ describe("the nav model (nav.ts)", () => {
       "distribution",
       "update",
       "identity",
+      "sync",
     ]);
     for (const g of GLOBAL_PAGES) expect(accentOf(g.page)).toBe("core");
     expect(accentOf("tiers")).toBe("license");
@@ -623,6 +627,7 @@ describe("enablement filtering", () => {
       "distribution",
       "update",
       "identity",
+      "sync",
     ]);
   });
 
@@ -634,6 +639,7 @@ describe("enablement filtering", () => {
       "distribution",
       "update",
       "identity",
+      "sync",
     );
     expect(visibleSections(none).map((s) => s.key)).toEqual(["core"]);
   });

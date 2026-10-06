@@ -72,13 +72,14 @@ browser conformance runners. Python, Swift, Godot and Kotlin are standalone tool
 `sdks/`.
 
 Inside the Worker, `src/core/` is the always-on substrate and each `src/services/<slug>/` is one
-opt-in service (`license`, `config`, `release`, `distribution`, `update`, `identity`). The services
+opt-in service (`license`, `config`, `release`, `distribution`, `update`, `identity`, `sync`). The services
 are declared
 once, as rows of `tools/services.json`; `pnpm gen:services` generates every language's slug
 constants from it. `src/mount.ts` is the composition root; `src/router.ts` builds
 `SERVICE_NAMESPACES` from the generated `SERVICE_SLUGS`. Release, Distribution and Update form a
 chain (release ← distribution ← update, coherence codes `distribution_requires_release` and
-`update_requires_distribution`); services read one another's state only through Core's
+`update_requires_distribution`), and Cloud Sync (`sync`) requires Config and Identity
+(`sync_requires_config`, `sync_requires_identity`); services read one another's state only through Core's
 read-only descriptor hooks in `src/core/hooks.ts` (`releaseCatalog`, `delivery`,
 `outletCapabilities`), which answer `null` while the providing service is off.
 

@@ -66,6 +66,10 @@
   --color-service-identity-fg: var(--pk-service-identity-fg);
   --color-service-identity-on: var(--pk-service-identity-on);
   --color-service-identity-subtle: var(--pk-service-identity-subtle);
+  --color-service-sync: var(--pk-service-sync);
+  --color-service-sync-fg: var(--pk-service-sync-fg);
+  --color-service-sync-on: var(--pk-service-sync-on);
+  --color-service-sync-subtle: var(--pk-service-sync-subtle);
   --color-success: var(--pk-success);
   --color-success-on: var(--pk-success-on);
   --color-success-border: var(--pk-success-border);

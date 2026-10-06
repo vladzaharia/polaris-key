@@ -128,7 +128,8 @@
                     }
                   },
                   "update": { "enabled": false },
-                  "identity": { "enabled": false }
+                  "identity": { "enabled": false },
+                  "sync": { "enabled": false }
                 }
               }
             }
@@ -143,7 +144,8 @@
           "release": true,
           "distribution": true,
           "update": false,
-          "identity": false
+          "identity": false,
+          "sync": false
         }
       }
     },

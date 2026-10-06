@@ -53,6 +53,7 @@ const ON: ServicesMap = {
   distribution: { enabled: true },
   update: { enabled: false },
   identity: { enabled: false },
+  sync: { enabled: false },
 };
 
 let db: Db;

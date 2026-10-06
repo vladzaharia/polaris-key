@@ -32,7 +32,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	t.check("distribution keeps its green", Brand.service_accent("distribution", true).to_html(false) == "39d075")
 	t.check("update is tangerine", Brand.service_accent("update", true).to_html(false) == "fe8001")
 	t.check("unknown section falls back to core", Brand.service_accent("nope", true) == Brand.KIT_VIOLET_DARK)
-	t.check("every section has an accent", Brand.SERVICE_IDS.size() == 7)
+	t.check("every section has an accent", Brand.SERVICE_IDS.size() == 8 and Brand.SERVICE_IDS.has("sync") and Brand.has_section_bit("sync"))
 	t.check("16 px is the favicon cut", Brand.optical_cut(16) == "favicon")
 	t.check("24 px is the service cut", Brand.optical_cut(24) == "service")
 	t.check("32 px is the service cut", Brand.optical_cut(32) == "service")

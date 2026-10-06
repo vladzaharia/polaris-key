@@ -44,6 +44,13 @@ public data class ConfigSchemaEntry(
     val defaultJson: String?,
 )
 
+/** A user setting's policy (a config key with a `user` block), defaults applied. */
+public data class UserSettingPolicy(
+    val sync: String,
+    val conflict: String,
+    val listed: Boolean,
+)
+
 public object ProductCatalog {
     public const val VERSION: Int = 3
 
@@ -231,4 +238,10 @@ public object ProductCatalog {
     public fun entry(key: String): ConfigSchemaEntry? = entries.firstOrNull { it.key == key }
 
     public fun entriesByKind(kind: ConfigKind): List<ConfigSchemaEntry> = entries.filter { it.kind == kind }
+
+    /** Every user setting, by key, in catalog order. */
+    public val userSettings: Map<String, UserSettingPolicy> = mapOf(
+        "audio.musicVolume" to UserSettingPolicy(sync = "user", conflict = "max", listed = true),
+        "ui.theme" to UserSettingPolicy(sync = "device", conflict = "lastWrite", listed = false),
+    )
 }

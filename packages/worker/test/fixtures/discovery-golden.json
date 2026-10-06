@@ -75,6 +75,9 @@
       },
       "identity": {
         "enabled": false
+      },
+      "sync": {
+        "enabled": false
       }
     }
   },
@@ -206,6 +209,17 @@
           "authDeviceVerify": "https://key.plrs.im/full/identity/auth/device/verify",
           "authDevicePoll": "https://key.plrs.im/full/identity/auth/device/poll"
         }
+      },
+      "sync": {
+        "enabled": true,
+        "settings": false,
+        "collections": false,
+        "saves": false,
+        "endpoints": {
+          "pull": null,
+          "push": null,
+          "saves": null
+        }
       }
     }
   },
@@ -278,6 +292,9 @@
         "enabled": false
       },
       "identity": {
+        "enabled": false
+      },
+      "sync": {
         "enabled": false
       }
     }

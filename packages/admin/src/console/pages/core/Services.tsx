@@ -97,6 +97,8 @@ const ERROR_TARGETS: Record<string, (ServiceSlug | "registration")[]> = {
   update_requires_distribution: ["update", "distribution"],
   registration_requires_identity: ["identity", "registration"],
   config_without_activation: ["config", "license", "registration"],
+  sync_requires_config: ["sync", "config"],
+  sync_requires_identity: ["sync", "identity"],
 };
 
 /** What turning a service off does, in the docs' words (services-enablement). */
@@ -112,6 +114,7 @@ const DISABLE_CONSEQUENCES: Record<ServiceSlug, string> = {
   update: "The update feed answers not-configured: clients see no updates.",
   identity:
     "Sign-in through this product stops. Licences stay attached to their owners' accounts.",
+  sync: "Cloud Sync's endpoints answer not-found: settings stay on each device and nothing syncs.",
 };
 
 /** What the turn-off confirmation shows: the services, and (Identity only) the signed-in count. */

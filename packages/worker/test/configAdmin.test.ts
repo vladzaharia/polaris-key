@@ -193,6 +193,96 @@ describe("catalog history and the expectedVersion guard (A-6)", () => {
   });
 });
 
+describe("Cloud Sync declarations on a console publish (U-04)", () => {
+  const SETTING = {
+    ...ENTRY("audio.volume"),
+    schema: { type: "number", minimum: 0, maximum: 1 },
+    default: 0.8,
+    user: { sync: "user", conflict: "max" },
+  };
+  const CLOUD_SYNC = {
+    collections: [{ name: "progress", access: "owner" }],
+    migrations: [
+      { toSchemaVersion: 2, rename: { "audio.vol": "audio.volume" } },
+    ],
+  };
+  const active = async (
+    call: Awaited<ReturnType<typeof setup>>["call"],
+  ): Promise<Record<string, unknown>> =>
+    (await (await call("GET", "config/catalog")).json()) as Record<
+      string,
+      unknown
+    >;
+
+  it("keeps a user block and stores the catalog's cloudSync block", async () => {
+    const { call } = await setup();
+    const res = await call("PUT", "config/catalog", {
+      catalog: { schemaVersion: 0, entries: [SETTING], cloudSync: CLOUD_SYNC },
+    });
+    expect(res.status).toBe(200);
+    const catalog = await active(call);
+    expect(catalog.cloudSync).toEqual(CLOUD_SYNC);
+    expect((catalog.entries as { user?: unknown }[])[0]!.user).toEqual(
+      SETTING.user,
+    );
+  });
+
+  it("carries the active cloudSync block forward when the body has none (the console's editor)", async () => {
+    const { call } = await setup();
+    await call("PUT", "config/catalog", {
+      catalog: { schemaVersion: 0, entries: [SETTING], cloudSync: CLOUD_SYNC },
+    });
+    expect((await publish(call, ["theme", "audio.volume"])).status).toBe(200);
+    expect((await active(call)).cloudSync).toEqual(CLOUD_SYNC);
+  });
+
+  it("refuses a user block that breaks a rule, and writes nothing", async () => {
+    const { db, call } = await setup();
+    for (const entry of [
+      { ...ENTRY("a"), kind: "secret", user: { sync: "user" } },
+      { ...ENTRY("a"), managementDefault: "enforced", user: { sync: "user" } },
+      { ...ENTRY("a"), user: { sync: "user", conflict: "max" } },
+      { ...ENTRY("a"), user: { sync: "user", conflict: "union" } },
+      { ...ENTRY("a"), user: { sync: "everywhere" } },
+    ]) {
+      const res = await call("PUT", "config/catalog", {
+        catalog: { schemaVersion: 0, entries: [entry] },
+      });
+      expect(res.status, JSON.stringify(entry)).toBe(422);
+      const body = (await res.json()) as { fields: string[] };
+      expect(body.fields[0]).toMatch(/^\/entries\/0\/user/);
+    }
+    const audits = (await listAudit(db, "djdl")).filter(
+      (a) => a.action === "schema.publish",
+    );
+    expect(audits).toHaveLength(0);
+  });
+
+  it("refuses a publish that leaves the carried cloudSync block pointing at nothing", async () => {
+    const { call } = await setup();
+    await call("PUT", "config/catalog", {
+      catalog: {
+        schemaVersion: 0,
+        entries: [
+          SETTING,
+          {
+            ...ENTRY("cloudSaves"),
+            kind: "flag",
+            schema: { type: "boolean" },
+          },
+        ],
+        cloudSync: { saves: { requiresFlag: "cloudSaves" } },
+      },
+    });
+    // The console drops the flag; the carried block still names it.
+    const res = await publish(call, ["theme"]);
+    expect(res.status).toBe(422);
+    expect(((await res.json()) as { fields: string[] }).fields[0]).toMatch(
+      /^\/cloudSync\/saves\/requiresFlag/,
+    );
+  });
+});
+
 describe("catalog usage (A-7b)", () => {
   it("names the profiles, inheriting tiers and licenses that set each key, never a value", async () => {
     const { db, call } = await setup();

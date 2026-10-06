@@ -108,6 +108,7 @@ fixes:**
   | distribution | green                   |
   | update       | tangerine               |
   | identity     | orchid                  |
+  | sync         | teal                    |
 
   None is blue, indigo or rose, and none is confusable with gold.
 
@@ -291,6 +292,7 @@ re-scoped. A page is shown only when its section is shown, plus the conditions l
 | **Update** (tangerine, Star Cut)   | **Feed**               | `update/feed`                                                                            | T4                       | UpdateSettings minus delivery access: metadata access, compat window, artifact policy, feed **endpoints**                                                                                                                                                         |
 | **Identity** (orchid)              | **Portal**             | `identity/portal`                                                                        | T4                       | Portal module toggles with dependencies, branding read-out                                                                                                                                                                                                        |
 |                                    | **Sign-in**            | `identity/sign-in`                                                                       | T3 read-only             | The OIDC card, now showing the provider, issuer and client (data already returned by `config/mint` → `identity`) and the manifest pointer                                                                                                                         |
+| **Cloud Sync** (teal)              | **Data**               | `sync/data`                                                                              | T3 read-only             | U-04. What the catalog declares: user settings, collections, saves, migrations, and the platform ceilings; the sign-in-only callout                                                                                                                               |
 
 **Global pages**:
 
@@ -336,6 +338,7 @@ that is not built yet carries `ready: false` in `nav.ts` and redirects to Deploy
 | Distribution                                          | `distribution` | green              | **Star Cut**                           | green                          |
 | Update                                                | `update`       | tangerine          | lucide `CircleArrowUp`                 | tangerine                      |
 | Identity                                              | `identity`     | orchid             | lucide `UserRound`                     | orchid                         |
+| Cloud Sync                                            | `sync`         | teal               | lucide `Cloud`                         | teal                           |
 
 **Rules.**
 

@@ -1258,6 +1258,10 @@ export const SERVICE_ERROR_MESSAGES: Record<string, string> = {
     "Registration is set to “requires-identity”, but Identity is off; no device could ever register.",
   config_without_activation:
     "Config is on without License, but registration is set to “requires-license” — those devices could never obtain a token.",
+  sync_requires_config:
+    "Cloud Sync syncs Config’s user settings — enable Config first, or turn Cloud Sync off.",
+  sync_requires_identity:
+    "Cloud Sync needs people to sign in through this product — enable Identity first, or turn Cloud Sync off.",
 };
 
 // ── update settings (feed access + compat window) ─────────────────────────────

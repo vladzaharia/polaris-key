@@ -53,6 +53,7 @@ function product(over: Partial<ProductDetail> = {}): ProductDetail {
       distribution: { enabled: false },
       update: { enabled: true },
       identity: { enabled: false },
+      sync: { enabled: false },
     },
     setup: { sync: { status: "ok", lastSyncedAt: 1_700_000_000 } },
     ...over,

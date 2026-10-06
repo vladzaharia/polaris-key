@@ -238,6 +238,7 @@ describe("register rate limiting", () => {
           distribution: { enabled: false },
           update: { enabled: false },
           identity: { enabled: false },
+          sync: { enabled: false },
         },
       }),
       "manifest",

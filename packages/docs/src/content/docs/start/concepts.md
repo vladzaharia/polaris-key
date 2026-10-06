@@ -11,7 +11,7 @@ reconcile. Consistent names are a feature: they make the system learnable across
 
 ## The suite: Core and services
 
-Polaris Key is **six opt-in services** over an always-on **Core** substrate. A product turns on
+Polaris Key is **seven opt-in services** over an always-on **Core** substrate. A product turns on
 only what it needs, and what it left off does not exist for it. That is what lets one app take
 signed settings without taking licensing, and another take a release feed without taking either.
 
@@ -20,7 +20,7 @@ signed settings without taking licensing, and another take a release feed withou
   list/rename/deauthorize, fingerprints, facts), trust & signing, discovery, rate limiting, the
   error taxonomy, audit, and manifest-ingest dispatch. Core is not a service and never appears in
   an enablement set; a product that enables nothing still registers devices and serves its JWKS.
-- **service** — one of exactly six opt-in units, each addressed by a singular **slug**. The slug
+- **service** — one of exactly seven opt-in units, each addressed by a singular **slug**. The slug
   is the worker directory (`packages/worker/src/services/<slug>/`), the route namespace
   (`/<product>/<slug>/…`), the SDK sub-client (where one exists), and the console section, so
   there is one word per unit everywhere. The services are declared once, as rows of
@@ -41,6 +41,8 @@ signed settings without taking licensing, and another take a release feed withou
     through Core (the **descriptor hooks**, below).
   - **[identity](/docs/services/identity/)** — product OIDC, browser sessions, the customer
     portal.
+  - **[sync](/docs/services/sync/)** — **Cloud Sync**: a signed-in person's user settings,
+    collections and saves, synced across their devices. It requires `config` and `identity`.
 
 ### Enablement
 
@@ -56,6 +58,7 @@ signed settings without taking licensing, and another take a release feed withou
     "distribution": { "enabled": false },
     "update": { "enabled": false },
     "identity": { "enabled": false },
+    "sync": { "enabled": false },
     "registration": "open"
   }
   ```
@@ -288,11 +291,38 @@ Note that **profile** is already taken twice — the reusable managed-payload ba
   - **hidden** — `enforced` **and** withheld from user-facing enumeration (still applied
     internally).
 - **scope** — where a catalog key is meaningful (the `UiHints.scopes` field): one or more of
-  `profile`, `license`, `device`.
+  `profile`, `license`, `device`, `user` (`user` is a hint; a user setting's `user.sync` is what is
+  enforced).
 - **manifest** — the files in a product's repo that describe it: `schema` (the config catalog),
   `product` (metadata + enabled services + registration policy + OIDC + tiers + provisioning),
   and `release` (release config + minters), each in JSON or YAML. They live in exactly one
   directory, **`.pkey/`** — there is no second candidate directory and no fallback between two.
+
+## Cloud Sync data
+
+The nouns of the Cloud Sync service (slug `sync`). Product copy and the console say "Cloud Sync";
+SDKs name the namespace `cloudSync` (`cloud_sync` in Python and GDScript), never `sync`, which
+already means the document sync.
+
+- **Cloud Sync** — the service that stores and syncs a person's user settings, collections and
+  saves for one product. It is off by default and requires Config and Identity: there is no Cloud
+  Sync without signing in through the product.
+- **user setting** — a catalog `config` key that declares a `user` block (`sync`: `user`,
+  `platform`, `device` or `local`; `conflict`: `lastWrite`, `max`, `min` or `merge`; `listed`).
+  Its chosen value is kept on the device by the Config SDK and, with Cloud Sync, synced; the
+  operator can still enforce it, which is why an `enforced` or `hidden` management default refuses
+  the block.
+- **account override** (user-level managed config) — an operator-authored managed-payload layer
+  for one account on one product. It replaces the licence override for config and secrets.
+- **collection** — a developer-declared namespace of **records** (JSON values keyed by id) held
+  for the Cloud Sync principal, declared in the catalog's `cloudSync` block.
+- **save** — a named slot holding an opaque blob plus metadata and revisions.
+- **Cloud Sync data** — the umbrella for user settings, collections and saves held in Cloud Sync.
+  With the account override it makes up the account × product data.
+- **Cloud Sync principal** — whose Cloud Sync data it is: the account signed in on the device, as
+  the product's pairwise subject; the same account the licensing model calls the holder. A device
+  activated with a licence key has no Cloud Sync principal and keeps its settings on the device.
+  (Plain **principal** keeps its meaning: the device principal.)
 
 ## Release model
 

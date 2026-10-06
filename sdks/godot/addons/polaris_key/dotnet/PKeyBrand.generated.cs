@@ -151,6 +151,7 @@ namespace PolarisKey.Brand
             ["distribution"] = new BrandAccent(new BrandColor(0x39D075), new BrandColor(0x39D075), new BrandColor(0x060912), new BrandColor(0x0C211E)),
             ["update"] = new BrandAccent(new BrandColor(0xFE8001), new BrandColor(0xFE8001), new BrandColor(0x060912), new BrandColor(0x241710)),
             ["identity"] = new BrandAccent(new BrandColor(0xD77DF2), new BrandColor(0xD77DF2), new BrandColor(0x060912), new BrandColor(0x1F172D)),
+            ["sync"] = new BrandAccent(new BrandColor(0x14F8E1), new BrandColor(0x14F8E1), new BrandColor(0x060912), new BrandColor(0x08262B)),
         };
 
         private static readonly Dictionary<string, BrandAccent> AccentsLight = new Dictionary<string, BrandAccent>
@@ -162,6 +163,7 @@ namespace PolarisKey.Brand
             ["distribution"] = new BrandAccent(new BrandColor(0x05773B), new BrandColor(0x05773B), new BrandColor(0xFFFFFF), new BrandColor(0xDEEBEB)),
             ["update"] = new BrandAccent(new BrandColor(0xB95800), new BrandColor(0xAA5000), new BrandColor(0xFFFFFF), new BrandColor(0xF0E8E6)),
             ["identity"] = new BrandAccent(new BrandColor(0x9E34AE), new BrandColor(0x9E34AE), new BrandColor(0xFFFFFF), new BrandColor(0xEDE4F7)),
+            ["sync"] = new BrandAccent(new BrandColor(0x086260), new BrandColor(0x086260), new BrandColor(0xFFFFFF), new BrandColor(0xDEE9EF)),
         };
 
         /// <summary>A section's accent; unknown ids answer core.</summary>

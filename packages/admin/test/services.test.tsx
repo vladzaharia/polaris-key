@@ -69,6 +69,7 @@ function state(over: Partial<ServicesResponse> = {}): ServicesResponse {
       distribution: { enabled: true },
       update: { enabled: true },
       identity: { enabled: true },
+      sync: { enabled: false },
     },
     registration: null,
     effectiveRegistration: "requires-license",
@@ -96,6 +97,7 @@ const ALL_ON = {
   distribution: true,
   update: true,
   identity: true,
+  sync: true,
 };
 const CHAIN_OFF = { release: false, distribution: false, update: false };
 
@@ -195,6 +197,87 @@ describe("Core → Services", () => {
     ]);
     expect(chainFlip("update", false, ALL_ON)).toEqual(["update"]);
   });
+
+  it("derives the Cloud Sync edges: it needs Config and Identity, and goes with either (U-04)", () => {
+    expect(needsOf("sync")).toEqual(["config", "identity"]);
+    expect(dependentsOf("config")).toEqual(["sync"]);
+    expect(dependentsOf("identity")).toEqual(["sync"]);
+    expect(chainFlip("identity", false, ALL_ON)).toEqual(["identity", "sync"]);
+    expect(chainFlip("config", false, ALL_ON)).toEqual(["config", "sync"]);
+    // With Cloud Sync off, Identity goes alone.
+    expect(chainFlip("identity", false, { ...ALL_ON, sync: false })).toEqual([
+      "identity",
+    ]);
+  });
+
+  it("turning on Cloud Sync from all-off turns on Config and Identity with it, sending only those flags (U-04)", async () => {
+    const user = userEvent.setup();
+    const allOff = { config: false, identity: false, sync: false };
+    services.mockResolvedValue(withServices(allOff));
+    updateServices.mockImplementationOnce(async () => {
+      const on = withServices({ config: true, identity: true, sync: true });
+      services.mockResolvedValue(on);
+      return on;
+    });
+    mount();
+    await screen.findByRole("switch", { name: /Cloud Sync/ });
+    expect(screen.getByText("Needs Config and Identity.")).toBeTruthy();
+    await user.click(sw("Cloud Sync"));
+    await waitFor(() => expect(updateServices).toHaveBeenCalledTimes(1));
+    expect(updateServices.mock.calls[0]).toEqual([
+      "djdl",
+      {
+        services: {
+          sync: { enabled: true },
+          config: { enabled: true },
+          identity: { enabled: true },
+        },
+      },
+    ]);
+    expect(await screen.findByText("Cloud Sync turned on")).toBeTruthy();
+    expect(
+      screen.getByText("Also turned on Config and Identity."),
+    ).toBeTruthy();
+    for (const s of ["Cloud Sync", "Config", "Identity"])
+      expect(sw(s).getAttribute("aria-checked")).toBe("true");
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
+  for (const [name, slug] of [
+    ["Identity", "identity"],
+    ["Config", "config"],
+  ] as const) {
+    it(`turning off ${name} while Cloud Sync is on lists Cloud Sync in the confirm and takes it off (U-04)`, async () => {
+      const user = userEvent.setup();
+      services.mockResolvedValue(withServices({ config: true, sync: true }));
+      updateServices.mockImplementationOnce(async () => {
+        const off = withServices({ config: true, [slug]: false, sync: false });
+        services.mockResolvedValue(off);
+        return off;
+      });
+      mount();
+      await screen.findByRole("switch", { name: new RegExp(name) });
+      await user.click(sw(name));
+      const dialog = await screen.findByRole("alertdialog");
+      expect(within(dialog).getByText(`Turn off ${name}?`)).toBeTruthy();
+      expect(
+        within(dialog).getByText("Also turns off Cloud Sync, which needs it."),
+      ).toBeTruthy();
+      await user.click(
+        within(dialog).getByRole("button", { name: "Turn off 2 services" }),
+      );
+      await waitFor(() => expect(updateServices).toHaveBeenCalledTimes(1));
+      expect(updateServices.mock.calls[0]![1]).toEqual({
+        services: { [slug]: { enabled: false }, sync: { enabled: false } },
+      });
+      expect(
+        await screen.findByText("Cloud Sync turned off with it."),
+      ).toBeTruthy();
+      await waitFor(() =>
+        expect(sw("Cloud Sync").getAttribute("aria-checked")).toBe("false"),
+      );
+    });
+  }
 
   it("turning on Update also turns on Distribution and Release, saves at once, and offers undo (L0)", async () => {
     const user = userEvent.setup();

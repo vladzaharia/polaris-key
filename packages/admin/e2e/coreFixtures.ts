@@ -8,9 +8,15 @@ const NOW = Math.floor(Date.now() / 1000);
 const DAY = 86_400;
 
 const services = Object.fromEntries(
-  ["license", "config", "release", "distribution", "update", "identity"].map(
-    (s) => [s, { enabled: true }],
-  ),
+  [
+    "license",
+    "config",
+    "release",
+    "distribution",
+    "update",
+    "identity",
+    "sync",
+  ].map((s) => [s, { enabled: true }]),
 );
 
 const PUB = "MCowBQYDK2VwAyEAq3Jd9QpX2a7mUf0bWzYbXl4tQ8nV1cR6sE5yH2kP9uA";
@@ -403,7 +409,25 @@ export const CORE_ROUTES: Record<string, unknown> = {
     entries: Array.from({ length: 42 }, (_, i) => ({
       key: `k${i}`,
       kind: "config",
+      // U-04: a few user settings, so Cloud Sync → Data has rows to lay out.
+      ...(i < 3
+        ? {
+            user: {
+              sync: (["user", "platform", "device"] as const)[i],
+              ...(i === 1 ? { listed: false } : {}),
+            },
+          }
+        : {}),
     })),
+    cloudSync: {
+      collections: [
+        { name: "progress", access: "owner", onAttach: "merge" },
+        { name: "unlocks", access: "ownerRead", conflict: "union" },
+        { name: "support_notes", access: "server" },
+      ],
+      saves: { conflict: "mostRecent", requiresFlag: "cloudSaves" },
+      migrations: [{ toSchemaVersion: 8, rename: { k40: "k41" } }],
+    },
   },
   "/manage/api/products/djdl/config/profiles": {
     profiles: Array.from({ length: 6 }, (_, i) => ({

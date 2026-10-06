@@ -73,6 +73,25 @@ describe("config.fetchSchema()", () => {
     c.close();
   });
 
+  it("a catalog carrying Cloud Sync's user and cloudSync members still parses (U-04)", async () => {
+    const synced = {
+      ...CATALOG,
+      entries: [
+        {
+          ...CATALOG.entries[0]!,
+          user: { sync: "user", conflict: "lastWrite" },
+        },
+      ],
+      cloudSync: {
+        collections: [{ name: "progress", access: "owner" }],
+        saves: { conflict: "prompt" },
+      },
+    };
+    const { c } = await client(() => json(synced));
+    await expect(c.config.fetchSchema()).resolves.toEqual(synced);
+    c.close();
+  });
+
   it("a refusal is null", async () => {
     const { c } = await client(() => json({ error: "not_found" }, 404));
     await expect(c.config.fetchSchema()).resolves.toBeNull();

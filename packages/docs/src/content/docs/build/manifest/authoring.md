@@ -130,8 +130,8 @@ compatible.
 
 ## Enabled services: `modules` + `devices.registration`
 
-Polaris Key is six opt-in services — **license, config, release, distribution, update,
-identity** — over an
+Polaris Key is seven opt-in services — **license, config, release, distribution, update,
+identity, sync** — over an
 always-on Core substrate (see [Concepts & terminology](/docs/start/concepts/)). `.pkey/product` declares which of them the
 product runs, and that declaration is persisted verbatim into `products.services_json`, the
 single authority every other surface projects from. It used to be validated and then thrown
@@ -210,6 +210,55 @@ column (`services_source` flips `manifest` → `admin`) so a later push cannot s
 service back on, nor re-open registration after an operator closed it. "Revert to manifest" flips
 ownership back and changes nothing else — the manifest re-applies on the next resync, not
 immediately, so the operator's escape hatch never depends on a GitHub round trip that can fail.
+
+### User settings and Cloud Sync data
+
+A `config` entry with a `user` block is a **user setting**: a value the person chooses, kept on
+the device and, with [Cloud Sync](/docs/services/sync/) on, synced for people who sign in. The
+catalog's top-level `cloudSync` block declares the shape of the rest of the product's Cloud Sync
+data (collections, saves, catalog migrations):
+
+```jsonc
+{
+  "key": "audio.musicVolume",
+  "kind": "config",
+  "schema": { "type": "number", "minimum": 0, "maximum": 1 },
+  "default": 0.8,
+  // sync: user | platform | device | local; conflict: lastWrite | max | min | merge
+  "user": { "sync": "user", "conflict": "lastWrite" },
+}
+```
+
+The block is refused on a `secret` or `flag`, under an `enforced` or `hidden` management default,
+and with a conflict policy the value's schema cannot support. The full rules are on the
+[Cloud Sync](/docs/services/sync/#validation) page.
+
+## Cloud Sync limits: `cloudSync`
+
+`.pkey/product`'s `cloudSync` block sets the product's per-person limits and write policy:
+`limits` (with `byTier` and `byEntitlement` raises), `unlicensed` (signed-in people with no usable
+licence) and `writes`. Every limit stays within the platform ceilings, and `unlicensed` within the
+licensed limits (`cloud_sync_limit_over_ceiling`). Declaring either `cloudSync` block, or a user
+setting that syncs, while the `sync` service is off is a warning, not an error: settings stay on
+the device until it is on.
+
+```jsonc
+{
+  "modules": {
+    "config": { "enabled": true },
+    "identity": { "enabled": true },
+    "sync": { "enabled": true },
+  },
+  "cloudSync": {
+    "limits": {
+      "totalBytes": 268435456,
+      "byTier": { "pro": { "totalBytes": 536870912 } },
+    },
+    "unlicensed": { "saves": false },
+    "writes": { "requireLicense": false },
+  },
+}
+```
 
 ## Browser origins: `web.origins`
 
@@ -767,3 +816,11 @@ it from the catalog with
 `pnpm gen:mirrors -- --catalog <catalog.json> --out-dir <mirror-dir>` (and add `--check`
 in product-specific CI) — see `CONTRIBUTING.md`. `--lang` picks the targets (`ts`, `python` and
 `swift` by default, plus `gdscript` for a Godot game's `catalog_generated.gd`).
+
+:::note[Upgrade: mirrors now always carry a user-settings block]
+Since the catalog gained `user` entries and the `cloudSync` block, every generated mirror
+includes the user-settings section even when the catalog declares no user entry (TypeScript
+emits `UserSettingKey = never` and an empty `USER_SETTINGS`; Python, Swift and GDScript emit the
+equivalent empty block). A repository that commits a mirror sees a one-time diff the first time
+it regenerates after upgrading; commit it and `--check` is clean again.
+:::
