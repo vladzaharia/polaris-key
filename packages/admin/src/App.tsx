@@ -1,11 +1,11 @@
 import * as React from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "./components/theme.js";
-import { Toaster } from "./components/ui/index.js";
 import { queryClient } from "./console/data/queryClient.js";
 import { useMe } from "./console/data/hooks.js";
 import { AppShell } from "./console/shell/AppShell.js";
 import { BootScreen } from "./console/shell/StatePages.js";
+import { AppToaster } from "./ui/toast.js";
 
 /**
  * The operator console (docs/design/ADMIN.md §2). Loads the session (`/me`, a query like any
@@ -16,7 +16,8 @@ export function App(): React.ReactElement {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <Toaster>{KIT_ENABLED ? <DevKitOr /> : <Boot />}</Toaster>
+        {KIT_ENABLED ? <DevKitOr /> : <Boot />}
+        <AppToaster />
       </ThemeProvider>
     </QueryClientProvider>
   );

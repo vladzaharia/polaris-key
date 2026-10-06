@@ -170,23 +170,29 @@ The product's JWKS URL sits under the list.
 
 The lifecycle, all from this section:
 
-| Action                         | Where                                       | Endpoint                                         | Effect                                                                                                                          |
-| ------------------------------ | ------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
-| **Prepare signing key**        | the section header (asks first)             | `POST .../keys/prepare` (or `.../keys/rotate`)   | Mints a new key as **staged**: published for trust discovery, not yet signing anything.                                         |
-| **Activate**                   | a staged row, once its trust window ends    | `POST .../keys/activate`                         | Retires the active key and promotes the staged one, in one batch.                                                               |
-| **Activate now (break-glass)** | a staged row's menu, before the window ends | `POST .../keys/activate` with `breakGlass: true` | The same, early. You type the key id to confirm; clients that have not refreshed reject documents until they do.                |
-| **Retire**                     | a staged row's menu                         | `POST .../keys/retire`                           | Marks a non-active key retired.                                                                                                 |
-| **Revoke**                     | a retired row's menu (type the key id)      | `POST .../keys/revoke`                           | Marks a non-active key revoked: the trust manifest lists it as revoked and clients reject what it signed (compromise response). |
+| Action                         | Where                                                                     | Endpoint                                         | Effect                                                                                                                          |
+| ------------------------------ | ------------------------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| **Prepare signing key**        | the section header (asks first); disabled while a rotation is in progress | `POST .../keys/prepare` (or `.../keys/rotate`)   | Mints a new key as **staged**: published for trust discovery, not yet signing anything.                                         |
+| **Activate**                   | the rotation strip, once its trust window ends                            | `POST .../keys/activate`                         | Retires the active key and promotes the staged one, in one batch.                                                               |
+| **Activate now (break-glass)** | the rotation strip's menu, before the window ends                         | `POST .../keys/activate` with `breakGlass: true` | The same, early. You type the key id to confirm; clients that have not refreshed reject documents until they do.                |
+| **Cancel rotation**            | the rotation strip's menu                                                 | `POST .../keys/retire`                           | Retires the staged key; the active key keeps signing.                                                                           |
+| **Revoke**                     | a retired row's menu (type the key id)                                    | `POST .../keys/revoke`                           | Marks a non-active key revoked: the trust manifest lists it as revoked and clients reject what it signed (compromise response). |
 
 ### Rotating the signing key
 
 Rotation is Prepare, wait out the trust window, then Activate: the old key retires in the same
 step and keeps verifying the documents it signed while it ages out of the trust set.
 
-A staged key shows a live countdown to the end of its **trust-refresh window** (5 minutes):
-clients need that long to pick the new key up from the trust manifest before anything is signed
-with it, or a client that hasn't refreshed would reject a document signed by a `kid` it doesn't
-recognize. Activate is disabled, with that reason, until the window ends.
+While a key is staged, a strip above the list walks the rotation: **Prepared → Trust window →
+Activate → Old key retires**. The trust window step counts down the **trust-refresh window**
+(5 minutes): clients need that long to pick the new key up from the trust manifest before
+anything is signed with it, or a client that hasn't refreshed would reject a document signed by a
+`kid` it doesn't recognize. Activate is disabled, with that reason, until the window ends.
+
+For 30 days after an activation, one line says what share of the devices active in the last 30
+days have **refreshed** since the new key went live: devices whose last contact with the platform
+came after the activation. The platform keeps no per-device record of a trust fetch, so this is a
+reassurance, not proof that a given device holds the new key.
 
 Retire and revoke both refuse (`409`) on the **currently active** key — stage and activate a
 replacement first. A product must always have exactly one active key; this guard is what stops
@@ -194,9 +200,10 @@ an operator from accidentally leaving it with zero. The private key never leaves
 KEK-sealed storage at any point.
 
 `GET /manage/api/products/<slug>/keys` returns
-`{ keys: [{ kid, status, alg, publicKey, createdAt, activateAfter, activatedAt, retiredAt, revokedAt }], now }`
+`{ keys: [{ kid, status, alg, publicKey, createdAt, activateAfter, activatedAt, retiredAt, revokedAt }], now, refresh }`
 — public material only, active key first. `now` is the server's clock, which the countdown is
-measured against.
+measured against. `refresh` is `{ kid, activatedAt, activeDevices, refreshedDevices, windowDays }`
+for 30 days after the active key replaced another, and `null` otherwise.
 
 :::caution[If you suspect a key was compromised]
 Prepare a new key, wait out (or break-glass through) the trust window, activate it, then revoke

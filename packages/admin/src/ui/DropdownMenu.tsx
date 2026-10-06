@@ -1,7 +1,13 @@
 import * as React from "react";
 import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui";
 import { Check, ChevronRight } from "lucide-react";
-import { cn } from "../../lib/cn.js";
+import { cn } from "../lib/cn.js";
+
+/**
+ * The composable dropdown menu on Radix (EXPERIENCE.md §3): the account and theme menus, the
+ * portal's product and account menus. A plain list of actions with labels and disabled reasons is
+ * `ActionMenu`; reach for these parts only when a menu needs a label, radio items or a submenu.
+ */
 
 export const DropdownMenu = DropdownMenuPrimitive.Root;
 export const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
@@ -24,7 +30,7 @@ export function DropdownMenuContent({
         ref={ref}
         sideOffset={sideOffset}
         className={cn(
-          "z-50 min-w-[10rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-pk-md animate-pk-in",
+          "z-50 min-w-[10rem] overflow-hidden rounded-md border border-border bg-surface-overlay p-1 text-fg shadow-elevation-2 animate-pk-in",
           className,
         )}
         {...props}
@@ -53,8 +59,7 @@ export function DropdownMenuItem({
         "focus:bg-hover focus:text-fg-strong data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         "[&_svg]:size-4 [&_svg]:shrink-0",
         inset && "pl-8",
-        destructive &&
-          "text-destructive focus:bg-destructive/10 focus:text-destructive",
+        destructive && "text-danger focus:bg-danger-subtle focus:text-danger",
         className,
       )}
       {...props}
@@ -137,7 +142,7 @@ export function DropdownMenuLabel({
     <DropdownMenuPrimitive.Label
       ref={ref}
       className={cn(
-        "px-2 py-1.5 text-xs font-semibold text-muted-foreground",
+        "px-2 py-1.5 text-xs font-bold text-fg-muted",
         inset && "pl-8",
         className,
       )}
@@ -196,7 +201,7 @@ export function DropdownMenuSubContent({
     <DropdownMenuPrimitive.SubContent
       ref={ref}
       className={cn(
-        "z-50 min-w-[8rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-pk-md animate-pk-in",
+        "z-50 min-w-[8rem] overflow-hidden rounded-md border border-border bg-surface-overlay p-1 text-fg shadow-elevation-2 animate-pk-in",
         className,
       )}
       {...props}

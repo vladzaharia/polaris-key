@@ -1,10 +1,11 @@
 /**
- * Distribution → Matrix (ADMIN.md §6.4, T5). "Where is each release, and what is it doing there?"
- * Fixes MTX-1 to MTX-10.
+ * The distribution matrix (ADMIN.md §6.4, T5): "Where is each release, and what is it doing
+ * there?" Fixes MTX-1 to MTX-10. Since UX-31 it is Rollouts' Matrix and Readiness views
+ * (EXPERIENCE.md §0.2, C7), not a page of its own; `distribution/matrix` redirects there.
  *
  * - Cells are summaries (a status plus at most one secondary line); every action lives in the
  *   cell drawer (MTX-1). The `Grid` primitive gives one tab stop, arrow keys and Enter.
- * - The view (Availability, Rollouts, Readiness) changes only the cell summary (MTX-2); the
+ * - The view (Rollouts' Matrix or Readiness tab) changes only the cell summary (MTX-2); the
  *   deliverable picker covers packs and the row limit is the server's 20 or 50 (MTX-6). All of it,
  *   and the open cell, is in the URL.
  * - The response is indexed into a `Map` once (MTX-8). Empty states split by cause (MTX-9).
@@ -12,13 +13,12 @@
  */
 
 import * as React from "react";
-import { Grid3x3, Plus, RefreshCw } from "lucide-react";
+import { Grid3x3 } from "lucide-react";
 import type {
   DistributionMatrix,
   MatrixCellDto,
   MatrixRolloutDto,
 } from "../../../api.js";
-import { docsUrl } from "../../../lib/docsLinks.js";
 import { formatCount, fromSeconds } from "../../../lib/format.js";
 import { statusOf } from "../../../lib/status.js";
 import { Button } from "../../../ui/Button.js";
@@ -26,16 +26,15 @@ import { Callout } from "../../../ui/Callout.js";
 import { EmptyState } from "../../../ui/EmptyState.js";
 import { ErrorState } from "../../../ui/ErrorState.js";
 import { Grid } from "../../../ui/Grid.js";
-import { SegmentedControl } from "../../../ui/SegmentedControl.js";
 import { Select } from "../../../ui/Select.js";
 import { Skeleton } from "../../../ui/Skeleton.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
 import { Timestamp } from "../../../ui/Timestamp.js";
 import { toast } from "../../../ui/toast.js";
 import { useMediaQuery } from "../../../ui/data-table/DataTable.js";
-import { PageHeader } from "../../components/PageHeader.js";
 import { mutate } from "../../data/mutations.js";
-import { useSearchParam } from "../../router.js";
+import { navigate, useLocation, useSearchParam } from "../../router.js";
+import { productPage, type QueryInit } from "../../routes.js";
 import { CellDrawer } from "./CellDrawer.js";
 import {
   MATRIX_LIMITS,
@@ -46,16 +45,9 @@ import {
   type MatrixView,
 } from "./data.js";
 import { outletKindLabel, READINESS_LABEL, rolloutSummary } from "./format.js";
-import { StartRolloutDialog } from "./RolloutDialogs.js";
 
 type Release = DistributionMatrix["releases"][number];
 type Outlet = DistributionMatrix["outlets"][number];
-
-const VIEW_OPTIONS: { value: MatrixView; label: string }[] = [
-  { value: "availability", label: "Availability" },
-  { value: "rollouts", label: "Rollouts" },
-  { value: "readiness", label: "Readiness" },
-];
 
 const ANY_CHANNEL = "__any__";
 
@@ -333,17 +325,111 @@ const LEGEND_KEYS: Record<MatrixView, string[]> = {
   rollouts: ["rolling", "halted", "pending"],
 };
 
+/** Rollouts' views (EXPERIENCE.md §0.2, C7): the list, and the grid in two summaries. */
+export const ROLLOUT_VIEWS = ["list", "matrix", "readiness"] as const;
+export type RolloutsView = (typeof ROLLOUT_VIEWS)[number];
+
+/**
+ * The old Matrix page's `view` mapped onto Rollouts' views: Readiness keeps its own view; the
+ * matrix's Availability and Rollouts summaries both land on Matrix (List is the rollouts view).
+ */
+export function rolloutsViewFor(matrixView: string | null): RolloutsView {
+  return matrixView === "readiness" ? "readiness" : "matrix";
+}
+
+/**
+ * `distribution/matrix` (and the `m` shortcut, entity links to a rollout's cell) now opens
+ * Rollouts on its Matrix view: one home for the concept (EXPERIENCE.md §0.2, C7). Every other
+ * query parameter (deliverable, channel, limit, the open cell) carries over, so old links still
+ * land on the same cell.
+ */
 export function MatrixPage({ slug }: { slug: string }): React.ReactElement {
+  const { route } = useLocation();
+  const query = route.query.toString();
+  React.useEffect(() => {
+    const next = new URLSearchParams(query);
+    const view = rolloutsViewFor(next.get("view"));
+    next.set("view", view);
+    const init: QueryInit = {};
+    for (const [k, v] of next) init[k] = v;
+    navigate(productPage(slug, "rollouts", { query: init }), {
+      replace: true,
+    });
+  }, [slug, query]);
+  return (
+    <div aria-busy="true" aria-label="Opening Rollouts">
+      <Skeleton className="h-12 w-full" />
+    </div>
+  );
+}
+
+/** "Refresh readiness" (a header action on Rollouts' grid views) and its result. */
+export function useReadinessRefresh(slug: string): {
+  refreshing: boolean;
+  refreshed: number | null;
+  run: () => Promise<void>;
+  dismiss: () => void;
+} {
+  const [refreshing, setRefreshing] = React.useState(false);
+  const [refreshed, setRefreshed] = React.useState<number | null>(null);
+  const run = async (): Promise<void> => {
+    setRefreshing(true);
+    try {
+      const result = await mutate("refreshReadiness", slug);
+      setRefreshed(result?.refreshed ?? 0);
+    } catch (err) {
+      toast.error(err, { context: { area: "distribution" } });
+    } finally {
+      setRefreshing(false);
+    }
+  };
+  return { refreshing, refreshed, run, dismiss: () => setRefreshed(null) };
+}
+
+export function ReadinessRefreshed({
+  refreshed,
+  onDismiss,
+}: {
+  refreshed: number | null;
+  onDismiss: () => void;
+}): React.ReactElement | null {
+  if (refreshed === null) return null;
+  return (
+    <Callout
+      tone="success"
+      title="Readiness recomputed"
+      live
+      action={
+        <Button size="sm" variant="ghost" onClick={onDismiss}>
+          Dismiss
+        </Button>
+      }
+    >
+      {refreshed === 0
+        ? "Nothing changed: every release's readiness was already current."
+        : `${formatCount(refreshed)} release × outlet ${refreshed === 1 ? "pair was" : "pairs were"} recomputed. Holds follow the new answer.`}
+    </Callout>
+  );
+}
+
+/**
+ * The release × outlet grid, Rollouts' Matrix and Readiness views (MTX-1 to MTX-10). The page
+ * around it (header, view tabs, Start rollout) is `RolloutsPage`; the grid keeps its own options,
+ * URL state and cell drawer.
+ */
+export function MatrixBoard({
+  slug,
+  view,
+}: {
+  slug: string;
+  view: MatrixView;
+}): React.ReactElement {
   const [deliverable] = useSearchParam("deliverable", QUERY.deliverable);
-  const [view, setView] = useSearchParam("view", QUERY.view);
   const [limit] = useSearchParam("limit", QUERY.limit);
   const [channel] = useSearchParam("channel", QUERY.channel);
   const [cell] = useSearchParam("cell", QUERY.cell);
   const narrow = useMediaQuery("(max-width: 767px)");
   const [forceGrid, setForceGrid] = React.useState(false);
-  const [starting, setStarting] = React.useState(false);
-  const [refreshing, setRefreshing] = React.useState(false);
-  const [refreshed, setRefreshed] = React.useState<number | null>(null);
 
   const matrix = useMatrix(slug, deliverable, limit);
   const deliverables = useDeliverables(slug);
@@ -390,134 +476,48 @@ export function MatrixPage({ slug }: { slug: string }): React.ReactElement {
     patchQuery({ cell: cellKey(releaseId, outletId) }, { push: true });
   const closeCell = (): void => patchQuery({ cell: null });
 
-  const refreshReadiness = async (): Promise<void> => {
-    setRefreshing(true);
-    try {
-      const result = await mutate("refreshReadiness", slug);
-      setRefreshed(result?.refreshed ?? 0);
-    } catch (err) {
-      toast.error(err, { context: { area: "distribution" } });
-    } finally {
-      setRefreshing(false);
-    }
-  };
-
   const capped = data ? data.releases.length >= data.limit : false;
   const open = parseCell(cell);
 
   return (
     <div className="space-y-5" data-template="matrix">
-      <PageHeader
-        title="Matrix"
-        meta={
-          <>
-            <a
-              className="text-accent-fg underline-offset-4 hover:underline"
-              href={docsUrl("rolloutControl")}
-              target="_blank"
-              rel="noreferrer"
-            >
-              How rollouts reach devices
-            </a>
-          </>
-        }
-        primaryAction={
-          <Button
-            iconStart={<Plus aria-hidden />}
-            onClick={() => setStarting(true)}
-          >
-            Start rollout…
-          </Button>
-        }
-        secondaryActions={
-          deliverable === "app"
-            ? [
-                {
-                  label: refreshing
-                    ? "Refreshing readiness…"
-                    : "Refresh readiness",
-                  icon: <RefreshCw aria-hidden />,
-                  onSelect: () => void refreshReadiness(),
-                  disabledReason: refreshing
-                    ? "Readiness is being recomputed."
-                    : undefined,
-                },
-              ]
-            : []
-        }
-        refetching={matrix.isFetching && !matrix.isPending}
-      />
-
-      {refreshed !== null ? (
-        <Callout
-          tone="success"
-          title="Readiness recomputed"
-          live
-          action={
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setRefreshed(null)}
-            >
-              Dismiss
-            </Button>
-          }
-        >
-          {refreshed === 0
-            ? "Nothing changed: every release's readiness was already current."
-            : `${formatCount(refreshed)} release × outlet ${refreshed === 1 ? "pair was" : "pairs were"} recomputed. Holds follow the new answer.`}
-        </Callout>
-      ) : null}
-
       <div
         role="toolbar"
         aria-label="Matrix options"
-        className="flex flex-wrap items-end gap-3"
+        className="flex flex-wrap items-end justify-between gap-3"
       >
-        <label className="flex flex-col gap-1 text-xs font-bold text-fg-muted">
-          Deliverable
-          <Select
-            aria-label="Deliverable"
-            className="w-44"
-            value={deliverable}
-            options={deliverableOptions}
-            onChange={(v) =>
-              patchQuery({
-                deliverable: v === "app" ? null : v,
-                cell: null,
-                channel: null,
-              })
-            }
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-xs font-bold text-fg-muted">
-          Channel
-          <Select
-            aria-label="Channel"
-            className="w-36"
-            value={channel === "" ? ANY_CHANNEL : channel}
-            options={[
-              { value: ANY_CHANNEL, label: "Any channel" },
-              ...channels.map((c) => ({ value: c, label: c })),
-            ]}
-            onChange={(v) =>
-              patchQuery({ channel: v === ANY_CHANNEL ? null : v })
-            }
-          />
-        </label>
-        <div className="flex flex-col gap-1">
-          <span
-            id="matrix-view-label"
-            className="text-xs font-bold text-fg-muted"
-          >
-            View
-          </span>
-          <SegmentedControl
-            aria-labelledby="matrix-view-label"
-            options={VIEW_OPTIONS}
-            value={view}
-            onChange={setView}
-          />
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="flex flex-col gap-1 text-xs font-bold text-fg-muted">
+            Deliverable
+            <Select
+              aria-label="Deliverable"
+              className="w-44"
+              value={deliverable}
+              options={deliverableOptions}
+              onChange={(v) =>
+                patchQuery({
+                  deliverable: v === "app" ? null : v,
+                  cell: null,
+                  channel: null,
+                })
+              }
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs font-bold text-fg-muted">
+            Channel
+            <Select
+              aria-label="Channel"
+              className="w-36"
+              value={channel === "" ? ANY_CHANNEL : channel}
+              options={[
+                { value: ANY_CHANNEL, label: "Any channel" },
+                ...channels.map((c) => ({ value: c, label: c })),
+              ]}
+              onChange={(v) =>
+                patchQuery({ channel: v === ANY_CHANNEL ? null : v })
+              }
+            />
+          </label>
         </div>
         <label className="flex flex-col gap-1 text-xs font-bold text-fg-muted">
           Rows
@@ -652,13 +652,6 @@ export function MatrixPage({ slug }: { slug: string }): React.ReactElement {
           onClose={closeCell}
         />
       ) : null}
-
-      <StartRolloutDialog
-        slug={slug}
-        open={starting}
-        initial={{ deliverable }}
-        onClose={() => setStarting(false)}
-      />
     </div>
   );
 }

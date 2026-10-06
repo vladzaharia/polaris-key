@@ -20,7 +20,7 @@ differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US 
 **No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
 
 - **Copy** to `signin.choice.*`: title "Choose a license for this device", lede `signin.choice.lede`, primary **Use this license and continue**, "No free devices", "Create a new free license", `signin.choice.raced`, `signin.choice.noneReplaceable` for the empty state. Exact per-line changes: SIGN-IN.md §10.4.
-- **Row anatomy** (SIGN-IN.md O-11): title, the tier as a neutral pill with "{n} of {limit} devices" or "Account-wide · unlimited devices", then "{origin} · {term}" with **Lifetime** (not "No expiry"). The identity's own `sub` licence shows as Account-wide only once I-09's seat rule lands.
+- **Row anatomy** (SIGN-IN.md O-11): title, the tier as a neutral pill with "{n} of {limit} devices" or "Account-wide · {n} of {limit} devices", then "{origin} · {term}" with **Lifetime** (not "No expiry"). The identity's own `sub` licence shows as Account-wide with its real seat count (owner, 2026-10-05: account-wide licenses stay device-limited; SIGN-IN.md D-53).
 - **Inline Replace is kept as built** (SIGN-IN.md D-59, I-04 decision 13 amended): the confirm uses `signin.replace.consequence` and **Replace and continue** as the primary (not a danger button), and **Back**.
 - The Free a device link keeps `license=` and `for=<device label>` (I-04 §F.5). The page takes `renderAuthCard()`'s look once UX-43 lands.
 

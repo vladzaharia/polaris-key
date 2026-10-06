@@ -12,14 +12,16 @@
   font-style: normal;
   font-weight: 300 900;
   font-display: block;
-  src: url("../ui-kits/fonts/rubik-var-latin.woff2") format("woff2");
+  src: url("../../../packages/brand/fonts/rubik-var-latin.woff2")
+    format("woff2");
 }
 @font-face {
   font-family: "JetBrains Mono";
   font-style: normal;
   font-weight: 400 600;
   font-display: block;
-  src: url("../ui-kits/fonts/jetbrains-mono-var-latin.woff2") format("woff2");
+  src: url("../../../packages/brand/fonts/jetbrains-mono-var-latin.woff2")
+    format("woff2");
 }
 
 :root {
@@ -555,7 +557,7 @@ label.lab {
   font-weight: 500;
 }
 /* SIGN-IN.md O-11: line 2 is the tier as a neutral pill, then the device counter or
-   "Account-wide · unlimited devices". */
+   "Account-wide · {used} of {limit} devices" (SIGN-IN.md D-53). */
 .tl {
   grid-column: 2 / 4;
   display: flex;
