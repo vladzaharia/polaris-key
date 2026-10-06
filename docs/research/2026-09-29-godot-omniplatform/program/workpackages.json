@@ -5868,7 +5868,7 @@
       "optional": false,
       "refs": ["design/PORTAL §4.30", "design/PORTAL §11.3 PX-22"],
       "brief": "wp/PX-22-account-profile.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "ST-01a",

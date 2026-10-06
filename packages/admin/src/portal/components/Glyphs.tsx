@@ -174,3 +174,34 @@ export function PlatformGlyphs({
     </span>
   );
 }
+
+/**
+ * A sign-in method's mark where one is drawn (Apple, Google, Steam), else null: the source badge
+ * on an avatar, the name chips and the picture tiles (Account → Profile, PX-22).
+ */
+export function ProviderGlyph({
+  provider,
+  className,
+}: {
+  provider: string | null | undefined;
+  className?: string;
+}): React.ReactElement | null {
+  if (provider === "apple") return <AppleGlyph className={className} />;
+  if (provider === "google") return <GoogleGlyph className={className} />;
+  if (provider === "steam") return <SteamGlyph className={className} />;
+  return null;
+}
+
+/**
+ * An avatar's source badge: the provider's mark, or null when none is drawn, so no empty badge
+ * is ever shown (Game Center, a removed method, an upload, Initials).
+ */
+export function providerBadge(
+  provider: string | null | undefined,
+): React.ReactElement | null {
+  return provider === "apple" ||
+    provider === "google" ||
+    provider === "steam" ? (
+    <ProviderGlyph provider={provider} />
+  ) : null;
+}
