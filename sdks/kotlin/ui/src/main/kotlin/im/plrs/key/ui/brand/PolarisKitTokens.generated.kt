@@ -40,11 +40,20 @@ public object PolarisKitTokens {
     /** The inner radius of a surface of radius [outer] inset by [inset]. */
     public fun concentricRadius(outer: Float, inset: Float): Float = maxOf(CONCENTRIC_MIN, outer - inset)
 
-    /** Motion durations (ms) and measures. */
+    /** Motion durations (ms), distances (dp) and measures (notes/S-23 §5). */
     public object Motion {
+        public const val micro: Int = 80
         public const val fast: Int = 120
         public const val base: Int = 200
+        public const val moderate: Int = 260
         public const val slow: Int = 320
+        public const val deliberate: Int = 480
+        public const val shimmer: Int = 1600
+        public const val distanceXs: Float = 2.0f
+        public const val distanceSm: Float = 4.0f
+        public const val distanceMd: Float = 8.0f
+        public const val distanceLg: Float = 12.0f
+        public const val distanceXl: Float = 24.0f
         public const val pressScale: Float = 0.98f
     }
 

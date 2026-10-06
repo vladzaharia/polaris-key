@@ -138,6 +138,8 @@
   --ease-standard: var(--pk-ease-standard);
   --ease-enter: var(--pk-ease-enter);
   --ease-exit: var(--pk-ease-exit);
+  --ease-emphasized: var(--pk-ease-emphasized);
+  --ease-spring: var(--pk-ease-spring);
 }
 
 /*

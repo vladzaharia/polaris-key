@@ -277,9 +277,13 @@ RADIUS = {
 #: Motion durations (ms) and measures.
 MOTION_MS = {
     "instant": 0,
+    "micro": 80,
     "fast": 120,
     "base": 200,
+    "moderate": 260,
     "slow": 320,
+    "deliberate": 480,
+    "shimmer": 1600,
 }
 MOTION = {
     "step": 200,

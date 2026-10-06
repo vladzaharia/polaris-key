@@ -87,9 +87,13 @@ public object PolarisBrandTokens {
     /** Motion durations in milliseconds. */
     public object Duration {
         public const val instant: Int = 0
+        public const val micro: Int = 80
         public const val fast: Int = 120
         public const val base: Int = 200
+        public const val moderate: Int = 260
         public const val slow: Int = 320
+        public const val deliberate: Int = 480
+        public const val shimmer: Int = 1600
     }
 
     /** Section ids: core plus every service slug. */
