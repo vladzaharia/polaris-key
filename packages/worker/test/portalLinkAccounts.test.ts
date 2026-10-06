@@ -699,6 +699,47 @@ describe("undo within 72 hours", () => {
     }
   });
 
+  it("gives the joined account its library entries back; the kept account keeps its own", async () => {
+    const w = await seededWorld();
+    await seedProduct(w.db, "other");
+    const b = await emailAccount(w, "mara@fennick.studio");
+    const a = await emailAccount(w, "a@example.com");
+    const entry = (accountId: string, product: string, at: number) =>
+      w.db.run(
+        "INSERT INTO library_entries (account_id, product, via, added_at) VALUES (?, ?, 'open', ?)",
+        accountId,
+        product,
+        at,
+      );
+    const library = async (accountId: string) =>
+      (
+        await w.db.all<{ product: string; added_at: number }>(
+          "SELECT product, added_at FROM library_entries WHERE account_id = ? ORDER BY product",
+          accountId,
+        )
+      ).map((r) => [r.product, r.added_at]);
+    await entry(a.accountId, "acme", NOW - 20);
+    await entry(a.accountId, "other", NOW - 10);
+    await entry(b.accountId, "other", NOW - 5);
+    await proveBoth(a, b);
+    const mergeId = (
+      (await (await join(a.d)).json()) as { merge: { id: string } }
+    ).merge.id;
+    // Joined: the kept account's own entry won for the product both had.
+    expect(await library(b.accountId)).toEqual([
+      ["acme", NOW - 20],
+      ["other", NOW - 5],
+    ]);
+    expect(
+      (await a.d.send("POST", `${LINK}/undo`, { merge: mergeId })).status,
+    ).toBe(200);
+    expect(await library(a.accountId)).toEqual([
+      ["acme", NOW - 20],
+      ["other", NOW - 10],
+    ]);
+    expect(await library(b.accountId)).toEqual([["other", NOW - 5]]);
+  });
+
   it("never orphans the survivor (last_link)", async () => {
     const w = await seededWorld();
     const { a, b, mergeId } = await joined(w);
