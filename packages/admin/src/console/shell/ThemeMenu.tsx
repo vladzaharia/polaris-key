@@ -1,15 +1,15 @@
 import * as React from "react";
 import { Monitor, Moon, Sun, type LucideIcon } from "lucide-react";
 import { useTheme, type ThemePreference } from "../../components/theme.js";
+import { Button } from "../../ui/Button.js";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
-} from "../../components/ui/index.js";
+} from "../../ui/DropdownMenu.js";
 
 export const THEME_OPTIONS: {
   value: ThemePreference;

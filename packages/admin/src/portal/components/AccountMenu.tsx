@@ -7,7 +7,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "../../components/ui/index.js";
+} from "../../ui/DropdownMenu.js";
 import type { PortalAccount } from "../api.js";
 import { href } from "../router.js";
 import { Avatar } from "./Avatar.js";

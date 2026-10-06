@@ -20,7 +20,7 @@ import {
 import { Link } from "../router.js";
 import { globalPage, productPage } from "../routes.js";
 import type { GlobalPageId, ProductPageId } from "../nav.js";
-import { Tooltip } from "../../components/ui/index.js";
+import { Tooltip } from "../../ui/Tooltip.js";
 import { PolarisMark } from "@polaris-key/brand/react";
 
 /**

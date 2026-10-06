@@ -32,6 +32,7 @@ import { toast } from "../../../ui/toast.js";
 import { LicenseConfig } from "./LicenseConfig.js";
 import { LicenseDevices, seatLimitOf } from "./LicenseDevices.js";
 import { EditHolderDialog, OfflineBundleDialog } from "./LicenseDialogs.js";
+import { DeleteLicenseDialog, deletionBlockedReason } from "./LicenseDelete.js";
 import { LicenseKeys, MintKeyDialog } from "./LicenseKeys.js";
 import { LicenseTerms } from "./LicenseTerms.js";
 import {
@@ -137,7 +138,7 @@ function LicenseRecordBody({
   const tiers = useTiers(slug).data?.tiers ?? [];
   const [termsDirty, setTermsDirty] = React.useState(false);
   const [dialog, setDialog] = React.useState<
-    "holder" | "bundle" | "mint" | "disable" | "enable" | null
+    "holder" | "bundle" | "mint" | "disable" | "enable" | "delete" | null
   >(null);
   // Config overrides keep their draft across tab switches once opened (the editor owns it).
   const [configOpened, setConfigOpened] = React.useState(tab === "config");
@@ -228,16 +229,21 @@ function LicenseRecordBody({
             onSelect: () => navigate(r.activity(slug, { q: id })),
           },
         ]}
-        dangerActions={
-          active
+        dangerActions={[
+          ...(active
             ? [
                 {
                   label: "Disable license…",
                   onSelect: () => setDialog("disable"),
                 },
               ]
-            : []
-        }
+            : []),
+          {
+            label: "Delete license…",
+            onSelect: () => setDialog("delete"),
+            disabledReason: deletionBlockedReason(license.deletion),
+          },
+        ]}
         refetching={refetching}
         tabs={
           <PageTabs
@@ -333,6 +339,12 @@ function LicenseRecordBody({
         ]}
         confirmLabel="Disable license"
         onConfirm={() => toggle(false)}
+      />
+      <DeleteLicenseDialog
+        slug={slug}
+        license={license}
+        open={dialog === "delete"}
+        onOpenChange={(o) => setDialog(o ? "delete" : null)}
       />
       <ConfirmDialog
         open={dialog === "enable"}
