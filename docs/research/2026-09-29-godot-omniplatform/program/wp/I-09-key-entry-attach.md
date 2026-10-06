@@ -45,7 +45,7 @@ differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US 
 **No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
 
 - `rankAnchorCandidates` marks the device's own candidate `current` and sets `keep` only for a licence outside the candidates; preselection is the current row, else Keep, else the first free row; a higher rank is never preselected over the current licence (`plans/I-04.md` §F.1–§F.2, `plans/I-09.md`).
-- **Account-wide licences** (§F.6): `licenseAccess(db, license)` in `core/anchor.ts`; `authorizeDevice` skips the seat count for an Account-wide licence when the device is signed in to the holding account; `access` on `shapeLicenseSummary` and the library seats (`limit: null`). **The lead confirms the enforcement rule with the owner before this merges.** THREAT-MODEL gains the Account-wide row.
+- **Sign-in licences** (§F.6): `licenseAccess(db, license)` in `core/anchor.ts`, the fact behind the origin "From signing in" and the mixed rule, never a displayed type (owner decision 2026-10-05: no 'Account-wide' label; origin shown as plain words, store named with the key); `access` on `shapeLicenseSummary`; the library seats keep the real limit. **Owner decision (2026-10-05): sign-in licenses stay device-limited**, so `authorizeDevice` does not change and no sign-in-licence THREAT-MODEL row is needed.
 - A Replace runs `freeAccountDevice()`'s statements and the guarded seat claim in one batch (§F.3).
 
 ## Goal

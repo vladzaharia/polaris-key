@@ -40,11 +40,21 @@ public enum PolarisKit {
     public static let fontFamily = "Rubik"
     public static let monoFamily = "JetBrains Mono"
 
-    /// Motion durations in seconds (the kit's own animations; system sheets keep their springs).
+    /// Motion durations in seconds and distances in points (the kit's own animations; system
+    /// sheets keep their springs). notes/S-23 §5; zero the durations under Reduce Motion.
     public enum Motion {
+        public static let micro: Double = 0.08
         public static let fast: Double = 0.12
         public static let base: Double = 0.2
+        public static let moderate: Double = 0.26
         public static let slow: Double = 0.32
+        public static let deliberate: Double = 0.48
+        public static let shimmer: Double = 1.6
+        public static let distanceXs: Double = 2
+        public static let distanceSm: Double = 4
+        public static let distanceMd: Double = 8
+        public static let distanceLg: Double = 12
+        public static let distanceXl: Double = 24
         public static let pressScale: Double = 0.98
         public static let sheetScale: Double = 0.98
     }

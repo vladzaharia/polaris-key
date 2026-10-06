@@ -57,6 +57,8 @@ import im.plrs.key.core.UpdateCheckError
 import im.plrs.key.core.UpdateCheckInput
 import im.plrs.key.core.UpdateCheckOutcome
 import im.plrs.key.core.UpdateContentHost
+import im.plrs.key.core.UpdateDecision
+import im.plrs.key.core.UpdateEvent
 import im.plrs.key.core.UpdateOutlet
 import im.plrs.key.core.VerifyReleaseRecordOptions
 import im.plrs.key.core.VerifyReleaseRecordResult
@@ -96,7 +98,7 @@ public object NoOutletSignals : OutletSignalReader {
  * Wire v4 update inputs. The installed VERSION is `CoreOptions.version`; everything else the decision
  * needs about this install is here, validated at construction (`invalid-options`).
  */
-public data class UpdateClientOptions(
+public data class UpdateClientOptions @JvmOverloads constructor(
     /** `kid` → raw 32-byte Ed25519 release key, base64url: the ONLY keys a release record verifies against. */
     val pinnedReleaseKeys: TrustSet = emptyMap(),
     /** Where this install came from; wins over [stamp] and [detected]. */
@@ -129,6 +131,57 @@ public data class UpdateClientOptions(
      */
     val installDriver: InstallDriver = JvmInstallDriver,
 )
+
+/** The app-updater feeds [UpdateClient.feedUrl] expands (discovery's `update.endpoints` keys). */
+public object FeedKind {
+    public const val appcast: String = "appcast"
+    public const val winsparkle: String = "winsparkle"
+    public const val velopack: String = "velopack"
+    public const val appInstaller: String = "appInstaller"
+    public const val zsync: String = "zsync"
+}
+
+/**
+ * An app-updater feed URL from discovery's `update.endpoints` [endpoints] (feed-url-matrix.json,
+ * plans/SP-00.md D5), or null when the product publishes no template for [kind] (the typed
+ * `product` N/A). [channel] (`stable` when null) goes through CHANNEL_ALIASES first; `{channel}`,
+ * `{velopackChannel}` and `{buildId}` are filled encoded as encodeURIComponent. `appcast` reads
+ * `endpoints.appcast` (the stable feed) and, for any other channel, inserts the channel as a path
+ * segment before `/appcast.xml`; `velopack` without [velopackChannel] is the feed directory
+ * Velopack's UpdateManager opens (the template up to `releases.`); `zsync` needs [buildId].
+ */
+public fun feedUrlFrom(
+    endpoints: Map<String, String>?,
+    baseUrl: String,
+    kind: String,
+    channel: String? = null,
+    velopackChannel: String? = null,
+    buildId: String? = null,
+): String? {
+    val requested = channel ?: "stable"
+    val canonical = im.plrs.key.core.CHANNEL_ALIASES[requested] ?: requested
+    val values = linkedMapOf("channel" to canonical)
+    if (kind == FeedKind.appcast) {
+        val stable = endpoints?.get(FeedKind.appcast) ?: return null
+        if (canonical == "stable") return expandTemplate(stable, baseUrl, values)
+        val suffix = "/appcast.xml"
+        val template = if (stable.endsWith(suffix)) stable.dropLast(suffix.length) + "/{channel}" + suffix else endpoints["channelAppcast"] ?: return null
+        return expandTemplate(template, baseUrl, values)
+    }
+    if (kind !in setOf(FeedKind.winsparkle, FeedKind.velopack, FeedKind.appInstaller, FeedKind.zsync)) return null
+    var template = endpoints?.get(kind) ?: return null
+    if ("{velopackChannel}" in template) {
+        if (velopackChannel != null) {
+            values["velopackChannel"] = velopackChannel
+        } else {
+            val cut = template.indexOf("releases.")
+            if (cut < 0 || "{velopackChannel}" !in template.substring(cut)) return null
+            template = template.substring(0, cut)
+        }
+    }
+    if ("{buildId}" in template) values["buildId"] = buildId ?: return null
+    return expandTemplate(template, baseUrl, values)
+}
 
 /** `channelFeed()`'s answer: the verified feed `decide()` would decide from. */
 public data class FeedCheck(
@@ -214,6 +267,10 @@ public class UpdateClient private constructor(
         this(core, configure(options, core.pinnedTrust), content)
 
     private val serial = Mutex()
+    private val offerFlow = kotlinx.coroutines.flow.MutableSharedFlow<UpdateCheck>(replay = 1, extraBufferCapacity = 4)
+
+    /** Every decision that offers a newer app build (`code-ready`, `binary`, `store`, `platform`); replays the last. */
+    public val offers: kotlinx.coroutines.flow.SharedFlow<UpdateCheck> = offerFlow
     private var detection: CompletableDeferred<Pair<ResolvedOutlet, DetectedOutlet?>>? = null
     private val detectionLock = Mutex()
 
@@ -224,7 +281,7 @@ public class UpdateClient private constructor(
     public suspend fun detected(): DetectedOutlet? = configured?.let { resolvedOutlet(it).second }
 
     private suspend fun resolvedOutlet(c: ConfiguredUpdate): Pair<ResolvedOutlet, DetectedOutlet?> {
-        c.outlet?.let { return it to c.options.detected }
+        c.outlet?.let { noteOutlet(it); return it to c.options.detected }
         val d = detectionLock.withLock {
             detection ?: CompletableDeferred<Pair<ResolvedOutlet, DetectedOutlet?>>().also { detection = it }.also { deferred ->
                 val options = c.options
@@ -244,8 +301,17 @@ public class UpdateClient private constructor(
                 deferred.complete(outlet to detected)
             }
         }
-        return d.await()
+        return d.await().also { noteOutlet(it.first) }
     }
+
+    /** Every journaled update event names this install's outlet (its id, else its kind) and channel. */
+    private fun noteOutlet(outlet: ResolvedOutlet) {
+        val reported = outlet.id ?: outlet.kind.takeIf { it != OUTLET_UNKNOWN }
+        core.updateEvents.context = { reported to core.channel }
+    }
+
+    /** The outlet the device report names: its id, else its kind; null when unknown or without update options. */
+    public suspend fun reportedOutlet(): String? = outlet()?.let { it.id ?: it.kind.takeIf { k -> k != OUTLET_UNKNOWN } }
 
     /**
      * `GET /<p>/update/version` — the newest build, and whether we are behind it. Refuses with
@@ -301,15 +367,52 @@ public class UpdateClient private constructor(
     }
 
     /**
+     * An app-updater feed URL (notes/SDK-PARITY-PASS.md §3.7, `update.feeds`), expanded from
+     * discovery's `update.endpoints` template for [kind] by [feedUrlFrom] (feed-url-matrix.json):
+     * `appcast` (Sparkle; the channel as a path segment off the stable feed), `winsparkle`, `velopack`
+     * (with [velopackChannel], e.g. `win-x64`, the releases file; without, the feed directory),
+     * `appInstaller`, `zsync` (needs [buildId]). [channel] defaults to this client's; an alias is
+     * canonicalised. Loads discovery first when this session has not. Throws [UnsupportedException]
+     * (`product`) when the product runs no Update, the Worker advertises no such template, or a
+     * needed value is missing.
+     */
+    public suspend fun feedUrl(kind: String, channel: String? = null, velopackChannel: String? = null, buildId: String? = null): String {
+        fun none(why: String): Nothing = throw im.plrs.key.core.UnsupportedException(
+            im.plrs.key.core.Unsupported(Feature.updateFeeds, im.plrs.key.core.UnsupportedReason.product, why),
+        )
+        if (core.discoveryDocument() == null && !core.localOnly) core.discover()
+        if (!core.enabled(ServiceSlug.update)) none("the product does not run the update service")
+        val endpoints = core.discoveryDocument()?.services?.get(ServiceSlug.update)?.endpoints
+        return feedUrlFrom(endpoints, core.endpoints.baseUrl, kind, channel ?: core.channel, velopackChannel, buildId)
+            ?: none("this Worker advertises no $kind feed for the product, or the feed needs a value that was not given")
+    }
+
+    /** Sparkle's appcast URL (`feedUrl(appcast)`). */
+    public suspend fun appcastUrl(channel: String? = null): String = feedUrl(FeedKind.appcast, channel)
+
+    /**
      * Hand a decision to the platform's installer ([UpdateClientOptions.installDriver]). Left at the
      * default on a JVM desktop, that is [desktopDriver] (UK-40): the installer for this OS and arch,
      * downloaded, verified against the signed record and opened. On Android the :android module
      * replaces the default with the flavour's driver.
      */
     public suspend fun install(check: UpdateCheck): InstallResult {
+        val driver = installDriver
+        val result = driver.install(check)
+        // §3.13: the desktop driver (UK-40) journals nothing itself; the Android drivers do.
+        if (driver is DesktopInstallDriver && result == InstallResult.Started) {
+            check.releaseId?.let { core.updateEvents.record(UpdateEvent.updateApplied, it, fromRelease = core.version) }
+        }
+        return result
+    }
+
+    /**
+     * The install driver [install] uses: [UpdateClientOptions.installDriver]; left at the default
+     * ([JvmInstallDriver]) on a JVM desktop, [desktopDriver].
+     */
+    public val installDriver: InstallDriver get() {
         val driver = configured?.options?.installDriver ?: JvmInstallDriver
-        if (driver === JvmInstallDriver && !RuntimeFamily.isAndroid) return desktopDriver.install(check)
-        return driver.install(check)
+        return if (driver === JvmInstallDriver && !RuntimeFamily.isAndroid) desktopDriver else driver
     }
 
     /**
@@ -328,6 +431,14 @@ public class UpdateClient private constructor(
     }
 
     // ── Internals ───────────────────────────────────────────────────────────────────────────
+
+    /** §3.13: a decision that offers a newer app build journals `update_offered` once per release. */
+    /** The release is named by its record's tag when it has one, else its version (the Worker's releaseId). */
+    private fun noteOffer(check: UpdateCheck) {
+        val release = check.releaseId ?: return
+        core.updateEvents.recordOnce(UpdateEvent.updateOffered, release, fromRelease = core.version)
+        offerFlow.tryEmit(check)
+    }
 
     private fun requireKeys(): ConfiguredUpdate {
         val c = configured
@@ -450,6 +561,7 @@ public class UpdateClient private constructor(
                 core.commitUpdateSlices(run.feeds, run.releaseRecords)
                 content?.noteFeedDeltas(run.feed.content.deltas)
                 run.revocations?.let { content?.recordRevocations(it) }
+                noteOffer(run.check)
                 run.check
             }
         }

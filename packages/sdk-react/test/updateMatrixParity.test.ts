@@ -235,6 +235,7 @@ describe(`update-matrix rows through the browser adapter (${matrix.rows.length})
       const { version, ...installed } = inp.installed;
       const outlet = inp.outlet;
       const adapter = new BrowserAdapter({
+        auth: "cookie",
         productSlug: PRODUCT,
         baseUrl: BASE,
         fetchImpl,

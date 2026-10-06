@@ -80,6 +80,10 @@
       "title": "UI kits: one design system for every SDK (docs/design/UI-KITS.md)"
     },
     {
+      "id": "MO",
+      "title": "Motion system for the portal and console (notes/S-23)"
+    },
+    {
       "id": "PS",
       "title": "Polaris Key storefront: the Library as a distribution channel (S-21)"
     },
@@ -5787,7 +5791,7 @@
         "design/PORTAL §11.3 PX-20"
       ],
       "brief": "wp/PX-20-quality-bar.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "PX-21",
@@ -6762,6 +6766,36 @@
       "status": "todo"
     },
     {
+      "id": "LX-14a",
+      "title": "Per-license device limit: `licenses.device_limit` set through the admin API and a console **Device limit…** action (raise, lower, clear to inherit); the console shows the effective limit and its source; a license limit beats the tier",
+      "phase": "LX",
+      "stage": "phase A: independent fixes",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": [],
+      "planMode": false,
+      "gates": [
+        "migration",
+        "rule-10",
+        "table-owners",
+        "console-csp-parity",
+        "threat-model",
+        "docs-links"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/design/SIGN-IN.md D-53 (owner, 2026-10-05)",
+        "plans/I-04.md §F.6",
+        "docs/design/EXPERIENCE.md §0.5 O1 item 5",
+        "notes/S-19 §7.2 (seat packs), C2 (licence value over tier)"
+      ],
+      "brief": "wp/LX-14a-per-license-device-limit.md",
+      "status": "todo"
+    },
+    {
       "id": "LX-14",
       "title": "Console licensing: Entitlements and Grants tabs, comp, trial, suppress and move actions, tier rank, catalog `combine` and `entitlementKind`, commerce mappings and restore policy, licensing report",
       "phase": "LX",
@@ -6769,7 +6803,7 @@
       "lane": "console",
       "role": "pkey-implementer",
       "estimateWeeks": [0.7, 1],
-      "deps": ["LX-06", "LX-09", "LX-10", "LX-11", "LX-12"],
+      "deps": ["LX-06", "LX-09", "LX-10", "LX-11", "LX-12", "LX-14a"],
       "planMode": false,
       "gates": ["console-csp-parity", "docs-links"],
       "humanInputs": [],
@@ -7029,7 +7063,7 @@
         "plans/SP-00.md (approved 2026-10-05; decisions delegated to Claude)"
       ],
       "brief": "wp/SP-00-parity-registry-plan.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "SP-08",
@@ -7126,6 +7160,417 @@
       "status": "dropped"
     },
     {
+      "id": "SP-12",
+      "title": "React boot and download surface: one-call `boot()` (`ui.boot`), bearer-mode `release.fetch` and the `distribution` model, `update.feedUrl()` on the desktop bridge, `crashTags()`",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1, 1.5],
+      "deps": [],
+      "planMode": false,
+      "gates": ["corpus-runner", "docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (SP-R06, SP-R09 and the feed-URL half of SP-R08)",
+        "packages/sdk-react/parity.json: ui.boot, release.fetch, release.distribution, update.feeds, crash.tags"
+      ],
+      "brief": "wp/SP-12-react-boot-download.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-13",
+      "title": "React device-local overrides (`config.local`): `config.set`, `config.setting` and `onConfigChange`, persisted in the browser and forwarded to the host on the desktop bridge",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": [],
+      "planMode": false,
+      "gates": ["docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (the `config.local` half of SP-R04 and SP-R05)",
+        "packages/sdk-react/parity.json: config.local"
+      ],
+      "brief": "wp/SP-13-react-config-local.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-14",
+      "title": "React update-health recording (`telemetry.updates`): a record call on the adapter, `update_offered` journalled by the browser update path, renderer events forwarded to the host",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.3, 0.5],
+      "deps": [],
+      "planMode": false,
+      "gates": ["corpus-runner", "docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (the `updates` half of SP-R11)",
+        "packages/sdk-react/parity.json: telemetry.updates"
+      ],
+      "brief": "wp/SP-14-react-update-telemetry.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-15",
+      "title": "React local client and update lifecycle: a network-free `core.local` adapter, `update.driver` (service-worker hand-off on the web, the host's driver over the bridge), `update.bootguard` slots and confirmation",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1, 1.5],
+      "deps": ["SP-12", "SP-14"],
+      "planMode": false,
+      "gates": ["corpus-runner", "docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (SP-R12 and the driver half of SP-R08)",
+        "packages/sdk-react/parity.json: core.local, update.driver, update.bootguard"
+      ],
+      "brief": "wp/SP-15-react-local-update-lifecycle.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-16",
+      "title": "React commerce in bearer mode (`commerce.receipt`): the commerce binding and claim routes in the Worker's `CORS_SERVICE_PATHS`, and React's cross-origin replay of P6-01's transcript",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.2, 0.4],
+      "deps": [],
+      "planMode": false,
+      "gates": ["threat-model", "workerd", "corpus-runner", "docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (SP-R10)",
+        "packages/sdk-react/parity.json: commerce.receipt"
+      ],
+      "brief": "wp/SP-16-react-commerce-cors.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-17",
+      "title": "Swift copy and crash tags: `ErrorCopy` serves the generated `Copy.generated.swift` tables with fallback and placeholder fill (`core.copy`), and `crashTags()` (`crash.tags`)",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": [],
+      "planMode": false,
+      "gates": ["ci:macos", "docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (the serving half of SP-S13 and the Swift crash-tags task of `plans/SP-00.md` §5)",
+        "sdks/swift/parity.json: core.copy, crash.tags"
+      ],
+      "brief": "wp/SP-17-swift-copy-crash-tags.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-18",
+      "title": "Swift `config.setting(key)` and `onConfigChange(key, listener)` over the existing `LocalConfigStore` (`config.local`)",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.2, 0.3],
+      "deps": [],
+      "planMode": false,
+      "gates": ["ci:macos", "docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (the rest of SP-S14)",
+        "sdks/swift/parity.json: config.local"
+      ],
+      "brief": "wp/SP-18-swift-config-local.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-19",
+      "title": "Swift verified download (`release.fetch`): Range and If-Range resume, the 401 body code mapped, and the fetch moved onto the client's transport so `release-fetch-gated.json` replays",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": [],
+      "planMode": false,
+      "gates": ["ci:macos", "corpus-runner", "docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (the Swift half of §3.6)",
+        "sdks/swift/parity.json: release.fetch"
+      ],
+      "brief": "wp/SP-19-swift-release-fetch.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-20",
+      "title": "Kotlin one-call boot in `:sdk` (`ui.boot`): the boot driver moves out of `:ui`'s `PolarisBootState` so the `:conformance` replayer drives `boot-cold-register.json` on the JVM",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.5, 0.8],
+      "deps": [],
+      "planMode": false,
+      "gates": ["ci:kotlin", "ci:android", "corpus-runner", "docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (SP-K06)",
+        "sdks/kotlin/parity.json: ui.boot"
+      ],
+      "brief": "wp/SP-20-kotlin-boot-sdk.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-21",
+      "title": "Kotlin copy API (`core.copy`): `copy.message(code)` and `copy.title(code)` over `Copy.generated.kt` with fallback and placeholder fill; the Android kit's `PolarisCopy` reads it",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.3, 0.5],
+      "deps": [],
+      "planMode": false,
+      "gates": ["ci:kotlin", "ci:android", "docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (the Kotlin copy task of §3.2)",
+        "sdks/kotlin/parity.json: core.copy"
+      ],
+      "brief": "wp/SP-21-kotlin-copy.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-22",
+      "title": "Python copy over the generated catalog (`core.copy`): `polaris_key.copy` serves `copy_generated.py` with React's code-versus-activation table rule and `COPY_FALLBACK`, keeping host English overrides",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.2, 0.4],
+      "deps": [],
+      "planMode": false,
+      "gates": ["docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (the copy half of SP-P14)",
+        "sdks/python/parity.json: core.copy"
+      ],
+      "brief": "wp/SP-22-python-copy.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-23",
+      "title": "Godot copy API (`core.copy`): `copy.message(code)` and `copy.title(code)` over `PKeyCoreCopy` with fallback and placeholder fill; the kit's `PKeyUiCopy` reads it",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "godot",
+      "role": "pkey-godot-engineer",
+      "estimateWeeks": [0.3, 0.5],
+      "deps": [],
+      "planMode": false,
+      "gates": ["docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (the API half of SP-G03 and SP-G13)",
+        "sdks/godot/parity.json: core.copy"
+      ],
+      "brief": "wp/SP-23-godot-copy.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-24",
+      "title": "Godot device-local overrides (`config.local`): `config.set`, `config.setting` and `config.clear` with S-17's names, validated against the catalog type, over `PKeyConfigFileStore`",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "godot",
+      "role": "pkey-godot-engineer",
+      "estimateWeeks": [0.3, 0.5],
+      "deps": [],
+      "planMode": false,
+      "gates": ["docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (the API half of SP-G05)",
+        "sdks/godot/parity.json: config.local"
+      ],
+      "brief": "wp/SP-24-godot-config-local.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-25",
+      "title": "Godot verified download (`release.fetch`): a public fetch API over `PKeyDownload`, If-Range on resume, and the `releaseFetch` mapping in `suite_transcripts`",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "godot",
+      "role": "pkey-godot-engineer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": [],
+      "planMode": false,
+      "gates": ["corpus-runner", "docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (the Godot half of §3.6)",
+        "sdks/godot/parity.json: release.fetch"
+      ],
+      "brief": "wp/SP-25-godot-release-fetch.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-26",
+      "title": "Godot updater feed URLs (`update.feeds`): App Installer and zsync feeds, the Velopack `releases.<velopackChannel>` file, the channel-alias rewrite and the typed `unsupported (product)`, replaying `feed-url-matrix.json`",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "godot",
+      "role": "pkey-godot-engineer",
+      "estimateWeeks": [0.5, 0.8],
+      "deps": ["P3-09"],
+      "planMode": false,
+      "gates": ["corpus-runner", "docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (the Godot half of §3.7)",
+        "sdks/godot/parity.json: update.feeds"
+      ],
+      "brief": "wp/SP-26-godot-update-feeds.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-27",
+      "title": "Godot desktop keyring stores (`core.store`): macOS Keychain through a macOS `PKeyApple` build, Windows Credential Manager through `pkey_win.dll`, Linux Secret Service, with file-store migration and a surfaced `keyring-error`",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "native",
+      "role": "pkey-godot-engineer",
+      "estimateWeeks": [1.5, 2.5],
+      "deps": ["P5-05"],
+      "planMode": false,
+      "gates": ["ci:macos", "ci:windows", "docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (SP-G11)",
+        "sdks/godot/parity.json: core.store"
+      ],
+      "brief": "wp/SP-27-godot-desktop-keyring.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-28",
+      "title": "Steam depot pack transport for desktop SDKs (`packs.transport.steam`): Node, Python, Swift (macOS) and Kotlin (JVM) read an installed depot or DLC through P5-08's `steam` transport contract",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1.5, 2.5],
+      "deps": ["P5-08"],
+      "planMode": false,
+      "gates": ["all-sdks", "ci:macos", "ci:kotlin", "docs-generated"],
+      "humanInputs": [
+        "Steamworks partner account (P5-08's test app, build account and test branch)",
+        "test devices (a Steam client on macOS, Windows and Linux)"
+      ],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (none (P5-08 covered Godot only))",
+        "packages/sdk-node/parity.json: packs.transport.steam",
+        "sdks/python/parity.json: packs.transport.steam",
+        "sdks/swift/parity.json: packs.transport.steam",
+        "sdks/kotlin/parity.json: packs.transport.steam"
+      ],
+      "brief": "wp/SP-28-steam-desktop-transport.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-29",
+      "title": "MSIX optional-package and Flatpak extension pack transports (`packs.transport.msix`, `packs.transport.flatpak`): the `pkey transport` build generators and the Node and Python transports",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1.5, 2.5],
+      "deps": ["P5-08"],
+      "planMode": false,
+      "gates": ["ci:windows", "cli-bundle", "docs-generated"],
+      "humanInputs": [
+        "a code-signing certificate for MSIX test packages",
+        "test devices (Windows 10/11 and a Linux desktop with Flatpak)"
+      ],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (none (program README §9: the `msix-optional` and `flatpak-ext` transports))",
+        "packages/sdk-node/parity.json: packs.transport.msix, packs.transport.flatpak",
+        "sdks/python/parity.json: packs.transport.msix, packs.transport.flatpak"
+      ],
+      "brief": "wp/SP-29-msix-flatpak-node-python.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-30",
+      "title": "Godot MSIX optional-package and Flatpak extension pack transports (`packs.transport.msix`, `packs.transport.flatpak`) over SP-29's layout",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "godot",
+      "role": "pkey-godot-engineer",
+      "estimateWeeks": [1, 1.5],
+      "deps": ["SP-29"],
+      "planMode": false,
+      "gates": ["ci:windows", "docs-generated"],
+      "humanInputs": [
+        "test devices (Windows 10/11 and a Linux desktop with Flatpak)"
+      ],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (none (program README §9))",
+        "sdks/godot/parity.json: packs.transport.msix, packs.transport.flatpak"
+      ],
+      "brief": "wp/SP-30-godot-msix-flatpak.md",
+      "status": "todo"
+    },
+    {
       "id": "HA-01",
       "title": "Hosted-asset core: `hosted_assets` table, `core/safeFetch.ts` guard, `core/hostedAssets.ts` ingest (cap, sniff, SHA-256, put, ref) and Content-Type on every R2 put",
       "phase": "HA",
@@ -7146,7 +7591,7 @@
         "notes/S-20 §9 HA-01"
       ],
       "brief": "wp/HA-01-hosted-asset-core.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "HA-02",
@@ -7212,7 +7657,7 @@
         "notes/S-20 §10.2 Q5"
       ],
       "brief": "wp/HA-04-manifest-presentation.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "HA-05",
@@ -7553,7 +7998,7 @@
       "optional": false,
       "refs": ["docs/design/UI-KITS.md §4.7", "plans/UK-02.md"],
       "brief": "wp/UK-02a-kit-copy-catalog.md",
-      "status": "todo",
+      "status": "done",
       "planRef": "UK-02"
     },
     {
@@ -8408,6 +8853,285 @@
       "optional": false,
       "refs": ["docs/design/UI-KITS.md §7.4, §10", "plans/HA-11.md"],
       "brief": "wp/UK-41-must-tier-closeout.md",
+      "status": "todo"
+    },
+    {
+      "id": "MO-01",
+      "title": "Motion tokens in `@polaris-key/brand`: `micro`, `moderate`, `deliberate`, `shimmer` durations, `emphasized` and `spring` easings, distances, scales, stagger and delays through `gen:brand` to CSS, Tailwind, TS, JSON and the kit languages; BRAND §7.5 and UI-KITS §4.8 updated",
+      "phase": "MO",
+      "stage": "wave 1: foundation",
+      "lane": "ui",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.3, 0.5],
+      "deps": [],
+      "planMode": false,
+      "gates": ["drift-gate", "generator-goldens", "docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-23 §5",
+        "notes/S-23 D3, D4",
+        "docs/design/BRAND.md §7.5",
+        "docs/design/UI-KITS.md §4.8"
+      ],
+      "brief": "wp/MO-01-brand-motion-tokens.md",
+      "status": "done"
+    },
+    {
+      "id": "MO-02",
+      "title": "The motion layer in the console app: `src/ui/motion/` (`viewTransition`, `useReducedMotion`, `Presence`, `CountUp`, `setMeter`, `highlight`, `Celebration`) and `src/motion.css` (keyframes, the nine patterns, gated View Transition rules), exit animations for every Radix overlay, sonner on the tokens, the missing `pk-refetch`, and a motion lint",
+      "phase": "MO",
+      "stage": "wave 1: foundation",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.6, 1],
+      "deps": ["MO-01"],
+      "planMode": false,
+      "gates": ["console-csp-parity", "ci"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-23 §6",
+        "notes/S-23 D1, D2, D7, D8",
+        "prototype/motion/motion.css",
+        "prototype/motion/motion.js"
+      ],
+      "brief": "wp/MO-02-motion-layer.md",
+      "status": "in-review"
+    },
+    {
+      "id": "MO-03",
+      "title": "E2E determinism and the motion smoke suite: every e2e context runs with reduced motion; a new `e2e/motion.e2e.test.ts` asserts token durations, exits, View Transitions, the list budget and zero CSP violations with motion on",
+      "phase": "MO",
+      "stage": "wave 1: foundation",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.3, 0.5],
+      "deps": ["MO-02"],
+      "planMode": false,
+      "gates": ["portal-e2e", "console-csp-parity", "ci"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["notes/S-23 §6.8", "notes/S-23 D9"],
+      "brief": "wp/MO-03-e2e-motion-determinism.md",
+      "status": "todo"
+    },
+    {
+      "id": "MO-04",
+      "title": "Console navigation motion: route fade-through, forward/back drill-down by route depth, licence key and record title as shared elements, record-tab indicator morph and panel fade-through, SegmentedControl thumb",
+      "phase": "MO",
+      "stage": "wave 2: areas",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["MO-03"],
+      "planMode": false,
+      "gates": ["console-csp-parity", "ci"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-23 §6.1 morph, shared-element",
+        "notes/S-23 §6.3",
+        "prototype/motion/console.html"
+      ],
+      "brief": "wp/MO-04-console-navigation-motion.md",
+      "status": "todo"
+    },
+    {
+      "id": "MO-05",
+      "title": "Portal navigation motion: route transitions with scroll reset and heading focus, Library tile → product hero shared element, smooth section scroll gated by reduced motion, JumpPalette exit",
+      "phase": "MO",
+      "stage": "wave 2: areas",
+      "lane": "portal",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["MO-03"],
+      "planMode": false,
+      "gates": ["portal-e2e", "console-csp-parity", "ci"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-23 §6.1 shared-element",
+        "notes/S-23 §4.2",
+        "prototype/motion/portal.html"
+      ],
+      "brief": "wp/MO-05-portal-navigation-motion.md",
+      "status": "todo"
+    },
+    {
+      "id": "MO-06",
+      "title": "Portal devices and activation moments: Remove/Replace inline confirm expands, freed devices leave the list, the seat meter and count animate, the Activate dialog morphs between steps and celebrates the first activation, FreeDevicePage success",
+      "phase": "MO",
+      "stage": "wave 2: areas",
+      "lane": "portal",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.5, 0.8],
+      "deps": ["MO-03", "SP-08"],
+      "planMode": false,
+      "gates": ["portal-e2e", "console-csp-parity", "ci"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-23 §6.1 expand, list, success",
+        "EXPERIENCE.md §0.7",
+        "SIGN-IN.md §3.7, §3.14",
+        "prototype/motion/portal.html"
+      ],
+      "brief": "wp/MO-06-portal-device-activation-motion.md",
+      "status": "todo"
+    },
+    {
+      "id": "MO-07",
+      "title": "Portal Library and Discover motion: first-load stagger, tile lift and press, developer art fades in on decode, grid ↔ list morph, the \"Added just now\" ring, Discover tiles",
+      "phase": "MO",
+      "stage": "wave 2: areas",
+      "lane": "portal",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["MO-03", "PX-16"],
+      "planMode": false,
+      "gates": ["portal-e2e", "console-csp-parity", "ci"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-23 §6.1 stagger-list, press",
+        "PORTAL.md §4.12–§4.16",
+        "prototype/motion/portal.html"
+      ],
+      "brief": "wp/MO-07-portal-library-motion.md",
+      "status": "todo"
+    },
+    {
+      "id": "MO-08",
+      "title": "Console overlays and controls: the Drawer slides from the edge, popovers, menus, selects and tooltips enter from their side, press states on buttons, icon buttons, switches, radio cards and copy buttons, the Button hover filter transitioned, the ⌘K palette",
+      "phase": "MO",
+      "stage": "wave 2: areas",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["MO-02"],
+      "planMode": false,
+      "gates": ["console-csp-parity", "ci"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["notes/S-23 §6.1 enter, exit, press", "notes/S-23 §4.2"],
+      "brief": "wp/MO-08-console-overlay-controls-motion.md",
+      "status": "todo"
+    },
+    {
+      "id": "MO-09",
+      "title": "Console data surfaces: table rows enter, leave and reorder within the 30-row budget, facet chips pop, the bulk-action bar presence, status pills ease and pop, chart fills and counts animate, StatTile and Skeleton get the shimmer (no more `animate-pulse` in `ui/`), RefetchBar, Stepper",
+      "phase": "MO",
+      "stage": "wave 2: areas",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.6, 1],
+      "deps": ["MO-03"],
+      "planMode": false,
+      "gates": ["console-csp-parity", "ci"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-23 §6.1 list, skeleton, status",
+        "notes/S-23 §6.2",
+        "notes/S-23 §3.5"
+      ],
+      "brief": "wp/MO-09-console-data-motion.md",
+      "status": "todo"
+    },
+    {
+      "id": "MO-10",
+      "title": "Console shell motion (after UX-10 merges): the phone bottom sheet slides up, the phone nav drawer slides from the edge, the route Suspense fallback becomes a skeleton, sidebar and state pages, Tailwind aliases for the new keyframes, and `animate-pulse` retired on platform pages and Home",
+      "phase": "MO",
+      "stage": "wave 3: after UX-10",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.7],
+      "deps": ["MO-02"],
+      "planMode": false,
+      "gates": ["console-csp-parity", "ci"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["notes/S-23 §4.2", "notes/S-23 §6.1"],
+      "brief": "wp/MO-10-console-shell-motion.md",
+      "status": "todo"
+    },
+    {
+      "id": "MO-11",
+      "title": "Console moments and counters: EXPERIENCE §0.7's first-time celebrations (first licence, first catalog publish, first release, store connected, product launched), the key-rotation countdown ring and refreshed-devices meter, Overview and Home attention lists stagger",
+      "phase": "MO",
+      "stage": "wave 3: after UX-29 and UX-12",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["MO-09"],
+      "planMode": false,
+      "gates": ["console-csp-parity", "ci"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "EXPERIENCE.md §0.7",
+        "EXPERIENCE.md §0.4 S2, O3",
+        "notes/S-23 §6.4"
+      ],
+      "brief": "wp/MO-11-console-moments-counters.md",
+      "status": "todo"
+    },
+    {
+      "id": "MO-12",
+      "title": "Reduce-motion preference: a Motion row (System, Reduced) beside the theme in the console account menu and in the portal's Account → Appearance, stored per browser and applied as `html[data-motion]` from the entry modules",
+      "phase": "MO",
+      "stage": "wave 3: after UX-10",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.2, 0.3],
+      "deps": ["MO-02"],
+      "planMode": false,
+      "gates": ["console-csp-parity", "ci"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["notes/S-23 D3", "notes/S-23 §6.6"],
+      "brief": "wp/MO-12-reduce-motion-preference.md",
+      "status": "todo"
+    },
+    {
+      "id": "MO-13",
+      "title": "Motion QA closeout: frame strips of every pattern in the real app (both themes, reduced), the 4× CPU frame budget in CI-optional e2e, the contributor docs page and the component inventory updated",
+      "phase": "MO",
+      "stage": "wave 4: closeout",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.3, 0.5],
+      "deps": [
+        "MO-04",
+        "MO-05",
+        "MO-06",
+        "MO-07",
+        "MO-08",
+        "MO-09",
+        "MO-10",
+        "MO-11",
+        "MO-12"
+      ],
+      "planMode": false,
+      "gates": ["console-csp-parity", "docs-links", "ci"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["notes/S-23 §3.5", "notes/S-23 §6.2 rule 7", "notes/S-23 §11"],
+      "brief": "wp/MO-13-motion-qa-closeout.md",
       "status": "todo"
     },
     {

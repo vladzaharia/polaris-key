@@ -163,6 +163,11 @@ export interface PacksWiring {
   feedDeltas?: () => FeedDeltas | null;
   /** Reads the committed feed's menu from the cache before the engine first plans. */
   loadFeedDeltas?: () => Promise<void>;
+  /** Update-health hooks (SDK parity pass §3.13): fresh installs, and pipeline failures. */
+  outcomes?: {
+    installed: (installs: readonly PackInstall[]) => void;
+    failed: (packIds: readonly string[], code: string) => void;
+  };
 }
 
 export class PacksClient {
@@ -195,7 +200,31 @@ export class PacksClient {
    */
   async ensure(packIds: readonly string[]): Promise<PackInstall[]> {
     this.w.ctx.requireService("release", Feature.packsState);
-    return (await this.start()).ensure(packIds);
+    return this.observed(packIds, async () =>
+      (await this.start()).ensure(packIds),
+    );
+  }
+
+  /** Run one install call, reporting fresh installs and failures to the update-health hooks. */
+  private async observed(
+    packIds: readonly string[],
+    work: () => Promise<PackInstall[]>,
+  ): Promise<PackInstall[]> {
+    const started = Math.floor(Date.now() / 1000);
+    let out: PackInstall[];
+    try {
+      out = await work();
+    } catch (e) {
+      const code = (e as { code?: unknown }).code;
+      this.w.outcomes?.failed(
+        packIds,
+        typeof code === "string" ? code : "pack-failed",
+      );
+      throw e;
+    }
+    const fresh = out.filter((i) => !i.embedded && i.installedAt >= started);
+    if (fresh.length > 0) this.w.outcomes?.installed(fresh);
+    return out;
   }
 
   /** The install state and this process's running set. */
@@ -276,7 +305,22 @@ export class PacksClient {
     opts: Omit<RunBootFetchOptions, "stamp">,
   ): Promise<{ result: BootFetchResult; installed: string[] }> {
     const engine = await this.start();
-    return runBootFetch(engine, { ...opts, stamp: await this.readStamp() });
+    const r = await runBootFetch(engine, {
+      ...opts,
+      stamp: await this.readStamp(),
+    });
+    if (r.result === "failed" || r.result === "offline") {
+      const { requiredPacks, essentialPacks } = await this.bootOptions();
+      const missing = [...requiredPacks, ...essentialPacks].filter(
+        (id) => !r.installed.includes(id),
+      );
+      if (missing.length > 0)
+        this.w.outcomes?.failed(
+          missing,
+          r.result === "offline" ? "network-error" : "fetch-failed",
+        );
+    }
+    return r;
   }
 
   /**
@@ -285,7 +329,10 @@ export class PacksClient {
    */
   async ensureReleases(targets: readonly PackTarget[]): Promise<PackInstall[]> {
     this.w.ctx.requireService("release", Feature.packsState);
-    return (await this.start()).ensureReleases(targets);
+    return this.observed(
+      targets.map((t) => t.pack),
+      async () => (await this.start()).ensureReleases(targets),
+    );
   }
 
   /**

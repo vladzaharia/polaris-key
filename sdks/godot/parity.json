@@ -33,8 +33,13 @@
     },
     "core.store": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-27",
       "note": "P1-02 ships the 0600 file store with surfaced failures and store_status() (file or indexeddb, degraded not-persistent). PKeyCore picks a platform store by default when its plugin is present (Keychain, then Keystore, then the file store): iOS, P5-05's Keychain store (core/store/keychain_store.gd, PKeyKeychainStore over PKeyApple: device id and token AfterFirstUnlockThisDeviceOnly with no access group); Android, P5-06's Keystore store (core/store/keystore_store.gd, PKeyKeystoreStore over PKeyAndroid: one AndroidKeyStore AES-256-GCM key per product, StrongBox where present, blobs in noBackupFilesDir, a lost key surfaced and re-enrolled). Both migrate from the file store and surface failures as keyring-error. No work package owns a desktop keyring, so the desktop runtimes keep the file store."
+    },
+    "core.copy": {
+      "status": "planned",
+      "wp": "SP-23",
+      "note": "core/copy_generated.gd (PKeyCoreCopy) is generated from copy.en.json, but no API reads it: there is no copy.message(code)/copy.title(code) and the kit's PKeyUiCopy keeps its own table (SP-G03). Needs that API over the generated table, a unit test of its fallback and placeholders, and SP-G13's .po generation."
     },
     "license.gate": {
       "status": "implemented"
@@ -63,6 +68,9 @@
     "license.reregister": {
       "status": "implemented"
     },
+    "license.refusals": {
+      "status": "implemented"
+    },
     "config.resolve": {
       "status": "implemented",
       "note": "OS.get_environment drops a leading U+FEFF from a value, so on a Godot host the two U+FEFF rows of config-matrix.json hold for the resolver, not for the process environment. A number's value is Godot's own reading, which is not correctly rounded, and a string value's \\u0000 reads as U+FFFD (both WIRE-CONTRACT-V3 §10); verdicts are unaffected."
@@ -81,6 +89,11 @@
     },
     "config.mirror": {
       "status": "implemented"
+    },
+    "config.local": {
+      "status": "planned",
+      "wp": "SP-24",
+      "note": "SP-G05 persists overrides by default (PKeyConfigFileStore at user://pkey_settings.cfg) and a store write emits config_changed (tests/config/test_store.gd), but there is no config.set/config.setting API with S-17's names and nothing validates a written value against the catalog type."
     },
     "devices.fingerprint": {
       "status": "implemented",
@@ -105,22 +118,43 @@
       "status": "implemented",
       "note": "The report also carries the Godot keys engine and outlet (the Worker bounds them; outlet is PKeyCore.reported_outlet()), and the updater's queued update events in updates (P6-03, P3-10)."
     },
+    "telemetry.updates": {
+      "status": "implemented"
+    },
     "devices.attest": {
       "status": "implemented",
       "except": [
-        { "runtime": "linux", "reason": "runtime" },
-        { "runtime": "macos", "reason": "runtime" },
-        { "runtime": "windows", "reason": "runtime" },
-        { "runtime": "web", "reason": "runtime" },
-        { "runtime": "ios", "reason": "outlet" },
-        { "runtime": "android", "reason": "outlet" }
+        {
+          "runtime": "linux",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "macos",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "web",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "ios",
+          "reason": "outlet"
+        },
+        {
+          "runtime": "android",
+          "reason": "outlet"
+        }
       ],
       "note": "P6-02: PolarisKey.devices.attest() (services/devices.gd) posts devices/attest/challenge, then devices/attest with an App Attest attestation (PKeyApple.app_attest over PolarisKeyPlatform's DCAppAttestService ops, clientDataHash = SHA-256 of the challenge's requestHash; the key id kept in the Keychain, re-attested with a fresh key when a reinstall, migration or restore killed it) or a standard Play Integrity token (PKeyAndroid.integrity_token over polaris-key-platform's play flavour, the requestHash verbatim, the cloud project number from the challenge or PKeyOptions.play_cloud_project_number). Unsupported runtime on desktop and web (and where App Attest does not run, the simulator); outlet on an iOS install that is not App Store or TestFlight, an Android install Google Play did not make or the direct plugin build, and a mobile build without the native plugin. Server codes are surfaced verbatim."
     },
     "identity.oidc": {
       "status": "planned",
-      "unowned": true,
-      "note": "Native Godot has no completion path for the OIDC redirect; see P1-07, which ships device-code sign-in instead."
+      "wp": "I-15",
+      "note": "Native Godot has no completion path for the OIDC redirect: it waits on the native redirect token route (I-15). The deprecated /identity/auth/poll route is not a substitute. Until then P1-07's device-code sign-in is the path, and identity.sign_in_with_browser() opens it in the system browser."
     },
     "identity.devicecode": {
       "status": "implemented",
@@ -135,11 +169,24 @@
     "release.record": {
       "status": "implemented"
     },
+    "release.fetch": {
+      "status": "planned",
+      "wp": "SP-25",
+      "note": "core/download.gd streams with Range resume and the updater checks size and SHA-256, but there is no public fetch call (only the updater's internal sidecar and APK paths) and a resume sends no If-Range, which release-fetch-gated.json records. Needs a release fetch API over PKeyDownload before suite_transcripts can map releaseFetch."
+    },
+    "release.distribution": {
+      "status": "implemented"
+    },
     "update.check": {
       "status": "implemented"
     },
     "update.feed": {
       "status": "implemented"
+    },
+    "update.feeds": {
+      "status": "planned",
+      "wp": "SP-26",
+      "note": "The updater builds the Sparkle appcast, WinSparkle and the Velopack feed directory (PKeyUpdater.feed_url, PKeyDiscovery.appcast_url_from) for this build's channel, but not the App Installer or zsync feeds, a Velopack releases.<velopackChannel> file, the channel-alias rewrite, or the typed unsupported (product) feed-url-matrix.json expects."
     },
     "update.decide": {
       "status": "implemented"
@@ -165,6 +212,9 @@
     "outlet.detect": {
       "status": "implemented",
       "note": "distribution/outlet.gd PKeyOutlet.detect_outlet over distribution/outlet_signals.gd (Flatpak, snap, AppImage, Steam library and environment, itch receipt, macOS receipt and Mach-O leaf, Caskroom, Windows path conventions, Android getInstallSourceInfo through JavaClassWrapper (PKeyAndroid.install_source() reads the same facts, plus the initiator's full signer set, through the P5-06 plugin), web display mode); iOS reads AppDistributor (raced against 2 s, every launch), embedded.mobileprovision and ALTBundleIdentifier through the Apple plugin's facade (native/pkey_apple.gd, P5-05; no evidence without the plugin or before the launch read arrives); the Windows package reader is a hook that answers unavailable until a Windows native reader lands. PKeyCore.update_outlet() feeds the decision and PKeyCore.reported_outlet() the device report; PolarisKey.update.outlet() and detected() expose the result, as client.update.outlet and detected do in Node and Python."
+    },
+    "crash.tags": {
+      "status": "implemented"
     },
     "packs.record": {
       "status": "implemented",
@@ -312,7 +362,7 @@
     },
     "packs.transport.msix": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-30",
       "note": "No work package owns an MSIX transport for Godot (program README §9).",
       "except": [
         {
@@ -339,7 +389,7 @@
     },
     "packs.transport.flatpak": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-30",
       "note": "No work package owns a Flatpak transport for Godot (program README §9).",
       "except": [
         {
@@ -368,9 +418,18 @@
       "status": "implemented",
       "note": "PKeyStages (core/stages.gd) replays every stage-matrix.json row, probe, guard and confirm case; PKeyBoot drives every row through PolarisKey.boot() with a scripted host (suite_boot)."
     },
+    "ui.boot": {
+      "status": "implemented"
+    },
     "ui.kit": {
       "status": "implemented",
       "note": "P1-10's v1 kit: PKeyBoot, gate, activation panel, sign-in dialog with QR, offline activation, settings panel, status banner, update prompt, entitlement badge and dev-menu section, pinned as structural snapshots and centred at five window sizes (suite_ui); a neutral default look over the game's theme, with opt-in Polaris Key branding and an optional Powered-by badge (PKeyOptions.ui_*, PKeyUiTheme; suite_brand). PKeyDeviceList is not in v1 (unowned; needs P1-05) and the pack progress UI is P4-08's."
+    },
+    "ui.cli": {
+      "status": "na",
+      "runtime": ["linux", "macos", "windows", "android", "ios", "web"],
+      "reason": "runtime",
+      "note": "This SDK ships a widget kit (ui.kit); the terminal kit is the headless SDKs' expectation."
     },
     "commerce.receipt": {
       "status": "implemented",

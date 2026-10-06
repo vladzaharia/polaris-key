@@ -41,7 +41,28 @@ public data class UpdateCheck(
     val feed: FeedSource,
     val record: RecordSource,
     val errors: List<UpdateCheckError>,
+    /**
+     * The `tag` of the verified release record the decision's target pins, when it names one. Not part
+     * of the wire `UpdateCheck` ([json]); it is what [releaseId] names the offered release by.
+     */
+    val releaseTag: String? = null,
 ) {
+    /**
+     * The update-health release id of the release the decision offers (the record's tag, else the
+     * version), or null when the decision offers no release.
+     */
+    val releaseId: String?
+        get() {
+            val release = when (val d = decision) {
+                is UpdateDecision.CodeReady -> d.release
+                is UpdateDecision.Binary -> d.release
+                is UpdateDecision.Store -> d.release
+                is UpdateDecision.Platform -> d.release
+                else -> return null
+            }
+            return releaseId(release.version, releaseTag)
+        }
+
     /** Where the decision's feed came from. */
     public enum class FeedSource(public val wire: String) { network("network"), committed("committed") }
 
@@ -271,7 +292,7 @@ public suspend fun runUpdateCheck(
     )
     return UpdateCheckOutcome.Ok(
         UpdateCheckRun(
-            UpdateCheck(feed.channel, decision, feedSource, recordSource, errors.toList()),
+            UpdateCheck(feed.channel, decision, feedSource, recordSource, errors.toList(), record?.tag),
             feed, record, feeds, releaseRecords, revocations,
         ),
     )

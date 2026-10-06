@@ -151,6 +151,7 @@ public struct PacksOptions: Sendable, Equatable {
             && a.handlers.map(\.type) == b.handlers.map(\.type)
             && a.excludeFromBackup == b.excludeFromBackup
             && (a.objectTransport == nil) == (b.objectTransport == nil)
+            && a.platformTransport?.id == b.platformTransport?.id
     }
 
     /// The content stamp (`pkey-content.json`). Without one the facet has no packs (`ensure`
@@ -172,13 +173,20 @@ public struct PacksOptions: Sendable, Equatable {
     public var excludeFromBackup: Bool
     /// The blob transport. Default `URLSessionPackObjectTransport()`.
     public var objectTransport: (any PackObjectTransport)?
+    /// P5-08: the store transport that carries some packs (`AppleAssetPackTransport` in
+    /// PolarisKeyUpdate for Apple-hosted Background Assets), or nil. A carried pack is installed
+    /// only through it; while it is unavailable the pack is refused with
+    /// `plan-transport-unsupported`, never fetched from the CDN.
+    public var platformTransport: (any PackPlatformTransport)?
 
     public init(
         contentStamp: PackStampSource? = nil, embedded: [EmbeddedPack] = [], axes: [String: [String]] = [:],
         engine: String? = nil, memBudget: Int = 256 * 1024 * 1024, dir: URL? = nil,
         handlers: [any PackHandler] = [], excludeFromBackup: Bool = true,
-        objectTransport: (any PackObjectTransport)? = nil
+        objectTransport: (any PackObjectTransport)? = nil,
+        platformTransport: (any PackPlatformTransport)? = nil
     ) {
+        self.platformTransport = platformTransport
         self.contentStamp = contentStamp
         self.embedded = embedded
         self.axes = axes
@@ -247,7 +255,26 @@ public actor PacksClient {
     /// download), or `PolarisError` `service-unavailable` when the product runs no Release service.
     public func ensure(_ packIds: [String]) async throws -> [PackInstall] {
         try await core.requireService(.release, feature: Feature.packsState)
-        return try await start().ensure(packIds)
+        let engine = try await start()
+        let before = (try? await engine.state().running) ?? [:]
+        do {
+            let installed = try await engine.ensure(packIds)
+            for i in installed where before[i.packId]?.version != i.version {
+                // P6-03: a pack switch is an applied update for the pack's deliverable.
+                await core.journal.record(
+                    UpdateEvent.updateApplied, release: "\(i.packId)@\(i.version)",
+                    fromRelease: before[i.packId].map { "\(i.packId)@\($0.version)" },
+                    channel: core.channel, deliverable: i.packId,
+                    packSetId: await engine.packSetId())
+            }
+            return installed
+        } catch let e as PackError {
+            let packId = e.packId ?? packIds.first ?? "pack"
+            await core.journal.record(
+                UpdateEvent.packFailed, release: packId, channel: core.channel,
+                deliverable: packId, code: e.code)
+            throw e
+        }
     }
 
     /// The install state and this process's running set.
@@ -443,12 +470,17 @@ public actor PacksClient {
                 // stamp holds (`stampHolds` gives nil) are treated as no holds: the record hash a
                 // decision names still binds the bytes.
                 holds: ((try? readStampBytes()) ?? nil).flatMap { stampHolds($0) } ?? [],
-                feedDeltas: { [feedMenu] in feedMenu.with { $0 ?? nil } }))
+                feedDeltas: { [feedMenu] in feedMenu.with { $0 ?? nil } },
+                platform: opts.platformTransport))
         if feedMenu.with({ $0 == nil }), let load = loadFeedDeltas, let loaded = await load() {
             feedMenu.with { if $0 == nil { $0 = .some(loaded) } }
         }
         let listeners = self.listeners
-        engine.on { e in for l in listeners.with({ Array($0.values) }) { l(e) } }
+        engine.on { e in
+            for l in listeners.with({ Array($0.values) }) { l(e) }
+            // The facade's `packs` event (notes/SDK-PARITY-PASS.md §3.11): the same progress.
+            core.emit(.packs(pack: e.packId, phase: e.phase, done: e.done, total: e.total))
+        }
         // A handler registered while the engine loads goes straight to it.
         building.with { $0 = engine }
         for h in pendingHandlers.with({ $0 }) { try? engine.registerHandler(h) }

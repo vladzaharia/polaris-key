@@ -25,7 +25,8 @@ had no way to say "there is no licence here, sync anyway".
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Literal, Optional
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Literal, Optional, Tuple
 
 from ..core.cache import CacheManager
 from ..core.context import CoreContext, now_sec
@@ -46,7 +47,27 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 # no ``channels`` entitlement. Re-exported for hosts that imported it from here.
 from ..constants_generated import CHANNEL_STABLE
 
-__all__ = ["LicenseClient", "LicenseAcquiredListener", "CHANNEL_STABLE"]
+__all__ = ["LicenseClient", "LicenseAcquiredListener", "LicenseInfo", "CHANNEL_STABLE"]
+
+
+@dataclass(frozen=True)
+class LicenseInfo:
+    """A summary of the verified licence document for an account or "About" screen (SDK parity
+    pass §3.3), read from the enforced entitlements the Worker writes (``license.tier``,
+    ``license.tierLabel``, ``deviceLimit``, ``channels``) and the signed ``profile``.
+
+    ``deviceCount`` and ``expiresAt`` are ``None`` today: the licence document carries neither
+    (the per-licence expiry arrives with licence document v2, LX-18); the fields exist so a UI
+    written now renders them when they do."""
+
+    licenseId: str
+    tier: Optional[str] = None
+    tierLabel: Optional[str] = None
+    deviceLimit: Optional[int] = None
+    deviceCount: Optional[int] = None
+    expiresAt: Optional[int] = None
+    profile: Optional[DocProfile] = None
+    entitledChannels: Tuple[str, ...] = ("stable",)
 
 
 #: Raised after a credential is minted, so the facade can sync without every activation
@@ -106,12 +127,51 @@ class LicenseClient:
     def doc(self) -> Optional[LicenseDoc]:
         return self._cache.license_doc()
 
-    def is_entitled(self, name: str) -> bool:
+    def is_entitled(self, name: str, now: Optional[int] = None) -> bool:
+        """Whether the licence grants the boolean flag ``name``.
+
+        ``False`` whenever the gate is not usable (S-19 G11): a revoked, expired, blocked or
+        never-activated install answers ``False`` even while a previously verified document
+        still names the flag. Before this, a revoked device kept its unlocks until the cache
+        was cleared.
+        """
         doc = self.doc
-        if doc is None:
+        if doc is None or not self.is_licensed(now):
             return False
         entry = doc.entitlements.get(name)
         return bool(entry is not None and entry.value is True)
+
+    def entitlement_value(self, name: str, now: Optional[int] = None) -> Any:
+        """The raw value of entitlement ``name`` (a string, number, list or bool), or ``None``
+        when the document does not carry it or the gate is not usable (S-19 G11)."""
+        doc = self.doc
+        if doc is None or not self.is_licensed(now):
+            return None
+        entry = doc.entitlements.get(name)
+        return entry.value if entry is not None else None
+
+    def license_info(self) -> Optional[LicenseInfo]:
+        """The verified licence's summary (:class:`LicenseInfo`), or ``None`` without one.
+        Read regardless of the gate, so an account screen can show WHICH licence was revoked."""
+        doc = self.doc
+        if doc is None:
+            return None
+
+        def raw(name: str) -> Any:
+            entry = doc.entitlements.get(name)
+            return entry.value if entry is not None else None
+
+        tier = raw("license.tier")
+        label = raw("license.tierLabel")
+        limit = raw("deviceLimit")
+        return LicenseInfo(
+            licenseId=doc.licenseId,
+            tier=tier if isinstance(tier, str) else None,
+            tierLabel=label if isinstance(label, str) else None,
+            deviceLimit=limit if isinstance(limit, int) and not isinstance(limit, bool) else None,
+            profile=doc.profile,
+            entitledChannels=tuple(self.entitled_channels()),
+        )
 
     def get_entitlements(self) -> Dict[str, Any]:
         doc = self.doc

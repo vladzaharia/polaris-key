@@ -36,12 +36,20 @@ extends EditorExportPlugin
 ## executable bits Sparkle's helpers lose in Godot's copy. Windows exports take the plugins' DLLs and
 ## the Velopack shim from the Windows GDExtension's [dependencies]; the plugin removes them again
 ## from a Microsoft Store export (outlet kind ms-store), whose only updater is StoreContext.
+##
+## Every export that carries the kit's bundled fonts also gets their licence files
+## (PKeyUiTheme.FONT_LICENCES, `_export_file`), which no include filter has to name.
 
 const S := preload("res://addons/polaris_key/core/build_stamp.gd")
 const Apple := preload("res://addons/polaris_key/native/apple_export.gd")
 const N := preload("res://addons/polaris_key/export/native_export.gd")
+const UiTheme := preload("res://addons/polaris_key/ui/theme/pkey_ui_theme.gd")
 
 var _export_path := ""
+## The bundled fonts' licence files already in this export (UiTheme.FONT_LICENCES): each is added
+## once, beside the first font resource that needs it, and a copy the preset's include filter
+## also selects is skipped so the pack holds one entry.
+var _licences_shipped := {}
 var _export_macos := false
 var _export_windows_store := false
 var _store_before := {}
@@ -170,6 +178,7 @@ func _get_export_features(platform: EditorExportPlatform, _debug: bool) -> Packe
 func _export_begin(features: PackedStringArray, is_debug: bool, path: String, _flags: int) -> void:
 	var platform := S.platform_for(get_export_platform().get_os_name() if get_export_platform() != null else "", features)
 	_export_path = path
+	_licences_shipped = {}
 	_export_macos = platform == "macos" and _sparkle()["enabled"]
 	if platform == "macos" and _mac_app_store() and FileAccess.file_exists(N.SPARKLE_GDEXTENSION):
 		push_error("Polaris Key: a Mac App Store build must not ship Sparkle, but %s is installed and Godot exports it. Remove it (or export from a project without it) before submitting; the Sparkle switches are off for this preset." % N.SPARKLE_GDEXTENSION)
@@ -239,7 +248,30 @@ func _preset_string(key: String) -> String:
 	return str(preset.get(key))
 
 
+## The SIL OFL 1.1 makes the bundled fonts' licences travel with them, but a `.txt` file is not a
+## resource, so a preset exports it only when its include filter names it. Every export that
+## carries a bundled font resource gets that font's licence files at their res:// paths; an export
+## without the kit's fonts (a data pack, say) gets none, so no out-of-prefix entry appears in it.
+func _export_file(path: String, _type: String, _features: PackedStringArray) -> void:
+	if UiTheme.is_font_licence(path):
+		if _licences_shipped.has(path):
+			skip()
+		else:
+			_licences_shipped[path] = true
+		return
+	for licence in UiTheme.font_licences(path):
+		if _licences_shipped.has(licence):
+			continue
+		var bytes := FileAccess.get_file_as_bytes(licence)
+		if bytes.is_empty():
+			push_warning("Polaris Key: %s is missing or empty, so the exported font %s ships without its licence (SIL OFL 1.1). Restore it from the addon." % [licence, path])
+			continue
+		_licences_shipped[licence] = true
+		add_file(licence, bytes, false)
+
+
 func _export_end() -> void:
+	_licences_shipped = {}
 	if _export_windows_store:
 		_export_windows_store = false
 		_strip_store_export(_absolute(_export_path))

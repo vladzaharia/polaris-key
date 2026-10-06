@@ -7,11 +7,12 @@ is a thin wrapper over :mod:`polaris_key.cli.core`. A consumer mounts the app vi
 
 from __future__ import annotations
 
-from typing import List, Optional
+import inspect
+from typing import Any, List, Optional
 
 import typer
 
-from . import core
+from . import core, verbs
 
 
 def _options(product, version, base_url, config_dir, trust, service) -> core.ClientOptions:
@@ -119,21 +120,6 @@ def polaris_typer_app(
         opts = _options(product, version, base_url, config_dir, trust, service)
         _emit(core.run_command(factory, opts, core.register))
 
-    # ── config ──────────────────────────────────────────────────────────────────────
-    @app.command(help="[config] Resolve a single layered-config key.")
-    def config(
-        key: str,
-        product: str = typer.Option(..., help="Product slug."),
-        version: str = typer.Option(core.DEFAULT_VERSION),
-        base_url: Optional[str] = typer.Option(None),
-        config_dir: Optional[str] = typer.Option(None),
-        trust: List[str] = typer.Option([]),
-        service: List[str] = typer.Option([]),
-        fallback: Optional[str] = typer.Option(None, help="Value if the key is unset."),
-    ) -> None:
-        opts = _options(product, version, base_url, config_dir, trust, service)
-        _emit(core.run_command(factory, opts, lambda c: core.config(c, key, fallback)))
-
     # ── core ────────────────────────────────────────────────────────────────────────
     @app.command(
         name="import-bundle", help="[core] Import an offline activation bundle."
@@ -154,7 +140,42 @@ def polaris_typer_app(
             raise typer.BadParameter(str(e))
         _emit(core.run_command(factory, opts, lambda c: core.import_bundle(c, jws)))
 
+    # ── the full verb set (cli/verbs.py) ────────────────────────────────────────────
+    for verb in verbs.VERBS:
+        app.command(name=verb.name, help=f"[{verb.group}] {verb.help}")(_typer_verb(factory, verb, _emit))
+
     return app
+
+
+def _typer_verb(factory: core.ClientFactory, verb: "verbs.Verb", emit):  # noqa: ANN001
+    """A function whose signature typer reads: the common options, the free words and the
+    verb's options, all from the one table."""
+    P = inspect.Parameter
+    params = [
+        P("product", P.KEYWORD_ONLY, default=typer.Option(..., help="Product slug."), annotation=str),
+        P("version", P.KEYWORD_ONLY, default=typer.Option(core.DEFAULT_VERSION), annotation=str),
+        P("base_url", P.KEYWORD_ONLY, default=typer.Option(None), annotation=Optional[str]),
+        P("config_dir", P.KEYWORD_ONLY, default=typer.Option(None), annotation=Optional[str]),
+        P("trust", P.KEYWORD_ONLY, default=typer.Option([]), annotation=List[str]),
+        P("service", P.KEYWORD_ONLY, default=typer.Option([]), annotation=List[str]),
+    ]
+    if verb.words:
+        params.insert(0, P("words", P.POSITIONAL_OR_KEYWORD, default=typer.Argument(None), annotation=Optional[List[str]]))
+    for o in verb.opts:
+        ann: Any = bool if o.kind == "flag" else (Optional[int] if o.kind == "int" else Optional[str])
+        default = typer.Option(False if o.kind == "flag" else o.default, f"--{o.name}", help=o.help)
+        params.append(P(verbs.option_dest(o.name), P.KEYWORD_ONLY, default=default, annotation=ann))
+
+    def run(**kw: Any) -> None:
+        opts = _options(kw.pop("product"), kw.pop("version"), kw.pop("base_url"), kw.pop("config_dir"),
+                        kw.pop("trust"), kw.pop("service"))
+        words = kw.pop("words", None) or []
+        ns = verbs.namespace(verb, words, kw)
+        emit(core.run_command(factory, opts, lambda c: verb.run(c, ns)))
+
+    run.__signature__ = inspect.Signature(params)  # type: ignore[attr-defined]
+    run.__name__ = verb.name.replace("-", "_")
+    return run
 
 
 # Standalone entry point (``python -m polaris_key.cli.typer_cli``).

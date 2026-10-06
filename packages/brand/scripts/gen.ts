@@ -39,6 +39,11 @@
 //   sdks/godot/addons/polaris_key/ui/theme/brand_marks_generated.gd      the kit SVGs the UI kit
 //                                       rasterises at run time when branding is on (the bit-less
 //                                       display-cut Pinned K, the compact "Powered by" badge)
+//   the kit copy tables (scripts/kit-copy.ts, plans/UK-02.md §3.3) from kit-copy/ and the core
+//   copy in conformance/parity/copy.<locale>.json: src/generated/kit-copy/<locale>.json + index.ts,
+//   packages/sdk-node/src/kitCopy.generated.ts, PolarisKeyUI/Resources/Localizable.xcstrings,
+//   sdks/kotlin/ui/src/commonMain/composeResources/values*/strings.xml, the Godot kit's
+//   ui/locale/*.po(t), and polaris_key/ui/kit_copy_generated.py + ui/locale/*.pot
 //
 // The UI-kit outputs (docs/design/UI-KITS.md §2; renderers in ./gen-kit.ts, design source in
 // src/tokens/{kit,terminal,accent-vectors}.ts and src/accent.ts):
@@ -77,6 +82,7 @@ import {
   FONT_WEIGHT,
   LETTER_SPACING,
   MOTION,
+  MOTION_EASING_FALLBACK,
   RADIUS,
   SPACE,
   TYPE_SCALE,
@@ -120,6 +126,7 @@ import {
   renderTemplate,
   type KitVariant,
 } from "./kit.js";
+import { KIT_COPY_TARGETS } from "./kit-copy.js";
 
 const PKG = join(dirname(fileURLToPath(import.meta.url)), "..");
 const ROOT = join(PKG, "..", "..");
@@ -238,6 +245,13 @@ function scaleVars(): [string, string][] {
   for (const [k, x] of Object.entries(MOTION.duration))
     v.push([`duration-${k}`, x]);
   for (const [k, x] of Object.entries(MOTION.easing)) v.push([`ease-${k}`, x]);
+  for (const [k, x] of Object.entries(MOTION.distance))
+    v.push([`motion-distance-${k}`, x]);
+  for (const [k, x] of Object.entries(MOTION.scale))
+    v.push([`motion-scale-${k}`, String(x)]);
+  v.push(["stagger-step", MOTION.stagger.step]);
+  v.push(["stagger-max", String(MOTION.stagger.max)]);
+  for (const [k, x] of Object.entries(MOTION.delay)) v.push([`delay-${k}`, x]);
   return v;
 }
 
@@ -254,8 +268,15 @@ function tokensCss(): string {
     ["polaris-key-rose-dark", BRAND.rose.dark],
     ["polaris-key-rose-light", BRAND.rose.light],
   ];
-  const durations = Object.keys(MOTION.duration)
-    .map((k) => `    --pk-duration-${k}: 0ms;`)
+  // Reduced motion collapses every duration and the stagger step, never the delays (S-23 D3).
+  const collapsed = [
+    ...Object.keys(MOTION.duration).map((k) => `--pk-duration-${k}`),
+    "--pk-stagger-step",
+  ];
+  const reduced = (indent: string) =>
+    collapsed.map((name) => `${indent}${name}: 0ms;`).join("\n");
+  const fallbacks = Object.entries(MOTION_EASING_FALLBACK)
+    .map(([k, x]) => `    --pk-ease-${k}: ${x};`)
     .join("\n");
   return `${cssBanner}
 
@@ -310,11 +331,26 @@ ${SERVICE_IDS.filter((id) => id !== "core")
   .map((id) => `\n[data-service="${id}"] {\n${sectionDecl(id)}\n}`)
   .join("\n")}
 
-/* Reduced motion: every duration token collapses, so token-driven motion stops everywhere. */
+/* Where linear() is unsupported, the spring easing falls back to standard. */
+@supports not (transition-timing-function: linear(0, 1)) {
+  :root {
+${fallbacks}
+  }
+}
+
+/*
+ * Reduced motion swaps instantly: every duration token and the stagger step collapse to 0 ms, so
+ * token-driven motion stops everywhere. The delays (--pk-delay-*) are not motion and stay. The
+ * OS setting and the in-app preference (data-motion="reduce" on <html>) do the same.
+ */
 @media (prefers-reduced-motion: reduce) {
   :root {
-${durations}
+${reduced("    ")}
   }
+}
+
+:root[data-motion="reduce"] {
+${reduced("  ")}
 }
 
 /* Every weight and style in use ships in the variable fonts; never let a browser fake one. */
@@ -345,6 +381,10 @@ ${durations}
   .polaris-section-bit {
     transition: none;
   }
+}
+
+:root[data-motion="reduce"] .polaris-section-bit {
+  transition: none;
 }
 `;
 }
@@ -473,6 +513,7 @@ function tokenModel() {
     radius: RADIUS,
     elevation: ELEVATION,
     motion: MOTION,
+    motionEasingFallback: MOTION_EASING_FALLBACK,
     font: FONT,
     fontWeight: FONT_WEIGHT,
     typeScale: TYPE_SCALE,
@@ -1553,6 +1594,8 @@ const TARGETS: Target[] = [
     render: () => nodeTerminal(KIT_CTX),
     parser: "typescript",
   },
+  // The kit copy catalog (plans/UK-02.md §3.3): web, Node, Swift, Kotlin, Godot and Python tables.
+  ...KIT_COPY_TARGETS,
 ];
 
 export async function renderAll(root = ROOT): Promise<Map<string, string>> {

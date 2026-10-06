@@ -121,6 +121,32 @@ final class KeychainStoreTests: XCTestCase {
 
     private func string(_ data: Data?) -> String? { data.flatMap { String(data: $0, encoding: .utf8) } }
 
+    /// SP-S15: an access group rides on every data-protection query, never on the legacy one.
+    func testAnAccessGroupScopesTheDataProtectionItem() async throws {
+        let fake = FakeKeychain()
+        let s = KeychainStore(productSlug: "djdl", configDir: root, keychain: fake, accessGroup: "TEAM.shared")
+        try await s.setToken("pkeyt_dp")
+        _ = try await s.getToken()
+        try await s.clearToken()
+        let dp = fake.queries.filter { ($0[kSecUseDataProtectionKeychain as String] as? Bool) == true }
+        XCTAssertFalse(dp.isEmpty)
+        for q in dp { XCTAssertEqual(q[kSecAttrAccessGroup as String] as? String, "TEAM.shared") }
+        for d in fake.deletes where (d[kSecUseDataProtectionKeychain as String] as? Bool) != true {
+            XCTAssertNil(d[kSecAttrAccessGroup as String])
+        }
+        XCTAssertEqual(s.accessGroup, "TEAM.shared")
+    }
+
+    /// SP-S15: an app group's container holds every directory not given explicitly.
+    func testAppGroupRootsLiveInTheSharedContainer() {
+        let container = URL(fileURLWithPath: "/tmp/group.example")
+        let roots = ProductDirs.Roots.inContainer(container)
+        let dirs = ProductDirs.resolve(productSlug: "djdl", roots: roots)
+        XCTAssertEqual(dirs.config.path, "/tmp/group.example/Library/Application Support/djdl")
+        XCTAssertEqual(dirs.data.path, "/tmp/group.example/Library/Application Support/polaris-key/data/djdl")
+        XCTAssertEqual(dirs.cache.path, "/tmp/group.example/Library/Caches/polaris-key/djdl")
+    }
+
     func testEntitledWritesGoToTheDataProtectionKeychainWithAfterFirstUnlock() async throws {
         let fake = FakeKeychain()
         fake.legacy = Data("pkeyt_old".utf8)

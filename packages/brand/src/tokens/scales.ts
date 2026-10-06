@@ -55,22 +55,77 @@ export const ELEVATION = {
 } as const;
 
 /**
- * Motion. Durations collapse to 0 ms under `prefers-reduced-motion: reduce` (tokens.css does it
- * once, globally), so a consumer that animates only through these tokens respects the setting
- * with no extra code. Nothing in the brand ever animates the star.
+ * Motion (notes/S-23 §5; BRAND.md §7.5). Every duration and the stagger step collapse to 0 ms
+ * under `prefers-reduced-motion: reduce` and under `:root[data-motion="reduce"]` (the in-app
+ * preference): tokens.css does it once, globally, so a consumer that animates only through these
+ * tokens swaps instantly with no extra code (S-23 D3). Delays are not motion and never collapse:
+ * a skeleton still waits `delay.skeleton`, a new row keeps its tint for `delay.highlight`.
+ * Nothing in the brand ever animates the star.
+ *
+ * No `quick` step (S-23 D4): exits use `fast`.
  */
 export const MOTION = {
   duration: {
     instant: "0ms",
+    /** Press in, hover colours, the fade-through gap, leaving rows. */
+    micro: "80ms",
+    /** Exits, popovers, the old view leaving. */
     fast: "120ms",
+    /** Route and tab fade-through, list moves, overlay scrim. */
     base: "200ms",
+    /** Morph (dialog or card size), expand, check draw (SIGN-IN.md §3.18's name and value). */
+    moderate: "260ms",
+    /** Dialog and drawer enter, shared-element morph, pill pop. */
     slow: "320ms",
+    /** Success burst, count-up, highlight fade; never blocks input. */
+    deliberate: "480ms",
+    /** The skeleton sweep period: a loading indicator, the one sanctioned loop besides the spinner. */
+    shimmer: "1600ms",
   },
   easing: {
     standard: "cubic-bezier(0.2, 0, 0, 1)",
     enter: "cubic-bezier(0, 0, 0, 1)",
     exit: "cubic-bezier(0.3, 0, 1, 1)",
+    /** Shared elements, drawer, sheet, meters. */
+    emphasized: "cubic-bezier(0.05, 0.7, 0.1, 1)",
+    /**
+     * A damped spring with a 4 % overshoot (the UI-KITS overshoot ceiling, 1.04): press release,
+     * pill pop. Where `linear()` is unsupported, tokens.css falls back to MOTION_EASING_FALLBACK.
+     */
+    spring:
+      "linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 20.5%, 1.043 24.5%, 1.035 28.4%, 1.007 36%, 0.998 42.4%, 1)",
   },
+  /** Hover lift (xs), enter rise (sm), exit and step slide (md), entering view (lg), sheet rise (xl). */
+  distance: {
+    xs: "2px",
+    sm: "4px",
+    md: "8px",
+    lg: "12px",
+    xl: "24px",
+  },
+  /** `:active` (press), overlay enter (enter), pill and chip pop (pop). */
+  scale: {
+    press: 0.98,
+    enter: 0.98,
+    pop: 0.9,
+  },
+  /** stagger-list: 30 ms a step, at most 6 steps (180 ms, under `base`). */
+  stagger: {
+    step: "30ms",
+    max: 6,
+  },
+  /** Not motion: these survive reduced motion. */
+  delay: {
+    /** Skeleton grace, so a fast response never flashes one. */
+    skeleton: "150ms",
+    /** How long a new or changed row keeps its tint. */
+    highlight: "1600ms",
+  },
+} as const;
+
+/** Easings that need a fallback where the browser lacks the syntax (`linear()`). */
+export const MOTION_EASING_FALLBACK = {
+  spring: MOTION.easing.standard,
 } as const;
 
 /**

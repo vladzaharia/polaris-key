@@ -1,0 +1,19 @@
+{
+  "name": "polaris-key-example-node-cli",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "djdl": "cli.ts"
+  },
+  "scripts": {
+    "start": "tsx cli.ts"
+  },
+  "dependencies": {
+    "@polaris-key/node": "^0.0.0",
+    "commander": "^14.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0"
+  }
+}

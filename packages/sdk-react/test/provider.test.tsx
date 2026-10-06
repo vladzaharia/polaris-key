@@ -1,4 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { useContext } from "react";
+import { renderToString } from "react-dom/server";
+import { PolarisContext } from "../src/react/context.js";
+import { BrowserAdapter } from "../src/browser/browserAdapter.js";
 import { cleanup, render, waitFor, within } from "@testing-library/react";
 import { PolarisKeyProvider } from "../src/react/Provider.js";
 import { defaultTheme } from "../src/components/theme.js";
@@ -223,5 +227,93 @@ describe("PolarisKeyProvider — expectServices (D-21)", () => {
         "license,config",
       ),
     );
+  });
+});
+
+describe("PolarisKeyProvider — construction does no I/O (SP-R13) and forwards auth/trust", () => {
+  function AdapterProbe(props: {
+    onAdapter: (a: unknown) => void;
+  }): JSX.Element {
+    const ctx = useContext(PolarisContext);
+    props.onAdapter(ctx?.adapter);
+    return <span />;
+  }
+
+  it("a render (server or client, before effects) makes no request; the mount effect starts the load", async () => {
+    const calls: string[] = [];
+    const inner = makeFakeFetch(makeDoc());
+    const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      calls.push(String(input));
+      return inner(input, init);
+    }) as typeof fetch;
+    const html = renderToString(
+      <PolarisKeyProvider
+        productSlug="acme"
+        mode="browser"
+        auth="cookie"
+        fetchImpl={fetchImpl}
+        now={() => NOW_SEC}
+      >
+        <Mode />
+      </PolarisKeyProvider>,
+    );
+    expect(html).toContain("browser");
+    expect(calls).toEqual([]);
+
+    render(
+      <PolarisKeyProvider
+        productSlug="acme"
+        mode="browser"
+        auth="cookie"
+        fetchImpl={fetchImpl}
+        now={() => NOW_SEC}
+      >
+        <Mode />
+      </PolarisKeyProvider>,
+    );
+    await waitFor(() =>
+      expect(calls.some((u) => u.includes("/acme/identity/session"))).toBe(
+        true,
+      ),
+    );
+  });
+
+  it("auth and trust reach the adapter, and an inline trust literal keeps the adapter stable", async () => {
+    const seen: unknown[] = [];
+    const pins = { k1: "A".repeat(43) };
+    const now = (): number => NOW_SEC;
+    const fetchImpl = (async () =>
+      new Response("{}", { status: 503 })) as unknown as typeof fetch;
+    const view = (
+      <PolarisKeyProvider
+        productSlug="acme"
+        mode="browser"
+        auth="bearer"
+        trust={{ pinnedKeys: { ...pins } }}
+        fetchImpl={fetchImpl}
+        now={now}
+      >
+        <AdapterProbe onAdapter={(a) => seen.push(a)} />
+      </PolarisKeyProvider>
+    );
+    const { rerender } = render(view);
+    rerender(
+      <PolarisKeyProvider
+        productSlug="acme"
+        mode="browser"
+        auth="bearer"
+        trust={{ pinnedKeys: { ...pins } }}
+        fetchImpl={fetchImpl}
+        now={now}
+      >
+        <AdapterProbe onAdapter={(a) => seen.push(a)} />
+      </PolarisKeyProvider>,
+    );
+    // An explicit bearer without pins throws at construction, so building at all proves the
+    // pins arrived; authMode proves `auth` did.
+    const adapter = seen[0] as BrowserAdapter;
+    expect(adapter).toBeInstanceOf(BrowserAdapter);
+    expect(adapter.authMode).toBe("bearer");
+    expect(new Set(seen).size).toBe(1);
   });
 });

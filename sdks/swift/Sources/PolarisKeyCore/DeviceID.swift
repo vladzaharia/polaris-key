@@ -2,15 +2,18 @@
 // `pkey-device:<product>:<raw>` with SHA-256 and base64url-truncate to 32 chars, mirroring
 // sdk-node's `deriveDeviceId` (so the same physical device derives the same id everywhere
 // the formula is shared). The raw source is the IOPlatformUUID on macOS and
-// identifierForVendor on iOS; a random UUID is the last-resort fallback.
+// identifierForVendor on iOS, iPadOS, Mac Catalyst, tvOS, visionOS and watchOS (SP-S16); a random
+// UUID is the last-resort fallback.
 
 import CryptoKit
 import Foundation
 
 #if os(macOS)
 import IOKit
-#elseif os(iOS)
+#elseif os(iOS) || os(tvOS) || os(visionOS)
 import UIKit
+#elseif os(watchOS)
+import WatchKit
 #endif
 
 public enum DeviceID {
@@ -31,11 +34,16 @@ public enum DeviceID {
     static func rawDeviceId() -> String? {
         #if os(macOS)
         return macPlatformUUID()
-        #elseif os(iOS)
+        #elseif os(iOS) || os(tvOS) || os(visionOS)
         // UIDevice is main-actor isolated (an error under Swift 6 on Xcode 16). Read it on the
         // main thread: directly when already there, otherwise hop with a synchronous dispatch.
         let read: @Sendable () -> String? = {
             MainActor.assumeIsolated { UIDevice.current.identifierForVendor?.uuidString }
+        }
+        return Thread.isMainThread ? read() : DispatchQueue.main.sync(execute: read)
+        #elseif os(watchOS)
+        let read: @Sendable () -> String? = {
+            MainActor.assumeIsolated { WKInterfaceDevice.current().identifierForVendor?.uuidString }
         }
         return Thread.isMainThread ? read() : DispatchQueue.main.sync(execute: read)
         #else

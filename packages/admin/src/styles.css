@@ -101,6 +101,10 @@
      product page starts at 1180 px. */
   --breakpoint-desk: 47.5625rem;
   --breakpoint-wide: 73.75rem;
+  /* The type scale's display step (EXPERIENCE.md §3): 40 px, for the portal's Library and
+     Product titles only (`PageHeader size="display"`; 30 px, text-3xl, on phones). */
+  --text-display: 2.5rem;
+  --text-display--line-height: 1.1;
   --animate-pk-in: pk-in var(--pk-duration-fast) var(--pk-ease-enter);
   --animate-pk-overlay-in: pk-overlay-in var(--pk-duration-fast)
     var(--pk-ease-standard);
@@ -171,6 +175,14 @@
   button:not(:disabled),
   [role="button"]:not(:disabled) {
     cursor: pointer;
+  }
+
+  /* Every table cell is vertically centred in its row (the owner's rule: a one-line cell beside a
+     two-line one sits on the row's middle, not its top). A cell's own utility class still wins;
+     none should set anything but align-middle (test/tableCells.test.ts). */
+  th,
+  td {
+    vertical-align: middle;
   }
 
   input::placeholder,

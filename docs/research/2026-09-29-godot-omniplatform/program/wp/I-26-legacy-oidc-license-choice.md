@@ -20,7 +20,7 @@ differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US 
 **No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
 
 - **Copy** to `signin.choice.*`: title "Choose a license for this device", lede `signin.choice.lede`, primary **Use this license and continue**, "No free devices", "Create a new free license", `signin.choice.raced`, `signin.choice.noneReplaceable` for the empty state. Exact per-line changes: SIGN-IN.md §10.4.
-- **Row anatomy** (SIGN-IN.md O-11): title, the tier as a neutral pill with "{n} of {limit} devices" or "Account-wide · unlimited devices", then "{origin} · {term}" with **Lifetime** (not "No expiry"). The identity's own `sub` licence shows as Account-wide only once I-09's seat rule lands.
+- **Row anatomy** (SIGN-IN.md O-11): title, the tier as a neutral pill with "{n} of {limit} devices" for every licence, then "{origin} · {term}" with **Lifetime** (not "No expiry"). The identity's own `sub` licence shows its real seat count and the origin "From signing in" (owner, 2026-10-05: sign-in licenses stay device-limited; SIGN-IN.md D-53). Owner decision (2026-10-05): no 'Account-wide' label; origin shown as plain words (store named with the key: "Steam key", "From Steam").
 - **Inline Replace is kept as built** (SIGN-IN.md D-59, I-04 decision 13 amended): the confirm uses `signin.replace.consequence` and **Replace and continue** as the primary (not a danger button), and **Back**.
 - The Free a device link keeps `license=` and `for=<device label>` (I-04 §F.5). The page takes `renderAuthCard()`'s look once UX-43 lands.
 
@@ -163,13 +163,15 @@ the recommended option. Where the code disagreed with this brief, the code won.
   tier with fingerprint mode `strict` is listed **blocked** (the mint would refuse).
 - **Create a new free licence** additionally requires that the identity has no `sub`-keyed
   licence yet (`activateFromIdentity` is idempotent on the subject and could not make a second).
-- **Origin labels** come from License's `licenseProvenance` hook ("Bought on Steam", "From the
-  developer", "Signed-in app", "Free"); display only.
+- **Origin labels** come from License's `licenseProvenance` hook ("Steam key" or "From Steam",
+  "Added with a key", "From the developer", "From signing in", "Free"; store name only, never an
+  order id); display only.
 - **Primary copy** is "Use this licence" (this brief), not the card's "Use this licence and
   continue" (decision 3 is the card's).
 - **Review fixes (2026-10-05):** US "license" in all UI copy and audit summaries; sign-in
-  licences read "Account-wide" beside their real seat count (the tier's limit is enforced, never
-  "unlimited"); the tier is a neutral tag pill with the count beside it, origin and expiry on the
+  licences show their real seat count (the tier's limit is enforced, never "unlimited") with the
+  origin "From signing in" (owner decision 2026-10-05: no 'Account-wide' label; origin shown as
+  plain words, store named with the key); the tier is a neutral tag pill with the count beside it, origin and expiry on the
   meta line; "Lifetime" instead of "No expiry"; tier fallback "Standard"; the Create row reads
   "A new free license for this device"; the device row says "Named by the device"; the audit
   row is written only after the flow update succeeds; the chooser re-checks that the account is

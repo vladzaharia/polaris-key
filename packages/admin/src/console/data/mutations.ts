@@ -42,6 +42,8 @@ export type WriteMethod =
   | "updateProduct"
   | "deleteProduct"
   | "resyncProduct"
+  | "checkRepoLink"
+  | "linkProductRepo"
   | "updateReleaseChannel"
   | "revertReleaseChannel"
   | "setChannelFloor"
@@ -82,6 +84,8 @@ export type WriteMethod =
   | "createLicense"
   | "patchLicense"
   | "setLicenseEnabled"
+  | "deleteLicense"
+  | "deleteLicenses"
   | "putLicenseOverrides"
   | "mintKey"
   | "revokeKey"
@@ -101,6 +105,9 @@ export type WriteMethod =
   | "deleteTier"
   | "assignPlatformStoreApp"
   | "releasePlatformStoreApp"
+  | "checkPlatformStoreCredential"
+  | "putPlatformStoreCredential"
+  | "checkCiSecret"
   | "saveFeedSettings"
   | "saveFeedPolicy"
   | "feedVersionAction"
@@ -241,6 +248,21 @@ export const MUTATIONS: MutationTable = {
     // A resync re-applies channels, catalog, services, tiers, profiles, update settings and
     // delivery access: everything under the product.
     invalidates: (slug) => [exact(qk.products()), prefix(qk.product(slug))],
+  },
+  checkRepoLink: {
+    label: "link repository check (dry run)",
+    invalidates: () => [],
+    why: "A dry run: it reads the repository and writes nothing.",
+  },
+  linkProductRepo: {
+    label: "link repository",
+    // Linking applies the manifest the way a resync does (everything under the product), and
+    // the registry shows each product's source.
+    invalidates: (slug) => [
+      exact(qk.me()),
+      exact(qk.products()),
+      prefix(qk.product(slug)),
+    ],
   },
   updateReleaseChannel: {
     label: "channel policy (promote, pin, unpin, minimum, critical)",
@@ -438,6 +460,15 @@ export const MUTATIONS: MutationTable = {
     label: "license enable or disable",
     invalidates: (slug) => license(slug),
   },
+  // A deletion removes the licence's devices and registry tokens too.
+  deleteLicense: {
+    label: "license delete",
+    invalidates: (slug) => [...license(slug), prefix(qk.devices(slug))],
+  },
+  deleteLicenses: {
+    label: "license bulk delete",
+    invalidates: (slug) => [...license(slug), prefix(qk.devices(slug))],
+  },
   putLicenseOverrides: {
     label: "license overrides",
     invalidates: (slug) => license(slug),
@@ -537,6 +568,22 @@ export const MUTATIONS: MutationTable = {
       prefix(qk.credentials(heldBy)),
       prefix(qk.health(heldBy)),
     ],
+  },
+  checkPlatformStoreCredential: {
+    label: "store credential live check",
+    invalidates: () => [],
+    why: "A POST that stores nothing (UX-69): the unsaved value is tried against the store and the answer is shown in the form.",
+  },
+  putPlatformStoreCredential: {
+    label: "store credential set",
+    // The connection list (presence, source, metadata, health) and every store's apps listing,
+    // which the Worker caches by the credential's version.
+    invalidates: () => [prefix(qk.platformStores())],
+  },
+  checkCiSecret: {
+    label: "CI secret live check",
+    invalidates: () => [],
+    why: "A POST that stores nothing (UX-69): the value is tried against the vendor and never kept.",
   },
   saveFeedSettings: {
     label: "feed settings save",

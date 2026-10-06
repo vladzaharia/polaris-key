@@ -36,6 +36,10 @@ import {
   type LicenseMerge,
   type LicenseMergeContributor,
 } from "./licenseMerge.js";
+import type {
+  LicenseDelete,
+  LicenseDeleteContributor,
+} from "./licenseDelete.js";
 import type { ServiceSettingsSlice } from "./settings/types.js";
 import type {
   StoreGrantChange,
@@ -106,13 +110,20 @@ export interface ServiceContext {
    * the retired licence held.
    */
   licenseMerge?: LicenseMerge;
+  /**
+   * Core's licence-deletion collector, bound to the registry (`core/licenseDelete.ts`) — every
+   * owner's blockers and DELETE statements for the console's licence deletion. Built by the
+   * admin dispatcher for `adminHandle`; absent elsewhere, where License refuses to delete rather
+   * than strand another owner's rows.
+   */
+  licenseDelete?: LicenseDelete;
 }
 
 /** A `ServiceContext` as a caller hands it to Core — everything but the Core-built `hooks`,
- *  `ingest`, `storeGrants` and `licenseMerge`. */
+ *  `ingest`, `storeGrants`, `licenseMerge` and `licenseDelete`. */
 export type ServiceRequest = Omit<
   ServiceContext,
-  "hooks" | "ingest" | "storeGrants" | "licenseMerge"
+  "hooks" | "ingest" | "storeGrants" | "licenseMerge" | "licenseDelete"
 >;
 
 /**
@@ -269,6 +280,12 @@ export interface ServiceDescriptor extends DescriptorHooks {
    * the merge's own batch: statements only, idempotent, touching this service's own tables.
    */
   licenseMerge?: LicenseMergeContributor;
+  /**
+   * `core/licenseDelete.ts`: why this service refuses to delete a licence (reads only) and the
+   * statements deleting this service's rows keyed by it. Run by Core for every registered service
+   * WHATEVER its enablement, like `licenseMerge`, and only into the deletion's own batch.
+   */
+  licenseDelete?: LicenseDeleteContributor;
   /**
    * Periodic work for one product, run on the connector cron (`scheduled.ts`,
    * `CONNECTOR_POLL_CRON`) for every product that has this service ENABLED — the same gate as

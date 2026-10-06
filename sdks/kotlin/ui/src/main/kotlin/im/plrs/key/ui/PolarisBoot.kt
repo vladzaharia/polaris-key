@@ -65,6 +65,13 @@ import im.plrs.key.core.PolarisException
 import im.plrs.key.core.bootTransition
 import im.plrs.key.core.initialBootState
 import im.plrs.key.sdk.PolarisKeyClient
+import im.plrs.key.core.BOOT_OK_SECONDS
+import im.plrs.key.core.BootConfirmation
+import im.plrs.key.core.UpdateCheck
+import im.plrs.key.core.UpdateDecision
+import im.plrs.key.packs.BootConsentPolicy
+import im.plrs.key.update.BootGuard
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -151,21 +158,52 @@ public interface PolarisBootHost {
         BootEvent.FetchResult.ok to emptyList()
 
     public suspend fun mount() {}
+
+    /**
+     * The stage-matrix v2 confirmation once the boot settles on [outcome] (`update.bootguard`): the
+     * host marks the launch healthy now, after BOOT_OK_SECONDS of `ready`, or never. Called once,
+     * off the boot's own path, so a delay here holds nothing up.
+     */
+    public suspend fun confirm(outcome: BootOutcome) {}
 }
 
 /**
- * The umbrella client as a boot host: sync is `client.sync()` (offline when every document the
- * product runs failed, or the call threw), the gate is `client.status()`, and decide asks the
- * update client when it is configured (an update client without options decides nothing). Fetch
- * and mount are the product's; pass [fetch] and [mount] to do them here.
+ * The umbrella client as a boot host (notes/SDK-PARITY-PASS.md §3.4): guard is [guard]
+ * (`client.bootGuard()` by default: counts unconfirmed launches, applies or rolls back staged
+ * payloads when the host has slots, journals update events, and confirms the launch once the boot
+ * settles), sync is `client.sync()` (offline when every document the product runs failed, or the
+ * call threw), the gate is `client.status()`, decide asks the update client when it is configured
+ * (each decision goes to [onCheck], so an update prompt can offer it), fetch is
+ * `client.packs.bootFetch` over the content stamp (the decision's `packs` installs included) when
+ * the host configured packs, and mount is the product's. Pass [fetch] or [mount] to do them yourself.
  */
 public fun PolarisKeyClient.bootHost(
     decide: Boolean = true,
     fetch: (suspend (PolarisFetchReporter) -> Pair<BootEvent.FetchResult, List<String>>)? = null,
     mount: (suspend () -> Unit)? = null,
+    guard: BootGuard? = bootGuard(),
+    consent: BootConsentPolicy = BootConsentPolicy.metered,
+    metered: () -> Boolean = { false },
+    onCheck: ((UpdateCheck) -> Unit)? = null,
 ): PolarisBootHost {
     val client = this
+    var lastCheck: UpdateCheck? = null
     return object : PolarisBootHost {
+        override suspend fun guard(): BootEvent.GuardResult {
+            val g = guard ?: return BootEvent.GuardResult.ok
+            return g.run().result
+        }
+
+        override suspend fun confirm(outcome: BootOutcome) {
+            val g = guard ?: return
+            if (g.confirm(outcome) == BootConfirmation.afterOkSeconds) {
+                delay(BOOT_OK_SECONDS * 1000L)
+                g.confirmNow()
+                // A healthy launch also confirms the running pack set (CONTENT §10 step 7).
+                if (client.packs.configured) runCatching { client.packs.confirm() }
+            }
+        }
+
         override suspend fun sync(): BootEvent.SyncResult {
             val result = try {
                 client.sync()
@@ -183,7 +221,10 @@ public fun PolarisKeyClient.bootHost(
         override suspend fun decide(): BootEvent.Decision {
             if (!decide) return BootEvent.Decision.none
             return try {
-                client.update.decide().boot
+                val check = client.update.decide(skipVersion = guard?.skipVersion)
+                lastCheck = check
+                onCheck?.invoke(check)
+                check.boot
             } catch (e: CancellationException) {
                 throw e
             } catch (e: PolarisException) {
@@ -191,8 +232,19 @@ public fun PolarisKeyClient.bootHost(
             }
         }
 
-        override suspend fun fetch(reporter: PolarisFetchReporter): Pair<BootEvent.FetchResult, List<String>> =
-            fetch?.invoke(reporter) ?: (BootEvent.FetchResult.ok to emptyList())
+        override suspend fun fetch(reporter: PolarisFetchReporter): Pair<BootEvent.FetchResult, List<String>> {
+            fetch?.let { return it(reporter) }
+            if (!client.packs.configured) return BootEvent.FetchResult.ok to emptyList()
+            val install = (lastCheck?.decision as? UpdateDecision.Packs)?.install
+            val out = client.packs.bootFetch(
+                send = { e -> if (e is BootEvent.FetchProgress) reporter.progress(e.done, e.total) },
+                consent = consent,
+                metered = metered(),
+                answer = { bytes, m -> reporter.consent(bytes, m) },
+                install = install,
+            )
+            return out.result to out.installed
+        }
 
         override suspend fun mount() {
             mount?.invoke()
@@ -236,10 +288,25 @@ public class PolarisBootState(options: BootOptions = BootOptions()) {
      * licence becoming usable, for the gate) moves the machine on; returns at `ready`.
      */
     public fun launch(scope: CoroutineScope, host: PolarisBootHost): Job = scope.launch {
+        var confirmed = false
         send(BootEvent.Start)
         while (isActive) {
             val ui = _ui.value
             val state = ui.state
+            if (state.outcome != BootOutcome.running && !confirmed) {
+                // The boot settled: confirm the launch once (off the boot's path; it may wait).
+                confirmed = true
+                val outcome = state.outcome
+                scope.launch {
+                    try {
+                        host.confirm(outcome)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        // A confirmation that fails leaves the launch counted; the boot goes on.
+                    }
+                }
+            }
             if (state.stage == BootStage.ready || state.stage == BootStage.background) return@launch
             if (state.outcome != BootOutcome.running) {
                 _ui.first { it.state != state }

@@ -1,0 +1,782 @@
+/*
+ * The motion layer's stylesheet (notes/S-23 §6; MO-02): the keyframes and the nine patterns on the
+ * brand's motion tokens (@polaris-key/brand tokens.css, MO-01), the exit half of every Radix
+ * overlay, sonner on the tokens, and the View Transition rules. Imported by both entries AFTER
+ * styles.css. The JavaScript half is src/ui/motion/.
+ *
+ * Rules every rule here obeys (S-23 D3, D6, D7, D8):
+ *   - every duration and stagger comes from a token, so reduced motion (the OS setting or
+ *     html[data-motion="reduce"]) collapses it to an instant swap; the delays (--pk-delay-*) are
+ *     not motion and stay;
+ *   - transform and opacity only, with three named exceptions: the expand pattern's grid rows,
+ *     colour on small elements, and SVG stroke-dashoffset;
+ *   - only loading indicators loop (the refetch sweep, the skeleton shimmer; the spinner lives in
+ *     styles.css and keeps turning under reduced motion);
+ *   - enter animations fill `backwards` (never `both`), so a finished enter leaves no animation
+ *     behind and `document.getAnimations()` is empty once the page is at rest;
+ *   - nothing here is markup: dynamic values reach these rules through the CSSOM
+ *     (el.style.setProperty) or data attributes, which the Worker's `style-src 'self'` allows;
+ *   - the Polaris star never moves (BRAND §7.5).
+ *
+ * Cascade: the overlay rules override Tailwind's `animate-pk-in` / `animate-pk-overlay-in`
+ * utilities, so they sit in the utilities layer with a higher specificity; the pattern classes sit
+ * in the components layer, so a utility on the same element still wins; sonner's overrides and the
+ * View Transition rules are unlayered, like the stylesheet they override.
+ */
+
+/* ── 1. Keyframes ─────────────────────────────────────────────────────────────────────────────── */
+@keyframes pk-enter {
+  from {
+    opacity: 0;
+    transform: translateY(var(--pk-motion-distance-sm))
+      scale(var(--pk-motion-scale-enter));
+  }
+}
+@keyframes pk-exit {
+  to {
+    opacity: 0;
+    transform: translateY(var(--pk-motion-distance-sm))
+      scale(var(--pk-motion-scale-enter));
+  }
+}
+@keyframes pk-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes pk-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes pk-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(var(--pk-motion-scale-pop));
+  }
+}
+@keyframes pk-drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+@keyframes pk-drawer-out {
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes pk-sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes pk-sheet-out {
+  to {
+    transform: translateY(100%);
+  }
+}
+/* Popper content comes from the side it opens on (Radix sets data-side). */
+@keyframes pk-from-top {
+  from {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--pk-motion-distance-sm)));
+  }
+}
+@keyframes pk-from-bottom {
+  from {
+    opacity: 0;
+    transform: translateY(var(--pk-motion-distance-sm));
+  }
+}
+@keyframes pk-from-left {
+  from {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--pk-motion-distance-sm)));
+  }
+}
+@keyframes pk-from-right {
+  from {
+    opacity: 0;
+    transform: translateX(var(--pk-motion-distance-sm));
+  }
+}
+/* The refetch bar's indeterminate sweep: a third-width bar crossing its track (transform only). */
+@keyframes pk-refetch {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+@keyframes pk-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes pk-draw {
+  from {
+    stroke-dashoffset: var(--pk-draw-length, 48);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes pk-burst {
+  0% {
+    opacity: 0;
+    transform: rotate(var(--pk-burst-angle)) translateX(8px) scale(0.4);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(var(--pk-burst-angle))
+      translateX(var(--pk-burst-reach, 44px)) scale(1);
+  }
+}
+@keyframes pk-vt-out-start {
+  to {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--pk-motion-distance-md)));
+  }
+}
+@keyframes pk-vt-in-end {
+  from {
+    opacity: 0;
+    transform: translateX(var(--pk-motion-distance-lg));
+  }
+}
+@keyframes pk-vt-out-end {
+  to {
+    opacity: 0;
+    transform: translateX(var(--pk-motion-distance-md));
+  }
+}
+@keyframes pk-vt-in-start {
+  from {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--pk-motion-distance-lg)));
+  }
+}
+
+/* ── 2. Overlays: enter and exit, keyed on the existing utility classes ──────────────────────────
+ * Every Radix overlay already carries `animate-pk-in` (content) or `animate-pk-overlay-in`
+ * (scrim). Radix's Presence keeps a closing node mounted until its animation ends, so a
+ * `data-state="closed"` rule is all an exit needs: no component file changes. Tooltips open as
+ * `delayed-open` / `instant-open`, so "open" is "not closed". `pk-transient` and `pk-overlay` are
+ * the same patterns for non-Radix transients (<Presence>, src/ui/motion/Presence.tsx). */
+@layer utilities {
+  /* enter: a dialog-sized surface rises at `slow`; popper content (data-side) at `fast`. */
+  :is(.animate-pk-in, .pk-transient):not([data-state="closed"]) {
+    animation: pk-enter var(--pk-duration-slow) var(--pk-ease-enter) backwards;
+  }
+  :is(.animate-pk-in, .pk-transient)[data-side="bottom"]:not(
+      [data-state="closed"]
+    ) {
+    animation: pk-from-top var(--pk-duration-fast) var(--pk-ease-enter)
+      backwards;
+  }
+  :is(.animate-pk-in, .pk-transient)[data-side="top"]:not(
+      [data-state="closed"]
+    ) {
+    animation: pk-from-bottom var(--pk-duration-fast) var(--pk-ease-enter)
+      backwards;
+  }
+  :is(.animate-pk-in, .pk-transient)[data-side="right"]:not(
+      [data-state="closed"]
+    ) {
+    animation: pk-from-left var(--pk-duration-fast) var(--pk-ease-enter)
+      backwards;
+  }
+  :is(.animate-pk-in, .pk-transient)[data-side="left"]:not(
+      [data-state="closed"]
+    ) {
+    animation: pk-from-right var(--pk-duration-fast) var(--pk-ease-enter)
+      backwards;
+  }
+  /* exit: the reverse at `base`; popper content just fades at `fast`. */
+  :is(.animate-pk-in, .pk-transient)[data-state="closed"] {
+    animation: pk-exit var(--pk-duration-base) var(--pk-ease-exit) forwards;
+  }
+  :is(.animate-pk-in, .pk-transient)[data-side][data-state="closed"] {
+    animation: pk-fade-out var(--pk-duration-fast) var(--pk-ease-exit) forwards;
+  }
+  /* The scrim fades in and out at `base`. */
+  :is(.animate-pk-overlay-in, .pk-overlay):not([data-state="closed"]) {
+    animation: pk-fade-in var(--pk-duration-base) var(--pk-ease-standard)
+      backwards;
+  }
+  :is(.animate-pk-overlay-in, .pk-overlay)[data-state="closed"] {
+    animation: pk-fade-out var(--pk-duration-base) var(--pk-ease-exit) forwards;
+  }
+  /* The drawer slides from the inline end (MO-08 applies the class); below 640 px a dialog marked
+     pk-sheet rises from the bottom edge (MO-10). */
+  .pk-drawer:not([data-state="closed"]) {
+    animation: pk-drawer-in var(--pk-duration-slow) var(--pk-ease-emphasized)
+      backwards;
+  }
+  .pk-drawer[data-state="closed"] {
+    animation: pk-drawer-out var(--pk-duration-base) var(--pk-ease-exit)
+      forwards;
+  }
+  @media (max-width: 639px) {
+    .pk-sheet.pk-sheet:not([data-state="closed"]) {
+      animation: pk-sheet-in var(--pk-duration-slow) var(--pk-ease-emphasized)
+        backwards;
+    }
+    .pk-sheet.pk-sheet[data-state="closed"] {
+      animation: pk-sheet-out var(--pk-duration-base) var(--pk-ease-exit)
+        forwards;
+    }
+  }
+
+  /* The refetch bar (ui/loading.tsx RefetchBar): a loading indicator, so it loops. */
+  .animate-pk-refetch {
+    animation: pk-refetch var(--pk-duration-shimmer) var(--pk-ease-standard)
+      infinite;
+  }
+
+  /* Reduced motion: no animation at all, so Radix unmounts a closing overlay at once and the
+     refetch bar stands still (its motion-reduce utilities show it full-width and dimmed). The
+     trailing :is() lifts these to the specificity of the most specific rule above, so they win by
+     order. */
+  @media (prefers-reduced-motion: reduce) {
+    :is(
+      .animate-pk-in,
+      .animate-pk-overlay-in,
+      .pk-transient,
+      .pk-overlay,
+      .pk-drawer,
+      .pk-sheet,
+      .animate-pk-refetch
+    ):is(*, [data-state], [data-side][data-state]) {
+      animation: none;
+    }
+  }
+  :root[data-motion="reduce"]
+    :is(
+      .animate-pk-in,
+      .animate-pk-overlay-in,
+      .pk-transient,
+      .pk-overlay,
+      .pk-drawer,
+      .pk-sheet,
+      .animate-pk-refetch
+    ):is(*, [data-state], [data-side][data-state]) {
+    animation: none;
+  }
+}
+
+/* ── 3. Toasts: sonner's own transitions on the tokens ───────────────────────────────────────────
+ * Same selectors as sonner/dist/styles.css (bundled by styles.css), later in the bundle, so these
+ * win. sonner unmounts a removed toast on a fixed 200 ms timer, so every exit fits in `base`.
+ * sonner's own `prefers-reduced-motion` rule (!important) still applies; html[data-motion] zeroes
+ * the tokens. */
+[data-sonner-toaster] {
+  transition: transform var(--pk-duration-slow) var(--pk-ease-standard);
+}
+[data-sonner-toast] {
+  transition:
+    transform var(--pk-duration-slow) var(--pk-ease-emphasized),
+    opacity var(--pk-duration-base) var(--pk-ease-standard),
+    height var(--pk-duration-base) var(--pk-ease-standard),
+    box-shadow var(--pk-duration-base) var(--pk-ease-standard);
+}
+[data-sonner-toast] > * {
+  transition: opacity var(--pk-duration-base) var(--pk-ease-standard);
+}
+[data-sonner-toast][data-styled="true"] [data-button] {
+  transition:
+    opacity var(--pk-duration-micro) var(--pk-ease-standard),
+    box-shadow var(--pk-duration-micro) var(--pk-ease-standard);
+}
+[data-sonner-toast][data-styled="true"] [data-close-button] {
+  transition:
+    opacity var(--pk-duration-micro) var(--pk-ease-standard),
+    background var(--pk-duration-micro) var(--pk-ease-standard),
+    border-color var(--pk-duration-micro) var(--pk-ease-standard);
+}
+[data-sonner-toast][data-removed="true"][data-front="false"][data-swipe-out="false"][data-expanded="false"] {
+  transition:
+    transform var(--pk-duration-base) var(--pk-ease-exit),
+    opacity var(--pk-duration-fast) var(--pk-ease-exit);
+}
+[data-sonner-toast][data-swipe-out="true"][data-y-position="bottom"],
+[data-sonner-toast][data-swipe-out="true"][data-y-position="top"] {
+  animation-duration: var(--pk-duration-base);
+  animation-timing-function: var(--pk-ease-exit);
+}
+[data-sonner-toast][data-promise="true"] [data-icon] > svg {
+  animation-duration: var(--pk-duration-slow);
+  animation-timing-function: var(--pk-ease-enter);
+}
+.sonner-loading-wrapper[data-visible="false"] {
+  animation-duration: var(--pk-duration-fast);
+  animation-timing-function: var(--pk-ease-exit);
+}
+.sonner-loader {
+  transition:
+    opacity var(--pk-duration-fast) var(--pk-ease-standard),
+    transform var(--pk-duration-fast) var(--pk-ease-standard);
+}
+/* sonner's loading spinner (sonner-spin) is a loading indicator and keeps its own loop. */
+
+/* ── 4. Patterns (the hand-off classes for MO-03 to MO-12) ────────────────────────────────────── */
+@layer components {
+  /* stagger-list: first mount only (a refetch does not remount), capped at --pk-stagger-max. */
+  .pk-stagger > * {
+    animation: pk-enter var(--pk-duration-slow) var(--pk-ease-enter) backwards;
+    animation-delay: calc(
+      min(sibling-index() - 1, var(--pk-stagger-max)) * var(--pk-stagger-step)
+    );
+  }
+  @supports not (animation-delay: calc(sibling-index() * 1ms)) {
+    .pk-stagger > * {
+      animation-delay: calc(var(--pk-stagger-max) * var(--pk-stagger-step));
+    }
+    .pk-stagger > :nth-child(1) {
+      animation-delay: 0ms;
+    }
+    .pk-stagger > :nth-child(2) {
+      animation-delay: calc(1 * var(--pk-stagger-step));
+    }
+    .pk-stagger > :nth-child(3) {
+      animation-delay: calc(2 * var(--pk-stagger-step));
+    }
+    .pk-stagger > :nth-child(4) {
+      animation-delay: calc(3 * var(--pk-stagger-step));
+    }
+    .pk-stagger > :nth-child(5) {
+      animation-delay: calc(4 * var(--pk-stagger-step));
+    }
+    .pk-stagger > :nth-child(6) {
+      animation-delay: calc(5 * var(--pk-stagger-step));
+    }
+  }
+
+  /* expand: an inline region that opens in place. The grid track animates (exception 1: one
+     element at a time, `moderate`); closed content is hidden, so it is out of the tab order and
+     the accessibility tree. */
+  .pk-expand {
+    display: grid;
+    grid-template-rows: 0fr;
+    visibility: hidden;
+    transition:
+      grid-template-rows var(--pk-duration-moderate) var(--pk-ease-standard),
+      visibility 0s var(--pk-duration-moderate);
+  }
+  .pk-expand > * {
+    min-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: opacity var(--pk-duration-fast) var(--pk-ease-standard);
+  }
+  .pk-expand[data-open] {
+    grid-template-rows: 1fr;
+    visibility: visible;
+    transition:
+      grid-template-rows var(--pk-duration-moderate) var(--pk-ease-standard),
+      visibility 0s;
+  }
+  .pk-expand[data-open] > * {
+    opacity: 1;
+    transition-delay: var(--pk-duration-micro);
+  }
+
+  /* skeleton: shaped like the content; shows after --pk-delay-skeleton (a delay, kept under
+     reduced motion); the sheen is a transform on a pseudo-element and stops under reduced motion. */
+  .pk-skeleton-group {
+    animation: pk-fade-in var(--pk-duration-fast) var(--pk-ease-standard)
+      backwards;
+    animation-delay: var(--pk-delay-skeleton);
+  }
+  .pk-skeleton {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--pk-radius-sm);
+    background: var(--pk-surface-sunken);
+  }
+  .pk-skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklab, var(--pk-text-default) 7%, transparent),
+      transparent
+    );
+    animation: pk-shimmer var(--pk-duration-shimmer) linear infinite;
+  }
+  /* Content replacing a skeleton fades in; it never slides (the skeleton held its place). */
+  .pk-content-in {
+    animation: pk-fade-in var(--pk-duration-base) var(--pk-ease-standard)
+      backwards;
+  }
+  /* The route fallback where the View Transitions API is missing (§6 below). */
+  :root:not([data-vt-supported]) .pk-route-in {
+    animation: pk-fade-in var(--pk-duration-base) var(--pk-ease-standard)
+      backwards;
+  }
+
+  /* status: a pill's colours ease (exception 2); a pill that appears or changes its word pops.
+     The word is always text: colour is never the only signal. */
+  .pk-pill {
+    transition:
+      background-color var(--pk-duration-base) var(--pk-ease-standard),
+      color var(--pk-duration-base) var(--pk-ease-standard),
+      border-color var(--pk-duration-base) var(--pk-ease-standard);
+  }
+  .pk-pop-in {
+    animation: pk-pop-in var(--pk-duration-slow) var(--pk-ease-spring) backwards;
+  }
+
+  /* row highlight (highlight()): a new or changed row is tinted, then the tint fades. Under
+     reduced motion the tint still comes and goes (an instant swap), so the cue survives. */
+  .pk-row {
+    transition: background-color var(--pk-duration-deliberate)
+      var(--pk-ease-standard);
+  }
+  .pk-row-highlight {
+    background-color: var(--pk-accent-subtle);
+  }
+
+  /* meter (setMeter()): a transform-only fill from the --pk-meter custom property. */
+  .pk-meter-fill {
+    transform-origin: left center;
+    transform: scaleX(var(--pk-meter, 0));
+    transition: transform var(--pk-duration-slow) var(--pk-ease-emphasized);
+  }
+  .pk-seg {
+    transition:
+      background-color var(--pk-duration-base) var(--pk-ease-standard),
+      transform var(--pk-duration-slow) var(--pk-ease-spring);
+  }
+  .pk-seg[data-changed] {
+    transform: scaleY(1.6);
+  }
+
+  /* success (<Celebration>): one check draw (exception 3) and one burst of six plain sparks in the
+     section accent, never the Polaris mark. */
+  .pk-celebration {
+    position: relative;
+    display: inline-flex;
+  }
+  .pk-check path {
+    stroke-dasharray: var(--pk-draw-length, 48);
+    animation: pk-draw var(--pk-duration-moderate) var(--pk-ease-standard)
+      backwards;
+    animation-delay: var(--pk-duration-fast);
+  }
+  .pk-celebration[data-static] .pk-check path {
+    animation: none;
+  }
+  .pk-burst {
+    position: absolute;
+    inset: 50% auto auto 50%;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+  }
+  .pk-burst > i {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    margin: -3px;
+    border-radius: 50%;
+    background: var(--pk-accent);
+    opacity: 0;
+    animation: pk-burst var(--pk-duration-deliberate) var(--pk-ease-enter);
+    animation-delay: var(--pk-duration-fast);
+  }
+  .pk-burst > i:nth-child(1) {
+    --pk-burst-angle: -90deg;
+  }
+  .pk-burst > i:nth-child(2) {
+    --pk-burst-angle: -30deg;
+    --pk-burst-reach: 52px;
+  }
+  .pk-burst > i:nth-child(3) {
+    --pk-burst-angle: 30deg;
+  }
+  .pk-burst > i:nth-child(4) {
+    --pk-burst-angle: 90deg;
+    --pk-burst-reach: 52px;
+  }
+  .pk-burst > i:nth-child(5) {
+    --pk-burst-angle: 150deg;
+  }
+  .pk-burst > i:nth-child(6) {
+    --pk-burst-angle: 210deg;
+    --pk-burst-reach: 52px;
+  }
+  .pk-burst > i:nth-child(even) {
+    width: 4px;
+    height: 4px;
+    margin: -2px;
+    background: var(--pk-accent-fg);
+  }
+
+  /* countdown ring: drains linearly over --pk-countdown (set through the CSSOM). */
+  .pk-countdown circle {
+    --pk-draw-length: 100;
+    stroke-dasharray: 100;
+    animation: pk-draw var(--pk-countdown, 3000ms) linear reverse forwards;
+  }
+
+  /* press: 0.98 on :active (`micro` in, `fast`·`spring` out); colours at `micro`. */
+  .pk-pressable {
+    transition:
+      background-color var(--pk-duration-micro) var(--pk-ease-standard),
+      border-color var(--pk-duration-micro) var(--pk-ease-standard),
+      color var(--pk-duration-micro) var(--pk-ease-standard),
+      transform var(--pk-duration-fast) var(--pk-ease-spring);
+  }
+  .pk-pressable:active:not(:disabled, [aria-disabled="true"]) {
+    transform: scale(var(--pk-motion-scale-press));
+    transition-duration: var(--pk-duration-micro);
+  }
+  /* lift: cards and tiles. The bigger shadow sits on a pseudo-element whose opacity fades, so a
+     hover never repaints a shadow per frame. Pointer devices only. */
+  .pk-lift {
+    position: relative;
+    transition: transform var(--pk-duration-base) var(--pk-ease-standard);
+  }
+  .pk-lift::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: var(--pk-elevation-3);
+    opacity: 0;
+    transition: opacity var(--pk-duration-base) var(--pk-ease-standard);
+    pointer-events: none;
+  }
+  @media (hover: hover) {
+    .pk-lift:hover {
+      transform: translateY(calc(-1 * var(--pk-motion-distance-xs)));
+    }
+    .pk-lift:hover::before {
+      opacity: 1;
+    }
+    .pk-lift:hover .pk-lift-art {
+      transform: scale(1.03);
+    }
+  }
+  .pk-lift-art {
+    transition: transform var(--pk-duration-slow) var(--pk-ease-standard);
+  }
+
+  /* Reduced motion: an instant swap. The tokens are already 0 ms; these also stop the loops and
+     hide the burst, so nothing is left running (S-23 §6.6). */
+  @media (prefers-reduced-motion: reduce) {
+    .pk-skeleton::after,
+    .pk-burst {
+      display: none;
+    }
+    .pk-stagger > *,
+    .pk-content-in,
+    .pk-route-in,
+    .pk-pop-in,
+    .pk-check path,
+    .pk-countdown circle {
+      animation: none;
+    }
+    .pk-pressable:active:not(:disabled, [aria-disabled="true"]),
+    .pk-lift:hover,
+    .pk-lift:hover .pk-lift-art {
+      transform: none;
+    }
+  }
+  :root[data-motion="reduce"] .pk-skeleton::after,
+  :root[data-motion="reduce"] .pk-burst {
+    display: none;
+  }
+  :root[data-motion="reduce"]
+    :is(
+      .pk-stagger > *,
+      .pk-content-in,
+      .pk-route-in,
+      .pk-pop-in,
+      .pk-check path,
+      .pk-countdown circle
+    ) {
+    animation: none;
+  }
+  :root[data-motion="reduce"]
+    :is(
+      .pk-pressable:active:not(:disabled, [aria-disabled="true"]),
+      .pk-lift:hover,
+      .pk-lift:hover .pk-lift-art
+    ) {
+    transform: none;
+  }
+}
+
+/* ── 5. View Transitions (route changes, tabs, shared elements, list mutations) ───────────────────
+ * Started only by viewTransition() (src/ui/motion/viewTransition.ts), which sets html[data-vt] to
+ * the transition's type. A region is named ONLY during the kind of transition it belongs to: a
+ * permanently named element is lifted into the transition layer on every transition and paints
+ * over live overlays such as a dialog's scrim (S-23 §3.4 item 1). The chrome (top bar, sidebar,
+ * switchers) is never named, so it stays live and still.
+ *   route    a sibling page: the main region fades through;
+ *   forward  a drill-down (list → record); back: Back. The main region slides; shared elements fly;
+ *   tab      a tab panel fades through and the tab indicator morphs;
+ *   list     rows of one list move, enter and leave; the main region is named too, so a page that
+ *            gets shorter (scroll clamped) glides;
+ *   dialog   a dialog's content changes step: the panel morphs its size;
+ *   theme    the whole page cross-fades.
+ * The main region is the console's and the portal's `main#content` (AppShell, PortalShell), the
+ * portal's focused flows' `main#flow`, or anything marked .pk-vt-main. */
+:root {
+  view-transition-name: none;
+}
+:root:is(
+    [data-vt="route"],
+    [data-vt="forward"],
+    [data-vt="back"],
+    [data-vt="list"]
+  )
+  :is(main#content, main#flow, .pk-vt-main) {
+  view-transition-name: pk-main;
+}
+:root:is([data-vt="forward"], [data-vt="back"]) .pk-vt-hero {
+  view-transition-name: pk-hero;
+}
+:root:is([data-vt="forward"], [data-vt="back"]) .pk-vt-hero-title {
+  view-transition-name: pk-hero-title;
+}
+:root:is([data-vt="forward"], [data-vt="back"]) .pk-vt-key {
+  view-transition-name: pk-key;
+}
+:root[data-vt="tab"] .pk-vt-tabpanel {
+  view-transition-name: pk-tabpanel;
+}
+:root:is([data-vt="tab"], [data-vt="route"]) .pk-vt-indicator {
+  view-transition-name: pk-indicator;
+}
+:root[data-vt="dialog"] .pk-vt-dialog {
+  view-transition-name: pk-dialog;
+}
+:root[data-vt="dialog"] .pk-vt-card {
+  view-transition-name: pk-card;
+}
+::view-transition-group(*) {
+  animation-duration: var(--pk-duration-base);
+  animation-timing-function: var(--pk-ease-standard);
+}
+::view-transition-old(*),
+::view-transition-new(*) {
+  animation-duration: var(--pk-duration-base);
+}
+/* Siblings and tabs fade through: the old view leaves in `fast`, the new one arrives after
+   `micro`, so two pages of text are never fully on screen at once (a plain cross-fade doubles
+   every line mid-way; S-23 §3.4 item 3). */
+::view-transition-old(pk-main),
+::view-transition-old(pk-tabpanel) {
+  animation: pk-fade-out var(--pk-duration-fast) var(--pk-ease-exit) both;
+}
+::view-transition-new(pk-main),
+::view-transition-new(pk-tabpanel) {
+  animation: pk-fade-in var(--pk-duration-base) var(--pk-ease-enter) both;
+  animation-delay: var(--pk-duration-micro);
+}
+/* A drill-down moves forward; Back moves back: the same fade-through plus a slide along the
+   reading direction (md out, lg in). */
+:root[data-vt="forward"]::view-transition-old(pk-main) {
+  animation: pk-vt-out-start var(--pk-duration-fast) var(--pk-ease-exit) both;
+}
+:root[data-vt="forward"]::view-transition-new(pk-main) {
+  animation: pk-vt-in-end var(--pk-duration-base) var(--pk-ease-enter) both;
+  animation-delay: var(--pk-duration-micro);
+}
+:root[data-vt="back"]::view-transition-old(pk-main) {
+  animation: pk-vt-out-end var(--pk-duration-fast) var(--pk-ease-exit) both;
+}
+:root[data-vt="back"]::view-transition-new(pk-main) {
+  animation: pk-vt-in-start var(--pk-duration-base) var(--pk-ease-enter) both;
+  animation-delay: var(--pk-duration-micro);
+}
+/* shared-element: slower and decelerating hard, so the eye can follow it. Both ends of a text
+   pair must be `width: fit-content`, or the snapshot stretches (S-23 §3.4 item 4). */
+::view-transition-group(pk-hero),
+::view-transition-group(pk-hero-title),
+::view-transition-group(pk-key),
+::view-transition-group(pk-indicator) {
+  animation-duration: var(--pk-duration-slow);
+  animation-timing-function: var(--pk-ease-emphasized);
+}
+/* morph: a card or dialog changes size between steps (SIGN-IN §3.18's pk-card is the same). */
+::view-transition-group(pk-dialog),
+::view-transition-group(pk-card) {
+  animation-duration: var(--pk-duration-moderate);
+  animation-timing-function: var(--pk-ease-standard);
+}
+/* The art is one picture at two sizes: show only the new snapshot, scaled from the old box, so
+   the morph never ghosts two copies (S-23 §3.4 item 6). */
+::view-transition-old(pk-hero),
+::view-transition-new(pk-hero) {
+  height: 100%;
+  object-fit: cover;
+}
+::view-transition-old(pk-hero) {
+  animation: none;
+  opacity: 0;
+}
+::view-transition-new(pk-hero) {
+  animation: none;
+}
+/* dialog steps: the old content leaves fast, then the new one fades in while the panel morphs. */
+::view-transition-old(pk-dialog),
+::view-transition-old(pk-card) {
+  animation: pk-fade-out var(--pk-duration-fast) var(--pk-ease-exit) both;
+}
+::view-transition-new(pk-dialog),
+::view-transition-new(pk-card) {
+  animation: pk-fade-in var(--pk-duration-base) var(--pk-ease-enter) both;
+  animation-delay: var(--pk-duration-micro);
+}
+/* list mutations: rows carry `match-element` names only while a list transition runs. So do the
+   list's container (.pk-vt-scope, usually its card) and the container's other children, so the
+   card's box, its heading and anything below the list move with the rows instead of jumping
+   (S-23 §3.4 item 2). viewTransition() adds .pk-vt-list to a list of up to 30 rows; a longer list
+   gets the names on its on-screen rows through the CSSOM instead (D7). */
+:root[data-vt="list"] .pk-vt-list > *,
+:root[data-vt="list"] .pk-vt-scope,
+:root[data-vt="list"] .pk-vt-scope > * {
+  view-transition-name: match-element;
+  view-transition-class: pk-row;
+}
+/* Leaving rows fade first (`micro`), then the rest close the gap. */
+::view-transition-group(*.pk-row) {
+  animation-duration: var(--pk-duration-base);
+  animation-delay: var(--pk-duration-micro);
+}
+/* Entering rows wait for the gap to open, then rise in. */
+::view-transition-new(*.pk-row):only-child {
+  animation: pk-enter var(--pk-duration-base) var(--pk-ease-enter) both;
+  animation-delay: var(--pk-duration-fast);
+}
+::view-transition-old(*.pk-row):only-child {
+  animation: pk-fade-out var(--pk-duration-micro) var(--pk-ease-exit) both;
+}
+/* theme switch: one cross-fade of the whole page. */
+:root[data-vt="theme"] {
+  view-transition-name: root;
+}
+/* viewTransition() never starts one under reduced motion; this covers any other caller. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+:root[data-motion="reduce"]::view-transition-group(*),
+:root[data-motion="reduce"]::view-transition-old(*),
+:root[data-motion="reduce"]::view-transition-new(*) {
+  animation: none !important;
+}

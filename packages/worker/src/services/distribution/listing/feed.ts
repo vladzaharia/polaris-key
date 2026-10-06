@@ -4,8 +4,8 @@
  * `.pkey/distribution` listing. A product with no model (no `dist_listings` row) renders exactly
  * the manifest listing it always did, so its feed bytes, ETag and golden files do not move.
  *
- * The model has no asset URLs (assets are blobs, A-18d), so `iconUrl`, `headerUrl` and
- * `screenshots` always come from the manifest.
+ * The model has no asset URLs (assets are blobs, A-18d), so the art (`icon`, `header` and
+ * `screenshots`, or a pre-HA-04 row's `iconUrl` and `headerUrl`) always comes from the manifest.
  *
  * One D1 read: the listing row, the default locale and the feed's overrides together.
  */

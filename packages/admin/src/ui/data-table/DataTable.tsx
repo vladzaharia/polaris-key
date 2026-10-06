@@ -545,6 +545,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
       : content;
   };
 
+  // Every body cell is vertically centred (test/ui/tableCells.test.tsx guards it).
   const cellClass = (col: Column<T, unknown>): string => {
     const meta = col.columnDef.meta;
     return cn(
@@ -582,7 +583,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
         )}
       >
         {selection ? (
-          <td className="sticky left-0 z-[1] w-10 bg-inherit px-3">
+          <td className="sticky left-0 z-[1] w-10 bg-inherit px-3 align-middle">
             <TriCheckbox
               checked={selected}
               onChange={(v) => row.toggleSelected(v)}
@@ -599,7 +600,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
           </td>
         ))}
         {rowActions ? (
-          <td className="w-12 px-2 text-right">
+          <td className="w-12 px-2 text-right align-middle">
             <RowMenu label={label} items={rowActions(row.original)} />
           </td>
         ) : null}
@@ -730,6 +731,9 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
             key={a.label}
             size="sm"
             variant={a.tone === "danger" ? "danger" : "outline"}
+            disabledReason={a.disabledReason?.(
+              selectedRows.map((r) => r.original),
+            )}
             onClick={() =>
               a.onSelect(
                 selectedRows.map((r) => r.original),

@@ -1831,6 +1831,55 @@ narrowest Play permissions, the Partner Center Manager role, a dedicated Steam p
 the operator's to configure and cannot be verified by the Worker. For App Store Connect the owner
 chose to keep the Admin team key (2026-10-04), so the write gate of A-17a (below) is the control.
 
+### The live credential check (UX-69)
+
+**What it is.** A connect form sends an UNSAVED credential once to a check route, and the Worker
+tries it against the store before anything is saved (SETUP.md D42):
+`POST /manage/api/platform/store-connections/<store>[/credentials/<slot>]/check` for the team keys
+(App Store Connect, Play, Partner Center, Steam), and
+`POST /manage/api/products/<slug>/distribution/storefronts/<id>/ci-secrets/<name>/check` for the
+CI secrets a storefront needs (itch.io's `BUTLER_API_KEY`, the snapcraft export-login, winget's
+GitHub token), which Polaris Key never keeps. Both are platform-admin only, behind the session,
+CSRF and admin rate limit like every console route.
+
+**Assets.** The pasted value itself, for the length of one request; the store's quota.
+
+**Controls.**
+
+- **Transient by type.** A store key becomes a `TransientOutletCredential`
+  (`core/outletCredentials.ts`): validated by the kind's own validator, its value in a private
+  field read only through `reveal()`, its `toJSON`, string form and `inspect` rendering the kind and
+  display metadata only. `outletCredentialReach.test.ts` keeps the maker to the store-connections
+  handler and `reveal()` and the `transient…Token` minters to Distribution and the token helpers.
+  Nothing on the path seals, caches (no token memo, no sealed KV slot), writes or audits;
+  `credentialCheck.test.ts` proves no credential row, KV key or audit row survives a check.
+- **One read, never a write.** Each check is one or two GETs (plus the OAuth token exchange's POST
+  for Google and Entra) to the store's fixed origin with `redirect: "manual"` and capped bodies:
+  App Store Connect `GET /v1/apps` through `AscClient` (so A-17a's write gate stands in front of
+  it, and no user, key, certificate or device endpoint is touched), Play Reporting `apps:search`,
+  Partner Center `GET /v1.0/my/applications`, Steam `GetPartnerAppListForWebAPIKey`, itch.io
+  `/profile` and `/profile/games`, the Snap dashboard's `tokens/whoami`, GitHub `/user` and
+  `/repos/<login>/winget-pkgs`. No retries: a 429 is answered "check again".
+- **Never a value out.** The response is a `CredentialCheck` composed by the Worker: a verdict, a
+  reason, sentences, and facts the store reported about the account (a team's issuer id, an app
+  count, a username, scopes, an expiry). Store error bodies are never copied; at most an enum-like
+  token is read (`invalid_grant`, an AADSTS number, Google's `SERVICE_DISABLED`, a Snap
+  `error_list` code) and mapped to text. Nothing is logged.
+- **Rate-limited per operator**, 20 checks in 10 minutes across every store (`credentialCheck`,
+  failing closed), counted after the format check and before any store call.
+
+**Residual risk.** The check is an oracle for whether a credential works, available to a
+platform admin, who can already store and use any credential; the limit bounds a loop, not the
+power. A pasted value transits the admin's browser and the Worker's memory for one request, which
+is what saving it through the console already implies; the Worker-secret route (the Sync Worker
+secrets workflow) remains for keys that must never pass through a browser. The Snap check binds an
+Ubuntu One discharge in the Worker to make the one `whoami` call, as `snapcraft` does; the
+macaroons are not kept. A check proves a read, not a write: a key that reads apps may still lack a
+write permission a later step needs, which that step reports. "Saved only after a pass" is the connect form's rule, not the server's: the
+store-connections `PUT` does not require a prior check, so an API caller (a platform admin) can
+still store an unchecked key, as before UX-69; the apps listing's health columns then show
+whether it works.
+
 ### Storefront adapters: the common layer (A-18a)
 
 **What it is.** Every storefront is one `StorefrontAdapter` (`core/storefront/adapter.ts`), the
@@ -4497,6 +4546,75 @@ The Godot SDK reaches Android through `polaris-key-platform` (sdks/kotlin) and t
   (notes/S-06 §7): it gates In-App Updates (a forged Play claim only reaches Play's own API, which
   then refuses) and never authorises anything on the server.
 
+### Node/Electron install drivers, PolarisBridge host and SafeStorageStore (SP-N09/N10/N11)
+
+`@polaris-key/node` hands a verified `binary` decision to an install driver
+(`packages/sdk-node/src/update/drivers/`), gives an Electron renderer a proxy over the client
+(`src/electron/main.ts`, `renderer.ts`, `preload.ts`) and keeps the token in Electron's
+`safeStorage` (`src/electron/safeStorage.ts`). The drivers install new code, the bridge is a
+privilege boundary, and the store holds the bearer. No driver holds a private key. In every case
+the signed update decision (P3-01) is the authority: a driver whose own feed offers any other
+version answers `unsupported` (`version`) and installs nothing.
+
+- **What verifies the bytes, per driver.**
+  - `seaSelfReplaceDriver` downloads through `release.fetch`, which checks the size and SHA-256
+    against the payload artifact of the signed release record before the file is renamed into
+    place. Nothing unverified runs. A payload whose name is an archive or an installer is
+    refused (`product`), and a process that is not a single-executable build is refused
+    (`runtime`), so the driver never replaces Node itself.
+  - `electronUpdaterDriver` lets electron-updater download through the host's own provider. It
+    then hashes the downloaded file and requires that SHA-256 to match an artifact of the decided
+    build in the signed release record (`payload-mismatch` otherwise). electron-updater's own
+    checks (sha512, the Windows publisher name) still run underneath. The record check is on by
+    default; a host that passes `verifyAgainstRecord: false` falls back to electron-updater's
+    feed-level integrity.
+  - `velopackDriver` checks only that the Velopack feed offers the decided version. The bytes are
+    verified by Velopack's own SHA-1/SHA-256 from that feed, so, as with the Godot Velopack path
+    (P5-07), integrity is the feed's: TLS to the Worker and the Worker's selection over verified
+    release records. Authenticode on Update.exe is the owner's. The driver does not compare the
+    package against the release record.
+- **SEA rename and rollback.** The driver writes `<exe>.new` beside the executable, renames the
+  running image to `<exe>.previous` and renames `<exe>.new` into its place. A failed second
+  rename restores the first. The boot guard's `rollback()` puts `<exe>.previous` back after
+  `MAX_FAILED_BOOTS` unconfirmed launches, and only when `<exe>.previous.json` names the version
+  being rolled back to. Residuals:
+  - the install directory must be writable by the user, so anyone who can write there can swap
+    `<exe>.new` between the verify and the rename, or plant `<exe>.previous` and its marker;
+  - the rollback does not re-verify `<exe>.previous`;
+  - both need write access to the directory that already holds the executable, which is
+    equivalent to replacing it. A host that installs into a protected directory should use an
+    installer-based driver instead.
+- **The bridge's trust boundary.** `exposePolarisBridge` registers `ipcMain` handlers that any
+  renderer loaded with the preload can call: state reads, `refresh`, sign-in, `submitKey`,
+  `signOut`, `importBundle`, `fetchSchema` and an `invoke` allowlist (`DEFAULT_INVOKE_VERBS`:
+  device list, rename, deauthorize and report, update check and decide, release changelog,
+  install URL and download URL).
+  - `invoke` answers only the allowlist plus the host's own `invoke.extra` verbs, looked up with
+    `Object.hasOwn`, so a prototype key never resolves. Arguments are type-checked before they
+    reach the client.
+  - The device code of a sign-in stays in the main process; the renderer holds a random flow id
+    that expires with the code. The token, the keyring and the cache never cross the boundary.
+    `BridgeState` carries the verified documents and the sync bookkeeping only.
+  - Refusals cross as `{code, message}` envelopes built from the copy catalog, never a raw
+    server body.
+  - `allowSender` is **optional, and the default accepts every frame**. A host that loads remote
+    content, an iframe, or a second window with the same preload exposes every verb above to
+    that content, including `devices.deauthorize` and `signOut`. Hosts should pass an
+    `allowSender` that pins the app's own origin (the README and tests show
+    `senderFrame.url.startsWith("app://")`), and attach the preload only to windows they trust.
+    The bridge cannot install code: no verb reaches a driver's `install`.
+- **SafeStorageStore degradation.** The token is encrypted with `safeStorage` (Keychain, DPAPI,
+  libsecret or KWallet) into a 0600 `token.enc` file opened with `O_NOFOLLOW`. Every weaker state
+  is reported by `status()`, never silent (P1b-09):
+  - encryption unavailable (before `app.whenReady()`, or no secret store) puts the token in a
+    plain 0600 `token` file and reports `keyring-unavailable`;
+  - Linux `basic_text` is Chromium's hard-coded key, which is obfuscation, not encryption. It is
+    reported as `keyring-unavailable`, with that detail;
+  - a token that no longer decrypts (the OS key was reset) reads as null and reports
+    `keyring-error`; the next activation writes a fresh one.
+  - at most one of `token.enc` and `token` exists after a write. In the two plain-equivalent
+    states the token is as safe as the user's home directory, the same residual as `FileStore`.
+
 ### JVM desktop keyring store and installer driver (UK-40)
 
 The Kotlin SDK's JVM desktop path (`PolarisKeyDesktop`) adds an OS keyring token store
@@ -4903,6 +5021,79 @@ sit behind the portal session; the claim also needs the CSRF header.
   `audit`, both with `source: discover`.
 - **Developers can withhold an offer without changing the policy** (`discover_enabled = 0`).
 
+### The outbound fetcher and hosted-asset ingest (HA-01)
+
+`core/safeFetch.ts` is the one guarded fetcher for URLs someone other than Polaris Key wrote, and
+`core/hostedAssets.ts` is the one ingest that turns such a URL, an upload or a CI push into a copy
+in the blob store (notes/S-20 §6.3, §6.12). HA-01 adds no route: the pulls are started by later
+packages (HA-05 register and resync, HA-06 uploads, HA-08 release mirroring), and the portal media
+proxy now fetches through the same guard.
+
+- **New outbound fetcher (S-20 §6.12).** Any public `https` host may be named, with no host
+  allowlist, so the guard is what bounds it: `https` only, port 443, no userinfo, at most 2048
+  characters, no IP literal, no single-label host, never `plrs.im` or any `*.plrs.im` (without
+  `global_fetch_strictly_public` a fetch to our own custom domain is routed to origin and bypasses
+  the front door), never `.local`, `.internal`, `.localhost` or `.home.arpa`. Redirects are
+  followed by hand, at most three, and each hop is guarded again **before** it is dialled; an
+  `Authorization` header reaches the first hop only, never a `Location`. One 30 s budget covers
+  every hop and the body; a declared `Content-Length` over the slot's cap is refused unread, and
+  the body is counted and cut at the cap whatever the header said. The Worker resolves nothing
+  itself, and the edge dials neither IP literals nor RFC 1918 or loopback space from a Worker, so
+  the remaining surface is "public hosts the operator named". **Who can name one:** manifest
+  authors and product operators of that product, never an end user's request. Every pull,
+  refused or not, writes an `assets.ingest` audit row. `test/safeFetch.test.ts` runs the S-20
+  reference puller's guard table case for case and the redirect-to-a-denied-host refusal.
+- **Content risk.** The type comes from the magic number, never from the source's
+  `Content-Type`: image slots take PNG, JPEG, WebP, GIF or AVIF; video slots MP4; nothing ever
+  sniffs as SVG or HTML (`core/sniff.ts` has no branch that could answer either). Per-slot caps
+  are code constants (icon 10 MiB, header and screenshots 20 MiB, notes images 5 MiB, video
+  512 MiB, release files R2's 4.995 GiB single-put limit), not settings (S-18 §5.6).
+- **Possession, unchanged (§3, "The blob store").** A product earns a `hosted-asset` ref only to
+  bytes it delivered: the ingest reads and hashes every byte even when the object is already
+  stored, an expected hash is checked against the bytes and never used to skip the read, and
+  whether another product already stored them never leaves the module. A streamed ingest (video,
+  release files) needs the expected SHA-256 and length up front, and R2 refuses the put if the
+  bytes miss it. A replaced copy's refs are dropped in the batch that writes the new one, and the
+  collector reclaims the bytes after the lock and the grace period; a failed re-pull keeps the
+  last good copy.
+- **Every put now stores a `Content-Type` (S-20 §4.6 #1).** `putVerified` (and so `promote`)
+  stores the sniffed type, never a declared one; it is metadata only, since `blobResponse` still
+  decides what a response may carry. The Play listing-image read sniffs objects stored before
+  this change.
+- **The portal media proxy** keeps its GitHub-only host rule on every hop (`allowHost`) on top of
+  this guard until HA-07 serves hosted copies; its cap, 5 s budget and sniff are unchanged.
+
+### Linking an existing product to a repository (UX-23)
+
+**What changes hands.** `POST /manage/api/products/<slug>/release/link` turns a manual product
+into a repository-linked one: from then on whoever can push `.pkey/` to the repository's default
+branch writes everything a resync writes (catalog, tiers, profiles, sign-in provider, edge-mint
+recipes, release settings, the manifest-owned trusted publisher). That is the same authority a
+product created from its repository has, granted to an existing product. Code:
+`services/release/linkExisting.ts`; tests: `test/linkExisting.test.ts`.
+
+**Who can do it.** The console session with CSRF, behind the platform-admin gate, like resync. The
+repository is not trusted for its own identity: the App installation must exist on it, and its
+`.pkey/product` must name this product's slug, so a link cannot attach a product to a repository
+that describes another product. The system product is refused (the deploy hook is its only
+writer), and an already-linked product is refused (no re-pointing to another repository here).
+
+**Nothing is applied that the operator did not see.** The dry run (`?dryRun=1`) writes nothing and
+returns the plan and a SHA-256 digest of the `.pkey/` files it read. The link refuses (409) unless
+the files GitHub serves at link time have the same digest, so a push between the check and the
+click cannot slip a different manifest in. The window left is the one every resync has: the
+second fetch inside `resyncRepo`, milliseconds later.
+
+**Every resync gate still runs, before the first write.** The issuer allowlist (R9-01: a custom
+issuer that differs from the stored one is refused unless allowlisted), the binary-name class
+(R6-01), catalog compilation, and the tier and profile references are checked before the
+coordinates are written; the apply itself is `resyncRepo`, so the ownership rules (`admin`-owned
+services, policies, compat window, access modes and publisher stay), the edge-mint approval sweep
+(P0-12) and the profile secret carry-forward (R2) apply unchanged. A refusal from the apply puts
+`release_source` and the coordinates back; what a refused resync already wrote stays, as for any
+resync, and the checks above make that reachable only by a push landing inside that window. The
+signing key is never touched.
+
 ### The refusal log (UX-15)
 
 `authorizeDevice` (`core/authz.ts`) now records each refused activation in `license_refusals`
@@ -4926,6 +5117,39 @@ device id. Only the platform-admin session reads it (`GET /manage/api/products/<
   carries anything from the table.
 - **No raw identifier is copied.** The device id is stored only as a truncated hash; the licence
   holder's name and email are not stored here at all.
+
+### Licence deletion (owner request, 2026-10-05)
+
+A platform admin can delete a licence outright (`DELETE /manage/api/products/<slug>/license/licenses/<id>`,
+bulk `POST …/license/deletions`, the cleanup list `GET …/license/deletions/candidates`;
+`services/license/admin/deletion.ts`, `core/licenseDelete.ts`). Before this a licence could only
+be disabled.
+
+- **Only behind the platform-admin session, CSRF and a typed confirmation.** The routes sit on
+  the admin API, so the session, the CSRF header and the product-admin gate run first (a test
+  pins the 403s). The Worker compares the typed string itself (`delete <id>`, or
+  `delete <n> licenses` for at most 100 at once), so a forged or replayed console request without
+  it changes nothing.
+- **Commerce history is never deleted.** A licence with store grants or recorded store purchases,
+  in any state, is refused. The owners' refusals are also sub-selects guarding every statement of
+  the batch and its audit row, so a purchase recorded between the check and the batch leaves the
+  licence untouched. `dist_purchases` and `license_store_grants` are never deleted.
+- **Refusals the operator chose are not lifted in bulk.** An active developer-issued licence must
+  be disabled first. A disabled auto-issued licence still bound to its machine (`enroll_hwid`) is
+  refused (`enroll_guard`): deleting it would let that machine enroll for another free licence.
+  Residual: deleting a disabled **sign-in** licence lets its holder sign in for a new one. The
+  cleanup list does not list disabled licences on their own (only sign-in duplicates of an
+  account that keeps a usable licence), and the console warns about the reissue on the record's
+  and the bulk confirmation.
+- **The cascade is complete and atomic.** One batch per licence removes every row keyed by it
+  (a test walks `sqlite_master` and fails on an unclaimed `license_id` table), and the devices'
+  bearer tokens are purged from KV after the batch commits, so the devices stop authenticating
+  at once. Residual: a licence-bound registry token can keep resolving on another isolate for up
+  to the resolution cache's 30 seconds, as with a revocation.
+- **History stays, identity does not leak.** The licence's audit rows are kept; the deletion
+  writes one `license.delete` row (written only while the licence still exists, so a racing
+  double delete audits once) naming tier, origin, the account's pairwise subject (never the
+  global account id) and the device count.
 
 ### Boundaries that are weaker than they look
 
@@ -5258,7 +5482,10 @@ creates a repository or moves a channel tag, or an `oci-push` ref that serves an
 repository's digest reads (F-23); a new registry
 principal kind, a registry token accepted in a URL outside Godot, any increase of
 `REGISTRY_TOKEN_TTL_SECONDS` or of the OCI pull token's lifetime, or a credentialed registry
-answer reaching the Cache API (F-21); a publish token longer than 30 days, not owner-bound or
+answer reaching the Cache API (F-21); a Node install driver (SP-N09) installs
+without the signed decision's version match, `electronUpdaterDriver`'s record check stops being
+the default, a PolarisBridge verb (SP-N10) is added to `DEFAULT_INVOKE_VERBS` or reaches an
+install, or `SafeStorageStore` (SP-N11) gains a degraded state `status()` does not report; a publish token longer than 30 days, not owner-bound or
 reaching Godot, any read inside a package beyond Swift manifests, or a raised native
 publish body cap (F-22); the bucket-lock duration
 changes; the admin authorization model changes; the wire contract

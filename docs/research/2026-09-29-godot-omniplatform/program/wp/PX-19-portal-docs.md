@@ -19,7 +19,7 @@
 differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
 **No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
 
-- Portal docs: Account-wide licences ("unlimited devices", Devices with Remove), the tier pill and "Lifetime", Replace a device from sign-in vs Remove in the portal (SIGN-IN.md D-08, O-11).
+- Portal docs: licences are not typed (owner decision 2026-10-05: no 'Account-wide' label): every licence is account-bound and device-limited ("2 of 5 devices", Devices with Remove; SIGN-IN.md D-53), and shows its origin in plain words ("From signing in", "Steam key ending 3WPLDA", "From Steam"), the tier pill and "Lifetime", Replace a device from sign-in vs Remove in the portal (SIGN-IN.md D-08, O-11).
 
 ## Goal
 

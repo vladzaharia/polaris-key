@@ -79,6 +79,7 @@ export {
   flattenEntries,
   readConfig,
   readEntitled,
+  readEntitlementValue,
   readEntitledChannels,
   resolveConfig,
   resolveConfigValue,
@@ -87,6 +88,37 @@ export {
   listUserConfig,
   type ProjectFlags,
 } from "./adapter.js";
+
+export {
+  bodyCode,
+  classifyActivation,
+  networkOutcome,
+  retryAfterSeconds,
+  type ActivationKind,
+  type ActivationOutcome,
+} from "./activation.js";
+export { activationError } from "./activationError.js";
+export {
+  activationMessage,
+  activationTitle,
+  copyLocales,
+  copyMessage,
+  copyTitle,
+  describeError,
+  hasCopy,
+  registerCopyLocale,
+  type CopyBundle,
+  type CopyParams,
+} from "./copy.js";
+export {
+  COPY_ACTIVATION,
+  COPY_CODES,
+  COPY_FALLBACK,
+  COPY_GATE,
+  COPY_LOCALE,
+  COPY_VERSION,
+  type CopyEntry,
+} from "../copy.generated.js";
 
 export type { ManagedEntry, JSONValue } from "@polaris-key/protocol/core";
 export type {

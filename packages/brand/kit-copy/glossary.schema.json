@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://key.plrs.im/docs/schemas/brand/glossary.schema.json",
+  "title": "Polaris Key kit copy glossary (packages/brand/kit-copy/glossary.json)",
+  "description": "The fixed translation of each product term in every launch locale. Translators of the locale packs use these words; a native-speaker review checks them first.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["glossaryVersion", "neverTranslate", "terms"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "$comment": { "type": "string" },
+    "glossaryVersion": { "type": "integer", "minimum": 1 },
+    "neverTranslate": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "terms": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["note"],
+        "properties": { "note": { "type": "string" } },
+        "additionalProperties": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}
