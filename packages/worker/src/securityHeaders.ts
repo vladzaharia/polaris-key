@@ -32,8 +32,9 @@ import { brandPageStyleSource } from "./core/brandHtml.js";
  * inline pre-paint theme script, allowed by its hash.
  *
  * `img-src` may add exactly ONE more source: the image host's origin (`IMG_ORIGIN`, HA-02), for
- * the console's product logos. It is passed per response by the shell that needs it
- * (`admin/index.ts`), never a wildcard and never a scheme or a path: the host serves only public,
+ * the console's product logos and the portal's product art (HA-07). It is passed per response by
+ * the shell that needs it (`admin/index.ts`, `services/identity/portal/index.ts`), never a wildcard
+ * and never a scheme or a path: the host serves only public,
  * content-addressed raster images under `default-src 'none'; sandbox` (THREAT-MODEL, "The image
  * host"), so an image from it can run nothing here.
  */

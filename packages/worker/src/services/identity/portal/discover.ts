@@ -177,7 +177,7 @@ export async function handleDiscover(
   for (const o of await discoverOffers(env, db, session.accountId, now)) {
     offers.push({
       product: o.product.slug,
-      ...(await presentationFor(o.product, hooksFor, now)),
+      ...(await presentationFor(env, db, o.product, hooksFor, now, "discover")),
       platforms: await productPlatforms(db, hooksFor, o.product.slug, now),
       offer: o.terms,
       reason: o.reason,

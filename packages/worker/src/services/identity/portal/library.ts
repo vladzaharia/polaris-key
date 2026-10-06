@@ -13,9 +13,14 @@
  *   presentation   the product's own store listing (`.pkey/distribution`'s root `listing`), read
  *                  through Distribution's `delivery` hook (rule 6: Identity never reads `dist_*`).
  *                  A product without Distribution, or without a listing, falls back to its
- *                  `products.name` and nulls — the portal's letter-and-tint fallback. Art is
- *                  handed out ONLY as a same-origin `/media/…` URL, and only when the media proxy
- *                  would serve it (`mediaUrlFor`), so the page never holds a developer URL.
+ *                  `products.name` and nulls — the portal's letter-and-tint fallback. The page
+ *                  never holds a developer URL. Art is Polaris Key's hosted copy on the image host
+ *                  (HA-07, `core/hostedImages.ts`): the icon of `presentation.icon`, else
+ *                  `listing.icon`, and the header of `listing.header`, exactly as the image host's
+ *                  `/icon` and `/header` aliases choose them, each at the ladder width its surface
+ *                  draws at (`PRESENTATION_WIDTHS`). With hosting off or no image host (HA-10's
+ *                  rollback), art is the same-origin `/media/…` proxy URL, and only when the proxy
+ *                  would serve it (`mediaUrlFor`), as before HA-07.
  *   seats          `deviceLimit` is `licenseDeviceLimit`, the number `authorizeDevice` enforces;
  *                  `activeSeatCount` counts authorized devices seen inside the dormancy window
  *                  (`SEAT_DORMANCY_SECONDS`), the predicate `countActiveDevices` applies at
@@ -33,7 +38,7 @@
  * `GET /api/licenses`. Downloads, stores and feeds on the product view are PX-W2's (G2, G4).
  */
 
-import type { Db } from "../../../core/platform.js";
+import type { Db, Env } from "../../../core/platform.js";
 import {
   loadProductPublic,
   type ProductPublic,
@@ -41,6 +46,14 @@ import {
 import { licenseDeviceLimit } from "../../../core/authz.js";
 import { seatActiveSince } from "../../../core/data.js";
 import type { DeviceRow } from "../../../core/data.js";
+import {
+  PRESENTATION_HEADER_SLOTS,
+  PRESENTATION_ICON_SLOTS,
+  firstHostedImage,
+  hostedImageOrigin,
+  hostedImageUrl,
+  hostedImages,
+} from "../../../core/hostedImages.js";
 import type { PortalHooksFor } from "./api.js";
 import { entitlementView } from "./entitlements.js";
 import { mediaUrlFor } from "./media.js";
@@ -77,8 +90,13 @@ export interface Presentation {
   developerName: string | null;
   tintColor: string | null;
   website: string | null;
-  /** Same-origin `/media/<p>/icon?v=…`, or `null` (no art, or art the proxy would not serve). */
+  /**
+   * The hosted icon on the image host (`https://img…/<p>/a/<sha256>/<w>.webp`, or the original),
+   * or `null` when there is no copy. With hosting off (HA-10's rollback) the same-origin
+   * `/media/<p>/icon?v=…` proxy URL, or `null` when the proxy would not serve one.
+   */
   iconUrl: string | null;
+  /** The hosted header art, like `iconUrl`. */
   headerUrl: string | null;
   /** G16. `null` when the listing declares neither. */
   support: { url: string | null; email: string | null } | null;
@@ -102,11 +120,75 @@ function str(v: unknown): string | null {
   return typeof v === "string" && v.length > 0 ? v : null;
 }
 
+/**
+ * Where the portal draws a product's art, and so which ladder width it asks for (HA-07: the
+ * variant chosen per surface, `core/hostedImages.ts`). The widths are the drawn size at 2x:
+ *
+ *   library    the tiles' 48 to 64 px icons and their header art (and the library's hero banner);
+ *   product    the product page's 112 px icon and its full-width banner;
+ *   discover   Discover's tiles, drawn like the library's.
+ *
+ * `client` is the sign-in request card (§12.7.2's client record): its icon stays the same-origin
+ * `/media/<p>/icon` the contract names, which 302s to the hosted copy (`media.ts`).
+ */
+export type PresentationSurface = "library" | "product" | "discover" | "client";
+
+export const PRESENTATION_WIDTHS: Record<
+  Exclude<PresentationSurface, "client">,
+  { icon: number; header: number }
+> = {
+  library: { icon: 128, header: 1280 },
+  product: { icon: 256, header: 1920 },
+  discover: { icon: 128, header: 1280 },
+};
+
+/** The art of one surface: hosted copies, or the rollback's proxy URLs (see the file comment). */
+async function presentationArt(
+  env: Env,
+  db: Db,
+  product: ProductPublic,
+  listing: Record<string, unknown> | null,
+  surface: PresentationSurface,
+): Promise<{ iconUrl: string | null; headerUrl: string | null }> {
+  if (hostedImageOrigin(env) === null)
+    return {
+      iconUrl: await mediaUrlFor(product.slug, "icon", listing),
+      headerUrl:
+        surface === "client"
+          ? null
+          : await mediaUrlFor(product.slug, "header", listing),
+    };
+  const images = await hostedImages(env, db, product.slug, [
+    ...PRESENTATION_ICON_SLOTS,
+    ...PRESENTATION_HEADER_SLOTS,
+  ]);
+  const icon = firstHostedImage(images, PRESENTATION_ICON_SLOTS);
+  const header = firstHostedImage(images, PRESENTATION_HEADER_SLOTS);
+  if (surface === "client")
+    return {
+      // §12.7.2: the same-origin path; `v` moves with the copy, so a new icon is a new URL.
+      iconUrl: icon
+        ? `/media/${encodeURIComponent(product.slug)}/icon?v=${icon.sha256.slice(0, 16)}`
+        : null,
+      headerUrl: null,
+    };
+  const widths = PRESENTATION_WIDTHS[surface];
+  return {
+    iconUrl: icon ? hostedImageUrl(env, product.slug, icon, widths.icon) : null,
+    headerUrl: header
+      ? hostedImageUrl(env, product.slug, header, widths.header)
+      : null,
+  };
+}
+
 /** The product's presentation, from its listing when Distribution has one (see file comment). */
 export async function presentationFor(
+  env: Env,
+  db: Db,
   product: ProductPublic,
   hooksFor: PortalHooksFor | undefined,
   now: number,
+  surface: PresentationSurface,
 ): Promise<Presentation> {
   const delivery = hooksFor ? hooksFor(product, now).delivery() : null;
   const listing = delivery
@@ -119,8 +201,7 @@ export async function presentationFor(
     developerName: str(listing?.developerName),
     tintColor: str(listing?.tintColor),
     website: str(listing?.website),
-    iconUrl: await mediaUrlFor(product.slug, "icon", listing),
-    headerUrl: await mediaUrlFor(product.slug, "header", listing),
+    ...(await presentationArt(env, db, product, listing, surface)),
     support:
       supportUrl || supportEmail
         ? { url: supportUrl, email: supportEmail }
@@ -256,6 +337,7 @@ export async function rankedLicensesFor(
 
 /** `GET /api/library`. */
 export async function libraryView(
+  env: Env,
   db: Db,
   accountId: string,
   now: number,
@@ -272,7 +354,7 @@ export async function libraryView(
     const best = shaped[0]!;
     products.push({
       product: slug,
-      ...(await presentationFor(product, hooksFor, now)),
+      ...(await presentationFor(env, db, product, hooksFor, now, "library")),
       status: best.status,
       license: licenseSummary(best),
       licenseCount: shaped.length,
@@ -284,6 +366,7 @@ export async function libraryView(
 
 /** `GET /api/products/<p>`, or `null` when the account holds nothing here (a 404). */
 export async function productView(
+  env: Env,
   db: Db,
   accountId: string,
   slug: string,
@@ -327,7 +410,7 @@ export async function productView(
   }
   return {
     product: slug,
-    ...(await presentationFor(product, hooksFor, now)),
+    ...(await presentationFor(env, db, product, hooksFor, now, "product")),
     // Each service's own toggle (§3.1): the product page shows a section only for a service
     // that is on — Cloud Sync and Identity among them as their work packages add them.
     services: Object.fromEntries(
