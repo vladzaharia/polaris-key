@@ -207,8 +207,8 @@ export function Sidebar({
 /**
  * The rail toggle (S-23 §6.1; MO-10): the column snaps to its new width (a width animation would
  * re-lay the whole page every frame) and what the swap mounts, the labels and the section headers
- * or rules, fades in at `base`. Only after a toggle: a first render, the phone drawer and a
- * navigation draw at once. Token-timed, so under reduced motion it is an instant swap.
+ * or rules, fades in at `base`. Only once the rail has been toggled: a first render and the
+ * phone drawer draw at once. Token-timed, so under reduced motion it is an instant swap.
  */
 const RAIL_FADE = "group-data-[rail-swap]/nav:animate-pk-fade-in";
 
