@@ -328,6 +328,9 @@ func dev_menu(outlet: String) -> Control:
 ## A PKeyBoot driven to a stop (or the waiting gate) through a scripted host.
 func boot(stop: String) -> Control:
 	var b := PKeyBoot.new()
+	# A stopped clock: the snapshot is the view the moment the stop lands, however long the
+	# machine takes to get there (no PROGRESS_AFTER_MSEC bar on a loaded machine; P1-13).
+	b.clock_msec = func() -> int: return 0
 	var host := PKeyFakeBootHost.new()
 	add(b)
 	b.gate.activation.set_capabilities(PKeyActivationController.capabilities(true, false, false, false))

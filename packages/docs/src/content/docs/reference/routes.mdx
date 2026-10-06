@@ -92,6 +92,16 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/{product}/identity/auth/start` | identity | Begin browser OIDC (PKCE) — 302 to the IdP |
 | POST | `/{product}/identity/session/license` | identity | Mint a browser session from a license key |
 | GET | `/{product}/identity/session` | identity | The browser session's fused document |
+| GET | `https://img.plrs.im/{product}/a/{sha256}/{w}.webp` | img | A width variant of a hosted image (image host only) |
+| HEAD | `https://img.plrs.im/{product}/a/{sha256}/{w}.webp` | img | A width variant of a hosted image, headers only (image host only) |
+| GET | `https://img.plrs.im/{product}/a/{sha256}` | img | A hosted image, content-addressed (image host only) |
+| HEAD | `https://img.plrs.im/{product}/a/{sha256}` | img | A hosted image, headers only (image host only) |
+| GET | `https://img.plrs.im/{product}/header` | img | The product's current header art, a stable alias (image host only) |
+| HEAD | `https://img.plrs.im/{product}/header` | img | The product's current header art alias, headers only (image host only) |
+| GET | `https://img.plrs.im/{product}/icon` | img | The product's current icon, a stable alias (image host only) |
+| HEAD | `https://img.plrs.im/{product}/icon` | img | The product's current icon alias, headers only (image host only) |
+| GET | `https://img.plrs.im/{product}/screenshots/{n}` | img | The product's current screenshot n, a stable alias (image host only) |
+| HEAD | `https://img.plrs.im/{product}/screenshots/{n}` | img | The product's current screenshot alias, headers only (image host only) |
 | POST | `/{product}/license/activate` | license | Redeem a license key for a device token |
 | POST | `/{product}/license/deauthorize` | license | Self-deauthorize this device |
 | GET | `/{product}/license/document` | license | The signed license document (pkey-license+jws) |
@@ -252,6 +262,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/{product}/release/channels/{channel}/pin` | release | Pin a channel to a release (CI) |
 | POST | `/{product}/release/channels/{channel}/promote` | release | Promote a release to a channel (CI) |
 | POST | `/{product}/release/channels/{channel}/unpin` | release | Unpin a channel (CI) |
+| POST | `/{product}/release/packages/prune` | release | Prune builds of main below each package's newest stable release (CI) |
 | POST | `/{product}/release/publish/delegations` | release | The product's content-key delegations (trusted publishing) |
 | POST | `/{product}/release/publish/stage` | release | A stage round of a pack's objects (trusted publishing) |
 | POST | `/{product}/release/publish/submit` | release | Submit a release descriptor against an upload ticket (trusted publishing) |

@@ -260,11 +260,16 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
     covers: { inventoryKinds: ["secret"] },
   },
   {
-    thing: "Origins (console, blob and package hosts)",
+    thing: "Origins (console, blob, package and image hosts)",
     reason: "The S-13 §8.2 deny-list: an origin is deploy-time forever.",
     shows: "Platform → Settings (the read-only inventory)",
     covers: {
-      ids: ["env:CONSOLE_ORIGIN", "env:BLOB_ORIGIN", "env:PKG_ORIGIN"],
+      ids: [
+        "env:CONSOLE_ORIGIN",
+        "env:BLOB_ORIGIN",
+        "env:PKG_ORIGIN",
+        "env:IMG_ORIGIN",
+      ],
     },
   },
   {
@@ -300,9 +305,10 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
     },
   },
   {
-    thing: "Key-encryption key identity (active key id and flag)",
+    thing:
+      "Key-encryption key identity (the active key id, and the legacy key id)",
     reason:
-      "Key material (the AT-2 deny-list); rotated by the keyring runbook.",
+      "Key material (the AT-2 deny-list); rotated by the keyring runbook. PLATFORM_KEK_ID is the legacy PLATFORM_KEK's key id: beside PLATFORM_KEK_KEYS that key is legacy and open-only.",
     shows: "Platform → Settings (the KEK keyring)",
     covers: { ids: ["env:PLATFORM_KEK_ID", "env:PLATFORM_KEK_ACTIVE"] },
   },

@@ -30,6 +30,11 @@ export declare function checkListing(
   listing: Listing,
   expected: Expected,
 ): string[];
+export declare function staleMainBuilds(
+  deliverable: PackageDeliverable,
+  listing: Listing,
+  expected: Expected,
+): string[];
 export declare function packageDeliverables(root: string): PackageDeliverable[];
 export declare function checkDrift(opts: {
   origin: string;
@@ -40,4 +45,6 @@ export declare function checkDrift(opts: {
   only?: string[];
   log?: (m: string) => void;
   sleep?: (ms: number) => Promise<void>;
+  /** Filled, for packages in step, with the builds of main a stable build left listed. */
+  warnings?: Map<string, string[]>;
 }): Promise<Map<string, string[]>>;

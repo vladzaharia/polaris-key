@@ -7,7 +7,7 @@ description: "Every platform, product and service setting in the settings regist
     Source of truth: the settings registry (packages/worker/src/core/settings/ and each service's
     settings.ts), emitted by packages/worker/scripts/gen-settings.ts. */}
 
-The settings registry describes every setting Polaris Key has: 56 entries (12 platform, 44 product, 0 entity), 23 of them registered ahead of the work package that wires them. This page is generated from the registry and checked against it in CI, so it cannot drift from it. An entry registered ahead of its work package is not offered in the console yet.
+The settings registry describes every setting Polaris Key has: 57 entries (12 platform, 45 product, 0 entity), 23 of them registered ahead of the work package that wires them. This page is generated from the registry and checked against it in CI, so it cannot drift from it. An entry registered ahead of its work package is not offered in the console yet.
 
 How to read the columns:
 
@@ -86,6 +86,7 @@ One value per product. A service's settings are product settings whose key start
 | `release.compatWindow` | [Compatibility window](/docs/services/release/compatibility/): The oldest and newest app versions a licence document admits. Builds outside it are refused at activation and refresh. | structured (\{ min, max \} semver bounds) | unset | cascade | claimable | `product:product.compatMin` | L1 on change | devices see it (discovery, document) |
 | `release.artifactPolicy` | [Artifact policy](/docs/services/release/artifacts/): Which channels, architectures and installers a GitHub release must carry before it is accepted. | structured (artifactPolicy (release.schema.json)) | unset | cascade | manifest | `release:release.artifactPolicy` | L0 on change | — |
 | `release.sparkleEd25519Pub` | [Sparkle update key](/docs/services/release/github-sync/): The Ed25519 public key appcast signatures are checked against. Whoever holds the matching private key can sign updates. | text, at most 64 characters | unset | cascade | manifest | `release:release.sparkleEd25519Pub` | L2 on change | reason required; security-widening |
+| `release.packages.prunePrereleases` | [Prune builds of main](/docs/build/install-from-feeds/): Feed retention: when a package version is published on stable, delete that package's builds of main below it (X-main.N, PyPI X.devN) from every feed. Stable and beta versions are never touched; the bytes are reclaimed once nothing else references them. Off by default: a product opts in. Always on for the platform's own feeds. | true or false | `false` | cascade | operator | — | L1 on, L0 off | — |
 
 ### Distribution
 
@@ -142,10 +143,10 @@ Things that look configurable but are not settings, and why. The coverage test (
 | Grants, entitlements, catalog flags and account overrides | Customer data and customer configuration, not Polaris behaviour. | License → Licenses; Config → Catalog |
 | Cloudflare bindings (D1, KV, R2, queues, Durable Objects, rate limiters) | Infrastructure wiring declared in wrangler.toml and the platform inventory (ST-02), changed by a deploy. | Platform → Settings (the read-only inventory) |
 | Credential and key material (the KEK, pepper, session secrets, OIDC client secrets, store and GitHub App keys) | Key material (the AT-2 deny-list): reported as present or absent, never as a value. Store credential slots are console-managed through platform_credentials, a settings-shaped table. | Platform → Settings (secrets, by presence); Platform → Store connections |
-| Origins (console, blob and package hosts) | The S-13 §8.2 deny-list: an origin is deploy-time forever. | Platform → Settings (the read-only inventory) |
+| Origins (console, blob, package and image hosts) | The S-13 §8.2 deny-list: an origin is deploy-time forever. | Platform → Settings (the read-only inventory) |
 | The privilege root and the admin identity provider (admin group, platform and admin OIDC issuer and client, issuer allowlist) | The S-13 §8.2 deny-list: who may administer is fixed at deploy. | Platform → Settings (the read-only inventory) |
 | The login card's platform sign-in clients (Google client id, Apple Services ID, team and key id) and the Turnstile site key | Deploy-time platform identity configuration (I-06, I-07): each pairs with a sealed secret set from the RUNBOOK, and the site key is public by design. | Platform → Settings (the read-only inventory) |
-| Key-encryption key identity (active key id and flag) | Key material (the AT-2 deny-list); rotated by the keyring runbook. | Platform → Settings (the KEK keyring) |
+| Key-encryption key identity (the active key id, and the legacy key id) | Key material (the AT-2 deny-list); rotated by the keyring runbook. PLATFORM_KEK_ID is the legacy PLATFORM_KEK's key id: beside PLATFORM_KEK_KEYS that key is legacy and open-only. | Platform → Settings (the KEK keyring) |
 | Storage location (blob bucket name, R2 parent account) | A bucket name is on the S-13 §8.2 deny-list; both are fixed by the deployment. | Platform → Settings (the read-only inventory) |
 | Deployment identity (environment, release tag, git SHA, platform repository and deploy environment, GitHub App id) | Written by the deploy pipeline; it describes the running build. | Platform → Deployment |
 | Release yanks, deprecations, rollouts, readiness overrides and submissions | Operational actions on records, not configuration. | Release → Releases; Distribution → Rollouts and Matrix |

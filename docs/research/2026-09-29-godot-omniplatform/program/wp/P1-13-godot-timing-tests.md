@@ -103,6 +103,7 @@ not a blocker but must not be fixed by raising timeouts. This package removes th
 - [ ] `sdks/godot/tools/run_tests.sh` passes 5 times in a row at load average above 300
       (recorded in the PR), and passes in CI with and without `GODOT_TEMPLATE`.
 - [ ] The green gate passes (`AGENTS.md`), scoped to the Godot SDK.
+- Lead decision 2026-10-06: two wall-clock floors stay, test_download.gd:122 (≥450 ms for a 0.5 s deadline) and suite_boot.gd:461 (≥250 ms for a 0.3 s deadline); lower bounds that load can only lengthen.
 
 ## Verify
 

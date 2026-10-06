@@ -23,6 +23,10 @@
  * tags) the channel's tag names it: npm `latest` / `beta` / `main`, OCI `latest` / `beta` /
  * `main`. Feeds render asynchronously (the package render queue), so a miss is retried until
  * `--timeout` seconds have passed; then every remaining mismatch is reported and it exits 1.
+ *
+ * On a stable build it also warns (never fails) about builds of main at or below the release
+ * that the feed still lists: the Worker's feed retention should have pruned them
+ * (`staleMainBuilds`).
  */
 
 import { readFileSync } from "node:fs";
@@ -242,6 +246,29 @@ export function checkListing(deliverable, listing, expected) {
   return problems;
 }
 
+/**
+ * Feed retention (the Worker prunes on a stable publish): on a STABLE build, the builds of main
+ * the feed still lists at or below the released version (`X-main.N` / PyPI `X.devN`, X <= V).
+ * The prune runs after the stable version is committed and never fails the publish, so these are
+ * reported as warnings, not drift: the next stable publish, or `pkey feeds prune`, removes them.
+ * Empty on any other channel, and for a product that turned retention off they are expected.
+ */
+export function staleMainBuilds(deliverable, listing, expected) {
+  if (expected.channel !== "stable") return [];
+  const { ecosystem } = deliverable;
+  const want = ecosystem === "pypi" ? expected.pep440 : expected.version;
+  const compare = ecosystem === "pypi" ? comparePep440 : compareSemver;
+  return listing.versions.filter((v) => {
+    if (kindOf(v, ecosystem) !== "main") return false;
+    const base =
+      ecosystem === "pypi"
+        ? v.replace(/\.dev\d+$/, "")
+        : v.replace(/-main\.\d+$/, "");
+    const c = compare(base, want);
+    return c !== null && c <= 0;
+  });
+}
+
 function newest(versions, compare) {
   let best = null;
   for (const v of versions) {
@@ -272,6 +299,7 @@ export async function checkDrift({
   only,
   log = () => {},
   sleep,
+  warnings,
 }) {
   const wait = sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
   let pending = packageDeliverables(root).filter(
@@ -283,8 +311,14 @@ export async function checkDrift({
     problems.clear();
     for (const d of pending) {
       try {
-        const p = checkListing(d, await readFeed(origin, owner, d), expected);
+        const listing = await readFeed(origin, owner, d);
+        const p = checkListing(d, listing, expected);
         if (p.length) problems.set(d.id, p);
+        else if (warnings) {
+          const stale = staleMainBuilds(d, listing, expected);
+          if (stale.length) warnings.set(d.id, stale);
+          else warnings.delete(d.id);
+        }
       } catch (e) {
         problems.set(d.id, [e instanceof Error ? e.message : String(e)]);
       }
@@ -319,6 +353,7 @@ async function main(argv) {
     join(fileURLToPath(new URL(".", import.meta.url)), "..");
   const timeoutSec = Number(arg(argv, "--timeout") ?? "600");
   const only = (arg(argv, "--only") ?? "").split(",").filter(Boolean);
+  const warnings = new Map();
   const problems = await checkDrift({
     origin,
     owner,
@@ -327,6 +362,7 @@ async function main(argv) {
     timeoutSec,
     only,
     log: (m) => process.stdout.write(`${m}\n`),
+    warnings,
   });
   const all = packageDeliverables(root).filter(
     (d) => !only.length || only.includes(d.ecosystem),
@@ -339,6 +375,11 @@ async function main(argv) {
     else
       process.stdout.write(
         `ok   ${d.id} ${d.ecosystem === "pypi" ? pep440 : version}\n`,
+      );
+    const stale = warnings.get(d.id);
+    if (stale?.length)
+      process.stdout.write(
+        `::warning::${d.id} (${d.name}): ${stale.length} build${stale.length === 1 ? "" : "s"} of main at or below ${version} still listed (${stale.slice(0, 5).join(", ")}${stale.length > 5 ? ", …" : ""}); feed retention prunes them after a stable publish: check the product's audit for package.prune.failed, or run pkey feeds prune\n`,
       );
   }
   if (problems.size) {

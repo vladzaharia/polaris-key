@@ -450,11 +450,12 @@ func _deadline(t: PKeyTestContext) -> void:
 	var host := PKeyFakeBootHost.new()
 	var first: Array = []
 	_capture(sdk, {"view": view, "host": host, "sync_timeout_seconds": 0.3, "allow_offline": false}, first)
+	# Read before the answer that arms the deadline, so load can only lengthen the measured wait.
+	var started := Time.get_ticks_msec()
 	host.answer({"type": "shell.done"})
 	host.answer({"type": "guard.done", "result": "ok"})
 	# A hang guard, not a speed budget (a deadline that never fires never answers): long enough
 	# that a loaded machine's slow frames still see the 0.3 s deadline fire.
-	var started := Time.get_ticks_msec()
 	while first.is_empty() and Time.get_ticks_msec() - started < 30000:
 		await (Engine.get_main_loop() as SceneTree).process_frame
 	var took := Time.get_ticks_msec() - started
