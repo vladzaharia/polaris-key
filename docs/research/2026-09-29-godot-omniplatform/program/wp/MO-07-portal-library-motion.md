@@ -52,10 +52,12 @@ Checked against `main` at `221d18a85`; where the brief and the code disagreed, t
 
 - **"PX-16's just-added state" is the Discover tile's.** On `main` it is a green edge with
   **In your library** on the art and **Open <product>** (PORTAL.md §4.16); the words that carry
-  the meaning are "In your library", not "Added just now". The ring and the plate pop in once,
-  when an Add goes through on screen; a tile already added when it mounts (`?added=` after a
-  reload) just shows them. The ring moved from the card (`ring-1`) to an `aria-hidden` overlay
-  outside the card's clip, so it can scale; the final pixels are unchanged.
+  the meaning are "In your library", not "Added just now". The plate pops in once (`pk-pop-in`)
+  and the ring fades in once (`pk-content-in`, opacity only: `pk-pop-in` scales from 0.9, which
+  would pass a 1 px ring inside the card's edge), when an Add goes through on screen; a tile
+  already added when it mounts (`?added=` after a reload) just shows them. The ring moved from
+  the card (`ring-1`) to an `aria-hidden` overlay outside the card's clip; the final pixels are
+  unchanged.
 - **The Library's 24-hour "Added just now" ring is not on `main`.** EXPERIENCE §0.7 (frame 7)
   and MO-06's Out list point it here, but it is a feature, not motion: new copy, a new rule on
   `addedAt`, and a new tile layout, and it would re-record the visual baselines of every scenario
@@ -77,9 +79,11 @@ Checked against `main` at `221d18a85`; where the brief and the code disagreed, t
   `shellMotion.e2e.test.ts`), because MO-04, MO-05 and MO-09 extend `e2e/motion.e2e.test.ts` in
   parallel.
 - **"First load"** means the page's first mount in this document, with its data still pending,
-  outside a View Transition (`useFirstLoad` in `src/portal/stagger.ts`). A return to the page
-  (cached or not) does not stagger, nor does a refetch, a search, a filter, a sort or a view
-  switch, and a list rendered while `html[data-vt]` is set never starts its stagger. This is the
+  outside a View Transition, and only until the first render with the data has committed
+  (`useFirstLoad` in `src/portal/stagger.ts`). A return to the page (cached or not) does not
+  stagger, nor does a refetch (also one that changes the layout tier: empty → grid, 1 → 2,
+  7 → 8, 8 → 7, Discover's empty state → offers), a search, a filter, a sort or a view switch,
+  and a list rendered while `html[data-vt]` is set never starts its stagger. This is the
   integration point with MO-05: Back from a product remounts the Library inside MO-05's `back`
   transition (the tile morph), so the stagger stays out of it without depending on MO-05's router.
 - **The Grid/List transition names regions, not tiles**: the products section's heading and view,

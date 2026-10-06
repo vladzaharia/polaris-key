@@ -21,8 +21,8 @@ import type { PortalScenario } from "./portalFixtures.js";
  *   - Grid ↔ List is ONE `list` View Transition that names a handful of regions (the products'
  *     view leaves on `micro`, the new one rises in after `fast`), never more than the 30-row budget,
  *     and leaves no name behind;
- *   - on Discover, a just-added tile's ring and plate pop in once (pk-pop-in on `slow`), and not
- *     again after a reload through `?added=`;
+ *   - on Discover, a just-added tile's plate pops in once (pk-pop-in on `slow`) and its ring fades
+ *     in once (pk-fade-in on `base`, opacity only), and not again after a reload through `?added=`;
  *   - under prefers-reduced-motion and under html[data-motion="reduce"] every one of these is an
  *     instant swap: no View Transition starts and `document.getAnimations()` is empty after each
  *     interaction.
@@ -619,7 +619,7 @@ describe("motion on: the Library and Discover under the Worker's CSP", () => {
       await s.close();
     });
 
-  it("on Discover, a just-added tile's ring and plate pop in once, and not after a reload", async () => {
+  it("on Discover, a just-added tile's plate pops in and its ring fades in, once, and not after a reload", async () => {
     const s = await open("three", "/#/discover");
     const { page } = s;
     await page.getByRole("article", { name: "Mossgarden" }).waitFor();
@@ -630,13 +630,16 @@ describe("motion on: the Library and Discover under the Worker's CSP", () => {
       .click();
     await page.getByRole("link", { name: "Open Mossgarden" }).waitFor();
     await atRest(page);
-    const pops = (await log(page)).filter(
+    const came = (await log(page)).filter(
       (e) =>
-        e.kind === "animation" && e.name === "pk-pop-in" && e.phase === "end",
+        e.kind === "animation" &&
+        (e.target === "plate" || e.target === "ring") &&
+        e.phase === "end",
     );
-    expect(pops.map((e) => [e.target, e.duration]).sort()).toEqual([
-      ["plate", SLOW],
-      ["ring", SLOW],
+    // The plate pops; the ring only fades (a scaled 1 px ring would pass inside the card's edge).
+    expect(came.map((e) => [e.target, e.name, e.duration]).sort()).toEqual([
+      ["plate", "pk-pop-in", SLOW],
+      ["ring", "pk-fade-in", BASE],
     ]);
     expect(await running(page)).toEqual([]);
 
@@ -645,7 +648,11 @@ describe("motion on: the Library and Discover under the Worker's CSP", () => {
     await page.reload();
     await page.getByRole("link", { name: "Open Mossgarden" }).waitFor();
     await atRest(page);
-    expect((await log(page)).filter((e) => e.name === "pk-pop-in")).toEqual([]);
+    expect(
+      (await log(page)).filter(
+        (e) => e.target === "plate" || e.target === "ring",
+      ),
+    ).toEqual([]);
     expect(await page.locator("[data-ring]").count()).toBe(1);
     expect(await s.violations()).toEqual([]);
     if (SHOTS) {
@@ -760,7 +767,10 @@ describe("reduced motion: every Library and Discover change is an instant swap",
       expect(await running(page)).toEqual([]);
       expect(
         (await state(page)).log.filter(
-          (e) => e.name === "pk-pop-in" || e.name === "pk-enter",
+          (e) =>
+            e.name === "pk-pop-in" ||
+            e.name === "pk-enter" ||
+            e.target === "ring",
         ),
       ).toEqual([]);
       expect(await s.violations()).toEqual([]);

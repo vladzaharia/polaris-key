@@ -26,6 +26,7 @@ import {
   DAY,
   fetchedRequests,
   license,
+  libraryFor,
   mockFetch,
   NOW_S,
   renderPortal,
@@ -303,6 +304,172 @@ describe("the Library staggers on its first load only", () => {
   });
 });
 
+// ── A refetch that changes the layout never staggers (review B1) ──────────────────────────────
+
+/** Every product list committed, with its class at the moment its ref attached. */
+interface Committed {
+  tag: string;
+  className: string;
+}
+
+/**
+ * Stand in for the Web Animations API: the stagger's ref calls `getAnimations()` on its list as
+ * the list is committed, so this records each list's class at that moment (and reports no
+ * animations, as under reduced motion).
+ */
+function recordCommittedLists(): Committed[] {
+  const committed: Committed[] = [];
+  Object.defineProperty(Element.prototype, "getAnimations", {
+    configurable: true,
+    value: function (this: Element) {
+      if (this.matches("ul, tbody"))
+        committed.push({ tag: this.tagName, className: this.className });
+      return [];
+    },
+  });
+  return committed;
+}
+
+/** Refetch everything stale, as a focus change does once the data is 30 s old. */
+async function refetch(path: string): Promise<void> {
+  const count = () => fetchedRequests().filter((r) => r === path).length;
+  const n = count();
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(Date.now() + 60_000);
+  act(() => {
+    focusManager.setFocused(false);
+    focusManager.setFocused(true);
+  });
+  await waitFor(() => expect(count()).toBeGreaterThan(n));
+}
+
+/** A library whose products change between fetches (Activate over the Library refetches it). */
+function libraryWorker(initial: number): { set: (n: number) => void } {
+  let held = TWELVE.slice(0, initial);
+  mockFetch(
+    signedIn(held, {
+      "/api/licenses": () => ({ licenses: held }),
+      "/api/library": () => libraryFor(held),
+    }),
+  );
+  return { set: (n) => (held = TWELVE.slice(0, n)) };
+}
+
+describe("a refetch that changes the Library's layout never staggers its new list", () => {
+  afterEach(() => {
+    delete (Element.prototype as { getAnimations?: unknown }).getAnimations;
+    focusManager.setFocused(undefined);
+  });
+
+  const cases: Array<{
+    name: string;
+    from: number;
+    to: number;
+    ready: () => Promise<unknown>;
+    after: () => Promise<unknown>;
+    /** The first load had a list of its own, which did stagger. */
+    first: string | null;
+    tag: string;
+  }> = [
+    {
+      name: "7 → 8 (the scaled library mounts)",
+      from: 7,
+      to: 8,
+      ready: () => screen.findAllByRole("article"),
+      after: () =>
+        screen.findByRole("searchbox", { name: "Search 8 products" }),
+      first: "UL",
+      tag: "UL",
+    },
+    {
+      name: "1 → 2 (the hero becomes a grid)",
+      from: 1,
+      to: 2,
+      ready: () => screen.findByRole("article", { name: "Nightfall" }),
+      after: () => screen.findByRole("article", { name: "Tidewater Studio" }),
+      first: null,
+      tag: "UL",
+    },
+    {
+      name: "8 → 7 (the scaled library leaves)",
+      from: 8,
+      to: 7,
+      ready: () =>
+        screen.findByRole("searchbox", { name: "Search 8 products" }),
+      after: async () =>
+        waitFor(() => expect(screen.queryByRole("searchbox")).toBeNull()),
+      first: "UL",
+      tag: "UL",
+    },
+    {
+      name: "0 → 2 (the empty state becomes a grid)",
+      from: 0,
+      to: 2,
+      // The empty state itself (the h1 also shows while the library is pending).
+      ready: () => screen.findByText(/Products bought with this email/),
+      after: () => screen.findByRole("article", { name: "Tidewater Studio" }),
+      first: null,
+      tag: "UL",
+    },
+  ];
+
+  for (const c of cases)
+    it(c.name, async () => {
+      const committed = recordCommittedLists();
+      const worker = libraryWorker(c.from);
+      renderPortal();
+      await c.ready();
+      await waitFor(() =>
+        expect(fetchedRequests()).toContain("GET /api/library"),
+      );
+      if (c.first) {
+        // The first load's own list did stagger (the check below is not vacuous).
+        expect(committed.map((x) => x.className).join("|")).toMatch(
+          /\bpk-stagger\b/,
+        );
+      } else expect(committed).toEqual([]);
+      const before = committed.length;
+      worker.set(c.to);
+      await refetch("GET /api/library");
+      await c.after();
+      const fresh = committed.slice(before);
+      expect(fresh.length, "the new list was committed").toBeGreaterThan(0);
+      for (const x of fresh) {
+        expect(x.tag).toBe(c.tag);
+        expect(x.className, "committed with the stagger").not.toMatch(
+          /\bpk-stagger\b/,
+        );
+      }
+      expect(items().className).not.toMatch(/\bpk-stagger\b/);
+    });
+
+  it("Discover: the empty state turning into offers", async () => {
+    const committed = recordCommittedLists();
+    let offers: PortalDiscoverOffer[] = [];
+    mockFetch(
+      signedIn([], {
+        "/api/discover": () => ({ offers }),
+      }),
+    );
+    window.history.replaceState(null, "", "/#/discover");
+    renderPortal();
+    await screen.findByRole("heading", {
+      level: 2,
+      name: "Nothing to add right now",
+    });
+    expect(committed).toEqual([]);
+    offers = [OFFER];
+    await refetch("GET /api/discover");
+    const card = await screen.findByRole("article", { name: "Mossgarden" });
+    expect(committed.length).toBeGreaterThan(0);
+    for (const x of committed)
+      expect(x.className, "committed with the stagger").not.toMatch(
+        /\bpk-stagger\b/,
+      );
+    expect(card.closest("ul")!.className).not.toMatch(/\bpk-stagger\b/);
+  });
+});
+
 // ── Grid ↔ list ─────────────────────────────────────────────────────────────────────────────────
 
 interface Started {
@@ -516,7 +683,7 @@ const OFFER: PortalDiscoverOffer = {
   reason: "free_with_account",
 } as PortalDiscoverOffer;
 
-describe("Discover tiles: lift, and the just-added ring pops in once", () => {
+describe("Discover tiles: lift, and the just-added ring and plate come in once", () => {
   const tile = (state: "offer" | "adding" | "added") => (
     <DiscoverTile offer={OFFER} state={state} onAdd={() => undefined} />
   );
@@ -532,7 +699,9 @@ describe("Discover tiles: lift, and the just-added ring pops in once", () => {
     const ring = container.querySelector("[data-ring]")!;
     expect(ring.getAttribute("aria-hidden")).toBe("true");
     expect(ring.className).toMatch(/\bring-1 ring-success\b/);
-    expect(ring.className).toMatch(/\bpk-pop-in\b/);
+    // The ring only fades (a scaled 1 px ring would pass inside the card's edge); the plate pops.
+    expect(ring.className).toMatch(/\bpk-content-in\b/);
+    expect(ring.className).not.toMatch(/\bpk-pop-in\b/);
     // The words carry the meaning; the plate pops with the ring.
     const plate = screen.getByText("In your library");
     expect(plate.className).toMatch(/\bpk-pop-in\b/);
@@ -546,7 +715,7 @@ describe("Discover tiles: lift, and the just-added ring pops in once", () => {
     const { container } = render(tile("added"));
     const ring = container.querySelector("[data-ring]")!;
     expect(ring.className).toMatch(/\bring-1 ring-success\b/);
-    expect(ring.className).not.toMatch(/\bpk-pop-in\b/);
+    expect(ring.className).not.toMatch(/\bpk-(pop|content)-in\b/);
     expect(screen.getByText("In your library").className).not.toMatch(
       /\bpk-pop-in\b/,
     );

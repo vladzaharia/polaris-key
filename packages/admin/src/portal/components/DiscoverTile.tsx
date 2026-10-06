@@ -41,10 +41,11 @@ export type DiscoverTileState = "offer" | "adding" | "added";
  *
  * Motion (notes/S-23 §6.1; MO-07): under a pointer the tile lifts and its art scales a little (the
  * tile has no link of its own, so only its button presses). When an Add goes through while the
- * tile is on screen, its ring and the **In your library** plate pop in once (`.pk-pop-in`); a tile
- * that is already added when it mounts (`?added=` after a reload) just shows them. The words carry
- * the meaning; the ring is decoration. The lift and the ring sit on a wrapper because the card
- * clips its art (`overflow-hidden`), which would clip both.
+ * tile is on screen, the **In your library** plate pops in once (`.pk-pop-in`) and the ring fades
+ * in once (`.pk-content-in`, opacity only: scaling a 1 px ring would pass it inside the card's
+ * edge); a tile that is already added when it mounts (`?added=` after a reload) just shows them.
+ * The words carry the meaning; the ring is decoration. The lift and the ring sit on a wrapper
+ * because the card clips its art (`overflow-hidden`), which would clip both.
  */
 export function DiscoverTile({
   offer,
@@ -64,7 +65,7 @@ export function DiscoverTile({
   const reason = reasonCopy(offer.reason);
   const ReasonIcon = REASON_ICON[reason.kind];
   const added = state === "added";
-  // Added while on screen (not already added when the tile mounted): the ring pops in once.
+  // Added while on screen (not already added when the tile mounted): ring and plate come in once.
   const [addedAtMount] = React.useState(added);
   const pop = added && !addedAtMount;
   const id = `offer-${offer.product}`;
@@ -190,7 +191,7 @@ export function DiscoverTile({
           data-ring
           className={cn(
             "pointer-events-none absolute inset-0 rounded-xl ring-1 ring-success",
-            pop && "pk-pop-in",
+            pop && "pk-content-in",
           )}
         />
       ) : null}
