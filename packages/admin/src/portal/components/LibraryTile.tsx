@@ -39,6 +39,7 @@ export function LibraryTile({
         tint={pres.tint}
         src={pres.headerUrl}
         variant="tile"
+        letter={false}
         // The listing's header is 16:9 (PORTAL.md Q-2): the card shows all of it, centred, the
         // same art the product page's hero shows a centred band of.
         className="aspect-video"

@@ -43,6 +43,7 @@ export function ProductArt({
   className,
   children,
   onError,
+  letter = true,
 }: {
   slug: string;
   name: string;
@@ -55,8 +56,13 @@ export function ProductArt({
   children?: React.ReactNode;
   /** Told when the image fails to load (the fallback then renders). */
   onError?: () => void;
+  /**
+   * The fallback's letter. `false` where the product's icon (or its letter tile) already overlaps
+   * the art, so a product without art never shows its letter twice: the tint field alone.
+   */
+  letter?: boolean;
 }): React.ReactElement {
-  const letter = letterOf(name);
+  const initial = letterOf(name);
   const background = tintFor(slug, tint);
   const [failed, setFailed] = React.useState(false);
   if (src && !failed) {
@@ -87,17 +93,19 @@ export function ProductArt({
       style={{ backgroundColor: background }}
       className={cn("relative overflow-hidden", className)}
     >
-      <span
-        aria-hidden
-        className={cn(
-          "absolute left-1/2 top-1/2 inline-flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[22%] bg-black/25 font-bold text-[#f4f1ff]",
-          variant === "banner" && "size-28 text-6xl",
-          variant === "tile" && "size-16 text-3xl",
-          variant === "thumb" && "size-9 text-lg",
-        )}
-      >
-        {letter}
-      </span>
+      {letter ? (
+        <span
+          aria-hidden
+          className={cn(
+            "absolute left-1/2 top-1/2 inline-flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[22%] bg-black/25 font-bold text-[#f4f1ff]",
+            variant === "banner" && "size-28 text-6xl",
+            variant === "tile" && "size-16 text-3xl",
+            variant === "thumb" && "size-9 text-lg",
+          )}
+        >
+          {initial}
+        </span>
+      ) : null}
       {children}
     </div>
   );

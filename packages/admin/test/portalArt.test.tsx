@@ -79,6 +79,17 @@ describe("library card", () => {
   const djdl = license({ product: "djdl", productName: "DJDL" });
   const other = license({ product: "ember", productName: "Ember Tactics" });
 
+  it("without art shows the letter once: the tint field and the icon's letter tile", async () => {
+    mockFetch(signedIn([djdl, other]));
+    renderPortal();
+    const card = await screen.findByRole("article", { name: "DJDL" });
+    const fallbacks = card.querySelectorAll("[data-art='fallback']");
+    expect(fallbacks).toHaveLength(2);
+    // The art holds only the status plate, no letter of its own.
+    expect(fallbacks[0]!.textContent).toBe("Active");
+    expect(fallbacks[1]!.textContent).toBe("D");
+  });
+
   it("names the product without the developer byline, and puts the status on a padded plate", async () => {
     mockFetch(
       signedIn([djdl, other], {

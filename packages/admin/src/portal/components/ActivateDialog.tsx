@@ -350,6 +350,7 @@ function ConfirmStep({
             tint={null}
             src={p.headerUrl}
             variant="banner"
+            letter={false}
             className="h-36 rounded-lg"
           />
           <ProductIcon
