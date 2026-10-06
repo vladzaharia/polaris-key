@@ -70,7 +70,7 @@ import { gitShaOrNull } from "./manifestSnapshot.js";
 export const PULL_BACKOFF_BASE_SECONDS = 15 * 60;
 /** The back-off never exceeds a day. */
 export const PULL_BACKOFF_CAP_SECONDS = 24 * 60 * 60;
-/** How many owed pulls one nightly run enqueues, at most. */
+/** How many owed pulls and ladder retries one nightly run enqueues, at most (one budget). */
 export const RECHECK_MAX_PER_RUN = 50;
 /** Queues' `sendBatch` limit. */
 const SEND_BATCH_MAX = 100;

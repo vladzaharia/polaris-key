@@ -57,6 +57,21 @@ Consumers need sized images. Generating them once at ingest bounds the cost, aga
   store failure leaves `[]`. A re-ingest of the same bytes reuses its variants (no new
   transformations), and builds them if it had none.
 
+## Follow-up from the HA-02/HA-03 review (fix/hosted-asset-followups, 2026-10-06)
+
+- **One ladder per (product, original, family).** The same bytes in two slots of one family
+  (`presentation.icon` and `listing.icon`, which falls back to it) used to build the ladder
+  twice. `ingest` now reuses the `variants_json` of a row of the same product holding the same
+  `sha256` in the same family, when that row still holds every variant through its own refs, and
+  adds this slot's own `hosted-asset` refs to the existing variant blobs (the image host checks
+  the ref per `<slot>@<locale>`). The dimensions of the same bytes are reused too, so the second
+  slot makes no binding call at all. Never across products.
+- **An empty ladder is retried.** A transient failure (9422) no longer leaves a copy without
+  sizes until its bytes change: HA-05 retries an owed ladder (`ladderOwedSql`) from the stored
+  original with `rebuildLadder` while the binding is bound, with the pulls' back-off. A slot
+  without a family, a copy narrower than its family's smallest rung, and a Worker without the
+  binding are never retried; the original-only fallback stays.
+
 ## Steps
 
 1. Binding.

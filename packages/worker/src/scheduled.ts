@@ -408,7 +408,8 @@ export async function runScheduledMaintenance(
   if (env) await runLazyDeltaSweep(report, env, db, now);
 
   // HA-05: owed hosted-asset pulls whose back-off has elapsed (failed, stale, never delivered),
-  // re-enqueued to `pkey-assets-<env>`, at most `RECHECK_MAX_PER_RUN` per night. Before the
+  // and, with the Images binding, ready copies still owing their variant ladder, re-enqueued to
+  // `pkey-assets-<env>`, at most `RECHECK_MAX_PER_RUN` per night between them. Before the
   // collector, which never touches a ref a row still holds.
   if (env)
     await step(report, "hostedAssets", () => recheckHostedAssets(env, db, now));

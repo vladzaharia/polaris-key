@@ -55,6 +55,24 @@ This is the owner's "just pull the files". It also retires DJDL's public `djdl-a
 - The system product's deploy-hook apply (`admin/systemProduct.ts`) is not wired. Only link and
   resync plan pulls.
 
+## Follow-up from the HA-02/HA-03 review (fix/hosted-asset-followups, 2026-10-06)
+
+- **Owed ladders are retryable.** A `ready` row in a ladder slot (icon, header, screenshots:
+  `variantFamily`) whose `variants_json` is `[]` while its width admits a rung, or is unknown,
+  owes its ladder (`ladderOwedSql`): HA-03's ingest hit 9422 or ran without the binding. While the
+  Images binding is bound and no pull is owed, the planner (a declared slot with nothing to
+  pull, console-claimed or not) and the nightly re-check send a ladder message
+  (`{v: 1, kind: "ladder", product, slot, locale, sha256, reason}`), and the consumer runs
+  `processLadderRetry` → `rebuildLadder`, which reads the stored original back and builds only the
+  ladder. The original is never pulled again.
+- **The same back-off and budget.** The retry uses `attempts` and `next_attempt_at` (an owed pull
+  and an owed ladder never share a row: the pull's ingest builds the ladder). A pull whose ingest
+  leaves the ladder owed counts as its first attempt (`attempts = 1`, next in 15 min); each failed
+  retry doubles the wait up to 24 h; a built ladder clears both. The re-check's 50 per run are
+  shared between pulls and ladder retries, oldest-due first.
+- **Never retried:** without the binding, for slots without a ladder family, or for a copy
+  narrower than its family's smallest rung (a retry that learns such a width records it).
+
 ## Design notes
 
 - Exponential back-off per slot, capped at 24 h.
