@@ -80,6 +80,15 @@ The portal swaps routes instantly with no scroll reset or focus move, and `scrol
   scrolls to a section the URL names later, so the page no longer undoes that with an instant
   scroll). Its `h1` is focusable (`tabIndex={-1}`); the Library's and Discover's headings are made
   focusable by the router at focus time, so `LibraryPage`/`DiscoverPage` (MO-07) stay untouched.
+- **Fix round (review, 2026-10-06).** Back lands on the tile it came from with or without motion
+  (the router owns scroll restoration); it remembers which of a product's tiles opened it (the
+  Library can list a product twice: its attention list and its grid). A heading-focus request
+  defers the router only when it is for the product being opened, so an unconsumed one never holds
+  another page's focus; the focus also waits for a loading placeholder `h1` (inside `aria-busy`)
+  to give way to the real one. `scrollBehavior()` is `instant` (not `auto`) under reduced motion.
+  A link to a product's first section keeps the page at its top, as the deep link on mount does
+  (`ProductPage` marks it with `data-first-section`). `pk-hero-icon` joins the shared-element
+  group rule.
 - **Strips** of the real app (tile → product and back, both themes, and reduced motion) were
   recorded locally with the S-23 `real-app.ts` method for review; committing real-app strips of
   every pattern is MO-13's.

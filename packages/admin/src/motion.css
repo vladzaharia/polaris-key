@@ -723,13 +723,10 @@
 /* shared-element: slower and decelerating hard, so the eye can follow it. Both ends of a text
    pair must be `width: fit-content`, or the snapshot stretches (S-23 §3.4 item 4). */
 ::view-transition-group(pk-hero),
+::view-transition-group(pk-hero-icon),
 ::view-transition-group(pk-hero-title),
 ::view-transition-group(pk-key),
 ::view-transition-group(pk-indicator) {
-  animation-duration: var(--pk-duration-slow);
-  animation-timing-function: var(--pk-ease-emphasized);
-}
-::view-transition-group(pk-hero-icon) {
   animation-duration: var(--pk-duration-slow);
   animation-timing-function: var(--pk-ease-emphasized);
 }

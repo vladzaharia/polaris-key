@@ -1266,6 +1266,42 @@ describe("reduced motion: the same interactions are instant swaps", () => {
       await o.close();
     });
 
+    it(`portal: Back lands on the tile it came from, motion or not (${theme})`, async () => {
+      const o = await portal.open("twelve", "/", { theme, height: 720 });
+      const page = o.page;
+      await h1(page, "Your library");
+      await page.getByText("Glyphsmith").first().waitFor();
+      // A tile below the fold.
+      const tile = page.locator("main article").last();
+      const name = (await tile.locator("h3").textContent())!.trim();
+      await tile.scrollIntoViewIfNeeded();
+      await armNavigation(page);
+      await tile.getByRole("link", { name, exact: true }).click();
+      const fwd = await settleNavigation(page, name);
+      expect(fwd).toMatchObject({ started: 0, scrollY: 0 });
+      await armNavigation(page);
+      await page
+        .getByRole("main")
+        .getByRole("link", { name: "Library", exact: true })
+        .click();
+      const back = await settleNavigation(page, "Your library");
+      expect(back.started).toBe(0);
+      expect(back.scrollY, "scrolled down to the tile").toBeGreaterThan(0);
+      const box = await page.evaluate((name) => {
+        const article = [...document.querySelectorAll("main article")].find(
+          (a) => a.querySelector("h3")?.textContent?.trim() === name,
+        )!;
+        const r = article.getBoundingClientRect();
+        return { top: r.top, bottom: r.bottom, vh: window.innerHeight };
+      }, name);
+      expect(box.top).toBeGreaterThanOrEqual(0);
+      expect(box.bottom).toBeLessThanOrEqual(box.vh);
+      expect(back.active).toBe("H1 Your library");
+      expect(await running(page)).toEqual([]);
+      expect(await o.violations()).toEqual([]);
+      await o.close();
+    });
+
     it(`portal: a section link scrolls instantly (${theme})`, async () => {
       const o = await portal.open("three", "/#/p/nightfall", { theme });
       const page = o.page;

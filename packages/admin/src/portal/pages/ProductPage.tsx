@@ -225,7 +225,12 @@ function ProductBody({
   const retry = () => void detail.refetch();
 
   return (
-    <div className="space-y-6 desk:space-y-8">
+    // data-first-section: a link to the first section keeps the page at its top, as the deep
+    // link above does (the router reads it, MO-05).
+    <div
+      className="space-y-6 desk:space-y-8"
+      data-first-section={sections[0] ?? undefined}
+    >
       <ProductHeader
         product={product}
         action={action}

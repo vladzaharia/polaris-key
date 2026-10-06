@@ -11,6 +11,11 @@ import {
   signedIn,
 } from "./portalHarness.js";
 import {
+  consumeHeadingFocus,
+  requestHeadingFocus,
+} from "../src/portal/focus.js";
+import {
+  focusPageHeading,
   navigationKind,
   resolveHash,
   VT_SOURCE,
@@ -251,22 +256,34 @@ describe("without the View Transitions API: instant swaps that still scroll and 
         behavior: typeof arg === "object" ? arg.behavior : undefined,
       });
     });
+    // A section other than the first (the first is the page's top; see below).
+    const first = document
+      .querySelector("main [data-first-section]")
+      ?.getAttribute("data-first-section");
+    const [a] = Array.from(
+      document.querySelectorAll<HTMLElement>("main [data-section]"),
+    )
+      .map((el) => el.dataset.section!)
+      .filter((id) => id !== first);
+    expect(a).toBeTruthy();
     const before = document.activeElement;
     act(() => {
-      window.location.hash = "#/p/nightfall/devices";
+      window.location.hash = `#/p/nightfall/${a}`;
     });
     await waitFor(() =>
-      expect(calls).toContainEqual({
-        id: "section-devices",
-        behavior: "smooth",
-      }),
+      expect(calls).toContainEqual({ id: `section-${a}`, behavior: "smooth" }),
     );
-    html.dataset.motion = "reduce";
+    // Back to the page's top, then the same section again under reduced motion.
     act(() => {
-      window.location.hash = "#/p/nightfall/license";
+      window.location.hash = "#/p/nightfall";
+    });
+    html.dataset.motion = "reduce";
+    calls.length = 0;
+    act(() => {
+      window.location.hash = `#/p/nightfall/${a}`;
     });
     await waitFor(() =>
-      expect(calls).toContainEqual({ id: "section-license", behavior: "auto" }),
+      expect(calls).toContainEqual({ id: `section-${a}`, behavior: "instant" }),
     );
     await new Promise((r) => setTimeout(r, 30));
     expect(document.activeElement).toBe(before);
@@ -290,7 +307,81 @@ describe("without the View Transitions API: instant swaps that still scroll and 
     expect(behaviors.at(-1)).toBe("smooth");
     html.dataset.motion = "reduce";
     await userEvent.click(links[0]!);
-    expect(behaviors.at(-1)).toBe("auto");
+    expect(behaviors.at(-1)).toBe("instant");
+  });
+
+  it("a link to the product's first section keeps the page at its top, as the deep link does", async () => {
+    window.history.replaceState(null, "", "/#/p/nightfall/devices");
+    withArt();
+    renderPortal();
+    await screen.findByRole("heading", { level: 1, name: "Nightfall" });
+    const first = document
+      .querySelector("main [data-first-section]")
+      ?.getAttribute("data-first-section");
+    expect(first).toBeTruthy();
+    const scrollTo = vi.fn();
+    vi.stubGlobal("scrollTo", scrollTo);
+    vi.spyOn(window, "scrollY", "get").mockReturnValue(600);
+    const into = vi.spyOn(Element.prototype, "scrollIntoView");
+    into.mockClear();
+    act(() => {
+      window.location.hash = `#/p/nightfall/${first}`;
+    });
+    await waitFor(() =>
+      expect(scrollTo).toHaveBeenCalledWith({
+        top: 0,
+        left: 0,
+        behavior: "smooth",
+      }),
+    );
+    expect(into).not.toHaveBeenCalled();
+  });
+
+  it("a heading-focus request for another product never holds this page's focus", async () => {
+    withArt();
+    renderPortal();
+    await library();
+    // Left by a jump that never reached its product page (a not-found product, say).
+    requestHeadingFocus("tidewater");
+    try {
+      act(() => {
+        window.location.hash = "#/account";
+      });
+      const h1 = await screen.findByRole("heading", {
+        level: 1,
+        name: "Account",
+      });
+      await waitFor(() => expect(document.activeElement).toBe(h1));
+    } finally {
+      consumeHeadingFocus("tidewater");
+    }
+  });
+});
+
+describe("focusPageHeading", () => {
+  afterEach(() => document.body.replaceChildren());
+
+  it("waits for the real heading while the page shows its loading placeholder", async () => {
+    const main = document.createElement("main");
+    main.innerHTML =
+      '<div aria-busy="true"><h1 class="sr-only">Loading</h1></div>';
+    document.body.append(main);
+    focusPageHeading();
+    await new Promise((r) => setTimeout(r, 60));
+    expect(document.activeElement).toBe(document.body);
+    main.innerHTML = "<h1>Nightfall</h1>";
+    const h1 = main.querySelector("h1")!;
+    await waitFor(() => expect(document.activeElement).toBe(h1));
+    expect(h1.getAttribute("tabindex")).toBe("-1");
+  });
+
+  it("gives up once another navigation has taken over", async () => {
+    const main = document.createElement("main");
+    main.innerHTML = "<h1>Account</h1>";
+    document.body.append(main);
+    focusPageHeading(undefined, () => false);
+    await new Promise((r) => setTimeout(r, 30));
+    expect(document.activeElement).toBe(document.body);
   });
 });
 

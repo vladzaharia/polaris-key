@@ -313,27 +313,45 @@ const OPEN_OVERLAYS = OVERLAY_ROLES.map(
   (r) => `[role="${r}"]:not([data-state="closed"])`,
 ).join(", ");
 
+/** A placeholder heading of a page still loading ("Loading", inside its `aria-busy` skeleton). */
+const placeholder = (el: Element | null): boolean =>
+  el?.closest('[aria-busy="true"]') != null;
+
 /**
  * Focus the page heading (`main h1`, unless `target` names another) without scrolling, so a
  * screen reader starts on the new page and hears it once (S-23 §6.5). A dialog or menu still
  * running its exit hands focus back to its opener when it leaves (ui/Dialog.tsx, Radix), so this
- * waits for it to go first; one that is open keeps focus. The heading becomes programmatically
- * focusable (`tabindex="-1"`, which styles.css draws no ring for).
+ * waits for it to go first; one that is open keeps focus. A page still loading shows a placeholder
+ * heading; this waits for the real one (about ten seconds at most) rather than announce
+ * "Loading". `alive` stops the wait once another navigation has taken over. The heading becomes
+ * programmatically focusable (`tabindex="-1"`, which styles.css draws no ring for).
  */
 export function focusPageHeading(
   target: () => HTMLElement | null = () =>
     document.querySelector<HTMLElement>("main h1"),
+  alive: () => boolean = () => true,
 ): void {
-  let frames = 0;
+  let overlayFrames = 0;
+  let loadingFrames = 0;
   const attempt = (): void => {
-    if (document.querySelector(CLOSING_OVERLAYS) && frames++ < 60) {
+    if (!alive()) return;
+    if (document.querySelector(CLOSING_OVERLAYS) && overlayFrames++ < 60) {
       requestAnimationFrame(attempt);
+      return;
+    }
+    if (placeholder(target())) {
+      if (loadingFrames++ < 600) requestAnimationFrame(attempt);
       return;
     }
     // Radix returns focus in a task after the overlay unmounts: run after that one.
     window.setTimeout(() => {
+      if (!alive()) return;
       const el = target();
       if (!el?.isConnected || document.querySelector(OPEN_OVERLAYS)) return;
+      if (placeholder(el)) {
+        attempt();
+        return;
+      }
       if (!el.hasAttribute("tabindex")) el.tabIndex = -1;
       el.focus({ preventScroll: true });
     }, 0);
@@ -341,9 +359,12 @@ export function focusPageHeading(
   attempt();
 }
 
-/** Smooth scrolling only when motion is allowed: it is instant under reduced motion (S-23 §6.6). */
+/**
+ * Smooth scrolling only when motion is allowed; under reduced motion it is `instant` (not `auto`,
+ * which would follow a stylesheet's `scroll-behavior`) (S-23 §6.6).
+ */
 export function scrollBehavior(): ScrollBehavior {
-  return reducedMotion() ? "auto" : "smooth";
+  return reducedMotion() ? "instant" : "smooth";
 }
 
 function scrollToTop(behavior: ScrollBehavior = "instant"): void {
@@ -418,13 +439,29 @@ function takeSource(slug: string): Element | null {
   return found;
 }
 
-/** The tile that opens `slug` on the page now showing (the Library's grid or list, Discover). */
-function tileFor(slug: string): Element | null {
+/**
+ * The tiles that open `slug` on the page now showing (the Library's grid or list, Discover), in
+ * document order. A product can have more than one (the Library's attention list and its grid).
+ */
+function tilesFor(slug: string): Element[] {
   const target = href.product(slug);
-  const link = Array.from(document.querySelectorAll("main a[href]")).find(
-    (a) => a.getAttribute("href") === target,
-  );
-  return link?.closest(TILE) ?? null;
+  const tiles: Element[] = [];
+  for (const a of Array.from(document.querySelectorAll("main a[href]"))) {
+    if (a.getAttribute("href") !== target) continue;
+    const tile = a.closest(TILE);
+    if (tile && !tiles.includes(tile)) tiles.push(tile);
+  }
+  return tiles;
+}
+
+/** Where the product page showing was opened from: its tile's place among the product's tiles. */
+let origin: { slug: string; index: number } | null = null;
+
+/** The tile Back returns to: the one the product was opened from, else its first. */
+function tileFor(slug: string): Element | null {
+  const tiles = tilesFor(slug);
+  const remembered = origin?.slug === slug ? tiles[origin.index] : undefined;
+  return remembered ?? tiles[0] ?? null;
 }
 
 /** Elements the router named through the CSSOM for the running transition (S-23 D8). */
@@ -446,8 +483,8 @@ function nameNewEnds(ends: Ends): void {
 }
 
 /**
- * Back on the Library: bring the tile on screen before the new state is captured, so the morph
- * lands on it. The page is at the top by then, so this scrolls only as far as the tile needs.
+ * Back on the Library: bring the tile on screen (before the new state is captured, so a morph
+ * lands on it). The page is at the top by then, so this scrolls only as far as the tile needs.
  */
 function reveal(tile: Element): void {
   const r = tile.getBoundingClientRect();
@@ -482,9 +519,18 @@ function go(from: PortalRoute, to: PortalRoute): void {
   if (kind === "section") {
     publish(to);
     const section = sectionOf(to);
-    const el = section ? document.getElementById(`section-${section}`) : null;
-    if (el) el.scrollIntoView?.({ behavior: scrollBehavior(), block: "start" });
-    else if (!section) scrollToTop(scrollBehavior());
+    // The page's first section is its top, as a deep link to it is on mount (ProductPage marks
+    // it with data-first-section).
+    const first = document
+      .querySelector("main [data-first-section]")
+      ?.getAttribute("data-first-section");
+    if (!section || section === first) {
+      scrollToTop(scrollBehavior());
+      return;
+    }
+    document
+      .getElementById(`section-${section}`)
+      ?.scrollIntoView?.({ behavior: scrollBehavior(), block: "start" });
     return;
   }
 
@@ -497,13 +543,18 @@ function go(from: PortalRoute, to: PortalRoute): void {
     !reducedMotion() &&
     document.querySelector(OVERLAYS) === null;
   const source =
-    animate && kind === "forward" && to.kind === "product"
-      ? takeSource(to.product)
+    kind === "forward" && to.kind === "product" ? takeSource(to.product) : null;
+  // Remembered for Back, motion or not.
+  if (kind === "forward" && to.kind === "product")
+    origin = source
+      ? { slug: to.product, index: tilesFor(to.product).indexOf(source) }
       : null;
   // An earlier transition's names go (it is skipped); the source keeps its mark for this one.
-  clearNamed(source);
+  clearNamed(animate ? source : null);
   const shared =
-    source && to.kind === "product" ? endsOf(source, to.product) : [];
+    animate && source && to.kind === "product"
+      ? endsOf(source, to.product)
+      : [];
   // Back pairs the hero's art only if the product page had one (a cover).
   const heroArt =
     animate &&
@@ -513,15 +564,17 @@ function go(from: PortalRoute, to: PortalRoute): void {
     // Before the new page renders, so its own deep link (a section) can scroll on from here.
     scrollToTop();
     flushSync(() => publish(to));
-    if (!animate || kind !== "back" || from.kind !== "product") return;
+    if (kind !== "back" || from.kind !== "product") return;
+    // Back lands on the tile it came from, motion or not (the router owns scroll restoration).
     const tile = tileFor(from.product);
     if (!tile) return;
     reveal(tile);
-    nameNewEnds(
-      endsOf(tile, from.product).filter(
-        ([, name]) => heroArt || name !== "pk-hero",
-      ),
-    );
+    if (animate)
+      nameNewEnds(
+        endsOf(tile, from.product).filter(
+          ([, name]) => heroArt || name !== "pk-hero",
+        ),
+      );
   };
   let handle: { updateCallbackDone: Promise<void>; finished: Promise<void> };
   if (animate) handle = viewTransition(update, { type: kind, shared });
@@ -533,9 +586,12 @@ function go(from: PortalRoute, to: PortalRoute): void {
     };
   }
   void handle.updateCallbackDone.then(() => {
-    // The product page takes a pending request itself, once its heading exists (focus.ts).
-    if (gen === generation && pendingHeadingFocus() === null)
-      focusPageHeading();
+    // A pending request for the product being opened is the product page's to take, once its
+    // heading exists (focus.ts); a request for any other page never holds this one's focus.
+    const ownFocus =
+      to.kind === "product" && pendingHeadingFocus() === to.product;
+    if (gen === generation && !ownFocus)
+      focusPageHeading(undefined, () => gen === generation);
   });
   void handle.finished.then(() => {
     if (gen === generation) clearNamed();
