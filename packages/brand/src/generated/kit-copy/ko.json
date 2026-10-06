@@ -569,6 +569,8 @@
   "core.codes.step_up_required.message": "보안을 위해 계속하려면 다시 로그인하세요.",
   "core.codes.not_eligible.title": "혜택 사용 불가",
   "core.codes.not_eligible.message": "이 혜택은 더 이상 회원님 계정에서 사용할 수 없어요. 새로고침한 후 다시 시도하세요.",
+  "core.codes.not_removable.title": "제거할 수 없음",
+  "core.codes.not_removable.message": "이 라이선스는 라이선스 키로 다시 추가할 수 없어서 라이브러리에 남아 있어요.",
   "core.codes.download_auth_required.title": "로그인하여 다운로드",
   "core.codes.download_auth_required.message": "다운로드하려면 로그인하거나 라이선스를 활성화하세요.",
   "core.codes.delivery_gate_missing.title": "다운로드 불가",

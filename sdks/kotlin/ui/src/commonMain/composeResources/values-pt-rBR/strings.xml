@@ -1306,6 +1306,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_not_eligible_message">Esta oferta não está mais disponível para sua conta. Atualize a página e tente novamente.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_removable_title">Não é possível remover</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_removable_message">Esta licença não pode ser adicionada de novo com uma chave de licença, então ela continua na sua biblioteca.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_download_auth_required_title">Entre para baixar</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_download_auth_required_message">Entre ou ative uma licença para baixar isto.</string>

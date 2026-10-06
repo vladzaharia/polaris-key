@@ -52,6 +52,17 @@ export interface PortalEntitlement {
   value: unknown;
 }
 
+/**
+ * How a licence reached the person (PX-23; notes/S-24 D21, SIGN-IN.md O-11): the Worker decides,
+ * the card words it. An open set: a value this build does not know reads by the older facts.
+ */
+export type PortalLicenseOrigin =
+  | "key"
+  | "store-key"
+  | "store"
+  | "developer"
+  | "signin";
+
 export interface PortalLicenseSummary {
   id: string;
   product: string;
@@ -73,6 +84,15 @@ export interface PortalLicenseSummary {
   activeKeyCount: number;
   deviceCount: number;
   entitlements: PortalEntitlement[];
+  /** PX-23: how it reached the person. Absent on an older Worker (the card then infers it). */
+  origin?: PortalLicenseOrigin | (string & {});
+  /** The store for `store-key` and `store` (`purchase.store`'s ids), else null. */
+  originStore?: string | null;
+  /**
+   * PX-23: Remove from my library is offered (its key can bring it back: an active key, on a
+   * product that lets a key add a licence). Absent on an older Worker, which offers no Remove.
+   */
+  removable?: boolean;
 }
 
 export interface PortalKey {
@@ -390,6 +410,13 @@ export interface PortalKeyPreview {
     deviceLimit: number | null;
   };
   platforms?: string[];
+  /**
+   * `addable` only (PX-23, S-24 D22): how many devices the licence is already on; they keep
+   * working and come with it. A count, never which. Absent on an older Worker.
+   */
+  devices?: number;
+  /** `addable` only: the product runs Cloud Sync, so signing in on those devices turns it on. */
+  cloudSync?: boolean;
   /** `email_mismatch` only: `m•••@proton.me`. */
   maskedEmail?: string;
 }
@@ -713,6 +740,15 @@ export const portalApi = {
         method: "POST",
         body: JSON.stringify({ key }),
       },
+    ),
+  /**
+   * PX-23 (S-24 D19): Remove from my library. The licence leaves the account and does not come
+   * back to it by itself; its key adds it back.
+   */
+  removeLicense: (product: string, id: string) =>
+    call<{ ok: true; product: string; licenseId: string }>(
+      `/api/licenses/${enc(product)}/${enc(id)}`,
+      { method: "DELETE" },
     ),
   disconnectDevice: (product: string, id: string, deviceId: string) =>
     call<{ ok: true; deviceId: string }>(

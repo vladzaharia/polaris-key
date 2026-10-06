@@ -114,6 +114,39 @@ async function toConfirm(page: Page): Promise<void> {
     .waitFor();
 }
 
+/** The License card's **License source** fact, once it reads `text` (owner, 2026-10-06). */
+export function licenseSourceIs(page: Page, text: string) {
+  return page
+    .locator('dt:text-is("License source") + dd')
+    .filter({
+      hasText: new RegExp(`^${text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`),
+    })
+    .first()
+    .waitFor();
+}
+
+/** PX-23: the preview of a floating key that is already on two devices, with Cloud Sync. */
+export const FLOATING_ON_TWO = {
+  "POST /api/activate/preview": {
+    body: {
+      verdict: "addable",
+      product: MOSSGARDEN,
+      entries: null,
+      license: {
+        tier: "standard",
+        tierLabel: "Standard",
+        status: "active",
+        usable: true,
+        expiresAt: null,
+        deviceLimit: 5,
+      },
+      platforms: ["macos", "windows", "linux"],
+      devices: 2,
+      cloudSync: true,
+    },
+  },
+};
+
 /** The modal from `#/?activate=<KEY>`: press Continue, wait for `copy` (a §4.19 verdict). */
 async function continueTo(page: Page, copy: RegExp): Promise<void> {
   const dialog = page.getByRole("dialog", { name: "Activate a license" });
@@ -391,6 +424,38 @@ export const SHIPPED: ShippedState[] = [
     },
   },
   {
+    // PX-23 (S-24 §10, frame 80): a floating key already on two devices.
+    section: "4.17",
+    id: "activate-confirm-devices",
+    title: "Activate license: confirm, a floating key with its devices",
+    scenario: "three",
+    path: "/",
+    routes: FLOATING_ON_TWO,
+    ready: async (p) => {
+      await toConfirm(p);
+      await p.getByText("It's on 2 devices already.").waitFor();
+    },
+  },
+  {
+    section: "4.17",
+    id: "activate-done-devices",
+    title: "Activate license: done, its devices came with it",
+    scenario: "three",
+    path: "/",
+    routes: FLOATING_ON_TWO,
+    ready: async (p) => {
+      await toConfirm(p);
+      await p
+        .getByRole("dialog", { name: "Add Mossgarden to your account?" })
+        .getByRole("button", { name: "Add Mossgarden" })
+        .click();
+      await p
+        .getByRole("dialog", { name: "Mossgarden is in your library" })
+        .getByText("Its 2 devices came with it.")
+        .waitFor();
+    },
+  },
+  {
     section: "4.18",
     id: "activate-link",
     title: "Activate license: deep link, key prefilled",
@@ -591,7 +656,7 @@ export const SHIPPED: ShippedState[] = [
     ready: async (p) => {
       await h1(p, "Quill");
       await p.getByText("1 of 5 devices").first().waitFor();
-      await p.getByText("From signing in · Lifetime").waitFor();
+      await licenseSourceIs(p, "From signing in");
       await p.getByText("Living room PC").first().waitFor();
     },
   },
@@ -621,7 +686,55 @@ export const SHIPPED: ShippedState[] = [
     path: "/#/p/drift-kart?license=lic_drift-kart-acct",
     ready: async (p) => {
       await h1(p, "Drift Kart");
-      await p.getByText("From signing in · Lifetime").waitFor();
+      await licenseSourceIs(p, "From signing in");
+    },
+  },
+  {
+    // PX-23 (S-24 D21, frame 81): a key Mara added to a licence nobody was named for.
+    section: "4.20",
+    id: "product-origin-key",
+    title:
+      "Product page, licence source: a key the person added (Tidewater Studio)",
+    scenario: "origins",
+    path: "/#/p/tidewater",
+    ready: async (p) => {
+      await h1(p, "Tidewater Studio");
+      await licenseSourceIs(p, "Added with a key");
+    },
+  },
+  {
+    // A licence the developer assigned reads "From <Developer>", even though it has a key.
+    section: "4.20",
+    id: "product-origin-developer",
+    title:
+      "Product page, licence source: assigned by the developer (Tidewater Studio)",
+    scenario: "origins",
+    path: "/#/p/tidewater?license=lic_tidewater-free",
+    ready: async (p) => {
+      await h1(p, "Tidewater Studio");
+      await licenseSourceIs(p, "From Harbor Audio");
+    },
+  },
+  {
+    // PX-23 (S-24 D19): Remove from my library, from the header's overflow menu.
+    section: "4.20",
+    id: "product-remove-license",
+    title: "Product page, Remove from my library",
+    scenario: "origins",
+    path: "/#/p/tidewater?license=lic_tidewater-free",
+    ready: async (p) => {
+      await h1(p, "Tidewater Studio");
+      await licenseSourceIs(p, "From Harbor Audio");
+      await p
+        .getByRole("button", { name: "More for Tidewater Studio" })
+        .click();
+      await p.getByRole("menuitem", { name: "Remove from my library" }).click();
+      await p
+        .getByRole("alertdialog", {
+          name: "Remove this Tidewater Studio license from your library?",
+        })
+        .getByRole("button", { name: "Remove from my library" })
+        .waitFor();
     },
   },
   {

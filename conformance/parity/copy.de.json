@@ -189,6 +189,10 @@
       "title": "Angebot nicht verfügbar",
       "message": "Dieses Angebot ist für Ihr Konto nicht mehr verfügbar. Aktualisieren Sie die Ansicht und versuchen Sie es erneut."
     },
+    "not_removable": {
+      "title": "Entfernen nicht möglich",
+      "message": "Diese Lizenz kann nicht mit einem Lizenzschlüssel wieder hinzugefügt werden, deshalb bleibt sie in Ihrer Bibliothek."
+    },
     "download_auth_required": {
       "title": "Zum Herunterladen anmelden",
       "message": "Melden Sie sich an oder aktivieren Sie eine Lizenz, um dies herunterzuladen."

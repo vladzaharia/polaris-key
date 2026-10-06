@@ -473,6 +473,40 @@ export function useUploadPicture() {
   });
 }
 
+/**
+ * PX-23: Remove from my library. Every view that lists the licence refreshes. A 404 means it is
+ * not in this account any more (removed from another tab, or moved by the developer): the same
+ * outcome, so it resolves as removed rather than as an error over a stale page. A refusal
+ * (`409 not_removable`) refreshes the licences too, so the page stops offering Remove.
+ */
+export function useRemoveLicense(product: string) {
+  const qc = useQueryClient();
+  const refresh = (licenseId: string): void => {
+    qc.removeQueries({ queryKey: portalKeys.license(product, licenseId) });
+    void qc.invalidateQueries({ queryKey: portalKeys.licenses });
+    void qc.invalidateQueries({ queryKey: portalKeys.library });
+    void qc.invalidateQueries({ queryKey: portalKeys.product(product) });
+    void qc.invalidateQueries({ queryKey: portalKeys.releases });
+    void qc.invalidateQueries({ queryKey: portalKeys.discover });
+  };
+  return useMutation({
+    mutationFn: async (licenseId: string) => {
+      try {
+        return await portalApi.removeLicense(product, licenseId);
+      } catch (err) {
+        if (err instanceof PortalApiError && err.status === 404)
+          return { ok: true as const, product, licenseId };
+        throw err;
+      }
+    },
+    onSuccess: (_res, licenseId) => refresh(licenseId),
+    onError: (err, licenseId) => {
+      if (err instanceof PortalApiError && err.status === 409)
+        refresh(licenseId);
+    },
+  });
+}
+
 export function useDeleteAccount() {
   return useMutation({ mutationFn: () => portalApi.deleteMe() });
 }

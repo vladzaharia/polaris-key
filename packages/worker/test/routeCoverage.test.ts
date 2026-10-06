@@ -133,6 +133,8 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/api/me/passkeys", ["get", "post"]],
     ["/api/me/passkeys/options", ["post"]],
     ["/api/me/passkeys/{passkeyId}", ["delete"]],
+    // PX-23 (S-24 D19): Remove from my library. The licence detail GET stays narrative.
+    ["/api/licenses/{product}/{licenseId}", ["delete"]],
   ],
 };
 

@@ -22,10 +22,13 @@ export function ProductHeader({
   product,
   action,
   headingRef,
+  onRemove,
 }: {
   product: LibraryProduct;
   action: QuickAction;
   headingRef?: React.Ref<HTMLHeadingElement>;
+  /** The overflow menu's Remove from my library (PX-23). */
+  onRemove?: () => void;
 }): React.ReactElement {
   const pres = product.presentation;
   const tier = tierLabel(product.best.tier);
@@ -135,6 +138,7 @@ export function ProductHeader({
             slug={product.slug}
             name={product.name}
             onPage
+            onRemove={onRemove}
             className="inline-flex size-12 shrink-0 items-center justify-center rounded-md border border-border-strong text-fg-strong hover:bg-hover"
           />
         </div>

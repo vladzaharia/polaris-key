@@ -586,6 +586,42 @@ describe("GET /api/discover (G24)", () => {
 });
 
 describe("POST /api/discover/<p>/claim (G25)", () => {
+  it("a Discover claim has no key, so it is never removable from the library (PX-23)", async () => {
+    const env = portalEnv();
+    const db = makeTestDb();
+    await freeProduct(db, "mossgarden");
+    const who = await platformAccount(env, db);
+    const { body } = await claim(env, db, who, "mossgarden");
+    const id = body.license.id as string;
+    const detail = await call(
+      env,
+      db,
+      "GET",
+      `/api/licenses/mossgarden/${id}`,
+      who,
+    );
+    expect(detail.body).toMatchObject({ id, removable: false });
+    const refused = await call(
+      env,
+      db,
+      "DELETE",
+      `/api/licenses/mossgarden/${id}`,
+      who,
+    );
+    expect(refused).toMatchObject({
+      status: 409,
+      body: { error: "not_removable", reason: "no_active_key" },
+    });
+    // Still held, and nothing blocks it.
+    expect(
+      (await call(env, db, "GET", "/api/products/mossgarden", who)).body
+        .licenses[0].id,
+    ).toBe(id);
+    expect(await db.all("SELECT * FROM license_auto_attach_blocks")).toEqual(
+      [],
+    );
+  });
+
   it("mints, links into the library, and audits with source discover", async () => {
     const env = portalEnv();
     const db = makeTestDb();

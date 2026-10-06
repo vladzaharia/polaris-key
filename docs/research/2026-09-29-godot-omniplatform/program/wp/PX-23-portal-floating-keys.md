@@ -12,6 +12,46 @@
 | Human input | none                                                                         |
 | Repo        | `vladzaharia/polaris-key`                                                    |
 
+## Corrections (as built, 2026-10-06)
+
+Where the brief and the code disagreed, the code was the fact; the lead's review follow-ups and an
+owner request joined the scope:
+
+- **The Remove copy says "not in an account", not "becomes a floating license".** LX-26 keeps a
+  removed licence's email, so it is assigned and waiting, and customers never read "floating"
+  (S-24 D5). The dialog words it per licence: "It won't be in an account, and it won't come back
+  to this account by itself. To add it again, use its key." (the developer named someone), and
+  "It won't be in an account: anyone with the key can add it, and it won't come back to this
+  account by itself." (a key the person added to a licence nobody was named for).
+- **There was no portal Remove on `main`.** PX-23 adds `DELETE /api/licenses/<p>/<id>` over
+  LX-26's `detachLicense` (rule 10: OpenAPI and `routeCoverage`; `reference/routes.mdx`
+  regenerated), and the UI: the last item of the product header's overflow menu (PORTAL.md
+  §4.20), a confirmation dialog.
+- **Lead decision on S-24 D19 (delegated, 2026-10-06):** after an explicit Remove, the removing
+  account's devices lose their Cloud Sync principal for that licence. `resolveSyncPrincipal`
+  (`core/accountSubjects.ts`) now reads the auto-attach block, with tests, THREAT-MODEL (U-02,
+  LX-26 and the preview) and a dated amendment in S-24 §10.
+- **Owner request (2026-10-06):** the card's origin moved from the meta line under the tier into
+  the facts grid as **License source**, beside Activated, and the repeated term went ("Updates
+  included" says it). Every product-page visual baseline changed with it.
+- **Key endings ("Key ending {last6}") wait for G7.** The Worker stores keys only as peppered
+  hashes and no last characters, so a key the person added reads "Added with a key" and a store
+  key "Steam key"; the card already words an ending when a key carries one.
+- **The preview also answers `cloudSync`**, so Done says "Sign in on them to turn on Cloud Sync."
+  only for a product that runs it; `devices` is answered only for `addable`.
+- **"From signing in"** keeps its existing rule (an OIDC-issued licence with no key), and an
+  origin a portal build does not know reads by the older facts; a store origin with no store
+  named reads as a key or the developer.
+- **Review B1 (lead decision, 2026-10-06): the server decides removability.** Only a licence its
+  key can bring back may be removed (an active key, on a product with `license_key_claim_enabled`):
+  the licence list and detail carry `removable`, the portal shows Remove only then, and the
+  DELETE refuses the rest with `409 not_removable` and a `reason` (`no_active_key`,
+  `key_claim_off`), writing nothing. `not_removable` is a new registered wire code (errors.json,
+  its copy in every locale; every SDK's generated constants, copy and kit-copy tables
+  regenerated). A Remove that meets a 404 (another tab removed it) counts as removed.
+- **Orphan baselines removed:** `library-account-wide*`, `product-account-wide*` and
+  `product-both-account-wide*` had no state.
+
 ## Goal
 
 Adding a floating key in Polaris Key says that the devices it is already on come with it, the

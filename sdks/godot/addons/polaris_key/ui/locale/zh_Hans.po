@@ -3452,6 +3452,16 @@ msgstr "优惠不可用"
 msgid "core.codes.not_eligible.message"
 msgstr "此优惠已不再适用于你的账户。请刷新后重试。"
 
+#. Can't remove
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.not_removable.title"
+msgstr "无法移除"
+
+#. This license can't be added back with a key, so it stays in your library.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.not_removable.message"
+msgstr "此许可证无法通过许可证密钥重新添加，因此会保留在你的库中。"
+
 #. Sign in to download
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.download_auth_required.title"

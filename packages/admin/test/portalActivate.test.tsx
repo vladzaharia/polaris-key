@@ -457,6 +457,97 @@ describe("Activate license modal (PX-06)", () => {
     expect(fetchedRequests()).toContain("POST /api/claim/license-key");
   });
 
+  /** The preview of a floating key already on `devices` devices (PX-23, S-24 D22). */
+  function floatingPreview(devices: number, cloudSync: boolean) {
+    return {
+      verdict: "addable",
+      product: PREVIEW_PRODUCT,
+      entries: null,
+      license: {
+        tier: "lifetime",
+        tierLabel: "Lifetime",
+        status: "active",
+        usable: true,
+        expiresAt: null,
+        deviceLimit: 5,
+      },
+      platforms: ["macos"],
+      devices,
+      cloudSync,
+    };
+  }
+
+  it("a floating key's devices come with it: the count on Confirm and on Done, with Cloud Sync's sign-in", async () => {
+    mockFetch({
+      ...routes(),
+      "POST /api/activate/preview": floatingPreview(2, true),
+    });
+    renderPortal();
+    await pasteAndContinue(await openFromHeader());
+    const confirm = await screen.findByRole("dialog", {
+      name: "Add Mossgarden to your account?",
+    });
+    expect(confirm.textContent).toContain(
+      "It's on 2 devices already. They keep working and come with it.",
+    );
+    // Cloud Sync is Done's to mention, once they came with it.
+    expect(confirm.textContent).not.toContain("Cloud Sync");
+    expect(await axeViolations()).toEqual([]);
+    await userEvent.click(
+      within(confirm).getByRole("button", { name: "Add Mossgarden" }),
+    );
+    const done = await screen.findByRole("dialog", {
+      name: "Mossgarden is in your library",
+    });
+    expect(done.textContent).toContain(
+      "Its 2 devices came with it. Sign in on them to turn on Cloud Sync.",
+    );
+    expect(await axeViolations()).toEqual([]);
+  });
+
+  it("one device, and no Cloud Sync: the singular, and no sign-in line", async () => {
+    mockFetch({
+      ...routes(),
+      "POST /api/activate/preview": floatingPreview(1, false),
+    });
+    renderPortal();
+    await pasteAndContinue(await openFromHeader());
+    const confirm = await screen.findByRole("dialog", {
+      name: "Add Mossgarden to your account?",
+    });
+    expect(confirm.textContent).toContain(
+      "It's on 1 device already. It keeps working and comes with it.",
+    );
+    await userEvent.click(
+      within(confirm).getByRole("button", { name: "Add Mossgarden" }),
+    );
+    const done = await screen.findByRole("dialog", {
+      name: "Mossgarden is in your library",
+    });
+    expect(done.textContent).toContain("Its 1 device came with it.");
+    expect(done.textContent).not.toContain("Cloud Sync");
+  });
+
+  it("a licence on no device says nothing about devices", async () => {
+    mockFetch({
+      ...routes(),
+      "POST /api/activate/preview": floatingPreview(0, true),
+    });
+    renderPortal();
+    await pasteAndContinue(await openFromHeader());
+    const confirm = await screen.findByRole("dialog", {
+      name: "Add Mossgarden to your account?",
+    });
+    expect(confirm.textContent).not.toMatch(/devices? already/);
+    await userEvent.click(
+      within(confirm).getByRole("button", { name: "Add Mossgarden" }),
+    );
+    const done = await screen.findByRole("dialog", {
+      name: "Mossgarden is in your library",
+    });
+    expect(done.textContent).not.toMatch(/came with it|Cloud Sync/);
+  });
+
   it("Change key goes back to the field with the key kept", async () => {
     mockFetch({
       ...routes(),

@@ -37,6 +37,18 @@
 > the key can add it, and it won't come back to this account by itself." Package PX-23; frames
 > [licenses/80](licenses/shots/80-portal-add-floating-desktop-dark.png) and
 > [81](licenses/shots/81-portal-license-card-desktop-dark.png).
+>
+> **As built (PX-23, 2026-10-06).** A removed licence keeps its email, so the Remove copy says
+> "not in an account", never "floating": "It won't be in an account, and it won't come back to
+> this account by itself. To add it again, use its key." for a licence the developer assigned,
+> and "It won't be in an account: anyone with the key can add it, and it won't come back to this
+> account by itself." for a key the person added. Remove is the last item of the header's
+> overflow menu ("Remove from my library"), a confirmation dialog that also says its devices keep
+> working and, with Cloud Sync, that the devices this person signed in on stop syncing it. The
+> owner moved the licence's origin out of the meta line into the License card's facts as
+> **License source**, beside Activated, and dropped the repeated term ("Updates included" says
+> it). The Worker reports the origin (`origin`: `key`, `store-key`, `store`, `developer`,
+> `signin`).
 
 > **Sign-in is specified in [SIGN-IN.md](SIGN-IN.md) (2026-10-05).** It is the single source of
 > truth for every sign-in step: the login card's steps, license choice and **Replace a device**, the

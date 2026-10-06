@@ -13,6 +13,7 @@ import {
   UPLOAD_ASSET,
   type PortalScenario,
 } from "./portalFixtures.js";
+import { FLOATING_ON_TWO, licenseSourceIs } from "./portalStates.js";
 
 /**
  * The customer site's main flows (PORTAL.md) in real Chromium under the Worker's exact CSP, driven
@@ -806,7 +807,7 @@ describe("main flows", () => {
   it("a sign-in licence lists its devices and removes one remotely", async () => {
     const o = await open("signIn", "/#/p/quill/devices");
     await h1(o.page, "Quill");
-    await o.page.getByText("From signing in · Lifetime").waitFor();
+    await licenseSourceIs(o.page, "From signing in");
     expect(await o.page.getByText(/Account-wide/).count()).toBe(0);
     await o.page
       .getByRole("button", { name: "Remove Living room PC" })
@@ -839,15 +840,161 @@ describe("main flows", () => {
       "Standard · Sign-in",
       "Standard · Steam key",
     ]);
-    await card.getByText("Steam key · Lifetime").waitFor();
+    await licenseSourceIs(o.page, "Steam key");
     expect(await card.getByText(/\d+ (of \d+ )?devices?$/).count()).toBe(0);
     const devices = o.page.getByRole("region", { name: "Devices" });
     await devices.getByText("Mara's MacBook Pro").waitFor();
     expect(await devices.getByText(/in use/).count()).toBe(0);
     await picker.selectOption({ label: "Standard · Sign-in" });
-    await card.getByText("From signing in · Lifetime").waitFor();
+    await licenseSourceIs(o.page, "From signing in");
     await card.getByText(/^1 of \d+ devices?$/).waitFor();
     await devices.getByText("Mara's Steam Deck").waitFor();
+    expect(await o.violations()).toEqual([]);
+    await o.close();
+  });
+
+  it("adds a floating key with its devices: the count on Confirm and on Done (PX-23)", async () => {
+    const o = await open("three", "/", { routes: FLOATING_ON_TWO });
+    await h1(o.page, "Your library");
+    await o.page.getByRole("button", { name: "Activate license" }).click();
+    const dialog = o.page.getByRole("dialog", { name: "Activate a license" });
+    await dialog
+      .getByRole("textbox", { name: "License key" })
+      .fill("pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w");
+    await dialog.getByRole("button", { name: "Continue" }).click();
+    const confirm = o.page.getByRole("dialog", {
+      name: "Add Mossgarden to your account?",
+    });
+    await confirm
+      .getByText(
+        "It's on 2 devices already. They keep working and come with it.",
+      )
+      .waitFor();
+    await shoot(o.page, "activate-confirm-devices-desktop-dark");
+    await confirm.getByRole("button", { name: "Add Mossgarden" }).click();
+    const done = o.page.getByRole("dialog", {
+      name: "Mossgarden is in your library",
+    });
+    await done
+      .getByText(
+        "Its 2 devices came with it. Sign in on them to turn on Cloud Sync.",
+      )
+      .waitFor();
+    await shoot(o.page, "activate-done-devices-desktop-dark");
+    expect(o.requests).toContain("POST /api/claim/license-key");
+    expect(await o.violations()).toEqual([]);
+    await o.close();
+  });
+
+  it("each licence names how it reached the person (PX-23)", async () => {
+    const o = await open("origins", "/#/p/tidewater");
+    await h1(o.page, "Tidewater Studio");
+    await licenseSourceIs(o.page, "Added with a key");
+    const card = o.page.getByRole("region", {
+      name: "Tidewater Studio license",
+    });
+    const picker = card.getByRole("combobox");
+    expect((await picker.locator("option").allTextContents()).sort()).toEqual([
+      "Free · From Harbor Audio",
+      "Pro · Key",
+    ]);
+    await picker.selectOption({ label: "Free · From Harbor Audio" });
+    await licenseSourceIs(o.page, "From Harbor Audio");
+    // The term is said once, as Updates included, never as a meta line under the tier.
+    expect(await card.getByText(/ · (Lifetime|Expires|Ended)/).count()).toBe(0);
+    expect(await o.violations()).toEqual([]);
+    await o.close();
+  });
+
+  it("no Remove for a licence its key can't bring back: a sign-in licence (PX-23 review)", async () => {
+    const o = await open("signIn", "/#/p/quill");
+    await h1(o.page, "Quill");
+    await licenseSourceIs(o.page, "From signing in");
+    await o.page.getByRole("button", { name: "More for Quill" }).click();
+    const items = o.page.getByRole("menuitem");
+    await items.first().waitFor();
+    expect(await items.allTextContents()).toEqual([
+      "Manage devices",
+      "Copy link",
+    ]);
+    expect(o.requests.some((r) => r.startsWith("DELETE /api/licenses/"))).toBe(
+      false,
+    );
+    expect(await o.violations()).toEqual([]);
+    await o.close();
+  });
+
+  it("Remove from my library: the licence leaves and stays out across reloads (PX-23, with LX-26)", async () => {
+    const o = await open(
+      "origins",
+      "/#/p/tidewater?license=lic_tidewater-free",
+    );
+    await h1(o.page, "Tidewater Studio");
+    await licenseSourceIs(o.page, "From Harbor Audio");
+    const removeFromMenu = async (dialogName: string) => {
+      await o.page
+        .getByRole("button", { name: "More for Tidewater Studio" })
+        .click();
+      await o.page
+        .getByRole("menuitem", { name: "Remove from my library" })
+        .click();
+      const dialog = o.page.getByRole("alertdialog", { name: dialogName });
+      await dialog.waitFor();
+      return dialog;
+    };
+    // A licence the developer assigned keeps its email: not in an account, never "floating".
+    const first = await removeFromMenu(
+      "Remove this Tidewater Studio license from your library?",
+    );
+    await first
+      .getByText(
+        "It won't be in an account, and it won't come back to this account by itself. To add it again, use its key.",
+      )
+      .waitFor();
+    expect(await first.getByText(/floating/i).count()).toBe(0);
+    await shoot(o.page, "product-remove-license-desktop-dark");
+    await first.getByRole("button", { name: "Remove from my library" }).click();
+    await o.page
+      .getByText("The Free license was removed from your library")
+      .first()
+      .waitFor();
+    expect(o.requests).toContain(
+      "DELETE /api/licenses/tidewater/lic_tidewater-free",
+    );
+    // The page now shows the licence that is left, and only it, after every reload.
+    for (let i = 0; i < 2; i++) {
+      await licenseSourceIs(o.page, "Added with a key");
+      const card = o.page.getByRole("region", {
+        name: "Tidewater Studio license",
+      });
+      expect(await card.getByRole("combobox").count()).toBe(0);
+      await o.page.reload();
+      await h1(o.page, "Tidewater Studio");
+    }
+    // The key Mara added floats again once removed: anyone with the key can add it.
+    const last = await removeFromMenu(
+      "Remove Tidewater Studio from your library?",
+    );
+    await last
+      .getByText(
+        "It won't be in an account: anyone with the key can add it, and it won't come back to this account by itself.",
+      )
+      .waitFor();
+    await last.getByRole("button", { name: "Remove from my library" }).click();
+    await o.page
+      .getByText("Tidewater Studio was removed from your library")
+      .first()
+      .waitFor();
+    await h1(o.page, "Your library");
+    for (let i = 0; i < 2; i++) {
+      await o.page.reload();
+      await h1(o.page, "Your library");
+      expect(
+        await o.page.getByRole("link", { name: /Tidewater Studio/ }).count(),
+      ).toBe(0);
+    }
+    await o.page.goto(`${portal.base()}/#/p/tidewater`);
+    await h1(o.page, "That product isn't in your library");
     expect(await o.violations()).toEqual([]);
     await o.close();
   });

@@ -569,6 +569,8 @@
   "core.codes.step_up_required.message": "Por tu seguridad, vuelve a iniciar sesión para continuar.",
   "core.codes.not_eligible.title": "Oferta no disponible",
   "core.codes.not_eligible.message": "Esta oferta ya no está disponible para tu cuenta. Actualiza la página y vuelve a intentarlo.",
+  "core.codes.not_removable.title": "No se puede quitar",
+  "core.codes.not_removable.message": "Esta licencia no se puede volver a añadir con una clave de licencia, así que se queda en tu biblioteca.",
   "core.codes.download_auth_required.title": "Inicia sesión para descargar",
   "core.codes.download_auth_required.message": "Inicia sesión o activa una licencia para descargar esto.",
   "core.codes.delivery_gate_missing.title": "Descarga no disponible",

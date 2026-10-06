@@ -176,6 +176,64 @@ describe("status model (§5.3), first match wins", () => {
       expect(licenseOrigin(o)).not.toMatch(/Account-wide/);
   });
 
+  it("follows the Worker's origin when it sends one (PX-23, S-24 D21)", () => {
+    const last = [{ last4: "3WPLDA" }];
+    const dev = { developer: "Little Fern" };
+    // A licence the developer assigned reads From <Developer>, though it has a key.
+    const assigned = license({ product: "a", origin: "developer" });
+    expect(licenseOrigin(assigned, { ...dev, keys: last })).toBe(
+      "From Little Fern",
+    );
+    expect(licenseOrigin(assigned)).toBe("From the developer");
+    expect(licenseOrigin(assigned, { developer: "  " })).toBe(
+      "From the developer",
+    );
+    expect(shortOrigin(assigned, dev)).toBe("From Little Fern");
+    expect(shortOrigin(assigned)).toBeNull();
+    // A key the person added.
+    const added = license({ product: "a", origin: "key" });
+    expect(licenseOrigin(added, { keys: last })).toBe("Key ending 3WPLDA");
+    expect(licenseOrigin(added)).toBe("Added with a key");
+    // The store comes with the origin; the product view's store is only a fallback.
+    const steamKey = license({
+      product: "a",
+      origin: "store-key",
+      originStore: "steam",
+    });
+    expect(licenseOrigin(steamKey, { keys: last })).toBe(
+      "Steam key ending 3WPLDA",
+    );
+    expect(shortOrigin(steamKey)).toBe("Steam key");
+    const appStore = license({
+      product: "a",
+      keyCount: 0,
+      origin: "store",
+      originStore: "app-store",
+    });
+    expect(licenseOrigin(appStore)).toBe("From the App Store");
+    const signIn = license({ product: "a", keyCount: 0, origin: "signin" });
+    expect(licenseOrigin(signIn, dev)).toBe("From signing in");
+    // A store origin with no store named reads by its other facts, never " key" or "From ".
+    expect(
+      licenseOrigin(license({ product: "a", origin: "store-key" }), {
+        keys: last,
+      }),
+    ).toBe("Key ending 3WPLDA");
+    expect(shortOrigin(license({ product: "a", origin: "store-key" }))).toBe(
+      "Key",
+    );
+    expect(
+      licenseOrigin(
+        license({ product: "a", keyCount: 0, origin: "store" }),
+        dev,
+      ),
+    ).toBe("From Little Fern");
+    // An origin this build does not know reads by the older facts.
+    expect(licenseOrigin(license({ product: "a", origin: "gift" }))).toBe(
+      "Added with a key",
+    );
+  });
+
   it("the best license is the most favourable, then the newest", () => {
     const expired = license({
       product: "a",

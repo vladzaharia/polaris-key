@@ -5,7 +5,9 @@
  * - `POST  /api/licenses/<product>/<licenseId>/keys` — get a new license key; the old one stops
  *   activating new devices. Per-product opt-in, recent sign-in required, shown once.
  * - `POST  /api/activate/preview` — what adding a key WOULD do, before it is added: the product,
- *   the tier and terms, the platforms, or a typed refusal.
+ *   the tier and terms, the platforms, how many devices it is already on (PX-23), or a typed
+ *   refusal.
+ * - `DELETE /api/licenses/<product>/<licenseId>` — Remove from my library (PX-23, S-24 D19).
  *
  * ── ONE EVALUATOR FOR THE PREVIEW AND THE CLAIM ─────────────────────────────────────────────
  *
@@ -53,13 +55,15 @@ import {
   getPortalLicense,
   getPortalProductSettings,
   licenseLinkedElsewhere,
+  listVisibleKeys,
   normalizeEmail,
   portalAudit,
   type PortalLicenseRow,
 } from "./repo.js";
+import { notRemovableReason } from "./origin.js";
 import { portalSessionAuthenticatedAt, type PortalSession } from "./session.js";
 import { sendNotice } from "./email.js";
-import { attachLicense } from "../accounts/claim.js";
+import { attachLicense, detachLicense } from "../accounts/claim.js";
 import {
   licenseAddedNotice,
   licenseKeyReplacedNotice,
@@ -71,7 +75,7 @@ import {
   portalJson,
   readBody,
   requireActionRateLimit,
-  shapeLicenseSummary,
+  shapeLicenseSummaryWithStore,
   type PortalHooksFor,
 } from "./api.js";
 
@@ -211,6 +215,21 @@ export async function productPlatforms(
   }
 }
 
+/**
+ * PX-23 (S-24 §10, D22): how many devices an addable licence is already on (authorized ones), so
+ * Confirm can say they come with it. A count only: never a label, platform or id, since the key
+ * holder learns no more about those devices than activating would tell them (a seat count).
+ */
+async function boundDeviceCount(db: Db, license: LicenseRow): Promise<number> {
+  const row = await db.first<{ n: number }>(
+    `SELECT COUNT(*) AS n FROM devices
+      WHERE product = ? AND license_id = ? AND status = 'authorized'`,
+    license.product,
+    license.id,
+  );
+  return row?.n ?? 0;
+}
+
 async function licenseTerms(
   db: Db,
   license: LicenseRow,
@@ -280,7 +299,8 @@ export async function handleActivatePreview(
     entries: null,
   };
   switch (verdict.kind) {
-    case "addable":
+    case "addable": {
+      const product = await loadProductPublic(db, verdict.product.slug);
       return portalJson({
         ...base,
         license: await licenseTerms(db, verdict.license, now),
@@ -290,7 +310,12 @@ export async function handleActivatePreview(
           verdict.product.slug,
           now,
         ),
+        // PX-23: the devices that come with it, and whether signing in on them turns on Cloud
+        // Sync (the product runs it; S-24 D22).
+        devices: await boundDeviceCount(db, verdict.license),
+        cloudSync: product?.services.sync?.enabled === true,
       });
+    }
     case "already_yours":
       return portalJson({
         ...base,
@@ -331,6 +356,7 @@ export async function handleClaimKey(
   db: Db,
   session: PortalSession,
   now: number,
+  hooksFor?: PortalHooksFor,
 ): Promise<Response> {
   if (req.method !== "POST") return err(405, "method_not_allowed");
   const limited = await requireActionRateLimit(
@@ -368,7 +394,12 @@ export async function handleClaimKey(
       // Idempotent: nothing is written and nobody is emailed a second time.
       return portalJson({
         ok: true,
-        license: await shapeLicenseSummary(db, verdict.license, now),
+        license: await shapeLicenseSummaryWithStore(
+          db,
+          verdict.license,
+          now,
+          hooksFor,
+        ),
       });
     case "addable":
       break;
@@ -430,8 +461,84 @@ export async function handleClaimKey(
   );
   return portalJson({
     ok: true,
-    license: portalRow ? await shapeLicenseSummary(db, portalRow, now) : null,
+    license: portalRow
+      ? await shapeLicenseSummaryWithStore(db, portalRow, now, hooksFor)
+      : null,
   });
+}
+
+// ── PX-23: Remove from my library ───────────────────────────────────────────────────────────
+
+/** The removals one account may make per product per minute (the device rename's shard). */
+export const LICENSE_REMOVE_LIMIT_PER_MINUTE = 10;
+
+/**
+ * `DELETE /api/licenses/<product>/<licenseId>` — the holder removes a licence from their library
+ * (docs/design/PORTAL.md §4.20's overflow menu; notes/S-24 §5.5, §10, D19). LX-26's
+ * `detachLicense` does the work: the licence leaves the account (it keeps its email, so it waits
+ * for an account that verifies it; with none it floats), an auto-attach block keeps it out of
+ * THIS account until its key is added again, the account's registry tokens for it are revoked,
+ * and both the detach and the block are audited. Its devices keep running and keep their seats;
+ * the ones this account signed in on lose Cloud Sync for it (`resolveSyncPrincipal` reads the
+ * block; lead decision, 2026-10-06).
+ *
+ * 404, the same as for a licence that is not yours, on a product whose portal is off. A licence
+ * that could never be added back (no active key, or the product turned key claims off; the list
+ * says `removable: false`) is refused with `409 not_removable` and its `reason`, before anything
+ * is charged or written. Charged after ownership is proven, in the product's own shard.
+ */
+export async function handleLicenseRemove(
+  req: Request,
+  env: Env,
+  db: Db,
+  session: PortalSession,
+  product: string,
+  licenseId: string,
+  now: number,
+): Promise<Response> {
+  const settings = await getPortalProductSettings(db, product);
+  if (settings.portal_enabled !== 1) return notFound();
+  const license = await getPortalLicense(
+    db,
+    session.accountId,
+    product,
+    licenseId,
+  );
+  if (!license) return notFound();
+  // Only a licence its key can bring back may leave (lead decision, 2026-10-06): refused before
+  // anything is charged or written.
+  const keys = await listVisibleKeys(db, product, licenseId);
+  const reason = notRemovableReason(
+    keys.filter((k) => k.status === "active").length,
+    settings.license_key_claim_enabled === 1,
+  );
+  if (reason) {
+    return portalJson(
+      {
+        error: "not_removable",
+        message: "this license could not be added back, so it stays",
+        reason,
+      },
+      409,
+    );
+  }
+  const limited = await requireActionRateLimit(
+    req,
+    env,
+    session,
+    "portalLicenseRemove",
+    now,
+    LICENSE_REMOVE_LIMIT_PER_MINUTE,
+    product,
+  );
+  if (limited) return limited;
+  const removed = await detachLicense(
+    { db, env, now, origin: new URL(req.url).origin },
+    { accountId: session.accountId, product, licenseId },
+  );
+  // Another request moved it first (a developer's relink, a concurrent remove): not yours now.
+  if (!removed.ok) return notFound();
+  return portalJson({ ok: true, product, licenseId });
 }
 
 // ── G6: rename a device ─────────────────────────────────────────────────────────────────────

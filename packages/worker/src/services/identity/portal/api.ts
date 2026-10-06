@@ -90,7 +90,14 @@ import {
   handleClaimKey,
   handleDeviceRename,
   handleKeyReissue,
+  handleLicenseRemove,
 } from "./selfService.js";
+import {
+  licenseStores,
+  notRemovableReason,
+  portalLicenseOrigin,
+  storeKey,
+} from "./origin.js";
 import {
   portalEmailConfigured,
   sendNotice,
@@ -193,38 +200,76 @@ function licenseBase(row: PortalLicenseRow): Record<string, unknown> {
   };
 }
 
+/**
+ * One licence as the portal lists it. `origin` and `originStore` say how it reached the person
+ * (PX-23, `origin.ts`); `store` is the store of an active purchase on it, which the caller reads
+ * through License's provenance hook ({@link licenseStores}), `null` when there is none or no hook.
+ */
 export async function shapeLicenseSummary(
   db: Db,
   row: PortalLicenseRow,
   now: number,
+  store: string | null = null,
 ): Promise<Record<string, unknown>> {
   const keys = await listVisibleKeys(db, row.product, row.id);
   const devices = await listVisibleDevices(db, row.product, row.id);
   // `channels`, `minVersion`, `maxVersion` and `entitlements` come from the licence document's
   // own resolution, not the licence row's columns (LX-04, S-19 G14; see `entitlements.ts`).
   const grants = await licenseGrants(db, row, now);
+  const activeKeyCount = keys.filter((k) => k.status === "active").length;
+  const settings = await getPortalProductSettings(db, row.product);
   return {
     ...licenseBase(row),
+    ...portalLicenseOrigin({
+      origin: row.origin ?? null,
+      sub: row.sub,
+      email: row.email,
+      keyCount: keys.length,
+      store,
+    }),
     channels: grants.channels,
     minVersion: grants.minVersion,
     maxVersion: grants.maxVersion,
     usable: licenseUsable(row, now),
     keyCount: keys.length,
-    activeKeyCount: keys.filter((k) => k.status === "active").length,
+    activeKeyCount,
     deviceCount: devices.filter((d) => d.status === "authorized").length,
     entitlements: grants.entitlements,
+    // PX-23: Remove from my library is offered only for a licence its key can bring back.
+    removable:
+      notRemovableReason(
+        activeKeyCount,
+        settings.license_key_claim_enabled === 1,
+      ) === null,
   };
+}
+
+/** {@link shapeLicenseSummary} with the licence's store read through the provenance hook. */
+export async function shapeLicenseSummaryWithStore(
+  db: Db,
+  row: PortalLicenseRow,
+  now: number,
+  hooksFor: PortalHooksFor | undefined,
+): Promise<Record<string, unknown>> {
+  const stores = await licenseStores(db, [row], hooksFor, now);
+  return shapeLicenseSummary(
+    db,
+    row,
+    now,
+    stores.get(storeKey(row.product, row.id)) ?? null,
+  );
 }
 
 async function shapeLicenseDetail(
   db: Db,
   row: PortalLicenseRow,
   now: number,
+  hooksFor: PortalHooksFor | undefined,
 ): Promise<Record<string, unknown>> {
   const keys = await listVisibleKeys(db, row.product, row.id);
   const devices = await listVisibleDevices(db, row.product, row.id);
   return {
-    ...(await shapeLicenseSummary(db, row, now)),
+    ...(await shapeLicenseSummaryWithStore(db, row, now, hooksFor)),
     keys: keys.map((key) => ({
       hash: key.key_hash,
       status: key.status,
@@ -646,17 +691,30 @@ async function handleLicenses(
   session: PortalSession,
   rest: string[],
   now: number,
+  hooksFor: PortalHooksFor | undefined,
 ): Promise<Response> {
   await syncAccountLicenseLinks(db, session.accountId, now);
   const [product, licenseId] = rest;
   if (!product) {
     const rows = await listPortalLicenses(db, session.accountId);
-    const filtered = [];
+    const shown: PortalLicenseRow[] = [];
     for (const row of rows) {
       const settings = await getPortalProductSettings(db, row.product);
       if (settings.portal_enabled !== 1) continue;
-      filtered.push(await shapeLicenseSummary(db, row, now));
+      shown.push(row);
     }
+    // One provenance read per product for the origins' store (PX-23).
+    const stores = await licenseStores(db, shown, hooksFor, now);
+    const filtered = [];
+    for (const row of shown)
+      filtered.push(
+        await shapeLicenseSummary(
+          db,
+          row,
+          now,
+          stores.get(storeKey(row.product, row.id)) ?? null,
+        ),
+      );
     return portalJson({ licenses: filtered });
   }
   if (!licenseId) return notFound();
@@ -665,7 +723,7 @@ async function handleLicenses(
   const settings = await getPortalProductSettings(db, product);
   if (settings.portal_enabled !== 1) return notFound();
   return portalJson({
-    ...(await shapeLicenseDetail(db, row, now)),
+    ...(await shapeLicenseDetail(db, row, now, hooksFor)),
     // PX-W5 (G7): whether "Get a new key" is offered for this licence — the product's opt-in.
     canGetNewKey: settings.key_reissue_enabled === 1 && row.status === "active",
   });
@@ -1474,9 +1532,20 @@ export async function handlePortalApi(
       now,
       hooksFor,
     );
-  if (head === "licenses") return handleLicenses(db, session, rest, now);
+  // PX-23 (S-24 D19): Remove from my library. The licence leaves the account and stays out.
+  if (
+    head === "licenses" &&
+    rest[0] &&
+    rest[1] &&
+    rest.length === 2 &&
+    req.method === "DELETE"
+  ) {
+    return handleLicenseRemove(req, env, db, session, rest[0], rest[1], now);
+  }
+  if (head === "licenses")
+    return handleLicenses(db, session, rest, now, hooksFor);
   if (head === "claim" && rest[0] === "license-key") {
-    return handleClaimKey(req, env, db, session, now);
+    return handleClaimKey(req, env, db, session, now, hooksFor);
   }
   if (head === "activate" && rest[0] === "preview" && rest.length === 1) {
     return handleActivatePreview(req, env, db, session, now, hooksFor);

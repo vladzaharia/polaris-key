@@ -1286,6 +1286,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_not_eligible_message">此优惠已不再适用于你的账户。请刷新后重试。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_removable_title">无法移除</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_removable_message">此许可证无法通过许可证密钥重新添加，因此会保留在你的库中。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_download_auth_required_title">登录以下载</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_download_auth_required_message">请登录或激活许可证以下载此内容。</string>
