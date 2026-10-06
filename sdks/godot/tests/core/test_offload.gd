@@ -7,7 +7,7 @@ extends RefCounted
 # milliseconds (P1-13), so they hold under any load. Timings and frame counts are INFO.
 
 ## The fake clock's step: each reading advances it this many microseconds, so a 4 ms budget
-## holds exactly four readings (one to set the deadline, then one per unit of work).
+## takes five readings (one to set the deadline, then one per unit of work, four units).
 const FAKE_TICK_USEC := 1000
 
 
@@ -23,7 +23,15 @@ func run(t: PKeyTestContext) -> void:
 
 	var saved := PKeyJws.mode
 	PKeyJws.mode = PKeyJws.Mode.AUTO
+	# A fake clock, so the no-threads slice count never depends on the machine's speed.
+	var now := [0]
+	var fake := func() -> int:
+		now[0] += FAKE_TICK_USEC
+		return now[0]
+	var saved_clock := PKeyJws.slice_clock
+	PKeyJws.slice_clock = fake
 	var r := await _timed(c, false)
+	PKeyJws.slice_clock = saved_clock
 	t.check("offload: AUTO matches the synchronous result", _same(r["result"], want))
 	if threads:
 		t.check("offload: AUTO moves a 350 KB verify off the main thread", r["mode"] == PKeyJws.Mode.THREAD and r["thread"] != 0 and r["thread"] != main, _how(r))
@@ -46,13 +54,11 @@ func run(t: PKeyTestContext) -> void:
 	# A fake clock: the slice count is exact on any machine. Four readings per 4 ms slice, so
 	# the bundle (thousands of SHA-512 blocks, 8 per unit) takes many slices; a budget that the
 	# slicing ignored would take one.
-	var now := [0]
-	PKeyJws.slice_clock = func() -> int:
-		now[0] += FAKE_TICK_USEC
-		return now[0]
+	now[0] = 0
+	PKeyJws.slice_clock = fake
 	r = await _timed(c, false)
 	var fake_slices: int = r["slices"]
-	t.check("offload: SLICED at a 4 ms budget spans slices (fake clock)", _same(r["result"], want) and r["mode"] == PKeyJws.Mode.SLICED and fake_slices >= 2, _how(r))
+	t.check("offload: SLICED at a 4 ms budget spans slices (fake clock)", _same(r["result"], want) and r["mode"] == PKeyJws.Mode.SLICED and fake_slices >= 2 and r["frames"] >= r["slices"] - 1, _how(r))
 	now[0] = 0
 	r = await _timed(c, false)
 	t.check("offload: the slice count is the same on a second run (deterministic)", _same(r["result"], want) and r["slices"] == fake_slices, "%d then %d slices" % [fake_slices, r["slices"]])

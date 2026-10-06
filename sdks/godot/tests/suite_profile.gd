@@ -82,6 +82,8 @@ func _bundle(t: PKeyTestContext) -> void:
 			frames[0] += 1
 		tree.process_frame.connect(tick)
 		var t0 := Time.get_ticks_usec()
+		PKeyJws.last_mode = PKeyJws.Mode.AUTO
+		PKeyJws.last_thread = -1
 		var r: PKeyResult = await sdk.import_bundle(c["jws"])
 		var ms := (Time.get_ticks_usec() - t0) / 1000.0
 		tree.process_frame.disconnect(tick)
