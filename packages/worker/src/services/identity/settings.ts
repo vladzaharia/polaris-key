@@ -7,9 +7,10 @@
  * the block), bounded 1–100 with no unlimited value (`allowUnset: false`, I-04 Q7), and capped by
  * the platform entry of the same key (`policyBound: "max"`). The bounds are the platform slice's
  * `KEY_ENTRY_LIMIT_*` constants; the manifest rule I-09 adds (`invalid_identity_key_entry_limit`)
- * must use the same numbers. PX-W9 reads it (`core/keyEntries.ts` `keyEntryLimit()`, over the
- * `product_settings` row); it stays pending on ST-04, whose `writeSetting()` gives the console a
- * write and whose `resolveSetting()` replaces that reader's body.
+ * must use the same numbers. PX-W9 reads it through ST-04's resolver (`core/keyEntries.ts`
+ * `keyEntryLimit()`, `resolveProductSetting`). It stays pending on I-09, whose manifest block and
+ * discovery member are what a live entry needs; I-09 drops `pending` and the console then writes it
+ * through `writeSetting()`.
  */
 
 import {
@@ -100,7 +101,10 @@ export const IDENTITY_SETTINGS_SLICE: ServiceSettingsSlice = {
       wire: ["discovery", "refusal"],
       readers: ["core/keyEntries.ts"],
       storage: { kind: "scalar" },
-      pending: { wp: "ST-04" },
+      // Read through ST-04's resolver since batch 4; still pending on I-09, which adds the two
+      // pieces a live entry needs: the manifest path (the `identity:` block) and the discovery
+      // member that publishes the value (`test/settings-registry.test.ts`, `settings-discovery`).
+      pending: { wp: "I-09" },
     }),
     setting({
       key: "identity.oidc",

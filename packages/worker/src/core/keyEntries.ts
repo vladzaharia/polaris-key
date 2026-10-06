@@ -23,9 +23,10 @@
  *
  * ── THE LIMIT AND THE SWITCH ────────────────────────────────────────────────────────────────
  *
- * `keyEntryLimit()` reads the product's `identity.keyEntry.limit` row in `product_settings` (1 to
- * 100), else 10; ST-04 replaces its body with `resolveSetting()`, and I-09's discovery member calls
- * it (plans/PX-W9.md §8 Q2). `keyEntryRefusalsOn()` reads the platform switch
+ * `keyEntryLimit()` resolves the product's `identity.keyEntry.limit` through ST-04's resolver
+ * (`resolveProductSetting`: the manifest or a console claim, 1 to 100, capped by the platform
+ * entry of the same key), else 10; I-09's discovery member calls it, so the value published is
+ * the value enforced (plans/PX-W9.md §8 Q2). `keyEntryRefusalsOn()` reads the platform switch
  * `identity.keyEntryRefusals` (A-13 store, `KEYENTRY_REFUSALS`), off until the SDKs that
  * show the refusal ship. The refusal applies only to a usable licence in no account
  * (`account_id IS NULL`, §8 Q3); a licence in an account meets I-09's `license_owned` first.
@@ -44,6 +45,8 @@ import { identityEnabled } from "./identityGate.js";
 import { buildManageUrl } from "./manageUrl.js";
 import { platformSetting, type SettingsEnv } from "./platformSettings.js";
 import type { ServicesMap } from "./services.js";
+import type { SettingsRegistry } from "./settings/registry.js";
+import { resolveProductSetting } from "./settings/resolve.js";
 import {
   KEY_ENTRY_LIMIT_DEFAULT,
   KEY_ENTRY_LIMIT_MAX,
@@ -52,6 +55,17 @@ import {
 
 /** The registry key of the product's limit (`services/identity/settings.ts`). */
 export const KEY_ENTRY_LIMIT_SETTING = "identity.keyEntry.limit";
+
+/**
+ * What the limit is read with: ST-04's settings context. Every dispatcher builds `registry`
+ * (`ServiceContext.settings`, the portal's `settings`); it is absent only on a context built by
+ * hand, where the limit is read straight from the product's stored row as before the resolver.
+ */
+export interface KeyEntrySettings {
+  env: SettingsEnv;
+  db: Db;
+  registry?: SettingsRegistry;
+}
 
 /** A product, as a slug (its toggle is read from the row) or loaded (its services map is used). */
 export type KeyEntryProduct = string | { slug: string; services: ServicesMap };
@@ -90,11 +104,25 @@ export function parseKeyEntryLimit(valueJson: string | null): number | null {
 }
 
 /**
- * The product's effective `identity.keyEntry.limit`: its `product_settings` row when it holds a
- * valid value, else `KEY_ENTRY_LIMIT_DEFAULT` (10). Capped at the platform maximum by
- * construction. ST-04 swaps the body for `resolveSetting()` (manifest, console, platform bound).
+ * The product's effective `identity.keyEntry.limit`, resolved (ST-04): the manifest or a console
+ * claim (an expired break-glass claim is none), validated 1 to 100 and capped by the platform
+ * entry of the same key (`policy`, `max`), else `KEY_ENTRY_LIMIT_DEFAULT` (10).
  */
-export async function keyEntryLimit(db: Db, product: string): Promise<number> {
+export async function keyEntryLimit(
+  ctx: KeyEntrySettings,
+  product: string,
+): Promise<number> {
+  if (!ctx.registry) return storedKeyEntryLimit(ctx.db, product);
+  const r = await resolveProductSetting(
+    { env: ctx.env, db: ctx.db, registry: ctx.registry },
+    product,
+    KEY_ENTRY_LIMIT_SETTING,
+  );
+  return typeof r?.value === "number" ? r.value : KEY_ENTRY_LIMIT_DEFAULT;
+}
+
+/** A context built by hand (no registry): the stored row when it holds a valid value, else 10. */
+async function storedKeyEntryLimit(db: Db, product: string): Promise<number> {
   const row = await db.first<{ value_json: string | null }>(
     "SELECT value_json FROM product_settings WHERE product = ? AND key = ?",
     product,
@@ -122,15 +150,15 @@ export async function countKeyEntries(
 
 /** `{used, limit}` for the licence, or `null` when the product's Identity toggle is off. */
 export async function keyEntryState(
-  db: Db,
+  ctx: KeyEntrySettings,
   product: KeyEntryProduct,
   licenseId: string,
 ): Promise<KeyEntries | null> {
-  if (!(await keyEntriesApply(db, product))) return null;
+  if (!(await keyEntriesApply(ctx.db, product))) return null;
   const slug = slugOf(product);
   return {
-    used: await countKeyEntries(db, slug, licenseId),
-    limit: await keyEntryLimit(db, slug),
+    used: await countKeyEntries(ctx.db, slug, licenseId),
+    limit: await keyEntryLimit(ctx, slug),
   };
 }
 
@@ -244,14 +272,14 @@ export type KeyEntryGate =
  * `authorizeDevice`) and in no account, and `used >= limit`. Step 3 is I-09's `license_owned`.
  */
 export async function keyEntryGate(
-  env: SettingsEnv,
-  db: Db,
+  ctx: KeyEntrySettings,
   product: { slug: string; services: ServicesMap },
   license: LicenseRow,
   deviceId: string,
   now: number,
 ): Promise<KeyEntryGate> {
-  const keyEntries = await keyEntryState(db, product, license.id);
+  const { env, db } = ctx;
+  const keyEntries = await keyEntryState(ctx, product, license.id);
   if (!keyEntries) return { kind: "off" };
   if (await isEnrolled(db, product.slug, license.id, deviceId))
     return { kind: "admit", keyEntries, enrolled: true };

@@ -33,6 +33,7 @@ import {
   countKeyEntries,
   keyEntriesApply,
   keyEntryLimit,
+  type KeyEntrySettings,
 } from "../../core/keyEntries.js";
 import { subjectFor } from "../../core/accountSubjects.js";
 import {
@@ -144,14 +145,14 @@ export interface KeyEntryListContext {
   limit: number | null;
 }
 
-/** The {@link KeyEntryListContext} of one product. */
+/** The {@link KeyEntryListContext} of one product, its limit resolved through ST-04's resolver. */
 export async function keyEntryListContext(
-  db: Db,
+  settings: KeyEntrySettings,
   product: string,
 ): Promise<KeyEntryListContext> {
   return {
-    limit: (await keyEntriesApply(db, product))
-      ? await keyEntryLimit(db, product)
+    limit: (await keyEntriesApply(settings.db, product))
+      ? await keyEntryLimit(settings, product)
       : null,
   };
 }
@@ -680,7 +681,9 @@ async function licenseKeyEntries(
   licenseId: string,
   context?: KeyEntryListContext,
 ): Promise<{ used: number; limit: number } | null> {
-  const { limit } = context ?? (await keyEntryListContext(db, product));
+  // Without a context (a call built by hand) the limit is the stored row's (`keyEntryLimit`).
+  const { limit } =
+    context ?? (await keyEntryListContext({ env: {}, db }, product));
   if (limit === null) return null;
   return { used: await countKeyEntries(db, product, licenseId), limit };
 }

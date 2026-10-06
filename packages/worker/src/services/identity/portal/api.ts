@@ -1400,7 +1400,7 @@ export async function handlePortalApi(
     segments[1] === "preview" &&
     segments.length === 2
   )
-    return handleKeyPreview(req, env, db, now);
+    return handleKeyPreview(req, env, db, now, settings);
   // PX-W14 (G29): the new device's half of "Sign in with another device" is pre-auth: it has no
   // session yet. The signed-in half (`lookup`, `approve`) is dispatched below.
   if (segments[0] === "device-login" && segments.length === 2) {
@@ -1592,10 +1592,18 @@ export async function handlePortalApi(
   if (head === "licenses")
     return handleLicenses(db, session, rest, now, hooksFor);
   if (head === "claim" && rest[0] === "license-key") {
-    return handleClaimKey(req, env, db, session, now, hooksFor);
+    return handleClaimKey(req, env, db, session, now, hooksFor, settings);
   }
   if (head === "activate" && rest[0] === "preview" && rest.length === 1) {
-    return handleActivatePreview(req, env, db, session, now, hooksFor);
+    return handleActivatePreview(
+      req,
+      env,
+      db,
+      session,
+      now,
+      hooksFor,
+      settings,
+    );
   }
   if (head === "releases")
     return handleReleases(req, env, db, session, rest, now, hooksFor);

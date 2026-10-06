@@ -31,6 +31,7 @@ import {
   parseKeyEntryLimit,
 } from "../src/core/keyEntries.js";
 import { serializeServices } from "../src/core/services.js";
+import { SETTINGS } from "../src/mount.js";
 import { invalidatePlatformSettings } from "../src/core/platformSettings.js";
 import { claimDeviceSeat, getLicense, setServices } from "../src/repo.js";
 import { authorizeDevice } from "../src/core/authz.js";
@@ -159,19 +160,41 @@ describe("the limit (§12.2 rule 5)", () => {
     expect(parseKeyEntryLimit(null)).toBeNull();
   });
 
-  it("is the product_settings row, else 10", async () => {
-    expect(await keyEntryLimit(db, SLUG)).toBe(10);
+  it("is resolved through ST-04's resolver: the product_settings row, else 10", async () => {
+    const ctx = { env, db, registry: SETTINGS };
+    expect(await keyEntryLimit(ctx, SLUG)).toBe(10);
     await setLimit(3);
-    expect(await keyEntryLimit(db, SLUG)).toBe(3);
+    expect(await keyEntryLimit(ctx, SLUG)).toBe(3);
+    // A stored value that is not one (outside 1 to 100) is ignored, as the resolver ignores it.
     await setLimit(500);
-    expect(await keyEntryLimit(db, SLUG)).toBe(10);
+    expect(await keyEntryLimit(ctx, SLUG)).toBe(10);
+  });
+
+  it("ignores an expired break-glass claim (ST-20), as the resolver does", async () => {
+    await setLimit(3);
+    await db.run(
+      "UPDATE product_settings SET expires_at = ? WHERE product = ? AND key = ?",
+      NOW - 1,
+      SLUG,
+      KEY_ENTRY_LIMIT_SETTING,
+    );
+    expect(await keyEntryLimit({ env, db, registry: SETTINGS }, SLUG)).toBe(10);
+  });
+
+  it("without a registry (a context built by hand) reads the stored row, else 10", async () => {
+    expect(await keyEntryLimit({ env, db }, SLUG)).toBe(10);
+    await setLimit(3);
+    expect(await keyEntryLimit({ env, db }, SLUG)).toBe(3);
+    await setLimit(500);
+    expect(await keyEntryLimit({ env, db }, SLUG)).toBe(10);
   });
 
   it("exists only while Identity is on", async () => {
+    const ctx = { env, db, registry: SETTINGS };
     const { licenseId } = await seedLicenseWithKey(db, SLUG);
-    expect(await keyEntryState(db, SLUG, licenseId)).toBeNull();
+    expect(await keyEntryState(ctx, SLUG, licenseId)).toBeNull();
     await setIdentity(true);
-    expect(await keyEntryState(db, SLUG, licenseId)).toEqual({
+    expect(await keyEntryState(ctx, SLUG, licenseId)).toEqual({
       used: 0,
       limit: 10,
     });

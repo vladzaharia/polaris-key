@@ -69,6 +69,7 @@ import {
 import { validatePayload } from "../../core/payload.js";
 import { clearDeviceSubjects } from "../../core/subjectHooks.js";
 import { checkBuildGate, tighterMax, tighterMin } from "../../core/gate.js";
+import type { SettingsRegistry } from "../../core/settings/registry.js";
 import { buildDoc, type FusedSessionDoc } from "./doc.js";
 
 interface BrowserSessionRecord {
@@ -353,6 +354,8 @@ export async function handleBrowserSessionLicense(
   db: Db,
   product: Product,
   now: number,
+  /** ST-04's settings registry (`ServiceContext.settings`): the key-entry limit is resolved by it. */
+  settings?: SettingsRegistry,
 ): Promise<Response> {
   if (req.method !== "POST") return methodNotAllowed();
   if (
@@ -388,7 +391,13 @@ export async function handleBrowserSessionLicense(
   // while Identity is on, so the gate always counts here. The browser device is
   // `browser:<licenseId>`, so it counts at most once per enrolment.
   const deviceId = `browser:${license.id}`;
-  const gate = await keyEntryGate(env, db, product, license, deviceId, now);
+  const gate = await keyEntryGate(
+    { env, db, registry: settings },
+    product,
+    license,
+    deviceId,
+    now,
+  );
   if (gate.kind === "refuse") {
     const meta = deviceMetadata(req);
     await logRefusal(db, {

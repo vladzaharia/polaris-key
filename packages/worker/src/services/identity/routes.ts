@@ -56,7 +56,7 @@ import {
 export async function handleIdentityRoutes(
   ctx: ServiceContext,
 ): Promise<Response | null> {
-  const { req, env, db, product, rest, now } = ctx;
+  const { req, env, db, product, rest, now, settings } = ctx;
 
   if (rest.length === 1) {
     if (rest[0] === "session")
@@ -66,7 +66,7 @@ export async function handleIdentityRoutes(
 
   if (rest.length === 2) {
     if (rest[0] === "session" && rest[1] === "license")
-      return handleBrowserSessionLicense(req, env, db, product, now);
+      return handleBrowserSessionLicense(req, env, db, product, now, settings);
     if (rest[0] !== "auth") return null;
     switch (rest[1]) {
       case "start":

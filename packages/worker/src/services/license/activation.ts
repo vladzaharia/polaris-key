@@ -43,6 +43,7 @@ import { requireLicensedDevice } from "./auth.js";
 import { authorizeDevice, type AuthzError } from "./authz.js";
 import { logRefusal, type WaitUntil } from "../../core/refusals.js";
 import { buildManageUrl } from "../../core/manageUrl.js";
+import type { SettingsRegistry } from "../../core/settings/registry.js";
 import {
   countKeyEntries,
   keyEntryGate,
@@ -138,6 +139,7 @@ async function activateWithKey(
   product: Product,
   now: number,
   waitUntil?: WaitUntil,
+  settings?: SettingsRegistry,
 ): Promise<Response> {
   if (req.method !== "POST") return methodNotAllowed();
   if (
@@ -168,7 +170,13 @@ async function activateWithKey(
   // PX-W9 (WIRE-CONTRACT-V4 §12.2): on an Identity product this is a key entry. An enrolled
   // device goes on as before; a new one past the licence's limit is refused while the switch is
   // on (step 4), and otherwise its seat claim records the entry (step 5).
-  const gate = await keyEntryGate(env, db, product, license, deviceId, now);
+  const gate = await keyEntryGate(
+    { env, db, registry: settings },
+    product,
+    license,
+    deviceId,
+    now,
+  );
   if (gate.kind === "refuse") {
     await logRefusal(
       db,
@@ -239,8 +247,10 @@ export async function handleActivate(
   product: Product,
   now: number,
   waitUntil?: WaitUntil,
+  /** ST-04's settings registry (`ServiceContext.settings`): the key-entry limit is resolved by it. */
+  settings?: SettingsRegistry,
 ): Promise<Response> {
-  return activateWithKey(req, env, db, product, now, waitUntil);
+  return activateWithKey(req, env, db, product, now, waitUntil, settings);
 }
 
 /** POST /<product>/license/token — replace the current token for an already-authorized device.

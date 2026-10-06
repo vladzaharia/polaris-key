@@ -69,6 +69,7 @@ import {
 } from "../../../core/keyEntries.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import { loadProductPublic } from "../../../core/products.js";
+import type { SettingsRegistry } from "../../../core/settings/registry.js";
 import { ErrorCode } from "../../../core/errors.js";
 import {
   accountHasVerifiedEmail,
@@ -325,6 +326,8 @@ export async function handleActivatePreview(
   session: PortalSession,
   now: number,
   hooksFor: PortalHooksFor | undefined,
+  /** ST-04's settings registry: the key-entry limit is resolved by it. */
+  settings?: SettingsRegistry,
 ): Promise<Response> {
   if (req.method !== "POST") return err(405, "method_not_allowed");
   // Charged BEFORE any lookup, on the claim's own bucket: a preview costs exactly what an add costs.
@@ -350,7 +353,11 @@ export async function handleActivatePreview(
     // account can see; `null` otherwise. Previewing never counts.
     keyEntries:
       verdict.kind === "addable" || verdict.kind === "already_yours"
-        ? await keyEntryState(db, verdict.product.slug, verdict.license.id)
+        ? await keyEntryState(
+            { env, db, registry: settings },
+            verdict.product.slug,
+            verdict.license.id,
+          )
         : null,
   };
   switch (verdict.kind) {
@@ -412,6 +419,8 @@ export async function handleClaimKey(
   session: PortalSession,
   now: number,
   hooksFor?: PortalHooksFor,
+  /** ST-04's settings registry: the key-entry limit is resolved by it. */
+  settings?: SettingsRegistry,
 ): Promise<Response> {
   if (req.method !== "POST") return err(405, "method_not_allowed");
   const limited = await requireActionRateLimit(
@@ -448,7 +457,7 @@ export async function handleClaimKey(
     case "already_yours": {
       // Idempotent: nothing is written (no key entry either) and nobody is emailed a second time.
       const keyEntries = await keyEntryState(
-        db,
+        { env, db, registry: settings },
         verdict.product.slug,
         verdict.license.id,
       );
@@ -526,7 +535,11 @@ export async function handleClaimKey(
     product.slug,
     license.id,
   );
-  const keyEntries = await keyEntryState(db, product.slug, license.id);
+  const keyEntries = await keyEntryState(
+    { env, db, registry: settings },
+    product.slug,
+    license.id,
+  );
   return portalJson({
     ok: true,
     license: portalRow
@@ -565,6 +578,8 @@ export async function handleKeyPreview(
   env: Env,
   db: Db,
   now: number,
+  /** ST-04's settings registry: the key-entry limit is resolved by it. */
+  settings?: SettingsRegistry,
 ): Promise<Response> {
   if (req.method !== "POST") return err(405, "method_not_allowed");
   // Charged BEFORE any lookup, so a refused guess costs as much as an accepted one.
@@ -599,7 +614,11 @@ export async function handleKeyPreview(
     });
   }
   const verdict = license.account_id ? "license_owned" : "addable";
-  const keyEntries = await keyEntryState(db, product.slug, license.id);
+  const keyEntries = await keyEntryState(
+    { env, db, registry: settings },
+    product.slug,
+    license.id,
+  );
   const forced =
     verdict === "addable" &&
     keyEntries !== null &&

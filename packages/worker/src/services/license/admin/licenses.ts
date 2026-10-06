@@ -182,6 +182,11 @@ async function deviceLimitView(
   };
 }
 
+/** PX-W9 on ST-04: the key-entry limit is resolved with the dispatcher's settings registry. */
+function keyEntrySettings(ctx: LicenseAdminContext) {
+  return { env: ctx.env, db: ctx.db, registry: ctx.settings };
+}
+
 async function summarize(
   ctx: LicenseAdminContext,
   license: LicenseRow,
@@ -192,7 +197,8 @@ async function summarize(
       ctx.db,
       ctx.product.slug,
       license,
-      keyEntryContext,
+      keyEntryContext ??
+        (await keyEntryListContext(keyEntrySettings(ctx), ctx.product.slug)),
     )),
     ...(await deviceLimitView(ctx, license)),
   };
@@ -244,7 +250,10 @@ export async function handleLicenses(
       });
       const verdicts = await deletionVerdicts(ctx, rows);
       // PX-W9: the Identity toggle and the key-entry limit, read once for the whole list.
-      const keyEntryContext = await keyEntryListContext(db, slug);
+      const keyEntryContext = await keyEntryListContext(
+        keyEntrySettings(ctx),
+        slug,
+      );
       const licenses = await Promise.all(
         rows.map(async (r) => ({
           ...(await summarize(ctx, r, keyEntryContext)),
