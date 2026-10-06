@@ -47,6 +47,34 @@ differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US 
 
 - In passthrough the confirm's primary is **Add and use on this device** and binds (it is the license choice; SIGN-IN.md §3.9). The entries notice is `signin.key.noEntries`, naming the product.
 
+## Verified against the code (2026-10-06, the PX-17 build)
+
+Where the brief and the code disagreed, the code was the fact:
+
+- **The confirm step, the entries notice and the §4.19 refusal copy already existed.** PX-06
+  built the modal on PX-W5's preview, and UX-05 and UX-79 added the verdicts, `license_owned`'s
+  actions and step focus. PX-17 adds the link context (§4.18), the `next=` and `return=`
+  hand-offs, the §4.19 tests and quality-bar states, and **Use a different key** on
+  `email_mismatch`.
+- **There is no passthrough card in the SPA yet.** The login card's `KeyStep`,
+  `LicenseChoiceStep` and **Replace a device** are PX-14's (UX-41). PX-17 exports `ConfirmStep`
+  with a `primaryLabel` for **Add and use on this device** and a `notes` slot for PX-23. Binding
+  the device, and offering **Replace a device** when the added license is full, happen in the
+  card.
+- **Nothing links to `/activate?product=…&return=/signin?request=…` yet.** The card's "You don't
+  have <Product> yet" state is PX-14's. The portal now follows that `return=` after the add, and
+  only to `/signin` on its own origin (`cardReturn`).
+- **Two §4.19 actions have no target yet.** **Link an existing account** needs `#/account/link`
+  (PX-15 on PX-W12), and **Add and verify that email** needs add-email (PX-W12, PX-13). Both are
+  left out rather than shown as dead ends, and so is the "If that account is yours too, sign in to
+  it and join the two." notice.
+- **The preview reports `entries: null` until PX-W9 counts entries**, so the confirm step's
+  entries notice shows only once PX-W9 lands. The link's own notice (`signin.key.noEntries`)
+  shows today.
+- **The sign-in return URL dropped `activate=` entirely**, so a keyless link (PX-W9 Q2: the
+  Worker never puts the key in it) lost the modal after a sign-in that navigates away or a magic
+  link opened in another tab. It now keeps an empty `activate=` (`carriedKey.ts`).
+
 ## Goal
 
 `ActivateDialog` gains the confirm step from `POST /api/activate/preview` (art header, product, tier, terms, key echo), the entries notice, and `product=` context from app deep links, with every §4.19 error state.
@@ -86,11 +114,13 @@ Confirm before adding, and arrive from apps with context ([PORTAL.md §4.17](../
 
 ## Acceptance criteria
 
-- [ ] Error-state tests for every §4.19 case.
-- [ ] `pnpm --filter @polaris-key/admin build` passes and `pnpm --filter @polaris-key/admin test:e2e` reports zero CSP violations.
-- [ ] `vitest-axe` passes on every new or changed page component; one `h1` per screen (§9).
-- [ ] No horizontal page scroll at 360 px on every screen this package touches (§8).
-- [ ] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
+- [x] Error-state tests for every §4.19 case. (`test/portalActivateLink.test.tsx`; the quality bar's
+      `activate-error-*` and `activate-entries` states.)
+- [x] `pnpm --filter @polaris-key/admin build` passes and `pnpm --filter @polaris-key/admin test:e2e` reports zero CSP violations. (The
+      Activate, device-limit and CSP e2e, filtered; every new state also in Playwright's linux image.)
+- [x] `vitest-axe` passes on every new or changed page component; one `h1` per screen (§9).
+- [x] No horizontal page scroll at 360 px on every screen this package touches (§8).
+- [x] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
 
 ## Verify
 

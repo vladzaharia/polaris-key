@@ -29,6 +29,7 @@ import {
   useRemoveDevice,
 } from "../data.js";
 import { isNotFound, portalErrorCopy } from "../errors.js";
+import { consumeHeadingFocus } from "../focus.js";
 import {
   deviceFamily,
   deviceOsName,
@@ -179,6 +180,13 @@ function FreeDevice({
   React.useEffect(() => {
     if (removed) headingRef.current?.focus();
   }, [removed]);
+  // Arriving from the Activate dialog (`next=free-device`, PX-17): focus the flow's heading once
+  // the dialog has closed (§9.4).
+  const titleRef = React.useRef<HTMLHeadingElement>(null);
+  React.useEffect(() => {
+    if (consumeHeadingFocus(product.product))
+      requestAnimationFrame(() => titleRef.current?.focus());
+  }, [product.product]);
 
   const name = product.name;
   const limit = seats.limit ?? 0;
@@ -242,7 +250,11 @@ function FreeDevice({
   if (!full) {
     return card(
       <div className="mt-2 space-y-4">
-        <h1 className="text-[1.75rem] font-bold leading-tight text-fg-strong">
+        <h1
+          ref={titleRef}
+          tabIndex={-1}
+          className="text-[1.75rem] font-bold leading-tight text-fg-strong outline-none"
+        >
           Your license has a free device
         </h1>
         {limit > 0 ? <SeatMeter inUse={inUse} limit={limit} /> : null}
@@ -270,7 +282,11 @@ function FreeDevice({
 
   return card(
     <div className="mt-2 space-y-4">
-      <h1 className="text-[1.75rem] font-bold leading-tight text-fg-strong desk:text-[2rem]">
+      <h1
+        ref={titleRef}
+        tabIndex={-1}
+        className="text-[1.75rem] font-bold leading-tight text-fg-strong outline-none desk:text-[2rem]"
+      >
         Your license is on {inUse} of {limit}{" "}
         {limit === 1 ? "device" : "devices"}
       </h1>

@@ -339,6 +339,11 @@ export interface DialogProps {
   unsaved?: boolean;
   /** The title element, for a flow that moves focus to it (a result step). */
   titleRef?: React.Ref<HTMLHeadingElement>;
+  /**
+   * The id of an element in the body that also describes the dialog (a notice the person must
+   * hear on open); read after `description`.
+   */
+  describedBy?: string;
   className?: string;
 }
 
@@ -355,9 +360,11 @@ export function Dialog({
   role,
   unsaved = false,
   titleRef: titleRefProp,
+  describedBy,
   className,
 }: DialogProps): React.ReactElement {
   const contentRef = React.useRef<HTMLDivElement>(null);
+  const descriptionId = React.useId();
   const titleRef = React.useRef<HTMLHeadingElement>(null);
   const focus = useOverlayFocus(open, contentRef, titleRef, initialFocusRef);
   const dismissal = useGuardedDismissal({
@@ -389,7 +396,15 @@ export function Dialog({
         <DialogPrimitive.Content
           ref={contentRef}
           {...(role ? { role } : {})}
-          {...(description ? {} : { "aria-describedby": undefined })}
+          {...(describedBy
+            ? {
+                "aria-describedby": description
+                  ? `${descriptionId} ${describedBy}`
+                  : describedBy,
+              }
+            : description
+              ? {}
+              : { "aria-describedby": undefined })}
           onOpenAutoFocus={focus.onOpenAutoFocus}
           onCloseAutoFocus={focus.onCloseAutoFocus}
           onEscapeKeyDown={(e) => {
@@ -430,7 +445,11 @@ export function Dialog({
                 {title}
               </DialogPrimitive.Title>
               {description ? (
-                <DialogPrimitive.Description className="text-sm text-fg-muted">
+                <DialogPrimitive.Description
+                  // With `describedBy` the content names both ids itself.
+                  {...(describedBy ? { id: descriptionId } : {})}
+                  className="text-sm text-fg-muted"
+                >
                   {description}
                 </DialogPrimitive.Description>
               ) : null}

@@ -336,6 +336,63 @@ describe("focused flows (PX-10)", () => {
   });
 });
 
+describe("the Activate link from an app (PX-17)", () => {
+  const KEY = "pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w";
+
+  it("next=free-device: names why, adds the key, then the free-device flow with the app's way back", async () => {
+    const o = await open(
+      "three",
+      `/activate?product=mossgarden&next=free-device&for=macOS+arm64&return=mossgarden%3A%2F%2Fretry#key=${KEY}`,
+      { width: 390, height: 844 },
+    );
+    const dialog = o.page.getByRole("dialog", { name: "Activate a license" });
+    await dialog.getByText(/then free one up for macOS arm64/).waitFor();
+    await dialog.getByRole("button", { name: "Continue" }).click();
+    const confirm = o.page.getByRole("dialog", {
+      name: "Add Mossgarden to your account?",
+    });
+    await confirm.getByRole("button", { name: "Add Mossgarden" }).click();
+    await h1(o.page, "Your license has a free device");
+    expect(await o.page.evaluate(() => location.hash)).toBe(
+      "#/p/mossgarden/free-device?license=lic_mossgarden&for=macOS+arm64&return=mossgarden%3A%2F%2Fretry",
+    );
+    // Focus lands on the flow's heading (§9.4).
+    await expect
+      .poll(() => o.page.evaluate(() => document.activeElement?.tagName))
+      .toBe("H1");
+    expect(
+      await o.page
+        .getByRole("link", { name: "Back to Mossgarden" })
+        .last()
+        .getAttribute("href"),
+    ).toBe("mossgarden://retry");
+    expect(o.requests).toContain("POST /api/claim/license-key");
+    // The key went in the claim's body only: no request line or Referer carries it.
+    expect(o.all.filter((r) => r.includes("pkey_"))).toEqual([]);
+    expect(await o.violations()).toEqual([]);
+    await o.close();
+  });
+
+  it("return= to the login card: back to /signin?request=… after the add, the key in no URL", async () => {
+    const o = await open(
+      "three",
+      `/activate?product=mossgarden&return=%2Fsignin%3Frequest%3Drq_0123456789abcdef#key=${KEY}`,
+    );
+    const dialog = o.page.getByRole("dialog", { name: "Activate a license" });
+    await dialog.getByText(/Signing in to Mossgarden/).waitFor();
+    await dialog.getByRole("button", { name: "Continue" }).click();
+    await o.page
+      .getByRole("dialog", { name: "Add Mossgarden to your account?" })
+      .getByRole("button", { name: "Add Mossgarden" })
+      .click();
+    await o.page.waitForURL(/\/signin\?request=rq_0123456789abcdef$/);
+    expect(o.requests).toContain("POST /api/claim/license-key");
+    expect(o.all.filter((r) => r.includes("pkey_"))).toEqual([]);
+    expect(await o.violations()).toEqual([]);
+    await o.close();
+  });
+});
+
 describe("portal flow conformance (UX-79)", () => {
   it("on a phone, the removal toast sits at the bottom above the phone bar, full width", async () => {
     for (const theme of ["dark", "light"] as const) {

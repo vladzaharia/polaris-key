@@ -304,6 +304,11 @@ export function claimVerdict(
   return null;
 }
 
+/** `signin.key.noEntries` (SIGN-IN.md §5.2): the one wording of "this key has no entries left". */
+export function noEntriesCopy(name: string): string {
+  return `This key has no entries left in ${name}. Add it to your account and ${name} signs you in instead.`;
+}
+
 /**
  * The entries notice (PORTAL.md §4.19, decided Q-5): a `warning` once the key has used all its
  * entries. Adding stays enabled; adding is the way past the limit.
@@ -313,11 +318,7 @@ export function entriesVerdict(
   name: string,
 ): KeyVerdict | null {
   if (!entries || entries.used < entries.limit) return null;
-  return {
-    code: "entries",
-    tone: "warning",
-    message: `This key has no entries left in ${name}. Add it to your account and ${name} signs you in instead.`,
-  };
+  return { code: "entries", tone: "warning", message: noEntriesCopy(name) };
 }
 
 /**

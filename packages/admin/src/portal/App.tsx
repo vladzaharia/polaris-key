@@ -31,8 +31,10 @@ import { ProductPage } from "./pages/ProductPage.js";
 import { SignInPage } from "./pages/SignInPage.js";
 import { restoreCarriedKey } from "./carriedKey.js";
 import {
+  activateContext,
   rewriteActivatePath,
   setParams,
+  type ActivateContext,
   useDocumentTitle,
   useRoute,
   type PortalRoute,
@@ -156,19 +158,33 @@ function SignedInShell({
   const activate = useActivate();
 
   // `#/?activate=<key>` (and `/activate#key=…`, rewritten to it) opens the modal over the
-  // Library with the key filled in; the parameter is consumed so a reload doesn't re-open it.
-  const activateParam =
-    route.kind === "library" ? route.params.get("activate") : null;
-  const productParam =
-    route.kind === "library" ? route.params.get("product") : null;
+  // Library with the key filled in, with what the link carried. A hash written by hand goes
+  // through the same sanitiser as the link (`activateContext`). The parameters are consumed so a
+  // reload doesn't re-open it.
+  const linkParams = route.kind === "library" ? route.params : null;
+  const activateParam = linkParams?.get("activate") ?? null;
+  const ctx: ActivateContext = linkParams ? activateContext(linkParams) : {};
+  const productParam = ctx.product ?? null;
+  const nextParam = ctx.next ?? null;
+  const forParam = ctx.for ?? null;
+  const returnParam = ctx.return ?? null;
   React.useEffect(() => {
     if (activateParam === null) return;
     activate.open({
       key: activateParam || undefined,
       product: productParam ?? undefined,
+      next: nextParam ?? undefined,
+      forDevice: forParam ?? undefined,
+      returnTo: returnParam ?? undefined,
     });
-    setParams({ activate: null, product: null });
-  }, [activateParam, productParam, activate]);
+    setParams({
+      activate: null,
+      product: null,
+      next: null,
+      for: null,
+      return: null,
+    });
+  }, [activateParam, productParam, nextParam, forParam, returnParam, activate]);
 
   // ⌘K (§4.27) from 8 products.
   const lib = useLibrary();

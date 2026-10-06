@@ -65,6 +65,19 @@ const NIGHTFALL_CONTEXT = {
   },
 };
 const SERVER_ERROR = { status: 500, body: { error: "internal" } };
+const MOSSGARDEN = {
+  slug: "mossgarden",
+  name: "Mossgarden",
+  developerName: "Little Fern",
+  iconUrl: null,
+  headerUrl: null,
+};
+/** `POST /api/activate/preview` answering with one §4.19 refusal (PX-17). */
+const previewSays = (answer: Record<string, unknown>) => ({
+  "POST /api/activate/preview": {
+    body: { product: MOSSGARDEN, entries: null, ...answer },
+  },
+});
 
 async function typeEmail(page: Page, email: string): Promise<void> {
   await h1(page, /Sign in/);
@@ -95,6 +108,14 @@ async function toConfirm(page: Page): Promise<void> {
     .getByRole("dialog", { name: "Add Mossgarden to your account?" })
     .getByText("Lifetime · up to 5 devices")
     .waitFor();
+}
+
+/** The modal from `#/?activate=<KEY>`: press Continue, wait for `copy` (a §4.19 verdict). */
+async function continueTo(page: Page, copy: RegExp): Promise<void> {
+  const dialog = page.getByRole("dialog", { name: "Activate a license" });
+  await dialog.getByText("Key format is valid").waitFor();
+  await dialog.getByRole("button", { name: "Continue" }).click();
+  await dialog.getByText(copy).waitFor();
 }
 
 /**
@@ -430,6 +451,78 @@ export const SHIPPED: ShippedState[] = [
         .waitFor();
     },
   },
+  // §4.18 and §4.19 from PX-17: the app's link, and the preview's refusals.
+  {
+    section: "4.18",
+    id: "activate-link-app",
+    title: "Activate license: deep link from an app (product= notice)",
+    scenario: "three",
+    path: `/activate?product=mossgarden#key=${KEY}`,
+    ready: (p) =>
+      p
+        .getByRole("dialog", { name: "Activate a license" })
+        .getByText(/Mossgarden sent you here/)
+        .waitFor(),
+  },
+  {
+    section: "4.19",
+    id: "activate-error-owned",
+    title: "Activate license: owned by another account",
+    scenario: "three",
+    path: `/#/?activate=${KEY}`,
+    routes: previewSays({ verdict: "license_owned" }),
+    ready: (p) => continueTo(p, /already in another Polaris Key account/),
+  },
+  {
+    section: "4.19",
+    id: "activate-error-email",
+    title: "Activate license: verified-email mismatch",
+    scenario: "three",
+    path: `/#/?activate=${KEY}`,
+    routes: previewSays({
+      verdict: "email_mismatch",
+      maskedEmail: "m•••@proton.me",
+    }),
+    ready: (p) => continueTo(p, /was bought with m•••@proton\.me/),
+  },
+  {
+    section: "4.19",
+    id: "activate-error-portal-off",
+    title: "Activate license: product portal off",
+    scenario: "three",
+    path: `/#/?activate=${KEY}`,
+    routes: previewSays({ verdict: "portal_off" }),
+    ready: (p) => continueTo(p, /manages this license elsewhere/),
+  },
+  {
+    section: "4.19",
+    id: "activate-entries",
+    title: "Activate license: no key entries left (a warning on confirm)",
+    scenario: "three",
+    path: `/#/?activate=${KEY}`,
+    routes: previewSays({
+      verdict: "addable",
+      entries: { used: 5, limit: 5 },
+      license: {
+        tier: "standard",
+        tierLabel: "Standard",
+        status: "active",
+        usable: true,
+        expiresAt: null,
+        deviceLimit: 5,
+      },
+      platforms: ["macos", "windows", "linux"],
+    }),
+    ready: async (p) => {
+      const dialog = p.getByRole("dialog", { name: "Activate a license" });
+      await dialog.getByText("Key format is valid").waitFor();
+      await dialog.getByRole("button", { name: "Continue" }).click();
+      await p
+        .getByRole("dialog", { name: "Add Mossgarden to your account?" })
+        .getByText(/no entries left in Mossgarden/)
+        .waitFor();
+    },
+  },
   // §4.20 Product page (PX-04, PX-08, PX-11).
   {
     section: "4.20",
@@ -724,17 +817,6 @@ export const PENDING: PendingState[] = [
     wp: ["PX-15"],
   },
   { section: "4.11", title: "Link an existing account: join", wp: ["PX-15"] },
-  {
-    section: "4.18",
-    title: "Activate license: deep link from an app (product= notice)",
-    wp: ["PX-17"],
-  },
-  {
-    section: "4.19",
-    title:
-      "Activate license: owned elsewhere, email mismatch, no entries left, portal off",
-    wp: ["PX-17"],
-  },
   { section: "4.20", title: "Product page with Cloud Sync", wp: ["PX-18"] },
   {
     section: "4.20",
