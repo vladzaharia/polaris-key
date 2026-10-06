@@ -19,7 +19,9 @@ import {
   checkRegistry,
   deniedCategories,
   DENIED_PLATFORM_NAMES,
+  SYSTEM_LOCKED_KEYS,
 } from "../src/core/settings/rules.js";
+import { CORE_SLICE } from "../src/core/settings/core.js";
 import {
   KEY_ENTRY_LIMIT_DEFAULT,
   KEY_ENTRY_LIMIT_MAX,
@@ -654,5 +656,53 @@ describe("the registry rules refuse", () => {
     expect(
       issuesWith("config", [], { namespaces: ["config", "core"] }),
     ).toContainEqual(expect.stringMatching(/"core" is reserved/));
+  });
+});
+
+describe("the system-lock rule (ST-20, S-18 §4.5 item 8)", () => {
+  const KEY = "core.manifest.authoritative";
+  const withCore = (core: readonly SettingDef[]) =>
+    checkRegistry(buildSettingsRegistry(SERVICES.values(), { core }));
+
+  it("locks manifest-authoritative mode on for the system product, in the registry", () => {
+    expect(SYSTEM_LOCKED_KEYS).toEqual({ [KEY]: true });
+    expect(SETTINGS.get(KEY, "product")).toMatchObject({
+      ownership: "operator",
+      defaultValue: false,
+      systemLock: { value: true },
+    });
+  });
+
+  it("refuses a registry whose locked entry lost its lock, changed it, or is gone", () => {
+    const edit = (over: Partial<SettingDef>) =>
+      CORE_SLICE.map((e) => (e.key === KEY ? { ...e, ...over } : e));
+    const locked = `product ${KEY}: the system product's value is locked to true (systemLock)`;
+    expect(withCore(edit({ systemLock: undefined }))).toContain(locked);
+    expect(withCore(edit({ systemLock: { value: false } }))).toContain(locked);
+    expect(withCore(CORE_SLICE.filter((e) => e.key !== KEY))).toContain(
+      `product ${KEY}: locked for the system product, so it must be registered`,
+    );
+  });
+
+  it("refuses a lock on a platform entry, and a lock that does not fit the value", () => {
+    expect(
+      issuesWith("license", [
+        product("license.test.locked", "license", {
+          value: { kind: "boolean" },
+          defaultValue: false,
+          confirm: { on: "L0", off: "L0" },
+          systemLock: { value: "on" },
+        }),
+      ]),
+    ).toContain(
+      "product license.test.locked: systemLock.value does not fit its value spec",
+    );
+    expect(
+      issuesWith("license", [], {
+        platform: [platform("blobs.test.locked", { systemLock: { value: 2 } })],
+      }),
+    ).toContain(
+      "platform blobs.test.locked: systemLock is declared on product entries only",
+    );
   });
 });

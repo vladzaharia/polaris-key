@@ -105,6 +105,13 @@ import {
 import { reservedNamesMode } from "../../core/reservedNames.js";
 import { handleOutletCredentials } from "./outletCredentials.js";
 
+/** The PATCH body field that writes each claimable setting (ST-20's refusals name the field). */
+const FIELD_OF_CLAIM: Partial<Record<ClaimKey, string>> = {
+  "core.name": "name",
+  "license.defaults.maxOfflineDays": "defaultMaxOfflineDays",
+  "license.defaults.deviceLimit": "defaultDeviceLimit",
+};
+
 /** Compile a schema supplied as a JSON/YAML string or a parsed object. Returns the catalog or
  *  an error message. Reuses the catalog compiler so manual schema is validated like a publish. */
 function compileSchema(
@@ -415,7 +422,7 @@ export async function handleProducts(
         : ({ ok: true, claim: null } as const);
     if (!decision.ok)
       return err(decision.status, ErrorCode.BadRequest, decision.message, {
-        fields: decision.fields ?? claimable,
+        fields: decision.fields ?? claimable.map((k) => FIELD_OF_CLAIM[k]),
         reason: decision.reason,
       });
     const claim = decision.claim;

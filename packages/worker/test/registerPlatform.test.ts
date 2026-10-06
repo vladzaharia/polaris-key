@@ -8,6 +8,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
+  breakGlassLines,
   readManifestFiles,
   registerPlatform,
 } from "../scripts/register-platform.mjs";
@@ -156,5 +157,23 @@ describe("register-platform.mjs", () => {
         out: { write: () => undefined },
       }),
     ).rejects.toThrow(/id-token: write/);
+  });
+
+  it("names the live break-glass claims in the deploy summary, as warnings under Actions (ST-20)", () => {
+    const body = {
+      slug: "polaris-key",
+      breakGlass: [
+        { key: "license.defaults.deviceLimit", expiresAt: 1_800_000_000 },
+      ],
+      breakGlassEnded: [{ key: "core.web.origins", why: "changed" as const }],
+    };
+    const lines = breakGlassLines(body, ENV);
+    expect(lines[0]).toBe(
+      "::warning title=Break-glass claim::polaris-key: license.defaults.deviceLimit is a live break-glass claim until 2027-01-15T08:00:00.000Z; commit the value to .pkey/ (the claim ends at the first deploy that changes it) or revert it in the console",
+    );
+    expect(lines[1]).toContain("core.web.origins ended");
+    // Outside Actions, plain lines; with no claims, nothing.
+    expect(breakGlassLines(body, {})[0]).toMatch(/^polaris-key: /);
+    expect(breakGlassLines({ slug: "polaris-key" }, ENV)).toEqual([]);
   });
 });

@@ -10,7 +10,15 @@ export interface RegisterResult {
   publisher: { workflow: string; environment: string } | null;
   publisherClaimed: boolean;
   publisherChanged: boolean;
+  /** ST-20: the system product's live break-glass claims (key and expiry only). */
+  breakGlass?: { key: string; expiresAt: number }[];
+  /** ST-20: the break-glass claims this deploy ended. */
+  breakGlassEnded?: { key: string; why: "expired" | "changed" }[];
 }
+export declare function breakGlassLines(
+  body: Pick<RegisterResult, "slug" | "breakGlass" | "breakGlassEnded">,
+  env?: Record<string, string | undefined>,
+): string[];
 export declare function registerPlatform(opts: {
   origin: string;
   root: string;

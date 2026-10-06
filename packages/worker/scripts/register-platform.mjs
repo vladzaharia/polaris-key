@@ -138,6 +138,29 @@ export async function registerPlatform({
   return body;
 }
 
+/**
+ * ST-20: the deploy summary's break-glass lines. The system product is manifest-authoritative, so
+ * a console edit to it is a time-boxed break-glass claim; each one still live after this deploy
+ * is named (key and expiry; the reason stays in the console), as a warning annotation under
+ * Actions so a claim nobody committed to `.pkey/` is visible on every deploy.
+ */
+export function breakGlassLines(body, env = process.env) {
+  const live = Array.isArray(body.breakGlass) ? body.breakGlass : [];
+  const ended = Array.isArray(body.breakGlassEnded) ? body.breakGlassEnded : [];
+  const at = (s) => new Date(s * 1000).toISOString();
+  const warn = env.GITHUB_ACTIONS === "true" ? "::warning title=Break-glass claim::" : "";
+  return [
+    ...live.map(
+      (b) =>
+        `${warn}${body.slug}: ${b.key} is a live break-glass claim until ${at(b.expiresAt)}; commit the value to .pkey/ (the claim ends at the first deploy that changes it) or revert it in the console`,
+    ),
+    ...ended.map(
+      (e) =>
+        `${body.slug}: the break-glass claim on ${e.key} ended (${e.why === "expired" ? "its 7 days ran out" : "this deploy's .pkey/ changed it"}); the manifest's value applies`,
+    ),
+  ];
+}
+
 async function main() {
   const origin = process.env.ORIGIN;
   if (!origin)
@@ -156,6 +179,7 @@ async function main() {
           : "none") +
       "\n",
   );
+  for (const line of breakGlassLines(r)) process.stdout.write(`${line}\n`);
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
