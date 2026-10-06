@@ -375,6 +375,55 @@ describe("keyvault: PLATFORM_KEK beside PLATFORM_KEK_KEYS (legacy key, open-only
       "PLATFORM_KEK must decode to exactly 32 bytes",
     );
   });
+
+  it("refuses an inherited member as PLATFORM_KEK_ACTIVE, at load, with the proper error", async () => {
+    // `constructor`, `toString` and `__proto__` are "in" a plain object without being ring
+    // entries. Each must fail when the ring loads, never pass the check and throw later at seal.
+    for (const active of ["constructor", "toString", "__proto__"]) {
+      for (const env of [
+        ring(active, { k2: KEK_NEW }),
+        ringWithLegacy(active, { k2: KEK_NEW }, KEK_OLD),
+      ]) {
+        await expect(describeKeyring(env)).rejects.toThrow(
+          "PLATFORM_KEK_ACTIVE is not in PLATFORM_KEK_KEYS",
+        );
+        await expect(seal(env, "value", ctx)).rejects.toThrow(
+          "PLATFORM_KEK_ACTIVE is not in PLATFORM_KEK_KEYS",
+        );
+      }
+    }
+  });
+
+  it("treats PLATFORM_KEK_ID=toString as a kid like any other, never an inherited member", async () => {
+    const named = {
+      PLATFORM_KEK: KEK_OLD,
+      PLATFORM_KEK_ID: "toString",
+    } as unknown as Env;
+    const blob = await seal(named, "value", ctx);
+    expect(JSON.parse(blob)).toMatchObject({ kekId: "toString" });
+
+    // Not in PLATFORM_KEK_KEYS: the legacy key, open-only, under that kid (no TypeError).
+    const both = ringWithLegacy("k2", { k2: KEK_NEW }, KEK_OLD, "toString");
+    expect(await describeKeyring(both)).toEqual({
+      active: "k2",
+      kids: ["k2", "toString"],
+      legacy: { kid: "toString", openOnly: true },
+    });
+    expect(await open(both, blob, ctx)).toBe("value");
+
+    // In PLATFORM_KEK_KEYS with different bytes: the proper conflict error, still no TypeError.
+    await rejectsWithoutKeyMaterial(
+      describeKeyring(
+        ringWithLegacy(
+          "k2",
+          { toString: KEK_THIRD, k2: KEK_NEW },
+          KEK_OLD,
+          "toString",
+        ),
+      ),
+      /both define kid toString with different keys; refusing to choose/,
+    );
+  });
 });
 
 describe("keyvault: the single shapes are unchanged", () => {
@@ -992,6 +1041,27 @@ describe("KEK rotation sweep (GET|POST /api/products/kek)", () => {
         remaining: 4,
         safeToDelete: true,
       },
+    });
+  });
+
+  it("counts a legacy kid named like an inherited member (toString) as a kid, never a function", async () => {
+    const { db, kv } = await seedSealedRows();
+    const env = kekAdminEnv(kv, {
+      PLATFORM_KEK_KEYS: JSON.stringify({ k2: KEK_NEW }),
+      PLATFORM_KEK_ACTIVE: "k2",
+      PLATFORM_KEK: KEK_OLD,
+      PLATFORM_KEK_ID: "toString",
+    });
+    const res = await kek(env, db, "GET");
+    expect(res.status).toBe(200);
+    // The seeded rows carry `default`, which this ring does not hold; none is under `toString`.
+    expect(res.body).toMatchObject({ kids: ["k2", "toString"], unopenable: 4 });
+    expect(res.body.legacy).toEqual({
+      kid: "toString",
+      openOnly: true,
+      remaining: 0,
+      workerSecrets: [],
+      safeToDelete: true,
     });
   });
 

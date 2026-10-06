@@ -31,7 +31,7 @@ import { listPlatformAudit } from "../src/repo.js";
 import { makeTestDb } from "./helpers.js";
 import { PLATFORM_INVENTORY } from "../src/platformInventory.generated.js";
 import { KvMock } from "./kvMock.js";
-import { makeEnv, NOW } from "./seed.js";
+import { makeEnv, NOW, TEST_KEK } from "./seed.js";
 
 const ADMIN_SECRET = "test-admin-session-secret";
 const PLATFORM_GROUP = "platform-admins";
@@ -603,6 +603,59 @@ describe("GET /manage/api/platform/settings", () => {
         "kek_legacy_open_only",
       );
     }
+  });
+
+  it("raises kek_legacy_open_only only when the legacy key is open-only, and kek_keyring_unusable when the ring refuses", async () => {
+    const other = btoa("\u0001".repeat(32));
+    const kekCodes = async (extra: Record<string, unknown>) =>
+      (
+        (await call(adminEnv(extra), makeTestDb(), "/api/platform/settings"))
+          .body.warnings as any[]
+      )
+        .map((w) => w.code as string)
+        .filter((c) => c.startsWith("kek_"));
+
+    // A same-bytes copy of a PLATFORM_KEK_KEYS entry adds nothing to the ring: no warning.
+    expect(
+      await kekCodes({
+        PLATFORM_KEK_KEYS: JSON.stringify({ default: TEST_KEK, k2: other }),
+        PLATFORM_KEK_ACTIVE: "k2",
+      }),
+    ).toEqual([]);
+
+    // The same kid with different bytes: the ring refuses, so there is no open-only legacy key.
+    const { body, text } = await call(
+      adminEnv({
+        PLATFORM_KEK_KEYS: JSON.stringify({ default: other }),
+        PLATFORM_KEK_ACTIVE: "default",
+      }),
+      makeTestDb(),
+      "/api/platform/settings",
+    );
+    const kekWarnings = (body.warnings as any[]).filter((w) =>
+      (w.code as string).startsWith("kek_"),
+    );
+    expect(kekWarnings.map((w) => w.code)).toEqual(["kek_keyring_unusable"]);
+    expect(kekWarnings[0].message).toMatch(
+      /both define kid default with different keys/,
+    );
+    expect(kekWarnings[0].names).toEqual([
+      "PLATFORM_KEK_KEYS",
+      "PLATFORM_KEK_ACTIVE",
+      "PLATFORM_KEK",
+    ]);
+    // Kids and names, never key material.
+    expect(text.includes(TEST_KEK)).toBe(false);
+    expect(text.includes(other)).toBe(false);
+
+    // Any other refusal raises the same warning: here the active kid is not a ring entry.
+    expect(
+      await kekCodes({
+        PLATFORM_KEK: undefined,
+        PLATFORM_KEK_KEYS: JSON.stringify({ k2: other }),
+        PLATFORM_KEK_ACTIVE: "constructor",
+      }),
+    ).toEqual(["kek_keyring_unusable"]);
   });
 
   it("warns while the console borrows the platform client, on a set PLATFORM_KEK_ID and on an unset PORTAL_SESSION_SECRET", async () => {

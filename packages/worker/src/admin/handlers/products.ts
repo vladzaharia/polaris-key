@@ -781,8 +781,9 @@ function legacyProgress(
   | Record<string, never> {
   if (!legacy) return {};
   let remaining = 0;
+  // An own-property read: a legacy kid such as `toString` must not pick up an inherited member.
   for (const perKid of Object.values(counts))
-    remaining += perKid[legacy.kid] ?? 0;
+    if (Object.hasOwn(perKid, legacy.kid)) remaining += perKid[legacy.kid]!;
   const workerSecrets = SEALED_WORKER_SECRETS.filter((name) => {
     const value = env[name];
     // Trimmed as `providers/config.ts` reads it: a blob piped into `wrangler secret put` keeps

@@ -187,7 +187,12 @@ function resolveKeyring(env: Env): RawKeyring {
         "PLATFORM_KEK_KEYS must be a JSON object of kid -> base64 KEK",
       );
     }
-    const raw: Record<string, string> = {};
+    // Null-prototype, and every lookup below is an own-property check: a kid such as
+    // `constructor`, `toString` or `__proto__` must never resolve to something inherited.
+    const raw: Record<string, string> = Object.create(null) as Record<
+      string,
+      string
+    >;
     for (const [kid, value] of Object.entries(parsed)) {
       if (kid.length === 0 || typeof value !== "string" || value.length === 0) {
         throw new Error(
@@ -202,7 +207,7 @@ function resolveKeyring(env: Env): RawKeyring {
     // Checked against PLATFORM_KEK_KEYS alone, BEFORE the legacy key joins: the active kid must
     // be a ring entry, so naming the legacy kid here fails closed instead of sealing under it.
     const active = env.PLATFORM_KEK_ACTIVE;
-    if (typeof active !== "string" || !(active in raw)) {
+    if (typeof active !== "string" || !Object.hasOwn(raw, active)) {
       throw new Error("PLATFORM_KEK_ACTIVE is not in PLATFORM_KEK_KEYS");
     }
     const legacy = env.PLATFORM_KEK;
@@ -282,7 +287,9 @@ async function loadKeyring(env: Env): Promise<Keyring> {
     if (keyBytes.length !== 32) {
       throw new Error("PLATFORM_KEK must decode to exactly 32 bytes");
     }
-    const inRing = raw[openOnly.kid];
+    const inRing = Object.hasOwn(raw, openOnly.kid)
+      ? raw[openOnly.kid]
+      : undefined;
     if (inRing !== undefined) {
       if (!sameBytes(keyBytes, b64Decode(inRing))) {
         throw new Error(

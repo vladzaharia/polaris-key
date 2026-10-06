@@ -32,7 +32,7 @@ import { ADMIN_SESSION_TTL_SECONDS } from "../session.js";
 import { platformAuditStatementFor } from "../audit.js";
 import { adminJson, err, notFound, readBody } from "../lib/respond.js";
 import { adminOidcIsDedicated } from "../../platformOidc.js";
-import { legacyKekId } from "../../keyvault.js";
+import { describeKeyring } from "../../keyvault.js";
 import {
   deletePlatformSetting,
   invalidatePlatformSettings,
@@ -109,8 +109,54 @@ function deployValues(env: Env): DeployValue[] {
   });
 }
 
+/** The KEK keyring's configuration names, in the order the warnings list them. */
+const KEK_NAMES = [
+  "PLATFORM_KEK_KEYS",
+  "PLATFORM_KEK_ACTIVE",
+  "PLATFORM_KEK",
+  "PLATFORM_KEK_ID",
+] as const;
+
+/**
+ * The keyring warnings, read from the ring as the Worker loads it (`describeKeyring`), so they
+ * can never disagree with what `seal` and `open` do:
+ *
+ *  - `kek_keyring_unusable` — the ring does not load (a malformed `PLATFORM_KEK_KEYS`, an active
+ *    kid outside it, a non-32-byte key, or `PLATFORM_KEK` and `PLATFORM_KEK_KEYS` naming one kid
+ *    with different keys). Every sealed value is unreadable, so every product route 404s.
+ *  - `kek_legacy_open_only` — `PLATFORM_KEK` sits beside `PLATFORM_KEK_KEYS` and is the only
+ *    source of its kid, so it is in the ring open-only (RUNBOOK "Rotating when the old KEK is
+ *    unknown"). A transitional state, flagged until `PLATFORM_KEK` is deleted. Not raised for a
+ *    same-bytes copy of a `PLATFORM_KEK_KEYS` entry, which adds nothing to the ring.
+ *
+ * Both name kids and configuration names, never key material.
+ */
+async function keyringWarnings(env: Env): Promise<Warning[]> {
+  let legacy: Awaited<ReturnType<typeof describeKeyring>>["legacy"];
+  try {
+    ({ legacy } = await describeKeyring(env));
+  } catch (e) {
+    const set = KEK_NAMES.filter((n) => str(env, n) !== null);
+    return [
+      {
+        code: "kek_keyring_unusable",
+        message: `The platform KEK keyring does not load, so no sealed value can be opened and every product route answers 404: ${e instanceof Error ? e.message : "unknown error"}. Correct the keyring secrets in one wrangler secret bulk call (RUNBOOK, "The platform KEK keyring").`,
+        names: set.length > 0 ? set : ["PLATFORM_KEK", "PLATFORM_KEK_KEYS"],
+      },
+    ];
+  }
+  if (!legacy?.openOnly) return [];
+  return [
+    {
+      code: "kek_legacy_open_only",
+      message: `PLATFORM_KEK is set alongside PLATFORM_KEK_KEYS, so it stays in the ring as the legacy key ${legacy.kid}, open-only: new values are sealed under PLATFORM_KEK_ACTIVE. Re-seal with the sweep, then delete PLATFORM_KEK once the Keyring section says it is safe to.`,
+      names: ["PLATFORM_KEK"],
+    },
+  ];
+}
+
 /** The S-13 §5.1 warnings. Exported for the tests. */
-export function settingsWarnings(env: Env): Warning[] {
+export async function settingsWarnings(env: Env): Promise<Warning[]> {
   const out: Warning[] = [];
   // I-03: the console falls back to the shared platform client until its own is set.
   if (!adminOidcIsDedicated(env))
@@ -129,18 +175,7 @@ export function settingsWarnings(env: Env): Warning[] {
         "PLATFORM_KEK_ID is set. Changing it on its own makes every sealed secret unopenable; rotate through PLATFORM_KEK_KEYS and PLATFORM_KEK_ACTIVE instead.",
       names: ["PLATFORM_KEK_ID"],
     });
-  // The rotation path for a KEK nobody holds (RUNBOOK "Rotating when the old KEK is unknown"):
-  // with both set, PLATFORM_KEK stays in the ring under its legacy kid, open-only. A transitional
-  // state, so it is flagged until PLATFORM_KEK is deleted. Names the kid, never key material.
-  if (
-    str(env, "PLATFORM_KEK_KEYS") !== null &&
-    str(env, "PLATFORM_KEK") !== null
-  )
-    out.push({
-      code: "kek_legacy_open_only",
-      message: `PLATFORM_KEK is set alongside PLATFORM_KEK_KEYS, so it stays in the ring as the legacy key ${legacyKekId(env)}, open-only: new values are sealed under PLATFORM_KEK_ACTIVE. Re-seal with the sweep, then delete PLATFORM_KEK once the Keyring section says it is safe to.`,
-      names: ["PLATFORM_KEK"],
-    });
+  out.push(...(await keyringWarnings(env)));
   if (str(env, "PORTAL_SESSION_SECRET") === null)
     out.push({
       code: "portal_session_secret_unset",
@@ -243,7 +278,7 @@ async function list(env: Env, db: Db): Promise<Response> {
       set: str(env, name) !== null,
     })),
     constants: constants(),
-    warnings: settingsWarnings(env),
+    warnings: await settingsWarnings(env),
   });
 }
 

@@ -248,6 +248,7 @@ const SECTIONS = [
 const WARNING_TITLES: Record<string, string> = {
   console_oidc_shared: "The console shares the customer sign-in client",
   kek_id_set: "PLATFORM_KEK_ID is set",
+  kek_keyring_unusable: "The KEK keyring does not load",
   kek_legacy_open_only: "PLATFORM_KEK is kept as a legacy key",
   portal_session_secret_unset: "Portal sessions share the admin secret",
 };
