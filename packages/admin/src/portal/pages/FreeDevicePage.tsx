@@ -248,12 +248,14 @@ function FreeDevice({
           className="flex items-center gap-3 text-[1.75rem] font-bold leading-tight text-fg-strong outline-none"
         >
           {/* The success check draws once (S-23 §6.4): no sparks, freeing a device is not a
-              first-time moment. It sits in a ring, as the icon it replaces did. */}
+              first-time moment. It sits in a ring the size of the icon it replaces. */}
           <span
             aria-hidden
-            className="inline-flex size-7 shrink-0 items-center justify-center rounded-full border-2 border-current text-success"
+            className="inline-flex size-7 shrink-0 items-center justify-center text-success"
           >
-            <SuccessCheck size={16} />
+            <span className="inline-flex size-6 items-center justify-center rounded-full border-2 border-current">
+              <SuccessCheck size={14} />
+            </span>
           </span>
           {removed} was removed
         </h1>
