@@ -863,7 +863,10 @@
 /* MO-09: an overlay open during a list transition (a facet menu, a closing dialog and its scrim, a
    toast) is named too, or the moving rows and the main region paint over it (S-23 §3.4 item 1).
    Overlays come later in paint order, so their groups stay on top; each shows only its live new
-   picture and does not move. */
+   picture and does not move. MO-06: so does sticky or fixed chrome marked .pk-vt-chrome (the
+   portal's top bar, its phone bar and a page's section nav): on a scrolled page the main region's
+   picture holds what lies under the top bar, and a list that gets shorter makes that picture
+   glide, so unnamed chrome would be painted over and a sticky nav carried along with it. */
 :root[data-vt="list"]
   :is(
     [data-radix-popper-content-wrapper],
@@ -871,7 +874,8 @@
     [role="alertdialog"],
     .animate-pk-overlay-in,
     .pk-overlay,
-    [data-sonner-toaster]
+    [data-sonner-toaster],
+    .pk-vt-chrome
   ) {
   view-transition-name: match-element;
   view-transition-class: pk-overlay-vt;

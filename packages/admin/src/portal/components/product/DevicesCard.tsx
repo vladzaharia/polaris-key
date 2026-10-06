@@ -74,7 +74,8 @@ export function DevicesCard({
 }): React.ReactElement {
   const { view, listRef } = useListTransition(detail, !loading && !error);
   // What is drawn comes from `view` (the old one while a transition captures it); what a click
-  // acts on comes from `detail`, the live data (a row already gone there does nothing).
+  // acts on comes from `detail`, the live data (a row already gone there does nothing, and a
+  // removal's announcement counts from the live seats).
   const live = activeOf(detail);
   const liveIds = new Set(live.map((d) => d.deviceId));
   const active = activeOf(view);
@@ -133,7 +134,8 @@ export function DevicesCard({
                   device={d}
                   detail={view}
                   productName={productName}
-                  inUse={live.length}
+                  inUse={active.length}
+                  liveInUse={live.length}
                   seatLimit={showCount ? seatLimit : null}
                   showCount={showCount}
                   emailConfigured={emailConfigured}
@@ -274,13 +276,19 @@ export function DeviceRow({
   seatLimit,
   showCount = true,
   emailConfigured = false,
+  liveInUse = inUse,
   gone = false,
 }: {
   device: PortalDevice;
   detail: PortalLicenseDetail;
   productName: string;
-  /** The devices using a seat now (the live count, for the consequences and the announcement). */
+  /** The devices using a seat, as the card shows them (the consequences say what is left). */
   inUse: number;
+  /**
+   * The devices using a seat in the live data, which a removal acts on (the announcement); it
+   * differs from `inUse` only while a list transition holds the old view.
+   */
+  liveInUse?: number;
   seatLimit?: number | null;
   /** False drops the new count from the consequences (the card shows no counter). */
   showCount?: boolean;
@@ -392,7 +400,7 @@ export function DeviceRow({
                   // The row leaves with the removal; find the page's heading while it is here.
                   const heading = pageHeading(rowRef.current);
                   // Said once, with the new count (S-23 §6.5: a freed seat is counted in text).
-                  const left = inUse - 1;
+                  const left = liveInUse - 1;
                   remove.mutate(device.deviceId, {
                     onSuccess: () => {
                       toast.success(`${name} was removed`, {

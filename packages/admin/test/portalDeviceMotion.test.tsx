@@ -311,7 +311,13 @@ describe("the Devices card: a change to the devices using a seat is one list tra
       expect(fake?.starts ?? []).toEqual([]);
     });
 
-  it("a click while the old view is held acts on the live data: the leaving row does nothing, a staying row counts from now", async () => {
+  it("a click while the old view is held acts on the live data: the leaving row does nothing, a removal counts from the live seats", async () => {
+    mockFetch({
+      "DELETE /api/licenses/nightfall/lic_nightfall/devices/d1": {
+        ok: true,
+        deviceId: "d1",
+      },
+    });
     const fake = installFake("deferred");
     const { refetch } = renderCard(TWO);
     refetch(ONE);
@@ -322,20 +328,35 @@ describe("the Devices card: a change to the devices using a seat is one list tra
     expect(screen.queryByRole("heading", { name: "Remove Studio PC?" })).toBe(
       null,
     );
-    // The MacBook's confirm says what removing it would leave now: 1 in use, so 0.
+    // The MacBook's confirm opens; while held it reads like the rest of the held view.
     fireEvent.click(
       screen.getByRole("button", { name: "Remove Mara's MacBook Pro" }),
     );
     expect(
       screen.getByText(
-        "Its seat is free straight away: 0 of 3 devices in use.",
+        "Its seat is free straight away: 1 of 3 devices in use.",
       ),
     ).toBeTruthy();
+    // Removing it now leaves no seat in use (live: 1 in use, not the held 2).
+    fireEvent.click(
+      screen.getByRole("button", { name: "Remove Mara's MacBook Pro" }),
+    );
+    await waitFor(() =>
+      expect(lastAnnouncement()).toBe(
+        "Mara's MacBook Pro was removed. 0 of 3 devices in use.",
+      ),
+    );
     await fake.release();
     expect(rowNames()).toEqual(["Mara's MacBook Pro"]);
-    // The open confirm survived the transition (same row element, same state).
+    // The open confirm survived the transition (same row element, same state) and now reads
+    // from the new view.
     expect(
       screen.getByRole("heading", { name: "Remove Mara's MacBook Pro?" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Its seat is free straight away: 0 of 3 devices in use.",
+      ),
     ).toBeTruthy();
   });
 
