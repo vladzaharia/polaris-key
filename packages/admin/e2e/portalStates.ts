@@ -164,25 +164,38 @@ export const SHIPPED: ShippedState[] = [
     scenario: "signedOut",
     path: "/",
     routes: {
-      "POST /api/magic/start": {
+      "POST /api/signin/email/start": {
         status: 429,
         body: { error: "rate_limited" },
       },
     },
     ready: async (p) => {
       await typeEmail(p, "mara@fennick.studio");
-      await p.getByText("Too many sign-in emails").first().waitFor();
+      await p.getByText("Too many codes").first().waitFor();
     },
   },
   {
     section: "4.1",
     id: "signin-sent",
-    title: "Login card, the email link sent",
+    title: "Login card, the code and link sent (six-cell code)",
     scenario: "signedOut",
     path: "/",
     ready: async (p) => {
       await typeEmail(p, "mara@fennick.studio");
       await h1(p, "Check your email");
+      await p.getByRole("textbox", { name: "6-digit code" }).waitFor();
+    },
+  },
+  {
+    section: "4.1",
+    id: "signin-key",
+    title: "Login card, Have a license key? (the on-ramp)",
+    scenario: "signedOut",
+    path: "/",
+    ready: async (p) => {
+      await h1(p, "Sign in to Polaris Key");
+      await p.getByRole("button", { name: "Have a license key?" }).click();
+      await h1(p, "Have a license key?");
     },
   },
   {
