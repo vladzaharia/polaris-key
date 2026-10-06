@@ -96,7 +96,7 @@ The note proposed an operator-reviewed preserve step with a 30-day default. The 
   `POST|GET /manage/api/products/<slug>/settings/backfill[/<reportId>]` and
   `POST|GET /manage/api/platform/settings/backfill`; `dryRun=1|0` is required, so a bare POST
   never applies. The product route sits ahead of LX-06's generic `settings/<key>` routes.
-  Migration `00XX_settings_backfill_reports.sql` (the lead numbers it); rehearsed on a scratch
+  Migration `0102_settings_backfill_reports.sql` (numbered by the lead); rehearsed on a scratch
   SQLite file with all 122 migrations, and replayed as a no-op on a populated database (test).
 
 ## Steps
@@ -111,7 +111,7 @@ The note proposed an operator-reviewed preserve step with a 30-day default. The 
 - [x] After apply every declared field equals the manifest and every undeclared console row has `source = 'console'` (test).
 - [x] The dry-run report is stored and readable after apply (test).
 - [x] A second apply is a no-op (test).
-- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header. (Scoped lead gate: steps 1–9 and 11–25 green; step 10's one red test is `recordDeploy`'s migration-name check on the `00XX` placeholder, green once the lead numbers the migration.)
+- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header. (Scoped lead gate: steps 1–9 and 11–25 green; step 10's one red test was `recordDeploy`'s migration-name check on the unnumbered placeholder, green since the migration is 0102.)
 
 ## Verify
 

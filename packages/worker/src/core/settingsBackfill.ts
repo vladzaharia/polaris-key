@@ -1,7 +1,7 @@
 /**
  * The settings backfill (ST-01c; notes/S-18 §4.14, owner decision D19 "Revert all console
  * values"). Core-owned: the classifier, the apply's statements, the state guard and the stored
- * reports (`settings_backfill_reports`, migration 00XX_settings_backfill_reports).
+ * reports (`settings_backfill_reports`, migration 0102_settings_backfill_reports).
  *
  * ST-01b gave every claimable setting an owner (`product_settings` claims; `source` on tiers and
  * profiles) but left existing products as they were: every existing tier and profile row reads
