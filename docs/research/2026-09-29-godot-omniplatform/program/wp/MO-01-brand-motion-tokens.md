@@ -54,6 +54,28 @@ Every later MO package, the UI kits and the sign-in card (SIGN-IN.md §3.18, whi
 
 `packages/brand/src/tokens/scales.ts`, `src/tokens/kit.ts`, `scripts/gen.ts`, `scripts/gen-kit.ts`, the generated `css/tokens.css`, `css/theme.css`, `css/kit.css`, `tokens.json`, `src/generated/{tokens,kit}.ts`, `sdks/swift/Sources/PolarisKeyUI/BrandTokens.generated.swift`, the Kotlin `BrandTokens.generated.kt`, `sdks/godot/addons/polaris_key/ui/theme/brand_tokens_generated.gd`, brand tests, `docs/design/BRAND.md`, `docs/design/UI-KITS.md`. In flight: `wp/U-04` (generated brand files; regenerate on rebase).
 
+## Corrections found in the code (MO-01 implementation)
+
+- `src/generated/tokens.ts` carries only the resolved colours; it never held motion. TypeScript
+  consumers read `MOTION` (and the new `MOTION_EASING_FALLBACK`) from `src/tokens/scales.ts`
+  through the package index, and `tokens.json` carries `motion` and `motionEasingFallback`. No
+  motion was added to `src/generated/tokens.ts`.
+- The kit motion constants live in the kit files, not the brand ones:
+  `sdks/swift/Sources/PolarisKeyUI/KitTokens.generated.swift` (`KitTokens.Motion`),
+  `sdks/kotlin/ui/.../PolarisKitTokens.generated.kt` (`Motion`) and
+  `sdks/godot/addons/polaris_key/ui/theme/kit_tokens_generated.gd` (`DURATION_*_MS`,
+  `MOTION_DISTANCE_*`, beside the existing `MOTION_<change>_MS` platform rows). The Kotlin
+  `PolarisBrandTokens.generated.kt` `Duration` object and Python `_tokens.py` `MOTION_MS` iterate
+  every duration and gain the new ones by regeneration; `BrandTokens.generated.swift` and
+  `brand_tokens_generated.gd` carry no motion and do not change.
+- `KIT_MOTION` shares one row set across platforms, and the Godot, Qt and C# outputs name
+  constants after it (`MOTION_STEP_MS`, asserted by `sdks/godot/tests/suite_brand.gd`). Only the
+  web rows are renamed, through a separate `KIT_WEB_MOTION_PATTERNS` key set (step → morph,
+  sheetIn → enter, sheetOut → exit, progress → meter, waiting → skeleton); the native rows keep
+  their names.
+- The in-app preference also stops the section bit's colour transition
+  (`:root[data-motion="reduce"] .polaris-section-bit`), matching the OS-setting rule.
+
 ## Steps
 
 1. Extend `MOTION` and the kit motion tables.
