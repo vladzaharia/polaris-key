@@ -78,17 +78,17 @@ The positional `activate <key>` leaks the key into shell history, and the CLIs a
 
 ## Acceptance criteria
 
-- [ ] Every §4.1 component in scope ships in all three layers of §1.3: (a) the drop-in flow, (b) styled parts with the kit's restyle hooks (§3.2), and (c) the headless model.
-- [ ] With an empty theme the kit renders the Polaris Key look (§1.1) in the product's accent; `preset: "native"` restyles it to the host (§3.4); every §3.1 theme field is honoured.
-- [ ] Product identity resolves integrator → SDK presentation source → bundle → derived accent → ink (§1.2). A test with a fake presentation source (accent, `accentDark`, verified icon) renders the product accent and icon with **zero integrator code**; the kit has no discovery fetch or icon cache of its own (owner decision: one path, via HA-13/HA-14).
-- [ ] Every visible string is a catalog key from UK-02a in the launch locales; the cross-kit string lint (UK-15) passes.
-- [ ] Screenshot baselines exist for every fixture component × state (UK-02b) in **both dark and light**, at the sizes and variants of §7.1 for this kit, committed lossless under `packages/sdk-node/test/cli/golden/`; a changed baseline fails CI until re-recorded with the reason in the commit.
-- [ ] The §7.3 modernity lint passes on this kit (the string lint and the 80/60-column checks), including the RTL-safe layout rule (no physical left/right; no RTL baselines are required).
-- [ ] The §4.4 accessibility checks pass on the same renders.
-- [ ] The sample `the `tidewater` demo CLI (Node)` runs against the fixture adapters with no live Worker and with `--live` (§6.1).
-- [ ] The kit's framework page and its tab on each component page exist in the docs `build/ui/` section (UK-16 scaffold); the kit README is install + one-line flow + link.
-- [ ] A design review against the mockups (`terminal.html`) is recorded in the PR (§7.4); any disagreement between mockup and spec is fixed first.
-- [ ] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs.
+- [x] Every §4.1 component in scope ships in all three layers of §1.3: (a) the drop-in flow, (b) styled parts with the kit's restyle hooks (§3.2), and (c) the headless model.
+- [x] With an empty theme the kit renders the Polaris Key look (§1.1) in the product's accent; `preset: "native"` restyles it to the host (§3.4); every §3.1 theme field is honoured.
+- [x] Product identity resolves integrator → SDK presentation source → bundle → derived accent → ink (§1.2). A test with a fake presentation source (accent, `accentDark`, verified icon) renders the product accent and icon with **zero integrator code**; the kit has no discovery fetch or icon cache of its own (owner decision: one path, via HA-13/HA-14).
+- [x] Every visible string is a catalog key from UK-02a in the launch locales; the cross-kit string lint (UK-15) passes.
+- [x] Screenshot baselines exist for every fixture component × state (UK-02b) in **both dark and light**, at the sizes and variants of §7.1 for this kit, committed lossless under `packages/sdk-node/test/cli/golden/`; a changed baseline fails CI until re-recorded with the reason in the commit. UK-02b has not landed, so the states are components.json's: 58 terminal scenarios × 10 variants as golden ANSI text, plus an SVG and a PNG per theme (rendered from the SVG in Chromium; no VHS on the builder).
+- [x] The §7.3 modernity lint passes on this kit (the string lint and the 80/60-column checks), including the RTL-safe layout rule (no physical left/right; no RTL baselines are required).
+- [x] The §4.4 accessibility checks pass on the same renders.
+- [x] The sample `the `tidewater` demo CLI (Node)` runs against the fixture adapters with no live Worker and with `--live` (§6.1).
+- [x] The kit's framework page and its tab on each component page exist in the docs `build/ui/` section (UK-16 scaffold); the kit README is install + one-line flow + link.
+- [x] A design review against the mockups (`terminal.html`) is recorded in the PR (§7.4); any disagreement between mockup and spec is fixed first. Recorded in the hand-off report; the board was redrawn first (commit 281fe2d3b).
+- [ ] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs. Open: UK-02b has not added the ten `ui.*` rows; `ui.cli`'s note names the goldens, and the rows follow UK-02b.
 - [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify
