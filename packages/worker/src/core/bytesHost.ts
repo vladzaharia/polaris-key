@@ -261,7 +261,11 @@ export function inertDocumentPolicy(
  * `ByteRoute`). Only a 200 (or a body-less 304) of exactly `text/html; charset=utf-8`, with no
  * `Content-Disposition`, under an inert policy.
  */
-function documentPolicy(res: Response, env: Env): string | null {
+async function documentPolicy(
+  res: Response,
+  env: Env,
+  db: Db,
+): Promise<string | null> {
   if (res.status !== 200 && res.status !== 304) return null;
   if (res.status === 304 && res.body !== null) return null;
   const type = (res.headers.get("content-type") ?? "")
@@ -271,7 +275,9 @@ function documentPolicy(res: Response, env: Env): string | null {
   if (res.headers.has("content-disposition")) return null;
   const csp = res.headers.get("content-security-policy");
   // HA-07: the image host may be an image source, only while hosted copies are served.
-  return inertDocumentPolicy(csp, { imgOrigin: hostedImageOrigin(env) })
+  return inertDocumentPolicy(csp, {
+    imgOrigin: await hostedImageOrigin(env, db),
+  })
     ? csp
     : null;
 }
@@ -383,7 +389,7 @@ async function answer(
   if (isLandingPath(pathname)) {
     if (req.method !== "GET" && req.method !== "HEAD") return plain(notFound());
     const res = await landingResponse(req, env);
-    const csp = documentPolicy(res, env);
+    const csp = await documentPolicy(res, env, db);
     if (csp !== null) return { res, documentCsp: csp };
     await res.body?.cancel().catch(() => undefined);
     return plain(notFound());
@@ -447,7 +453,7 @@ async function answerDocument(
     now,
     hooks: buildHooks(registry, product.services, { env, db, product, now }),
   });
-  const csp = res.status < 400 ? documentPolicy(res, env) : null;
+  const csp = res.status < 400 ? await documentPolicy(res, env, db) : null;
   if (csp !== null) return { res: stripCors(res), documentCsp: csp };
   if (res.status >= 400 && !refusedType(res))
     return { res: stripCors(res), documentCsp: null };

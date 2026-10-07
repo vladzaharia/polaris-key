@@ -173,7 +173,7 @@ async function presentationArt(
   listing: Record<string, unknown> | null,
   surface: PresentationSurface,
 ): Promise<{ iconUrl: string | null; headerUrl: string | null }> {
-  if (hostedImageOrigin(env) === null)
+  if ((await hostedImageOrigin(env, db)) === null)
     return {
       iconUrl: await mediaUrlFor(product.slug, "icon", listing),
       headerUrl:

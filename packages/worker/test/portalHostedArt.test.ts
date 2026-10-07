@@ -10,16 +10,17 @@
  *     keeps exactly its pre-HA-07 art, the `/media` proxy URL, and `/media` proxies it;
  *   - the sign-in card's client record keeps §12.7.2's same-origin `/media/<p>/icon`;
  *   - the portal shell's CSP admits exactly the image host;
- *   - with the kill switch off (HA-10's `assets.hosting.enabled`, a code constant until then) or no
- *     image host, every one of these is what it was before HA-07.
+ *   - with the kill switch off (HA-10's platform setting `assets.hosting.enabled`, switched here
+ *     as the console switches it) or no image host, every one of these is what it was before
+ *     HA-07.
  */
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
-import { seedHosted } from "./hostedFixture.js";
+import { seedHosted, setAssetHosting } from "./hostedFixture.js";
 import { handlePortalApi, portalHooksFor } from "./portalHarness.js";
 import type { Env } from "../src/env.js";
 import type { Db } from "../src/db/types.js";
@@ -48,13 +49,6 @@ import {
 import { clientRecordFor } from "../src/services/identity/passthrough/client.js";
 import { pickVariantWidth } from "../src/core/hostedImages.js";
 
-// The kill switch, controllable per test (HA-10 replaces the constant with a settings read).
-const hosting = vi.hoisted(() => ({ on: true }));
-vi.mock("../src/core/assetHosting.js", () => ({
-  ASSET_HOSTING_ENABLED: true,
-  assetHostingEnabled: () => hosting.on,
-}));
-
 const PORTAL_SECRET = "test-portal-session-secret";
 const IMG = "https://img.example.test";
 const ICON =
@@ -66,10 +60,6 @@ const H = "c".repeat(64);
 const PNG = new Uint8Array([
   0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13,
 ]);
-
-beforeEach(() => {
-  hosting.on = true;
-});
 
 function portalEnv(img: string | null = IMG): Env {
   const env = makeEnv(new KvMock(), []);
@@ -270,7 +260,7 @@ describe("the portal's presentation on hosted copies", () => {
         headerUrl: `/media/tidewater/header?v=${await mediaVersion(HEADER)}`,
       });
     // Byte-identical to the rollback's answer.
-    hosting.on = false;
+    await setAssetHosting(env, db, "off");
     expect((await api(env, db, "/api/library", s)).products[0]).toEqual(
       library.products[0],
     );
@@ -438,11 +428,11 @@ describe("GET /media/<p>/<asset> redirects to the hosted copy, else proxies per 
 });
 
 describe("the portal shell's CSP admits exactly the image host", () => {
-  const imgSrc = async (env: Env) => {
+  const imgSrc = async (env: Env, db: Db = makeTestDb()) => {
     const res = await handlePortal(
       new Request("https://key.plrs.im/library"),
       env,
-      makeTestDb(),
+      db,
       "/library",
       { now: NOW },
     );
@@ -455,8 +445,13 @@ describe("the portal shell's CSP admits exactly the image host", () => {
   it("adds IMG_ORIGIN, and only while hosted copies are served", async () => {
     expect(await imgSrc(portalEnv())).toBe(`img-src 'self' data: ${IMG}`);
     expect(await imgSrc(portalEnv(null))).toBe("img-src 'self' data:");
-    hosting.on = false;
-    expect(await imgSrc(portalEnv())).toBe("img-src 'self' data:");
+    const env = portalEnv();
+    const db = makeTestDb();
+    await setAssetHosting(env, db, "off");
+    expect(await imgSrc(env, db)).toBe("img-src 'self' data:");
+    // Switched back on, the image host is admitted again.
+    await setAssetHosting(env, db, "on");
+    expect(await imgSrc(env, db)).toBe(`img-src 'self' data: ${IMG}`);
   });
 
   it("writes only a bare origin into the policy", async () => {
@@ -468,12 +463,19 @@ describe("the portal shell's CSP admits exactly the image host", () => {
 
 describe("rollback: hosting off, or no image host, restores the pre-HA-07 portal", () => {
   for (const [label, setup] of [
-    ["the kill switch off", () => ((hosting.on = false), portalEnv())],
-    ["no image host", () => portalEnv(null)],
+    [
+      "the kill switch off",
+      async (db: Db) => {
+        const env = portalEnv();
+        await setAssetHosting(env, db, "off");
+        return env;
+      },
+    ],
+    ["no image host", async () => portalEnv(null)],
   ] as const)
     it(`${label}: proxy URLs in the library, and /media proxies again`, async () => {
-      const env = setup();
       const db = makeTestDb();
+      const env = await setup(db);
       await tidewater(db);
       await seedHosted(db, "tidewater", "presentation.icon", { sha256: A });
       const s = await signedIn(env, db);

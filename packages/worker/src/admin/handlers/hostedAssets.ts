@@ -15,6 +15,20 @@
  *                                                                per request (`services/release/
  *                                                                mirror.ts`); answers how many were
  *                                                                queued and how many still owe one
+ *   GET    /manage/api/products/<slug>/assets/usage              HA-10: the bytes the product holds
+ *                                                                against its two quotas, the
+ *                                                                kill switch, and its three
+ *                                                                hosted-asset settings
+ *                                                                (`assets.releases.mirror`,
+ *                                                                `assets.quota.mediaBytes`,
+ *                                                                `assets.quota.releaseBytes`)
+ *   PATCH  /manage/api/products/<slug>/assets/settings/<key>     HA-10: set one of those three
+ *                                                                `{ value, expectedVersion,
+ *                                                                reason? }`, through
+ *                                                                `writeSetting()`
+ *   DELETE /manage/api/products/<slug>/assets/settings/<key>     HA-10: drop the product's own
+ *                                                                value `{ expectedVersion }`: it
+ *                                                                follows the platform again
  *   POST   /manage/api/products/<slug>/assets/<slot>[?locale=]   upload: the body is the file; the
  *                                                                upload CLAIMS the slot
  *   DELETE /manage/api/products/<slug>/assets/<slot>[?locale=]   Revert to the manifest (a claim
@@ -33,7 +47,10 @@
  * (`presentation.icon` is `.pkey/product`'s). The mirror action is composed here, in the admin
  * layer, because the files and their GitHub access are Release's. Platform-admin gated and
  * CSRF-checked by the dispatcher; every write is audited with the session's actor
- * (`assets.ingest`, `assets.revert`, `assets.delete`, `assets.mirror`).
+ * (`assets.ingest`, `assets.revert`, `assets.delete`, `assets.mirror`, and `setting.update` /
+ * `setting.reset` with the setting's key for a settings write). The settings routes are the
+ * bespoke console writers ST-05's generic API will alias: strict `writeSetting()` (the version is
+ * required), registry keys only, and only the three `assets.*` product keys.
  */
 
 import type { Env } from "../../env.js";
@@ -54,8 +71,28 @@ import { IMG_HOST_TYPES } from "../../core/imgHost.js";
 import { imgUrl } from "../../core/imgHostname.js";
 import { listingSlotMirror } from "../../services/distribution/listing/hostedMirror.js";
 import { mirrorNow } from "../../services/release/mirror.js";
+import { assetHostingEnabled } from "../../core/assetHosting.js";
+import {
+  ASSET_PRODUCT_KEYS,
+  inheritedValue,
+  isAssetProductKey,
+  productAssetSettings,
+} from "../../core/assetSettings.js";
+import { assetUsage } from "../../core/assetQuota.js";
+import type {
+  SettingConfirm,
+  SettingSource,
+  ValueSpec,
+} from "../../core/settings/types.js";
+import { writeSetting } from "../../core/settings/write.js";
+import { SETTINGS } from "../../mount.js";
 import { audit } from "../audit.js";
-import { adminJson, err } from "../lib/respond.js";
+import {
+  adminJson,
+  err,
+  readBody,
+  settingRefused,
+} from "../lib/respond.js";
 import type { AdminSession } from "../session.js";
 
 /** The variant the Presentation page previews: the smallest rung at least this wide. */
@@ -116,6 +153,149 @@ function decodeSegment(raw: string): string | null {
   }
 }
 
+/** One of the product's hosted-asset settings, as the Presentation page edits it (HA-10). */
+export interface AssetSettingDto {
+  key: string;
+  label: string;
+  description: string;
+  spec: ValueSpec;
+  confirm: SettingConfirm;
+  /** The value in force. */
+  value: unknown;
+  /** Where it came from: `console` (the product's own), `platform` (inherited) or `default`. */
+  source: SettingSource;
+  /** What the product follows without a value of its own (what Reset leaves). */
+  inherited: unknown;
+  /** The product has a value of its own. */
+  own: boolean;
+  /** The `expectedVersion` the next write carries (0: no value of its own). */
+  version: number;
+}
+
+/** One quota: the bytes and distinct files the product holds, against the limit. */
+export interface QuotaUsageDto {
+  bytes: number;
+  files: number;
+  quota: number;
+  /** No room for one byte more: new images are refused, or mirroring has stopped. */
+  full: boolean;
+}
+
+/** `GET …/assets/usage` (HA-10; notes/S-20 §6.10). */
+export interface AssetUsageDto {
+  /** The platform kill switch `assets.hosting.enabled`. */
+  hosting: boolean;
+  media: QuotaUsageDto;
+  release: QuotaUsageDto;
+  settings: AssetSettingDto[];
+}
+
+async function usageDto(
+  env: Env,
+  db: Db,
+  slug: string,
+): Promise<AssetUsageDto | null> {
+  const settings = await productAssetSettings(env, db, slug);
+  if (!settings) return null;
+  const used = await assetUsage(db, slug);
+  const quota = (bytes: number, files: number, limit: number) => ({
+    bytes,
+    files,
+    quota: limit,
+    full: bytes >= limit,
+  });
+  return {
+    hosting: await assetHostingEnabled(env, db),
+    media: quota(used.media.bytes, used.media.files, settings.mediaQuota),
+    release: quota(
+      used.release.bytes,
+      used.release.files,
+      settings.releaseQuota,
+    ),
+    settings: ASSET_PRODUCT_KEYS.map((key) => {
+      const def = SETTINGS.get(key, "product")!;
+      const r = settings.resolved[key];
+      return {
+        key,
+        label: def.label,
+        description: def.description,
+        spec: def.value,
+        confirm: def.confirm,
+        value: r.value,
+        source: r.source,
+        inherited: inheritedValue(r),
+        own: r.source === "console",
+        version: r.version,
+      };
+    }),
+  };
+}
+
+/** `…/assets/usage` and `…/assets/settings/<key>` (HA-10). */
+async function handleAssetSettings(
+  req: Request,
+  env: Env,
+  db: Db,
+  session: AdminSession,
+  slug: string,
+  rest: string[],
+  now: number,
+): Promise<Response> {
+  if (rest[0] === "usage") {
+    if (rest.length !== 1) return err(404, ErrorCode.NotFound);
+    if (req.method !== "GET" && req.method !== "HEAD")
+      return err(405, "method_not_allowed", "use GET");
+    const dto = await usageDto(env, db, slug);
+    return dto ? adminJson(dto) : err(404, ErrorCode.NotFound);
+  }
+  // `settings/<key>`: registry keys are dotted lowerCamel words, which no URL encoding changes.
+  const key = rest[1];
+  if (rest.length !== 2 || key === undefined || !isAssetProductKey(key))
+    return err(
+      404,
+      ErrorCode.NotFound,
+      `the hosted-asset settings are ${ASSET_PRODUCT_KEYS.join(", ")}`,
+      { reason: "unknown_setting" },
+    );
+  if (req.method !== "PATCH" && req.method !== "DELETE")
+    return err(405, "method_not_allowed", "use PATCH to set or DELETE to reset");
+  const body = await readBody(req);
+  if (req.method === "PATCH" && !("value" in body))
+    return err(422, ErrorCode.BadRequest, "value is required", {
+      reason: "invalid_value",
+      fields: ["value"],
+    });
+  const out = await writeSetting(
+    { env, db, registry: SETTINGS },
+    {
+      key,
+      op: req.method === "PATCH" ? "set" : "reset",
+      ...(req.method === "PATCH" ? { value: body.value } : {}),
+      expectedVersion:
+        typeof body.expectedVersion === "number"
+          ? body.expectedVersion
+          : undefined,
+      reason:
+        typeof body.reason === "string" && body.reason.trim() !== ""
+          ? body.reason.trim().slice(0, 500)
+          : null,
+    },
+    {
+      actor: {
+        sub: session.sub,
+        name: session.name ?? null,
+        email: session.email ?? null,
+      },
+      origin: "console",
+      now,
+      product: slug,
+    },
+  );
+  if (!out.ok) return settingRefused(out);
+  const dto = await usageDto(env, db, slug);
+  return dto ? adminJson(dto) : err(404, ErrorCode.NotFound);
+}
+
 export async function handleHostedAssets(
   req: Request,
   env: Env,
@@ -125,6 +305,8 @@ export async function handleHostedAssets(
   rest: string[],
   now: number,
 ): Promise<Response> {
+  if (rest[0] === "usage" || rest[0] === "settings")
+    return handleAssetSettings(req, env, db, session, slug, rest, now);
   if (rest.length === 1 && rest[0] === "mirror") {
     if (req.method !== "POST")
       return err(405, "method_not_allowed", "POST to queue the mirrors");
@@ -134,13 +316,20 @@ export async function handleHostedAssets(
         ? err(
             409,
             "mirror_disabled",
-            "release-file mirroring is off for this product (Release is off)",
+            "release-file mirroring is off for this product (Release is off, assets.releases.mirror is off, or hosted assets are off on this deployment)",
           )
-        : err(
-            503,
-            "unavailable",
-            "no blob store or asset queue is bound on this deployment",
-          );
+        : result.reason === "quota"
+          ? err(
+              409,
+              "asset_quota_exceeded",
+              "this product holds its whole release-file quota (assets.quota.releaseBytes): mirroring has stopped and GitHub keeps serving",
+              { reason: "quota" },
+            )
+          : err(
+              503,
+              "unavailable",
+              "no blob store or asset queue is bound on this deployment",
+            );
     await audit(
       db,
       slug,
@@ -216,6 +405,13 @@ export async function handleHostedAssets(
         return err(404, ErrorCode.NotFound, "no blob store here", {
           reason: "no_blob_store",
         });
+      if (result.reason === "quota")
+        return err(
+          422,
+          "asset_quota_exceeded",
+          refusalMessage(result.reason),
+          { reason: result.reason },
+        );
       return err(422, "asset_refused", refusalMessage(result.reason), {
         reason: result.reason,
         ...(result.reason === "too-large" ? { maxBytes } : {}),
@@ -257,6 +453,8 @@ function refusalMessage(reason: string): string {
       return "The upload ended before the whole file arrived; try again";
     case "retry":
       return "The file could not be stored just now; try again";
+    case "quota":
+      return "This product holds its whole media quota (assets.quota.mediaBytes); the current copy keeps serving";
     default:
       return `The file was refused (${reason})`;
   }

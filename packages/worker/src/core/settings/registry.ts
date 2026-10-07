@@ -80,7 +80,7 @@ export function buildSettingsRegistry(
     },
     {
       owner: "core",
-      namespaces: ["core", "storefront"],
+      namespaces: ["core", "storefront", "assets"],
       entries: base.core ?? CORE_SLICE,
     },
   ];

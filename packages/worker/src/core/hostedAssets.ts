@@ -70,6 +70,17 @@
  * reads the stored original back (never the source) and builds only the ladder, with the pulls'
  * back-off (`core/hostedAssetPulls.ts`).
  *
+ * ── QUOTAS (HA-10; S-20 §6.10, owner decision 9) ────────────────────────────────────────────
+ *
+ * A product holds at most `assets.quota.mediaBytes` of images and `assets.quota.releaseBytes` of
+ * release files (`core/assetQuota.ts`, `core/assetSettings.ts`). The quota is checked before any
+ * byte is put (the original's size and hash are known by then), and again, atomically, in the
+ * batch that writes the row and the refs: every statement of it carries the quota guard, so the
+ * whole batch applies only while the usage after it is within the quota. Past it, the ingest is
+ * refused `quota` like any other refusal: no ref is written, and a slot that had a good copy
+ * keeps it and keeps serving it. The ladder's variants count too, so `rebuildLadder` is guarded
+ * the same way. Per-file caps stay code constants (`SLOT_CLASSES`).
+ *
  * ── SIZES ───────────────────────────────────────────────────────────────────────────────────
  *
  * Image slots are capped at 20 MiB at most, so their bytes are read into memory, hashed and put
@@ -86,7 +97,7 @@
  * (`allowHost`, a GitHub asset's storage hosts), on top of the guard.
  */
 
-import type { Db, DbStatement } from "../db/types.js";
+import type { Db, DbParam, DbStatement } from "../db/types.js";
 import type { Env } from "../env.js";
 import { auditStatement } from "../repo.js";
 import { randomId } from "../crypto.js";
@@ -95,9 +106,17 @@ import {
   checksumHex,
   putVerified,
   recordObject,
-  stmtRecordRef,
   streamSha256,
 } from "./blobs.js";
+import {
+  quotaClassOf,
+  quotaGuardSql,
+  quotaLimit,
+  quotaParams,
+  withinQuota,
+  type QuotaClass,
+  type QuotaKey,
+} from "./assetQuota.js";
 import {
   bodyFailureReason,
   cappedStream,
@@ -223,7 +242,10 @@ export type IngestReason =
   | "unverifiable"
   /** The store refused or raced the write (the collector, a concurrent ingest): try again. */
   | "retry"
-  /** Over the product's hosting quota (HA-10 enforces it; reserved here). */
+  /**
+   * Over the product's hosting quota (HA-10, `core/assetQuota.ts`): nothing was stored for the
+   * slot, and the copy it had (if any) keeps serving.
+   */
   | "quota"
   /**
    * A source the caller yields to holds the slot (`yieldsTo`: a console claim, a manifest
@@ -518,6 +540,12 @@ async function existingMatches(
   return !!head && head.size === size && checksumHex(head) === sha256;
 }
 
+/**
+ * Would the product stay within its quota holding these bytes in the slot (HA-10)? Asked before
+ * the bytes are put; the write's batch decides atomically.
+ */
+type Admit = (sha256: string, size: number) => Promise<boolean>;
+
 /** Buffered path: image slots (≤ 20 MiB). */
 async function storeBuffered(
   ctx: IngestContext,
@@ -526,6 +554,7 @@ async function storeBuffered(
   body: ReadableStream<Uint8Array>,
   declared: number | null,
   expected: string | null,
+  admit: Admit,
 ): Promise<Stored | IngestReason> {
   let bytes: Uint8Array;
   try {
@@ -540,6 +569,7 @@ async function storeBuffered(
   if (refused) return refused;
   const sha256 = hexOf(await crypto.subtle.digest("SHA-256", bytes));
   if (expected && expected !== sha256) return "sha256-mismatch";
+  if (!(await admit(sha256, bytes.byteLength))) return "quota";
   const key = blobKey(sha256);
   const expect = { sha256, size: bytes.byteLength };
   const put = await putVerified(bucket, key, bytes, expect, { contentType });
@@ -579,6 +609,7 @@ async function storeStreamed(
   body: ReadableStream<Uint8Array>,
   declared: number | null,
   expected: string | null,
+  admit: Admit,
 ): Promise<Stored | IngestReason> {
   if (!expected || declared === null) {
     await body.cancel().catch(() => undefined);
@@ -597,6 +628,11 @@ async function storeStreamed(
   if (refused) {
     await stream.cancel().catch(() => undefined);
     return refused;
+  }
+  // The hash and length are known before a byte is stored: past the quota, nothing is.
+  if (!(await admit(expected, declared))) {
+    await stream.cancel().catch(() => undefined);
+    return "quota";
   }
   const key = blobKey(expected);
   const expect = { sha256: expected, size: declared };
@@ -978,11 +1014,27 @@ export async function rebuildLadder(
   };
   let variants: HostedAssetVariant[] = [];
   let source = "the stored copy";
+  // HA-10: the sizes count against the product's media quota (`core/assetQuota.ts`).
+  const refId = hostedAssetRefId(slot, locale);
+  const limit = await quotaLimit(ctx.env, ctx.db, product, "media");
+  const originalKey: QuotaKey = { key: blobKey(sha256), size: row.size ?? 0 };
   // A width already known to admit no rung needs no read and no build: record it ("none").
   if (dims.width === null || ladderWidths(slot, dims.width).length > 0) {
     variants = await reusableLadder(ctx.db, product, slot, dims.width, same);
     if (variants.length > 0) source = "an identical copy";
     else {
+      // No room for a single byte more: no transformation is spent on sizes that cannot be kept.
+      if (
+        !(await withinQuota(
+          ctx.db,
+          "media",
+          product,
+          refId,
+          [originalKey],
+          limit - 1,
+        ))
+      )
+        return failed();
       const original = await readOriginal(
         bucket,
         sha256,
@@ -1007,12 +1059,23 @@ export async function rebuildLadder(
   }
 
   // Every statement is guarded by the same condition, read before the last one (the row's
-  // update) changes it: all of them apply, or none (a re-ingest or a removal got there first).
+  // update) changes it: all of them apply, or none (a re-ingest or a removal got there first, or
+  // the sizes would take the product past its media quota).
+  const quotaKeys: QuotaKey[] = [
+    originalKey,
+    ...variants.map((v) => ({ key: blobKey(v.sha256), size: v.size })),
+  ];
+  // Recording "no sizes" (`[]`) adds no bytes, so only a ladder is held to the quota.
+  const quotaWhere =
+    variants.length > 0 ? `(${quotaGuardSql("media")})` : "1";
+  const quotaArgs: DbParam[] =
+    variants.length > 0
+      ? [...quotaParams(product, refId, quotaKeys), limit]
+      : [];
   const guard = `EXISTS (SELECT 1 FROM hosted_assets
     WHERE product = ? AND slot = ? AND locale = ? AND sha256 = ?
-      AND status = 'ready' AND variants_json = '[]')`;
-  const guardParams = [product, slot, locale, sha256];
-  const refId = hostedAssetRefId(slot, locale);
+      AND status = 'ready' AND variants_json = '[]') AND ${quotaWhere}`;
+  const guardParams: DbParam[] = [product, slot, locale, sha256, ...quotaArgs];
   const statements: DbStatement[] = [
     ...variants.map((v) => ({
       sql: `INSERT INTO blob_refs (product, storage_key, ref_kind, ref_id, created_at)
@@ -1049,19 +1112,30 @@ export async function rebuildLadder(
     sql: `UPDATE hosted_assets SET variants_json = ?, width = COALESCE(width, ?),
             height = COALESCE(height, ?), modified_at = ?
            WHERE product = ? AND slot = ? AND locale = ? AND sha256 = ?
-             AND status = 'ready' AND variants_json = '[]'`,
+             AND status = 'ready' AND variants_json = '[]' AND ${quotaWhere}`,
     params: [
       JSON.stringify(variants),
       dims.width,
       dims.height,
       ctx.now,
-      ...guardParams,
+      product,
+      slot,
+      locale,
+      sha256,
+      ...quotaArgs,
     ],
   });
+  const overQuota = async () =>
+    variants.length > 0 &&
+    !(await withinQuota(ctx.db, "media", product, refId, quotaKeys, limit));
   if (ctx.db.batchChanges) {
     const changes = await ctx.db.batchChanges(statements);
-    if (changes.at(-1) === 0) return "superseded";
-  } else await ctx.db.batch(statements);
+    if (changes.at(-1) === 0)
+      return (await overQuota()) ? failed() : "superseded";
+  } else {
+    if (await overQuota()) return failed();
+    await ctx.db.batch(statements);
+  }
   return variants.length > 0 ? "built" : "none";
 }
 
@@ -1161,6 +1235,23 @@ export async function ingest(
     record: input.recordRefusal !== false,
     yieldsTo,
   };
+  const refId = hostedAssetRefId(slot, locale);
+
+  // HA-10: the product's quota for this slot's class, read once, when first needed (a 304 never
+  // reads it). `admit` is the check before any byte is put; the batch's guard decides.
+  const qcls: QuotaClass = quotaClassOf(slot);
+  let limit: number | undefined;
+  const quota = async (): Promise<number> =>
+    (limit ??= await quotaLimit(ctx.env, ctx.db, product, qcls));
+  const admit: Admit = async (sha256, size) =>
+    withinQuota(
+      ctx.db,
+      qcls,
+      product,
+      refId,
+      [{ key: blobKey(sha256), size }],
+      await quota(),
+    );
 
   const source = {
     origin: input.origin,
@@ -1273,8 +1364,8 @@ export async function ingest(
   // 2–6. Cap, sniff, hash, put, describe.
   const stored =
     cls.maxBytes <= BUFFER_MAX
-      ? await storeBuffered(ctx, bucket, cls, body, declared, expected)
-      : await storeStreamed(ctx, bucket, cls, body, declared, expected);
+      ? await storeBuffered(ctx, bucket, cls, body, declared, expected, admit)
+      : await storeStreamed(ctx, bucket, cls, body, declared, expected, admit);
   if (typeof stored === "string")
     return fail(
       ctx,
@@ -1314,18 +1405,33 @@ export async function ingest(
 
   // 8. The row, the refs, the drop of a replaced copy's refs, the audit: one batch.
   const key = blobKey(stored.sha256);
-  const refId = hostedAssetRefId(slot, locale);
   const keys = [key, ...variants.map((v) => blobKey(v.sha256))];
+  const quotaKeys: QuotaKey[] = [
+    { key, size: stored.size },
+    ...variants.map((v) => ({ key: blobKey(v.sha256), size: v.size })),
+  ];
+  const limitNow = await quota();
   // A NEW copy (other bytes than the row held, whatever way in) starts with a clean back-off:
   // none, or, when it owes its ladder while the binding is bound, this ingest as the ladder's
   // first failed attempt (HA-05 retries it one step later). The same bytes keep the row's.
   const owed = !!ctx.env.IMAGES && owesLadder(slot, stored.width, variants);
-  // A yielding ingest (`yieldsTo`) writes nothing unless the slot is still not held: every
-  // statement carries the same guard, and the row's upsert runs last, so all of them read the
-  // state before the batch and all apply, or none does (a console upload raced this pull or push).
-  const guard = yieldGuardSql(yieldsTo);
-  const guardParams = guard ? [product, slot, locale] : [];
-  const where = guard ? ` WHERE ${guard}` : "";
+  // Every statement carries the same guard, and the row's upsert runs last, so all of them read
+  // the state before the batch and all apply, or none does:
+  //   - a yielding ingest (`yieldsTo`) writes nothing once the slot is held (a console upload
+  //     raced this pull or push);
+  //   - and nothing is written when the product's usage after the batch would pass its quota
+  //     (HA-10, `core/assetQuota.ts`: the same answer before, during and after the batch).
+  const yieldGuard = yieldGuardSql(yieldsTo);
+  const guard = [
+    ...(yieldGuard ? [`(${yieldGuard})`] : []),
+    `(${quotaGuardSql(qcls)})`,
+  ].join(" AND ");
+  const guardParams: DbParam[] = [
+    ...(yieldGuard ? [product, slot, locale] : []),
+    ...quotaParams(product, refId, quotaKeys),
+    limitNow,
+  ];
+  const where = ` WHERE ${guard}`;
   const rowValues = [
     product,
     slot,
@@ -1349,7 +1455,7 @@ export async function ingest(
     sql: `INSERT INTO hosted_assets (product, slot, locale, origin, source_kind, source_ref,
             source_etag, sha256, size, content_type, width, height, variants_json, status, error,
             checked_at, modified_at, attempts, next_attempt_at)
-          ${guard ? "SELECT" : "VALUES ("} ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ready', NULL, ?, ?, ?, ?${guard ? where : ")"}
+          SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ready', NULL, ?, ?, ?, ?${where}
           ON CONFLICT(product, slot, locale) DO UPDATE SET
             origin = excluded.origin, source_kind = excluded.source_kind,
             source_ref = excluded.source_ref, source_etag = excluded.source_etag,
@@ -1373,64 +1479,78 @@ export async function ingest(
   const dropReplaced: DbStatement = {
     sql: `DELETE FROM blob_refs
            WHERE product = ? AND ref_kind = ? AND ref_id = ?
-             AND storage_key NOT IN (${keys.map(() => "?").join(", ")})${guard ? ` AND ${guard}` : ""}`,
+             AND storage_key NOT IN (${keys.map(() => "?").join(", ")}) AND ${guard}`,
     params: [product, HOSTED_ASSET_REF, refId, ...keys, ...guardParams],
   };
-  if (!guard) {
-    await ctx.db.batch([
-      row,
-      dropReplaced,
-      ...keys.map((storageKey) =>
-        stmtRecordRef(
-          { product, storageKey, refKind: HOSTED_ASSET_REF, refId },
-          ctx.now,
-        ),
-      ),
-      auditRow(product, slot, locale, actor, ctx.now, summary),
-    ]);
-  } else {
-    const statements: DbStatement[] = [
-      dropReplaced,
-      ...keys.map((storageKey) => ({
-        sql: `INSERT INTO blob_refs (product, storage_key, ref_kind, ref_id, created_at)
-              SELECT ?, ?, ?, ?, ?${where}
-              ON CONFLICT(product, storage_key, ref_kind, ref_id) DO UPDATE SET
-                created_at = MAX(blob_refs.created_at, excluded.created_at)`,
-        params: [
-          product,
-          storageKey,
-          HOSTED_ASSET_REF,
-          refId,
-          ctx.now,
-          ...guardParams,
-        ],
-      })),
-      {
-        sql: `INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action,
-                target_kind, target_id, parent_id, summary)
-              SELECT ?, ?, ?, ?, ?, ?, 'assets.ingest', 'hosted-asset', ?, NULL, ?${where}`,
-        params: [
-          product,
-          randomId("aud"),
-          ctx.now,
-          actor.sub,
-          actor.name,
-          actor.email ?? null,
-          refId,
-          summary,
-          ...guardParams,
-        ],
-      },
-      row,
-    ];
-    if (ctx.db.batchChanges) {
-      const changes = await ctx.db.batchChanges(statements);
-      if (changes.at(-1) === 0) return { ok: false, reason: "claimed" };
-    } else {
-      await ctx.db.batch(statements);
-      const after = await getHostedAsset(ctx.db, product, slot, locale);
-      if (heldBy(after, yieldsTo)) return { ok: false, reason: "claimed" };
-    }
+  const statements: DbStatement[] = [
+    dropReplaced,
+    ...keys.map((storageKey) => ({
+      sql: `INSERT INTO blob_refs (product, storage_key, ref_kind, ref_id, created_at)
+            SELECT ?, ?, ?, ?, ?${where}
+            ON CONFLICT(product, storage_key, ref_kind, ref_id) DO UPDATE SET
+              created_at = MAX(blob_refs.created_at, excluded.created_at)`,
+      params: [
+        product,
+        storageKey,
+        HOSTED_ASSET_REF,
+        refId,
+        ctx.now,
+        ...guardParams,
+      ],
+    })),
+    {
+      sql: `INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action,
+              target_kind, target_id, parent_id, summary)
+            SELECT ?, ?, ?, ?, ?, ?, 'assets.ingest', 'hosted-asset', ?, NULL, ?${where}`,
+      params: [
+        product,
+        randomId("aud"),
+        ctx.now,
+        actor.sub,
+        actor.name,
+        actor.email ?? null,
+        refId,
+        summary,
+        ...guardParams,
+      ],
+    },
+    row,
+  ];
+  let applied: boolean;
+  if (ctx.db.batchChanges)
+    applied = (await ctx.db.batchChanges(statements)).at(-1) !== 0;
+  else {
+    await ctx.db.batch(statements);
+    applied = !!(await ctx.db.first(
+      `SELECT 1 AS ok FROM hosted_assets WHERE product = ? AND slot = ? AND locale = ?
+          AND sha256 = ? AND status = 'ready' AND modified_at = ?`,
+      product,
+      slot,
+      locale,
+      stored.sha256,
+      ctx.now,
+    ));
+  }
+  if (!applied) {
+    // Nothing was written. Who stopped it: a source this ingest yields to, or the quota.
+    if (yieldGuard !== null)
+      if (heldBy(await getHostedAsset(ctx.db, product, slot, locale), yieldsTo))
+        return { ok: false, reason: "claimed" };
+    if (
+      !(await withinQuota(ctx.db, qcls, product, refId, quotaKeys, limitNow))
+    )
+      return fail(
+        ctx,
+        product,
+        slot,
+        locale,
+        prev,
+        source,
+        actor,
+        "quota",
+        refusal,
+      );
+    return { ok: false, reason: yieldGuard !== null ? "claimed" : "retry" };
   }
   return {
     ok: true,

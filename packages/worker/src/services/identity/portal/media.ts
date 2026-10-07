@@ -351,13 +351,13 @@ export async function handlePortalMedia(
   if (settings.portal_enabled !== 1) return refused();
 
   // HA-07: the hosted copy, through the image host's stable alias. Nothing is fetched.
-  const origin = hostedImageOrigin(env);
-  if (origin !== null && (asset === "icon" || asset === "header")) {
+  if (asset === "icon" || asset === "header") {
+    const origin = await hostedImageOrigin(env, db);
     const slots = MEDIA_SLOTS[asset];
-    const copy = firstHostedImage(
-      await hostedImages(env, db, product, slots),
-      slots,
-    );
+    const copy =
+      origin === null
+        ? null
+        : firstHostedImage(await hostedImages(env, db, product, slots), slots);
     if (copy)
       return new Response(null, {
         status: 302,

@@ -4,36 +4,40 @@
  * download alias (`mirror.ts`, `source.ts`) all ask here.
  *
  * Owner decision 6: mirroring is ON by default for every product, existing ones included. HA-10
- * registers the two settings that can turn it off, and this function then reads them:
+ * registered the two settings that turn it off, and this function reads them:
  *
- *   - `assets.releases.mirror` (product, operator-owned): off keeps GitHub-only serving for that
- *     product;
- *   - `assets.hosting.enabled` (platform kill switch): off returns every consumer to today's
- *     behaviour.
+ *   - `assets.hosting.enabled` (the platform kill switch, `core/assetHosting.ts`): off returns
+ *     every consumer to today's behaviour: nothing is queued or copied, and the legacy alias
+ *     streams from GitHub;
+ *   - `assets.releases.mirror` (product, operator-owned, default on, `core/assetSettings.ts`):
+ *     off keeps GitHub-only serving for that product.
  *
- * Until then the answer is the code default, `RELEASE_MIRROR_DEFAULT`, for every product that
- * exists and runs Release (a product with Release off has no truth store to serve from). Copies
- * already made stay valid either way: their `r2` locations are hash-pinned.
+ * And only for a product that exists and runs Release (a product with Release off has no truth
+ * store to serve from). Copies already made stay valid either way: their `r2` locations are
+ * hash-pinned. The release-file quota (`assets.quota.releaseBytes`) is not a switch: it stops new
+ * copies (`mirror.ts`, `core/hostedAssets.ts`), never the serving of the ones already made.
  */
 
-import type { Db, Env } from "../../core/platform.js";
+import type { Db } from "../../core/platform.js";
 import { parseServices } from "../../core/services.js";
-
-/** The code default until HA-10 registers `assets.releases.mirror`: on (owner decision 6). */
-export const RELEASE_MIRROR_DEFAULT = true;
+import { assetHostingEnabled } from "../../core/assetHosting.js";
+import { productAssetSettings } from "../../core/assetSettings.js";
+import type { SettingsEnv } from "../../core/platformSettings.js";
+import type { ProductFacts } from "../../core/settings/resolve.js";
 
 /** Does Polaris Key mirror `product`'s release files now? */
 export async function releaseMirrorEnabled(
-  _env: Pick<Env, "BLOBS">,
+  env: SettingsEnv,
   db: Db,
   product: string,
 ): Promise<boolean> {
-  if (!RELEASE_MIRROR_DEFAULT) return false;
-  const row = await db.first<{ services_json: string | null }>(
-    `SELECT services_json FROM products
+  if (!(await assetHostingEnabled(env, db))) return false;
+  const row = await db.first<ProductFacts & { services_json: string | null }>(
+    `SELECT * FROM products
       WHERE slug = ? AND deleted_at IS NULL AND COALESCE(status, 'active') != 'deleted'`,
     product,
   );
   if (!row) return false;
-  return parseServices(row.services_json).services.release.enabled;
+  if (!parseServices(row.services_json).services.release.enabled) return false;
+  return (await productAssetSettings(env, db, row))?.releaseMirror ?? false;
 }

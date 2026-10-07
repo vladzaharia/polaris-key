@@ -129,7 +129,7 @@ async function pageIcon(
   db: Db,
   product: string,
 ): Promise<string | null> {
-  if (hostedImageOrigin(env) === null) return null;
+  if ((await hostedImageOrigin(env, db)) === null) return null;
   const icon = firstHostedImage(
     await hostedImages(env, db, product, PRESENTATION_ICON_SLOTS),
     PRESENTATION_ICON_SLOTS,
@@ -287,7 +287,7 @@ async function handlePage(
     headers: {
       "content-type": "text/html; charset=utf-8",
       "content-security-policy": await pageCsp(
-        iconUrl ? hostedImageOrigin(env) : null,
+        iconUrl ? await hostedImageOrigin(env, db) : null,
       ),
       "cache-control": PAGE_CACHE,
       // The page differs by platform: a shared cache must key on what detection read.

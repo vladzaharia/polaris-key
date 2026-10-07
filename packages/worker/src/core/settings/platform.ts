@@ -43,6 +43,20 @@ export const DEFAULT_DEVICE_LIMIT = 5;
 /** No device-limit maximum exists today; the registry bounds the value so it stays an integer. */
 export const DEVICE_LIMIT_MAX = 1_000_000;
 
+/**
+ * HA-10 (notes/S-20 owner decision 9): the hosting quotas' defaults and bounds. The defaults are
+ * S-20's (512 MiB of images, 100 GiB of mirrored release files); the maxima only keep the value a
+ * bounded integer (1 TiB, 10 TiB). Per-file caps are code constants (`core/hostedAssets.ts`
+ * `SLOT_CLASSES`), never settings: they are security bounds (S-18 §5.6).
+ */
+export const ASSET_MEDIA_QUOTA_DEFAULT = 512 * 1024 * 1024;
+export const ASSET_MEDIA_QUOTA_MAX = 1024 ** 4;
+export const ASSET_RELEASE_QUOTA_DEFAULT = 100 * 1024 ** 3;
+export const ASSET_RELEASE_QUOTA_MAX = 10 * 1024 ** 4;
+
+/** The page that explains hosted assets, their switches and their quotas. */
+export const ASSETS_DOCS = "/docs/admin/presentation/";
+
 const PLATFORM_DOCS = "/docs/admin/platform-settings/";
 
 export const PLATFORM_SLICE: readonly SettingDef[] = [
@@ -316,6 +330,94 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
       "core/storefrontSwitch.ts",
       "services/identity/portal/store/obtain.ts",
     ],
+  }),
+
+  // ── Hosted assets (HA-10, notes/S-20 §6.8 "Rollback", §6.10, owner decision 9) ───────────
+  // The kill switch. Not a security gate: off only returns every surface to what it did before
+  // HA-07 (the portal's GitHub-only media proxy, the developer's URLs in the feeds, no icon on the
+  // download page) and stops release-file mirroring (GitHub keeps serving). The stored copies and
+  // their refs stay either way. An A-13 store entry, so the console's Platform → Settings switches
+  // it and a deploy can set it. `runtime` (S-20 §6.10): a console value wins, then `[vars]`, then
+  // the default `on`; an unreadable store is not an off, so an outage never forces the rollback.
+  setting({
+    key: "assets.hosting.enabled",
+    aliases: ["ASSET_HOSTING"],
+    scope: "platform",
+    service: "platform",
+    area: "delivery",
+    label: "Hosted assets",
+    description:
+      "Serves Polaris Key's own copies of products' images from the image host and mirrors their release files. Off returns every surface to the developer's own URLs and GitHub; the stored copies stay.",
+    keywords: ["image host", "img", "mirror", "kill switch", "rollback"],
+    docs: ASSETS_DOCS,
+    value: { kind: "switch" },
+    defaultValue: "on",
+    merge: "cascade",
+    varName: "ASSET_HOSTING",
+    precedence: "runtime",
+    ownership: "operator",
+    confirm: { on: "L1", off: "L1" },
+    readers: [
+      "core/assetHosting.ts",
+      "core/hostedImages.ts",
+      "services/release/mirrorSwitch.ts",
+    ],
+    storage: { kind: "scalar", storedAs: "ASSET_HOSTING" },
+    since: "HA-10",
+  }),
+  // Every product's default hosting quotas (owner decision 9). A product inherits them live
+  // (`assets.quota.*` at product scope) unless an operator sets its own. Stored under the
+  // registry key itself (no A-13 alias); ST-05's generic API and ST-16's platform defaults are
+  // their console writers, so until then the code default applies everywhere.
+  setting({
+    key: "assets.quota.mediaBytes",
+    scope: "platform",
+    service: "platform",
+    area: "product-defaults",
+    label: "Default media quota",
+    description:
+      "How many bytes of hosted images (originals and their sizes, not release files) a product may hold when it sets no quota of its own. Past it, a new image is refused and the current copy keeps serving.",
+    keywords: ["hosted assets", "storage", "quota", "images"],
+    docs: ASSETS_DOCS,
+    value: {
+      kind: "integer",
+      unit: "bytes",
+      min: 0,
+      max: ASSET_MEDIA_QUOTA_MAX,
+    },
+    defaultValue: ASSET_MEDIA_QUOTA_DEFAULT,
+    merge: "cascade",
+    productLink: { default: true, bound: false },
+    ownership: "operator",
+    confirm: { up: "L1", down: "L1" },
+    readers: ["core/assetSettings.ts", "core/assetQuota.ts"],
+    storage: { kind: "scalar" },
+    since: "HA-10",
+  }),
+  setting({
+    key: "assets.quota.releaseBytes",
+    scope: "platform",
+    service: "platform",
+    area: "product-defaults",
+    label: "Default release-file quota",
+    description:
+      "How many bytes of mirrored release files a product may hold when it sets no quota of its own. Past it, mirroring stops and GitHub keeps serving the files.",
+    keywords: ["hosted assets", "storage", "quota", "mirror", "releases"],
+    docs: ASSETS_DOCS,
+    value: {
+      kind: "integer",
+      unit: "bytes",
+      min: 0,
+      max: ASSET_RELEASE_QUOTA_MAX,
+    },
+    defaultValue: ASSET_RELEASE_QUOTA_DEFAULT,
+    merge: "cascade",
+    productLink: { default: true, bound: false },
+    ownership: "operator",
+    confirm: { up: "L1", down: "L1" },
+    readers: ["core/assetSettings.ts", "core/assetQuota.ts"],
+    storage: { kind: "scalar" },
+    since: "HA-10",
   }),
 
   // ── Product defaults (ST-16 wires them; owner decision 2: live inheritance) ─────────────

@@ -96,6 +96,7 @@ describe("the platform inventory (ST-02)", () => {
         .map((e) => [e.name, e.editable])
         .sort(),
     ).toEqual([
+      ["ASSET_HOSTING", "ASSET_HOSTING"],
       ["BLOB_GC_GRACE_DAYS", "BLOB_GC_GRACE_DAYS"],
       ["BLOB_GC_MODE", "BLOB_GC_MODE"],
       ["IDENTITY_RESERVED_DISPLAY_NAMES", "IDENTITY_RESERVED_DISPLAY_NAMES"],

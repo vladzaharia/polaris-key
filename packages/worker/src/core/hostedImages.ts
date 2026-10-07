@@ -20,9 +20,11 @@
  *
  * ── WHEN NOTHING IS SERVED FROM HERE ────────────────────────────────────────────────────────
  *
- * `hostedImageOrigin(env)` is `null`, and every read answers nothing, when the kill switch is off
- * (`core/assetHosting.ts`, HA-10's `assets.hosting.enabled`) or the deployment has no image host
- * (`IMG_ORIGIN` unset or unusable). Each surface then does what it did before HA-07.
+ * `hostedImageOrigin(env, db)` is `null`, and every read answers nothing, when the kill switch is
+ * off (`core/assetHosting.ts`, HA-10's platform setting `assets.hosting.enabled`) or the deployment
+ * has no image host (`IMG_ORIGIN` unset or unusable). Each surface then does what it did before
+ * HA-07. The switch is a settings read (the platform store's 30-second copy), so every surface
+ * asks it once per request, through `hostedImageOrigin` or `hostedImages`.
  *
  * ── THE VARIANT CHOICE ──────────────────────────────────────────────────────────────────────
  *
@@ -43,7 +45,11 @@ import { IMG_ALIASES, IMG_HOST_TYPES } from "./imgHost.js";
 import { imgOrigin, imgUrl } from "./imgHostname.js";
 import { assetHostingEnabled } from "./assetHosting.js";
 
-type HostedEnv = Pick<Env, "IMG_ORIGIN" | "BLOB_ORIGIN" | "PKG_ORIGIN">;
+/** The image host's origins, and the kill switch's `[vars]` value. */
+type HostedEnv = Pick<
+  Env,
+  "IMG_ORIGIN" | "BLOB_ORIGIN" | "PKG_ORIGIN" | "ASSET_HOSTING"
+>;
 
 /** One slot's servable copy. */
 export interface HostedImage {
@@ -74,9 +80,13 @@ export function listingScreenshotSlots(count: number): string[] {
  * The image host's origin when hosted copies are served, else `null`: the kill switch is off, or
  * there is no image host. Every surface branches on this one answer.
  */
-export function hostedImageOrigin(env: HostedEnv): string | null {
-  if (!assetHostingEnabled(env)) return null;
-  return imgOrigin(env);
+export async function hostedImageOrigin(
+  env: HostedEnv,
+  db: Db,
+): Promise<string | null> {
+  const origin = imgOrigin(env);
+  if (origin === null) return null;
+  return (await assetHostingEnabled(env, db)) ? origin : null;
 }
 
 /** `blobs/sha256/`: the ungated key prefix the image host reads (`blobKey`). */
@@ -96,7 +106,7 @@ interface Row {
 
 /**
  * The servable copies among `slots` of one product, by slot (one statement). Empty when
- * `hostedImageOrigin(env)` is `null`.
+ * `hostedImageOrigin(env, db)` is `null`.
  */
 export async function hostedImages(
   env: HostedEnv,
@@ -108,7 +118,8 @@ export async function hostedImages(
   const wanted = [
     ...new Set(slots.filter((s) => slotClass(s)?.accept === "image")),
   ];
-  if (hostedImageOrigin(env) === null || wanted.length === 0) return out;
+  if (wanted.length === 0 || (await hostedImageOrigin(env, db)) === null)
+    return out;
   // The image host's tenancy check, in the query: the copy's hosted-asset ref must exist.
   const rows = await db.all<Row>(
     `SELECT h.slot AS slot, h.origin AS origin, h.sha256 AS sha256,
@@ -174,8 +185,10 @@ export function pickVariantWidth(
 
 /**
  * The image-host URL of `image` for a surface drawing it at `width` px (the variant choice
- * above), or of the original when `width` is omitted. `null` when there is no image host or
- * hosting is off, so a caller never hands out a URL certain to 404.
+ * above), or of the original when `width` is omitted. `null` when there is no image host, so a
+ * caller never hands out a URL certain to 404. `image` comes from `hostedImages`, which answers
+ * nothing while hosting is off, so the switch was asked already (synchronous on purpose: a
+ * surface maps many copies to URLs).
  */
 export function hostedImageUrl(
   env: HostedEnv,
@@ -183,7 +196,6 @@ export function hostedImageUrl(
   image: HostedImage,
   width?: number,
 ): string | null {
-  if (hostedImageOrigin(env) === null) return null;
   const w = width === undefined ? null : pickVariantWidth(image.widths, width);
   return w === null
     ? imgUrl(env, product, image.sha256)
