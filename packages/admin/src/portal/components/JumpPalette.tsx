@@ -172,7 +172,8 @@ export function JumpPalette({
                 </Command.Group>
               ) : null}
               <Command.Group heading="Actions" className={group}>
-                {top ? (
+                {/* An open product's entry (PS-04) has no devices to manage. */}
+                {top && top.kind !== "entry" ? (
                   <Command.Item
                     value={`devices:${top.slug}`}
                     onSelect={() => go(top, "devices")}

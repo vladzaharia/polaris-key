@@ -29,6 +29,7 @@ import { FreeDevicePage } from "./pages/FreeDevicePage.js";
 import { LibraryPage } from "./pages/LibraryPage.js";
 import { ProductPage } from "./pages/ProductPage.js";
 import { SignInPage } from "./pages/SignInPage.js";
+import { StorefrontPage } from "./pages/StorefrontPage.js";
 import { restoreCarriedKey } from "./carriedKey.js";
 import {
   activateContext,
@@ -92,6 +93,7 @@ function Boot(): React.ReactElement {
       "product",
       "registryTokens",
       "discover",
+      "storefront",
     ])
       qc.removeQueries({ queryKey: ["portal", key] });
   }, [signedOut, qc]);
@@ -241,6 +243,8 @@ function Page({
       return <LibraryPage account={account} params={route.params} />;
     case "discover":
       return <DiscoverPage params={route.params} />;
+    case "storefront":
+      return <StorefrontPage key={route.product} product={route.product} />;
     case "product":
       return (
         <ProductPage

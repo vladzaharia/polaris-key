@@ -14,11 +14,15 @@ import { ProductIcon } from "./ProductIcon.js";
 import { ProductMenu } from "./ProductMenu.js";
 import { ProductStatusPill } from "./ProductStatus.js";
 import { QuickActionButton } from "./QuickAction.js";
+import { RemoveEntryConfirm } from "./RemoveEntryConfirm.js";
 
 /**
  * A library tile (§4.14, §4.15): art with the status on a solid plate, the icon overlapping, the
  * name (`h3`, the link to the product page; the developer is the product page's), the reason line, platform glyphs, an
  * optional note and the outlined quick action with the overflow menu. `compact` is the 8+ grid.
+ *
+ * An open product's entry (PS-04, notes/S-21 §6.5) reads "Free to use", with no seat or licence
+ * facts; its menu offers **Remove from library**, confirmed inline under the actions.
  *
  * Motion (notes/S-23 §6.1; MO-07): under a pointer the tile lifts and its art scales a little;
  * pressing the tile's link presses the tile, while its own buttons press only themselves. The lift
@@ -49,6 +53,11 @@ export function LibraryTile({
   const { presentation: pres } = product;
   const cue = useCueOnce(product.slug, product.justAdded);
   const statusNote = product.status.note;
+  // How many times Remove was chosen; 0 = no confirmation (choosing it again refocuses Keep it).
+  const [ask, setAsk] = React.useState(0);
+  const confirming = ask > 0;
+  const menuButton = React.useRef<HTMLButtonElement>(null);
+  const entry = product.kind === "entry";
   return (
     <div ref={cue.ref} className="pk-lift pk-pressable-card grid rounded-xl">
       <article
@@ -160,12 +169,27 @@ export function LibraryTile({
             <ProductMenu
               slug={product.slug}
               name={product.name}
+              entry={entry}
+              onRemove={entry ? () => setAsk((n) => n + 1) : undefined}
+              triggerRef={menuButton}
               className={cn(
                 "inline-flex shrink-0 items-center justify-center rounded-md border border-border-strong text-fg-strong hover:bg-hover",
                 compact ? "size-10" : "size-11",
               )}
             />
           </div>
+          {entry && confirming ? (
+            <RemoveEntryConfirm
+              slug={product.slug}
+              name={product.name}
+              ask={ask}
+              className="mt-3"
+              onCancel={() => {
+                setAsk(0);
+                menuButton.current?.focus();
+              }}
+            />
+          ) : null}
         </div>
       </article>
       {product.justAdded ? (

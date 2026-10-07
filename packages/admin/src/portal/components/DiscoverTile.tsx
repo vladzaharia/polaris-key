@@ -2,9 +2,14 @@ import * as React from "react";
 import {
   AlertCircle,
   ArrowRight,
+  AtSign,
   Check,
+  Clock,
+  ExternalLink,
   Gift,
   Plus,
+  ShoppingBag,
+  Sparkles,
   User,
   Users,
   type LucideIcon,
@@ -13,8 +18,10 @@ import { Button } from "../../ui/Button.js";
 import { cn } from "../../lib/cn.js";
 import type { PortalDiscoverOffer } from "../api.js";
 import {
+  moreWaysText,
   offerPlatforms,
-  reasonCopy,
+  offerReason,
+  storeLinkLabel,
   termsLine,
   type ReasonKind,
 } from "../model/discover.js";
@@ -23,9 +30,14 @@ import { PlatformGlyphs } from "./Glyphs.js";
 import { ProductArt } from "./ProductArt.js";
 import { ProductIcon } from "./ProductIcon.js";
 
-const REASON_ICON: Record<ReasonKind, LucideIcon> = {
+export const REASON_ICON: Record<ReasonKind, LucideIcon> = {
   account: User,
+  trial: Clock,
   group: Users,
+  idp: User,
+  domain: AtSign,
+  store: ShoppingBag,
+  open: Sparkles,
   added: Check,
   other: Gift,
 };
@@ -33,19 +45,29 @@ const REASON_ICON: Record<ReasonKind, LucideIcon> = {
 export type DiscoverTileState = "offer" | "adding" | "added";
 
 /**
- * A Discover tile (PORTAL.md §4.16, §5.2 `DiscoverTile`): art, the icon overlapping, name and
- * developer, what you'd get (tier and terms) with platform glyphs, **why you can add it** (always
- * visible, owner decision Q-6) and the outlined **Add to library**. Added, the tile turns
- * green-edged with **In your library** on the art and **Open <product>**. Errors are inline on
- * the tile; an offer that ended loses its button.
+ * A Discover tile (PORTAL.md §4.16, §5.2 `DiscoverTile`; notes/S-21 §6.5): art, the icon
+ * overlapping, name and developer, what you'd get (tier and terms; an open product's or a
+ * link's one-line description instead) with platform glyphs, **why you can add it** (always
+ * visible, owner decision Q-6: the first way to add it, with "+1 more way" when there are others)
+ * and the outlined **Add to library**. Added, the tile turns green-edged with **In your
+ * library** on the art and **Open <product>**. Errors are inline on the tile; an offer that ended
+ * loses its button.
  *
- * Motion (notes/S-23 §6.1; MO-07): under a pointer the tile lifts and its art scales a little (the
- * tile has no link of its own, so only its button presses). When an Add goes through while the
- * tile is on screen, the **In your library** plate pops in once (`.pk-pop-in`) and the ring fades
- * in once (`.pk-content-in`, opacity only: scaling a 1 px ring would pass it inside the card's
- * edge); a tile that is already added when it mounts (`?added=` after a reload) just shows them.
- * The words carry the meaning; the ring is decoration. The lift and the ring sit on a wrapper
- * because the card clips its art (`overflow-hidden`), which would clip both.
+ * A link-only listing (an operator showed it to everyone signed in, with nothing to add) has no
+ * reason line and no Add: its actions are its store pages, "Get it on <store>" (S-21 §6.5).
+ *
+ * The name opens the storefront product page (`#/discover/:product`, PS-05): every way to add
+ * it, its listing and screenshots. The whole card follows the name (`pk-press-link`), its own
+ * buttons and links excepted.
+ *
+ * Motion (notes/S-23 §6.1; MO-07): under a pointer the tile lifts and its art scales a little;
+ * pressing the card's link presses the card, while its buttons press only themselves. When an
+ * Add goes through while the tile is on screen, the **In your library** plate pops in once
+ * (`.pk-pop-in`) and the ring fades in once (`.pk-content-in`, opacity only: scaling a 1 px ring
+ * would pass it inside the card's edge); a tile that is already added when it mounts (`?added=`
+ * after a reload) just shows them. The words carry the meaning; the ring is decoration. The lift
+ * and the ring sit on a wrapper because the card clips its art (`overflow-hidden`), which would
+ * clip both.
  */
 export function DiscoverTile({
   offer,
@@ -62,19 +84,27 @@ export function DiscoverTile({
   ended?: boolean;
   onAdd: () => void;
 }): React.ReactElement {
-  const reason = reasonCopy(offer.reason);
-  const ReasonIcon = REASON_ICON[reason.kind];
+  const reason = offerReason(offer);
+  const ReasonIcon = reason ? REASON_ICON[reason.kind] : null;
   const added = state === "added";
+  const link = offer.cta === "link" && !added;
+  const more = added ? null : moreWaysText(offer);
   // Added while on screen (not already added when the tile mounted): ring and plate come in once.
   const [addedAtMount] = React.useState(added);
   const pop = added && !addedAtMount;
   const id = `offer-${offer.product}`;
   const errorId = `${id}-error`;
+  // Held now: its storefront page is gone, its library page is where it lives.
+  const page = added
+    ? href.product(offer.product)
+    : href.storefront(offer.product);
+  const what = offer.offer ? termsLine(offer.offer) : offer.shortDescription;
   return (
-    <div className="pk-lift relative grid rounded-xl">
+    <div className="pk-lift pk-pressable-card relative grid rounded-xl">
       <article
         aria-labelledby={id}
         data-state={state}
+        data-cta={offer.cta}
         className={cn(
           "relative flex flex-col overflow-hidden rounded-xl border bg-surface-raised shadow-elevation-1",
           added ? "border-success" : "border-border",
@@ -116,7 +146,12 @@ export function DiscoverTile({
             />
             <div className="min-w-0 pt-9">
               <h3 id={id} className="truncate text-lg font-bold text-fg-strong">
-                {offer.name}
+                <a
+                  href={page}
+                  className="pk-press-link rounded-sm after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
+                >
+                  {offer.name}
+                </a>
               </h3>
               {offer.developerName ? (
                 <p className="truncate text-sm text-fg-muted">
@@ -125,23 +160,39 @@ export function DiscoverTile({
               ) : null}
             </div>
           </div>
-          <div className="mt-4 flex items-center justify-between gap-3 text-sm text-fg-muted">
-            <span className="min-w-0">{termsLine(offer.offer)}</span>
-            <PlatformGlyphs
-              platforms={offerPlatforms(offer.platforms)}
-              className="shrink-0"
-            />
-          </div>
-          <p className="mt-3 flex gap-2.5 rounded-md bg-surface-sunken px-3 py-2.5 text-[0.9375rem] text-fg-strong">
-            <ReasonIcon
-              aria-hidden
-              className="mt-0.5 size-4 shrink-0 text-accent-fg"
-            />
-            <span>
-              <span className="sr-only">Why you can add it: </span>
-              {reason.text}
-            </span>
-          </p>
+          {what || offer.platforms.length ? (
+            <div className="mt-4 flex items-center justify-between gap-3 text-sm text-fg-muted">
+              <span className="min-w-0">{what}</span>
+              <PlatformGlyphs
+                platforms={offerPlatforms(offer.platforms)}
+                className="shrink-0"
+              />
+            </div>
+          ) : null}
+          {reason && ReasonIcon ? (
+            <p className="mt-3 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 rounded-md bg-surface-sunken px-3 py-2.5 text-[0.9375rem] text-fg-strong">
+              <span className="flex min-w-0 flex-1 gap-2.5">
+                <ReasonIcon
+                  aria-hidden
+                  className="mt-0.5 size-4 shrink-0 self-start text-accent-fg"
+                />
+                <span>
+                  <span className="sr-only">Why you can add it: </span>
+                  {reason.text}
+                </span>
+              </span>
+              {more ? (
+                // Every way to add it, with its terms, is on the product page (S-21 §6.5).
+                <a
+                  href={page}
+                  className="relative text-sm font-bold text-accent-fg hover:underline"
+                >
+                  {more}
+                  <span className="sr-only"> to add {offer.name}</span>
+                </a>
+              ) : null}
+            </p>
+          ) : null}
           {error ? (
             <p
               id={errorId}
@@ -152,8 +203,10 @@ export function DiscoverTile({
               {error}
             </p>
           ) : null}
-          {ended && !added ? null : (
-            <div className="mt-auto pt-5">
+          {link ? (
+            <LinkActions offer={offer} page={page} />
+          ) : ended && !added ? null : (
+            <div className="relative mt-auto pt-5">
               {added ? (
                 <Button
                   asChild
@@ -196,5 +249,76 @@ export function DiscoverTile({
         />
       ) : null}
     </div>
+  );
+}
+
+/**
+ * A link-only listing's actions (S-21 §6.5): "Get it on <store>" for each live store page, else
+ * "Get it from <developer>" on their website, else the product page.
+ */
+function LinkActions({
+  offer,
+  page,
+}: {
+  offer: PortalDiscoverOffer;
+  page: string;
+}): React.ReactElement {
+  const site =
+    offer.website && /^https:\/\//.test(offer.website) ? offer.website : null;
+  return (
+    <ul className="relative mt-auto flex flex-col gap-2 pt-5">
+      {offer.stores.length > 0 ? (
+        offer.stores.map((s) => (
+          <li key={s.id}>
+            <ExternalButton
+              href={s.url}
+              label={storeLinkLabel(s)}
+              name={offer.name}
+            />
+          </li>
+        ))
+      ) : site ? (
+        <li>
+          <ExternalButton
+            href={site}
+            label={`Get it from ${offer.developerName ?? "the developer"}`}
+            name={offer.name}
+          />
+        </li>
+      ) : (
+        <li>
+          <Button asChild variant="quiet" size="lg" className="h-11 w-full">
+            <a href={page} aria-label={`See details: ${offer.name}`}>
+              <ArrowRight aria-hidden />
+              See details
+            </a>
+          </Button>
+        </li>
+      )}
+    </ul>
+  );
+}
+
+function ExternalButton({
+  href: to,
+  label,
+  name,
+}: {
+  href: string;
+  label: string;
+  name: string;
+}): React.ReactElement {
+  return (
+    <Button asChild variant="quiet" size="lg" className="h-11 w-full">
+      <a
+        href={to}
+        target="_blank"
+        rel="noreferrer"
+        aria-label={`${label}: ${name} (opens in a new tab)`}
+      >
+        <ExternalLink aria-hidden />
+        <span className="truncate">{label}</span>
+      </a>
+    </Button>
   );
 }

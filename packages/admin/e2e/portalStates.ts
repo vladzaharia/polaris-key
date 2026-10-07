@@ -376,6 +376,8 @@ export const SHIPPED: ShippedState[] = [
         .getByRole("button", { name: "Add to library: Mossgarden" })
         .click();
       await p.getByRole("link", { name: "Open Mossgarden" }).waitFor();
+      // The toast is part of the state: wait for it, so the screenshot never races it.
+      await p.getByText("Mossgarden is in your library").waitFor();
     },
   },
   {
@@ -389,6 +391,104 @@ export const SHIPPED: ShippedState[] = [
       await p
         .getByRole("heading", { level: 2, name: "Nothing to add right now" })
         .waitFor();
+    },
+  },
+  // §4.16 Discover as the Polaris Key storefront (PS-05, notes/S-21 §6.5): multi-path, open and
+  // link-only tiles, the storefront product page and its one not-found state.
+  {
+    section: "4.16",
+    id: "discover-storefront",
+    title: "Discover, every way to add, open and link-only tiles",
+    scenario: "storefront",
+    path: "/#/discover",
+    ready: async (p) => {
+      await h1(p, "Discover");
+      await p.getByRole("article", { name: "Starfall Arena" }).waitFor();
+    },
+  },
+  {
+    section: "4.16",
+    id: "storefront-page",
+    title: "Storefront product page, two ways to add",
+    scenario: "storefront",
+    path: "/#/discover/lumen-raw",
+    ready: async (p) => {
+      await h1(p, "Lumen RAW");
+      await p.getByRole("region", { name: "Ways to add it" }).waitFor();
+    },
+  },
+  {
+    section: "4.16",
+    id: "storefront-open",
+    title: "Storefront product page, an open product",
+    scenario: "storefront",
+    path: "/#/discover/driftwood",
+    ready: async (p) => {
+      await h1(p, "Driftwood Notes");
+      await p.getByRole("region", { name: "Why you can add it" }).waitFor();
+    },
+  },
+  {
+    section: "4.16",
+    id: "storefront-link",
+    title: "Storefront product page, link only",
+    scenario: "storefront",
+    path: "/#/discover/starfall",
+    ready: async (p) => {
+      await h1(p, "Starfall Arena");
+      await p
+        .getByRole("link", { name: /Get it on Steam/ })
+        .first()
+        .waitFor();
+    },
+  },
+  {
+    section: "4.16",
+    id: "storefront-not-found",
+    title: "Storefront product page, nothing to add here",
+    scenario: "storefront",
+    path: "/#/discover/not-a-product",
+    ready: (p) => h1(p, "There's nothing to add here"),
+  },
+  {
+    section: "4.14",
+    id: "library-entry",
+    title: "Library with an open product (Free to use)",
+    scenario: "storefront",
+    path: "/",
+    ready: async (p) => {
+      await h1(p, "Your library");
+      await p.getByRole("article", { name: "Kestrel Maps" }).waitFor();
+    },
+  },
+  {
+    section: "4.14",
+    id: "library-entry-remove",
+    title: "Library, Remove from library confirmed inline",
+    scenario: "storefront",
+    path: "/",
+    ready: async (p) => {
+      await h1(p, "Your library");
+      await p.getByRole("button", { name: "More for Kestrel Maps" }).click();
+      await p.getByRole("menuitem", { name: "Remove from library" }).click();
+      await p
+        .getByRole("group", { name: "Remove Kestrel Maps from your library?" })
+        .waitFor();
+      await p.getByRole("menu").waitFor({ state: "detached" });
+      // Checked from the top, like every state: focus on Keep it scrolls the page, and a tile's
+      // name link under the sticky header reads to axe as an obscured target.
+      await p.evaluate(() => window.scrollTo(0, 0));
+    },
+  },
+  {
+    section: "4.20",
+    id: "product-entry",
+    title: "Product page of an open product (no license)",
+    scenario: "storefront",
+    path: "/#/p/kestrel-maps",
+    ready: async (p) => {
+      await h1(p, "Kestrel Maps");
+      await p.getByRole("region", { name: "Get Kestrel Maps" }).waitFor();
     },
   },
   // §4.17–4.19 Activate license (PX-06, PX-W5's preview).

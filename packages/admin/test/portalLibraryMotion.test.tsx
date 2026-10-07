@@ -664,6 +664,13 @@ describe("ProductArt fades its image in once decoded", () => {
 
 // ── Discover: the just-added ring ─────────────────────────────────────────────────────────────
 
+const TERMS = {
+  tier: "lifetime",
+  tierLabel: "Lifetime",
+  deviceLimit: 5,
+  expiresAt: null,
+  expiryDays: null,
+};
 const OFFER: PortalDiscoverOffer = {
   product: "mossgarden",
   name: "Mossgarden",
@@ -674,14 +681,22 @@ const OFFER: PortalDiscoverOffer = {
   headerUrl: null,
   support: null,
   platforms: ["macos"],
-  offer: {
-    tier: "lifetime",
-    tierLabel: "Lifetime",
-    deviceLimit: 5,
-    expiresAt: null,
-  },
+  shortDescription: null,
+  cta: "add",
+  paths: [
+    {
+      kind: "auto_issue",
+      detail: null,
+      label: null,
+      terms: TERMS,
+      action: "add",
+      reason: "free_with_account",
+    },
+  ],
+  offer: TERMS,
   reason: "free_with_account",
-} as PortalDiscoverOffer;
+  stores: [],
+};
 
 describe("Discover tiles: lift, and the just-added ring and plate come in once", () => {
   const tile = (state: "offer" | "adding" | "added") => (
@@ -692,7 +707,12 @@ describe("Discover tiles: lift, and the just-added ring and plate come in once",
     const { container, rerender } = render(tile("offer"));
     const wrapper = container.firstElementChild as HTMLElement;
     expect(wrapper.className).toMatch(/\bpk-lift\b/);
-    expect(wrapper.className).not.toMatch(/\bpk-pressable/);
+    // PS-05: the name opens the storefront page, so the card presses for that link only (its
+    // Add presses itself), as a Library tile does.
+    expect(wrapper.className).toMatch(/\bpk-pressable-card\b/);
+    expect(screen.getByRole("link", { name: "Mossgarden" }).className).toMatch(
+      /\bpk-press-link\b/,
+    );
     expect(container.querySelector("[data-ring]")).toBeNull();
     rerender(tile("adding"));
     rerender(tile("added"));

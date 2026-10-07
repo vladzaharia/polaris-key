@@ -15,6 +15,8 @@ import { pendingHeadingFocus } from "./focus.js";
  * decision Q2); product ids in URLs are product slugs.
  *
  * - `#/` is the Library and the default: any hash that names no other page lands there.
+ * - `#/discover/:product` is the storefront product page (PS-05, notes/S-21 §6.5): a product the
+ *   person could add, with its listing and every way to add it.
  * - The stable links of the old portal redirect (anti-pattern A10) with `history.replaceState`,
  *   so Back never bounces through a dead URL.
  * - `/activate` (the path apps and emails link to) becomes `#/?activate=<key>`: the Library with
@@ -62,6 +64,8 @@ export type FocusedFlowKind = (typeof FOCUSED_FLOWS)[number];
 export type PortalRoute =
   | { kind: "library"; params: URLSearchParams }
   | { kind: "discover"; params: URLSearchParams }
+  /** The storefront product page (PS-05): `#/discover/:product`. */
+  | { kind: "storefront"; product: string }
   | {
       kind: "product";
       product: string;
@@ -93,6 +97,8 @@ const enc = encodeURIComponent;
 export const href = {
   library: (params?: Record<string, string>): string => withQuery("#/", params),
   discover: (): string => "#/discover",
+  /** The storefront product page of a product the person could add (PS-05). */
+  storefront: (slug: string): string => `#/discover/${enc(slug)}`,
   product: (
     slug: string,
     section?: ProductSection,
@@ -140,6 +146,11 @@ export function resolveHash(hash: string): Resolved {
   if (!head) return library();
   switch (head) {
     case "discover":
+      if (a) {
+        const route: PortalRoute = { kind: "storefront", product: a };
+        // Nothing lives under a storefront page: a longer path is the page itself.
+        return b ? { route, redirect: href.storefront(a) } : { route };
+      }
       return { route: { kind: "discover", params } };
     case "p": {
       if (!a) return { ...library(), redirect: "#/" };
@@ -331,7 +342,8 @@ function current(): Resolved {
  * How one route follows another:
  *
  * - `forward`: into a product from the Library or Discover; `back`: from a product to the Library
- *   or Discover. The main region slides along the reading direction, and the product's art, icon
+ *   or Discover. A product's storefront page (PS-05) is a product page too: Discover's tile opens
+ *   it forward and Back returns to the tile. The main region slides along the reading direction, and the product's art, icon
  *   and name fly between its tile and the product hero (`pk-hero`, `pk-hero-icon`,
  *   `pk-hero-title`).
  * - `route`: between any other two pages (the top-level pages, one product to another, the
@@ -352,6 +364,8 @@ function pageOf(r: PortalRoute): string {
   switch (r.kind) {
     case "product":
       return `product:${r.product}`;
+    case "storefront":
+      return `storefront:${r.product}`;
     case "focused":
       return `focused:${r.flow}:${r.product}`;
     default:
@@ -366,6 +380,13 @@ function sectionOf(r: PortalRoute): string | null {
 const isTopLevel = (r: PortalRoute): boolean =>
   r.kind === "library" || r.kind === "discover";
 
+/** The page about one product a tile opens, as its href: its Library page or its storefront page. */
+function productPageHref(r: PortalRoute): string | null {
+  if (r.kind === "product") return href.product(r.product);
+  if (r.kind === "storefront") return href.storefront(r.product);
+  return null;
+}
+
 /** The kind of navigation from one route to the next (pure). */
 export function navigationKind(
   from: PortalRoute,
@@ -373,8 +394,8 @@ export function navigationKind(
 ): PortalNavigation {
   if (pageOf(from) === pageOf(to))
     return sectionOf(from) === sectionOf(to) ? "params" : "section";
-  if (isTopLevel(from) && to.kind === "product") return "forward";
-  if (from.kind === "product" && isTopLevel(to)) return "back";
+  if (isTopLevel(from) && productPageHref(to) !== null) return "forward";
+  if (productPageHref(from) !== null && isTopLevel(to)) return "back";
   return "route";
 }
 
@@ -453,9 +474,10 @@ function scrollToTop(behavior: ScrollBehavior = "instant"): void {
 
 /**
  * The shared element (S-23 §6.1): the Library or Discover tile a product was opened from. A
- * delegated click listener marks it with `data-vt-source="<slug>"` (LibraryTile and DiscoverTile
- * stay as they are); the navigation that follows names its art, icon and title for that one
- * transition.
+ * delegated click listener marks it with `data-vt-source="<page>"`, the hash of the product page
+ * it opened (`#/p/<slug>`, or `#/discover/<slug>` for the storefront page, PS-05); LibraryTile and
+ * DiscoverTile stay as they are. The navigation that follows names its art, icon and title for
+ * that one transition.
  */
 export const VT_SOURCE = "data-vt-source";
 const TILE = "article, tr";
@@ -463,7 +485,7 @@ const TILE = "article, tr";
 type Ends = Array<readonly [Element | null, string]>;
 
 /** A tile's (or list row's) art, icon and title: the ends that fly into the product hero. */
-function endsOf(tile: Element, slug: string): Ends {
+function endsOf(tile: Element, page: string): Ends {
   // The art is the tile's direct child (ProductArt); a list row has none. Only real art flies: a
   // tint field has no hero banner to pair with. The icon (ProductIcon, data-art too) sits in
   // front of the art's lower edge, so it flies as well, or the art would cover it mid-flight.
@@ -475,7 +497,7 @@ function endsOf(tile: Element, slug: string): Ends {
   const title =
     tile.querySelector("h2, h3") ??
     Array.from(tile.querySelectorAll("a[href]")).find(
-      (a) => a.getAttribute("href") === href.product(slug),
+      (a) => a.getAttribute("href") === page,
     ) ??
     null;
   return [
@@ -500,46 +522,48 @@ function markSource(e: MouseEvent): void {
   if (!link || !to.startsWith("#") || !link.closest("main")) return;
   const { route } = resolveHash(to);
   // The product's page itself, not a deep link into one of its sections.
-  if (route.kind !== "product" || route.section) return;
+  if (route.kind === "product" && route.section) return;
+  const page = productPageHref(route);
+  if (page === null) return;
   const tile = link.closest(TILE);
   if (!tile) return;
   for (const el of Array.from(document.querySelectorAll(`[${VT_SOURCE}]`)))
     el.removeAttribute(VT_SOURCE);
-  tile.setAttribute(VT_SOURCE, route.product);
+  tile.setAttribute(VT_SOURCE, page);
 }
 
-/** The tile marked as the source for `slug`; any other mark is dropped. */
-function takeSource(slug: string): Element | null {
+/** The tile marked as the source for the product page `page`; any other mark is dropped. */
+function takeSource(page: string): Element | null {
   let found: Element | null = null;
   for (const el of Array.from(document.querySelectorAll(`[${VT_SOURCE}]`))) {
-    if (!found && el.getAttribute(VT_SOURCE) === slug) found = el;
+    if (!found && el.getAttribute(VT_SOURCE) === page) found = el;
     else el.removeAttribute(VT_SOURCE);
   }
   return found;
 }
 
 /**
- * The tiles that open `slug` on the page now showing (the Library's grid or list, Discover), in
- * document order. A product can have more than one (the Library's attention list and its grid).
+ * The tiles that open the product page `page` on the page now showing (the Library's grid or
+ * list, Discover), in document order. A product can have more than one (the Library's attention
+ * list and its grid).
  */
-function tilesFor(slug: string): Element[] {
-  const target = href.product(slug);
+function tilesFor(page: string): Element[] {
   const tiles: Element[] = [];
   for (const a of Array.from(document.querySelectorAll("main a[href]"))) {
-    if (a.getAttribute("href") !== target) continue;
+    if (a.getAttribute("href") !== page) continue;
     const tile = a.closest(TILE);
     if (tile && !tiles.includes(tile)) tiles.push(tile);
   }
   return tiles;
 }
 
-/** Where the product page showing was opened from: its tile's place among the product's tiles. */
-let origin: { slug: string; index: number } | null = null;
+/** Where the product page showing was opened from: its tile's place among that page's tiles. */
+let origin: { page: string; index: number } | null = null;
 
-/** The tile Back returns to: the one the product was opened from, else its first. */
-function tileFor(slug: string): Element | null {
-  const tiles = tilesFor(slug);
-  const remembered = origin?.slug === slug ? tiles[origin.index] : undefined;
+/** The tile Back returns to: the one the product page was opened from, else its first. */
+function tileFor(page: string): Element | null {
+  const tiles = tilesFor(page);
+  const remembered = origin?.page === page ? tiles[origin.index] : undefined;
   return remembered ?? tiles[0] ?? null;
 }
 
@@ -621,19 +645,17 @@ function go(from: PortalRoute, to: PortalRoute): void {
     viewTransitionsSupported() &&
     !reducedMotion() &&
     document.querySelector(OVERLAYS) === null;
-  const source =
-    kind === "forward" && to.kind === "product" ? takeSource(to.product) : null;
+  const toPage = kind === "forward" ? productPageHref(to) : null;
+  const source = toPage !== null ? takeSource(toPage) : null;
   // Remembered for Back, motion or not.
-  if (kind === "forward" && to.kind === "product")
+  if (toPage !== null)
     origin = source
-      ? { slug: to.product, index: tilesFor(to.product).indexOf(source) }
+      ? { page: toPage, index: tilesFor(toPage).indexOf(source) }
       : null;
   // An earlier transition's names go (it is skipped); the source keeps its mark for this one.
   clearNamed(animate ? source : null);
   const shared =
-    animate && source && to.kind === "product"
-      ? endsOf(source, to.product)
-      : [];
+    animate && source && toPage !== null ? endsOf(source, toPage) : [];
   // Back pairs the hero's art only if the product page had one (a cover).
   const heroArt =
     animate &&
@@ -643,14 +665,15 @@ function go(from: PortalRoute, to: PortalRoute): void {
     // Before the new page renders, so its own deep link (a section) can scroll on from here.
     scrollToTop();
     flushSync(() => publish(to));
-    if (kind !== "back" || from.kind !== "product") return;
+    const fromPage = kind === "back" ? productPageHref(from) : null;
+    if (fromPage === null) return;
     // Back lands on the tile it came from, motion or not (the router owns scroll restoration).
-    const tile = tileFor(from.product);
+    const tile = tileFor(fromPage);
     if (!tile) return;
     reveal(tile);
     if (animate)
       nameNewEnds(
-        endsOf(tile, from.product).filter(
+        endsOf(tile, fromPage).filter(
           ([, name]) => heroArt || name !== "pk-hero",
         ),
       );

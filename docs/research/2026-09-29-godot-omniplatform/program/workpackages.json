@@ -9389,7 +9389,7 @@
       "optional": false,
       "refs": ["notes/S-21 §6.5", "design/PORTAL §4.16", "notes/S-21 §9 PS-05"],
       "brief": "wp/PS-05-storefront-portal-ui.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "PS-05b",

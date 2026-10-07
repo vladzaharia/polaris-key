@@ -25,8 +25,8 @@ export function LibraryHero({
   action: QuickAction;
 }): React.ReactElement {
   const { best, presentation: pres } = product;
-  const tier = tierLabel(best.tier);
-  const includes = best.entitlements
+  const tier = best ? tierLabel(best.tier) : null;
+  const includes = (best?.entitlements ?? [])
     .filter((e) => e.key !== "channels")
     .map((e) => e.label);
   return (
@@ -79,21 +79,31 @@ export function LibraryHero({
         />
         <StorePills stores={product.stores} />
         <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-3 border-t border-border pt-5 text-sm">
-          <dt className="text-fg-muted">License</dt>
-          <dd className="text-fg-strong">{product.status.note}</dd>
-          <dt className="text-fg-muted">Devices</dt>
-          <dd className="space-y-2 text-fg-strong">
-            <span className="block">
-              {`${devicesText(product.deviceCount, product.seats?.limit)} in use`}
-            </span>
-            {product.seats ? (
-              <SeatMeter
-                inUse={product.seats.inUse}
-                limit={product.seats.limit}
-                className="max-w-48"
-              />
-            ) : null}
-          </dd>
+          {product.kind === "entry" ? (
+            // An open product (PS-04): nothing to licence, so no licence or seat facts.
+            <>
+              <dt className="text-fg-muted">License</dt>
+              <dd className="text-fg-strong">None needed</dd>
+            </>
+          ) : (
+            <>
+              <dt className="text-fg-muted">License</dt>
+              <dd className="text-fg-strong">{product.status.note}</dd>
+              <dt className="text-fg-muted">Devices</dt>
+              <dd className="space-y-2 text-fg-strong">
+                <span className="block">
+                  {`${devicesText(product.deviceCount, product.seats?.limit)} in use`}
+                </span>
+                {product.seats ? (
+                  <SeatMeter
+                    inUse={product.seats.inUse}
+                    limit={product.seats.limit}
+                    className="max-w-48"
+                  />
+                ) : null}
+              </dd>
+            </>
+          )}
           {includes.length ? (
             <>
               <dt className="text-fg-muted">Includes</dt>
@@ -113,7 +123,9 @@ export function LibraryHero({
           href={href.product(product.slug)}
           className="mt-auto inline-flex items-center gap-2 self-start font-bold text-accent-fg hover:underline"
         >
-          License, devices and all versions
+          {product.kind === "entry"
+            ? "Details and downloads"
+            : "License, devices and all versions"}
           <ArrowRight aria-hidden className="size-4" />
         </a>
       </div>

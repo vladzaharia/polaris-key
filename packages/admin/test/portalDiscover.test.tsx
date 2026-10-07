@@ -41,10 +41,14 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+/**
+ * One offer as the Worker sends it since PS-04: its paths (here the one its `reason` names, with
+ * the offer's terms), the first path's `reason` and `offer`, and the action.
+ */
 function offer(
   over: Partial<PortalDiscoverOffer> & { product: string; name: string },
 ): PortalDiscoverOffer {
-  return {
+  const base = {
     developerName: null,
     tintColor: null,
     website: null,
@@ -52,6 +56,9 @@ function offer(
     headerUrl: null,
     support: null,
     platforms: [],
+    shortDescription: null,
+    cta: "add" as const,
+    stores: [],
     offer: {
       tier: null,
       tierLabel: null,
@@ -61,6 +68,26 @@ function offer(
     },
     reason: "free_with_account",
     ...over,
+  };
+  const reason = base.reason ?? "";
+  const group = reason.startsWith("group:") ? reason.slice(6) : null;
+  return {
+    ...base,
+    paths: over.paths ?? [
+      {
+        kind:
+          reason === "free_with_account"
+            ? "auto_issue"
+            : group !== null
+              ? "group"
+              : reason,
+        detail: group,
+        label: null,
+        terms: base.offer,
+        action: "add",
+        reason,
+      },
+    ],
   };
 }
 
@@ -475,9 +502,19 @@ describe("the empty Library's Discover teaser (PX-16, §4.12)", () => {
       "MMossgardenFree with a Polaris Key account",
       "LLumen RAWFor members of aperture-seven-customers",
     ]);
-    for (const link of within(ready).getAllByRole("link"))
-      expect(link.getAttribute("href")).toBe("#/discover");
-    expect(within(ready).getByRole("link", { name: "See all" })).toBeTruthy();
+    // Each row opens its storefront page (PS-05); See all opens Discover.
+    expect(
+      within(ready)
+        .getAllByRole("listitem")
+        .map((r) => within(r).getByRole("link").getAttribute("href")),
+    ).toEqual([
+      "#/discover/quill",
+      "#/discover/mossgarden",
+      "#/discover/lumen-raw",
+    ]);
+    expect(
+      within(ready).getByRole("link", { name: "See all" }).getAttribute("href"),
+    ).toBe("#/discover");
     expect(
       screen.getByRole("link", { name: "See 4 in Discover" }),
     ).toBeTruthy();

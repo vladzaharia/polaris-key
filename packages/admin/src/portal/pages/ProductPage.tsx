@@ -25,7 +25,7 @@ import { useLibrary } from "../library.js";
 import {
   quickAction,
   tierLabel,
-  type LibraryProduct,
+  type LicensedProduct,
 } from "../model/library.js";
 import {
   presentSections,
@@ -48,6 +48,7 @@ import {
   useDocumentTitle,
   type ProductSection,
 } from "../router.js";
+import { EntryProductBody } from "./EntryProductPage.js";
 import { NotFoundProduct } from "./NotFoundProduct.js";
 
 /**
@@ -81,6 +82,9 @@ export function ProductPage({
   if (lib.error)
     return <ErrorPanel error={lib.error} onRetry={lib.retry} asPage />;
   if (!product) return <NotFoundProduct email={account.email} />;
+  // An open product's entry (PS-04): no licence, so no licence card, devices or package access.
+  if (product.kind === "entry")
+    return <EntryProductBody product={product} device={lib.device} />;
   return (
     <ProductBody
       product={product}
@@ -110,7 +114,7 @@ function ProductBody({
   requested,
   device,
 }: {
-  product: LibraryProduct;
+  product: LicensedProduct;
   section: ProductSection | null;
   requested: string | null;
   device: ReturnType<typeof useLibrary>["device"];

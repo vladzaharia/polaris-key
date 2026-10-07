@@ -34,6 +34,7 @@ import {
 } from "./portalHarness.js";
 import type {
   PortalLibraryItem,
+  PortalLicensedItem,
   PortalLicenseSummary,
   PortalRelease,
 } from "../src/portal/api.js";
@@ -496,7 +497,9 @@ describe("Needs attention", () => {
 });
 
 describe("the server-side library (PX-W1: G1, G5, G16)", () => {
-  const item = (over: Partial<PortalLibraryItem> = {}): PortalLibraryItem => ({
+  const item = (
+    over: Partial<PortalLicensedItem> = {},
+  ): PortalLicensedItem => ({
     product: "x",
     name: "Nightfall",
     developerName: "Kiln Games",
@@ -606,7 +609,7 @@ describe("the server-side library (PX-W1: G1, G5, G16)", () => {
       status: "disabled",
     });
     const [p] = build([lic(), newer], [], NOW_S, [item()]);
-    expect(p!.best.id).toBe("lic_x_1");
+    expect(p!.best?.id).toBe("lic_x_1");
     expect(p!.licenses.map((l) => l.id)).toEqual(["lic_x_1", "lic_x_2"]);
     expect(p!.seats).toEqual({ limit: 3, inUse: 2 });
   });
@@ -661,7 +664,7 @@ describe("PX-08: the Worker's status, in words", () => {
     const b = license({ product: "b", activatedAt: NOW_S - DAY });
     const lib = buildLibrary([libraryItem(a), libraryItem(b)], [], [], NOW_S);
     expect(lib.map((p) => p.slug)).toEqual(["a", "b"]);
-    expect(lib[0]!.best.id).toBe(a.id);
+    expect(lib[0]!.best?.id).toBe(a.id);
   });
 });
 

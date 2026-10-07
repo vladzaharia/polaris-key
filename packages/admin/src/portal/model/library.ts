@@ -1,14 +1,16 @@
-import type {
-  PortalArtifact,
-  PortalDownloadFile,
-  PortalDownloads,
-  PortalLibraryItem,
-  PortalLicenseOrigin,
-  PortalLicenseSummary,
-  PortalPresentation,
-  PortalRelease,
-  PortalStatus,
-  PortalStoreLink,
+import {
+  isEntryItem,
+  type PortalArtifact,
+  type PortalDownloadFile,
+  type PortalDownloads,
+  type PortalLibraryItem,
+  type PortalLicensedItem,
+  type PortalLicenseOrigin,
+  type PortalLicenseSummary,
+  type PortalPresentation,
+  type PortalRelease,
+  type PortalStatus,
+  type PortalStoreLink,
 } from "../api.js";
 import { PLATFORM_ORDER, type PlatformKey } from "../components/Glyphs.js";
 
@@ -35,7 +37,9 @@ export type StatusKind =
   | "expiresSoon"
   | "offlineGrace"
   | "signedInApp"
-  | "active";
+  | "active"
+  /** An open product's library entry (PS-04): nothing to licence, so "Free to use". */
+  | "freeToUse";
 
 export type StatusTone = "danger" | "warning" | "info" | "neutral" | "success";
 
@@ -71,17 +75,14 @@ export interface Seats {
   inUse: number;
 }
 
-export interface LibraryProduct {
+interface LibraryProductBase {
   slug: string;
   name: string;
   presentation: Presentation;
-  licenses: PortalLicenseSummary[];
-  /** The license the product page and tile describe (best by §5.3 precedence). */
-  best: PortalLicenseSummary;
   status: ProductStatus;
   /**
    * When the product joined the library: the Worker's first contact (PX-W1's `addedAt`), else its
-   * newest license's activation.
+   * newest license's activation; an entry's (PS-04), when the entry was added.
    */
   addedAt: number;
   /**
@@ -89,10 +90,6 @@ export interface LibraryProduct {
    * old (`isJustAdded`). The tile then carries a ring and the text, and leads with its download.
    */
   justAdded: boolean;
-  /** Devices using a seat on the best license. */
-  deviceCount: number;
-  /** The seat limit and use (G5), as the Worker counted them on the best licence. */
-  seats: Seats | null;
   /** This product's releases, newest first. */
   releases: PortalRelease[];
   latestVersion: string | null;
@@ -105,6 +102,42 @@ export interface LibraryProduct {
   /** Stores reporting a live release with a link to open ("Also yours on", §4.13). */
   stores: PortalStoreLink[];
 }
+
+/** A product the account holds a licence for. */
+export interface LicensedProduct extends LibraryProductBase {
+  kind: "license";
+  licenses: PortalLicenseSummary[];
+  /** The license the product page and tile describe (best by §5.3 precedence). */
+  best: PortalLicenseSummary;
+  /** Devices using a seat on the best license. */
+  deviceCount: number;
+  /** The seat limit and use (G5), as the Worker counted them on the best licence. */
+  seats: Seats | null;
+}
+
+/**
+ * An open product in the library through an entry (PS-04, notes/S-21 §6.4): no licence, so no
+ * licence card, no seats and no devices; "Free to use", Get it, and Remove from library.
+ */
+export interface EntryProduct extends LibraryProductBase {
+  kind: "entry";
+  licenses: readonly [];
+  best: null;
+  deviceCount: 0;
+  seats: null;
+}
+
+/** One library item: a licensed product, or an open product's entry. */
+export type LibraryProduct = LicensedProduct | EntryProduct;
+
+/** The status an entry always has (PS-04): healthy, quiet, never an issue. */
+export const FREE_TO_USE: ProductStatus = {
+  kind: "freeToUse",
+  label: "Free to use",
+  tone: "neutral",
+  note: "Free to use",
+  attention: false,
+};
 
 const DAY = 86_400;
 export const EXPIRES_SOON_DAYS = 14;
@@ -139,6 +172,7 @@ const PRECEDENCE: readonly StatusKind[] = [
   "offlineGrace",
   "signedInApp",
   "active",
+  "freeToUse",
 ];
 
 function str(v: unknown): string | null {
@@ -510,7 +544,7 @@ export function deviceFamily(
 }
 
 /** The licence summary a library item stands for, when `GET /api/licenses` hasn't listed it. */
-function summaryFromItem(item: PortalLibraryItem): PortalLicenseSummary {
+function summaryFromItem(item: PortalLicensedItem): PortalLicenseSummary {
   const l = item.license;
   return {
     id: l.id,
@@ -629,10 +663,6 @@ export function buildLibrary(
   const out: LibraryProduct[] = [];
   for (const item of items) {
     const slug = item.product;
-    const own = licenses.filter((l) => l.product === slug);
-    const best =
-      own.find((l) => l.id === item.license.id) ?? summaryFromItem(item);
-    const list = own.some((l) => l.id === best.id) ? own : [best, ...own];
     const ownReleases = releases
       .filter((r) => r.product === slug)
       .sort((a, b) => (b.publishedAt ?? 0) - (a.publishedAt ?? 0));
@@ -649,6 +679,36 @@ export function buildLibrary(
         }
       platforms = PLATFORM_ORDER.filter((p) => set.has(p));
     }
+    const presentation = presentationFrom(item);
+    const common = {
+      slug,
+      presentation,
+      releases: ownReleases,
+      latestVersion: usable?.latest?.version ?? ownReleases[0]?.version ?? null,
+      platforms,
+      downloads: d,
+      stores: (usable?.stores ?? []).filter((st) => st.live && st.url),
+    };
+    if (isEntryItem(item)) {
+      out.push({
+        ...common,
+        kind: "entry",
+        name: item.name || slug,
+        licenses: [],
+        best: null,
+        status: FREE_TO_USE,
+        addedAt: item.addedAt ?? 0,
+        // An entry's date is the Worker's own (when it was added): a new product in the library.
+        justAdded: isJustAdded(item.addedAt, now),
+        deviceCount: 0,
+        seats: null,
+      });
+      continue;
+    }
+    const own = licenses.filter((l) => l.product === slug);
+    const best =
+      own.find((l) => l.id === item.license.id) ?? summaryFromItem(item);
+    const list = own.some((l) => l.id === best.id) ? own : [best, ...own];
     const seats: Seats | null =
       item.license.deviceLimit > 0
         ? {
@@ -656,15 +716,14 @@ export function buildLibrary(
             inUse: item.license.activeSeatCount,
           }
         : null;
-    const presentation = presentationFrom(item);
     const lastCovered =
       usable?.recommended && !usable.recommended.latest
         ? usable.recommended.version
         : null;
     out.push({
-      slug,
+      ...common,
+      kind: "license",
       name: item.name || best.productName || slug,
-      presentation,
       licenses: list,
       best,
       status: statusFromServer(
@@ -680,11 +739,6 @@ export function buildLibrary(
       justAdded: isJustAdded(item.addedAt, now),
       deviceCount: seats ? seats.inUse : item.license.deviceCount,
       seats,
-      releases: ownReleases,
-      latestVersion: usable?.latest?.version ?? ownReleases[0]?.version ?? null,
-      platforms,
-      downloads: d,
-      stores: (usable?.stores ?? []).filter((st) => st.live && st.url),
     });
   }
   return out;
@@ -1100,6 +1154,8 @@ export function attentionItems(
 ): AttentionItem[] {
   const out: AttentionItem[] = [];
   for (const p of products) {
+    // An entry (PS-04) has no licence to expire, suspend or fill: never anything to act on.
+    if (p.kind === "entry") continue;
     if (p.status.kind === "deviceLimit" && p.seats && devicesHref) {
       out.push({
         product: p,

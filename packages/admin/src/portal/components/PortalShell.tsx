@@ -47,7 +47,8 @@ export function PortalShell({
   const activate = useActivate();
   // The product pages live inside the Library (§3.2): its tab stays current there.
   const onLibrary = route.kind === "library" || route.kind === "product";
-  const onDiscover = route.kind === "discover";
+  // A storefront product page (PS-05) lives inside Discover: its tab stays current there.
+  const onDiscover = route.kind === "discover" || route.kind === "storefront";
   const showDiscover = discoverCount !== null;
   const mainRef = React.useRef<HTMLElement>(null);
   usePhoneBarToastInset();

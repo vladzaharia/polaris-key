@@ -202,20 +202,61 @@ export interface PortalLicenseSeats {
 export interface PortalLibrary {
   products: PortalLibraryItem[];
   /**
-   * How many products this account could add from Discover (G24). Absent until the Worker can
-   * list offers (PX-W10): Discover then stays out of the nav, as the spec's fallback says.
+   * How many products this account could add from Discover (G24): every offer with something to
+   * add, open products included, never a link (notes/S-21 §6.10 item 8). Absent until the Worker
+   * can list offers (PX-W10): Discover then stays out of the nav, as the spec's fallback says.
    */
   discoverCount?: number;
 }
 
-export interface PortalLibraryItem extends PortalPresentation {
+/** A product held by a licence, or an open product's library entry (PS-04). */
+export type PortalLibraryItem = PortalLicensedItem | PortalEntryItem;
+
+interface PortalLibraryItemBase extends PortalPresentation {
   product: string;
-  /** PS-04: `entry` is an open product with no licence (filtered out until PS-05 shows it). */
-  kind?: "license" | "entry";
   status: PortalStatus;
+  addedAt: number | null;
+}
+
+export interface PortalLicensedItem extends PortalLibraryItemBase {
+  /** Absent on a Worker before PS-04, which listed licences only. */
+  kind?: "license";
   license: PortalLicenseSeats;
   licenseCount: number;
-  addedAt: number | null;
+}
+
+/**
+ * An open product added from the storefront (PS-04, notes/S-21 §6.4): no licence and no seats,
+ * always `active`. It leaves the library by `DELETE /api/library/<p>`, or by itself once the
+ * account holds a licence for the product.
+ */
+export interface PortalEntryItem extends PortalLibraryItemBase {
+  kind: "entry";
+  /** How it was added: `open` today. */
+  via: string;
+  license: null;
+  licenseCount: 0;
+}
+
+/** A library item that is an entry (PS-04), not a licence. */
+export function isEntryItem(item: PortalLibraryItem): item is PortalEntryItem {
+  return item.kind === "entry";
+}
+
+/**
+ * `GET /api/library` as the portal reads it: licence items (`kind` `license`, or none from a
+ * Worker before PS-04) and entries. An item of a kind this build doesn't know is left out rather
+ * than shown as something it isn't.
+ */
+function libraryFromWire(body: PortalLibrary): PortalLibrary {
+  return {
+    ...body,
+    products: (body.products ?? []).filter((p) =>
+      p.kind === "entry"
+        ? p.license === null
+        : (p.kind === undefined || p.kind === "license") && p.license != null,
+    ),
+  };
 }
 
 export interface PortalProductDevice {
@@ -232,6 +273,8 @@ export interface PortalProductDevice {
 
 export interface PortalProduct extends PortalPresentation {
   product: string;
+  /** `entry`: an open product's library entry (PS-04), with no licences. */
+  kind?: "license" | "entry";
   /** Each service's own toggle (e.g. `identity`); a section shows only for a service that is on. */
   services: Record<string, boolean>;
   status: PortalStatus;
@@ -461,12 +504,12 @@ export interface PortalSignedOutKeyPreview {
   upgrade: "skippable" | "forced";
 }
 
-// ── Discover (PX-W10; G24, G25) ─────────────────────────────────────────────────────────────
+// ── Discover, the Polaris Key storefront (PX-W10, G24, G25; PS-04, notes/S-21 §6.3–6.5) ───────
 
 /**
- * Why the account can add a product (owner decision Q-6: always shown). An open set: today
- * `free_with_account` or `group:<group>`; later policies add their own codes, which the page
- * words generically until it knows them.
+ * A path's reason code (owner decision Q-6: why is always shown). An open set: today
+ * `free_with_account`, `group:<group>` and `open`; later paths add their own codes, which the
+ * page words generically until it knows them.
  */
 export type PortalDiscoverReason = string;
 
@@ -481,63 +524,218 @@ export interface PortalDiscoverTerms {
   expiryDays: number | null;
 }
 
-/** One offer of `GET /api/discover`. */
-export interface PortalDiscoverOffer extends PortalPresentation {
-  product: string;
-  platforms: string[];
-  offer: PortalDiscoverTerms;
+/**
+ * The obtain-path kinds this build words (notes/S-21 §6.3). An open set: a kind it does not know
+ * reads by its reason code, generically.
+ */
+export type PortalObtainPathKind =
+  | "store_owned"
+  | "group"
+  | "product_idp"
+  | "email_domain"
+  | "auto_issue"
+  | "open";
+
+/** One way the account could add the product now, in the Worker's evaluation order. */
+export interface PortalObtainPath {
+  kind: PortalObtainPathKind | (string & {});
+  /** The group, store, IdP label or email domain; `null` when the path has none. */
+  detail: string | null;
+  /** The operator's label for a `group` path ("Aperture Seven"), else `null` (S-21 D10). */
+  label: string | null;
+  /** The licence the path would mint; `null` for a path that mints none (`open`). */
+  terms: PortalDiscoverTerms | null;
+  /** `add` today; S-22 adds `buy` and `upgrade`, which this build never offers. */
+  action: "add";
   reason: PortalDiscoverReason;
 }
 
+/** One live store page of a product (`stores`): a link-only offer's actions, the page's "Also on". */
+export interface PortalStorefrontStore {
+  id: string;
+  kind: string;
+  label: string;
+  /** An `https:` page. */
+  url: string;
+}
+
 /**
- * One offer as the Worker sends it since PS-04: the additive storefront fields, and `offer` and
- * `reason` `null` for an open product (no licence terms) or a link (nothing to add).
+ * One product Discover shows the account (`GET /api/discover`): something to add (`cta: "add"`,
+ * at least one path), or an audience-`everyone` listing with nothing to add (`cta: "link"`, no
+ * path), whose actions are its store pages. `offer` and `reason` are the first path's (PX-W10's
+ * fields); `null` for a link, and `offer` `null` for a path that mints no licence (`open`).
  */
-type WirePortalDiscoverOffer = Omit<PortalDiscoverOffer, "offer" | "reason"> & {
+export interface PortalDiscoverOffer extends PortalPresentation {
+  product: string;
+  platforms: string[];
+  /** The listing's one-line subtitle, or `null`. */
+  shortDescription: string | null;
+  cta: "add" | "link";
+  paths: PortalObtainPath[];
   offer: PortalDiscoverTerms | null;
   reason: PortalDiscoverReason | null;
-  cta?: "add" | "link";
-};
-
-/**
- * Until PS-05 renders open products and link-only listings (notes/S-21 §6.5), the Discover page
- * shows only the offers PX-16's tile can show: an Add with licence terms.
- */
-function addableOffers(body: { offers: WirePortalDiscoverOffer[] }): {
-  offers: PortalDiscoverOffer[];
-} {
-  const offers: PortalDiscoverOffer[] = [];
-  for (const o of body.offers)
-    if ((o.cta ?? "add") === "add" && o.offer !== null && o.reason !== null)
-      offers.push({ ...o, offer: o.offer, reason: o.reason });
-  return { offers };
+  /** A link's live store pages; empty for an offer to add (the product page lists them all). */
+  stores: PortalStorefrontStore[];
 }
 
-/**
- * Until PS-05 renders library entries (open products with no licence, PS-04), the library shows
- * only the products it holds a licence for.
- */
-function licensedOnly(body: PortalLibrary): PortalLibrary {
+/** `GET /api/discover/<p>`: the storefront product page, `404` for anything not visible. */
+export interface PortalStorefrontProduct extends PortalDiscoverOffer {
+  /** The listing's description (plain text), or `null`. */
+  description: string | null;
+  /** The listing's screenshots, as media URLs (`/media/<p>/screenshot-<n>` or hosted). */
+  screenshots: string[];
+}
+
+const isObject = (v: unknown): v is Record<string, unknown> =>
+  v !== null && typeof v === "object" && !Array.isArray(v);
+const strOrNull = (v: unknown): string | null =>
+  typeof v === "string" && v.length > 0 ? v : null;
+
+function termsFrom(v: unknown): PortalDiscoverTerms | null {
+  if (!isObject(v)) return null;
+  const num = (x: unknown): number | null =>
+    typeof x === "number" && Number.isFinite(x) ? x : null;
   return {
-    ...body,
-    products: body.products.filter((p) => (p.kind ?? "license") === "license"),
+    tier: strOrNull(v.tier),
+    tierLabel: strOrNull(v.tierLabel),
+    deviceLimit: num(v.deviceLimit) ?? 0,
+    expiresAt: num(v.expiresAt),
+    expiryDays: num(v.expiryDays),
   };
 }
 
-/** `POST /api/discover/<p>/claim`: the licence, new (`added`) or already held. */
-export interface PortalDiscoverClaim {
-  added: boolean;
-  product: string;
-  license: {
-    id: string;
-    tier: string | null;
-    tierLabel: string | null;
-    status: string;
-    usable: boolean;
-    expiresAt: number | null;
-    deviceLimit: number;
+/** A path as this build can offer it, or `null` (not a path, or an action it cannot take). */
+function pathFrom(v: unknown): PortalObtainPath | null {
+  if (!isObject(v) || typeof v.kind !== "string" || v.action !== "add")
+    return null;
+  return {
+    kind: v.kind,
+    detail: strOrNull(v.detail),
+    label: strOrNull(v.label),
+    terms: termsFrom(v.terms),
+    action: "add",
+    reason: typeof v.reason === "string" ? v.reason : v.kind,
   };
 }
+
+/** A Worker before PS-04 sent no `paths`: its one reason and terms are the one path. */
+function legacyPath(reason: string, terms: PortalDiscoverTerms | null) {
+  const group = reason.startsWith("group:")
+    ? reason.slice("group:".length)
+    : null;
+  return {
+    kind:
+      reason === "free_with_account"
+        ? "auto_issue"
+        : group !== null
+          ? "group"
+          : reason,
+    detail: group,
+    label: null,
+    terms,
+    action: "add" as const,
+    reason,
+  };
+}
+
+function storeFrom(v: unknown): PortalStorefrontStore | null {
+  if (!isObject(v)) return null;
+  const url = strOrNull(v.url);
+  const label = strOrNull(v.label);
+  if (!url || !/^https:\/\//.test(url) || !label) return null;
+  return {
+    id: strOrNull(v.id) ?? url,
+    kind: strOrNull(v.kind) ?? "store",
+    label,
+    url,
+  };
+}
+
+/**
+ * One offer as the portal shows it, from the Worker's answer (PS-04's additive shape, or PX-W10's
+ * older one: no `cta`, no `paths`). `null` for an offer this build cannot show honestly: an
+ * action it does not know (S-22's `buy`), or an Add with no path to say why (Q-6).
+ */
+export function offerFromWire(raw: unknown): PortalDiscoverOffer | null {
+  if (!isObject(raw) || typeof raw.product !== "string") return null;
+  const cta = raw.cta ?? "add";
+  if (cta !== "add" && cta !== "link") return null;
+  const reason = typeof raw.reason === "string" ? raw.reason : null;
+  const terms = termsFrom(raw.offer);
+  const paths =
+    cta === "link"
+      ? []
+      : Array.isArray(raw.paths)
+        ? raw.paths.flatMap((p) => pathFrom(p) ?? [])
+        : reason !== null
+          ? [legacyPath(reason, terms)]
+          : [];
+  if (cta === "add" && paths.length === 0) return null;
+  const stores = Array.isArray(raw.stores)
+    ? raw.stores.flatMap((s) => storeFrom(s) ?? [])
+    : [];
+  const pres = raw as unknown as PortalPresentation;
+  return {
+    name: typeof raw.name === "string" ? raw.name : raw.product,
+    developerName: strOrNull(pres.developerName),
+    tintColor: strOrNull(pres.tintColor),
+    website: strOrNull(pres.website),
+    iconUrl: strOrNull(pres.iconUrl),
+    headerUrl: strOrNull(pres.headerUrl),
+    support: isObject(raw.support)
+      ? {
+          url: strOrNull(raw.support.url),
+          email: strOrNull(raw.support.email),
+        }
+      : null,
+    product: raw.product,
+    platforms: Array.isArray(raw.platforms)
+      ? raw.platforms.filter((p): p is string => typeof p === "string")
+      : [],
+    shortDescription: strOrNull(raw.shortDescription),
+    cta,
+    paths,
+    offer: paths[0]?.terms ?? null,
+    reason: paths[0]?.reason ?? null,
+    stores,
+  };
+}
+
+/** The storefront product page from the Worker's answer, or `null` when it can't be shown. */
+export function storefrontProductFromWire(
+  raw: unknown,
+): PortalStorefrontProduct | null {
+  const offer = offerFromWire(raw);
+  if (!offer || !isObject(raw)) return null;
+  return {
+    ...offer,
+    description: strOrNull(raw.description),
+    screenshots: Array.isArray(raw.screenshots)
+      ? raw.screenshots.filter((s): s is string => typeof s === "string")
+      : [],
+  };
+}
+
+/**
+ * `POST /api/discover/<p>/claim`: what Add created (`added`) or found already held. A licence for
+ * the identity paths, a library entry for an open product (PS-04, notes/S-21 §6.4); an older
+ * Worker sends no `kind` (a licence).
+ */
+export type PortalDiscoverClaim = { added: boolean; product: string } & (
+  | {
+      kind?: "license";
+      license: {
+        id: string;
+        tier: string | null;
+        tierLabel: string | null;
+        status: string;
+        usable: boolean;
+        expiresAt: number | null;
+        deviceLimit: number;
+      };
+    }
+  | { kind: "entry"; entry: { via: string; addedAt: number } }
+);
 
 // ── Account → Profile (PX-W16; PORTAL.md §4.30, G32, G33) ──────────────────────────────────
 
@@ -908,15 +1106,36 @@ export const portalApi = {
       `/api/licenses/${enc(product)}/${enc(id)}/devices/${enc(deviceId)}`,
       { method: "DELETE" },
     ),
-  library: () => call<PortalLibrary>("/api/library").then(licensedOnly),
+  library: () => call<PortalLibrary>("/api/library").then(libraryFromWire),
+  /** Discover's offers (PX-W10, PS-04), each as the portal can show it (`offerFromWire`). */
   discover: () =>
-    call<{ offers: WirePortalDiscoverOffer[] }>("/api/discover").then(
-      addableOffers,
-    ),
-  /** "Add to library" (G25): mints through the auto-issue path; idempotent per product. */
-  claimDiscover: (product: string) =>
+    call<{ offers?: unknown }>("/api/discover").then((body) => ({
+      offers: Array.isArray(body?.offers)
+        ? body.offers.flatMap((o) => offerFromWire(o) ?? [])
+        : [],
+    })),
+  /** The storefront product page (PS-04): `404` for anything this account can't see. */
+  storefrontProduct: async (product: string) => {
+    const body = storefrontProductFromWire(
+      await call<unknown>(`/api/discover/${enc(product)}`),
+    );
+    // An answer this build can't show reads like any product it can't see.
+    if (!body) throw new PortalApiError(404, "not_found");
+    return body;
+  },
+  /**
+   * "Add to library" (G25, PS-04): through `path` (a kind the offer listed), or the offer's first
+   * path when absent. Idempotent per product.
+   */
+  claimDiscover: (product: string, path?: string) =>
     call<PortalDiscoverClaim>(`/api/discover/${enc(product)}/claim`, {
       method: "POST",
+      ...(path ? { body: JSON.stringify({ path }) } : {}),
+    }),
+  /** PS-04: remove a library ENTRY (an open product); a licence is never removed here. */
+  removeLibraryEntry: (product: string) =>
+    call<{ ok: true; product: string }>(`/api/library/${enc(product)}`, {
+      method: "DELETE",
     }),
   product: (product: string) =>
     call<PortalProduct>(`/api/products/${enc(product)}`),

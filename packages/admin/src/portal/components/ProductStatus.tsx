@@ -20,6 +20,7 @@ const ICON: Record<StatusKind, LucideIcon> = {
   offlineGrace: AlertCircle,
   signedInApp: User,
   active: Check,
+  freeToUse: Check,
 };
 
 /** The tones that are issues: only these render as pills (EXPERIENCE §7). */
