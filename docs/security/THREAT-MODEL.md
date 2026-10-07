@@ -5899,7 +5899,10 @@ item 15 (merge takeover) are the threats; the rules below are what the routes ad
   account), so a join made with stolen proof of one account is reversible by its owner after the
   notice. Only methods still on the kept account go back: a method disconnected since the join (a
   lost passkey, a compromised provider account) never comes back silently, and the snapshot holds
-  method ids only, never their subjects, addresses or keys. The undo refuses (`last_link`) when an
+  method ids only, never their subjects, addresses or keys. Nor does an address come back as the
+  restored account's primary email on the snapshot's word: a primary none of the returning
+  methods carries (verified, if the primary is) gives way to the oldest verified address they
+  carry, or to none (a test). The undo refuses (`last_link`) when an
   account would be left with no way to sign in; that guard is the first statement of the undo's
   batch and aborts it, so a removal racing the undo cannot orphan either side (a test). A licence
   that goes back revokes every registry token the kept account minted on it during the window
@@ -5922,7 +5925,12 @@ item 15 (merge takeover) are the threats; the rules below are what the routes ad
   binding to the kept account's subject is cleared with the licence's other bindings at the undo,
   but a device bound to the kept account's subject on a licence that stays with the kept account
   is untouched. A picture the kept account did not use may be swept before an undo
-  (`sweepAvatars`, after a day), and the restored account then shows initials.
+  (`sweepAvatars`, after a day), and the restored account then shows initials. A kept account
+  that took the joined account's WebAuthn user handle and created a passkey under it during the
+  window keeps that handle after an undo, so both accounts share one `passkey_user_handle`.
+  Availability only: a credential is found by its id and belongs to one account, so neither signs
+  in as the other, but an authenticator keeps one passkey per RP id and user handle, and enrolling
+  on one account can replace the other's, which then signs in another way.
 
 ### The console's Users page and the relink tool (I-12)
 

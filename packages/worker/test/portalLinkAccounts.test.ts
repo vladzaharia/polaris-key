@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import { NOW, seedProduct } from "./seed.js";
 import { Device, seededWorld, type CardWorld } from "./identityCardHarness.js";
 import { insertLicense } from "../src/repo.js";
+import { deleteProduct } from "../src/admin/repo.js";
 import {
   ACCOUNT_SESSION_COOKIE,
   LINK_FLOW_COOKIE,
@@ -20,6 +21,7 @@ import {
   undoMerge,
 } from "../src/services/identity/accounts/mergeUndo.js";
 import type { Db } from "../src/db/types.js";
+import { EMAIL_ISSUER } from "../src/services/identity/accounts/repo.js";
 
 const LINK = "/api/me/link";
 
@@ -696,6 +698,195 @@ describe("undo within 72 hours", () => {
         b.accountId,
       );
       expect(handle?.passkey_user_handle).toBe(enrolled ? "h-a" : null);
+    }
+  });
+
+  it("gives the joined account its library entries back; the kept account keeps its own", async () => {
+    const w = await seededWorld();
+    await seedProduct(w.db, "other");
+    const b = await emailAccount(w, "mara@fennick.studio");
+    const a = await emailAccount(w, "a@example.com");
+    const entry = (accountId: string, product: string, at: number) =>
+      w.db.run(
+        "INSERT INTO library_entries (account_id, product, via, added_at) VALUES (?, ?, 'open', ?)",
+        accountId,
+        product,
+        at,
+      );
+    const library = async (accountId: string) =>
+      (
+        await w.db.all<{ product: string; added_at: number }>(
+          "SELECT product, added_at FROM library_entries WHERE account_id = ? ORDER BY product",
+          accountId,
+        )
+      ).map((r) => [r.product, r.added_at]);
+    await entry(a.accountId, "acme", NOW - 20);
+    await entry(a.accountId, "other", NOW - 10);
+    await entry(b.accountId, "other", NOW - 5);
+    await proveBoth(a, b);
+    const mergeId = (
+      (await (await join(a.d)).json()) as { merge: { id: string } }
+    ).merge.id;
+    // Joined: the kept account's own entry won for the product both had.
+    expect(await library(b.accountId)).toEqual([
+      ["acme", NOW - 20],
+      ["other", NOW - 5],
+    ]);
+    expect(
+      (await a.d.send("POST", `${LINK}/undo`, { merge: mergeId })).status,
+    ).toBe(200);
+    expect(await library(a.accountId)).toEqual([
+      ["acme", NOW - 20],
+      ["other", NOW - 10],
+    ]);
+    expect(await library(b.accountId)).toEqual([["other", NOW - 5]]);
+  });
+
+  it("never brings back an entry, consent or acceptance the kept account no longer holds", async () => {
+    const w = await seededWorld();
+    await seedProduct(w.db, "other");
+    const b = await emailAccount(w, "mara@fennick.studio");
+    const a = await emailAccount(w, "a@example.com");
+    for (const [product, at] of [
+      ["acme", NOW - 20],
+      ["other", NOW - 10],
+    ] as const)
+      await w.db.run(
+        "INSERT INTO library_entries (account_id, product, via, added_at) VALUES (?, ?, 'open', ?)",
+        a.accountId,
+        product,
+        at,
+      );
+    await w.db.run(
+      `INSERT OR REPLACE INTO account_product_grants
+         (account_id, product, claims_json, granted_at, modified_at, scope_hash)
+       VALUES (?, 'other', '[]', ?, ?, NULL)`,
+      a.accountId,
+      NOW - 10,
+      NOW - 10,
+    );
+    for (const product of ["acme", "other"])
+      await w.db.run(
+        `INSERT INTO account_terms_acceptances (account_id, product, version, url, accepted_at)
+         VALUES (?, ?, 'v1', 'https://example.com/terms', ?)`,
+        a.accountId,
+        product,
+        NOW - 10,
+      );
+    await proveBoth(a, b);
+    const mergeId = (
+      (await (await join(a.d)).json()) as { merge: { id: string } }
+    ).merge.id;
+    // During the window the kept account removes acme from its library, and other is deleted.
+    await w.db.run(
+      "DELETE FROM library_entries WHERE account_id = ? AND product = 'acme'",
+      b.accountId,
+    );
+    await deleteProduct(w.db, "other", NOW + 60);
+    expect(
+      (await a.d.send("POST", `${LINK}/undo`, { merge: mergeId })).status,
+    ).toBe(200);
+    const rows = (table: string, accountId: string) =>
+      w.db.all<{ product: string }>(
+        `SELECT product FROM ${table} WHERE account_id = ? AND product IN ('acme', 'other')
+          ORDER BY product`,
+        accountId,
+      );
+    expect(await rows("library_entries", a.accountId)).toEqual([]);
+    expect(await rows("library_entries", b.accountId)).toEqual([]);
+    expect(
+      await w.db.all(
+        "SELECT product FROM account_product_grants WHERE product = 'other'",
+      ),
+    ).toEqual([]);
+    // The acceptance the kept account still held goes back; the deleted product's does not.
+    expect(await rows("account_terms_acceptances", a.accountId)).toEqual([
+      { product: "acme" },
+    ]);
+    expect(await rows("account_terms_acceptances", b.accountId)).toEqual([]);
+  });
+
+  it("never restores a primary email the joined account no longer holds", async () => {
+    const primary = (w: CardWorld, accountId: string) =>
+      w.db.first<{
+        primary_email: string | null;
+        primary_email_verified_at: number | null;
+      }>(
+        "SELECT primary_email, primary_email_verified_at FROM accounts WHERE id = ?",
+        accountId,
+      );
+    const disconnect = async (d: Device, display: string) => {
+      const methods = (await (
+        await d.send("GET", "/api/me/methods")
+      ).json()) as {
+        methods: Array<{ id: string; display: string }>;
+      };
+      const m = methods.methods.find((x) => x.display === display)!;
+      expect((await d.send("DELETE", `/api/me/methods/${m.id}`)).status).toBe(
+        200,
+      );
+    };
+    const otherMethod = (w: CardWorld, accountId: string, row: string) =>
+      w.db.run(
+        `INSERT INTO account_links (id, account_id, issuer_key, tenant_scope, subject, kind,
+                                    email, email_verified, display_name, created_at, last_used_at)
+         VALUES ${row}`,
+        accountId,
+      );
+
+    // Its primary address was disconnected during the window; its other address takes over.
+    {
+      const w = await seededWorld();
+      const b = await emailAccount(w, "mara@fennick.studio");
+      const a = await emailAccount(w, "a@example.com");
+      await otherMethod(
+        w,
+        a.accountId,
+        `('lnk_a2', ?, '${EMAIL_ISSUER}', '', 'a2@example.com', 'email', 'a2@example.com', 1,
+          NULL, ${NOW + 1}, ${NOW + 1})`,
+      );
+      await proveBoth(a, b);
+      const mergeId = (
+        (await (await join(a.d)).json()) as { merge: { id: string } }
+      ).merge.id;
+      await disconnect(a.d, "a@example.com");
+      expect(
+        (await a.d.send("POST", `${LINK}/undo`, { merge: mergeId })).status,
+      ).toBe(200);
+      expect(await primary(w, a.accountId)).toEqual({
+        primary_email: "a2@example.com",
+        primary_email_verified_at: NOW + 1,
+      });
+    }
+
+    // Disconnected, and another account's since: with no other address, it has none.
+    {
+      const w = await seededWorld();
+      const b = await emailAccount(w, "mara@fennick.studio");
+      const a = await emailAccount(w, "a@example.com");
+      await otherMethod(
+        w,
+        a.accountId,
+        `('lnk_steam_a', ?, 'steam', '', '76561198000000001', 'steam', NULL, 0, 'marafox',
+          ${NOW}, ${NOW})`,
+      );
+      await proveBoth(a, b);
+      const mergeId = (
+        (await (await join(a.d)).json()) as { merge: { id: string } }
+      ).merge.id;
+      await disconnect(a.d, "a@example.com");
+      const c = await emailAccount(w, "a@example.com");
+      expect(
+        (await a.d.send("POST", `${LINK}/undo`, { merge: mergeId })).status,
+      ).toBe(200);
+      expect(await linksOf(w, a.accountId)).toEqual(["76561198000000001"]);
+      expect(await primary(w, a.accountId)).toEqual({
+        primary_email: null,
+        primary_email_verified_at: null,
+      });
+      expect((await primary(w, c.accountId))?.primary_email).toBe(
+        "a@example.com",
+      );
     }
   });
 

@@ -28,13 +28,16 @@ export interface ExpandProps {
 /**
  * Run `then` once every animation on `el` and inside it has finished or been cancelled: in this
  * frame when nothing is running (no Web Animations API, reduced motion), so an instant swap never
- * waits for a promise. Returns a cancel function.
+ * waits for a promise. An endless animation inside (a button's spinner, `iterations: Infinity`)
+ * never finishes, so it is not waited on: the region's own transitions are. Returns a cancel
+ * function.
  */
 function whenSettled(el: Element, then: () => void): () => void {
-  const running =
+  const running = (
     typeof el.getAnimations === "function"
       ? el.getAnimations({ subtree: true })
-      : [];
+      : []
+  ).filter((a) => a.effect?.getTiming?.().iterations !== Infinity);
   if (running.length === 0) {
     then();
     return () => undefined;

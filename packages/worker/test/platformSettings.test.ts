@@ -20,6 +20,7 @@ import {
   refreshPlatformSettings,
   resolveSetting,
   isHardOffVar,
+  onlyAfterAChange,
   settingConfirmLevel,
   unrecognisedCeilingVars,
   validateSettingValue,
@@ -1088,5 +1089,31 @@ describe("A-13 hardening", () => {
     } finally {
       real.confirm = original;
     }
+  });
+});
+
+describe("onlyAfterAChange", () => {
+  it("guards a flat VALUES (...) insert on changes()", () => {
+    const out = onlyAfterAChange({
+      sql: "INSERT INTO t (a, b) VALUES (?, ?)",
+      params: [1, 2],
+    });
+    expect(out.sql).toBe(
+      "INSERT INTO t (a, b) SELECT ?, ? WHERE changes() > 0",
+    );
+    expect(out.params).toEqual([1, 2]);
+  });
+
+  it("throws rather than return a statement it could not guard", () => {
+    // Nested parentheses, a trailing clause and an INSERT ... SELECT all fall outside the shape it
+    // rewrites; returned unchanged, each would insert its audit row even after a no-op write.
+    for (const sql of [
+      "INSERT INTO t (a, b) VALUES (?, lower(?))",
+      "INSERT INTO t (a) VALUES (?) ON CONFLICT DO NOTHING",
+      "INSERT INTO t (a) SELECT ?",
+    ])
+      expect(() => onlyAfterAChange({ sql, params: [1] })).toThrow(
+        /onlyAfterAChange/,
+      );
   });
 });

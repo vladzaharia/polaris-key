@@ -376,6 +376,36 @@ describe("the link engine", () => {
       error: "last_link",
     });
   });
+
+  it("a removal that loses a race to a move is not_found, never only_email, without the email rule", async () => {
+    const w = await world();
+    const a = await signedIn(w.db, emailIdentity("a@example.com"));
+    const b = await signedIn(w.db, emailIdentity("b@example.com"));
+    const proof = { accountId: a.account.id, authenticatedAt: NOW };
+    const moving = await linkIdentity(w.ctx(), proof, oidcIdentity("u-2"));
+    if (!moving.ok) throw new Error("link failed");
+    expect((await linkIdentity(w.ctx(), proof, oidcIdentity("u-3"))).ok).toBe(
+      true,
+    );
+    // The method moves to another account between the read and the DELETE (a join's undo).
+    const racy = Object.create(w.db) as Db;
+    racy.batch = async (stmts) => {
+      await w.db.run(
+        "UPDATE account_links SET account_id = ? WHERE id = ?",
+        b.account.id,
+        moving.link.id,
+      );
+      return w.db.batch(stmts);
+    };
+    expect(
+      await unlinkIdentity({ ...w.ctx(), db: racy }, proof, moving.link.id),
+    ).toEqual({ ok: false, error: "not_found" });
+    const held = await w.db.first<{ account_id: string }>(
+      "SELECT account_id FROM account_links WHERE id = ?",
+      moving.link.id,
+    );
+    expect(held?.account_id).toBe(b.account.id);
+  });
 });
 
 // ── Merge ─────────────────────────────────────────────────────────────────────────────────────

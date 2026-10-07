@@ -836,10 +836,13 @@ export async function processLadderRetry(
  * without a queue binding.
  *
  * A due row the re-check cannot act on (an unreadable `wanted_ref`, a repo ref with no applied
- * commit to read it at) is read past, never counted: the budget is what is enqueued, so a few such
- * rows, always the oldest due, cannot crowd every ladder retry out of a run. They are not held
- * off either: a resync that brings the commit pulls at once (the planner waits out the back-off of
- * an unchanged ref). Reading is bounded by `RECHECK_MAX_PAGES` pages of `limit` rows.
+ * commit to read it at) is read past, never counted: the budget is what is enqueued, so such rows
+ * cannot crowd every ladder retry out of a run. Each is also held off as a failed pull is
+ * (`attempts` up, the next back-off step), so it sorts behind the rows that fell due before it
+ * rather than staying the oldest due and filling the pages of every run. The cost: a resync that
+ * brings the missing commit waits out that back-off (15 minutes, doubling to about a day; with
+ * the nightly run, two days at worst), as the planner does for any unchanged ref. Reading is
+ * bounded by `RECHECK_MAX_PAGES` pages of `limit` rows.
  */
 export async function recheckHostedAssets(
   env: Pick<Env, "HOSTED_ASSET_QUEUE" | "IMAGES">,
@@ -850,7 +853,11 @@ export async function recheckHostedAssets(
   if (!env.HOSTED_ASSET_QUEUE || limit <= 0) return 0;
   const messages: AssetQueueMessage[] = [];
   const statements: DbStatement[] = [];
-  // Nothing is written until every page is read, so OFFSET pages over a stable result.
+  // Nothing is written until every page is read, so this run's own holds never move a row from one
+  // OFFSET page to another. Concurrent writes (a resync's planner, a consumer recording an outcome)
+  // still can: a row may then be read twice, which `seen` acts on once, or stepped past, which the
+  // next run reads.
+  const seen = new Set<string>();
   for (let page = 0; page < RECHECK_MAX_PAGES; page++) {
     const due = await db.all<{
       product: string;
@@ -877,6 +884,9 @@ export async function recheckHostedAssets(
     );
     for (const r of due) {
       if (messages.length >= limit) break;
+      const key = `${r.product}|${r.slot}|${r.locale}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
       if (!r.pull) {
         if (!r.sha256 || variantFamily(r.slot) === null) continue;
         messages.push(
@@ -887,9 +897,18 @@ export async function recheckHostedAssets(
       }
       if (r.wanted_ref === null) continue;
       const ref = parseWantedRef(r.wanted_ref);
-      if (!ref || !isManifestAssetSlot(r.slot)) continue;
       const commit = gitShaOrNull(r.applied_sha);
-      if (ref.kind === "repo" && !commit) continue;
+      if (
+        !ref ||
+        !isManifestAssetSlot(r.slot) ||
+        (ref.kind === "repo" && !commit)
+      ) {
+        // Nothing to send: held off as a failed pull is, never counted against the budget.
+        statements.push(
+          stmtPullFailed(r.product, r.slot, r.wanted_ref, now, null),
+        );
+        continue;
+      }
       messages.push({
         v: 1,
         product: r.product,
@@ -903,9 +922,8 @@ export async function recheckHostedAssets(
     }
     if (messages.length >= limit || due.length < limit) break;
   }
-  if (messages.length === 0) return 0;
-  await enqueueAssetPulls(env, messages);
-  await db.batch(statements);
+  if (messages.length > 0) await enqueueAssetPulls(env, messages);
+  if (statements.length > 0) await db.batch(statements);
   return messages.length;
 }
 

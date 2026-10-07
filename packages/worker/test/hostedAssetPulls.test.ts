@@ -41,6 +41,7 @@ import type { FetchImpl } from "../src/core/safeFetch.js";
 import { handleAssetQueue } from "../src/assetQueue.js";
 import type { Env } from "../src/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
+import type { Db, DbParam } from "../src/db/types.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { R2Mock, asR2, installDigestStream } from "./r2Mock.js";
@@ -534,6 +535,54 @@ describe("recheckHostedAssets", () => {
     expect(await recheckHostedAssets({}, db, later + 10_000)).toBe(0);
   });
 
+  it("enqueues a row once even when a concurrent insert shifts it onto the next page", async () => {
+    await syncAndPull(
+      iconManifest("https://cdn.example.com/none.png"),
+      NOW,
+      upstream({}),
+    );
+    // Page one: a row it cannot act on, then the owed pull it sends. A page that full reads on.
+    await db.run(
+      `UPDATE hosted_assets SET wanted_ref = 'not a ref', next_attempt_at = ?
+        WHERE slot = 'listing.icon'`,
+      NOW + 10,
+    );
+    await db.run(
+      `UPDATE hosted_assets SET next_attempt_at = ? WHERE slot = 'presentation.icon'`,
+      NOW + 20,
+    );
+    // Between the pages a resync inserts a slot that sorts first, so OFFSET 2 lands on the
+    // owed pull again.
+    let reads = 0;
+    const racing: Db = Object.assign(Object.create(db) as Db, {
+      all: async (sql: string, ...params: DbParam[]) => {
+        const rows = await db.all(sql, ...params);
+        if (++reads === 1)
+          await db.run(
+            `INSERT INTO hosted_assets (product, slot, locale, origin, source_kind, source_ref,
+               status, modified_at, wanted_ref, attempts, next_attempt_at)
+             VALUES ('djdl', 'listing.header', '', 'manifest', 'url', ?, 'pending', ?, ?, 0, NULL)`,
+            URL_B,
+            NOW,
+            wantedRefOf({ kind: "url", src: URL_B }),
+          );
+        return rows;
+      },
+    });
+    const t = NOW + PULL_BACKOFF_BASE_SECONDS;
+    const before = q.sent.length;
+    expect(await recheckHostedAssets(env, racing, t, 2)).toBe(1);
+    expect(reads).toBe(2);
+    expect(q.sent.slice(before)).toEqual([
+      expect.objectContaining({ slot: "presentation.icon", reason: "recheck" }),
+    ]);
+    // The slot it stepped past is the next run's.
+    expect(await recheckHostedAssets(env, db, t, 2)).toBe(1);
+    expect(q.sent.slice(before + 1)).toEqual([
+      expect.objectContaining({ slot: "listing.header", reason: "recheck" }),
+    ]);
+  });
+
   it("leaves ready, console and deleted-product rows alone", async () => {
     await syncAndPull(
       iconManifest(URL_A),
@@ -919,17 +968,58 @@ describe("owed ladders", () => {
     );
     const t = NOW + PULL_BACKOFF_BASE_SECONDS;
     const before = q.sent.length;
+    const iconAttempts = Number((await row("djdl", "listing.icon"))?.attempts);
     // A budget of one still reaches the ladder retry behind them.
     expect(await recheckHostedAssets(env, db, t, 1)).toBe(1);
     expect(q.sent.slice(before)).toEqual([
       expect.objectContaining({ slot: "presentation.icon", kind: "ladder" }),
     ]);
-    // Read past, never held off: nothing on the skipped rows changed.
-    expect((await row("djdl", "listing.icon"))?.next_attempt_at).toBe(NOW + 10);
-    expect((await row("djdl", "listing.header"))?.next_attempt_at).toBeNull();
-    expect((await row("djdl", "listing.header"))?.attempts).toBe(0);
-    // With nothing left to send, the run ends: the skipped rows stay due and unsent.
+    // Read past and held off as failed pulls are: one more attempt, the next back-off step.
+    expect(await row("djdl", "listing.icon")).toMatchObject({
+      attempts: iconAttempts + 1,
+      next_attempt_at: t + pullBackoffSeconds(iconAttempts + 1),
+    });
+    expect(await row("djdl", "listing.header")).toMatchObject({
+      attempts: 1,
+      next_attempt_at: t + PULL_BACKOFF_BASE_SECONDS,
+    });
+    // With nothing left to send, the run ends: the skipped rows stay unsent.
     expect(await recheckHostedAssets(env, db, t, 1)).toBe(0);
+  });
+
+  it("holds off rows it cannot act on, so they stop filling every run's pages", async () => {
+    // More unreadable refs than one run reads (RECHECK_MAX_PAGES pages of one row), all due
+    // before the one owed pull it could send.
+    for (let n = 1; n <= 21; n++)
+      await db.run(
+        `INSERT INTO hosted_assets (product, slot, locale, origin, source_kind, source_ref,
+           status, modified_at, wanted_ref, attempts, next_attempt_at)
+         VALUES ('djdl', ?, '', 'manifest', 'url', 'x', 'failed', ?, 'not a ref', 0, ?)`,
+        `listing.screenshot:${n}`,
+        NOW,
+        NOW + n,
+      );
+    await db.run(
+      `INSERT INTO hosted_assets (product, slot, locale, origin, source_kind, source_ref,
+         status, modified_at, wanted_ref, attempts, next_attempt_at)
+       VALUES ('djdl', 'presentation.icon', '', 'manifest', 'url', ?, 'pending', ?, ?, 0, ?)`,
+      URL_A,
+      NOW,
+      wantedRefOf({ kind: "url", src: URL_A }),
+      NOW + 100,
+    );
+    const t = NOW + 1_000;
+    const before = q.sent.length;
+    // The first run reads its 20 pages of unusable rows and sends nothing, but holds them off.
+    expect(await recheckHostedAssets(env, db, t, 1)).toBe(0);
+    expect((await row("djdl", "listing.screenshot:20"))?.next_attempt_at).toBe(
+      t + PULL_BACKOFF_BASE_SECONDS,
+    );
+    // So the next one reads past the one it had not reached and sends the owed pull.
+    expect(await recheckHostedAssets(env, db, t, 1)).toBe(1);
+    expect(q.sent.slice(before)).toEqual([
+      expect.objectContaining({ slot: "presentation.icon", reason: "recheck" }),
+    ]);
   });
 
   it("drops a ladder message for bytes the slot no longer holds", async () => {

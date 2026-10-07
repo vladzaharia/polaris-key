@@ -123,6 +123,33 @@ describe("Expand", () => {
     expect(screen.queryByText("Remove Studio PC?")).toBeNull();
   });
 
+  it("never waits on an endless animation inside (a pending button's spinner)", async () => {
+    // A spinner runs for ever: its `finished` never settles.
+    const spinner = {
+      finished: new Promise<Animation>(() => undefined),
+      effect: { getTiming: () => ({ iterations: Infinity }) },
+    } as unknown as Animation;
+    (Element.prototype as { getAnimations?: unknown }).getAnimations = () => [
+      spinner,
+    ];
+    const { rerender } = render(<Probe open />);
+    rerender(<Probe open={false} />);
+    await act(async () => undefined);
+    expect(screen.queryByText("Remove Studio PC?")).toBeNull();
+    // Beside the closing's own transition, only that transition is waited on.
+    const closing = deferredAnimation();
+    (Element.prototype as { getAnimations?: unknown }).getAnimations = () => [
+      spinner,
+      closing.anim,
+    ];
+    rerender(<Probe open />);
+    rerender(<Probe open={false} />);
+    await act(async () => undefined);
+    expect(screen.getByText("Remove Studio PC?")).toBeTruthy();
+    await act(async () => closing.finish());
+    expect(screen.queryByText("Remove Studio PC?")).toBeNull();
+  });
+
   it("a re-open during the closing cancels it: the content stays, and the old close never unmounts it", async () => {
     const first = deferredAnimation();
     (Element.prototype as { getAnimations?: unknown }).getAnimations = () => [
