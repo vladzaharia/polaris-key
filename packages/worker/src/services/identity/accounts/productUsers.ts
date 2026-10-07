@@ -29,25 +29,36 @@
 import {
   PAIRWISE_SUBJECT_PATTERN,
   accountForSubject,
+  isFloatingLicense,
   licenseAccountId,
+  licenseEmail,
   resolveSubject,
 } from "../../../core/accountSubjects.js";
+import { associateLicenseHolder } from "../../../core/licenseHolders.js";
 import {
   runSubjectDelete,
   runSubjectExport,
   subjectDataSize,
 } from "../../../core/subjectHooks.js";
-import { getProduct } from "../../../core/data.js";
+import { getLicense, getProduct, type LicenseRow } from "../../../core/data.js";
 import { randomId, type Db } from "../../../core/platform.js";
-import { sendSecurityNotice } from "../portal/email.js";
+import { sendNotice, sendSecurityNotice } from "../portal/email.js";
 import {
+  licenseAssignedToYouNotice,
+  licenseMadeFloatingNotice,
+  licenseReassignedAwayNotice,
   licenseRelinkUndoneNotice,
   licenseRelinkedAwayNotice,
   licenseRelinkedInNotice,
+  type NoticeMessage,
 } from "../portal/notices.js";
 import { detachLicense, reassignLicense } from "./claim.js";
 import type { AccountContext } from "./links.js";
-import { getAccountRow } from "./repo.js";
+import {
+  getAccountRow,
+  normalizeEmail,
+  verifiedAccountEmails,
+} from "./repo.js";
 import { PRODUCT_SIGNIN_ACTION, signInKindOf } from "./signIn.js";
 
 /** How long a relink can be undone (S-16 §5.4 item 9: 72 hours). */
@@ -327,8 +338,16 @@ export interface ProductUserDevice {
   signedIn?: boolean;
 }
 
+/**
+ * What a `license_relinks` row records (LX-30): an I-12 relink between two subjects, or one of the
+ * tool's two holder moves, **Make floating** (`floating`) and **Reassign…** (`reassign`).
+ */
+export type RelinkKind = "relink" | "floating" | "reassign";
+
 export interface ProductUserRelink {
   id: string;
+  /** LX-30: a relink, or a holder move (Make floating, Reassign…). */
+  kind: RelinkKind;
   licenseId: string;
   direction: "in" | "out";
   /** The other side of the move, as a subject of this product (`null` after a deletion). */
@@ -681,6 +700,63 @@ interface RelinkRow {
   undone_at: number | null;
   undone_by: string | null;
   undo_reason: string | null;
+  /** LX-30: a holder move's before and after (`HolderSnapshot` as JSON); NULL for a relink. */
+  holder_json?: string | null;
+}
+
+/** One side of a holder move: the licence's own name and email (never the account's). */
+export interface HolderFacts {
+  name: string | null;
+  email: string | null;
+}
+
+/** What a holder move changed, kept on its row (`license_relinks.holder_json`) for the undo. */
+interface HolderSnapshot {
+  kind: "floating" | "reassign";
+  from: HolderFacts;
+  to: HolderFacts;
+  devicesSignedOut: number;
+}
+
+/**
+ * The subject a holder move left the licence with. `to_subject` is NOT NULL (migration 0082), so a
+ * move that leaves the licence with no account (Make floating, or a reassignment to an address no
+ * account has verified yet) writes `''`; every reader maps it back to "no subject" here.
+ */
+const NO_SUBJECT = "";
+
+function subjectOrNull(subject: string | null): string | null {
+  return subject === null || subject === NO_SUBJECT ? null : subject;
+}
+
+function facts(raw: unknown): HolderFacts {
+  const o = (raw ?? {}) as Record<string, unknown>;
+  return {
+    name: typeof o.name === "string" ? o.name : null,
+    email: typeof o.email === "string" ? o.email : null,
+  };
+}
+
+/** A row's holder snapshot, or `null` for an I-12 relink (or an unreadable value). */
+function holderOf(r: Pick<RelinkRow, "holder_json">): HolderSnapshot | null {
+  if (!r.holder_json) return null;
+  try {
+    const o = JSON.parse(r.holder_json) as Record<string, unknown>;
+    if (o.kind !== "floating" && o.kind !== "reassign") return null;
+    return {
+      kind: o.kind,
+      from: facts(o.from),
+      to: facts(o.to),
+      devicesSignedOut:
+        typeof o.devicesSignedOut === "number" ? o.devicesSignedOut : 0,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function kindOf(r: Pick<RelinkRow, "holder_json">): RelinkKind {
+  return holderOf(r)?.kind ?? "relink";
 }
 
 async function relinksForSubjects(
@@ -704,9 +780,10 @@ async function relinksForSubjects(
     const incoming = subjects.includes(r.to_subject);
     out.push({
       id: r.id,
+      kind: kindOf(r),
       licenseId: r.license_id,
       direction: incoming ? "in" : "out",
-      otherSubject: incoming ? r.from_subject : r.to_subject,
+      otherSubject: subjectOrNull(incoming ? r.from_subject : r.to_subject),
       reason: r.reason,
       actorName: r.actor_name,
       createdAt: r.created_at,
@@ -718,14 +795,45 @@ async function relinksForSubjects(
   return out;
 }
 
+/**
+ * Can the move still be undone? Not undone, inside its 72 hours, and the licence still sits where
+ * the move put it:
+ *
+ *   - a relink: still in the account it was moved to;
+ *   - Make floating: still floating (no account, no email: nobody added the key to an account
+ *     and nobody assigned it since);
+ *   - Reassign…: still carrying the address the move set, and either in no account, in the
+ *     account it joined at the move, or in an account that has verified that address (it joined
+ *     through that address's own verification). A claim by key into another account, a later
+ *     reassignment or an email edit closes the undo.
+ */
 async function relinkUndoable(
   db: Db,
   r: RelinkRow,
   now: number,
 ): Promise<boolean> {
   if (r.undone_at !== null || now >= r.undo_until) return false;
-  const owner = await licenseAccountId(db, r.product, r.license_id);
-  return owner !== null && owner === r.to_account_id;
+  const holder = holderOf(r);
+  if (!holder) {
+    const owner = await licenseAccountId(db, r.product, r.license_id);
+    return owner !== null && owner === r.to_account_id;
+  }
+  const license = await getLicense(db, r.product, r.license_id);
+  if (!license) return false;
+  if (holder.kind === "floating") return isFloatingLicense(license);
+  const email = licenseEmail(license);
+  if (
+    email === null ||
+    holder.to.email === null ||
+    normalizeEmail(email) !== normalizeEmail(holder.to.email)
+  )
+    return false;
+  const owner = license.account_id ?? null;
+  if (owner === null || owner === r.to_account_id) return true;
+  const target = normalizeEmail(holder.to.email);
+  return (await verifiedAccountEmails(db, owner)).some(
+    (e) => normalizeEmail(e) === target,
+  );
 }
 
 /** Why a relink or its undo was refused. Codes the admin layer maps to its error bodies. */
@@ -745,7 +853,17 @@ export type RelinkRefusal =
   /** The relink does not exist for this product. */
   | "relink_not_found"
   /** Undone already, past the 72 hours, or the licence has moved on since. */
-  | "undo_unavailable";
+  | "undo_unavailable"
+  /** LX-30: Make floating on a licence that is already floating. */
+  | "already_floating"
+  /** LX-30: Reassign… on a floating licence (a floating licence is given a holder by Assign). */
+  | "license_floating"
+  /** LX-30: Reassign… to the address the licence already carries. */
+  | "same_holder"
+  /** LX-30: the typed confirmation is not the licence's name or id. */
+  | "confirm_required"
+  /** LX-30: Reassign… without a usable email address. */
+  | "email_invalid";
 
 export type RelinkResult =
   | {
@@ -902,17 +1020,22 @@ export type UndoResult =
   | {
       ok: true;
       licenseId: string;
-      /** The subject the licence returns to (`null` when that account was deleted: floating). */
+      /** The subject the licence returns to (`null` when that account was deleted, or when the
+       *  move took the licence from an address with no account: floating or waiting). */
       toSubject: string | null;
-      fromSubject: string;
+      /** The subject the licence leaves (`null` when it had none: floating or waiting). */
+      fromSubject: string | null;
       noticesSent: number;
     }
   | { ok: false; reason: RelinkRefusal };
 
 /**
- * Undo a relink within 72 hours: the licence goes back to the account it came from, provided it
- * still sits where the relink put it (a later relink, a detach or a deletion closes the undo).
- * Same notices, same reason rule; the caller has checked the step-up again.
+ * Undo a relink, or a holder move (LX-30), within 72 hours: the licence goes back to the account
+ * it came from, provided it still sits where the move put it (a later relink, a detach, a claim or
+ * a deletion closes the undo; `relinkUndoable`). A holder move's undo also puts the licence's own
+ * `name` and `email` back. Moving it back into an account lifts that account's auto-attach block
+ * (`reassignLicense`), which is how the block the move wrote goes. Same notices, same reason rule;
+ * the caller has checked the step-up again.
  */
 export async function undoRelink(
   ctx: AccountContext,
@@ -934,6 +1057,8 @@ export async function undoRelink(
   if (!r) return { ok: false, reason: "relink_not_found" };
   if (!(await relinkUndoable(db, r, now)))
     return { ok: false, reason: "undo_unavailable" };
+  const holder = holderOf(r);
+  if (holder) return undoHolderMove(ctx, r, holder, reason, args.actor);
 
   const productRow = await getProduct(db, args.product);
   let noticesSent = 0;
@@ -962,27 +1087,538 @@ export async function undoRelink(
   });
   if (!moved.ok || moved.previousAccountId !== r.to_account_id)
     return { ok: false, reason: "conflict" };
+  await markUndone(db, r, args.actor.sub, reason, now);
+  return {
+    ok: true,
+    licenseId: r.license_id,
+    toSubject: await subjectOfAccount(db, r.from_account_id, args.product),
+    fromSubject: subjectOrNull(r.to_subject),
+    noticesSent,
+  };
+}
+
+async function markUndone(
+  db: Db,
+  r: RelinkRow,
+  actorSub: string,
+  reason: string,
+  now: number,
+): Promise<void> {
   await db.run(
     `UPDATE license_relinks SET undone_at = ?, undone_by = ?, undo_reason = ?
       WHERE product = ? AND id = ? AND undone_at IS NULL`,
     now,
-    args.actor.sub,
+    actorSub,
     reason,
-    args.product,
-    args.relinkId,
+    r.product,
+    r.id,
   );
-  const back = r.from_account_id
-    ? await db.first<{ subject: string }>(
-        "SELECT subject FROM account_product_subjects WHERE account_id = ? AND product = ?",
-        r.from_account_id,
-        args.product,
-      )
-    : null;
+}
+
+/** The account's pairwise subject for the product, or `null` (no account, or none yet). */
+async function subjectOfAccount(
+  db: Db,
+  accountId: string | null,
+  product: string,
+): Promise<string | null> {
+  if (!accountId) return null;
+  const row = await db.first<{ subject: string }>(
+    "SELECT subject FROM account_product_subjects WHERE account_id = ? AND product = ?",
+    accountId,
+    product,
+  );
+  return row?.subject ?? null;
+}
+
+// ── Holder moves: Make floating and Reassign… (LX-30; notes/S-24 §5.5, D20) ─────────────────
+//
+// The relink tool's two moves keyed by the LICENCE rather than by a subject, so they also reach a
+// licence that is waiting for its email (no account, so no subject). Both carry every control a
+// relink carries (the caller's step-up, a reason, a notice before the change, the daily alert, a
+// 72-hour undo) plus a typed confirmation the Worker checks: the licence's name, or its id.
+//
+//   - Make floating: the licence leaves its account through `reassignLicense(toAccountId: null)`
+//     (which writes the auto-attach block for that account; nothing here writes one), and its
+//     `name` and `email` are cleared. It keeps working on every device that has its key.
+//   - Reassign…: the same move away, then the new `name` and `email` are set and Core's
+//     `associateLicenseHolder` runs (S-24 D3): the licence joins the account that verified the new
+//     address, if one did, or waits for it. The answer never says which (D4).
+//
+// Each writes one `license_relinks` row whose `holder_json` keeps the before and after for the
+// undo (`undoRelink` → `undoHolderMove`).
+
+/** The longest email address (RFC 5321's path limit). */
+const EMAIL_MAX = 254;
+
+/** A usable address: trimmed, one `@` with something either side, no whitespace. */
+export function cleanEmail(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const v = raw.trim();
+  if (v.length === 0 || v.length > EMAIL_MAX) return null;
+  return /^[^\s@]+@[^\s@]+$/.test(v) ? v : null;
+}
+
+/** The typed confirmation: the licence's id, or its trimmed non-empty name. */
+export function holderConfirmMatches(
+  license: Pick<LicenseRow, "id" | "name">,
+  confirm: unknown,
+): boolean {
+  if (typeof confirm !== "string") return false;
+  if (confirm === license.id) return true;
+  const name = (license.name ?? "").trim();
+  return name !== "" && confirm === name;
+}
+
+export type HolderMoveResult =
+  | {
+      ok: true;
+      relinkId: string;
+      undoUntil: number;
+      noticesSent: number;
+      /** This operator passed the daily relink count: an alert was raised. */
+      alert: boolean;
+      /** The licence's holder before the move, for the console audit row. */
+      before: { subject: string | null } & HolderFacts;
+      /** After: `null` for Make floating. */
+      after: HolderFacts | null;
+      devicesSignedOut: number;
+    }
+  | { ok: false; reason: RelinkRefusal };
+
+/** Shared checks of both moves: the licence is this product's, the confirmation, the reason. */
+async function holderMoveTarget(
+  db: Db,
+  args: {
+    product: string;
+    licenseId: string;
+    confirm: unknown;
+    reason: unknown;
+  },
+): Promise<
+  | { ok: true; license: LicenseRow; reason: string }
+  | { ok: false; reason: RelinkRefusal }
+> {
+  const license = await getLicense(db, args.product, args.licenseId);
+  if (!license) return { ok: false, reason: "license_not_found" };
+  if (!holderConfirmMatches(license, args.confirm))
+    return { ok: false, reason: "confirm_required" };
+  const reason = cleanReason(args.reason);
+  if (!reason) return { ok: false, reason: "reason_required" };
+  return { ok: true, license, reason };
+}
+
+/**
+ * Tell the side a licence leaves: every verified email of the account it is in (plus the
+ * licence's own address), or, when it is waiting, its address alone. Never throws.
+ */
+async function noticeLeavingSide(
+  ctx: AccountContext,
+  owner: string | null,
+  address: string | null,
+  build: (inAccount: boolean) => NoticeMessage,
+): Promise<number> {
+  const { db, env, now } = ctx;
+  if (owner)
+    return sendSecurityNotice(env, db, owner, address, build(true), now);
+  if (!address) return 0;
+  try {
+    return (await sendNotice(env, db, address, build(false), now)) ? 1 : 0;
+  } catch {
+    // As `sendSecurityNotice`: a failed send never fails the change; the count says it.
+    return 0;
+  }
+}
+
+async function noticeAddress(
+  ctx: AccountContext,
+  address: string,
+  message: NoticeMessage,
+): Promise<number> {
+  try {
+    return (await sendNotice(ctx.env, ctx.db, address, message, ctx.now))
+      ? 1
+      : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/** Write a holder move's row; answers its id, its undo deadline and whether to alert. */
+async function recordHolderMove(
+  ctx: AccountContext,
+  args: {
+    product: string;
+    licenseId: string;
+    fromAccountId: string | null;
+    fromSubject: string | null;
+    toAccountId: string | null;
+    toSubject: string | null;
+    reason: string;
+    actor: { sub: string; name: string | null };
+    noticesSent: number;
+    holder: HolderSnapshot;
+  },
+): Promise<{ relinkId: string; undoUntil: number; alert: boolean }> {
+  const { db, now } = ctx;
+  const prior = await operatorRelinksToday(db, args.actor.sub, now);
+  const relinkId = randomId("rlk");
+  const undoUntil = now + RELINK_UNDO_SECONDS;
+  await db.run(
+    `INSERT INTO license_relinks
+       (product, id, license_id, from_account_id, to_account_id, from_subject, to_subject,
+        reason, actor_sub, actor_name, notices_sent, created_at, undo_until, holder_json)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args.product,
+    relinkId,
+    args.licenseId,
+    args.fromAccountId,
+    args.toAccountId,
+    args.fromSubject,
+    args.toSubject ?? NO_SUBJECT,
+    args.reason,
+    args.actor.sub,
+    args.actor.name,
+    args.noticesSent,
+    now,
+    undoUntil,
+    JSON.stringify(args.holder),
+  );
+  return {
+    relinkId,
+    undoUntil,
+    alert: prior + 1 > RELINK_DAILY_ALERT_COUNT,
+  };
+}
+
+/**
+ * Make floating (S-24 §5.5): take the licence off its holder. The caller has checked the step-up,
+ * signs devices out through `signOutDevices` when the operator asked (it runs after the move), and
+ * writes the console audit row.
+ */
+export async function makeLicenseFloating(
+  ctx: AccountContext,
+  args: {
+    product: string;
+    licenseId: string;
+    reason: unknown;
+    confirm: unknown;
+    actor: { sub: string; name: string | null };
+    /** Sign every device of the licence out; answers how many. Runs after the move. */
+    signOutDevices?: () => Promise<number>;
+  },
+): Promise<HolderMoveResult> {
+  const { db, now } = ctx;
+  const target = await holderMoveTarget(db, args);
+  if (!target.ok) return target;
+  const { license, reason } = target;
+  if (isFloatingLicense(license))
+    return { ok: false, reason: "already_floating" };
+  const owner = license.account_id ?? null;
+  const address = licenseEmail(license);
+  const from: HolderFacts = { name: license.name ?? null, email: address };
+  const fromSubject = await subjectOfAccount(db, owner, args.product);
+
+  // The notice goes out first: "a notice before the change takes effect".
+  const productRow = await getProduct(db, args.product);
+  const noticesSent = await noticeLeavingSide(
+    ctx,
+    owner,
+    address,
+    (inAccount) =>
+      licenseMadeFloatingNotice({
+        productName: productRow?.name,
+        inAccount,
+        origin: ctx.origin,
+      }),
+  );
+
+  if (owner) {
+    const moved = await reassignLicense(ctx, {
+      product: args.product,
+      licenseId: args.licenseId,
+      toAccountId: null,
+      actor: `admin:${args.actor.sub}`,
+      expectedPreviousAccountId: owner,
+    });
+    if (!moved.ok || moved.previousAccountId !== owner)
+      return { ok: false, reason: "conflict" };
+  }
+  // Compare-and-set: still in no account and still carrying the address read above.
+  const cleared = await db.runChanges(
+    `UPDATE licenses SET name = NULL, email = NULL, modified_by = ?, modified_at = ?
+      WHERE product = ? AND id = ? AND account_id IS NULL AND COALESCE(email, '') = ?`,
+    args.actor.sub,
+    now,
+    args.product,
+    args.licenseId,
+    license.email ?? "",
+  );
+  if (cleared !== 1) return { ok: false, reason: "conflict" };
+
+  const devicesSignedOut = args.signOutDevices
+    ? await args.signOutDevices()
+    : 0;
+  const recorded = await recordHolderMove(ctx, {
+    product: args.product,
+    licenseId: args.licenseId,
+    fromAccountId: owner,
+    fromSubject,
+    toAccountId: null,
+    toSubject: null,
+    reason,
+    actor: args.actor,
+    noticesSent,
+    holder: {
+      kind: "floating",
+      from,
+      to: { name: null, email: null },
+      devicesSignedOut,
+    },
+  });
+  return {
+    ok: true,
+    ...recorded,
+    noticesSent,
+    before: { subject: fromSubject, ...from },
+    after: null,
+    devicesSignedOut,
+  };
+}
+
+/**
+ * Reassign… (S-24 §5.5): give an assigned licence to another person, named by an email address
+ * (and optionally a name). The old side and the new address are told before the change; the new
+ * address's notice never says whether an account holds it (D4). The caller has checked the
+ * step-up and the name's text rules, and writes the console audit row.
+ */
+export async function reassignLicenseHolder(
+  ctx: AccountContext,
+  args: {
+    product: string;
+    licenseId: string;
+    email: unknown;
+    name: unknown;
+    reason: unknown;
+    confirm: unknown;
+    actor: { sub: string; name: string | null };
+  },
+): Promise<HolderMoveResult> {
+  const { db, now } = ctx;
+  const target = await holderMoveTarget(db, args);
+  if (!target.ok) return target;
+  const { license, reason } = target;
+  if (isFloatingLicense(license))
+    return { ok: false, reason: "license_floating" };
+  const email = cleanEmail(args.email);
+  if (!email) return { ok: false, reason: "email_invalid" };
+  const current = licenseEmail(license);
+  if (current !== null && normalizeEmail(current) === normalizeEmail(email))
+    return { ok: false, reason: "same_holder" };
+  const name =
+    typeof args.name === "string" && args.name.trim() !== ""
+      ? args.name.trim()
+      : null;
+  const owner = license.account_id ?? null;
+  const from: HolderFacts = { name: license.name ?? null, email: current };
+  const fromSubject = await subjectOfAccount(db, owner, args.product);
+
+  const productRow = await getProduct(db, args.product);
+  let noticesSent = await noticeLeavingSide(ctx, owner, current, (inAccount) =>
+    licenseReassignedAwayNotice({
+      productName: productRow?.name,
+      inAccount,
+      origin: ctx.origin,
+    }),
+  );
+  noticesSent += await noticeAddress(
+    ctx,
+    email,
+    licenseAssignedToYouNotice({
+      productName: productRow?.name,
+      productSlug: args.product,
+      origin: ctx.origin,
+    }),
+  );
+
+  if (owner) {
+    const moved = await reassignLicense(ctx, {
+      product: args.product,
+      licenseId: args.licenseId,
+      toAccountId: null,
+      actor: `admin:${args.actor.sub}`,
+      expectedPreviousAccountId: owner,
+    });
+    if (!moved.ok || moved.previousAccountId !== owner)
+      return { ok: false, reason: "conflict" };
+  }
+  const set = await db.runChanges(
+    `UPDATE licenses SET name = ?, email = ?, modified_by = ?, modified_at = ?
+      WHERE product = ? AND id = ? AND account_id IS NULL AND COALESCE(email, '') = ?`,
+    name,
+    email,
+    args.actor.sub,
+    now,
+    args.product,
+    args.licenseId,
+    license.email ?? "",
+  );
+  if (set !== 1) return { ok: false, reason: "conflict" };
+  // S-24 D3: the account that verified the new address, if one did and the pair is not blocked.
+  await associateLicenseHolder(
+    { db, env: ctx.env, now, origin: ctx.origin },
+    args.product,
+    args.licenseId,
+  );
+  const joined = await licenseAccountId(db, args.product, args.licenseId);
+  const to: HolderFacts = { name, email };
+  const recorded = await recordHolderMove(ctx, {
+    product: args.product,
+    licenseId: args.licenseId,
+    fromAccountId: owner,
+    fromSubject,
+    toAccountId: joined,
+    toSubject: await subjectOfAccount(db, joined, args.product),
+    reason,
+    actor: args.actor,
+    noticesSent,
+    holder: { kind: "reassign", from, to, devicesSignedOut: 0 },
+  });
+  return {
+    ok: true,
+    ...recorded,
+    noticesSent,
+    before: { subject: fromSubject, ...from },
+    after: to,
+    devicesSignedOut: 0,
+  };
+}
+
+/**
+ * A holder move's undo: tell both sides, move the owner back (lifting the restored account's
+ * block), put the licence's own `name` and `email` back, and, when it returns to an address with
+ * no account, let the account that has verified that address since take it (S-24 D3).
+ */
+async function undoHolderMove(
+  ctx: AccountContext,
+  r: RelinkRow,
+  holder: HolderSnapshot,
+  reason: string,
+  actor: { sub: string; name: string | null },
+): Promise<UndoResult> {
+  const { db, now } = ctx;
+  const license = await getLicense(db, r.product, r.license_id);
+  if (!license) return { ok: false, reason: "undo_unavailable" };
+  const owner = license.account_id ?? null;
+  const productRow = await getProduct(db, r.product);
+  const notice = (): NoticeMessage =>
+    licenseRelinkUndoneNotice({
+      productName: productRow?.name,
+      origin: ctx.origin,
+    });
+  let noticesSent = await noticeLeavingSide(
+    ctx,
+    owner,
+    licenseEmail(license),
+    notice,
+  );
+  noticesSent += await noticeLeavingSide(
+    ctx,
+    r.from_account_id,
+    holder.from.email,
+    notice,
+  );
+
+  if (owner !== r.from_account_id) {
+    const moved = await reassignLicense(ctx, {
+      product: r.product,
+      licenseId: r.license_id,
+      toAccountId: r.from_account_id,
+      actor: `admin:${actor.sub}`,
+      expectedPreviousAccountId: owner,
+    });
+    if (!moved.ok || moved.previousAccountId !== owner)
+      return { ok: false, reason: "conflict" };
+  }
+  const restored = await db.runChanges(
+    `UPDATE licenses SET name = ?, email = ?, modified_by = ?, modified_at = ?
+      WHERE product = ? AND id = ? AND account_id IS ? AND COALESCE(email, '') = ?`,
+    holder.from.name,
+    holder.from.email,
+    actor.sub,
+    now,
+    r.product,
+    r.license_id,
+    r.from_account_id,
+    license.email ?? "",
+  );
+  if (restored !== 1) return { ok: false, reason: "conflict" };
+  if (r.from_account_id === null && holder.from.email !== null)
+    await associateLicenseHolder(
+      { db, env: ctx.env, now, origin: ctx.origin },
+      r.product,
+      r.license_id,
+    );
+  await markUndone(db, r, actor.sub, reason, now);
+  const back = await licenseAccountId(db, r.product, r.license_id);
   return {
     ok: true,
     licenseId: r.license_id,
-    toSubject: back?.subject ?? null,
-    fromSubject: r.to_subject,
+    toSubject: await subjectOfAccount(db, back, r.product),
+    fromSubject: subjectOrNull(r.to_subject),
     noticesSent,
   };
+}
+
+/** One move of a licence, as the licence record lists it (LX-30). */
+export interface LicenseHolderMove {
+  id: string;
+  kind: RelinkKind;
+  reason: string;
+  actorName: string | null;
+  createdAt: number;
+  undoUntil: number;
+  undoneAt: number | null;
+  undoable: boolean;
+  fromSubject: string | null;
+  toSubject: string | null;
+  /** The licence's own name and email before a holder move; `null` for a relink. */
+  from: HolderFacts | null;
+  /** After a holder move (both `null` for Make floating); `null` for a relink. */
+  to: HolderFacts | null;
+  devicesSignedOut: number;
+}
+
+/** The licence record's move history: this licence of this product, newest first, at most 20. */
+export async function licenseHolderMoves(
+  db: Db,
+  product: string,
+  licenseId: string,
+  now: number,
+): Promise<LicenseHolderMove[]> {
+  const rows = await db.all<RelinkRow>(
+    `SELECT * FROM license_relinks WHERE product = ? AND license_id = ?
+      ORDER BY created_at DESC, id DESC LIMIT 20`,
+    product,
+    licenseId,
+  );
+  const out: LicenseHolderMove[] = [];
+  for (const r of rows) {
+    const holder = holderOf(r);
+    out.push({
+      id: r.id,
+      kind: holder?.kind ?? "relink",
+      reason: r.reason,
+      actorName: r.actor_name,
+      createdAt: r.created_at,
+      undoUntil: r.undo_until,
+      undoneAt: r.undone_at,
+      undoable: await relinkUndoable(db, r, now),
+      fromSubject: subjectOrNull(r.from_subject),
+      toSubject: subjectOrNull(r.to_subject),
+      from: holder ? holder.from : null,
+      to: holder ? holder.to : null,
+      devicesSignedOut: holder?.devicesSignedOut ?? 0,
+    });
+  }
+  return out;
 }

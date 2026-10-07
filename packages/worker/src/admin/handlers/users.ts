@@ -17,6 +17,16 @@
  *   POST users/<subject>/licenses/<id>/relink    { target, reason }   step-up
  *   POST users/relinks/<relinkId>/undo           { reason }           step-up, within 72 hours
  *
+ * LX-30 (notes/S-24 §5.5, D20): the relink tool's two holder moves, keyed by the LICENCE so they
+ * also reach a licence waiting for its email (no account, so no subject):
+ *
+ *   POST users/licenses/<id>/make-floating   { reason, confirm, signOutDevices? }  step-up
+ *   POST users/licenses/<id>/reassign        { email, name?, reason, confirm }     step-up
+ *   GET  users/licenses/<id>/relinks         the licence's moves, newest first, with their undo
+ *
+ * `confirm` is the typed confirmation (the licence's name, or its id), compared here. Both moves
+ * are undone through `users/relinks/<relinkId>/undo`, like a relink.
+ *
  * Every row is keyed by this product's pairwise subject. The account id never appears in a
  * response (it never leaves the Worker's Identity and Core code), nor the account's sign-in
  * methods, nor anything of another product: the queries live in Identity's `accounts/productUsers.ts`,
@@ -33,6 +43,8 @@
 import type { Env } from "../../env.js";
 import type { Db } from "../../db/types.js";
 import { ErrorCode } from "../../core/errors.js";
+import { getLicense, listDevicesByLicense } from "../../core/data.js";
+import { deauthorizeDeviceAsAdmin } from "../../core/deviceAdmin.js";
 import { loadProduct } from "../../core/products.js";
 import { appendPlatformEvent } from "../../core/platformEvents.js";
 import {
@@ -40,16 +52,21 @@ import {
   deleteProductUserData,
   detachProductUserLicense,
   exportProductUser,
+  licenseHolderMoves,
   listProductUsers,
   lookupProductUser,
+  makeLicenseFloating,
   productUserDetail,
+  reassignLicenseHolder,
   relinkLicense,
   undoRelink,
+  type HolderMoveResult,
   type RelinkRefusal,
 } from "../../services/identity/accounts/productUsers.js";
 import type { AccountContext } from "../../services/identity/accounts/links.js";
 import { audit } from "../audit.js";
 import { adminJson, err, notFound, readBody } from "../lib/respond.js";
+import { WriteChecks } from "../lib/writeChecks.js";
 import { handleUserOverrides } from "./accountOverrides.js";
 import {
   STEP_UP_MAX_AGE_SECONDS,
@@ -75,10 +92,36 @@ const REFUSALS: Record<RelinkRefusal, [number, string]> = {
     409,
     "This relink can't be undone: it was undone already, the 72 hours have passed, or the license has moved since.",
   ],
+  already_floating: [409, "This license is already floating."],
+  license_floating: [
+    409,
+    "This license is floating. Give it a holder with Assign instead.",
+  ],
+  same_holder: [409, "This license is already assigned to that email."],
+  // The two below answer `bad_request` (an existing code) with `fields`; see `refused`.
+  confirm_required: [
+    400,
+    "Type the license's name, or its id when it has none, to confirm.",
+  ],
+  email_invalid: [422, "Enter a valid email address."],
+};
+
+/** Refusals that are a malformed request, answered as `bad_request` with the field named. */
+const FIELD_REFUSALS: Partial<
+  Record<RelinkRefusal, { fields: string[]; reason?: string }>
+> = {
+  confirm_required: { fields: ["confirm"], reason: "confirm_required" },
+  email_invalid: { fields: ["email"] },
 };
 
 function refused(reason: RelinkRefusal): Response {
   const [status, message] = REFUSALS[reason];
+  const field = FIELD_REFUSALS[reason];
+  if (field)
+    return err(status, ErrorCode.BadRequest, message, {
+      ...(field.reason ? { reason: field.reason } : {}),
+      fields: field.fields,
+    });
   return err(status, reason, message);
 }
 
@@ -218,6 +261,106 @@ export async function handleProductUsers(
     });
   }
 
+  // LX-30: users/licenses/<id>/(make-floating | reassign | relinks)
+  if (first === "licenses") {
+    if (!second || !third || fourth !== undefined) return notFound();
+    const licenseId = second;
+    if (third === "relinks") {
+      if (req.method !== "GET")
+        return err(405, ErrorCode.BadRequest, "method not allowed");
+      if (!(await getLicense(db, slug, licenseId)))
+        return refused("license_not_found");
+      return adminJson({
+        relinks: await licenseHolderMoves(db, slug, licenseId, now),
+      });
+    }
+    if (third !== "make-floating" && third !== "reassign") return notFound();
+    if (req.method !== "POST")
+      return err(405, ErrorCode.BadRequest, "method not allowed");
+    if (!isSteppedUp(session, now)) return stepUpRequired();
+    const body = await readBody(req);
+    let result: HolderMoveResult;
+    if (third === "make-floating") {
+      result = await makeLicenseFloating(ctx, {
+        product: slug,
+        licenseId,
+        reason: body.reason,
+        confirm: body.confirm,
+        actor,
+        ...(body.signOutDevices === true
+          ? {
+              signOutDevices: async () => {
+                let n = 0;
+                for (const device of await listDevicesByLicense(
+                  db,
+                  slug,
+                  licenseId,
+                )) {
+                  if (device.status !== "authorized") continue;
+                  await deauthorizeDeviceAsAdmin(
+                    { env, db, session, now },
+                    device,
+                  );
+                  n += 1;
+                }
+                return n;
+              },
+            }
+          : {}),
+      });
+    } else {
+      // The new holder's name and email are free text the signed profile carries.
+      const checks = new WriteChecks()
+        .text("name", body.name)
+        .text("email", body.email)
+        .response();
+      if (checks) return checks;
+      if (
+        body.name !== undefined &&
+        body.name !== null &&
+        typeof body.name !== "string"
+      )
+        return err(422, ErrorCode.BadRequest, "name must be a string", {
+          fields: ["name"],
+        });
+      result = await reassignLicenseHolder(ctx, {
+        product: slug,
+        licenseId,
+        email: body.email,
+        name: body.name,
+        reason: body.reason,
+        confirm: body.confirm,
+        actor,
+      });
+    }
+    if (!result.ok) return refused(result.reason);
+    const floating = third === "make-floating";
+    await audit(
+      db,
+      slug,
+      session,
+      now,
+      floating ? "user.license.make_floating" : "user.license.reassign",
+      { kind: "license", id: licenseId },
+      JSON.stringify({
+        relink: result.relinkId,
+        before: result.before,
+        after: result.after,
+        reason: typeof body.reason === "string" ? body.reason.trim() : "",
+        ...(floating ? { devicesSignedOut: result.devicesSignedOut } : {}),
+      }),
+    );
+    if (result.alert) await relinkAlert(db, session, slug, now);
+    return adminJson({
+      ok: true,
+      relinkId: result.relinkId,
+      undoUntil: result.undoUntil,
+      noticesSent: result.noticesSent,
+      alert: result.alert,
+      ...(floating ? { devicesSignedOut: result.devicesSignedOut } : {}),
+    });
+  }
+
   // Everything else is one row: users/<subject>[/…]
   const subject = first;
   const found = await lookupProductUser(db, slug, subject);
@@ -333,19 +476,7 @@ export async function handleProductUsers(
           reason: typeof body.reason === "string" ? body.reason.trim() : "",
         }),
       );
-      if (result.alert) {
-        await appendPlatformEvent(db, {
-          actor: {
-            sub: session.sub,
-            name: session.name || null,
-            email: session.email || null,
-          },
-          at: now,
-          action: "identity.relink.alert",
-          target: { kind: "product", id: slug },
-          summary: `${session.name || session.sub} relinked more than ${RELINK_DAILY_ALERT_COUNT} licenses in 24 hours`,
-        });
-      }
+      if (result.alert) await relinkAlert(db, session, slug, now);
       return adminJson({
         ok: true,
         relinkId: result.relinkId,
@@ -358,4 +489,27 @@ export async function handleProductUsers(
   }
 
   return notFound();
+}
+
+/**
+ * The platform alert when one operator passes `RELINK_DAILY_ALERT_COUNT` relinks and holder moves
+ * in 24 hours (S-16 §5.4 item 9; LX-30 counts Make floating and Reassign… with the relinks).
+ */
+async function relinkAlert(
+  db: Db,
+  session: AdminSession,
+  slug: string,
+  now: number,
+): Promise<void> {
+  await appendPlatformEvent(db, {
+    actor: {
+      sub: session.sub,
+      name: session.name || null,
+      email: session.email || null,
+    },
+    at: now,
+    action: "identity.relink.alert",
+    target: { kind: "product", id: slug },
+    summary: `${session.name || session.sub} relinked more than ${RELINK_DAILY_ALERT_COUNT} licenses in 24 hours`,
+  });
 }
