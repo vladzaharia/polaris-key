@@ -6574,10 +6574,11 @@ own tenancy check (an image slot's stored copy, the product's `hosted-asset` ref
   (`SERVES_NOTHING_REF_KINDS`), which makes "Listing asset derivation (A-18d)"'s "No route serves
   these objects" true. Pre-release screenshots are no longer fetchable by digest from the app's
   delivery mode; they are public only on the image host, and only once ingested into an image slot.
-- **The kill switch is not a security gate.** `assetHostingEnabled` (`core/assetHosting.ts`, a
-  constant until HA-10's `assets.hosting.enabled`) and a missing `IMG_ORIGIN` restore every
-  surface's pre-HA-07 behaviour, the GitHub-only proxy included; the blob-route fix does not follow
-  it.
+- **The kill switch is not a security gate.** `assetHostingEnabled` (`core/assetHosting.ts`, the
+  platform setting `assets.hosting.enabled` since HA-10: the A-13 `ASSET_HOSTING` row, see
+  "Platform settings and operations") and a missing `IMG_ORIGIN` restore every surface's
+  pre-HA-07 behaviour, the GitHub-only proxy included; the blob-route fix does not follow it. The
+  three HA-07 tests switch the real setting, as the console does.
 
 Residual risk: the image host's (an operator can host an abusive image; HA-06's delete-a-copy
 removes it at the next request). Tests: `test/portalHostedArt.test.ts`,
