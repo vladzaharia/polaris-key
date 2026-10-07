@@ -579,6 +579,19 @@ describe("GET …/analytics (the 28-day card)", () => {
     });
   });
 
+  it("writes nothing", async () => {
+    const w = await world();
+    const rec = recording(w.db);
+    const r = await w.call(
+      "GET",
+      PANEL("aperture", "/analytics"),
+      undefined,
+      rec.db,
+    );
+    expect(r.status).toBe(200);
+    expect(rec.wrote()).toBe(false);
+  });
+
   it("says when impressions are not counted (no pepper)", async () => {
     const w = await world();
     delete (w.env as Partial<Env>).KEY_HASH_PEPPER;

@@ -728,6 +728,35 @@ function PersonaPreview({
               ))}
             </div>
           ) : null}
+          {/* The inputs a later way to add reads appear with that way (PS-07, PS-09): a
+              domain, never an address, and a store, never an account. */}
+          {status.available.includes("email_domain") ? (
+            <div className="space-y-1.5">
+              <label
+                htmlFor={`pk-${slug}-persona-domain`}
+                className="block text-sm text-fg"
+              >
+                A verified email at this domain
+              </label>
+              <Input
+                id={`pk-${slug}-persona-domain`}
+                className="w-full sm:w-72"
+                maxLength={253}
+                placeholder="example.edu"
+                value={persona.emailDomain ?? ""}
+                onValueChange={(v) =>
+                  set({ emailDomain: v.trim() === "" ? null : v.trim() })
+                }
+              />
+            </div>
+          ) : null}
+          {status.available.includes("store_owned") ? (
+            <Checkbox
+              label="Linked Steam and owns it there"
+              checked={persona.stores.includes("steam")}
+              onCheckedChange={(on) => set({ stores: on ? ["steam"] : [] })}
+            />
+          ) : null}
           <Checkbox
             label="Already has it"
             checked={persona.holds}

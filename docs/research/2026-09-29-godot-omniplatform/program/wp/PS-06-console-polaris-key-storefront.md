@@ -59,6 +59,58 @@ In the console, Polaris Key appears as a storefront tile with its capability str
 
 - No "coming soon" or implementation-status copy; no redundant subtitles; a path whose policy is not configured is absent, not disabled.
 
+## Corrections from the code (PS-06 implementation, 2026-10-06)
+
+Recorded under step 1; the code is the fact. Each was decided on the recommended option (decisions
+delegated to the lead).
+
+- **The routes are CORE, and the composition root of the first-party ports.** `GET|POST
+/manage/api/products/<p>/storefronts/polaris-key[/preview|/analytics]` live in
+  `admin/handlers/polarisKeyStorefront.ts` beside the other product-scoped core resources
+  (`assets`, `refusals`), because every product can list whether or not it runs Distribution
+  (S-21 §6.2) and the panel needs two services. The GET runs the declared `polaris-key.status`
+  handler over `FirstPartyPorts` the owning services implement: Identity answers the status
+  (`services/identity/portal/store/console.ts`: listing, policy, the engine's mode rules,
+  readiness inputs), Distribution the listing fit (its own `readListing` and Core's `fitReport`).
+  This is the "wire the first-party status port" follow-up. `readListing` and `audit` are real
+  too; `setListing` and `writeListing` are not served by any route (see the next point), so the
+  panel's ports refuse them with a clear error.
+- **The panel writes through PS-02's route, not through `submit`.** Listing, audience, ways to add
+  and group labels are `PATCH …/identity/portal` (`writeSetting()`, audited
+  `storefront.polarisKey.update`), at the levels `lib/actions.ts` now assigns: listing and ways to
+  add L1, narrowing the audience and labels L0, widening the audience to everyone L3 with the
+  product's slug typed (the brief's and S-21 §6.6's typed confirmation; the Worker still needs its
+  `confirm` key, which the console sends). The A-18j flow has no Polaris Key steps (SETUP.md D48:
+  the built-in storefront has no wizard), so nothing calls the first-party write handlers yet.
+- **SETUP.md §2.10 asks for UX-54's page shell; UX-54 is not registered.** The panel is the
+  storefront's own page, a record of the Storefronts page (`distribution/storefronts/polaris-key`,
+  one `STORE_PANELS` line), with SETUP's Discover-tab content. UX-54's shell can host it as is.
+- **The built-in tile needed a flag and a badge.** The storefront view gains `builtIn` (an adapter
+  with no credential whose ops are `first-party`, from the declaration), and `CapabilityBadge`
+  gains `first-party` ("Built in"); before this every Polaris Key op rendered "Not offered". A
+  built-in tile reads "Built in: always connected" with **Manage**; Add to storefronts leaves it
+  out.
+- **The persona preview reads no account.** `previewPersona` (in `store/obtain.ts`) runs the engine
+  with a synthetic identity and the persona's "holds it" switch; `previewIdentityIssue` gained
+  `existing: false` so a synthetic subject is never looked up among licences. `ObtainContext`
+  carries the persona, with an empty `accountId`, for PS-07 and PS-09's sources to answer from.
+  The route schema is closed (`PERSONA_FIELDS`); `emailDomain` and `stores` are accepted for those
+  sources, and the console shows their inputs only once their path kinds are configured (today
+  the persona form is the sign-in switch, the mapped groups and "Already has it").
+- **The preview tile is the console's, with the portal's words.** PX-16's `DiscoverTile` draws only
+  offers with licence terms until PS-05, so the preview renders the same fields (reason line from
+  S-21 §6.5's table, terms, action) in a console card from `GET /api/discover`'s offer shape
+  (`storefrontTileView`, which records no impression).
+- **Readiness for an unlisted product** counts the ways it would offer once listed; otherwise it
+  counts what the current mode offers (Automatic: the identity kinds only).
+- **Listing editor.** The fit report gains a store switcher kept in the URL (`?store=`); the
+  panel's **Edit the listing** opens it on `polaris-key`. `LISTING_GROUP_LABELS` names the
+  `polaris-key` slot group.
+- **Docs.** A page of its own, `/docs/admin/polaris-key-storefront/` (help links cannot carry
+  anchors), linked from Storefronts, the admin index and Identity → Portal's listing section.
+- **No migration, no OpenAPI entry** (admin routes are narrative-only); THREAT-MODEL gains "The
+  Polaris Key panel and the persona preview (PS-06)".
+
 ## Steps
 
 1. Re-read the S-21 sections above; verify this brief against the code and record any correction here.
@@ -68,10 +120,10 @@ In the console, Polaris Key appears as a storefront tile with its capability str
 
 ## Acceptance criteria
 
-- [ ] The tile renders from the registry (a test with the registry stubbed).
-- [ ] The preview has no input that identifies a real person (reviewer check, test on the route schema).
-- [ ] `adminCspParity`, the CSP e2e and `check:links` pass.
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+- [x] The tile renders from the registry (a test with the registry stubbed).
+- [x] The preview has no input that identifies a real person (reviewer check, test on the route schema).
+- [x] `adminCspParity`, the CSP e2e and `check:links` pass.
+- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
 
