@@ -358,6 +358,13 @@ const TABLE_OWNERS = {
     "store_operations",
     "email_suppressions",
     "email_product_caps",
+    // LX-08 (plans/LX-01.md §6.1): the licensing model. Written only through
+    // src/core/grants.ts (grants, grant_entitlements) and Core (the rest).
+    "grants",
+    "grant_entitlements",
+    "device_store_identities",
+    "holder_versions",
+    "entitlement_events",
   ],
   license: [
     "licenses",
@@ -423,6 +430,10 @@ const TABLE_OWNERS = {
     "dist_purchase_bindings",
     "dist_purchase_binding_aliases",
     "dist_purchases",
+    // LX-08: the licensing model's commerce tables.
+    "dist_store_product_entitlements",
+    "dist_holder_bindings",
+    "dist_binding_aliases",
     "dist_registry_owners",
     "dist_registry_feeds",
     "dist_registry_policy",
