@@ -27,6 +27,7 @@ import { LibraryToolbar } from "../components/LibraryToolbar.js";
 import {
   applyView,
   effectiveMode,
+  justAddedFirst,
   readRememberedMode,
   readView,
   rememberMode,
@@ -42,6 +43,9 @@ import { useFirstLoad, useFirstLoadStagger } from "../stagger.js";
  * (`stagger.ts`); the
  * Grid/List toggle is one `list` View Transition. The page's own blocks are its `.pk-vt-scope`,
  * so during that transition they hold still while the products' view changes.
+ *
+ * A product added in the last 24 hours (PX-24) is first: under the default sort at 8+, and ahead
+ * of the Worker's order in the 2–7 grid, which has no sort.
  */
 export function LibraryPage({
   account,
@@ -157,7 +161,7 @@ function LibraryBody({
             stagger.className,
           )}
         >
-          {products.map((p) => (
+          {justAddedFirst(products).map((p) => (
             <li key={p.slug} className="grid">
               <LibraryTile
                 product={p}

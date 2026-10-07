@@ -1,8 +1,13 @@
 import * as React from "react";
 import { Info } from "lucide-react";
 import { cn } from "../../lib/cn.js";
-import type { LibraryProduct, QuickAction } from "../model/library.js";
+import {
+  isDownloadAction,
+  type LibraryProduct,
+  type QuickAction,
+} from "../model/library.js";
 import { href } from "../router.js";
+import { useCueOnce } from "../stagger.js";
 import { PlatformGlyphs } from "./Glyphs.js";
 import { ProductArt } from "./ProductArt.js";
 import { ProductIcon } from "./ProductIcon.js";
@@ -19,6 +24,15 @@ import { QuickActionButton } from "./QuickAction.js";
  * pressing the tile's link presses the tile, while its own buttons press only themselves. The lift
  * sits on a wrapper because the card clips its art (`overflow-hidden`), which would clip the
  * lift's shadow too.
+ *
+ * Just added (PX-24; EXPERIENCE §0.6 P1 step 7, §0.7): for 24 hours a new product's tile carries a
+ * ring, the quiet text "Added just now" at the head of its reason line, and its download as the
+ * tile's lead (solid); a tile whose quick action is not a download keeps it outlined. No pill. The
+ * words carry the meaning (WCAG 1.4.1); the ring is decoration (`aria-hidden`), an overlay on the
+ * wrapper outside the card's clip, as on the Discover tile. The first time the tile is on screen
+ * in this document the text pops in (`.pk-pop-in`) and the ring fades in (`.pk-content-in`,
+ * opacity only: scaling would pass the ring inside the card's edge); never again after that
+ * (`useCueOnce`), and under reduced motion they are simply there.
  */
 export function LibraryTile({
   product,
@@ -33,8 +47,10 @@ export function LibraryTile({
   compact?: boolean;
 }): React.ReactElement {
   const { presentation: pres } = product;
+  const cue = useCueOnce(product.slug, product.justAdded);
+  const statusNote = product.status.note;
   return (
-    <div className="pk-lift pk-pressable-card grid rounded-xl">
+    <div ref={cue.ref} className="pk-lift pk-pressable-card grid rounded-xl">
       <article
         aria-labelledby={`tile-${product.slug}`}
         className="group relative flex flex-col overflow-hidden rounded-xl border border-border bg-surface-raised shadow-elevation-1"
@@ -100,7 +116,28 @@ export function LibraryTile({
             </div>
           </div>
           <div className="mt-4 flex items-center justify-between gap-3 text-sm text-fg-muted">
-            <span className="min-w-0 truncate">{product.status.note}</span>
+            <span
+              className={cn(
+                "min-w-0",
+                product.justAdded ? "line-clamp-2" : "truncate",
+              )}
+            >
+              {product.justAdded ? (
+                <>
+                  <span
+                    data-cue="text"
+                    className={cn(
+                      "inline-block font-bold text-accent-fg",
+                      cue.animate && "pk-pop-in",
+                    )}
+                  >
+                    Added just now
+                  </span>
+                  {statusNote ? " · " : null}
+                </>
+              ) : null}
+              {statusNote}
+            </span>
             <PlatformGlyphs
               platforms={product.platforms}
               className="shrink-0"
@@ -116,6 +153,7 @@ export function LibraryTile({
             <QuickActionButton
               product={product}
               action={action}
+              lead={product.justAdded && isDownloadAction(action)}
               size={compact ? "md" : "lg"}
               className={cn("min-w-0 flex-1", compact ? "h-10" : "h-11")}
             />
@@ -130,6 +168,18 @@ export function LibraryTile({
           </div>
         </div>
       </article>
+      {product.justAdded ? (
+        // The ring around the card (outside its border, where the card can't clip it).
+        <span
+          aria-hidden
+          data-ring
+          data-cue="ring"
+          className={cn(
+            "pointer-events-none absolute inset-0 rounded-xl ring-2 ring-accent",
+            cue.animate && "pk-content-in",
+          )}
+        />
+      ) : null}
     </div>
   );
 }
