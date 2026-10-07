@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="705.6" height="212.8" viewBox="0 0 705.6 212.8" role="img" aria-label="ReleaseNotes, list, terminal, light theme">
+<rect width="705.6" height="212.8" rx="12" fill="#fbfbfc" stroke="#dcdee3"/>
+<g font-family="JetBrains Mono, ui-monospace, monospace" font-size="14" xml:space="preserve">
+<rect x="42" y="14" width="151.2" height="16.8" fill="#26847a"/>
+<rect x="20.5" y="22.4" width="1" height="8.4" fill="#6e7781"/>
+<rect x="20.5" y="21.9" width="4.7" height="1" fill="#6e7781"/>
+<text x="50.4" y="26.6" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#ffffff" font-weight="600">Tidewater Studio</text>
+<text x="201.6" y="26.6" textLength="92.4" lengthAdjust="spacingAndGlyphs" fill="#6e7781">· changelog</text>
+<rect x="20.5" y="30.8" width="1" height="16.8" fill="#6e7781"/>
+<text x="21" y="60.2" text-anchor="middle" fill="#14796f">◆</text>
+<text x="42" y="60.2" textLength="252" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">What&#x27;s new in Tidewater Studio</text>
+<rect x="20.5" y="64.4" width="1" height="16.8" fill="#6e7781"/>
+<rect x="20.5" y="81.2" width="1" height="16.8" fill="#6e7781"/>
+<text x="42" y="93.8" textLength="92.4" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">Version 2.5</text>
+<text x="142.8" y="93.8" textLength="176.4" lengthAdjust="spacingAndGlyphs" fill="#6e7781">· Released 2026-10-01</text>
+<rect x="20.5" y="98" width="1" height="16.8" fill="#6e7781"/>
+<text x="58.8" y="110.6" textLength="403.2" lengthAdjust="spacingAndGlyphs" fill="#24292f">Stem export in one click, with loudness matching</text>
+<rect x="20.5" y="114.8" width="1" height="16.8" fill="#6e7781"/>
+<text x="58.8" y="127.4" textLength="344.4" lengthAdjust="spacingAndGlyphs" fill="#24292f">Track freeze now works with every plug-in</text>
+<rect x="20.5" y="131.6" width="1" height="16.8" fill="#6e7781"/>
+<rect x="20.5" y="148.4" width="1" height="16.8" fill="#6e7781"/>
+<text x="42" y="161" textLength="109.2" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">Version 2.4.1</text>
+<text x="159.6" y="161" textLength="176.4" lengthAdjust="spacingAndGlyphs" fill="#6e7781">· Released 2026-09-12</text>
+<rect x="20.5" y="165.2" width="1" height="16.8" fill="#6e7781"/>
+<text x="58.8" y="177.8" textLength="327.6" lengthAdjust="spacingAndGlyphs" fill="#24292f">Fixes a crash when a plug-in is missing</text>
+<rect x="20.5" y="182" width="1" height="8.4" fill="#6e7781"/>
+<rect x="20.5" y="189.9" width="4.7" height="1" fill="#6e7781"/>
+</g></svg>

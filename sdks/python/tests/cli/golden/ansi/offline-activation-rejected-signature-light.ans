@@ -1,0 +1,52 @@
+── truecolor · 80 ──
+[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · import-bundle[0m
+[90m│[0m
+[31m✗[0m  [1mActivation file not valid[0m
+[90m│[0m  The activation file's signature isn't valid.
+[90m└[0m
+── ansi16 · 80 ──
+[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · import-bundle[0m
+[90m│[0m
+[31m✗[0m  [1mActivation file not valid[0m
+[90m│[0m  The activation file's signature isn't valid.
+[90m└[0m
+── no-color · 80 ──
+┌   Tidewater Studio  · import-bundle
+│
+✗  Activation file not valid
+│  The activation file's signature isn't valid.
+└
+── ascii · 80 ──
+[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - import-bundle[0m
+[90m|[0m
+[31mx[0m  [1mActivation file not valid[0m
+[90m|[0m  The activation file's signature isn't valid.
+[90m`[0m
+── truecolor · 60 ──
+[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · import-bundle[0m
+[90m│[0m
+[31m✗[0m  [1mActivation file not valid[0m
+[90m│[0m  The activation file's signature isn't valid.
+[90m└[0m
+── ansi16 · 60 ──
+[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · import-bundle[0m
+[90m│[0m
+[31m✗[0m  [1mActivation file not valid[0m
+[90m│[0m  The activation file's signature isn't valid.
+[90m└[0m
+── no-color · 60 ──
+┌   Tidewater Studio  · import-bundle
+│
+✗  Activation file not valid
+│  The activation file's signature isn't valid.
+└
+── ascii · 60 ──
+[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - import-bundle[0m
+[90m|[0m
+[31mx[0m  [1mActivation file not valid[0m
+[90m|[0m  The activation file's signature isn't valid.
+[90m`[0m
+── pipe · 80 ──
+Tidewater Studio · import-bundle
+Activation file not valid
+The activation file's signature isn't valid.

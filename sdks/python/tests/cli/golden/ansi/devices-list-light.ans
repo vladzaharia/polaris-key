@@ -1,0 +1,160 @@
+── truecolor · 80 ──
+[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · devices[0m
+[90m│[0m
+[38;2;20;121;111m◆[0m  [1mYour devices[0m[90m · 3 devices[0m
+[90m│[0m  [90mDevices using this license.[0m
+[90m│[0m
+[90m│[0m  [1mWork laptop[0m
+[90m│[0m    [90mWindows 11 · last seen 41 days ago · dev_9k2[0m
+[90m│[0m
+[90m│[0m  [1mMara’s iPad[0m
+[90m│[0m    [90miPadOS 26 · last seen yesterday · dev_4m7[0m
+[90m│[0m
+[90m│[0m  [1mMacBook Pro[0m[90m · [0m[38;2;20;121;111mThis computer[0m
+[90m│[0m    [90mmacOS 26 · last seen today · dev_1c3[0m
+[90m│[0m
+[90m│[0m  [1mtidewater devices rename <id> <name>[0m   [90mRename[0m
+[90m│[0m  [1mtidewater devices deauthorize <id>[0m     [90mRemove[0m
+[90m└[0m
+── ansi16 · 80 ──
+[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · devices[0m
+[90m│[0m
+[36m◆[0m  [1mYour devices[0m[90m · 3 devices[0m
+[90m│[0m  [90mDevices using this license.[0m
+[90m│[0m
+[90m│[0m  [1mWork laptop[0m
+[90m│[0m    [90mWindows 11 · last seen 41 days ago · dev_9k2[0m
+[90m│[0m
+[90m│[0m  [1mMara’s iPad[0m
+[90m│[0m    [90miPadOS 26 · last seen yesterday · dev_4m7[0m
+[90m│[0m
+[90m│[0m  [1mMacBook Pro[0m[90m · [0m[36mThis computer[0m
+[90m│[0m    [90mmacOS 26 · last seen today · dev_1c3[0m
+[90m│[0m
+[90m│[0m  [1mtidewater devices rename <id> <name>[0m   [90mRename[0m
+[90m│[0m  [1mtidewater devices deauthorize <id>[0m     [90mRemove[0m
+[90m└[0m
+── no-color · 80 ──
+┌   Tidewater Studio  · devices
+│
+◆  Your devices · 3 devices
+│  Devices using this license.
+│
+│  Work laptop
+│    Windows 11 · last seen 41 days ago · dev_9k2
+│
+│  Mara’s iPad
+│    iPadOS 26 · last seen yesterday · dev_4m7
+│
+│  MacBook Pro · This computer
+│    macOS 26 · last seen today · dev_1c3
+│
+│  tidewater devices rename <id> <name>   Rename
+│  tidewater devices deauthorize <id>     Remove
+└
+── ascii · 80 ──
+[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - devices[0m
+[90m|[0m
+[36m*[0m  [1mYour devices[0m[90m - 3 devices[0m
+[90m|[0m  [90mDevices using this license.[0m
+[90m|[0m
+[90m|[0m  [1mWork laptop[0m
+[90m|[0m    [90mWindows 11 · last seen 41 days ago - dev_9k2[0m
+[90m|[0m
+[90m|[0m  [1mMara’s iPad[0m
+[90m|[0m    [90miPadOS 26 · last seen yesterday - dev_4m7[0m
+[90m|[0m
+[90m|[0m  [1mMacBook Pro[0m[90m - [0m[36mThis computer[0m
+[90m|[0m    [90mmacOS 26 · last seen today - dev_1c3[0m
+[90m|[0m
+[90m|[0m  [1mtidewater devices rename <id> <name>[0m   [90mRename[0m
+[90m|[0m  [1mtidewater devices deauthorize <id>[0m     [90mRemove[0m
+[90m`[0m
+── truecolor · 60 ──
+[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · devices[0m
+[90m│[0m
+[38;2;20;121;111m◆[0m  [1mYour devices[0m[90m · 3 devices[0m
+[90m│[0m  [90mDevices using this license.[0m
+[90m│[0m
+[90m│[0m  [1mWork laptop[0m
+[90m│[0m    [90mWindows 11 · last seen 41 days ago · dev_9k2[0m
+[90m│[0m
+[90m│[0m  [1mMara’s iPad[0m
+[90m│[0m    [90miPadOS 26 · last seen yesterday · dev_4m7[0m
+[90m│[0m
+[90m│[0m  [1mMacBook Pro[0m[90m · [0m[38;2;20;121;111mThis computer[0m
+[90m│[0m    [90mmacOS 26 · last seen today · dev_1c3[0m
+[90m│[0m
+[90m│[0m  [1mtidewater devices rename <id> <name>[0m   [90mRename[0m
+[90m│[0m  [1mtidewater devices deauthorize <id>[0m     [90mRemove[0m
+[90m└[0m
+── ansi16 · 60 ──
+[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · devices[0m
+[90m│[0m
+[36m◆[0m  [1mYour devices[0m[90m · 3 devices[0m
+[90m│[0m  [90mDevices using this license.[0m
+[90m│[0m
+[90m│[0m  [1mWork laptop[0m
+[90m│[0m    [90mWindows 11 · last seen 41 days ago · dev_9k2[0m
+[90m│[0m
+[90m│[0m  [1mMara’s iPad[0m
+[90m│[0m    [90miPadOS 26 · last seen yesterday · dev_4m7[0m
+[90m│[0m
+[90m│[0m  [1mMacBook Pro[0m[90m · [0m[36mThis computer[0m
+[90m│[0m    [90mmacOS 26 · last seen today · dev_1c3[0m
+[90m│[0m
+[90m│[0m  [1mtidewater devices rename <id> <name>[0m   [90mRename[0m
+[90m│[0m  [1mtidewater devices deauthorize <id>[0m     [90mRemove[0m
+[90m└[0m
+── no-color · 60 ──
+┌   Tidewater Studio  · devices
+│
+◆  Your devices · 3 devices
+│  Devices using this license.
+│
+│  Work laptop
+│    Windows 11 · last seen 41 days ago · dev_9k2
+│
+│  Mara’s iPad
+│    iPadOS 26 · last seen yesterday · dev_4m7
+│
+│  MacBook Pro · This computer
+│    macOS 26 · last seen today · dev_1c3
+│
+│  tidewater devices rename <id> <name>   Rename
+│  tidewater devices deauthorize <id>     Remove
+└
+── ascii · 60 ──
+[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - devices[0m
+[90m|[0m
+[36m*[0m  [1mYour devices[0m[90m - 3 devices[0m
+[90m|[0m  [90mDevices using this license.[0m
+[90m|[0m
+[90m|[0m  [1mWork laptop[0m
+[90m|[0m    [90mWindows 11 · last seen 41 days ago - dev_9k2[0m
+[90m|[0m
+[90m|[0m  [1mMara’s iPad[0m
+[90m|[0m    [90miPadOS 26 · last seen yesterday - dev_4m7[0m
+[90m|[0m
+[90m|[0m  [1mMacBook Pro[0m[90m - [0m[36mThis computer[0m
+[90m|[0m    [90mmacOS 26 · last seen today - dev_1c3[0m
+[90m|[0m
+[90m|[0m  [1mtidewater devices rename <id> <name>[0m   [90mRename[0m
+[90m|[0m  [1mtidewater devices deauthorize <id>[0m     [90mRemove[0m
+[90m`[0m
+── pipe · 80 ──
+Tidewater Studio · devices
+Your devices · 3 devices
+Devices using this license.
+
+Work laptop
+  Windows 11 · last seen 41 days ago · dev_9k2
+
+Mara’s iPad
+  iPadOS 26 · last seen yesterday · dev_4m7
+
+MacBook Pro · This computer
+  macOS 26 · last seen today · dev_1c3
+
+tidewater devices rename <id> <name>   Rename
+tidewater devices deauthorize <id>     Remove

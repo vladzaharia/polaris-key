@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="705.6" height="128.8" viewBox="0 0 705.6 128.8" role="img" aria-label="SignInHandoff, no-browser, terminal, light theme">
+<rect width="705.6" height="128.8" rx="12" fill="#fbfbfc" stroke="#dcdee3"/>
+<g font-family="JetBrains Mono, ui-monospace, monospace" font-size="14" xml:space="preserve">
+<rect x="42" y="14" width="151.2" height="16.8" fill="#26847a"/>
+<rect x="20.5" y="22.4" width="1" height="8.4" fill="#6e7781"/>
+<rect x="20.5" y="21.9" width="4.7" height="1" fill="#6e7781"/>
+<text x="50.4" y="26.6" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#ffffff" font-weight="600">Tidewater Studio</text>
+<text x="201.6" y="26.6" textLength="58.8" lengthAdjust="spacingAndGlyphs" fill="#6e7781">· login</text>
+<rect x="20.5" y="30.8" width="1" height="16.8" fill="#6e7781"/>
+<text x="21" y="60.2" text-anchor="middle" fill="#9a6700">▲</text>
+<text x="42" y="60.2" textLength="243.6" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">We couldn&#x27;t open your browser</text>
+<rect x="20.5" y="64.4" width="1" height="16.8" fill="#6e7781"/>
+<text x="42" y="77" textLength="571.2" lengthAdjust="spacingAndGlyphs" fill="#24292f">Open this link in a browser on this computer, or use a code instead.</text>
+<rect x="20.5" y="81.2" width="1" height="16.8" fill="#6e7781"/>
+<text x="42" y="93.8" textLength="319.2" lengthAdjust="spacingAndGlyphs" fill="#24292f" text-decoration="underline">key.plrs.im/device?user_code=WDJB-MJHT</text>
+<rect x="20.5" y="98" width="1" height="8.4" fill="#6e7781"/>
+<rect x="20.5" y="105.9" width="4.7" height="1" fill="#6e7781"/>
+<text x="42" y="110.6" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">c</text>
+<text x="58.8" y="110.6" textLength="168" lengthAdjust="spacingAndGlyphs" fill="#6e7781">Use a code instead ·</text>
+<text x="235.2" y="110.6" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">Esc</text>
+<text x="268.8" y="110.6" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#6e7781">Cancel</text>
+</g></svg>

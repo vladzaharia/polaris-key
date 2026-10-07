@@ -1,0 +1,74 @@
+── truecolor · 80 ──
+[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · boot[0m
+[90m│[0m
+[31m✗[0m  [1mUpdate required[0m
+[90m│[0m  This version is no longer supported. Update the app to continue.
+[90m│[0m
+[90m│[0m  [1mtidewater update[0m   [90mUpdate[0m
+[90m└[0m
+── ansi16 · 80 ──
+[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · boot[0m
+[90m│[0m
+[31m✗[0m  [1mUpdate required[0m
+[90m│[0m  This version is no longer supported. Update the app to continue.
+[90m│[0m
+[90m│[0m  [1mtidewater update[0m   [90mUpdate[0m
+[90m└[0m
+── no-color · 80 ──
+┌   Tidewater Studio  · boot
+│
+✗  Update required
+│  This version is no longer supported. Update the app to continue.
+│
+│  tidewater update   Update
+└
+── ascii · 80 ──
+[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - boot[0m
+[90m|[0m
+[31mx[0m  [1mUpdate required[0m
+[90m|[0m  This version is no longer supported. Update the app to continue.
+[90m|[0m
+[90m|[0m  [1mtidewater update[0m   [90mUpdate[0m
+[90m`[0m
+── truecolor · 60 ──
+[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · boot[0m
+[90m│[0m
+[31m✗[0m  [1mUpdate required[0m
+[90m│[0m  This version is no longer supported. Update the app
+[90m│[0m  to continue.
+[90m│[0m
+[90m│[0m  [1mtidewater update[0m   [90mUpdate[0m
+[90m└[0m
+── ansi16 · 60 ──
+[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · boot[0m
+[90m│[0m
+[31m✗[0m  [1mUpdate required[0m
+[90m│[0m  This version is no longer supported. Update the app
+[90m│[0m  to continue.
+[90m│[0m
+[90m│[0m  [1mtidewater update[0m   [90mUpdate[0m
+[90m└[0m
+── no-color · 60 ──
+┌   Tidewater Studio  · boot
+│
+✗  Update required
+│  This version is no longer supported. Update the app
+│  to continue.
+│
+│  tidewater update   Update
+└
+── ascii · 60 ──
+[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - boot[0m
+[90m|[0m
+[31mx[0m  [1mUpdate required[0m
+[90m|[0m  This version is no longer supported. Update the app
+[90m|[0m  to continue.
+[90m|[0m
+[90m|[0m  [1mtidewater update[0m   [90mUpdate[0m
+[90m`[0m
+── pipe · 80 ──
+Tidewater Studio · boot
+Update required
+This version is no longer supported. Update the app to continue.
+
+tidewater update   Update

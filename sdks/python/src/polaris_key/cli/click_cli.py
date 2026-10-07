@@ -1,7 +1,8 @@
 """Optional ``click`` adapter + injectable hook over the shared command core.
 
-Importing this module requires the ``click`` extra. The commands are thin wrappers over
-:mod:`polaris_key.cli.core`, so they never diverge from the argparse front end. A consumer
+Importing this module requires the ``click`` extra. The commands are built from the one verb
+table (:mod:`polaris_key.cli.verbs`), so they never diverge from the argparse front end, and draw
+through the terminal kit (``--json``, ``--no-color``, ``--ascii`` on every verb). A consumer
 attaches the group to their own app via ``app.add_command(polaris_click_group(...))``.
 
 Verbs are grouped by owning service (license/devices/config/core) exactly as in the
@@ -10,7 +11,7 @@ argparse adapter — the help text names the owner so the CLI surface matches th
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional
 
 import click
 
@@ -59,11 +60,15 @@ def _options(product, version, base_url, config_dir, trust, service) -> core.Cli
 def polaris_click_group(
     client_factory: Optional[core.ClientFactory] = None,
     name: str = "polaris",
+    *,
+    theme: Any = None,
+    prog: Optional[str] = None,
 ) -> click.Group:
     """Return a ``click.Group`` exposing the Polaris Key commands.
 
     Mount it with ``app.add_command(polaris_click_group(...))``. ``client_factory``
-    (default: build from the parsed options) lets a consumer pin trust keys / base URL.
+    (default: build from the parsed options) lets a consumer pin trust keys / base URL;
+    ``theme`` restyles the terminal kit and ``prog`` is the command its fix lines name.
     """
     factory = client_factory or core.default_client_factory
 
@@ -75,82 +80,23 @@ def polaris_click_group(
         result.emit()
         raise SystemExit(result.code)
 
-    # ── license ─────────────────────────────────────────────────────────────────────
-    @group.command(help="[license] Activate this device with a license key.")
-    @_with_common
-    # Optional positional + non-argv sources. argv is visible in shell history and `ps`
-    # (R12-13 / R4-16), so the documented path is --key-stdin / --key-file / the env var.
-    @click.argument("key", required=False, default=None)
-    @click.option("--key-file", default=None, help="Read the license key from a file.")
-    @click.option("--key-stdin", is_flag=True, help="Read the license key from stdin.")
-    def activate(  # noqa: ANN001
-        product, version, base_url, config_dir, trust, service, key, key_file, key_stdin
-    ):
-        opts = _options(product, version, base_url, config_dir, trust, service)
-        try:
-            resolved = core.resolve_activation_key(
-                key, key_file=key_file, key_stdin=key_stdin
-            )
-        except (ValueError, OSError) as e:
-            raise click.UsageError(str(e))
-        _emit(core.run_command(factory, opts, lambda c: core.activate(c, resolved)))
-
-    @group.command(help="[license] Obtain a license with no key and no sign-in.")
-    @_with_common
-    def enroll(product, version, base_url, config_dir, trust, service):  # noqa: ANN001
-        opts = _options(product, version, base_url, config_dir, trust, service)
-        _emit(core.run_command(factory, opts, core.enroll))
-
-    @group.command(help="[license] Deauthorize + wipe local credentials.")
-    @_with_common
-    def deactivate(product, version, base_url, config_dir, trust, service):  # noqa: ANN001
-        opts = _options(product, version, base_url, config_dir, trust, service)
-        _emit(core.run_command(factory, opts, core.deactivate))
-
-    @group.command(help="[license] Show the current gate status.")
-    @_with_common
-    def status(product, version, base_url, config_dir, trust, service):  # noqa: ANN001
-        opts = _options(product, version, base_url, config_dir, trust, service)
-        _emit(core.run_command(factory, opts, core.status))
-
-    # ── devices ─────────────────────────────────────────────────────────────────────
-    @group.command(help="[devices] Register this device keylessly.")
-    @_with_common
-    def register(product, version, base_url, config_dir, trust, service):  # noqa: ANN001
-        opts = _options(product, version, base_url, config_dir, trust, service)
-        _emit(core.run_command(factory, opts, core.register))
-
-    # ── core ────────────────────────────────────────────────────────────────────────
-    @group.command(name="import-bundle", help="[core] Import an offline activation bundle.")
-    @_with_common
-    @click.argument("bundle")
-    def import_bundle(  # noqa: ANN001
-        product, version, base_url, config_dir, trust, service, bundle
-    ):
-        opts = _options(product, version, base_url, config_dir, trust, service)
-        try:
-            jws = core.read_bundle_file(bundle)
-        except (ValueError, OSError) as e:
-            raise click.UsageError(str(e))
-        _emit(core.run_command(factory, opts, lambda c: core.import_bundle(c, jws)))
-
-    # ── the full verb set (cli/verbs.py) ────────────────────────────────────────────
+    # Every verb from the one table (cli/verbs.py), so the front ends never diverge.
     for verb in verbs.VERBS:
-        group.add_command(_click_verb(factory, verb, _emit))
+        group.add_command(_click_verb(factory, verb, _emit, theme, prog or "polaris-key"))
 
     return group
 
 
-def _click_verb(factory: core.ClientFactory, verb: "verbs.Verb", emit) -> click.Command:  # noqa: ANN001
+def _click_verb(factory: core.ClientFactory, verb: "verbs.Verb", emit, theme: Any = None, prog: str = "polaris-key") -> click.Command:  # noqa: ANN001
     def callback(product, version, base_url, config_dir, trust, service, words=(), **values):  # noqa: ANN001
         opts = _options(product, version, base_url, config_dir, trust, service)
         ns = verbs.namespace(verb, list(words), values)
-        emit(core.run_command(factory, opts, lambda c: verb.run(c, ns)))
+        emit(verbs.run(factory, opts, verb, ns, theme=theme, prog=prog))
 
     params = []
     if verb.words:
         params.append(click.Argument(["words"], nargs=-1))
-    for o in verb.opts:
+    for o in verb.opts + verbs.UI_OPTS:
         if o.kind == "flag":
             params.append(click.Option([f"--{o.name}"], is_flag=True, default=False, help=o.help))
         else:
