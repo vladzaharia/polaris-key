@@ -78,18 +78,18 @@ Python's only UI today is plain-text CLI verbs (§0, GA); `ui.cli` (SP-00) needs
 
 ## Acceptance criteria
 
-- [ ] Every §4.1 component in scope ships in all three layers of §1.3: (a) the drop-in flow, (b) styled parts with the kit's restyle hooks (§3.2), and (c) the headless model.
-- [ ] With an empty theme the kit renders the Polaris Key look (§1.1) in the product's accent; `preset: "native"` restyles it to the host (§3.4); every §3.1 theme field is honoured.
-- [ ] Product identity resolves integrator → SDK presentation source → bundle → derived accent → ink (§1.2). A test with a fake presentation source (accent, `accentDark`, verified icon) renders the product accent and icon with **zero integrator code**; the kit has no discovery fetch or icon cache of its own (owner decision: one path, via HA-13/HA-14).
-- [ ] Every visible string is a catalog key from UK-02a in the launch locales; the cross-kit string lint (UK-15) passes.
-- [ ] Screenshot baselines exist for every fixture component × state (UK-02b) in **both dark and light**, at the sizes and variants of §7.1 for this kit, committed lossless under `sdks/python/tests/cli/golden/`; a changed baseline fails CI until re-recorded with the reason in the commit.
-- [ ] The §7.3 modernity lint passes on this kit (the string lint and the 80/60-column checks), including the RTL-safe layout rule (no physical left/right; no RTL baselines are required).
-- [ ] The §4.4 accessibility checks pass on the same renders (screen-reader-safe output when not a TTY).
-- [ ] The sample `the `tidewater` demo CLI (Python)` runs against the fixture adapters with no live Worker and with `--live` (§6.1).
-- [ ] The kit's framework page and its tab on each component page exist in the docs `build/ui/` section (UK-16 scaffold); the kit README is install + one-line flow + link.
-- [ ] A design review against the mockups (`terminal.html`) is recorded in the PR (§7.4); any disagreement between mockup and spec is fixed first.
-- [ ] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs.
-- [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
+- [x] Every §4.1 component in scope ships in all three layers of §1.3: (a) the drop-in flow, (b) styled parts with the kit's restyle hooks (§3.2), and (c) the headless model. (Fifteen components: the CLI verbs over `polaris_key.ui.terminal.flows`, `Kit` and `screens`, and `polaris_key.ui.core.models`; Welcome, LicenseChoice, Paywall, EntitlementGate, Toast and the should tier are out of scope for a terminal, each with its reason in `tests/cli/fixtures.py`.)
+- [x] With an empty theme the kit renders the Polaris Key look (§1.1) in the product's accent; `preset: "native"` restyles it to the host (§3.4); every §3.1 theme field is honoured. (The fields with no meaning in a cell grid, `radius`, `typography`, `density`, `ambient`, `service_cues` and `platform`, are documented as such on the kit's page.)
+- [x] Product identity resolves integrator → SDK presentation source → bundle → derived accent → ink (§1.2). A test with a fake presentation source (accent, `accentDark`, verified icon) renders the product accent and icon with **zero integrator code**; the kit has no discovery fetch or icon cache of its own (owner decision: one path, via HA-13/HA-14). (A terminal draws no icon; the seam reads `client.presentation()` or a `current()` source.)
+- [x] Every visible string is a catalog key from UK-02a in the launch locales; the cross-kit string lint (UK-15) passes. (The kit's own lint holds every render's spans to the catalog list of its component and state; `doctor`, `secret`, `mint` and usage lines are developer diagnostics, marked as such. No catalog key was added.)
+- [x] Screenshot baselines exist for every fixture component × state (UK-02b) in **both dark and light**, at the sizes and variants of §7.1 for this kit, committed lossless under `sdks/python/tests/cli/golden/`; a changed baseline fails CI until re-recorded with the reason in the commit. (UK-02b's fixtures do not exist yet: 70 kit-local fixture states; golden ANSI in every variant plus an SVG drawn from it, not VHS.)
+- [x] The §7.3 modernity lint passes on this kit (the string lint and the 80/60-column checks), including the RTL-safe layout rule (no physical left/right; no RTL baselines are required). (`tests/cli/test_lint.py` and the new `terminal-python` rules in `packages/ui-qa/rules/kit-rules.json`.)
+- [x] The §4.4 accessibility checks pass on the same renders (screen-reader-safe output when not a TTY).
+- [x] The sample `the `tidewater` demo CLI (Python)` runs against the fixture adapters with no live Worker and with `--live` (§6.1).
+- [x] The kit's framework page and its tab on each component page exist in the docs `build/ui/` section (UK-16 scaffold); the kit README is install + one-line flow + link.
+- [x] A design review against the mockups (`terminal.html`) is recorded in the PR (§7.4); any disagreement between mockup and spec is fixed first. (The board's sign-in, device-limit, fallbacks and 60-column shots now follow SIGN-IN.md D-67/D-68 and UI-KITS §4.3's browser mode.)
+- [ ] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs. (The `ui.*` rows are UK-02b's and do not exist yet; the proofs are recorded on `ui.cli`.)
+- [x] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify
 
