@@ -511,7 +511,7 @@ def update(k: Kit, v: UpdateView, verb: str = "update") -> Lines:
             for note in v.notes[:3]:
                 body += k.body([k.d(note, "notes")])
             if v.notes_url:
-                body += k.body([k.t("update.allChanges", "muted", link=v.notes_url, version=v.version)])
+                body += k.body([k.t("update.allChanges", "muted", "link", link=v.notes_url, version=v.version)])
         body += _gap(k)
         if v.state == "store":
             body += k.body([k.t("update.platform.generic", product=k.inline_product)])

@@ -19,7 +19,7 @@
 <rect x="20.5" y="131.6" width="1" height="16.8" fill="#7f848e"/>
 <text x="42" y="144.2" textLength="344.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Track freeze now works with every plug-in</text>
 <rect x="20.5" y="148.4" width="1" height="16.8" fill="#7f848e"/>
-<text x="42" y="161" textLength="151.2" lengthAdjust="spacingAndGlyphs" fill="#7f848e">All changes in 2.5</text>
+<text x="42" y="161" textLength="151.2" lengthAdjust="spacingAndGlyphs" fill="#7f848e" text-decoration="underline">All changes in 2.5</text>
 <rect x="20.5" y="165.2" width="1" height="16.8" fill="#7f848e"/>
 <rect x="20.5" y="182" width="1" height="16.8" fill="#7f848e"/>
 <text x="42" y="194.6" textLength="184.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">tidewater update apply</text>
