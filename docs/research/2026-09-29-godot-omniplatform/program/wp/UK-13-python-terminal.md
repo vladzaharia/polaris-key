@@ -8,9 +8,23 @@
 | Unblocks    | [UK-41](UK-41-must-tier-closeout.md)                                                                                                              |
 | Role        | `pkey-sdk-porter`                                                                                                                                 |
 | Plan mode   | no                                                                                                                                                |
-| Gates       | golden ANSI text plus VHS-rendered SVG (truecolor, ANSI-16, `NO_COLOR`, ascii; 80 and 60 columns); the string lint                                |
+| Gates       | golden ANSI text plus an SVG drawn from it (truecolor, ANSI-16, `NO_COLOR`, ascii; 80 and 60 columns); the string lint                            |
 | Human input | none                                                                                                                                              |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                         |
+
+## Corrections (2026-10-07, review fix round)
+
+- **`polaris_key.ui.core` pre-empts part of UK-12.** UK-12 had not started, so this package created
+  the shared headless layer: the copy lookup and its ICU subset, `ProductIdentity` and the
+  presentation-source seam, `Theme`, and the models (SDK result in, component and state out). UK-12
+  extends it with the Qt view models rather than writing a second one.
+- **The SVG baselines are drawn from the golden ANSI, not by VHS.** VHS is not installed on the build
+  machines and writes no SVG; the kit's cell-grid renderer (`tests/cli/svg.py`, 14 px JetBrains
+  Mono at line-height 1.2) draws each default render, and the SVGs are byte-compared like the text.
+  The Gates line above says so.
+- **The UK-02b rows are still open.** `ui-matrix.json` and the `ui.gate` … `ui.i18n` parity rows do
+  not exist yet: kit-local fixtures (`tests/cli/fixtures.py`) stand in, and the proofs are recorded
+  on `ui.cli`. The criterion on `parity.json` stays open until UK-02b lands.
 
 ## Sign-in alignment (2026-10-05): SIGN-IN.md
 

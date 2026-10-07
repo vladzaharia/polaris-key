@@ -23,7 +23,7 @@ License key entry with a live verdict: the field names the product and tier as s
 
 <Tabs syncKey="ui-kit">
   <TabItem label="Terminal (Python)">
-    **Drop-in.** `activate`: masked entry with the live verdict when no key comes from `--key-stdin`, `--key-file` or `$POLARIS_KEY_ACTIVATION_KEY`; the key never touches argv or the scrollback.
+    **Drop-in.** `activate`: masked entry with the live verdict when no key comes from `--key-stdin`, `--key-file` or `$POLARIS_KEY_ACTIVATION_KEY`; a key entered there never touches argv, and the scrollback shows only its prefix and last six characters (a positional key still works, with a warning).
 
     **Styled part.** `screens.key_entry(kit, raw, verdict)`, `screens.activate(kit, view)` in `polaris_key.ui.terminal`, drawn with a `Kit`; restyle through
     `Theme(colors=…, symbols=…, preset="native")`.

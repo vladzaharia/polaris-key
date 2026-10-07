@@ -45,19 +45,19 @@ args = parser.parse_args(); raise SystemExit(args.func(args))
 `polaris_click_group(client_factory, theme=…, prog=…)` and `polaris_typer_app(…)` do the same for
 click and typer. The verbs:
 
-| Verb                  | What it draws                                                                                                                                |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `status`              | The account summary, the offline grace line, a blocked state with its fix as a command, or the activation prompt                             |
-| `activate`            | Masked key entry with the live verdict (the key never touches argv or the scrollback), then done, the refusal, or Replace a device           |
-| `login` / `sign-in`   | The browser, or the code when headless (SSH, no display, `CI`, `--device-code`). Enter opens the browser again, `c` uses a code, Esc cancels |
-| `logout` / `sign-out` | A y/N confirm on a terminal (`--yes` skips it)                                                                                               |
-| `devices`             | The device list; rename; deauthorize with a confirm                                                                                          |
-| `update`, `packs`     | The update prompt and live download progress                                                                                                 |
-| `changelog`           | Release notes                                                                                                                                |
-| `config`              | Settings with their source, and the locked rows                                                                                              |
-| `boot`                | A live line per stage, the consent question, then Ready or the stop and its fix                                                              |
-| `offline-request`     | The request code, with a half-block QR at 70 columns and 20 rows or more                                                                     |
-| `doctor`              | Diagnostics for the person integrating the SDK                                                                                               |
+| Verb                  | What it draws                                                                                                                                                                   |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `status`              | The account summary, the offline grace line, a blocked state with its fix as a command, or the activation prompt                                                                |
+| `activate`            | Masked key entry with the live verdict (stdin, a file or the environment in scripts; a positional key still works, with a warning), then done, the refusal, or Replace a device |
+| `login` / `sign-in`   | The browser, or the code when headless (SSH, no display, `CI`, `--device-code`). Enter opens the browser again, `c` uses a code, Esc cancels                                    |
+| `logout` / `sign-out` | A y/N confirm on a terminal (`--yes` skips it)                                                                                                                                  |
+| `devices`             | The device list; rename; deauthorize with a confirm                                                                                                                             |
+| `update`, `packs`     | The update prompt and live download progress                                                                                                                                    |
+| `changelog`           | Release notes                                                                                                                                                                   |
+| `config`              | Settings with their source, and the locked rows                                                                                                                                 |
+| `boot`                | A live line per stage, the consent question, then Ready or the stop and its fix                                                                                                 |
+| `offline-request`     | The request code, with a half-block QR at 70 columns and 20 rows or more                                                                                                        |
+| `doctor`              | Diagnostics for the person integrating the SDK                                                                                                                                  |
 
 Sign-in in a terminal is the browser presentation only: the license is chosen on the card, the
 terminal never lists licenses, and no terminal draws a QR for sign-in.
@@ -86,11 +86,17 @@ own terminal UI uses them with `polaris_key.ui.core.Copy` and gets the same stat
 
 ## Machine-readable output
 
-Every verb takes `--json`. It never prompts and never writes an escape. Each line on stdout is one
-JSON object with `"v": 1` and `"command"`. Progress lines carry an `"event"` such as `"pending"`
+The human output is localised catalog copy, drawn for people: its words, layout and language can
+change between releases, so a script must not parse it. Scripts use `--json`, whose shape is
+versioned (`"v": 1`) and changes only with that version.
+
+Every verb takes `--json`. It never prompts and never writes an escape, and it is plain ASCII
+(server text included, with its control characters escaped). Each line on stdout is one JSON
+object with `"v": 1` and `"command"`. Progress lines carry an `"event"` such as `"pending"`
 (sign-in: `verificationUri`, `verificationUriComplete`, `userCode`, `expiresAt`), `"stage"` or
 `"progress"` (`done`, `total`), and the last line is always `"event": "result"` with `"ok"`,
-`"exit"` and the verb's fields:
+`"exit"` and the verb's fields. That holds when something fails too: a usage error ends with
+`"error": "usage"` and exit 2, and anything unexpected with `"error": "internal"` and exit 1.
 
 ```json
 {
@@ -111,8 +117,26 @@ JSON object with `"v": 1` and `"command"`. Progress lines carry an `"event"` suc
 }
 ```
 
-Exit codes stay as they were: 0, 1 for a refusal or an unusable gate, 2 for a usage error, and 130
-when the person presses Ctrl-C.
+Scripts that read the plain lines the CLI printed before the kit move to these fields:
+
+| Before                               | `--json` field                                     |
+| ------------------------------------ | -------------------------------------------------- |
+| `Status: ok`                         | `status` (`status`)                                |
+| `Usable: True`                       | `usable` (`status`)                                |
+| `Grace until (epoch): …`             | `graceUntil` (`status`)                            |
+| `Allowed version range: min=… max=…` | `allowedRange` (`status`)                          |
+| `Licensed to: <name> <email>`        | `profile` (`status`)                               |
+| `Token store: …`                     | `tokenStore` (`status`; `doctor` prints it too)    |
+| `Activated. Status: ok`              | `kind`, `status` (`activate`, `enroll`)            |
+| `Registered device <id>. Status: …`  | `deviceId`, `status` (`register`)                  |
+| `Imported bundle <id> (license). …`  | `bundleId`, `imported`, `status` (`import-bundle`) |
+| `<key> = <value> (source: …)`        | `key`, `value`, `source` (`config`)                |
+
+Exit codes: 0 for success, 1 for a refusal, an unusable gate or a declined confirmation, 2 for a
+usage error, and 130 when the person presses Ctrl-C. Two argparse errors moved from 1 to 2 with the
+kit, because they are usage errors: a `--key-file` that cannot be read (or no key from any source
+without a terminal), and an `import-bundle` file that cannot be read or is empty. With `--json`, a
+malformed `--trust` pair also exits 2 with its result line.
 
 ## Theming
 
