@@ -637,11 +637,86 @@ describe("Remove from my library stays removed (S-24 D19, H5)", () => {
       product: SLUG,
       licenseId: created.licenseId,
     });
+    // LX-30: a PATCH no longer gives an email-bearing licence another address (that is
+    // Reassign…, below); the refusal changes nothing.
     const res = await call("PATCH", `/license/licenses/${created.licenseId}`, {
       email: "ada@example.com",
     });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(400);
     expect(await ownerOf(created.licenseId)).toBeNull();
+    // Reassign… to her address does not land it back in her library either: the block holds.
+    const moved = await call(
+      "POST",
+      `/users/licenses/${created.licenseId}/reassign`,
+      {
+        email: "ada@example.com",
+        reason: "Back to Ada",
+        confirm: created.licenseId,
+      },
+    );
+    expect(moved.status).toBe(200);
+    expect(await ownerOf(created.licenseId)).toBeNull();
+  });
+});
+
+describe("PATCH never gives an email-bearing licence to another address (LX-30, S-24 D20)", () => {
+  const patch = (id: string, body: Record<string, unknown>) =>
+    call("PATCH", `/license/licenses/${id}`, body);
+  const emailOf = async (id: string) =>
+    (
+      await db.first<{ email: string | null }>(
+        "SELECT email FROM licenses WHERE product = ? AND id = ?",
+        SLUG,
+        id,
+      )
+    )?.email ?? null;
+
+  it("refuses another address on a waiting licence and on one in an account, pointing at Reassign", async () => {
+    await account("ada@example.com");
+    const inAccount = await create({ email: "ada@example.com" });
+    expect(await ownerOf(inAccount.licenseId)).not.toBeNull();
+    const waiting = await create({ email: "bo@example.com" });
+    for (const id of [inAccount.licenseId, waiting.licenseId]) {
+      const before = await emailOf(id);
+      const res = await patch(id, { email: "cy@example.com" });
+      expect(res.status, id).toBe(400);
+      const body = (await res.json()) as {
+        code: string;
+        message: string;
+        fields: string[];
+      };
+      expect(body).toMatchObject({ code: "bad_request", fields: ["email"] });
+      expect(body.message).toContain("Reassign");
+      expect(await emailOf(id)).toBe(before);
+    }
+  });
+
+  it("allows a case-only edit, a first email on a floating licence (Assign) and on an in-account licence with none", async () => {
+    const waiting = await create({ email: "bo@example.com" });
+    expect(
+      (await patch(waiting.licenseId, { email: " BO@example.com " })).status,
+    ).toBe(200);
+    expect(await emailOf(waiting.licenseId)).toBe("BO@example.com");
+
+    const floating = await create({});
+    expect(
+      (await patch(floating.licenseId, { email: "dee@example.com" })).status,
+    ).toBe(200);
+    expect(await emailOf(floating.licenseId)).toBe("dee@example.com");
+
+    const ada = await account("ada@example.com");
+    const noEmail = await create({});
+    await db.run(
+      "UPDATE licenses SET account_id = ? WHERE product = ? AND id = ?",
+      ada.id,
+      SLUG,
+      noEmail.licenseId,
+    );
+    expect(
+      (await patch(noEmail.licenseId, { email: "ada@example.com" })).status,
+    ).toBe(200);
+    expect(await emailOf(noEmail.licenseId)).toBe("ada@example.com");
+    expect(await ownerOf(noEmail.licenseId)).toBe(ada.id);
   });
 });
 

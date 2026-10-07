@@ -213,6 +213,19 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
       "/manage/api/products/{product}/users/{subject}/overrides",
       ["get", "put"],
     ],
+    // LX-30: the relink tool's two holder moves, keyed by the licence, and its move history.
+    [
+      "/manage/api/products/{product}/users/licenses/{licenseId}/make-floating",
+      ["post"],
+    ],
+    [
+      "/manage/api/products/{product}/users/licenses/{licenseId}/reassign",
+      ["post"],
+    ],
+    [
+      "/manage/api/products/{product}/users/licenses/{licenseId}/relinks",
+      ["get"],
+    ],
   ],
 };
 

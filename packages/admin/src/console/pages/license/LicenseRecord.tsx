@@ -3,10 +3,16 @@
  * who changed it last (LDT-9), a primary action and a menu with the rare ones (LDT-8); route tabs
  * (LDT-4): Overview (one Terms form, LDT-1), Keys, Devices and Config overrides. A dirty Terms
  * form stays mounted across tabs, and leaving the record asks first.
+ *
+ * LX-30 (S-24 §8.8): the header's holder line ("Ada Lovelace · ada@example.com · In an account",
+ * "Waiting for ada@example.com" or "Floating · anyone with the key", with the batch it came from)
+ * and, beside it, PX-W9's "Key entries 3 of 10" for a licence with no account. A floating licence
+ * leads with **Assign…**; an assigned one has **Reassign…** and **Make floating…** (I-12's relink
+ * tool, L3 typed). The newest move shows with its **Undo…** while its 72 hours run.
  */
 
 import * as React from "react";
-import { KeyRound, Power } from "lucide-react";
+import { KeyRound, Power, UserRound } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api, ApiError, type LicenseDetail } from "../../../api.js";
 import { useMe, useProduct } from "../../data/hooks.js";
@@ -23,6 +29,7 @@ import { confirmFor } from "../../../lib/actions.js";
 import { fromSeconds, formatRelative } from "../../../lib/format.js";
 import { SIGN_IN_LABELS } from "../../../lib/labels.js";
 import { Button } from "../../../ui/Button.js";
+import { Callout } from "../../../ui/Callout.js";
 import { ConfirmDialog } from "../../../ui/ConfirmDialog.js";
 import { EmptyState } from "../../../ui/EmptyState.js";
 import { ErrorState } from "../../../ui/ErrorState.js";
@@ -33,6 +40,21 @@ import { LicenseConfig } from "./LicenseConfig.js";
 import { LicenseDevices } from "./LicenseDevices.js";
 import { DeviceLimitSheet } from "./LicenseDeviceLimit.js";
 import { EditHolderDialog, OfflineBundleDialog } from "./LicenseDialogs.js";
+import {
+  AssignDialog,
+  MakeFloatingDialog,
+  ReassignDialog,
+  UndoHolderMoveDialog,
+  UndoableMoveCallout,
+} from "./LicenseHolderDialogs.js";
+import {
+  HolderLine,
+  holderOf,
+  licenseTitle,
+  undoableMove,
+  useLicenseBatch,
+  useLicenseHolderMoves,
+} from "./holders.js";
 import { DeleteLicenseDialog, deletionBlockedReason } from "./LicenseDelete.js";
 import { LicenseKeys, MintKeyDialog } from "./LicenseKeys.js";
 import { LicenseTerms } from "./LicenseTerms.js";
@@ -142,6 +164,9 @@ function LicenseRecordBody({
   const [termsDirty, setTermsDirty] = React.useState(false);
   const [dialog, setDialog] = React.useState<
     | "holder"
+    | "assign"
+    | "reassign"
+    | "floating"
     | "bundle"
     | "mint"
     | "deviceLimit"
@@ -158,6 +183,41 @@ function LicenseRecordBody({
 
   const id = license.id;
   const active = license.status === "active";
+  const holder = holderOf(license);
+  const floating = holder.kind === "floating";
+  const inAccount = holder.kind === "assigned" && holder.inAccount;
+  const batch = useLicenseBatch(slug, license.batchId ?? null).data ?? null;
+  const moves = useLicenseHolderMoves(slug, id).data?.relinks;
+  const undoable = undoableMove(moves);
+  const [undoing, setUndoing] = React.useState<typeof undoable>(null);
+  // ADMIN.md §5.6: an undo removes the callout whose button opened it; once it has gone, focus
+  // moves to the page's heading rather than dropping to <body>.
+  const focusAfterUndo = React.useRef(false);
+  const undoableId = undoable?.id ?? null;
+  const undoOpen = undoing !== null;
+  React.useEffect(() => {
+    // Wait for both: the note gone (the refetch) and the dialog closed (its focus scope released).
+    if (!focusAfterUndo.current || undoableId !== null || undoOpen) return;
+    focusAfterUndo.current = false;
+    let tries = 0;
+    let frame = 0;
+    const attempt = (): void => {
+      const title = document.querySelector<HTMLElement>("h1[data-page-title]");
+      const active = document.activeElement;
+      // Only where focus was lost: never steal it from something that took it on purpose.
+      if (title && (!active || active === document.body)) {
+        if (!title.hasAttribute("tabindex"))
+          title.setAttribute("tabindex", "-1");
+        title.focus({ preventScroll: true });
+      }
+      if (document.activeElement !== title && ++tries < 10)
+        frame = requestAnimationFrame(attempt);
+    };
+    frame = requestAnimationFrame(attempt);
+    return () => cancelAnimationFrame(frame);
+  }, [undoableId, undoOpen]);
+  // PX-W9: a licence with no account counts the devices that entered its key (Identity on).
+  const keyEntries = inAccount ? null : (license.keyEntries ?? null);
   // LX-14a: the limit the Worker enforces and where it comes from.
   const seats = seatLimitOf(license, tiers, product?.defaultDeviceLimit);
   const limit = seats.limit;
@@ -193,7 +253,7 @@ function LicenseRecordBody({
           <Breadcrumbs
             items={[
               { label: "Licenses", to: r.licenses(slug) },
-              { label: license.name || id },
+              { label: licenseTitle(license) },
             ]}
           />
         }
@@ -201,14 +261,19 @@ function LicenseRecordBody({
           // The other end of the Licenses table's name (S-23 §6.1 shared-element): named
           // `pk-key` during a drill-down, fit-content like its source.
           <span className="pk-vt-key inline-block max-w-full">
-            {license.name || "Unnamed license"}
+            {licenseTitle(license)}
           </span>
         }
         titleAside={<LicenseStatus license={license} />}
         description={expiry}
         meta={
           <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            {license.email ? <span>{license.email}</span> : null}
+            <HolderLine slug={slug} license={license} batch={batch} />
+            {keyEntries ? (
+              <span data-testid="record-key-entries">
+                Key entries {keyEntries.used} of {keyEntries.limit}
+              </span>
+            ) : null}
             <IdChip value={id} noun="license id" />
             <span data-testid="record-device-limit">
               Device limit {seatLimitText(seats)}
@@ -226,19 +291,31 @@ function LicenseRecordBody({
           </span>
         }
         primaryAction={
-          active ? (
-            <Button iconStart={<KeyRound />} onClick={() => setDialog("mint")}>
-              Mint key
-            </Button>
-          ) : (
+          !active ? (
             <Button iconStart={<Power />} onClick={() => setDialog("enable")}>
               Enable license
+            </Button>
+          ) : floating ? (
+            // S-24 §8.8, frame 77: a floating licence's one action is to give it a holder.
+            <Button
+              iconStart={<UserRound />}
+              onClick={() => setDialog("assign")}
+            >
+              Assign…
+            </Button>
+          ) : (
+            <Button iconStart={<KeyRound />} onClick={() => setDialog("mint")}>
+              Mint key
             </Button>
           )
         }
         secondaryActions={[
-          { label: "Edit holder…", onSelect: () => setDialog("holder") },
-          ...(active
+          ...(floating
+            ? active
+              ? []
+              : [{ label: "Assign…", onSelect: () => setDialog("assign") }]
+            : [{ label: "Edit holder…", onSelect: () => setDialog("holder") }]),
+          ...(active && !floating
             ? []
             : [{ label: "Mint key…", onSelect: () => setDialog("mint") }]),
           {
@@ -246,12 +323,24 @@ function LicenseRecordBody({
             onSelect: () => setDialog("bundle"),
           },
           { label: "Device limit…", onSelect: () => setDialog("deviceLimit") },
+          // S-24 §8.8: Reassign lives in the overflow, beside Make floating in its danger part.
+          ...(floating
+            ? []
+            : [{ label: "Reassign…", onSelect: () => setDialog("reassign") }]),
           {
             label: "View in activity",
             onSelect: () => navigate(r.activity(slug, { q: id })),
           },
         ]}
         dangerActions={[
+          ...(floating
+            ? []
+            : [
+                {
+                  label: "Make floating…",
+                  onSelect: () => setDialog("floating"),
+                },
+              ]),
           ...(active
             ? [
                 {
@@ -303,6 +392,19 @@ function LicenseRecordBody({
         }
       />
 
+      {undoable ? (
+        <UndoableMoveCallout
+          move={undoable}
+          onUndo={() => setUndoing(undoable)}
+        />
+      ) : null}
+      {floating && tab === "overview" ? (
+        <Callout tone="info" title="Not in anyone's account">
+          It works on every device that enters the key
+          {limit === null ? "" : `, up to ${limit}`}. Whoever adds the key in
+          Polaris Key keeps it, or assign it to someone now.
+        </Callout>
+      ) : null}
       {/* Overview stays mounted while its draft is dirty, so a tab switch keeps it. Each panel
           is a `pk-vt-tabpanel`: the visible one fades through on a tab switch (S-23 §6.1); a
           hidden one is not rendered, so it takes no part. */}
@@ -340,6 +442,33 @@ function LicenseRecordBody({
         license={license}
         open={dialog === "holder"}
         onOpenChange={(o) => setDialog(o ? "holder" : null)}
+      />
+      <AssignDialog
+        slug={slug}
+        license={license}
+        open={dialog === "assign"}
+        onOpenChange={(o) => setDialog(o ? "assign" : null)}
+      />
+      <ReassignDialog
+        slug={slug}
+        license={license}
+        open={dialog === "reassign"}
+        onOpenChange={(o) => setDialog(o ? "reassign" : null)}
+      />
+      <MakeFloatingDialog
+        slug={slug}
+        license={license}
+        open={dialog === "floating"}
+        onOpenChange={(o) => setDialog(o ? "floating" : null)}
+      />
+      <UndoHolderMoveDialog
+        slug={slug}
+        licenseId={id}
+        move={undoing}
+        onClose={() => setUndoing(null)}
+        onUndone={() => {
+          focusAfterUndo.current = true;
+        }}
       />
       <DeviceLimitSheet
         slug={slug}

@@ -1,5 +1,9 @@
 import * as React from "react";
 import { EnrollmentPage } from "./license/EnrollmentPage.js";
+import {
+  LicenseBatchPage,
+  LicenseBatchesPage,
+} from "./license/LicenseBatch.js";
 import { LicenseSettingsPage } from "./license/LicenseSettingsPage.js";
 import { LicenseRecord } from "./license/LicenseRecord.js";
 import { LicensesPage } from "./license/LicensesPage.js";
@@ -9,7 +13,7 @@ import type { SectionPageProps } from "./types.js";
 
 /**
  * License (ADMIN.md §6.5): Licenses and the license record, Tiers and the tier record, Enrollment,
- * and Settings (LX-06: S-19's licensing settings).
+ * Settings (LX-06: S-19's licensing settings), and licence batches with each batch's page (LX-30).
  */
 export default function LicensePages({
   route,
@@ -32,6 +36,12 @@ export default function LicensePages({
       return <EnrollmentPage slug={slug} />;
     case "license-settings":
       return <LicenseSettingsPage slug={slug} />;
+    case "license-batches":
+      return route.id !== undefined ? (
+        <LicenseBatchPage slug={slug} id={route.id} />
+      ) : (
+        <LicenseBatchesPage slug={slug} />
+      );
     default:
       return null;
   }

@@ -4,9 +4,11 @@
  *
  *   POST /batches                          create up to 500 floating licences in one labelled
  *                                          batch; the answer carries every key ONCE (`no-store`)
- *   GET  /batches                          every batch, newest first, with its used counts
+ *   GET  /batches[?limit&cursor]           the batches, newest first, with their used counts,
+ *                                          a page at a time (LX-30: `nextCursor`)
  *   GET  /batches/<id>                     one batch
- *   POST /batches/<id>/disable-unused      disable every licence of the batch never used
+ *   POST /batches/<id>/disable-unused      disable every licence of the batch never used;
+ *                                          `{ confirm? }`, the batch label when given (LX-30)
  *
  * The data and the SQL are `../batches.ts`. Every licence of a batch is floating (no name, no
  * email, no account: the holder rule's `isFloatingLicense`), `origin = 'admin'`, and carries its
@@ -36,7 +38,9 @@ import type { Db, DbStatement } from "../../../core/platform.js";
 import { describeHolder, licenseHolder } from "../../../core/licenseHolders.js";
 import { tierExpiresAt } from "../authz.js";
 import {
+  BATCH_PAGE_MAX,
   batchDisabledDeviceTokens,
+  decodeBatchCursor,
   countUnusedBatchLicenses,
   createBatchStatements,
   disableUnusedAfterAuditStatement,
@@ -102,8 +106,7 @@ export async function handleBatches(
 
   // /batches
   if (!id) {
-    if (req.method === "GET")
-      return adminJson({ batches: await listLicenseBatches(db, slug) });
+    if (req.method === "GET") return listBatches(ctx);
     if (req.method === "POST") return createBatch(ctx);
     return err(405, ErrorCode.BadRequest, "method not allowed");
   }
@@ -121,6 +124,14 @@ export async function handleBatches(
   if (action === "disable-unused") {
     if (req.method !== "POST")
       return err(405, ErrorCode.BadRequest, "method not allowed");
+    // LX-30: the console's typed confirmation, checked here when it is sent (an older caller may
+    // send no body; a stated value must be the label, exactly).
+    const body = await readBody(req);
+    if ("confirm" in body && body.confirm !== batch.label)
+      return err(400, ErrorCode.BadRequest, "type the batch label to confirm", {
+        reason: "confirm_required",
+        fields: ["confirm"],
+      });
     const disabled = await disableUnused(db, slug, batch, session, now);
     // An unused licence has no device, so this is normally nothing. It purges a device bound in
     // the instant around the UPDATE, as the single disable purges its licence's devices.
@@ -136,6 +147,40 @@ export async function handleBatches(
   }
 
   return adminNotFound();
+}
+
+/** `GET /batches?limit=&cursor=`: a page of the list (LX-30). */
+async function listBatches(ctx: LicenseAdminContext): Promise<Response> {
+  const url = new URL(ctx.req.url);
+  const rawLimit = url.searchParams.get("limit");
+  const rawCursor = url.searchParams.get("cursor");
+  let limit: number | undefined;
+  if (rawLimit !== null) {
+    const n = Number(rawLimit);
+    if (!/^\d+$/.test(rawLimit) || n < 1 || n > BATCH_PAGE_MAX)
+      return err(
+        400,
+        ErrorCode.BadRequest,
+        `limit must be an integer from 1 to ${BATCH_PAGE_MAX}`,
+        { fields: ["limit"] },
+      );
+    limit = n;
+  }
+  let after: { createdAt: number; id: string } | undefined;
+  if (rawCursor !== null && rawCursor !== "") {
+    const decoded = decodeBatchCursor(rawCursor);
+    if (!decoded)
+      return err(400, ErrorCode.BadRequest, "cursor is not valid", {
+        fields: ["cursor"],
+      });
+    after = decoded;
+  }
+  return adminJson(
+    await listLicenseBatches(ctx.db, ctx.product.slug, {
+      ...(limit !== undefined ? { limit } : {}),
+      ...(after ? { after } : {}),
+    }),
+  );
 }
 
 /** Attempts at a Disable unused keys whose count moved between the read and the batch. */

@@ -1,0 +1,24 @@
+-- LX-30 (notes/S-24 §5.5, D20): the relink tool's two holder moves, **Make floating** and
+-- **Reassign…**, recorded in I-12's `license_relinks` so they share its 72-hour undo, its history
+-- and the per-operator daily alert.
+--
+-- A relink (I-12) moves a licence between two accounts and leaves its `name` and `email` alone. A
+-- holder move also changes the licence's own holder: Make floating clears `name` and `email`;
+-- Reassign sets them to a new person. The undo must put them back, so the row keeps what it
+-- changed as JSON:
+--
+--   {"kind": "floating" | "reassign",
+--    "from": {"name": …, "email": …}, "to": {"name": …, "email": …},
+--    "devicesSignedOut": n}
+--
+-- NULL for an I-12 relink. The values are the licence's own name and email, which the developer
+-- wrote (never the account's details, S-24 D6); the row goes with the licence when it is deleted
+-- (Identity's `licenseDelete` contributor) and with the product.
+--
+-- `to_subject` is NOT NULL in 0082. A holder move that leaves the licence with no account (Make
+-- floating, or a reassignment to an address no account has verified yet) writes '' there, and
+-- every reader maps '' to "no subject" (`services/identity/accounts/productUsers.ts`).
+--
+-- ONE statement per file (R11-04): a bare ADD COLUMN cannot be made idempotent in SQLite, so a
+-- replay fails here and strands nothing after it.
+ALTER TABLE license_relinks ADD COLUMN holder_json TEXT;

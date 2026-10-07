@@ -51,6 +51,59 @@ Checked against `main` at `148439c4f`. Each item names the package whose review 
 - **Not in scope.** No reset action and no per-licence limit (PX-W9 Q7). Operators raise the product's
   `identity.keyEntry.limit`.
 
+## Corrections from the code (as built, 2026-10-06)
+
+Where the brief and the code disagreed, the code was the fact:
+
+- **Send a new key… and Assign's Email them the key are not built.** Both use LX-27's
+  `POST …/licenses/<id>/send-key`, and LX-27 is still `todo` (it is not one of this package's
+  dependencies). A console action may not call a route that does not exist, so the two entry points
+  move to LX-27 (recorded in its brief). Assign sets the name and email only.
+- **Reassign is by email, keyed by the licence.** I-12's relink names its target by a pairwise
+  subject and needs the licence to be in an account; S-24 §5.2 and §5.5 reassign to another email,
+  from an account or from a waiting address. So the Worker gains three Core admin routes beside
+  I-12's relink (`admin/handlers/users.ts`, logic in Identity's `accounts/productUsers.ts`):
+  `POST …/users/licenses/<id>/make-floating` `{reason, confirm, signOutDevices?}`,
+  `POST …/users/licenses/<id>/reassign` `{email, name?, reason, confirm}` and
+  `GET …/users/licenses/<id>/relinks` (the licence's moves with their undo). Both writes take the
+  step-up, a reason, the daily per-operator alert and a `license_relinks` row; the existing
+  `POST …/users/relinks/<id>/undo` undoes them, restoring the account, `name` and `email`. Make
+  floating writes no block row of its own: `reassignLicense(toAccountId: null)` does, and the undo's
+  move back lifts it. Reassign runs Core's `associateLicenseHolder` (S-24 D3) and answers the same
+  whether or not the new address joined an account (D4). Audit actions `user.license.make_floating`
+  and `user.license.reassign`.
+- **The typed confirmation is the licence's name, else its id**, and the Worker compares it
+  (`400 bad_request`, `reason: confirm_required`). There is no "key ending" to type: keys are
+  stored only as peppered hashes, so nothing knows a key's last characters.
+- **Storage:** one migration, `0104_license_relinks_holder.sql` (the lead's number), adding
+  `license_relinks.holder_json` (the before and after name and email, for the undo); `LATEST_MIGRATION`
+  names it. `to_subject` is `NOT NULL` in 0082, so a move that leaves the licence with no account
+  writes `''`, read back as no subject.
+- **"Also sign out its devices"** deauthorizes each device after the move (`deauthorizeDeviceAsAdmin`,
+  one `device.deauthorize` audit row each), not in the same D1 batch.
+- **LX-28's follow-ups are built here:** the batch list pages (`?limit=1..500&cursor=`, default 100,
+  `nextCursor`), Disable unused keys checks an optional `confirm` against the batch label (the
+  console always sends it), and the activity verbs `license.holder.assign`, `license.batch.create`,
+  `license.batch.disable_unused`, `account.license.auto_attach_block` and the relink tool's verbs,
+  with a `license_batch` target kind and a "Users and license holders" action group.
+- **Batches get a collection page** (`#/p/<slug>/license/batches`, not in the sidebar) besides the
+  batch page, reached from Licenses' **Batches** action and the Batch filter. The Licenses list's
+  Batch column starts hidden below 1440 px (the layout lint's sideways-scroll rule).
+- **Rule 10:** the three routes, the batch list's parameters and the disable-unused body are in the
+  OpenAPI spec and `routeCoverage`'s `products` table (I-12's own relink routes stay narrative); the
+  docs site's `admin/users.md` documents them.
+- **Edit holder** stays on an assigned licence and edits the name only, and the Worker's `PATCH` now
+  refuses what Edit holder no longer offers (review B3): changing the email of a licence that has one
+  to another address is `400 bad_request` (`fields: ["email"]`, "use Reassign"). A case-only edit, a
+  first email on a floating licence (Assign) and a first email on an in-account licence stay a PATCH.
+  LX-26's test that edited a removed licence's email now expects the refusal and goes through
+  Reassign instead.
+- **Review fix round (2026-10-07):** a product deletion deletes its `license_relinks` rows (they
+  hold names, emails and account ids); Make floating writes its relink row and the handler its
+  audit row and alert BEFORE signing devices out, and a sign-out that fails partway answers 200
+  with the count it reached (the undo and the audit stay); focus moves to the page heading after an
+  undo removes its note; the Users page names a holder move's account-less side "an email address".
+
 ## Goal
 
 An operator can see who holds each licence (or that it is floating), filter by holder and batch,
@@ -111,12 +164,12 @@ visible and changeable after creation, and reassignment must go through one audi
 
 ## Acceptance criteria
 
-- [ ] Each holder state renders correctly on the list and the record (tests, screenshots in both
+- [x] Each holder state renders correctly on the list and the record (tests, screenshots in both
       themes).
-- [ ] Reassign and Make floating require step-up, a reason and the typed confirmation, and can be
+- [x] Reassign and Make floating require step-up, a reason and the typed confirmation, and can be
       undone within 72 hours (tests).
-- [ ] Disable unused disables only never-used licences of the batch (test).
-- [ ] Console CSP parity and the green gate pass (AGENTS.md).
+- [x] Disable unused disables only never-used licences of the batch (test).
+- [x] Console CSP parity and the green gate pass (AGENTS.md).
 
 ## Verify
 
@@ -128,6 +181,17 @@ mise exec node@22 -- pnpm --filter @polaris-key/worker test -- relink license
 ## Hand-off
 
 LX-31 documents the holder surfaces.
+
+Follow-ups recorded by the LX-30 review (2026-10-07), none blocking:
+
+- The undo is not one D1 batch (the owner move, the name and email restore and the undone mark are
+  separate writes), the same class as I-12's relink.
+- Notices go out before the compare-and-set, so a move that then answers `conflict` has already
+  told both sides (I-12's class too).
+- A keyless licence made floating (no key ever handed out) is unreachable by anyone once the 72-hour
+  undo closes; consider a warning in Make floating when the licence has no active key.
+- The Licenses table remounts once when the first batch read lands (its Batch column); focus
+  inside the table at that instant is lost.
 
 The role agent sets `--set LX-30 in-review` when it hands off. After review, the lead adds the last
 commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set LX-30

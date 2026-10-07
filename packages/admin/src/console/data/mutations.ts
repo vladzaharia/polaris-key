@@ -94,6 +94,7 @@ export type WriteMethod =
   | "patchLicense"
   | "setLicenseEnabled"
   | "deleteLicense"
+  | "disableUnusedLicenses"
   | "deleteLicenses"
   | "putLicenseOverrides"
   | "mintKey"
@@ -104,6 +105,8 @@ export type WriteMethod =
   | "deleteProductUserData"
   | "detachProductUserLicense"
   | "relinkProductUserLicense"
+  | "makeLicenseFloating"
+  | "reassignLicenseHolder"
   | "undoRelink"
   | "putProductUserOverrides"
   | "updateSignInSettings"
@@ -198,6 +201,8 @@ const readiness = (slug: string): Target[] => [
 const license = (slug: string): Target[] => [
   prefix(qk.licenses(slug)),
   prefix(qk.devicesSummary(slug)),
+  // LX-30: a batch counts its licences' states (unused, disabled), and a deletion its rows.
+  prefix(qk.licenseBatches(slug)),
   summary(),
 ];
 
@@ -442,6 +447,15 @@ export const MUTATIONS: MutationTable = {
     label: "user license relink",
     invalidates: (slug) => users(slug),
   },
+  // LX-30: Make floating and Reassign are I-12's tool keyed by the licence; the same rows move.
+  makeLicenseFloating: {
+    label: "license make floating",
+    invalidates: (slug) => users(slug),
+  },
+  reassignLicenseHolder: {
+    label: "license reassign",
+    invalidates: (slug) => users(slug),
+  },
   undoRelink: {
     label: "user license relink undo",
     invalidates: (slug) => users(slug),
@@ -645,6 +659,11 @@ export const MUTATIONS: MutationTable = {
   deleteLicense: {
     label: "license delete",
     invalidates: (slug) => [...license(slug), prefix(qk.devices(slug))],
+  },
+  // LX-30: disables the batch's never-used licences.
+  disableUnusedLicenses: {
+    label: "license batch disable unused",
+    invalidates: (slug) => license(slug),
   },
   deleteLicenses: {
     label: "license bulk delete",

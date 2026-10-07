@@ -147,6 +147,12 @@ export async function deleteProduct(
       sql: "DELETE FROM override_migration_report WHERE product = ?",
       params: [slug],
     },
+    // I-12 and LX-30: the relink history names accounts and subjects, and a holder move keeps the
+    // licence's name and email before and after (`holder_json`); nothing is left to undo.
+    {
+      sql: "DELETE FROM license_relinks WHERE product = ?",
+      params: [slug],
+    },
     {
       sql: "UPDATE devices SET status = 'deauthorized', subject = NULL WHERE product = ?",
       params: [slug],

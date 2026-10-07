@@ -210,18 +210,57 @@ function shapeBatch(r: BatchViewRow): LicenseBatchView {
   };
 }
 
-/** Every batch of the product with its counts, newest first. */
+/** The batch list's page size when the caller names none (LX-30). */
+export const BATCH_PAGE_DEFAULT = 100;
+/** The largest page the batch list answers. */
+export const BATCH_PAGE_MAX = 500;
+
+/** A page of the batch list: newest first, and the cursor to the next page (`null`: the last). */
+export interface LicenseBatchPage {
+  batches: LicenseBatchView[];
+  nextCursor: string | null;
+}
+
+/** The list cursor: `<created_at>.<id>` of the last batch of the page, opaque to the caller. */
+function encodeBatchCursor(b: LicenseBatchView): string {
+  return `${b.createdAt}.${b.id}`;
+}
+
+/** A cursor back to its position; `null` when it is not one this module wrote. */
+export function decodeBatchCursor(
+  raw: string,
+): { createdAt: number; id: string } | null {
+  const m = /^(\d{1,12})\.([A-Za-z0-9_-]{1,64})$/.exec(raw);
+  return m ? { createdAt: Number(m[1]), id: m[2]! } : null;
+}
+
+/**
+ * The product's batches with their counts, newest first (`created_at DESC, id DESC`), one page at
+ * a time (LX-30, for products with many batches). `after` is a decoded cursor.
+ */
 export async function listLicenseBatches(
   db: Db,
   product: string,
-): Promise<LicenseBatchView[]> {
+  page: { limit?: number; after?: { createdAt: number; id: string } } = {},
+): Promise<LicenseBatchPage> {
+  const limit = page.limit ?? BATCH_PAGE_DEFAULT;
+  const after = page.after;
   const rows = await db.all<BatchViewRow>(
     `${BATCH_VIEW_SQL}
+      ${after ? "AND (b.created_at < ? OR (b.created_at = ? AND b.id < ?))" : ""}
       GROUP BY b.product, b.id
-      ORDER BY b.created_at DESC, b.id DESC`,
+      ORDER BY b.created_at DESC, b.id DESC
+      LIMIT ?`,
     product,
+    ...(after ? [after.createdAt, after.createdAt, after.id] : []),
+    limit + 1,
   );
-  return rows.map(shapeBatch);
+  const batches = rows.slice(0, limit).map(shapeBatch);
+  const last = batches[batches.length - 1];
+  return {
+    batches,
+    nextCursor: rows.length > limit && last ? encodeBatchCursor(last) : null,
+  };
 }
 
 /** One batch with its counts, or `null` when the product has no such batch. */

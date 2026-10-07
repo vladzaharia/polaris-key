@@ -11,6 +11,19 @@ You are receiving this because your Polaris Key account was deleted. We sent it 
 }
 `;
 
+exports[`notice templates: copy > assignedToYou: subject and plain text 1`] = `
+{
+  "subject": "A Mossgarden license was assigned to you",
+  "text": "The developer of Mossgarden assigned one of its licenses to this email address.
+
+Sign in to Polaris Key with this email address to find it in your library.
+
+Open Mossgarden: https://key.plrs.im/#/p/mossgarden
+
+You are receiving this because a developer issued a license to this email address.",
+}
+`;
+
 exports[`notice templates: copy > deviceRemoved: subject and plain text 1`] = `
 {
   "subject": "Studio PC was removed from Tidewater Studio",
@@ -109,6 +122,30 @@ You are receiving this because of a change to your Polaris Key account.",
 }
 `;
 
+exports[`notice templates: copy > madeFloating: subject and plain text 1`] = `
+{
+  "subject": "The developer removed a Mossgarden license from your account",
+  "text": "The developer of Mossgarden removed one of its licenses from your Polaris Key account, at the request of its support. It is no longer in your library.
+
+If you did not expect this, contact the developer's support now: they can undo it for 72 hours.
+
+Wasn't you? Secure your account: https://key.plrs.im/#/account/methods
+
+You are receiving this because of a change to your Polaris Key account. We sent it to every verified email on the account.",
+}
+`;
+
+exports[`notice templates: copy > madeFloatingWaiting: subject and plain text 1`] = `
+{
+  "subject": "A Mossgarden license is no longer assigned to you",
+  "text": "The developer of Mossgarden removed your name and email address from one of its licenses, at the request of its support.
+
+If you did not expect this, contact the developer's support now: they can undo it for 72 hours.
+
+You are receiving this because a developer issued a license to this email address.",
+}
+`;
+
 exports[`notice templates: copy > methodAdded: subject and plain text 1`] = `
 {
   "subject": "Steam was connected to your Polaris Key account",
@@ -145,5 +182,29 @@ Open Polaris Key: https://key.plrs.im/#/account/sessions
 Wasn't you? Secure your account: https://key.plrs.im/#/account/methods
 
 You are receiving this because of a change to your Polaris Key account. We sent it to every verified email on the account.",
+}
+`;
+
+exports[`notice templates: copy > reassignedAway: subject and plain text 1`] = `
+{
+  "subject": "The developer assigned your Mossgarden license to someone else",
+  "text": "The developer of Mossgarden assigned one of its licenses in your Polaris Key account to someone else, at the request of its support. It is no longer in your library.
+
+If you did not expect this, contact the developer's support now: they can undo it for 72 hours.
+
+Wasn't you? Secure your account: https://key.plrs.im/#/account/methods
+
+You are receiving this because of a change to your Polaris Key account. We sent it to every verified email on the account.",
+}
+`;
+
+exports[`notice templates: copy > reassignedAwayWaiting: subject and plain text 1`] = `
+{
+  "subject": "The developer assigned your Mossgarden license to someone else",
+  "text": "The developer of Mossgarden assigned one of its licenses, issued to this email address, to someone else, at the request of its support.
+
+If you did not expect this, contact the developer's support now: they can undo it for 72 hours.
+
+You are receiving this because a developer issued a license to this email address.",
 }
 `;

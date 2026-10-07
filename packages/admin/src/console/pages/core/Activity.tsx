@@ -429,6 +429,16 @@ export function ActivityTarget({
       return <EntityLink slug={slug} kind="license" id={t.id} />;
     case "tier":
       return <EntityLink slug={slug} kind="tier" id={t.id} />;
+    case "license_batch":
+      // LX-28/LX-30: a batch's page; its label is in the summary.
+      return (
+        <Link
+          to={r.licenseBatch(slug, t.id)}
+          className="font-mono text-xs text-accent-fg underline-offset-4 hover:underline"
+        >
+          {t.id}
+        </Link>
+      );
     case "profile":
       return <EntityLink slug={slug} kind="profile" id={t.id} />;
     case "device":

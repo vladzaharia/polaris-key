@@ -22,7 +22,7 @@ export interface ActionPolicy {
   intent: ConfirmIntent;
   /**
    * L3: the operator types a value (the slug, the kid, "reseal", "delete", "migrate", the store
-   * app's name, or `delete <id>`) to confirm.
+   * app's name, `delete <id>`, the licence's name or id, or the batch label) to confirm.
    */
   typedConfirmation: boolean;
   /**
@@ -36,7 +36,9 @@ export interface ActionPolicy {
     | "delete"
     | "appName"
     | "deleteId"
-    | "migrate";
+    | "migrate"
+    | "licenseName"
+    | "batchLabel";
 }
 
 /** Every action named in §5.2, by stable id. */
@@ -170,6 +172,12 @@ export const ACTION_LEVELS = {
   // U-03: the licence override migration's run, platform-wide and one-way: unowned licences'
   // config and secret overrides are dropped. Typed `migrate`, after a fresh sign-in.
   "overrideMigration.run": 3,
+  // LX-30 (S-24 D20, R7): Reassign and Make floating are I-12's relink tool on the licence record
+  // (step-up, reason, notices, 72-hour undo) and typed with the licence's name, else its id; the
+  // Worker compares. Disable unused keys contains a leaked batch, typed with the batch label.
+  "license.reassign": 3,
+  "license.makeFloating": 3,
+  "batch.disableUnused": 3,
   // A-17a (owner decision, 2026-10-04): releasing a held App Store version is typed. The Worker
   // compares `confirm` with the app's name in App Store Connect.
   "connector.releaseVersion": 3,
@@ -224,6 +232,9 @@ const TYPED: Partial<Record<ActionId, ActionPolicy["typed"]>> = {
   "user.deleteData": "delete",
   "license.delete": "deleteId",
   "overrideMigration.run": "migrate",
+  "license.reassign": "licenseName",
+  "license.makeFloating": "licenseName",
+  "batch.disableUnused": "batchLabel",
   "connector.releaseVersion": "appName",
   "connector.phasedComplete": "appName",
   "connector.iapAvailability": "appName",

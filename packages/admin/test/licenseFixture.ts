@@ -6,6 +6,7 @@
 
 import { configureAxe } from "vitest-axe";
 import type {
+  Me,
   LicenseDetail,
   LicenseSummary,
   ProductCatalog,
@@ -65,6 +66,10 @@ export const ADA = summary("lic_1", {
   channels: ["stable", "beta"],
   modifiedBy: "u1",
   modifiedAt: NOW_S - 3600,
+  // LX-26: in an account (the Worker's derived holder).
+  holder: { kind: "assigned", inAccount: true, email: "ada@x.io" },
+  ownerSubject: "ps_AAAAAAAAAAAAAAAAAAAAAA",
+  batchId: null,
 });
 
 export const LICENSES: LicenseSummary[] = [
@@ -235,6 +240,7 @@ export function failing(status: number, error = "server_error"): Response {
 export interface LicenseBootOptions {
   routes?: Record<string, unknown>;
   services?: Enablement;
+  me?: Partial<Me>;
 }
 
 /** Mount the console at a License hash over the fixtures (override any route with `routes`). */
@@ -244,6 +250,7 @@ export function bootLicense(
 ): FetchLog {
   return boot(hash, {
     services: opts.services ?? ALL_ON,
+    ...(opts.me ? { me: opts.me } : {}),
     extra: {
       [`${API}/license/licenses`]: { licenses: LICENSES },
       [`${API}/license/licenses/lic_1`]: DETAIL,

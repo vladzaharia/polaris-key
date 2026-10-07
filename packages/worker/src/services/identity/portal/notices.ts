@@ -483,3 +483,102 @@ export function licenseRelinkUndoneNotice(input: {
     origin: input.origin,
   });
 }
+
+// ── Holder moves (LX-30; notes/S-24 §5.5, D20) ───────────────────────────────────────────────
+//
+// Make floating and Reassign… are the relink tool's two holder moves. The side the licence leaves
+// is told before the move (with the undo window), at every verified email of its account when it
+// was in one, or at the licence's own address when it was waiting for one. A waiting address has
+// no Polaris Key account, so its variant carries no "Secure your account" link and says why the
+// message came. The new address is told the licence is waiting for it, and never whether an
+// account already holds that address (S-24 D4).
+
+/** Why a message reached an address that has no account: the developer issued a licence to it. */
+const LICENSE_ADDRESS_FOOTER =
+  "You are receiving this because a developer issued a license to this email address.";
+
+/** The away side of a holder move: an account (security notice) or a waiting licence's address. */
+function holderMovedAwayNotice(input: {
+  subject: string;
+  paragraph: string;
+  inAccount: boolean;
+  origin: string;
+}): NoticeMessage {
+  const undo = `If you did not expect this, contact the developer's support now: they can undo it for ${RELINK_UNDO_WORDS}.`;
+  return buildNotice({
+    subject: input.subject,
+    paragraphs: [input.paragraph, undo],
+    ...(input.inAccount
+      ? { secureUrl: appLink(input.origin, "account/methods") }
+      : { footer: LICENSE_ADDRESS_FOOTER }),
+    origin: input.origin,
+  });
+}
+
+/**
+ * Make floating: the developer took the licence off its holder. It keeps working on every device
+ * that has its key; it is no longer in anyone's library.
+ */
+export function licenseMadeFloatingNotice(input: {
+  productName: string | null | undefined;
+  /** True: sent to the account the licence leaves. False: to a waiting licence's address. */
+  inAccount: boolean;
+  origin: string;
+}): NoticeMessage {
+  const name = displayValue(input.productName, "product");
+  const dev = displayValue(input.productName, "this product");
+  return holderMovedAwayNotice({
+    subject: input.inAccount
+      ? `The developer removed a ${name} license from your account`
+      : `A ${name} license is no longer assigned to you`,
+    paragraph: input.inAccount
+      ? `The developer of ${dev} removed one of its licenses from your Polaris Key account, at the request of its support. It is no longer in your library.`
+      : `The developer of ${dev} removed your name and email address from one of its licenses, at the request of its support.`,
+    inAccount: input.inAccount,
+    origin: input.origin,
+  });
+}
+
+/** Reassign…: the developer gave the licence to someone else. */
+export function licenseReassignedAwayNotice(input: {
+  productName: string | null | undefined;
+  inAccount: boolean;
+  origin: string;
+}): NoticeMessage {
+  const name = displayValue(input.productName, "product");
+  const dev = displayValue(input.productName, "this product");
+  return holderMovedAwayNotice({
+    subject: `The developer assigned your ${name} license to someone else`,
+    paragraph: input.inAccount
+      ? `The developer of ${dev} assigned one of its licenses in your Polaris Key account to someone else, at the request of its support. It is no longer in your library.`
+      : `The developer of ${dev} assigned one of its licenses, issued to this email address, to someone else, at the request of its support.`,
+    inAccount: input.inAccount,
+    origin: input.origin,
+  });
+}
+
+/**
+ * Reassign…, the receiving side: sent to the new address only. Never says whether an account
+ * holds that address (S-24 D4): the same words whether the licence is waiting or already joined.
+ */
+export function licenseAssignedToYouNotice(input: {
+  productName: string | null | undefined;
+  productSlug: string;
+  origin: string;
+}): NoticeMessage {
+  const name = displayValue(input.productName, "product");
+  const dev = displayValue(input.productName, "this product");
+  return buildNotice({
+    subject: `A ${name} license was assigned to you`,
+    paragraphs: [
+      `The developer of ${dev} assigned one of its licenses to this email address.`,
+      "Sign in to Polaris Key with this email address to find it in your library.",
+    ],
+    action: {
+      label: `Open ${displayValue(input.productName, "it")}`,
+      url: appLink(input.origin, productRoute(input.productSlug)),
+    },
+    footer: LICENSE_ADDRESS_FOOTER,
+    origin: input.origin,
+  });
+}

@@ -1173,7 +1173,57 @@ export const LICENSES = Array.from({ length: 240 }, (_, i) => ({
   identityProvider: i % 4 === 1 ? "oidc" : "manual",
   modifiedBy: "u1",
   modifiedAt: NOW_S - i * 3600,
+  // LX-30: every holder state; every tenth licence is a floating key of one of two batches.
+  ...(i % 10 === 9
+    ? {
+        name: "",
+        email: "",
+        holder: { kind: "floating" },
+        ownerSubject: null,
+        batchId: i % 20 === 9 ? "batch_oct" : "batch_long",
+        keyEntries: { used: i % 4, limit: 10 },
+      }
+    : i % 3 === 2
+      ? {
+          holder: { kind: "assigned", inAccount: false },
+          ownerSubject: null,
+          batchId: null,
+          keyEntries: { used: 0, limit: 10 },
+        }
+      : {
+          holder: { kind: "assigned", inAccount: true },
+          ownerSubject: "ps_Xq3v9TbN2kLm8PwRz1YcAa",
+          batchId: null,
+          keyEntries: null,
+        }),
 }));
+
+/** LX-30: two batches, one with a label at the 80-character limit. */
+export const BATCHES = [
+  {
+    id: "batch_oct",
+    label: "Steam keys, October",
+    count: 50,
+    tier: "pro",
+    createdBy: "u1",
+    createdAt: NOW_S - 5 * DAY,
+    used: 12,
+    unused: 37,
+    disabled: 1,
+  },
+  {
+    id: "batch_long",
+    label:
+      "Humble Bundle — Northwind audio tools, spring promotion keys for EU resellers",
+    count: 500,
+    tier: "studio-enterprise-annual",
+    createdBy: "ops@northwind-broadcast-studios.example.co.uk",
+    createdAt: NOW_S - 40 * DAY,
+    used: 498,
+    unused: 0,
+    disabled: 2,
+  },
+];
 
 export const TIERS = [
   {
@@ -1682,6 +1732,10 @@ export const DATA_ROUTES: Record<string, unknown> = {
   [`${PROD}/license/licenses`]: { licenses: LICENSES },
   [`${PROD}/license/licenses/lic_1`]: LICENSE_DETAIL,
   [`${PROD}/license/tiers`]: { tiers: TIERS },
+  [`${PROD}/license/batches`]: { batches: BATCHES, nextCursor: null },
+  [`${PROD}/license/batches/batch_oct`]: BATCHES[0],
+  [`${PROD}/license/batches/batch_long`]: BATCHES[1],
+  [`${PROD}/users/licenses/lic_1/relinks`]: { relinks: [] },
   [`${PROD}/config/catalog`]: CATALOG,
   [`${PROD}/config/profiles`]: { profiles: PROFILES },
   [`${PROD}/config/profiles/base`]: PROFILE,

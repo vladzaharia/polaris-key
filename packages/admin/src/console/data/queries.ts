@@ -138,6 +138,13 @@ export const qk = {
   /** The "Clean up duplicates" list; under the licenses prefix, so every licence write refreshes it. */
   licenseCleanup: (slug: string) =>
     product(slug, "license", "licenses", "_cleanup"),
+  /** LX-30: the holder moves of one licence (I-12's relink history for it); under its record. */
+  licenseHolderMoves: (slug: string, id: string) =>
+    product(slug, "license", "licenses", id, "_moves"),
+  /** LX-28/LX-30: every batch of the product, all pages fetched (`{ batches }`). */
+  licenseBatches: (slug: string) => product(slug, "license", "batches"),
+  licenseBatch: (slug: string, id: string) =>
+    product(slug, "license", "batches", id),
   tiers: (slug: string) => product(slug, "license", "tiers"),
   fingerprintPolicy: (slug: string) => product(slug, "license", "enrollment"),
   /** LX-06: the row-backed settings of one area; every area under one prefix (`productSettingsAll`). */
