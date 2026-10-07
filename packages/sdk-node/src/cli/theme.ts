@@ -115,7 +115,7 @@ const hex = (v: string) => normalizeHex(v.startsWith("#") ? v : `#${v}`);
 export function titleizeSlug(slug: string): string {
   return slug
     .replace(/[-_]+/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .replace(/\b\w/g, (c) => c.toUpperCase()) // ui-lint: allow terminal-uppercase initial capitals for a slug-derived name
     .trim();
 }
 

@@ -57,8 +57,8 @@
 [90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · status[39m
 [90m│[39m
 [31m✗[39m  [1mSigned out[22m
-[90m│[39m  This device was signed out. Sign in or activate again to
-[90m│[39m  continue.
+[90m│[39m  This device was signed out. Sign in or activate again
+[90m│[39m  to continue.
 [90m│[39m
 [90m│[39m  To keep using Tidewater Studio:
 [90m│[39m  [1mtidewater activate[22m   [90mUse a different key[39m
@@ -69,8 +69,8 @@
 [90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · status[39m
 [90m│[39m
 [31m✗[39m  [1mSigned out[22m
-[90m│[39m  This device was signed out. Sign in or activate again to
-[90m│[39m  continue.
+[90m│[39m  This device was signed out. Sign in or activate again
+[90m│[39m  to continue.
 [90m│[39m
 [90m│[39m  To keep using Tidewater Studio:
 [90m│[39m  [1mtidewater activate[22m   [90mUse a different key[39m
@@ -81,8 +81,8 @@
 [90m┌[39m  [36m[7m Tidewater Studio [27m[39m[90m · status[39m
 [90m│[39m
 [31m✗[39m  [1mSigned out[22m
-[90m│[39m  This device was signed out. Sign in or activate again to
-[90m│[39m  continue.
+[90m│[39m  This device was signed out. Sign in or activate again
+[90m│[39m  to continue.
 [90m│[39m
 [90m│[39m  To keep using Tidewater Studio:
 [90m│[39m  [1mtidewater activate[22m   [90mUse a different key[39m
@@ -93,8 +93,8 @@
 ┌   Tidewater Studio  · status
 │
 ✗  Signed out
-│  This device was signed out. Sign in or activate again to
-│  continue.
+│  This device was signed out. Sign in or activate again
+│  to continue.
 │
 │  To keep using Tidewater Studio:
 │  tidewater activate   Use a different key
@@ -105,8 +105,8 @@
 [90m+[39m  [36m[7m Tidewater Studio [27m[39m[90m - status[39m
 [90m|[39m
 [31mx[39m  [1mSigned out[22m
-[90m|[39m  This device was signed out. Sign in or activate again to
-[90m|[39m  continue.
+[90m|[39m  This device was signed out. Sign in or activate again
+[90m|[39m  to continue.
 [90m|[39m
 [90m|[39m  To keep using Tidewater Studio:
 [90m|[39m  [1mtidewater activate[22m   [90mUse a different key[39m

@@ -6,10 +6,10 @@
 [1mLicense[22m
   [1mactivate [key][22m            Add a license key (prompts; never an argument)
   [1mstatus[22m                    License, devices and offline time
-  [1menroll[22m                    Get the free license, when Tidewater Studio offers
-                            one
-  [1mdeactivate[22m                Stop using your license on this device and free its
-                            seat
+  [1menroll[22m                    Get the free license, when Tidewater Studio
+                            offers one
+  [1mdeactivate[22m                Stop using your license on this device and free
+                            its seat
 
 [1mAccount[22m
   [1mlogin[22m                     Sign in with your account in the browser
@@ -63,10 +63,10 @@
 [1mLicense[22m
   [1mactivate [key][22m            Add a license key (prompts; never an argument)
   [1mstatus[22m                    License, devices and offline time
-  [1menroll[22m                    Get the free license, when Tidewater Studio offers
-                            one
-  [1mdeactivate[22m                Stop using your license on this device and free its
-                            seat
+  [1menroll[22m                    Get the free license, when Tidewater Studio
+                            offers one
+  [1mdeactivate[22m                Stop using your license on this device and free
+                            its seat
 
 [1mAccount[22m
   [1mlogin[22m                     Sign in with your account in the browser
@@ -120,10 +120,10 @@
 [1mLicense[22m
   [1mactivate [key][22m            Add a license key (prompts; never an argument)
   [1mstatus[22m                    License, devices and offline time
-  [1menroll[22m                    Get the free license, when Tidewater Studio offers
-                            one
-  [1mdeactivate[22m                Stop using your license on this device and free its
-                            seat
+  [1menroll[22m                    Get the free license, when Tidewater Studio
+                            offers one
+  [1mdeactivate[22m                Stop using your license on this device and free
+                            its seat
 
 [1mAccount[22m
   [1mlogin[22m                     Sign in with your account in the browser
@@ -177,10 +177,10 @@ Usage  tidewater <command> [options]
 License
   activate [key]            Add a license key (prompts; never an argument)
   status                    License, devices and offline time
-  enroll                    Get the free license, when Tidewater Studio offers
-                            one
-  deactivate                Stop using your license on this device and free its
-                            seat
+  enroll                    Get the free license, when Tidewater Studio
+                            offers one
+  deactivate                Stop using your license on this device and free
+                            its seat
 
 Account
   login                     Sign in with your account in the browser
@@ -234,10 +234,10 @@ Run tidewater <command> --help for one command's options.
 [1mLicense[22m
   [1mactivate [key][22m            Add a license key (prompts; never an argument)
   [1mstatus[22m                    License, devices and offline time
-  [1menroll[22m                    Get the free license, when Tidewater Studio offers
-                            one
-  [1mdeactivate[22m                Stop using your license on this device and free its
-                            seat
+  [1menroll[22m                    Get the free license, when Tidewater Studio
+                            offers one
+  [1mdeactivate[22m                Stop using your license on this device and free
+                            its seat
 
 [1mAccount[22m
   [1mlogin[22m                     Sign in with your account in the browser
@@ -289,8 +289,8 @@ Run tidewater <command> --help for one command's options.
 [90mUsage[39m  tidewater <command> [options]
 
 [1mLicense[22m
-  [1mactivate [key][22m    Add a license key (prompts; never an
-                    argument)
+  [1mactivate [key][22m    Add a license key (prompts; never
+                    an argument)
   [1mstatus[22m            License, devices and offline time
   [1menroll[22m            Get the free license, when Tidewater
                     Studio offers one
@@ -302,8 +302,8 @@ Run tidewater <command> --help for one command's options.
   [1mlogout[22m            Sign out on this device
 
 [1mDevices[22m
-  [1mregister[22m          Register this device without a license
-                    key
+  [1mregister[22m          Register this device without a
+                    license key
   [1mdevices list[22m      List the devices using your license
   [1mdevices rename <deviceId> [label...][22m
                     Rename a device (no name clears it)
@@ -329,23 +329,23 @@ Run tidewater <command> --help for one command's options.
 [1mContent[22m
   [1mpacks status[22m      Show installed and downloading content
   [1mpacks ensure <packIds...>[22m
-                    Download and install content, with
-                    progress
+                    Download and install content,
+                    with progress
 
 [1mSupport[22m
-  [1moffline-request[22m   Print the request code for offline
-                    activation
+  [1moffline-request[22m   Print the request code for
+                    offline activation
   [1mimport-bundle <file>[22m
                     Activate from an offline activation file
-  [1mdoctor[22m            Show what this device can do, for
-                    support
+  [1mdoctor[22m            Show what this device can do,
+                    for support
   [1mcompletion <shell>[22m
-                    Print shell completion for bash, zsh or
-                    fish
+                    Print shell completion for bash, zsh
+                    or fish
 
 [1mOptions[22m
-  [1m--json[22m            JSON output for scripts, on every
-                    command
+  [1m--json[22m            JSON output for scripts, on
+                    every command
   [1m--no-color[22m        Plain text (also NO_COLOR=1)
   [1m--ascii[22m           ASCII symbols only
   [1m-h, --help[22m        Help for a command
@@ -358,8 +358,8 @@ Run tidewater <command> --help for one command's options.
 [90mUsage[39m  tidewater <command> [options]
 
 [1mLicense[22m
-  [1mactivate [key][22m    Add a license key (prompts; never an
-                    argument)
+  [1mactivate [key][22m    Add a license key (prompts; never
+                    an argument)
   [1mstatus[22m            License, devices and offline time
   [1menroll[22m            Get the free license, when Tidewater
                     Studio offers one
@@ -371,8 +371,8 @@ Run tidewater <command> --help for one command's options.
   [1mlogout[22m            Sign out on this device
 
 [1mDevices[22m
-  [1mregister[22m          Register this device without a license
-                    key
+  [1mregister[22m          Register this device without a
+                    license key
   [1mdevices list[22m      List the devices using your license
   [1mdevices rename <deviceId> [label...][22m
                     Rename a device (no name clears it)
@@ -398,23 +398,23 @@ Run tidewater <command> --help for one command's options.
 [1mContent[22m
   [1mpacks status[22m      Show installed and downloading content
   [1mpacks ensure <packIds...>[22m
-                    Download and install content, with
-                    progress
+                    Download and install content,
+                    with progress
 
 [1mSupport[22m
-  [1moffline-request[22m   Print the request code for offline
-                    activation
+  [1moffline-request[22m   Print the request code for
+                    offline activation
   [1mimport-bundle <file>[22m
                     Activate from an offline activation file
-  [1mdoctor[22m            Show what this device can do, for
-                    support
+  [1mdoctor[22m            Show what this device can do,
+                    for support
   [1mcompletion <shell>[22m
-                    Print shell completion for bash, zsh or
-                    fish
+                    Print shell completion for bash, zsh
+                    or fish
 
 [1mOptions[22m
-  [1m--json[22m            JSON output for scripts, on every
-                    command
+  [1m--json[22m            JSON output for scripts, on
+                    every command
   [1m--no-color[22m        Plain text (also NO_COLOR=1)
   [1m--ascii[22m           ASCII symbols only
   [1m-h, --help[22m        Help for a command
@@ -427,8 +427,8 @@ Run tidewater <command> --help for one command's options.
 [90mUsage[39m  tidewater <command> [options]
 
 [1mLicense[22m
-  [1mactivate [key][22m    Add a license key (prompts; never an
-                    argument)
+  [1mactivate [key][22m    Add a license key (prompts; never
+                    an argument)
   [1mstatus[22m            License, devices and offline time
   [1menroll[22m            Get the free license, when Tidewater
                     Studio offers one
@@ -440,8 +440,8 @@ Run tidewater <command> --help for one command's options.
   [1mlogout[22m            Sign out on this device
 
 [1mDevices[22m
-  [1mregister[22m          Register this device without a license
-                    key
+  [1mregister[22m          Register this device without a
+                    license key
   [1mdevices list[22m      List the devices using your license
   [1mdevices rename <deviceId> [label...][22m
                     Rename a device (no name clears it)
@@ -467,23 +467,23 @@ Run tidewater <command> --help for one command's options.
 [1mContent[22m
   [1mpacks status[22m      Show installed and downloading content
   [1mpacks ensure <packIds...>[22m
-                    Download and install content, with
-                    progress
+                    Download and install content,
+                    with progress
 
 [1mSupport[22m
-  [1moffline-request[22m   Print the request code for offline
-                    activation
+  [1moffline-request[22m   Print the request code for
+                    offline activation
   [1mimport-bundle <file>[22m
                     Activate from an offline activation file
-  [1mdoctor[22m            Show what this device can do, for
-                    support
+  [1mdoctor[22m            Show what this device can do,
+                    for support
   [1mcompletion <shell>[22m
-                    Print shell completion for bash, zsh or
-                    fish
+                    Print shell completion for bash, zsh
+                    or fish
 
 [1mOptions[22m
-  [1m--json[22m            JSON output for scripts, on every
-                    command
+  [1m--json[22m            JSON output for scripts, on
+                    every command
   [1m--no-color[22m        Plain text (also NO_COLOR=1)
   [1m--ascii[22m           ASCII symbols only
   [1m-h, --help[22m        Help for a command
@@ -496,8 +496,8 @@ tidewater · Tidewater Studio license and updates
 Usage  tidewater <command> [options]
 
 License
-  activate [key]    Add a license key (prompts; never an
-                    argument)
+  activate [key]    Add a license key (prompts; never
+                    an argument)
   status            License, devices and offline time
   enroll            Get the free license, when Tidewater
                     Studio offers one
@@ -509,8 +509,8 @@ Account
   logout            Sign out on this device
 
 Devices
-  register          Register this device without a license
-                    key
+  register          Register this device without a
+                    license key
   devices list      List the devices using your license
   devices rename <deviceId> [label...]
                     Rename a device (no name clears it)
@@ -536,23 +536,23 @@ Updates
 Content
   packs status      Show installed and downloading content
   packs ensure <packIds...>
-                    Download and install content, with
-                    progress
+                    Download and install content,
+                    with progress
 
 Support
-  offline-request   Print the request code for offline
-                    activation
+  offline-request   Print the request code for
+                    offline activation
   import-bundle <file>
                     Activate from an offline activation file
-  doctor            Show what this device can do, for
-                    support
+  doctor            Show what this device can do,
+                    for support
   completion <shell>
-                    Print shell completion for bash, zsh or
-                    fish
+                    Print shell completion for bash, zsh
+                    or fish
 
 Options
-  --json            JSON output for scripts, on every
-                    command
+  --json            JSON output for scripts, on
+                    every command
   --no-color        Plain text (also NO_COLOR=1)
   --ascii           ASCII symbols only
   -h, --help        Help for a command
@@ -565,8 +565,8 @@ Run tidewater <command> --help for one command's options.
 [90mUsage[39m  tidewater <command> [options]
 
 [1mLicense[22m
-  [1mactivate [key][22m    Add a license key (prompts; never an
-                    argument)
+  [1mactivate [key][22m    Add a license key (prompts; never
+                    an argument)
   [1mstatus[22m            License, devices and offline time
   [1menroll[22m            Get the free license, when Tidewater
                     Studio offers one
@@ -578,8 +578,8 @@ Run tidewater <command> --help for one command's options.
   [1mlogout[22m            Sign out on this device
 
 [1mDevices[22m
-  [1mregister[22m          Register this device without a license
-                    key
+  [1mregister[22m          Register this device without a
+                    license key
   [1mdevices list[22m      List the devices using your license
   [1mdevices rename <deviceId> [label...][22m
                     Rename a device (no name clears it)
@@ -605,23 +605,23 @@ Run tidewater <command> --help for one command's options.
 [1mContent[22m
   [1mpacks status[22m      Show installed and downloading content
   [1mpacks ensure <packIds...>[22m
-                    Download and install content, with
-                    progress
+                    Download and install content,
+                    with progress
 
 [1mSupport[22m
-  [1moffline-request[22m   Print the request code for offline
-                    activation
+  [1moffline-request[22m   Print the request code for
+                    offline activation
   [1mimport-bundle <file>[22m
                     Activate from an offline activation file
-  [1mdoctor[22m            Show what this device can do, for
-                    support
+  [1mdoctor[22m            Show what this device can do,
+                    for support
   [1mcompletion <shell>[22m
-                    Print shell completion for bash, zsh or
-                    fish
+                    Print shell completion for bash, zsh
+                    or fish
 
 [1mOptions[22m
-  [1m--json[22m            JSON output for scripts, on every
-                    command
+  [1m--json[22m            JSON output for scripts, on
+                    every command
   [1m--no-color[22m        Plain text (also NO_COLOR=1)
   [1m--ascii[22m           ASCII symbols only
   [1m-h, --help[22m        Help for a command

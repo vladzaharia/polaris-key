@@ -71,7 +71,7 @@ export function polarisCommandModule(
   factory: ClientFactory,
   options: YargsAdapterOptions,
 ): CommandModule<unknown, CommonArgs> {
-  const print = options.print ?? ((line: string) => console.log(line));
+  const print = options.print ?? ((line: string) => console.log(line)); // ui-lint: allow terminal-console the legacy print sink's default (kit: false)
   const setExitCode =
     options.setExitCode ??
     ((code: number) => {

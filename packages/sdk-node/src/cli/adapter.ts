@@ -70,10 +70,27 @@ export async function runKitVerb(
   buildClient: () => Promise<PolarisKeyClient>,
   o: RunKitVerbOptions,
 ): Promise<number> {
-  const io: TerminalIO = {
-    ...o.io,
-    ...(o.print && !o.io?.stdout ? { stdout: lineSink(o.print) } : {}),
+  const base: TerminalOutput =
+    o.io?.stdout ?? (o.print ? lineSink(o.print) : process.stdout);
+  // `login --json` streams its own lines; when it fails before its first one, the envelope
+  // below is the only line, so a script always reads exactly one final state.
+  let wrote = false;
+  const stdout: TerminalOutput = {
+    get isTTY() {
+      return base.isTTY;
+    },
+    get columns() {
+      return base.columns;
+    },
+    get rows() {
+      return base.rows;
+    },
+    write(chunk: string) {
+      wrote = true;
+      return base.write(chunk);
+    },
   };
+  const io: TerminalIO = { ...o.io, stdout };
   let client: PolarisKeyClient | null = null;
   let clientError: unknown = null;
   if (!verb.clientless) {
@@ -126,7 +143,7 @@ export async function runKitVerb(
     ctx.close();
   }
   // `login` streams its own JSON lines (SIGN-IN.md D-68); every other verb prints one object.
-  if (ctx.caps.json && (verb.path[0] !== "login" || thrown))
+  if (ctx.caps.json && (verb.path[0] !== "login" || thrown || !wrote))
     ctx.stdout.write(`${jsonLine(envelope(verb.path.join(" "), r))}\n`);
   return r.exitCode;
 }

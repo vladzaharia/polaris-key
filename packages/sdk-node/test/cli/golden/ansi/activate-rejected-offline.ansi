@@ -43,8 +43,8 @@
 [90m│[39m
 [90m◇[39m  [1mLicense key[22m [90m· pkey_tidewater_[39m••••••
 [33m▲[39m  [1mCan't connect[22m
-[90m│[39m  Can't reach Polaris Key. Check your connection and try
-[90m│[39m  again.
+[90m│[39m  Can't reach Polaris Key. Check your connection and
+[90m│[39m  try again.
 [90m└[39m
 
 #### truecolor-60-light
@@ -52,8 +52,8 @@
 [90m│[39m
 [90m◇[39m  [1mLicense key[22m [90m· pkey_tidewater_[39m••••••
 [33m▲[39m  [1mCan't connect[22m
-[90m│[39m  Can't reach Polaris Key. Check your connection and try
-[90m│[39m  again.
+[90m│[39m  Can't reach Polaris Key. Check your connection and
+[90m│[39m  try again.
 [90m└[39m
 
 #### ansi16-60
@@ -61,8 +61,8 @@
 [90m│[39m
 [90m◇[39m  [1mLicense key[22m [90m· pkey_tidewater_[39m••••••
 [33m▲[39m  [1mCan't connect[22m
-[90m│[39m  Can't reach Polaris Key. Check your connection and try
-[90m│[39m  again.
+[90m│[39m  Can't reach Polaris Key. Check your connection and
+[90m│[39m  try again.
 [90m└[39m
 
 #### no-color-60
@@ -70,8 +70,8 @@
 │
 ◇  License key · pkey_tidewater_••••••
 ▲  Can't connect
-│  Can't reach Polaris Key. Check your connection and try
-│  again.
+│  Can't reach Polaris Key. Check your connection and
+│  try again.
 └
 
 #### ascii-60
@@ -79,6 +79,6 @@
 [90m|[39m
 [90mo[39m  [1mLicense key[22m [90m- pkey_tidewater_[39m******
 [33m![39m  [1mCan't connect[22m
-[90m|[39m  Can't reach Polaris Key. Check your connection and try
-[90m|[39m  again.
+[90m|[39m  Can't reach Polaris Key. Check your connection and
+[90m|[39m  try again.
 [90m`[39m

@@ -664,7 +664,8 @@ export const CLI_VERBS: readonly CliVerb[] = [
     args: [],
     describe: "Sign in with your account (browser, or a code when headless)",
     describeKey: "cli.verb.login",
-    run: (c, _a, io) => signIn(c, io),
+    // No QR for sign-in on any desktop surface, terminals included (SIGN-IN.md D-67).
+    run: (c, _a, io) => signIn(c, io, { qr: false }),
     flow: (ctx, c, _a, f) => loginFlow(ctx, need(c), f),
   },
   {

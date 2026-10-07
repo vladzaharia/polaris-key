@@ -26,10 +26,34 @@ const UP = "\x1b[1A";
 const HIDE_CURSOR = "\x1b[?25l";
 const SHOW_CURSOR = "\x1b[?25h";
 
+/**
+ * While a region hides the cursor, an interrupt must not leave the user's terminal without one.
+ * Only on a real terminal, and only when the host installed no SIGINT handler of its own (then
+ * the default action, exiting, is kept: the cursor is restored first and the exit code is 130).
+ */
+function guardCursor(out: TerminalOutput): () => void {
+  if (!out.isTTY || typeof process === "undefined") return () => undefined;
+  const restore = () => {
+    out.write(SHOW_CURSOR);
+  };
+  const ownSigint = process.listenerCount("SIGINT") === 0;
+  const onSigint = () => {
+    restore();
+    process.exit(130);
+  };
+  process.once("exit", restore);
+  if (ownSigint) process.once("SIGINT", onSigint);
+  return () => {
+    process.removeListener("exit", restore);
+    if (ownSigint) process.removeListener("SIGINT", onSigint);
+  };
+}
+
 export class LiveRegion {
   private drawn = 0;
   private printedOnce = false;
   private hidden = false;
+  private unguard: () => void = () => undefined;
 
   constructor(
     private readonly out: TerminalOutput,
@@ -56,6 +80,7 @@ export class LiveRegion {
     if (!this.hidden) {
       s = HIDE_CURSOR + s;
       this.hidden = true;
+      this.unguard = guardCursor(this.out);
     }
     s += lines.join("\n");
     this.drawn = lines.length;
@@ -74,6 +99,8 @@ export class LiveRegion {
     const s = this.caps.animate ? this.erase() : "";
     const show = this.hidden ? SHOW_CURSOR : "";
     this.hidden = false;
+    this.unguard();
+    this.unguard = () => undefined;
     this.out.write(`${s}${lines.length ? `${lines.join("\n")}\n` : ""}${show}`);
     this.printedOnce = false;
   }
@@ -83,6 +110,8 @@ export class LiveRegion {
     const s = this.caps.animate ? this.erase() : "";
     const show = this.hidden ? SHOW_CURSOR : "";
     this.hidden = false;
+    this.unguard();
+    this.unguard = () => undefined;
     if (s || show) this.out.write(s + show);
   }
 }

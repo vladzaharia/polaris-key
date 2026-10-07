@@ -198,7 +198,14 @@ describe("cell widths", () => {
   });
   it("wraps CJK between characters and Latin at spaces", () => {
     expect(wrapText("一二三四五六", 6)).toEqual(["一二三", "四五六"]);
+    // No last line of one lone word: "three" takes "two" with it.
+    expect(wrapText("one two three", 9)).toEqual(["one", "two three"]);
     expect(wrapText("one two three", 8)).toEqual(["one two", "three"]);
+    expect(wrapText("one two three four", 13)).toEqual([
+      "one two",
+      "three four",
+    ]);
+    expect(wrapText("一二三四五六七", 6)).toEqual(["一二三", "四五六", "七"]);
   });
 });
 
@@ -555,6 +562,46 @@ describe("--json on every verb (both adapters)", () => {
     expect(lines[0]!.userCode).toBe("WDJB-MJHT");
     expect(r.raw).not.toContain("dc_secret");
   });
+  it("prints login's envelope when sign-in cannot start, so a script always reads a final state", async () => {
+    const { runKitVerb } = await import("../../src/cli/adapter.js");
+    const login = CLI_VERBS.find((v) => v.path[0] === "login")!;
+    for (const client of [
+      stubClient({ capabilities: { identity: { enabled: false } } }),
+      stubClient({
+        identity: {
+          beginSignIn: async () =>
+            Promise.reject(Object.assign(new Error("x"), { code: "network" })),
+        },
+      }),
+    ]) {
+      const screen = new Screen();
+      const code = await runKitVerb(
+        login,
+        [],
+        { json: true },
+        async () => client,
+        {
+          slug: "tidewater",
+          io: {
+            stdout: screen,
+            stderr: new Screen(),
+            env: {},
+            ticker: frozenTicker,
+            now: () => NOW,
+          },
+        },
+      );
+      const lines = screen.raw.trim().split("\n");
+      expect(lines).toHaveLength(1);
+      expect(JSON.parse(lines[0]!)).toMatchObject({
+        version: 1,
+        command: "login",
+        ok: false,
+        exitCode: code,
+      });
+    }
+  });
+
   it("yargs prints the same envelope", async () => {
     const screen = new Screen();
     const y = yargs([]).exitProcess(false);

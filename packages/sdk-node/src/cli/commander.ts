@@ -58,7 +58,7 @@ function rootOf(cmd: Command): Command {
 
 /** Redraw one progress line on stderr; nothing when stderr is not a terminal. */
 export function ttyProgress(line: string): void {
-  if (process.stderr.isTTY) process.stderr.write(`\r\x1b[2K${line}`);
+  if (process.stderr.isTTY) process.stderr.write(`\r\x1b[2K${line}`); // ui-lint: allow terminal-raw-escape the pre-kit progress line (kit: false)
 }
 
 /** Commander's own formatter, for commands the kit does not own. */
@@ -102,7 +102,7 @@ export function registerPolarisCommands(
   };
 
   // The pre-kit path (`kit: false`): plain messages, a progress line on stderr.
-  const print = options.print ?? ((line: string) => console.log(line));
+  const print = options.print ?? ((line: string) => console.log(line)); // ui-lint: allow terminal-console the legacy print sink's default (kit: false)
   const progress = options.progress ?? ttyProgress;
   let drawn = false;
   const say = (line: string) => {

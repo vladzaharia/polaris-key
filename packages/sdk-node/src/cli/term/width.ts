@@ -136,23 +136,61 @@ function pieces(span: Span): Span[] {
 
 /**
  * Wrap styled spans to `width` cells. Lines break at spaces (and between CJK characters); a `keep`
- * span that does not fit on a line of its own is cut in the middle. Trailing spaces are dropped.
+ * span that does not fit on a line of its own is cut in the middle; a last line of one lone word
+ * takes the word before it along (UI-KITS §1.5 rule 11). Trailing spaces are dropped.
  */
 export function wrapSpans(spans: Line, width: number, ellipsis = "…"): Line[] {
-  const lines: Line[] = [[]];
-  let w = 0;
-  const push = (p: Span) => {
-    const cur = lines[lines.length - 1]!;
-    const last = cur[cur.length - 1];
+  const lines = wrapPieces(spans, width, ellipsis);
+  balanceLast(lines, width);
+  return lines.map(merge);
+}
+
+const textOf = (pieces: readonly Span[]) => pieces.map((p) => p.text).join("");
+const widthOf = (pieces: readonly Span[]) =>
+  cellWidth(textOf(pieces).trimEnd());
+const words = (pieces: readonly Span[]) =>
+  pieces.filter((p) => p.text.trim() !== "");
+
+/** A last line of one Latin word (CJK lines and kept tokens such as a URL are never orphans). */
+function isOrphan(pieces: readonly Span[]): boolean {
+  const ws = words(pieces);
+  if (ws.length !== 1 || ws[0]!.keep) return false;
+  return ![...ws[0]!.text].some((c) => charWidth(c) === 2);
+}
+
+/** Move words from the line before an orphan down to it, while both still fit. */
+function balanceLast(lines: Span[][], width: number): void {
+  const n = lines.length;
+  if (n < 2 || !isOrphan(lines[n - 1]!)) return;
+  const prev = lines[n - 2]!;
+  const last = lines[n - 1]!;
+  // Pieces keep their trailing space; the previous line's last word needs one again.
+  for (let k = prev.length - 1; k >= 1; k--) {
+    const head = prev.slice(0, k);
+    const moved = prev
+      .slice(k)
+      .map((p, i, all) =>
+        i === all.length - 1 && !/\s$/.test(p.text)
+          ? { ...p, text: `${p.text} ` }
+          : p,
+      );
+    const tail = [...moved, ...last];
+    if (words(head).length === 0) return;
     if (
-      last &&
-      last.link === p.link &&
-      last.keep === p.keep &&
-      (last.style ?? []).join() === (p.style ?? []).join()
-    )
-      last.text += p.text;
-    else cur.push({ ...p });
-  };
+      widthOf(head) <= width &&
+      widthOf(tail) <= width &&
+      words(tail).length >= 2
+    ) {
+      lines[n - 2] = head;
+      lines[n - 1] = tail;
+      return;
+    }
+  }
+}
+
+function wrapPieces(spans: Line, width: number, ellipsis: string): Span[][] {
+  const lines: Span[][] = [[]];
+  let w = 0;
   for (const span of spans) {
     for (let p of pieces(span)) {
       const pw = cellWidth(p.text.trimEnd());
@@ -163,15 +201,30 @@ export function wrapSpans(spans: Line, width: number, ellipsis = "…"): Line[] 
       }
       if (pw > width && p.keep)
         p = { ...p, text: truncateMiddle(p.text, width, ellipsis) };
-      push(p);
+      lines[lines.length - 1]!.push(p);
       w += cellWidth(p.text);
     }
   }
-  return lines.map((line) => {
-    const last = line[line.length - 1];
-    if (last && !last.keep) last.text = last.text.trimEnd();
-    return line.filter((s) => s.text !== "");
-  });
+  return lines;
+}
+
+/** Join neighbouring pieces of one style, and drop the line's trailing space. */
+function merge(pieces: Span[]): Line {
+  const out: Span[] = [];
+  for (const p of pieces) {
+    const last = out[out.length - 1];
+    if (
+      last &&
+      last.link === p.link &&
+      last.keep === p.keep &&
+      (last.style ?? []).join() === (p.style ?? []).join()
+    )
+      last.text += p.text;
+    else out.push({ ...p });
+  }
+  const last = out[out.length - 1];
+  if (last && !last.keep) last.text = last.text.trimEnd();
+  return out.filter((s) => s.text !== "");
 }
 
 /** Plain text wrapped to `width` cells. */
