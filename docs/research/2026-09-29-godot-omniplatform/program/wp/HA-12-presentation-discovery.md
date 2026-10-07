@@ -103,17 +103,40 @@ This is the server half of decision 10 ([S-20 §6.9](../../notes/S-20-hosted-ass
   six, generated into every SDK.
 - **No ETag (Q4).** Discovery keeps `public, max-age=300` and gains no ETag.
 
+## Execution notes (HA-12, 2026-10-06: where the code differed from the plan)
+
+- **The migration is `0104_products_presentation.sql`, not `00XX_`.** wrangler orders migrations
+  by `parseInt` of the leading number, so `00XX_` sorts as 0 and runs first, and an
+  `ALTER TABLE products` there fails before `products` exists (`test/checkRepresentable.test.ts`,
+  and a real `d1 migrations apply`). 0104 is the next free number on `integ/batch-4`
+  @`fd2aee241`; `LATEST_MIGRATION` and the data-model page follow it. The lead renumbers if 0104
+  is taken.
+- **No client-core export-layout test exists** (plan §2.6). `./presentation` is added to
+  `package.json` `exports`; the matrix test imports the module directly.
+- **The usable-URL rule is written portably** (§5.5 rule 5): printable ASCII with no `#` or `\`,
+  an `https://` or loopback `http://` prefix, an authority without `@`, and an origin compared as
+  the lower-cased `scheme://authority` string. There is no URL parser, so GDScript applies the
+  same test. Text with a lone surrogate is invalid, and an invalid `name` falls back to the
+  document's `name` only when that passes the same rule. The matrix pins each.
+- **The codec lives in `core/products.ts`** (`parseStoredPresentation`, `serializePresentation`),
+  so the writers (`linkRepo`, `resyncRepo`, `linkSystemProduct`) and the column adapter import it
+  without an import cycle through `core/presentation.ts`.
+- **`PRESENTATION_MATRIX_VERSION`** is generated beside the other corpus versions, so the SDK
+  matrix runners (HA-13, HA-14) assert the file's version as they do the others'.
+- **A failed presentation read never fails discovery.** `resolvePresentation` answers `null` (the
+  member is omitted) when the listing or the hosted-copy read throws.
+
 ## Steps
 
 1. Per the plan.
 
 ## Acceptance criteria
 
-- [ ] `pnpm gen:corpus -- --check` covers `presentation-matrix.json` and its Swift and Godot mirrors; `pnpm gen:constants -- --check`, `pnpm gen:settings -- --check` and `pnpm parity:check` are green.
-- [ ] A product with only a listing icon and `tintColor` (no manifest `presentation`) emits `core.presentation` with that icon and accent (test).
-- [ ] `pnpm gen:transcripts -- --check` and `pnpm gen:corpus -- --check` are green after regeneration.
-- [ ] Discovery for a product with no presentation omits the member (test).
-- [ ] The `core.presentation` registry entry has no `pending` marker and its storage is the store HA-11's plan names; `pnpm gen:settings -- --check` is green.
+- [x] `pnpm gen:corpus -- --check` covers `presentation-matrix.json` and its Swift and Godot mirrors; `pnpm gen:constants -- --check`, `pnpm gen:settings -- --check` and `pnpm parity:check` are green.
+- [x] A product with only a listing icon and `tintColor` (no manifest `presentation`) emits `core.presentation` with that icon and accent (test).
+- [x] `pnpm gen:transcripts -- --check` and `pnpm gen:corpus -- --check` are green after regeneration.
+- [x] Discovery for a product with no presentation omits the member (test).
+- [x] The `core.presentation` registry entry has no `pending` marker and its storage is the store HA-11's plan names; `pnpm gen:settings -- --check` is green.
 - [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify
