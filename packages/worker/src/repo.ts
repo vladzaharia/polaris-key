@@ -44,7 +44,7 @@ export interface ProductRow {
   // ingest. NULL reads back as the default policy (`core/deviceTrust.ts`).
   trust_policy_json?: string | null;
   trust_policy_source?: string;
-  // `.pkey/product` `presentation` (migrations/0104, HA-12), as `serializePresentation` writes it
+  // `.pkey/product` `presentation` (migrations/0106, HA-12), as `serializePresentation` writes it
   // (`core/products.ts`). Manifest-only: link, resync and the system product's deploy hook write
   // it; NULL when undeclared. Read by `core/products.ts` for discovery's `core.presentation`.
   presentation_json?: string | null;
@@ -316,7 +316,7 @@ export async function listAllProductSlugs(db: Db): Promise<string[]> {
 }
 
 /**
- * `presentation_json` (migrations/0104, HA-12) is named only when the row carries it: the manifest
+ * `presentation_json` (migrations/0106, HA-12) is named only when the row carries it: the manifest
  * writers always do (NULL when undeclared), while a product created without a manifest (the
  * console, a test seed) leaves it to the column's NULL default. So an insert still works against
  * a database migrated only up to an older schema.

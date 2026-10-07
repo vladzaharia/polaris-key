@@ -105,12 +105,11 @@ This is the server half of decision 10 ([S-20 §6.9](../../notes/S-20-hosted-ass
 
 ## Execution notes (HA-12, 2026-10-06: where the code differed from the plan)
 
-- **The migration is `0104_products_presentation.sql`, not `00XX_`.** wrangler orders migrations
-  by `parseInt` of the leading number, so `00XX_` sorts as 0 and runs first, and an
-  `ALTER TABLE products` there fails before `products` exists (`test/checkRepresentable.test.ts`,
-  and a real `d1 migrations apply`). 0104 is the next free number on `integ/batch-4`
-  @`fd2aee241`; `LATEST_MIGRATION` and the data-model page follow it. The lead renumbers if 0104
-  is taken.
+- **The migration is `0106_products_presentation.sql`** (the lead's number: 0104 is LX-30's and
+  0105*a…m are LX-08's). It was never `00XX*`: wrangler orders migrations by `parseInt`of the
+leading number, so`00XX\_`sorts as 0 and runs first, and an`ALTER TABLE products`there fails
+before`products` exists (`test/checkRepresentable.test.ts`, and a real
+`d1 migrations apply`). `LATEST_MIGRATION` and the data-model page follow it.
 - **No client-core export-layout test exists** (plan §2.6). `./presentation` is added to
   `package.json` `exports`; the matrix test imports the module directly.
 - **The usable-URL rule is written portably** (§5.5 rule 5): printable ASCII with no `#` or `\`,
