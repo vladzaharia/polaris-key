@@ -231,7 +231,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     area: "delivery",
     label: "Hosted assets",
     description:
-      "Serves Polaris Key's own copies of products' images from the image host and mirrors their release files. Off returns every surface to the developer's own URLs and GitHub; the stored copies stay.",
+      "Serves Polaris Key's own copies of products' images from the image host and mirrors their release files. Off returns every image surface to the developer's own URLs and copies no new release file; release files already copied keep serving from their copies, and every stored copy stays.",
     keywords: ["image host", "img", "mirror", "kill switch", "rollback"],
     docs: "/docs/admin/presentation/",
     ownership: "operator",
@@ -560,7 +560,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     area: "assets",
     label: "Mirror release files",
     description:
-      "Keeps Polaris Key's own copy of every app release file the product publishes on GitHub or at a URL, and serves it first. Off keeps GitHub-only serving for this product; copies already made stay valid.",
+      "Keeps Polaris Key's own copy of every app release file the product publishes on GitHub or at a URL, and serves it first. Off copies no new release file for this product, so GitHub serves the files without a copy; the copies already made keep serving.",
     keywords: ["mirror", "release files", "github", "r2", "downloads"],
     docs: "/docs/admin/presentation/",
     ownership: "operator",

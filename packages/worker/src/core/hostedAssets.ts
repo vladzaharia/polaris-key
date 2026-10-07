@@ -1547,7 +1547,9 @@ export async function ingest(
         "quota",
         refusal,
       );
-    return { ok: false, reason: yieldGuard !== null ? "claimed" : "retry" };
+    // Neither holds now (a claim landed and was reverted, or a racing copy came and went while
+    // the batch ran): nothing was written, and the caller tries again.
+    return { ok: false, reason: "retry" };
   }
   return {
     ok: true,

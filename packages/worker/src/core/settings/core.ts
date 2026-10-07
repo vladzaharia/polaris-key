@@ -391,7 +391,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
     area: "assets",
     label: "Mirror release files",
     description:
-      "Keeps Polaris Key's own copy of every app release file the product publishes on GitHub or at a URL, and serves it first. Off keeps GitHub-only serving for this product; copies already made stay valid.",
+      "Keeps Polaris Key's own copy of every app release file the product publishes on GitHub or at a URL, and serves it first. Off copies no new release file for this product, so GitHub serves the files without a copy; the copies already made keep serving.",
     keywords: ["mirror", "release files", "github", "r2", "downloads"],
     docs: ASSETS_DOCS,
     value: { kind: "switch" },

@@ -53,8 +53,9 @@ minor releases or 60 days, whichever is later. It sits under Identity & access i
 
 `ASSET_HOSTING` is `assets.hosting.enabled`, the hosted-assets rollback switch. Off, every
 surface goes back to the developer's own image URLs and the portal's media proxy, release-file
-mirroring stops, and the legacy download streams from GitHub; the stored copies stay, and image
-URLs already handed out keep working. It is not a security gate, so it uses runtime precedence:
+mirroring stops, and the legacy download streams from GitHub; the stored copies stay, release
+files already copied keep serving from their copies, and image URLs already handed out keep
+working. It is not a security gate, so it uses runtime precedence:
 an unreadable settings store does not turn it off. It sits under Delivery in the console. Each
 product's quotas and its own mirroring switch are on its
 [Presentation page](/docs/admin/presentation/#hosting-and-quotas).

@@ -333,10 +333,11 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
   }),
 
   // ── Hosted assets (HA-10, notes/S-20 §6.8 "Rollback", §6.10, owner decision 9) ───────────
-  // The kill switch. Not a security gate: off only returns every surface to what it did before
-  // HA-07 (the portal's GitHub-only media proxy, the developer's URLs in the feeds, no icon on the
-  // download page) and stops release-file mirroring (GitHub keeps serving). The stored copies and
-  // their refs stay either way. An A-13 store entry, so the console's Platform → Settings switches
+  // The kill switch. Not a security gate: off only returns every image surface to what it did
+  // before HA-07 (the portal's GitHub-only media proxy, the developer's URLs in the feeds, no icon
+  // on the download page) and stops release-file mirroring: no new copy is made and the legacy
+  // download streams from GitHub, while the byte routes keep serving copies already made (their
+  // `r2` locations are hash-pinned). The stored copies and their refs stay either way. An A-13 store entry, so the console's Platform → Settings switches
   // it and a deploy can set it. `runtime` (S-20 §6.10): a console value wins, then `[vars]`, then
   // the default `on`; an unreadable store is not an off, so an outage never forces the rollback.
   setting({
@@ -347,7 +348,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     area: "delivery",
     label: "Hosted assets",
     description:
-      "Serves Polaris Key's own copies of products' images from the image host and mirrors their release files. Off returns every surface to the developer's own URLs and GitHub; the stored copies stay.",
+      "Serves Polaris Key's own copies of products' images from the image host and mirrors their release files. Off returns every image surface to the developer's own URLs and copies no new release file; release files already copied keep serving from their copies, and every stored copy stays.",
     keywords: ["image host", "img", "mirror", "kill switch", "rollback"],
     docs: ASSETS_DOCS,
     value: { kind: "switch" },

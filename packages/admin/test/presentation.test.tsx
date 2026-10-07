@@ -428,6 +428,32 @@ describe("Core → Presentation → Hosting and quotas (HA-10)", () => {
     );
   });
 
+  it("after a save disables Save, focus stays in the row, on the quota field", async () => {
+    const saved = usage();
+    saved.settings[1] = {
+      ...saved.settings[1]!,
+      value: 1024 * MiB,
+      source: "console",
+      own: true,
+      version: 1,
+    };
+    fns.saveAssetSetting.mockImplementation(async () => {
+      fns.assetUsage.mockResolvedValue(saved);
+      return saved;
+    });
+    mount();
+    const quota = await row("Media quota");
+    const input = within(quota).getByLabelText("Media quota in MiB");
+    await userEvent.clear(input);
+    await userEvent.type(input, "1024");
+    const save = within(quota).getByRole("button", { name: "Save" });
+    await userEvent.click(save);
+    const dialog = await screen.findByRole("alertdialog");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(save.hasAttribute("disabled")).toBe(true));
+    await waitFor(() => expect(document.activeElement).toBe(input));
+  });
+
   it("turning mirroring off asks first", async () => {
     fns.saveAssetSetting.mockResolvedValue(usage());
     mount();

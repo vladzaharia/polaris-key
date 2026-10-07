@@ -4067,12 +4067,13 @@ is no new privilege level and no outbound call.
   `error` can only make a product's next resync fail; it is confirmed (L1) and audited.
 - **`ASSET_HOSTING` (HA-10, `assets.hosting.enabled`) is a rollback switch, not a gate.** On (the
   default) the HA-07 surfaces hand out Polaris Key's own copies of product images from the image
-  host and release files are mirrored (HA-08); off returns every surface to the developer's own
-  URLs and the portal's media proxy, stops mirroring, and the legacy download streams from GitHub.
-  It widens nothing either way: the image host serves only copies a product holds a ref to, the
-  blob route's refusal of hosted art does not follow it, and no signed document carries a URL. A
-  hostile session can only flip where public art and release bytes come from (both
-  hash-identical, inside AT-2's time-bounded session); it is confirmed (L1) both ways and audited.
+  host and release files are mirrored (HA-08); off returns every image surface to the developer's
+  own URLs and the portal's media proxy, stops new mirrors, and the legacy download streams from
+  GitHub (copies already made keep serving on the byte routes; their `r2` locations are
+  hash-pinned). It widens nothing either way: the image host serves only copies a product holds a
+  ref to, the blob route's refusal of hosted art does not follow it, and no signed document
+  carries a URL. A hostile session that turns it off only restores the pre-HA-07 behaviour already
+  accepted, inside AT-2's time-bounded session; it is confirmed (L1) both ways and audited.
   `runtime` precedence: an unreadable store is not an off, so an outage never forces the rollback.
   The per-product hosting settings beside it (`assets.releases.mirror`, `assets.quota.mediaBytes`,
   `assets.quota.releaseBytes`, product scope, operator-owned, written through `writeSetting()`)

@@ -72,10 +72,10 @@ counts once, however many slots use it.
 | **Media quota**          | `assets.quota.mediaBytes`: 512 MiB unless the platform default or this product sets another. Past it, a new or replaced image is refused, and the copy the slot already has keeps serving. |
 | **Release files**        | The bytes of mirrored release files against the release-file quota.                                                                                                                        |
 | **Release-file quota**   | `assets.quota.releaseBytes`: 100 GiB unless the platform default or this product sets another. Past it, mirroring stops and GitHub keeps serving the files that have no copy.              |
-| **Mirror release files** | `assets.releases.mirror`: on by default. Off keeps GitHub-only serving for this product; copies already made stay valid.                                                                   |
+| **Mirror release files** | `assets.releases.mirror`: on by default. Off copies no new release file for this product, so GitHub serves the files without a copy; the copies already made keep serving.                 |
 
 A quota is entered in MiB and saved after a confirmation; **Reset** returns it to the platform
 default. Turning mirroring off asks first. When a quota is full, its row says so. When hosted
 assets are off for the whole deployment (Platform → Settings → Delivery), the section says that
-first: every surface then shows the developer's own URLs, and the copies listed here stay until it
-is turned back on.
+first: every image surface then shows the developer's own URLs and no new release file is copied,
+while the copies listed here stay (release files already copied keep serving from them).

@@ -242,7 +242,7 @@ function consequencesOf(
           ]
         : [
             "Every surface goes back to the developer's own image URLs and the portal's media proxy, as before hosted assets.",
-            "Release-file mirroring stops and the legacy download streams from GitHub. The stored copies stay, and image URLs already handed out keep working.",
+            "Release-file mirroring stops and the legacy download streams from GitHub; release files already copied keep serving from their copies. The stored copies stay, and image URLs already handed out keep working.",
             reach,
           ];
     case "LAZY_DELTA_MAX_BYTES":

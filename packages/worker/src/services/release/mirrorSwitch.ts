@@ -10,7 +10,8 @@
  *     every consumer to today's behaviour: nothing is queued or copied, and the legacy alias
  *     streams from GitHub;
  *   - `assets.releases.mirror` (product, operator-owned, default on, `core/assetSettings.ts`):
- *     off keeps GitHub-only serving for that product.
+ *     off copies no new file for that product, so GitHub serves the files without a copy, and the
+ *     legacy alias streams from GitHub.
  *
  * And only for a product that exists and runs Release (a product with Release off has no truth
  * store to serve from). Copies already made stay valid either way: their `r2` locations are

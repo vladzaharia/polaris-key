@@ -1577,6 +1577,55 @@ describe("the media quota (HA-10)", () => {
     );
   });
 
+  it("a guard that stopped the batch but holds no more is a retry, never a claim", async () => {
+    // A console upload claims the slot while this manifest pull's batch runs, and is reverted
+    // before the pull looks again: the batch wrote nothing, the slot is not held, there is room.
+    let raced = false;
+    const racing: Db = {
+      all: (sql, ...p) => db.all(sql, ...p),
+      first: (sql, ...p) => db.first(sql, ...p),
+      run: (sql, ...p) => db.run(sql, ...p),
+      runChanges: (sql, ...p) => db.runChanges(sql, ...p),
+      batch: (st: DbStatement[]) => db.batch(st),
+      batchChanges: async (st: DbStatement[]) => {
+        if (
+          raced ||
+          !st.some((x) => x.sql.includes("INSERT INTO hosted_assets"))
+        )
+          return db.batchChanges(st);
+        raced = true;
+        await db.run(
+          `INSERT INTO hosted_assets (product, slot, locale, origin, source_kind, status, modified_at)
+           VALUES ('djdl', 'listing.header', '', 'console', 'upload', 'pending', ?)`,
+          NOW,
+        );
+        const changes = await db.batchChanges(st);
+        await db.run(
+          "DELETE FROM hosted_assets WHERE product = 'djdl' AND slot = 'listing.header'",
+        );
+        return changes;
+      },
+    };
+    const result = await ingest(
+      { ...ctx, db: racing },
+      "djdl",
+      "listing.header",
+      {
+        kind: "stream",
+        body: stream(PNG),
+        size: PNG.length,
+        sourceKind: "url",
+        sourceRef: "https://cdn.example.test/header.png",
+        origin: "manifest",
+        yieldsTo: ["console"],
+      },
+    );
+    expect(raced).toBe(true);
+    expect(result).toEqual({ ok: false, reason: "retry" });
+    expect(await refsOf("listing.header")).toEqual([]);
+    expect(await getHostedAsset(db, "djdl", "listing.header")).toBeNull();
+  });
+
   it("the sizes count: an original that fits with a ladder that does not is refused whole", async () => {
     const images = stubImages({ width: 512 });
     ctx.env = { BLOBS: asR2(r2), IMAGES: images };

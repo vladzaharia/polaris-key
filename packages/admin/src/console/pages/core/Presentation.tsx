@@ -333,9 +333,9 @@ function HostingRows({
             tone="warning"
             title="Hosted assets are off on this deployment"
           >
-            Every surface shows the developer&apos;s own URLs and GitHub serves
-            the release files (Platform → Settings → Delivery). The copies below
-            stay, and serve again once it is turned back on.
+            Every image surface shows the developer&apos;s own URLs and no new
+            release file is copied (Platform → Settings → Delivery). The copies
+            below stay; release files already copied keep serving from them.
           </Callout>
         </div>
       ) : null}
@@ -426,6 +426,26 @@ function QuotaRow({
   const next = mib === null ? null : mib * QUOTA_MIB;
   const changed = next !== null && next !== current;
   const id = `asset-setting-${setting.key}`;
+  const saveRef = React.useRef<HTMLButtonElement>(null);
+  /**
+   * After a save, the saved value comes back and disables Save, which may hold focus by then
+   * (the dialog returns focus to it): keep focus in the row by moving it to the field. Watches
+   * for a few seconds, never steals focus from anything else.
+   */
+  const keepFocusInRow = (): void => {
+    const until = Date.now() + 5000;
+    const tick = (): void => {
+      const save = saveRef.current;
+      const active = document.activeElement;
+      const lost = !active || active === document.body || active === save;
+      if (save?.disabled && lost) {
+        document.getElementById(id)?.focus({ preventScroll: true });
+        return;
+      }
+      if (Date.now() < until) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  };
   const inherited =
     typeof setting.inherited === "number" ? setting.inherited : null;
   return (
@@ -454,6 +474,7 @@ function QuotaRow({
           aria-label={`${setting.label} in MiB`}
         />
         <Button
+          ref={saveRef}
           size="sm"
           disabled={!changed}
           onClick={() => setConfirm("save")}
@@ -484,6 +505,7 @@ function QuotaRow({
             value: next,
             expectedVersion: setting.version,
           });
+          keepFocusInRow();
           toast.success(`${setting.label} set to ${binaryBytes(next)}`);
         }}
       />
@@ -525,7 +547,7 @@ function MirrorRow({
     toast.success(
       value === "on"
         ? "Release files are mirrored again"
-        : "Release files serve from GitHub only",
+        : "No new release file is copied; copies already made keep serving",
     );
   };
   const id = `asset-setting-${setting.key}`;

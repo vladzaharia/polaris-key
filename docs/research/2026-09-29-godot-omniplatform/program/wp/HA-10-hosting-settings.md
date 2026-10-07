@@ -67,8 +67,9 @@ Quotas and the kill switch are knobs, and S-18 makes knobs registry settings ([S
   name `ASSET_HOSTING`, `runtime`, area `delivery`), so Platform → Settings → Delivery switches it
   today. The two platform quota defaults are registry-only rows with no console writer until
   ST-05 and ST-16; the three product settings are written through `writeSetting()` by
-  `PATCH|DELETE /manage/api/products/<slug>/assets/settings/<key>` (narrative-only admin routes,
-  rule 10) and edited on the Presentation page.
+  `PATCH|DELETE /manage/api/products/<slug>/assets/settings/<key>` and read by
+  `GET /manage/api/products/<slug>/assets/usage` (rule 10: in the OpenAPI spec, tagged `admin`, and
+  in `routeCoverage`'s `ADMIN_KIND_PATHS.products`), and edited on the Presentation page.
 
 ## Steps
 
@@ -92,6 +93,16 @@ mise exec node@22 -- pnpm --filter @polaris-key/admin test
 ## Hand-off
 
 HA-15 documents the settings.
+
+Follow-ups from the review (2026-10-07), not in this package:
+
+- **Over-quota churn (HA-15 or a later HA fix).** A copy whose ladder is owed while the product is
+  at its media quota is retried with back-off, and each retry may build the ladder again before
+  the batch refuses it. A same-bytes re-pull of a product already over a lowered quota flips the
+  slot to `failed` (`quota`) although it adds no bytes. Both keep the current copy serving.
+- **Console logos ignore the switch (HA-15).** The console's product card and registry read
+  `presentation.icon` from the image host (`admin/lib/presentation.ts`) whatever
+  `assets.hosting.enabled` says; only the public surfaces follow it.
 
 The role agent sets `--set HA-10 in-review` when it hands off. After review, the lead adds the last
 commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set HA-10 done`.
