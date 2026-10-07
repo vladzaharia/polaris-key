@@ -18997,6 +18997,58 @@ components:
               machineUuid: 4Sc9ItiFEQMbGXeAbXVdIw
               boardSerial: HkkgWaC6QKS4SdCUJf1vLQ
               cpuModel: 8UvzXqhwR0mDPPlgKtEQqA
+    ProductPresentation:
+      type: object
+      description: >
+        `core.presentation` (WIRE-CONTRACT-V4 §5.5, HA-12): unsigned display data, never authority;
+        no gate, entitlement or trust decision reads it. OMITTED unless something beyond the name
+        resolves (a developer name, an accent or an icon). `name` is the Distribution listing's
+        name, else the product's; `developerName` is the listing's; `accent` is `.pkey/product`
+        `presentation.accent`, else the listing's `tintColor`; `accentDark` is
+        `presentation.accentDark`. The icon is the hosted copy of the `presentation.icon` slot,
+        else of `listing.icon`, named only by content-addressed image-host URLs; it is omitted when
+        no hosted copy exists, hosting is off or there is no image host. Clients parse it field by
+        field: a malformed field is dropped and never refuses discovery.
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1 }
+        developerName: { type: string, minLength: 1 }
+        accent: { type: string, pattern: "^#[0-9a-f]{6}$" }
+        accentDark: { type: string, pattern: "^#[0-9a-f]{6}$" }
+        icon:
+          type: object
+          required: [sha256, contentType, original, sizes]
+          properties:
+            sha256:
+              type: string
+              pattern: "^[0-9a-f]{64}$"
+              description: The original's SHA-256. A client shows the original's bytes only when they match.
+            contentType:
+              type: string
+              enum: [image/avif, image/gif, image/jpeg, image/png, image/webp]
+            width: { type: integer, minimum: 1, maximum: 16384 }
+            height: { type: integer, minimum: 1, maximum: 16384 }
+            original:
+              type: string
+              format: uri
+              description: The original on the image host, `https://img.plrs.im/<p>/a/<sha256>`.
+            url:
+              type: string
+              description: >
+                The WebP size template, `<original>/{w}.webp`. Present exactly when `sizes` is
+                non-empty.
+            sizes:
+              type: array
+              maxItems: 8
+              description: >
+                The WebP width variants, strictly ascending by `w`, each with its own SHA-256.
+                Empty when the image host has no resized copies (the original serves alone).
+              items:
+                type: object
+                required: [w, sha256]
+                properties:
+                  w: { type: integer, minimum: 1, maximum: 4096 }
+                  sha256: { type: string, pattern: "^[0-9a-f]{64}$" }
     DiscoveryDocument:
       type: object
       description: >
@@ -19053,6 +19105,8 @@ components:
                   type: string
                   format: uri
                   description: OMITTED when `registration` is `requires-license`.
+            presentation:
+              $ref: "#/components/schemas/ProductPresentation"
         trust:
           type: object
           required:
