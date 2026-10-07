@@ -8,6 +8,7 @@ import {
   type PortalHarness,
 } from "./portalHarness.js";
 import {
+  MARA_METHODS,
   PROFILE_STEAM,
   profileRoutes,
   UPLOAD_ASSET,
@@ -642,6 +643,87 @@ describe("Account → Profile (PX-22, §4.30)", () => {
       expect(
         o.all.filter((r) => /\/media\/avatar\/|\/api\/me\/profile/.test(r)),
       ).toEqual([]);
+      expect(await o.violations()).toEqual([]);
+    } finally {
+      await o.close();
+    }
+  });
+});
+
+describe("Account → Sign-in methods (PX-13, §4.26)", () => {
+  it("Disconnect asks to confirm it's you, takes an email code, then removes the method", async () => {
+    let fresh = false;
+    let removed = false;
+    const calls: string[] = [];
+    const view = () => ({
+      ...MARA_METHODS,
+      methods: MARA_METHODS.methods.filter(
+        (m) => !(removed && m.id === "lnk_steam"),
+      ),
+      providers: MARA_METHODS.providers.map((p) =>
+        p.kind === "steam" ? { ...p, connected: !removed } : p,
+      ),
+      stepUp: fresh
+        ? {
+            authenticatedAt: Date.UTC(2026, 9, 1, 12) / 1000,
+            freshUntil: Date.UTC(2026, 9, 1, 12, 5) / 1000,
+            fresh: true,
+            maxAgeSeconds: 300,
+          }
+        : MARA_METHODS.stepUp,
+    });
+    const o = await open("three", "/#/account/methods", {
+      routes: {
+        "GET /api/me/methods": () => ({ body: view() }),
+        "POST /api/signin/email/start": () => {
+          calls.push("start");
+          return { body: { ok: true, expiresIn: 600, resendIn: 60 } };
+        },
+        "POST /api/signin/email/verify": () => {
+          calls.push("verify");
+          fresh = true;
+          return { body: { status: "signed_in", next: "/" } };
+        },
+        "DELETE /api/me/methods/lnk_steam": () => {
+          calls.push("delete");
+          if (!fresh)
+            return { status: 401, body: { error: "step_up_required" } };
+          removed = true;
+          return {
+            body: { ok: true, removed: { id: "lnk_steam", kind: "steam" } },
+          };
+        },
+      },
+    });
+    try {
+      await h1(o.page, "Account");
+      const region = o.page.getByRole("region", { name: "Sign-in methods" });
+      await region.getByRole("button", { name: "Disconnect Steam" }).click();
+      await region
+        .getByRole("heading", { name: "Disconnect Steam?" })
+        .waitFor();
+      const prompt = region.getByRole("group", {
+        name: "Confirm it's you first",
+      });
+      // The account has passkeys, so the passkey comes first; this run confirms with an email code.
+      const useEmail = prompt.getByRole("button", {
+        name: "Use an email code instead",
+      });
+      if (await useEmail.isVisible()) await useEmail.click();
+      await prompt
+        .getByRole("button", { name: "Email a code to mara@fennick.studio" })
+        .click();
+      await prompt
+        .getByRole("textbox", { name: "6-digit code" })
+        .fill("481920");
+      await o.page.getByText("Steam was disconnected").first().waitFor();
+      expect(calls).toEqual(["start", "verify", "delete"]);
+      await region
+        .getByRole("button", { name: "Disconnect Steam" })
+        .waitFor({ state: "detached" });
+      expect(
+        await o.page.evaluate(() => document.activeElement?.textContent),
+      ).toBe("Accounts");
       expect(await o.violations()).toEqual([]);
     } finally {
       await o.close();

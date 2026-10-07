@@ -17,6 +17,7 @@ import {
   useProduct,
 } from "../data.js";
 import { PackageAccessCard } from "../components/product/PackageAccessCard.js";
+import { ProductIdentityCard } from "../components/product/ProductIdentityCard.js";
 import { RemoveLicenseDialog } from "../components/product/RemoveLicenseDialog.js";
 import { toast } from "../../ui/toast.js";
 import { consumeHeadingFocus } from "../focus.js";
@@ -330,6 +331,13 @@ function ProductBody({
                   error={detail.error}
                   onRetry={retry}
                 />
+              </div>
+            ) : null}
+            {/* Product sign-in, only with Identity on (§3.1): after License on wide screens, after
+                Devices on phones (§4.20's task order); equal orders keep the source order. */}
+            {view.data?.services.identity === true ? (
+              <div className="order-3 desk:order-2">
+                <ProductIdentityCard productName={product.name} />
               </div>
             ) : null}
             {has("help") ? (

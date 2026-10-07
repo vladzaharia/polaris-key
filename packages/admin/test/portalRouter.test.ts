@@ -68,14 +68,24 @@ describe("portal routes (PORTAL.md §3.3)", () => {
   });
 
   it("parses account sections", () => {
-    expect(resolveHash("#/account").route).toEqual({
+    expect(resolveHash("#/account").route).toMatchObject({
       kind: "account",
       section: null,
     });
-    expect(resolveHash("#/account/appearance").route).toEqual({
+    expect(resolveHash("#/account/appearance").route).toMatchObject({
       kind: "account",
       section: "appearance",
     });
+  });
+
+  it("keeps an account section's query (PX-13: a provider's Connect, Add an email)", () => {
+    const r = resolveHash("#/account/methods?connected=google").route;
+    expect(r).toMatchObject({ kind: "account", section: "methods" });
+    expect(r.kind === "account" && r.params.get("connected")).toBe("google");
+    expect(href.account("methods", { add: "email" })).toBe(
+      "#/account/methods?add=email",
+    );
+    expect(href.account("methods")).toBe("#/account/methods");
   });
 
   it.each([

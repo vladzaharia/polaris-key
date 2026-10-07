@@ -252,6 +252,12 @@ function Page({
         />
       );
     case "account":
-      return <AccountPage account={account} section={route.section} />;
+      return (
+        <AccountPage
+          account={account}
+          section={route.section}
+          params={route.params}
+        />
+      );
   }
 }

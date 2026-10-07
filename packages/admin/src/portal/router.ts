@@ -74,7 +74,12 @@ export type PortalRoute =
       product: string;
       params: URLSearchParams;
     }
-  | { kind: "account"; section: AccountSection | null };
+  | {
+      kind: "account";
+      section: AccountSection | null;
+      /** `?connected=` / `?error=&method=` (a provider's Connect), `?remove=`, `?add=email`. */
+      params: URLSearchParams;
+    };
 
 export interface Resolved {
   route: PortalRoute;
@@ -99,8 +104,10 @@ export const href = {
     flow: FocusedFlowKind,
     params?: Record<string, string>,
   ): string => withQuery(`#/p/${enc(slug)}/${flow}`, params),
-  account: (section?: AccountSection): string =>
-    `#/account${section ? `/${section}` : ""}`,
+  account: (
+    section?: AccountSection,
+    params?: Record<string, string>,
+  ): string => withQuery(`#/account${section ? `/${section}` : ""}`, params),
   activate: (key?: string): string => withQuery("#/", { activate: key ?? "" }),
 };
 
@@ -162,7 +169,7 @@ export function resolveHash(hash: string): Resolved {
     case "account": {
       if (a === "emails" || a === "passkeys" || a === "linked")
         return {
-          route: { kind: "account", section: "methods" },
+          route: { kind: "account", section: "methods", params },
           redirect: href.account("methods"),
         };
       const section =
@@ -171,10 +178,10 @@ export function resolveHash(hash: string): Resolved {
           : null;
       if (a && !section)
         return {
-          route: { kind: "account", section: null },
+          route: { kind: "account", section: null, params },
           redirect: href.account(),
         };
-      return { route: { kind: "account", section } };
+      return { route: { kind: "account", section, params } };
     }
     // §3.3 redirects: the old portal's links keep working.
     case "licenses": {
@@ -188,7 +195,11 @@ export function resolveHash(hash: string): Resolved {
       return { ...resolveHash("#/"), redirect: "#/" };
     case "profile":
       return {
-        route: { kind: "account", section: null },
+        route: {
+          kind: "account",
+          section: null,
+          params: new URLSearchParams(),
+        },
         redirect: href.account(),
       };
     case "claim": {

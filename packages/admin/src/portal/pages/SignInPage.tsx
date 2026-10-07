@@ -3,7 +3,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, KeyRound, RefreshCw, ShieldCheck } from "lucide-react";
 import { Button } from "../../ui/Button.js";
 import { Input } from "../../ui/Input.js";
-import { cn } from "../../lib/cn.js";
 import {
   portalApi,
   PortalApiError,
@@ -12,6 +11,7 @@ import {
 } from "../api.js";
 import { CardHeader, LoginCard } from "../components/signin/LoginCard.js";
 import { ProviderRow } from "../components/signin/ProviderRow.js";
+import { CODE_LENGTH, CodeCells } from "../components/CodeCells.js";
 import { KeyField } from "../components/KeyField.js";
 import { portalKeys, useCapabilities } from "../data.js";
 import { portalErrorCopy } from "../errors.js";
@@ -46,7 +46,6 @@ type Step =
 
 /** The countdown when an answer carries no `resendIn` (a Worker from before PX-W4). */
 const RESEND_FALLBACK_S = 60;
-const CODE_LENGTH = 6;
 
 /** Seconds until "Send a new code", from the start's or the resend's answer. */
 function resendDelay(out: PortalEmailSent | undefined): number {
@@ -685,66 +684,6 @@ function CodeStep({
         </QuietLink>
       </QuietLinks>
     </>
-  );
-}
-
-/**
- * One input drawn as six cells (§3.4, §3.14): `autocomplete="one-time-code"`, numeric, one
- * accessible name ("6-digit code", `signin.code.label`), paste fills it. The cells are a mirror
- * behind the transparent input, never six inputs.
- */
-function CodeCells({
-  id,
-  value,
-  invalid,
-  describedBy,
-  onChange,
-}: {
-  id: string;
-  value: string;
-  invalid: boolean;
-  describedBy?: string;
-  onChange: (value: string) => void;
-}): React.ReactElement {
-  const [focused, setFocused] = React.useState(false);
-  const at = Math.min(value.length, CODE_LENGTH - 1);
-  return (
-    <div className="relative">
-      <div aria-hidden className="grid grid-cols-6 gap-2">
-        {Array.from({ length: CODE_LENGTH }, (_, i) => (
-          <div
-            key={i}
-            className={cn(
-              "flex h-14 items-center justify-center rounded-md border bg-surface-sunken font-mono text-2xl font-bold text-fg-strong",
-              invalid
-                ? "border-danger"
-                : focused && i === at
-                  ? "border-focus ring-2 ring-focus"
-                  : "border-border-strong",
-            )}
-          >
-            {value[i] ?? ""}
-          </div>
-        ))}
-      </div>
-      <input
-        id={id}
-        aria-label="6-digit code"
-        aria-invalid={invalid || undefined}
-        aria-describedby={describedBy}
-        autoComplete="one-time-code"
-        inputMode="numeric"
-        pattern="[0-9]*"
-        maxLength={CODE_LENGTH}
-        value={value}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        onChange={(e) =>
-          onChange(e.target.value.replace(/\D/g, "").slice(0, CODE_LENGTH))
-        }
-        className="absolute inset-0 size-full cursor-text bg-transparent text-transparent caret-transparent outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
-      />
-    </div>
   );
 }
 

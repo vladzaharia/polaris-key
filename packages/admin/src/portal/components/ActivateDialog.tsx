@@ -421,6 +421,18 @@ export function ActivateDialog({
                               setServerVerdict(null);
                               focusField();
                             }}
+                            onAddEmail={
+                              verdict.code === "email_mismatch"
+                                ? () => {
+                                    // PX-13: Account → Sign-in methods with Add an email open. The
+                                    // masked address can't be filled in; the person types theirs.
+                                    onOpenChange(false);
+                                    navigate(
+                                      href.account("methods", { add: "email" }),
+                                    );
+                                  }
+                                : undefined
+                            }
                           />
                         ) : undefined,
                     }
@@ -484,14 +496,18 @@ export function ActivateDialog({
 /**
  * A refused key's way forward (EXPERIENCE.md §0.6 P1 frame 5; SIGN-IN.md §3.9): **Use a
  * different key** always, for `license_owned` and `email_mismatch`; **Sign in to that account**
- * once the Worker names where (`license_owned` only, I-09's `signInUrl`).
+ * once the Worker names where (`license_owned` only, I-09's `signInUrl`); **Add and verify that
+ * email** for `email_mismatch` (PORTAL.md §4.19), which opens Account → Sign-in methods with
+ * Add an email open (PX-13).
  */
 function RefusalActions({
   signInUrl,
   onDifferentKey,
+  onAddEmail,
 }: {
   signInUrl?: string;
   onDifferentKey: () => void;
+  onAddEmail?: () => void;
 }): React.ReactElement {
   return (
     <>
@@ -503,6 +519,16 @@ function RefusalActions({
       >
         Use a different key
       </Button>
+      {onAddEmail ? (
+        <Button
+          variant="outline"
+          size="sm"
+          className="font-bold"
+          onClick={onAddEmail}
+        >
+          Add and verify that email
+        </Button>
+      ) : null}
       {signInUrl ? (
         <Button
           variant="outline"

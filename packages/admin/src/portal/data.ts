@@ -20,12 +20,14 @@ import {
   type PortalLicenseDetail,
   type PortalLicenseSummary,
   type PortalMe,
+  type PortalMethods,
   type PortalMintTokenInput,
   type PortalPackageAccess,
   type PortalProduct,
   type PortalProfile,
   type PortalProfileChange,
   type PortalRelease,
+  type PortalSession,
 } from "./api.js";
 import { browser } from "./browser.js";
 import { isSignedOut } from "./errors.js";
@@ -57,6 +59,8 @@ const qk = {
   portalRegistryTokens: (product: string, license: string) =>
     ["portal", "registryTokens", product, license] as const,
   portalProfile: () => ["portal", "profile"] as const,
+  portalMethods: () => ["portal", "methods"] as const,
+  portalSessions: () => ["portal", "sessions"] as const,
 };
 
 export const portalKeys = {
@@ -70,6 +74,8 @@ export const portalKeys = {
   downloads: qk.portalDownloads,
   product: qk.portalProduct,
   profile: qk.portalProfile(),
+  methods: qk.portalMethods(),
+  sessions: qk.portalSessions(),
 };
 
 export function createPortalQueryClient(): QueryClient {
@@ -111,10 +117,18 @@ export function consumeQuietSignOut(): boolean {
   return q;
 }
 
+/**
+ * Session reads started so far: only the newest one's answer sets the CSRF token, so a read sent
+ * before a step-up sign-in (with the old cookie) that answers after one sent since can't put the
+ * old token back.
+ */
+let sessionReads = 0;
+
 async function fetchSession(): Promise<PortalMe | null> {
+  const read = ++sessionReads;
   try {
     const me = await portalApi.me();
-    setPortalCsrf(me.csrf);
+    if (read === sessionReads) setPortalCsrf(me.csrf);
     return me;
   } catch (err) {
     if (err instanceof PortalApiError && err.status === 401) {
@@ -509,6 +523,107 @@ export function useRemoveLicense(product: string) {
 
 export function useDeleteAccount() {
   return useMutation({ mutationFn: () => portalApi.deleteMe() });
+}
+
+/**
+ * Account → Sign-in methods (PX-W12, `GET /api/me/methods`), or `null` when this Worker has no
+ * such route (404): the section then lists the session's email alone (G27's fallback).
+ */
+export function useMethods(): UseQueryResult<PortalMethods | null> {
+  return useQuery({
+    queryKey: qk.portalMethods(),
+    queryFn: fetchMethods,
+  });
+}
+
+async function fetchMethods(): Promise<PortalMethods | null> {
+  try {
+    return await portalApi.methods();
+  } catch (err) {
+    if (err instanceof PortalApiError && err.status === 404) return null;
+    throw err;
+  }
+}
+
+/**
+ * Where you're signed in (I-07, `GET /api/sessions`), or `null` when this Worker has no such
+ * route (404): the section is left out rather than shown empty.
+ */
+export function useSessions(): UseQueryResult<PortalSession[] | null> {
+  return useQuery({
+    queryKey: qk.portalSessions(),
+    queryFn: fetchSessions,
+  });
+}
+
+async function fetchSessions(): Promise<PortalSession[] | null> {
+  try {
+    return (await portalApi.sessions()).sessions;
+  } catch (err) {
+    if (err instanceof PortalApiError && err.status === 404) return null;
+    throw err;
+  }
+}
+
+/**
+ * After a sign-in method changed: the methods, the session (its email follows the primary), the
+ * profile's sources and the library (a verified address brings the licences waiting on it).
+ */
+export function refreshAfterMethodChange(client: QueryClient): void {
+  void client.invalidateQueries({ queryKey: portalKeys.methods });
+  void client.invalidateQueries({ queryKey: portalKeys.me });
+  void client.invalidateQueries({ queryKey: portalKeys.profile });
+  void client.invalidateQueries({ queryKey: portalKeys.library });
+  void client.invalidateQueries({ queryKey: portalKeys.licenses });
+}
+
+/** Disconnect a sign-in method (step-up first; never the last one). */
+export function useRemoveMethod() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => portalApi.removeMethod(id),
+    onSuccess: () => refreshAfterMethodChange(qc),
+    onError: (err) => {
+      // Refused for the account's state (`last_link`, `only_email`) or gone already: re-read it,
+      // so the page stops offering what the Worker refuses.
+      if (
+        err instanceof PortalApiError &&
+        (err.status === 409 || err.status === 403 || err.status === 404)
+      )
+        void qc.invalidateQueries({ queryKey: portalKeys.methods });
+    },
+  });
+}
+
+/**
+ * The session again, now (`GET /api/me`): after a step-up sign-in the browser holds a new
+ * session, with a new CSRF token, which every later change must carry.
+ */
+export async function refreshSession(
+  client: QueryClient,
+): Promise<PortalMe | null> {
+  // Not `fetchQuery`: it would join a `/api/me` already in flight, sent with the old cookie,
+  // whose answer would put the old CSRF token back. A request of its own, sent now, and its
+  // answer is the session (`fetchSession` sets the token).
+  await client.cancelQueries({ queryKey: qk.portalMe() });
+  const me = await fetchSession();
+  client.setQueryData(qk.portalMe(), me);
+  return me;
+}
+
+/** End one other session (a browser or app signed in to this account). */
+export function useEndSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => portalApi.endSession(id),
+    onSettled: () =>
+      void qc.invalidateQueries({ queryKey: portalKeys.sessions }),
+  });
+}
+
+/** Sign out everywhere: every session and app of the account, this browser's included. */
+export function useSignOutEverywhere() {
+  return useMutation({ mutationFn: () => portalApi.signOutEverywhere() });
 }
 
 /**

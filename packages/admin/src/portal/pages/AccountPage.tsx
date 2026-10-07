@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { LogOut, Mail, Trash2 } from "lucide-react";
+import { LogOut, Trash2 } from "lucide-react";
 import {
   useMotionPreference,
   type MotionPreference,
@@ -12,8 +12,10 @@ import { toast } from "../../ui/toast.js";
 import { cn } from "../../lib/cn.js";
 import type { PortalAccount } from "../api.js";
 import { ProfileCard } from "../components/ProfileCard.js";
+import { SignInMethods } from "../components/account/SignInMethods.js";
+import { SessionsCard } from "../components/account/SessionsCard.js";
 import { SectionCard } from "../components/product/Card.js";
-import { signOutQuietly, useDeleteAccount } from "../data.js";
+import { signOutQuietly, useDeleteAccount, useSessions } from "../data.js";
 import { portalErrorCopy } from "../errors.js";
 import {
   href,
@@ -23,15 +25,19 @@ import {
 } from "../router.js";
 
 /**
- * Account (PORTAL.md §4.26): Profile first (PX-22, §4.30: name and picture, edited in place), the
- * sign-in email (the Sign-in methods section's scaffold until G27 lists Apple, Google, Steam and
- * passkeys), Appearance, Your data with Delete account behind a typed confirmation, and Sign out
- * (PX-07). Connected products and Where you're signed in arrive with I-06 and I-15; the section
- * nav lists only what exists.
+ * Account (PORTAL.md §4.26): Profile first (PX-22, §4.30: name and picture, edited in place),
+ * Sign-in methods (PX-13 on PX-W12: connect, disconnect with step-up, the last-method guard, the
+ * Hide My Email notice), Where you're signed in (PX-13 on I-07's sessions), Appearance, Your data
+ * with Delete account behind a typed confirmation, and Sign out (PX-07).
+ *
+ * The section nav lists only what is on the page: Where you're signed in once the Worker answers
+ * for sessions. Connected products and Download my data wait for their API (PX-13's brief); until
+ * then neither the nav nor the page points at them.
  */
 const SECTIONS: { id: AccountSection; label: string }[] = [
   { id: "profile", label: "Profile" },
   { id: "methods", label: "Sign-in methods" },
+  { id: "sessions", label: "Where you're signed in" },
   { id: "appearance", label: "Appearance" },
   { id: "data", label: "Your data" },
 ];
@@ -39,11 +45,16 @@ const SECTIONS: { id: AccountSection; label: string }[] = [
 export function AccountPage({
   account,
   section,
+  params,
 }: {
   account: PortalAccount;
   section: AccountSection | null;
+  params: URLSearchParams;
 }): React.ReactElement {
   useDocumentTitle("Account");
+  const sessions = useSessions();
+  const sessionsShown = !sessions.isPending && sessions.data !== null;
+  const sections = SECTIONS.filter((s) => s.id !== "sessions" || sessionsShown);
   const [current, setCurrent] = React.useState<AccountSection>(
     SECTIONS.some((s) => s.id === section) ? section! : "profile",
   );
@@ -102,7 +113,7 @@ export function AccountPage({
         className="sticky top-14 z-20 -mx-4 overflow-x-auto border-b border-border bg-surface-page px-4 py-2 desk:hidden"
       >
         <ul className="flex gap-2">
-          {SECTIONS.map((s) => (
+          {sections.map((s) => (
             <li key={s.id}>
               <SectionLink
                 id={s.id}
@@ -121,7 +132,7 @@ export function AccountPage({
           className="sticky top-24 hidden w-56 shrink-0 self-start desk:block"
         >
           <ul className="space-y-1">
-            {SECTIONS.map((s) => (
+            {sections.map((s) => (
               <li key={s.id}>
                 <SectionLink
                   id={s.id}
@@ -135,7 +146,8 @@ export function AccountPage({
         </nav>
         <div className="min-w-0 flex-1 space-y-6">
           <ProfileCard account={account} />
-          <SignInMethods account={account} />
+          <SignInMethods account={account} params={params} />
+          <SessionsCard />
           <Appearance />
           <YourData account={account} />
         </div>
@@ -180,36 +192,6 @@ function SectionLink({
     >
       {label}
     </a>
-  );
-}
-
-/** Sign-in methods, v1: the one email this account signs in with (G10/G27 fallback). */
-function SignInMethods({
-  account,
-}: {
-  account: PortalAccount;
-}): React.ReactElement {
-  return (
-    <SectionCard
-      id="methods"
-      title="Sign-in methods"
-      subtitle="How you get into this account. Sign-in links, receipts and security notices go to this email."
-    >
-      <h3 className="mb-2 text-xs font-bold text-fg-muted">Email</h3>
-      <ul className="divide-y divide-border border-y border-border">
-        <li className="flex items-center gap-3 py-3">
-          <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-fg-strong">
-            <Mail aria-hidden className="size-5" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="truncate font-bold text-fg-strong">{account.email}</p>
-            <p className="text-sm text-fg-muted">
-              Products bought with this email join your library by themselves.
-            </p>
-          </div>
-        </li>
-      </ul>
-    </SectionCard>
   );
 }
 
