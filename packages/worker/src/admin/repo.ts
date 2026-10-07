@@ -6,6 +6,7 @@
 
 import { stmtRevokeProductCiTokens } from "../core/publisher.js";
 import { stmtRevokeProductRegistryTokens } from "../core/registryTokens.js";
+import { productGrantErasureStatements } from "../core/grants.js";
 import {
   holderFilterSql,
   stmtDeleteProductAutoAttachBlocks,
@@ -147,6 +148,10 @@ export async function deleteProduct(
       sql: "DELETE FROM override_migration_report WHERE product = ?",
       params: [slug],
     },
+    // LX-08: the licensing model's account- and store-held grants, the Steam identities verified
+    // on its devices and the entitlement-event feed (subjects); licence-held grants stay with
+    // their licences (`core/grants.ts`).
+    ...productGrantErasureStatements(slug),
     {
       sql: "UPDATE devices SET status = 'deauthorized', subject = NULL WHERE product = ?",
       params: [slug],

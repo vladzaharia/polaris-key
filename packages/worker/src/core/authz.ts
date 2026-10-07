@@ -259,6 +259,9 @@ export async function licenseDeviceLimitInfo(
   product: Pick<Product, "slug" | "defaultDeviceLimit">,
   license: LicenseRow,
   now: number,
+  /** LX-08: `withoutOidcGrant` for a hypothetical row whose overrides already carry the
+   *  provisioned keys a sign-in is about to write (`core/payload.ts`). */
+  opts: { withoutOidcGrant?: boolean } = {},
 ): Promise<DeviceLimitInfo> {
   const { payload, tier } = await resolveMergedPayload(
     db,
@@ -266,7 +269,7 @@ export async function licenseDeviceLimitInfo(
     license,
     null,
     now,
-    { entitlementsOnly: true },
+    { entitlementsOnly: true, withoutOidcGrant: opts.withoutOidcGrant },
   );
   const merged = payload.entitlements["deviceLimit"];
   const tierLimit = tierDeviceLimit(tier);
@@ -293,8 +296,9 @@ export async function licenseDeviceLimit(
   product: Pick<Product, "slug" | "defaultDeviceLimit">,
   license: LicenseRow,
   now: number,
+  opts: { withoutOidcGrant?: boolean } = {},
 ): Promise<number> {
-  return (await licenseDeviceLimitInfo(db, product, license, now)).limit;
+  return (await licenseDeviceLimitInfo(db, product, license, now, opts)).limit;
 }
 
 /** The fingerprint mode `authorizeDevice` enforces on a licence of tier `tierId`: the tier's

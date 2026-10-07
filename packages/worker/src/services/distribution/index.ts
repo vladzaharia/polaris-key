@@ -67,6 +67,7 @@ import { runAutoHalt, type AutoHaltOutcome } from "./autoHalt.js";
 import { runCommerceTick, type CommerceTick } from "./commerce/recheck.js";
 import {
   commerceDeleteContribution,
+  commerceLicensingReconcile,
   commerceMergeStatements,
 } from "./commerce/state.js";
 import {
@@ -267,6 +268,12 @@ export const distributionService: ServiceDescriptor = {
    * Distribution's enablement.
    */
   licenseDelete: commerceDeleteContribution,
+  /**
+   * LX-08 (`core/licensingCatchUp.ts`): each purchase's `grant_id` and each store mapping's
+   * entitlement rows re-projected from `dist_purchases` and `dist_store_products.flag`, whatever
+   * Distribution's enablement.
+   */
+  licensingReconcile: commerceLicensingReconcile,
   /** `/manage/api/products/<slug>/distribution/…` (`admin.ts`). */
   adminHandle: handleDistributionAdmin,
   /** The store-connector poll, on the connector cron (`connectors/`). */

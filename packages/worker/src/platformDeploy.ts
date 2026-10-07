@@ -18,7 +18,9 @@
  *      ST-20: the system product is manifest-authoritative (locked), so this apply also ends any
  *      break-glass claim whose 7 days ran out or whose field the manifest changed, and the answer
  *      lists the live ones (`breakGlass`, key and expiry) for the deploy summary.
- *   3. The answer reports `uploads: {ready, missing}`: whether this Worker can issue the upload
+ *   3. LX-08: one bounded pass of the licensing catch-up (`core/licensingCatchUp.ts`): store grants
+ *      re-projected, OIDC-provisioned keys moved to their `oidc` grants; counts in `licensing`.
+ *   4. The answer reports `uploads: {ready, missing}`: whether this Worker can issue the upload
  *      tickets every publish needs (the `BLOBS` binding and the parent R2 token, by name only).
  *      `scripts/register-platform.mjs` fails the deploy job on `ready: false`, so a missing R2
  *      secret is a red deploy, not a 404 in every SDK feed job.
@@ -82,6 +84,7 @@ import {
 import { MANIFEST_FILE_NAMES } from "./services/release/manifestFiles.js";
 import { reservedNamesMode } from "./core/reservedNames.js";
 import { reservedDisplayNamesMode } from "./core/reservedDisplayNames.js";
+import { runLicensingCatchUp } from "./core/licensingCatchUp.js";
 
 export const DEPLOY_HOOK_PATH = "/webhooks/deploy";
 /** The one workflow whose runs may call the hook. */
@@ -91,6 +94,8 @@ export const DEFAULT_DEPLOY_ENVIRONMENT = "production";
 export const MAX_DEPLOY_HOOK_BODY_BYTES = 256 * 1024;
 /** Per client IP, before any signature check (a deploy calls once, a rerun once more). */
 const DEPLOY_HOOK_RL = { limit: 20, windowSec: 60 };
+/** LX-08: licences the deploy hook's provisioned-keys pass examines (the nightly finishes). */
+const DEPLOY_HOOK_LICENSING_BUDGET = 500;
 /** The deploy hook's own rate-limit scope (`RateLimitDO` is keyed by name, not by product). */
 const RL_SCOPE = "_platform-deploy-hook";
 
@@ -346,6 +351,27 @@ export async function handleDeployHook(
     }),
   });
 
+  // LX-08 (plans/LX-01.md §6.2 steps 2–4): the deploy-hook job `licensing.migrateProvisioned`
+  // and the store-grant re-projection, one bounded pass right after the deploy that starts the
+  // dual-write (`core/licensingCatchUp.ts`); the nightly maintenance finishes whatever remains. It
+  // changes no document, and a failure is reported here, never a failed deploy.
+  let licensing: Record<string, unknown>;
+  try {
+    const r = await runLicensingCatchUp(
+      db,
+      SERVICES,
+      now,
+      DEPLOY_HOOK_LICENSING_BUDGET,
+    );
+    licensing = {
+      products: r.products,
+      failed: Object.keys(r.failures),
+      provisioned: r.provisioned,
+    };
+  } catch (e) {
+    licensing = { error: e instanceof Error ? e.message : String(e) };
+  }
+
   return json({
     ok: true,
     slug: SYSTEM_PRODUCT_SLUG,
@@ -367,5 +393,7 @@ export async function handleDeployHook(
       const missing = uploadsMissing(env);
       return { ready: missing.length === 0, missing };
     })(),
+    // LX-08: the licensing catch-up's counts (no licence id, no purchase key).
+    licensing,
   });
 }

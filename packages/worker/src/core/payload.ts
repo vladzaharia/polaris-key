@@ -9,8 +9,8 @@
  * they are assembled from the SAME stack of stored layers:
  *
  *     catalog defaults  →  tier's profile  →  the license's profiles (in order)
- *                       →  store grants (P6-01)  →  license overrides  →  ACCOUNT OVERRIDES (U-03)
- *                       →  device overrides
+ *                       →  store grants (P6-01)  →  license overrides  →  the OIDC GRANT (LX-08)
+ *                       →  ACCOUNT OVERRIDES (U-03)  →  device overrides
  *
  * and that stack is jointly owned: the catalog and the profiles are Config's rows, the tier and
  * the license are License's, the device is Core's. Duplicating the walk in both services would
@@ -37,6 +37,7 @@ import type { ManagedEntry } from "@polaris-key/protocol";
 import type { Db } from "../db/types.js";
 import { mergePayloads } from "../merge.js";
 import { storeGrantLayer } from "./storeGrants.js";
+import { oidcGrantLayer } from "./grants.js";
 import { accountOverrideLayer } from "./accountOverrides.js";
 import { licenseConfigOverridesRetired } from "./overrideMigration.js";
 import {
@@ -156,7 +157,7 @@ export async function resolveMergedPayload(
   license: LicenseRow | null,
   device: DeviceRow | null | undefined,
   now: number,
-  opts: { entitlementsOnly?: boolean } = {},
+  opts: { entitlementsOnly?: boolean; withoutOidcGrant?: boolean } = {},
 ): Promise<MergedPayload> {
   const layers: (string | null | undefined)[] = [
     await catalogDefaultPayload(db, product, now),
@@ -186,6 +187,16 @@ export async function resolveMergedPayload(
         ? license.overrides_json
         : await licenseOverrideLayer(db, license.overrides_json),
     );
+    // LX-08 (S-19 §7.14 step 4): the licence's OIDC-provisioned entitlement keys, moved out of its
+    // overrides column into its `oidc` grant. Right AFTER the overrides and without any key they
+    // carry, which is the order and the precedence the keys had inside the column (an operator's
+    // override of a provisioned key still wins; `core/grants.ts` explains the byte identity).
+    // A caller previewing a hypothetical row whose overrides already carry the provisioned keys
+    // passes `withoutOidcGrant`, so the stored grant is not read twice.
+    if (!opts.withoutOidcGrant)
+      layers.push(
+        await oidcGrantLayer(db, product, license.id, license.overrides_json),
+      );
   }
 
   // U-03: outside `if (license)`, so a licence-less signed-in device gets its account's layer.

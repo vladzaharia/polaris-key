@@ -303,6 +303,14 @@ export interface ServiceDescriptor extends DescriptorHooks {
    */
   licenseDelete?: LicenseDeleteContributor;
   /**
+   * LX-08 (`core/licensingCatchUp.ts`, S-19 §7.14 steps 2–3): the statements re-projecting this
+   * service's rows of the licensing model from the legacy rows they mirror, for one product.
+   * Idempotent upserts that change nothing once the rows agree. Run by Core for every registered
+   * service WHATEVER its enablement, like `licenseMerge`, after a deploy (the deploy hook) and
+   * nightly, so rows a pre-LX-08 Worker wrote between the migration and the deploy catch up.
+   */
+  licensingReconcile?(product: string): DbStatement[];
+  /**
    * Periodic work for one product, run on the connector cron (`scheduled.ts`,
    * `CONNECTOR_POLL_CRON`) for every product that has this service ENABLED — the same gate as
    * dispatch: a disabled service's code never runs (P5-02: Distribution's store-connector

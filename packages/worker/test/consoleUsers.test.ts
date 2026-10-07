@@ -536,15 +536,21 @@ describe("actions", () => {
     expect(exp.headers.get("content-disposition")).toContain("attachment");
     const doc = (await exp.json()) as Record<string, unknown>;
     expect(doc.subject).toBe(f.adaAlpha);
-    // U-03's account override layer is a registered store too: it holds nothing for Ada yet.
+    // U-03's account override layer and LX-08's entitlement-event feed are registered stores
+    // too: they hold nothing for Ada yet.
     expect(doc.stores).toEqual({
       "config.accountOverrides": { overrides: null, migrationReport: [] },
+      "core.entitlementEvents": [],
       "test-store": { overrides: { volume: 3 }, of: f.adaAlpha },
     });
     const del = await w.json("POST", `/alpha/users/${f.adaAlpha}/data/delete`);
     expect(del.body).toEqual({
       ok: true,
-      stores: ["config.accountOverrides", "test-store"],
+      stores: [
+        "config.accountOverrides",
+        "core.entitlementEvents",
+        "test-store",
+      ],
     });
     expect(deleted).toEqual([`alpha:${f.adaAlpha}`]);
     // The subject and its licence are untouched: the developer never deletes the account.

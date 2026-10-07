@@ -2,7 +2,8 @@
 
 /**
  * License's `applyStoreGrant` (P6-01, `core/storeGrants.ts`): the one writer of
- * `license_store_grants`.
+ * `license_store_grants`. From LX-08 each write also re-projects the purchase's licence-held grant
+ * (`core/grants.ts`, Core's tables) in the same batch: the dual-write of S-19 §7.14 step 3.
  *
  * Distribution has already verified the purchase with its store and bound it to this licence;
  * this only records the effect. One row per (store, purchase key hash, flag):
@@ -28,6 +29,10 @@ import type { LicenseMergeChange } from "../../core/licenseMerge.js";
 import type { DbStatement } from "../../core/platform.js";
 import { appendAudit, getLicense } from "../../core/data.js";
 import { randomId } from "../../core/platform.js";
+import {
+  grantMergeStatements,
+  storeGrantProjection,
+} from "../../core/grants.js";
 
 /** The audit actor of a store-grant change. */
 export const STORE_GRANT_ACTOR = "system:commerce";
@@ -41,35 +46,52 @@ export async function applyStoreGrant(
   const license = await getLicense(db, product, change.licenseId);
   if (!license) return { ok: false, reason: "no_license" };
 
+  const write =
+    change.action === "grant"
+      ? {
+          sql: `INSERT INTO license_store_grants
+                  (product, license_id, flag, store, purchase_key_hash, state, granted_at, revoked_at)
+                VALUES (?, ?, ?, ?, ?, 'active', ?, NULL)
+                ON CONFLICT (product, store, purchase_key_hash, flag) DO UPDATE SET
+                  state = 'active', granted_at = excluded.granted_at, revoked_at = NULL
+                WHERE license_store_grants.state <> 'active'
+                  AND license_store_grants.license_id = excluded.license_id`,
+          params: [
+            product,
+            change.licenseId,
+            change.flag,
+            change.store,
+            change.purchaseKeyHash,
+            now,
+          ],
+        }
+      : {
+          sql: `UPDATE license_store_grants SET state = 'revoked', revoked_at = ?
+                 WHERE product = ? AND store = ? AND purchase_key_hash = ? AND flag = ?
+                   AND license_id = ? AND state = 'active'`,
+          params: [
+            now,
+            product,
+            change.store,
+            change.purchaseKeyHash,
+            change.flag,
+            change.licenseId,
+          ],
+        };
+  // LX-08 (S-19 §7.14 step 3): the licensing model's grant for this purchase is re-projected from
+  // the rows just written, in the SAME batch, so the two can never disagree. Reads stay on
+  // `license_store_grants` until LX-09.
+  const projection = storeGrantProjection(
+    product,
+    { store: change.store, purchaseKeyHash: change.purchaseKeyHash },
+    "commerce",
+  );
   let changed: number;
-  if (change.action === "grant") {
-    changed = await db.runChanges(
-      `INSERT INTO license_store_grants
-         (product, license_id, flag, store, purchase_key_hash, state, granted_at, revoked_at)
-       VALUES (?, ?, ?, ?, ?, 'active', ?, NULL)
-       ON CONFLICT (product, store, purchase_key_hash, flag) DO UPDATE SET
-         state = 'active', granted_at = excluded.granted_at, revoked_at = NULL
-       WHERE license_store_grants.state <> 'active'
-         AND license_store_grants.license_id = excluded.license_id`,
-      product,
-      change.licenseId,
-      change.flag,
-      change.store,
-      change.purchaseKeyHash,
-      now,
-    );
+  if (db.batchChanges) {
+    changed = (await db.batchChanges([write, ...projection]))[0] ?? 0;
   } else {
-    changed = await db.runChanges(
-      `UPDATE license_store_grants SET state = 'revoked', revoked_at = ?
-        WHERE product = ? AND store = ? AND purchase_key_hash = ? AND flag = ?
-          AND license_id = ? AND state = 'active'`,
-      now,
-      product,
-      change.store,
-      change.purchaseKeyHash,
-      change.flag,
-      change.licenseId,
-    );
+    changed = await db.runChanges(write.sql, ...write.params);
+    await db.batch(projection);
   }
   if (changed > 0)
     await appendAudit(db, {
@@ -107,5 +129,7 @@ export function storeGrantMergeStatements(
              WHERE product = ? AND license_id = ?`,
       params: [change.toLicenseId, change.product, change.fromLicenseId],
     },
+    // LX-08: the store grants' projection moves with them (`core/grants.ts`).
+    ...grantMergeStatements(change),
   ];
 }

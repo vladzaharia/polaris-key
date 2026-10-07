@@ -7,6 +7,9 @@
  * API, the re-checks through the real connector cron (`runConnectorPolls`).
  */
 
+import { storeGrantDrift } from "../src/core/grants.js";
+import { runLicensingCatchUp } from "../src/core/licensingCatchUp.js";
+import { SERVICES } from "../src/mount.js";
 import { afterEach, describe, expect, it } from "vitest";
 import { CONSOLE, SLUG } from "./releaseRoutesFixture.js";
 import { dispatchWith } from "../src/dispatch.js";
@@ -35,7 +38,10 @@ import {
 } from "./commerceWorld.js";
 
 let w: CommerceWorld | null = null;
-afterEach(() => {
+afterEach(async () => {
+  // LX-08 (S-19 §7.14 step 3): whatever a scenario did, the licensing model's dual-written rows
+  // agree with the store-grant rows the documents still read: zero drift.
+  if (w) expect(await storeGrantDrift(w.db, SLUG)).toEqual([]);
   w?.close();
   w = null;
 });
@@ -137,6 +143,11 @@ describe("commerce: binding and the licence-document grant layer", () => {
     expect((await entitlements(cw, cw.tokenA))[FLAG]).toMatchObject({
       value: false,
     });
+    // LX-08: a row written outside License's writer, as a pre-LX-08 Worker does between the
+    // migration and the deploy, lags in the licensing model until the catch-up projects it (the
+    // suite's afterEach then finds zero drift).
+    expect(await storeGrantDrift(cw.db, SLUG)).not.toEqual([]);
+    await runLicensingCatchUp(cw.db, SERVICES, NOW);
   });
 
   it("commerce needs License: settings writes are refused 409 and every route is the not-found", async () => {
@@ -1113,7 +1124,6 @@ describe("commerce: admin", () => {
 describe("commerce: the seams", () => {
   it("Core's applyStoreGrant fails closed with License off, before any License code runs", async () => {
     const { applyStoreGrant } = await import("../src/core/registry.js");
-    const { SERVICES } = await import("../src/mount.js");
     const cw = await world();
     const change = {
       licenseId: cw.licenseA,
