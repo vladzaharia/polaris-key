@@ -5747,7 +5747,7 @@
         "design/PORTAL §11.3 PX-13"
       ],
       "brief": "wp/PX-13-account-v2.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "PX-14",
@@ -7948,7 +7948,7 @@
       "optional": false,
       "refs": ["notes/S-20 §6.10", "notes/S-20 owner decision 9"],
       "brief": "wp/HA-10-hosting-settings.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "HA-11",
@@ -10255,7 +10255,7 @@
         "wp/MO-07-portal-library-motion.md, Corrections found while building (2026-10-06)"
       ],
       "brief": "wp/PX-24-library-added-just-now.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "PX-25",
