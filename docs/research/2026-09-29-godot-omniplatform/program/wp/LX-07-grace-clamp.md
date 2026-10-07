@@ -18,6 +18,17 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 
 - **[`plans/LX-01.md`](../plans/LX-01.md):** Q7: add one informative §3.6 sentence now ("`graceUntil` may be earlier when the licence expires sooner").
 
+## Corrections (LX-07 build, 2026-10-06)
+
+Recorded by the builder where the code or a closer reading changed the approach. The code is the fact.
+
+- **The setting already exists and needs no `pending` change.** LX-06 registered `licensing.clampGraceToExpiry` (claimable `product_settings` row, default `true`, critical) without `pending`. LX-07 is its reader: `core/graceClamp.ts` resolves it through ST-04's `resolveProductSetting()` (a context built by hand reads the stored row the same way) and is added to the entry's `readers`. No migration, no new route, no manifest rule.
+- **"The document" is every document a licence grants.** The clamp applies to the licence document, to the config document of a device that R1 binds to its licence (`services/config/document.ts`: its secrets already stop with the licence online, so its offline window stops too), to both inner documents of an offline bundle (the operator's `graceDays` is the window there; the `bundle.minted` audit summary says when it was clamped), and to Identity's fused browser-session document. A config-only product and a keyless device have no licence and are never clamped.
+- **The clamp floors at the document's own `expiresAt`.** Every verifier refuses `graceUntil < expiresAt` (WIRE-CONTRACT-V4 §3, always enforced), so `graceUntil = min(window, max(expires_at, issuedAt + DOC_EXPIRY_SECONDS))`. A licence expiring within the hour gets an hour-long document; the licence route refuses the next fetch. A window already below that floor (zero days) is left unchanged.
+- **The report is an offline tool, not a route.** The clamp is on for every product the moment the release deploys, so the report has to run before it, on a production copy: `pnpm --filter @polaris-key/worker grace-clamp:report -- --sql prod.sql --out dir` (`scripts/grace-clamp-report.ts`, the U-03 dry-run pattern; it writes nothing, checked). `graceClampReport()` lives in Core so LX-09's holder report (S-19 §7.3.4) reuses it. Adding a console route would have needed rule 10's OpenAPI entry and could not be read before the deploy.
+- **Behaviour change in an existing field's value, not a shape change.** No claim, no corpus case and no `PROTOCOL_VERSION` change; §3.6 gains the informative sentence plans/LX-01.md Q7 approved.
+- **Cost.** The setting is read only when the clamp would move the window, so a perpetual licence and a licence whose expiry lies past its window add no read to the document routes.
+
 ## Goal
 
 Offline grace is clamped to licence expiry on every product by default, after a report lists the affected licences, with a per-product opt-out (`licensing.clampGraceToExpiry`); grace is never clamped to a grant's expiry.
@@ -54,8 +65,8 @@ A licence expiring tomorrow with 30 offline days keeps working offline for 30 da
 
 ## Acceptance criteria
 
-- [ ] A licence expiring before its grace window ends gets a clamped window (test).
-- [ ] Opt-out restores today's window (test).
+- [x] A licence expiring before its grace window ends gets a clamped window (test: `packages/worker/test/graceClamp.test.ts`, licence, config, bundle and browser-session documents through the reference verifiers).
+- [x] Opt-out restores today's window (test: same file, through `writeSetting()`).
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
@@ -67,7 +78,8 @@ mise exec node@22 -- pnpm gen:corpus -- --check
 
 ## Hand-off
 
-- None.
+- **Owner, before the release that carries LX-07:** run the affected-licence report on a production copy and opt out any product that must keep the full window (RUNBOOK "Offline grace clamp (LX-07)").
+- **LX-09:** the holder report (S-19 §7.3.4) lists the licences hit by the clamp by calling `graceClampReport()` (`packages/worker/src/core/graceClamp.ts`), not a second query.
 
 The role agent sets `--set LX-07 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:

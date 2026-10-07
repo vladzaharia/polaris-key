@@ -7274,6 +7274,42 @@ D1 can plant a value the Worker accepts. The containment steps (RUNBOOK, "KEK co
 (containment)") delete `PLATFORM_KEK`, and containment is not complete until `legacy` is gone
 from the keyring endpoint.
 
+### Offline grace clamped to licence expiry (LX-07)
+
+S-19 G9: `graceUntil = issuedAt + maxOfflineDays × 86 400` was never bounded by the licence, so a
+licence expiring tomorrow with 30 offline days kept an install that stayed offline running for 30
+days, and an offline bundle minted with `graceDays: 365` for a licence expiring next week ran for
+a year. For an offline install the grace bound is the only revocation lever (WIRE-CONTRACT-V4
+§4.3), so this was the whole of a time-limited licence's enforcement offline.
+
+- **The clamp.** While the product's `licensing.clampGraceToExpiry` is on (the registry default),
+  every document a licence grants is stamped `graceUntil = min(window, max(expires_at,
+expiresAt))` (`core/graceClamp.ts`, `core/documents.ts` `clampGraceUntil`): the licence
+  document, the config document of a device R1 binds to its licence (its secrets stop with the
+  licence offline as well as online), both inner documents of an offline bundle, and Identity's
+  fused browser-session document. One function computes it for all four, so no path can drift.
+- **The floor is `expiresAt`, not `expires_at`.** Every verifier refuses `graceUntil < expiresAt`,
+  so a licence that expires within the hour gets a document valid for its ordinary hour. Residual:
+  an install can run up to one hour past the licence's expiry, the same hour any freshly fetched
+  document has; the licence route refuses the next fetch (`licenseUsable`).
+- **Fail-safe direction.** The setting is resolved through ST-04's resolver (an expired
+  break-glass claim is no claim); anything but an explicit `false`, including an unknown product
+  or an unreadable row, reads on, which only ever shortens a window. The opt-out is a critical
+  setting: a console change needs a reason and is audited (`setting.update`), and a manifest value
+  is visible in the repository.
+- **What it does not cover.** A device that holds a document issued before the clamp keeps that
+  document's window until it reconnects; an online device re-fetches within the hour (the
+  half-life rule, WIRE-CONTRACT-V4 §5). A clock rolled back on the device defeats any
+  `graceUntil`, clamped or not (§6 below). A grant's own expiry is not applied to the window
+  (S-19 §7.6: that would end base access offline); per-entry expiry for add-on grants is
+  LX-18/LX-19's wire work.
+- **No wire change.** No claim is added or renamed; `graceUntil` only takes an earlier value
+  inside the range verifiers already enforce (`[expiresAt, issuedAt + MAX_GRACE_SECONDS]`), as
+  §3.6's informative note says.
+- **The affected-licence report** (`graceClampReport`, `scripts/grace-clamp-report.ts`) runs on
+  an offline copy, writes nothing (checked) and carries licence ids, tiers and counts only: no
+  name, email or key.
+
 ### Boundaries that are weaker than they look
 
 - **The SDK cache is inside the attacker's trust domain, but the SDK treats it as trusted.** The
@@ -7506,7 +7542,10 @@ Stated honestly, so nobody builds on a false assumption:
 **It does stop:** using the product with no license at all _against the server_; obtaining product
 secrets or edge-mint tokens without a valid device token; exceeding seat limits by ordinary,
 non-concurrent use; continuing to work after revocation _if the client contacts the server again_;
-outliving a time-limited licence by signing in again. Until LX-02 (S-19 G7) an OIDC sign-in on an
+outliving a time-limited licence by signing in again; outliving it offline, since LX-07 (S-19 G9),
+while the product keeps `licensing.clampGraceToExpiry` on (the default): a document's `graceUntil`
+ends at the licence's expiry (no earlier than the document's own one-hour `expiresAt`), bundles
+included. Until LX-02 (S-19 G7) an OIDC sign-in on an
 existing licence reset `expires_at` to `now + policy_expiry_days` and its tier to the first mapped
 group's, so a trial renewed on every sign-in, and replaced the whole `overrides_json`, so an
 operator's restriction (a `deviceLimit` cut, a revoked flag) was undone by the next sign-in. The

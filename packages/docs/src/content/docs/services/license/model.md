@@ -258,6 +258,12 @@ keeps working (`refundGraceHours`). They are declared under `licensing:` in `.pk
 [Licensing settings](/docs/build/manifest/authoring/#licensing-settings-licensing)) and edited on
 **License → Settings**, where a change claims the setting from the manifest until you revert it.
 
+`clampGraceToExpiry` is in effect: on (the default), a license that expires inside its offline
+window gets documents whose `graceUntil` stops at the expiry, so an offline install cannot outlive
+its license ([the license document](/docs/services/license/document/#the-envelope)). Turning it off
+keeps the full window for such licenses. It never clamps to an add-on grant's expiry, and a
+perpetual license is never affected.
+
 ## Reference
 
 - [D1 data model](/docs/reference/data-model/) — every column of `licenses`, `keys_index`,

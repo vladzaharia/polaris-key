@@ -3,9 +3,10 @@
  * settings, the registry's `license.licensing` area. Each is seeded by `.pkey/product`'s
  * `licensing:` block, a console edit claims it, and Revert returns it to the manifest (S-18 §4.5).
  *
- * The behaviour behind each setting ships in later packages (LX-07, LX-09, LX-10, LX-12), so the
- * page says that saved values take effect as each part of the licensing model arrives. The
- * billing-retry grace stays hidden until LX-23 (the registry marks it pending).
+ * The offline grace clamp is in effect (LX-07). The behaviour behind the other settings ships in
+ * later packages (LX-09, LX-10, LX-12), so the page says that those take effect as each part of
+ * the licensing model arrives. The billing-retry grace stays hidden until LX-23 (the registry
+ * marks it pending).
  */
 
 import * as React from "react";
@@ -97,8 +98,9 @@ export function LicenseSettingsPage({
       sections={[{ id: SECTION, title: "Licensing model" }]}
     >
       <Callout tone="info">
-        Saved values take effect as each part of the licensing model ships;
-        until then devices keep today&apos;s behaviour.
+        Clamping offline grace to expiry applies to devices at their next
+        licence refresh. The other settings take effect as each part of the
+        licensing model ships; until then devices keep today&apos;s behaviour.
       </Callout>
       <ProductSettingsSection
         slug={slug}

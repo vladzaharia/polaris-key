@@ -574,6 +574,8 @@ Pinned by `releaseRecordCases` (each case's `step`):
 
 `graceUntil = issuedAt + maxOfflineDays × SECONDS_PER_DAY`, where `maxOfflineDays` is the per-license override or the product default. The 365-day ceiling applies at **verify time**, not only in the gate. Offline bundles use the same mechanism with operator-chosen `graceDays ≤ 365` (D-22).
 
+_Informative (LX-07):_ `graceUntil` may be earlier when the licence expires sooner. A product that clamps grace to licence expiry (the default; `licensing.clampGraceToExpiry`) stamps `min(issuedAt + maxOfflineDays × SECONDS_PER_DAY, max(licence expiry, expiresAt))` on every document the licence grants, bundles included. Verifiers are unaffected: the value stays within `[expiresAt, issuedAt + MAX_GRACE_SECONDS]`.
+
 ### 3.7 Marker verification order [C]
 
 Pinned by `markerCases` (each case's `step`). The marker's `release` is a compact pack record:
