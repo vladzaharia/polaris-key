@@ -50,17 +50,13 @@ import type { Db } from "../../core/platform.js";
 import type { Product } from "../../core/products.js";
 import type { PurchaseSourceKind, ServiceHooks } from "../../core/hooks.js";
 import { escapeHtml } from "../../core/brandHtml.js";
-import {
-  findLink,
-  getAccountRow,
-  LEGACY_OIDC_ISSUER,
-} from "./accounts/repo.js";
+import { getAccountRow } from "./accounts/repo.js";
+import { platformSubjectLink } from "./accounts/platformMigration.js";
 import {
   autoLinkEnabled,
   getPortalProductSettings,
   listVisibleDevices,
   listVisibleKeys,
-  portalIdentityIssuerKey,
 } from "./portal/repo.js";
 
 // ── the browser binder ──────────────────────────────────────────────────────────────────────
@@ -110,19 +106,8 @@ export async function legacyChoiceAccount(
   if ((provider ?? "platform") !== "platform") return null;
   if (!(await autoLinkEnabled(db, product))) return null;
   // The portal keys platform links by the issuer (S-16 G14); a link the portal has not re-keyed
-  // yet still carries the pre-I-01 literal. Both name the same IdP, so both count. Read-only:
-  // the re-key itself stays the portal callback's.
-  const link =
-    (await findLink(db, {
-      issuerKey: portalIdentityIssuerKey(issuer),
-      tenantScope: "",
-      subject: sub,
-    })) ??
-    (await findLink(db, {
-      issuerKey: LEGACY_OIDC_ISSUER,
-      tenantScope: "",
-      subject: sub,
-    }));
+  // yet still carries the pre-I-01 literal. Both count (`platformSubjectLink`, read-only).
+  const link = await platformSubjectLink(db, issuer, sub);
   if (!link || link.kind !== "oidc") return null;
   const account = await getAccountRow(db, link.account_id);
   if (!account || account.status !== "active") return null;

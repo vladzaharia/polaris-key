@@ -60,6 +60,8 @@ import {
   getAccountRow,
   normalizeEmail,
   rekeyLegacyAccountLinks,
+  resolveAccount,
+  type AccountLinkRow,
 } from "./repo.js";
 import { signIn, type SignInResult, type VerifiedIdentity } from "./signIn.js";
 
@@ -159,6 +161,55 @@ export const PLATFORM_SIGNIN_ENDED = {
   body: "Single sign-on no longer signs you in here. Sign in to your Polaris Key account with your email, a passkey or another way you added.",
   action: "Sign in to Polaris Key",
 } as const;
+
+// ── the subject's account ────────────────────────────────────────────────────────────────────
+
+/**
+ * The sign-in method a platform-IdP subject holds, whichever account holds it: keyed by the
+ * issuer (S-16 G14), or by the pre-I-01 literal `oidc` the portal has not re-keyed yet. Both name
+ * the same IdP, so both count. Read-only: the re-key itself stays the callbacks' (the claim, the
+ * portal).
+ */
+export async function platformSubjectLink(
+  db: Db,
+  issuer: string,
+  sub: string,
+): Promise<AccountLinkRow | null> {
+  return (
+    (await findLink(db, {
+      issuerKey: portalIdentityIssuerKey(issuer),
+      tenantScope: "",
+      subject: sub,
+    })) ??
+    (await findLink(db, {
+      issuerKey: LEGACY_OIDC_ISSUER,
+      tenantScope: "",
+      subject: sub,
+    }))
+  );
+}
+
+/**
+ * Whether a platform-IdP subject belongs to a Polaris Key account that can no longer sign in
+ * (the I-17 review's N9): the subject holds a method whose account is disabled, is being deleted
+ * (`deleted`), or no longer resolves. A product sign-in is then refused, in every migration mode,
+ * before anything is minted or written; without this its floating `sub`-keyed licence still
+ * signed the subject in. A subject that holds no method has no account (a floating licence, or
+ * an erased account, which leaves no link): `false`, and it signs in exactly as before.
+ * Read-only.
+ */
+export async function platformSubjectAccountRefused(
+  db: Db,
+  issuer: string,
+  sub: string,
+  now: number,
+): Promise<boolean> {
+  const link = await platformSubjectLink(db, issuer, sub);
+  if (!link) return false;
+  // As `signIn` reads it: an absorbed account's sign-ins go to the survivor for 30 days.
+  const account = await resolveAccount(db, link.account_id, now);
+  return !account || account.status !== "active";
+}
 
 // ── the claim ────────────────────────────────────────────────────────────────────────────────
 
