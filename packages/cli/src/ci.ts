@@ -24,6 +24,21 @@ import { DEFAULT_BASE_URL } from "./bundle.js";
 export type Out = Pick<NodeJS.WriteStream, "write">;
 export type Sleep = (ms: number) => Promise<void>;
 
+/**
+ * Where a long command reports its stages (`pkey release publish`, `pkey listing assets`). The
+ * CLI passes a spinner that draws on stderr only on an interactive terminal (`terminal.ts`);
+ * off a terminal, under CI, or from a library caller it is absent and nothing extra is printed.
+ */
+export interface StageProgress {
+  /**
+   * A new stage starts and replaces the previous one ("Hashing 4 files"); an empty label means
+   * nothing long is running (the summary that follows prints without a spinner beside it).
+   */
+  stage(label: string): void;
+  /** How far a counted stage is. */
+  advance(done: number, total: number): void;
+}
+
 export const defaultSleep: Sleep = (ms) =>
   new Promise((resolve) => setTimeout(resolve, ms));
 

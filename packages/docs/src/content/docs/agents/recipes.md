@@ -29,7 +29,9 @@ Deep page: [The `.pkey/` manifest](/docs/build/manifest/) · Skill: `authoring-p
 | 5   | Validate until clean    | Fix every `error`; read the `warning` lines rather than ignoring them. A `deprecated_spelling` names the canonical spelling to write ([Deprecated spellings](/docs/build/manifest/authoring/#deprecated-spellings))                  |
 
 ```sh
-pkey validate      # exit 0, no error lines
+pkey validate          # exit 0, no error lines
+pkey validate --json   # the same verdict as one JSON object: result.errors[] and result.warnings[]
+                       # each {code, message, at, file}; pkey validate <path> for a .pkey/ elsewhere
 ```
 
 ## 2. Enable a service for a product

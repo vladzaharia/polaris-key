@@ -1,13 +1,26 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { SERVICE_SLUGS } from "@polaris-key/manifest";
 import {
   ADMIN_COOKIE_ENV,
-  ADMIN_COOKIE_NAME,
   BUNDLE_USAGE,
   DEFAULT_BASE_URL,
   mintBundle,
 } from "./bundle.js";
+import {
+  COMPLETION_SHELLS,
+  completionScript,
+  findCommand,
+  renderCommandHelp,
+  renderHelp,
+  type CompletionShell,
+} from "./help.js";
+import {
+  Spinner,
+  termFor,
+  type Term,
+  type TermFlags,
+  type TermOut,
+} from "./terminal.js";
 import {
   findDistributionFile,
   initManifest,
@@ -22,6 +35,8 @@ import {
   type ValidationMessage,
 } from "./manifest.js";
 import { authGithubOidc, CI_TOKEN_ENV, type CiEnv } from "./oidc.js";
+import type { StageProgress } from "./ci.js";
+import { wrapSpans, type Line } from "@polaris-key/node/terminal";
 import {
   descriptorManifestOf,
   PUBLISH_USAGE,
@@ -423,10 +438,30 @@ export {
   type ValidationResult,
 } from "./manifest.js";
 
+export {
+  COMMANDS,
+  COMPLETION_SHELLS,
+  completionScript,
+  renderCommandHelp,
+  renderHelp,
+  type CompletionShell,
+  type PkeyCommand,
+} from "./help.js";
+export {
+  Spinner,
+  termFor,
+  type Term,
+  type TermFlags,
+  type TermOut,
+} from "./terminal.js";
+export type { StageProgress } from "./ci.js";
+
 export interface CliIo {
   cwd?: string;
-  stdout?: Pick<NodeJS.WriteStream, "write">;
-  stderr?: Pick<NodeJS.WriteStream, "write">;
+  /** Where results go. `isTTY` and `columns` (Node's streams have them) decide colour and width. */
+  stdout?: TermOut;
+  /** Where errors, warnings and, on a terminal, the spinner go. */
+  stderr?: TermOut;
   /** The environment the CI commands read (default `process.env`). */
   env?: CiEnv;
   /** The test seam for every network call the CI commands make. */
@@ -447,8 +482,42 @@ interface ParsedArgs {
   positional: string[];
 }
 
+/** The flags every command takes, read before the command's own parse; none takes a value. */
+interface GlobalFlags extends TermFlags {
+  /** `--help` or `-h` anywhere before a bare `--`: print help and run nothing. */
+  help: boolean;
+}
+
+/**
+ * Take the global flags out of `argv` (UK-14): `--help`/`-h`, `--no-color`/`--color` and
+ * `--ascii`. They never take a value, so they cannot swallow the next word, and a command never
+ * sees them; everything after a bare `--` (`pkey storefront exec … -- <argv>`) is left alone.
+ */
+function globalFlags(argv: readonly string[]): {
+  argv: string[];
+  flags: GlobalFlags;
+} {
+  const rest: string[] = [];
+  const flags: GlobalFlags = { help: false };
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i]!;
+    if (arg === "--") {
+      rest.push(...argv.slice(i));
+      break;
+    }
+    if (arg === "--help" || arg === "-h" || arg.startsWith("--help="))
+      flags.help = true;
+    else if (arg === "--no-color") flags.color = false;
+    else if (arg === "--color") flags.color = true;
+    else if (arg === "--ascii") flags.ascii = true;
+    else rest.push(arg);
+  }
+  return { argv: rest, flags };
+}
+
 export async function runPkey(argv: string[], io: CliIo = {}): Promise<number> {
-  const parsed = parseArgs(argv);
+  const global = globalFlags(argv);
+  const parsed = parseArgs(global.argv);
   const cwd = io.cwd ?? process.cwd();
   const stdout = io.stdout ?? process.stdout;
   const stderr = io.stderr ?? process.stderr;
@@ -457,22 +526,30 @@ export async function runPkey(argv: string[], io: CliIo = {}): Promise<number> {
     fetchImpl: io.fetchImpl,
     sleep: io.sleep,
   };
+  const g: TermFlags = { color: global.flags.color, ascii: global.flags.ascii };
+  const term = (out: TermOut): Term => termFor(out, ci.env, g);
+
+  // Help runs nothing: `pkey`, `pkey help [command]`, and `--help`/`-h` on any command.
+  if (global.flags.help || parsed.command === "help") {
+    const words =
+      parsed.command === "help"
+        ? parsed.positional
+        : [parsed.command, ...parsed.positional];
+    return cmdHelp(words, stdout, stderr, term);
+  }
 
   try {
     switch (parsed.command) {
-      case "help":
-      case "--help":
-      case "-h":
-        stdout.write(helpText());
-        return 0;
       case "init":
         return await cmdInit(parsed, cwd, stdout);
       case "validate":
-        return await cmdValidate(cwd, stdout);
+        return await cmdValidate(parsed, cwd, stdout, term(stdout));
+      case "completion":
+        return cmdCompletion(parsed, stdout, stderr);
       case "distribution":
         return await cmdDistribution(parsed, cwd, stdout, stderr, ci);
       case "doctor":
-        return await cmdDoctor(parsed, cwd, stdout);
+        return await cmdDoctor(parsed, cwd, stdout, term(stdout));
       case "bundle":
         return await cmdBundle(parsed, cwd, stdout);
       case "trust":
@@ -484,13 +561,13 @@ export async function runPkey(argv: string[], io: CliIo = {}): Promise<number> {
       case "auth":
         return await cmdAuth(parsed, stdout, stderr, ci);
       case "release":
-        return await cmdRelease(parsed, cwd, stdout, stderr, ci);
+        return await cmdRelease(parsed, cwd, stdout, stderr, ci, g);
       case "manifest":
         return await cmdManifest(parsed, cwd, stdout);
       case "feeds":
         return await cmdFeeds(parsed, cwd, stdout, stderr, ci);
       case "listing":
-        return await cmdListing(parsed, cwd, stdout, stderr, ci);
+        return await cmdListing(parsed, cwd, stdout, stderr, ci, g);
       case "assets":
         return await cmdAssets(parsed, cwd, stdout, stderr, ci);
       case "transport":
@@ -505,7 +582,9 @@ export async function runPkey(argv: string[], io: CliIo = {}): Promise<number> {
           { cwd, stdout, stderr, ...ci },
         );
       default:
-        stderr.write(`Unknown command "${parsed.command}".\n\n${helpText()}`);
+        stderr.write(
+          `Unknown command "${parsed.command}".\n\n${renderHelp(term(stderr))}`,
+        );
         return 2;
     }
   } catch (err) {
@@ -513,6 +592,53 @@ export async function runPkey(argv: string[], io: CliIo = {}): Promise<number> {
     return 1;
   }
 }
+
+/**
+ * `pkey help [command [subcommand]]`, or `--help`/`-h` on any command: the grouped overview, or
+ * one command's usage lines and notes. Exit 0; an unknown command is a usage error (2).
+ */
+function cmdHelp(
+  words: readonly string[],
+  stdout: TermOut,
+  stderr: TermOut,
+  term: (out: TermOut) => Term,
+): number {
+  const [name, sub] = words;
+  if (name === undefined) {
+    stdout.write(renderHelp(term(stdout)));
+    return 0;
+  }
+  const cmd = findCommand(name);
+  if (!cmd) {
+    stderr.write(`Unknown command "${name}".\n\n${renderHelp(term(stderr))}`);
+    return 2;
+  }
+  stdout.write(renderCommandHelp(term(stdout), cmd, sub));
+  return 0;
+}
+
+const COMPLETION_USAGE = `Usage: pkey completion ${COMPLETION_SHELLS.join("|")}`;
+
+/** `pkey completion bash|zsh|fish`: the script, generated from the command table (`help.ts`). */
+function cmdCompletion(
+  parsed: ParsedArgs,
+  stdout: TermOut,
+  stderr: TermOut,
+): number {
+  const shell = parsed.positional[0];
+  if (
+    parsed.positional.length !== 1 ||
+    !COMPLETION_SHELLS.includes(shell as CompletionShell)
+  ) {
+    stderr.write(`${COMPLETION_USAGE}\n`);
+    return 2;
+  }
+  stdout.write(completionScript(shell as CompletionShell));
+  return 0;
+}
+
+/** Flags that never take a value, so they never swallow the next word (`validate --json dir`). */
+const VALUELESS_FLAGS = new Set(["json"]);
 
 function parseArgs(argv: string[]): ParsedArgs {
   const [command = "help", ...rest] = argv;
@@ -544,7 +670,7 @@ function parseArgs(argv: string[]): ParsedArgs {
       continue;
     }
     const next = rest[i + 1];
-    if (next && !next.startsWith("--")) {
+    if (next && !next.startsWith("--") && !VALUELESS_FLAGS.has(rawKey)) {
       add(rawKey, next);
       i += 1;
     } else {
@@ -589,29 +715,181 @@ async function cmdInit(
   return 0;
 }
 
+const VALIDATE_USAGE = "Usage: pkey validate [path] [--json]";
+
+/**
+ * `pkey validate [path] [--json]`: the `.pkey/` under `path` (relative to the current directory;
+ * default the current directory), through the validator repo-link and resync apply. Exit 0 when
+ * valid, 1 when not.
+ */
 async function cmdValidate(
+  parsed: ParsedArgs,
   cwd: string,
-  stdout: Pick<NodeJS.WriteStream, "write">,
+  stdout: TermOut,
+  term: Term,
 ): Promise<number> {
-  const manifest = await loadManifest(cwd);
+  if (parsed.positional.length > 1) throw new Error(VALIDATE_USAGE);
+  const target = parsed.positional[0];
+  const dir = target === undefined ? cwd : path.resolve(cwd, target);
+  if (flagBool(parsed, "json")) return validateJson(dir, cwd, stdout);
+  return validateText(dir, cwd, stdout, term);
+}
+
+/**
+ * The verdict, the services and the required secrets, then every warning (▲) and error (✗) with
+ * where it points. On a terminal the roles are coloured and long messages wrap under their own
+ * column; anywhere else each message is one plain line, as a log or a grep wants it.
+ */
+async function validateText(
+  dir: string,
+  cwd: string,
+  stdout: TermOut,
+  term: Term,
+): Promise<number> {
+  const manifest = await loadManifest(dir);
   const result = validateLoadedManifest(manifest);
-  stdout.write(`Manifest: ${result.ok ? "valid" : "invalid"}\n`);
-  stdout.write(
-    `Modules: ${result.enabledModules.length ? result.enabledModules.join(", ") : "none"}\n`,
-  );
+  const { painter, symbols, caps } = term;
+  const rows: Array<{ mark: string; spans: Line }> = [];
+  const mark = (glyph: string, role: string) => painter.style(glyph, [role]);
+  rows.push({
+    mark: result.ok
+      ? mark(symbols.ok, "success")
+      : mark(symbols.fail, "danger"),
+    spans: [
+      {
+        text: `Manifest: ${result.ok ? "valid" : "invalid"}`,
+        style: ["strong"],
+      },
+    ],
+  });
+  rows.push({
+    mark: " ",
+    spans: [
+      { text: "Modules: ", style: ["muted"] },
+      {
+        text: result.enabledModules.length
+          ? result.enabledModules.join(", ")
+          : "none",
+      },
+    ],
+  });
   if (result.requiredSecrets.length)
-    stdout.write(`Required secrets: ${result.requiredSecrets.join(", ")}\n`);
+    rows.push({
+      mark: " ",
+      spans: [
+        { text: "Required secrets: ", style: ["muted"] },
+        { text: result.requiredSecrets.join(", ") },
+      ],
+    });
+  const message = (
+    kind: "warning" | "error",
+    at: Line,
+    text: string,
+  ): { mark: string; spans: Line } => {
+    const role = kind === "warning" ? "warning" : "danger";
+    return {
+      mark: mark(kind === "warning" ? symbols.warn : symbols.fail, role),
+      spans: [
+        { text: `${kind} `, style: [role] },
+        ...at,
+        { text: `: ${text}` },
+      ],
+    };
+  };
   for (const warning of manifest.fileWarnings ?? [])
-    stdout.write(`warning .pkey/: ${warning}\n`);
-  for (const warning of result.warnings) {
-    stdout.write(
-      `warning ${located(manifest, cwd, warning)}: ${warning.message}\n`,
+    rows.push(message("warning", [{ text: ".pkey/" }], warning));
+  for (const warning of result.warnings)
+    rows.push(
+      message("warning", pointerSpans(manifest, cwd, warning), warning.message),
+    );
+  for (const error of result.errors)
+    rows.push(
+      message("error", pointerSpans(manifest, cwd, error), error.message),
+    );
+  const gap = " ".repeat(2);
+  for (const row of rows) {
+    const lines = caps.tty
+      ? wrapSpans(row.spans, Math.max(20, caps.columns - 3), symbols.ellipsis)
+      : [row.spans];
+    lines.forEach((l, i) =>
+      stdout.write(`${i === 0 ? row.mark : " "}${gap}${painter.line(l)}\n`),
     );
   }
-  for (const error of result.errors) {
-    stdout.write(`error ${located(manifest, cwd, error)}: ${error.message}\n`);
-  }
   return result.ok ? 0 : 1;
+}
+
+/**
+ * `pkey validate --json`: one JSON object on stdout in the CLI kit's envelope
+ * (`@polaris-key/node`'s cli/json.ts): `{version, command, ok, exitCode, result}`, or `error`
+ * instead of `result` when no manifest could be read.
+ */
+async function validateJson(
+  dir: string,
+  cwd: string,
+  stdout: TermOut,
+): Promise<number> {
+  const envelope = (exitCode: number, rest: Record<string, unknown>) =>
+    `${JSON.stringify({ version: 1, command: "validate", ok: exitCode === 0, exitCode, ...rest })}\n`;
+  let manifest: LoadedManifest;
+  try {
+    manifest = await loadManifest(dir);
+  } catch (e) {
+    stdout.write(
+      envelope(1, {
+        error: {
+          code: null,
+          title: "No manifest read",
+          message: (e as Error).message,
+        },
+      }),
+    );
+    return 1;
+  }
+  const result = validateLoadedManifest(manifest);
+  const entry = (m: ValidationMessage) => {
+    const file = fileOf(manifest, m);
+    return {
+      code: m.code,
+      message: m.message,
+      at: `${m.file}${m.path}`,
+      file: file ? path.relative(cwd, file) : null,
+    };
+  };
+  const exitCode = result.ok ? 0 : 1;
+  stdout.write(
+    envelope(exitCode, {
+      result: {
+        valid: result.ok,
+        modules: result.enabledModules,
+        requiredSecrets: result.requiredSecrets,
+        warnings: [
+          // The CLI's own duplicate-file warning has no validator code.
+          ...(manifest.fileWarnings ?? []).map((message) => ({
+            code: null,
+            message,
+            at: ".pkey/",
+            file: null,
+          })),
+          ...result.warnings.map(entry),
+        ],
+        errors: result.errors.map(entry),
+      },
+    }),
+  );
+  return exitCode;
+}
+
+/** The file a validation message's document was read from, when there is one. */
+function fileOf(
+  manifest: LoadedManifest,
+  msg: ValidationMessage,
+): string | undefined {
+  return {
+    product: manifest.productPath,
+    schema: manifest.schemaPath,
+    release: manifest.releasePath,
+    distribution: manifest.distributionPath,
+  }[msg.file];
 }
 
 /**
@@ -624,13 +902,24 @@ function located(
   cwd: string,
   msg: ValidationMessage,
 ): string {
-  const file = {
-    product: manifest.productPath,
-    schema: manifest.schemaPath,
-    release: manifest.releasePath,
-    distribution: manifest.distributionPath,
-  }[msg.file];
-  return `${msg.file}${msg.path}${file ? ` (${path.relative(cwd, file)})` : ""}`;
+  return pointerSpans(manifest, cwd, msg)
+    .map((s) => s.text)
+    .join("");
+}
+
+/** `located` as spans: the pointer, then the file in the muted role. */
+function pointerSpans(
+  manifest: LoadedManifest,
+  cwd: string,
+  msg: ValidationMessage,
+): Line {
+  const file = fileOf(manifest, msg);
+  return [
+    { text: `${msg.file}${msg.path}` },
+    ...(file
+      ? [{ text: ` (${path.relative(cwd, file)})`, style: ["muted"] }]
+      : []),
+  ];
 }
 
 const DISTRIBUTION_USAGE = `Usage: pkey distribution outlet-ids --outlet <id>\n${DISTRIBUTION_CI_USAGE}`;
@@ -743,9 +1032,10 @@ async function cmdDistributionCi(
 async function cmdDoctor(
   parsed: ParsedArgs,
   cwd: string,
-  stdout: Pick<NodeJS.WriteStream, "write">,
+  stdout: TermOut,
+  term: Term,
 ): Promise<number> {
-  const localCode = await cmdValidate(cwd, stdout);
+  const localCode = await validateText(cwd, cwd, stdout, term);
   const baseUrl = flagString(parsed, "base-url");
   const product = flagString(parsed, "product");
   if (!baseUrl || !product) {
@@ -799,8 +1089,8 @@ async function cmdBundle(
     product,
     deviceId: device,
     graceDays: Number(graceRaw),
-    // `--no-config` is a boolean flag, so it is read with flagBool; see the parseArgs note in
-    // helpText() about passing valueless flags last or with `=`.
+    // `--no-config` is a boolean flag, so it is read with flagBool; see the note in
+    // `pkey bundle --help` about passing valueless flags last or with `=`.
     includeConfig: !flagBool(parsed, "no-config"),
     licenseId: flagString(parsed, "license"),
     baseUrl: flagString(parsed, "base-url"),
@@ -987,13 +1277,198 @@ async function cmdAuth(
   return 0;
 }
 
+/**
+ * `pkey release publish`: an app release (`publish.ts`), a pack release (`packPublish.ts`) or a
+ * package release (`package/publish.ts`), reporting its stages to `progress`.
+ */
+async function releasePublish(
+  parsed: ParsedArgs,
+  cwd: string,
+  product: string | undefined,
+  common: {
+    baseUrl: string | undefined;
+    env: CiEnv;
+    stdout: TermOut;
+    stderr: TermOut;
+    fetchImpl?: typeof fetch;
+    sleep?: (ms: number) => Promise<void>;
+  },
+  progress: StageProgress,
+): Promise<number> {
+  const dir = flagString(parsed, "dir");
+  if (!product || !dir) throw new Error(PUBLISH_USAGE);
+  const deliverable = flagString(parsed, "deliverable");
+  const releaseKeyPem = flagString(parsed, "release-key-file")
+    ? await readFile(
+        path.resolve(cwd, flagString(parsed, "release-key-file")!),
+        "utf8",
+      )
+    : undefined;
+  const minSupportedSeq =
+    flagString(parsed, "min-supported-seq") !== undefined
+      ? Number(flagString(parsed, "min-supported-seq"))
+      : undefined;
+  if (parsed.bare.has("pin"))
+    throw new Error("--pin needs a value: --pin <packId>@<version>.");
+  const contentKeyPem = flagString(parsed, "content-key-file")
+    ? await readFile(
+        path.resolve(cwd, flagString(parsed, "content-key-file")!),
+        "utf8",
+      )
+    : undefined;
+  const delegation = flagString(parsed, "delegation");
+  // F-03: a package release (a `kind: package` deliverable): extracted, never signed.
+  if (
+    deliverable &&
+    deliverable !== "app" &&
+    (await isPackageDeliverable(cwd, deliverable))
+  ) {
+    refuseFlags(
+      parsed,
+      [
+        "tag",
+        "source",
+        "meta",
+        "release-key-file",
+        "min-supported-seq",
+        "content-stamp",
+        "embedded",
+        "pin",
+        "content-interface",
+        "provides",
+        "removes",
+        "out",
+        "bases",
+        "content-key-file",
+        "delegation",
+        "script-extensions",
+        "script-types",
+      ],
+      `--deliverable ${deliverable} is a package: its files are extracted from --dir, its release id is <deliverable>@<version>, and it is never signed`,
+    );
+    if (flagBool(parsed, "no-record"))
+      throw new Error(
+        "--no-record does not apply to a package: a package release never carries a record.",
+      );
+    progress.stage(`Publishing ${deliverable}`);
+    await publishPackage({
+      ...common,
+      cwd,
+      product,
+      dir,
+      deliverable,
+      version: flagString(parsed, "version"),
+      channel: flagString(parsed, "channel"),
+      dryRun: flagBool(parsed, "dry-run"),
+    });
+    return 0;
+  }
+  if (deliverable && deliverable !== "app") {
+    refuseFlags(
+      parsed,
+      ["content-stamp", "embedded", "pin"],
+      `--deliverable ${deliverable} is a pack; these stamp an app release's packs`,
+    );
+    refuseFlags(
+      parsed,
+      ["content-interface", "strict"],
+      `--deliverable ${deliverable} is a pack; the content-interface fingerprint is the app's (its pack lists content ids with --provides)`,
+    );
+    if (parsed.bare.has("removes") || parsed.bare.has("provides"))
+      throw new Error(
+        "--provides needs a file and --removes a content id: --provides <file>, --removes <id>[,<id>...].",
+      );
+    if (parsed.bare.has("script-extensions") || parsed.bare.has("script-types"))
+      throw new Error(
+        "--script-extensions and --script-types need values: --script-extensions lua[,wren...], --script-types LuaScript[,...].",
+      );
+    const scriptExtensions = parseRemoves(
+      parsed.multi["script-extensions"] ?? [],
+    );
+    const scriptTypes = parseRemoves(parsed.multi["script-types"] ?? []);
+    // P4-03: a pack release.
+    await publishPack({
+      ...common,
+      progress,
+      cwd,
+      product,
+      dir,
+      deliverable,
+      version: flagString(parsed, "version"),
+      tag: flagString(parsed, "tag"),
+      channel: flagString(parsed, "channel"),
+      out: flagString(parsed, "out"),
+      bases: flagString(parsed, "bases"),
+      dryRun: flagBool(parsed, "dry-run"),
+      ...(releaseKeyPem !== undefined ? { releaseKeyPem } : {}),
+      ...(contentKeyPem !== undefined ? { contentKeyPem } : {}),
+      ...(delegation !== undefined ? { delegation } : {}),
+      ...(minSupportedSeq !== undefined ? { minSupportedSeq } : {}),
+      ...(flagString(parsed, "provides") !== undefined
+        ? { providesFile: flagString(parsed, "provides") }
+        : {}),
+      removes: parseRemoves(parsed.multi["removes"] ?? []),
+      // P4-28: another script language's extensions and types, for the PCK lint.
+      ...(scriptExtensions.length ? { scriptExtensions } : {}),
+      ...(scriptTypes.length ? { scriptTypes } : {}),
+    });
+    return 0;
+  }
+  refuseFlags(
+    parsed,
+    ["provides", "removes"],
+    "they list a pack release's content ids; the app's code interface is --content-interface",
+  );
+  refuseFlags(
+    parsed,
+    ["script-extensions", "script-types"],
+    "they configure a godot.pck pack's lint",
+  );
+  refuseFlags(
+    parsed,
+    ["out", "bases"],
+    "they keep and read a pack's earlier releases; the app takes neither",
+  );
+  refuseFlags(
+    parsed,
+    ["content-key-file", "delegation"],
+    "a content key signs only data-only pack releases, never an app record",
+  );
+  await publishRelease({
+    ...common,
+    progress,
+    cwd,
+    product,
+    dir,
+    deliverable,
+    version: flagString(parsed, "version"),
+    tag: flagString(parsed, "tag"),
+    channel: flagString(parsed, "channel"),
+    source: flagString(parsed, "source") as PublishSource | undefined,
+    meta: flagString(parsed, "meta"),
+    dryRun: flagBool(parsed, "dry-run"),
+    ...(releaseKeyPem !== undefined ? { releaseKeyPem } : {}),
+    ...(minSupportedSeq !== undefined ? { minSupportedSeq } : {}),
+    noRecord: flagBool(parsed, "no-record"),
+    contentStamp: flagString(parsed, "content-stamp"),
+    embedded: flagString(parsed, "embedded"),
+    pins: parsed.multi["pin"] ?? [],
+    ...(flagString(parsed, "content-interface") !== undefined
+      ? { contentInterface: flagString(parsed, "content-interface") }
+      : {}),
+    strict: flagBool(parsed, "strict"),
+  });
+  return 0;
+}
+
 /** `pkey release publish|promote|pin|unpin|yank` (`publish.ts`, `channels.ts`). */
 async function cmdRelease(
   parsed: ParsedArgs,
   cwd: string,
-  stdout: Pick<NodeJS.WriteStream, "write">,
-  stderr: Pick<NodeJS.WriteStream, "write">,
+  stdout: TermOut,
+  stderr: TermOut,
   ci: CiIo,
+  g: TermFlags,
 ): Promise<number> {
   const [sub, releaseId] = parsed.positional;
   const product = flagString(parsed, "product");
@@ -1007,170 +1482,23 @@ async function cmdRelease(
   };
   switch (sub) {
     case "publish": {
-      const dir = flagString(parsed, "dir");
-      if (!product || !dir) throw new Error(PUBLISH_USAGE);
-      const deliverable = flagString(parsed, "deliverable");
-      const releaseKeyPem = flagString(parsed, "release-key-file")
-        ? await readFile(
-            path.resolve(cwd, flagString(parsed, "release-key-file")!),
-            "utf8",
-          )
-        : undefined;
-      const minSupportedSeq =
-        flagString(parsed, "min-supported-seq") !== undefined
-          ? Number(flagString(parsed, "min-supported-seq"))
-          : undefined;
-      if (parsed.bare.has("pin"))
-        throw new Error("--pin needs a value: --pin <packId>@<version>.");
-      const contentKeyPem = flagString(parsed, "content-key-file")
-        ? await readFile(
-            path.resolve(cwd, flagString(parsed, "content-key-file")!),
-            "utf8",
-          )
-        : undefined;
-      const delegation = flagString(parsed, "delegation");
-      // F-03: a package release (a `kind: package` deliverable): extracted, never signed.
-      if (
-        deliverable &&
-        deliverable !== "app" &&
-        (await isPackageDeliverable(cwd, deliverable))
-      ) {
-        refuseFlags(
+      // One spinner line per stage, on stderr, only on an interactive terminal (`terminal.ts`).
+      const spinner = new Spinner(stderr, ci.env, g);
+      try {
+        return await releasePublish(
           parsed,
-          [
-            "tag",
-            "source",
-            "meta",
-            "release-key-file",
-            "min-supported-seq",
-            "content-stamp",
-            "embedded",
-            "pin",
-            "content-interface",
-            "provides",
-            "removes",
-            "out",
-            "bases",
-            "content-key-file",
-            "delegation",
-            "script-extensions",
-            "script-types",
-          ],
-          `--deliverable ${deliverable} is a package: its files are extracted from --dir, its release id is <deliverable>@<version>, and it is never signed`,
-        );
-        if (flagBool(parsed, "no-record"))
-          throw new Error(
-            "--no-record does not apply to a package: a package release never carries a record.",
-          );
-        await publishPackage({
-          ...common,
           cwd,
           product,
-          dir,
-          deliverable,
-          version: flagString(parsed, "version"),
-          channel: flagString(parsed, "channel"),
-          dryRun: flagBool(parsed, "dry-run"),
-        });
-        return 0;
+          {
+            ...common,
+            stdout: spinner.wrap(stdout),
+            stderr: spinner.wrap(stderr),
+          },
+          spinner,
+        );
+      } finally {
+        spinner.stop();
       }
-      if (deliverable && deliverable !== "app") {
-        refuseFlags(
-          parsed,
-          ["content-stamp", "embedded", "pin"],
-          `--deliverable ${deliverable} is a pack; these stamp an app release's packs`,
-        );
-        refuseFlags(
-          parsed,
-          ["content-interface", "strict"],
-          `--deliverable ${deliverable} is a pack; the content-interface fingerprint is the app's (its pack lists content ids with --provides)`,
-        );
-        if (parsed.bare.has("removes") || parsed.bare.has("provides"))
-          throw new Error(
-            "--provides needs a file and --removes a content id: --provides <file>, --removes <id>[,<id>...].",
-          );
-        if (
-          parsed.bare.has("script-extensions") ||
-          parsed.bare.has("script-types")
-        )
-          throw new Error(
-            "--script-extensions and --script-types need values: --script-extensions lua[,wren...], --script-types LuaScript[,...].",
-          );
-        const scriptExtensions = parseRemoves(
-          parsed.multi["script-extensions"] ?? [],
-        );
-        const scriptTypes = parseRemoves(parsed.multi["script-types"] ?? []);
-        // P4-03: a pack release.
-        await publishPack({
-          ...common,
-          cwd,
-          product,
-          dir,
-          deliverable,
-          version: flagString(parsed, "version"),
-          tag: flagString(parsed, "tag"),
-          channel: flagString(parsed, "channel"),
-          out: flagString(parsed, "out"),
-          bases: flagString(parsed, "bases"),
-          dryRun: flagBool(parsed, "dry-run"),
-          ...(releaseKeyPem !== undefined ? { releaseKeyPem } : {}),
-          ...(contentKeyPem !== undefined ? { contentKeyPem } : {}),
-          ...(delegation !== undefined ? { delegation } : {}),
-          ...(minSupportedSeq !== undefined ? { minSupportedSeq } : {}),
-          ...(flagString(parsed, "provides") !== undefined
-            ? { providesFile: flagString(parsed, "provides") }
-            : {}),
-          removes: parseRemoves(parsed.multi["removes"] ?? []),
-          // P4-28: another script language's extensions and types, for the PCK lint.
-          ...(scriptExtensions.length ? { scriptExtensions } : {}),
-          ...(scriptTypes.length ? { scriptTypes } : {}),
-        });
-        return 0;
-      }
-      refuseFlags(
-        parsed,
-        ["provides", "removes"],
-        "they list a pack release's content ids; the app's code interface is --content-interface",
-      );
-      refuseFlags(
-        parsed,
-        ["script-extensions", "script-types"],
-        "they configure a godot.pck pack's lint",
-      );
-      refuseFlags(
-        parsed,
-        ["out", "bases"],
-        "they keep and read a pack's earlier releases; the app takes neither",
-      );
-      refuseFlags(
-        parsed,
-        ["content-key-file", "delegation"],
-        "a content key signs only data-only pack releases, never an app record",
-      );
-      await publishRelease({
-        ...common,
-        cwd,
-        product,
-        dir,
-        deliverable,
-        version: flagString(parsed, "version"),
-        tag: flagString(parsed, "tag"),
-        channel: flagString(parsed, "channel"),
-        source: flagString(parsed, "source") as PublishSource | undefined,
-        meta: flagString(parsed, "meta"),
-        dryRun: flagBool(parsed, "dry-run"),
-        ...(releaseKeyPem !== undefined ? { releaseKeyPem } : {}),
-        ...(minSupportedSeq !== undefined ? { minSupportedSeq } : {}),
-        noRecord: flagBool(parsed, "no-record"),
-        contentStamp: flagString(parsed, "content-stamp"),
-        embedded: flagString(parsed, "embedded"),
-        pins: parsed.multi["pin"] ?? [],
-        ...(flagString(parsed, "content-interface") !== undefined
-          ? { contentInterface: flagString(parsed, "content-interface") }
-          : {}),
-        strict: flagBool(parsed, "strict"),
-      });
-      return 0;
     }
     case "content-stamp": {
       if (parsed.bare.has("pin"))
@@ -1395,15 +1723,30 @@ async function cmdFeeds(
 async function cmdListing(
   parsed: ParsedArgs,
   cwd: string,
-  stdout: Pick<NodeJS.WriteStream, "write">,
-  stderr: Pick<NodeJS.WriteStream, "write">,
+  stdout: TermOut,
+  stderr: TermOut,
   ci: CiIo,
+  g: TermFlags,
 ): Promise<number> {
   switch (parsed.positional[0]) {
     case "import":
       return cmdListingImport(parsed, cwd, stdout, ci);
-    case "assets":
-      return cmdListingAssets(parsed, cwd, stdout, stderr, ci);
+    case "assets": {
+      // One spinner line per stage, on stderr, only on an interactive terminal (`terminal.ts`).
+      const spinner = new Spinner(stderr, ci.env, g);
+      try {
+        return await cmdListingAssets(
+          parsed,
+          cwd,
+          spinner.wrap(stdout),
+          spinner.wrap(stderr),
+          ci,
+          spinner,
+        );
+      } finally {
+        spinner.stop();
+      }
+    }
     default:
       throw new Error(`${LISTING_USAGE}\n${LISTING_ASSETS_USAGE}`);
   }
@@ -1413,9 +1756,10 @@ async function cmdListing(
 async function cmdListingAssets(
   parsed: ParsedArgs,
   cwd: string,
-  stdout: Pick<NodeJS.WriteStream, "write">,
-  stderr: Pick<NodeJS.WriteStream, "write">,
+  stdout: TermOut,
+  stderr: TermOut,
   ci: CiIo,
+  progress: StageProgress,
 ): Promise<number> {
   const out = flagString(parsed, "out");
   if (parsed.positional[0] !== "assets" || !out)
@@ -1443,6 +1787,7 @@ async function cmdListingAssets(
     stderr,
     fetchImpl: ci.fetchImpl,
     sleep: ci.sleep,
+    progress,
   });
   return 0;
 }
@@ -1678,251 +2023,4 @@ async function cmdListingImport(
       : `${formatImport(result)}\n`,
   );
   return 0;
-}
-
-function helpText(): string {
-  return `pkey - Polaris Key platform CLI
-
-Commands:
-  pkey init [--product slug] [--name name] [--modules ${SERVICE_SLUGS.join(",")}]
-  pkey validate
-  pkey distribution outlet-ids --outlet id
-  pkey doctor [--base-url url --product slug]
-  pkey trust --kid kid --public-key key
-  pkey sdk --product slug [--base-url url] [--kid kid --public-key key]
-  pkey sdk --lang node|react|python|swift|kotlin|godot [--product slug] [--base-url url]
-              [--write [--out path] [--force]] [--kid kid --public-key key]
-              [--release-key kid=key ...] [--package kotlin.package]
-  pkey mirror --lang ts,python,swift,gdscript,kotlin [--out-dir dir] [--catalog file |
-              --product slug [--base-url url]] [--package kotlin.package] [--check]
-  pkey bundle --product slug --device id --grace-days n [--no-config] [--license id]
-              [--base-url url] [--out file] [--force]
-  pkey manifest schemas --out dir
-  pkey listing import --godot project --product slug [--preset name ...] [--locale code]
-              [--overwrite] [--apply [--fields a,b]] [--json] [--base-url url]
-  pkey listing import --godot project --dry-run [--preset name ...]
-
-CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
-  pkey auth github-oidc --product slug [--base-url url]
-  pkey release publish --product slug --version v --dir path [--deliverable app]
-              [--tag vX.Y.Z] [--channel c] [--source r2|github] [--meta builds.json]
-              [--base-url url] [--release-key-file pem] [--min-supported-seq n]
-              [--no-record] [--content-stamp file | --embedded dir --pin pack@v ...]
-              [--content-interface registry.json [--strict]] [--dry-run]
-  pkey release publish --product slug --version v --dir path --deliverable packId
-              [--out dir] [--bases dir] [--release-key-file pem] [--base-url url] [--dry-run]
-              [--content-key-file pem --delegation sha256]
-              [--provides ids.json] [--removes id[,id...] ...]
-              [--script-extensions ext[,ext...]] [--script-types Type[,Type...]]
-  pkey release content-stamp --product slug --out pkey-content.json [--embedded dir]
-              [--pin packId@version ...] [--hold packId@version[=reason] ...] [--base-url url]
-  pkey release revoke packId@version --reason text --product slug [--replacement version]
-              [--release-key-file pem] [--base-url url] [--dry-run]
-  pkey release revoke --delegation sha256|file --reason text --product slug
-              [--release-key-file pem] [--base-url url] [--dry-run]
-  pkey release keys generate --kid kid --out file [--force]
-  pkey release keys generate --content --out file
-  pkey release delegate --product slug --prefix packId --types type,... --public-key key
-              [--expires-in days] [--notes text] [--release-key-file pem] [--base-url url]
-              [--dry-run]
-  pkey release promote|pin releaseId --channel c --product slug [--deliverable id]
-  pkey release unpin --channel c --product slug [--deliverable id]
-  pkey release yank releaseId --reason text --product slug
-  pkey distribution report availability|submission --product slug --outlet id
-              (--release id | --version v [--deliverable id]) --state s [--build id]
-              [--since epoch] [--platform-ref json] [--detail json]
-  pkey distribution report key --product slug --purpose p --sha256 hex [--outlet id]
-  pkey distribution rollout --product slug --outlet id --channel c --release id --bp n
-              [--deliverable id]
-  pkey distribution pause|resume|halt|complete --product slug --outlet id --channel c
-              [--release id] [--deliverable id]
-  pkey feeds fdroid --product slug --channel c --out dir [--keystore path --alias a]
-              [--ks-pass-env NAME] [--apksigner path] [--icon png] [--base-url url] [--dry-run]
-  pkey feeds setup --ecosystem npm|pypi|swift|maven|oci|godot --owner slug
-              [--namespace key=value ...] [--package name [--version v]] [--origin url]
-              [--token-env NAME] [--json]
-  pkey feeds prune --product slug [--deliverable id] [--apply] [--json] [--base-url url]
-  pkey listing assets --out dir [--icon png] [--key-art png] [--key-art-portrait png]
-              [--wordmark png] [--screenshots dir] [--focal x,y] [--focal-portrait x,y]
-              [--background #rrggbb] [--accept store/class/name ...] [--pad store/class/name ...]
-              [--locale code] [--upload --product slug [--base-url url] [--dry-run]]
-  pkey assets push file --slot slot [--locale code] --product slug [--base-url url] [--dry-run]
-  pkey transport apple-ba package --deliverable packId --release v --from dir [--content-api n]
-              [--variant key] [--out dir] [--platforms iOS[,macOS]] [--no-archive] [--no-report]
-  pkey transport apple-ba upload --deliverable packId --release v [--dir dir] [--from dir] [--content-api n]
-              [--expect-resource id] [--lock file] [--wait minutes] [--no-report]
-  pkey transport play-pad modules --deliverable packId --release v --from dir --project dir
-              [--delivery fast-follow|on-demand] [--default-texture fmt] [--variant key] [--no-report]
-  pkey transport steam-depot vdf --deliverable packId --release v --from dir --depot id
-              (--branch b | --channel c) [--setlive] [--app id] [--out dir] [--no-report]
-  pkey storefront itch push --platform windows|linux|mac|android --dir dir --version v
-              [--channel c] [--outlet id] [--dry-run] [--no-report]
-  pkey storefront snap metadata --yaml snapcraft.yaml [--dry-run]
-  pkey storefront snap upload --snap file.snap --channel c[,c...] [--outlet id] [--dry-run] [--no-report]
-  pkey storefront snap upload-metadata --snap file.snap [--dry-run] [--no-report]
-  pkey storefront exec store command --op operation [--outlet id] [--tool-path path] -- argv...
-  pkey storefront allow-list [--store s] [--json]
-  pkey storefront winget|homebrew|scoop|flathub pr [--channel c] [--outlet id] [--dry-run [--out dir]]
-              [--portable path] [--command name] [--license l] [--app name] [--project-license spdx] [--no-report]
-  pkey storefront winget|homebrew|scoop|flathub status [--channel c] [--version v] [--outlet id] [--no-report]
-  pkey storefront flathub init [--out dir] [--channel c] [--outlet id] [--command path] [--runtime-version v]
-
-pkey release publish matches the files under --dir against .pkey/release's
-deliverables.app.artifacts map (<file>.sig and <file>.sha256 ride along as sidecars), hashes
-them, uploads what Polaris Key does not already hold, and submits the release descriptor.
---dry-run prints the descriptor and the server's verdict and uploads and writes nothing.
-With a release key (PKEY_RELEASE_KEY, or --release-key-file) it also signs the release record
-(pkey-release+jws) under the .pkey/release releaseKeys entry whose public key matches, checks it,
-and submits it with the descriptor; a dry run prints the record unsigned. pkey release keys
-generate writes a new private release key to --out and prints its releaseKeys entry.
-When .pkey/release declares packs, an app publish states its pins: --content-stamp is the
-pkey-content.json pkey release content-stamp wrote before the export (from the pkey-marker/1
-markers under --embedded, verified, and --pin packId@version resolved through Polaris Key), and
-each build's embeds come from the artifact map; both go into the descriptor, which the record
-is moved from. --deliverable <packId> publishes a pack: per declared variant, the payload at
-<dir>/<variant key or "default">/ (one .pck file, or the tree), checked, stripped of
-project.binary and the class cache, linted, indexed (pkey-files/1), with a full object, file
-blobs, a gaps object and deltas against the releases --bases keeps (zstd >= 1.5.5 on PATH), and
-for a PCK variant of 4 MiB or more a pkey-chunks/1 chunk index with chunk bundles shared along
-the --bases chain (patch.strategies chunk, discovery release.chunks); it signs the pack record,
-uploads in stage rounds, submits it, and writes a marker beside each payload. --out keeps the
-record, payloads and chunk indexes for the next publish's --bases.
-A godot.pck lint (P4-28) refuses a resource that references an app script or a UID outside the
-pack's uid cache unless .pkey/release lists it in deliverables.app.content.attachable (the
-device's PKeyOptions.pack_attachable), and refuses as scripts .gd, .gdc, .cs plus
---script-extensions (bare extensions of a GDExtension script language) and the class names
---script-types gives (the device asks its engine for both).
-Save compatibility (P4-20): a pack release signs the content ids it provides, from --provides or
-the pack's declared provides.from (default .pkey/provides.json; provides.required fails a
-publish without it); Polaris Key refuses a release that stops providing an id its predecessor
-provided at a live contentApi level both support, unless --removes acknowledges it. An app
-publish with --content-interface hashes that registry (canonical JSON, SHA-256), stores it with
-the release and warns when it changed since the channel's current app release while contentApi
-did not (--strict fails instead, before anything is uploaded).
-pkey release content-stamp --hold packId@version[=reason] keeps a compatible pack at one
-release for this app release (written into the stamp's holds; never a pinned pack).
-pkey release revoke signs a kind: revocation release record with the release key and submits it:
-devices stop using that pack release, and --replacement names the release of the same pack they
-take instead. Revocations are permanent; a later revoke of the same release supersedes the
-replacement or reason, never the revoked status.
-pkey release keys generate --content writes a new content key (no kid) and prints its public
-key; pkey release delegate signs a kind: delegation record with the release key that lets that
-key sign data-only pack releases (files.tree, data.json, l10n.table) of compatible or standalone
-packs under --prefix (whole segments) for --expires-in days (default 180, at most 366). A content
-team then publishes with PKEY_CONTENT_KEY (or --content-key-file) and --delegation <sha256>:
-the files must pass the data-only rule, and the record is signed under the kid pkd1-<sha256>.
-pkey release revoke --delegation revokes a delegation and every pack release signed under it.
---meta is a JSON file {"<buildId>": {"buildNumber", "minOS", "requires"}}. An ipa or apk
-payload's facts (bundle id, versions, entitlements; package, version code, ABIs, signer) are
-read into the descriptor for the storefront feeds. The CI commands
-exchange the job's GitHub OIDC token for a short-lived pkeyci_ token themselves; no secret
-is stored in the repository. See /docs/build/ci/.
-
-pkey distribution report tells Polaris Key what a store says until its connector exists:
-availability (pending, processing, in-review, approved, live, rejected, removed) and the
-submission state (prepared, submitted, in-review, approved, rejected,
-pending-developer-release, released, cancelled) of a release on an outlet. report key
-sends the SHA-256 fingerprint the job signed with (colons allowed); one that is not in the
-product's key inventory is flagged for an operator and the command exits 1. rollout, pause,
-resume, halt and complete drive the outlet rollout; --bp is basis points (2500 = 25%), and
-they need a token an operator granted distribution:rollout.
-
-pkey feeds fdroid builds the channel's F-Droid repository (index-v2.json, entry.json, a diff)
-from Polaris Key's releases, signs entry.jar with apksigner and the CI-held repo key (the
-password in $PKEY_FDROID_KS_PASS), uploads it and registers it; the token needs
-distribution:feeds. Without --keystore it writes the unsigned files and stops.
-
-pkey feeds prune deletes each package's builds of main (X-main.N, PyPI X.devN) below its newest
-stable release, the backfill of the Worker's automatic feed retention. It is a dry run unless
---apply: it prints what would go, per package, with counts and bytes. With --apply it also lists
-any version skipped (held since the plan, so kept) and exits non-zero if any version failed. The
-token needs release:yank, which an operator grants.
-
-pkey feeds setup prints the copy-paste setup for one package feed on the registry host (default
-https://pkg.plrs.im), the same snippets the console's Setup tab shows: strict routing only (the
-npm scope, uv explicit = true, Gradle exclusiveContent, SwiftPM --scope, a fully qualified image
-reference, the Godot editor URLs). --namespace sets the feed's namespace (scope=@acme,
-groupPrefixes=gg.acme,gg.acme.tools); --token-env NAME adds the credential lines, reading the
-registry token from that environment variable. Offline: nothing is sent anywhere.
-
-pkey listing assets derives every store's icons from one square icon master (Play 512, the
-Microsoft tile 300, Steam's 184 JPG and 256 icons, Flathub, Snap, winget and F-Droid; Android's
-adaptive layers only when the mark sits inside the central 66 of 108 dp), composes every store's
-art from logo-free key art and the wordmark (Play and F-Droid feature graphics, Steam's capsules
-and library set, the Microsoft super hero, poster and box art, the itch.io cover, the Snap banner;
-cropped around --focal, the wordmark only on slots that allow a title), and fits each screenshot
-under --screenshots (one directory per size class) for the App Store, Play, the Microsoft Store and
-Steam. A screenshot that does not fit gets a crop or pad proposal, used only for the images named
-with --accept or --pad. Everything goes under --out with report.json (the fit report), preview.html
-and one ZIP pack per store. --upload stores the masters, outputs and packs in the listing model
-(the token needs distribution:listing); nothing is pushed to a store. Needs the sharp library.
-
-pkey assets push hosts a file that is not on the web in a slot: presentation.icon, listing.icon,
-listing.header, listing.screenshot:<1-16> or a listing image slot (icon-master,
-play:feature-graphic, ...). Polaris Key hosts a copy and serves it from its image host; PNG, JPEG,
-WebP, GIF or AVIF only (never SVG), up to 10 MiB for icon slots and 20 MiB for the rest. A slot an
-operator uploaded in the console, or one a manifest declares, is kept as it is (console, then
-manifest, then CI). The token needs assets:write, an opt-in scope, and Release must be on (the
-upload ticket comes from its uploads route).
-
-pkey transport packages a published pack release (the --out cache of pkey release publish
---deliverable <packId>, re-hashed against its record and linted again, so a pack with scripts
-never reaches a store) for the transport .pkey/distribution routes it through, writes the
-pkey-marker/1 marker beside the payload, and reports the transport's availability:
-apple-ba package writes Manifest.json for asset pack <pack>-c<contentApi> (dots become hyphens;
-every apple-ba pack is mapped at once and a collision, double hyphen or id over 64 characters is
-refused before anything is written) and runs xcrun ba-package (macOS); apple-ba upload sends it
-to App Store Connect with CI's key (ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY or ASC_KEY_PATH)
-and records the asset pack's resource id in .pkey/asset-packs.json (commit it; a later upload
-into any other resource is refused); play-pad modules writes com.android.asset-pack modules
-(a #tcf_ directory per texture variant) into a Godot Android Gradle build and patches it;
-steam-depot vdf writes a content-only SteamPipe build (SetLive on named branches only).
-
-pkey storefront runs a store's vendor CLI from CI, and only as a command its CI allow-list
-admits (pkey storefront allow-list prints them): itch push is butler push <dir>
-<user/game>:<platform[-channel]> --userversion <v>, the target from the itch outlet's identity
-(BUTLER_API_KEY in the environment); snap upload is snapcraft upload <snap> --release=<snap
-channels>, only the channels the snap outlet's channels map declares, and snap upload-metadata
-sends the summary, description and icon the snap carries, which snap metadata writes into
-snapcraft.yaml from the listing model before the build (SNAPCRAFT_STORE_CREDENTIALS, a scoped
-export-login). exec runs any other allow-listed command (steamcmd +run_app_build, whose script
-may set live only a named branch; msstore publish, refused while the console has a staged
-draft; BuildPatchTool -mode=UploadBinary). Each step is reported back to Polaris Key before and
-after it runs (distribution:report), so the store's ledger shows it beside console steps; a step
-already done in the same run is skipped. --dry-run checks and prints the command lines.
-pkey storefront <store> pr writes winget's manifests (schema 1.12.0), the cask in your own
-Homebrew tap (direct.homebrewTap), the Scoop feed's manifest in your own bucket
-(direct.scoopBucket) or Flathub's updated manifest and MetaInfo for the channel's newest release,
-and opens one pull request per version with the GitHub token in PKEY_PR_TOKEN (a CI secret,
-never argv); a PR already open or merged for the version is recorded and nothing is written.
-status reads the pull request's state and review labels. flathub init writes the first
-submission's files, which a person opens against flathub/flathub's new-pr branch.
-
-pkey manifest schemas writes the .pkey/ JSON Schemas into a directory, for editors in a
-repository with no node_modules.
-
-pkey bundle mints one offline activation bundle and writes it to a file (default
-<product>-<first 8 of device id>.pkeybundle; --base-url defaults to ${DEFAULT_BASE_URL}).
-Copy that file to the air-gapped machine and import it there.
-
-pkey distribution outlet-ids prints the build outlet's store ids from .pkey/distribution as
-one JSON object of strings (steamAppId, itchGameId, flatpakId, snapName, caskToken,
-homebrewFormula, msixFamilyName, bundleId), for CI to pass to a Godot export as PKEY_OUTLET_IDS. With no
-.pkey/distribution it prints {}.
-
-Environment:
-  ${ADMIN_COOKIE_ENV}   Required by \`pkey bundle\`. The console's admin session cookie, as
-                      \`${ADMIN_COOKIE_NAME}=<value>\` (the bare value is accepted too).
-                      The admin API is authenticated by the console's browser session —
-                      there is no API token yet — so copy the cookie from an authenticated
-                      console tab: devtools -> Application -> Cookies -> the console origin.
-                      It is a SHORT-LIVED session credential carrying full admin authority:
-                      do not commit it, and do not export it into a shared shell.
-  ${CI_TOKEN_ENV}       Optional for the CI commands: a static pkeyci_ token an operator
-                      issued, for CI that is not GitHub Actions. Unset in Actions, where
-                      the job's OIDC token is exchanged instead.
-
-Note: --no-config, --force and --dry-run take no value. A valueless flag swallows the next bare word, so
-pass them last or as --no-config=true / --force=true / --dry-run=true.
-`;
 }

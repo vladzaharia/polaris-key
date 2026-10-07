@@ -66,7 +66,13 @@ import {
   type ReleaseDescriptor,
 } from "@polaris-key/manifest";
 import type { ReleaseRecordDoc } from "@polaris-key/protocol/release";
-import { ciClient, CiRequestError, type Out, type Sleep } from "./ci.js";
+import {
+  ciClient,
+  CiRequestError,
+  type Out,
+  type Sleep,
+  type StageProgress,
+} from "./ci.js";
 import { loadManifest, validateLoadedManifest } from "./manifest.js";
 import { mask, resolveCiToken, type CiEnv } from "./oidc.js";
 import { MAX_SINGLE_PUT_BYTES, putFile } from "./s3.js";
@@ -169,6 +175,8 @@ export interface PublishOptions {
   contentInterface?: string;
   /** P4-20 `--strict`: fail, not warn, when the fingerprint changed and contentApi did not. */
   strict?: boolean;
+  /** The stages as they start (hashing, uploading, submitting): the CLI's spinner. */
+  progress?: StageProgress;
 }
 
 export interface PublishResult {
@@ -621,6 +629,9 @@ export async function publishRelease(
       )
     : {};
   const hashed: { entry: ManifestArtifactEntry; files: HashedFile[] }[] = [];
+  const toHash = match.builds.reduce((n, b) => n + b.files.length, 0);
+  opts.progress?.stage(`Hashing ${toHash} file${toHash === 1 ? "" : "s"}`);
+  let hashedCount = 0;
   for (const b of match.builds) {
     const files: HashedFile[] = [];
     for (const f of b.files) {
@@ -630,6 +641,7 @@ export async function publishRelease(
           `${f.name} is ${size} bytes; one upload is at most ${MAX_SINGLE_PUT_BYTES} bytes (a single-part PUT).`,
         );
       files.push({ ...f, ...(await hashFile(f.path)) });
+      opts.progress?.advance((hashedCount += 1), toHash);
     }
     hashed.push({ entry: b.entry, files });
   }
@@ -811,6 +823,7 @@ export async function publishRelease(
 
   // 4. Credentials, the ticket, the uploads and the submit.
   let token: string;
+  opts.progress?.stage("Getting a CI token");
   try {
     token = await resolveCiToken({
       baseUrl: opts.baseUrl,
@@ -867,6 +880,7 @@ export async function publishRelease(
 
   const objects = new Map<string, HashedFile>();
   for (const b of hashed) for (const f of b.files) objects.set(f.sha256, f);
+  opts.progress?.stage("Requesting an upload ticket");
   const ticket = asTicket(
     await client.postJson("release/publish/uploads", {
       what: "Requesting an upload ticket",
@@ -947,6 +961,13 @@ export async function publishRelease(
     );
 
   if (source === "r2") {
+    const toUpload = opts.dryRun
+      ? 0
+      : ticket.objects.filter((o) => !o.present).length;
+    if (toUpload > 0)
+      opts.progress?.stage(
+        `Uploading ${toUpload} object${toUpload === 1 ? "" : "s"}`,
+      );
     for (const o of ticket.objects) {
       if (o.present) {
         result.skipped.push(o.target);
@@ -969,6 +990,7 @@ export async function publishRelease(
         log: opts.stderr,
       });
       result.uploaded.push(o.target);
+      opts.progress?.advance(result.uploaded.length, toUpload);
     }
     if (!opts.dryRun)
       out.write(
@@ -976,6 +998,9 @@ export async function publishRelease(
       );
   }
 
+  opts.progress?.stage(
+    opts.dryRun ? "Validating the release (dry run)" : "Submitting the release",
+  );
   const server = await client.postJson("release/publish/submit", {
     what: opts.dryRun
       ? "Validating the release (dry run)"

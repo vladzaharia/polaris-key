@@ -307,7 +307,14 @@ describe("the standalone bundle", () => {
     );
     expect(stdout).toContain("Wrote 5 schemas");
     const help = await run(process.execPath, [out, "help"]);
-    expect(help.stdout).toContain("pkey release publish");
+    expect(help.stdout).toContain("release publish");
+    const publishHelp = await run(process.execPath, [
+      out,
+      "release",
+      "publish",
+      "--help",
+    ]);
+    expect(publishHelp.stdout).toContain("pkey release publish");
   }, 60_000);
 
   // The Action runs its COMMITTED dist/index.js. A bare `dist/` in the root .gitignore once

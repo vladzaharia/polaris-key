@@ -41,7 +41,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import path from "node:path";
-import { ciClient, type Out, type Sleep } from "./ci.js";
+import { ciClient, type Out, type Sleep, type StageProgress } from "./ci.js";
 import { mask, resolveCiToken, type CiEnv } from "./oidc.js";
 import { putFile } from "./s3.js";
 import { zipStore } from "./zip.js";
@@ -104,6 +104,8 @@ export interface ListingAssetsOptions {
   stderr: Out;
   fetchImpl?: typeof fetch;
   sleep?: Sleep;
+  /** The stages as they start (decoding, encoding, uploading): the CLI's spinner. */
+  progress?: StageProgress;
 }
 
 /** One file `pkey listing assets` wrote, as `report.json` lists it. */
@@ -413,6 +415,7 @@ export async function listingAssets(
     throw new Error(`--out ${opts.out} is not a directory.`);
 
   // ── Inputs ──
+  opts.progress?.stage("Reading the masters");
   const masterList = (
     await Promise.all([
       loadMaster(opts.cwd, "icon-master", opts.icon),
@@ -441,6 +444,7 @@ export async function listingAssets(
   const shots = await loadScreenshots(opts.cwd, opts.screenshots);
 
   // ── Derive, compose, fit ──
+  opts.progress?.stage("Deriving, composing and fitting");
   const slots = deriveAll(masters, { focal, focalPortrait, background });
   const fitted = fitScreenshots(shots, accepted, background);
   if (fitted.unused.length)
@@ -477,6 +481,13 @@ export async function listingAssets(
   };
 
   const reportSlots: ReportSlot[] = [];
+  const encodeTotal =
+    slots.filter((s) => s.raster).length +
+    fitted.outputs.filter((s) => s.raster).length;
+  let encoded = 0;
+  opts.progress?.stage(
+    `Encoding ${encodeTotal} image${encodeTotal === 1 ? "" : "s"}`,
+  );
   for (const s of slots) {
     const entry: ReportSlot = {
       slot: s.spec.slot,
@@ -489,6 +500,7 @@ export async function listingAssets(
     if (s.raster) {
       const n = s.spec.alpha ? 4 : 3;
       const bytes = await encodeImage(s.raster, s.spec.format, s.spec.alpha);
+      opts.progress?.advance((encoded += 1), encodeTotal);
       const ext = s.spec.format === "jpeg" ? "jpg" : "png";
       const rel = `${s.spec.store}/${s.spec.name}.${ext}`;
       await writeRel(rel, bytes);
@@ -540,6 +552,7 @@ export async function listingAssets(
     };
     if (s.raster) {
       const bytes = await encodeImage(s.raster, "png", false);
+      opts.progress?.advance((encoded += 1), encodeTotal);
       const rel =
         s.status === "pending"
           ? `proposals/${s.store}/${s.cls}/${s.name}.png`
@@ -578,6 +591,7 @@ export async function listingAssets(
     reportShots.push(entry);
   }
 
+  opts.progress?.stage("Writing the store packs and the report");
   const packs: ListingAssetsReport["packs"] = [];
   for (const store of PACK_STORES) {
     const entries = packEntries.get(store);
@@ -641,6 +655,7 @@ export async function listingAssets(
   );
 
   // ── Summary ──
+  opts.progress?.stage("");
   const relDir = path.relative(opts.cwd, dir);
   const rel = relDir === "" ? "." : relDir.startsWith("..") ? dir : relDir;
   const count = (st: string) =>
@@ -821,6 +836,9 @@ export async function listingAssets(
   mask(opts.env, out, ticket.ticket);
   mask(opts.env, out, ticket.credentials.secretAccessKey);
   mask(opts.env, out, ticket.credentials.sessionToken);
+  opts.progress?.stage(
+    `Uploading ${ticket.objects.length} listing asset${ticket.objects.length === 1 ? "" : "s"}`,
+  );
   for (const o of ticket.objects) {
     const r = unique.get(o.sha256);
     if (!r)
@@ -838,7 +856,9 @@ export async function listingAssets(
       log: opts.stderr,
     });
     result.uploaded.push(r.slot);
+    opts.progress?.advance(result.uploaded.length, ticket.objects.length);
   }
+  opts.progress?.stage("Registering the listing assets");
   const answer = (await client.postJson("distribution/listing/assets", {
     what: "Registering the listing assets",
     body: { ticket: ticket.ticket, assets: body },

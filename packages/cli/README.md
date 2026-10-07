@@ -30,10 +30,14 @@ pkg.plrs.im/polaris-key/pkey:latest validate`.
 
 ## Commands
 
+`pkey` (or `pkey help`, `pkey --help`, `pkey -h`) prints every command, grouped (Manifest, SDK and
+tools, Offline bundles, CI release, Distribution, Feeds, Listing and assets, Transport, Storefront,
+Shell), and `pkey <command> --help` prints one command's usage lines and notes. The most used:
+
 ```
-pkey init [--product slug] [--name name] [--modules license,config,release,distribution,update,identity]
+pkey init [--product slug] [--name name] [--modules license,config,release,distribution,update,identity,sync]
           [--admin-group group] [--release-owner owner] [--release-repo repo] [--force]
-pkey validate
+pkey validate [path] [--json]
 pkey distribution outlet-ids --outlet id
 pkey doctor [--base-url url --product slug]
 pkey trust --kid kid --public-key key
@@ -45,10 +49,50 @@ pkey mirror --lang ts,python,swift,gdscript,kotlin [--out-dir dir]
             [--catalog file | --product slug [--base-url url]] [--package kotlin.package] [--check]
 pkey bundle --product slug --device id --grace-days n [--no-config] [--license id]
             [--base-url url] [--out file] [--force]
-pkey help   # also --help / -h
+pkey completion bash|zsh|fish
+pkey help [command]   # also pkey --help / -h, and pkey <command> --help / -h
 ```
 
-Exit codes: `0` success, `1` a validation/runtime failure, `2` an unrecognized command.
+Exit codes: `0` success, `1` a validation/runtime failure, `2` an unrecognized command or a
+usage error (`pkey completion` without a shell it knows).
+
+### Help
+
+`pkey <command> --help`, `pkey <command> -h` and `pkey help <command>` print that command's usage
+lines, the paragraphs that explain it, the environment variables it reads and a note on its
+valueless flags, and exit `0` **without running the command** — `pkey init --help` writes no
+files, `pkey release publish --help` sends nothing. A subcommand narrows it
+(`pkey release publish --help`, `pkey help feeds prune`). `--help` and `-h` count anywhere before a
+bare `--`; after it (`pkey storefront exec … -- <argv>`) they belong to the store's command.
+
+### Terminal output
+
+`pkey` draws with the same terminal primitives as the Node SDK's CLI kit
+(`@polaris-key/node/terminal`; docs/design/UI-KITS.md §1.4): ANSI-16 roles (strong headings,
+muted descriptions, `✓` success, `▲` warning, `✗` danger), 80 columns that degrade to the
+terminal's width (legible at 60). Colour appears only when stdout is a terminal: `NO_COLOR=1`,
+`--no-color`, `TERM=dumb` and a pipe give plain text with no escape sequences, and `FORCE_COLOR`
+(or `--color`) forces it. `--ascii`, `TERM=dumb` and `PKEY_ASCII=1` swap the symbols for ASCII
+(`+`, `!`, `x`). Machine output — `--json`, `distribution outlet-ids`, the `trust`, `sdk` and
+`feeds setup` snippets — is never styled.
+
+The long commands (`pkey release publish`: hashing, the upload ticket, uploading, submitting;
+`pkey listing assets`: reading, encoding, uploading, registering) show one spinner line per stage
+on **stderr**, only when stderr is a terminal and never under CI (`CI`, `GITHUB_ACTIONS`). The
+line is erased before anything else is printed, and stdout is byte for byte what it is in a
+pipe.
+
+### Shell completion
+
+`pkey completion bash|zsh|fish` prints a completion script generated from `pkey`'s own command
+table: the commands, their subcommands (`release publish|content-stamp|revoke|keys|delegate|
+promote|pin|unpin|yank`, `transport apple-ba package|upload`, …) and each command's flags.
+
+```sh
+eval "$(pkey completion bash)"                           # in ~/.bashrc
+eval "$(pkey completion zsh)"                            # in ~/.zshrc, after compinit
+pkey completion fish > ~/.config/fish/completions/pkey.fish
+```
 
 ### `pkey init`
 
@@ -88,20 +132,61 @@ keeps `.pkey/` somewhere other than one level under `node_modules`.
 
 ### `pkey validate`
 
-Reads `.pkey/` from the current directory (`product.{json,yaml,yml}` required; `schema`,
-`release` and `distribution` read if present) and runs it through `@polaris-key/manifest`'s
-`validateIngestDocuments` — the same presence rule plus validator that repo-link and resync apply, so a missing `.pkey/schema` is `missing_schema` locally too. Prints the resolved
-service-slug vocabulary regardless of which vocabulary the manifest wrote in, any required
-secret names, then every warning and error with its document, JSON-pointer path and the file it
-was read from:
+Reads `.pkey/` under `path` — relative to the current directory, default the current directory
+(`product.{json,yaml,yml}` required; `schema`, `release` and `distribution` read if present) — and
+runs it through `@polaris-key/manifest`'s `validateIngestDocuments`: the same presence rule plus
+validator that repo-link and resync apply, so a missing `.pkey/schema` is `missing_schema` locally
+too. Prints a verdict, the resolved service-slug vocabulary regardless of which vocabulary the
+manifest wrote in, any required secret names, then every warning (`▲`) and error (`✗`) with its
+document, JSON-pointer path and the file it was read from. Exit `0` when valid, `1` when not.
 
 ```
-Manifest: invalid
-Modules: license, config, release, update
-Required secrets: OIDC_CLIENT_SECRET
-warning product/modules/config (.pkey/product.yaml): Config is enabled without an activation method.
-error release/: Releases are enabled, so .pkey/release.yaml or release.json is required.
+$ pkey validate game
+✗  Manifest: invalid
+   Modules: config, release, update
+▲  warning product/modules/config (game/.pkey/product.yaml): Config is enabled without an activation method.
+✗  error release/: Releases are enabled, so .pkey/release.yaml or release.json is required.
 ```
+
+On a terminal the roles are coloured and a long message wraps under its own column; anywhere else
+each message is one plain line. `--json` prints one JSON object on stdout instead, in the Node SDK
+CLI kit's envelope:
+
+```json
+{
+  "version": 1,
+  "command": "validate",
+  "ok": false,
+  "exitCode": 1,
+  "result": {
+    "valid": false,
+    "modules": ["config", "release", "update"],
+    "requiredSecrets": [],
+    "warnings": [
+      {
+        "code": "config_without_activation",
+        "message": "Config is enabled without an activation method.",
+        "at": "product/modules/config",
+        "file": "game/.pkey/product.yaml"
+      }
+    ],
+    "errors": [
+      {
+        "code": "missing_release",
+        "message": "Releases are enabled, so .pkey/release.yaml or release.json is required.",
+        "at": "release/",
+        "file": null
+      }
+    ]
+  }
+}
+```
+
+(Printed on one line.) `at` is the document and JSON pointer, `file` the file it was read from
+relative to the current directory (`null` when the document is missing). The CLI's own warning
+that one document exists under two extensions has `"code": null` and `"at": ".pkey/"`. When no
+manifest can be read at all, `result` is replaced by
+`"error": {"code": null, "title": "No manifest read", "message": "…"}` and the exit code is `1`.
 
 The full code list is at [Manifest validation codes](/docs/reference/validation-codes/).
 
@@ -257,12 +342,13 @@ stale relative to the CSRF token `/manage/api/me` handed back for it.
 
 ### The valueless-flag gotcha
 
-`--no-config` and `--force` take no value. The argument parser hands a _valueless_ flag the
-next bare word as its value if that word doesn't itself start with `--`, so placing one of
-these immediately before a positional argument would swallow it. None of today's commands
-takes a positional after these flags, so the trap cannot spring in practice — but the safe
-habit for any future command is to pass boolean flags **last**, or spelled out as
-`--no-config=true` / `--force=true`.
+`--no-config`, `--force`, `--dry-run` and the other boolean flags take no value. The argument
+parser hands a _valueless_ flag the next bare word as its value if that word doesn't itself start
+with `--`, so placing one of these immediately before a positional argument would swallow it.
+The safe habit is to pass boolean flags **last**, or spelled out as `--no-config=true` /
+`--force=true`; each command's `--help` ends with a note naming its valueless flags. The global
+flags `--help`, `-h`, `--no-color`, `--color`, `--ascii` and `--json` never take a value, so
+`pkey validate --json game` validates `game`.
 
 ## Develop
 

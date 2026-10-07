@@ -81,6 +81,7 @@ import {
   type CiClient,
   type Out,
   type Sleep,
+  type StageProgress,
 } from "./ci.js";
 import { loadManifest, validateLoadedManifest } from "./manifest.js";
 import { mask, resolveCiToken, type CiEnv } from "./oidc.js";
@@ -197,6 +198,8 @@ export interface PackPublishOptions {
   scriptExtensions?: string[];
   /** P4-28 `--script-types`: that language's script class names (markers and reference types). */
   scriptTypes?: string[];
+  /** The stages as they start (checking, building, uploading, submitting): the CLI's spinner. */
+  progress?: StageProgress;
 }
 
 /** The lint settings beyond the pack's own declaration (P4-28). */
@@ -701,7 +704,11 @@ export async function publishPack(
   // 2. Payloads: check, strip, lint.
   const root = path.resolve(opts.cwd, opts.dir);
   const variants: LoadedVariant[] = [];
-  for (const v of declaredVariants(pack))
+  const declared = declaredVariants(pack);
+  opts.progress?.stage(
+    `Checking ${declared.length} variant${declared.length === 1 ? "" : "s"} of ${packId}`,
+  );
+  for (const v of declared)
     variants.push(
       await loadVariant(pack, v, root, {
         ...(ctx.app?.content?.attachable
@@ -776,10 +783,14 @@ export async function publishPack(
 
     // 3. Objects, proven.
     const built = new Map<string, BuiltPayload>();
+    opts.progress?.stage(
+      `Building and hashing ${variants.length} payload${variants.length === 1 ? "" : "s"}`,
+    );
     for (const v of variants) {
       const b = await buildPayload(z, v.payload);
       await selfCheckPayload(z, b);
       built.set(v.key, b);
+      opts.progress?.advance(built.size, variants.length);
     }
     out.write(
       `Self-check: every files index parses and rebuilds its payload byte for byte (zstd ${z.version})\n`,
@@ -812,6 +823,7 @@ export async function publishPack(
         );
     }
     let client: CiClient | null = null;
+    opts.progress?.stage("Asking Polaris Key about earlier releases");
     try {
       const token = await resolveCiToken({
         baseUrl: opts.baseUrl,
@@ -1003,6 +1015,7 @@ export async function publishPack(
     }
 
     // 5. Deltas, per variant, newest base first.
+    opts.progress?.stage("Building the objects and deltas");
     const objects = new Map<string, StagedObject>();
     const addObject = (bytes: Uint8Array, label: string) => {
       const sha256 = sha256Hex(bytes);
@@ -1239,6 +1252,7 @@ export async function publishPack(
     const list = [...objects.values()];
     if (opts.dryRun) {
       if (client) {
+        opts.progress?.stage("Asking which objects are stored");
         let present = 0;
         for (let i = 0; i < list.length; i += STAGE_ROUND_OBJECTS) {
           const ticket = await requestTicket(
@@ -1261,6 +1275,7 @@ export async function publishPack(
       return result;
     }
 
+    opts.progress?.stage("Signing the pack record");
     const jws = await sign!(record as unknown as ReleaseRecordDoc);
     if (jws.length > MAX_RECORD_JWS_BYTES)
       throw new Error(
@@ -1292,12 +1307,24 @@ export async function publishPack(
 
     const objDir = path.join(work, "objects");
     await mkdir(objDir, { recursive: true });
+    opts.progress?.stage(
+      `Uploading ${list.length} object${list.length === 1 ? "" : "s"}`,
+    );
     for (let i = 0; i < list.length; i += STAGE_ROUND_OBJECTS) {
       const round = list.slice(i, i + STAGE_ROUND_OBJECTS);
       let attempt = 0;
       for (;;) {
         try {
-          await stageRound(client!, round, gated, packId, objDir, opts, result);
+          await stageRound(
+            client!,
+            round,
+            gated,
+            packId,
+            objDir,
+            opts,
+            result,
+            list.length,
+          );
           break;
         } catch (e) {
           attempt += 1;
@@ -1311,6 +1338,7 @@ export async function publishPack(
     out.write(
       `Uploaded ${result.uploaded.length} object${result.uploaded.length === 1 ? "" : "s"}; ${result.skipped.length} already stored\n`,
     );
+    opts.progress?.stage("Submitting the pack record");
     const server = await client!.postJson("release/publish/submit", {
       what: "Submitting the pack record",
       body: { record: jws },
@@ -1440,6 +1468,8 @@ async function stageRound(
   objDir: string,
   opts: PackPublishOptions,
   result: PackPublishResult,
+  /** Every object of the publish, for the progress count. */
+  objectTotal: number,
 ): Promise<void> {
   const ticket = await requestTicket(client, round, gated, opts);
   const bySha = new Map(round.map((o) => [o.sha256, o]));
@@ -1481,6 +1511,10 @@ async function stageRound(
       log: opts.stderr,
     });
     uploaded.push(o.target);
+    opts.progress?.advance(
+      result.uploaded.length + result.skipped.length + uploaded.length,
+      objectTotal,
+    );
   }
   if (uploaded.length > 0)
     await client.postJson("release/publish/stage", {
