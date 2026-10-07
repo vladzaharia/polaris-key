@@ -11,7 +11,9 @@ import type {
   PortalDevice,
   PortalDownloadFile,
   PortalDownloads,
+  PortalEntryItem,
   PortalLibraryItem,
+  PortalLicensedItem,
   PortalStoreLink,
   PortalLicenseDetail,
   PortalStatus,
@@ -191,8 +193,8 @@ export function release(
  */
 export function libraryItem(
   l: PortalLicenseSummary,
-  over: Partial<PortalLibraryItem> & { deviceLimit?: number } = {},
-): PortalLibraryItem {
+  over: Partial<PortalLicensedItem> & { deviceLimit?: number } = {},
+): PortalLicensedItem {
   const { deviceLimit = 0, ...rest } = over;
   const status: PortalStatus =
     l.status !== "active"
@@ -245,7 +247,7 @@ export function libraryFor(
   licenses: readonly PortalLicenseSummary[],
   discoverCount?: number,
   /** Presentation (art, developer) applied to every item. */
-  over: Partial<PortalLibraryItem> = {},
+  over: Partial<PortalLicensedItem> = {},
 ): { products: PortalLibraryItem[]; discoverCount?: number } {
   const best = new Map<string, PortalLicenseSummary>();
   for (const l of licenses) {
@@ -261,6 +263,34 @@ export function libraryFor(
         ...over,
       })),
     ...(discoverCount === undefined ? {} : { discoverCount }),
+  };
+}
+
+/**
+ * An open product's library entry (`GET /api/library`, PS-04): no licence, always `active`, added
+ * from Discover's storefront.
+ */
+export function entryItem(
+  product: string,
+  name: string,
+  over: Partial<PortalEntryItem> = {},
+): PortalEntryItem {
+  return {
+    product,
+    name,
+    developerName: null,
+    tintColor: null,
+    website: null,
+    iconUrl: null,
+    headerUrl: null,
+    support: null,
+    kind: "entry",
+    via: "open",
+    status: "active",
+    license: null,
+    licenseCount: 0,
+    addedAt: NOW_S - DAY,
+    ...over,
   };
 }
 

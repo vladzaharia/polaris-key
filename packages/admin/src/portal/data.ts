@@ -26,6 +26,7 @@ import {
   type PortalProfile,
   type PortalProfileChange,
   type PortalRelease,
+  type PortalStorefrontProduct,
 } from "./api.js";
 import { browser } from "./browser.js";
 import { isSignedOut } from "./errors.js";
@@ -51,6 +52,8 @@ const qk = {
   portalReleases: () => ["portal", "releases"] as const,
   portalLibrary: () => ["portal", "library"] as const,
   portalDiscover: () => ["portal", "discover"] as const,
+  portalStorefront: (product: string) =>
+    ["portal", "storefront", product] as const,
   portalDownloads: (product: string) =>
     ["portal", "downloads", product] as const,
   portalProduct: (product: string) => ["portal", "product", product] as const,
@@ -67,6 +70,7 @@ export const portalKeys = {
   releases: qk.portalReleases(),
   library: qk.portalLibrary(),
   discover: qk.portalDiscover(),
+  storefront: qk.portalStorefront,
   downloads: qk.portalDownloads,
   product: qk.portalProduct,
   profile: qk.portalProfile(),
@@ -223,17 +227,65 @@ export function useDiscover(
 }
 
 /**
- * "Add to library" (G25). The Worker re-evaluates and mints once per account and product; the
- * library (its count and Discover's) and the licence summaries refresh after.
+ * The storefront product page (PS-04, notes/S-21 §6.5; `GET /api/discover/<p>`): the listing,
+ * every way to add it with its terms, and its store pages. Unknown, unlisted, ineligible and held
+ * products all answer the same `404`, which the page shows as one not-found state.
+ */
+export function useStorefrontProduct(
+  product: string,
+): UseQueryResult<PortalStorefrontProduct> {
+  return useQuery({
+    queryKey: qk.portalStorefront(product),
+    queryFn: () => portalApi.storefrontProduct(product),
+  });
+}
+
+/**
+ * "Add to library" (G25, PS-04): through `path` (a kind the offer listed), or the offer's first
+ * path. The Worker re-evaluates and creates once per account and product (a licence, or an open
+ * product's library entry); the library (its count and Discover's), the licence summaries and
+ * the storefront pages refresh after.
  */
 export function useClaimDiscover() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (product: string) => portalApi.claimDiscover(product),
-    onSuccess: () => {
+    mutationFn: (v: { product: string; path?: string }) =>
+      portalApi.claimDiscover(v.product, v.path),
+    onSuccess: (_res, v) => {
       void qc.invalidateQueries({ queryKey: portalKeys.library });
       void qc.invalidateQueries({ queryKey: portalKeys.licenses });
       void qc.invalidateQueries({ queryKey: portalKeys.discover });
+      void qc.invalidateQueries({ queryKey: portalKeys.product(v.product) });
+      // Held now: its storefront page answers 404 from here on. Dropped rather than refetched, so
+      // the page being left never flashes "not found" on its way out.
+      qc.removeQueries({ queryKey: portalKeys.storefront(v.product) });
+    },
+  });
+}
+
+/**
+ * Remove from library (PS-04): an open product's ENTRY only (`DELETE /api/library/<p>`); a
+ * licence leaves only by its own removal. A 404 means it is gone already (another tab): the same
+ * outcome, so it resolves as removed. The library, Discover (the product may be offered again)
+ * and the product's views refresh.
+ */
+export function useRemoveLibraryEntry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (product: string) => {
+      try {
+        return await portalApi.removeLibraryEntry(product);
+      } catch (err) {
+        if (err instanceof PortalApiError && err.status === 404)
+          return { ok: true as const, product };
+        throw err;
+      }
+    },
+    onSuccess: (_res, product) => {
+      void qc.invalidateQueries({ queryKey: portalKeys.library });
+      void qc.invalidateQueries({ queryKey: portalKeys.discover });
+      qc.removeQueries({ queryKey: portalKeys.product(product) });
+      qc.removeQueries({ queryKey: portalKeys.storefront(product) });
     },
   });
 }

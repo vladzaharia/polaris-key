@@ -1,7 +1,7 @@
 import * as React from "react";
 import { ArrowRight, ChevronRight } from "lucide-react";
 import { useDiscover } from "../data.js";
-import { reasonCopy } from "../model/discover.js";
+import { offerReason } from "../model/discover.js";
 import { href } from "../router.js";
 import { ProductArt } from "./ProductArt.js";
 
@@ -10,8 +10,9 @@ export const TEASER_LIMIT = 3;
 
 /**
  * "Ready to add" on the empty Library (PORTAL.md §4.12): up to three Discover offers as rows
- * (thumb, name, why) with **See all**. Renders nothing while Discover is empty, still loading,
- * or failed: the empty Library never waits on it or shows its error.
+ * (thumb, name, why), each opening its storefront page (PS-05), with **See all**. Only offers with
+ * something to add: a link-only listing is not "ready to add". Renders nothing while Discover is
+ * empty, still loading, or failed: the empty Library never waits on it or shows its error.
  */
 export function DiscoverTeaser({
   discoverCount,
@@ -20,7 +21,8 @@ export function DiscoverTeaser({
   discoverCount: number | null;
 }): React.ReactElement | null {
   const discover = useDiscover((discoverCount ?? 0) > 0);
-  const offers = discover.data?.slice(0, TEASER_LIMIT) ?? [];
+  const offers =
+    discover.data?.filter((o) => o.cta === "add").slice(0, TEASER_LIMIT) ?? [];
   if (!discoverCount || offers.length === 0) return null;
   return (
     <section aria-labelledby="ready-h" className="space-y-4">
@@ -46,7 +48,7 @@ export function DiscoverTeaser({
         {offers.map((o) => (
           <li key={o.product} className="grid">
             <a
-              href={href.discover()}
+              href={href.storefront(o.product)}
               className="flex items-center gap-4 rounded-xl border border-border bg-surface-raised p-2.5 pr-4 shadow-elevation-1 hover:bg-hover"
             >
               <ProductArt
@@ -62,7 +64,7 @@ export function DiscoverTeaser({
                   {o.name}
                 </span>
                 <span className="block text-sm text-fg-muted">
-                  {reasonCopy(o.reason).text}
+                  {offerReason(o)?.text}
                 </span>
               </span>
               <ChevronRight

@@ -101,9 +101,14 @@ export function FreeDevicePage({
   );
   const returnUrl = p ? allowedReturn(params.get("return"), p.returnTo) : null;
   const back = flowBack(slug, p?.name ?? "the product", returnUrl);
+  // An open product's entry (PS-04) has no licence and no devices to free: its page instead.
+  const nothingToFree = p != null && p.licenses.length === 0;
+  React.useEffect(() => {
+    if (nothingToFree) window.location.replace(href.product(slug));
+  }, [nothingToFree, slug]);
   return (
     <FocusedFlow back={back}>
-      {q.isPending ? (
+      {q.isPending || nothingToFree ? (
         <div aria-busy className="mx-auto max-w-[41rem] space-y-4">
           <h1 className="sr-only">Loading</h1>
           <Skeleton className="h-96 w-full rounded-xl" />

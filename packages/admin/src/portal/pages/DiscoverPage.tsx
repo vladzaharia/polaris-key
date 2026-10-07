@@ -36,8 +36,11 @@ interface TileError {
 }
 
 /**
- * Discover (PORTAL.md §4.16): every product the account could add for free right now, as
- * Discover tiles with their terms and the always-visible reason. **Add to library** mints once
+ * Discover (PORTAL.md §4.16; notes/S-21 §6.5): every product the account could add for free
+ * right now, as Discover tiles with their terms and the always-visible reason (the first way to
+ * add it; the storefront page `#/discover/:product` lists every way), plus any listing its
+ * developer shows everyone with nothing to add, whose tile links to its store pages. An open
+ * product (nothing to licence) adds as a library entry, not a licence. **Add to library** adds once
  * (the button is guarded while its request runs, and the Worker's claim is idempotent), then the
  * tile shows the just-added state, also after a reload through `?added=<product>` (repeated once
  * per product added, so a second add keeps the first one's tile; the most recent few). With
@@ -123,7 +126,7 @@ export function DiscoverPage({
       return next;
     });
     try {
-      await claim.mutateAsync(slug);
+      await claim.mutateAsync({ product: slug });
       setAdded((m) => new Map(m).set(slug, offer));
       setFocusOpen(slug);
       // Read now, not from this render: another add may have finished meanwhile.
@@ -159,7 +162,7 @@ export function DiscoverPage({
         <p className="text-fg-muted">
           {empty
             ? "Products their developers offer to your account, free to add."
-            : "Products their developers offer to your account. Adding one gives you its license straight away, at no cost."}
+            : "Products their developers offer to your account. Adding one puts it in your library straight away, at no cost."}
         </p>
       </div>
       {pending ? (

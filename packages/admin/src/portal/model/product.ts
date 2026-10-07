@@ -25,6 +25,7 @@ import {
   tierLabel,
   type DeviceInHand,
   type LibraryProduct,
+  type LicensedProduct,
   type Presentation,
   type QuickAction,
 } from "./library.js";
@@ -610,7 +611,7 @@ export function storeFor(
  * neither has answered (the limit is never guessed).
  */
 export function seatLimitFor(
-  p: LibraryProduct,
+  p: LicensedProduct,
   view: PortalProduct | undefined,
   id: string,
 ): number | null {

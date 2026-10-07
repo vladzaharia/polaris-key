@@ -108,9 +108,11 @@ export function LibraryList({
                     : "hidden px-2 py-3 text-sm text-fg wide:table-cell"
                 }
               >
-                {p.seats
-                  ? `${p.seats.inUse} of ${p.seats.limit}`
-                  : p.deviceCount}
+                {p.kind === "entry"
+                  ? "–"
+                  : p.seats
+                    ? `${p.seats.inUse} of ${p.seats.limit}`
+                    : p.deviceCount}
               </td>
               <td className="relative hidden px-2 py-3 text-right desk:table-cell">
                 <QuickActionButton

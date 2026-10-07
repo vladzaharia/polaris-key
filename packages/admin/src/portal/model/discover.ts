@@ -3,9 +3,16 @@ import type {
   PortalDiscoverOffer,
   PortalDiscoverTerms,
   PortalLibraryItem,
+  PortalObtainPath,
+  PortalStorefrontStore,
 } from "../api.js";
 import { PLATFORM_ORDER, type PlatformKey } from "../components/Glyphs.js";
-import { formatDay, normalisePlatform, tierLabel } from "./library.js";
+import {
+  formatDay,
+  normalisePlatform,
+  storeName,
+  tierLabel,
+} from "./library.js";
 import { discoverCountFrom } from "./owned.js";
 
 /**
@@ -15,12 +22,26 @@ import { discoverCountFrom } from "./owned.js";
  * change it): this module only words the terms the Worker sends and never derives them.
  */
 
-export type ReasonKind = "account" | "group" | "added" | "other";
+export type ReasonKind =
+  | "account"
+  | "trial"
+  | "group"
+  | "idp"
+  | "domain"
+  | "store"
+  | "open"
+  | "added"
+  | "other";
 
 export interface ReasonCopy {
   kind: ReasonKind;
   text: string;
 }
+
+const GENERIC: ReasonCopy = {
+  kind: "other",
+  text: "Offered to your account by its developer",
+};
 
 /** The reason line for a Worker reason code. Unknown codes get honest generic copy. */
 export function reasonCopy(reason: string): ReasonCopy {
@@ -28,11 +49,95 @@ export function reasonCopy(reason: string): ReasonCopy {
     return { kind: "added", text: "Added from Discover, at no cost" };
   if (reason === "free_with_account")
     return { kind: "account", text: "Free with a Polaris Key account" };
+  if (reason === "open") return { kind: "open", text: "Free to use" };
   if (reason.startsWith("group:")) {
     const group = reason.slice("group:".length).trim();
     if (group) return { kind: "group", text: `For members of ${group}` };
   }
-  return { kind: "other", text: "Offered to your account by its developer" };
+  return GENERIC;
+}
+
+/**
+ * Why the account can add the product by this path (notes/S-21 §6.5's table; owner decision Q-6:
+ * every offer says why). A path this build doesn't know reads by its reason code, generically.
+ *
+ * - `auto_issue`: "Free with a Polaris Key account", or "Free trial · 14 days" when the tier
+ *   expires;
+ * - `group`: "Included with <label>" when the operator labelled the group, else "For members of
+ *   <group>";
+ * - `product_idp`: "Included with your <IdP> account"; `email_domain`: "For everyone with a
+ *   <domain> email"; `store_owned`: "You own it on Steam";
+ * - `open`: "Free to use".
+ */
+export function pathCopy(path: PortalObtainPath): ReasonCopy {
+  const detail = path.detail?.trim() || null;
+  switch (path.kind) {
+    case "auto_issue": {
+      const t = path.terms;
+      if (t?.expiryDays != null)
+        return {
+          kind: "trial",
+          text: `Free trial · ${t.expiryDays} ${t.expiryDays === 1 ? "day" : "days"}`,
+        };
+      if (t?.expiresAt != null)
+        return {
+          kind: "trial",
+          text: `Free trial · until ${formatDay(t.expiresAt)}`,
+        };
+      return { kind: "account", text: "Free with a Polaris Key account" };
+    }
+    case "group": {
+      const label = path.label?.trim();
+      if (label) return { kind: "group", text: `Included with ${label}` };
+      if (detail) return { kind: "group", text: `For members of ${detail}` };
+      return reasonCopy(path.reason);
+    }
+    case "product_idp":
+      return detail
+        ? { kind: "idp", text: `Included with your ${detail} account` }
+        : GENERIC;
+    case "email_domain":
+      return detail
+        ? { kind: "domain", text: `For everyone with a ${detail} email` }
+        : GENERIC;
+    case "store_owned":
+      return {
+        kind: "store",
+        text: detail
+          ? `You own it on ${storeName(detail)}`
+          : "You own it in a store",
+      };
+    case "open":
+      return { kind: "open", text: "Free to use" };
+    default:
+      return reasonCopy(path.reason);
+  }
+}
+
+/** The tile's reason line: the first path's, or `null` for a link (S-21 §6.5: no reason line). */
+export function offerReason(offer: PortalDiscoverOffer): ReasonCopy | null {
+  if (offer.reason === ADDED_REASON) return reasonCopy(ADDED_REASON);
+  const first = offer.paths[0];
+  return first ? pathCopy(first) : null;
+}
+
+/** "+1 more way", "+2 more ways": the paths beyond the tile's first, or `null`. */
+export function moreWaysText(offer: PortalDiscoverOffer): string | null {
+  const more = offer.paths.length - 1;
+  if (more < 1) return null;
+  return `+${more} more ${more === 1 ? "way" : "ways"}`;
+}
+
+/** What a path gives, for the product page: its licence terms, or what an open product means. */
+export function pathTermsLine(path: PortalObtainPath): string {
+  return path.terms ? termsLine(path.terms) : "No license needed";
+}
+
+/** "Get it on Steam", "Get it on the App Store": a link-only offer's action for one store page. */
+export function storeLinkLabel(store: PortalStorefrontStore): string {
+  if (store.kind === "app-store") return "Get it on the App Store";
+  if (store.kind === "play") return "Get it on Google Play";
+  return `Get it on ${store.label}`;
 }
 
 /** "Lifetime · 5 devices", "Beta · 90 days · 2 devices": the tier and its terms. */
@@ -86,32 +191,48 @@ export function withAdded(current: readonly string[], slug: string): string[] {
 
 /**
  * A just-added product's tile after a reload (`#/discover?added=<p>`): the offer is gone from
- * `GET /api/discover` (the account holds it now), so the tile is rebuilt from the library item.
- * Its reason line says what happened instead of why it was offered.
+ * `GET /api/discover` (the account holds it now), so the tile is rebuilt from the library item:
+ * the licence's terms, or none for an open product's entry. Its reason line says what happened
+ * instead of why it was offered.
  */
 export function addedOfferFromLibrary(
   item: PortalLibraryItem,
 ): PortalDiscoverOffer {
   const {
+    developerName,
+    tintColor,
+    website,
+    iconUrl,
+    headerUrl,
+    support,
+    name,
     product,
-    license,
-    status: _s,
-    licenseCount: _c,
-    addedAt: _a,
-    ...pres
   } = item;
+  const terms: PortalDiscoverTerms | null = item.license
+    ? {
+        tier: item.license.tier,
+        tierLabel: null,
+        deviceLimit: item.license.deviceLimit,
+        expiresAt: item.license.expiresAt,
+        expiryDays: null,
+      }
+    : null;
   return {
-    ...pres,
+    name,
+    developerName,
+    tintColor,
+    website,
+    iconUrl,
+    headerUrl,
+    support,
     product,
     platforms: [],
-    offer: {
-      tier: license.tier,
-      tierLabel: null,
-      deviceLimit: license.deviceLimit,
-      expiresAt: license.expiresAt,
-      expiryDays: null,
-    },
+    shortDescription: null,
+    cta: "add",
+    paths: [],
+    offer: terms,
     reason: ADDED_REASON,
+    stores: [],
   };
 }
 

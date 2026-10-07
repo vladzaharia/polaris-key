@@ -23,15 +23,18 @@ export function ProductHeader({
   action,
   headingRef,
   onRemove,
+  menuTriggerRef,
 }: {
   product: LibraryProduct;
   action: QuickAction;
   headingRef?: React.Ref<HTMLHeadingElement>;
-  /** The overflow menu's Remove from my library (PX-23). */
+  /** The overflow menu's Remove from my library (PX-23), or an entry's Remove from library. */
   onRemove?: () => void;
+  /** The overflow menu's button, for an inline confirmation that hands focus back to it. */
+  menuTriggerRef?: React.Ref<HTMLButtonElement>;
 }): React.ReactElement {
   const pres = product.presentation;
-  const tier = tierLabel(product.best.tier);
+  const tier = product.best ? tierLabel(product.best.tier) : null;
   // No cover (or one the proxy failed to serve): the icon stands alone beside the name, rather
   // than a letter banner with the same letter tile on top of it.
   const [coverFailed, setCoverFailed] = React.useState(false);
@@ -138,7 +141,9 @@ export function ProductHeader({
             slug={product.slug}
             name={product.name}
             onPage
+            entry={product.kind === "entry"}
             onRemove={onRemove}
+            triggerRef={menuTriggerRef}
             className="inline-flex size-12 shrink-0 items-center justify-center rounded-md border border-border-strong text-fg-strong hover:bg-hover"
           />
         </div>
