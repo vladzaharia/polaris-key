@@ -384,6 +384,32 @@ describe("licensing", () => {
       devices: [expect.objectContaining({ id: "dev-1", label: "Studio Mac" })],
     });
 
+    // A device's own rename goes through PX-W13's label rule: no control character is ever
+    // stored (a CLI that prints the label could otherwise be driven by terminal escapes).
+    const hostile = await handleDevices(
+      mkReq(
+        "PATCH",
+        { authorization: `Bearer ${token}` },
+        { label: "Lap\u001b]52;c;ZXZpbA==\u0007top\u001b[2J\u009b  Pro" },
+      ),
+      env,
+      db,
+      product,
+      NOW,
+      "dev-1",
+    );
+    expect(hostile.status).toBe(200);
+    const hostileLabel = ((await hostile.json()) as { device: { label: string } })
+      .device.label;
+    expect(hostileLabel).not.toMatch(/[\u0000-\u001f\u007f-\u009f]/);
+    const stored = await db.first<{ label: string | null }>(
+      "SELECT label FROM devices WHERE product = ? AND device_id = ?",
+      product.slug,
+      "dev-1",
+    );
+    expect(stored?.label).toBe(hostileLabel);
+    expect([...(stored?.label ?? "")].length).toBeLessThanOrEqual(64);
+
     const remove = await handleDevices(
       mkReq("DELETE", {
         authorization: `Bearer ${token}`,
