@@ -60,7 +60,7 @@ export async function handleIdentityRoutes(
 
   if (rest.length === 1) {
     if (rest[0] === "session")
-      return handleBrowserSession(req, env, db, product, now);
+      return handleBrowserSession(req, env, db, product, now, settings);
     return null;
   }
 

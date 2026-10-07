@@ -1554,6 +1554,52 @@ rows (which an older Worker does not read) hold them.
 **KEK rotation** covers the account rows: their sealed secrets are counted and re-sealed by the
 `managed` bucket of the KEK sweep (above).
 
+## Offline grace clamp (LX-07)
+
+A licence's offline grace no longer outlasts the licence (S-19 G9, decision 7). While a product's
+`licensing.clampGraceToExpiry` is on (the default), every document a licence grants (the licence
+document, the config document of a device bound to it, an offline bundle's inner documents, the
+browser-session document) has `graceUntil = min(issuedAt + maxOfflineDays × 86 400,
+max(expires_at, expiresAt))`. A perpetual licence, and one whose expiry lies past its window, is
+unchanged; a grant's own expiry never shortens the window. The opt-out is per product: License →
+Settings → **Clamp offline grace to expiry** off (a reason is required), or
+`clampGraceToExpiry: false` under `licensing:` in `.pkey/product`.
+
+**Owner steps (production), before the release that carries LX-07.** The clamp is on for every
+product the moment that release is deployed, so read the affected-licence report first. Agents
+never run any of this against staging or production, and never run `wrangler` against a remote.
+
+1. **Report on a production-shaped copy**, offline, with no Worker and no KEK:
+
+   ```sh
+   npx wrangler d1 export polaris_key_prod --env prod --remote --output prod.sql   # owner only
+   pnpm --filter @polaris-key/worker grace-clamp:report -- --sql prod.sql --out grace-report
+   # optional: --now <epoch seconds of the planned deploy> (default: now); --product <slug>
+   # a dump over ~500 MiB: sqlite3 prod.sqlite < prod.sql, then pass --sqlite prod.sqlite instead
+   ```
+
+   `grace-report/` then holds `report.json` and `report.csv`: per product, whether License is on,
+   the clamp's state and where it comes from (`default`, `manifest` or `console`), and every
+   usable licence that expires inside its offline window, with its expiry, its window, the window
+   it gets instead, the days removed and how many devices are authorised on it. Licence ids and
+   counts only: no name, email or key. The tool loads the copy into memory and fails if the report
+   changed anything. Delete `prod.sql` afterwards: it holds customer data.
+
+2. **Opt out where the full window must stay** (a product whose licences are routinely renewed
+   after they lapse, say). The setting exists since LX-06 and does nothing until this release, so
+   the opt-out can be set before the deploy. If LX-06 ships in the same release, set it right after
+   the deploy: an online device picks up the clamped window at its next document fetch (within the
+   hour), an offline one only when it next reconnects.
+3. **Deploy.** Nothing else to do; there is no migration.
+
+**After the deploy.** A licence that is renewed (its `expires_at` moved later) gets its full window
+back at the next full fetch (within the hour while online; a `304` keeps the copy it has). A licence that expires within the hour gets documents that end with their
+ordinary hour of validity, which every verifier requires. An offline bundle minted for a licence
+that expires inside `graceDays` is clamped the same way, and its `bundle.minted` audit row says so.
+
+**Rolling back.** Turn the setting off per product (no deploy; devices get the full window at their
+next fetch), or redeploy the previous Worker.
+
 ## The blob collector (P4-14)
 
 The nightly maintenance cron (`17 3 * * *`) runs Core's blob collector after the retention steps:

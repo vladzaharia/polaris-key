@@ -69,7 +69,9 @@ is no cache or disk boundary here for a signature to survive:
 ```
 
 `expiresAt` is `issuedAt + 3600` and `graceUntil` is `issuedAt + maxOfflineDays × 86 400`, the
-same arithmetic the signed documents use.
+same arithmetic the signed documents use, ending no later than the licence's expiry (and never
+earlier than `expiresAt`) while `licensing.clampGraceToExpiry` is on
+([WIRE-CONTRACT-V4 §3.6](/docs/services/license/document/#the-envelope)).
 
 `secrets` is always the empty object shown above — never omitted, never populated. A browser
 session's whole point is to drive a page's UI off config and entitlements; secret material stays

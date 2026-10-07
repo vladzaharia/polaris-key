@@ -25,12 +25,12 @@ const MINT_ID = /^[a-z0-9-]+$/;
 export async function handleConfigRoutes(
   ctx: ServiceContext,
 ): Promise<Response | null> {
-  const { req, env, db, product, rest, now } = ctx;
+  const { req, env, db, product, rest, now, settings } = ctx;
 
   if (rest.length === 1) {
     switch (rest[0]) {
       case "document":
-        return handleConfigDocument(req, env, db, product, now);
+        return handleConfigDocument(req, env, db, product, now, settings);
       case "schema":
         return handleSchema(db, product);
       default:

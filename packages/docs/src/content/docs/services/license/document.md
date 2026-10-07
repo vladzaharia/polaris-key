@@ -87,19 +87,28 @@ byte-identical, and the surfaces v3 introduced speak the nested shape from their
 
 ### The envelope
 
-| Claim        | Value                                                                                                                 |
-| ------------ | --------------------------------------------------------------------------------------------------------------------- |
-| `iss`        | A **fixed** string, never derived from the request's base URL.                                                        |
-| `aud`        | The product slug. Product isolation is structural: every read is product-scoped and the signing key is the product's. |
-| `deviceId`   | The device the token belongs to. A client rejects a document minted for another device.                               |
-| `issuedAt`   | Issue time, in unix seconds.                                                                                          |
-| `expiresAt`  | `issuedAt` plus the document TTL — one hour, on the online path.                                                      |
-| `graceUntil` | `issuedAt` plus `maxOfflineDays × 86400`, where `maxOfflineDays` is the license's override or the product default.    |
+| Claim        | Value                                                                                                                                                             |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `iss`        | A **fixed** string, never derived from the request's base URL.                                                                                                    |
+| `aud`        | The product slug. Product isolation is structural: every read is product-scoped and the signing key is the product's.                                             |
+| `deviceId`   | The device the token belongs to. A client rejects a document minted for another device.                                                                           |
+| `issuedAt`   | Issue time, in unix seconds.                                                                                                                                      |
+| `expiresAt`  | `issuedAt` plus the document TTL — one hour, on the online path.                                                                                                  |
+| `graceUntil` | `issuedAt` plus `maxOfflineDays × 86400`, where `maxOfflineDays` is the license's override or the product default; never later than the license's expiry (below). |
 
 The short `expiresAt` and the long `graceUntil` are two different clocks. `expiresAt` governs
 whether a freshly-fetched document is acceptable; `graceUntil` governs how long an _offline_
 install keeps running. A verifier enforces a 365-day ceiling on grace at verify time, not merely
 in the gate, so a hostile signer cannot grant a century of it.
+
+**Grace never outlasts the license.** A license that expires inside its offline window gets a
+`graceUntil` at its expiry instead, so an install that stays offline stops when the license does
+(a license expiring tomorrow with 30 offline days used to keep working offline for 30 days). The
+clamp never goes below the document's own `expiresAt`, which every verifier requires, and a
+perpetual license is never affected. It is the product setting `licensing.clampGraceToExpiry`, on
+by default; a product that opts out on **License → Settings** (or with `clampGraceToExpiry: false`
+under `licensing:` in `.pkey/product`) keeps the full window. An add-on grant's own expiry never
+shortens the window: that would end base access offline.
 
 ### `profile`
 
@@ -244,7 +253,9 @@ carries a license document, a config document, or both, plus the trust manifest,
 all-or-nothing. The bundle's documents are assembled by the **same** builder the network path
 uses, so a bundle-activated install cannot receive a differently-merged grant. Fingerprint
 enforcement is skipped for bundle activation — there is no server to dedupe against — and the
-grace bound is the only revocation lever such an install has.
+grace bound is the only revocation lever such an install has. That is why a bundle's operator-chosen
+`graceDays` is clamped to the license's expiry exactly as the network path's window is; the audit
+row of the mint says so when it happens.
 
 ## Reference
 

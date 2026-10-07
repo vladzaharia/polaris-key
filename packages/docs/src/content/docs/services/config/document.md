@@ -122,6 +122,12 @@ answers instead. A config-only install is entitled to an offline grace window ex
 licensed one; §3.3's 365-day ceiling (`MAX_GRACE_SECONDS`) applies at verify time regardless of
 which source set the day count.
 
+For a device bound to a license on a product that runs License, the window also ends no later
+than that license's expiry while the product clamps grace (`licensing.clampGraceToExpiry`, on by
+default; see [the license document](/docs/services/license/document/)). Such a device stops
+receiving the document's secrets once the license lapses, so its offline copy stops with the
+license too. A config-only product and a keyless device have no license and are never clamped.
+
 ## The ETag is Config's own
 
 `configDocETag` hashes a canonical JSON of `{ iss, aud, deviceId, schemaVersion, config, secrets }`
