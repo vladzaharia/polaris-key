@@ -69,6 +69,35 @@ async function seedOidc(db: ReturnType<typeof makeTestDb>): Promise<void> {
   );
 }
 
+/** LX-08: the entries of a licence's `oidc` grant, as the licence document's layer reads them. */
+async function oidcGrantEntries(
+  db: Db,
+  licenseId: string,
+): Promise<
+  Record<string, { state: string; value: unknown; updatedAt: number }>
+> {
+  const rows = await db.all<{
+    key: string;
+    value_json: string;
+    state: string;
+    updated_at: number;
+  }>(
+    `SELECT key, value_json, state, updated_at FROM grant_entitlements
+      WHERE product = 'djdl' AND grant_id = ? ORDER BY key`,
+    `grt_oidc_${licenseId}`,
+  );
+  return Object.fromEntries(
+    rows.map((r) => [
+      r.key,
+      {
+        state: r.state,
+        value: JSON.parse(r.value_json),
+        updatedAt: r.updated_at,
+      },
+    ]),
+  );
+}
+
 const identity = (over: Partial<OidcIdentity> = {}): OidcIdentity => ({
   sub: "user-123",
   email: "ada@example.com",
@@ -301,6 +330,10 @@ describe("OIDC sign-in on an existing licence (LX-02)", () => {
     );
   }
 
+  // LX-08 (S-19 §7.14 step 4): provisioned ENTITLEMENT keys are the licence's `oidc` grant, not
+  // override keys; the column keeps the declared secrets (until U-03's run) and operator keys.
+  const grantEntries = oidcGrantEntries;
+
   it("a trial licence's expires_at does not move on sign-in, so the trial ends", async () => {
     const { db, product } = await setup();
     await db.run(
@@ -408,8 +441,10 @@ describe("OIDC sign-in on an existing licence (LX-02)", () => {
     });
     expect(after.entitlements.betaAccess?.value).toBe(true);
     expect(after.entitlements.deviceLimit?.value).toBe(9);
-    // Declared keys follow the current claim.
-    expect(after.entitlements.polarisVpn).toEqual({
+    // Declared keys follow the current claim: the entitlement on the licence's `oidc` grant
+    // (LX-08), never in the column.
+    expect(after.entitlements.polarisVpn).toBeUndefined();
+    expect((await grantEntries(db, r1.licenseId)).polarisVpn).toEqual({
       state: "enforced",
       value: true,
       updatedAt: NOW + 60,
@@ -426,7 +461,8 @@ describe("OIDC sign-in on an existing licence (LX-02)", () => {
     const before = JSON.parse(
       (await readRow(db, r1.licenseId))!.overrides_json,
     ) as Stored;
-    expect(before.entitlements.polarisVpn?.value).toBe(true);
+    expect(before.entitlements.polarisVpn).toBeUndefined();
+    expect((await grantEntries(db, r1.licenseId)).polarisVpn?.value).toBe(true);
     expect(before.secrets["proxy.subscriptionUrl"]).toBeDefined();
     await writeOverrides(db, r1.licenseId, {
       ...before,
@@ -447,6 +483,7 @@ describe("OIDC sign-in on an existing licence (LX-02)", () => {
       (await readRow(db, r1.licenseId))!.overrides_json,
     ) as Stored;
     expect(after.entitlements.polarisVpn).toBeUndefined();
+    expect((await grantEntries(db, r1.licenseId)).polarisVpn).toBeUndefined();
     expect(after.secrets["proxy.subscriptionUrl"]).toBeUndefined();
     expect(after.entitlements.betaAccess?.value).toBe(true);
   });
@@ -456,14 +493,18 @@ describe("OIDC sign-in on an existing licence (LX-02)", () => {
     const r1 = await activateFromIdentity(db, product, identity(), NOW);
     if (!("licenseId" in r1)) throw new Error("expected license");
     let injected = false;
+    // The compare-and-set rides one batch with the `oidc` grant's guarded statements (LX-08).
     const racing: Db = {
       ...db,
       all: db.all.bind(db),
       first: db.first.bind(db),
       run: db.run.bind(db),
-      batch: db.batch.bind(db),
-      async runChanges(sql, ...params) {
-        if (!injected && sql.includes("overrides_json IS ?")) {
+      runChanges: db.runChanges.bind(db),
+      async batch(statements) {
+        if (
+          !injected &&
+          statements.some((st) => st.sql.includes("overrides_json IS ?"))
+        ) {
           injected = true;
           await writeOverrides(db, r1.licenseId, {
             config: {},
@@ -473,7 +514,7 @@ describe("OIDC sign-in on an existing licence (LX-02)", () => {
             },
           });
         }
-        return db.runChanges(sql, ...params);
+        return db.batch(statements);
       },
     };
     await activateFromIdentity(racing, product, identity(), NOW + 60);
@@ -482,7 +523,7 @@ describe("OIDC sign-in on an existing licence (LX-02)", () => {
       (await readRow(db, r1.licenseId))!.overrides_json,
     ) as Stored;
     expect(after.entitlements.operatorEdit?.value).toBe(1);
-    expect(after.entitlements.polarisVpn?.value).toBe(true);
+    expect((await grantEntries(db, r1.licenseId)).polarisVpn?.value).toBe(true);
   });
 
   it("mergeProvisionedOverrides keeps unknown members and treats an unparseable column as empty", () => {
@@ -618,7 +659,9 @@ describe("OIDC provisioning after the licence-override migration (U-03; S-19 §8
       entitlements: Record<string, unknown>;
     };
     expect(stored.secrets).toEqual({});
-    expect(stored.entitlements.polarisVpn).toBeDefined();
+    // LX-08: the provisioned entitlement is the licence's `oidc` grant.
+    expect(stored.entitlements.polarisVpn).toBeUndefined();
+    expect((await oidcGrantEntries(db, r.licenseId)).polarisVpn).toBeDefined();
     expect((await accountRow())!.payload_json).not.toContain("vpn.example.com");
 
     // The claim disappears: the declared secret leaves the owner's row too.

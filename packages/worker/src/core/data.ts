@@ -56,6 +56,7 @@ export {
   getTier,
   insertKey,
   insertLicense,
+  stmtInsertLicense,
   insertSchema,
   listDevicesByLicense,
   listKeysByLicense,

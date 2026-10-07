@@ -68,11 +68,15 @@ import {
   getLicense,
   countActiveDevices,
   getLicenseBySub,
+  getProduct,
   getTier,
-  insertLicense,
   seatActiveSince,
+  stmtInsertLicense,
   type LicenseRow,
+  type TierRow,
 } from "../../core/data.js";
+import { guardedWrite, oidcGrantStatements } from "../../core/grants.js";
+import { readSyncTierOnSignIn } from "./settings.js";
 import {
   mergeLicenseInto,
   type LicenseMerge,
@@ -792,18 +796,20 @@ async function identityTier(
     ) ?? {};
 
   let entitledBy: string | null = null;
-  let tierGroup: string | null = null;
-  let tierId: string | null = null;
+  const tiered: { group: string; tier: string }[] = [];
   for (const g of identity.groups) {
     const m = map[g];
     if (m) {
       if (entitledBy === null) entitledBy = g;
-      if (m.tier && !tierId) {
-        tierId = m.tier;
-        tierGroup = g;
-      }
+      if (m.tier) tiered.push({ group: g, tier: m.tier });
     }
   }
+  // LX-08 (S-19 §7.5): the HIGHEST-RANK mapped tier wins, not the first. A tie keeps the first in
+  // the identity's group order, which is the whole answer while every tier has rank 0 (the
+  // default), so nothing changes until an operator ranks the tiers.
+  const best = await highestRankTier(db, product.slug, tiered);
+  const tierGroup: string | null = best?.group ?? null;
+  let tierId: string | null = best?.tier ?? null;
   let via: AutoIssueGrantVia;
   if (entitledBy !== null) {
     via = { kind: "group", group: tierGroup ?? entitledBy };
@@ -824,6 +830,34 @@ async function identityTier(
     expiresAt = tierExpiresAt(await getTier(db, product.slug, tierId), now);
   }
   return { tierId, expiresAt, via };
+}
+
+/** The rank of each of a product's tiers (`tiers.rank`, LX-08; 0 by default). */
+async function tierRanks(
+  db: Db,
+  product: string,
+): Promise<Map<string, number>> {
+  const rows = await db.all<{ id: string; rank: number }>(
+    "SELECT id, rank FROM tiers WHERE product = ?",
+    product,
+  );
+  return new Map(rows.map((r) => [r.id, r.rank]));
+}
+
+/** The candidate with the highest-rank tier, the first one on a tie (an unknown tier ranks 0).
+ *  Reads the ranks only when there is a choice to make. */
+async function highestRankTier<T extends { tier: string }>(
+  db: Db,
+  product: string,
+  candidates: readonly T[],
+): Promise<T | null> {
+  if (candidates.length === 0) return null;
+  if (new Set(candidates.map((c) => c.tier)).size === 1) return candidates[0]!;
+  const ranks = await tierRanks(db, product);
+  let best = candidates[0]!;
+  for (const c of candidates.slice(1))
+    if ((ranks.get(c.tier) ?? 0) > (ranks.get(best.tier) ?? 0)) best = c;
+  return best;
 }
 
 /** Would `activateFromIdentity` refuse this identity? The same two refusals, read-only: no
@@ -911,6 +945,8 @@ async function postActivationDeviceLimit(
       identity,
       now,
     );
+    // The hypothetical column carries the provisioned keys themselves (LX-08 writes them to the
+    // `oidc` grant instead, with the same values): the stored grant is not read on top.
     return licenseDeviceLimit(
       db,
       product,
@@ -923,6 +959,7 @@ async function postActivationDeviceLimit(
         ),
       },
       now,
+      { withoutOidcGrant: true },
     );
   }
   const overrides = await provisionedOverrides(db, product, identity, now);
@@ -936,6 +973,7 @@ async function postActivationDeviceLimit(
       overrides_json: JSON.stringify(overrides),
     },
     now,
+    { withoutOidcGrant: true },
   );
 }
 
@@ -972,13 +1010,62 @@ export async function previewIdentityIssue(
 const SIGNIN_UPDATE_ATTEMPTS = 3;
 
 /**
+ * The column a sign-in writes on top of the provisioning (LX-08, S-19 §7.14 step 4): provisioned
+ * ENTITLEMENT keys never go into `overrides_json` any more, they are the licence's `oidc` grant
+ * (`core/grants.ts`); provisioned secrets go to the column until the U-03 run freezes it (then to
+ * the owner's account overrides). Config is never provisioned.
+ */
+function provisionedColumn(
+  provisioned: ManagedPayload,
+  frozen: boolean,
+): ManagedPayload {
+  return {
+    config: {},
+    secrets: frozen ? {} : provisioned.secrets,
+    entitlements: {},
+  };
+}
+
+/**
+ * `identity.oidc.syncTierOnSignIn: upgradeOnly` (LX-08, S-19 §7.5): the tier a sign-in moves an
+ * existing licence to, or null to leave it. Only to a STRICTLY higher-rank tier than the one the
+ * licence is on; a licence on no tier, or on a tier that no longer exists, is left alone (an
+ * operator chose that). `expires_at` never moves (LX-02). With the setting `off` (the default)
+ * nothing is read beyond the comparison.
+ */
+async function upgradedTier(
+  db: Db,
+  product: Pick<ProductPublic, "slug">,
+  existing: LicenseRow,
+  identityTierId: string | null | undefined,
+): Promise<TierRow | null> {
+  if (!identityTierId || !existing.tier_id) return null;
+  if (identityTierId === existing.tier_id) return null;
+  const productRow = await getProduct(db, product.slug);
+  if (!productRow) return null;
+  if ((await readSyncTierOnSignIn(db, productRow)) !== "upgradeOnly")
+    return null;
+  const [current, next] = await Promise.all([
+    getTier(db, product.slug, existing.tier_id),
+    getTier(db, product.slug, identityTierId),
+  ]);
+  if (!current || !next) return null;
+  return (next.rank ?? 0) > (current.rank ?? 0) ? next : null;
+}
+
+/**
  * The sign-in write on an identity's EXISTING licence (LX-02, S-19 §4.3 G7, §7.5 Phase A,
- * decision 12): `name`, `email` and `groups_json` follow the provider; `tier_id` and
- * `expires_at` are NOT touched (a time-limited tier used to renew on every sign-in: endless
- * trials; the tier is changed by an operator, a purchase or, from LX-08, the opt-in
- * `syncTierOnSignIn`), and `overrides_json` is rewritten only at the provisioning's declared
- * keys (`mergeProvisionedOverrides`), so operator overrides survive and a declared key whose
- * claim disappeared is removed.
+ * decision 12): `name`, `email` and `groups_json` follow the provider; `expires_at` is NOT touched
+ * (a time-limited tier used to renew on every sign-in: endless trials), and neither is `tier_id`,
+ * except that the opt-in `syncTierOnSignIn: upgradeOnly` moves it to a higher-rank tier (LX-08,
+ * {@link upgradedTier}). `overrides_json` is rewritten only at the provisioning's declared keys
+ * (`mergeProvisionedOverrides`), so operator overrides survive and a declared key whose claim
+ * disappeared is removed.
+ *
+ * LX-08 (S-19 §7.14 step 4): the provisioned ENTITLEMENT keys are the licence's `oidc` grant,
+ * re-evaluated here on every sign-in (a declared key whose claim disappeared leaves the grant),
+ * and the declared keys leave the column, so this sign-in also moves its own licence. The grant
+ * statements are guarded by the same compare-and-set as the column, in one batch.
  *
  * The merge reads the column and writes it back, so the write is a compare-and-set on the value
  * it merged from: an operator edit that lands in between makes it re-read and merge again
@@ -991,16 +1078,16 @@ async function updateLicenseOnSignIn(
   existing: LicenseRow,
   now: number,
   env?: Env,
+  /** The tier the identity's group map (or `oidcDefault`) resolves to, for `syncTierOnSignIn`. */
+  identityTierId?: string | null,
 ): Promise<void> {
   const signIn = await signInProvisioning(db, product, identity, now);
   const declared = signIn.declared;
   // U-03 (S-19 §8 U-03 row): from the licence-override migration's run on, provisioned SECRETS
-  // target the licence owner's account overrides; the licence keeps only the entitlement half
-  // (its declared secret keys are still removed from it, so nothing stale lingers there).
+  // target the licence owner's account overrides (its declared secret keys are still removed
+  // from the column, so nothing stale lingers there).
   const frozen = await licenseConfigOverridesFrozen(db);
-  const provisioned = frozen
-    ? { ...signIn.provisioned, secrets: {} }
-    : signIn.provisioned;
+  const column = provisionedColumn(signIn.provisioned, frozen);
   if (frozen && existing.account_id)
     await applyProvisionedAccountSecrets(
       env,
@@ -1011,23 +1098,61 @@ async function updateLicenseOnSignIn(
       declared.secrets,
       now,
     );
+  const tier = await upgradedTier(db, product, existing, identityTierId);
   let current = existing.overrides_json;
   for (let attempt = 0; attempt < SIGNIN_UPDATE_ATTEMPTS; attempt++) {
-    const changed = await db.runChanges(
-      `UPDATE licenses SET name = ?, email = ?, groups_json = ?, overrides_json = ?,
-         modified_by = ?, modified_at = ?
-       WHERE product = ? AND id = ? AND overrides_json IS ?`,
-      identity.name ?? null,
-      identity.email ?? null,
-      JSON.stringify(identity.groups),
-      mergeProvisionedOverrides(current, provisioned, declared),
-      "oidc",
-      now,
-      product.slug,
-      existing.id,
-      current,
+    const merged = mergeProvisionedOverrides(current, column, declared);
+    const applied = await guardedWrite(
+      db,
+      oidcGrantStatements({
+        product: product.slug,
+        licenseId: existing.id,
+        entries: signIn.provisioned.entitlements,
+        declared: declared.entitlements,
+        now,
+        writer: "oidc",
+        guard: {
+          product: product.slug,
+          licenseId: existing.id,
+          overridesJson: current,
+        },
+      }),
+      {
+        sql: `UPDATE licenses SET name = ?, email = ?, groups_json = ?, overrides_json = ?,
+                ${tier ? "tier_id = ?, " : ""}modified_by = ?, modified_at = ?
+              WHERE product = ? AND id = ? AND overrides_json IS ?`,
+        params: [
+          identity.name ?? null,
+          identity.email ?? null,
+          JSON.stringify(identity.groups),
+          merged,
+          ...(tier ? [tier.id] : []),
+          "oidc",
+          now,
+          product.slug,
+          existing.id,
+          current,
+        ],
+      },
+      { product: product.slug, licenseId: existing.id, overridesJson: merged },
     );
-    if (changed > 0) return;
+    if (applied) {
+      if (tier)
+        await appendAudit(db, {
+          product: product.slug,
+          id: randomId("aud"),
+          at: now,
+          actor_sub: identity.sub,
+          actor_name: identity.name ?? null,
+          actor_email: identity.email ?? null,
+          action: "license.tier.change",
+          target_kind: "license",
+          target_id: existing.id,
+          parent_id: null,
+          summary: `Moved from tier ${existing.tier_id} to the higher-rank tier ${tier.id} at sign-in (syncTierOnSignIn: upgradeOnly)`,
+        });
+      return;
+    }
     const reread = await getLicense(db, product.slug, existing.id);
     if (!reread) throw new Error("license not found");
     current = reread.overrides_json;
@@ -1070,13 +1195,31 @@ export async function activateFromIdentity(
   if ("error" in tier) return tier;
   const { tierId, expiresAt } = tier;
 
-  const provisionedAll = await provisionedOverrides(db, product, identity, now);
+  const { provisioned: provisionedAll, declared } = await signInProvisioning(
+    db,
+    product,
+    identity,
+    now,
+  );
   // U-03: from the migration run on, provisioned secrets go to the owner's account overrides
-  // (below, for a licence that has an owner); the licence column keeps entitlements only.
+  // (below, for a licence that has an owner). `overrides` is what the provisioning amounts to on
+  // the licence (the device-limit previews read it); LX-08 writes its entitlement keys to the
+  // licence's `oidc` grant (`oidcGrant`) and the rest to the column (`column`).
   const frozen = await licenseConfigOverridesFrozen(db);
   const overrides: ManagedPayload = frozen
     ? { ...provisionedAll, secrets: {} }
     : provisionedAll;
+  const column = provisionedColumn(provisionedAll, frozen);
+  const oidcGrant = (licenseId: string) =>
+    oidcGrantStatements({
+      product: product.slug,
+      licenseId,
+      entries: provisionedAll.entitlements,
+      declared: declared.entitlements,
+      now,
+      writer: "oidc",
+      guard: null,
+    });
 
   // The enrolled license this device is currently on, if it is genuinely a claimable
   // anonymous one. Anything else (an admin or OIDC license) is left alone.
@@ -1108,12 +1251,13 @@ export async function activateFromIdentity(
       },
       now,
     );
-    await db.run(
-      "UPDATE licenses SET overrides_json = ? WHERE product = ? AND id = ?",
-      JSON.stringify(overrides),
-      product.slug,
-      claimable.id,
-    );
+    await db.batch([
+      {
+        sql: "UPDATE licenses SET overrides_json = ? WHERE product = ? AND id = ?",
+        params: [JSON.stringify(column), product.slug, claimable.id],
+      },
+      ...oidcGrant(claimable.id),
+    ]);
     // Every key the provisioning DECLARES, not just the ones this identity's claims provide, so
     // a declared key whose claim is absent is cleared from the owner's row (revocation on claim
     // loss), exactly as the sign-in rewrite does.
@@ -1124,8 +1268,7 @@ export async function activateFromIdentity(
         product.slug,
         claimable.account_id,
         provisionedAll.secrets,
-        provisioningDeclaredKeys(await getProvisioning(db, product.slug))
-          .secrets,
+        declared.secrets,
         now,
       );
     await appendAudit(db, {
@@ -1165,6 +1308,7 @@ export async function activateFromIdentity(
         overrides_json: JSON.stringify(overrides),
       },
       now,
+      { withoutOidcGrant: true },
     );
     const merged = await mergeLicenseInto(
       db,
@@ -1206,7 +1350,15 @@ export async function activateFromIdentity(
 
   if (existing) {
     if (!licenseUsable(existing, now)) return { error: "license-unusable" };
-    await updateLicenseOnSignIn(db, product, identity, existing, now, opts.env);
+    await updateLicenseOnSignIn(
+      db,
+      product,
+      identity,
+      existing,
+      now,
+      opts.env,
+      tierId,
+    );
     return {
       licenseId: existing.id,
       ...(claimable ? { merged: "migrated" as const } : {}),
@@ -1214,27 +1366,30 @@ export async function activateFromIdentity(
   }
 
   const licenseId = randomId("lic");
-  await insertLicense(db, {
-    product: product.slug,
-    id: licenseId,
-    status: "active",
-    sub: identity.sub,
-    name: identity.name ?? null,
-    email: identity.email ?? null,
-    groups_json: JSON.stringify(identity.groups),
-    tier_id: tierId,
-    activated_at: now,
-    expires_at: expiresAt,
-    max_offline_days: null,
-    overrides_json: JSON.stringify(overrides),
-    channels_json: null,
-    min_version: null,
-    max_version: null,
-    // S-16 G14: without this the column defaults to 'admin' (migrations/0011).
-    origin: "oidc",
-    modified_by: "oidc",
-    modified_at: now,
-  });
+  await db.batch([
+    stmtInsertLicense({
+      product: product.slug,
+      id: licenseId,
+      status: "active",
+      sub: identity.sub,
+      name: identity.name ?? null,
+      email: identity.email ?? null,
+      groups_json: JSON.stringify(identity.groups),
+      tier_id: tierId,
+      activated_at: now,
+      expires_at: expiresAt,
+      max_offline_days: null,
+      overrides_json: JSON.stringify(column),
+      channels_json: null,
+      min_version: null,
+      max_version: null,
+      // S-16 G14: without this the column defaults to 'admin' (migrations/0011).
+      origin: "oidc",
+      modified_by: "oidc",
+      modified_at: now,
+    }),
+    ...oidcGrant(licenseId),
+  ]);
   return { licenseId };
 }
 

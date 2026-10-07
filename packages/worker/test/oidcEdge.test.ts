@@ -164,7 +164,14 @@ describe("activateFromIdentity", () => {
     if (!("licenseId" in r)) throw new Error("expected license");
     const lic = await getLicense(db, "djdl", r.licenseId);
     const ov = JSON.parse(lic!.overrides_json!) as ManagedPayload;
-    expect(ov.entitlements.polarisVpn?.value).toBe(true);
+    // LX-08 (S-19 §7.14 step 4): the provisioned entitlement is the licence's `oidc` grant, born
+    // with it; the provisioned secret stays a licence override (until U-03's run).
+    expect(ov.entitlements.polarisVpn).toBeUndefined();
+    const grant = await db.first<{ value_json: string; state: string }>(
+      "SELECT value_json, state FROM grant_entitlements WHERE product = 'djdl' AND grant_id = ? AND key = 'polarisVpn'",
+      `grt_oidc_${r.licenseId}`,
+    );
+    expect(grant).toEqual({ value_json: "true", state: "enforced" });
     expect(ov.secrets["proxy.subscriptionUrl"]?.value).toBe(
       "https://vpn.example.com/abc123",
     );

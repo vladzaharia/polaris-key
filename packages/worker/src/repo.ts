@@ -203,6 +203,12 @@ export interface TierRow {
   max_version: string | null;
   // Fingerprint enforcement strength for this tier; null inherits the product default.
   policy_fingerprint?: string | null;
+  /** LX-08 (00XX_g): higher is better (anchor choice, the OIDC group map, `syncTierOnSignIn`);
+   *  0 by default. Optional only for rows built by hand. */
+  rank?: number;
+  /** LX-08 (00XX_h): the tier default for a licence's offline grace (`max_offline_days`); NULL
+   *  falls back to the product default. Stored for LX-09's `combined` mode. */
+  policy_offline_grace_days?: number | null;
   modified_by: string | null;
   modified_at: number;
   /** ST-01b (0079): who owns the row. */
@@ -571,8 +577,16 @@ export interface TierInput {
   channels?: string[] | null;
   minVersion?: string | null;
   maxVersion?: string | null;
+  /** LX-08: `licensing.tiers[].rank` (0 when omitted). */
+  rank?: number;
+  /** LX-08: `licensing.tiers[].policyOfflineGraceDays` (null when omitted). */
+  policyOfflineGraceDays?: number | null;
   modifiedAt: number;
 }
+
+/** `stmtInsertTier`'s params from `label` to `policy_offline_grace_days`: the manifest-owned
+ *  columns a resync and the settings backfill compare (`slice(...TIER_COMPARED_PARAMS)`). */
+export const TIER_COMPARED_PARAMS = [2, 12] as const;
 
 export interface ProfileInput {
   product: string;
@@ -599,8 +613,9 @@ export function stmtInsertProfile(p: ProfileInput): DbStatement {
 export function stmtInsertTier(t: TierInput): DbStatement {
   return {
     sql: `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_device_limit,
-             channels_json, min_version, max_version, policy_fingerprint, modified_by, modified_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)`,
+             channels_json, min_version, max_version, policy_fingerprint, rank,
+             policy_offline_grace_days, modified_by, modified_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)`,
     params: [
       t.product,
       t.id,
@@ -612,6 +627,8 @@ export function stmtInsertTier(t: TierInput): DbStatement {
       t.minVersion ?? null,
       t.maxVersion ?? null,
       t.policyFingerprint ?? null,
+      t.rank ?? 0,
+      t.policyOfflineGraceDays ?? null,
       t.modifiedAt,
     ],
   };
@@ -625,15 +642,16 @@ export function stmtInsertTier(t: TierInput): DbStatement {
 export function stmtUpsertManifestTier(t: TierInput): DbStatement {
   return {
     sql: `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_device_limit,
-             channels_json, min_version, max_version, policy_fingerprint, modified_by, modified_at,
-             source)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 'manifest')
+             channels_json, min_version, max_version, policy_fingerprint, rank,
+             policy_offline_grace_days, modified_by, modified_at, source)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 'manifest')
           ON CONFLICT(product, id) DO UPDATE SET
             label = excluded.label, profile_id = excluded.profile_id,
             policy_expiry_days = excluded.policy_expiry_days,
             policy_device_limit = excluded.policy_device_limit,
             channels_json = excluded.channels_json, min_version = excluded.min_version,
             max_version = excluded.max_version, policy_fingerprint = excluded.policy_fingerprint,
+            rank = excluded.rank, policy_offline_grace_days = excluded.policy_offline_grace_days,
             modified_by = NULL, modified_at = excluded.modified_at
           WHERE tiers.source = 'manifest'`,
     params: stmtInsertTier(t).params,
@@ -904,31 +922,40 @@ export async function getLicenseBySub(
 }
 
 export async function insertLicense(db: Db, row: LicenseRow): Promise<void> {
-  await db.run(
-    `INSERT INTO licenses (product, id, status, sub, name, email, groups_json, tier_id,
+  const stmt = stmtInsertLicense(row);
+  await db.run(stmt.sql, ...stmt.params);
+}
+
+/** `insertLicense` as a statement, so a new licence and what it carries from birth (LX-08: its
+ *  `oidc` grant) land in one batch. */
+export function stmtInsertLicense(row: LicenseRow): DbStatement {
+  return {
+    sql: `INSERT INTO licenses (product, id, status, sub, name, email, groups_json, tier_id,
        activated_at, expires_at, max_offline_days, overrides_json, channels_json, min_version, max_version,
        origin, enroll_hwid, modified_by, modified_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    row.product,
-    row.id,
-    row.status,
-    row.sub,
-    row.name,
-    row.email,
-    row.groups_json,
-    row.tier_id,
-    row.activated_at,
-    row.expires_at,
-    row.max_offline_days,
-    row.overrides_json,
-    row.channels_json,
-    row.min_version,
-    row.max_version,
-    row.origin ?? "admin",
-    row.enroll_hwid ?? null,
-    row.modified_by,
-    row.modified_at,
-  );
+    params: [
+      row.product,
+      row.id,
+      row.status,
+      row.sub,
+      row.name,
+      row.email,
+      row.groups_json,
+      row.tier_id,
+      row.activated_at,
+      row.expires_at,
+      row.max_offline_days,
+      row.overrides_json,
+      row.channels_json,
+      row.min_version,
+      row.max_version,
+      row.origin ?? "admin",
+      row.enroll_hwid ?? null,
+      row.modified_by,
+      row.modified_at,
+    ],
+  };
 }
 
 /** Resolve the auto-issued license bound to a machine. Backed by the partial unique index
