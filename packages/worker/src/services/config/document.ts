@@ -25,7 +25,9 @@
  *
  * `graceUntil` still comes from the licence's `max_offline_days` when there is a licence, and
  * from the product default when there is not — the offline window is a property of the
- * DOCUMENT, and a config-only install is entitled to one.
+ * DOCUMENT, and a config-only install is entitled to one. For a device R1 (below) binds to its
+ * licence, the window also ends no later than the licence's expiry when the product clamps grace
+ * (LX-07, `core/graceClamp.ts`): its secrets stop with the licence offline as well as online.
  *
  * ── R1: A LICENSED PRODUCT'S SECRETS STOP WITH THE LICENCE ─────────────────────────────────
  *
@@ -82,6 +84,8 @@ export {
   type ConfigPayload,
 } from "../../core/documents.js";
 import { buildConfigDoc, resolveConfigPayload } from "../../core/documents.js";
+import { graceClampFor } from "../../core/graceClamp.js";
+import type { SettingsRegistry } from "../../core/settings/registry.js";
 
 /** A strong ETag over the config content, excluding the per-request timestamps. Independent of
  *  the license document's tag (§5), so a licence change no longer forces a settings refetch. */
@@ -104,6 +108,8 @@ export async function handleConfigDocument(
   db: Db,
   product: Product,
   now: number,
+  /** ST-04's settings registry (`ServiceContext.settings`): LX-07's grace clamp is resolved by it. */
+  settings?: SettingsRegistry,
 ): Promise<Response> {
   if (req.method !== "GET") return methodNotAllowed();
 
@@ -112,11 +118,10 @@ export async function handleConfigDocument(
   if ("error" in valid) return wireError(401, ErrorCode.Unauthorized);
   // ...plus, on a product that runs License, a usable licence for a device bound to one (R1,
   // above). A keyless device has nothing to have lapsed.
-  if (
+  const licenseBound =
     product.services.license.enabled &&
-    valid.device.license_id !== NO_LICENSE_ID &&
-    !licenseUsable(valid.license, now)
-  )
+    valid.device.license_id !== NO_LICENSE_ID;
+  if (licenseBound && !licenseUsable(valid.license, now))
     return wireError(401, ErrorCode.LicenseUnusable);
 
   await touchDeviceMetadata(db, valid.device, deviceMetadata(req), now);
@@ -135,12 +140,23 @@ export async function handleConfigDocument(
     });
   }
 
+  const maxOfflineDays =
+    valid.license?.max_offline_days ?? product.defaultMaxOfflineDays;
   const doc = buildConfigDoc({
     aud: product.slug,
     deviceId: valid.device.device_id,
     now,
-    maxOfflineDays:
-      valid.license?.max_offline_days ?? product.defaultMaxOfflineDays,
+    maxOfflineDays,
+    // LX-07: only the licence R1 binds the device to clamps its window.
+    clampGraceTo: licenseBound
+      ? await graceClampFor(
+          { env, db, registry: settings },
+          product.slug,
+          valid.license,
+          now,
+          maxOfflineDays,
+        )
+      : null,
     schemaVersion: product.schemaVersion,
     payload,
   });

@@ -11,6 +11,7 @@
     "email:dns-check": "../../node_modules/.bin/tsx scripts/check-email-dns.ts",
     "signin:seal": "../../node_modules/.bin/tsx scripts/seal-signin-secret.ts",
     "override-migration:dry-run": "../../node_modules/.bin/tsx scripts/override-migration-dry-run.ts",
+    "grace-clamp:report": "../../node_modules/.bin/tsx scripts/grace-clamp-report.ts",
     "test": "vitest run",
     "test:workerd": "vitest run --config vitest.workers.config.ts && vitest run --config vitest.deltas.workers.config.ts",
     "typecheck:workerd": "tsc -p test-workerd && tsc -p test-workerd-deltas",

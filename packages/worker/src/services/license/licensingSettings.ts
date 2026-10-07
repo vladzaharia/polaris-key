@@ -16,9 +16,11 @@
  * The storage and the write path are Core's (`core/rowSettings.ts`), shared with Identity's
  * `identity.oidc.syncTierOnSignIn`. ST-04's resolver and `writeSetting()` take both over.
  *
- * The behaviour behind each setting is NOT here: LX-07 (the grace clamp), LX-09 (the model and
- * the holder), LX-10 (anchor and re-anchor), LX-12 (refund grace) and LX-23 (billing-retry grace)
- * read them through `readLicensingSettings` below until the resolver exists.
+ * The behaviour behind each setting is NOT here. LX-07's grace clamp reads
+ * `licensing.clampGraceToExpiry` through ST-04's resolver (`core/graceClamp.ts`, which the bundle
+ * mint and every licence-bearing document share); LX-09 (the model and the holder), LX-10 (anchor
+ * and re-anchor), LX-12 (refund grace) and LX-23 (billing-retry grace) read theirs through the
+ * resolver or `readLicensingSettings` below.
  *
  * Every assumption about how licences, grants and entitlements relate (one licence carrying many
  * entitlements, the anchor licence, the holder) is confined to THIS module: nothing else in the
@@ -134,7 +136,8 @@ export const LICENSING_SETTINGS: readonly SettingDef[] = [
     confirm: { on: "L0", off: "L1" },
     visibleWhen: VISIBLE,
     wire: ["document"],
-    readers: READERS,
+    // LX-07: the clamp itself (licence, config, bundle and browser-session documents).
+    readers: [...READERS, "core/graceClamp.ts"],
     storage: { kind: "scalar" },
     since: "LX-06",
   }),

@@ -36,7 +36,7 @@ export async function handleLicenseRoutes(
     case "deauthorize":
       return handleDeauthorize(req, env, db, product);
     case "document":
-      return handleLicenseDocument(req, env, db, product, now);
+      return handleLicenseDocument(req, env, db, product, now, settings);
     default:
       return null;
   }

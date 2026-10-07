@@ -70,6 +70,7 @@ import { validatePayload } from "../../core/payload.js";
 import { clearDeviceSubjects } from "../../core/subjectHooks.js";
 import { checkBuildGate, tighterMax, tighterMin } from "../../core/gate.js";
 import type { SettingsRegistry } from "../../core/settings/registry.js";
+import { graceClampFor } from "../../core/graceClamp.js";
 import { buildDoc, type FusedSessionDoc } from "./doc.js";
 
 interface BrowserSessionRecord {
@@ -227,6 +228,7 @@ async function browserDoc(
   product: Product,
   record: BrowserSessionRecord,
   now: number,
+  settings: SettingsRegistry | undefined,
 ): Promise<
   | { ok: true; doc: FusedSessionDoc }
   | {
@@ -296,6 +298,8 @@ async function browserDoc(
     };
   }
 
+  const maxOfflineDays =
+    valid.license.max_offline_days ?? product.defaultMaxOfflineDays;
   return {
     ok: true,
     doc: buildDoc({
@@ -304,8 +308,15 @@ async function browserDoc(
       licenseId: valid.license.id,
       deviceId: valid.device.device_id,
       now,
-      maxOfflineDays:
-        valid.license.max_offline_days ?? product.defaultMaxOfflineDays,
+      maxOfflineDays,
+      // LX-07 (S-19 G9): the fused document grants the licence too, so it is clamped the same way.
+      clampGraceTo: await graceClampFor(
+        { env, db, registry: settings },
+        product.slug,
+        valid.license,
+        now,
+        maxOfflineDays,
+      ),
       profile: docProfile(valid.license),
       payload,
     }),
@@ -318,11 +329,21 @@ export async function handleBrowserSession(
   db: Db,
   product: Product,
   now: number,
+  /** ST-04's settings registry (`ServiceContext.settings`): LX-07's grace clamp is resolved by it. */
+  settings?: SettingsRegistry,
 ): Promise<Response> {
   if (req.method !== "GET") return methodNotAllowed();
   const session = await loadBrowserSession(req, env, product);
   if (!session) return json({ authenticated: false, doc: null });
-  const result = await browserDoc(req, env, db, product, session.record, now);
+  const result = await browserDoc(
+    req,
+    env,
+    db,
+    product,
+    session.record,
+    now,
+    settings,
+  );
   if (!result.ok && result.catalogUnavailable) {
     return errorResponse(
       500,

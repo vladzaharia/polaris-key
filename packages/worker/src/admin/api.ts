@@ -292,7 +292,7 @@ async function handleProductScoped(
   // carries the License document AND the Config document, either of which may be absent, so it
   // belongs to neither service — a config-only product mints one with no license in it at all.
   if (resource === "bundles") {
-    return handleBundleMint(req, env, db, session, slug, id, now);
+    return handleBundleMint(req, env, db, session, slug, id, now, SETTINGS);
   }
 
   // The blob collector's dry run and the bundle live-data ratios (P4-14). CORE, like the blob

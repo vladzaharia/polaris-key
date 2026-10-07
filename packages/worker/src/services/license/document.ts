@@ -46,6 +46,8 @@ export {
   type BuildLicenseDocInput,
 } from "../../core/documents.js";
 import { buildLicenseDoc } from "../../core/documents.js";
+import { graceClampFor } from "../../core/graceClamp.js";
+import type { SettingsRegistry } from "../../core/settings/registry.js";
 
 /**
  * A strong ETag over the document CONTENT, excluding the per-request timestamps, so an
@@ -101,6 +103,8 @@ export async function handleLicenseDocument(
   db: Db,
   product: Product,
   now: number,
+  /** ST-04's settings registry (`ServiceContext.settings`): LX-07's grace clamp is resolved by it. */
+  settings?: SettingsRegistry,
 ): Promise<Response> {
   if (req.method !== "GET") return methodNotAllowed();
 
@@ -128,13 +132,22 @@ export async function handleLicenseDocument(
   });
   if (!gate.ok) return blockedResponse(gate);
 
+  const maxOfflineDays =
+    valid.license.max_offline_days ?? product.defaultMaxOfflineDays;
   const doc = buildLicenseDoc({
     aud: product.slug,
     deviceId: valid.device.device_id,
     licenseId: valid.license.id,
     now,
-    maxOfflineDays:
-      valid.license.max_offline_days ?? product.defaultMaxOfflineDays,
+    maxOfflineDays,
+    // LX-07 (S-19 G9): the offline window ends no later than the licence (`core/graceClamp.ts`).
+    clampGraceTo: await graceClampFor(
+      { env, db, registry: settings },
+      product.slug,
+      valid.license,
+      now,
+      maxOfflineDays,
+    ),
     profile: docProfile(valid.license),
     entitlements,
   });

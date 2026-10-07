@@ -23,6 +23,7 @@ import {
   type DocProfile,
 } from "@polaris-key/protocol";
 import type { ManagedPayload } from "../../core/payload.js";
+import { clampGraceUntil } from "../../core/documents.js";
 
 /**
  * The FUSED document shape: licence claims, config, secrets and entitlements in one artifact.
@@ -52,6 +53,8 @@ export interface BuildDocInput {
   deviceId: string;
   now: number;
   maxOfflineDays: number;
+  /** LX-07: the licence's expiry when the product clamps grace to it (`core/graceClamp.ts`). */
+  clampGraceTo?: number | null;
   profile: DocProfile;
   payload: ManagedPayload;
 }
@@ -66,7 +69,11 @@ export function buildDoc(input: BuildDocInput): FusedSessionDoc {
     deviceId: input.deviceId,
     issuedAt: input.now,
     expiresAt: input.now + DOC_EXPIRY_SECONDS,
-    graceUntil: input.now + input.maxOfflineDays * SECONDS_PER_DAY,
+    graceUntil: clampGraceUntil(
+      input.now + input.maxOfflineDays * SECONDS_PER_DAY,
+      input.now,
+      input.clampGraceTo,
+    ),
     profile: input.profile,
     payload: input.payload,
   };

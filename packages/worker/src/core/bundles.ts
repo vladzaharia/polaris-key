@@ -32,7 +32,10 @@
  * ── THE THREE TIME BOUNDS, AND WHY THEY DIFFER ──────────────────────────────────────────────
  *
  *   inner `expiresAt`   `issuedAt + DOC_EXPIRY_SECONDS` — one hour, exactly as online.
- *   inner `graceUntil`  `issuedAt + graceDays × 86 400` — the operator's offline window.
+ *   inner `graceUntil`  `issuedAt + graceDays × 86 400` — the operator's offline window, ended
+ *                       no later than the licence's expiry when the product clamps grace (LX-07,
+ *                       `core/graceClamp.ts`): an air-gapped install is exactly the one for which
+ *                       the grace bound is the only revocation lever.
  *   bundle `expiresAt`  `issuedAt + BUNDLE_IMPORT_WINDOW_SECONDS` — the IMPORT deadline.
  *
  * The first two are not a mistake. §7 step 4 verifies inner documents on the RELOAD profile
@@ -75,6 +78,8 @@ import {
   buildConfigDoc,
   resolveConfigPayload,
 } from "./documents.js";
+import { graceClampFor } from "./graceClamp.js";
+import type { SettingsRegistry } from "./settings/registry.js";
 
 /**
  * How long a minted bundle may wait before it is imported: 30 days.
@@ -176,6 +181,8 @@ export async function handleBundleMint(
   slug: string,
   action: string | undefined,
   now: number,
+  /** ST-04's settings registry: LX-07's grace clamp is resolved by it. */
+  settings?: SettingsRegistry,
 ): Promise<Response> {
   if (action !== undefined) return notFound();
   if (req.method !== "POST")
@@ -254,6 +261,16 @@ export async function handleBundleMint(
   // which every payload layer already tolerates.
   const device = await getDevice(db, slug, deviceId);
 
+  // LX-07: both inner documents end no later than the licence when the product clamps grace
+  // (a config-only bundle has no licence and is never clamped). `null` = the operator's window.
+  const clampGraceTo = await graceClampFor(
+    { env, db, registry: settings },
+    slug,
+    license,
+    now,
+    graceDays,
+  );
+
   const docs: BundleDoc["docs"] = {};
   const bundleId = ulid(now);
   // The three `signDoc` calls and the `signTrustManifest` call are caught together: a guard
@@ -280,6 +297,7 @@ export async function handleBundleMint(
         licenseId: license.id,
         now,
         maxOfflineDays: graceDays,
+        clampGraceTo,
         profile: docProfile(license),
         entitlements,
       });
@@ -316,6 +334,7 @@ export async function handleBundleMint(
         deviceId,
         now,
         maxOfflineDays: graceDays,
+        clampGraceTo,
         schemaVersion: product.schemaVersion,
         payload,
       });
@@ -383,7 +402,10 @@ export async function handleBundleMint(
     // happened, so it names the bundle, the machine, what went in it and for how long.
     `Minted offline bundle ${bundleId} for device ${deviceId}` +
       `${license ? ` on licence ${license.id}` : ""}: ` +
-      `${carried.join(" + ")}, ${graceDays}-day grace`,
+      `${carried.join(" + ")}, ${graceDays}-day grace` +
+      (clampGraceTo !== null
+        ? `, clamped to the licence's expiry (${new Date(clampGraceTo * 1000).toISOString()})`
+        : ""),
   );
 
   return adminJson({ bundleId, bundle: jws });

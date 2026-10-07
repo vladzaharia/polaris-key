@@ -32,6 +32,15 @@
  * `graceDays`. `expiresAt` is NOT parameterised — it is `DOC_EXPIRY_SECONDS` on both paths,
  * because §7 step 4 verifies inner documents on the reload profile where `graceUntil` is the
  * bound that matters. See the note in `core/bundles.ts`.
+ *
+ * ── THE `clampGraceTo` PARAMETER (LX-07, S-19 G9) ───────────────────────────────────────────
+ *
+ * Offline grace never outlasts the licence it serves: when the product's
+ * `licensing.clampGraceToExpiry` is on (the default) and the licence expires inside the window,
+ * the caller passes the licence's `expires_at` and `graceUntil` stops there (`clampGraceUntil`).
+ * The builders stay pure: the setting is read by `core/graceClamp.ts`' `graceClampFor`, which
+ * answers `null` (no clamp) for a perpetual licence, a licence whose expiry lies past the window,
+ * and a product that opted out.
  */
 
 import {
@@ -52,12 +61,40 @@ import {
 } from "./payload.js";
 
 /**
- * `graceUntil` with integer arithmetic (plans/P3-01.md §2.2): a fractional day count stored
- * before the admin paths refused one moves `graceUntil` by under a second instead of making
- * it a fraction, which `signDoc`'s integer guard would refuse.
+ * The unclamped offline window's end, with integer arithmetic (plans/P3-01.md §2.2): a fractional
+ * day count stored before the admin paths refused one moves `graceUntil` by under a second
+ * instead of making it a fraction, which `signDoc`'s integer guard would refuse.
  */
-function graceUntil(now: number, maxOfflineDays: number): number {
+export function offlineWindowEnd(now: number, maxOfflineDays: number): number {
   return now + Math.floor(maxOfflineDays * SECONDS_PER_DAY);
+}
+
+/**
+ * `graceUntil` for a document issued at `now` whose offline window ends at `windowEnd`, clamped
+ * to `clampTo` (a licence's `expires_at`, LX-07) when one is given.
+ *
+ * The clamp never goes below the document's own `expiresAt` (`now + DOC_EXPIRY_SECONDS`): every
+ * verifier refuses `graceUntil < expiresAt` (WIRE-CONTRACT-V4 §3, always enforced), so a licence
+ * that expires within the hour gets a document that ends with its ordinary hour of validity, and
+ * the licence route refuses the next fetch. Only ever lowers the window: a `windowEnd` already
+ * below that floor (a zero-day window) is returned unchanged, exactly as without a clamp.
+ */
+export function clampGraceUntil(
+  windowEnd: number,
+  now: number,
+  clampTo: number | null | undefined,
+): number {
+  if (clampTo === null || clampTo === undefined) return windowEnd;
+  return Math.min(windowEnd, Math.max(clampTo, now + DOC_EXPIRY_SECONDS));
+}
+
+/** `graceUntil` of a document the builders below stamp. */
+function graceUntil(
+  now: number,
+  maxOfflineDays: number,
+  clampTo: number | null | undefined,
+): number {
+  return clampGraceUntil(offlineWindowEnd(now, maxOfflineDays), now, clampTo);
 }
 
 // ── license document (§2.1) ───────────────────────────────────────────────────
@@ -68,6 +105,8 @@ export interface BuildLicenseDocInput {
   licenseId: string;
   now: number;
   maxOfflineDays: number;
+  /** LX-07: the instant `graceUntil` may not pass (the licence's expiry), or none. */
+  clampGraceTo?: number | null;
   profile: LicenseDoc["profile"];
   entitlements: Record<string, ManagedEntry>;
 }
@@ -84,7 +123,7 @@ export function buildLicenseDoc(input: BuildLicenseDocInput): LicenseDoc {
     deviceId: input.deviceId,
     issuedAt: input.now,
     expiresAt: input.now + DOC_EXPIRY_SECONDS,
-    graceUntil: graceUntil(input.now, input.maxOfflineDays),
+    graceUntil: graceUntil(input.now, input.maxOfflineDays, input.clampGraceTo),
     licenseId: input.licenseId,
     profile: input.profile,
     entitlements: input.entitlements,
@@ -139,6 +178,8 @@ export interface BuildConfigDocInput {
   deviceId: string;
   now: number;
   maxOfflineDays: number;
+  /** LX-07: the bound licence's expiry when the product clamps grace to it, or none. */
+  clampGraceTo?: number | null;
   schemaVersion: number;
   payload: ConfigPayload;
 }
@@ -152,7 +193,7 @@ export function buildConfigDoc(input: BuildConfigDocInput): ConfigDoc {
     deviceId: input.deviceId,
     issuedAt: input.now,
     expiresAt: input.now + DOC_EXPIRY_SECONDS,
-    graceUntil: graceUntil(input.now, input.maxOfflineDays),
+    graceUntil: graceUntil(input.now, input.maxOfflineDays, input.clampGraceTo),
     schemaVersion: input.schemaVersion,
     config: input.payload.config,
     secrets: input.payload.secrets,
