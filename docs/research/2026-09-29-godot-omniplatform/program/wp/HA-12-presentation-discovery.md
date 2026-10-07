@@ -137,8 +137,7 @@ This is the server half of decision 10 ([S-20 §6.9](../../notes/S-20-hosted-ass
 - **`PRESENTATION_MATRIX_VERSION`** is generated beside the other corpus versions, so the SDK
   matrix runners (HA-13, HA-14) assert the file's version as they do the others'.
 - **A failed presentation read never fails discovery.** `resolvePresentation` answers `null` (the
-  member is omitted) when the listing or the hosted-copy read throws. It logs one structured
-  warning to Workers Logs, holding only the product slug and the error.
+  member is omitted) when the listing or the hosted-copy read throws.
 
 ## Steps
 

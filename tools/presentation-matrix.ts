@@ -86,7 +86,9 @@ export function refOrigin(v: J | undefined): string | undefined {
   if (host !== "[::1]" && host !== "127.0.0.1") {
     const labels = host.split(".");
     if (!labels.every((l) => /^[a-z0-9-]{1,63}$/.test(l))) return undefined;
-    if (/^[0-9]+$/.test(labels[labels.length - 1]!)) return undefined;
+    // WHATWG's ends-in-a-number test: no decimal or `0x` hex last label (an IPv4 number).
+    if (/^([0-9]+|0x[0-9a-f]*)$/.test(labels[labels.length - 1]!))
+      return undefined;
   }
   if (scheme === "http" && !["localhost", "127.0.0.1", "[::1]"].includes(host))
     return undefined;
@@ -702,7 +704,8 @@ const PARSE_CASES: ParseCase[] = [
   ),
   I("original-not-a-string", with_(BARE, { original: 7 }), undefined),
   // The authority: a port of 1-5 digits up to 65535, the one bracketed host `[::1]` with nothing
-  // but a port after it, and otherwise DNS labels of [a-z0-9-] whose last is not all digits.
+  // but a port after it, and otherwise DNS labels of [a-z0-9-] whose last is neither all digits
+  // nor `0x` and hex digits.
   I(
     "original-port-65535",
     with_(BARE, { original: `https://img.plrs.im:65535/djdl/a/${SHA}` }),
@@ -797,6 +800,16 @@ const PARSE_CASES: ParseCase[] = [
   I(
     "original-numeric-host",
     with_(BARE, { original: `https://999.1.1.1/djdl/a/${SHA}` }),
+    undefined,
+  ),
+  I(
+    "original-hex-ipv4",
+    with_(BARE, { original: `https://0x7f000001/djdl/a/${SHA}` }),
+    undefined,
+  ),
+  I(
+    "original-hex-last-label",
+    with_(BARE, { original: `https://a.0x7f/djdl/a/${SHA}` }),
     undefined,
   ),
   I(
@@ -1135,7 +1148,7 @@ export function buildPresentationMatrix(): Obj {
   return {
     presentationMatrixVersion: PRESENTATION_MATRIX_VERSION,
     description:
-      "Product presentation, the client half (WIRE-CONTRACT-V4 section 5.5, plans/HA-11.md section 2.1, plans/HA-12.md). Discovery's unsigned `core.presentation` member, parsed field by field: a malformed field is dropped and never refuses discovery. parseCases: `parsePresentation(core, doc)` must equal `expect` (the normalised member, or null). (1) `core` or its `presentation` not an object: null. (2) `name`, `developerName`: a string of 1 to 1024 UTF-8 bytes (PRESENTATION_TEXT_MAX_BYTES) with no U+0000-001F, U+007F-009F or lone surrogate; bidi and zero-width characters are kept. A bad `developerName` is dropped; a bad `name` falls back to `doc.name` (same rule), then `doc.product`. (3) `accent`, `accentDark`: ^#[0-9A-Fa-f]{6}$, lower-cased, else dropped. (4) `icon`: dropped unless `sha256` is ^[0-9a-f]{64}$, `contentType` is one of PRESENTATION_ICON_TYPES and `original` is usable; `width`, `height`: integers 1-16384, else dropped; `sizes` (absent reads []): at most 8 {w, sha256}, each w an integer 1-4096 strictly ascending, sha256 as above, else sizes [] and no url; `url`: at most 2048 bytes with exactly one `{w}`, beginning (ASCII case-insensitively) with the original's origin followed by `/` or `?`, so `{w}` sits after the authority, and usable with `{w}` filled by 1, else no url and sizes []; no sizes means no url. (5) A usable URL: 1-2048 characters in U+0021-007E with no `#` or backslash, beginning https:// or http:// (ASCII case-insensitive); its authority (to the first `/`, `?` or the end), lower-cased, is a host then an optional `:port` of 1-5 digits at most 65535; the host is `[::1]`, `127.0.0.1`, or dot-separated labels of 1-63 characters in [a-z0-9-] whose last label is not all digits (so no `@`, `%`, `_`, empty label or other bracketed address); http only for the hosts localhost, 127.0.0.1 and [::1]. An origin is scheme://authority, lower-cased. No row holds U+0000 (a Godot String cannot); lone surrogates are not carried either (JSON decoders differ on them), and each SDK pins that rule in its own tests. Unknown members are ignored at every level. pickCases: `pickIconSize(icon, px, scale, decodable)` with need = max(1, ceil(px * scale)): with sizes and image/webp decodable, the smallest w >= need, else the largest w, unless the original is decodable, its width is known and wider than the largest w, and need exceeds the largest w (then the original); with no usable size, the original if decodable; else none. A size's url is `url` with `{w}` replaced. verifyCases: `iconMatches(bytes, sha256)` is true iff the lower-case hex SHA-256 of the base64-decoded bytes equals `sha256` exactly. Every runner compares with deep equality (member order is not significant). Non-ASCII is written escaped. Append-only: a new row keeps presentationMatrixVersion; a changed row or rule bumps it.",
+      "Product presentation, the client half (WIRE-CONTRACT-V4 section 5.5, plans/HA-11.md section 2.1, plans/HA-12.md). Discovery's unsigned `core.presentation` member, parsed field by field: a malformed field is dropped and never refuses discovery. parseCases: `parsePresentation(core, doc)` must equal `expect` (the normalised member, or null). (1) `core` or its `presentation` not an object: null. (2) `name`, `developerName`: a string of 1 to 1024 UTF-8 bytes (PRESENTATION_TEXT_MAX_BYTES) with no U+0000-001F, U+007F-009F or lone surrogate; bidi and zero-width characters are kept. A bad `developerName` is dropped; a bad `name` falls back to `doc.name` (same rule), then `doc.product`. (3) `accent`, `accentDark`: ^#[0-9A-Fa-f]{6}$, lower-cased, else dropped. (4) `icon`: dropped unless `sha256` is ^[0-9a-f]{64}$, `contentType` is one of PRESENTATION_ICON_TYPES and `original` is usable; `width`, `height`: integers 1-16384, else dropped; `sizes` (absent reads []): at most 8 {w, sha256}, each w an integer 1-4096 strictly ascending, sha256 as above, else sizes [] and no url; `url`: at most 2048 bytes with exactly one `{w}`, beginning (ASCII case-insensitively) with the original's origin followed by `/` or `?`, so `{w}` sits after the authority, and usable with `{w}` filled by 1, else no url and sizes []; no sizes means no url. (5) A usable URL: 1-2048 characters in U+0021-007E with no `#` or backslash, beginning https:// or http:// (ASCII case-insensitive); its authority (to the first `/`, `?` or the end), lower-cased, is a host then an optional `:port` of 1-5 digits at most 65535; the host is `[::1]`, `127.0.0.1`, or dot-separated labels of 1-63 characters in [a-z0-9-] whose last label is neither all digits nor ^0x[0-9a-f]*$ (WHATWG's ends-in-a-number test; so no `@`, `%`, `_`, empty label or other IP literal); http only for the hosts localhost, 127.0.0.1 and [::1]. An origin is scheme://authority, lower-cased. No row holds U+0000 (a Godot String cannot); lone surrogates are not carried either (JSON decoders differ on them), and each SDK pins that rule in its own tests. Unknown members are ignored at every level. pickCases: `pickIconSize(icon, px, scale, decodable)` with need = max(1, ceil(px * scale)): with sizes and image/webp decodable, the smallest w >= need, else the largest w, unless the original is decodable, its width is known and wider than the largest w, and need exceeds the largest w (then the original); with no usable size, the original if decodable; else none. A size's url is `url` with `{w}` replaced. verifyCases: `iconMatches(bytes, sha256)` is true iff the lower-case hex SHA-256 of the base64-decoded bytes equals `sha256` exactly. Every runner compares with deep equality (member order is not significant). Non-ASCII is written escaped. Append-only: a new row keeps presentationMatrixVersion; a changed row or rule bumps it.",
     parseCases: PARSE_CASES as unknown as J,
     pickCases: PICK_CASES as unknown as J,
     verifyCases: VERIFY_CASES as unknown as J,

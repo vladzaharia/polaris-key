@@ -926,12 +926,14 @@ dropped and never refuses discovery.
      host followed by an optional `:port`, where the port is 1 to 5 digits and at most 65535;
    - the host is `[::1]` (the only bracketed address, and nothing but a `:port` may follow its
      `]`), `127.0.0.1`, or dot-separated labels of 1 to 63 characters in `[a-z0-9-]` whose last
-     label is not all digits. So there is no userinfo (`@`), no `%`, no empty label and no other
-     IP literal;
+     label is neither all digits nor `0x` followed by hex digits (WHATWG's ends-in-a-number
+     test). So there is no userinfo (`@`), no `%`, no empty label and no other IP literal;
    - with `http`, the host is `localhost`, `127.0.0.1` or `[::1]`.
 
-   On ports, bracketed addresses and host characters the rule is stricter than a WHATWG URL
-   parser, never looser.
+   The one place a WHATWG URL parser can be stricter: an `xn--` label is not checked as valid
+   Punycode, because that is not portable to GDScript. A WHATWG client may refuse such a host, and
+   then the icon fetch fails. That is safe: origins still map one to one, so no template can
+   reach another host.
 
    A URL's origin is its scheme and authority, ASCII-lower-cased, and two origins are the same
    only when they are equal as strings (an explicit default port differs from none). There is no

@@ -128,8 +128,8 @@ export interface PresentationContext {
 
 /**
  * `core.presentation`, normalised, or `null` when nothing beyond the name resolves (the member is
- * then omitted). A failed read (the listing, the hosted copy) answers `null` too, with a warning in
- * the Worker's logs: presentation is display data and never fails discovery.
+ * then omitted). A failed read (the listing, the hosted copy) answers `null` too: presentation is
+ * display data and never fails discovery.
  */
 export async function resolvePresentation(
   ctx: PresentationContext,
@@ -162,17 +162,7 @@ export async function resolvePresentation(
     )
       return null;
     return parsed;
-  } catch (err) {
-    // Display data never fails discovery, but a swallowed failure is still logged (Workers Logs):
-    // the product slug and the error only. No request, device or account fact is in scope here.
-    console.warn(
-      JSON.stringify({
-        event: "core.presentation.resolve_failed",
-        product: ctx.product.slug,
-        error: err instanceof Error ? err.name : typeof err,
-        message: err instanceof Error ? err.message.slice(0, 200) : undefined,
-      }),
-    );
+  } catch {
     return null;
   }
 }

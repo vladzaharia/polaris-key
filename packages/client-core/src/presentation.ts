@@ -38,11 +38,14 @@
 //      or the end and lower-cased, is a host and an optional `:port` of 1 to 5 digits, at most
 //      65535. The host is `[::1]` (the one bracketed address, with nothing but a port after
 //      it), `127.0.0.1`, or dot-separated labels of 1 to 63 characters in `[a-z0-9-]` whose last
-//      label is not all digits: so no userinfo `@`, no `%`, no empty label. `http` only for the
+//      label is neither all digits nor `0x` and hex digits (WHATWG's ends-in-a-number test): so no
+//      userinfo `@`, no `%`, no empty label, no other IP literal. `http` only for the
 //      hosts `localhost`, `127.0.0.1` and `[::1]`. There is no pinned host: production, staging and
 //      dev use `img`, `img-staging` and `img-dev`. The origin two URLs share is their scheme and
-//      authority, lower-cased, compared exactly. On ports, bracketed addresses and host characters
-//      the rule is stricter than a WHATWG URL parser, never looser.
+//      authority, lower-cased, compared exactly. The one place a WHATWG URL parser can be stricter:
+//      an `xn--` label is not checked as valid Punycode (not portable to GDScript), so a WHATWG
+//      client may refuse such a host and its fetch fails. That is safe: origins still map one to
+//      one, so a template can never reach another host.
 //
 // The rules are deliberately portable: no URL parser, no Unicode normalisation, nothing Godot's
 // GDScript cannot do. The corpus generator (`tools/presentation-matrix.ts`) holds its own
@@ -103,6 +106,8 @@ const LOOPBACK_HOSTS: ReadonlySet<string> = new Set([
 ]);
 const DNS_LABEL = /^[a-z0-9-]{1,63}$/;
 const ALL_DIGITS = /^[0-9]+$/;
+/** WHATWG's ends-in-a-number test: a last label that would parse as an IPv4 number. */
+const HEX_NUMBER = /^0x[0-9a-f]*$/;
 
 /** A lower-cased authority's host when it has a usable host and port, else `null`. */
 function authorityHost(authority: string): string | null {
@@ -131,7 +136,8 @@ function authorityHost(authority: string): string | null {
   if (host === "[::1]" || host === "127.0.0.1") return host;
   const labels = host.split(".");
   if (!labels.every((l) => DNS_LABEL.test(l))) return null;
-  if (ALL_DIGITS.test(labels[labels.length - 1]!)) return null;
+  const last = labels[labels.length - 1]!;
+  if (ALL_DIGITS.test(last) || HEX_NUMBER.test(last)) return null;
   return host;
 }
 

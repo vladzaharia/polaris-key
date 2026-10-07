@@ -348,37 +348,24 @@ describe("discovery's core.presentation", () => {
     expect(await member(env, db)).toBeUndefined();
   });
 
-  it("a failed read never fails discovery: the member is simply absent, and the failure is logged", async () => {
+  it("a failed read never fails discovery: the member is simply absent", async () => {
     const db = makeTestDb();
     const env = envWith();
     await tidewater(db, null, { accent: "#123456" });
     const product = (await loadProductPublic(db, "tidewater"))!;
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    try {
-      expect(
-        await resolvePresentation({
-          product,
-          env,
-          db,
-          hooks: {
-            delivery: () =>
-              ({
-                listing: () => Promise.reject(new Error("D1_ERROR")),
-              }) as never,
-          },
-        }),
-      ).toBeNull();
-      expect(warn).toHaveBeenCalledTimes(1);
-      // The slug and the error, nothing else.
-      expect(JSON.parse(warn.mock.calls[0]![0] as string)).toEqual({
-        event: "core.presentation.resolve_failed",
-        product: "tidewater",
-        error: "Error",
-        message: "D1_ERROR",
-      });
-    } finally {
-      warn.mockRestore();
-    }
+    expect(
+      await resolvePresentation({
+        product,
+        env,
+        db,
+        hooks: {
+          delivery: () =>
+            ({
+              listing: () => Promise.reject(new Error("D1_ERROR")),
+            }) as never,
+        },
+      }),
+    ).toBeNull();
   });
 });
 
