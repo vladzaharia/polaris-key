@@ -6,7 +6,8 @@ It keeps a little state between runs in a file under the temp directory, so ``ac
 
 * any ``pkey_tidewater_`` key with a 22-character body activates;
 * a key ending ``LIMITS`` hits the device limit first (Replace a device, then Try again);
-* ``login`` signs in as Mara Fennick about four seconds after the code is shown.
+* ``login`` signs in as Mara Fennick about four seconds after the code is shown
+  (``TIDEWATER_SIGN_IN_SECONDS`` changes the wait).
 """
 
 from __future__ import annotations
@@ -28,6 +29,8 @@ from polaris_key.release.client import ChangelogEntry
 from polaris_key.update.client import VersionCheck
 
 STATE = os.path.join(tempfile.gettempdir(), "polaris-key-tidewater-demo.json")
+#: Seconds until the demo sign-in completes (the tests shorten it).
+SIGN_IN_SECONDS = float(os.environ.get("TIDEWATER_SIGN_IN_SECONDS", "4"))
 MANAGE_URL = "https://key.plrs.im/portal/tidewater/devices"
 
 
@@ -65,6 +68,26 @@ class _State:
     status: str
     graceUntil: Optional[int] = None
     allowedRange: Any = None
+
+
+@dataclass
+class _Boot:
+    """What ``client.boot()`` returns, for the fields the kit reads."""
+
+    outcome: str
+    stage: str
+    status: Optional[str] = None
+    emits: tuple = ()
+    error: Optional[str] = None
+    state: Any = None
+
+    @property
+    def ready(self) -> bool:
+        return self.outcome == "ready"
+
+    @property
+    def update_available(self) -> bool:
+        return False
 
 
 class _License:
@@ -117,10 +140,10 @@ class _Identity:
         return _Prompt(expiresAt=int(time.time()) + 600)
 
     def wait_for_sign_in(self, prompt: Any, timeout: Optional[float] = None, *, cancel: Optional[threading.Event] = None, on_confirm: Any = None) -> Any:
-        if cancel is not None and cancel.wait(4.0):
+        if cancel is not None and cancel.wait(SIGN_IN_SECONDS):
             raise PolarisError("cancelled", "cancelled")
         if cancel is None:
-            time.sleep(4.0)
+            time.sleep(SIGN_IN_SECONDS)
         self.c.state.update(activated=True, signed_in=True)
         _save(self.c.state)
         ident = type("Identity", (), {"name": "Mara Fennick", "email": "mara@fennick.studio"})()
@@ -210,6 +233,16 @@ class FixtureClient:
         self.update = _Update()
         self.devices = _Devices()
         self.presentation_source = Presentation()
+
+    def boot(self, *, on_stage: Any = None, answer: Any = None, consent: str = "always", **_: Any) -> "_Boot":
+        """The one-call boot: a stage at a time, then ready, or waiting for a license."""
+        for stage in ("shell", "sync", "gate", "decide", "mount", "ready"):
+            if on_stage is not None:
+                on_stage(None, [{"type": "stage_changed", "stage": stage}])
+            time.sleep(0.25)
+            if stage == "gate" and not self.state.get("activated"):
+                return _Boot("waiting", "gate", "needs-activation")
+        return _Boot("ready", "ready", "ok")
 
     def status(self, now: Optional[int] = None) -> _State:
         return _State("ok" if self.state.get("activated") else "needs-activation")

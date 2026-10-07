@@ -307,6 +307,11 @@ def enroll(client: Any, t: Terminal) -> Outcome:
     result = _busy(t, client.license.enroll, lambda f: [Line([Span(screens._spinner(k, f), ("muted",)), Span("  "), k.t("activate.busy")])])
     view = activation_view(result)
     data = _activation_data(result)
+    if view.state == "done":
+        try:
+            data["status"] = client.status().status
+        except Exception:
+            pass
     lines = screens.activate(k, view, t.verb or "enroll")
     return Outcome(0 if view.state == "done" else 1, lines, data)
 
@@ -331,14 +336,17 @@ def sign_in(
     *,
     device_name: Optional[str] = None,
     attach: bool = False,
+    browser: bool = False,
     open_url: Optional[Callable[[str], bool]] = None,
 ) -> Outcome:
     """``login`` / ``sign-in`` (SIGN-IN.md §4.15, frame 32): open the browser and wait, or, when
     headless or with ``--device-code``, show the code. No QR, no license rows (the card chooses).
-    Keys: Enter opens the browser again, ``c`` uses a code (then copies it), Esc cancels."""
+    Keys: Enter opens the browser again, ``c`` uses a code (then copies it), Esc cancels.
+    ``browser`` (``--browser``) opens the browser even when the terminal looks headless."""
     k = t.kit
     verb = t.verb or "sign-in"
-    headless = t.env.headless or t.env.json or not t.env.interactive
+    # --browser opens the browser even where the kit would show the code (SSH, CI, a pipe).
+    headless = not browser and (t.env.headless or t.env.json or not t.env.interactive)
     model = SignInModel(headless=headless, device_code_url=k.identity.device_code_url)
     opener = open_url or t.device.open_url
 

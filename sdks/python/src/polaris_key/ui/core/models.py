@@ -133,7 +133,8 @@ class KeyVerdict:
     ``malformed``."""
 
     state: str
-    key: str = ""
+    #: The key as typed: never in a repr, so a log or a traceback does not hold it.
+    key: str = field(default="", repr=False)
     slug: Optional[str] = None
     prefix: str = ""
     used: int = 0
@@ -170,7 +171,8 @@ class ActivateView:
     #: The result kind in kebab form (``ok``, ``device-limit``, ``unauthorized``, ``refused`` …).
     kind: str
     code: Optional[str] = None
-    key: Optional[str] = None
+    #: The key that was activated: never in a repr.
+    key: Optional[str] = field(default=None, repr=False)
     used: Optional[int] = None
     limit: Optional[int] = None
     manage_url: Optional[str] = None

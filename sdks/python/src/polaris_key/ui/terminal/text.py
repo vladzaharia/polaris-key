@@ -14,13 +14,17 @@ rich backend (``polaris_key.ui.terminal.device``) renders the same lines to the 
 
 from __future__ import annotations
 
+import re
 import unicodedata
 from dataclasses import dataclass, field
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
+from ...core.manage import is_manage_url
 from .. import ansi
 
 __all__ = [
+    "clean",
+    "safe_link",
     "Span",
     "Line",
     "Palette",
@@ -32,6 +36,27 @@ __all__ = [
 ]
 
 
+#: C0 controls, DEL and C1 controls: what could start or end a terminal escape (ESC, BEL, CSI
+#: 0x9B, OSC 0x9D, ST 0x9C …) or move the cursor. Text never carries them to a terminal.
+_CONTROLS = re.compile("[\x00-\x1f\x7f-\x9f]")
+
+
+def clean(text: str) -> str:
+    """``text`` without control characters. Copy and data (a device label, a product name, a
+    changelog line, a URL from the server) are drawn as text, never as escapes: the kit's own
+    escapes are written by :func:`to_ansi` outside every span's text."""
+    return _CONTROLS.sub("", text) if text else text
+
+
+def safe_link(url: Optional[str]) -> Optional[str]:
+    """``url`` when it may become an OSC 8 hyperlink: an absolute ``https`` URL (or ``http`` to a
+    loopback host) with no whitespace, control character or userinfo (the manage-URL rule of
+    ``polaris_key.core.manage``). Anything else is drawn as text without a link."""
+    if not url or _CONTROLS.search(url) or not is_manage_url(url):
+        return None
+    return url
+
+
 @dataclass(frozen=True)
 class Span:
     text: str
@@ -41,6 +66,10 @@ class Span:
     src: str = "space"
     #: Never broken across lines (a key, a user code, a URL).
     nobreak: bool = False
+
+    def __post_init__(self) -> None:
+        if self.text and _CONTROLS.search(self.text):
+            object.__setattr__(self, "text", clean(self.text))
 
 
 @dataclass
@@ -281,12 +310,14 @@ def to_ansi(line: Line, palette: Palette) -> str:
         trimmed = last.text.rstrip(" ")
         spans = spans[:-1] + ([Span(trimmed, last.roles, last.link, last.src)] if trimmed else [])
     if palette.color == "none":
-        return "".join(s.text for s in spans)
+        return "".join(clean(s.text) for s in spans)
     out: List[str] = []
     for s in spans:
+        text = clean(s.text)
         params = palette.params(s.roles) if s.roles else ""
-        body = f"\x1b[{params}m{s.text}\x1b[0m" if params else s.text
-        if s.link and palette.hyperlinks:
-            body = f"\x1b]8;;{s.link}\x1b\\{body}\x1b]8;;\x1b\\"
+        body = f"\x1b[{params}m{text}\x1b[0m" if params else text
+        link = safe_link(s.link) if palette.hyperlinks else None
+        if link:
+            body = f"\x1b]8;;{link}\x1b\\{body}\x1b]8;;\x1b\\"
         out.append(body)
     return "".join(out)

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Tuple
 
+from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.theme import Theme as TextualTheme
@@ -25,6 +26,7 @@ from ..core.copy import Copy
 from ..core.identity import ResolvedIdentity, presentation_source, resolve_identity
 from ..core.models import DevicesView, DeviceRow, GateView, gate_view, update_view
 from ..core.theme import Theme
+from .text import clean
 
 __all__ = ["PolarisKeyApp", "run_app", "SECTIONS"]
 
@@ -115,7 +117,7 @@ class PolarisKeyApp(App):
         self.manage_url = manage_url
         self.section = "account"
         super().__init__()
-        self.title = self.identity.name
+        self.title = clean(self.identity.name)
         # The one key binding, labelled from the catalog.
         self.bind("q", "quit", description=self.copy("common.close"))
 
@@ -158,9 +160,9 @@ class PolarisKeyApp(App):
 
     def compose(self) -> ComposeResult:
         sep = " · "
-        yield Static(f"[b]{_esc(self.identity.name)}[/b]{sep}{_esc(self.copy('account.title'))}", id="pk-header")
+        yield Static(self._header("account.title"), id="pk-header")
         with Horizontal(id="pk-body"):
-            yield ListView(*[ListItem(Static(self.copy(key)), id=f"pk-{sid}") for sid, key in SECTIONS], id="pk-nav")
+            yield ListView(*[ListItem(_text(self.copy(key)), id=f"pk-{sid}") for sid, key in SECTIONS], id="pk-nav")
             yield VerticalScroll(id="pk-main")
         yield Footer()
 
@@ -186,48 +188,51 @@ class PolarisKeyApp(App):
         main.remove_children()
         main.mount_all(self._section(section))
         header = self.query_one("#pk-header", Static)
-        title = dict(SECTIONS)[section]
-        header.update(f"[b]{_esc(self.identity.name)}[/b] · {_esc(self.copy(title))}")
+        header.update(self._header(dict(SECTIONS)[section]))
+
+    def _header(self, key: str) -> Text:
+        """The product name in bold, then the section: rich Text, never parsed as markup."""
+        return Text.assemble((clean(self.identity.name), "bold"), " · " + clean(self.copy(key)))
 
     def _section(self, section: str) -> List[Any]:
         t = self.copy
         if section == "devices":
             v = self.devices()
             if v.state == "browser-mode":
-                return [Static(t("devices.browser"), classes="pk-muted")]
+                return [_text(t("devices.browser"), classes="pk-muted")]
             if v.state == "empty":
-                return [Static(t("devices.empty"), classes="pk-muted")]
-            out: List[Any] = [Static(t("devices.title"), classes="pk-title"), Static(t("devices.count", count=len(v.rows)), classes="pk-muted")]
+                return [_text(t("devices.empty"), classes="pk-muted")]
+            out: List[Any] = [_text(t("devices.title"), classes="pk-title"), _text(t("devices.count", count=len(v.rows)), classes="pk-muted")]
             for r in v.rows:
                 name = r.label or t("devices.unnamed")
                 tag = f" · {t('part.thisDeviceTitle', formFactor='computer')}" if r.current else ""
-                out.append(Static(f"\n{_esc(name)}{_esc(tag)}"))
+                out.append(_text(f"\n{name}{tag}"))
                 if r.platform:
-                    out.append(Static(_esc(r.platform), classes="pk-muted"))
+                    out.append(_text(r.platform, classes="pk-muted"))
             return out
         if section == "updates":
             u = self.update_state()
             if u is None:
-                return [Static(t("update.checkNow"), classes="pk-muted")]
+                return [_text(t("update.checkNow"), classes="pk-muted")]
             if u.state == "up-to-date":
-                return [Static(t("update.upToDate"), classes="pk-title"), Static(t("account.version", version=u.current or ""), classes="pk-muted")]
+                return [_text(t("update.upToDate"), classes="pk-title"), _text(t("account.version", version=u.current or ""), classes="pk-muted")]
             return [
-                Static(t("update.title", product=self.identity.name, version=u.version or ""), classes="pk-title"),
-                Static(t("account.version", version=u.current or ""), classes="pk-muted"),
+                _text(t("update.title", product=self.identity.name, version=u.version or ""), classes="pk-title"),
+                _text(t("account.version", version=u.current or ""), classes="pk-muted"),
                 Horizontal(Button(t("update.install"), classes="pk-primary", id="pk-install"), Button(t("update.later"), classes="pk-secondary", id="pk-later"), classes="pk-actions"),
             ]
         g = self.gate()
         lines: List[Any] = []
         head = self.identity.name + (f" {g.tier}" if g.tier else "")
-        lines.append(Static(f"[b]{_esc(head)}[/b]" + (f" · {_esc(g.term)}" if g.term else ""), classes="pk-row"))
+        lines.append(Static(Text.assemble((clean(head), "bold"), f" · {clean(g.term)}" if g.term else ""), classes="pk-row"))
         if g.signed_in and (g.holder or g.email):
-            lines.append(Static(t("account.holder", name=g.holder or g.email), classes="pk-muted"))
+            lines.append(_text(t("account.holder", name=g.holder or g.email), classes="pk-muted"))
         else:
-            lines.append(Static(t("account.keyOnly"), classes="pk-muted"))
+            lines.append(_text(t("account.keyOnly"), classes="pk-muted"))
         status_key = {"ok": "part.status.ok", "grace": "part.status.grace", "expired": "part.status.expired", "revoked": "part.status.revoked"}.get(g.status, "part.status.inactive")
-        lines.append(Static(f"\n{_esc(t(status_key))}"))
+        lines.append(_text(f"\n{t(status_key)}"))
         if g.version:
-            lines.append(Static(t("account.version", version=g.version), classes="pk-muted"))
+            lines.append(_text(t("account.version", version=g.version), classes="pk-muted"))
         buttons = [Button(t("common.manage"), classes="pk-primary", id="pk-manage")] if self.manage_url else []
         buttons.append(Button(t("common.signOut"), classes="pk-secondary", id="pk-sign-out"))
         lines.append(Horizontal(*buttons, classes="pk-actions"))
@@ -247,9 +252,10 @@ class PolarisKeyApp(App):
             self.show("account")
 
 
-def _esc(text: str) -> str:
-    """Escape Textual markup in copy and data."""
-    return text.replace("[", r"\[")
+def _text(text: str, **kw: Any) -> Static:
+    """A Static for copy and data: control characters dropped and never parsed as markup, so a
+    server's device label or product name is drawn as written."""
+    return Static(clean(text), markup=False, **kw)
 
 
 def run_app(client: Any, *, theme: Optional[Theme] = None, scheme: Optional[str] = None, manage_url: Optional[str] = None) -> Any:

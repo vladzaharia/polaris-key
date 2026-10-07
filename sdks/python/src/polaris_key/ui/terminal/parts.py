@@ -142,7 +142,7 @@ class Kit:
     def decor(self) -> bool:
         """Rails and glyphs: on a terminal. Piped output (a log, a screen reader) is plain lines
         (UI-KITS §4.4)."""
-        return self.env.tty
+        return self.env.tty and not self.env.dumb
 
     @property
     def body_width(self) -> int:

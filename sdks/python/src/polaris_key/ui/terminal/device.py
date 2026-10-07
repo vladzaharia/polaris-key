@@ -20,7 +20,7 @@ import time
 from typing import IO, Any, Callable, Iterable, List, Optional, Sequence
 
 from .env import TermEnv
-from .text import Line, Palette, Span, _merge, to_ansi
+from .text import Line, Palette, Span, _merge, cell_len, clean, safe_link, to_ansi
 
 __all__ = ["Device", "KeyReader", "rich_available", "to_rich"]
 
@@ -89,11 +89,13 @@ def to_rich(lines: Iterable[Line], palette: Palette) -> Any:
             last = spans[-1]
             spans = spans[:-1] + ([Span(last.text.rstrip(" "), last.roles, last.link, last.src)] if last.text.strip() else [])
         for s in spans:
-            if palette.color == "none" or not (s.roles or (s.link and palette.hyperlinks)):
-                out.append(s.text)
+            text = clean(s.text)
+            link = safe_link(s.link) if palette.hyperlinks else None
+            if palette.color == "none" or not (s.roles or link):
+                out.append(text)
                 continue
             params = palette.params(s.roles) if s.roles else ""
-            out.append(s.text, _rich_style(params, s.link if palette.hyperlinks else None))
+            out.append(text, _rich_style(params, link))
     return out
 
 
@@ -127,11 +129,12 @@ class KeyReader:
     ``ctrl-u``, or the text typed or pasted (bracketed paste is unwrapped). ``Ctrl-C`` raises
     ``KeyboardInterrupt``. POSIX through termios, Windows through msvcrt."""
 
-    def __init__(self, stdin: Optional[IO[str]] = None) -> None:
+    def __init__(self, stdin: Optional[IO[str]] = None, *, bracketed_paste: bool = True) -> None:
         self._in = stdin or sys.stdin
         self._fd: Optional[int] = None
         self._old: Any = None
         self._pending = ""
+        self._paste = bracketed_paste
 
     def __enter__(self) -> "KeyReader":
         if os.name == "posix":
@@ -141,16 +144,18 @@ class KeyReader:
             self._fd = self._in.fileno()
             self._old = termios.tcgetattr(self._fd)
             tty.setcbreak(self._fd)
-            sys.stdout.write("\x1b[?2004h")
-            sys.stdout.flush()
+            if self._paste:
+                sys.stdout.write("\x1b[?2004h")
+                sys.stdout.flush()
         return self
 
     def __exit__(self, *exc: Any) -> None:
         if os.name == "posix" and self._fd is not None:
             import termios
 
-            sys.stdout.write("\x1b[?2004l")
-            sys.stdout.flush()
+            if self._paste:
+                sys.stdout.write("\x1b[?2004l")
+                sys.stdout.flush()
             termios.tcsetattr(self._fd, termios.TCSADRAIN, self._old)
 
     def _raw(self, timeout: Optional[float]) -> str:
@@ -278,11 +283,12 @@ class Device:
             self.out.flush()
 
     def emit(self, obj: dict) -> None:
-        self.out.write(_json.dumps(obj, ensure_ascii=False, sort_keys=False) + "\n")
+        # ASCII only: every control and C1 character in server text is escaped (\u001b, \u009b).
+        self.out.write(_json.dumps(obj, ensure_ascii=True, sort_keys=False) + "\n")
         self.out.flush()
 
     def keys(self) -> KeyReader:
-        return KeyReader(self.inp)
+        return KeyReader(self.inp, bracketed_paste=not self.env.dumb)
 
     def live(self) -> "LiveRegion":
         return LiveRegion(self)
@@ -299,6 +305,10 @@ class Device:
 
     @staticmethod
     def open_url(url: str) -> bool:
+        """Open ``url`` in the browser: only an ``https`` (or loopback ``http``) URL with no control
+        character, whatever the server sent."""
+        if not safe_link(url):
+            return False
         try:
             import webbrowser
 
@@ -321,8 +331,13 @@ class LiveRegion:
     @property
     def _redraws(self) -> bool:
         """A region redraws on an interactive terminal (key entry needs it even with motion off;
-        motion only decides whether spinners turn)."""
-        return self.d.env.interactive or self.d.env.motion
+        motion only decides whether spinners turn), never on ``TERM=dumb``."""
+        return (self.d.env.interactive or self.d.env.motion) and not self.d.env.dumb
+
+    def _rows(self, line: Line) -> int:
+        """Physical rows ``line`` takes: a terminal narrower than the 60-column layout wraps it."""
+        cols = max(1, self.d.env.columns)
+        return max(1, -(-cell_len(clean(line.text).rstrip()) // cols))
 
     def __enter__(self) -> "LiveRegion":
         if self.d.use_rich and self._redraws:
@@ -347,7 +362,7 @@ class LiveRegion:
                 out.write(f"\x1b[{self._drawn}F\x1b[J")
             for line in self._lines:
                 out.write(to_ansi(line, self.d.palette) + "\n")
-            self._drawn = len(self._lines)
+            self._drawn = sum(self._rows(line) for line in self._lines)
             out.flush()
 
     def clear(self) -> None:

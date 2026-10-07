@@ -228,3 +228,59 @@ def test_rich_writes_the_same_bytes(fx, mode: str) -> None:
     console = rich_console(e, buf, width=200, environ={})
     console.print(to_rich(lines, pal))
     assert _LINK_ID.sub("\x1b]8;;", buf.getvalue()) == ours
+
+
+def test_browser_flag_opens_the_browser_even_when_headless() -> None:
+    opened: list = []
+    t = terminal([], opened=opened)
+    t.kit.env = t.kit.env.but(headless=True)
+    t.verb = "login"
+    out = flows.sign_in(_SignInClient(_Identity(0.2)), t, browser=True)
+    assert out.code == 0 and opened == [_Prompt.verificationUriComplete]
+    assert C("signin.cli.opening") in t.device.out.getvalue()
+
+
+def test_json_always_ends_with_a_result_line(capsys) -> None:
+    from polaris_key.cli import argparse_cli, core, verbs
+
+    def broken(opts: core.ClientOptions) -> Any:
+        raise RuntimeError("discovery blew up")
+
+    parser = argparse_cli.GroupedHelpParser(prog="polaris-key")
+    argparse_cli.register_argparse(parser.add_subparsers(dest="command", required=True), broken)
+    args = parser.parse_args(["status", "--product", "tidewater", "--json"])
+    assert args.func(args) == 1
+    last = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+    assert last == {"v": 1, "command": "status", "event": "result", "ok": False, "exit": 1, "error": "internal"}
+
+    class Exploding:
+        product = "tidewater"
+
+        def status(self) -> Any:
+            raise ValueError("boom")
+
+        def close(self) -> None:
+            pass
+
+    status = next(v for v in verbs.VERBS if v.name == "status")
+    res = verbs.run(lambda o: Exploding(), core.ClientOptions(product="tidewater"), status, {"json": True})
+    res.emit()
+    last = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+    assert last["event"] == "result" and last["error"] == "internal" and last["exit"] == 1
+    assert argparse_cli.main(["status", "--json"]) == 2
+    usage = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+    assert usage["event"] == "result" and usage["error"] == "usage" and usage["exit"] == 2
+
+
+def test_a_live_region_counts_wrapped_rows_on_a_narrow_terminal() -> None:
+    from polaris_key.ui.terminal.text import Line, Span
+
+    e = env("ansi16", "unicode", 60, "dark").but(columns=40)
+    k = kit(e)
+    out = io.StringIO()
+    d = Device(e, k.palette(), stdout=out, use_rich=False)
+    with d.live() as live:
+        live.update([Line([Span("x" * 55)]), Line([Span("short")])])
+        live.update([Line([Span("y")])])
+    # 55 cells in 40 columns take two rows, so the redraw moves up three.
+    assert "\x1b[3F" in out.getvalue()

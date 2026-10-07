@@ -10,6 +10,8 @@
   no colour, where the QR inverts), then ``COLORFGBG``, then dark.
 * **Motion.** Spinners animate only on an interactive terminal, never with ``CI`` set, ``TERM=dumb``
   or ``theme.motion`` reduced or none (UI-KITS §4.8).
+* **TERM=dumb** (SIGN-IN.md D-77) is plain lines: no escapes, rails or glyphs, no prompts, no
+  cursor control and no bracketed paste; a headless sign-in prints its code once.
 * **Headless** (SIGN-IN.md D-68): ``SSH_CONNECTION`` or ``SSH_TTY``; on Linux no ``DISPLAY`` and no
   ``WAYLAND_DISPLAY``; ``CI``. Sign-in then goes straight to the code.
 """
@@ -48,6 +50,11 @@ class TermEnv:
     headless: bool = False
     #: ``--json``: one JSON object per state on stdout, no prompts, no escapes.
     json: bool = False
+    #: ``TERM=dumb``: a terminal that draws no escape at all, so plain lines, no rails, no
+    #: prompts, no cursor control and no bracketed paste (SIGN-IN.md D-77).
+    dumb: bool = False
+    #: The terminal's real width in cells (``width`` is the layout's, never below 60).
+    columns: int = ansi.LAYOUT["columns"]
 
     @property
     def symbol(self) -> Mapping[str, str]:
@@ -158,7 +165,7 @@ def detect(
     forced = bool(e.get("FORCE_COLOR")) and e.get("FORCE_COLOR") != "0"
     out_tty = _isatty(out)
     tty = out_tty or forced
-    interactive = out_tty and _isatty(inp) and not ci and not json
+    interactive = out_tty and _isatty(inp) and not ci and not json and not dumb
 
     if json or no_color or bool(e.get("NO_COLOR")) or dumb or not tty:
         color = "none"
@@ -207,4 +214,6 @@ def detect(
         motion=interactive and not dumb and motion == "system",
         headless=headless,
         json=json,
+        dumb=dumb,
+        columns=cols if out_tty else ansi.LAYOUT["columns"],
     )

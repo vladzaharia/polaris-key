@@ -144,7 +144,9 @@ def register(client: Any, ns: Dict[str, Any]) -> CommandResult:
 # ── identity ─────────────────────────────────────────────────────────────────────────
 def sign_in(client: Any, ns: Dict[str, Any]) -> CommandResult:
     t = _term(client, ns, ns.get("_verb") or "sign-in")
-    out = _flows().sign_in(client, t, device_name=ns.get("device_name"), attach=bool(ns.get("attach")))
+    out = _flows().sign_in(
+        client, t, device_name=ns.get("device_name"), attach=bool(ns.get("attach")), browser=bool(ns.get("browser"))
+    )
     return _done(out, ns)
 
 
@@ -268,7 +270,7 @@ _KEY_SOURCE = (
 )
 _SIGN_IN = (
     Opt("device-code", "flag", "Use a code instead of this computer's browser (automatic over SSH)."),
-    Opt("browser", "flag", "Open the sign-in page in the system browser (the default on a desktop)."),
+    Opt("browser", "flag", "Open the sign-in page in the system browser, even over SSH or in CI."),
     Opt("device-name", "str", "A name for this device on the account."),
     Opt("attach", "flag", "Offer to attach this device's free license to the account."),
     Opt("no-qr", "flag", "Accepted for compatibility; sign-in shows no QR in a terminal."),
@@ -277,7 +279,7 @@ _YES = (Opt("yes", "flag", "Do not ask for confirmation."),)
 
 #: Every verb. ``login`` and ``logout`` are ``sign-in`` and ``sign-out`` (SIGN-IN.md §4.15).
 VERBS: Tuple[Verb, ...] = (
-    Verb("activate", "license", "Add a license key (prompts; never an argument).", activate,
+    Verb("activate", "license", "Add a license key (a masked prompt, stdin or a file).", activate,
          opts=_KEY_SOURCE, arg="key"),
     Verb("enroll", "license", "Get a license with no key and no sign-in.", enroll),
     Verb("deactivate", "license", "Release this device's seat and wipe local credentials.", deactivate),
@@ -333,7 +335,13 @@ def run(
     client. The result's :meth:`~CommandResult.emit` draws it, or prints its JSON."""
     from ..ui.terminal.flows import Terminal
 
-    client = factory(opts)
+    try:
+        client = factory(opts)
+    except Exception:
+        if not ns.get("json"):
+            raise
+        term = Terminal.create(product=opts.product, verb=verb.name, json=True)
+        return CommandResult(1, [], terminal=term, data={"error": "internal"})
     try:
         term = Terminal.create(
             product=opts.product,
@@ -351,7 +359,12 @@ def run(
         try:
             result = verb.run(client, ns)
         except KeyboardInterrupt:
-            return CommandResult(130, [])
+            return CommandResult(130, [], terminal=term if term.env.json else None, data={"error": "interrupted"})
+        except Exception:
+            if not term.env.json:
+                raise
+            # --json always ends with a result line, whatever went wrong.
+            return CommandResult(1, [], terminal=term, data={"error": "internal"})
         if result.terminal is None:
             result.terminal = term
         return result

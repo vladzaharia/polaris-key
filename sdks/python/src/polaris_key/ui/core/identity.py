@@ -17,6 +17,7 @@ and name with no integrator code.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Any, Mapping, Optional, Sequence
 
@@ -98,11 +99,22 @@ def presentation_source(client: Any) -> Optional[Any]:
     return None
 
 
+_CONTROLS = re.compile("[\x00-\x1f\x7f-\x9f]")
+
+
+def _text(v: Optional[str]) -> Optional[str]:
+    """A display string without control characters (a name is drawn, never interpreted)."""
+    if not isinstance(v, str):
+        return None
+    v = _CONTROLS.sub("", v).strip()
+    return v or None
+
+
 def _field(p: Any, *names: str) -> Optional[str]:
     for n in names:
-        v = p.get(n) if isinstance(p, Mapping) else getattr(p, n, None)
-        if isinstance(v, str) and v.strip():
-            return v.strip()
+        v = _text(p.get(n) if isinstance(p, Mapping) else getattr(p, n, None))
+        if v:
+            return v
     return None
 
 
@@ -159,9 +171,9 @@ def resolve_identity(
             light = dark = derived
             src = "icon"
     return ResolvedIdentity(
-        name=name,
-        short_name=me.short_name,
-        developer=developer,
+        name=_text(name) or "",
+        short_name=_text(me.short_name),
+        developer=_text(developer),
         accent_source=src if (light or dark) else "ink",
         accent_light=light,
         accent_dark=dark,

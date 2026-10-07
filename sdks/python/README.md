@@ -562,6 +562,14 @@ verbs under your own command so the kit names it:
 register_argparse(parser.add_subparsers(dest="command", required=True), client_factory, prog="tidewater")
 ```
 
+**Scripts read `--json`, never the human lines.** The human output is localised catalog copy: its
+words, layout and language can change between releases. `--json` is versioned (`"v": 1`). The
+lines this CLI printed before the kit map to JSON fields: `Status:` is `status`, `Usable:` is
+`usable`, `Token store:` is `tokenStore`, `Registered device` is `deviceId` and `Imported bundle`
+is `bundleId` (the full table is on the kit's page). Two argparse errors now exit 2 instead of 1,
+as usage errors: an unreadable `--key-file` (or no key from any source without a terminal) and an
+unreadable or empty `import-bundle` file.
+
 The kit's page, with the `--json` shapes, the theme and the Textual app:
 [Terminal (Python)](/docs/build/ui/frameworks/terminal-python/). Sample: `examples/ui/terminal-python/`.
 

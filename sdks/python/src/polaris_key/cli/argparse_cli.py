@@ -108,8 +108,26 @@ def register_argparse(
     return subparsers
 
 
+def json_usage_error(command: str, message: str, out: Any = None) -> int:
+    """With ``--json``, a usage error still ends with a result line (exit 2)."""
+    import json
+
+    from ..ui.terminal.flows import JSON_VERSION
+
+    obj = {"v": JSON_VERSION, "command": command, "event": "result", "ok": False, "exit": 2, "error": "usage", "message": message}
+    (out or sys.stdout).write(json.dumps(obj, ensure_ascii=True) + "\n")
+    return 2
+
+
 def _verb(factory: core.ClientFactory, verb: "verbs.Verb", theme: Any, prog: str):
     def run(args: argparse.Namespace) -> int:
+        if getattr(args, "json", False):
+            try:
+                opts = _options(args)
+            except SystemExit as e:
+                return json_usage_error(verb.name, str(e.code))
+        else:
+            opts = _options(args)
         values = {
             verbs.option_dest(o.name): getattr(args, verbs.option_dest(o.name), o.default)
             for o in verb.opts + verbs.UI_OPTS
@@ -120,7 +138,7 @@ def _verb(factory: core.ClientFactory, verb: "verbs.Verb", theme: Any, prog: str
         else:
             words = getattr(args, "words", [])
         ns = verbs.namespace(verb, words, values)
-        result = verbs.run(factory, _options(args), verb, ns, theme=theme, prog=prog)
+        result = verbs.run(factory, opts, verb, ns, theme=theme, prog=prog)
         result.emit()
         return result.code
 
@@ -159,6 +177,7 @@ class GroupedHelpParser(argparse.ArgumentParser):
         line(Span(self.prog, ("strong",)), Span(sep, ("muted",)), Span(self.description or "", ("muted",)))
         line()
         line(Span("Usage", ("muted",)), Span(f"  {self.prog} <command> --product <slug> [options]"))
+        line(Span("       ", ()), Span(f"{self.prog} <command> --help", ("muted",)))
         width = max(len(v.name) for v in verbs.VERBS) + 4
         for title, group in HELP_GROUPS:
             members = [v for v in verbs.VERBS if v.group == group]
@@ -169,7 +188,7 @@ class GroupedHelpParser(argparse.ArgumentParser):
             for v in members:
                 line(Span("  " + v.name.ljust(width), ("strong",)), Span(v.help, ("muted",)))
         line()
-        line(Span("Options", ("strong",)))
+        line(Span("Every command takes", ("strong",)))
         for o in verbs.UI_OPTS:
             line(Span("  " + f"--{o.name}".ljust(width), ("strong",)), Span(o.help, ("muted",)))
         line(Span("  " + "-h, --help".ljust(width), ("strong",)), Span("Help for a command.", ("muted",)))
@@ -184,7 +203,15 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
-    args = build_parser().parse_args(argv if argv is not None else sys.argv[1:])
+    argv = list(argv if argv is not None else sys.argv[1:])
+    try:
+        args = build_parser().parse_args(argv)
+    except SystemExit as e:
+        # argparse printed its usage to stderr; --json still ends with a result line.
+        if e.code not in (0, None) and "--json" in argv:
+            command = next((a for a in argv if not a.startswith("-")), "")
+            return json_usage_error(command, "usage")
+        raise
     try:
         return int(args.func(args))
     except KeyboardInterrupt:
