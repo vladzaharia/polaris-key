@@ -137,7 +137,7 @@ This is the server half of decision 10 ([S-20 §6.9](../../notes/S-20-hosted-ass
 - [x] `pnpm gen:transcripts -- --check` and `pnpm gen:corpus -- --check` are green after regeneration.
 - [x] Discovery for a product with no presentation omits the member (test).
 - [x] The `core.presentation` registry entry has no `pending` marker and its storage is the store HA-11's plan names; `pnpm gen:settings -- --check` is green.
-- [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
+- [x] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify
 
