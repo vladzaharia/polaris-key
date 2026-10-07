@@ -16,7 +16,7 @@
  * CORE, like `assets`: every product can list on Polaris Key whether or not it runs Distribution
  * (notes/S-21 §6.2), so the panel is not under a service. It is the composition root of the
  * first-party ports (`core/storefront/firstParty.ts`): Identity answers `status` from the tables
- * and the engine it owns (`services/identity/portal/store/console.ts`), Distribution the listing
+ * and the engine it owns (`services/identity/portal/store/panelStatus.ts`), Distribution the listing
  * model's fit for `polaris-key` (its own tables), and the GET runs the declared handler
  * (`polaris-key.status`) over them, so the panel and the conformance suite read the same op.
  *
@@ -55,7 +55,7 @@ import { SERVICES } from "../../mount.js";
 import { readListing } from "../../services/distribution/listing/store.js";
 import { storefrontTileView } from "../../services/identity/portal/discover.js";
 import { storefrontAnalytics } from "../../services/identity/portal/store/analytics.js";
-import { polarisKeyStatus } from "../../services/identity/portal/store/console.js";
+import { polarisKeyStatus } from "../../services/identity/portal/store/panelStatus.js";
 import {
   previewPersona,
   type Persona,

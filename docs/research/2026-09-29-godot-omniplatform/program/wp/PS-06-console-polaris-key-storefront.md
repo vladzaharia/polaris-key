@@ -70,7 +70,7 @@ delegated to the lead).
   (`assets`, `refusals`), because every product can list whether or not it runs Distribution
   (S-21 §6.2) and the panel needs two services. The GET runs the declared `polaris-key.status`
   handler over `FirstPartyPorts` the owning services implement: Identity answers the status
-  (`services/identity/portal/store/console.ts`: listing, policy, the engine's mode rules,
+  (`services/identity/portal/store/panelStatus.ts`: listing, policy, the engine's mode rules,
   readiness inputs), Distribution the listing fit (its own `readListing` and Core's `fitReport`).
   This is the "wire the first-party status port" follow-up. `readListing` and `audit` are real
   too; `setListing` and `writeListing` are not served by any route (see the next point), so the
