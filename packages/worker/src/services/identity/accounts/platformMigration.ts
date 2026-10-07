@@ -173,8 +173,10 @@ export const PLATFORM_SIGNIN_ENDED = {
 export async function platformSubjectLink(
   db: Db,
   issuer: string,
-  sub: string,
+  rawSub: string,
 ): Promise<AccountLinkRow | null> {
+  // The same subject `signIn` looks up: trimmed.
+  const sub = rawSub.trim();
   return (
     (await findLink(db, {
       issuerKey: portalIdentityIssuerKey(issuer),

@@ -5187,8 +5187,11 @@ directory holds operators only, which closes G5 (operator and customer in one di
   again before it shows the identity, activates or mints, because an account can be disabled
   while the flow waits, and answers the generic `error` (D8). A subject that holds no method (a
   floating licence only, an erased account, which leaves no link, or a custom-issuer product's
-  subject) signs in as before. Residual: a device signed in before the disable keeps its token
-  (disabling drops the device's subject, not its binding); this closes new sign-ins only.
+  subject) signs in as before. Residual: a device or browser session signed in before the
+  disable keeps its token (disabling clears the device's account binding, `devices.subject`, not
+  its licence seat), and on a `requires-identity` product a live browser session can still
+  register devices; this closes new sign-ins only. Ending those is a product decision about
+  licence seats (follow-up).
 - **The switch is deploy-time (AT-2).** `PLATFORM_OIDC_MIGRATION` and `PLATFORM_OIDC_SUNSET` are
   `[vars]`, explained in `NOT_A_SETTING`, never console values: a console session cannot move
   people between sign-in paths or end anyone's sign-in. Off by default; an unrecognised mode reads

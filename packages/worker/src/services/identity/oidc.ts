@@ -3152,7 +3152,8 @@ async function pollAccountRefused(
   // `provider`: the check then still runs (fail closed) rather than being skipped.
   const row = await getOidcConfig(db, product.slug);
   const platform = platformOidcConfig(env);
-  if (!platform) return false;
+  // No platform secrets while a platform-provider flow waits: refuse (fail closed).
+  if (!platform) return (row?.provider ?? "platform") === "platform";
   return signInAccountRefused(
     db,
     row?.provider ?? null,

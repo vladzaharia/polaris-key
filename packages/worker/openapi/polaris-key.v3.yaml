@@ -7057,7 +7057,9 @@ paths:
             The identity verified but is not entitled to this product — LEGACY FLAT. Or, I-26,
             the licence chooser applies but this browser does not carry the flow's binder: the
             branded HTML page "Start again on your device" (`text/html`), the flow dropped and
-            nothing minted.
+            nothing minted. On a `provider: platform` product, also a branded HTML page when
+            the platform sign-in has ended (I-17's sunset or operators-only) or the subject's
+            account can no longer sign in ("This account can't sign in"), nothing written.
           content:
             text/html:
               schema: { type: string }
