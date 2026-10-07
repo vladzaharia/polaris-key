@@ -94,9 +94,14 @@ Discover tiles show every way to add with the S-21 reason copy, `#/discover/:pro
 
 ## Acceptance criteria
 
-- [ ] e2e: add from a tile, add from the product page, remove an entry; both themes at 1440 and 390 px.
-- [ ] Zero CSP violations; axe passes; no horizontal scroll at 360 px.
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+- [x] e2e: add from a tile, add from the product page, remove an entry; both themes at 1440 and 390 px.
+      (`e2e/storefront.e2e.test.ts`, 12 runs; eight storefront states on the quality bar,
+      `e2e/portalStates.ts`, with linux baselines.)
+- [x] Zero CSP violations; axe passes; no horizontal scroll at 360 px. (Every flow step and every
+      new state; `vitest-axe` on the new components in `test/portalStorefront.test.tsx`.)
+- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+      (GATE GREEN; `test:e2e` 1488 passed, and the full linux baseline check passed after
+      re-recording only the states this change moves.)
 
 ## Verify
 
