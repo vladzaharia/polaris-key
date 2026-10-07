@@ -6,7 +6,7 @@ import {
   type Opened,
   type PortalHarness,
 } from "./portalHarness.js";
-import type { PortalScenario } from "./portalFixtures.js";
+import { FIXTURE_NOW, type PortalScenario } from "./portalFixtures.js";
 
 /**
  * The Library and Discover motion (notes/S-23 §4.2, §6.1, §6.6; MO-07), in the BUILT portal under
@@ -23,12 +23,17 @@ import type { PortalScenario } from "./portalFixtures.js";
  *     and leaves no name behind;
  *   - on Discover, a just-added tile's plate pops in once (pk-pop-in on `slow`) and its ring fades
  *     in once (pk-fade-in on `base`, opacity only), and not again after a reload through `?added=`;
+ *   - in the Library, a product added under 24 hours ago (PX-24: the fixtures' Mossgarden is a
+ *     minute old) says "Added just now", which pops in once (pk-pop-in on `slow`), and its ring
+ *     fades in once (pk-fade-in on `base`); never again on a refetch, a search, a sort, a view
+ *     switch or a return to the Library;
  *   - under prefers-reduced-motion and under html[data-motion="reduce"] every one of these is an
  *     instant swap: no View Transition starts and `document.getAnimations()` is empty after each
  *     interaction.
  *
  * Zero CSP violations throughout. With `PK_SHOTS_DIR` set it also saves frame strips (animations
- * slowed ×0.1) of the stagger, the Grid → List transition and the ring.
+ * slowed ×0.1) of the stagger, the Grid → List transition, the ring and the Library's "Added just
+ * now".
  */
 
 const SHOTS = process.env.PK_SHOTS_DIR;
@@ -84,6 +89,7 @@ function probe(dataMotion: boolean): void {
   w.__m = { log: [], vt: [], starts: [], pseudo: {}, shifts: [] };
   const tag = (el: Element): string => {
     if (el.matches("[data-ring]")) return "ring";
+    if (el.matches("[data-cue='text']")) return "added";
     if (el.matches("img.pk-img-in")) return "img";
     if (el.closest("[data-art]") && el.textContent?.includes("In your library"))
       return "plate";
@@ -357,6 +363,18 @@ const BASE = 200;
 const FAST = 120;
 const MICRO = 80;
 const STEP = 30;
+
+/** The Library's cue (PX-24): "Added just now" and the ring, as the probe tags them. */
+const cueEvents = (events: AnimEvent[]): AnimEvent[] =>
+  events.filter((e) => e.target === "added" || e.target === "ring");
+
+/** The classes on Mossgarden's text and ring: none of the cue's motion is left on them. */
+const cueClasses = (page: Page): Promise<string[]> =>
+  page.evaluate(() =>
+    [...document.querySelectorAll("[data-cue]")].map(
+      (el) => `${el.getAttribute("data-cue")}: ${el.className}`,
+    ),
+  );
 
 // ── Motion on ─────────────────────────────────────────────────────────────────────────────────
 
@@ -669,6 +687,111 @@ describe("motion on: the Library and Discover under the Worker's CSP", () => {
     await s.close();
   });
 
+  for (const theme of ["dark", "light"] as const)
+    it(`the Library's "Added just now" pops in once and its ring fades in once, never again (${theme})`, async () => {
+      const s = await open("twelve", "/", { theme });
+      const { page } = s;
+      const card = page.getByRole("article", { name: "Mossgarden" });
+      await card.waitFor();
+      await page.getByRole("article", { name: "Glyphsmith" }).waitFor();
+      await atRest(page);
+      // First under the default sort, saying so.
+      expect(
+        await page
+          .locator("section[aria-labelledby='all-h'] article h3")
+          .first()
+          .textContent(),
+      ).toBe("Mossgarden");
+      await card.getByText("Added just now").waitFor();
+      const came = cueEvents(await log(page));
+      // The text pops; the ring only fades (a scaled ring would pass inside the card's edge).
+      expect(
+        came
+          .filter((e) => e.phase === "end")
+          .map((e) => [e.target, e.name, e.duration])
+          .sort(),
+      ).toEqual([
+        ["added", "pk-pop-in", SLOW],
+        ["ring", "pk-fade-in", BASE],
+      ]);
+      expect(came.filter((e) => e.phase === "cancel")).toEqual([]);
+      expect(await running(page)).toEqual([]);
+      // Nothing is left waiting to replay.
+      await expect
+        .poll(() => cueClasses(page))
+        .toEqual([
+          expect.not.stringMatching(/pk-pop-in|pk-content-in/),
+          expect.not.stringMatching(/pk-pop-in|pk-content-in/),
+        ]);
+
+      const quiet = async (what: string): Promise<void> => {
+        await page.getByRole("article", { name: "Mossgarden" }).waitFor();
+        await atRest(page);
+        expect(cueEvents(await log(page)), what).toEqual([]);
+        expect(await running(page), what).toEqual([]);
+        expect(await page.locator("[data-ring]").count(), what).toBe(1);
+      };
+
+      // A refetch: a minute later the library is stale, and coming back to the tab refetches it.
+      const libraryFetches = () =>
+        s.requests.filter((r) => r === "GET /api/library").length;
+      const before = libraryFetches();
+      await page.clock.setFixedTime((FIXTURE_NOW + 60) * 1000);
+      await page.evaluate(() =>
+        // React Query listens on window.
+        window.dispatchEvent(new Event("visibilitychange")),
+      );
+      await expect.poll(libraryFetches).toBeGreaterThan(before);
+      await quiet("refetch");
+
+      // A search that hides it, then Show all.
+      await page.getByRole("searchbox").fill("orbit");
+      await page.getByText("Showing 1 of 12 ·").waitFor();
+      await page.getByRole("button", { name: "Show all" }).click();
+      await quiet("search");
+
+      // By name, where it keeps its place, and back to Recently added.
+      const sort = page.getByRole("combobox", { name: "Sort" });
+      await sort.selectOption("name");
+      await page.getByText("By name").waitFor();
+      await quiet("sort by name");
+      await sort.selectOption("recent");
+      await page.getByText("Recently added first").waitFor();
+      await quiet("sort by recent");
+
+      // Grid → List → Grid.
+      await page.getByRole("radio", { name: "List" }).click();
+      await page.getByRole("table", { name: "Your products" }).waitFor();
+      await page.waitForFunction(
+        () => !document.documentElement.hasAttribute("data-vt"),
+      );
+      await atRest(page);
+      expect(cueEvents(await log(page)), "grid → list").toEqual([]);
+      expect(await page.locator("tbody [data-ring]").count()).toBe(1);
+      await page.getByRole("radio", { name: "Grid" }).click();
+      await page.waitForFunction(
+        () => !document.documentElement.hasAttribute("data-vt"),
+      );
+      await quiet("list → grid");
+
+      // A return to the Library.
+      await page.evaluate(() => (location.hash = "#/account"));
+      await page.getByRole("heading", { level: 1, name: "Account" }).waitFor();
+      await page.evaluate(() => (location.hash = "#/"));
+      await quiet("return");
+      expect(await s.violations()).toEqual([]);
+
+      if (theme === "dark")
+        await strip(
+          page,
+          "added-just-now",
+          () => page.reload().then(() => undefined),
+          6,
+          150,
+        );
+      await s.close();
+    });
+
   it("staggers Discover's offers on their first load", async () => {
     const s = await open("three", "/#/discover");
     const { page } = s;
@@ -771,6 +894,37 @@ describe("reduced motion: every Library and Discover change is an instant swap",
             e.name === "pk-pop-in" ||
             e.name === "pk-enter" ||
             e.target === "ring",
+        ),
+      ).toEqual([]);
+      expect(await s.violations()).toEqual([]);
+      await s.close();
+    });
+
+  for (const { name, o } of REDUCED)
+    it(`${name}: the Library's "Added just now" and its ring are simply there`, async () => {
+      const s = await open("twelve", "/", o);
+      const { page } = s;
+      const card = page.getByRole("article", { name: "Mossgarden" });
+      await card.waitFor();
+      await card.getByText("Added just now").waitFor();
+      expect(await page.locator("[data-ring]").count()).toBe(1);
+      expect(await running(page), "first load").toEqual([]);
+      // No class is left on to replay if motion comes back on.
+      await expect
+        .poll(() => cueClasses(page))
+        .toEqual([
+          expect.not.stringMatching(/pk-pop-in|pk-content-in/),
+          expect.not.stringMatching(/pk-pop-in|pk-content-in/),
+        ]);
+      await page.getByRole("combobox", { name: "Sort" }).selectOption("name");
+      await page.getByText("By name").waitFor();
+      expect(await running(page), "sort").toEqual([]);
+      await page.getByRole("radio", { name: "List" }).click();
+      await page.getByRole("table", { name: "Your products" }).waitFor();
+      expect(await running(page), "grid → list").toEqual([]);
+      expect(
+        (await state(page)).log.filter(
+          (e) => e.target === "added" || e.target === "ring",
         ),
       ).toEqual([]);
       expect(await s.violations()).toEqual([]);
