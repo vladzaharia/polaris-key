@@ -1510,7 +1510,133 @@ const MIGRATION_REPORT = {
 
 const PROD = "/manage/api/products/djdl";
 
+// PS-06: the Polaris Key storefront: its hub tile, its panel and the 28-day card.
+const firstParty = (op: string) => ({
+  mode: "first-party",
+  plane: "worker",
+  handler: `polaris-key.${op}`,
+});
+
+const POLARIS_KEY_ROUTES: Record<string, unknown> = {
+  [`${PROD}/distribution/storefronts`]: {
+    listing: { name: "DJDL", defaultLocale: "en-US", locales: ["en-US"] },
+    stores: [
+      {
+        id: "polaris-key",
+        label: "Polaris Key",
+        builtIn: true,
+        listingStore: "polaris-key",
+        connection: {
+          state: "keyless",
+          credential: null,
+          credentialLabel: null,
+          source: null,
+          lastError: null,
+        },
+        app: null,
+        outlets: [],
+        readOnly: null,
+        capabilities: [
+          ["identifiers", "Identifiers"],
+          ["readListing", "Listing import"],
+          ["writeListingText", "Listing text"],
+          ["writeListingAssets", "Listing images"],
+          ["category", "Category"],
+          ["submit", "Submit for review"],
+        ]
+          .map(([op, label]) => ({ op, label, support: firstParty(op!) }))
+          .concat([
+            {
+              op: "pricing",
+              label: "Price and availability",
+              support: {
+                mode: "unsupported",
+                reason: "Listed products are obtained without payment",
+              } as never,
+            },
+          ]),
+        prerequisites: [],
+        steps: [],
+        pushListing: null,
+        confirmationLabel: "Polaris Key",
+      },
+    ],
+  },
+  [`${PROD}/storefronts/polaris-key`]: {
+    enabled: true,
+    portalEnabled: true,
+    listing: {
+      listed: "listed",
+      audience: "eligible",
+      offerPaths: null,
+      groupLabels: { "aperture-beta": "Aperture Seven" },
+    },
+    available: ["group", "auto_issue", "open"],
+    active: ["group", "auto_issue", "open"],
+    everyone: false,
+    identityEligible: true,
+    licenseEnabled: true,
+    groups: [
+      { group: "aperture-beta", tier: "beta", label: "Aperture Seven" },
+      {
+        group: "aperture-crew-with-a-long-group-name",
+        tier: null,
+        label: null,
+      },
+    ],
+    autoIssue: { tier: "free", tierLabel: "Free", expiryDays: 14 },
+    readiness: [
+      {
+        id: "portal",
+        state: "pass",
+        reason: "The portal is on for this product",
+      },
+      {
+        id: "listing",
+        state: "fail",
+        reason:
+          "The listing needs a name and a short description that fit Polaris Key's limits",
+      },
+      {
+        id: "obtain-path",
+        state: "pass",
+        reason: "People can add it through 3 obtain paths",
+      },
+      {
+        id: "get-it",
+        state: "warn",
+        reason:
+          "Get it opens the developer's website: there is no download or store link",
+      },
+      {
+        id: "licence-tier",
+        state: "pass",
+        reason: "Every tier a path issues exists and has a device limit",
+      },
+    ],
+  },
+  [`${PROD}/storefronts/polaris-key/analytics`]: {
+    from: "2026-09-09",
+    to: "2026-10-06",
+    days: 28,
+    totals: { impressions: 12_480, adds: 1_204, activations: 812 },
+    byKind: [
+      { kind: "group", impressions: 4_100, adds: 520, activations: 401 },
+      { kind: "auto_issue", impressions: 7_900, adds: 684, activations: 411 },
+      { kind: "link", impressions: 480, adds: 0, activations: 0 },
+    ],
+    daily: Array.from({ length: 28 }, (_, i) => ({
+      day: `2026-09-${String((i % 28) + 1).padStart(2, "0")}`,
+      impressions: 300 + ((i * 37) % 200),
+      adds: 30 + ((i * 7) % 20),
+      activations: 20 + ((i * 5) % 15),
+    })),
+    impressionsCounted: true,
+  },
+};
+
 export const DATA_ROUTES: Record<string, unknown> = {
+  ...POLARIS_KEY_ROUTES,
   "/manage/api/platform/version": IDENTITY,
   "/manage/api/platform/deployment": deployment({
     deploys: {

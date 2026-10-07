@@ -36,6 +36,8 @@ export const DOCS_LINKS = {
   compatSimulator: "/docs/services/release/compatibility/",
   rolloutControl: "/docs/admin/distribution-matrix/",
   storeConnections: "/docs/admin/store-connections/",
+  // PS-06: the built-in storefront's page (listing, audience, ways to add, preview, analytics).
+  polarisKeyStorefront: "/docs/admin/polaris-key-storefront/",
   packageFeeds: "/docs/admin/feeds/",
   packageFeedsHost: "/docs/services/distribution/package-feeds/",
   platformSecrets: "/docs/admin/deploy/",

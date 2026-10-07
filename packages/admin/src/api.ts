@@ -983,6 +983,12 @@ export interface PortalProductSettings {
   claimByKey?: boolean;
   /** PX-W10 (G24): the product may be offered on the portal's Discover. On by default. */
   discoverEnabled?: boolean;
+  /** PS-02: the Polaris Key listing (`storefront.polarisKey.*`; PS-06's panel edits them). */
+  storeListed?: PolarisKeyListed;
+  storeAudience?: PolarisKeyAudience;
+  /** `null` = every way to add, including kinds added later. */
+  storeOfferPaths?: ObtainPathKind[] | null;
+  storeGroupLabels?: Record<string, string>;
   branding?: unknown;
   modifiedAt?: number;
 }
@@ -1432,8 +1438,143 @@ export type UpdatePortalSettingsBody = Partial<
     | "discoverEnabled"
     | "autoLinkEnabled"
     | "branding"
+    | "storeListed"
+    | "storeAudience"
+    | "storeOfferPaths"
+    | "storeGroupLabels"
   >
->;
+> & {
+  /**
+   * The typed phrase that widens the audience to `everyone` (`storefront.polarisKey.audience`,
+   * level 2, PS-02); the Worker answers `400 confirm_required` without it.
+   */
+  confirm?: string;
+};
+
+// ── The Polaris Key storefront (PS-06; notes/S-21 §6.6) ───────────────────────────────────────
+
+/** One obtain-path kind (notes/S-21 §6.3): one reason a signed-in person can add a product. */
+export type ObtainPathKind =
+  | "group"
+  | "auto_issue"
+  | "open"
+  | "store_owned"
+  | "product_idp"
+  | "email_domain";
+
+/** `storefront.polarisKey.listed`. */
+export type PolarisKeyListed = "auto" | "listed" | "unlisted";
+/** `storefront.polarisKey.audience`. */
+export type PolarisKeyAudience = "eligible" | "everyone";
+
+/** One readiness check (PS-01's `polarisKeyReadiness`). */
+export interface PolarisKeyReadinessCheck {
+  id: "portal" | "listing" | "obtain-path" | "get-it" | "licence-tier";
+  state: "pass" | "warn" | "fail";
+  reason: string;
+}
+
+/** `GET …/storefronts/polaris-key`: the first-party `status` op. */
+export interface PolarisKeyStatusResponse {
+  /** The deployment switch `storefront.polarisKey.enabled`. */
+  enabled: boolean;
+  portalEnabled: boolean;
+  listing: {
+    listed: PolarisKeyListed;
+    audience: PolarisKeyAudience;
+    offerPaths: ObtainPathKind[] | null;
+    groupLabels: Record<string, string>;
+  };
+  /** The kinds whose policy is configured: the "Ways to add" switches. */
+  available: ObtainPathKind[];
+  /** The available kinds the listing offers now, in evaluation order. */
+  active: ObtainPathKind[];
+  /** Audience everyone on a listed product: everyone else signed in sees a link. */
+  everyone: boolean;
+  identityEligible: boolean;
+  licenseEnabled: boolean;
+  groups: { group: string; tier: string | null; label: string | null }[];
+  autoIssue: {
+    tier: string;
+    tierLabel: string | null;
+    expiryDays: number | null;
+  } | null;
+  readiness: PolarisKeyReadinessCheck[];
+}
+
+/** A synthetic person (S-21 owner decision 11): nothing in it names anyone. */
+export interface PolarisKeyPersona {
+  platformAccount: boolean;
+  groups: string[];
+  /** A domain, never an address. */
+  emailDomain: string | null;
+  stores: string[];
+  holds: boolean;
+}
+
+/** The licence terms a path would mint. */
+export interface PolarisKeyTerms {
+  tier: string | null;
+  tierLabel: string | null;
+  deviceLimit: number;
+  expiresAt: number | null;
+  expiryDays: number | null;
+}
+
+/** One path on a preview tile, as `GET /api/discover` sends it. */
+export interface PolarisKeyTilePath {
+  kind: ObtainPathKind;
+  detail: string | null;
+  /** The operator's group label, or `null`. */
+  label: string | null;
+  terms: PolarisKeyTerms | null;
+  action: "add" | "link";
+  reason: string;
+}
+
+/** The Discover tile a persona would see (`GET /api/discover`'s offer shape). */
+export interface PolarisKeyTile {
+  product: string;
+  name: string;
+  developerName: string | null;
+  tintColor: string | null;
+  iconUrl: string | null;
+  headerUrl: string | null;
+  platforms: string[];
+  shortDescription: string | null;
+  cta: "add" | "link";
+  paths: PolarisKeyTilePath[];
+  offer: PolarisKeyTerms | null;
+  reason: string | null;
+  stores: { id: string; kind: string; label: string; url: string }[];
+}
+
+/** `POST …/storefronts/polaris-key/preview`. */
+export interface PolarisKeyPreviewResponse {
+  persona: PolarisKeyPersona;
+  visible: boolean;
+  hidden: "storefront_off" | "not_candidate" | "holds" | "no_path" | null;
+  tile: PolarisKeyTile | null;
+}
+
+/** One row of the analytics card. */
+export interface PolarisKeyCounts {
+  impressions: number;
+  adds: number;
+  activations: number;
+}
+
+/** `GET …/storefronts/polaris-key/analytics`: the last 28 days of `storefront_daily`. */
+export interface PolarisKeyAnalyticsResponse {
+  from: string;
+  to: string;
+  days: number;
+  totals: PolarisKeyCounts;
+  byKind: (PolarisKeyCounts & { kind: ObtainPathKind | "link" })[];
+  daily: (PolarisKeyCounts & { day: string })[];
+  /** False on a deployment without `KEY_HASH_PEPPER`: no impression is counted there. */
+  impressionsCounted: boolean;
+}
 
 export interface CreateManualProductResult {
   ok: true;
@@ -2070,7 +2211,9 @@ export type SupportDto =
         | { read: string; every: number; until: number }
         | "operator-assertion";
     }
-  | { mode: "unsupported"; reason: string };
+  | { mode: "unsupported"; reason: string }
+  /** PS-01: run on Polaris Key's own tables (the built-in storefront); shown as "Built in". */
+  | { mode: "first-party"; plane: "worker"; handler: string };
 
 export type StorefrontStepState =
   | "todo"
@@ -2132,6 +2275,11 @@ export interface StorefrontStepDto {
 export interface StorefrontDto {
   id: string;
   label: string;
+  /**
+   * A built-in store (PS-06): it runs on Polaris Key's own tables, so it has nothing to connect
+   * and no flow; its tile opens the store's own panel. Optional for older Workers.
+   */
+  builtIn?: boolean;
   listingStore: string | null;
   connection: {
     state: "connected" | "not-configured" | "keyless";
@@ -4621,6 +4769,20 @@ const rawApi = {
   // ── distribution: storefronts and the listing (A-18j) ─────────────────────
   storefronts: (slug: string) =>
     call<StorefrontsResponse>(`${p(slug)}/distribution/storefronts`),
+  /** PS-06: the Polaris Key panel (the first-party `status` op). */
+  polarisKey: (slug: string) =>
+    call<PolarisKeyStatusResponse>(`${p(slug)}/storefronts/polaris-key`),
+  /** PS-06: "Who can see this?" for a persona; reads only (a POST for its body). */
+  polarisKeyPreview: (slug: string, persona: PolarisKeyPersona) =>
+    call<PolarisKeyPreviewResponse>(
+      `${p(slug)}/storefronts/polaris-key/preview`,
+      { method: "POST", body: JSON.stringify(persona) },
+    ),
+  /** PS-06: the 28-day analytics card. */
+  polarisKeyAnalytics: (slug: string) =>
+    call<PolarisKeyAnalyticsResponse>(
+      `${p(slug)}/storefronts/polaris-key/analytics`,
+    ),
   storefrontSlots: (slug: string) =>
     call<{ slots: ListingSlotDto[] }>(
       `${p(slug)}/distribution/storefronts/slots`,

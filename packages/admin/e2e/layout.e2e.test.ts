@@ -70,6 +70,8 @@ const RECORD_IDS: Record<string, { id: string; child?: string[] }> = {
   deliverables: { id: PACK_ID },
   "package-feeds": { id: "npm", child: ["@djdl/sdk"] },
   "platform-feeds": { id: "npm", child: ["polaris-key", "@polaris-key/node"] },
+  // PS-06: the built-in storefront's own page.
+  storefronts: { id: "polaris-key" },
 };
 
 function cases(): Case[] {

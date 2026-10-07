@@ -12,6 +12,7 @@ import { Button } from "../../../ui/Button.js";
 import { ConfirmDialog } from "../../../ui/ConfirmDialog.js";
 import { ErrorState } from "../../../ui/ErrorState.js";
 import { FormField } from "../../../ui/form.js";
+import { Select } from "../../../ui/Select.js";
 import { Skeleton } from "../../../ui/Skeleton.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
 import { Textarea } from "../../../ui/Textarea.js";
@@ -110,10 +111,16 @@ function OverrideDialog({
 export function FitReport({
   slug,
   stores,
+  storeFilter,
 }: {
   slug: string;
   /** Only these listing columns (`play`, `ms-store`…); every store when absent. */
   stores?: readonly string[];
+  /**
+   * The store switcher (PS-06): one store's row, or every store's (`""`), chosen by the operator.
+   * The Listing page keeps it in the URL (`?store=`), so a storefront's page links to its row.
+   */
+  storeFilter?: { value: string; onChange: (store: string) => void };
 }): React.ReactElement {
   const q = useListingFit(slug);
   const [override, setOverride] = React.useState<{
@@ -129,9 +136,35 @@ export function FitReport({
         context={{ area: "distribution", thing: "Fit report" }}
       />
     );
-  const rows = q.data.stores.filter((s) => !stores || stores.includes(s.store));
+  const known = q.data.stores.some((s) => s.store === storeFilter?.value);
+  const only = storeFilter && known ? storeFilter.value : null;
+  const rows = q.data.stores.filter(
+    (s) =>
+      (!stores || stores.includes(s.store)) &&
+      (only === null || s.store === only),
+  );
   return (
     <>
+      {storeFilter ? (
+        <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
+          <label
+            htmlFor={`fit-store-${slug}`}
+            className="text-sm text-fg-muted"
+          >
+            Store
+          </label>
+          <Select
+            id={`fit-store-${slug}`}
+            className="w-full sm:w-56"
+            value={only ?? "all"}
+            options={[
+              { value: "all", label: "Every store" },
+              ...q.data.stores.map((s) => ({ value: s.store, label: s.label })),
+            ]}
+            onChange={(v) => storeFilter.onChange(!v || v === "all" ? "" : v)}
+          />
+        </div>
+      ) : null}
       <ul
         aria-label="Fit report"
         className="divide-y divide-border rounded-lg border border-border bg-surface-raised"
