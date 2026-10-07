@@ -89,7 +89,11 @@ const ROUTES = {
   [`${API}/users/licenses/lic_float/relinks`]: { relinks: [] },
 };
 
-const table = () => screen.findByRole("table", { name: "Licenses" });
+/** The Licenses table once the batch read has landed (the table remounts with its Batch column). */
+async function table(withBatches = true): Promise<HTMLElement> {
+  if (withBatches) await screen.findByRole("columnheader", { name: /Batch/ });
+  return screen.findByRole("table", { name: "Licenses" });
+}
 const rowOf = (t: HTMLElement, text: string) =>
   within(t).getByText(text).closest("tr")!;
 const rowNames = (t: HTMLElement) =>
@@ -166,7 +170,7 @@ describe("Licenses: the Holder column and filters", () => {
         [`${API}/license/batches`]: { batches: [], nextCursor: null },
       },
     });
-    const t = await table();
+    const t = await table(false);
     await within(t).findByText("Lena Ortiz");
     expect(within(t).queryByRole("columnheader", { name: /Batch/ })).toBeNull();
   });

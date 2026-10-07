@@ -60,7 +60,10 @@ export function LicenseBatchesPage({
         accessorKey: "label",
         meta: { priority: 1, primary: true },
         cell: ({ row }) => (
-          <span className="block max-w-[22rem] truncate">
+          <span
+            className="block max-w-[22rem] truncate"
+            title={row.original.label}
+          >
             {row.original.label}
           </span>
         ),

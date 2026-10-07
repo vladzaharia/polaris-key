@@ -254,7 +254,7 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
                 row.original.batchId ? (
                   <Link
                     to={r.licenseBatch(slug, row.original.batchId)}
-                    className="inline-block max-w-[12rem] truncate rounded-full border border-border px-2 py-0.5 text-xs text-fg hover:border-border-strong"
+                    className="inline-block max-w-[6.5rem] truncate rounded-full border border-border px-2 py-0.5 text-xs text-fg hover:border-border-strong"
                     title={batchLabel(row.original.batchId)}
                   >
                     {batchLabel(row.original.batchId)}
@@ -464,6 +464,9 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
         </p>
       ) : null}
       <DataTable<LicenseSummary>
+        // The Batch column arrives with the first batch read: a remount then lets the table's
+        // first-mount column defaults (priority 3 starts hidden below 1440 px) apply to it.
+        key={hasBatches ? "with-batches" : "no-batches"}
         id="licenses"
         caption="Licenses"
         data={licenses}
