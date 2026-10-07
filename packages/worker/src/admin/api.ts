@@ -88,6 +88,7 @@ import { handleServicesAdmin } from "../core/servicesAdmin.js";
 import { handleBundleMint } from "../core/bundles.js";
 import { handleBlobGcAdmin } from "../core/blobGc.js";
 import { loadProduct } from "../core/products.js";
+import { handleProductStorefronts } from "./handlers/polarisKeyStorefront.js";
 import { buildHooks } from "../core/hooks.js";
 import { manifestIngestFor } from "../core/registry.js";
 import { licenseDeleteFor } from "../core/licenseDelete.js";
@@ -319,6 +320,24 @@ async function handleProductScoped(
   //   GET /products/<slug>/refusals[?refusedSince=&licenseId=&limit=]
   if (resource === "refusals") {
     return handleRefusals(req, db, slug, rest.slice(1), now);
+  }
+
+  // PS-06: the Polaris Key storefront's console panel (notes/S-21 §6.6). CORE, like `assets`:
+  // every product can list on Polaris Key whether or not it runs Distribution (S-21 §6.2), and
+  // the panel composes Identity's listing and engine with Distribution's listing model.
+  //   GET  /products/<slug>/storefronts/polaris-key
+  //   POST /products/<slug>/storefronts/polaris-key/preview
+  //   GET  /products/<slug>/storefronts/polaris-key/analytics
+  if (resource === "storefronts") {
+    return handleProductStorefronts(
+      req,
+      env,
+      db,
+      session,
+      slug,
+      rest.slice(1),
+      now,
+    );
   }
 
   // HA-05, HA-06: the product's hosted assets (`core/hostedAssetPulls.ts`,

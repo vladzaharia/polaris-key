@@ -403,6 +403,27 @@ export async function autoLinkEnabled(
 }
 
 /**
+ * PS-06: may the storefront's identity paths (`group`, `auto_issue`) run on `product` at all? The
+ * candidate query's `identity_eligible` (`listStorefrontCandidates`) for one product, whatever its
+ * listing: the platform issuer with auto-linking on (R5-01/R5-02).
+ */
+export async function storefrontIdentityEligible(
+  db: Db,
+  product: string,
+): Promise<boolean> {
+  const row = await db.first<{ one: number }>(
+    `SELECT 1 AS one
+       FROM (SELECT ? AS product) l
+       LEFT JOIN portal_product_settings s ON s.product = l.product
+       LEFT JOIN oidc_config o ON o.product = l.product
+      WHERE COALESCE(o.provider, 'platform') = 'platform'
+        AND ${AUTO_LINK_ENABLED_SQL}`,
+    product,
+  );
+  return row !== null;
+}
+
+/**
  * Every address the account verified (a delivered magic link, a platform IdP's
  * `email_verified: true` claim, a verified primary email). Security notices go to all of them
  * (PORTAL.md §6.3).

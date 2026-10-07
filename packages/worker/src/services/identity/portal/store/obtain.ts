@@ -239,11 +239,35 @@ export function decideVerdict(
 
 // ── Evaluation context and sources ───────────────────────────────────────────────────────────
 
+/**
+ * A SYNTHETIC person, for the console's "Who can see this?" (PS-06; notes/S-21 §6.6, owner
+ * decision 11): what the operator says the person has, never an account. Nothing in it names or
+ * looks up a real person: groups are IdP group names, the email is a domain, stores are store ids.
+ */
+export interface Persona {
+  /** Signed in to Polaris Key with the platform IdP (an email-link-only account has no subject). */
+  platformAccount: boolean;
+  /** The `groups` the platform IdP asserts for the person. */
+  groups: readonly string[];
+  /** The domain of a verified email the person holds (`email_domain`, PS-09), or `null`. */
+  emailDomain: string | null;
+  /** The stores the person linked (`store_owned`, PS-07), by store id. */
+  stores: readonly string[];
+  /** The person holds the product already (it is in their Library). */
+  holds: boolean;
+}
+
 /** What a path source may read, for one account and one listing or claim. */
 export interface ObtainContext {
   env: Env;
   db: Db;
+  /**
+   * The account. EMPTY when `persona` is set: a persona has no account, and a source must then
+   * answer from the persona alone, never from an account's rows.
+   */
   accountId: string;
+  /** Set only for the console's persona preview (PS-06); `null` for every real account. */
+  persona: Persona | null;
   now: number;
   /** The account at the platform IdP (read once), or `null` when it has none. */
   identity(): Promise<OidcIdentity | null>;
@@ -338,21 +362,51 @@ export async function discoverIdentity(
   };
 }
 
+/** The subject a persona's synthetic identity carries; it is never looked up (`personaIdentity`). */
+export const PERSONA_SUBJECT = "persona";
+
+/**
+ * A persona as the identity policy sees it: the groups and a verified email at its domain, as
+ * `discoverIdentity` shapes a real account. Built in memory; its subject keys nothing, and the
+ * engine never looks it up among licences (`previewIdentityIssue`'s `existing: false`).
+ */
+export function personaIdentity(persona: Persona): OidcIdentity | null {
+  if (!persona.platformAccount) return null;
+  const email =
+    persona.emailDomain !== null ? `person@${persona.emailDomain}` : undefined;
+  const groups = [...persona.groups];
+  return {
+    sub: PERSONA_SUBJECT,
+    ...(email !== undefined ? { email } : {}),
+    groups,
+    claims: {
+      sub: PERSONA_SUBJECT,
+      ...(email !== undefined ? { email, email_verified: true } : {}),
+      groups,
+    },
+  };
+}
+
 function obtainContext(
   env: Env,
   db: Db,
   accountId: string,
   now: number,
   hooksFor: PortalHooksFor | undefined,
+  persona: Persona | null = null,
 ): ObtainContext {
   let identity: Promise<OidcIdentity | null> | undefined;
   const deliveries = new Map<string, Delivery | null>();
   return {
     env,
     db,
-    accountId,
+    accountId: persona ? "" : accountId,
+    persona,
     now,
-    identity: () => (identity ??= discoverIdentity(env, db, accountId)),
+    identity: () =>
+      (identity ??= persona
+        ? Promise.resolve(personaIdentity(persona))
+        : discoverIdentity(env, db, accountId)),
     delivery(product) {
       if (!hooksFor) return null;
       if (!deliveries.has(product.slug))
@@ -385,7 +439,10 @@ async function identityEvidence(
   const identity = await ctx.identity();
   if (!identity) return null;
   const { db, now } = ctx;
-  const preview = await previewIdentityIssue(db, product, identity, now);
+  // A persona's subject is synthetic: it is never looked up among real licences.
+  const preview = await previewIdentityIssue(db, product, identity, now, {
+    existing: ctx.persona === null,
+  });
   if ("error" in preview) return { identity, existing: null, path: null };
   if (preview.existing)
     return { identity, existing: preview.existing, path: null };
@@ -613,4 +670,59 @@ export async function obtainPaths(
     (await evaluateObtain(env, db, accountId, slug, now, opts))?.verdict ??
     HIDDEN
   );
+}
+
+// ── The console's persona preview (PS-06) ────────────────────────────────────────────────────
+
+/**
+ * Why a persona does not see the product: the deployment switch is off, the product is not a
+ * candidate at all (portal off, unlisted, not active), the persona holds it already, or no path
+ * is offered to it (and no audience-`everyone` link applies).
+ */
+export type PersonaHidden =
+  | "storefront_off"
+  | "not_candidate"
+  | "holds"
+  | "no_path";
+
+export interface PersonaPreview {
+  /** What the persona would see: the engine's own verdict. */
+  verdict: ObtainVerdict;
+  /** The evaluated candidate, for the tile; `null` when the product is not a candidate. */
+  evaluation: ObtainEvaluation | null;
+  /** Why it is hidden, for the operator; `null` when visible. */
+  hidden: PersonaHidden | null;
+}
+
+/**
+ * "Who can see this?" (notes/S-21 §6.6, owner decision 11): the engine run for a SYNTHETIC person
+ * against one product, exactly as a real account's listing runs it, but with every account fact
+ * taken from the persona. No account row is read: not the platform identity (the persona's
+ * groups and email domain are the identity), not the held set (`persona.holds`), and not a
+ * licence by subject (`existing: false`). A product operator therefore learns nothing about any
+ * person. Reads only, like the rest of the engine.
+ */
+export async function previewPersona(
+  env: Env,
+  db: Db,
+  slug: string,
+  persona: Persona,
+  now: number,
+  opts: ObtainOptions = {},
+): Promise<PersonaPreview> {
+  if (!(await polarisKeyStorefrontEnabled(db)))
+    return { verdict: HIDDEN, evaluation: null, hidden: "storefront_off" };
+  const [row] = await listStorefrontCandidates(db, slug);
+  const candidate = row ? storefrontCandidate(row) : null;
+  if (!candidate || candidate.listing.listed === "unlisted")
+    return { verdict: HIDDEN, evaluation: null, hidden: "not_candidate" };
+  const ctx = obtainContext(env, db, "", now, opts.hooksFor, persona);
+  const ev = await evaluateCandidate(ctx, candidate, persona.holds, opts);
+  if (!ev)
+    return { verdict: HIDDEN, evaluation: null, hidden: "not_candidate" };
+  return {
+    verdict: ev.verdict,
+    evaluation: ev,
+    hidden: ev.verdict.visible ? null : ev.held ? "holds" : "no_path",
+  };
 }
