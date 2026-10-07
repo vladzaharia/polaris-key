@@ -5,6 +5,7 @@ sidebar:
   order: 6
 ---
 
+import { Tabs, TabItem } from "@astrojs/starlight/components";
 import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
 
@@ -20,5 +21,19 @@ The first-paint screen while the boot stages run: the product hero, a neutral in
 
 ## In each kit
 
-No kit documents Boot here yet. Each kit adds its tab when it ships the component: the drop-in,
-the styled part with its slots and restyle hooks, and the headless model.
+<Tabs syncKey="ui-kit">
+  <TabItem label="Terminal (Node)">
+    **Drop-in.** `checkFlow`, through `runKitVerb` (the bare `tidewater` in the sample): a spinner
+    while the client syncs (`progress`), then the gate's answer.
+
+    **Styled part.** The spinner row: the `LiveRegion`, `animate` and `spinnerFrames` primitives,
+    drawn only where the terminal animates.
+
+    **Headless.** None of its own: after `client.sync()`, `statusExit(client.status().status)` says
+    whether to go on and `statusView` what to show.
+
+    [Terminal (Node)](/docs/build/ui/frameworks/terminal-node/) has the adapter's options, the
+    `--json` contract and the fallbacks.
+
+  </TabItem>
+</Tabs>

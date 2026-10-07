@@ -5,6 +5,7 @@ sidebar:
   order: 17
 ---
 
+import { Tabs, TabItem } from "@astrojs/starlight/components";
 import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
 
@@ -20,5 +21,17 @@ The changelog for one version or many, read from the release service. Notes rend
 
 ## In each kit
 
-No kit documents ReleaseNotes here yet. Each kit adds its tab when it ships the component: the drop-in,
-the styled part with its slots and restyle hooks, and the headless model.
+<Tabs syncKey="ui-kit">
+  <TabItem label="Terminal (Node)">
+    **Drop-in.** `changelog` (`changelogFlow`): the published releases, newest first, dated in the
+    active locale (`list`, `empty`, `error`).
+
+    **Styled part.** `stepRow` and `textRow`.
+
+    **Headless.** None of its own: the data is `client.release.changelog()`.
+
+    [Terminal (Node)](/docs/build/ui/frameworks/terminal-node/) has the adapter's options, the
+    `--json` contract and the fallbacks.
+
+  </TabItem>
+</Tabs>

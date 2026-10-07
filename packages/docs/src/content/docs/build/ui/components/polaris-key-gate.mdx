@@ -5,6 +5,7 @@ sidebar:
   order: 5
 ---
 
+import { Tabs, TabItem } from "@astrojs/starlight/components";
 import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
 
@@ -20,5 +21,20 @@ The drop-in root: it boots, gates and runs every flow the product needs, renders
 
 ## In each kit
 
-No kit documents PolarisKeyGate here yet. Each kit adds its tab when it ships the component: the drop-in,
-the styled part with its slots and restyle hooks, and the headless model.
+<Tabs syncKey="ui-kit">
+  <TabItem label="Terminal (Node)">
+    **Drop-in.** `status` (`statusFlow`) before there is a license (`needs-activation`): the
+    commands that get one (`activate`, `login`, `enroll` for a free tier) and exit code 3.
+    `checkFlow`, the check a product runs before its own work, prints the `licensed` line or falls
+    through to `status`.
+
+    **Styled part.** `problemRows` and `fixRows`.
+
+    **Headless.** `statusView(input)`: PolarisKeyGate `needs-activation` with its `fixes`, or
+    `licensed`; `statusExit(status)` says whether the product may go on.
+
+    [Terminal (Node)](/docs/build/ui/frameworks/terminal-node/) has the adapter's options, the
+    `--json` contract and the fallbacks.
+
+  </TabItem>
+</Tabs>

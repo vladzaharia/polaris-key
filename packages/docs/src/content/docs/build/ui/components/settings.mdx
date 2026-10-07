@@ -5,6 +5,7 @@ sidebar:
   order: 21
 ---
 
+import { Tabs, TabItem } from "@astrojs/starlight/components";
 import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
 
@@ -20,5 +21,20 @@ Settings driven by the product's config catalog: typed controls, categories, sea
 
 ## In each kit
 
-No kit documents Settings here yet. Each kit adds its tab when it ships the component: the drop-in,
-the styled part with its slots and restyle hooks, and the headless model.
+<Tabs syncKey="ui-kit">
+  <TabItem label="Terminal (Node)">
+    **Drop-in.** `config list` (`configListFlow`): each setting, its value and where it comes from,
+    with the operator's locked ones marked (`list`, `locked`); `config get <key>`,
+    `config set <key> <value>` and `config reset <key>` (`saving`). `secret <key>` and
+    `mint <recipeId>` print a value alone, for scripts.
+
+    **Styled part.** `tableRows`.
+
+    **Headless.** None of its own: the data is `client.config.listUserConfig()` and
+    `client.config.getConfigSource(key)`.
+
+    [Terminal (Node)](/docs/build/ui/frameworks/terminal-node/) has the adapter's options, the
+    `--json` contract and the fallbacks.
+
+  </TabItem>
+</Tabs>

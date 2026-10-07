@@ -5,6 +5,7 @@ sidebar:
   order: 14
 ---
 
+import { Tabs, TabItem } from "@astrojs/starlight/components";
 import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
 
@@ -20,5 +21,20 @@ The device list: an icon for the form factor, the name, platform and last seen, 
 
 ## In each kit
 
-No kit documents Devices here yet. Each kit adds its tab when it ships the component: the drop-in,
-the styled part with its slots and restyle hooks, and the headless model.
+<Tabs syncKey="ui-kit">
+  <TabItem label="Terminal (Node)">
+    **Drop-in.** `devices list` (`devicesListFlow`): this device first and marked, each with its
+    platform and id (`list`, `empty`); `devices rename <deviceId> [label...]` and
+    `devices deauthorize <deviceId>`.
+
+    **Styled part.** Rail rows with the radio symbols (`●` this device, `○` the others), the id kept
+    whole.
+
+    **Headless.** `devicesView(devices)`: `list` or `empty`, with each row's `name`, `platform`,
+    `current` and `lastSeenAt`.
+
+    [Terminal (Node)](/docs/build/ui/frameworks/terminal-node/) has the adapter's options, the
+    `--json` contract and the fallbacks.
+
+  </TabItem>
+</Tabs>

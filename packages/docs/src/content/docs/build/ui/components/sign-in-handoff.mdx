@@ -5,6 +5,7 @@ sidebar:
   order: 9
 ---
 
+import { Tabs, TabItem } from "@astrojs/starlight/components";
 import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
 
@@ -20,5 +21,22 @@ Step two of the sign-in form, in place: Finish in your browser, with Open browse
 
 ## In each kit
 
-No kit documents SignInHandoff here yet. Each kit adds its tab when it ships the component: the drop-in,
-the styled part with its slots and restyle hooks, and the headless model.
+<Tabs syncKey="ui-kit">
+  <TabItem label="Terminal (Node)">
+    **Drop-in.** `login` (`loginFlow`) opens the browser and waits: Enter opens it again, `c` shows
+    the code, Esc cancels. `login --device-code`, an SSH session, CI or Linux without a display show
+    the code instead, with a countdown and `c` to copy it. No QR code. Under `--json` it streams
+    `pending`, then the final state.
+
+    **Styled part.** `codeRows` (the code in reverse video), `linkSpan` (an OSC 8 link) and
+    `hintsRow`, with the `LiveRegion`, `spinnerFrames` and `osc52` primitives.
+
+    **Headless.** `handoffView(state, data?)`: `starting`, `waiting`, `no-browser`, `code`,
+    `link-copied`, `finishing`, `denied`, `expired` or `cancelled`, with the URL, the code and the
+    seconds left; `clock(seconds)` formats the countdown.
+
+    [Terminal (Node)](/docs/build/ui/frameworks/terminal-node/) has the adapter's options, the
+    `--json` contract and the fallbacks.
+
+  </TabItem>
+</Tabs>

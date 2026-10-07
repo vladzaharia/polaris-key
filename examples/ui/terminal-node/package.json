@@ -1,0 +1,23 @@
+{
+  "name": "polaris-key-example-ui-terminal-node",
+  "version": "2.4.1",
+  "private": true,
+  "type": "module",
+  "productName": "Tidewater Studio",
+  "author": "Harbor Audio",
+  "scripts": {
+    "start": "tsx cli.ts",
+    "typecheck": "tsc --noEmit",
+    "repo": "tsx --tsconfig tsconfig.repo.json cli.ts",
+    "repo:typecheck": "tsc --noEmit -p tsconfig.repo.json"
+  },
+  "dependencies": {
+    "@polaris-key/node": "^0.0.0",
+    "commander": "^14.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.0"
+  }
+}

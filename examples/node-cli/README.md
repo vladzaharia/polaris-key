@@ -1,7 +1,7 @@
 # Commander CLI with sign-in
 
 `registerPolarisCommands` adds the whole CLI kit to your own program: `activate`, `enroll`,
-`sign-in` (code and terminal QR), `devices list|rename|deauthorize`, `config get|list|set|reset`,
+`login` (the browser, or a code when headless; alias `sign-in`), `devices list|rename|deauthorize`, `config get|list|set|reset`,
 `update check|apply`, `changelog`, `packs status|ensure`, `offline-request`, `import-bundle`,
 `doctor`, `secret` and `mint`. The tool's own command boots the client and runs only when the
 gate is `ready`.

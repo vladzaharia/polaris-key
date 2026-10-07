@@ -177,7 +177,10 @@ export const UI_KITS: readonly UiKit[] = [
     sdk: "Node",
     tier: "must",
     package: "@polaris-key/node",
-    current: { label: "Node SDK", href: "/docs/build/sdks/node/" },
+    current: {
+      label: "Terminal (Node)",
+      href: "/docs/build/ui/frameworks/terminal-node/",
+    },
   },
 ];
 
