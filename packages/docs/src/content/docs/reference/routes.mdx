@@ -41,6 +41,9 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/manage/api/products/{product}/settings/effective` | admin | The product's row-backed settings, with the value in force and where it came from |
 | GET | `/manage/api/products/{product}/users/{subject}/overrides` | admin | One user's account overrides on a product |
 | PUT | `/manage/api/products/{product}/users/{subject}/overrides` | admin | Edit one user's account overrides on a product |
+| POST | `/manage/api/products/{product}/users/licenses/{licenseId}/make-floating` | admin | Make a licence floating (the relink tool; step-up, reason, typed confirmation) |
+| POST | `/manage/api/products/{product}/users/licenses/{licenseId}/reassign` | admin | Reassign a licence to another person by email (the relink tool; step-up, reason, typed confirmation) |
+| GET | `/manage/api/products/{product}/users/licenses/{licenseId}/relinks` | admin | A licence's relinks and holder moves, newest first, with their undo |
 | POST | `/manage/api/products/link-repo` | admin | Create a product from a repository's `.pkey/`, or dry-run it |
 | GET | `/manage/api/products/slug-check` | admin | Is a slug free for a new product |
 | GET | `/manage/api/products` | admin | Every registered product, as the console's registry, Home and switcher read it |

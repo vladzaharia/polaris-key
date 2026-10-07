@@ -164,7 +164,7 @@ this page or fails the freshness gate.
 | `account_product_grants` | 0068_a_accounts.sql | `account_id`, `product`, `claims_json`, `granted_at`, `modified_at`, `scope_hash (0087)` |
 | `account_passkeys` | 0068_a_accounts.sql | `credential_id`, `account_id`, `public_key`, `sign_count`, `transports_json`, `rp_id`, `user_handle`, `created_at`, `last_used_at`, `details_json (0094)` |
 | `account_terms_acceptances` | 0091_account_terms_acceptances.sql | `account_id`, `product`, `version`, `url`, `accepted_at` |
-| `license_relinks` | 0082_license_relinks.sql | `product`, `id`, `license_id`, `from_account_id`, `to_account_id`, `from_subject`, `to_subject`, `reason`, `actor_sub`, `actor_name`, `notices_sent`, `created_at`, `undo_until`, `undone_at`, `undone_by`, `undo_reason` |
+| `license_relinks` | 0082_license_relinks.sql | `product`, `id`, `license_id`, `from_account_id`, `to_account_id`, `from_subject`, `to_subject`, `reason`, `actor_sub`, `actor_name`, `notices_sent`, `created_at`, `undo_until`, `undone_at`, `undone_by`, `undo_reason`, `holder_json (00XX)` |
 | `account_avatars` | 0093_account_avatars.sql | `asset`, `account_id`, `origin`, `bytes`, `created_at` |
 | `library_entries` | 0096_storefront_library.sql | `account_id`, `product`, `via`, `added_at` |
 | `storefront_daily` | 0096_storefront_library.sql | `product`, `day`, `path_kind`, `impressions`, `adds`, `activations` |

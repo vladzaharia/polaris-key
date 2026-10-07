@@ -100,6 +100,36 @@ lost access to the account their license is in, so it carries these safeguards:
 An operator who relinks more than five licenses in a day raises an alert in the platform
 activity.
 
+### Make floating and Reassign
+
+The same tool has two moves keyed by the license rather than by a person, so they also reach a
+license that is still waiting for its email. Both carry the relink safeguards (a sign-in from the
+last five minutes, a reason, an email before the change, the 72-hour undo and the daily alert),
+plus a typed confirmation: the license's name, or its id when it has no name. Polaris Key checks
+the typed value too.
+
+- **Make floating** takes the license off its holder: it leaves the account it is in and loses
+  its name and email, so it works for anyone with its key. That account is emailed first and the
+  license is never added back to it automatically. Its devices keep running unless you also ask
+  to sign them out.
+- **Reassign** gives the license to another person by email (and optionally a name). The old
+  holder and the new address are emailed first. The license joins the account that has verified
+  the new address, or waits until someone signs in with it; the email to the new address never
+  says which.
+
+**Undo** within 72 hours puts back the account, the name and the email, while the license still
+sits where the move put it. Adding the key to an account, a later change of its email, or the end
+of the window closes it.
+
+The routes, for scripts that use the admin session:
+
+| Route                                                                | Body                                           |
+| -------------------------------------------------------------------- | ---------------------------------------------- |
+| `POST /manage/api/products/<slug>/users/licenses/<id>/make-floating` | `reason`, `confirm`, optional `signOutDevices` |
+| `POST /manage/api/products/<slug>/users/licenses/<id>/reassign`      | `email`, optional `name`, `reason`, `confirm`  |
+| `GET /manage/api/products/<slug>/users/licenses/<id>/relinks`        | the license's moves, newest first              |
+| `POST /manage/api/products/<slug>/users/relinks/<relinkId>/undo`     | `reason`                                       |
+
 ## Sign-in settings
 
 With Identity on, **Identity → Sign-in** has a **Sign-in through this product** section:
