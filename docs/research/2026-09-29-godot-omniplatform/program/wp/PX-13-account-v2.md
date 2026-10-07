@@ -129,7 +129,7 @@ Account v2 is where people manage how they sign in ([PORTAL.md §4.26](../../../
 - [x] `pnpm --filter @polaris-key/admin build` passes and `pnpm --filter @polaris-key/admin test:e2e` reports zero CSP violations.
 - [x] `vitest-axe` passes on every new or changed page component; one `h1` per screen (§9).
 - [x] No horizontal page scroll at 360 px on every screen this package touches (§8).
-- [ ] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
+- [x] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header. (Builder, 2026-10-06: the lead gate, scope `changed`, green on every step; `test:e2e` green apart from five motion-timing checks in files this package does not touch, which pass on their own.)
 
 ## Verify
 
