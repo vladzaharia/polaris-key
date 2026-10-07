@@ -38,6 +38,7 @@ export {
   stmtInsertReleaseConfig,
   stmtInsertSchema,
   stmtInsertTier,
+  TIER_COMPARED_PARAMS,
   stmtSetAutoIssuePolicy,
   stmtSetFingerprintPolicy,
   stmtSetServices,

@@ -49,6 +49,7 @@ import {
   stmtInsertProvisioning,
   stmtInsertSchema,
   stmtInsertTier,
+  TIER_COMPARED_PARAMS,
   stmtSetAutoIssuePolicy,
   stmtSetFingerprintPolicy,
   stmtSetServices,
@@ -755,6 +756,8 @@ async function applyRepoManifest(
       channels: t.channels,
       minVersion: t.minVersion,
       maxVersion: t.maxVersion,
+      rank: t.rank ?? 0,
+      policyOfflineGraceDays: t.policyOfflineGraceDays ?? null,
       modifiedAt: now,
     };
     stmts.push(stmtUpsertManifestTier(input));
@@ -1026,8 +1029,8 @@ export async function countLicensesListingProfile(
 function tierShape(t: TierRow | DbStatement["params"]): string {
   if (Array.isArray(t))
     // stmtInsertTier's params: product, id, label, profile, expiry, limit, channels, min, max,
-    // fingerprint, modifiedAt.
-    return JSON.stringify(t.slice(2, 10));
+    // fingerprint, rank, offline grace (LX-08), modifiedAt.
+    return JSON.stringify(t.slice(...TIER_COMPARED_PARAMS));
   return JSON.stringify([
     t.label,
     t.profile_id,
@@ -1037,6 +1040,8 @@ function tierShape(t: TierRow | DbStatement["params"]): string {
     t.min_version,
     t.max_version,
     t.policy_fingerprint ?? null,
+    t.rank ?? 0,
+    t.policy_offline_grace_days ?? null,
   ]);
 }
 

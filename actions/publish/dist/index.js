@@ -1693,6 +1693,17 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
             "description": "Fingerprint enforcement for this tier; null (or omitted) inherits the product default.",
             "anyOf": [{ "$ref": "#/$defs/fingerprintMode" }, { "type": "null" }]
           },
+          "rank": {
+            "description": "Higher is better: orders anchor choice, the OIDC group-map choice and syncTierOnSignIn upgrades (LX-08). Not unique; 0 when omitted.",
+            "$ref": "#/$defs/nonNegativeInteger"
+          },
+          "policyOfflineGraceDays": {
+            "description": "The tier default for a licence's offline grace, in days (0-365); null (or omitted) falls back to the product default. Not maxOfflineDays, which is a legacy alias of policyExpiryDays.",
+            "anyOf": [
+              { "type": "integer", "minimum": 0, "maximum": 365 },
+              { "type": "null" }
+            ]
+          },
           "channels": {
             "description": "Upgrade channels this tier may follow.",
             "type": "array",
@@ -17489,6 +17500,7 @@ var MAX_WEB_ORIGIN_LENGTH = 267;
 var WEB_ORIGIN_RE = /^(?:https:\/\/[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*|http:\/\/(?:localhost|127\.0\.0\.1))(?::[0-9]{1,5})?$/;
 var CONTROL_CHAR_RE = /[\u0000-\u001f\u007f]/;
 var MAX_LABEL_LENGTH = 200;
+var MAX_TIER_OFFLINE_GRACE_DAYS = 365;
 var MAX_TEXT_LENGTH = 2e3;
 var MAX_PROBE_TARGET_LENGTH = 512;
 var MAX_REDIRECT_URIS = 20;
@@ -17808,6 +17820,24 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
         "policyDeviceLimit must be a non-negative integer."
       );
     }
+    if (record.rank !== void 0 && !nonNegativeInteger2(record.rank)) {
+      add4(
+        errors,
+        "product",
+        `/licensing/tiers/${i}/rank`,
+        "invalid_tier_rank",
+        "Tier rank must be a non-negative integer."
+      );
+    }
+    if (record.policyOfflineGraceDays !== void 0 && record.policyOfflineGraceDays !== null && !(typeof record.policyOfflineGraceDays === "number" && nonNegativeInteger2(record.policyOfflineGraceDays) && record.policyOfflineGraceDays <= MAX_TIER_OFFLINE_GRACE_DAYS)) {
+      add4(
+        errors,
+        "product",
+        `/licensing/tiers/${i}/policyOfflineGraceDays`,
+        "invalid_tier_policy_offline_grace_days",
+        "Tier policyOfflineGraceDays must be an integer from 0 to 365, or null."
+      );
+    }
     boundedText(
       errors,
       "product",
@@ -17866,7 +17896,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
           "product",
           `/licensing/tiers/${i}/maxOfflineDays`,
           "tier_ignored_field",
-          "maxOfflineDays on a tier is ignored because it is not a number; use policyExpiryDays for the licence expiry."
+          "maxOfflineDays on a tier is ignored because it is not a number; use policyExpiryDays for the licence expiry, and for offline grace use policyOfflineGraceDays."
         );
       } else if (typeof record.policyExpiryDays === "number" || typeof record.expiryDays === "number") {
         add4(
@@ -17874,7 +17904,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
           "product",
           `/licensing/tiers/${i}/maxOfflineDays`,
           "tier_ignored_field",
-          "maxOfflineDays on a tier is ignored because policyExpiryDays or expiryDays is also set and wins; it is not offline grace."
+          "maxOfflineDays on a tier is ignored because policyExpiryDays or expiryDays is also set and wins; it is not offline grace: for offline grace use policyOfflineGraceDays."
         );
       } else {
         add4(
@@ -17882,7 +17912,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
           "product",
           `/licensing/tiers/${i}/maxOfflineDays`,
           "tier_ignored_field",
-          "maxOfflineDays on a tier sets the licence expiry, policyExpiryDays, not offline grace."
+          "maxOfflineDays on a tier sets the licence expiry, policyExpiryDays, not offline grace: for offline grace use policyOfflineGraceDays."
         );
       }
     }
@@ -20359,7 +20389,9 @@ function normalizeTier(raw) {
     policyFingerprint: isOneOf2(raw.policyFingerprint, FINGERPRINT_MODE_VALUES) ? raw.policyFingerprint : null,
     channels: arrayAt(raw, "channels")?.filter(isString) ?? [],
     minVersion: typeof raw.minVersion === "string" ? raw.minVersion : null,
-    maxVersion: typeof raw.maxVersion === "string" ? raw.maxVersion : null
+    maxVersion: typeof raw.maxVersion === "string" ? raw.maxVersion : null,
+    rank: typeof raw.rank === "number" && nonNegativeInteger2(raw.rank) ? raw.rank : 0,
+    policyOfflineGraceDays: typeof raw.policyOfflineGraceDays === "number" && nonNegativeInteger2(raw.policyOfflineGraceDays) && raw.policyOfflineGraceDays <= MAX_TIER_OFFLINE_GRACE_DAYS ? raw.policyOfflineGraceDays : null
   };
 }
 function normalizeProbe(raw) {

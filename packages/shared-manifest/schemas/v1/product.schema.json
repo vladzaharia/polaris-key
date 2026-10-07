@@ -547,6 +547,17 @@
             "description": "Fingerprint enforcement for this tier; null (or omitted) inherits the product default.",
             "anyOf": [{ "$ref": "#/$defs/fingerprintMode" }, { "type": "null" }]
           },
+          "rank": {
+            "description": "Higher is better: orders anchor choice, the OIDC group-map choice and syncTierOnSignIn upgrades (LX-08). Not unique; 0 when omitted.",
+            "$ref": "#/$defs/nonNegativeInteger"
+          },
+          "policyOfflineGraceDays": {
+            "description": "The tier default for a licence's offline grace, in days (0-365); null (or omitted) falls back to the product default. Not maxOfflineDays, which is a legacy alias of policyExpiryDays.",
+            "anyOf": [
+              { "type": "integer", "minimum": 0, "maximum": 365 },
+              { "type": "null" }
+            ]
+          },
           "channels": {
             "description": "Upgrade channels this tier may follow.",
             "type": "array",

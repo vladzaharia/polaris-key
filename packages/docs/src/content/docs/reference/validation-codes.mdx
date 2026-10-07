@@ -8,7 +8,7 @@ description: "Every error and warning validateManifestDocuments and validateInge
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 235 distinct emit sites.
+codes with their JSON-pointer paths. 237 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
@@ -178,6 +178,8 @@ the offending value, or the allowed set.
 | `invalid_tier_fingerprint_mode` | error | product | `/licensing/tiers/${i}/policyFingerprint` | Tier policyFingerprint must be one of $\{FINGERPRINT_MODE_VALUES.join(", ")\}. |
 | `invalid_tier_id` | error | product | `/licensing/tiers/${i}/id` | Tier ids must be non-empty simple identifiers. |
 | `invalid_tier_label` | error | product | `/licensing/tiers/${i}/label` | Tier label |
+| `invalid_tier_policy_offline_grace_days` | error | product | `/licensing/tiers/${i}/policyOfflineGraceDays` | Tier policyOfflineGraceDays must be an integer from 0 to 365, or null. |
+| `invalid_tier_rank` | error | product | `/licensing/tiers/${i}/rank` | Tier rank must be a non-negative integer. |
 | `invalid_tier_ref` | error | product | `/autoIssue/tierId` | autoIssue.tierId must be a tier identifier. |
 | `invalid_transport_deliverable` | error | distribution | `/transports/deliverables/${deliverableId}` | $\{deliverableId\} is a package deliverable; packages are served only by package feeds, never through an outlet's transport. |
 | `invalid_transport` | error | distribution | `/transports/default` | transports.default must be one of $\{TRANSPORTS.join(", ")\}. |
@@ -224,9 +226,9 @@ the offending value, or the allowed set.
 | `sync_requires_config` | error | product | `/modules/sync` | Cloud Sync syncs catalog config keys, so config must be enabled too. |
 | `sync_requires_identity` | error | product | `/modules/sync` | Cloud Sync needs a signed-in person, so identity must be enabled too. |
 | `tier_ignored_field` | warning | product | `/licensing/tiers/${i}/deviceLimit` | deviceLimit on a tier is ignored; use policyDeviceLimit. |
-| `tier_ignored_field` | warning | product | `/licensing/tiers/${i}/maxOfflineDays` | maxOfflineDays on a tier is ignored because it is not a number; use policyExpiryDays for the licence expiry. |
-| `tier_ignored_field` | warning | product | `/licensing/tiers/${i}/maxOfflineDays` | maxOfflineDays on a tier is ignored because policyExpiryDays or expiryDays is also set and wins; it is not offline grace. |
-| `tier_ignored_field` | warning | product | `/licensing/tiers/${i}/maxOfflineDays` | maxOfflineDays on a tier sets the licence expiry, policyExpiryDays, not offline grace. |
+| `tier_ignored_field` | warning | product | `/licensing/tiers/${i}/maxOfflineDays` | maxOfflineDays on a tier is ignored because it is not a number; use policyExpiryDays for the licence expiry, and for offline grace use policyOfflineGraceDays. |
+| `tier_ignored_field` | warning | product | `/licensing/tiers/${i}/maxOfflineDays` | maxOfflineDays on a tier is ignored because policyExpiryDays or expiryDays is also set and wins; it is not offline grace: for offline grace use policyOfflineGraceDays. |
+| `tier_ignored_field` | warning | product | `/licensing/tiers/${i}/maxOfflineDays` | maxOfflineDays on a tier sets the licence expiry, policyExpiryDays, not offline grace: for offline grace use policyOfflineGraceDays. |
 | `too_many_pack_deliverables` | error | release | `/release/deliverables` | a product declares at most $\{MAX_PACK_DELIVERABLES\} pack deliverables (each one costs transport rows and a deliverable row in every resync). |
 | `too_many_package_deliverables` | error | release | `/release/deliverables` | a product declares at most $\{MAX_PACKAGE_DELIVERABLES\} package deliverables. |
 | `too_many_redirect_uris` | error | product | `/oidc/redirectUris` | At most $\{MAX_REDIRECT_URIS\} redirect URIs are allowed. |

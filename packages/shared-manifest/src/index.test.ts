@@ -1593,6 +1593,84 @@ describe("tier keys the scaffold used to write (tier_ignored_field)", () => {
     );
     expect(res.warnings.map((w) => w.code)).not.toContain("tier_ignored_field");
   });
+
+  it("points every maxOfflineDays warning at policyOfflineGraceDays for offline grace (LX-08)", () => {
+    const msg = (tier: Record<string, unknown>) =>
+      validateManifestDocuments(tiered(tier)).warnings.find(
+        (w) => w.path === "/licensing/tiers/0/maxOfflineDays",
+      )?.message;
+    for (const tier of [
+      { maxOfflineDays: 14 },
+      { maxOfflineDays: 14, policyExpiryDays: 30 },
+      { maxOfflineDays: "14" },
+    ])
+      expect(msg(tier)).toContain(
+        "for offline grace use policyOfflineGraceDays",
+      );
+  });
+});
+
+describe("tier rank and offline grace (LX-08, plans/LX-01.md §3.1)", () => {
+  const product = (tier: Record<string, unknown>) =>
+    JSON.stringify({
+      ...PRODUCT,
+      licensing: { tiers: [{ id: "standard", ...tier }] },
+    });
+  const parse = (tier: Record<string, unknown>) =>
+    parseManifest({
+      product: product(tier),
+      schema: JSON.stringify({ schemaVersion: 1, catalog: [] }),
+    });
+
+  it("defaults rank to 0 and offline grace to null", () => {
+    const res = parse({});
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.manifest.tiers[0]).toMatchObject({
+      rank: 0,
+      policyOfflineGraceDays: null,
+    });
+  });
+
+  it("carries a declared rank and offline grace, and allows equal ranks", () => {
+    const res = parseManifest({
+      product: JSON.stringify({
+        ...PRODUCT,
+        licensing: {
+          tiers: [
+            { id: "free", rank: 2, policyOfflineGraceDays: 0 },
+            { id: "pro", rank: 2, policyOfflineGraceDays: 365 },
+          ],
+        },
+      }),
+      schema: JSON.stringify({ schemaVersion: 1, catalog: [] }),
+    });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(
+      res.manifest.tiers.map((t) => [t.rank, t.policyOfflineGraceDays]),
+    ).toEqual([
+      [2, 0],
+      [2, 365],
+    ]);
+  });
+
+  it("refuses a negative or fractional rank and an out-of-range offline grace", () => {
+    const codes = (tier: Record<string, unknown>) =>
+      validateManifestDocuments({
+        product: JSON.parse(product(tier)),
+        schema: { schemaVersion: 1, catalog: [] },
+      }).errors.map((e) => e.code);
+    expect(codes({ rank: -1 })).toContain("invalid_tier_rank");
+    expect(codes({ rank: 0.5 })).toContain("invalid_tier_rank");
+    expect(codes({ policyOfflineGraceDays: 366 })).toContain(
+      "invalid_tier_policy_offline_grace_days",
+    );
+    expect(codes({ policyOfflineGraceDays: -1 })).toContain(
+      "invalid_tier_policy_offline_grace_days",
+    );
+    expect(codes({ policyOfflineGraceDays: null })).toEqual([]);
+  });
 });
 
 describe("channel names (P0-04, WIRE-CONTRACT-V3 §5.1)", () => {
