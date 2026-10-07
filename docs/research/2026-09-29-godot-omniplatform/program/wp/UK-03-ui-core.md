@@ -82,6 +82,7 @@ Layer (c) for the JS kits; elements, React, Vue, Svelte, Angular and React Nativ
 ## Presentation seam ([`plans/HA-11.md`](../plans/HA-11.md), approved 2026-10-06)
 
 - **Do not define a seam.** The kit's `ProductIdentity` resolver takes the TypeScript `PresentationSource` from `@polaris-key/client-core/presentation` (written by HA-12).
+- **Bidi-isolate presentation text** ([`plans/HA-12.md`](../plans/HA-12.md) Q5). The SDK keeps bidi controls in `PresentationSource` `name` and `developerName` (only C0 and C1 are dropped), so the kit renders both in an isolated run: a `<bdi>` element or `dir="auto"` in the renderers.
 - **Before that lands.** If the SDK type has not landed when this package starts, declare a
   structurally identical local type, `current()`, `icon(px, scale)` and change notification, and
   replace it with the SDK's type when it lands.

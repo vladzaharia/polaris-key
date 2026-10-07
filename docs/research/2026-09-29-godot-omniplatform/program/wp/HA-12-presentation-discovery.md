@@ -7,7 +7,7 @@
 | Depends on  | [HA-11](HA-11-presentation-discovery-plan.md), [HA-02](HA-02-img-host.md), [HA-07](HA-07-serve-hosted-copies.md) |
 | Unblocks    | [HA-13](HA-13-sdks-presentation.md), [HA-14](HA-14-godot-presentation.md)                                        |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                            |
-| Plan mode   | yes: executes the approved [`plans/HA-11.md`](../plans/HA-11.md)                                                 |
+| Plan mode   | yes: executes the approved [`plans/HA-11.md`](../plans/HA-11.md) through [`plans/HA-12.md`](../plans/HA-12.md)   |
 | Gates       | plan mode; corpus and transcripts (rule 1); drift gates; generated docs                                          |
 | Human input | none                                                                                                             |
 | Repo        | `vladzaharia/polaris-key`                                                                                        |
@@ -24,7 +24,7 @@ This is the server half of decision 10 ([S-20 §6.9](../../notes/S-20-hosted-ass
 
 - AGENTS.md (always) and CLAUDE.md.
 - [notes/S-20](../../notes/S-20-hosted-assets.md). Its owner-decisions header (delegated, 2026-10-05) wins over the sections below it.
-- `plans/HA-11.md` (approved).
+- `plans/HA-11.md` (approved) and `plans/HA-12.md` (approved 2026-10-06), whose §0.2 amends HA-11's text.
 - `src/core/discovery.ts`, `packages/shared-protocol`, `packages/worker/test/transcripts/`.
 
 ## Scope
@@ -64,20 +64,44 @@ This is the server half of decision 10 ([S-20 §6.9](../../notes/S-20-hosted-ass
   `presentationFor` both use the resolver.
 
 - **Contract and shared code.**
-  - `WIRE-CONTRACT-V4.md`: §5.3, plus additions to §9 and §10.
+  - `WIRE-CONTRACT-V4.md`: §5.5 (not §5.3, which PX-W9 holds), plus additions to §9 and §10.
   - `shared-protocol/src/core.ts`: the presentation types and `PRESENTATION_*` constants, emitted
     by `gen:constants`.
   - New `packages/client-core/src/presentation.ts`, exported as
     `@polaris-key/client-core/presentation`: `parsePresentation`, `pickIconSize`, `iconMatches`
     and the `PresentationSource` seam type.
 - **Corpus.** `tools/presentation-matrix.ts` produces `presentation-matrix.json`
-  (`presentationMatrixVersion: 1`) through `sign-corpus.ts`, with both mirrors and a self-check
-  against client-core. Add the file to AGENTS.md rule 1 and to `contribute/corpus.md`.
+  (`presentationMatrixVersion: 1`) through `sign-corpus.ts`, with both mirrors. It checks its rows
+  against its own generator-local reference, which imports nothing it checks; client-core is
+  proven by its own matrix test against the file (`plans/HA-12.md` Q2). Add the file, and the
+  missing `device-label.json`, to AGENTS.md rule 1, and the file to `contribute/corpus.md`.
 - **Transcript.** `discovery-presentation.json`, two steps: the member is present, then gone.
 - **Parity.** A `core.presentation` row in `features.json`, set to `planned` in all six
   `parity.json` files.
 - **Docs and spec.** The OpenAPI `DiscoveryDocument` schema, the `services/core/discovery.md`
   "Presentation" section and one THREAT-MODEL row.
+
+## Plan amendments ([`plans/HA-12.md`](../plans/HA-12.md), approved 2026-10-06)
+
+`plans/HA-12.md` is the execution plan; where it differs from the list above, it wins (its §0.2).
+
+- **Hosted copies.** `core/hostedImages.ts` `HostedImage` gains `contentType` and per-size
+  `variants` (`{w, sha256}`, WebP, deduplicated, ascending); `widths` is derived from them. The
+  icon is `firstHostedImage(…, PRESENTATION_ICON_SLOTS)`, read only while `hostedImageOrigin(env)`
+  is non-null. A slot with no hosted copy has no icon in discovery; the `/media` proxy never
+  appears (Q3).
+- **Settings.** A decode-only `core.presentation` column adapter (no `set`, so a console write is
+  refused) and a `core.presentation` probe in `settings-discovery.test.ts`.
+- **Writers.** `repo.ts` `ProductRow`, `stmtInsertProduct` and `insertProduct` gain
+  `presentation_json`; resync's `productFields` gains a manifest-only row with an explicit audit
+  key (`core.presentation`, not the `core.adminGroup` fallback); `linkSystemProduct` writes the
+  column in its first `UPDATE`.
+- **Portal.** The portal shares only the resolver's text half (`presentationText`: name,
+  developer, accent as its tint). Its art and §12.7.2's client record `iconUrl` do not change.
+- **Constants (Q6).** `PRESENTATION_ICON_MAX_DIMENSION` 16384,
+  `PRESENTATION_ICON_FETCH_TIMEOUT_SECONDS` 10 and `PRESENTATION_CACHE_MAX_FILES` 4 join HA-11's
+  six, generated into every SDK.
+- **No ETag (Q4).** Discovery keeps `public, max-age=300` and gains no ETag.
 
 ## Steps
 
@@ -99,11 +123,15 @@ mise exec node@22 -- pnpm --filter @polaris-key/worker test
 mise exec node@22 -- pnpm gen:transcripts -- --check
 mise exec node@22 -- pnpm gen:corpus -- --check
 mise exec node@22 -- pnpm gen:settings -- --check
+mise exec node@22 -- pnpm --filter @polaris-key/cli bundle:action -- --check
 ```
 
 ## Hand-off
 
 SDK porters replay the new transcripts.
+
+After the deploy, the lead resyncs DJDL (S-20 §6.8, "pull on first resync"): HA-05 then pulls its
+art, and the icon appears in discovery within 300 s (`plans/HA-12.md` §7).
 
 The role agent sets `--set HA-12 in-review` when it hands off. After review, the lead adds the last
 commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set HA-12 done`.

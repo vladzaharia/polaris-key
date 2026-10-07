@@ -57,6 +57,17 @@ Godot is the program's primary engine. Its kit today shows only bundled marks ([
 - **Tests.** A matrix runner for `presentation-matrix.json` from `tests/corpus/v2/`, and replay
   of `discovery-presentation.json`. Flip `core.presentation` to `implemented`.
 
+**Amended by [`plans/HA-12.md`](../plans/HA-12.md) (approved 2026-10-06).**
+
+- The contract text is `WIRE-CONTRACT-V4.md` **§5.5**, not §5.3.
+- The usable-URL rule pins no host; staging and dev serve images from `img-staging` and `img-dev`
+  (not `media-staging` and `media-dev`).
+- Read every limit from the generated `constants_generated.gd` (Q6), never a literal: the
+  `PRESENTATION_*` text, URL, size, width, dimension, byte, timeout and cache-file limits and
+  `PRESENTATION_ICON_TYPES`.
+- The parse rule drops only C0 and C1 controls, so bidi controls survive (Q5). The kit renders
+  `name` and `developerName` bidi-isolated (wrapped in FSI…PDI, U+2068…U+2069).
+
 ## Steps
 
 1. Per the plan.
