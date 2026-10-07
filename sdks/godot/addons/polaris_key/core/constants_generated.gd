@@ -336,6 +336,7 @@ class Feature:
 	const CORE_CACHE := "core.cache"
 	const CORE_BUNDLE := "core.bundle"
 	const CORE_DISCOVER := "core.discover"
+	const CORE_PRESENTATION := "core.presentation"
 	const CORE_SYNC := "core.sync"
 	const CORE_LOCAL := "core.local"
 	const CORE_HEADERS := "core.headers"
@@ -419,7 +420,7 @@ class Feature:
 
 
 ## Every `Feature` value, in source order.
-const FEATURE_VALUES := ["core.verify", "core.cache", "core.bundle", "core.discover", "core.sync", "core.local", "core.headers", "core.errors", "core.caps", "core.store", "core.copy", "license.gate", "license.activate", "license.enroll", "license.deactivate", "license.manage", "license.entitlements", "license.channels", "license.reregister", "license.refusals", "config.resolve", "config.list", "config.secret", "config.schema", "config.mint", "config.mirror", "config.local", "devices.fingerprint", "devices.facts", "devices.register", "devices.manage", "devices.report", "telemetry.updates", "devices.attest", "identity.oidc", "identity.devicecode", "identity.devicelabel", "identity.toggle", "identity.keyentry", "release.changelog", "release.download", "release.record", "release.fetch", "release.distribution", "update.check", "update.feed", "update.feeds", "update.decide", "update.content", "update.driver", "update.bootguard", "outlet.detect", "crash.tags", "packs.record", "packs.revoke", "packs.delegation", "packs.delta.feed", "packs.plan", "packs.index.files", "packs.index.chunks", "packs.apply.full", "packs.apply.file", "packs.apply.chunk", "packs.apply.delta", "packs.state", "packs.handlers", "packs.type.godot.zip", "packs.type.l10n.table", "packs.type.data.json", "packs.type.audio.bank", "packs.type.ml.model", "packs.provides", "packs.transport.apple", "packs.transport.play", "packs.transport.steam", "packs.transport.msix", "packs.transport.flatpak", "ui.stages", "ui.boot", "ui.kit", "ui.kit.manage", "ui.kit.keyentry", "ui.cli", "commerce.receipt"]
+const FEATURE_VALUES := ["core.verify", "core.cache", "core.bundle", "core.discover", "core.presentation", "core.sync", "core.local", "core.headers", "core.errors", "core.caps", "core.store", "core.copy", "license.gate", "license.activate", "license.enroll", "license.deactivate", "license.manage", "license.entitlements", "license.channels", "license.reregister", "license.refusals", "config.resolve", "config.list", "config.secret", "config.schema", "config.mint", "config.mirror", "config.local", "devices.fingerprint", "devices.facts", "devices.register", "devices.manage", "devices.report", "telemetry.updates", "devices.attest", "identity.oidc", "identity.devicecode", "identity.devicelabel", "identity.toggle", "identity.keyentry", "release.changelog", "release.download", "release.record", "release.fetch", "release.distribution", "update.check", "update.feed", "update.feeds", "update.decide", "update.content", "update.driver", "update.bootguard", "outlet.detect", "crash.tags", "packs.record", "packs.revoke", "packs.delegation", "packs.delta.feed", "packs.plan", "packs.index.files", "packs.index.chunks", "packs.apply.full", "packs.apply.file", "packs.apply.chunk", "packs.apply.delta", "packs.state", "packs.handlers", "packs.type.godot.zip", "packs.type.l10n.table", "packs.type.data.json", "packs.type.audio.bank", "packs.type.ml.model", "packs.provides", "packs.transport.apple", "packs.transport.play", "packs.transport.steam", "packs.transport.msix", "packs.transport.flatpak", "ui.stages", "ui.boot", "ui.kit", "ui.kit.manage", "ui.kit.keyentry", "ui.cli", "commerce.receipt"]
 
 
 ## Why a feature is unsupported here: the `supports()` reason enum (PARITY §2.2).
@@ -839,6 +840,9 @@ const SYNC_SCENARIOS_VERSION := 1
 ## `deviceLabelVersion` of conformance/corpus/v2/device-label.json.
 const DEVICE_LABEL_VERSION := 1
 
+## `presentationMatrixVersion` of conformance/corpus/v2/presentation-matrix.json.
+const PRESENTATION_MATRIX_VERSION := 1
+
 ## `contentCorpusVersion` of conformance/corpus/v2/content/cases.json.
 const CONTENT_CORPUS_VERSION := 2
 
@@ -932,6 +936,33 @@ const REQUEST_HANDLE_PATTERN := "^rq_[A-Za-z0-9_-]{22}$"
 ## Identity passthrough: `REQUEST_HANDLE_TTL_SECONDS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`).
 const REQUEST_HANDLE_TTL_SECONDS := 600
 
+## Product presentation: `PRESENTATION_TEXT_MAX_BYTES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`).
+const PRESENTATION_TEXT_MAX_BYTES := 1024
+
+## Product presentation: `PRESENTATION_URL_MAX_BYTES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`).
+const PRESENTATION_URL_MAX_BYTES := 2048
+
+## Product presentation: `PRESENTATION_MAX_ICON_SIZES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`).
+const PRESENTATION_MAX_ICON_SIZES := 8
+
+## Product presentation: `PRESENTATION_MAX_ICON_WIDTH` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`).
+const PRESENTATION_MAX_ICON_WIDTH := 4096
+
+## Product presentation: `PRESENTATION_ICON_MAX_DIMENSION` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`).
+const PRESENTATION_ICON_MAX_DIMENSION := 16384
+
+## Product presentation: `PRESENTATION_ICON_MAX_BYTES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`).
+const PRESENTATION_ICON_MAX_BYTES := 10485760
+
+## Product presentation: `PRESENTATION_ICON_FETCH_TIMEOUT_SECONDS` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`).
+const PRESENTATION_ICON_FETCH_TIMEOUT_SECONDS := 10
+
+## Product presentation: `PRESENTATION_CACHE_MAX_FILES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`).
+const PRESENTATION_CACHE_MAX_FILES := 4
+
+## Product presentation: `PRESENTATION_ICON_TYPES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`).
+const PRESENTATION_ICON_TYPES := ["image/avif", "image/gif", "image/jpeg", "image/png", "image/webp"]
+
 ## Channel constant `CHANNEL_ALIASES` (`@polaris-key/protocol/core`).
 const CHANNEL_ALIASES := {
 	"staging": "beta",
@@ -1009,6 +1040,7 @@ static func capabilities() -> Dictionary:
 		"core.cache": {"status": "implemented", "service": "core", "na": []},
 		"core.bundle": {"status": "implemented", "service": "core", "na": []},
 		"core.discover": {"status": "implemented", "service": "core", "na": []},
+		"core.presentation": {"status": "planned", "service": "core", "na": []},
 		"core.sync": {"status": "implemented", "service": "core", "na": []},
 		"core.local": {"status": "implemented", "service": "core", "na": []},
 		"core.headers": {"status": "implemented", "service": "core", "na": []},
@@ -1092,4 +1124,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "4634ffa6286dc4ba184e0ac2a19b95259804b8b2155b48715a1d628f0da1da75"
+const CAPABILITY_DIGEST := "f901d4f05b32ef70f12f9544be87ce0fc6f0b43979767a6368d429d33b3ea318"

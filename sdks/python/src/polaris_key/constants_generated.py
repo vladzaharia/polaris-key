@@ -85,6 +85,7 @@ __all__ = [
     "PLAN_MATRIX_VERSION",
     "SYNC_SCENARIOS_VERSION",
     "DEVICE_LABEL_VERSION",
+    "PRESENTATION_MATRIX_VERSION",
     "CONTENT_CORPUS_VERSION",
     "MAX_WIRE_INTEGER",
     "MAX_JSON_DEPTH",
@@ -116,6 +117,15 @@ __all__ = [
     "DEVICE_LABEL_MAX_CODEPOINTS",
     "REQUEST_HANDLE_PATTERN",
     "REQUEST_HANDLE_TTL_SECONDS",
+    "PRESENTATION_TEXT_MAX_BYTES",
+    "PRESENTATION_URL_MAX_BYTES",
+    "PRESENTATION_MAX_ICON_SIZES",
+    "PRESENTATION_MAX_ICON_WIDTH",
+    "PRESENTATION_ICON_MAX_DIMENSION",
+    "PRESENTATION_ICON_MAX_BYTES",
+    "PRESENTATION_ICON_FETCH_TIMEOUT_SECONDS",
+    "PRESENTATION_CACHE_MAX_FILES",
+    "PRESENTATION_ICON_TYPES",
     "CHANNEL_ALIASES",
     "CHANNEL_BETA",
     "CHANNEL_DEV",
@@ -621,6 +631,7 @@ class Feature:
     CORE_CACHE: Final = "core.cache"
     CORE_BUNDLE: Final = "core.bundle"
     CORE_DISCOVER: Final = "core.discover"
+    CORE_PRESENTATION: Final = "core.presentation"
     CORE_SYNC: Final = "core.sync"
     CORE_LOCAL: Final = "core.local"
     CORE_HEADERS: Final = "core.headers"
@@ -709,6 +720,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "core.cache",
     "core.bundle",
     "core.discover",
+    "core.presentation",
     "core.sync",
     "core.local",
     "core.headers",
@@ -1457,6 +1469,10 @@ SYNC_SCENARIOS_VERSION: Final[int] = 1
 DEVICE_LABEL_VERSION: Final[int] = 1
 
 
+#: `presentationMatrixVersion` of conformance/corpus/v2/presentation-matrix.json.
+PRESENTATION_MATRIX_VERSION: Final[int] = 1
+
+
 #: `contentCorpusVersion` of conformance/corpus/v2/content/cases.json.
 CONTENT_CORPUS_VERSION: Final[int] = 2
 
@@ -1581,6 +1597,48 @@ REQUEST_HANDLE_PATTERN: Final[str] = "^rq_[A-Za-z0-9_-]{22}$"
 REQUEST_HANDLE_TTL_SECONDS: Final[int] = 600
 
 
+#: Product presentation: `PRESENTATION_TEXT_MAX_BYTES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`).
+PRESENTATION_TEXT_MAX_BYTES: Final[int] = 1024
+
+
+#: Product presentation: `PRESENTATION_URL_MAX_BYTES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`).
+PRESENTATION_URL_MAX_BYTES: Final[int] = 2048
+
+
+#: Product presentation: `PRESENTATION_MAX_ICON_SIZES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`).
+PRESENTATION_MAX_ICON_SIZES: Final[int] = 8
+
+
+#: Product presentation: `PRESENTATION_MAX_ICON_WIDTH` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`).
+PRESENTATION_MAX_ICON_WIDTH: Final[int] = 4096
+
+
+#: Product presentation: `PRESENTATION_ICON_MAX_DIMENSION` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`).
+PRESENTATION_ICON_MAX_DIMENSION: Final[int] = 16384
+
+
+#: Product presentation: `PRESENTATION_ICON_MAX_BYTES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`).
+PRESENTATION_ICON_MAX_BYTES: Final[int] = 10485760
+
+
+#: Product presentation: `PRESENTATION_ICON_FETCH_TIMEOUT_SECONDS` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`).
+PRESENTATION_ICON_FETCH_TIMEOUT_SECONDS: Final[int] = 10
+
+
+#: Product presentation: `PRESENTATION_CACHE_MAX_FILES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`).
+PRESENTATION_CACHE_MAX_FILES: Final[int] = 4
+
+
+#: Product presentation: `PRESENTATION_ICON_TYPES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`).
+PRESENTATION_ICON_TYPES: Tuple[str, ...] = (
+    "image/avif",
+    "image/gif",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+)
+
+
 #: Channel constant `CHANNEL_ALIASES` (`@polaris-key/protocol/core`).
 CHANNEL_ALIASES: Mapping[str, str] = MappingProxyType(
     {
@@ -1689,6 +1747,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "core.cache": CapabilityRow("implemented", "core", ()),
         "core.bundle": CapabilityRow("implemented", "core", ()),
         "core.discover": CapabilityRow("implemented", "core", ()),
+        "core.presentation": CapabilityRow("planned", "core", ()),
         "core.sync": CapabilityRow("implemented", "core", ()),
         "core.local": CapabilityRow("implemented", "core", ()),
         "core.headers": CapabilityRow("implemented", "core", ()),
@@ -1773,4 +1832,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "0861ec81c92890118cee2e30b9c07ba53b8a5e4db03bd24fd5880e2267d6ff35"
+CAPABILITY_DIGEST: Final[str] = "7f12f7f84342bdafeb0385f301984806db4a829917268caaa952313c82e033ea"

@@ -16,6 +16,10 @@
     "core.discover": {
       "status": "implemented"
     },
+    "core.presentation": {
+      "status": "planned",
+      "wp": "HA-14"
+    },
     "core.sync": {
       "status": "implemented"
     },

@@ -489,6 +489,7 @@ export const Feature = {
   coreCache: "core.cache",
   coreBundle: "core.bundle",
   coreDiscover: "core.discover",
+  corePresentation: "core.presentation",
   coreSync: "core.sync",
   coreLocal: "core.local",
   coreHeaders: "core.headers",
@@ -578,6 +579,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "core.cache",
   "core.bundle",
   "core.discover",
+  "core.presentation",
   "core.sync",
   "core.local",
   "core.headers",
@@ -1285,6 +1287,9 @@ export const SYNC_SCENARIOS_VERSION = 1;
 /** `deviceLabelVersion` of conformance/corpus/v2/device-label.json. */
 export const DEVICE_LABEL_VERSION = 1;
 
+/** `presentationMatrixVersion` of conformance/corpus/v2/presentation-matrix.json. */
+export const PRESENTATION_MATRIX_VERSION = 1;
+
 /** `contentCorpusVersion` of conformance/corpus/v2/content/cases.json. */
 export const CONTENT_CORPUS_VERSION = 2;
 
@@ -1378,6 +1383,39 @@ export const REQUEST_HANDLE_PATTERN = "^rq_[A-Za-z0-9_-]{22}$";
 /** Identity passthrough: `REQUEST_HANDLE_TTL_SECONDS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`). */
 export const REQUEST_HANDLE_TTL_SECONDS = 600;
 
+/** Product presentation: `PRESENTATION_TEXT_MAX_BYTES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`). */
+export const PRESENTATION_TEXT_MAX_BYTES = 1024;
+
+/** Product presentation: `PRESENTATION_URL_MAX_BYTES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`). */
+export const PRESENTATION_URL_MAX_BYTES = 2048;
+
+/** Product presentation: `PRESENTATION_MAX_ICON_SIZES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`). */
+export const PRESENTATION_MAX_ICON_SIZES = 8;
+
+/** Product presentation: `PRESENTATION_MAX_ICON_WIDTH` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`). */
+export const PRESENTATION_MAX_ICON_WIDTH = 4096;
+
+/** Product presentation: `PRESENTATION_ICON_MAX_DIMENSION` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`). */
+export const PRESENTATION_ICON_MAX_DIMENSION = 16384;
+
+/** Product presentation: `PRESENTATION_ICON_MAX_BYTES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`). */
+export const PRESENTATION_ICON_MAX_BYTES = 10485760;
+
+/** Product presentation: `PRESENTATION_ICON_FETCH_TIMEOUT_SECONDS` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`). */
+export const PRESENTATION_ICON_FETCH_TIMEOUT_SECONDS = 10;
+
+/** Product presentation: `PRESENTATION_CACHE_MAX_FILES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`). */
+export const PRESENTATION_CACHE_MAX_FILES = 4;
+
+/** Product presentation: `PRESENTATION_ICON_TYPES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`). */
+export const PRESENTATION_ICON_TYPES = [
+  "image/avif",
+  "image/gif",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+] as const;
+
 /** Channel constant `CHANNEL_ALIASES` (`@polaris-key/protocol/core`). */
 export const CHANNEL_ALIASES = {
   staging: "beta",
@@ -1465,6 +1503,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "core.cache": { status: "implemented", service: "core", na: [] },
   "core.bundle": { status: "implemented", service: "core", na: [] },
   "core.discover": { status: "implemented", service: "core", na: [] },
+  "core.presentation": { status: "planned", service: "core", na: [] },
   "core.sync": { status: "implemented", service: "core", na: [] },
   "core.local": { status: "implemented", service: "core", na: [] },
   "core.headers": { status: "implemented", service: "core", na: [] },
@@ -1609,4 +1648,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "c2c04bf4807a23ed3fe653bc203503da48977a9746d3a78e65ba241076129bea";
+  "40161bb7de97590be162d490f41aa6752884682ee077e073c576b080ea6d0b5e";

@@ -313,4 +313,23 @@ describe("@polaris-key/protocol layout", () => {
     // The subpath is not re-exported from the barrel: Identity's shapes are service-scoped.
     expect("REQUEST_HANDLE_PATTERN" in barrel).toBe(false);
   });
+
+  it("the presentation limits (WIRE-CONTRACT-V4 §5.5, plans/HA-12.md §2.5)", () => {
+    expect(core.PRESENTATION_TEXT_MAX_BYTES).toBe(1024);
+    expect(core.PRESENTATION_URL_MAX_BYTES).toBe(2048);
+    expect(core.PRESENTATION_MAX_ICON_SIZES).toBe(8);
+    expect(core.PRESENTATION_MAX_ICON_WIDTH).toBe(4096);
+    expect(core.PRESENTATION_ICON_MAX_DIMENSION).toBe(16384);
+    expect(core.PRESENTATION_ICON_MAX_BYTES).toBe(10 * 1024 * 1024);
+    expect(core.PRESENTATION_ICON_FETCH_TIMEOUT_SECONDS).toBe(10);
+    expect(core.PRESENTATION_CACHE_MAX_FILES).toBe(4);
+    // Sorted, so every SDK's generated list reads the same.
+    expect([...core.PRESENTATION_ICON_TYPES]).toEqual([
+      "image/avif",
+      "image/gif",
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+    ]);
+  });
 });

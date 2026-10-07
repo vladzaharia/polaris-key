@@ -389,3 +389,69 @@ export const ARCH_SPELLINGS = {
   wasm32: "wasm32",
 } as const;
 export type ClientArch = (typeof ARCH_SPELLINGS)[keyof typeof ARCH_SPELLINGS];
+
+// ── Product presentation (WIRE-CONTRACT-V4 §5.5, plans/HA-11.md, plans/HA-12.md) ──────────────
+//
+// The unsigned discovery member `core.presentation`: display data only, never authority. Every
+// SDK parses it field by field (a malformed field is dropped and never refuses discovery) and
+// shows icon bytes only when their SHA-256 equals the hash the member names.
+// `presentation-matrix.json` pins the parse rule, the size choice and the verification check.
+
+/** The UTF-8 byte cap on `name` and `developerName`. */
+export const PRESENTATION_TEXT_MAX_BYTES = 1024;
+/** The byte cap on `icon.original` and `icon.url`. */
+export const PRESENTATION_URL_MAX_BYTES = 2048;
+/** The most entries `icon.sizes` may carry. */
+export const PRESENTATION_MAX_ICON_SIZES = 8;
+/** The widest `icon.sizes[].w`. */
+export const PRESENTATION_MAX_ICON_WIDTH = 4096;
+/** The largest `icon.width` and `icon.height`. */
+export const PRESENTATION_ICON_MAX_DIMENSION = 16384;
+/** The body cap of an icon fetch (the icon slot's 10 MiB). */
+export const PRESENTATION_ICON_MAX_BYTES = 10485760;
+/** The timeout of an icon fetch. */
+export const PRESENTATION_ICON_FETCH_TIMEOUT_SECONDS = 10;
+/** The most icon files an SDK keeps cached under `presentation/`. */
+export const PRESENTATION_CACHE_MAX_FILES = 4;
+/** The types `icon.contentType` may name: the image host's raster types. */
+export const PRESENTATION_ICON_TYPES = [
+  "image/avif",
+  "image/gif",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+] as const;
+export type PresentationIconType = (typeof PRESENTATION_ICON_TYPES)[number];
+
+/** One WebP width of the icon, verified by its own hash. */
+export interface PresentationIconSize {
+  w: number;
+  /** Lower-case hex SHA-256 of that width's bytes. */
+  sha256: string;
+}
+
+/** The icon, as content-addressed image-host URLs. */
+export interface PresentationIcon {
+  /** Lower-case hex SHA-256 of the original's bytes. */
+  sha256: string;
+  contentType: PresentationIconType;
+  width?: number;
+  height?: number;
+  /** The original's URL. */
+  original: string;
+  /** The WebP template, with exactly one `{w}`; present iff `sizes` is non-empty. */
+  url?: string;
+  /** Ascending by `w`; `[]` when the image host has no ladder. */
+  sizes: PresentationIconSize[];
+}
+
+/** `core.presentation`, normalised: what the Worker emits and what every SDK's parser returns. */
+export interface ProductPresentation {
+  name: string;
+  developerName?: string;
+  /** `#rrggbb`, lower-case. */
+  accent?: string;
+  /** `#rrggbb`, lower-case: the accent on a dark ground. */
+  accentDark?: string;
+  icon?: PresentationIcon;
+}

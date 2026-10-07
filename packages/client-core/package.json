@@ -98,6 +98,10 @@
     "./cloud-sync": {
       "types": "./dist/cloud-sync.d.ts",
       "default": "./dist/cloud-sync.js"
+    },
+    "./presentation": {
+      "types": "./dist/presentation.d.ts",
+      "default": "./dist/presentation.js"
     }
   },
   "files": [
