@@ -32,9 +32,60 @@ export function useFirstLoad(page: string, pending: boolean): boolean {
   return first && !shown.current;
 }
 
-/** Forget which pages have loaded: for tests, where every render stands for a fresh document. */
+/**
+ * Forget which pages have loaded and which cues have come in (`useCueOnce`): for tests, where
+ * every render stands for a fresh document.
+ */
 export function forgetLoadedPages(): void {
   loadedPages.clear();
+  cuesShown.clear();
+}
+
+/** The cues (`useCueOnce`) that have been on screen in this document, by key. */
+const cuesShown = new Set<string>();
+
+/**
+ * Whether a cue that marks something new (the Library's "Added just now", PX-24) comes in with
+ * motion: only the **first time it is on screen in this document**, and not inside a View
+ * Transition. Once it has been shown it is simply there, on every later render and mount: a
+ * refetch, a search, a filter, a sort, a grid ↔ list switch, a layout tier change (7 → 8
+ * products), a return to the page. Key it by what it marks (the product), not by the element:
+ * the grid's tile and the list's row show the same cue.
+ *
+ * `animate` turns off again once the cue's own animations (those on `[data-cue]` elements under
+ * `ref`'s element) have finished, so no class waits to replay: React moves a reordered item by
+ * taking it out of the document and putting it back, which would restart a CSS animation still
+ * on it. Timers never decide that (S-23 §6.2 rule 6). Under reduced motion there are no
+ * animations, so it turns off at once; without the Web Animations API (jsdom) it stays on.
+ */
+export function useCueOnce(
+  key: string,
+  on: boolean,
+): { animate: boolean; ref: React.RefCallback<HTMLElement> } {
+  const [animate, setAnimate] = React.useState(
+    () => on && !cuesShown.has(key) && !viewTransitionRunning(),
+  );
+  React.useEffect(() => {
+    if (on) cuesShown.add(key);
+  }, [key, on]);
+  const ref = React.useCallback(
+    (el: HTMLElement | null) => {
+      if (!el || !animate || typeof el.getAnimations !== "function") return;
+      // getAnimations() resolves styles first, so the cue's animations exist by now.
+      const cue = el
+        .getAnimations({ subtree: true })
+        .filter((a) =>
+          (
+            (a.effect as KeyframeEffect | null)?.target as Element | null
+          )?.matches?.("[data-cue]"),
+        );
+      void Promise.allSettled(cue.map((a) => a.finished)).then(() =>
+        setAnimate(false),
+      );
+    },
+    [animate],
+  );
+  return { animate: animate && on, ref };
 }
 
 /**

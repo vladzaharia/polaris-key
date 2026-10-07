@@ -46,6 +46,15 @@ export function matches(p: LibraryProduct, q: string): boolean {
   );
 }
 
+/** Newest first, a just-added product (PX-24) ahead of any other whatever its fallback date. */
+function byRecent(a: LibraryProduct, b: LibraryProduct): number {
+  return Number(b.justAdded) - Number(a.justAdded) || b.addedAt - a.addedAt;
+}
+
+/**
+ * Search, filter and sort. Under the default sort (Recently added) a just-added product is first
+ * (EXPERIENCE §0.6 P1 step 7); By name keeps it in its place.
+ */
 export function applyView(
   products: readonly LibraryProduct[],
   v: Pick<LibraryView, "q" | "filter" | "sort">,
@@ -57,8 +66,22 @@ export function applyView(
     out.sort((a, b) =>
       a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
     );
-  else out.sort((a, b) => b.addedAt - a.addedAt);
+  else out.sort(byRecent);
   return out;
+}
+
+/**
+ * The 2–7 grid, which has no sort (§4.14): the just-added products first, newest first, and the
+ * rest in the Worker's order (PX-24; EXPERIENCE §0.6 P1 step 7: the new product is first in the
+ * Library for its 24 hours).
+ */
+export function justAddedFirst(
+  products: readonly LibraryProduct[],
+): LibraryProduct[] {
+  return [
+    ...products.filter((p) => p.justAdded).sort(byRecent),
+    ...products.filter((p) => !p.justAdded),
+  ];
 }
 
 export const VIEW_STORAGE_KEY = "pk-portal-library-view";

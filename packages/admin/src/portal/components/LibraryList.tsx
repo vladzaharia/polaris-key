@@ -1,7 +1,13 @@
 import * as React from "react";
 import { ChevronRight } from "lucide-react";
-import type { LibraryProduct, QuickAction } from "../model/library.js";
+import { cn } from "../../lib/cn.js";
+import {
+  isDownloadAction,
+  type LibraryProduct,
+  type QuickAction,
+} from "../model/library.js";
 import { href } from "../router.js";
+import { useCueOnce } from "../stagger.js";
 import { ProductIcon } from "./ProductIcon.js";
 import { ProductStatusPill } from "./ProductStatus.js";
 import { QuickActionButton } from "./QuickAction.js";
@@ -14,6 +20,9 @@ import { QuickActionButton } from "./QuickAction.js";
  *
  * `bodyRef` and `bodyClassName` go on the `tbody`, whose rows are the list's items: the Library's
  * first-load stagger (MO-07) puts `.pk-stagger` there.
+ *
+ * A just-added product's row (PX-24) says "Added just now" under its name, carries the ring inside
+ * its edges and leads with its download, as its tile does (`LibraryTile`).
  */
 export function LibraryList({
   products,
@@ -66,67 +75,106 @@ export function LibraryList({
         </thead>
         <tbody ref={bodyRef} className={bodyClassName}>
           {products.map((p) => (
-            <tr
-              key={p.slug}
-              className="relative border-b border-border last:border-0 hover:bg-hover"
-            >
-              <td className="w-0 py-3 pl-4 pr-2 desk:pl-5">
-                <ProductIcon
-                  slug={p.slug}
-                  name={p.name}
-                  tint={p.presentation.tint}
-                  src={p.presentation.iconUrl}
-                  size={48}
-                />
-              </td>
-              <td className="px-2 py-3">
-                <a
-                  href={href.product(p.slug)}
-                  className="font-bold text-fg-strong after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
-                >
-                  {p.name}
-                </a>
-                {p.presentation.developer ? (
-                  <span className="block text-sm text-fg-muted">
-                    {p.presentation.developer}
-                  </span>
-                ) : null}
-                <span className="mt-1 block desk:hidden">
-                  <ProductStatusPill status={p.status} />
-                </span>
-              </td>
-              <td className="hidden px-2 py-3 desk:table-cell">
-                <ProductStatusPill status={p.status} />
-              </td>
-              <td className="hidden px-2 py-3 font-mono text-sm text-fg wide:table-cell">
-                {p.latestVersion ?? "–"}
-              </td>
-              <td
-                className={
-                  p.status.kind === "deviceLimit"
-                    ? "hidden px-2 py-3 text-sm font-bold text-danger wide:table-cell"
-                    : "hidden px-2 py-3 text-sm text-fg wide:table-cell"
-                }
-              >
-                {p.seats
-                  ? `${p.seats.inUse} of ${p.seats.limit}`
-                  : p.deviceCount}
-              </td>
-              <td className="relative hidden px-2 py-3 text-right desk:table-cell">
-                <QuickActionButton
-                  product={p}
-                  action={actionFor(p)}
-                  size="md"
-                  className="h-10"
-                />
-              </td>
-              <td className="w-0 py-3 pr-4 desk:pr-5">
-                <ChevronRight aria-hidden className="size-5 text-fg-muted" />
-              </td>
-            </tr>
+            <LibraryRow key={p.slug} product={p} action={actionFor(p)} />
           ))}
         </tbody>
       </table>
     </div>
+  );
+}
+
+function LibraryRow({
+  product: p,
+  action,
+}: {
+  product: LibraryProduct;
+  action: QuickAction;
+}): React.ReactElement {
+  const cue = useCueOnce(p.slug, p.justAdded);
+  const developer = p.presentation.developer;
+  return (
+    <tr
+      ref={cue.ref}
+      className="relative border-b border-border last:border-0 hover:bg-hover"
+    >
+      <td className="w-0 py-3 pl-4 pr-2 desk:pl-5">
+        <ProductIcon
+          slug={p.slug}
+          name={p.name}
+          tint={p.presentation.tint}
+          src={p.presentation.iconUrl}
+          size={48}
+        />
+        {p.justAdded ? (
+          // The ring, inset from the row's edges so the list's rounded frame never clips it.
+          <span
+            aria-hidden
+            data-ring
+            data-cue="ring"
+            className={cn(
+              "pointer-events-none absolute inset-1 rounded-lg ring-2 ring-accent",
+              cue.animate && "pk-content-in",
+            )}
+          />
+        ) : null}
+      </td>
+      <td className="px-2 py-3">
+        <a
+          href={href.product(p.slug)}
+          className="font-bold text-fg-strong after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
+        >
+          {p.name}
+        </a>
+        {p.justAdded || developer ? (
+          <span className="block text-sm text-fg-muted">
+            {p.justAdded ? (
+              <>
+                <span
+                  data-cue="text"
+                  className={cn(
+                    "inline-block font-bold text-accent-fg",
+                    cue.animate && "pk-pop-in",
+                  )}
+                >
+                  Added just now
+                </span>
+                {developer ? " · " : null}
+              </>
+            ) : null}
+            {developer}
+          </span>
+        ) : null}
+        <span className="mt-1 block desk:hidden">
+          <ProductStatusPill status={p.status} />
+        </span>
+      </td>
+      <td className="hidden px-2 py-3 desk:table-cell">
+        <ProductStatusPill status={p.status} />
+      </td>
+      <td className="hidden px-2 py-3 font-mono text-sm text-fg wide:table-cell">
+        {p.latestVersion ?? "–"}
+      </td>
+      <td
+        className={
+          p.status.kind === "deviceLimit"
+            ? "hidden px-2 py-3 text-sm font-bold text-danger wide:table-cell"
+            : "hidden px-2 py-3 text-sm text-fg wide:table-cell"
+        }
+      >
+        {p.seats ? `${p.seats.inUse} of ${p.seats.limit}` : p.deviceCount}
+      </td>
+      <td className="relative hidden px-2 py-3 text-right desk:table-cell">
+        <QuickActionButton
+          product={p}
+          action={action}
+          lead={p.justAdded && isDownloadAction(action)}
+          size="md"
+          className="h-10"
+        />
+      </td>
+      <td className="w-0 py-3 pr-4 desk:pr-5">
+        <ChevronRight aria-hidden className="size-5 text-fg-muted" />
+      </td>
+    </tr>
   );
 }

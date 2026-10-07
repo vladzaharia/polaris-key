@@ -82,7 +82,8 @@ also pointed it at MO-07. This package is that follow-up (filed 2026-10-06).
   ring. Open point for the builder, decided on the recommended option and recorded in this brief:
   **recommended**, accept that for this package (no Worker change, no wire change). The
   alternative, a Worker-side "latest attach" time, is a portal API change with its OpenAPI operation
-  and `PORTAL_KIND_PATHS` row (rule 10).
+  and `PORTAL_KIND_PATHS` row (rule 10). **Decided (lead, 2026-10-06): recommended.** A re-added
+  product gets no ring; no Worker change.
 - **First in the Library** holds under the default sort (`recent`, `addedAt` descending,
   `libraryView.ts`); under **By name** the tile keeps its place.
 - **The ring fades; it does not scale.** MO-07 found that `pk-pop-in` scales from 0.9, which would
@@ -91,6 +92,49 @@ also pointed it at MO-07. This package is that follow-up (filed 2026-10-06).
 - **Not the only signal** (WCAG 1.4.1): the text says it; the ring decorates.
 - **The 24 hours use the browser's clock** against the server's `addedAt` (seconds). A wrong
   device clock can only show or hide a quiet cue, never a policy.
+
+## Corrections found while building (2026-10-06)
+
+Checked against `integ/batch-4` at `1d71afb38`; where the brief and the code disagreed, the code
+won:
+
+- **Only the Worker's own `addedAt` decides.** `buildLibrary` falls back to the newest licence's
+  activation when the Worker sends `addedAt: null`, for the sort only; that fallback is not a first
+  contact, so such a product is never "just added" (`isJustAdded(item.addedAt, now)`). The rule and
+  its edges are in `model/library.ts` and `test/portalLibraryModel.test.ts`.
+- **The 2–7 grid has no sort** (§4.14): it shows the Worker's order (licences in name order, then
+  library entries). "First in the Library" there is a stable partition, `justAddedFirst` in
+  `model/libraryView.ts`: the just-added products first (newest first), the rest in the Worker's
+  order, so nothing else moves. Under the 8+ default sort (`recent`) a just-added product is also
+  ahead of any product whose fallback date is newer; **By name** keeps its place.
+- **The one-product hero (§4.13) is not a tile** and already leads with the solid download; it gets
+  no ring or text here. That library's first product has its own moment ("Your first product!", on
+  the Done step, §0.7), owned by the package of that screen.
+- **"Its download" is the quick action when it gets the product onto the device in hand**
+  (`isDownloadAction`): the build itself, the two-build "Download for macOS" that opens both, "Email
+  me the download" on a phone (G23), or a store link for this device. "See downloads", "View
+  details", "Free a device" and "Open <product>" keep the outlined action, as the brief says for
+  "See downloads". This is the one exception to §4.14's "solid violet is reserved for the hero, the
+  attention shelf and the product header"; PORTAL.md §4.14 now says so.
+- **Frame 7's layout:** the ring is `ring-2` in the accent (frame 7's violet), on an `aria-hidden`
+  overlay on the tile's wrapper outside the card's clip; "Added just now" is bold in `text-accent-fg`
+  at the head of the reason line ("Added just now · Pro · 2 of 3 devices"), and that line wraps to
+  two lines (`line-clamp-2`) instead of truncating, as frame 7 does. The list row (§4.15) puts the
+  text before the developer under the name ("Added just now · Little Fern"), draws the ring inset
+  from the row's edges (`inset-1 rounded-lg`, so the list's rounded frame never clips it) and leads
+  its quick-action column with the download.
+- **Once per product per document** is `useCueOnce` in `portal/stagger.ts`, keyed by the product so
+  the grid's tile and the list's row share it: the cue animates only the first time it is on screen
+  in the document and outside a View Transition (Back from a product into a first Library visit
+  shows it still). Its classes come off once its own animations finish (at once under reduced
+  motion), so nothing is left on an element to replay later, on a DOM move or when motion is
+  turned back on (the "no stale pending flags" lesson). A product that appears through a refetch
+  (an Add from Discover, an activation) pops on that first appearance: that is the moment.
+- **The fixtures' Mossgarden has no release**, so in the baselines its tile and row show the ring
+  and the text with the outlined **View details**; the solid lead is covered by
+  `test/portalJustAdded.test.tsx` (and was checked in a local render of a just-added Tidewater
+  Studio, which matches frame 7). The fixtures were not given a Mossgarden build: that would also
+  move the product page, Activate and Discover baselines, outside this package.
 
 ## Steps
 
@@ -105,18 +149,27 @@ in-review`.
 
 ## Acceptance criteria
 
-- [ ] A product added under 24 hours ago shows the ring and "Added just now" and leads its tile with
+- [x] A product added under 24 hours ago shows the ring and "Added just now" and leads its tile with
       the download; at 24 hours it does not (model tests at the edges).
-- [ ] Under the default sort the just-added product is first (test).
-- [ ] The ring and text appear once per tile per document, never on a refetch, filter, sort or view
+      (`test/portalLibraryModel.test.ts` "PX-24: Added just now": just added, 23 h 59 min, 24 h − 1 s,
+      24 h, a future `addedAt`, missing; `test/portalJustAdded.test.tsx` for the tile, the list row
+      and the outlined See downloads.)
+- [x] Under the default sort the just-added product is first (test). (8+ `recent`, the 2–7 grid's
+      `justAddedFirst`, and By name keeping its place.)
+- [x] The ring and text appear once per tile per document, never on a refetch, filter, sort or view
       switch, and are static under both reduced-motion settings (e2e: `document.getAnimations()`
-      is empty after the interaction).
-- [ ] `vitest-axe` passes on the changed tile; the text, not the ring, carries the meaning.
-- [ ] The linux visual baselines are re-recorded and `scripts/portal-baselines.sh --check` passes; no
-      horizontal page scroll at 360 px.
-- [ ] `pnpm --filter @polaris-key/admin build` passes and `pnpm --filter @polaris-key/admin test:e2e`
-      reports zero CSP violations.
-- [ ] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in
+      is empty after the interaction). (`e2e/libraryMotion.e2e.test.ts`: the text's `pk-pop-in` on
+      `slow` and the ring's `pk-fade-in` on `base` once, then nothing on a refetch, a search, both
+      sorts, Grid → List → Grid or a return; both reduced-motion settings; no cue class is left on.)
+- [x] `vitest-axe` passes on the changed tile; the text, not the ring, carries the meaning.
+- [x] The linux visual baselines are re-recorded and `scripts/portal-baselines.sh --check` passes; no
+      horizontal page scroll at 360 px. (24 re-recorded, the ones the just-added Mossgarden moves;
+      `--check` 245 passed.)
+- [x] `pnpm --filter @polaris-key/admin build` passes and `pnpm --filter @polaris-key/admin test:e2e`
+      reports zero CSP violations. (0 violations over 982 page loads; three reduced-motion cases in
+      `deviceMotion.e2e.test.ts`, which this package does not touch, caught the button spinner
+      under load and pass on their own, 12/12.)
+- [x] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in
       the header.
 
 ## Verify

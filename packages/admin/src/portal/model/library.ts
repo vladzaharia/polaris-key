@@ -79,8 +79,16 @@ export interface LibraryProduct {
   /** The license the product page and tile describe (best by §5.3 precedence). */
   best: PortalLicenseSummary;
   status: ProductStatus;
-  /** When the product joined the library: its newest license's activation. */
+  /**
+   * When the product joined the library: the Worker's first contact (PX-W1's `addedAt`), else its
+   * newest license's activation.
+   */
   addedAt: number;
+  /**
+   * "Added just now" (PX-24; EXPERIENCE §0.6 P1 step 7): the Worker's `addedAt` is under 24 hours
+   * old (`isJustAdded`). The tile then carries a ring and the text, and leads with its download.
+   */
+  justAdded: boolean;
   /** Devices using a seat on the best license. */
   deviceCount: number;
   /** The seat limit and use (G5), as the Worker counted them on the best licence. */
@@ -100,6 +108,27 @@ export interface LibraryProduct {
 
 const DAY = 86_400;
 export const EXPIRES_SOON_DAYS = 14;
+
+/** How long a new product stays "Added just now" (EXPERIENCE §0.6 P1 step 7, §0.7): 24 hours. */
+export const JUST_ADDED_SECONDS = DAY;
+
+/**
+ * Whether a product is "just added" (PX-24): `0 ≤ now − addedAt < 24 h`, both in seconds.
+ *
+ * `addedAt` is the Worker's, and it is the account's **first contact** with the product (the
+ * pairwise subject's creation, `library.ts` `addedAt()`), not the latest attach: a product added
+ * again after Remove from my library, or a licence attached where an earlier sign-in already made
+ * the subject, keeps its old date and is not just added. A future `addedAt` (this device's clock
+ * behind the server's) counts as now; a missing one is never just added. `now` is the browser's
+ * clock, so a wrong one can only show or hide a quiet cue, never decide anything.
+ */
+export function isJustAdded(
+  addedAt: number | null | undefined,
+  now: number,
+): boolean {
+  if (typeof addedAt !== "number" || !Number.isFinite(addedAt)) return false;
+  return Math.max(0, now - addedAt) < JUST_ADDED_SECONDS;
+}
 
 const PRECEDENCE: readonly StatusKind[] = [
   "suspended",
@@ -647,6 +676,8 @@ export function buildLibrary(
         lastCovered,
       ),
       addedAt: item.addedAt ?? Math.max(...list.map((l) => l.activatedAt)),
+      // The Worker's own date only: the activation fallback above is not a first contact.
+      justAdded: isJustAdded(item.addedAt, now),
       deviceCount: seats ? seats.inUse : item.license.deviceCount,
       seats,
       releases: ownReleases,
@@ -983,6 +1014,19 @@ export function quickAction(
     };
   }
   return seeDownloads;
+}
+
+/**
+ * Whether a quick action is the product's download for the device in hand (PX-24): the build
+ * itself, the two-build "Download for macOS" that opens both, "Email me the download" on a phone
+ * (G23), or the store that has the product for this device. A just-added product's tile leads
+ * with it (solid, EXPERIENCE §0.6 P1 step 7). "See downloads", "View details", "Free a device"
+ * and "Open <product>" are not downloads: a tile with one of them keeps its outlined action.
+ */
+export function isDownloadAction(action: QuickAction): boolean {
+  if (action.kind === "download" || action.kind === "email") return true;
+  if (action.icon === "store") return true;
+  return action.icon === "downloads" && action.label !== "See downloads";
 }
 
 export function osName(os: PlatformKey): string {
