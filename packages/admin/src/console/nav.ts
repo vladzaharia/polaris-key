@@ -121,6 +121,7 @@ export type ProductPageId =
   | "tiers"
   | "enrollment"
   | "license-settings"
+  | "license-batches"
   // config
   | "catalog"
   | "catalog-edit"
@@ -379,6 +380,19 @@ export const SECTIONS: NavSection[] = [
         docs: "/docs/services/license/enrollment/",
         inNav: true,
         ready: true,
+      },
+      // LX-30: licence batches (LX-28), reached from Licenses' Batch filter and a batch licence;
+      // not in the sidebar.
+      {
+        page: "license-batches",
+        label: "Batches",
+        paletteLabel: "License batches",
+        path: "license/batches",
+        icon: Boxes,
+        docs: "/docs/admin/licenses-and-devices/",
+        inNav: false,
+        ready: true,
+        record: { noun: "Batch", ready: true },
       },
       // LX-06: S-19's licensing settings (`licensing.*`, the settings area `license.licensing`).
       {

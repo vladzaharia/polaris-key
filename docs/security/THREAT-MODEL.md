@@ -7019,6 +7019,52 @@ not_removable` (`reason` `no_active_key` or `key_claim_off`) before the rate lim
   removing a holder is the relink tool's Make floating (I-12, LX-30), which takes a step-up, a
   reason and has an undo, rather than an unaudited field edit.
 
+### Make floating and Reassign: the relink tool's holder moves (LX-30)
+
+`POST /manage/api/products/<slug>/users/licenses/<id>/make-floating` and `…/reassign`
+(`admin/handlers/users.ts`, `services/identity/accounts/productUsers.ts`; notes/S-24 §5.5, D20)
+change who holds a licence: Make floating takes it out of its account and clears its own name and
+email; Reassign gives it to another email address, which it then waits for or joins (D3). They are
+the I-12 relink tool keyed by the licence, so they also reach a licence waiting for its email.
+
+- **The relink controls, all of them.** An interactive sign-in no older than 5 minutes
+  (`step_up_required`), a reason of 1 to 500 characters, notices BEFORE the change, an audit row
+  with before and after (`user.license.make_floating`, `user.license.reassign`), a
+  `license_relinks` row with a 72-hour undo, and the moves count towards one operator's daily
+  relink alert (`identity.relink.alert`) with the relinks. A concurrent change answers `conflict`:
+  the owner move is `reassignLicense`'s compare-and-set and the name and email write is
+  conditional on the licence still having no account and the address read.
+- **A typed confirmation the Worker checks** (R7): `confirm` must be the licence's name or its id,
+  or the answer is `400 bad_request` (`confirm_required`) and nothing is sent or written. A
+  replayed or scripted call without it cannot move a licence.
+- **Notices to the old and the new address.** The account a licence leaves is told at every
+  verified address (a security notice, with the undo window); a waiting licence's address gets
+  the same message without "Secure your account" (it has no account). Reassign also tells the new
+  address that a licence was assigned to it.
+- **T-H2 holds for Reassign.** The answer has the same members whether or not an account has
+  verified the new address, and the new address's notice is the same words either way (it never
+  says "already in your account"); association runs through the same `associateLicenseHolder` as
+  a create, with its constant-cost lookup. The residual is T-H2's: afterwards the licence reads
+  "in an account" or "waiting", which the operator could already learn by creating a licence for
+  that address.
+- **No pulled-back licence (T-H4).** The account a licence leaves is blocked from getting it back
+  automatically (`reassignLicense` writes the block; the moves write none of their own); the undo
+  moves it back explicitly, which lifts that block, and blocks the account it is taken from.
+- **The undo cannot steal a licence.** It works only while the licence still sits where the move
+  put it: still floating (nobody added the key to an account since), or still carrying the
+  reassigned address and in no account, the account it joined at the move, or an account that has
+  verified that address. A claim by key into another account, a later email change or the 72
+  hours close it.
+- **Signing devices out is opt-in.** Make floating leaves devices running (a floating licence is
+  still a licence, S-24 R2) unless the operator ticks **Also sign out its devices**, which
+  deauthorises each device exactly as the Devices tab does (`device.deauthorize` audited per
+  device).
+- Residual, accepted: Reassign mails an operator-typed address. It is behind the step-up, the
+  daily alert and the audit trail, and the message carries no key and no link that signs anyone in.
+- Residual, accepted: the console PATCH still lets an operator change the email of a licence that
+  is waiting or in an account (only clearing it is refused). That edit has no step-up and no undo;
+  the console offers Reassign instead and no longer edits an assigned licence's email (LX-30).
+
 ### Bulk floating keys: licence batches and Disable unused keys (LX-28)
 
 `POST /manage/api/products/<slug>/license/batches` creates up to 500 floating licences of one tier
@@ -7054,6 +7100,11 @@ platform-admin group).
     same D1 batch as the `UPDATE`: the audit row is written only while the batch still has the
     count just read, and the `UPDATE` runs only after it (`changes()`), so the row always records
     what was disabled and neither commits without the other (tested on better-sqlite3 and D1).
+  - **Typed confirmation (LX-30).** The console's **Disable unused keys…** is L3 with the batch
+    label typed, and sends it as `confirm`; when `confirm` is sent the Worker refuses anything but
+    the label (`400 bad_request`, `confirm_required`). An older caller that sends no body is
+    still accepted. The batch list pages (`limit`, `cursor`) so a product with many batches is
+    not one unbounded read.
   - Residual, accepted: a key the thief already activated counts as used and stays active; the
     operator disables those licences one at a time (or revokes their keys), and the batch read
     says how many there are. A key added to an account in the portal but never activated binds no

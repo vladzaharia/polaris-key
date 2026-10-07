@@ -65,6 +65,10 @@ export const ADA = summary("lic_1", {
   channels: ["stable", "beta"],
   modifiedBy: "u1",
   modifiedAt: NOW_S - 3600,
+  // LX-26: in an account (the Worker's derived holder).
+  holder: { kind: "assigned", inAccount: true, email: "ada@x.io" },
+  ownerSubject: "ps_AAAAAAAAAAAAAAAAAAAAAA",
+  batchId: null,
 });
 
 export const LICENSES: LicenseSummary[] = [

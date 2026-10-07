@@ -442,6 +442,9 @@ export const r = {
     productPage(slug, "tiers", { id, tab }),
   enrollment: (slug: string) => productPage(slug, "enrollment"),
   licenseSettings: (slug: string) => productPage(slug, "license-settings"),
+  licenseBatches: (slug: string) => productPage(slug, "license-batches"),
+  licenseBatch: (slug: string, id: string) =>
+    productPage(slug, "license-batches", { id }),
   catalog: (slug: string) => productPage(slug, "catalog"),
   catalogEdit: (slug: string) => productPage(slug, "catalog-edit"),
   profiles: (slug: string) => productPage(slug, "profiles"),

@@ -1234,6 +1234,8 @@ export interface ProductUserDevice {
 export interface ProductUserRelink {
   id: string;
   licenseId: string;
+  /** LX-30: an I-12 relink, a Make floating or a Reassign. Absent from an older Worker. */
+  kind?: LicenseHolderMoveKind;
   direction: "in" | "out";
   otherSubject: string | null;
   reason: string;
@@ -3189,6 +3191,91 @@ export interface LicenseSummary {
   /** What "Use inherited limit" falls back to: the tier's, an entitlement's or the product's. */
   inheritedDeviceLimit?: number;
   inheritedDeviceLimitSource?: Exclude<DeviceLimitSource, "license">;
+  /**
+   * LX-26 (S-24 D1): floating or assigned, derived by the Worker from the licence's account and
+   * its own email. Absent from an older Worker: the console then derives it from `email`.
+   */
+  holder?: LicenseHolder;
+  /** PX-W17: the owner as this product sees them, `null` while floating or waiting. */
+  ownerSubject?: string | null;
+  /** LX-28: the batch the licence was created in, `null` for a licence created on its own. */
+  batchId?: string | null;
+  /** PX-W9: the licence's key entries; `null` with Identity off. */
+  keyEntries?: { used: number; limit: number } | null;
+}
+
+/**
+ * Who holds a licence (S-24 §5.1, D1): **floating** (no account and no email: anyone with the
+ * key), or **assigned**, in an account or waiting for its email to be verified. `email` is the
+ * licence's own, never the account's.
+ */
+export type LicenseHolder =
+  | { kind: "floating" }
+  | { kind: "assigned"; inAccount: boolean; email?: string };
+
+/** A licence batch (LX-28): up to 500 floating licences created together under one label. */
+export interface LicenseBatch {
+  id: string;
+  label: string;
+  /** How many licences the batch created. */
+  count: number;
+  tier: string | null;
+  /** The operator's session sub. */
+  createdBy: string;
+  createdAt: number;
+  /** Licences of the batch that have ever had a device bound. */
+  used: number;
+  /** Active licences never used: what Disable unused keys would disable. */
+  unused: number;
+  /** Licences of the batch that are disabled, used or not. */
+  disabled: number;
+}
+
+/** How a licence's holder last moved (LX-30): I-12's relink, Make floating or Reassign. */
+export type LicenseHolderMoveKind = "relink" | "floating" | "reassign";
+
+/** `GET users/licenses/<id>/relinks`: one move of one licence, with its 72-hour undo. */
+export interface LicenseHolderMove {
+  id: string;
+  kind: LicenseHolderMoveKind;
+  reason: string;
+  actorName: string | null;
+  createdAt: number;
+  undoUntil: number;
+  undoneAt: number | null;
+  undoable: boolean;
+  fromSubject: string | null;
+  toSubject: string | null;
+  /** The holder's name and email before the move (`null` for a relink, which keeps them). */
+  from: { name: string | null; email: string | null } | null;
+  to: { name: string | null; email: string | null } | null;
+  devicesSignedOut: number;
+}
+
+/** Make floating (LX-30): a step-up action; `confirm` is the licence's name, else its id. */
+export interface MakeFloatingBody {
+  reason: string;
+  confirm: string;
+  signOutDevices?: boolean;
+}
+
+/** Reassign (LX-30): a step-up action; `confirm` is the licence's name, else its id. */
+export interface ReassignLicenseBody {
+  email: string;
+  name?: string | null;
+  reason: string;
+  confirm: string;
+}
+
+/** What Make floating and Reassign answer. Never whether the new address has an account (D4). */
+export interface HolderMoveResult {
+  ok: true;
+  relinkId: string;
+  undoUntil: number;
+  noticesSent: number;
+  alert: boolean;
+  /** Make floating only: how many devices were signed out. */
+  devicesSignedOut?: number;
 }
 
 /** Where a licence's effective device limit comes from, most specific first (LX-14a). */
@@ -4929,6 +5016,29 @@ const rawApi = {
     call<{ candidates: LicenseCleanupCandidate[] }>(
       `${p(slug)}/license/deletions/candidates`,
     ),
+
+  // ── license batches (LX-28, LX-30) ──────────────────────────────────────────────
+  /** One page of the product's batches, newest first. */
+  licenseBatches: (
+    slug: string,
+    page: { limit?: number; cursor?: string } = {},
+  ) => {
+    const q = new URLSearchParams();
+    if (page.limit !== undefined) q.set("limit", String(page.limit));
+    if (page.cursor) q.set("cursor", page.cursor);
+    const qs = q.toString();
+    return call<{ batches: LicenseBatch[]; nextCursor?: string | null }>(
+      `${p(slug)}/license/batches${qs ? `?${qs}` : ""}`,
+    );
+  },
+  licenseBatch: (slug: string, id: string) =>
+    call<LicenseBatch>(`${p(slug)}/license/batches/${enc(id)}`),
+  /** Typed confirmation: `confirm` is the batch label. */
+  disableUnusedLicenses: (slug: string, batchId: string, confirm: string) =>
+    call<{ disabled: number }>(
+      `${p(slug)}/license/batches/${enc(batchId)}/disable-unused`,
+      { method: "POST", body: JSON.stringify({ confirm }) },
+    ),
   putLicenseOverrides: (slug: string, id: string, updates: OverrideUpdate[]) =>
     call<{ ok: true; id: string }>(
       `${p(slug)}/license/licenses/${enc(id)}/overrides`,
@@ -5057,6 +5167,31 @@ const rawApi = {
   ) =>
     call<RelinkResult>(
       `${p(slug)}/users/${enc(subject)}/licenses/${enc(licenseId)}/relink`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+  /** LX-30: the licence's holder moves, newest first, with their undo windows. */
+  licenseHolderMoves: (slug: string, licenseId: string) =>
+    call<{ relinks: LicenseHolderMove[] }>(
+      `${p(slug)}/users/licenses/${enc(licenseId)}/relinks`,
+    ),
+  /** LX-30: needs a step-up (403 `step_up_required` otherwise). */
+  makeLicenseFloating: (
+    slug: string,
+    licenseId: string,
+    body: MakeFloatingBody,
+  ) =>
+    call<HolderMoveResult>(
+      `${p(slug)}/users/licenses/${enc(licenseId)}/make-floating`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+  /** LX-30: needs a step-up (403 `step_up_required` otherwise). */
+  reassignLicenseHolder: (
+    slug: string,
+    licenseId: string,
+    body: ReassignLicenseBody,
+  ) =>
+    call<HolderMoveResult>(
+      `${p(slug)}/users/licenses/${enc(licenseId)}/reassign`,
       { method: "POST", body: JSON.stringify(body) },
     ),
   /** Needs a step-up, within 72 hours of the relink. */

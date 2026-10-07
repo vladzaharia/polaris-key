@@ -1,9 +1,13 @@
 /**
  * License → Licenses (ADMIN.md §6.5.1, T2): facet tiles over the computed state (LIC-1), a
- * client-mode table (search over name, email and id; status, tier, channel and sign-in facets;
- * CSV; virtualized above 200 rows; LIC-7), bulk Disable / Enable / Export / Delete, the "Clean up
- * duplicates" helper (`LicenseDelete.tsx`), and the stepped Create license dialog. Every filter is
- * in the URL.
+ * client-mode table (search over name, email and id; status, holder, batch, tier, channel and
+ * sign-in facets; CSV; virtualized above 200 rows; LIC-7), bulk Disable / Enable / Export /
+ * Delete, the "Clean up duplicates" helper (`LicenseDelete.tsx`), and the stepped Create license
+ * dialog. Every filter is in the URL.
+ *
+ * LX-30 (S-24 §8.8): the Holder column says who holds each licence (name and email, "Waiting for
+ * ada@…", or Floating, muted), the Holder facet filters on it (Anyone, In an account, Waiting,
+ * Floating), and a product with batches gets a Batch column and facet whose labels open the batch.
  */
 
 import * as React from "react";
@@ -12,7 +16,7 @@ import type { LicenseSummary } from "../../../api.js";
 import { useProduct } from "../../data/hooks.js";
 import { mutate } from "../../data/mutations.js";
 import { r } from "../../routes.js";
-import { Link } from "../../router.js";
+import { Link, navigate } from "../../router.js";
 import { useTableUrlState } from "../../useTableUrlState.js";
 import { PageHeader } from "../../components/PageHeader.js";
 import { CollectionTemplate } from "../../templates/Collection.js";
@@ -42,6 +46,14 @@ import {
   deletionBlockedReason,
 } from "./LicenseDelete.js";
 import {
+  HOLDER_STATES,
+  HOLDER_STATE_LABELS,
+  HolderCell,
+  holderOf,
+  holderState,
+  useLicenseBatches,
+} from "./holders.js";
+import {
   LICENSE_STATE_LABELS,
   LicenseStatus,
   licenseState,
@@ -53,12 +65,21 @@ import {
 } from "./shared.js";
 
 const STATES: LicenseState[] = ["active", "expiring", "expired", "disabled"];
-const FACETS = ["status", "tier", "channel", "signin"] as const;
+const FACETS = [
+  "status",
+  "holder",
+  "batch",
+  "tier",
+  "channel",
+  "signin",
+] as const;
 const NO_TIER = "__none__";
+const NO_BATCH = "__none__";
 
 export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
   const licensesQ = useLicenses(slug);
   const tiersQ = useTiers(slug);
+  const batchesQ = useLicenseBatches(slug);
   const product = useProduct(slug).data;
   const [state, setState] = useTableUrlState("licenses", { facets: FACETS });
   const [createOpen, setCreateOpen] = React.useState(false);
@@ -76,6 +97,17 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
     [licensesQ.data],
   );
   const tiers = React.useMemo(() => tiersQ.data?.tiers ?? [], [tiersQ.data]);
+  const batches = React.useMemo(
+    () => batchesQ.data?.batches ?? [],
+    [batchesQ.data],
+  );
+  const batchLabel = React.useCallback(
+    (id: string) => batches.find((b) => b.id === id)?.label ?? id,
+    [batches],
+  );
+  // A product with no batch keeps the table it had: no Batch column, no Batch facet.
+  const hasBatches =
+    batches.length > 0 || licenses.some((l) => Boolean(l.batchId));
   // "Now" moves with each fetch, so a state is stable while the operator reads the table.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const now = React.useMemo(() => Date.now(), [licensesQ.dataUpdatedAt]);
@@ -103,32 +135,20 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
         id: "holder",
         header: "Holder",
         accessorFn: (l) => l.name || l.email || l.id,
-        meta: { priority: 1, primary: true, csv: (l) => l.name },
-        cell: ({ row }) => {
-          const l = row.original;
-          return (
-            <span className="flex min-w-0 max-w-[22rem] flex-col">
-              {/* The name flies into the record's title on a drill-down (S-23 §6.1
-                  shared-element): the router names it for the old page only. Both ends are
-                  fit-content, so the snapshot never stretches. */}
-              <span
-                className="w-fit max-w-full truncate"
-                title={l.name || undefined}
-                data-vt-shared="pk-key"
-              >
-                {l.name || "Unnamed license"}
-              </span>
-              {l.email ? (
-                <span
-                  className="truncate text-xs font-normal text-fg-muted"
-                  title={l.email}
-                >
-                  {l.email}
-                </span>
-              ) : null}
-            </span>
-          );
+        meta: {
+          priority: 1,
+          primary: true,
+          csv: (l) =>
+            l.name ||
+            (holderOf(l).kind === "floating" ? "Floating" : l.email || ""),
         },
+        cell: ({ row }) => <HolderCell license={row.original} />,
+      },
+      {
+        id: "holderState",
+        header: "Holder state",
+        accessorFn: (l) => HOLDER_STATE_LABELS[holderState(l)],
+        meta: { defaultHidden: true },
       },
       {
         id: "email",
@@ -222,6 +242,27 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
         accessorKey: "activeKeyCount",
         meta: { priority: 3, numeric: true },
       },
+      ...(hasBatches
+        ? [
+            {
+              id: "batch",
+              header: "Batch",
+              accessorFn: (l: LicenseSummary) =>
+                l.batchId ? batchLabel(l.batchId) : "",
+              meta: { priority: 3 },
+              cell: ({ row }: { row: { original: LicenseSummary } }) =>
+                row.original.batchId ? (
+                  <Link
+                    to={r.licenseBatch(slug, row.original.batchId)}
+                    className="inline-block max-w-[12rem] truncate rounded-full border border-border px-2 py-0.5 text-xs text-fg hover:border-border-strong"
+                    title={batchLabel(row.original.batchId)}
+                  >
+                    {batchLabel(row.original.batchId)}
+                  </Link>
+                ) : null,
+            } satisfies DataColumn<LicenseSummary>,
+          ]
+        : []),
       {
         id: "channel",
         header: "Channels",
@@ -237,7 +278,15 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
         meta: { defaultHidden: true },
       },
     ],
-    [now, tierLabel, tiers, product?.defaultDeviceLimit],
+    [
+      now,
+      tierLabel,
+      tiers,
+      product?.defaultDeviceLimit,
+      hasBatches,
+      batchLabel,
+      slug,
+    ],
   );
 
   const facets = React.useMemo<Facet<LicenseSummary>[]>(() => {
@@ -252,6 +301,28 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
         })),
         accessor: (l) => licenseState(l, now),
       },
+      {
+        id: "holder",
+        label: "Holder",
+        options: HOLDER_STATES.map((h) => ({
+          value: h,
+          label: HOLDER_STATE_LABELS[h],
+        })),
+        accessor: (l) => holderState(l),
+      },
+      ...(hasBatches
+        ? [
+            {
+              id: "batch",
+              label: "Batch",
+              options: [
+                ...batches.map((b) => ({ value: b.id, label: b.label })),
+                { value: NO_BATCH, label: "Not in a batch" },
+              ],
+              accessor: (l: LicenseSummary) => l.batchId ?? NO_BATCH,
+            },
+          ]
+        : []),
       {
         id: "tier",
         label: "Tier",
@@ -277,9 +348,15 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
         accessor: (l) => l.identityProvider,
       },
     ];
-  }, [licenses, tiers, now]);
+  }, [licenses, tiers, now, hasBatches, batches]);
 
   const statusFilter = state.filters.status ?? [];
+  // Filtered to one batch: its page is one click away (S-24 §8.8, "Batch page (from the filter)").
+  const batchFilter = state.filters.batch ?? [];
+  const oneBatch =
+    batchFilter.length === 1 && batchFilter[0] !== NO_BATCH
+      ? batchFilter[0]!
+      : null;
   const toggleState = (s: LicenseState): void => {
     const on = statusFilter.length === 1 && statusFilter[0] === s;
     setState({
@@ -345,6 +422,14 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
               label: "Clean up duplicates…",
               onSelect: () => setCleanupOpen(true),
             },
+            ...(hasBatches
+              ? [
+                  {
+                    label: "Batches",
+                    onSelect: () => navigate(r.licenseBatches(slug)),
+                  },
+                ]
+              : []),
           ]}
           refetching={licensesQ.isFetching && !licensesQ.isPending}
         />
@@ -366,13 +451,28 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
       }
     >
       <OverrideMigrationNotice slug={slug} />
+      {oneBatch ? (
+        <p className="text-sm text-fg-muted" data-testid="batch-filter-link">
+          Showing the licenses of batch{" "}
+          <Link
+            to={r.licenseBatch(slug, oneBatch)}
+            className="font-bold text-accent-fg underline-offset-2 hover:underline"
+          >
+            {batchLabel(oneBatch)}
+          </Link>
+          .
+        </p>
+      ) : null}
       <DataTable<LicenseSummary>
         id="licenses"
         caption="Licenses"
         data={licenses}
         columns={columns}
         getRowId={(l) => l.id}
-        rowLabel={(l) => l.name || l.id}
+        rowLabel={(l) =>
+          l.name ||
+          (holderOf(l).kind === "floating" ? `Floating license ${l.id}` : l.id)
+        }
         rowHref={(l) => r.license(slug, l.id)}
         linkComponent={Link}
         facets={facets}

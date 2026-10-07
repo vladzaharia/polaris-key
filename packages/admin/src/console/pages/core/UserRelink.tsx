@@ -94,7 +94,8 @@ export function useStepUp(open: boolean): {
   return { fresh, markStale: () => setStale(true) };
 }
 
-function ReasonField({
+/** The mandatory reason a relink, a Make floating, a Reassign and an undo ask for (I-12). */
+export function ReasonField({
   id,
   value,
   onChange,

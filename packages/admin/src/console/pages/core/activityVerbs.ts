@@ -34,6 +34,19 @@ const VERBS: Record<string, string> = {
   "license.disable": "disabled license",
   "license.delete": "deleted license",
   "license.enroll": "enrolled a keyless license",
+  // LX-26, LX-28 and LX-30 (notes/S-24 §6.3, §7.4): holders and batches.
+  "license.holder.assign": "assigned license",
+  "license.batch.create": "created batch",
+  "license.batch.disable_unused": "disabled the unused keys of batch",
+  // The account's own history (`portal_audit`), where it shows (S-24 D19).
+  "account.license.auto_attach_block":
+    "stopped automatic re-adding to the library of license",
+  // I-12's relink tool, and LX-30's Make floating and Reassign on it.
+  "user.license.detach": "detached license",
+  "user.license.relink": "relinked license",
+  "user.license.relink.undo": "undid a relink of license",
+  "user.license.make_floating": "unassigned (made floating) license",
+  "user.license.reassign": "reassigned license",
   "device.deauthorize": "deauthorized device",
   "device.fingerprint.reset": "reset the hardware binding of device",
   "device.fingerprint.drift": "recorded a hardware change on device",
@@ -106,6 +119,7 @@ export function verbFor(action: string): string {
 /** The action filter's choices: one prefix per area, in the order operators look for them. */
 export const ACTION_GROUPS: { value: string; label: string }[] = [
   { value: "license.", label: "Licenses" },
+  { value: "user.", label: "Users and license holders" },
   { value: "key.", label: "Keys" },
   { value: "device.", label: "Devices" },
   { value: "secret.", label: "Secrets" },
@@ -135,6 +149,7 @@ export const TARGET_KINDS: { value: string; label: string }[] = [
   { value: "secret", label: "Secret" },
   { value: "profile", label: "Profile" },
   { value: "tier", label: "Tier" },
+  { value: "license_batch", label: "License batch" },
   { value: "product", label: "Product" },
   { value: "ci_token", label: "CI token" },
   { value: "feed", label: "Package feed" },

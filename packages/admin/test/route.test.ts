@@ -512,6 +512,7 @@ describe("the nav model (nav.ts)", () => {
       "tiers",
       "enrollment",
       "license-settings",
+      "license-batches",
       "catalog",
       "catalog-edit",
       "profiles",

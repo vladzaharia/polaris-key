@@ -1,6 +1,10 @@
 /**
- * The license record's two dialogs: Edit holder (name and email; the terms live in the Overview
- * form) and Mint offline bundle (ADMIN.md §6.5.2).
+ * The license record's two dialogs: Edit holder (the name; the terms live in the Overview form)
+ * and Mint offline bundle (ADMIN.md §6.5.2).
+ *
+ * LX-30 (S-24 D20): Edit holder no longer edits an assigned licence's email. Giving the licence to
+ * another address is **Reassign…**, and removing its holder is **Make floating…**, both I-12's
+ * audited relink tool (`LicenseHolderDialogs.tsx`); a floating licence gets **Assign…** instead.
  *
  * ── The offline bundle ─────────────────────────────────────────────────────────────────────
  *
@@ -35,14 +39,12 @@ import { announce } from "../../../ui/LiveRegion.js";
 import { NumberInput } from "../../../ui/NumberInput.js";
 import { OneTimeSecretPanel } from "../../../ui/OneTimeSecretPanel.js";
 import { toast } from "../../../ui/toast.js";
-import { EMAIL_RE } from "./shared.js";
 
 // ── Edit holder ────────────────────────────────────────────────────────────────────────────────
 
 interface HolderValues {
   [key: string]: unknown;
   name: string;
-  email: string;
 }
 
 export function EditHolderDialog({
@@ -61,7 +63,7 @@ export function EditHolderDialog({
       open={open}
       onOpenChange={onOpenChange}
       title="Edit holder"
-      description="The name and email this license is issued to. Devices pick up the change at their next license refresh."
+      description="The name this license is issued to. Devices pick up the change at their next license refresh. To give it to someone else, use Reassign."
     >
       {open ? (
         <HolderForm
@@ -84,20 +86,9 @@ function HolderForm({
   onDone: () => void;
 }): React.ReactElement {
   const form = useAdminForm<HolderValues>({
-    values: { name: license.name, email: license.email },
-    validate: (v) => {
-      const e: Record<string, string> = {};
-      if (!v.name.trim()) e.name = "Enter the holder's name.";
-      if (!v.email.trim()) e.email = "Enter the holder's email.";
-      else if (!EMAIL_RE.test(v.email.trim()))
-        e.email = "Enter a valid email address.";
-      return e;
-    },
+    values: { name: license.name },
     onSubmit: async (draft, { server }) => {
-      const d = diffValues(server, {
-        name: draft.name.trim(),
-        email: draft.email.trim(),
-      });
+      const d = diffValues(server, { name: draft.name.trim() });
       if (Object.keys(d).length) {
         await mutate("patchLicense", slug, license.id, d as never);
         toast.success("Holder updated");
@@ -109,12 +100,14 @@ function HolderForm({
   return (
     <Form form={form} aria-label="Holder" className="contents">
       <DialogBody className="space-y-4">
-        <FormField name="name" label="Name" required>
+        <FormField name="name" label="Name">
           {(f) => <Input {...f} autoFocus />}
         </FormField>
-        <FormField name="email" label="Email" required>
-          {(f) => <Input {...f} type="email" />}
-        </FormField>
+        {license.email ? (
+          <p className="text-sm text-fg-muted">
+            Email: <span className="text-fg">{license.email}</span>
+          </p>
+        ) : null}
         {form.submitError && !Object.keys(form.errors).length ? (
           <Callout tone="danger" title="The holder wasn't saved" live>
             {errorCopy(form.submitError, { thing: "License" }).description}
