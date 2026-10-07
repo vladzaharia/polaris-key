@@ -53,6 +53,10 @@
       "types": "./dist/cli/index.d.ts",
       "default": "./dist/cli/index.js"
     },
+    "./terminal": {
+      "types": "./dist/cli/term/index.d.ts",
+      "default": "./dist/cli/term/index.js"
+    },
     "./commerce": {
       "types": "./dist/commerce/index.d.ts",
       "default": "./dist/commerce/index.js"

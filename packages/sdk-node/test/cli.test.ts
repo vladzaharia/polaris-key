@@ -479,10 +479,20 @@ describe("cli/commander adapter smoke", () => {
       productSlug: "djdl",
       version: "1.2.3",
     });
-    // ...and the status command printed the core's output (gate = needs-activation).
-    expect(lines.join("\n")).toContain("needs-activation");
-    // ...and the adapter passed the store status through (P1b-09).
-    expect(lines.join("\n")).toContain("Token store: memory");
+    // ...and the status command drew the gate (needs-activation) in the catalog's words.
+    expect(lines.join("\n")).toContain(
+      "Enter a license key or sign in to continue.",
+    );
+    // ...and --json carries the gate and the store status (P1b-09).
+    lines.length = 0;
+    await program.parseAsync(["status", "--json"], { from: "user" });
+    const out = JSON.parse(lines.join("\n")) as {
+      exitCode: number;
+      result: { status: { status: string }; store: { backend: string } };
+    };
+    expect(out.exitCode).toBe(3);
+    expect(out.result.status.status).toBe("needs-activation");
+    expect(out.result.store.backend).toBe("memory");
     expect(seen.client).toBeInstanceOf(PolarisKeyClient);
 
     // Every v3 verb is attached, in its service group. `register` in particular: a config-only
@@ -524,6 +534,6 @@ describe("cli/commander adapter smoke", () => {
     await program.parseAsync(["register"], { from: "user" });
 
     expect(calls).toContain("POST /djdl/devices/register");
-    expect(lines.join("\n")).toContain("Registered device");
+    expect(lines.join("\n")).toContain("This device is registered.");
   });
 });

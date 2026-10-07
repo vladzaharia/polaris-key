@@ -255,6 +255,31 @@ describe("the adapters build every verb from CLI_VERBS", () => {
       CLI_VERBS.map((v) => v.path.join(" ")).sort(),
     );
     await program.parseAsync(["devices", "list"], { from: "user" });
+    expect(lines.join("\n")).toContain(
+      "No devices are using this license yet.",
+    );
+    await program.parseAsync(["config", "get", "missing.key"], {
+      from: "user",
+    });
+    expect(lines.join("\n")).toContain("missing.key has no value.");
+  });
+
+  it("kit: false keeps the plain CommandResult output", async () => {
+    const { client: c } = await client({
+      "GET /djdl/devices": () => json({ devices: [] }),
+    });
+    const lines: string[] = [];
+    const program = new Command();
+    program.exitOverride();
+    registerPolarisCommands(program, async () => c, {
+      pinnedKeys: {},
+      productSlug: "djdl",
+      version: "1.2.3",
+      kit: false,
+      print: (l) => lines.push(l),
+      setExitCode: () => undefined,
+    });
+    await program.parseAsync(["devices", "list"], { from: "user" });
     expect(lines.join("\n")).toContain("0 device(s)");
     await program.parseAsync(["config", "get", "missing.key"], {
       from: "user",
@@ -276,8 +301,10 @@ describe("the adapters build every verb from CLI_VERBS", () => {
       setExitCode: () => undefined,
     });
     await y.parseAsync(["polaris-key", "devices", "list"]);
-    expect(lines.join("\n")).toContain("0 device(s)");
+    expect(lines.join("\n")).toContain(
+      "No devices are using this license yet.",
+    );
     await y.parseAsync(["polaris-key", "config", "get", "missing.key"]);
-    expect(lines.at(-1)).toContain("missing.key is not set");
+    expect(lines.join("\n")).toContain("missing.key has no value.");
   });
 });

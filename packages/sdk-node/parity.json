@@ -132,7 +132,7 @@
     "identity.oidc": {
       "status": "planned",
       "wp": "I-15",
-      "note": "Browser redirect sign-in for native hosts waits on I-15's redirect token route (wire item W4); /identity/auth/poll is deprecated and never used. The interim is identity.signInWithBrowser(): device code opened in the system browser (SDK parity pass §3.12)."
+      "note": "Browser redirect sign-in for native hosts waits on I-15's redirect token route (wire item W4); /identity/auth/poll is deprecated and never used. The interim is identity.signInWithBrowser(): device code opened in the system browser (SDK parity pass \u00a73.12)."
     },
     "identity.devicecode": {
       "status": "implemented"
@@ -331,11 +331,11 @@
     },
     "ui.cli": {
       "status": "implemented",
-      "note": "@polaris-key/node/cli: status, activate, enroll, deactivate, register, sign-in, devices and the rest of CLI_VERBS for commander and yargs; one test per verb (SP-N14)."
+      "note": "@polaris-key/node/cli, the terminal kit (UK-14): every CLI_VERBS verb runs a rail flow (masked key entry, browser or code sign-in, spinners and progress, OSC 8 links and OSC 52 copy, the half-block QR for offline requests), --json on every verb, grouped help and bash/zsh/fish completion, for commander and yargs. Proven by test/cli/golden.test.ts (every component x state in truecolor dark and light, ANSI-16, NO_COLOR and ASCII at 80 and 60 columns, with SVG and PNG baselines) and test/cli/kit.test.ts; the plain command core keeps one test per verb (SP-N14)."
     },
     "commerce.receipt": {
       "status": "implemented",
-      "note": "client.commerce: binding(), claim(store, payload) and the store helpers claimSteam(ticketHex, dlcAppId), claimAppStore(jws), claimPlay(productId, token). No store SDK dependency: the host passes what its store handed it (SDK parity pass §3.9, SP-N04)."
+      "note": "client.commerce: binding(), claim(store, payload) and the store helpers claimSteam(ticketHex, dlcAppId), claimAppStore(jws), claimPlay(productId, token). No store SDK dependency: the host passes what its store handed it (SDK parity pass \u00a73.9, SP-N04)."
     }
   }
 }

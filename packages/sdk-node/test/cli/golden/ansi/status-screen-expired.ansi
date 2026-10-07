@@ -1,0 +1,114 @@
+#### truecolor-80-dark
+[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · status[39m
+[90m│[39m
+[31m✗[39m  [1mLicense expired[22m
+[90m│[39m  Your license has expired. Connect to the internet or renew it to continue.
+[90m│[39m
+[90m│[39m  To keep using Tidewater Studio:
+[90m│[39m  [1mtidewater activate[22m   [90mUse a different key[39m
+[90m│[39m  [1mtidewater login[22m      [90mUse the license on your account[39m
+[90m└[39m
+
+#### truecolor-80-light
+[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · status[39m
+[90m│[39m
+[31m✗[39m  [1mLicense expired[22m
+[90m│[39m  Your license has expired. Connect to the internet or renew it to continue.
+[90m│[39m
+[90m│[39m  To keep using Tidewater Studio:
+[90m│[39m  [1mtidewater activate[22m   [90mUse a different key[39m
+[90m│[39m  [1mtidewater login[22m      [90mUse the license on your account[39m
+[90m└[39m
+
+#### ansi16-80
+[90m┌[39m  [36m[7m Tidewater Studio [27m[39m[90m · status[39m
+[90m│[39m
+[31m✗[39m  [1mLicense expired[22m
+[90m│[39m  Your license has expired. Connect to the internet or renew it to continue.
+[90m│[39m
+[90m│[39m  To keep using Tidewater Studio:
+[90m│[39m  [1mtidewater activate[22m   [90mUse a different key[39m
+[90m│[39m  [1mtidewater login[22m      [90mUse the license on your account[39m
+[90m└[39m
+
+#### no-color-80
+┌   Tidewater Studio  · status
+│
+✗  License expired
+│  Your license has expired. Connect to the internet or renew it to continue.
+│
+│  To keep using Tidewater Studio:
+│  tidewater activate   Use a different key
+│  tidewater login      Use the license on your account
+└
+
+#### ascii-80
+[90m+[39m  [36m[7m Tidewater Studio [27m[39m[90m - status[39m
+[90m|[39m
+[31mx[39m  [1mLicense expired[22m
+[90m|[39m  Your license has expired. Connect to the internet or renew it to continue.
+[90m|[39m
+[90m|[39m  To keep using Tidewater Studio:
+[90m|[39m  [1mtidewater activate[22m   [90mUse a different key[39m
+[90m|[39m  [1mtidewater login[22m      [90mUse the license on your account[39m
+[90m`[39m
+
+#### truecolor-60-dark
+[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · status[39m
+[90m│[39m
+[31m✗[39m  [1mLicense expired[22m
+[90m│[39m  Your license has expired. Connect to the internet or
+[90m│[39m  renew it to continue.
+[90m│[39m
+[90m│[39m  To keep using Tidewater Studio:
+[90m│[39m  [1mtidewater activate[22m   [90mUse a different key[39m
+[90m│[39m  [1mtidewater login[22m      [90mUse the license on your account[39m
+[90m└[39m
+
+#### truecolor-60-light
+[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · status[39m
+[90m│[39m
+[31m✗[39m  [1mLicense expired[22m
+[90m│[39m  Your license has expired. Connect to the internet or
+[90m│[39m  renew it to continue.
+[90m│[39m
+[90m│[39m  To keep using Tidewater Studio:
+[90m│[39m  [1mtidewater activate[22m   [90mUse a different key[39m
+[90m│[39m  [1mtidewater login[22m      [90mUse the license on your account[39m
+[90m└[39m
+
+#### ansi16-60
+[90m┌[39m  [36m[7m Tidewater Studio [27m[39m[90m · status[39m
+[90m│[39m
+[31m✗[39m  [1mLicense expired[22m
+[90m│[39m  Your license has expired. Connect to the internet or
+[90m│[39m  renew it to continue.
+[90m│[39m
+[90m│[39m  To keep using Tidewater Studio:
+[90m│[39m  [1mtidewater activate[22m   [90mUse a different key[39m
+[90m│[39m  [1mtidewater login[22m      [90mUse the license on your account[39m
+[90m└[39m
+
+#### no-color-60
+┌   Tidewater Studio  · status
+│
+✗  License expired
+│  Your license has expired. Connect to the internet or
+│  renew it to continue.
+│
+│  To keep using Tidewater Studio:
+│  tidewater activate   Use a different key
+│  tidewater login      Use the license on your account
+└
+
+#### ascii-60
+[90m+[39m  [36m[7m Tidewater Studio [27m[39m[90m - status[39m
+[90m|[39m
+[31mx[39m  [1mLicense expired[22m
+[90m|[39m  Your license has expired. Connect to the internet or
+[90m|[39m  renew it to continue.
+[90m|[39m
+[90m|[39m  To keep using Tidewater Studio:
+[90m|[39m  [1mtidewater activate[22m   [90mUse a different key[39m
+[90m|[39m  [1mtidewater login[22m      [90mUse the license on your account[39m
+[90m`[39m
