@@ -25,14 +25,15 @@ describe("presentation-matrix.json's reference", () => {
       );
   });
 
-  it("is the committed file's version", () => {
-    const file = JSON.parse(
-      readFileSync(
-        join(ROOT, "conformance", "corpus", "v2", "presentation-matrix.json"),
-        "utf8",
-      ),
-    ) as { presentationMatrixVersion: number };
+  it("is the committed file's version, and the file holds no U+0000", () => {
+    const text = readFileSync(
+      join(ROOT, "conformance", "corpus", "v2", "presentation-matrix.json"),
+      "utf8",
+    );
+    const file = JSON.parse(text) as { presentationMatrixVersion: number };
     expect(file.presentationMatrixVersion).toBe(PRESENTATION_MATRIX_VERSION);
+    // A Godot String cannot hold U+0000 (WIRE-CONTRACT-V4 §10); the generator refuses one.
+    expect(text.toLowerCase()).not.toContain("\\u0000");
     expect(buildPresentationMatrix().presentationMatrixVersion).toBe(1);
   });
 
@@ -43,6 +44,19 @@ describe("presentation-matrix.json's reference", () => {
     expect(refOrigin("http://example.com/x")).toBeUndefined();
     expect(refOrigin("https://u@img.plrs.im/x")).toBeUndefined();
     expect(refOrigin("https://img.plrs.im/x#")).toBeUndefined();
+    // The authority: a bounded numeric port, `[::1]` as the only bracketed host, DNS labels.
+    expect(refOrigin("https://img.plrs.im:65535/x")).toBe(
+      "https://img.plrs.im:65535",
+    );
+    for (const bad of [
+      "https://img.plrs.im:65536/x",
+      "https://img.plrs.im:abc/x",
+      "https://[evil]/x",
+      "http://[::1]evil.com/x",
+      "https://img%40plrs.im/x",
+      "https://999.1.1.1/x",
+    ])
+      expect(refOrigin(bad), bad).toBeUndefined();
     // Text is counted in UTF-8 bytes, never UTF-16 units or code points.
     const doc = { product: "p" };
     expect(refParse({ presentation: { name: "é".repeat(513) } }, doc)).toEqual({

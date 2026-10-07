@@ -28,16 +28,21 @@
 //      are integers 1…PRESENTATION_ICON_MAX_DIMENSION or dropped; `sizes` is at most
 //      PRESENTATION_MAX_ICON_SIZES `{w, sha256}` entries, each `w` an integer
 //      1…PRESENTATION_MAX_ICON_WIDTH strictly ascending: any bad entry drops `sizes` and `url`
-//      (the original stays). `url` is a usable URL once its one `{w}` is filled, on the original's
-//      origin; otherwise, or with no sizes, `url` and `sizes` are both dropped. An absent `sizes`
-//      reads as `[]`.
+//      (the original stays). `url` holds exactly one `{w}`, begins with the original's origin and
+//      then `/` or `?` (so the width can never change the host or the port), and is a usable URL
+//      once that `{w}` is filled; otherwise, or with no sizes, `url` and `sizes` are both dropped.
+//      An absent `sizes` reads as `[]`.
 //   5. A usable URL: 1 to PRESENTATION_URL_MAX_BYTES printable ASCII characters (U+0021–U+007E: no
 //      space, no control, nothing non-ASCII) with no `#` (no fragment) and no `\`; it begins
-//      `https://`, or `http://` only for the hosts `localhost`, `127.0.0.1` and `[::1]` (scheme and
-//      host compared ASCII-case-insensitively); its authority (up to the first `/`, `?` or the end)
-//      is non-empty and holds no `@` (no userinfo). There is no pinned host: production, staging
-//      and dev use `img`, `img-staging` and `img-dev`. The origin two URLs share is their scheme
-//      and authority, ASCII-lower-cased, compared exactly.
+//      `https://` or `http://` (ASCII-case-insensitively). Its authority, up to the first `/`, `?`
+//      or the end and lower-cased, is a host and an optional `:port` of 1 to 5 digits, at most
+//      65535. The host is `[::1]` (the one bracketed address, with nothing but a port after
+//      it), `127.0.0.1`, or dot-separated labels of 1 to 63 characters in `[a-z0-9-]` whose last
+//      label is not all digits: so no userinfo `@`, no `%`, no empty label. `http` only for the
+//      hosts `localhost`, `127.0.0.1` and `[::1]`. There is no pinned host: production, staging and
+//      dev use `img`, `img-staging` and `img-dev`. The origin two URLs share is their scheme and
+//      authority, lower-cased, compared exactly. On ports, bracketed addresses and host characters
+//      the rule is stricter than a WHATWG URL parser, never looser.
 //
 // The rules are deliberately portable: no URL parser, no Unicode normalisation, nothing Godot's
 // GDScript cannot do. The corpus generator (`tools/presentation-matrix.ts`) holds its own
@@ -96,6 +101,39 @@ const LOOPBACK_HOSTS: ReadonlySet<string> = new Set([
   "127.0.0.1",
   "[::1]",
 ]);
+const DNS_LABEL = /^[a-z0-9-]{1,63}$/;
+const ALL_DIGITS = /^[0-9]+$/;
+
+/** A lower-cased authority's host when it has a usable host and port, else `null`. */
+function authorityHost(authority: string): string | null {
+  let host: string;
+  let port: string | null;
+  if (authority.startsWith("[")) {
+    const close = authority.indexOf("]");
+    if (close === -1) return null;
+    host = authority.slice(0, close + 1);
+    const after = authority.slice(close + 1);
+    if (after !== "" && !after.startsWith(":")) return null;
+    port = after === "" ? null : after.slice(1);
+  } else {
+    const colon = authority.indexOf(":");
+    host = colon === -1 ? authority : authority.slice(0, colon);
+    port = colon === -1 ? null : authority.slice(colon + 1);
+  }
+  if (
+    port !== null &&
+    (port.length < 1 ||
+      port.length > 5 ||
+      !ALL_DIGITS.test(port) ||
+      Number(port) > 65535)
+  )
+    return null;
+  if (host === "[::1]" || host === "127.0.0.1") return host;
+  const labels = host.split(".");
+  if (!labels.every((l) => DNS_LABEL.test(l))) return null;
+  if (ALL_DIGITS.test(labels[labels.length - 1]!)) return null;
+  return host;
+}
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
@@ -157,15 +195,10 @@ export function usableUrlOrigin(v: unknown): string | null {
   const rest = lower.slice(scheme.length + 3);
   const end = rest.search(/[/?]/);
   const authority = end === -1 ? rest : rest.slice(0, end);
-  if (authority === "" || authority.includes("@")) return null;
-  if (scheme === "http") {
-    // The host is the authority without its port: `[::1]:8787` → `[::1]`, `localhost:8787` →
-    // `localhost`. Only the loopback hosts may be plain http.
-    const host = authority.startsWith("[")
-      ? authority.slice(0, authority.indexOf("]") + 1)
-      : authority.split(":")[0]!;
-    if (!LOOPBACK_HOSTS.has(host)) return null;
-  }
+  const host = authorityHost(authority);
+  if (host === null) return null;
+  // Only the loopback hosts may be plain http.
+  if (scheme === "http" && !LOOPBACK_HOSTS.has(host)) return null;
   return `${scheme}://${authority}`;
 }
 
@@ -221,6 +254,9 @@ function icon(v: unknown): PresentationIcon | undefined {
     typeof url === "string" &&
     url.length <= PRESENTATION_URL_MAX_BYTES &&
     url.split("{w}").length === 2 &&
+    // `{w}` after the authority: the template begins with the original's own origin.
+    (url.toLowerCase().startsWith(`${origin}/`) ||
+      url.toLowerCase().startsWith(`${origin}?`)) &&
     usableUrlOrigin(url.replace("{w}", "1")) === origin;
   // Members in the contract's order (§5.5), so an emitted member reads as the contract shows it.
   const out: PresentationIcon = {

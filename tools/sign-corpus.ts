@@ -16,7 +16,7 @@
 //                           from `res://` in the editor and in an exported pack). Every file
 //                           is written into every target in `CORPUS_TARGETS`.
 //
-// Twelve files and one directory: `cases.json` (signed vectors, the v4 feed, release-record and
+// Thirteen files and one directory: `cases.json` (signed vectors, the v4 feed, release-record and
 // pack families included), `gate-matrix.json` (§5, with SP-00's `entitlementRows` family),
 // `fingerprint.json` (the hardware-hash
 // formulas), `stage-matrix.json` (the boot stage machine of `@polaris-key/client-core/stages`,

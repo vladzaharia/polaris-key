@@ -71,7 +71,7 @@ silently stop matching a returning machine to its existing free-tier enrollment.
 
 ## What's in the corpus
 
-Eleven files and the content corpus, one directory, so a runner can point at `corpus/v2/` and find everything it needs:
+Thirteen files and the content corpus, one directory, so a runner can point at `corpus/v2/` and find everything it needs:
 
 | File                       | Contents                                                                                                                                                                                                                                                                              |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -85,6 +85,7 @@ Eleven files and the content corpus, one directory, so a runner can point at `co
 | `outlet-matrix.json`       | WIRE-CONTRACT-V4 §11.2: outlet capability defaults and narrowing, the listing-URL prefixes, the detection signals and every detection row.                                                                                                                                            |
 | `plan-matrix.json`         | WIRE-CONTRACT-V4 §11.4: the install planner's rows, variant selection and target mapping (packs v1).                                                                                                                                                                                  |
 | `feed-url-matrix.json`     | The app-updater feed URLs (`appcast`, `winsparkle`, `velopack`, `appInstaller`, `zsync`) expanded from discovery's `update.endpoints` templates, or `{unsupported: "product"}` when a template is missing (`plans/SP-00.md` D5).                                                      |
+| `sync-scenarios.json`      | WIRE-CONTRACT-V4 §11.5 (U-18): the Cloud Sync client scenarios, literal data written by hand in `tools/sync-scenarios.ts` (see below).                                                                                                                                                |
 | `device-label.json`        | WIRE-CONTRACT-V4 §12.7.1 (PX-W13): raw device labels and their normalised form, or none. Every SDK runs every row, and the Worker runs them through `/identity/auth/device/start`. Non-ASCII code points are written escaped; no row holds U+0000, which a Godot `String` cannot.     |
 | `presentation-matrix.json` | WIRE-CONTRACT-V4 §5.5 (HA-12): discovery's `core.presentation` parsed field by field (`parseCases`), the icon size chosen for a pixel size, scale and decodable set (`pickCases`), and icon bytes checked against their SHA-256 (`verifyCases`, base64 bytes). ASCII only.            |
 | `content/`                 | WIRE-CONTRACT-V4 §2.6: `content/cases.json` (path rules, the files index, the chunk index, full, delta, file and chunk apply, `packSetId`, the content stamp, `frameWindow`) over the committed blobs in `content/blobs/`. Source only, not mirrored.                                 |

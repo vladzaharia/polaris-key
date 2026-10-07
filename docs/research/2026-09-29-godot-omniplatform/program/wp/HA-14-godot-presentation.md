@@ -65,7 +65,9 @@ Godot is the program's primary engine. Its kit today shows only bundled marks ([
 - Read every limit from the generated `constants_generated.gd` (Q6), never a literal: the
   `PRESENTATION_*` text, URL, size, width, dimension, byte, timeout and cache-file limits and
   `PRESENTATION_ICON_TYPES`.
-- The parse rule drops only C0 and C1 controls, so bidi controls survive (Q5). The kit renders
+- The §5.5 text rule drops a `name` or `developerName` holding a C0 control, DEL, a C1 control
+  or a lone surrogate, and nothing else, so bidi controls survive (Q5). The URL rule is §5.5
+  rule 5 as HA-12 tightened it in review (port, host and `{w}` placement). The kit renders
   `name` and `developerName` bidi-isolated (wrapped in FSI…PDI, U+2068…U+2069).
 
 ## Steps

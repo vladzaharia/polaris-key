@@ -14,12 +14,17 @@
  *     console cannot.
  */
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import { parsePresentation } from "@polaris-key/client-core/presentation";
 import { PRESENTATION_ICON_TYPES } from "@polaris-key/protocol/core";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
-import { makeEnv, NOW, seedProduct } from "./seed.js";
+import { makeEnv, NOW, seedProduct, TEST_KEK } from "./seed.js";
+import { envFor } from "./releaseRoutesFixture.js";
 import { seedHosted } from "./hostedFixture.js";
 import { portalHooksFor } from "./portalHarness.js";
 import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
@@ -46,6 +51,11 @@ import { clientRecordFor } from "../src/services/identity/passthrough/client.js"
 import { linkRepo } from "../src/services/release/linkRepo.js";
 import { resyncRepo } from "../src/services/release/resync.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
+import { parseManifest } from "../src/services/release/manifest.js";
+import {
+  ensureSystemProduct,
+  linkSystemProduct,
+} from "../src/admin/systemProduct.js";
 
 // The kill switch, controllable per test (HA-10 replaces the constant with a settings read).
 const hosting = vi.hoisted(() => ({ on: true }));
@@ -338,24 +348,37 @@ describe("discovery's core.presentation", () => {
     expect(await member(env, db)).toBeUndefined();
   });
 
-  it("a failed read never fails discovery: the member is simply absent", async () => {
+  it("a failed read never fails discovery: the member is simply absent, and the failure is logged", async () => {
     const db = makeTestDb();
     const env = envWith();
     await tidewater(db, null, { accent: "#123456" });
     const product = (await loadProductPublic(db, "tidewater"))!;
-    expect(
-      await resolvePresentation({
-        product,
-        env,
-        db,
-        hooks: {
-          delivery: () =>
-            ({
-              listing: () => Promise.reject(new Error("D1_ERROR")),
-            }) as never,
-        },
-      }),
-    ).toBeNull();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      expect(
+        await resolvePresentation({
+          product,
+          env,
+          db,
+          hooks: {
+            delivery: () =>
+              ({
+                listing: () => Promise.reject(new Error("D1_ERROR")),
+              }) as never,
+          },
+        }),
+      ).toBeNull();
+      expect(warn).toHaveBeenCalledTimes(1);
+      // The slug and the error, nothing else.
+      expect(JSON.parse(warn.mock.calls[0]![0] as string)).toEqual({
+        event: "core.presentation.resolve_failed",
+        product: "tidewater",
+        error: "Error",
+        message: "D1_ERROR",
+      });
+    } finally {
+      warn.mockRestore();
+    }
   });
 });
 
@@ -632,5 +655,64 @@ describe("link and resync write products.presentation_json", () => {
     expect(rows).toHaveLength(2);
     // Never filed under the unkeyed rows' `core.adminGroup` fallback.
     expect(rows.every((r) => r.target_id === "core.presentation")).toBe(true);
+  });
+});
+
+describe("linkSystemProduct writes products.presentation_json", () => {
+  it("the deploy hook stores the platform manifest's presentation, and NULL when it declares none", async () => {
+    const db = makeTestDb();
+    const env = envFor();
+    env.PLATFORM_KEK = TEST_KEK;
+    expect((await ensureSystemProduct(env, db, "u1", NOW)).ok).toBe(true);
+    // The monorepo's own `.pkey/`, as the deploy hook applies it.
+    const root = join(
+      fileURLToPath(new URL(".", import.meta.url)),
+      "..",
+      "..",
+      "..",
+      ".pkey",
+    );
+    const files = {
+      product: readFileSync(join(root, "product.yaml"), "utf8"),
+      schema: readFileSync(join(root, "schema.yaml"), "utf8"),
+      release: readFileSync(join(root, "release.yaml"), "utf8"),
+    };
+    const parsed = parseManifest(files);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    const repo = {
+      repository: "vladzaharia/polaris-key",
+      repositoryId: 1,
+      repositoryOwnerId: 2,
+    };
+    const stored = async () =>
+      (
+        await db.first<{ p: string | null }>(
+          "SELECT presentation_json AS p FROM products WHERE slug = ?",
+          SYSTEM_PRODUCT_SLUG,
+        )
+      )?.p ?? null;
+
+    const declared = { accent: "#123456", accentDark: "#ABCDEF" };
+    const linked = await linkSystemProduct(
+      db,
+      { ...parsed.manifest, presentation: declared },
+      repo,
+      { files, sha: null },
+      NOW + 1,
+    );
+    expect(linked.ok).toBe(true);
+    expect(parseStoredPresentation(await stored())).toEqual(declared);
+
+    const { presentation: _dropped, ...undeclared } = parsed.manifest;
+    const again = await linkSystemProduct(
+      db,
+      undeclared,
+      repo,
+      { files, sha: null },
+      NOW + 2,
+    );
+    expect(again.ok).toBe(true);
+    expect(await stored()).toBeNull();
   });
 });

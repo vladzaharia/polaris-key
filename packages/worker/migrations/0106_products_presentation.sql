@@ -1,7 +1,7 @@
 -- HA-12 (plans/HA-11.md Q5, plans/HA-12.md §3 and §6): the product's manifest-declared
 -- presentation, `.pkey/product` `presentation` (HA-04's `ManifestPresentation`: the icon ref and
 -- the light and dark accents), as the canonical JSON the manifest writers store
--- (`core/presentation.ts` `serializePresentation`). Manifest-only: link (`linkRepo`), every
+-- (`core/products.ts` `serializePresentation`). Manifest-only: link (`linkRepo`), every
 -- resync (`resyncRepo`) and the system product's deploy hook (`linkSystemProduct`) write it in
 -- their existing batch, NULL when the manifest declares none; the console never writes it (the
 -- `core.presentation` setting's column adapter is decode-only).

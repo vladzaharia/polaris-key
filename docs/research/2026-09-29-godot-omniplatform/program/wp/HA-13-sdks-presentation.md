@@ -75,7 +75,9 @@ It completes "zero integrator work" for every non-Godot SDK ([S-20 §6.9](../../
   `PRESENTATION_ICON_MAX_DIMENSION`, `PRESENTATION_ICON_MAX_BYTES`,
   `PRESENTATION_ICON_FETCH_TIMEOUT_SECONDS`, `PRESENTATION_CACHE_MAX_FILES` and
   `PRESENTATION_ICON_TYPES`.
-- The parse rule drops only C0 and C1 controls, so bidi controls survive (Q5). Every kit renders
+- The §5.5 text rule drops a `name` or `developerName` holding a C0 control, DEL, a C1 control
+  or a lone surrogate, and nothing else, so bidi controls survive (Q5). The URL rule is §5.5
+  rule 5 as HA-12 tightened it in review (port, host and `{w}` placement). Every kit renders
   `name` and `developerName` in a bidi-isolated run (`<bdi>` or `dir="auto"` on the web, FSI…PDI
   elsewhere).
 

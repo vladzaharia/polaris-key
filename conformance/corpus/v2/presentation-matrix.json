@@ -1,6 +1,6 @@
 {
   "presentationMatrixVersion": 1,
-  "description": "Product presentation, the client half (WIRE-CONTRACT-V4 section 5.5, plans/HA-11.md section 2.1, plans/HA-12.md). Discovery's unsigned `core.presentation` member, parsed field by field: a malformed field is dropped and never refuses discovery. parseCases: `parsePresentation(core, doc)` must equal `expect` (the normalised member, or null). (1) `core` or its `presentation` not an object: null. (2) `name`, `developerName`: a string of 1 to 1024 UTF-8 bytes (PRESENTATION_TEXT_MAX_BYTES) with no U+0000-001F, U+007F-009F or lone surrogate; bidi and zero-width characters are kept. A bad `developerName` is dropped; a bad `name` falls back to `doc.name` (same rule), then `doc.product`. (3) `accent`, `accentDark`: ^#[0-9A-Fa-f]{6}$, lower-cased, else dropped. (4) `icon`: dropped unless `sha256` is ^[0-9a-f]{64}$, `contentType` is one of PRESENTATION_ICON_TYPES and `original` is usable; `width`, `height`: integers 1-16384, else dropped; `sizes` (absent reads []): at most 8 {w, sha256}, each w an integer 1-4096 strictly ascending, sha256 as above, else sizes [] and no url; `url`: at most 2048 bytes with exactly one `{w}`, usable with `{w}` filled and on the original's origin, else no url and sizes []; no sizes means no url. (5) A usable URL: 1-2048 characters in U+0021-007E with no `#` or backslash, beginning https:// or http:// (ASCII case-insensitive), http only for the hosts localhost, 127.0.0.1 and [::1]; its authority (to the first `/`, `?` or the end) is non-empty with no `@`. An origin is scheme://authority, lower-cased. Unknown members are ignored at every level. pickCases: `pickIconSize(icon, px, scale, decodable)` with need = max(1, ceil(px * scale)): with sizes and image/webp decodable, the smallest w >= need, else the largest w, unless the original is decodable, its width is known and wider than the largest w, and need exceeds the largest w (then the original); with no usable size, the original if decodable; else none. A size's url is `url` with `{w}` replaced. verifyCases: `iconMatches(bytes, sha256)` is true iff the lower-case hex SHA-256 of the base64-decoded bytes equals `sha256` exactly. Every runner compares with deep equality (member order is not significant). Non-ASCII is written escaped. Append-only: a new row keeps presentationMatrixVersion; a changed row or rule bumps it.",
+  "description": "Product presentation, the client half (WIRE-CONTRACT-V4 section 5.5, plans/HA-11.md section 2.1, plans/HA-12.md). Discovery's unsigned `core.presentation` member, parsed field by field: a malformed field is dropped and never refuses discovery. parseCases: `parsePresentation(core, doc)` must equal `expect` (the normalised member, or null). (1) `core` or its `presentation` not an object: null. (2) `name`, `developerName`: a string of 1 to 1024 UTF-8 bytes (PRESENTATION_TEXT_MAX_BYTES) with no U+0000-001F, U+007F-009F or lone surrogate; bidi and zero-width characters are kept. A bad `developerName` is dropped; a bad `name` falls back to `doc.name` (same rule), then `doc.product`. (3) `accent`, `accentDark`: ^#[0-9A-Fa-f]{6}$, lower-cased, else dropped. (4) `icon`: dropped unless `sha256` is ^[0-9a-f]{64}$, `contentType` is one of PRESENTATION_ICON_TYPES and `original` is usable; `width`, `height`: integers 1-16384, else dropped; `sizes` (absent reads []): at most 8 {w, sha256}, each w an integer 1-4096 strictly ascending, sha256 as above, else sizes [] and no url; `url`: at most 2048 bytes with exactly one `{w}`, beginning (ASCII case-insensitively) with the original's origin followed by `/` or `?`, so `{w}` sits after the authority, and usable with `{w}` filled by 1, else no url and sizes []; no sizes means no url. (5) A usable URL: 1-2048 characters in U+0021-007E with no `#` or backslash, beginning https:// or http:// (ASCII case-insensitive); its authority (to the first `/`, `?` or the end), lower-cased, is a host then an optional `:port` of 1-5 digits at most 65535; the host is `[::1]`, `127.0.0.1`, or dot-separated labels of 1-63 characters in [a-z0-9-] whose last label is not all digits (so no `@`, `%`, `_`, empty label or other bracketed address); http only for the hosts localhost, 127.0.0.1 and [::1]. An origin is scheme://authority, lower-cased. No row holds U+0000 (a Godot String cannot); lone surrogates are not carried either (JSON decoders differ on them), and each SDK pins that rule in its own tests. Unknown members are ignored at every level. pickCases: `pickIconSize(icon, px, scale, decodable)` with need = max(1, ceil(px * scale)): with sizes and image/webp decodable, the smallest w >= need, else the largest w, unless the original is decodable, its width is known and wider than the largest w, and need exceeds the largest w (then the original); with no usable size, the original if decodable; else none. A size's url is `url` with `{w}` replaced. verifyCases: `iconMatches(bytes, sha256)` is true iff the lower-case hex SHA-256 of the base64-decoded bytes equals `sha256` exactly. Every runner compares with deep equality (member order is not significant). Non-ASCII is written escaped. Append-only: a new row keeps presentationMatrixVersion; a changed row or rule bumps it.",
   "parseCases": [
     {
       "name": "full",
@@ -224,7 +224,7 @@
     {
       "name": "name-invalid-doc-name-invalid-falls-back-to-slug",
       "core": { "presentation": { "name": "", "accent": "#000000" } },
-      "doc": { "name": "DJDL\u0000", "product": "djdl" },
+      "doc": { "name": "DJDL\u0001", "product": "djdl" },
       "expect": { "name": "djdl", "accent": "#000000" }
     },
     {
@@ -2419,7 +2419,7 @@
       }
     },
     {
-      "name": "icon-url-w-in-host",
+      "name": "icon-url-w-glued-to-host",
       "core": {
         "presentation": {
           "name": "DJDL",
@@ -2464,6 +2464,106 @@
           "width": 1024,
           "height": 1024,
           "original": "https://img.plrs.im/djdl/a/0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+          "sizes": []
+        }
+      }
+    },
+    {
+      "name": "icon-url-w-in-port",
+      "core": {
+        "presentation": {
+          "name": "DJDL",
+          "icon": {
+            "sha256": "0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "contentType": "image/png",
+            "width": 1024,
+            "height": 1024,
+            "original": "https://img.plrs.im:1/djdl/a/0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "url": "https://img.plrs.im:{w}/djdl/a/0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a.webp",
+            "sizes": [
+              {
+                "w": 64,
+                "sha256": "b2f621d32ab14cb44d9f7def51a4fa397003a0842fbfbfde66ef0058da29dcb3"
+              },
+              {
+                "w": 128,
+                "sha256": "17637d48e9ff845709129dd485e4c1de9a7971b48b50103a349f990ebfa271b4"
+              },
+              {
+                "w": 256,
+                "sha256": "d6b914b98af92c48fc3a2e8367cf7f59962dcbf5cbe68d74278878389f5c397e"
+              },
+              {
+                "w": 512,
+                "sha256": "1d4eb13f44416d48c4698d9f8e42eaca690274fb0d100fef8f74f4db6a06a9d2"
+              },
+              {
+                "w": 1024,
+                "sha256": "dfd8ba69f0a17d98166532229bf4cd9246c061ea2c3c77e06894e3aaefeee80a"
+              }
+            ]
+          }
+        }
+      },
+      "doc": { "name": "DJDL Downloader", "product": "djdl" },
+      "expect": {
+        "name": "DJDL",
+        "icon": {
+          "sha256": "0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+          "contentType": "image/png",
+          "width": 1024,
+          "height": 1024,
+          "original": "https://img.plrs.im:1/djdl/a/0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+          "sizes": []
+        }
+      }
+    },
+    {
+      "name": "icon-url-w-in-host",
+      "core": {
+        "presentation": {
+          "name": "DJDL",
+          "icon": {
+            "sha256": "0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "contentType": "image/png",
+            "width": 1024,
+            "height": 1024,
+            "original": "https://1.plrs.im/djdl/a/0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "url": "https://{w}.plrs.im/djdl/a/0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a.webp",
+            "sizes": [
+              {
+                "w": 64,
+                "sha256": "b2f621d32ab14cb44d9f7def51a4fa397003a0842fbfbfde66ef0058da29dcb3"
+              },
+              {
+                "w": 128,
+                "sha256": "17637d48e9ff845709129dd485e4c1de9a7971b48b50103a349f990ebfa271b4"
+              },
+              {
+                "w": 256,
+                "sha256": "d6b914b98af92c48fc3a2e8367cf7f59962dcbf5cbe68d74278878389f5c397e"
+              },
+              {
+                "w": 512,
+                "sha256": "1d4eb13f44416d48c4698d9f8e42eaca690274fb0d100fef8f74f4db6a06a9d2"
+              },
+              {
+                "w": 1024,
+                "sha256": "dfd8ba69f0a17d98166532229bf4cd9246c061ea2c3c77e06894e3aaefeee80a"
+              }
+            ]
+          }
+        }
+      },
+      "doc": { "name": "DJDL Downloader", "product": "djdl" },
+      "expect": {
+        "name": "DJDL",
+        "icon": {
+          "sha256": "0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+          "contentType": "image/png",
+          "width": 1024,
+          "height": 1024,
+          "original": "https://1.plrs.im/djdl/a/0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
           "sizes": []
         }
       }
@@ -3085,11 +3185,393 @@
       "expect": { "name": "DJDL" }
     },
     {
+      "name": "original-port-65535",
+      "core": {
+        "presentation": {
+          "name": "DJDL",
+          "icon": {
+            "sha256": "0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "contentType": "image/png",
+            "width": 1024,
+            "height": 1024,
+            "original": "https://img.plrs.im:65535/djdl/a/0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "sizes": []
+          }
+        }
+      },
+      "doc": { "name": "DJDL Downloader", "product": "djdl" },
+      "expect": {
+        "name": "DJDL",
+        "icon": {
+          "sha256": "0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+          "contentType": "image/png",
+          "width": 1024,
+          "height": 1024,
+          "original": "https://img.plrs.im:65535/djdl/a/0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+          "sizes": []
+        }
+      }
+    },
+    {
+      "name": "original-port-over-65535",
+      "core": {
+        "presentation": {
+          "name": "DJDL",
+          "icon": {
+            "sha256": "0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "contentType": "image/png",
+            "width": 1024,
+            "height": 1024,
+            "original": "https://img.plrs.im:99999/djdl/a/0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "sizes": []
+          }
+        }
+      },
+      "doc": { "name": "DJDL Downloader", "product": "djdl" },
+      "expect": { "name": "DJDL" }
+    },
+    {
+      "name": "original-port-six-digits",
+      "core": {
+        "presentation": {
+          "name": "DJDL",
+          "icon": {
+            "sha256": "0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "contentType": "image/png",
+            "width": 1024,
+            "height": 1024,
+            "original": "https://img.plrs.im:000443/djdl/a/0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "sizes": []
+          }
+        }
+      },
+      "doc": { "name": "DJDL Downloader", "product": "djdl" },
+      "expect": { "name": "DJDL" }
+    },
+    {
+      "name": "original-port-not-digits",
+      "core": {
+        "presentation": {
+          "name": "DJDL",
+          "icon": {
+            "sha256": "0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "contentType": "image/png",
+            "width": 1024,
+            "height": 1024,
+            "original": "https://img.plrs.im:abc/djdl/a/0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "sizes": []
+          }
+        }
+      },
+      "doc": { "name": "DJDL Downloader", "product": "djdl" },
+      "expect": { "name": "DJDL" }
+    },
+    {
+      "name": "original-port-empty",
+      "core": {
+        "presentation": {
+          "name": "DJDL",
+          "icon": {
+            "sha256": "0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "contentType": "image/png",
+            "width": 1024,
+            "height": 1024,
+            "original": "https://img.plrs.im:/djdl/a/0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "sizes": []
+          }
+        }
+      },
+      "doc": { "name": "DJDL Downloader", "product": "djdl" },
+      "expect": { "name": "DJDL" }
+    },
+    {
+      "name": "original-two-ports",
+      "core": {
+        "presentation": {
+          "name": "DJDL",
+          "icon": {
+            "sha256": "0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "contentType": "image/png",
+            "width": 1024,
+            "height": 1024,
+            "original": "https://img.plrs.im:1:2/djdl/a/0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "sizes": []
+          }
+        }
+      },
+      "doc": { "name": "DJDL Downloader", "product": "djdl" },
+      "expect": { "name": "DJDL" }
+    },
+    {
+      "name": "original-ipv6-not-loopback",
+      "core": {
+        "presentation": {
+          "name": "DJDL",
+          "icon": {
+            "sha256": "0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "contentType": "image/png",
+            "width": 1024,
+            "height": 1024,
+            "original": "https://[evil]/djdl/a/0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "sizes": []
+          }
+        }
+      },
+      "doc": { "name": "DJDL Downloader", "product": "djdl" },
+      "expect": { "name": "DJDL" }
+    },
+    {
+      "name": "original-ipv6-other-address",
+      "core": {
+        "presentation": {
+          "name": "DJDL",
+          "icon": {
+            "sha256": "0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "contentType": "image/png",
+            "width": 1024,
+            "height": 1024,
+            "original": "https://[::2]/djdl/a/0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "sizes": []
+          }
+        }
+      },
+      "doc": { "name": "DJDL Downloader", "product": "djdl" },
+      "expect": { "name": "DJDL" }
+    },
+    {
+      "name": "original-ipv6-host-after-bracket",
+      "core": {
+        "presentation": {
+          "name": "DJDL",
+          "icon": {
+            "sha256": "0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "contentType": "image/png",
+            "width": 1024,
+            "height": 1024,
+            "original": "http://[::1]evil.com/djdl/a/0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "sizes": []
+          }
+        }
+      },
+      "doc": { "name": "DJDL Downloader", "product": "djdl" },
+      "expect": { "name": "DJDL" }
+    },
+    {
+      "name": "original-ipv6-unclosed",
+      "core": {
+        "presentation": {
+          "name": "DJDL",
+          "icon": {
+            "sha256": "0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "contentType": "image/png",
+            "width": 1024,
+            "height": 1024,
+            "original": "http://[::1/djdl/a/0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "sizes": []
+          }
+        }
+      },
+      "doc": { "name": "DJDL Downloader", "product": "djdl" },
+      "expect": { "name": "DJDL" }
+    },
+    {
+      "name": "original-https-ipv6-loopback-with-port",
+      "core": {
+        "presentation": {
+          "name": "DJDL",
+          "icon": {
+            "sha256": "0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "contentType": "image/png",
+            "width": 1024,
+            "height": 1024,
+            "original": "https://[::1]:8443/djdl/a/0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "sizes": []
+          }
+        }
+      },
+      "doc": { "name": "DJDL Downloader", "product": "djdl" },
+      "expect": {
+        "name": "DJDL",
+        "icon": {
+          "sha256": "0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+          "contentType": "image/png",
+          "width": 1024,
+          "height": 1024,
+          "original": "https://[::1]:8443/djdl/a/0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+          "sizes": []
+        }
+      }
+    },
+    {
+      "name": "original-percent-in-host",
+      "core": {
+        "presentation": {
+          "name": "DJDL",
+          "icon": {
+            "sha256": "0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "contentType": "image/png",
+            "width": 1024,
+            "height": 1024,
+            "original": "https://img%40plrs.im/djdl/a/0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "sizes": []
+          }
+        }
+      },
+      "doc": { "name": "DJDL Downloader", "product": "djdl" },
+      "expect": { "name": "DJDL" }
+    },
+    {
+      "name": "original-underscore-in-host",
+      "core": {
+        "presentation": {
+          "name": "DJDL",
+          "icon": {
+            "sha256": "0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "contentType": "image/png",
+            "width": 1024,
+            "height": 1024,
+            "original": "https://img_plrs.im/djdl/a/0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "sizes": []
+          }
+        }
+      },
+      "doc": { "name": "DJDL Downloader", "product": "djdl" },
+      "expect": { "name": "DJDL" }
+    },
+    {
+      "name": "original-empty-label",
+      "core": {
+        "presentation": {
+          "name": "DJDL",
+          "icon": {
+            "sha256": "0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "contentType": "image/png",
+            "width": 1024,
+            "height": 1024,
+            "original": "https://img..plrs.im/djdl/a/0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "sizes": []
+          }
+        }
+      },
+      "doc": { "name": "DJDL Downloader", "product": "djdl" },
+      "expect": { "name": "DJDL" }
+    },
+    {
+      "name": "original-trailing-dot",
+      "core": {
+        "presentation": {
+          "name": "DJDL",
+          "icon": {
+            "sha256": "0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "contentType": "image/png",
+            "width": 1024,
+            "height": 1024,
+            "original": "https://img.plrs.im./djdl/a/0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "sizes": []
+          }
+        }
+      },
+      "doc": { "name": "DJDL Downloader", "product": "djdl" },
+      "expect": { "name": "DJDL" }
+    },
+    {
+      "name": "original-label-64-chars",
+      "core": {
+        "presentation": {
+          "name": "DJDL",
+          "icon": {
+            "sha256": "0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "contentType": "image/png",
+            "width": 1024,
+            "height": 1024,
+            "original": "https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.plrs.im/djdl/a/0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "sizes": []
+          }
+        }
+      },
+      "doc": { "name": "DJDL Downloader", "product": "djdl" },
+      "expect": { "name": "DJDL" }
+    },
+    {
+      "name": "original-label-63-chars",
+      "core": {
+        "presentation": {
+          "name": "DJDL",
+          "icon": {
+            "sha256": "0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "contentType": "image/png",
+            "width": 1024,
+            "height": 1024,
+            "original": "https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.plrs.im/djdl/a/0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "sizes": []
+          }
+        }
+      },
+      "doc": { "name": "DJDL Downloader", "product": "djdl" },
+      "expect": {
+        "name": "DJDL",
+        "icon": {
+          "sha256": "0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+          "contentType": "image/png",
+          "width": 1024,
+          "height": 1024,
+          "original": "https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.plrs.im/djdl/a/0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+          "sizes": []
+        }
+      }
+    },
+    {
+      "name": "original-numeric-host",
+      "core": {
+        "presentation": {
+          "name": "DJDL",
+          "icon": {
+            "sha256": "0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "contentType": "image/png",
+            "width": 1024,
+            "height": 1024,
+            "original": "https://999.1.1.1/djdl/a/0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "sizes": []
+          }
+        }
+      },
+      "doc": { "name": "DJDL Downloader", "product": "djdl" },
+      "expect": { "name": "DJDL" }
+    },
+    {
+      "name": "original-https-127-0-0-1",
+      "core": {
+        "presentation": {
+          "name": "DJDL",
+          "icon": {
+            "sha256": "0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "contentType": "image/png",
+            "width": 1024,
+            "height": 1024,
+            "original": "https://127.0.0.1/djdl/a/0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+            "sizes": []
+          }
+        }
+      },
+      "doc": { "name": "DJDL Downloader", "product": "djdl" },
+      "expect": {
+        "name": "DJDL",
+        "icon": {
+          "sha256": "0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+          "contentType": "image/png",
+          "width": 1024,
+          "height": 1024,
+          "original": "https://127.0.0.1/djdl/a/0fa7c83e4cfd6152266830ae693d1f7f4595fb50e181d715837dda73169f7f3a",
+          "sizes": []
+        }
+      }
+    },
+    {
       "name": "only-name-survives",
       "core": {
         "presentation": {
           "name": "DJDL",
-          "developerName": "\u0000",
+          "developerName": "\u0001",
           "accent": "#12345",
           "accentDark": "blue",
           "icon": {

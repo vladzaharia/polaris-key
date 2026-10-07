@@ -105,25 +105,40 @@ This is the server half of decision 10 ([S-20 §6.9](../../notes/S-20-hosted-ass
 
 ## Execution notes (HA-12, 2026-10-06: where the code differed from the plan)
 
-- **The migration is `0106_products_presentation.sql`** (the lead's number: 0104 is LX-30's and
-  0105*a…m are LX-08's). It was never `00XX*`: wrangler orders migrations by `parseInt`of the
-leading number, so`00XX\_`sorts as 0 and runs first, and an`ALTER TABLE products`there fails
-before`products` exists (`test/checkRepresentable.test.ts`, and a real
-`d1 migrations apply`). `LATEST_MIGRATION` and the data-model page follow it.
+- **The migration is `0106_products_presentation.sql`.** That is the lead's number: `0104` is
+  LX-30's, and `0105_a` to `0105_m` are LX-08's. It was never a `00XX` placeholder, because
+  wrangler orders migrations by `parseInt` of the leading number. A `00XX` file sorts as 0 and
+  runs first, so an `ALTER TABLE products` in it fails before `products` exists
+  (`test/checkRepresentable.test.ts`, and a real `d1 migrations apply`). `LATEST_MIGRATION` and
+  the data-model page follow the number.
 - **No client-core export-layout test exists** (plan §2.6). `./presentation` is added to
   `package.json` `exports`; the matrix test imports the module directly.
-- **The usable-URL rule is written portably** (§5.5 rule 5): printable ASCII with no `#` or `\`,
-  an `https://` or loopback `http://` prefix, an authority without `@`, and an origin compared as
-  the lower-cased `scheme://authority` string. There is no URL parser, so GDScript applies the
-  same test. Text with a lone surrogate is invalid, and an invalid `name` falls back to the
-  document's `name` only when that passes the same rule. The matrix pins each.
+- **The usable-URL rule is written portably** (§5.5 rule 5), with no URL parser, so GDScript
+  applies the same test:
+  - printable ASCII, with no `#` and no `\`;
+  - an `https://` prefix, or `http://` for the loopback hosts only;
+  - an authority of a host and an optional port of 1 to 5 digits, at most 65535;
+  - a host that is `[::1]`, `127.0.0.1`, or `[a-z0-9-]` labels whose last label is not all
+    digits;
+  - an origin compared as the lower-cased `scheme://authority` string.
+
+  The `url` template must begin with the original's origin and then `/` or `?`, so `{w}` can
+  never change the host or the port. The matrix pins each rule (review fix round). No matrix row
+  holds U+0000, which a Godot `String` cannot, and the generator refuses one.
+
+- **Lone surrogates are not in the matrix.** §5.5 makes text with a lone surrogate invalid, but
+  JSON decoders differ on one, so the matrix does not carry it. client-core pins the rule in its
+  own test (`packages/client-core/test/presentation.test.ts`, "a lone surrogate is not text"), and
+  each SDK pins it the same way. An invalid `name` falls back to the document's `name` only when
+  that passes the same rule, and the matrix pins that.
 - **The codec lives in `core/products.ts`** (`parseStoredPresentation`, `serializePresentation`),
   so the writers (`linkRepo`, `resyncRepo`, `linkSystemProduct`) and the column adapter import it
   without an import cycle through `core/presentation.ts`.
 - **`PRESENTATION_MATRIX_VERSION`** is generated beside the other corpus versions, so the SDK
   matrix runners (HA-13, HA-14) assert the file's version as they do the others'.
 - **A failed presentation read never fails discovery.** `resolvePresentation` answers `null` (the
-  member is omitted) when the listing or the hosted-copy read throws.
+  member is omitted) when the listing or the hosted-copy read throws. It logs one structured
+  warning to Workers Logs, holding only the product slug and the error.
 
 ## Steps
 
@@ -154,6 +169,9 @@ SDK porters replay the new transcripts.
 
 After the deploy, the lead resyncs DJDL (S-20 §6.8, "pull on first resync"): HA-05 then pulls its
 art, and the icon appears in discovery within 300 s (`plans/HA-12.md` §7).
+
+Follow-up (review): the resync dry run (`planRepoManifest`) does not yet show a change to
+`presentation`, though the apply writes and audits it as `core.presentation`.
 
 The role agent sets `--set HA-12 in-review` when it hands off. After review, the lead adds the last
 commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set HA-12 done`.

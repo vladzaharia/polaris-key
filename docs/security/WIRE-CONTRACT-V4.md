@@ -824,7 +824,9 @@ neither ever rejects one.
 ### 5.5 Product presentation (`core.presentation`) [C]
 
 Pinned by `presentation-matrix.json` (`presentationMatrixVersion` 1: `parseCases`, `pickCases`
-and `verifyCases`) and `discovery-presentation.json` (transcript).
+and `verifyCases`) and `discovery-presentation.json` (transcript). No matrix row holds U+0000
+(Godot reads it as U+FFFD, §10) or a lone surrogate (JSON decoders differ on one); each SDK pins
+the lone-surrogate rule in its own tests.
 
 Discovery's `core` block may carry `presentation`: the product's name, developer, accent colours
 and icon, so a UI kit can show the product with no integrator code. It is unsigned display data.
@@ -910,19 +912,26 @@ dropped and never refuses discovery.
      from 1 to `PRESENTATION_MAX_ICON_WIDTH`, strictly ascending, and `sha256` matching
      `^[0-9a-f]{64}$`. If any entry is bad, `sizes` reads as `[]`, `url` is dropped, and the
      original stays.
-   - `url` must be at most `PRESENTATION_URL_MAX_BYTES` bytes with exactly one `{w}`, and a
-     usable URL on the same origin as `original` once that `{w}` is replaced by a width (`1`).
-     Otherwise, or when `sizes` is empty, `url` is dropped and `sizes` reads as `[]`.
+   - `url` must be at most `PRESENTATION_URL_MAX_BYTES` bytes with exactly one `{w}`; it must
+     begin, ASCII case-insensitively, with `original`'s origin followed by `/` or `?`, so the
+     `{w}` sits after the authority and no width can change the host or the port; and it must be
+     a usable URL on that origin once its `{w}` is replaced by a width (`1`). Otherwise, or when
+     `sizes` is empty, `url` is dropped and `sizes` reads as `[]`.
 5. **Usable URL.** Deliberately portable, with no URL parser, so every SDK (GDScript included)
    applies the same test:
    - 1 to `PRESENTATION_URL_MAX_BYTES` characters, each printable ASCII (U+0021–007E: no space,
      no control, nothing non-ASCII), and no `#` (no fragment) and no `\`;
    - it begins `https://`, or `http://` (both ASCII case-insensitive);
-   - its authority, from after `://` to the first `/` or `?` or the end, is non-empty and holds no
-     `@` (no userinfo);
-   - with `http`, the authority's host (the authority without a `:port`; a bracketed IPv6
-     literal keeps its brackets) is `localhost`, `127.0.0.1` or `[::1]`, compared ASCII
-     case-insensitively.
+   - its authority, from after `://` to the first `/` or `?` or the end, ASCII-lower-cased, is a
+     host followed by an optional `:port`, where the port is 1 to 5 digits and at most 65535;
+   - the host is `[::1]` (the only bracketed address, and nothing but a `:port` may follow its
+     `]`), `127.0.0.1`, or dot-separated labels of 1 to 63 characters in `[a-z0-9-]` whose last
+     label is not all digits. So there is no userinfo (`@`), no `%`, no empty label and no other
+     IP literal;
+   - with `http`, the host is `localhost`, `127.0.0.1` or `[::1]`.
+
+   On ports, bracketed addresses and host characters the rule is stricter than a WHATWG URL
+   parser, never looser.
 
    A URL's origin is its scheme and authority, ASCII-lower-cased, and two origins are the same
    only when they are equal as strings (an explicit default port differs from none). There is no

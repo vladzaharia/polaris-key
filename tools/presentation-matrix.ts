@@ -67,6 +67,8 @@ function refColour(v: J | undefined): string | undefined {
 }
 
 const URL_RE = /^(https?):\/\/([^/?]*)(?:[/?][\x21-\x7e]*)?$/i;
+/** An authority, lower-cased: the one bracketed host, or DNS characters; then an optional port. */
+const AUTHORITY_RE = /^(\[::1\]|[a-z0-9.-]+)(?::([0-9]{1,5}))?$/;
 
 /** Rule 5: `scheme://authority`, lower-cased, of a usable URL, else `undefined`. */
 export function refOrigin(v: J | undefined): string | undefined {
@@ -77,11 +79,17 @@ export function refOrigin(v: J | undefined): string | undefined {
   if (!m) return undefined;
   const scheme = m[1]!.toLowerCase();
   const authority = m[2]!.toLowerCase();
-  if (authority === "" || authority.includes("@")) return undefined;
-  if (scheme === "http") {
-    const host = /^(\[[^\]]*\]|[^:]*)/.exec(authority)![1]!;
-    if (!["localhost", "127.0.0.1", "[::1]"].includes(host)) return undefined;
+  const a = AUTHORITY_RE.exec(authority);
+  if (!a) return undefined;
+  const host = a[1]!;
+  if (a[2] !== undefined && Number(a[2]) > 65535) return undefined;
+  if (host !== "[::1]" && host !== "127.0.0.1") {
+    const labels = host.split(".");
+    if (!labels.every((l) => /^[a-z0-9-]{1,63}$/.test(l))) return undefined;
+    if (/^[0-9]+$/.test(labels[labels.length - 1]!)) return undefined;
   }
+  if (scheme === "http" && !["localhost", "127.0.0.1", "[::1]"].includes(host))
+    return undefined;
   return `${scheme}://${authority}`;
 }
 
@@ -119,10 +127,13 @@ function refIcon(v: J | undefined): Obj | undefined {
         (i === 0 || (e.w as number) > ((raw[i - 1] as Obj).w as number)),
     );
   const tpl = v.url;
+  // `{w}` sits after the authority: the template begins with the original's own origin, so no
+  // width can change the host or the port.
   const tplOk =
     typeof tpl === "string" &&
     tpl.length <= L.PRESENTATION_URL_MAX_BYTES &&
     (tpl.match(/\{w\}/g) ?? []).length === 1 &&
+    [`${origin}/`, `${origin}?`].some((p) => tpl.toLowerCase().startsWith(p)) &&
     refOrigin(tpl.replace("{w}", "1")) === origin;
   if (sizesOk && (raw as J[]).length > 0 && tplOk) {
     out.url = tpl;
@@ -311,7 +322,7 @@ const PARSE_CASES: ParseCase[] = [
     "name-invalid-doc-name-invalid-falls-back-to-slug",
     member({ name: "", accent: "#000000" }),
     { name: "djdl", accent: "#000000" },
-    { name: "DJDL\u0000", product: "djdl" },
+    { name: "DJDL\u0001", product: "djdl" },
   ),
   P("name-not-a-string", member({ name: 42 }), { name: "DJDL Downloader" }),
   P("name-empty", member({ name: "" }), { name: "DJDL Downloader" }),
@@ -537,9 +548,27 @@ const PARSE_CASES: ParseCase[] = [
   ),
   I("icon-url-fragment", with_(ICON, { url: `${TEMPLATE}#x` }), BARE),
   I(
-    "icon-url-w-in-host",
+    "icon-url-w-glued-to-host",
     with_(ICON, { url: `https://img.plrs.im{w}/djdl/a/${SHA}.webp` }),
     BARE,
+  ),
+  // `{w}` filled with a width could match the original's origin here, so the template must begin
+  // with that origin before any `{w}`.
+  I(
+    "icon-url-w-in-port",
+    with_(ICON, {
+      original: `https://img.plrs.im:1/djdl/a/${SHA}`,
+      url: `https://img.plrs.im:{w}/djdl/a/${SHA}.webp`,
+    }),
+    with_(BARE, { original: `https://img.plrs.im:1/djdl/a/${SHA}` }),
+  ),
+  I(
+    "icon-url-w-in-host",
+    with_(ICON, {
+      original: `https://1.plrs.im/djdl/a/${SHA}`,
+      url: `https://{w}.plrs.im/djdl/a/${SHA}.webp`,
+    }),
+    with_(BARE, { original: `https://1.plrs.im/djdl/a/${SHA}` }),
   ),
 
   // ── rule 5: usable URLs ──
@@ -672,13 +701,116 @@ const PARSE_CASES: ParseCase[] = [
     undefined,
   ),
   I("original-not-a-string", with_(BARE, { original: 7 }), undefined),
+  // The authority: a port of 1-5 digits up to 65535, the one bracketed host `[::1]` with nothing
+  // but a port after it, and otherwise DNS labels of [a-z0-9-] whose last is not all digits.
+  I(
+    "original-port-65535",
+    with_(BARE, { original: `https://img.plrs.im:65535/djdl/a/${SHA}` }),
+    with_(BARE, { original: `https://img.plrs.im:65535/djdl/a/${SHA}` }),
+  ),
+  I(
+    "original-port-over-65535",
+    with_(BARE, { original: `https://img.plrs.im:99999/djdl/a/${SHA}` }),
+    undefined,
+  ),
+  I(
+    "original-port-six-digits",
+    with_(BARE, { original: `https://img.plrs.im:000443/djdl/a/${SHA}` }),
+    undefined,
+  ),
+  I(
+    "original-port-not-digits",
+    with_(BARE, { original: `https://img.plrs.im:abc/djdl/a/${SHA}` }),
+    undefined,
+  ),
+  I(
+    "original-port-empty",
+    with_(BARE, { original: `https://img.plrs.im:/djdl/a/${SHA}` }),
+    undefined,
+  ),
+  I(
+    "original-two-ports",
+    with_(BARE, { original: `https://img.plrs.im:1:2/djdl/a/${SHA}` }),
+    undefined,
+  ),
+  I(
+    "original-ipv6-not-loopback",
+    with_(BARE, { original: `https://[evil]/djdl/a/${SHA}` }),
+    undefined,
+  ),
+  I(
+    "original-ipv6-other-address",
+    with_(BARE, { original: `https://[::2]/djdl/a/${SHA}` }),
+    undefined,
+  ),
+  I(
+    "original-ipv6-host-after-bracket",
+    with_(BARE, { original: `http://[::1]evil.com/djdl/a/${SHA}` }),
+    undefined,
+  ),
+  I(
+    "original-ipv6-unclosed",
+    with_(BARE, { original: `http://[::1/djdl/a/${SHA}` }),
+    undefined,
+  ),
+  I(
+    "original-https-ipv6-loopback-with-port",
+    with_(BARE, { original: `https://[::1]:8443/djdl/a/${SHA}` }),
+    with_(BARE, { original: `https://[::1]:8443/djdl/a/${SHA}` }),
+  ),
+  I(
+    "original-percent-in-host",
+    with_(BARE, { original: `https://img%40plrs.im/djdl/a/${SHA}` }),
+    undefined,
+  ),
+  I(
+    "original-underscore-in-host",
+    with_(BARE, { original: `https://img_plrs.im/djdl/a/${SHA}` }),
+    undefined,
+  ),
+  I(
+    "original-empty-label",
+    with_(BARE, { original: `https://img..plrs.im/djdl/a/${SHA}` }),
+    undefined,
+  ),
+  I(
+    "original-trailing-dot",
+    with_(BARE, { original: `https://img.plrs.im./djdl/a/${SHA}` }),
+    undefined,
+  ),
+  I(
+    "original-label-64-chars",
+    with_(BARE, {
+      original: `https://${"a".repeat(64)}.plrs.im/djdl/a/${SHA}`,
+    }),
+    undefined,
+  ),
+  I(
+    "original-label-63-chars",
+    with_(BARE, {
+      original: `https://${"a".repeat(63)}.plrs.im/djdl/a/${SHA}`,
+    }),
+    with_(BARE, {
+      original: `https://${"a".repeat(63)}.plrs.im/djdl/a/${SHA}`,
+    }),
+  ),
+  I(
+    "original-numeric-host",
+    with_(BARE, { original: `https://999.1.1.1/djdl/a/${SHA}` }),
+    undefined,
+  ),
+  I(
+    "original-https-127-0-0-1",
+    with_(BARE, { original: `https://127.0.0.1/djdl/a/${SHA}` }),
+    with_(BARE, { original: `https://127.0.0.1/djdl/a/${SHA}` }),
+  ),
 
   // ── the fallbacks together ──
   P(
     "only-name-survives",
     member({
       name: "DJDL",
-      developerName: "\u0000",
+      developerName: "\u0001",
       accent: "#12345",
       accentDark: "blue",
       icon: with_(ICON, { contentType: "text/html" }),
@@ -942,6 +1074,18 @@ function unique(kind: string, names: readonly string[]): void {
 
 /** The file's object, after every row has been recomputed by the reference. */
 export function buildPresentationMatrix(): Obj {
+  // No row holds U+0000 anywhere: a Godot String cannot (it reads U+FFFD, WIRE-CONTRACT-V4 §10),
+  // so a row with one could never pass there. `JSON.stringify` writes it as `\u0000`.
+  for (const [kind, rows] of [
+    ["parseCases", PARSE_CASES],
+    ["pickCases", PICK_CASES],
+    ["verifyCases", VERIFY_CASES],
+  ] as const)
+    for (const row of rows as readonly { name: string }[])
+      if (JSON.stringify(row).includes("\\u0000"))
+        throw new Error(
+          `presentation-matrix ${kind} ${row.name}: holds U+0000`,
+        );
   unique(
     "parseCases",
     PARSE_CASES.map((c) => c.name),
@@ -991,7 +1135,7 @@ export function buildPresentationMatrix(): Obj {
   return {
     presentationMatrixVersion: PRESENTATION_MATRIX_VERSION,
     description:
-      "Product presentation, the client half (WIRE-CONTRACT-V4 section 5.5, plans/HA-11.md section 2.1, plans/HA-12.md). Discovery's unsigned `core.presentation` member, parsed field by field: a malformed field is dropped and never refuses discovery. parseCases: `parsePresentation(core, doc)` must equal `expect` (the normalised member, or null). (1) `core` or its `presentation` not an object: null. (2) `name`, `developerName`: a string of 1 to 1024 UTF-8 bytes (PRESENTATION_TEXT_MAX_BYTES) with no U+0000-001F, U+007F-009F or lone surrogate; bidi and zero-width characters are kept. A bad `developerName` is dropped; a bad `name` falls back to `doc.name` (same rule), then `doc.product`. (3) `accent`, `accentDark`: ^#[0-9A-Fa-f]{6}$, lower-cased, else dropped. (4) `icon`: dropped unless `sha256` is ^[0-9a-f]{64}$, `contentType` is one of PRESENTATION_ICON_TYPES and `original` is usable; `width`, `height`: integers 1-16384, else dropped; `sizes` (absent reads []): at most 8 {w, sha256}, each w an integer 1-4096 strictly ascending, sha256 as above, else sizes [] and no url; `url`: at most 2048 bytes with exactly one `{w}`, usable with `{w}` filled and on the original's origin, else no url and sizes []; no sizes means no url. (5) A usable URL: 1-2048 characters in U+0021-007E with no `#` or backslash, beginning https:// or http:// (ASCII case-insensitive), http only for the hosts localhost, 127.0.0.1 and [::1]; its authority (to the first `/`, `?` or the end) is non-empty with no `@`. An origin is scheme://authority, lower-cased. Unknown members are ignored at every level. pickCases: `pickIconSize(icon, px, scale, decodable)` with need = max(1, ceil(px * scale)): with sizes and image/webp decodable, the smallest w >= need, else the largest w, unless the original is decodable, its width is known and wider than the largest w, and need exceeds the largest w (then the original); with no usable size, the original if decodable; else none. A size's url is `url` with `{w}` replaced. verifyCases: `iconMatches(bytes, sha256)` is true iff the lower-case hex SHA-256 of the base64-decoded bytes equals `sha256` exactly. Every runner compares with deep equality (member order is not significant). Non-ASCII is written escaped. Append-only: a new row keeps presentationMatrixVersion; a changed row or rule bumps it.",
+      "Product presentation, the client half (WIRE-CONTRACT-V4 section 5.5, plans/HA-11.md section 2.1, plans/HA-12.md). Discovery's unsigned `core.presentation` member, parsed field by field: a malformed field is dropped and never refuses discovery. parseCases: `parsePresentation(core, doc)` must equal `expect` (the normalised member, or null). (1) `core` or its `presentation` not an object: null. (2) `name`, `developerName`: a string of 1 to 1024 UTF-8 bytes (PRESENTATION_TEXT_MAX_BYTES) with no U+0000-001F, U+007F-009F or lone surrogate; bidi and zero-width characters are kept. A bad `developerName` is dropped; a bad `name` falls back to `doc.name` (same rule), then `doc.product`. (3) `accent`, `accentDark`: ^#[0-9A-Fa-f]{6}$, lower-cased, else dropped. (4) `icon`: dropped unless `sha256` is ^[0-9a-f]{64}$, `contentType` is one of PRESENTATION_ICON_TYPES and `original` is usable; `width`, `height`: integers 1-16384, else dropped; `sizes` (absent reads []): at most 8 {w, sha256}, each w an integer 1-4096 strictly ascending, sha256 as above, else sizes [] and no url; `url`: at most 2048 bytes with exactly one `{w}`, beginning (ASCII case-insensitively) with the original's origin followed by `/` or `?`, so `{w}` sits after the authority, and usable with `{w}` filled by 1, else no url and sizes []; no sizes means no url. (5) A usable URL: 1-2048 characters in U+0021-007E with no `#` or backslash, beginning https:// or http:// (ASCII case-insensitive); its authority (to the first `/`, `?` or the end), lower-cased, is a host then an optional `:port` of 1-5 digits at most 65535; the host is `[::1]`, `127.0.0.1`, or dot-separated labels of 1-63 characters in [a-z0-9-] whose last label is not all digits (so no `@`, `%`, `_`, empty label or other bracketed address); http only for the hosts localhost, 127.0.0.1 and [::1]. An origin is scheme://authority, lower-cased. No row holds U+0000 (a Godot String cannot); lone surrogates are not carried either (JSON decoders differ on them), and each SDK pins that rule in its own tests. Unknown members are ignored at every level. pickCases: `pickIconSize(icon, px, scale, decodable)` with need = max(1, ceil(px * scale)): with sizes and image/webp decodable, the smallest w >= need, else the largest w, unless the original is decodable, its width is known and wider than the largest w, and need exceeds the largest w (then the original); with no usable size, the original if decodable; else none. A size's url is `url` with `{w}` replaced. verifyCases: `iconMatches(bytes, sha256)` is true iff the lower-case hex SHA-256 of the base64-decoded bytes equals `sha256` exactly. Every runner compares with deep equality (member order is not significant). Non-ASCII is written escaped. Append-only: a new row keeps presentationMatrixVersion; a changed row or rule bumps it.",
     parseCases: PARSE_CASES as unknown as J,
     pickCases: PICK_CASES as unknown as J,
     verifyCases: VERIFY_CASES as unknown as J,
