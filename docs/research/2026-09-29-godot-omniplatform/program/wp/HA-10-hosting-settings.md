@@ -78,9 +78,9 @@ Quotas and the kill switch are knobs, and S-18 makes knobs registry settings ([S
 
 ## Acceptance criteria
 
-- [ ] Switching `assets.hosting.enabled` off restores today's behaviour on every HA-07 surface (test).
-- [ ] Over quota, the old copy keeps serving (test).
-- [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
+- [x] Switching `assets.hosting.enabled` off restores today's behaviour on every HA-07 surface (test).
+- [x] Over quota, the old copy keeps serving (test).
+- [x] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify
 
