@@ -101,9 +101,17 @@ Python's only UI today is plain-text CLI verbs (§0, GA); `ui.cli` (SP-00) needs
 - [x] The §4.4 accessibility checks pass on the same renders (screen-reader-safe output when not a TTY).
 - [x] The sample `the `tidewater` demo CLI (Python)` runs against the fixture adapters with no live Worker and with `--live` (§6.1).
 - [x] The kit's framework page and its tab on each component page exist in the docs `build/ui/` section (UK-16 scaffold); the kit README is install + one-line flow + link.
-- [x] A design review against the mockups (`terminal.html`) is recorded in the PR (§7.4); any disagreement between mockup and spec is fixed first. (The board's sign-in, device-limit, fallbacks and 60-column shots now follow SIGN-IN.md D-67/D-68 and UI-KITS §4.3's browser mode.)
+- [x] A design review against the mockups (`terminal.html`) is recorded in the PR (§7.4); any disagreement between mockup and spec is fixed first. (Signed off by the lead, 2026-10-07; see "Design review" below. The board's sign-in, device-limit, fallbacks and 60-column shots now follow SIGN-IN.md D-67/D-68 and UI-KITS §4.3's browser mode.)
 - [ ] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs. (The `ui.*` rows are UK-02b's and do not exist yet; the proofs are recorded on `ui.cli`.)
 - [x] The green gate passes (AGENTS.md), including every drift gate listed in the header.
+
+## Design review (UI-KITS §7.4)
+
+Design review signed off by the lead under delegated authority, 2026-10-07: SIGN-IN.md wins the
+two spec conflicts (no QR on sign-in, QR only for offline-request; `TERM=dumb` prints plain
+lines). The data-dependent differences (device count and offline days, tier and term after a key,
+`signin.cli.license`, the device-limit picker) wait for their data. Help and diagnostics stay
+English until catalog keys exist.
 
 ## Verify
 
