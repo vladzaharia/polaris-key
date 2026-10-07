@@ -1068,6 +1068,303 @@ export function profileRoutes(
   };
 }
 
+// ── Account → Sign-in methods and Where you're signed in (PX-13; frames 36 to 38) ─────────────
+
+/** Mara's sign-in methods (frame 36), shaped like `GET /api/me/methods` (PX-W12). */
+export const MARA_METHODS = (() => {
+  const m = (
+    id: string,
+    kind: string,
+    label: string,
+    group: "accounts" | "email" | "passkeys",
+    display: string | null,
+    connectedAt: number,
+    lastUsedAt: number | null,
+    tenantScoped = false,
+  ) => ({
+    id,
+    kind,
+    group,
+    label,
+    display,
+    connectedAt,
+    lastUsedAt,
+    canRemove: true,
+    reason: null,
+    flag: null,
+    relay: false,
+    tenantScoped,
+  });
+  const AUG_12 = Date.UTC(2026, 7, 12, 10) / 1000;
+  const JUL_3 = Date.UTC(2026, 6, 3, 10) / 1000;
+  const AUG_2 = Date.UTC(2026, 7, 2, 10) / 1000;
+  const SEP_19 = Date.UTC(2026, 8, 19, 10) / 1000;
+  return {
+    methods: [
+      m(
+        "lnk_google",
+        "google",
+        "Google",
+        "accounts",
+        "mara.fennick@gmail.com",
+        AUG_12,
+        NOW - 21 * DAY,
+      ),
+      m(
+        "lnk_steam",
+        "steam",
+        "Steam",
+        "accounts",
+        "marafox",
+        JUL_3,
+        NOW - 3 * 3600,
+      ),
+      m(
+        "lnk_gc",
+        "gamecenter",
+        "Game Center",
+        "accounts",
+        "Mara F.",
+        JUL_3,
+        NOW - DAY,
+        true,
+      ),
+      m(
+        "lnk_mail1",
+        "email",
+        "Email",
+        "email",
+        ACCOUNT.email,
+        JUL_3,
+        NOW - 14 * DAY,
+      ),
+      m(
+        "lnk_mail2",
+        "email",
+        "Email",
+        "email",
+        "mara.f@proton.me",
+        AUG_2,
+        null,
+      ),
+      m(
+        "lnk_pk1",
+        "passkey",
+        "Passkey",
+        "passkeys",
+        "Safari on macOS",
+        AUG_2,
+        NOW - 2 * 3600,
+      ),
+      m(
+        "lnk_pk2",
+        "passkey",
+        "Passkey",
+        "passkeys",
+        "Chrome on Windows",
+        SEP_19,
+        NOW - 4 * DAY,
+      ),
+    ],
+    emails: [
+      {
+        methodId: "lnk_mail1",
+        email: ACCOUNT.email,
+        primary: true,
+        connectedAt: JUL_3,
+        lastUsedAt: NOW - 14 * DAY,
+        canRemove: true,
+        reason: null,
+      },
+      {
+        methodId: "lnk_mail2",
+        email: "mara.f@proton.me",
+        primary: false,
+        connectedAt: AUG_2,
+        lastUsedAt: null,
+        canRemove: true,
+        reason: null,
+      },
+    ],
+    passkeys: [
+      {
+        id: "cGFzc2tleS1pY2xvdWQ",
+        methodId: "lnk_pk1",
+        createdAt: AUG_2,
+        lastUsedAt: NOW - 2 * 3600,
+        transports: ["internal", "hybrid"],
+        synced: true,
+        aaguid: "fbfc3007-154e-4ecc-8c0b-6e020557d7bd",
+        addedFrom: "Safari on macOS",
+        canRemove: true,
+        reason: null,
+      },
+      {
+        id: "cGFzc2tleS0xcGFzc3dvcmQ",
+        methodId: "lnk_pk2",
+        createdAt: SEP_19,
+        lastUsedAt: NOW - 4 * DAY,
+        transports: ["internal"],
+        synced: true,
+        aaguid: "bada5566-a7aa-401f-bd96-45619a55120d",
+        addedFrom: "Chrome on Windows",
+        canRemove: true,
+        reason: null,
+      },
+    ],
+    providers: [
+      { kind: "apple", connected: false, available: true },
+      { kind: "google", connected: true, available: true },
+      { kind: "steam", connected: true, available: true },
+    ],
+    passkey: { canAdd: true, reason: null },
+    primaryEmail: ACCOUNT.email,
+    hideMyEmail: false,
+    // Signed in an hour ago: a change asks to confirm it's you first (frame 37).
+    stepUp: {
+      authenticatedAt: NOW - 3600,
+      freshUntil: NOW - 3300,
+      fresh: false,
+      maxAgeSeconds: 300,
+    },
+  };
+})();
+
+/** Mara's browsers (`GET /api/sessions`, I-07), this one first. */
+const MARA_SESSIONS = [
+  {
+    id: "sess_this_browser_00001",
+    createdAt: NOW - 3 * DAY,
+    lastSeenAt: NOW - 60,
+    expiresAt: NOW + 27 * DAY,
+    browser: "Chrome on macOS",
+    methods: ["passkey"],
+    current: true,
+  },
+  {
+    id: "sess_phone_000000002",
+    createdAt: NOW - 9 * DAY,
+    lastSeenAt: NOW - DAY,
+    expiresAt: NOW + 21 * DAY,
+    browser: "Safari on iOS",
+    methods: ["email"],
+    current: false,
+  },
+  {
+    id: "sess_desktop_00000003",
+    createdAt: NOW - 20 * DAY,
+    lastSeenAt: NOW - 2 * DAY,
+    expiresAt: NOW + 10 * DAY,
+    browser: "Firefox on Windows",
+    methods: ["steam"],
+    current: false,
+  },
+];
+
+/** Sign-in methods and sessions for Mara's signed-in scenarios. */
+function accountRoutes(): Record<string, Handler> {
+  return {
+    "GET /api/me/methods": { body: MARA_METHODS },
+    "GET /api/sessions": { body: { sessions: MARA_SESSIONS } },
+  };
+}
+
+const SAM_RELAY = "x7k2mq9p4d@privaterelay.appleid.com";
+
+/**
+ * Frame 38: Sam Okafor, whose only method is Sign in with Apple through Hide My Email. His
+ * account page shows the last-method guard and the Hide My Email notice.
+ */
+export function samRoutes(): Record<string, Handler> {
+  const SAM = { id: "acct_sam", name: "Sam Okafor", email: SAM_RELAY };
+  return {
+    "/api/me": { body: { account: { ...SAM, avatarUrl: null }, csrf: "csrf" } },
+    "GET /api/me/profile": {
+      body: {
+        profile: {
+          displayName: "Sam Okafor",
+          displayNameSource: {
+            kind: "provider",
+            linkId: "lnk_apple",
+            provider: "apple",
+          },
+          explicitName: false,
+          picture: null,
+          pictureSource: { kind: "initials" },
+          explicitPicture: false,
+          locale: "en-US",
+          sources: [
+            {
+              linkId: "lnk_apple",
+              provider: "apple",
+              label: SAM_RELAY,
+              name: "Sam Okafor",
+              picture: null,
+            },
+          ],
+        },
+      },
+    },
+    "GET /api/me/methods": {
+      body: {
+        methods: [
+          {
+            id: "lnk_apple",
+            kind: "apple",
+            group: "accounts",
+            label: "Apple",
+            display: SAM_RELAY,
+            connectedAt: NOW - 3600,
+            lastUsedAt: NOW - 60,
+            canRemove: false,
+            reason: "last_link",
+            flag: null,
+            relay: true,
+            tenantScoped: false,
+          },
+        ],
+        emails: [],
+        passkeys: [],
+        providers: [
+          { kind: "apple", connected: true, available: true },
+          { kind: "google", connected: false, available: true },
+          { kind: "steam", connected: false, available: true },
+        ],
+        passkey: { canAdd: false, reason: "email_unverified" },
+        primaryEmail: SAM_RELAY,
+        hideMyEmail: true,
+        stepUp: {
+          authenticatedAt: NOW - 60,
+          freshUntil: NOW + 240,
+          fresh: true,
+          maxAgeSeconds: 300,
+        },
+      },
+    },
+    "GET /api/sessions": { body: { sessions: [MARA_SESSIONS[0]] } },
+  };
+}
+
+/** One scenario product with Identity on (§3.1), for the product page's sign-in card (PX-13). */
+export function identityOn(
+  s: PortalScenario,
+  slug: string,
+): Record<string, Handler> {
+  const base = portalRoutes(s)[`/api/products/${slug}`] as (
+    req: Request,
+  ) => Reply;
+  return {
+    [`/api/products/${slug}`]: (req) => {
+      const r = base(req);
+      const body = r.body as { services: Record<string, boolean> };
+      return {
+        ...r,
+        body: { ...body, services: { ...body.services, identity: true } },
+      };
+    },
+  };
+}
+
 export function portalRoutes(s: PortalScenario): Record<string, Handler> {
   if (s === "signedOut") {
     return {
@@ -1090,6 +1387,7 @@ export function portalRoutes(s: PortalScenario): Record<string, Handler> {
       : OFFERS.filter((o) => !licenses.some((l) => l.product === o.product));
   const routes: Record<string, Handler> = {
     ...profileRoutes(),
+    ...accountRoutes(),
     "/api/capabilities": { body: CAPS },
     "/api/licenses": () => ({ body: { licenses } }),
     // One item per product (the first licence listed is the best), like the Worker.

@@ -2,7 +2,9 @@ import type { Page } from "playwright";
 import { h1, type Override } from "./portalHarness.js";
 import {
   PROFILE_STEAM,
+  identityOn,
   profileRoutes,
+  samRoutes,
   type PortalScenario,
 } from "./portalFixtures.js";
 
@@ -805,14 +807,42 @@ export const SHIPPED: ShippedState[] = [
     path: "/#/p/nightfall/download?platform=linux",
     ready: (p) => h1(p, "Download Nightfall for Linux"),
   },
-  // §4.26 Account (PX-07).
+  // §4.26 Account (PX-07; Sign-in methods and Where you're signed in, PX-13).
   {
     section: "4.26",
     id: "account",
-    title: "Account v1",
+    title: "Account: profile, sign-in methods, where you're signed in",
     scenario: "three",
     path: "/#/account",
-    ready: (p) => h1(p, "Account"),
+    ready: async (p) => {
+      await h1(p, "Account");
+      await p.getByRole("heading", { name: "Accounts" }).waitFor();
+      await p.getByText("This browser").waitFor();
+    },
+  },
+  {
+    section: "4.26",
+    id: "account-disconnect",
+    title: "Account: disconnect with step-up",
+    scenario: "three",
+    path: "/#/account/methods",
+    ready: async (p) => {
+      await h1(p, "Account");
+      await p.getByRole("button", { name: "Disconnect Steam" }).click();
+      await p.getByRole("group", { name: "Confirm it's you first" }).waitFor();
+    },
+  },
+  {
+    section: "4.26",
+    id: "account-last-method",
+    title: "Account: last-method guard and the Hide My Email notice (Sam)",
+    scenario: "one",
+    path: "/#/account",
+    routes: samRoutes(),
+    ready: async (p) => {
+      await h1(p, "Account");
+      await p.getByText("Only method").waitFor();
+    },
   },
   {
     section: "4.26",
@@ -858,6 +888,19 @@ export const SHIPPED: ShippedState[] = [
         // The tile (its label) takes the click; the native radio inside is visually hidden.
         .locator('[data-tile="link:lnk_google"]')
         .click();
+    },
+  },
+  // §4.20 The product sign-in card (PX-13): Nightfall with Identity on.
+  {
+    section: "4.20",
+    id: "product-identity",
+    title: "Product page: the sign-in card (Identity on)",
+    scenario: "three",
+    path: "/#/p/nightfall",
+    routes: identityOn("three", "nightfall"),
+    ready: async (p) => {
+      await h1(p, "Nightfall");
+      await p.getByRole("heading", { name: "Sign in to Nightfall" }).waitFor();
     },
   },
   // §4.27 Jump to a product (PX-03).
@@ -975,8 +1018,9 @@ export const PENDING: PendingState[] = [
   },
   {
     section: "4.20",
-    title: 'Product page: "<Product> knows you as" identity card',
-    wp: ["PX-13"],
+    title:
+      'Product page: "<Product> knows you as" the method it uses (needs the product users on the portal API)',
+    wp: ["PX-13 follow-up"],
   },
   {
     section: "4.23",
@@ -986,11 +1030,10 @@ export const PENDING: PendingState[] = [
   { section: "4.24", title: "Approve a new device", wp: ["PX-15"] },
   {
     section: "4.26",
-    title: "Account: sign-in methods, sessions, connected products",
-    wp: ["PX-13"],
+    title:
+      "Account: connected products, Download my data, Make primary, passkey Rename (need their API)",
+    wp: ["PX-13 follow-up"],
   },
-  { section: "4.26", title: "Account: disconnect with step-up", wp: ["PX-13"] },
-  { section: "4.26", title: "Account: last-method guard", wp: ["PX-13"] },
   {
     section: "4.29",
     title:

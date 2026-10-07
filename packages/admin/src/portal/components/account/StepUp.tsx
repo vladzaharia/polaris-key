@@ -74,9 +74,19 @@ export function StepUp({
   const email = caps.auth.magic ? (view.emails[0]?.email ?? null) : null;
   const providers = stepUpProviders(view);
   const sso = caps.auth.oidc && view.methods.some((m) => m.kind === "oidc");
-  const [way, setWay] = React.useState<Way | null>(
-    passkey ? "passkey" : email ? "email" : null,
-  );
+  // The person's pick, else the first way this account has (the capabilities may still be on
+  // their way as the prompt appears, so this follows them rather than freezing the first guess).
+  const [picked, setWay] = React.useState<Way | null>(null);
+  const way: Way | null =
+    picked === "passkey" && passkey
+      ? "passkey"
+      : picked === "email" && email
+        ? "email"
+        : passkey
+          ? "passkey"
+          : email
+            ? "email"
+            : null;
   const [sent, setSent] = React.useState(false);
   const [code, setCode] = React.useState("");
   const [busy, setBusy] = React.useState(false);
