@@ -399,8 +399,9 @@ describe("licensing", () => {
       "dev-1",
     );
     expect(hostile.status).toBe(200);
-    const hostileLabel = ((await hostile.json()) as { device: { label: string } })
-      .device.label;
+    const hostileLabel = (
+      (await hostile.json()) as { device: { label: string } }
+    ).device.label;
     expect(hostileLabel).not.toMatch(/[\u0000-\u001f\u007f-\u009f]/);
     const stored = await db.first<{ label: string | null }>(
       "SELECT label FROM devices WHERE product = ? AND device_id = ?",
