@@ -128,6 +128,8 @@ export const qk = {
   blobGc: (slug: string) => product(slug, "core", "blob-gc"),
   /** HA-06: the product's hosted-asset slots (the Presentation page). */
   hostedAssets: (slug: string) => product(slug, "core", "assets"),
+  /** HA-10: usage against the quotas and the hosted-asset settings (under the slots' prefix). */
+  assetUsage: (slug: string) => product(slug, "core", "assets", "usage"),
 
   // license
   licenses: (slug: string) => product(slug, "license", "licenses"),

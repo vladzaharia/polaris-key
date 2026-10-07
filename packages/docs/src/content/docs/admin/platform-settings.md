@@ -23,6 +23,7 @@ In the console this is **Platform → Settings** (`#/platform/settings`; `#/plat
 | `BLOB_GC_GRACE_DAYS`              | How long an object stays unreferenced before the collector may delete it.                           | 1 to 365 days (default 30)                 |
 | `LICENSING_RESERVED_NAMES`        | What happens to a catalog flag that declares a reserved entitlement name with an incompatible type. | `warn` or `error` (default `warn`)         |
 | `IDENTITY_RESERVED_DISPLAY_NAMES` | What happens to a product or listing name that uses a platform or store name.                       | `warn` or `error` (default `warn`)         |
+| `ASSET_HOSTING`                   | Serves Polaris Key's own copies of product images and mirrors release files (hosted assets).        | `on` or `off` (default `on`)               |
 
 32 MiB is the measured ceiling of the delta consumer, so a runtime size cap can only lower it.
 "Lower" is measured against that 32 MiB ceiling, not against the deploy-time `LAZY_DELTA_MAX_BYTES`
@@ -49,6 +50,14 @@ itch.io (see [display names](/docs/build/manifest/authoring/#display-names)). Wi
 link, resync and the console's listing edits refuse it. Either way the sign-in card shows the
 product slug in a neutral frame instead of a reserved name. The setting starts at `warn` for two
 minor releases or 60 days, whichever is later. It sits under Identity & access in the console.
+
+`ASSET_HOSTING` is `assets.hosting.enabled`, the hosted-assets rollback switch. Off, every
+surface goes back to the developer's own image URLs and the portal's media proxy, release-file
+mirroring stops, and the legacy download streams from GitHub; the stored copies stay, and image
+URLs already handed out keep working. It is not a security gate, so it uses runtime precedence:
+an unreadable settings store does not turn it off. It sits under Delivery in the console. Each
+product's quotas and its own mirroring switch are on its
+[Presentation page](/docs/admin/presentation/#hosting-and-quotas).
 
 Nothing else can become a runtime setting. Origins, the platform admin group, the admin identity
 provider, the issuer allowlist, key material, session lengths, rate limits, retention periods and
@@ -105,7 +114,9 @@ Platform → Settings has these sections, top to bottom.
   product whose catalog declares a reserved name, each declaration marked compatible or not with
   the reason. Check this list before switching to Refuse: a product marked incompatible would
   fail its next resync.
-- **Identity & access**, **Delivery** and **Email.** The deploy-time values, read-only. Identity
+- **Delivery.** The hosted-assets switch (`ASSET_HOSTING`; turning it either way asks first),
+  then the deploy-time delivery values, read-only.
+- **Identity & access** and **Email.** The deploy-time values, read-only. Identity
   shows the console's own client (`ADMIN_OIDC_ISSUER`, `ADMIN_OIDC_CLIENT_ID`) above the platform
   client the portal and products use (`PLATFORM_OIDC_*`).
 - **Limits.** The code constants: retention, the bucket's age lock, the collector's shortest

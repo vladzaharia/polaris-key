@@ -645,7 +645,13 @@ describe("HA-10: the switches and the release-file quota", () => {
     (await mirrorRefs()).map((r) => r.ref_id.split("/")[1]).sort();
 
   it("assets.releases.mirror off keeps GitHub-only serving for the product", async () => {
-    await setProductAssetSetting(env, db, SLUG, "assets.releases.mirror", "off");
+    await setProductAssetSetting(
+      env,
+      db,
+      SLUG,
+      "assets.releases.mirror",
+      "off",
+    );
     await sync();
     expect(q.sent).toEqual([]);
     expect(await enqueueReleaseMirrors(env, db, SLUG, NOW)).toBe(0);
@@ -702,13 +708,13 @@ describe("HA-10: the switches and the release-file quota", () => {
     for (const [r, a] of [
       ["v1.1.0", "201"],
       ["v1.0.0", "102"],
-    ])
+    ] as const)
       expect(await processReleaseMirror(ctx(), msg(r, a))).toBe("mirrored");
     gh.calls.storage.length = 0;
     for (const [r, a] of [
       ["v1.1.0", "202"],
       ["v1.0.0", "101"],
-    ]) {
+    ] as const) {
       expect(await processReleaseMirror(ctx(), msg(r, a))).toBe("failed");
       expect(await job(r, a)).toMatchObject({
         status: "failed",
@@ -735,12 +741,10 @@ describe("HA-10: the switches and the release-file quota", () => {
     expect(gh.calls.storage).toHaveLength(1);
     // At the quota, nothing is queued, and the operator's action says why.
     const sent = q.sent.length;
-    expect(
-      await enqueueReleaseMirrors(env, db, SLUG, NOW + 86_400 * 30),
-    ).toBe(0);
-    expect(
-      await backfillReleaseMirrors(env, db, NOW + 86_400 * 30),
-    ).toBe(0);
+    expect(await enqueueReleaseMirrors(env, db, SLUG, NOW + 86_400 * 30)).toBe(
+      0,
+    );
+    expect(await backfillReleaseMirrors(env, db, NOW + 86_400 * 30)).toBe(0);
     expect(q.sent.length).toBe(sent);
     expect(await mirrorNow(env, db, SLUG, NOW + 20)).toEqual({
       ok: false,

@@ -468,6 +468,67 @@ describe("Reserved display names (PX-W13)", () => {
   });
 });
 
+describe("Hosted assets (HA-10)", () => {
+  const hosting = (over: Setting = {}): Setting =>
+    gcMode({
+      key: "ASSET_HOSTING",
+      area: "delivery",
+      label: "Hosted assets",
+      description:
+        "Serves Polaris Key's own copies of products' images from the image host and mirrors their release files.",
+      precedence: "runtime",
+      confirm: { on: "L1", off: "L1" },
+      ...over,
+    });
+  const withHosting = (over: Setting = {}) =>
+    view({
+      settings: [
+        lazyDeltas(),
+        maxBytes(),
+        gcMode(),
+        grace(),
+        reservedNames(),
+        reservedDisplayNames(),
+        hosting(over),
+      ],
+    });
+
+  it("the switch is an editable row in Delivery, and turning it off asks first (L1)", async () => {
+    const log = boot("#/platform/settings", {
+      extra: routes({
+        "/manage/api/platform/settings": writable(
+          () => hosting({ value: "off", source: "runtime", version: 1 }),
+          () => withHosting(),
+        ),
+      }),
+    });
+    const delivery = await section("Delivery");
+    const toggle = within(delivery).getByRole("switch", {
+      name: "Hosted assets",
+    });
+    expect(toggle.getAttribute("aria-checked")).toBe("true");
+    const jobs = await section("Background jobs");
+    expect(within(jobs).queryByText("Hosted assets")).toBeNull();
+    await userEvent.click(toggle);
+    const dialog = await screen.findByRole("alertdialog");
+    expect(
+      within(dialog).getByText(/goes back to the developer's own image URLs/),
+    ).toBeTruthy();
+    expect(writes(log, "PATCH")).toHaveLength(0);
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /hosted assets$/ }),
+    );
+    await waitFor(() => expect(writes(log, "PATCH")).toHaveLength(1));
+    expect(writes(log, "PATCH")[0]!.path).toBe(
+      "/manage/api/platform/settings/ASSET_HOSTING",
+    );
+    expect(JSON.parse(writes(log, "PATCH")[0]!.body!)).toEqual({
+      value: "off",
+      expectedVersion: 0,
+    });
+  });
+});
+
 describe("Licensing (LX-05)", () => {
   it("shows the reserved-names severity, the reserved keys and each declaring product", async () => {
     boot("#/platform/settings", { extra: routes() });

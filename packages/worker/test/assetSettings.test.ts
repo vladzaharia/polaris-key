@@ -210,12 +210,24 @@ describe("a product's settings", () => {
     expect(inheritedValue(s.resolved["assets.quota.mediaBytes"])).toBe(
       1_000_000,
     );
-    await setProductAssetSetting(env, db, SLUG, "assets.quota.mediaBytes", null);
+    await setProductAssetSetting(
+      env,
+      db,
+      SLUG,
+      "assets.quota.mediaBytes",
+      null,
+    );
     expect((await productAssetSettings(env, db, SLUG))!.mediaQuota).toBe(
       1_000_000,
     );
 
-    await setProductAssetSetting(env, db, SLUG, "assets.releases.mirror", "off");
+    await setProductAssetSetting(
+      env,
+      db,
+      SLUG,
+      "assets.releases.mirror",
+      "off",
+    );
     expect((await productAssetSettings(env, db, SLUG))!.releaseMirror).toBe(
       false,
     );
@@ -330,9 +342,9 @@ describe("the console: usage and the settings writes", () => {
     ).toMatchObject({ value: "on", source: "default", own: false, version: 0 });
 
     await setAssetHosting(env, db, "off");
-    expect(((await (await call("GET", "usage")).json()) as AssetUsageDto).hosting).toBe(
-      false,
-    );
+    expect(
+      ((await (await call("GET", "usage")).json()) as AssetUsageDto).hosting,
+    ).toBe(false);
   });
 
   it("PATCH and DELETE …/settings/<key> write through writeSetting(), versioned and audited", async () => {

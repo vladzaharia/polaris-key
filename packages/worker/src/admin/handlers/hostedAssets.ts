@@ -87,12 +87,7 @@ import type {
 import { writeSetting } from "../../core/settings/write.js";
 import { SETTINGS } from "../../mount.js";
 import { audit } from "../audit.js";
-import {
-  adminJson,
-  err,
-  readBody,
-  settingRefused,
-} from "../lib/respond.js";
+import { adminJson, err, readBody, settingRefused } from "../lib/respond.js";
 import type { AdminSession } from "../session.js";
 
 /** The variant the Presentation page previews: the smallest rung at least this wide. */
@@ -258,7 +253,11 @@ async function handleAssetSettings(
       { reason: "unknown_setting" },
     );
   if (req.method !== "PATCH" && req.method !== "DELETE")
-    return err(405, "method_not_allowed", "use PATCH to set or DELETE to reset");
+    return err(
+      405,
+      "method_not_allowed",
+      "use PATCH to set or DELETE to reset",
+    );
   const body = await readBody(req);
   if (req.method === "PATCH" && !("value" in body))
     return err(422, ErrorCode.BadRequest, "value is required", {
@@ -406,12 +405,9 @@ export async function handleHostedAssets(
           reason: "no_blob_store",
         });
       if (result.reason === "quota")
-        return err(
-          422,
-          "asset_quota_exceeded",
-          refusalMessage(result.reason),
-          { reason: result.reason },
-        );
+        return err(422, "asset_quota_exceeded", refusalMessage(result.reason), {
+          reason: result.reason,
+        });
       return err(422, "asset_refused", refusalMessage(result.reason), {
         reason: result.reason,
         ...(result.reason === "too-large" ? { maxBytes } : {}),

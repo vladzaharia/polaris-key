@@ -1066,8 +1066,7 @@ export async function rebuildLadder(
     ...variants.map((v) => ({ key: blobKey(v.sha256), size: v.size })),
   ];
   // Recording "no sizes" (`[]`) adds no bytes, so only a ladder is held to the quota.
-  const quotaWhere =
-    variants.length > 0 ? `(${quotaGuardSql("media")})` : "1";
+  const quotaWhere = variants.length > 0 ? `(${quotaGuardSql("media")})` : "1";
   const quotaArgs: DbParam[] =
     variants.length > 0
       ? [...quotaParams(product, refId, quotaKeys), limit]
@@ -1536,9 +1535,7 @@ export async function ingest(
     if (yieldGuard !== null)
       if (heldBy(await getHostedAsset(ctx.db, product, slot, locale), yieldsTo))
         return { ok: false, reason: "claimed" };
-    if (
-      !(await withinQuota(ctx.db, qcls, product, refId, quotaKeys, limitNow))
-    )
+    if (!(await withinQuota(ctx.db, qcls, product, refId, quotaKeys, limitNow)))
       return fail(
         ctx,
         product,

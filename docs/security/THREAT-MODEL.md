@@ -4035,8 +4035,9 @@ per-subject limiter, CSRF on mutations, and `handlePlatform`'s second platform-a
 is no new privilege level and no outbound call.
 
 - **What is editable is a closed list in code.** `PLATFORM_SETTINGS` (`core/platformSettings.ts`)
-  declares `LAZY_DELTAS`, `LAZY_DELTA_MAX_BYTES`, `BLOB_GC_MODE`, `BLOB_GC_GRACE_DAYS` and
-  `LICENSING_RESERVED_NAMES` (below), and nothing else: a D1 row with any other key is ignored, and a value outside an entry's validator
+  declares `LAZY_DELTAS`, `LAZY_DELTA_MAX_BYTES`, `BLOB_GC_MODE`, `BLOB_GC_GRACE_DAYS`,
+  `LICENSING_RESERVED_NAMES`, `IDENTITY_RESERVED_DISPLAY_NAMES`, `KEYENTRY_REFUSALS` and
+  `ASSET_HOSTING` (below), and nothing else: a D1 row with any other key is ignored, and a value outside an entry's validator
   is never applied (the resolver falls through to `[vars]` or the code default). Each is a
   background job's kill switch or tunable. The worst a hostile session can do with them is waste
   delta CPU (bounded by each product's daily cap and the 32 MiB ceiling, which the size cap can
@@ -4064,6 +4065,19 @@ is no new privilege level and no outbound call.
   `warn` gains nothing on the sign-in card: the card's render-time check shows such a name as the
   product slug in the neutral frame in both modes (see "Passthrough request metadata"). Setting
   `error` can only make a product's next resync fail; it is confirmed (L1) and audited.
+- **`ASSET_HOSTING` (HA-10, `assets.hosting.enabled`) is a rollback switch, not a gate.** On (the
+  default) the HA-07 surfaces hand out Polaris Key's own copies of product images from the image
+  host and release files are mirrored (HA-08); off returns every surface to the developer's own
+  URLs and the portal's media proxy, stops mirroring, and the legacy download streams from GitHub.
+  It widens nothing either way: the image host serves only copies a product holds a ref to, the
+  blob route's refusal of hosted art does not follow it, and no signed document carries a URL. A
+  hostile session can only flip where public art and release bytes come from (both
+  hash-identical, inside AT-2's time-bounded session); it is confirmed (L1) both ways and audited.
+  `runtime` precedence: an unreadable store is not an off, so an outage never forces the rollback.
+  The per-product hosting settings beside it (`assets.releases.mirror`, `assets.quota.mediaBytes`,
+  `assets.quota.releaseBytes`, product scope, operator-owned, written through `writeSetting()`)
+  only narrow what Polaris Key stores: a quota refuses a copy atomically in the batch that would
+  hold it and never removes one, and the per-file caps stay code constants.
 - **Why nothing else may join it (AT-2).** Whoever takes the admin plane already reaches A2, A3,
   A5 and A6 through the API for as long as the session lasts. A runtime knob that _widens_ what a
   session can do (a longer session TTL, a raised rate limit, a looser `OIDC_ISSUER_ALLOWLIST`, a

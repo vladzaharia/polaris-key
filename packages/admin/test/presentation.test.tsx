@@ -8,13 +8,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { HostedAssetDto } from "../src/api.js";
+import type { AssetUsageDto, HostedAssetDto } from "../src/api.js";
 import { expectNoAxeViolations, renderAt, resetCore } from "./coreTestUtils.js";
 
 const fns = vi.hoisted(() => ({
   hostedAssets: vi.fn(),
   uploadHostedAsset: vi.fn(),
   deleteHostedAsset: vi.fn(),
+  assetUsage: vi.fn(),
+  saveAssetSetting: vi.fn(),
+  resetAssetSetting: vi.fn(),
 }));
 
 vi.mock("../src/api.js", async () => {
@@ -113,12 +116,70 @@ const ROWS: HostedAssetDto[] = [
   }),
 ];
 
+const MiB = 1024 * 1024;
+
+/** HA-10: the usage read, images within quota and release files at theirs. */
+function usage(over: Partial<AssetUsageDto> = {}): AssetUsageDto {
+  return {
+    hosting: true,
+    media: { bytes: 128 * MiB, files: 7, quota: 512 * MiB, full: false },
+    release: {
+      bytes: 2 * 1024 * MiB,
+      files: 3,
+      quota: 2 * 1024 * MiB,
+      full: true,
+    },
+    settings: [
+      {
+        key: "assets.releases.mirror",
+        label: "Mirror release files",
+        description: "Keeps Polaris Key's own copy of every app release file.",
+        spec: { kind: "switch" },
+        confirm: { on: "L0", off: "L1" },
+        value: "on",
+        source: "default",
+        inherited: "on",
+        own: false,
+        version: 0,
+      },
+      {
+        key: "assets.quota.mediaBytes",
+        label: "Media quota",
+        description: "How many bytes of hosted images this product may hold.",
+        spec: { kind: "integer", unit: "bytes", min: 0, max: 1024 ** 4 },
+        confirm: { up: "L1", down: "L1" },
+        value: 512 * MiB,
+        source: "default",
+        inherited: 512 * MiB,
+        own: false,
+        version: 0,
+      },
+      {
+        key: "assets.quota.releaseBytes",
+        label: "Release-file quota",
+        description:
+          "How many bytes of mirrored release files this product may hold.",
+        spec: { kind: "integer", unit: "bytes", min: 0, max: 10 * 1024 ** 4 },
+        confirm: { up: "L1", down: "L1" },
+        value: 2 * 1024 * MiB,
+        source: "console",
+        inherited: 100 * 1024 * MiB,
+        own: true,
+        version: 3,
+      },
+    ],
+    ...over,
+  };
+}
+
 const mount = () =>
   renderAt("#/p/djdl/presentation", <PresentationPage slug="djdl" />);
 
 /** The settings row whose label is `label`. */
 async function row(label: string): Promise<HTMLElement> {
-  const el = await screen.findByText(label, { selector: "span.font-bold" });
+  const el = await screen.findByText(label, {
+    selector: "span.font-bold, label.font-bold",
+  });
   return el.closest("[data-align]") as HTMLElement;
 }
 
@@ -126,6 +187,7 @@ beforeEach(() => {
   resetCore();
   for (const f of Object.values(fns)) f.mockReset();
   fns.hostedAssets.mockResolvedValue({ assets: ROWS });
+  fns.assetUsage.mockResolvedValue(usage());
 });
 afterEach(cleanup);
 
@@ -286,5 +348,104 @@ describe("the page's words", () => {
     expect(statusOf(asset({ status: "pending" })).label).toBe("Pulling");
     expect(statusOf(asset({ pullPending: true })).label).toBe("Updating");
     expect(statusOf(asset({ status: "failed" })).tone).toBe("danger");
+  });
+});
+
+describe("Core → Presentation → Hosting and quotas (HA-10)", () => {
+  it("Hosting and quotas: usage against each quota, a warning when one is full", async () => {
+    const { container } = mount();
+    const images = await row("Images");
+    expect(
+      within(images).getByText(/128 MiB of 512 MiB · 7 files/),
+    ).toBeTruthy();
+    expect(within(images).queryByText("Quota full")).toBeNull();
+    const files = await row("Release files");
+    expect(within(files).getByText(/2 GiB of 2 GiB · 3 files/)).toBeTruthy();
+    expect(within(files).getByText("Quota full")).toBeTruthy();
+    expect(within(files).getByText(/mirroring has stopped/)).toBeTruthy();
+    expect(
+      within(await row("Media quota")).getByText("Default: 512 MiB"),
+    ).toBeTruthy();
+    expect(
+      within(await row("Release-file quota")).getByText(
+        "Set for this product: 2 GiB",
+      ),
+    ).toBeTruthy();
+    // Hosting is on: no deployment warning.
+    expect(
+      screen.queryByText("Hosted assets are off on this deployment"),
+    ).toBeNull();
+    await expectNoAxeViolations(container);
+  });
+
+  it("says when hosted assets are off on the deployment", async () => {
+    fns.assetUsage.mockResolvedValue(usage({ hosting: false }));
+    mount();
+    expect(
+      await screen.findByText("Hosted assets are off on this deployment"),
+    ).toBeTruthy();
+  });
+
+  it("saves a quota through mutate, with the version it was read at, and Reset returns it to the platform", async () => {
+    const spy = vi.spyOn(queryClient, "invalidateQueries");
+    fns.saveAssetSetting.mockResolvedValue(usage());
+    fns.resetAssetSetting.mockResolvedValue(usage());
+    mount();
+    const quota = await row("Media quota");
+    const input = within(quota).getByLabelText("Media quota in MiB");
+    await userEvent.clear(input);
+    await userEvent.type(input, "1024");
+    await userEvent.click(within(quota).getByRole("button", { name: "Save" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Save", hidden: false }),
+    );
+    await waitFor(() => expect(fns.saveAssetSetting).toHaveBeenCalled());
+    expect(fns.saveAssetSetting).toHaveBeenCalledWith(
+      "djdl",
+      "assets.quota.mediaBytes",
+      { value: 1024 * MiB, expectedVersion: 0 },
+    );
+    const keys = spy.mock.calls.map((c) => JSON.stringify(c[0]?.queryKey));
+    expect(keys).toContain(JSON.stringify(qk.hostedAssets("djdl")));
+    spy.mockRestore();
+
+    const release = await row("Release-file quota");
+    await userEvent.click(
+      within(release).getByRole("button", { name: "Reset" }),
+    );
+    expect(
+      await screen.findByText(/follows the platform default again: 100 GiB/),
+    ).toBeTruthy();
+    await userEvent.click(
+      screen.getAllByRole("button", { name: "Reset" }).at(-1)!,
+    );
+    await waitFor(() =>
+      expect(fns.resetAssetSetting).toHaveBeenCalledWith(
+        "djdl",
+        "assets.quota.releaseBytes",
+        3,
+      ),
+    );
+  });
+
+  it("turning mirroring off asks first", async () => {
+    fns.saveAssetSetting.mockResolvedValue(usage());
+    mount();
+    const mirror = await row("Mirror release files");
+    await userEvent.click(within(mirror).getByRole("switch"));
+    expect(
+      await screen.findByText("Stop mirroring this product's release files?"),
+    ).toBeTruthy();
+    expect(fns.saveAssetSetting).not.toHaveBeenCalled();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Stop mirroring" }),
+    );
+    await waitFor(() =>
+      expect(fns.saveAssetSetting).toHaveBeenCalledWith(
+        "djdl",
+        "assets.releases.mirror",
+        { value: "off", expectedVersion: 0 },
+      ),
+    );
   });
 });

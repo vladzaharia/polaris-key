@@ -51,6 +51,25 @@ Quotas and the kill switch are knobs, and S-18 makes knobs registry settings ([S
   accent remain.
 - **If HA-12 lands first.** HA-12 then reads nothing, and this package adds the read with a test.
 
+## Corrections from the code (HA-10, 2026-10-06)
+
+- **HA-12 has not landed.** `core/presentation.ts` does not exist yet, and the registry test
+  refuses a reader file that does not exist, so HA-10 cannot list it. HA-12 reads the switch the
+  way every HA-07 surface does, through `hostedImageOrigin(env, db)` (or `hostedImages`), and adds
+  `core/presentation.ts` to `assets.hosting.enabled`'s `readers` in `core/settings/platform.ts`.
+- **The switch read is asynchronous.** HA-07 said making the switch a settings read "touches
+  nothing else"; a settings read needs the database, so `hostedImageOrigin` became
+  `hostedImageOrigin(env, db)` and every HA-07 surface awaits it (the portal shell's CSP, the
+  bytes host's document policy, `/media`, the library, the feeds, the download page).
+  `hostedImageUrl` stays synchronous: it is only handed copies `hostedImages` answered, which is
+  empty while hosting is off.
+- **Where each setting lives.** `assets.hosting.enabled` is an A-13 store entry (row and `[vars]`
+  name `ASSET_HOSTING`, `runtime`, area `delivery`), so Platform → Settings → Delivery switches it
+  today. The two platform quota defaults are registry-only rows with no console writer until
+  ST-05 and ST-16; the three product settings are written through `writeSetting()` by
+  `PATCH|DELETE /manage/api/products/<slug>/assets/settings/<key>` (narrative-only admin routes,
+  rule 10) and edited on the Presentation page.
+
 ## Steps
 
 1. Entries.

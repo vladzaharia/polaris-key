@@ -142,7 +142,9 @@ export type WriteMethod =
   | "listingImport"
   | "putListingReleaseNotes"
   | "uploadHostedAsset"
-  | "deleteHostedAsset";
+  | "deleteHostedAsset"
+  | "saveAssetSetting"
+  | "resetAssetSetting";
 
 export interface MutationSpec<A extends unknown[]> {
   /** What the write does, for the table's readers (and the test's failure messages). */
@@ -868,6 +870,21 @@ export const MUTATIONS: MutationTable = {
   deleteHostedAsset: {
     label: "hosted asset revert or delete",
     invalidates: (slug) => hostedAssets(slug),
+  },
+  saveAssetSetting: {
+    label: "hosted asset setting save",
+    // The usage read (under the slots' prefix) carries the settings; the trail records the write.
+    invalidates: (slug) => [
+      prefix(qk.hostedAssets(slug)),
+      prefix(qk.activity(slug)),
+    ],
+  },
+  resetAssetSetting: {
+    label: "hosted asset setting reset",
+    invalidates: (slug) => [
+      prefix(qk.hostedAssets(slug)),
+      prefix(qk.activity(slug)),
+    ],
   },
   savePackageFeeds: {
     label: "package feeds switch",
