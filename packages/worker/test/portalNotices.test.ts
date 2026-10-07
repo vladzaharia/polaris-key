@@ -37,6 +37,9 @@ import {
   displayValue,
   downloadLinkEmail,
   licenseAddedNotice,
+  licenseAssignedToYouNotice,
+  licenseMadeFloatingNotice,
+  licenseReassignedAwayNotice,
   newDeviceSignInNotice,
   signInMethodAddedNotice,
   signInMethodRemovedNotice,
@@ -82,6 +85,38 @@ const TEMPLATES: Record<string, () => NoticeMessage> = {
   methodRemoved: () =>
     signInMethodRemovedNotice({ method: "Steam", origin: ORIGIN }),
   accountDeleted: () => accountDeletedNotice({ origin: ORIGIN }),
+  // LX-30: the relink tool's holder moves. The away side is a security notice when the licence
+  // was in an account, and a plain one to a waiting licence's address (it has no account).
+  madeFloating: () =>
+    licenseMadeFloatingNotice({
+      productName: "Mossgarden",
+      inAccount: true,
+      origin: ORIGIN,
+    }),
+  madeFloatingWaiting: () =>
+    licenseMadeFloatingNotice({
+      productName: "Mossgarden",
+      inAccount: false,
+      origin: ORIGIN,
+    }),
+  reassignedAway: () =>
+    licenseReassignedAwayNotice({
+      productName: "Mossgarden",
+      inAccount: true,
+      origin: ORIGIN,
+    }),
+  reassignedAwayWaiting: () =>
+    licenseReassignedAwayNotice({
+      productName: "Mossgarden",
+      inAccount: false,
+      origin: ORIGIN,
+    }),
+  assignedToYou: () =>
+    licenseAssignedToYouNotice({
+      productName: "Mossgarden",
+      productSlug: "mossgarden",
+      origin: ORIGIN,
+    }),
 };
 
 const SECURITY = new Set([
@@ -89,6 +124,8 @@ const SECURITY = new Set([
   "newDeviceSignIn",
   "methodAdded",
   "methodRemoved",
+  "madeFloating",
+  "reassignedAway",
 ]);
 
 describe("notice templates: copy", () => {
@@ -172,6 +209,29 @@ describe("notice templates: rules", () => {
     expect(urls(TEMPLATES.accountDeleted!())).toEqual([]);
     for (const build of Object.values(TEMPLATES)) {
       expect(build().text).not.toMatch(/token|pkey_/i);
+    }
+  });
+
+  it("holder moves (LX-30): the new address hears nothing about accounts, a waiting address has no account to secure", () => {
+    const toYou = TEMPLATES.assignedToYou!();
+    expect(toYou.subject).toBe("A Mossgarden license was assigned to you");
+    expect(toYou.text.match(/https:\/\/\S+/g)).toEqual([
+      `${ORIGIN}/#/p/mossgarden`,
+    ]);
+    // The same words whether or not an account holds the address (S-24 D4).
+    expect(toYou.text).not.toMatch(/already|your account|existing/i);
+    for (const name of ["madeFloatingWaiting", "reassignedAwayWaiting"]) {
+      const m = TEMPLATES[name]!();
+      expect(m.text).toContain("issued a license to this email address");
+      expect(m.text).not.toContain("Polaris Key account,");
+    }
+    for (const name of [
+      "madeFloating",
+      "madeFloatingWaiting",
+      "reassignedAway",
+      "reassignedAwayWaiting",
+    ]) {
+      expect(TEMPLATES[name]!().text).toContain("undo it for 72 hours");
     }
   });
 
