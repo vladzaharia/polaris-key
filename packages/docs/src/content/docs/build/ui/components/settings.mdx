@@ -5,6 +5,7 @@ sidebar:
   order: 21
 ---
 
+import { Tabs, TabItem } from "@astrojs/starlight/components";
 import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
 
@@ -20,5 +21,14 @@ Settings driven by the product's config catalog: typed controls, categories, sea
 
 ## In each kit
 
-No kit documents Settings here yet. Each kit adds its tab when it ships the component: the drop-in,
-the styled part with its slots and restyle hooks, and the headless model.
+<Tabs syncKey="ui-kit">
+  <TabItem label="Terminal (Python)">
+    **Drop-in.** `config` (`list`, `get`, `set`, `reset`).
+
+    **Styled part.** `screens.settings(kit, view)` in `polaris_key.ui.terminal`, drawn with a `Kit`; restyle through
+    `Theme(colors=…, symbols=…, preset="native")`.
+
+    **Headless.** `settings_view(entries, local)` → `SettingsView` in `polaris_key.ui.core.models`.
+
+  </TabItem>
+</Tabs>

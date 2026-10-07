@@ -80,8 +80,10 @@ const GLOBS: Readonly<Record<string, Record<string, ImageMetadata>>> = {
     "../../../../packages/sdk-node/test/cli/golden/*-{dark,light}.png",
     { eager: true, import: "default" },
   ),
+  // The terminal kit's baselines are SVGs drawn from its golden ANSI text (UK-13): the default
+  // render (truecolor, 80 columns) of each state; the other variants are text-only goldens.
   "terminal-python": import.meta.glob<ImageMetadata>(
-    "../../../../sdks/python/tests/cli/golden/*-{dark,light}.png",
+    "../../../../sdks/python/tests/cli/golden/*-{dark,light}.svg",
     { eager: true, import: "default" },
   ),
 };

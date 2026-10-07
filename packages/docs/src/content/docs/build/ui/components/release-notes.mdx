@@ -5,6 +5,7 @@ sidebar:
   order: 17
 ---
 
+import { Tabs, TabItem } from "@astrojs/starlight/components";
 import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
 
@@ -20,5 +21,14 @@ The changelog for one version or many, read from the release service. Notes rend
 
 ## In each kit
 
-No kit documents ReleaseNotes here yet. Each kit adds its tab when it ships the component: the drop-in,
-the styled part with its slots and restyle hooks, and the headless model.
+<Tabs syncKey="ui-kit">
+  <TabItem label="Terminal (Python)">
+    **Drop-in.** `changelog [--limit n]`.
+
+    **Styled part.** `screens.release_notes(kit, view)` in `polaris_key.ui.terminal`, drawn with a `Kit`; restyle through
+    `Theme(colors=…, symbols=…, preset="native")`.
+
+    **Headless.** `release_notes_view(entries)` → `ReleaseNotesView` in `polaris_key.ui.core.models`.
+
+  </TabItem>
+</Tabs>

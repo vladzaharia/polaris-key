@@ -241,7 +241,8 @@
     <main class="board">
       <figure>
         <figcaption>
-          terminal · sign-in (device code, half-block QR, 80 × 24)
+          terminal · sign-in (the browser, or a code when headless; no QR in a
+          terminal, SIGN-IN.md D-67, D-68)
         </figcaption>
         <div class="shot cols80" data-shot="sign-in">
           <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
@@ -256,7 +257,10 @@
         </div>
       </figure>
       <figure>
-        <figcaption>terminal · device limit picker</figcaption>
+        <figcaption>
+          terminal · device limit (browser mode: Replace a device opens the
+          portal, then Try again; UI-KITS §4.3)
+        </figcaption>
         <div class="shot cols80" data-shot="device-limit">
           <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
           <pre id="dl"></pre>
@@ -319,7 +323,7 @@
               <pre class="fb"></pre>
             </div>
             <div>
-              <div class="lbl">ascii symbols (TERM=dumb or --ascii)</div>
+              <div class="lbl">ascii symbols (--ascii)</div>
               <pre class="fb ascii"></pre>
             </div>
           </div>
@@ -327,8 +331,8 @@
       </figure>
       <figure>
         <figcaption>
-          terminal · 60 columns (QR hidden below 70, meta wraps, keys truncate
-          in the middle)
+          terminal · 60 columns (QR hidden below 70, text wraps, keys cut in the
+          middle)
         </figcaption>
         <div class="shot cols60" data-shot="narrow">
           <div class="tbar"><i></i><i></i><i></i>tidewater — 60 × 24</div>
@@ -392,97 +396,48 @@
           ["m", " " + a],
         ]);
 
-      // Half-block QR (same deterministic matrix as the other boards), black on white, 2-cell quiet zone.
-      function qrMatrix(seed = 9) {
-        const n = 29;
-        let s = seed;
-        const rnd = () =>
-          (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
-        const m = Array.from({ length: n }, () => Array(n).fill(0));
-        const finder = (x0, y0) => {
-          for (let y = 0; y < 7; y++)
-            for (let x = 0; x < 7; x++)
-              m[y0 + y][x0 + x] =
-                x === 0 ||
-                y === 0 ||
-                x === 6 ||
-                y === 6 ||
-                (x > 1 && x < 5 && y > 1 && y < 5)
-                  ? 1
-                  : 0;
-        };
-        const inF = (x, y) =>
-          (x < 8 && y < 8) || (x > n - 9 && y < 8) || (x < 8 && y > n - 9);
-        for (let y = 0; y < n; y++)
-          for (let x = 0; x < n; x++) {
-            if (inF(x, y)) continue;
-            if (x === 6 || y === 6) {
-              m[y][x] = (x + y) % 2 === 0 ? 1 : 0;
-              continue;
-            }
-            m[y][x] = rnd() > 0.52 ? 1 : 0;
-          }
-        finder(0, 0);
-        finder(n - 7, 0);
-        finder(0, n - 7);
-        const q = 2,
-          N = n + 2 * q;
-        const g = Array.from({ length: N + 1 }, (_, y) =>
-          Array.from({ length: N }, (_, x) =>
-            y >= q && y < n + q && x >= q && x < n + q ? m[y - q][x - q] : 0,
-          ),
-        );
-        // Drawn as one SVG per text row so each half-block fills its cell exactly, as a terminal
-        // renders ▀ ▄ █ (fonts leave gaps at line-height 1.2; terminals do not).
-        const out = [];
-        for (let y = 0; y < N; y += 2) {
-          let r = "";
-          for (let x = 0; x < N; x++) {
-            if (g[y][x]) r += `<rect x="${x}" y="0" width="1" height="1"/>`;
-            if (g[y + 1][x]) r += `<rect x="${x}" y="1" width="1" height="1"/>`;
-          }
-          out.push(
-            `<svg width="${(N * 8.4).toFixed(1)}" height="16.8" viewBox="0 0 ${N} 2" preserveAspectRatio="none" shape-rendering="crispEdges" style="vertical-align: top; display: inline-block"><rect width="${N}" height="2" fill="#fff"/><g fill="#000">${r}</g></svg>`,
-          );
-        }
-        return out; // 17 lines × 33 cells
-      }
-
-      // 1. Sign in
-      const Q = qrMatrix(9);
-      const left = [
-        L(["a", "◆"], ["", "  "], ["s", "Sign in on any device"]),
-        R(),
-        R(["", "Go to "], ["s u", "key.plrs.im/activate"]),
-        R(["", "and enter this code:"]),
-        R(),
-        R(["rev", " WDJB-MJHT "]),
-        R(),
-        R(["", "Check the code there matches"]),
-        R(["", "this one."]),
-        R(),
-        R(["m", "⠹"], ["", " Waiting… "], ["m", "· expires in 4:52"]),
-        R(),
-        R(...keys(["c", "copy"], ["o", "open"], ["esc", "cancel"])),
-      ];
-      const lines = [
+      // 1. Sign in (SIGN-IN.md §4.15 frame 32): the browser on a desktop, the code when headless.
+      put("signin", [
         L(["m", "$ "], ["", "tidewater login"]),
-        L(["m", "┌  "], ["chip", " Tidewater Studio "], ["m", " · sign in"]),
+        L(["m", "┌  "], ["chip", " Tidewater Studio "], ["m", " · login"]),
         L(["m", "│"]),
-      ];
-      for (let i = 0; i < Q.length; i++) {
-        const l = left[i] || R();
-        lines.push({ html: pad(l, 44) + Q[i] });
-      }
-      lines.push(
-        R(),
-        R([
-          "m",
-          "Polaris Key handles sign-in. Harbor Audio never sees your passkeys.",
-        ]),
-        L(["m", "└"]),
-      );
-      put("signin", lines);
+        L(["ok", "◇"], ["", "  Opening Polaris Key in your browser…"]),
+        R(
+          ["", "If it didn't open, go to "],
+          ["u", "key.plrs.im/device?user_code=WDJB-MJHT"],
+        ),
+        L(["m", "│"]),
+        L(["m", "⠹"], ["", "  Waiting for your browser…"]),
+        L(
+          ["m", "└  "],
+          ...keys(
+            ["Enter", "open again"],
+            ["c", "use a code"],
+            ["Esc", "cancel"],
+          ),
+        ),
+        "",
+        L(["m", "build-01 $ "], ["", "tidewater login"]),
+        L(["m", "┌  "], ["chip", " Tidewater Studio "], ["m", " · login"]),
+        L(["m", "│"]),
+        L(
+          ["ok", "◇"],
+          ["", "  No browser on this computer. Use a code instead:"],
+        ),
+        R(
+          ["", "On any phone or computer, go to "],
+          ["u", "key.plrs.im/device"],
+          ["", " and enter this code."],
+        ),
+        L(["m", "│"]),
+        R(["", "   "], ["rev", " WDJB-MJHT "]),
+        L(["m", "│"]),
+        R(["", "Check the code there matches this one."]),
+        R(["m", "Code expires in 4:12"]),
+        L(["m", "│"]),
+        L(["m", "⠹"], ["", "  Waiting for your browser…"]),
+        L(["m", "└  "], ...keys(["c", "Copy code"], ["Esc", "Cancel"])),
+      ]);
 
       // 2. Activate
       put("activate", [
@@ -522,7 +477,7 @@
         ]),
       ]);
 
-      // 3. Device limit
+      // 3. Device limit: browser mode on the key path (UI-KITS §4.3 "Naming and data source").
       const dl = (cols, narrow) => [
         L(["m", "$ "], ["", "tidewater activate"]),
         L(["m", "┌  "], ["chip", " Tidewater Studio "], ["m", " · activate"]),
@@ -530,9 +485,8 @@
         L(
           ["ok", "◇"],
           ["", "  License key "],
-          ["m", narrow ? "· pkey_tide…PLDA" : "· pkey_tidewater_7Q2M…3WPLDA"],
+          ["m", "· pkey_tidewater_…3WPLDA"],
         ),
-        R(["ok", "✓"], ["", " Tidewater Studio Pro"], ["m", " · Lifetime"]),
         L(["m", "│"]),
         L(
           ["warn", "▲"],
@@ -542,48 +496,36 @@
         R(["m", "●●● 3 of 3 in use"]),
         ...(narrow
           ? [
-              R(
-                ["", "Remove one to use it on "],
-                ["s", "build-server-02"],
-                ["", "."],
-              ),
-              R(["", "You can add it back later."]),
+              R([
+                "",
+                "To use it on this computer, replace one. You can add it",
+              ]),
+              R(["", "back later."]),
             ]
           : [
-              R(
-                ["", "Remove one to use it on "],
-                ["s", "build-server-02"],
-                ["", ". You can add it back later."],
-              ),
+              R([
+                "",
+                "To use it on this computer, replace one. You can add it back later.",
+              ]),
             ]),
         L(["m", "│"]),
-        L(["a", "◆"], ["", "  "], ["s", "Which device?"]),
-        R(["a", "●"], ["", " "], ["s", "Work laptop"]),
-        R(
-          ["", "  "],
-          [
-            "m",
-            narrow
-              ? "Windows 11 · 41 days ago"
-              : "Windows 11 · last used 41 days ago · least recent",
-          ],
-        ),
-        ...(narrow ? [R(["", "  "], ["m", "least recent"])] : []),
-        R(
-          ["m", "○"],
-          ["", " Mara’s iPad   "],
-          ["m", narrow ? "yesterday" : "iPadOS 26 · last used yesterday"],
-        ),
-        R(
-          ["m", "○"],
-          ["", " MacBook Pro   "],
-          ["m", narrow ? "today" : "macOS 26 · last used today"],
-        ),
-        L(["m", "│"]),
-        R(["m", "Tidewater Studio signs out on Work laptop."]),
+        L(["a", "◆"], ["", "  "], ["s", "Replace a device"]),
+        ...(narrow
+          ? [
+              R(["", "Replace a device in your browser. Tidewater Studio"]),
+              R(["", "continues when you're done."]),
+            ]
+          : [
+              R([
+                "",
+                "Replace a device in your browser. Tidewater Studio continues when",
+              ]),
+              R(["", "you're done."]),
+            ]),
+        R(["m u", "key.plrs.im/portal/tidewater/devices"]),
         L(
           ["m", "└  "],
-          ...keys(["↑↓", "choose"], ["enter", "remove"], ["esc", "cancel"]),
+          ...keys(["Enter", "Open in browser"], ["Esc", "Cancel"]),
         ),
       ];
       put("dl", dl(80));
@@ -752,21 +694,26 @@
           L(
             ["m", ascii ? "|" : "│"],
             ["", "  "],
-            ["a", ascii ? "(*)" : "●"],
-            ["", " "],
-            ["s", "Work laptop"],
-            ["m", ascii ? " - least recent" : " · least recent"],
+            ["m", ascii ? "### 3 of 3 in use" : "●●● 3 of 3 in use"],
           ),
+          L(["m", ascii ? "|" : "│"]),
+          L(["a", ascii ? "*" : "◆"], ["", "  "], ["s", "Replace a device"]),
           L(
             ["m", ascii ? "|" : "│"],
             ["", "  "],
-            ["m", ascii ? "( )" : "○"],
-            ["", " Mara’s iPad"],
+            ["m u", "key.plrs.im/portal/tidewater/devices"],
           ),
           L(
             ["m", ascii ? "`" : "└"],
             ["", "  "],
-            ...keys(["enter", "remove"], ["esc", "cancel"]),
+            ...(ascii
+              ? [
+                  ["s", "Enter"],
+                  ["m", " Open in browser - "],
+                  ["s", "Esc"],
+                  ["m", " Cancel"],
+                ]
+              : keys(["Enter", "Open in browser"], ["Esc", "Cancel"])),
           ),
         ]
           .map((l) => l.html)

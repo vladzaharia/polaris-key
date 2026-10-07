@@ -1,0 +1,153 @@
+---
+title: "Terminal (Python)"
+description: "The Python terminal kit: the polaris-key CLI and any host CLI drawn in the Polaris Key terminal look, with --json on every verb and an optional Textual app."
+sidebar:
+  order: 20
+---
+
+import KitCoverage from "../../../../../components/ui/KitCoverage.astro";
+import KitFacts from "../../../../../components/ui/KitFacts.astro";
+
+The Python SDK's terminal kit, `polaris_key.ui.terminal`. It draws every verb of the
+`polaris-key` CLI, and any host CLI that mounts those verbs, in the product's identity: the
+product chip, a continuous rail, step glyphs, key hints, the seat meter, progress, the user code
+and links. Colour is ANSI-16 for every status role, so output follows the person's terminal
+theme; truecolor is used only for the product accent, and only when the terminal says it can.
+`NO_COLOR`, pipes and `TERM=dumb` get plain lines. An optional Textual app shows the account,
+devices and updates full screen.
+
+<KitFacts kit="terminal-python" />
+
+## Install
+
+```sh
+pip install "polaris-key[cli]"    # rich renders the styled output
+pip install "polaris-key[tui]"    # adds the Textual app
+```
+
+rich is optional: without it the kit writes the same escape sequences itself, and with it rich
+renders them (including on legacy Windows consoles). Nothing else in the SDK needs either.
+
+## The one-line flow
+
+The `polaris-key` console script is the kit. A product CLI mounts the same verbs under its own
+name, so its fix lines and help name its command:
+
+```python
+import argparse
+from polaris_key.cli import register_argparse
+
+parser = argparse.ArgumentParser(prog="tidewater")
+register_argparse(parser.add_subparsers(dest="command", required=True), client_factory, prog="tidewater")
+args = parser.parse_args(); raise SystemExit(args.func(args))
+```
+
+`polaris_click_group(client_factory, theme=…, prog=…)` and `polaris_typer_app(…)` do the same for
+click and typer. The verbs:
+
+| Verb                  | What it draws                                                                                                                                |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `status`              | The account summary, the offline grace line, a blocked state with its fix as a command, or the activation prompt                             |
+| `activate`            | Masked key entry with the live verdict (the key never touches argv or the scrollback), then done, the refusal, or Replace a device           |
+| `login` / `sign-in`   | The browser, or the code when headless (SSH, no display, `CI`, `--device-code`). Enter opens the browser again, `c` uses a code, Esc cancels |
+| `logout` / `sign-out` | A y/N confirm on a terminal (`--yes` skips it)                                                                                               |
+| `devices`             | The device list; rename; deauthorize with a confirm                                                                                          |
+| `update`, `packs`     | The update prompt and live download progress                                                                                                 |
+| `changelog`           | Release notes                                                                                                                                |
+| `config`              | Settings with their source, and the locked rows                                                                                              |
+| `boot`                | A live line per stage, the consent question, then Ready or the stop and its fix                                                              |
+| `offline-request`     | The request code, with a half-block QR at 70 columns and 20 rows or more                                                                     |
+| `doctor`              | Diagnostics for the person integrating the SDK                                                                                               |
+
+Sign-in in a terminal is the browser presentation only: the license is chosen on the card, the
+terminal never lists licenses, and no terminal draws a QR for sign-in.
+
+## Piecemeal
+
+Layer (b) is `Kit` and `screens`: each screen takes a headless view and returns lines, which
+`to_ansi` (or the rich device) writes. The parts are on `Kit`: `header`, `step`, `body`, `end`,
+`hints`, `seat_meter`, `bar`, `code`, `link`, `key` (a key cut in the middle) and `qr`.
+
+```python
+from polaris_key.ui.terminal import Terminal, screens
+from polaris_key.ui.core.models import gate_view
+
+term = Terminal.create(client=client, verb="status")
+view = gate_view(client.status().status, now=now)
+term.device.print(screens.gate(term.kit, view))
+```
+
+## Headless
+
+Layer (c) is `polaris_key.ui.core.models`: functions from SDK results to a catalog component and
+state (`gate_view`, `parse_key`, `activation_view`, `update_view`, `boot_view`,
+`settings_view`, `release_notes_view`) and the `SignInModel` state machine. A host that draws its
+own terminal UI uses them with `polaris_key.ui.core.Copy` and gets the same states and copy keys.
+
+## Machine-readable output
+
+Every verb takes `--json`. It never prompts and never writes an escape. Each line on stdout is one
+JSON object with `"v": 1` and `"command"`. Progress lines carry an `"event"` such as `"pending"`
+(sign-in: `verificationUri`, `verificationUriComplete`, `userCode`, `expiresAt`), `"stage"` or
+`"progress"` (`done`, `total`), and the last line is always `"event": "result"` with `"ok"`,
+`"exit"` and the verb's fields:
+
+```json
+{
+  "v": 1,
+  "command": "status",
+  "event": "result",
+  "ok": true,
+  "exit": 0,
+  "status": "ok",
+  "usable": true,
+  "component": "AccountAndLicense",
+  "state": "key-only",
+  "graceUntil": null,
+  "allowedRange": null,
+  "profile": null,
+  "version": "2.4.1",
+  "channel": "stable"
+}
+```
+
+Exit codes stay as they were: 0, 1 for a refusal or an unusable gate, 2 for a usage error, and 130
+when the person presses Ctrl-C.
+
+## Theming
+
+`Theme` (`polaris_key.ui.core`) goes to `register_argparse(…, theme=Theme(…))` or the click and
+typer builders; the fields are on [Theming](/docs/build/ui/theming/). In a terminal:
+
+- `accent`, `product` and the presentation source set the chip and the accent glyphs; with no
+  accent the kit draws ink (bold and plain reverse video), never Polaris violet;
+- `color_scheme` picks the accent's dark or light form; `system` reads `PKEY_THEME`, then the
+  terminal's background (OSC 11), then `COLORFGBG`, then dark;
+- `colors` overrides a role's SGR parameters per scheme, and `symbols` picks Unicode or ASCII;
+- `preset="native"` keeps the terminal's own colours;
+- `motion` set to `reduced` or `none` stops the spinners, which never run without a terminal or
+  with `CI`;
+- `copy` takes a `locale` and overrides;
+- `radius`, `typography`, `density`, `ambient`, `service_cues` and `platform` have no meaning in
+  a cell grid.
+
+## Localisation
+
+The kit reads the generated table in `polaris_key.ui.kit_copy_generated` in the launch locales,
+picked from the theme's `copy.locale`, else `LC_ALL`, `LC_MESSAGES` or `LANG`, falling back key by
+key to English. Wide CJK characters take two cells, and lines break between them.
+
+## Baselines
+
+Golden ANSI text for every state in both terminal themes, in every variant (truecolor, ANSI-16,
+`NO_COLOR`, ASCII symbols; 80 and 60 columns; piped), and an SVG of the default render that the
+component pages show. Record them with
+`PKEY_GOLDEN=record .venv/bin/python -m pytest -q tests/cli` in `sdks/python`.
+
+<KitCoverage kit="terminal-python" />
+
+## Sample
+
+`examples/ui/terminal-python/` is the `tidewater` demo CLI: Tidewater Studio by Harbor Audio,
+running against its fixture adapter with no Worker (`python tidewater.py status`), or against a
+real Worker with `--live`. `--tui` opens the Textual app.

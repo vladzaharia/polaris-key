@@ -16,6 +16,13 @@
     "qt": {
       "roots": ["sdks/python/src/polaris_key/ui/qt"],
       "extensions": [".py", ".qml", ".qss"]
+    },
+    "terminal-python": {
+      "roots": [
+        "sdks/python/src/polaris_key/ui/terminal",
+        "sdks/python/src/polaris_key/ui/core"
+      ],
+      "extensions": [".py"]
     }
   },
   "rules": [
@@ -154,6 +161,35 @@
       "pattern": "#[0-9A-Fa-f]{6}\\b|\\bQColor\\(\\s*[0-9\"]|\\brgba?\\(",
       "spec": "§2.1, §7.3",
       "says": "No colour literal outside the generated theme (Theme.qml, the .qss files)."
+    },
+    {
+      "id": "terminal-python-rtl",
+      "kit": "terminal-python",
+      "pattern": "\\.(ljust|rjust)\\(|\\bjustify\\s*=\\s*[\"'](left|right)[\"']",
+      "spec": "§4.7, §7.3",
+      "says": "RTL-safe layout: pad with cell-aware spans and let the terminal's bidi lay the line out; no left or right justification."
+    },
+    {
+      "id": "terminal-python-escape",
+      "kit": "terminal-python",
+      "pattern": "\\\\x1b\\[[0-9;]+m|\\\\033\\[[0-9;]+m",
+      "spec": "§2.1, §7.3",
+      "says": "No hand-written SGR: every role's parameters come from the generated ANSI tables (polaris_key/ui/ansi.py); only the writer in text.py emits them.",
+      "exclude": ["/ui/terminal/text\\.py$"]
+    },
+    {
+      "id": "terminal-python-colour-literal",
+      "kit": "terminal-python",
+      "pattern": "#[0-9A-Fa-f]{6}\\b",
+      "spec": "§2.1, §7.3",
+      "says": "No colour literal outside the generated tokens and the accent resolver."
+    },
+    {
+      "id": "terminal-python-stock-spinner",
+      "kit": "terminal-python",
+      "pattern": "\\bconsole\\.status\\(|\\brich\\.spinner\\b|\\bSpinner\\(",
+      "spec": "§1.5 rule 4",
+      "says": "No stock spinner: the braille spinner in mute from the generated tables, at 80 ms a frame."
     }
   ]
 }
