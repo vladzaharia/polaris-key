@@ -11,6 +11,13 @@
 import { setting } from "./define.js";
 import type { SettingDef } from "./types.js";
 import {
+  ASSET_MEDIA_QUOTA_DEFAULT,
+  ASSET_MEDIA_QUOTA_MAX,
+  ASSET_RELEASE_QUOTA_DEFAULT,
+  ASSET_RELEASE_QUOTA_MAX,
+  ASSETS_DOCS,
+} from "./platform.js";
+import {
   GROUP_LABELS_MAX,
   LISTING_AUDIENCES,
   LISTING_STATES,
@@ -370,5 +377,89 @@ export const CORE_SLICE: readonly SettingDef[] = [
     readers: STOREFRONT_READERS,
     storage: storefrontColumn("store_group_labels_json"),
     since: "PS-02",
+  }),
+
+  // ── Hosted assets (HA-10, notes/S-20 §6.10, owner decisions 6 and 9) ────────────────────
+  // Core's, like the copies themselves (`core/hostedAssets.ts`): every product has hosted images
+  // whether or not it runs Distribution. Operator-owned and never in the manifest: the manifest's
+  // author does not pay for the storage. Rows in `product_settings`, written through
+  // `writeSetting()` (the console's Presentation page, `admin/handlers/hostedAssets.ts`).
+  setting({
+    key: "assets.releases.mirror",
+    scope: "product",
+    service: "core",
+    area: "assets",
+    label: "Mirror release files",
+    description:
+      "Keeps Polaris Key's own copy of every app release file the product publishes on GitHub or at a URL, and serves it first. Off copies no new release file for this product, so GitHub serves the files without a copy; the copies already made keep serving.",
+    keywords: ["mirror", "release files", "github", "r2", "downloads"],
+    docs: ASSETS_DOCS,
+    value: { kind: "switch" },
+    defaultValue: "on",
+    merge: "cascade",
+    ownership: "operator",
+    confirm: { on: "L0", off: "L1" },
+    readers: ["core/assetSettings.ts", "services/release/mirrorSwitch.ts"],
+    storage: { kind: "scalar" },
+    since: "HA-10",
+  }),
+  setting({
+    key: "assets.quota.mediaBytes",
+    scope: "product",
+    service: "core",
+    area: "assets",
+    label: "Media quota",
+    description:
+      "How many bytes of hosted images (originals and their sizes, not release files) this product may hold. Past it, a new image is refused and the current copy keeps serving. Unset follows the platform default.",
+    keywords: ["hosted assets", "storage", "quota", "images"],
+    docs: ASSETS_DOCS,
+    value: {
+      kind: "integer",
+      unit: "bytes",
+      min: 0,
+      max: ASSET_MEDIA_QUOTA_MAX,
+    },
+    defaultValue: ASSET_MEDIA_QUOTA_DEFAULT,
+    merge: "cascade",
+    inherits: "platform",
+    ownership: "operator",
+    confirm: { up: "L1", down: "L1" },
+    readers: [
+      "core/assetSettings.ts",
+      "core/assetQuota.ts",
+      "core/hostedAssets.ts",
+    ],
+    storage: { kind: "scalar" },
+    since: "HA-10",
+  }),
+  setting({
+    key: "assets.quota.releaseBytes",
+    scope: "product",
+    service: "core",
+    area: "assets",
+    label: "Release-file quota",
+    description:
+      "How many bytes of mirrored release files this product may hold. Past it, mirroring stops and GitHub keeps serving the files. Unset follows the platform default.",
+    keywords: ["hosted assets", "storage", "quota", "mirror", "releases"],
+    docs: ASSETS_DOCS,
+    value: {
+      kind: "integer",
+      unit: "bytes",
+      min: 0,
+      max: ASSET_RELEASE_QUOTA_MAX,
+    },
+    defaultValue: ASSET_RELEASE_QUOTA_DEFAULT,
+    merge: "cascade",
+    inherits: "platform",
+    ownership: "operator",
+    confirm: { up: "L1", down: "L1" },
+    readers: [
+      "core/assetSettings.ts",
+      "core/assetQuota.ts",
+      "core/hostedAssets.ts",
+      "services/release/mirror.ts",
+    ],
+    storage: { kind: "scalar" },
+    since: "HA-10",
   }),
 ];

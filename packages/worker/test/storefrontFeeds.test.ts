@@ -47,12 +47,6 @@ vi.mock("../src/core/ciTokens.js", () => ({
   lookupCiToken: async (_env: unknown, _db: unknown, token: string) =>
     tokens.get(token) ?? null,
 }));
-// HA-07's kill switch (a code constant until HA-10), controllable per test.
-const hosting = vi.hoisted(() => ({ on: true }));
-vi.mock("../src/core/assetHosting.js", () => ({
-  ASSET_HOSTING_ENABLED: true,
-  assetHostingEnabled: () => hosting.on,
-}));
 
 import { parseManifest } from "@polaris-key/manifest";
 import { makeTestDb } from "./helpers.js";
@@ -90,7 +84,7 @@ import {
 import { buildHooks } from "../src/core/hooks.js";
 import { feedStateStamp } from "../src/services/distribution/feeds/cache.js";
 import { hostedArtStamp } from "../src/services/distribution/feeds/art.js";
-import { seedHosted } from "./hostedFixture.js";
+import { seedHosted, setAssetHosting } from "./hostedFixture.js";
 import { loadProduct } from "../src/core/products.js";
 import { SERVICES } from "../src/mount.js";
 
@@ -1814,10 +1808,6 @@ describe("storefront feeds: the AltStore sources name hosted copies (HA-07)", ()
   const H = "4".repeat(64);
   const ref = (kind: string, src: string) => JSON.stringify({ kind, src });
 
-  afterEach(() => {
-    hosting.on = true;
-  });
-
   /** The world, with an image host and an AltStore listing in HA-04's normalised form. */
   async function hostedWorld(): Promise<World> {
     const w = await setup({ blobOrigin: BYTES });
@@ -1946,12 +1936,15 @@ describe("storefront feeds: the AltStore sources name hosted copies (HA-07)", ()
   });
 
   for (const [label, off] of [
-    ["the kill switch off", (w: World) => void ((hosting.on = false), w)],
-    ["no image host", (w: World) => void delete w.env.IMG_ORIGIN],
+    [
+      "the kill switch off (HA-10's assets.hosting.enabled)",
+      (w: World) => setAssetHosting(w.env, w.db, "off"),
+    ],
+    ["no image host", async (w: World) => void delete w.env.IMG_ORIGIN],
   ] as const)
     it(`rollback, ${label}: the developer's URLs, exactly as before HA-07`, async () => {
       const w = await hostedWorld();
-      off(w);
+      await off(w);
       const { doc } = await feed(w, "altstore/stable/source.json");
       expect(doc.iconURL).toBe(ICON);
       expect(doc.headerURL).toBe(HEADER_NEW);
@@ -1976,7 +1969,7 @@ describe("storefront feeds: the AltStore sources name hosted copies (HA-07)", ()
       SLUG,
     );
     expect(await hostedArtStamp(w.env, w.db, SLUG)).not.toBe(after);
-    hosting.on = false;
+    await setAssetHosting(w.env, w.db, "off");
     expect(await hostedArtStamp(w.env, w.db, SLUG)).toBe("-");
   });
 });

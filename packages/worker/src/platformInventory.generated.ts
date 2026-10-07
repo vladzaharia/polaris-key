@@ -154,6 +154,13 @@ export const PLATFORM_INVENTORY: readonly PlatformInventoryEntry[] = [
     editable: null,
   },
   {
+    name: "ASSET_HOSTING",
+    kind: "var",
+    area: "delivery",
+    optional: true,
+    editable: "ASSET_HOSTING",
+  },
+  {
     name: "CONSOLE_ORIGIN",
     kind: "var",
     area: "delivery",

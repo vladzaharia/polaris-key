@@ -26,6 +26,9 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/manage/api/products/{product}/assets/{slot}` | admin | Upload a file into a hosted-asset slot (the console claims the slot) |
 | DELETE | `/manage/api/products/{product}/assets/{slot}` | admin | Revert a console upload to the manifest, or delete a hosted copy |
 | POST | `/manage/api/products/{product}/assets/mirror` | admin | Queue a copy of every release file that still owes one (release-file mirroring) |
+| PATCH | `/manage/api/products/{product}/assets/settings/{key}` | admin | Set one of the product's hosted-asset settings |
+| DELETE | `/manage/api/products/{product}/assets/settings/{key}` | admin | Reset one of the product's hosted-asset settings to what it inherits |
+| GET | `/manage/api/products/{product}/assets/usage` | admin | What the product holds against its hosting quotas, and its hosted-asset settings |
 | GET | `/manage/api/products/{product}/assets` | admin | The product's hosted assets, their sources and pull status |
 | POST | `/manage/api/products/{product}/license/batches/{batchId}/disable-unused` | admin | Disable every licence of a batch that no device was ever bound to |
 | GET | `/manage/api/products/{product}/license/batches/{batchId}` | admin | One licence batch with its used counts |

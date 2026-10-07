@@ -68,6 +68,9 @@ import {
   SLUG,
 } from "./releaseRoutesFixture.js";
 import { NOW } from "./seed.js";
+import { setAssetHosting, setProductAssetSetting } from "./hostedFixture.js";
+import { assetUsage } from "../src/core/assetQuota.js";
+import { mirrorNow } from "../src/services/release/mirror.js";
 
 beforeAll(() => installDigestStream());
 
@@ -634,6 +637,152 @@ describe("release-file mirroring (rules)", () => {
     } as unknown as SqliteDb;
     await enableServices(db, true);
     expect(await enqueueReleaseMirrors(env, broken, SLUG, NOW)).toBe(0);
+  });
+});
+
+describe("HA-10: the switches and the release-file quota", () => {
+  const mirrored = async () =>
+    (await mirrorRefs()).map((r) => r.ref_id.split("/")[1]).sort();
+
+  it("assets.releases.mirror off keeps GitHub-only serving for the product", async () => {
+    await setProductAssetSetting(
+      env,
+      db,
+      SLUG,
+      "assets.releases.mirror",
+      "off",
+    );
+    await sync();
+    expect(q.sent).toEqual([]);
+    expect(await enqueueReleaseMirrors(env, db, SLUG, NOW)).toBe(0);
+    expect(await backfillReleaseMirrors(env, db, NOW)).toBe(0);
+    expect(await mirrorNow(env, db, SLUG, NOW)).toEqual({
+      ok: false,
+      reason: "disabled",
+    });
+    expect(await processReleaseMirror(ctx(), msg("v1.1.0", "201"))).toBe(
+      "superseded",
+    );
+    expect(await mirrorRefs()).toEqual([]);
+    // Back on (Reset: the default, on), the next sync queues every file again.
+    await setProductAssetSetting(env, db, SLUG, "assets.releases.mirror", null);
+    expect(await enqueueReleaseMirrors(env, db, SLUG, NOW)).toBe(4);
+  });
+
+  it("the kill switch off stops mirroring, and the legacy download streams from GitHub again", async () => {
+    await sync();
+    await drain();
+    expect(await mirrored()).toEqual(["101", "102", "201", "202"]);
+    await setAssetHosting(env, db, "off");
+    // Nothing more is queued or copied.
+    expect(await enqueueReleaseMirrors(env, db, SLUG, NOW + 20)).toBe(0);
+    expect(await mirrorNow(env, db, SLUG, NOW + 20)).toEqual({
+      ok: false,
+      reason: "disabled",
+    });
+    // The legacy alias goes back to GitHub; the copies themselves stay.
+    gh.calls.storage.length = 0;
+    const cli = await get(`${CONSOLE}/${SLUG}/release/dl/1.1.0/djdl-arm64`);
+    expect(cli.status).toBe(200);
+    expect(new Uint8Array(await cli.arrayBuffer())).toEqual(ASSET_BYTES[201]);
+    expect(gh.calls.storage).toHaveLength(1);
+    expect(await mirrored()).toEqual(["101", "102", "201", "202"]);
+    // Switched back on, the copy serves again.
+    await setAssetHosting(env, db, "on");
+    gh.calls.storage.length = 0;
+    const again = await get(`${CONSOLE}/${SLUG}/release/dl/1.1.0/djdl-arm64`);
+    expect(again.status).toBe(200);
+    expect(gh.calls.storage).toEqual([]);
+  });
+
+  it("past the quota, mirroring stops before anything is downloaded and GitHub keeps serving", async () => {
+    // Room for 201 (6,000 bytes) and 102 (3,000 bytes), not for 202 or 101.
+    await setProductAssetSetting(
+      env,
+      db,
+      SLUG,
+      "assets.quota.releaseBytes",
+      9_000,
+    );
+    await sync();
+    for (const [r, a] of [
+      ["v1.1.0", "201"],
+      ["v1.0.0", "102"],
+    ] as const)
+      expect(await processReleaseMirror(ctx(), msg(r, a))).toBe("mirrored");
+    gh.calls.storage.length = 0;
+    for (const [r, a] of [
+      ["v1.1.0", "202"],
+      ["v1.0.0", "101"],
+    ] as const) {
+      expect(await processReleaseMirror(ctx(), msg(r, a))).toBe("failed");
+      expect(await job(r, a)).toMatchObject({
+        status: "failed",
+        error: "quota",
+        attempts: 1,
+      });
+      expect((await artifact(r, a))?.locations_json ?? "").not.toContain(
+        '"r2"',
+      );
+    }
+    // Refused before a byte was fetched.
+    expect(gh.calls.storage).toEqual([]);
+    expect(await mirrored()).toEqual(["102", "201"]);
+    expect((await assetUsage(db, SLUG)).release).toEqual({
+      bytes: 9_000,
+      files: 2,
+    });
+    // GitHub keeps serving the files that have no copy.
+    const res = await get(
+      `${BYTES}/${SLUG}/distribution/files/v1.1.0/djdl-1.1.0-arm64.dmg`,
+    );
+    expect(res.status).toBe(200);
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(ASSET_BYTES[202]);
+    expect(gh.calls.storage).toHaveLength(1);
+    // At the quota, nothing is queued, and the operator's action says why.
+    const sent = q.sent.length;
+    expect(await enqueueReleaseMirrors(env, db, SLUG, NOW + 86_400 * 30)).toBe(
+      0,
+    );
+    expect(await backfillReleaseMirrors(env, db, NOW + 86_400 * 30)).toBe(0);
+    expect(q.sent.length).toBe(sent);
+    expect(await mirrorNow(env, db, SLUG, NOW + 20)).toEqual({
+      ok: false,
+      reason: "quota",
+    });
+    // A raised quota lets mirroring resume.
+    await setProductAssetSetting(
+      env,
+      db,
+      SLUG,
+      "assets.quota.releaseBytes",
+      null,
+    );
+    expect(await mirrorNow(env, db, SLUG, NOW + 20)).toMatchObject({
+      ok: true,
+      queued: 2,
+    });
+  });
+
+  it("two files racing for the last room: exactly one is copied", async () => {
+    await setProductAssetSetting(
+      env,
+      db,
+      SLUG,
+      "assets.quota.releaseBytes",
+      7_000,
+    );
+    await sync();
+    const out = await Promise.all([
+      processReleaseMirror(ctx(), msg("v1.1.0", "201")),
+      processReleaseMirror(ctx(), msg("v1.0.0", "101")),
+    ]);
+    expect(out.filter((o) => o === "mirrored")).toHaveLength(1);
+    expect(out.filter((o) => o === "failed")).toHaveLength(1);
+    expect((await assetUsage(db, SLUG)).release.bytes).toBeLessThanOrEqual(
+      7_000,
+    );
+    expect(await mirrored()).toHaveLength(1);
   });
 });
 

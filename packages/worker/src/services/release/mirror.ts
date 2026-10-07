@@ -56,7 +56,12 @@
  * - Never on an end user's request (owner decision 3), and never failing the sync, resync or
  *   publish that triggered it: enqueueing is best-effort and swallows every failure.
  * - `releaseMirrorEnabled` (`mirrorSwitch.ts`) is asked first everywhere: HA-10's
- *   `assets.releases.mirror`, on by default.
+ *   `assets.releases.mirror`, on by default, under the platform kill switch
+ *   `assets.hosting.enabled`.
+ * - The release-file quota (HA-10, `assets.quota.releaseBytes`, `core/assetQuota.ts`): a product
+ *   at its quota has nothing queued (`quotaFull`), "mirror now" answers `quota`, and a file that
+ *   would take it past is refused `quota` before anything is downloaded (and, atomically, by
+ *   `ingest`'s batch). The job row goes `failed` with back-off, and GitHub keeps serving.
  */
 
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
@@ -64,6 +69,7 @@ import type { Db, DbStatement, Env } from "../../core/platform.js";
 import { isAllowedStorageHost, randomId } from "../../core/platform.js";
 import { blobKey } from "../../core/blobs.js";
 import {
+  hostedAssetRefId,
   ingest,
   SLOT_CLASSES,
   type IngestInput,
@@ -73,6 +79,12 @@ import {
   PULL_BACKOFF_CAP_SECONDS,
   pullBackoffSeconds,
 } from "../../core/hostedAssetPulls.js";
+import {
+  quotaFull,
+  quotaLimit,
+  RELEASE_ARTIFACT_REF_KIND,
+  withinQuota,
+} from "../../core/assetQuota.js";
 import { getReleaseConfig, isResolved, type ResolvedConfig } from "./config.js";
 import { installationToken } from "./gateway.js";
 import {
@@ -89,8 +101,9 @@ import { releaseMirrorEnabled } from "./mirrorSwitch.js";
 export { releaseMirrorEnabled } from "./mirrorSwitch.js";
 
 /** The `blob_refs.ref_kind` a mirrored file's `r2` location is held by (ref id
- *  `<release_id>/<artifact_id>`). Never dropped by the collector. */
-export const RELEASE_ARTIFACT_REF = "release-artifact";
+ *  `<release_id>/<artifact_id>`). Never dropped by the collector. Core's constant, since the
+ *  release-file quota counts these refs (`core/assetQuota.ts`). */
+export const RELEASE_ARTIFACT_REF = RELEASE_ARTIFACT_REF_KIND;
 
 /** How many files one sync, resync or publish queues at most. */
 export const MIRROR_ENQUEUE_MAX_PER_RUN = 100;
@@ -369,6 +382,7 @@ export async function enqueueReleaseMirrors(
   if (!queue || !env.BLOBS) return 0;
   try {
     if (!(await releaseMirrorEnabled(env, db, product))) return 0;
+    if (await quotaFull(env, db, product, "release")) return 0;
     const files = await owedFiles(db, now, { product, limit });
     return await queueFiles(queue, db, files, now, "sync");
   } catch {
@@ -398,7 +412,9 @@ export async function backfillReleaseMirrors(
     if (files.length >= limit) break;
     let on = enabled.get(f.product);
     if (on === undefined) {
-      on = await releaseMirrorEnabled(env, db, f.product);
+      on =
+        (await releaseMirrorEnabled(env, db, f.product)) &&
+        !(await quotaFull(env, db, f.product, "release"));
       enabled.set(f.product, on);
     }
     if (on) files.push(f);
@@ -408,7 +424,7 @@ export async function backfillReleaseMirrors(
 
 export type MirrorNowResult =
   | { ok: true; queued: number; owed: number }
-  | { ok: false; reason: "unavailable" | "disabled" };
+  | { ok: false; reason: "unavailable" | "disabled" | "quota" };
 
 /**
  * The operator's "mirror now" (`POST /manage/api/products/<slug>/assets/mirror`): every owed copy
@@ -427,6 +443,8 @@ export async function mirrorNow(
   if (!queue || !env.BLOBS) return { ok: false, reason: "unavailable" };
   if (!(await releaseMirrorEnabled(env, db, product)))
     return { ok: false, reason: "disabled" };
+  if (await quotaFull(env, db, product, "release"))
+    return { ok: false, reason: "quota" };
   const files = await owedFiles(db, now, {
     product,
     limit: MIRROR_OPERATOR_MAX_PER_RUN,
@@ -561,6 +579,24 @@ export async function processReleaseMirror(
     return "failed";
   };
   if (!source) return fail("no-source", null);
+  // HA-10: a file that would take the product past its release-file quota is refused before
+  // anything is fetched; `ingest`'s batch decides atomically.
+  let limit: number | undefined;
+  const overQuota = async (sha: string, size: number): Promise<boolean> =>
+    !(await withinQuota(
+      db,
+      "release",
+      msg.product,
+      hostedAssetRefId(`release-file:${sha}`),
+      [{ key: blobKey(sha), size }],
+      (limit ??= await quotaLimit(env, db, msg.product, "release")),
+    ));
+  if (
+    row.sha256 &&
+    row.size_bytes !== null &&
+    (await overQuota(row.sha256, row.size_bytes))
+  )
+    return fail("quota", source.kind === "external" ? source.url : null);
 
   let input: IngestInput;
   let expected: string;
@@ -607,6 +643,7 @@ export async function processReleaseMirror(
     if (row.size_bytes !== null && row.size_bytes !== meta.size)
       return fail("size-mismatch", label);
     if (meta.size > RELEASE_FILE_CAP) return fail("too-large", label);
+    if (await overQuota(want, meta.size)) return fail("quota", label);
     expected = want;
     input = {
       kind: "pull",

@@ -8,19 +8,13 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NOW } from "./seed.js";
-import { seedHosted } from "./hostedFixture.js";
+import { seedHosted, setAssetHosting } from "./hostedFixture.js";
 import { SLUG, model, onBytes, setup } from "./downloadWorld.js";
 import { inertDocumentPolicy } from "../src/core/bytesHost.js";
 import {
   PAGE_ICON_WIDTH,
   pageCsp,
 } from "../src/services/distribution/page/index.js";
-
-const hosting = vi.hoisted(() => ({ on: true }));
-vi.mock("../src/core/assetHosting.js", () => ({
-  ASSET_HOSTING_ENABLED: true,
-  assetHostingEnabled: () => hosting.on,
-}));
 
 const IMG = "https://img.example.test";
 const A = "a".repeat(64);
@@ -30,7 +24,6 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.useRealTimers();
-  hosting.on = true;
 });
 
 describe("the document rule admits exactly the image host as an image source", () => {
@@ -116,14 +109,18 @@ describe("the page shows the hosted icon", () => {
   });
 
   for (const [label, off] of [
-    ["the kill switch off", () => void (hosting.on = false)],
+    [
+      "the kill switch off (HA-10's assets.hosting.enabled)",
+      (w: Awaited<ReturnType<typeof setup>>) =>
+        setAssetHosting(w.env, w.db, "off"),
+    ],
     ["no image host", null],
   ] as const)
     it(`rollback, ${label}: the page as before HA-07`, async () => {
       const w = await setup();
       if (off) {
         w.env.IMG_ORIGIN = IMG;
-        off();
+        await off(w);
       }
       await seedHosted(w.db, SLUG, "presentation.icon", { sha256: A });
       const res = await onBytes(w, `/${SLUG}`);

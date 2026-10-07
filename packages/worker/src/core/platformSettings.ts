@@ -55,7 +55,8 @@ export type PlatformSettingKey =
   | "BLOB_GC_GRACE_DAYS"
   | "LICENSING_RESERVED_NAMES"
   | "IDENTITY_RESERVED_DISPLAY_NAMES"
-  | "KEYENTRY_REFUSALS";
+  | "KEYENTRY_REFUSALS"
+  | "ASSET_HOSTING";
 
 /** The typed value each setting resolves to. */
 export interface PlatformSettingValues {
@@ -66,9 +67,22 @@ export interface PlatformSettingValues {
   LICENSING_RESERVED_NAMES: ReservedNamesMode;
   IDENTITY_RESERVED_DISPLAY_NAMES: ReservedDisplayNamesMode;
   KEYENTRY_REFUSALS: "on" | "off";
+  ASSET_HOSTING: "on" | "off";
 }
 
 export type Precedence = "runtime" | "ceiling";
+/** The console section an A-13 entry is edited in (HA-10 added `delivery`: hosted assets). */
+export type PlatformSettingArea =
+  | "background-jobs"
+  | "licensing"
+  | "identity"
+  | "delivery";
+const PLATFORM_SETTING_AREAS: readonly string[] = [
+  "background-jobs",
+  "licensing",
+  "identity",
+  "delivery",
+];
 /** ADMIN.md §5.2 destructive levels. L2 and above require `{ confirm: "<key>" }` on a write. */
 export type ConfirmLevel = "L0" | "L1" | "L2" | "L3";
 /** The Worker scripts that read a setting. */
@@ -79,7 +93,7 @@ interface BaseDef {
   key: PlatformSettingKey;
   /** The settings-registry key this entry is derived from (ST-03), e.g. `deltas.lazy.mode`. */
   registryKey: string;
-  area: "background-jobs" | "licensing" | "identity";
+  area: PlatformSettingArea;
   label: string;
   description: string;
   /** The `[vars]` name read as the deploy-time value (the same name as the key today). */
@@ -155,15 +169,13 @@ function fromRegistry(def: SettingDef): PlatformSettingDef {
     !storedAs ||
     !def.varName ||
     !def.precedence ||
-    (def.area !== "background-jobs" &&
-      def.area !== "licensing" &&
-      def.area !== "identity")
+    !PLATFORM_SETTING_AREAS.includes(def.area)
   )
     throw new Error(`${def.key} is not an A-13 store entry`);
   const base = {
     key: storedAs as PlatformSettingKey,
     registryKey: def.key,
-    area: def.area as "background-jobs" | "licensing" | "identity",
+    area: def.area as PlatformSettingArea,
     label: def.label,
     description: def.description,
     varName: def.varName,

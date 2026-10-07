@@ -5,7 +5,59 @@
  */
 
 import type { Db } from "../src/db/types.js";
+import type { SettingsEnv } from "../src/core/platformSettings.js";
+import { assetSettingsRegistry } from "../src/core/assetSettings.js";
+import { writeSetting } from "../src/core/settings/write.js";
 import { NOW } from "./seed.js";
+
+/**
+ * HA-10: set one of a product's hosted-asset settings (`assets.releases.mirror`,
+ * `assets.quota.mediaBytes`, `assets.quota.releaseBytes`) as the console does, through
+ * `writeSetting()` (a `product_settings` row, audited). `null` resets it to what it inherits.
+ */
+export async function setProductAssetSetting(
+  env: SettingsEnv,
+  db: Db,
+  product: string,
+  key: string,
+  value: unknown,
+): Promise<void> {
+  const out = await writeSetting(
+    { env, db, registry: assetSettingsRegistry() },
+    value === null ? { key, op: "reset" } : { key, value },
+    {
+      actor: { sub: "admin-1", name: "Ops", email: "ops@example.test" },
+      origin: "console",
+      now: NOW,
+      product,
+      strict: false,
+    },
+  );
+  if (!out.ok) throw new Error(out.message);
+}
+
+/**
+ * HA-10: switch the platform setting `assets.hosting.enabled` exactly as the console does: through
+ * `writeSetting()`, which stores the `ASSET_HOSTING` row in `platform_settings`, audits it and
+ * drops this isolate's copy of the store, so the next read sees it.
+ */
+export async function setAssetHosting(
+  env: SettingsEnv,
+  db: Db,
+  value: "on" | "off",
+): Promise<void> {
+  const out = await writeSetting(
+    { env, db, registry: assetSettingsRegistry() },
+    { key: "assets.hosting.enabled", value },
+    {
+      actor: { sub: "admin-1", name: "Ops", email: "ops@example.test" },
+      origin: "console",
+      now: NOW,
+      strict: false,
+    },
+  );
+  if (!out.ok) throw new Error(out.message);
+}
 
 export interface HostedSeed {
   sha256: string | null;

@@ -204,6 +204,8 @@ describe("the settings registry (ST-03)", () => {
       ["IDENTITY_RESERVED_DISPLAY_NAMES", "identity.reservedDisplayNames"],
       // PX-W9: the key-entry refusal switch (WIRE-CONTRACT-V4 §12.2 step 4).
       ["KEYENTRY_REFUSALS", "identity.keyEntryRefusals"],
+      // HA-10: the hosted-asset kill switch (notes/S-20 §6.8 "Rollback").
+      ["ASSET_HOSTING", "assets.hosting.enabled"],
     ];
     for (const [alias, key] of pairs) {
       expect(SETTINGS.canonicalKey(alias)).toBe(key);

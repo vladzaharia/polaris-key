@@ -181,6 +181,12 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/manage/api/products/{product}/assets/{slot}", ["post", "delete"]],
     // HA-08: the operator's "mirror now" for release files.
     ["/manage/api/products/{product}/assets/mirror", ["post"]],
+    // HA-10: usage against the hosting quotas, and the product's hosted-asset settings.
+    ["/manage/api/products/{product}/assets/usage", ["get"]],
+    [
+      "/manage/api/products/{product}/assets/settings/{key}",
+      ["patch", "delete"],
+    ],
     // LX-26: the licence reads and writes that carry the derived holder (DELETE stays narrative).
     ["/manage/api/products/{product}/license/licenses", ["get", "post"]],
     [

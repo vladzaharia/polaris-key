@@ -13986,7 +13986,9 @@ paths:
         "422":
           description: >
             The file was refused (`asset_refused`, with `reason`: `not-an-image`, `too-large`,
-            `size-mismatch`, `retry`, …). The slot is unchanged.
+            `size-mismatch`, `retry`, …), or HA-10: the product holds its whole media quota
+            (`asset_quota_exceeded`, `reason: quota`, `assets.quota.mediaBytes`). Either way the
+            slot is unchanged and its current copy keeps serving.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
@@ -14080,12 +14082,146 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
         "409":
-          description: "`mirror_disabled`: mirroring is off for the product (Release is off)."
+          description: >
+            `mirror_disabled`: mirroring is off for the product (Release is off, the product's
+            `assets.releases.mirror` is off, or hosted assets are off on this deployment:
+            `assets.hosting.enabled`). HA-10: `asset_quota_exceeded` (`reason: quota`): the product
+            holds its whole release-file quota (`assets.quota.releaseBytes`), so mirroring has
+            stopped and GitHub keeps serving the files that have no copy.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
         "503":
           description: "`unavailable`: no blob store or asset queue is bound on this deployment."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/{product}/assets/usage:
+    get:
+      operationId: getAdminAssetUsage
+      tags: [admin]
+      summary: What the product holds against its hosting quotas, and its hosted-asset settings
+      description: >
+        HA-10 (notes/S-20 §6.10, owner decision 9). The bytes and distinct files the product holds
+        a ref to, per quota: `media` (hosted images, originals and their sizes) against
+        `assets.quota.mediaBytes`, and `release` (mirrored release files) against
+        `assets.quota.releaseBytes`; each file counts once, however many slots hold it. `full`
+        means there is no room for one byte more. `hosting` is the platform kill switch
+        `assets.hosting.enabled`. `settings` are the product's three hosted-asset settings
+        (`assets.releases.mirror`, `assets.quota.mediaBytes`, `assets.quota.releaseBytes`), each
+        with its value in force, where it came from, what it inherits and the `version` the next
+        write carries. Platform admins only; admin session cookie.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The usage and the settings.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminAssetUsage" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/{product}/assets/settings/{key}:
+    patch:
+      operationId: setAdminAssetSetting
+      tags: [admin]
+      summary: Set one of the product's hosted-asset settings
+      description: >
+        HA-10 (notes/S-20 §6.10). `key` is `assets.releases.mirror` (`on` or `off`),
+        `assets.quota.mediaBytes` or `assets.quota.releaseBytes` (bytes, 0 to the registry's
+        maximum). Written through the settings registry's one write path (`writeSetting()`, strict):
+        `expectedVersion` is the `version` the usage read answered, and a stale one writes nothing.
+        Operator-owned: no manifest field sets these. Audited as `setting.update` with the
+        setting's key. Answers the usage read as it is after the write. Platform admins only; admin
+        session cookie and `X-PKey-CSRF`.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+        - { name: key, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [value, expectedVersion]
+              properties:
+                value: {}
+                expectedVersion: { type: integer, minimum: 0 }
+                reason: { type: string, maxLength: 500 }
+      responses:
+        "200":
+          description: The usage and the settings after the write.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminAssetUsage" }
+        "400":
+          description: "`expectedVersion` is missing (`reason: expected_version_required`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: "No such product, or `key` is not one of the three (`reason: unknown_setting`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: "The setting changed since it was read (`reason: version_conflict`). Nothing was written."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "422":
+          description: "`value` is missing or not a value of the setting (`reason: invalid_value`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+    delete:
+      operationId: resetAdminAssetSetting
+      tags: [admin]
+      summary: Reset one of the product's hosted-asset settings to what it inherits
+      description: >
+        HA-10. Drops the product's own value of `key`, through `writeSetting()` (strict): a quota
+        follows the platform default again, mirroring its default (on). Body `{ expectedVersion }`.
+        Audited as `setting.reset`. Answers the usage read as it is after the reset. Platform
+        admins only; admin session cookie and `X-PKey-CSRF`.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+        - { name: key, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion]
+              properties:
+                expectedVersion: { type: integer, minimum: 0 }
+      responses:
+        "200":
+          description: The usage and the settings after the reset.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminAssetUsage" }
+        "400":
+          description: "`expectedVersion` is missing (`reason: expected_version_required`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: "No such product, or `key` is not one of the three (`reason: unknown_setting`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: "The setting changed since it was read (`reason: version_conflict`). Nothing was written."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
@@ -17471,6 +17607,68 @@ components:
           type: string
           maxLength: 500
           description: Required for critical settings; stored on the row and in the audit summary.
+    AdminAssetUsage:
+      type: object
+      description: "HA-10: `GET /manage/api/products/{product}/assets/usage`."
+      required: [hosting, media, release, settings]
+      properties:
+        hosting:
+          type: boolean
+          description: "The platform kill switch `assets.hosting.enabled`."
+        media: { $ref: "#/components/schemas/AdminQuotaUsage" }
+        release: { $ref: "#/components/schemas/AdminQuotaUsage" }
+        settings:
+          type: array
+          items: { $ref: "#/components/schemas/AdminAssetSetting" }
+    AdminQuotaUsage:
+      type: object
+      required: [bytes, files, quota, full]
+      properties:
+        bytes: { type: integer, minimum: 0 }
+        files: { type: integer, minimum: 0 }
+        quota: { type: integer, minimum: 0 }
+        full:
+          type: boolean
+          description: "No room for one byte more."
+    AdminAssetSetting:
+      type: object
+      required:
+        [
+          key,
+          label,
+          description,
+          spec,
+          confirm,
+          value,
+          source,
+          inherited,
+          own,
+          version,
+        ]
+      properties:
+        key:
+          type: string
+          enum:
+            [
+              assets.releases.mirror,
+              assets.quota.mediaBytes,
+              assets.quota.releaseBytes,
+            ]
+        label: { type: string }
+        description: { type: string }
+        spec: { type: object, description: "The registry's value spec." }
+        confirm:
+          { type: object, description: "The confirm level per direction." }
+        value: { description: "The value in force." }
+        source:
+          type: string
+          description: "`console` (the product's own), `platform` or `default` (inherited)."
+        inherited:
+          {
+            description: "What the product follows without a value of its own.",
+          }
+        own: { type: boolean }
+        version: { type: integer, minimum: 0 }
     AdminHostedAssets:
       type: object
       required: [assets]

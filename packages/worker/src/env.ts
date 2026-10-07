@@ -193,6 +193,16 @@ export interface Env {
    */
   IMG_ORIGIN?: string;
   /**
+   * HA-10 (notes/S-20 §6.8 "Rollback"): `on` or `off`, the hosted-asset kill switch
+   * (`assets.hosting.enabled`, `core/assetHosting.ts`). Off returns every surface to the developer's
+   * own URLs and GitHub, and stops release-file mirroring; the stored copies stay. A `[vars]`
+   * value, unset in every environment; read only through the platform settings store (`runtime`):
+   * a console value wins, then this, then the code default `on`.
+   * @inventory var delivery
+   * @editable ASSET_HOSTING
+   */
+  ASSET_HOSTING?: string;
+  /**
    * The console host's origin, e.g. `https://key.plrs.im` (P2b-06). The public download page on
    * the bytes host links the storefront feeds, which are served here, through it. Unset (or
    * equal to the bytes host) ⇒ the page leaves the feed rows (AltStore, SideStore, Obtainium,

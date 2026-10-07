@@ -1114,6 +1114,47 @@ export interface HostedAssetDto {
   maxBytes: number | null;
 }
 
+/**
+ * One of a product's hosted-asset settings (HA-10; worker `admin/handlers/hostedAssets.ts`,
+ * `AssetSettingDto`): `assets.releases.mirror`, `assets.quota.mediaBytes`,
+ * `assets.quota.releaseBytes`.
+ */
+export interface AssetSettingDto {
+  key: string;
+  label: string;
+  description: string;
+  spec: SettingValueSpec;
+  confirm: SettingConfirmSpec;
+  /** The value in force. */
+  value: unknown;
+  /** `console`: the product's own value; `platform` or `default`: inherited. */
+  source: string;
+  /** What the product follows without a value of its own (what Reset leaves). */
+  inherited: unknown;
+  /** The product has a value of its own. */
+  own: boolean;
+  /** The `expectedVersion` the next write carries. */
+  version: number;
+}
+
+/** One quota: the bytes and distinct files the product holds, against the limit. */
+export interface QuotaUsageDto {
+  bytes: number;
+  files: number;
+  quota: number;
+  /** No room for one byte more: new images are refused, or mirroring has stopped. */
+  full: boolean;
+}
+
+/** HA-10: `GET …/assets/usage` (notes/S-20 §6.10). */
+export interface AssetUsageDto {
+  /** The platform kill switch `assets.hosting.enabled`. */
+  hosting: boolean;
+  media: QuotaUsageDto;
+  release: QuotaUsageDto;
+  settings: AssetSettingDto[];
+}
+
 /** What Revert or delete-a-copy did (`DELETE …/assets/<slot>`). */
 export type HostedAssetOutcome =
   | { outcome: "reverted"; pulling: boolean }
@@ -4604,6 +4645,24 @@ const rawApi = {
       `${p(slug)}/assets/${enc(slot)}${locale ? `?locale=${enc(locale)}` : ""}`,
       { method: "DELETE" },
     ),
+  /** HA-10: the bytes the product holds against its quotas, the kill switch, its settings. */
+  assetUsage: (slug: string) => call<AssetUsageDto>(`${p(slug)}/assets/usage`),
+  /** HA-10: set one of the product's hosted-asset settings (through `writeSetting()`). */
+  saveAssetSetting: (
+    slug: string,
+    key: string,
+    body: { value: unknown; expectedVersion: number; reason?: string },
+  ) =>
+    call<AssetUsageDto>(`${p(slug)}/assets/settings/${enc(key)}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  /** HA-10: drop the product's own value: it follows the platform default again. */
+  resetAssetSetting: (slug: string, key: string, expectedVersion: number) =>
+    call<AssetUsageDto>(`${p(slug)}/assets/settings/${enc(key)}`, {
+      method: "DELETE",
+      body: JSON.stringify({ expectedVersion }),
+    }),
 
   // ── services (per-product enablement) ───────────────────────────────────────
   services: (slug: string) => call<ServicesResponse>(`${p(slug)}/services`),

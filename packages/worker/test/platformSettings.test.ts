@@ -119,8 +119,9 @@ function countingDb(inner: Db): { db: Db; count: () => number } {
 // ── The registry ─────────────────────────────────────────────────────────────────────────────
 
 describe("PLATFORM_SETTINGS", () => {
-  it("declares exactly the four background-job settings, the two reserved-names severities and the key-entry refusal switch", () => {
+  it("declares exactly the four background-job settings, the two reserved-names severities, the key-entry refusal switch and the hosted-asset switch", () => {
     expect(PLATFORM_SETTINGS.map((d) => d.key).sort()).toEqual([
+      "ASSET_HOSTING",
       "BLOB_GC_GRACE_DAYS",
       "BLOB_GC_MODE",
       "IDENTITY_RESERVED_DISPLAY_NAMES",
@@ -142,6 +143,9 @@ describe("PLATFORM_SETTINGS", () => {
       // PX-W9: a rollout switch, not a kill switch. Off is the permissive side (every key entry is
       // admitted), so `runtime`: a console value, then `[vars]`, then the default `off`.
       KEYENTRY_REFUSALS: "runtime",
+      // HA-10 (notes/S-20 §6.10): the hosted-asset rollback switch. Not a security gate (off only
+      // restores the pre-HA-07 behaviour), so `runtime`: an unreadable store is not an off.
+      ASSET_HOSTING: "runtime",
     });
   });
 

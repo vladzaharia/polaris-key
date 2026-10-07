@@ -233,6 +233,18 @@ function consequencesOf(
             "Every key entry is admitted again. Key entries are still counted.",
             reach,
           ];
+    case "ASSET_HOSTING":
+      return after === "on"
+        ? [
+            "The portal, the AltStore and SideStore sources and the download page show Polaris Key's own copies of products' images from the image host again.",
+            "Release files are mirrored again, and the legacy download serves the copies.",
+            reach,
+          ]
+        : [
+            "Every surface goes back to the developer's own image URLs and the portal's media proxy, as before hosted assets.",
+            "Release-file mirroring stops and the legacy download streams from GitHub; release files already copied keep serving from their copies. The stored copies stay, and image URLs already handed out keep working.",
+            reach,
+          ];
     case "LAZY_DELTA_MAX_BYTES":
       return [
         `The delta consumer encodes payloads up to ${next} on either side of a pair (was ${before}).`,
@@ -322,7 +334,10 @@ export function PlatformSettingsPage(): React.ReactElement {
     identitySettings.length > 0 ||
     IDENTITY_VARS.some((n) => deploy.has(n)) ||
     view.constants.some((c) => c.name === "ADMIN_SESSION_TTL_SECONDS");
-  const showDelivery = DELIVERY_VARS.some((n) => deploy.has(n));
+  // HA-10: the hosted-asset switch is the Delivery section's one editable row.
+  const deliverySettings = view.settings.filter((s) => s.area === "delivery");
+  const showDelivery =
+    deliverySettings.length > 0 || DELIVERY_VARS.some((n) => deploy.has(n));
   const showEmail = EMAIL_VARS.some((n) => deploy.has(n));
   const showLimits = view.constants.some(
     (c) => c.name !== "ADMIN_SESSION_TTL_SECONDS",
@@ -405,7 +420,23 @@ export function PlatformSettingsPage(): React.ReactElement {
       ) : null}
 
       {showDelivery ? (
-        <SettingsSection id="platform-delivery" title="Delivery">
+        <SettingsSection
+          id="platform-delivery"
+          title="Delivery"
+          description={
+            deliverySettings.length > 0
+              ? "Hosted assets save on their own; the hosts themselves are deploy-time."
+              : undefined
+          }
+        >
+          {deliverySettings.map((s) => (
+            <EditableRow
+              key={s.key}
+              setting={s}
+              storeAvailable={view.storeAvailable}
+              propagationSeconds={view.propagationSeconds}
+            />
+          ))}
           {DELIVERY_VARS.map((n) => (
             <DeployRow key={n} item={deploy.get(n)} />
           ))}

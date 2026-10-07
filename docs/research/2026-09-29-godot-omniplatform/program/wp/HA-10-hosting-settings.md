@@ -51,6 +51,26 @@ Quotas and the kill switch are knobs, and S-18 makes knobs registry settings ([S
   accent remain.
 - **If HA-12 lands first.** HA-12 then reads nothing, and this package adds the read with a test.
 
+## Corrections from the code (HA-10, 2026-10-06)
+
+- **HA-12 has not landed.** `core/presentation.ts` does not exist yet, and the registry test
+  refuses a reader file that does not exist, so HA-10 cannot list it. HA-12 reads the switch the
+  way every HA-07 surface does, through `hostedImageOrigin(env, db)` (or `hostedImages`), and adds
+  `core/presentation.ts` to `assets.hosting.enabled`'s `readers` in `core/settings/platform.ts`.
+- **The switch read is asynchronous.** HA-07 said making the switch a settings read "touches
+  nothing else"; a settings read needs the database, so `hostedImageOrigin` became
+  `hostedImageOrigin(env, db)` and every HA-07 surface awaits it (the portal shell's CSP, the
+  bytes host's document policy, `/media`, the library, the feeds, the download page).
+  `hostedImageUrl` stays synchronous: it is only handed copies `hostedImages` answered, which is
+  empty while hosting is off.
+- **Where each setting lives.** `assets.hosting.enabled` is an A-13 store entry (row and `[vars]`
+  name `ASSET_HOSTING`, `runtime`, area `delivery`), so Platform → Settings → Delivery switches it
+  today. The two platform quota defaults are registry-only rows with no console writer until
+  ST-05 and ST-16; the three product settings are written through `writeSetting()` by
+  `PATCH|DELETE /manage/api/products/<slug>/assets/settings/<key>` and read by
+  `GET /manage/api/products/<slug>/assets/usage` (rule 10: in the OpenAPI spec, tagged `admin`, and
+  in `routeCoverage`'s `ADMIN_KIND_PATHS.products`), and edited on the Presentation page.
+
 ## Steps
 
 1. Entries.
@@ -59,9 +79,9 @@ Quotas and the kill switch are knobs, and S-18 makes knobs registry settings ([S
 
 ## Acceptance criteria
 
-- [ ] Switching `assets.hosting.enabled` off restores today's behaviour on every HA-07 surface (test).
-- [ ] Over quota, the old copy keeps serving (test).
-- [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
+- [x] Switching `assets.hosting.enabled` off restores today's behaviour on every HA-07 surface (test).
+- [x] Over quota, the old copy keeps serving (test).
+- [x] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify
 
@@ -73,6 +93,16 @@ mise exec node@22 -- pnpm --filter @polaris-key/admin test
 ## Hand-off
 
 HA-15 documents the settings.
+
+Follow-ups from the review (2026-10-07), not in this package:
+
+- **Over-quota churn (HA-15 or a later HA fix).** A copy whose ladder is owed while the product is
+  at its media quota is retried with back-off, and each retry may build the ladder again before
+  the batch refuses it. A same-bytes re-pull of a product already over a lowered quota flips the
+  slot to `failed` (`quota`) although it adds no bytes. Both keep the current copy serving.
+- **Console logos ignore the switch (HA-15).** The console's product card and registry read
+  `presentation.icon` from the image host (`admin/lib/presentation.ts`) whatever
+  `assets.hosting.enabled` says; only the public surfaces follow it.
 
 The role agent sets `--set HA-10 in-review` when it hands off. After review, the lead adds the last
 commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set HA-10 done`.

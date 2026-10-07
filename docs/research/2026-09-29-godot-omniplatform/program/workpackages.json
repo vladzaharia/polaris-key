@@ -7948,7 +7948,7 @@
       "optional": false,
       "refs": ["notes/S-20 §6.10", "notes/S-20 owner decision 9"],
       "brief": "wp/HA-10-hosting-settings.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "HA-11",

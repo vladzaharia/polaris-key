@@ -36,6 +36,14 @@ import type { SqliteDb } from "../src/db/sqlite.js";
 import { makeTestDb } from "./helpers.js";
 import { R2Mock, asR2, installDigestStream } from "./r2Mock.js";
 import { NOW, seedProduct } from "./seed.js";
+import { setProductAssetSetting } from "./hostedFixture.js";
+import {
+  assetUsage,
+  quotaClassOf,
+  RELEASE_ARTIFACT_REF_KIND,
+} from "../src/core/assetQuota.js";
+import { hostedImages } from "../src/core/hostedImages.js";
+import type { Db, DbStatement } from "../src/db/types.js";
 
 beforeAll(() => installDigestStream());
 
@@ -1387,3 +1395,294 @@ async function insertListingAsset(hex: string): Promise<void> {
     NOW,
   );
 }
+
+// ── The media quota (HA-10; notes/S-20 §6.10, owner decision 9) ──────────────────────────────
+
+describe("the media quota (HA-10)", () => {
+  const PNG3 = filled(PNG_SIG, 28_000, 11);
+  const quota = (bytes: number) =>
+    setProductAssetSetting({}, db, "djdl", "assets.quota.mediaBytes", bytes);
+  const refsOf = async (slot: string) =>
+    (await refs())
+      .filter((r) => r.ref_id === `${slot}@`)
+      .map((r) => r.storage_key);
+
+  it("counts hosted images and release files apart, each distinct key once", () => {
+    expect(quotaClassOf("presentation.icon")).toBe("media");
+    expect(quotaClassOf("listing.screenshot:3")).toBe("media");
+    expect(quotaClassOf("play:icon")).toBe("media");
+    expect(quotaClassOf("release-file")).toBe("release");
+    expect(quotaClassOf(`release-file:${"a".repeat(64)}`)).toBe("release");
+    // Core's spelling of HA-08's ref kind is the one the mirror writes.
+    expect(RELEASE_ARTIFACT_REF_KIND).toBe("release-artifact");
+    expect(HOSTED_ASSET_REF).toBe("hosted-asset");
+  });
+
+  it("past the quota, nothing is stored and the copy the slot had keeps serving", async () => {
+    await quota(45_000);
+    expect(
+      await ingest(ctx, "djdl", "presentation.icon", upload(PNG)),
+    ).toMatchObject({ ok: true, status: "ready" });
+
+    // A second image that would take the product to 50,000 bytes: refused before it is put.
+    expect(
+      await ingest(ctx, "djdl", "listing.header", {
+        kind: "stream",
+        body: stream(PNG2),
+        size: PNG2.length,
+        sourceKind: "url",
+        sourceRef: "https://cdn.example.test/header.png",
+        origin: "manifest",
+      }),
+    ).toEqual({ ok: false, reason: "quota" });
+    expect(r2.has(blobKey(sha(PNG2)))).toBe(false);
+    expect(await refsOf("listing.header")).toEqual([]);
+    expect(await getHostedAsset(db, "djdl", "listing.header")).toMatchObject({
+      status: "failed",
+      error: "quota",
+      sha256: null,
+    });
+    expect((await audits()).at(-1)?.summary).toBe(
+      "listing.header: refused (quota)",
+    );
+
+    // Replacing the icon frees its old bytes: 30,000 held after, within 45,000.
+    expect(
+      await ingest(ctx, "djdl", "presentation.icon", upload(PNG2)),
+    ).toMatchObject({ ok: true });
+    expect(await refsOf("presentation.icon")).toEqual([blobKey(sha(PNG2))]);
+    expect((await assetUsage(db, "djdl")).media).toEqual({
+      bytes: PNG2.length,
+      files: 1,
+    });
+
+    // The operator lowers the quota below what the product holds: a new icon is refused, and
+    // the one it has stays, row, ref and all, and the image host keeps serving it.
+    await quota(25_000);
+    expect(
+      await ingest(ctx, "djdl", "presentation.icon", {
+        kind: "stream",
+        body: stream(PNG3),
+        size: PNG3.length,
+        sourceKind: "url",
+        sourceRef: "https://cdn.example.test/icon-v3.png",
+        origin: "manifest",
+      }),
+    ).toEqual({ ok: false, reason: "quota" });
+    expect(await getHostedAsset(db, "djdl", "presentation.icon")).toMatchObject(
+      { sha256: sha(PNG2), status: "failed", error: "quota" },
+    );
+    expect(await refsOf("presentation.icon")).toEqual([blobKey(sha(PNG2))]);
+    const served = await hostedImages(
+      { IMG_ORIGIN: "https://img.example.test" },
+      db,
+      "djdl",
+      ["presentation.icon"],
+    );
+    expect(served.get("presentation.icon")?.sha256).toBe(sha(PNG2));
+    expect(r2.has(blobKey(sha(PNG3)))).toBe(false);
+  });
+
+  it("the same bytes in a second slot count once", async () => {
+    await quota(PNG.length);
+    for (const slot of ["presentation.icon", "listing.icon"])
+      expect(await ingest(ctx, "djdl", slot, upload(PNG))).toMatchObject({
+        ok: true,
+      });
+    expect((await assetUsage(db, "djdl")).media).toEqual({
+      bytes: PNG.length,
+      files: 1,
+    });
+    // One byte more is not there.
+    expect(await ingest(ctx, "djdl", "listing.header", upload(PNG2))).toEqual({
+      ok: false,
+      reason: "quota",
+    });
+  });
+
+  it("a console upload over the quota is answered, and the slot's row is left alone", async () => {
+    await quota(10_000);
+    expect(
+      await ingest(ctx, "djdl", "presentation.icon", {
+        ...upload(PNG),
+        recordRefusal: false,
+      }),
+    ).toEqual({ ok: false, reason: "quota" });
+    expect(await getHostedAsset(db, "djdl", "presentation.icon")).toBeNull();
+    expect(await refs()).toEqual([]);
+  });
+
+  it("the batch decides: a copy that lands between the check and the write is never both admitted", async () => {
+    await quota(55_000);
+    expect(
+      await ingest(ctx, "djdl", "presentation.icon", upload(PNG)),
+    ).toMatchObject({ ok: true });
+    // Another ingest of the product finishes while this one is storing its bytes: 10,000 more
+    // bytes held under another slot. The check before the put saw 50,000 (within 55,000); the
+    // batch sees 60,000.
+    const other = "f".repeat(64);
+    let raced = false;
+    const racing: Db = {
+      all: (sql, ...p) => db.all(sql, ...p),
+      first: (sql, ...p) => db.first(sql, ...p),
+      run: (sql, ...p) => db.run(sql, ...p),
+      runChanges: (sql, ...p) => db.runChanges(sql, ...p),
+      batch: (st: DbStatement[]) => db.batch(st),
+      batchChanges: async (st: DbStatement[]) => {
+        if (
+          !raced &&
+          st.some((x) => x.sql.includes("INSERT INTO hosted_assets"))
+        ) {
+          raced = true;
+          await db.run(
+            `INSERT INTO blob_objects (storage_key, sha256, size, kind, gated, verified_at, created_at)
+             VALUES (?, ?, 10000, 'blob', 0, ?, ?)`,
+            blobKey(other),
+            other,
+            NOW,
+            NOW,
+          );
+          await db.run(
+            "INSERT INTO blob_refs (product, storage_key, ref_kind, ref_id, created_at) VALUES ('djdl', ?, 'hosted-asset', 'listing.screenshot:1@', ?)",
+            blobKey(other),
+            NOW,
+          );
+        }
+        return db.batchChanges(st);
+      },
+    };
+    const result = await ingest(
+      { ...ctx, db: racing },
+      "djdl",
+      "listing.header",
+      upload(PNG2),
+    );
+    expect(raced).toBe(true);
+    expect(result).toEqual({ ok: false, reason: "quota" });
+    // All or nothing: no ref, no copy, no "hosted from" audit; the race's own ref stands.
+    expect(await refsOf("listing.header")).toEqual([]);
+    expect(await getHostedAsset(db, "djdl", "listing.header")).toMatchObject({
+      status: "failed",
+      error: "quota",
+      sha256: null,
+    });
+    expect(
+      (await audits()).filter((a) =>
+        a.summary.startsWith("listing.header: hosted"),
+      ),
+    ).toEqual([]);
+    expect(await refsOf("listing.screenshot:1")).toEqual([blobKey(other)]);
+    expect((await assetUsage(db, "djdl")).media.bytes).toBe(
+      PNG.length + 10_000,
+    );
+  });
+
+  it("a guard that stopped the batch but holds no more is a retry, never a claim", async () => {
+    // A console upload claims the slot while this manifest pull's batch runs, and is reverted
+    // before the pull looks again: the batch wrote nothing, the slot is not held, there is room.
+    let raced = false;
+    const racing: Db = {
+      all: (sql, ...p) => db.all(sql, ...p),
+      first: (sql, ...p) => db.first(sql, ...p),
+      run: (sql, ...p) => db.run(sql, ...p),
+      runChanges: (sql, ...p) => db.runChanges(sql, ...p),
+      batch: (st: DbStatement[]) => db.batch(st),
+      batchChanges: async (st: DbStatement[]) => {
+        if (
+          raced ||
+          !st.some((x) => x.sql.includes("INSERT INTO hosted_assets"))
+        )
+          return db.batchChanges(st);
+        raced = true;
+        await db.run(
+          `INSERT INTO hosted_assets (product, slot, locale, origin, source_kind, status, modified_at)
+           VALUES ('djdl', 'listing.header', '', 'console', 'upload', 'pending', ?)`,
+          NOW,
+        );
+        const changes = await db.batchChanges(st);
+        await db.run(
+          "DELETE FROM hosted_assets WHERE product = 'djdl' AND slot = 'listing.header'",
+        );
+        return changes;
+      },
+    };
+    const result = await ingest(
+      { ...ctx, db: racing },
+      "djdl",
+      "listing.header",
+      {
+        kind: "stream",
+        body: stream(PNG),
+        size: PNG.length,
+        sourceKind: "url",
+        sourceRef: "https://cdn.example.test/header.png",
+        origin: "manifest",
+        yieldsTo: ["console"],
+      },
+    );
+    expect(raced).toBe(true);
+    expect(result).toEqual({ ok: false, reason: "retry" });
+    expect(await refsOf("listing.header")).toEqual([]);
+    expect(await getHostedAsset(db, "djdl", "listing.header")).toBeNull();
+  });
+
+  it("the sizes count: an original that fits with a ladder that does not is refused whole", async () => {
+    const images = stubImages({ width: 512 });
+    ctx.env = { BLOBS: asR2(r2), IMAGES: images };
+    // Room for the original alone (20,000 bytes), not for its four sizes (~2,000 more).
+    await quota(PNG.length + 500);
+    expect(await ingest(ctx, "djdl", "presentation.icon", upload(PNG))).toEqual(
+      { ok: false, reason: "quota" },
+    );
+    expect(await refs()).toEqual([]);
+    // With room for them, the same ingest holds the original and every size.
+    await quota(PNG.length + 10_000);
+    expect(
+      await ingest(ctx, "djdl", "presentation.icon", upload(PNG)),
+    ).toMatchObject({ ok: true });
+    expect(await refsOf("presentation.icon")).toHaveLength(5);
+  });
+
+  it("rebuildLadder: no transformation without room, and the batch holds the quota", async () => {
+    // A copy whose ladder is owed (the binding failed with 9422 at ingest).
+    ctx.env = {
+      BLOBS: asR2(r2),
+      IMAGES: stubImages({
+        width: 512,
+        failAt: { n: 0, code: IMAGES_QUOTA_ERROR },
+      }),
+    };
+    expect(
+      await ingest(ctx, "djdl", "presentation.icon", upload(PNG)),
+    ).toMatchObject({ ok: true });
+
+    // At the quota exactly: the retry fails without spending a transformation.
+    await quota(PNG.length);
+    const none = stubImages({ width: 512 });
+    ctx.env = { BLOBS: asR2(r2), IMAGES: none };
+    expect(
+      await rebuildLadder(ctx, "djdl", "presentation.icon", "", sha(PNG)),
+    ).toBe("failed");
+    expect(none.widths).toEqual([]);
+
+    // Room for the original and a little: the ladder is built, but holding it would pass the
+    // quota, so the batch writes nothing and the retry is a failure (with its back-off).
+    await quota(PNG.length + 100);
+    const some = stubImages({ width: 512 });
+    ctx.env = { BLOBS: asR2(r2), IMAGES: some };
+    expect(
+      await rebuildLadder(ctx, "djdl", "presentation.icon", "", sha(PNG)),
+    ).toBe("failed");
+    expect(some.widths.length).toBeGreaterThan(0);
+    expect(await refsOf("presentation.icon")).toEqual([blobKey(sha(PNG))]);
+    expect(await variantsOf("presentation.icon")).toEqual([]);
+
+    // With room: built.
+    await quota(PNG.length + 10_000);
+    ctx.env = { BLOBS: asR2(r2), IMAGES: stubImages({ width: 512 }) };
+    expect(
+      await rebuildLadder(ctx, "djdl", "presentation.icon", "", sha(PNG)),
+    ).toBe("built");
+    expect(await refsOf("presentation.icon")).toHaveLength(5);
+  });
+});

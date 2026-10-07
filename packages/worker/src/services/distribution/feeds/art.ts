@@ -71,7 +71,7 @@ export async function feedArt(
   product: string,
   listing: RenderListing | null,
 ): Promise<ListingArt | null> {
-  if (hostedImageOrigin(env) === null) return null;
+  if ((await hostedImageOrigin(env, db)) === null) return null;
   const l = (listing ?? {}) as Record<string, unknown>;
   const declaredShots = Array.isArray(l.screenshots) ? l.screenshots : [];
   const images = await hostedImages(env, db, product, [
@@ -124,7 +124,7 @@ export async function hostedScreenshotUrls(
   product: string,
   listing: RenderListing | null,
 ): Promise<string[]> {
-  const origin = hostedImageOrigin(env);
+  const origin = await hostedImageOrigin(env, db);
   const art = await feedArt(env, db, product, listing);
   if (origin === null || art === null) return [];
   return art.screenshots.filter((u) => u.startsWith(`${origin}/`));
@@ -143,7 +143,7 @@ export async function hostedArtStamp(
   db: Db,
   product: string,
 ): Promise<string> {
-  const origin = hostedImageOrigin(env);
+  const origin = await hostedImageOrigin(env, db);
   if (origin === null) return "-";
   const row = await db.first<{ s: string | null }>(
     `SELECT group_concat(slot || '=' || COALESCE(sha256, '') || '/' || origin || '/' ||
