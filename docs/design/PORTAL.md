@@ -663,6 +663,11 @@ claim error "owned by another account" (§4.19).
 - A 3-column grid of large **library tiles** (§5.2). No toolbar.
 - Every tile's action is the **outlined quick action**; solid violet is reserved for the hero, the
   attention shelf and the product header.
+- **Added just now** (EXPERIENCE §0.6 P1 step 7, frame 7; PX-24): for 24 hours after the account
+  first got a product, its tile is first, carries a ring and the quiet text "Added just now" at the
+  head of its reason line, and leads with its download (solid): the one exception to the outlined
+  rule. A quick action that is not a download (See downloads, View details) stays outlined. The
+  8+ grid and the list (§4.15) do the same under the default sort; By name keeps its place.
 
 ### 4.15 Library: many products (8+), grid and list
 
