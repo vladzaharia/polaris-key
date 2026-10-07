@@ -126,6 +126,8 @@ export function parseGroupLabels(v: unknown): GroupLabels | undefined {
   const out: Record<string, string> = {};
   for (const [group, label] of entries) {
     if (group.length === 0 || group.length > GROUP_NAME_MAX) return undefined;
+    // A label map is a plain object: an assignment to `__proto__` would be dropped, not stored.
+    if (group === "__proto__") return undefined;
     if (typeof label !== "string") return undefined;
     const t = label.trim();
     if (t.length === 0 || t.length > GROUP_LABEL_MAX) return undefined;

@@ -441,6 +441,23 @@ describe("POST …/preview shows the tile that person would see", () => {
     );
   });
 
+  it("a group named like an Object member is not a mapped group", async () => {
+    const w = await world();
+    for (const g of [
+      "constructor",
+      "toString",
+      "__proto__",
+      "hasOwnProperty",
+    ]) {
+      const r = await w.call("POST", PANEL("aperture", "/preview"), {
+        groups: [g],
+      });
+      expect(r.status).toBe(200);
+      expect(r.body.tile?.reason).not.toBe(`group:${g}`);
+      expect(r.body.tile?.reason).toBe("free_with_account");
+    }
+  });
+
   it("anyone signed in with the platform IdP gets the free tier", async () => {
     const w = await world();
     const r = await w.call("POST", PANEL("aperture", "/preview"), {});

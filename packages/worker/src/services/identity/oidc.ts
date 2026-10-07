@@ -795,7 +795,8 @@ async function identityTier(
   let tierGroup: string | null = null;
   let tierId: string | null = null;
   for (const g of identity.groups) {
-    const m = map[g];
+    // Own keys only: a group named like an Object member (`constructor`, `__proto__`) is not mapped.
+    const m = Object.prototype.hasOwnProperty.call(map, g) ? map[g] : undefined;
     if (m) {
       if (entitledBy === null) entitledBy = g;
       if (m.tier && !tierId) {
