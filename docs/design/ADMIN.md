@@ -1652,6 +1652,14 @@ Open batch, Create another and, for the first licence, Try it.
 ada@…", or **Floating** (muted) with "anyone with the key"; filters **Holder** (Anyone, In an
 account, Waiting, Floating) and **Batch**.
 
+**Batches (LX-30).** A product with batches gets a **Batch** column (the label, linking to the
+batch) and facet, and **Batches** among the page's secondary actions. Filtered to one batch, the list
+says so and links to it. **Batches** (`#/p/<slug>/license/batches`, not in the sidebar) lists them
+with used of count; a **batch page** shows its label, created and by whom, the tier, used of count,
+unused and disabled, the plain statement "Keys can't be downloaded again" (the Worker kept only
+hashes), **Show its licenses**, and **Disable unused keys…** (L3, typed batch label; the Worker
+compares). Disable unused keys disables only the batch's active licences no device ever used.
+
 #### 6.5.2 License record
 
 ```
@@ -1681,9 +1689,14 @@ account, Waiting, Floating) and **Batch**.
   **profiles**. This ends the split between the Edit dialog and the Policy tab (LDT-1), and makes
   profiles editable (LDT-3).
 - The holder line (S-24): "Ada Lovelace · ada@example.com · In an account", "Waiting for
-  ada@example.com", or "Floating · anyone with the key". **Assign…** on a floating licence; in the
-  overflow **Send a new key…** (assigned), **Reassign…** and **Make floating…** (I-12's relink tool:
-  step-up, reason, notice, 72-hour undo, typed confirmation). Edit holder edits the name only.
+  ada@example.com", or "Floating · anyone with the key", with the batch it came from. **Assign…** on a
+  floating licence (its primary action; an info callout "Not in anyone's account" says what floating
+  means, D5); in the overflow **Send a new key…** (assigned), **Reassign…** and, in the danger part,
+  **Make floating…** (I-12's relink tool: step-up, reason, notice, 72-hour undo, typed confirmation of
+  the licence's name, else its id). Edit holder edits the name only. The newest move shows as a callout
+  with **Undo…** while its 72 hours run. Beside the holder line, a licence with no account shows
+  "Key entries {used} of {limit}" while Identity is on (PX-W9). **Send a new key…** and Assign's
+  **Email them the key** wait for LX-27's `send-key` route (LX-30 shipped without them).
 - Cleared values send `null`. This needs **A-3**, the worker accepting `null` for `maxOfflineDays`
   (LDT-2), and the same for tiers (TIR-1).
 - The downgrade warning is a `Callout tone="warning"` using the server's `deviceCount` (LDT-12).

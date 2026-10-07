@@ -64,6 +64,7 @@ interface Case {
 const RECORD_IDS: Record<string, { id: string; child?: string[] }> = {
   devices: { id: DEVICE_ID },
   licenses: { id: "lic_1" },
+  "license-batches": { id: "batch_long" },
   tiers: { id: "pro" },
   profiles: { id: "base" },
   releases: { id: "v0.4.2" },
