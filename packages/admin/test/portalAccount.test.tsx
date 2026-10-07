@@ -30,7 +30,8 @@ describe("Account v1 (PX-07)", () => {
       await screen.findByRole("heading", { level: 1, name: "Account" }),
     ).toBeTruthy();
     const methods = screen.getByRole("region", { name: "Sign-in methods" });
-    expect(within(methods).getByText(ACCOUNT.email)).toBeTruthy();
+    // A Worker without G27's methods list (404): the session's email alone.
+    expect(await within(methods).findByText(ACCOUNT.email)).toBeTruthy();
     // Neutral facts are text, never a chip (EXPERIENCE §11.3).
     expect(within(methods).queryByText("Primary")).toBeNull();
     const nav = screen.getByRole("navigation", { name: "On this page" });

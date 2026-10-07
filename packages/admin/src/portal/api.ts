@@ -588,6 +588,119 @@ export interface PortalProfileChange {
   picture?: "initials" | { from: string } | { upload: string };
 }
 
+// ── Account → Sign-in methods (PX-W12, I-16; PORTAL.md §4.26, G27) ─────────────────────────
+
+/** Why a method cannot be removed now: the account's only method, or its only email address. */
+export type PortalRemoveRefusal = "last_link" | "only_email";
+
+/** One sign-in method (`GET /api/me/methods` `methods[]`). */
+export interface PortalMethod {
+  /** The method's id: the path segment that disconnects it. */
+  id: string;
+  /** `google`, `apple`, `steam`, `email`, `passkey`, `gamecenter`, `pgs`, `eos`, `oidc` … */
+  kind: string;
+  group: "accounts" | "email" | "passkeys";
+  /** The method by its own name ("Google", "Game Center"). */
+  label: string;
+  /** The connected identity: an address, a persona, a passkey's browser. */
+  display: string | null;
+  connectedAt: number;
+  lastUsedAt: number | null;
+  canRemove: boolean;
+  reason: PortalRemoveRefusal | null;
+  /** What the provider reported since linking (`consent_revoked`, …). */
+  flag?: string | null;
+  /** Apple only: a Hide My Email relay address. */
+  relay?: boolean;
+  /** Recognised only inside one developer's products (Game Center, Play Games). */
+  tenantScoped?: boolean;
+}
+
+/** One verified address (`emails[]`), the primary first. */
+export interface PortalMethodEmail {
+  methodId: string;
+  email: string;
+  primary: boolean;
+  connectedAt: number;
+  lastUsedAt: number | null;
+  canRemove: boolean;
+  reason: PortalRemoveRefusal | null;
+}
+
+/** One passkey (I-16's `PasskeyView`, plus what the methods list adds). */
+export interface PortalPasskey {
+  /** The credential id (base64url): what a sign-in names it by. */
+  id: string;
+  /** Its sign-in method's id. */
+  methodId: string;
+  createdAt: number;
+  lastUsedAt: number | null;
+  transports: string[];
+  synced: boolean | null;
+  /** The authenticator model, when the browser disclosed it. */
+  aaguid: string | null;
+  /** The browser it was added from ("Safari on macOS"). */
+  addedFrom: string | null;
+  canRemove?: boolean;
+  reason?: PortalRemoveRefusal | null;
+}
+
+/** `GET /api/me/methods`. */
+export interface PortalMethods {
+  methods: PortalMethod[];
+  emails: PortalMethodEmail[];
+  passkeys: PortalPasskey[];
+  /** Apple, Google and Steam, always; `available` says whether this deploy can connect it. */
+  providers: {
+    kind: PortalProvider;
+    connected: boolean;
+    available: boolean;
+  }[];
+  /** Whether a passkey can be added now, and why not. */
+  passkey: { canAdd: boolean; reason: "email_unverified" | "limit" | null };
+  primaryEmail: string | null;
+  /** The primary email is an Apple Hide My Email relay. */
+  hideMyEmail: boolean;
+  /** Whether this session signed in recently enough (5 minutes) for a change. */
+  stepUp: {
+    authenticatedAt: number;
+    freshUntil: number;
+    fresh: boolean;
+    maxAgeSeconds: number;
+  };
+}
+
+/** `POST /api/me/methods/email/start`: a code went out, or the address is already this account's. */
+export type PortalEmailMethodStart =
+  | {
+      status: "code_sent";
+      email: string;
+      expiresIn: number;
+      codeLength: number;
+    }
+  | { status: "connected"; already: true; email: string };
+
+/** A WebAuthn ceremony's options, as the Worker sends them (base64url strings). */
+export interface PortalPasskeyOptions {
+  options: Record<string, unknown>;
+  expiresIn: number;
+}
+
+/** One live session of the account (`GET /api/sessions`, I-07), newest first. */
+export interface PortalSession {
+  /** The row key (a hash, never a cookie): the path segment that ends it. */
+  id: string;
+  createdAt: number;
+  lastSeenAt: number;
+  expiresAt: number;
+  /** "Firefox on Windows", when known. */
+  browser?: string | null;
+  /** How it signed in (`passkey`, `email`, `google`, …). */
+  methods: string[];
+  /** This browser. */
+  current: boolean;
+}
+
 /**
  * The email start's and the resend's one answer (I-07, PX-W4), the same whether or not mail went
  * out. The numbers are optional so an older Worker's bare `{ ok: true }` still reads.
@@ -837,6 +950,65 @@ export const portalApi = {
   downloadToken: (product: string, releaseId: string, artifactId: string) =>
     call<{ url: string }>(
       `/api/releases/${enc(product)}/${enc(releaseId)}/artifacts/${enc(artifactId)}/token`,
+      { method: "POST" },
+    ),
+  /** Account → Sign-in methods (PX-W12): every method, grouped, and what each allows. */
+  methods: () => call<PortalMethods>("/api/me/methods"),
+  /** Connect Apple, Google or Steam: the provider URL to open (step-up first). */
+  startProviderMethod: (kind: PortalProvider) =>
+    call<{ redirect: string; expiresIn: number }>(
+      `/api/me/methods/${enc(kind)}/start`,
+      { method: "POST" },
+    ),
+  /** Add an email: a code to the address (the same answer whoever holds it). */
+  startEmailMethod: (email: string) =>
+    call<PortalEmailMethodStart>("/api/me/methods/email/start", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+  verifyEmailMethod: (code: string) =>
+    call<{ status: "connected"; already: boolean; email: string }>(
+      "/api/me/methods/email/verify",
+      { method: "POST", body: JSON.stringify({ code }) },
+    ),
+  /** Add a passkey, step 1: the registration challenge (I-16, through PX-W12's start). */
+  passkeyRegistrationOptions: () =>
+    call<PortalPasskeyOptions>("/api/me/methods/passkey/start", {
+      method: "POST",
+    }),
+  /** Add a passkey, step 2: the browser's attestation. */
+  addPasskey: (response: unknown) =>
+    call<{ ok: true; passkey: { id: string; methodId: string } }>(
+      "/api/me/passkeys",
+      { method: "POST", body: JSON.stringify({ response }) },
+    ),
+  /** Disconnect a method (step-up; never the last one). */
+  removeMethod: (id: string) =>
+    call<{ ok: true; removed: { id: string; kind: string } }>(
+      `/api/me/methods/${enc(id)}`,
+      { method: "DELETE" },
+    ),
+  /** A passkey sign-in's challenge: how the account page confirms it's you (step-up). */
+  passkeySignInOptions: () =>
+    call<PortalPasskeyOptions>("/api/signin/passkey/options", {
+      method: "POST",
+      body: JSON.stringify({}),
+    }),
+  passkeySignInVerify: (response: unknown) =>
+    call<{ status: string }>("/api/signin/passkey/verify", {
+      method: "POST",
+      body: JSON.stringify({ response }),
+    }),
+  /** Where you're signed in (I-07): the account's live sessions. */
+  sessions: () => call<{ sessions: PortalSession[] }>("/api/sessions"),
+  endSession: (id: string) =>
+    call<{ ok: true; current: boolean }>(`/api/sessions/${enc(id)}`, {
+      method: "DELETE",
+    }),
+  /** Every session and app of the account, this browser's included. */
+  signOutEverywhere: () =>
+    call<{ ok: true; ended: number; devices?: number }>(
+      "/api/sessions/sign-out-everywhere",
       { method: "POST" },
     ),
 };

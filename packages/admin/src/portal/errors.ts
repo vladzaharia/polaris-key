@@ -16,7 +16,20 @@ export function isNetworkError(err: unknown): boolean {
 }
 
 export function isSignedOut(err: unknown): boolean {
-  return err instanceof PortalApiError && err.status === 401;
+  return (
+    err instanceof PortalApiError &&
+    err.status === 401 &&
+    // Still signed in, only not recently enough for an account change (PX-W12).
+    err.code !== "step_up_required"
+  );
+}
+
+/**
+ * An account change needs a sign-in from the last 5 minutes (PX-W12, I-16): the page asks the
+ * person to confirm it's them, then tries again.
+ */
+export function isStepUpRequired(err: unknown): boolean {
+  return err instanceof PortalApiError && err.code === "step_up_required";
 }
 
 export function isNotFound(err: unknown): boolean {

@@ -613,6 +613,47 @@ describe("Activate license modal (PX-06)", () => {
     }
   });
 
+  it("offers Add and verify that email for a verified-email mismatch (PX-13)", async () => {
+    mockFetch({
+      ...routes(),
+      "POST /api/activate/preview": {
+        verdict: "email_mismatch",
+        product: PREVIEW_PRODUCT,
+        maskedEmail: "m•••@proton.me",
+        entries: null,
+      },
+      "/api/me/methods": {
+        methods: [],
+        emails: [],
+        passkeys: [],
+        providers: [],
+        passkey: { canAdd: false, reason: "email_unverified" },
+        primaryEmail: ACCOUNT.email,
+        hideMyEmail: false,
+        stepUp: {
+          authenticatedAt: 0,
+          freshUntil: 0,
+          fresh: false,
+          maxAgeSeconds: 300,
+        },
+      },
+    });
+    renderPortal();
+    const dialog = await openFromHeader();
+    await pasteAndContinue(dialog);
+    await within(dialog).findByRole("alert");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Add and verify that email" }),
+    );
+    // Account → Sign-in methods, Add an email open, its field focused.
+    await waitFor(() => expect(window.location.hash).toBe("#/account/methods"));
+    const field = await screen.findByRole("textbox", { name: "Email address" });
+    await waitFor(() => expect(document.activeElement).toBe(field));
+    expect(
+      screen.queryByRole("dialog", { name: "Activate a license" }),
+    ).toBeNull();
+  });
+
   it("focus follows the step: the confirm heading, the done heading, and the field on Change key (UX-79)", async () => {
     mockFetch({
       ...routes(),

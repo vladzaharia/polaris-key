@@ -1372,3 +1372,55 @@ function productView(
     })),
   };
 }
+
+describe("product identity card (PX-13; §4.20, §3.1)", () => {
+  it("shows how the product signs you in, only with Identity on", async () => {
+    mockFetch(
+      routes({
+        "/api/products/nightfall": {
+          ...productView("nightfall", [
+            { id: "lic_nightfall", deviceLimit: 3 },
+          ]),
+          services: { license: true, identity: true },
+        },
+      }),
+    );
+    renderPortal();
+    await page();
+    const card = await screen.findByRole("region", {
+      name: "Sign in to Nightfall",
+    });
+    expect(
+      within(card).getByText(
+        "It gets its own id for you, so developers can't match you across products.",
+      ),
+    ).toBeTruthy();
+    expect(
+      within(card)
+        .getByRole("link", { name: "Manage sign-in methods" })
+        .getAttribute("href"),
+    ).toBe("#/account/methods");
+    // Not a section of its own: the TOC and the pills don't list it.
+    const toc = screen.getByRole("navigation", { name: "On this page" });
+    expect(within(toc).queryByRole("link", { name: /Sign in/ })).toBeNull();
+    expect(await axeViolations()).toEqual([]);
+  });
+
+  it("says nothing about sign-in for a product without Identity", async () => {
+    mockFetch(
+      routes({
+        "/api/products/nightfall": productView("nightfall", [
+          { id: "lic_nightfall", deviceLimit: 3 },
+        ]),
+      }),
+    );
+    renderPortal();
+    await page();
+    await waitFor(() =>
+      expect(
+        screen.getByRole("region", { name: "Devices" }).textContent,
+      ).toMatch(/of 3 devices/),
+    );
+    expect(screen.queryByRole("region", { name: /^Sign in to/ })).toBeNull();
+  });
+});
