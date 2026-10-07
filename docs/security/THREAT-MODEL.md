@@ -6122,6 +6122,43 @@ values onto it and drops unowned licences'.
   the Cloud Sync principal), and the owner line follows `licenses.account_id`, which the removal
   cleared. Re-adding the key lifts the block; other accounts' devices are unaffected (a test).
 
+### The licensing model's expand step: grants (LX-08)
+
+The licensing model (S-19 model OC; Amendment A4) adds **grants**, which are reasons a holder has
+entitlements. LX-08 only expands storage and keeps every document byte-identical. LX-22 writes
+the model's full threat-model rows (T1–T10, P1–P3) once reads switch in LX-09. Until then:
+
+- **No new trust in a grant.** The licence document still reads the store-grant rows
+  (`license_store_grants`) and the licence's overrides. The one new read is the licence's own
+  `oidc` grant (`grt_oidc_<licence id>`). It holds the provisioned entitlement keys that LX-08
+  moved out of the overrides column, with the same values, states and times. Two writers can
+  change it:
+  - the sign-in writer (`services/identity/oidc.ts`). It writes only the keys the product's
+    provisioning declares, from a verified claim, as LX-02's rewrite did.
+  - the catch-up move (`core/grants.ts`). It copies only what the column already held.
+
+  An operator's override of a provisioned key still beats the grant. Revocation on claim loss is
+  preserved: a declared key whose claim disappears leaves the grant at the next sign-in. Moving a
+  key never changes a document (a test compares signed bytes and ETags), so no device sees a
+  value it did not see before.
+
+- **Dual-written rows cannot drift.** Each store-grant write re-projects its purchase into a
+  grant in the same D1 batch. The projection is a pure function of the old rows, so the new rows
+  can only lag (a pre-LX-08 Worker during the deploy window). The catch-up (deploy hook and
+  nightly) closes that gap. A zero-drift check runs after every commerce scenario in the suite.
+- **Concurrent writes do not clobber.** The move and the sign-in writer each write the column
+  and the grant in one batch. Every grant statement is guarded by the same compare-and-set as the
+  column, so a concurrent operator edit or sign-in is never overwritten: the move leaves that
+  licence for a later pass, and the sign-in re-plans. U-03's sweep empties only the column's
+  `config` and `secrets` members, and in SQL, so it cannot lose an entitlement key and LX-08
+  cannot lose a secret.
+- **No account id leaves; new personal data is erased.** `grants.account_id` is the global
+  account id and never leaves the Worker (S-16 §5.1); nothing writes an account-held grant before
+  LX-13. `entitlement_events` is keyed by the product's pairwise subject and is a registered
+  subject store, so a merge re-keys it and a deletion removes it. A deleted licence takes its
+  grants, keys, holder version and events. A soft-deleted product loses its account- and
+  Steam-held grants, its devices' Steam identities and its events (docs/PRIVACY.md).
+
 ### Discover: free offers and "Add to library" (PX-W10, PS-03, PS-04)
 
 `GET /api/discover` lists the products the signed-in account could add, `GET /api/discover/<p>` is

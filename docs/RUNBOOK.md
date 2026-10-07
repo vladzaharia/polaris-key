@@ -1554,6 +1554,72 @@ rows (which an older Worker does not read) hold them.
 **KEK rotation** covers the account rows: their sealed secrets are counted and re-sealed by the
 `managed` bucket of the KEK sweep (above).
 
+## Licensing model expand (LX-08)
+
+The licensing model (S-19 model OC, plans/LX-01.md) adds **grants**: reasons a holder (a licence,
+an account or a store identity) has entitlements. LX-08 is the expand step only (S-19 §7.14 steps
+1–4). Every licence and device document stays **byte-identical**, ETag included, and every read
+stays on the old objects until LX-09. Three things change underneath:
+
+- **Store grants are dual-written.** Every store purchase in `license_store_grants` also has one
+  licence-held grant, `grt_s_<store>_<purchase key hash>` (`grants`, `grant_entitlements`,
+  `dist_purchases.grant_id`), and every store mapping has its entitlement rows
+  (`dist_store_product_entitlements`). The new rows are a projection of the old ones and are
+  written in the same batch, so they cannot drift.
+- **OIDC-provisioned entitlement keys move** out of `licenses.overrides_json` into the licence's
+  `oidc` grant, `grt_oidc_<license id>` (djdl's `polarisVpn`). Each entry's state, value and
+  `updatedAt` is copied, and the licence document reads the grant where the keys used to sit. A
+  sign-in moves its own licence. Provisioned **secrets** are not touched: they stay a licence
+  override until the U-03 run, and then go to the owner's account overrides (U-03).
+- **Tiers gain `rank` and `policyOfflineGraceDays`** (default 0 and none). A sign-in whose
+  groups map to several tiers picks the highest-ranked one. While every rank is 0 that is still
+  the first match, so nothing changes until a rank is set. `oidc.syncTierOnSignIn: upgradeOnly`
+  (off by default) moves an existing licence to a higher-ranked tier at sign-in.
+
+**Owner steps (production).** Agents never run any of this against staging or production.
+
+1. **Deploy.** The release that carries LX-08 applies its migrations through the normal deploy
+   (`wrangler d1 migrations apply`). Each migration file is a bare `ADD COLUMN` (R11-04), an
+   `IF NOT EXISTS` table, or the backfill (`…_m_licensing_backfill.sql`). The backfill projects
+   every existing store grant and mapping. It is an upsert that changes nothing on a replay, so a
+   migration run that is interrupted and started again converges. The Worker that is still live
+   until the deploy reads none of the new objects, so the window is safe.
+2. **The catch-up runs by itself after the deploy.** The deploy hook (`POST /webhooks/deploy`)
+   runs one bounded pass, and the nightly maintenance (`licensingCatchUp`) runs one every night
+   until nothing is left (`src/core/licensingCatchUp.ts`). Each pass does two things:
+   - it re-projects the store grants and mappings, which picks up what the old Worker wrote
+     between the migration and the deploy;
+   - it moves the provisioned keys of licences that have not signed in since. That is the job
+     `licensing.migrateProvisioned` in plans/LX-01.md §6.2.
+
+   Check the deploy job's log: the hook's answer carries
+   `licensing: {products, failed, provisioned: {moved, deferred, raced, more}}`. `failed` should be
+   empty. `more: true` means the nightly pass finishes the work.
+
+   A licence is **deferred** when moving it would reorder the keys in its document. That happens
+   when an operator added an override key after the licence's last sign-in. A deferred licence is
+   left exactly as it is, and its next sign-in moves it, as every sign-in rewrites the document
+   anyway.
+
+3. **Nothing else is needed.** There is no switch and no flag. Reads move in LX-09; LX-16 stops the
+   dual-write and retires the old objects after a zero-drift report (`storeGrantDrift` in
+   `src/core/grants.ts`).
+
+**Rolling back.** Store grants and mappings never left their old tables, so a Worker built before
+LX-08 keeps serving them. The provisioned keys **did** leave the overrides column. After rolling
+the Worker back, run the down script once to copy them back:
+
+```sh
+# owner only, after deploying the pre-LX-08 build:
+npx wrangler d1 execute polaris_key_prod --env prod --remote \
+  --file packages/worker/scripts/rollback/00XX_licensing.down.sql
+```
+
+It is idempotent, so a second run copies nothing. It appends each grant's keys after the
+licence's other keys, where LX-02's writer kept them, so the old Worker's documents are the
+LX-08 Worker's byte for byte. It leaves every LX-08 table, column and row in place, so a roll
+forward resumes: the catch-up moves the keys out again.
+
 ## The blob collector (P4-14)
 
 The nightly maintenance cron (`17 3 * * *`) runs Core's blob collector after the retention steps:
