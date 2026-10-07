@@ -44,6 +44,47 @@ Discover tiles show every way to add with the S-21 reason copy, `#/discover/:pro
 
 - Every offer shows why (owner Q-6). No "coming soon" copy. One `h1` per screen.
 
+## Corrections (PS-05 builder, verified against the code)
+
+- **PS-04's interim filter is gone.** `packages/admin/src/portal/api.ts` no longer drops open
+  offers, links and library entries (`addableOffers`, `licensedOnly`); `offerFromWire` reads
+  PS-04's shape and a pre-PS-04 answer (no `cta`, no `paths`: its reason and terms are the one
+  path), and leaves out only what this build cannot show honestly (an action it does not know,
+  such as S-22's `buy`, or an Add with no path). The nav's Discover count is the Worker's
+  `discoverCount` unchanged: open offers count, links never (S-21 §6.10 item 8, lead decision), so
+  it now matches what Discover lists. No Worker change.
+- **Get it for an entry has no downloads yet: the API does not serve them.** The downloads view
+  (`GET /api/products/<p>/downloads`), the token mint and the redemption all gate on a linked
+  licence (`hasLinkedProductLicense`), so an open product's entry gets the plain `404`. The
+  entry's page and tile therefore offer the developer's website ("Get it from <developer>"),
+  and the page's Get it renders the downloads view as soon as the Worker answers it for an entry
+  (no portal change needed then). Follow-up for the Worker: accept a shown library entry beside a
+  linked licence on those three gates, for `public` and `authenticated` deliverables only
+  (`accountMayDownload` already refuses the rest without a licence), with the threat-model line.
+- **An entry's page has no listing.** S-21 §6.5 says the Library's open-product page "shows Get it
+  and the listing", but `GET /api/products/<p>` carries no description or screenshots for an
+  entry, and `GET /api/discover/<p>` answers `404` for a held product. The page shows the header,
+  Get it and Help. Follow-up for the Worker: the entry's product view carries `description`,
+  `screenshots` and `shortDescription` from the same listing.
+- **The tile's "+1 more way" links to the storefront page**, where every path is listed with its
+  terms and the person picks one (a radio group; the first, the Worker's order, is preselected).
+  The tile's name opens the storefront page too, so the Discover tile is now a pressable card
+  like a Library tile (MO-07's unit test follows).
+- **After Add, the storefront page is replaced** (`location.replace`) by `#/p/:product`, whose `h1`
+  takes focus: the page no longer exists for the person, so Back skips it. A product the
+  library already holds goes straight to its library page (the client's own library, so no
+  enumeration).
+- **Discover's lede** says "Adding one puts it in your library straight away, at no cost": an open
+  product gets no licence. PORTAL.md §4.16's copy is PS-11's to amend.
+- **Remove from library** (entries only) is on the entry's tile menu and its page's header menu,
+  confirmed inline with focus on **Keep it**; Escape or Keep it returns focus to the menu
+  button, and after removal focus moves to the page's `h1` (or the Library's) before the tile
+  goes. The free-device flow sends an entry to its product page (nothing to free).
+- **The e2e flows and the `library-entry-remove` state are checked from the page top**, as every
+  quality-bar state is: scrolled, a tile's name link passes under the sticky header, which axe's
+  `target-size` rule reads as an obscured target (a property of the sticky header, not of
+  these screens).
+
 ## Steps
 
 1. Re-read the S-21 sections above; verify this brief against the code and record any correction here.

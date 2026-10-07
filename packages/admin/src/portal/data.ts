@@ -256,9 +256,8 @@ export function useClaimDiscover() {
       void qc.invalidateQueries({ queryKey: portalKeys.licenses });
       void qc.invalidateQueries({ queryKey: portalKeys.discover });
       void qc.invalidateQueries({ queryKey: portalKeys.product(v.product) });
-      // Held now: its storefront page answers 404 from here on. Dropped rather than refetched, so
-      // the page being left never flashes "not found" on its way out.
-      qc.removeQueries({ queryKey: portalKeys.storefront(v.product) });
+      // The storefront page is left as it is: the page that added it moves on to the library
+      // page, and a held product's storefront page goes there too (StorefrontPage).
     },
   });
 }

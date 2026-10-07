@@ -19,7 +19,14 @@ export type PortalScenario =
    * PX-23's origins (S-24 D21): Tidewater Studio held twice, by a key Mara added to a licence
    * nobody was named for, and by one Harbor Audio assigned to her ("From Harbor Audio").
    */
-  | "origins";
+  | "origins"
+  /**
+   * The Polaris Key storefront (PS-05, notes/S-21 §6.5): Nightfall and Tidewater Studio held by
+   * licence, Kestrel Maps (an open product) held by a library entry; Discover offers Lumen RAW two
+   * ways (an operator-labelled group and a trial), Driftwood Notes (open), Mossgarden, and lists
+   * Starfall Arena to everyone with only its Steam page.
+   */
+  | "storefront";
 
 type Reply = { status?: number; body: unknown };
 export type Handler = Reply | ((req: Request) => Reply);
@@ -311,6 +318,14 @@ const PRESENTATION: Record<
   },
   mossgarden: { developerName: "Little Fern", deviceLimit: 5 },
   "lumen-raw": { developerName: "Aperture Seven", deviceLimit: 2 },
+  // PS-05's storefront cast.
+  driftwood: { developerName: "Tern Studio", deviceLimit: 0 },
+  "kestrel-maps": {
+    developerName: "Harrier Labs",
+    deviceLimit: 0,
+    support: "https://harrier.example/help",
+  },
+  starfall: { developerName: "Comet Forge", deviceLimit: 0 },
   "pixel-forge": { developerName: "Anvil Labs", deviceLimit: 0 },
   // At its limit: the 12-product shelf shows "Free a device" (§4.15, mockup 35).
   quill: { developerName: "Inkwell", deviceLimit: 5 },
@@ -378,6 +393,28 @@ const ART: Record<
     disc: [196, 72, 52],
     icon: false,
   },
+  // PS-05: the storefront's open products and its link-only listing.
+  driftwood: {
+    bands: [
+      [214, 204, 184],
+      [150, 136, 112],
+    ],
+    disc: [62, 92, 110],
+  },
+  "kestrel-maps": {
+    bands: [
+      [28, 52, 46],
+      [56, 98, 80],
+    ],
+    disc: [236, 214, 140],
+  },
+  starfall: {
+    bands: [
+      [16, 14, 40],
+      [36, 26, 78],
+    ],
+    disc: [250, 196, 90],
+  },
   // PX-16: the Discover cast of mockup 23.
   quill: {
     bands: [[246, 241, 230]],
@@ -406,9 +443,14 @@ export function portalMedia(pathname: string): Buffer | null {
     const size = a[2] ? 96 : 256;
     return art ? artPng(size, size, art.bands, art.disc) : null;
   }
-  const m = pathname.match(/^\/media\/([a-z0-9-]+)\/(icon|header)$/);
+  // PS-04: a listing's screenshots (`screenshot-<n>`) are 16:9 like its header.
+  const m = pathname.match(
+    /^\/media\/([a-z0-9-]+)\/(icon|header|screenshot-\d{1,2})$/,
+  );
   const art = m ? ART[m[1]!] : undefined;
   if (!m || !art || (m[2] === "icon" && art.icon === false)) return null;
+  if (m[2]!.startsWith("screenshot-"))
+    return artPng(640, 360, [...art.bands].reverse(), art.disc);
   if (m[2] === "icon" && art.icon)
     return squirclePng(256, art.bands, art.disc, art.icon.squircle);
   return m[2] === "icon"
@@ -780,6 +822,10 @@ function discoverOffer(
   reason: string,
   platforms: string[],
 ) {
+  const terms = {
+    ...offer,
+    expiresAt: offer.expiryDays === null ? null : NOW + offer.expiryDays * DAY,
+  };
   return {
     product,
     name,
@@ -790,11 +836,30 @@ function discoverOffer(
     headerUrl: ART[product] ? `/media/${product}/header?v=1` : null,
     support: null,
     platforms,
-    offer: {
-      ...offer,
-      expiresAt:
-        offer.expiryDays === null ? null : NOW + offer.expiryDays * DAY,
-    },
+    offer: terms,
+    reason,
+    // PS-04's additive shape: the action, every path (here the one its reason names) and the
+    // listing's one line and store pages.
+    shortDescription: null as string | null,
+    cta: "add" as "add" | "link",
+    paths: [identityPath(reason, terms)] as unknown[],
+    stores: [] as unknown[],
+  };
+}
+
+/** The identity path a PX-W10 reason names (`free_with_account`, `group:<g>`), with its terms. */
+function identityPath(
+  reason: string,
+  terms: unknown,
+  label: string | null = null,
+) {
+  const group = reason.startsWith("group:") ? reason.slice(6) : null;
+  return {
+    kind: group === null ? "auto_issue" : "group",
+    detail: group,
+    label,
+    terms,
+    action: "add",
     reason,
   };
 }
@@ -840,6 +905,151 @@ const OFFERS = [
   ),
 ];
 
+/**
+ * PS-05's storefront (notes/S-21 §6.5), as PS-04's `GET /api/discover` sends it: Lumen RAW two
+ * ways (the group, with the operator's label, first; a 14-day trial for every account), Mossgarden
+ * as in mockup 23, Driftwood Notes with nothing to licence (`open`), and Starfall Arena listed to
+ * everyone with only its Steam page (`cta: "link"`).
+ */
+const STEAM_STARFALL = {
+  id: "steam:main",
+  kind: "steam",
+  label: "Steam",
+  url: "https://store.example/steam/starfall",
+};
+const STEAM_LUMEN = {
+  id: "steam:main",
+  kind: "steam",
+  label: "Steam",
+  url: "https://store.example/steam/lumen-raw",
+};
+const LUMEN_STOREFRONT = (() => {
+  const base = discoverOffer(
+    "lumen-raw",
+    "Lumen RAW",
+    {
+      tier: "standard",
+      tierLabel: "Standard",
+      deviceLimit: 2,
+      expiryDays: null,
+    },
+    "group:aperture-customers",
+    ["macos", "windows"],
+  );
+  const trial = {
+    tier: "trial",
+    tierLabel: "Trial",
+    deviceLimit: 1,
+    expiresAt: NOW + 14 * DAY,
+    expiryDays: 14,
+  };
+  return {
+    ...base,
+    shortDescription: "RAW development for night skies",
+    paths: [
+      identityPath("group:aperture-customers", base.offer, "Aperture Seven"),
+      {
+        kind: "auto_issue",
+        detail: null,
+        label: null,
+        terms: trial,
+        action: "add",
+        reason: "free_with_account",
+      },
+    ],
+  };
+})();
+const DRIFTWOOD_OPEN = {
+  ...discoverOffer(
+    "driftwood",
+    "Driftwood Notes",
+    { tier: "", tierLabel: "", deviceLimit: 0, expiryDays: null },
+    "open",
+    ["macos", "linux"],
+  ),
+  website: "https://tern.example",
+  offer: null,
+  shortDescription: "A quiet notebook for field recordings",
+  paths: [
+    {
+      kind: "open",
+      detail: null,
+      label: null,
+      terms: null,
+      action: "add",
+      reason: "open",
+    },
+  ],
+};
+const STARFALL_LINK = {
+  ...discoverOffer(
+    "starfall",
+    "Starfall Arena",
+    { tier: "", tierLabel: "", deviceLimit: 0, expiryDays: null },
+    "",
+    ["windows", "linux"],
+  ),
+  offer: null,
+  reason: null,
+  cta: "link" as const,
+  shortDescription: "Arena battles between the stars",
+  paths: [],
+  stores: [STEAM_STARFALL],
+};
+const STOREFRONT_OFFERS = [
+  LUMEN_STOREFRONT,
+  OFFERS[1]!,
+  DRIFTWOOD_OPEN,
+  STARFALL_LINK,
+];
+
+/** `GET /api/discover/<p>`: the offer plus its listing (description, screenshots, every store). */
+const STOREFRONT_PAGES: Record<string, Record<string, unknown>> = {
+  "lumen-raw": {
+    description:
+      "Develop RAW files from long exposures without losing the faint stars.\nStack a night's frames, pull out the Milky Way and keep the foreground sharp.",
+    screenshots: [
+      "/media/lumen-raw/screenshot-0?v=1",
+      "/media/lumen-raw/screenshot-1?v=1",
+    ],
+    stores: [STEAM_LUMEN],
+  },
+  driftwood: {
+    description:
+      "Record, tag and transcribe field recordings in one quiet notebook. Free to use, with no license.",
+    screenshots: ["/media/driftwood/screenshot-0?v=1"],
+    stores: [],
+  },
+  starfall: {
+    description:
+      "Short arena battles between ships of light. Free on Steam for everyone with a Polaris Key account.",
+    screenshots: ["/media/starfall/screenshot-0?v=1"],
+    stores: [STEAM_STARFALL],
+  },
+};
+
+/** An open product's library entry (PS-04): no licence, always active, with its presentation. */
+function entryItem(product: string, name: string, addedAt: number) {
+  const pres = PRESENTATION[product];
+  return {
+    product,
+    name,
+    developerName: pres?.developerName ?? null,
+    tintColor: null,
+    website: `https://${product}.example`,
+    iconUrl: ART[product] ? `/media/${product}/icon?v=1` : null,
+    headerUrl: ART[product] ? `/media/${product}/header?v=1` : null,
+    support: pres?.support ? { url: pres.support, email: null } : null,
+    kind: "entry",
+    via: "open",
+    status: "active",
+    license: null,
+    licenseCount: 0,
+    addedAt,
+  };
+}
+type Entry = ReturnType<typeof entryItem>;
+
 const CAPS = {
   auth: { oidc: true, magic: true },
   modules: { licensing: true, claim: true, releases: true },
@@ -859,6 +1069,8 @@ function licensesFor(s: PortalScenario) {
       return [NIGHTFALL, QUILL_SIGNIN, DRIFT_KEY, DRIFT_SIGNIN];
     case "origins":
       return [TIDEWATER_KEY, TIDEWATER_FREE];
+    case "storefront":
+      return [NIGHTFALL, TIDEWATER];
     default:
       return [];
   }
@@ -1083,11 +1295,18 @@ export function portalRoutes(s: PortalScenario): Record<string, Handler> {
     };
   }
   let licenses = licensesFor(s);
+  // PS-05: open products held by a library entry (PS-04), no licence behind them.
+  let entries: Entry[] =
+    s === "storefront"
+      ? [entryItem("kestrel-maps", "Kestrel Maps", NOW - 3 * DAY)]
+      : [];
   const removed = new Set<string>();
+  const offers = s === "storefront" ? STOREFRONT_OFFERS : OFFERS;
+  const holds = (slug: string) =>
+    licenses.some((l) => l.product === slug) ||
+    entries.some((e) => e.product === slug);
   const openOffers = () =>
-    s === "twelve"
-      ? []
-      : OFFERS.filter((o) => !licenses.some((l) => l.product === o.product));
+    s === "twelve" ? [] : offers.filter((o) => !holds(o.product));
   const routes: Record<string, Handler> = {
     ...profileRoutes(),
     "/api/capabilities": { body: CAPS },
@@ -1095,11 +1314,16 @@ export function portalRoutes(s: PortalScenario): Record<string, Handler> {
     // One item per product (the first licence listed is the best), like the Worker.
     "/api/library": () => ({
       body: {
-        products: firstPerProduct(licenses).map((l) => ({
-          ...libraryItem(l),
-          licenseCount: licenses.filter((x) => x.product === l.product).length,
-        })),
-        discoverCount: openOffers().length,
+        products: [
+          ...firstPerProduct(licenses).map((l) => ({
+            ...libraryItem(l),
+            licenseCount: licenses.filter((x) => x.product === l.product)
+              .length,
+          })),
+          ...entries,
+        ],
+        // Offers to add, open products included; never a link (S-21 §6.10 item 8).
+        discoverCount: openOffers().filter((o) => o.cta === "add").length,
       },
     }),
     "/api/discover": () => ({ body: { offers: openOffers() } }),
@@ -1378,10 +1602,19 @@ export function portalRoutes(s: PortalScenario): Record<string, Handler> {
       removed.add("work");
       return { body: { ok: true, deviceId: "work" } };
     };
-  // PX-W10's claim: mints once (idempotent); Lumen RAW's offer ended (409 `not_eligible`).
-  for (const o of OFFERS) {
-    routes[`POST /api/discover/${o.product}/claim`] = () => {
-      if (o.product === "lumen-raw")
+  // PX-W10's claim, by path since PS-04: mints once (idempotent), or adds an open product's library
+  // entry; Lumen RAW's offer ended (409 `not_eligible`) outside the storefront scenario.
+  for (const o of offers) {
+    routes[`POST /api/discover/${o.product}/claim`] = (req) => {
+      const asked = (req.postDataJSON() as { path?: string } | null)?.path;
+      const path = (
+        o.paths as Array<{ kind: string; terms: { tier: string } | null }>
+      ).find((p, i) => (asked ? p.kind === asked : i === 0));
+      if (
+        !path ||
+        o.cta !== "add" ||
+        (o.product === "lumen-raw" && s !== "storefront")
+      )
         return {
           status: 409,
           body: {
@@ -1389,13 +1622,32 @@ export function portalRoutes(s: PortalScenario): Record<string, Handler> {
             message: "this product is no longer offered to your account",
           },
         };
-      const added = !licenses.some((l) => l.product === o.product);
+      const added = !holds(o.product);
+      if (path.kind === "open") {
+        if (added) entries = [...entries, entryItem(o.product, o.name, NOW)];
+        return {
+          body: {
+            added,
+            product: o.product,
+            kind: "entry",
+            entry: { via: "open", addedAt: NOW },
+          },
+        };
+      }
+      const terms = path.terms as {
+        tier: string;
+        tierLabel: string;
+        expiresAt: number | null;
+        deviceLimit: number;
+      };
       const l =
         o.product === "mossgarden"
           ? MOSSGARDEN
           : lic(o.product, o.name, {
-              tier: o.offer.tier,
+              tier: terms.tier,
               identityProvider: "oidc",
+              keyCount: 0,
+              activeKeyCount: 0,
               activatedAt: NOW - 30,
               deviceCount: 0,
             });
@@ -1404,17 +1656,44 @@ export function portalRoutes(s: PortalScenario): Record<string, Handler> {
         body: {
           added,
           product: o.product,
+          kind: "license",
           license: {
             id: l.id,
-            tier: o.offer.tier,
-            tierLabel: o.offer.tierLabel,
+            tier: terms.tier,
+            tierLabel: terms.tierLabel,
             status: "active",
             usable: true,
-            expiresAt: o.offer.expiresAt,
-            deviceLimit: o.offer.deviceLimit,
+            expiresAt: terms.expiresAt,
+            deviceLimit: terms.deviceLimit,
           },
         },
       };
+    };
+    // PS-04's storefront page: the same one 404 for anything this account can't add now.
+    routes[`GET /api/discover/${o.product}`] = () =>
+      holds(o.product) || s === "twelve"
+        ? { status: 404, body: { error: "not_found" } }
+        : { body: { ...o, ...STOREFRONT_PAGES[o.product] } };
+  }
+  // PS-04: an entry's product view (no licences) and Remove from library (entries only).
+  for (const slug of ["kestrel-maps", "driftwood"]) {
+    routes[`/api/products/${slug}`] = () => {
+      const e = entries.find((x) => x.product === slug);
+      if (!e) return { status: 404, body: { error: "not_found" } };
+      return {
+        body: {
+          ...e,
+          services: { license: false, distribution: true },
+          returnTo: { origins: [], schemes: [] },
+          licenses: [],
+        },
+      };
+    };
+    routes[`DELETE /api/library/${slug}`] = () => {
+      if (!entries.some((x) => x.product === slug))
+        return { status: 404, body: { error: "not_found" } };
+      entries = entries.filter((x) => x.product !== slug);
+      return { body: { ok: true, product: slug } };
     };
   }
   for (const [id, [deviceId]] of Object.entries(SIGN_IN_DEVICE)) {
