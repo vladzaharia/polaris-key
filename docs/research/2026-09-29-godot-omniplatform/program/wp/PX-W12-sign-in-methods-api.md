@@ -5,7 +5,7 @@
 | Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase W: Worker additions)                                                 |
 | Size        | 1–1.6 engineer-weeks                                                                                                    |
 | Depends on  | [I-05](I-05-accounts-core.md), [I-16](I-16-passkeys.md), [I-07](I-07-login-card-email.md)                               |
-| Unblocks    | [PX-13](PX-13-account-v2.md), [PX-15](PX-15-after-sign-in.md)                                                           |
+| Unblocks    | [PX-13](PX-13-account-v2.md), [PX-15](PX-15-after-sign-in.md), [PX-W19](PX-W19-account-api-gaps.md)                     |
 | Role        | `pkey-implementer`                                                                                                      |
 | Plan mode   | no                                                                                                                      |
 | Gates       | the PORTAL.md §11 green gate; rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; `typecheck:workerd` and `test:workerd` |
