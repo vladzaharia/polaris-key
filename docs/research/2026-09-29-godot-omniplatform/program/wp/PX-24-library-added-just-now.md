@@ -149,18 +149,27 @@ in-review`.
 
 ## Acceptance criteria
 
-- [ ] A product added under 24 hours ago shows the ring and "Added just now" and leads its tile with
+- [x] A product added under 24 hours ago shows the ring and "Added just now" and leads its tile with
       the download; at 24 hours it does not (model tests at the edges).
-- [ ] Under the default sort the just-added product is first (test).
-- [ ] The ring and text appear once per tile per document, never on a refetch, filter, sort or view
+      (`test/portalLibraryModel.test.ts` "PX-24: Added just now": just added, 23 h 59 min, 24 h − 1 s,
+      24 h, a future `addedAt`, missing; `test/portalJustAdded.test.tsx` for the tile, the list row
+      and the outlined See downloads.)
+- [x] Under the default sort the just-added product is first (test). (8+ `recent`, the 2–7 grid's
+      `justAddedFirst`, and By name keeping its place.)
+- [x] The ring and text appear once per tile per document, never on a refetch, filter, sort or view
       switch, and are static under both reduced-motion settings (e2e: `document.getAnimations()`
-      is empty after the interaction).
-- [ ] `vitest-axe` passes on the changed tile; the text, not the ring, carries the meaning.
-- [ ] The linux visual baselines are re-recorded and `scripts/portal-baselines.sh --check` passes; no
-      horizontal page scroll at 360 px.
-- [ ] `pnpm --filter @polaris-key/admin build` passes and `pnpm --filter @polaris-key/admin test:e2e`
-      reports zero CSP violations.
-- [ ] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in
+      is empty after the interaction). (`e2e/libraryMotion.e2e.test.ts`: the text's `pk-pop-in` on
+      `slow` and the ring's `pk-fade-in` on `base` once, then nothing on a refetch, a search, both
+      sorts, Grid → List → Grid or a return; both reduced-motion settings; no cue class is left on.)
+- [x] `vitest-axe` passes on the changed tile; the text, not the ring, carries the meaning.
+- [x] The linux visual baselines are re-recorded and `scripts/portal-baselines.sh --check` passes; no
+      horizontal page scroll at 360 px. (24 re-recorded, the ones the just-added Mossgarden moves;
+      `--check` 245 passed.)
+- [x] `pnpm --filter @polaris-key/admin build` passes and `pnpm --filter @polaris-key/admin test:e2e`
+      reports zero CSP violations. (0 violations over 982 page loads; three reduced-motion cases in
+      `deviceMotion.e2e.test.ts`, which this package does not touch, caught the button spinner
+      under load and pass on their own, 12/12.)
+- [x] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in
       the header.
 
 ## Verify
