@@ -35,6 +35,7 @@ import {
   passkeyName,
   passkeyProvider,
   remainingAfter,
+  stepUpFresh,
 } from "../../model/methods.js";
 import {
   focusPageHeading,
@@ -148,17 +149,29 @@ function SignInEmailOnly({
   );
 }
 
-/** What a provider callback came back with (`?connected=` or `?error=&method=`), in words. */
+/** Apple, Google or Steam: a key of `PROVIDER_NAME` of its own, never an inherited one. */
+function isProvider(kind: string | null): kind is PortalProvider {
+  return (
+    kind !== null && Object.prototype.hasOwnProperty.call(PROVIDER_NAME, kind)
+  );
+}
+
+/**
+ * What a provider callback came back with (`?connected=` or `?error=&method=`), in words.
+ * "Connected" is said only when the methods list shows it connected: the URL alone is no proof.
+ */
 function callbackNotice(
   params: URLSearchParams,
+  view: PortalMethods,
 ): { tone: "success" | "danger"; text: string } | null {
   const method = params.get("method") ?? params.get("connected");
-  const name =
-    method && method in PROVIDER_NAME
-      ? PROVIDER_NAME[method as PortalProvider]
-      : "That account";
-  if (params.get("connected"))
-    return { tone: "success", text: `${name} is connected.` };
+  const name = isProvider(method) ? PROVIDER_NAME[method] : "That account";
+  const connected = params.get("connected");
+  if (connected)
+    return isProvider(connected) &&
+      view.providers.some((p) => p.kind === connected && p.connected)
+      ? { tone: "success", text: `${name} is connected.` }
+      : null;
   const error = params.get("error");
   if (!error) return null;
   if (error === "link_conflict")
@@ -203,27 +216,51 @@ function MethodGroups({
   };
   /** "Add your real email" (the Hide My Email notice) opens Add an email: a new value each time. */
   const [addEmailAsked, setAddEmailAsked] = React.useState(0);
-  // A provider's callback, a step-up sign-in coming back to finish a removal, or a link asking for
-  // Add an email: each is read once and dropped from the URL, so a reload doesn't repeat it.
-  const [notice, setNotice] = React.useState(() => callbackNotice(params));
+  /** Back from a provider's step-up to add a passkey or connect a provider: their button. */
+  const [passkeyAsked, setPasskeyAsked] = React.useState(0);
+  const [connectAsked, setConnectAsked] = React.useState<{
+    kind: PortalProvider;
+    n: number;
+  } | null>(null);
+  // A provider's callback, a step-up sign-in coming back to finish what it started (`?remove=`,
+  // `?add=email|passkey`, `?connect=<provider>`), or a link asking for Add an email: each is read
+  // once and dropped from the URL, so a reload doesn't repeat it.
+  const [notice, setNotice] = React.useState(() =>
+    callbackNotice(params, view),
+  );
   const [removeId] = React.useState(() => params.get("remove"));
   React.useEffect(() => {
-    const said = callbackNotice(params);
-    const add = params.get("add") === "email";
-    if (!said && !add && !params.get("remove")) return;
+    const said = callbackNotice(params, view);
+    const add = params.get("add");
+    const connect = params.get("connect");
+    if (
+      !said &&
+      !add &&
+      !connect &&
+      !params.get("remove") &&
+      !params.get("connected") &&
+      !params.get("error")
+    )
+      return;
     if (said) setNotice(said);
     if (said?.tone === "success") {
       toast.success(said.text);
       announce(said.text);
     }
-    if (add) setAddEmailAsked((n) => n + 1);
+    if (add === "email") setAddEmailAsked((n) => n + 1);
+    if (add === "passkey") setPasskeyAsked((n) => n + 1);
+    if (isProvider(connect))
+      setConnectAsked((c) => ({ kind: connect, n: (c?.n ?? 0) + 1 }));
     setParams({
       connected: null,
       error: null,
       method: null,
       remove: null,
       add: null,
+      connect: null,
     });
+    // `view` is read as the parameters arrive; a later refetch says nothing again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params]);
 
   const returnTo = (extra?: Record<string, string>): string =>
@@ -235,7 +272,7 @@ function MethodGroups({
     accountId: account.id,
   };
   const accounts = view.methods.filter((m) => m.group === "accounts");
-  const others = accounts.filter((m) => !(m.kind in PROVIDER_NAME));
+  const others = accounts.filter((m) => !isProvider(m.kind));
   const passkeyByMethod = new Map(view.passkeys.map((p) => [p.methodId, p]));
   const notifyTo = view.primaryEmail ?? account.email;
   const recorded = notifyTo
@@ -339,7 +376,8 @@ function MethodGroups({
                       key={kind}
                       kind={kind}
                       {...common}
-                      returnTo={returnTo()}
+                      returnTo={returnTo({ connect: kind })}
+                      asked={connectAsked?.kind === kind ? connectAsked.n : 0}
                     />,
                   ]
                 : [];
@@ -415,7 +453,7 @@ function MethodGroups({
           })}
           <AddEmail
             {...common}
-            returnTo={returnTo()}
+            returnTo={returnTo({ add: "email" })}
             asked={addEmailAsked}
             onAdded={focusGroup("email")}
           />
@@ -448,7 +486,8 @@ function MethodGroups({
             })}
           <AddPasskey
             {...common}
-            returnTo={returnTo()}
+            returnTo={returnTo({ add: "passkey" })}
+            asked={passkeyAsked}
             onAdded={focusGroup("passkeys")}
           />
         </ul>
@@ -534,6 +573,23 @@ function changeErrorText(err: unknown, name?: string): string {
   return `${copy.title}. ${copy.description}`;
 }
 
+/** When `asked` changes (above 0), focus `ref` after the page's own heading focus, in view. */
+function useAskedFocus(
+  asked: number,
+  ref: React.RefObject<HTMLElement | null>,
+): void {
+  React.useEffect(() => {
+    if (asked === 0) return;
+    focusPageHeading(() => ref.current);
+    ref.current?.scrollIntoView?.({
+      block: "center",
+      behavior: scrollBehavior(),
+    });
+    // Only when asked.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [asked]);
+}
+
 /**
  * A provider the account hasn't connected: **Connect** opens it (after step-up), and it comes back
  * to the account page linked, or with the reason it wasn't.
@@ -543,17 +599,23 @@ function ConnectRow({
   view,
   accountId,
   returnTo,
+  asked,
 }: {
   kind: PortalProvider;
   view: PortalMethods;
   accountId: string;
   returnTo: string;
+  /** Changes when a provider's step-up comes back to connect this one (`?connect=`). */
+  asked: number;
 }): React.ReactElement {
   const [stepUp, setStepUp] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const name = PROVIDER_NAME[kind];
   const buttonRef = React.useRef<HTMLButtonElement>(null);
+  // Confirmed with another provider and back: Connect is the next thing to press (the page
+  // never leaves for a second provider by itself).
+  useAskedFocus(asked, buttonRef);
   const connect = async (): Promise<void> => {
     setBusy(true);
     setError(null);
@@ -944,11 +1006,14 @@ function AddPasskey({
   view,
   accountId,
   returnTo,
+  asked,
   onAdded,
 }: {
   view: PortalMethods;
   accountId: string;
   returnTo: string;
+  /** Changes when a provider's step-up comes back to add a passkey (`?add=passkey`). */
+  asked: number;
   onAdded: () => void;
 }): React.ReactElement {
   const qc = useQueryClient();
@@ -959,6 +1024,15 @@ function AddPasskey({
   const buttonRef = React.useRef<HTMLButtonElement>(null);
   const reasonId = React.useId();
   const supported = passkeysSupported();
+  // Back from a provider's step-up: a browser makes a passkey only from a click, so the button
+  // takes focus, ready to press.
+  useAskedFocus(asked, buttonRef);
+  React.useEffect(() => {
+    if (asked > 0 && stepUpFresh(view.stepUp, Math.floor(Date.now() / 1000)))
+      setReady(true);
+    // Only when asked.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [asked]);
   const reason = !view.passkey.canAdd
     ? view.passkey.reason === "limit"
       ? "You have as many passkeys as an account can hold. Remove one to add another."

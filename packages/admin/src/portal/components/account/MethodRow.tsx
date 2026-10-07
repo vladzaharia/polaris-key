@@ -12,7 +12,7 @@ import {
 import { useRemoveMethod } from "../../data.js";
 import { isStepUpRequired, portalErrorCopy } from "../../errors.js";
 import { stepUpFresh } from "../../model/methods.js";
-import { scrollBehavior } from "../../router.js";
+import { focusPageHeading, scrollBehavior } from "../../router.js";
 import { StepUp } from "./StepUp.js";
 
 /**
@@ -92,6 +92,19 @@ export function MethodRow({
   const headingRef = React.useRef<HTMLHeadingElement>(null);
   const buttonRef = React.useRef<HTMLButtonElement>(null);
   const remove = useRemoveMethod();
+  // Back from a provider's sign-in to finish this removal (`?remove=<id>`): the panel mounts open,
+  // which runs no opening, so it takes focus and comes into view itself, after the page's own
+  // heading focus.
+  React.useEffect(() => {
+    if (!initiallyOpen) return;
+    focusPageHeading(() => headingRef.current);
+    headingRef.current?.scrollIntoView?.({
+      block: "center",
+      behavior: scrollBehavior(),
+    });
+    // Once, as it mounts.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const panelId = `method-${id}`;
   const reasonId = `method-${id}-reason`;
   const guarded = !canRemove && reason !== null;

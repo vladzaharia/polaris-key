@@ -39,6 +39,11 @@ export interface PortalCapabilities {
    * today's Worker: without it the card shows no header rather than a slug.
    */
   product?: { slug: string; name: string; developerName?: string | null };
+  /**
+   * I-07: the public Turnstile site key the email start asks a token for; null (or absent on an
+   * older Worker) when the deploy has Turnstile off and no token is asked for.
+   */
+  turnstileSiteKey?: string | null;
   modules: {
     licensing: boolean;
     claim: boolean;

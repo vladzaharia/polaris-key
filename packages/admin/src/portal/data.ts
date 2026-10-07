@@ -117,10 +117,18 @@ export function consumeQuietSignOut(): boolean {
   return q;
 }
 
+/**
+ * Session reads started so far: only the newest one's answer sets the CSRF token, so a read sent
+ * before a step-up sign-in (with the old cookie) that answers after one sent since can't put the
+ * old token back.
+ */
+let sessionReads = 0;
+
 async function fetchSession(): Promise<PortalMe | null> {
+  const read = ++sessionReads;
   try {
     const me = await portalApi.me();
-    setPortalCsrf(me.csrf);
+    if (read === sessionReads) setPortalCsrf(me.csrf);
     return me;
   } catch (err) {
     if (err instanceof PortalApiError && err.status === 401) {
@@ -591,12 +599,16 @@ export function useRemoveMethod() {
  * The session again, now (`GET /api/me`): after a step-up sign-in the browser holds a new
  * session, with a new CSRF token, which every later change must carry.
  */
-export function refreshSession(client: QueryClient): Promise<PortalMe | null> {
-  return client.fetchQuery({
-    queryKey: qk.portalMe(),
-    queryFn: fetchSession,
-    staleTime: 0,
-  });
+export async function refreshSession(
+  client: QueryClient,
+): Promise<PortalMe | null> {
+  // Not `fetchQuery`: it would join a `/api/me` already in flight, sent with the old cookie,
+  // whose answer would put the old CSRF token back. A request of its own, sent now, and its
+  // answer is the session (`fetchSession` sets the token).
+  await client.cancelQueries({ queryKey: qk.portalMe() });
+  const me = await fetchSession();
+  client.setQueryData(qk.portalMe(), me);
+  return me;
 }
 
 /** End one other session (a browser or app signed in to this account). */

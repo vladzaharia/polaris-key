@@ -58,12 +58,16 @@ on PX-W12's and I-07's APIs, change no contract, and report any API change inste
 - **Step-up is signing in again, in place** (PX-W12's correction). The panel offers a passkey
   first (the browser is offered only this account's credentials, so it cannot sign in to another
   account), else an email code on the card's `/api/signin/email/*` routes to one of the account's
-  own email methods, else signing in again with a connected provider, which returns to
-  `#/account/methods?remove=<id>` and reopens the panel. Every sign-in opens a new account session
-  (I-07), so the page re-reads `GET /api/me` for the new CSRF token and ends the session row it
-  replaced (`DELETE /api/sessions/<id>`, only once that row is no longer `current`). PX-W12 asks
-  for step-up on **Connect** and **Add** as well as removal; the page asks the same way. A browser
-  makes a passkey only from a click, so after a step-up **Add a passkey** is pressed once more.
+  own email methods, else signing in again with a connected provider, which returns to what it
+  was confirming (`?remove=<id>` reopens the panel with focus on its heading, `?connect=<provider>`
+  and `?add=passkey` focus their button, `?add=email` reopens the form). Every in-place sign-in
+  opens a new account session (I-07), so the page re-reads `GET /api/me` for the new CSRF token
+  (a request of its own: a read still in flight with the old cookie can't put the old token back)
+  and ends the session row it replaced (`DELETE /api/sessions/<id>`, only once that row is no
+  longer `current`). The provider way leaves the page, so it cannot end the row it replaced: Where
+  you're signed in lists this browser twice until that row expires. PX-W12 asks for step-up on
+  **Connect** and **Add** as well as removal; the page asks the same way. A browser makes a passkey
+  only from a click, so after a step-up **Add a passkey** is pressed once more.
 - **Sign out everywhere** (I-07's route) ends this browser's session too and signs the account out
   of its apps (Core's clearing hook): the page says so, under that name, not "everywhere else".
 - **Link an existing account** (the header link and the Hide My Email notice's link) and **Approve
@@ -71,12 +75,15 @@ on PX-W12's and I-07's APIs, change no contract, and report any API change inste
   `license_owned`'s link). The Hide My Email notice offers **Add your real email** meanwhile.
 - **Apple, Google and Steam** are listed when connected or when this deploy can connect them
   (`providers[].available`); a row that could only say "not available" would be a dead end.
-- **Turnstile:** the email step-up starts without a Turnstile token, as the sign-in page does
-  until PX-12 renders the widget; with Turnstile on it answers `turnstile_failed` and the passkey
-  or provider way remains.
+- **Turnstile:** the email step-up uses the card's email start, which asks for a Turnstile token
+  when the deploy has Turnstile on (`turnstileSiteKey` in `GET /api/capabilities`). The account
+  page renders no widget, so with a site key it skips the email way and offers the passkey, or
+  signing in again with a provider; an email start refused with `turnstile_failed` falls back the
+  same way.
 - **Route params:** the account route now carries its query (`?connected=`, `?error=&method=`
-  from a provider's Connect callback, `?remove=`, `?add=email`), read once and dropped from the
-  URL.
+  from a provider's Connect callback, `?remove=`, `?add=email|passkey`, `?connect=`), read once and
+  dropped from the URL. "Connected" is said only when the methods list shows the provider
+  connected.
 
 ## Goal
 
@@ -157,6 +164,10 @@ The API the rest of this package's surface needs (PX-13 builder, 2026-10-06), ea
 PX-15 adds **Link an existing account** to the Sign-in methods header and to the Hide My Email
 notice, and **Approve a new device** to Where you're signed in, once `#/account/link` and
 `#/account/approve` exist.
+
+PX-12, once it renders the Turnstile widget on the login card: render it in the account page's
+step-up (`components/account/StepUp.tsx`) as well, so the email way comes back with Turnstile on,
+or keep the skip there.
 
 The role agent sets `--set PX-13 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set PX-13 done`.

@@ -32,12 +32,15 @@ import { CODE_LENGTH, CodeCells } from "../CodeCells.js";
  *   to disconnect". The browser is offered only this account's passkeys, so the sign-in cannot
  *   land on another account.
  * - **An email code** to one of the account's own email addresses otherwise (or as the other
- *   way): the code is typed here, in six cells.
+ *   way): the code is typed here, in six cells. Not while the deploy has Turnstile on: the email
+ *   start then wants a token this page has no widget for (PX-12 renders it on the login card), so
+ *   the passkey or provider way shows instead, as it does after a `turnstile_failed`.
  * - **Sign in again with Apple, Google or Steam**, or single sign-on, for an account with neither:
  *   the page leaves for the provider and comes back to `returnTo`.
  *
  * A sign-in opens a new session for this browser (with a new CSRF token, which the page reads
- * at once); the one it replaced is ended, so Where you're signed in lists this browser once.
+ * at once); the one it replaced is ended, so Where you're signed in lists this browser once. A
+ * provider sign-in leaves the page, so it cannot end the old one: that row stays until it expires.
  */
 export interface StepUpProps {
   /** The verb the confirmation unlocks, in the passkey button: "Use your passkey to {verb}". */
@@ -71,7 +74,12 @@ export function StepUp({
   const codeId = React.useId();
   const labelRef = React.useRef<HTMLParagraphElement>(null);
   const passkey = view.passkeys.length > 0 && passkeysSupported();
-  const email = caps.auth.magic ? (view.emails[0]?.email ?? null) : null;
+  /** The email start refused its security check: this prompt stops offering the email way. */
+  const [turnstileFailed, setTurnstileFailed] = React.useState(false);
+  const email =
+    caps.auth.magic && !caps.turnstileSiteKey && !turnstileFailed
+      ? (view.emails[0]?.email ?? null)
+      : null;
   const providers = stepUpProviders(view);
   const sso = caps.auth.oidc && view.methods.some((m) => m.kind === "oidc");
   // The person's pick, else the first way this account has (the capabilities may still be on
@@ -127,11 +135,19 @@ export function StepUp({
     setBusy(true);
     setError(null);
     try {
-      await portalApi.startEmailSignIn(email);
+      // A code already went out: "Send a new code" is PX-W4's resend for this sign-in, which
+      // retires the old code and link and asks for no new security check.
+      if (sent) await portalApi.resendSignInCode();
+      else await portalApi.startEmailSignIn(email);
       setSent(true);
       setCode("");
       requestAnimationFrame(() => document.getElementById(codeId)?.focus());
     } catch (err) {
+      if (err instanceof PortalApiError && err.code === "turnstile_failed")
+        setTurnstileFailed(true);
+      // The sign-in itself expired: the next send starts a new one.
+      if (err instanceof PortalApiError && err.code === "signin_expired")
+        setSent(false);
       setError(sendErrorText(err));
     } finally {
       setBusy(false);
@@ -156,6 +172,14 @@ export function StepUp({
 
   const signInAgain = (path: string): string =>
     `${path}?return_to=${encodeURIComponent(returnTo)}`;
+  const providerWays = (
+    <SignInAgain
+      key="again"
+      providers={providers}
+      sso={sso}
+      hrefFor={(p) => signInAgain(p === "sso" ? "/login" : `/login/${p}`)}
+    />
+  );
   const otherWays: React.ReactNode[] = [];
   if (way === "passkey" && email)
     otherWays.push(
@@ -186,6 +210,10 @@ export function StepUp({
         Use your passkey instead
       </Button>,
     );
+  // The email way was refused its security check while a passkey remains the main way: the
+  // providers this account has are offered under it too.
+  if (turnstileFailed && way !== null && (providers.length > 0 || sso))
+    otherWays.push(providerWays);
 
   return (
     <div role="group" aria-labelledby={labelId} className="space-y-3">
@@ -267,11 +295,7 @@ export function StepUp({
           </div>
         </form>
       ) : (
-        <SignInAgain
-          providers={providers}
-          sso={sso}
-          hrefFor={(p) => signInAgain(p === "sso" ? "/login" : `/login/${p}`)}
-        />
+        providerWays
       )}
       {error ? (
         <p id={errorId} role="alert" className="text-sm text-danger">
@@ -376,12 +400,16 @@ function passkeyErrorText(err: unknown): string {
 
 function sendErrorText(err: unknown): string {
   if (err instanceof PortalApiError) {
+    if (err.code === "turnstile_failed")
+      return "The security check didn't run here. Confirm it's you another way.";
+    if (err.code === "signin_expired")
+      return "That code has expired. Send a new one.";
+    if (err.status === 429 && err.retryAfter !== undefined)
+      return `Wait ${Math.max(1, Math.ceil(err.retryAfter))} seconds, then send a new code.`;
     if (err.status === 429)
       return "Too many codes. Try again in a few minutes.";
     if (err.code === "email_unavailable" || err.code === "auth_method_disabled")
       return "We can't send email right now. Try again later.";
-    if (err.code === "turnstile_failed")
-      return "The security check did not pass. Try again.";
   }
   return commonErrorText(err);
 }

@@ -17,6 +17,7 @@ import {
 import {
   ACCOUNT,
   axeViolations,
+  CAPS_ALL,
   DAY,
   fetchedRequests,
   mockFetch,
@@ -774,6 +775,231 @@ describe("Sign-in methods (PX-13)", () => {
   });
 });
 
+describe("step-up ways and returns (PX-13 review)", () => {
+  /** Mara without passkeys: an email and Google (and Steam) to confirm with. */
+  function noPasskeys(over: Partial<PortalMethods> = {}): PortalMethods {
+    const view = maraMethods(over);
+    return {
+      ...view,
+      methods: view.methods.filter((m) => m.group !== "passkeys"),
+      passkeys: [],
+    };
+  }
+
+  it("with Turnstile on, offers signing in again with a provider, never an email code", async () => {
+    mockFetch(
+      routes(noPasskeys(), {
+        "/api/capabilities": { ...CAPS_ALL, turnstileSiteKey: "0x4AAAAAAA" },
+      }),
+    );
+    renderPortal();
+    const region = await methodsRegion();
+    await userEvent.click(
+      within(region).getByRole("button", { name: "Disconnect Steam" }),
+    );
+    const prompt = await within(region).findByRole("group", {
+      name: "Confirm it's you first",
+    });
+    const google = within(prompt).getByRole("link", {
+      name: "Sign in again with Google",
+    });
+    // It comes back to finish this removal.
+    expect(google.getAttribute("href")).toBe(
+      `/login/google?return_to=${encodeURIComponent(
+        `${window.location.origin}/#/account/methods?remove=lnk_steam`,
+      )}`,
+    );
+    expect(
+      within(prompt).queryByRole("button", { name: /Email a code/ }),
+    ).toBeNull();
+    expect(fetchedRequests()).not.toContain("POST /api/signin/email/start");
+  });
+
+  it("falls back to the providers when the email start fails its security check", async () => {
+    mockFetch(
+      routes(noPasskeys(), {
+        "POST /api/signin/email/start": {
+          status: 403,
+          body: { error: "turnstile_failed" },
+        },
+      }),
+    );
+    renderPortal();
+    const region = await methodsRegion();
+    await userEvent.click(
+      within(region).getByRole("button", { name: "Disconnect Steam" }),
+    );
+    const prompt = await within(region).findByRole("group", {
+      name: "Confirm it's you first",
+    });
+    await userEvent.click(
+      within(prompt).getByRole("button", {
+        name: `Email a code to ${ACCOUNT.email}`,
+      }),
+    );
+    expect(
+      await within(prompt).findByText(
+        "The security check didn't run here. Confirm it's you another way.",
+      ),
+    ).toBeTruthy();
+    expect(
+      within(prompt).getByRole("link", { name: "Sign in again with Google" }),
+    ).toBeTruthy();
+    expect(
+      within(prompt).queryByRole("button", { name: /Email a code/ }),
+    ).toBeNull();
+  });
+
+  it("sends a new code with the resend, not a second start", async () => {
+    mockFetch(
+      routes(noPasskeys(), {
+        "POST /api/signin/email/start": { ok: true, expiresIn: 600 },
+        "POST /api/signin/email/resend": { ok: true, expiresIn: 600 },
+      }),
+    );
+    renderPortal();
+    const region = await methodsRegion();
+    await userEvent.click(
+      within(region).getByRole("button", { name: "Disconnect Steam" }),
+    );
+    const prompt = await within(region).findByRole("group", {
+      name: "Confirm it's you first",
+    });
+    await userEvent.click(
+      within(prompt).getByRole("button", {
+        name: `Email a code to ${ACCOUNT.email}`,
+      }),
+    );
+    await userEvent.click(
+      await within(prompt).findByRole("button", { name: "Send a new code" }),
+    );
+    await waitFor(() =>
+      expect(fetchedRequests()).toContain("POST /api/signin/email/resend"),
+    );
+    expect(
+      fetchedRequests().filter((r) => r === "POST /api/signin/email/start"),
+    ).toHaveLength(1);
+  });
+
+  it("back from a provider's step-up to remove: the panel is open, focused, and waits for a click", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/#/account/methods?remove=lnk_steam",
+    );
+    mockFetch(
+      routes(
+        maraMethods({
+          stepUp: {
+            authenticatedAt: NOW_S - 10,
+            freshUntil: NOW_S + 290,
+            fresh: true,
+            maxAgeSeconds: 300,
+          },
+        }),
+      ),
+    );
+    renderPortal();
+    const region = await methodsRegion();
+    const heading = await within(region).findByRole("heading", {
+      name: "Disconnect Steam?",
+    });
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+    expect(
+      within(region).getByRole("button", { name: "Disconnect Steam" }),
+    ).toBeTruthy();
+    expect(
+      fetchedRequests().some((r) => r.startsWith("DELETE /api/me/methods")),
+    ).toBe(false);
+    await waitFor(() => expect(window.location.hash).toBe("#/account/methods"));
+  });
+
+  it("back from a provider's step-up to connect: Connect takes focus, the page doesn't leave", async () => {
+    window.history.replaceState(null, "", "/#/account/methods?connect=apple");
+    const go = vi.spyOn(browser, "go").mockImplementation(() => undefined);
+    mockFetch(routes(maraMethods()));
+    renderPortal();
+    const region = await methodsRegion();
+    const connect = within(region).getByRole("button", {
+      name: "Connect Apple",
+    });
+    await waitFor(() => expect(document.activeElement).toBe(connect));
+    await waitFor(() => expect(window.location.hash).toBe("#/account/methods"));
+    expect(go).not.toHaveBeenCalled();
+  });
+
+  it("a step-up started from Connect or Add an email comes back to it", async () => {
+    mockFetch(
+      routes(noPasskeys(), {
+        "/api/capabilities": { ...CAPS_ALL, turnstileSiteKey: "0x4AAAAAAA" },
+        "POST /api/me/methods/apple/start": {
+          status: 401,
+          body: { error: "step_up_required" },
+        },
+        "POST /api/me/methods/email/start": {
+          status: 401,
+          body: { error: "step_up_required" },
+        },
+      }),
+    );
+    renderPortal();
+    const region = await methodsRegion();
+    const back = (target: string) =>
+      `/login/google?return_to=${encodeURIComponent(
+        `${window.location.origin}/#/account/methods?${target}`,
+      )}`;
+    await userEvent.click(
+      within(region).getByRole("button", { name: "Connect Apple" }),
+    );
+    let prompt = await within(region).findByRole("group", {
+      name: "Confirm it's you first",
+    });
+    expect(
+      within(prompt)
+        .getByRole("link", { name: "Sign in again with Google" })
+        .getAttribute("href"),
+    ).toBe(back("connect=apple"));
+    await userEvent.click(
+      within(region).getByRole("button", { name: "Cancel" }),
+    );
+    await userEvent.click(
+      within(region).getByRole("button", { name: "Add an email" }),
+    );
+    await userEvent.type(
+      await within(region).findByRole("textbox", { name: "Email address" }),
+      "mara@studio.example",
+    );
+    await userEvent.click(
+      within(region).getByRole("button", { name: "Send code" }),
+    );
+    prompt = await within(region).findByRole("group", {
+      name: "Confirm it's you first",
+    });
+    expect(
+      within(prompt)
+        .getByRole("link", { name: "Sign in again with Google" })
+        .getAttribute("href"),
+    ).toBe(back("add=email"));
+  });
+
+  it("says a provider is connected only when the list shows it connected", async () => {
+    window.history.replaceState(null, "", "/#/account/methods?connected=apple");
+    mockFetch(routes(maraMethods()));
+    renderPortal();
+    await methodsRegion();
+    await waitFor(() => expect(window.location.hash).toBe("#/account/methods"));
+    expect(screen.queryByText("Apple is connected.")).toBeNull();
+    cleanup();
+    window.history.replaceState(
+      null,
+      "",
+      "/#/account/methods?connected=google",
+    );
+    renderPortal();
+    expect(await screen.findByText("Google is connected.")).toBeTruthy();
+  });
+});
+
 describe("Where you're signed in (PX-13 on I-07)", () => {
   it("marks this browser and signs another out, focus to the section", async () => {
     let sessions = SESSIONS;
@@ -895,6 +1121,7 @@ describe("Sign-in methods model (PX-13)", () => {
       }),
     ).toBe("Firefox on Windows");
     expect(passkeyName({ aaguid: null, addedFrom: null })).toBe("Passkey");
+    expect(passkeyName({ aaguid: null, addedFrom: "  " })).toBe("Passkey");
     expect(passkeyProvider(ICLOUD)?.glyph).toBe("apple");
   });
 

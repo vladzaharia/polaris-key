@@ -78,7 +78,7 @@ export function passkeyProvider(
 export function passkeyName(
   p: Pick<PortalPasskey, "aaguid" | "addedFrom">,
 ): string {
-  return passkeyProvider(p.aaguid)?.name ?? p.addedFrom?.trim() ?? "Passkey";
+  return passkeyProvider(p.aaguid)?.name ?? (p.addedFrom?.trim() || "Passkey");
 }
 
 /** The account's providers by name, in the provider row's order. */
