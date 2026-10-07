@@ -36,12 +36,17 @@ const SEED: Record<string, string> = {
   "qt-checkbox": "box = QCheckBox('Sync')",
   "qt-rtl": "QLabel { margin-left: 4px; }",
   "qt-colour-literal": "label.setStyleSheet('color: #ff6a3d')",
+  "terminal-raw-escape": "out.write(`\\x1b[36m${name}\\x1b[39m`);",
+  "terminal-stock-prompt": "const rl = createInterface({ input, output });",
+  "terminal-console": 'console.log("Activated");',
+  "terminal-uppercase": "const title = heading.toUpperCase();",
 };
 const EXT: Record<string, string> = {
   swiftui: ".swift",
   compose: ".kt",
   godot: ".gd",
   qt: ".py",
+  "terminal-node": ".ts",
 };
 
 function seededRoot(): string {
