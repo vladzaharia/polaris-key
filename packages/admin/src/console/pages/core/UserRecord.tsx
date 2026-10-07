@@ -498,10 +498,21 @@ function UserLicenses({
                 <span className="flex min-w-0 flex-col gap-0.5">
                   <span>
                     <EntityLink slug={slug} kind="license" id={x.licenseId} />{" "}
-                    {x.direction === "in" ? "moved here from " : "moved to "}
-                    <span className="font-mono text-xs">
-                      {x.otherSubject ?? "a deleted account"}
-                    </span>
+                    {x.kind === "floating" && x.direction === "out" ? (
+                      // LX-30: Make floating from the licence record.
+                      "made floating"
+                    ) : x.kind === "reassign" && x.direction === "out" ? (
+                      "reassigned to another email"
+                    ) : (
+                      <>
+                        {x.direction === "in"
+                          ? "moved here from "
+                          : "moved to "}
+                        <span className="font-mono text-xs">
+                          {x.otherSubject ?? "a deleted account"}
+                        </span>
+                      </>
+                    )}
                   </span>
                   <span className="text-xs text-fg-muted">
                     {x.actorName ?? "An operator"} ·{" "}

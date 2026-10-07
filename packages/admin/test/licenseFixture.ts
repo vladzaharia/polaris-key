@@ -6,6 +6,7 @@
 
 import { configureAxe } from "vitest-axe";
 import type {
+  Me,
   LicenseDetail,
   LicenseSummary,
   ProductCatalog,
@@ -239,6 +240,7 @@ export function failing(status: number, error = "server_error"): Response {
 export interface LicenseBootOptions {
   routes?: Record<string, unknown>;
   services?: Enablement;
+  me?: Partial<Me>;
 }
 
 /** Mount the console at a License hash over the fixtures (override any route with `routes`). */
@@ -248,6 +250,7 @@ export function bootLicense(
 ): FetchLog {
   return boot(hash, {
     services: opts.services ?? ALL_ON,
+    ...(opts.me ? { me: opts.me } : {}),
     extra: {
       [`${API}/license/licenses`]: { licenses: LICENSES },
       [`${API}/license/licenses/lic_1`]: DETAIL,

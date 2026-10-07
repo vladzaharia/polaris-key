@@ -219,7 +219,7 @@ export async function fetchLicenseBatches(
   let cursor: string | undefined;
   for (let page = 0; page < MAX_BATCH_PAGES; page++) {
     const res = await api.licenseBatches(slug, { limit: BATCH_PAGE, cursor });
-    batches.push(...res.batches);
+    batches.push(...(res.batches ?? []));
     if (!res.nextCursor) break;
     cursor = res.nextCursor;
   }
