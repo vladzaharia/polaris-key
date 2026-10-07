@@ -2992,6 +2992,411 @@ msgstr "打开Polaris Key"
 msgid "signin.code.label"
 msgstr "6位验证码"
 
+#. License
+#. Terminal help: the heading over the license commands (activate, status…).
+msgid "cli.group.license"
+msgstr "许可证"
+
+#. Account
+#. Terminal help: the heading over the sign-in and sign-out commands.
+msgid "cli.group.account"
+msgstr "账户"
+
+#. Devices
+#. Terminal help: the heading over the device commands.
+msgid "cli.group.devices"
+msgstr "设备"
+
+#. Settings
+#. Terminal help: the heading over the settings (config) commands.
+msgid "cli.group.settings"
+msgstr "设置"
+
+#. Updates
+#. Terminal help: the heading over the update and release-notes commands.
+msgid "cli.group.updates"
+msgstr "更新"
+
+#. Content
+#. Terminal help: the heading over the downloadable content (packs) commands.
+msgid "cli.group.content"
+msgstr "内容"
+
+#. Support
+#. Terminal help: the heading over diagnostics and offline activation commands.
+msgid "cli.group.support"
+msgstr "支持"
+
+#. Usage
+#. Terminal help: the label before the command's usage line, like 'Usage  tidewater <command> [options]'.
+msgid "cli.help.usage"
+msgstr "用法"
+
+#. Options
+#. Terminal help: the heading over the flags every command takes.
+msgid "cli.help.options"
+msgstr "选项"
+
+#. {product} license and updates
+#. Terminal help: one line under the command name saying what the command-line tool does.
+msgid "cli.help.lede"
+msgstr "{product}许可证与更新"
+
+#. Run {command} for one command's options.
+#. Terminal help footer. {command} is a command line such as 'tidewater activate --help'.
+msgid "cli.help.more"
+msgstr "运行{command}查看单个命令的选项。"
+
+#. Add a license key (prompts; never an argument)
+#. Terminal help: what the activate command does. The key is typed at a prompt or piped in, never written on the command line.
+msgid "cli.verb.activate"
+msgstr "添加许可证密钥（提示输入，不可作为参数）"
+
+#. Get the free license, when {product} offers one
+#. Terminal help: what the enroll command does.
+msgid "cli.verb.enroll"
+msgstr "获取免费许可证（如果{product}提供）"
+
+#. Stop using your license on this device and free its seat
+#. Terminal help: what the deactivate command does.
+msgid "cli.verb.deactivate"
+msgstr "停止在此设备上使用你的许可证并释放席位"
+
+#. License, devices and offline time
+#. Terminal help: what the status command shows.
+msgid "cli.verb.status"
+msgstr "许可证、设备和离线时间"
+
+#. Print the request code for offline activation
+#. Terminal help: what the offline-request command does.
+msgid "cli.verb.offlineRequest"
+msgstr "输出离线激活所需的请求代码"
+
+#. Activate from an offline activation file
+#. Terminal help: what the import-bundle command does.
+msgid "cli.verb.importBundle"
+msgstr "从离线激活文件激活"
+
+#. Sign in with your account in the browser
+#. Terminal help: what the login command does.
+msgid "cli.verb.login"
+msgstr "在浏览器中使用你的账户登录"
+
+#. Sign out on this device
+#. Terminal help: what the logout command does.
+msgid "cli.verb.logout"
+msgstr "在此设备上退出登录"
+
+#. Register this device without a license key
+#. Terminal help: what the register command does.
+msgid "cli.verb.register"
+msgstr "不使用许可证密钥注册此设备"
+
+#. List the devices using your license
+#. Terminal help: what 'devices list' does.
+msgid "cli.verb.devicesList"
+msgstr "列出使用你的许可证的设备"
+
+#. Rename a device (no name clears it)
+#. Terminal help: what 'devices rename' does.
+msgid "cli.verb.devicesRename"
+msgstr "重命名设备（不提供名称则清除名称）"
+
+#. Remove a device and free its seat
+#. Terminal help: what 'devices deauthorize' does.
+msgid "cli.verb.devicesRemove"
+msgstr "移除设备并释放其席位"
+
+#. Show one setting and where its value comes from
+#. Terminal help: what 'config get' does.
+msgid "cli.verb.configGet"
+msgstr "显示某项设置及其值的来源"
+
+#. List the settings you can see
+#. Terminal help: what 'config list' does.
+msgid "cli.verb.configList"
+msgstr "列出你可以查看的设置"
+
+#. Change a setting on this device
+#. Terminal help: what 'config set' does.
+msgid "cli.verb.configSet"
+msgstr "在此设备上更改设置"
+
+#. Reset a setting to its default
+#. Terminal help: what 'config reset' does.
+msgid "cli.verb.configReset"
+msgstr "将设置恢复为默认值"
+
+#. Print a secret delivered to this device
+#. Terminal help: what the secret command does.
+msgid "cli.verb.secret"
+msgstr "输出发送到此设备的机密"
+
+#. Get a short-lived token from a recipe
+#. Terminal help: what the mint command does.
+msgid "cli.verb.mint"
+msgstr "通过配方获取短期令牌"
+
+#. Check for a newer version
+#. Terminal help: what 'update check' does.
+msgid "cli.verb.updateCheck"
+msgstr "检查是否有新版本"
+
+#. Download and install the newer version
+#. Terminal help: what 'update apply' does.
+msgid "cli.verb.updateApply"
+msgstr "下载并安装新版本"
+
+#. Show what's new in each version
+#. Terminal help: what the changelog command does.
+msgid "cli.verb.changelog"
+msgstr "显示每个版本的新功能"
+
+#. Show installed and downloading content
+#. Terminal help: what 'packs status' does.
+msgid "cli.verb.packsStatus"
+msgstr "显示已安装和正在下载的内容"
+
+#. Download and install content, with progress
+#. Terminal help: what 'packs ensure' does.
+msgid "cli.verb.packsEnsure"
+msgstr "下载并安装内容，并显示进度"
+
+#. Show what this device can do, for support
+#. Terminal help: what the doctor command does.
+msgid "cli.verb.doctor"
+msgstr "显示此设备支持的功能，供技术支持使用"
+
+#. Print shell completion for bash, zsh or fish
+#. Terminal help: what the completion command does. bash, zsh and fish are shell names; keep them.
+msgid "cli.verb.completion"
+msgstr "输出bash、zsh或fish的shell补全脚本"
+
+#. JSON output for scripts, on every command
+#. Terminal help: what the --json flag does.
+msgid "cli.option.json"
+msgstr "供脚本使用的JSON输出，适用于所有命令"
+
+#. Plain text (also NO_COLOR=1)
+#. Terminal help: what the --no-color flag does. NO_COLOR=1 is an environment variable; keep it.
+msgid "cli.option.noColor"
+msgstr "纯文本（也可用NO_COLOR=1）"
+
+#. ASCII symbols only
+#. Terminal help: what the --ascii flag does.
+msgid "cli.option.ascii"
+msgstr "仅使用ASCII符号"
+
+#. Help for a command
+#. Terminal help: what the -h, --help flag does.
+msgid "cli.option.help"
+msgstr "命令帮助"
+
+#. Don't ask before signing out
+#. Terminal help: what the --yes flag does.
+msgid "cli.option.yes"
+msgstr "退出登录前不再询问"
+
+#. Sign in with a code instead of this computer's browser
+#. Terminal help: what the --device-code flag does.
+msgid "cli.option.deviceCode"
+msgstr "使用代码登录，而非此电脑的浏览器"
+
+#. Enter activate · Esc cancel
+#. Terminal key hints under the license key prompt. Each part is a key name, a space, then what it does; keep the key first and the ' · ' separators.
+msgid "cli.keys.activate"
+msgstr "Enter 激活 · Esc 取消"
+
+#. c copy the code · Esc cancel
+#. Terminal key hints while waiting for a code sign-in. 'c' is the key to press; keep the key first and the ' · ' separators.
+msgid "cli.keys.code"
+msgstr "c 复制代码 · Esc 取消"
+
+#. Enter open in browser · Esc cancel
+#. Terminal key hints when every device on the license is in use: Enter opens the page that replaces a device. Keep the key first and the ' · ' separators.
+msgid "cli.keys.deviceLimit"
+msgstr "Enter 在浏览器中打开 · Esc 取消"
+
+#. Enter try again · Esc cancel
+#. Terminal key hints after the browser opened to free a device: Enter tries the activation again. Keep the key first and the ' · ' separators.
+msgid "cli.keys.retry"
+msgstr "Enter 重试 · Esc 取消"
+
+#. Esc cancel
+#. Terminal key hint while an update downloads. Keep the key first.
+msgid "cli.keys.download"
+msgstr "Esc 取消"
+
+#. Waiting for you to sign in…
+#. Terminal: shown beside the spinner while the person enters the code on another device.
+msgid "cli.signin.waitingCode"
+msgstr "正在等待你登录…"
+
+#. Signed in as {email}
+#. Terminal: the sign-in finished and only the email is known.
+msgid "cli.signin.signedInEmail"
+msgstr "已登录为{email}"
+
+#. A key typed after the command is saved in your shell history. Next time, run {command} and paste the key when it asks.
+#. Terminal warning when a license key was given on the command line. {command} is a command line such as 'tidewater activate'.
+msgid "cli.activate.argWarning"
+msgstr "在命令后输入的密钥会保存在shell历史记录中。下次请运行{command}，并在提示时粘贴密钥。"
+
+#. No license key. Run {command} in a terminal, or pipe the key to it.
+#. Terminal: activate ran where it cannot ask for the key (no terminal) and nothing was piped in.
+msgid "cli.activate.noKey"
+msgstr "没有许可证密钥。请在终端中运行{command}，或通过管道将密钥传给它。"
+
+#. Free a device, then run {command} again.
+#. Terminal: every device on the license is in use; free one in the browser, then activate again. {command} is a command line.
+msgid "cli.deviceLimit.again"
+msgstr "请释放一台设备，然后再次运行{command}。"
+
+#. License
+#. Terminal status: the row label for the license (tier and holder).
+msgid "cli.status.license"
+msgstr "许可证"
+
+#. Offline
+#. Terminal status: the row label for how long the app works without the internet.
+msgid "cli.status.offline"
+msgstr "离线"
+
+#. Works offline until {date}
+#. Terminal status: the license keeps working without the internet until {date} (a short date).
+msgid "cli.status.offlineUntil"
+msgstr "可离线使用至{date}"
+
+#. Version
+#. Terminal status: the row label for the app's version and release channel.
+msgid "cli.status.version"
+msgstr "版本"
+
+#. To keep using {product}:
+#. Terminal status: the heading over the commands that fix a blocked license.
+msgid "cli.status.fixes"
+msgstr "要继续使用{product}："
+
+#. Use the license on your account
+#. Terminal status: what the login command does as a fix for a blocked license.
+msgid "cli.fix.signIn"
+msgstr "使用你账户中的许可证"
+
+#. Signed out of {product} on this device.
+#. Terminal: sign-out finished.
+msgid "cli.logout.done"
+msgstr "已在此设备上退出登录{product}。"
+
+#. {product} no longer uses your license on this device. Its seat is free.
+#. Terminal: deactivate finished; the license's seat on this device is released.
+msgid "cli.deactivate.done"
+msgstr "{product}不再在此设备上使用你的许可证。其席位已释放。"
+
+#. Nothing changed.
+#. Terminal: the person answered no to a confirmation.
+msgid "cli.nothingChanged"
+msgstr "未做任何更改。"
+
+#. This device is registered.
+#. Terminal: keyless device registration finished.
+msgid "cli.register.done"
+msgstr "此设备已注册。"
+
+#. Renamed to {device}.
+#. Terminal: a device was renamed; {device} is the new name.
+msgid "cli.devices.renamed"
+msgstr "已重命名为{device}。"
+
+#. {device} has no name now.
+#. Terminal: a device's name was cleared; {device} is the device's id.
+msgid "cli.devices.nameCleared"
+msgstr "{device}现在没有名称。"
+
+#. {device} was removed. Its seat is free.
+#. Terminal: a device was removed from the license.
+msgid "cli.devices.removed"
+msgstr "{device}已移除。其席位已释放。"
+
+#. Update cancelled. Nothing was installed.
+#. Terminal: the person stopped an update download.
+msgid "cli.update.cancelled"
+msgstr "更新已取消。未安装任何内容。"
+
+#. No content is installed.
+#. Terminal: there are no downloadable content packs on this device.
+msgid "cli.packs.none"
+msgstr "没有已安装的内容。"
+
+#. after a restart
+#. Terminal: a content pack is installed and takes effect after the app restarts. Shown after the pack's version.
+msgid "cli.packs.afterRestart"
+msgstr "重启后生效"
+
+#. {name} has no value.
+#. Terminal: a setting has no value and no default. {name} is the setting's key.
+msgid "cli.config.unset"
+msgstr "{name}没有值。"
+
+#. No secret named {name} is delivered to this device.
+#. Terminal: the secret command found nothing. {name} is the secret's key.
+msgid "cli.secret.none"
+msgstr "没有名为{name}的机密发送到此设备。"
+
+#. Then run {command} with the file you get back.
+#. Terminal offline activation: what to do with the activation file. {command} is a command line.
+msgid "cli.offline.import"
+msgstr "然后使用你收到的文件运行{command}。"
+
+#. SDK
+#. Terminal diagnostics: the row label for the SDK name and version.
+msgid "cli.doctor.sdk"
+msgstr "SDK"
+
+#. Product
+#. Terminal diagnostics: the row label for the product and its version.
+msgid "cli.doctor.product"
+msgstr "产品"
+
+#. Server
+#. Terminal diagnostics: the row label for the server address.
+msgid "cli.doctor.server"
+msgstr "服务器"
+
+#. Device
+#. Terminal diagnostics: the row label for this device's id.
+msgid "cli.doctor.device"
+msgstr "设备"
+
+#. Token store
+#. Terminal diagnostics: the row label for where the device's credential is kept (keyring or file).
+msgid "cli.doctor.store"
+msgstr "令牌存储"
+
+#. Discovery
+#. Terminal diagnostics: the row label for whether the product's service description could be read.
+msgid "cli.doctor.discovery"
+msgstr "服务发现"
+
+#. Reachable
+#. Terminal diagnostics: the product's service description was read.
+msgid "cli.doctor.reachable"
+msgstr "可访问"
+
+#. Services
+#. Terminal diagnostics: the row label for the services the product turned on.
+msgid "cli.doctor.services"
+msgstr "服务"
+
+#. Installed from
+#. Terminal diagnostics: the row label for the store or channel the app was installed from.
+msgid "cli.doctor.installedFrom"
+msgstr "安装来源"
+
+#. Not supported here
+#. Terminal diagnostics: the heading over features this device cannot use, each with its reason.
+msgid "cli.doctor.unsupported"
+msgstr "此处不支持"
+
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).
 msgid "core.fallback.title"

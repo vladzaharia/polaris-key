@@ -3012,6 +3012,411 @@ msgstr "Apri Polaris Key"
 msgid "signin.code.label"
 msgstr "Codice a 6 cifre"
 
+#. License
+#. Terminal help: the heading over the license commands (activate, status…).
+msgid "cli.group.license"
+msgstr "Licenza"
+
+#. Account
+#. Terminal help: the heading over the sign-in and sign-out commands.
+msgid "cli.group.account"
+msgstr "Account"
+
+#. Devices
+#. Terminal help: the heading over the device commands.
+msgid "cli.group.devices"
+msgstr "Dispositivi"
+
+#. Settings
+#. Terminal help: the heading over the settings (config) commands.
+msgid "cli.group.settings"
+msgstr "Impostazioni"
+
+#. Updates
+#. Terminal help: the heading over the update and release-notes commands.
+msgid "cli.group.updates"
+msgstr "Aggiornamenti"
+
+#. Content
+#. Terminal help: the heading over the downloadable content (packs) commands.
+msgid "cli.group.content"
+msgstr "Contenuti"
+
+#. Support
+#. Terminal help: the heading over diagnostics and offline activation commands.
+msgid "cli.group.support"
+msgstr "Assistenza"
+
+#. Usage
+#. Terminal help: the label before the command's usage line, like 'Usage  tidewater <command> [options]'.
+msgid "cli.help.usage"
+msgstr "Uso"
+
+#. Options
+#. Terminal help: the heading over the flags every command takes.
+msgid "cli.help.options"
+msgstr "Opzioni"
+
+#. {product} license and updates
+#. Terminal help: one line under the command name saying what the command-line tool does.
+msgid "cli.help.lede"
+msgstr "Licenza e aggiornamenti di {product}"
+
+#. Run {command} for one command's options.
+#. Terminal help footer. {command} is a command line such as 'tidewater activate --help'.
+msgid "cli.help.more"
+msgstr "Esegui {command} per le opzioni di un comando."
+
+#. Add a license key (prompts; never an argument)
+#. Terminal help: what the activate command does. The key is typed at a prompt or piped in, never written on the command line.
+msgid "cli.verb.activate"
+msgstr "Aggiungi chiave di licenza (chiesta, mai come argomento)"
+
+#. Get the free license, when {product} offers one
+#. Terminal help: what the enroll command does.
+msgid "cli.verb.enroll"
+msgstr "Ottieni la licenza gratuita, se {product} ne offre una"
+
+#. Stop using your license on this device and free its seat
+#. Terminal help: what the deactivate command does.
+msgid "cli.verb.deactivate"
+msgstr "Togli la licenza da questo dispositivo e liberane il posto"
+
+#. License, devices and offline time
+#. Terminal help: what the status command shows.
+msgid "cli.verb.status"
+msgstr "Licenza, dispositivi e tempo offline"
+
+#. Print the request code for offline activation
+#. Terminal help: what the offline-request command does.
+msgid "cli.verb.offlineRequest"
+msgstr "Mostra il codice di richiesta per l'attivazione offline"
+
+#. Activate from an offline activation file
+#. Terminal help: what the import-bundle command does.
+msgid "cli.verb.importBundle"
+msgstr "Attiva da un file di attivazione offline"
+
+#. Sign in with your account in the browser
+#. Terminal help: what the login command does.
+msgid "cli.verb.login"
+msgstr "Accedi con il tuo account nel browser"
+
+#. Sign out on this device
+#. Terminal help: what the logout command does.
+msgid "cli.verb.logout"
+msgstr "Esci su questo dispositivo"
+
+#. Register this device without a license key
+#. Terminal help: what the register command does.
+msgid "cli.verb.register"
+msgstr "Registra questo dispositivo senza chiave di licenza"
+
+#. List the devices using your license
+#. Terminal help: what 'devices list' does.
+msgid "cli.verb.devicesList"
+msgstr "Elenca i dispositivi che usano la tua licenza"
+
+#. Rename a device (no name clears it)
+#. Terminal help: what 'devices rename' does.
+msgid "cli.verb.devicesRename"
+msgstr "Rinomina un dispositivo (senza nome, toglie il nome)"
+
+#. Remove a device and free its seat
+#. Terminal help: what 'devices deauthorize' does.
+msgid "cli.verb.devicesRemove"
+msgstr "Rimuovi un dispositivo e liberane il posto"
+
+#. Show one setting and where its value comes from
+#. Terminal help: what 'config get' does.
+msgid "cli.verb.configGet"
+msgstr "Mostra un'impostazione e l'origine del suo valore"
+
+#. List the settings you can see
+#. Terminal help: what 'config list' does.
+msgid "cli.verb.configList"
+msgstr "Elenca le impostazioni che puoi vedere"
+
+#. Change a setting on this device
+#. Terminal help: what 'config set' does.
+msgid "cli.verb.configSet"
+msgstr "Modifica un'impostazione su questo dispositivo"
+
+#. Reset a setting to its default
+#. Terminal help: what 'config reset' does.
+msgid "cli.verb.configReset"
+msgstr "Ripristina il valore predefinito di un'impostazione"
+
+#. Print a secret delivered to this device
+#. Terminal help: what the secret command does.
+msgid "cli.verb.secret"
+msgstr "Mostra un segreto consegnato a questo dispositivo"
+
+#. Get a short-lived token from a recipe
+#. Terminal help: what the mint command does.
+msgid "cli.verb.mint"
+msgstr "Ottieni un token di breve durata da una ricetta"
+
+#. Check for a newer version
+#. Terminal help: what 'update check' does.
+msgid "cli.verb.updateCheck"
+msgstr "Cerca una versione più recente"
+
+#. Download and install the newer version
+#. Terminal help: what 'update apply' does.
+msgid "cli.verb.updateApply"
+msgstr "Scarica e installa la versione più recente"
+
+#. Show what's new in each version
+#. Terminal help: what the changelog command does.
+msgid "cli.verb.changelog"
+msgstr "Mostra le novità di ogni versione"
+
+#. Show installed and downloading content
+#. Terminal help: what 'packs status' does.
+msgid "cli.verb.packsStatus"
+msgstr "Mostra i contenuti installati e in download"
+
+#. Download and install content, with progress
+#. Terminal help: what 'packs ensure' does.
+msgid "cli.verb.packsEnsure"
+msgstr "Scarica e installa contenuti, con avanzamento"
+
+#. Show what this device can do, for support
+#. Terminal help: what the doctor command does.
+msgid "cli.verb.doctor"
+msgstr "Mostra cosa può fare questo dispositivo, per l'assistenza"
+
+#. Print shell completion for bash, zsh or fish
+#. Terminal help: what the completion command does. bash, zsh and fish are shell names; keep them.
+msgid "cli.verb.completion"
+msgstr "Genera il completamento shell per bash, zsh o fish"
+
+#. JSON output for scripts, on every command
+#. Terminal help: what the --json flag does.
+msgid "cli.option.json"
+msgstr "Output JSON per gli script, su ogni comando"
+
+#. Plain text (also NO_COLOR=1)
+#. Terminal help: what the --no-color flag does. NO_COLOR=1 is an environment variable; keep it.
+msgid "cli.option.noColor"
+msgstr "Testo semplice (anche NO_COLOR=1)"
+
+#. ASCII symbols only
+#. Terminal help: what the --ascii flag does.
+msgid "cli.option.ascii"
+msgstr "Solo simboli ASCII"
+
+#. Help for a command
+#. Terminal help: what the -h, --help flag does.
+msgid "cli.option.help"
+msgstr "Aiuto per un comando"
+
+#. Don't ask before signing out
+#. Terminal help: what the --yes flag does.
+msgid "cli.option.yes"
+msgstr "Non chiedere conferma prima di uscire"
+
+#. Sign in with a code instead of this computer's browser
+#. Terminal help: what the --device-code flag does.
+msgid "cli.option.deviceCode"
+msgstr "Accedi con un codice invece del browser locale"
+
+#. Enter activate · Esc cancel
+#. Terminal key hints under the license key prompt. Each part is a key name, a space, then what it does; keep the key first and the ' · ' separators.
+msgid "cli.keys.activate"
+msgstr "Invio attiva · Esc annulla"
+
+#. c copy the code · Esc cancel
+#. Terminal key hints while waiting for a code sign-in. 'c' is the key to press; keep the key first and the ' · ' separators.
+msgid "cli.keys.code"
+msgstr "c copia il codice · Esc annulla"
+
+#. Enter open in browser · Esc cancel
+#. Terminal key hints when every device on the license is in use: Enter opens the page that replaces a device. Keep the key first and the ' · ' separators.
+msgid "cli.keys.deviceLimit"
+msgstr "Invio apri nel browser · Esc annulla"
+
+#. Enter try again · Esc cancel
+#. Terminal key hints after the browser opened to free a device: Enter tries the activation again. Keep the key first and the ' · ' separators.
+msgid "cli.keys.retry"
+msgstr "Invio riprova · Esc annulla"
+
+#. Esc cancel
+#. Terminal key hint while an update downloads. Keep the key first.
+msgid "cli.keys.download"
+msgstr "Esc annulla"
+
+#. Waiting for you to sign in…
+#. Terminal: shown beside the spinner while the person enters the code on another device.
+msgid "cli.signin.waitingCode"
+msgstr "In attesa del tuo accesso…"
+
+#. Signed in as {email}
+#. Terminal: the sign-in finished and only the email is known.
+msgid "cli.signin.signedInEmail"
+msgstr "Accesso effettuato come {email}"
+
+#. A key typed after the command is saved in your shell history. Next time, run {command} and paste the key when it asks.
+#. Terminal warning when a license key was given on the command line. {command} is a command line such as 'tidewater activate'.
+msgid "cli.activate.argWarning"
+msgstr "Una chiave digitata dopo il comando viene salvata nella cronologia della shell. La prossima volta esegui {command} e incolla la chiave quando viene richiesta."
+
+#. No license key. Run {command} in a terminal, or pipe the key to it.
+#. Terminal: activate ran where it cannot ask for the key (no terminal) and nothing was piped in.
+msgid "cli.activate.noKey"
+msgstr "Nessuna chiave di licenza. Esegui {command} in un terminale o passagli la chiave tramite pipe."
+
+#. Free a device, then run {command} again.
+#. Terminal: every device on the license is in use; free one in the browser, then activate again. {command} is a command line.
+msgid "cli.deviceLimit.again"
+msgstr "Libera un dispositivo, poi esegui di nuovo {command}."
+
+#. License
+#. Terminal status: the row label for the license (tier and holder).
+msgid "cli.status.license"
+msgstr "Licenza"
+
+#. Offline
+#. Terminal status: the row label for how long the app works without the internet.
+msgid "cli.status.offline"
+msgstr "Offline"
+
+#. Works offline until {date}
+#. Terminal status: the license keeps working without the internet until {date} (a short date).
+msgid "cli.status.offlineUntil"
+msgstr "Funziona offline fino al {date}"
+
+#. Version
+#. Terminal status: the row label for the app's version and release channel.
+msgid "cli.status.version"
+msgstr "Versione"
+
+#. To keep using {product}:
+#. Terminal status: the heading over the commands that fix a blocked license.
+msgid "cli.status.fixes"
+msgstr "Per continuare a usare {product}:"
+
+#. Use the license on your account
+#. Terminal status: what the login command does as a fix for a blocked license.
+msgid "cli.fix.signIn"
+msgstr "Usa la licenza del tuo account"
+
+#. Signed out of {product} on this device.
+#. Terminal: sign-out finished.
+msgid "cli.logout.done"
+msgstr "Uscita da {product} effettuata su questo dispositivo."
+
+#. {product} no longer uses your license on this device. Its seat is free.
+#. Terminal: deactivate finished; the license's seat on this device is released.
+msgid "cli.deactivate.done"
+msgstr "{product} non usa più la tua licenza su questo dispositivo. Il posto è libero."
+
+#. Nothing changed.
+#. Terminal: the person answered no to a confirmation.
+msgid "cli.nothingChanged"
+msgstr "Nessuna modifica."
+
+#. This device is registered.
+#. Terminal: keyless device registration finished.
+msgid "cli.register.done"
+msgstr "Questo dispositivo è registrato."
+
+#. Renamed to {device}.
+#. Terminal: a device was renamed; {device} is the new name.
+msgid "cli.devices.renamed"
+msgstr "Rinominato in {device}."
+
+#. {device} has no name now.
+#. Terminal: a device's name was cleared; {device} is the device's id.
+msgid "cli.devices.nameCleared"
+msgstr "{device} ora non ha un nome."
+
+#. {device} was removed. Its seat is free.
+#. Terminal: a device was removed from the license.
+msgid "cli.devices.removed"
+msgstr "{device} è stato rimosso. Il posto è libero."
+
+#. Update cancelled. Nothing was installed.
+#. Terminal: the person stopped an update download.
+msgid "cli.update.cancelled"
+msgstr "Aggiornamento annullato. Non è stato installato nulla."
+
+#. No content is installed.
+#. Terminal: there are no downloadable content packs on this device.
+msgid "cli.packs.none"
+msgstr "Nessun contenuto installato."
+
+#. after a restart
+#. Terminal: a content pack is installed and takes effect after the app restarts. Shown after the pack's version.
+msgid "cli.packs.afterRestart"
+msgstr "dopo un riavvio"
+
+#. {name} has no value.
+#. Terminal: a setting has no value and no default. {name} is the setting's key.
+msgid "cli.config.unset"
+msgstr "{name} non ha un valore."
+
+#. No secret named {name} is delivered to this device.
+#. Terminal: the secret command found nothing. {name} is the secret's key.
+msgid "cli.secret.none"
+msgstr "Questo dispositivo non ha ricevuto alcun segreto di nome {name}."
+
+#. Then run {command} with the file you get back.
+#. Terminal offline activation: what to do with the activation file. {command} is a command line.
+msgid "cli.offline.import"
+msgstr "Poi esegui {command} con il file che ricevi."
+
+#. SDK
+#. Terminal diagnostics: the row label for the SDK name and version.
+msgid "cli.doctor.sdk"
+msgstr "SDK"
+
+#. Product
+#. Terminal diagnostics: the row label for the product and its version.
+msgid "cli.doctor.product"
+msgstr "Prodotto"
+
+#. Server
+#. Terminal diagnostics: the row label for the server address.
+msgid "cli.doctor.server"
+msgstr "Server"
+
+#. Device
+#. Terminal diagnostics: the row label for this device's id.
+msgid "cli.doctor.device"
+msgstr "Dispositivo"
+
+#. Token store
+#. Terminal diagnostics: the row label for where the device's credential is kept (keyring or file).
+msgid "cli.doctor.store"
+msgstr "Archivio token"
+
+#. Discovery
+#. Terminal diagnostics: the row label for whether the product's service description could be read.
+msgid "cli.doctor.discovery"
+msgstr "Rilevamento"
+
+#. Reachable
+#. Terminal diagnostics: the product's service description was read.
+msgid "cli.doctor.reachable"
+msgstr "Raggiungibile"
+
+#. Services
+#. Terminal diagnostics: the row label for the services the product turned on.
+msgid "cli.doctor.services"
+msgstr "Servizi"
+
+#. Installed from
+#. Terminal diagnostics: the row label for the store or channel the app was installed from.
+msgid "cli.doctor.installedFrom"
+msgstr "Installato da"
+
+#. Not supported here
+#. Terminal diagnostics: the heading over features this device cannot use, each with its reason.
+msgid "cli.doctor.unsupported"
+msgstr "Non supportato qui"
+
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).
 msgid "core.fallback.title"
