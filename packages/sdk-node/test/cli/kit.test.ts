@@ -535,32 +535,65 @@ describe("--json on every verb (both adapters)", () => {
       expect(out, verb.path.join(" ")).not.toMatch(/\x1b/);
       expect(out.split("\n"), verb.path.join(" ")).toHaveLength(1);
       const j = JSON.parse(out) as {
-        version: number;
+        v: number;
         command: string;
+        event: string;
         ok: boolean;
-        exitCode: number;
+        exit: number;
       };
       expect(j).toMatchObject({
-        version: CLI_JSON_VERSION,
+        v: CLI_JSON_VERSION,
         command: verb.path.join(" "),
+        event: "result",
       });
-      expect(typeof j.exitCode).toBe("number");
+      expect(typeof j.exit).toBe("number");
+      expect(j.ok).toBe(j.exit === 0);
       expect(out).not.toContain(KEY_SECRET);
       expect(out).not.toContain("pkeyt_");
     }
   });
-  it("streams login as NDJSON: pending first, then the final state, never the poll credential", async () => {
-    const r = await render({ variant: VARIANTS[0]!, json: true }, async (h) => {
-      const { loginFlow } = await import("../../src/cli/flows.js");
-      await loginFlow(h.ctx, stubClient());
+  it("streams login as NDJSON: pending first, the result last, never the poll credential", async () => {
+    const { runKitVerb } = await import("../../src/cli/adapter.js");
+    const login = CLI_VERBS.find((v) => v.path[0] === "login")!;
+    const screen = new Screen();
+    await runKitVerb(login, [], { json: true }, async () => stubClient(), {
+      slug: "tidewater",
+      io: {
+        stdout: screen,
+        stderr: new Screen(),
+        env: {},
+        ticker: frozenTicker,
+        now: () => NOW,
+      },
     });
-    const lines = r.raw
+    const lines = screen.raw
       .trim()
       .split("\n")
-      .map((l) => JSON.parse(l) as { state: string; userCode?: string });
-    expect(lines.map((l) => l.state)).toEqual(["pending", "signedIn"]);
-    expect(lines[0]!.userCode).toBe("WDJB-MJHT");
-    expect(r.raw).not.toContain("dc_secret");
+      .map(
+        (l) =>
+          JSON.parse(l) as {
+            v: number;
+            event: string;
+            state?: string;
+            userCode?: string;
+            ok?: boolean;
+            exit?: number;
+          },
+      );
+    expect(lines.map((l) => l.event)).toEqual(["pending", "result"]);
+    expect(lines[0]).toMatchObject({
+      v: 1,
+      command: "login",
+      userCode: "WDJB-MJHT",
+    });
+    expect(lines[1]).toMatchObject({
+      v: 1,
+      command: "login",
+      state: "signedIn",
+      ok: true,
+      exit: 0,
+    });
+    expect(screen.raw).not.toContain("dc_secret");
   });
   it("prints login's envelope when sign-in cannot start, so a script always reads a final state", async () => {
     const { runKitVerb } = await import("../../src/cli/adapter.js");
@@ -594,10 +627,11 @@ describe("--json on every verb (both adapters)", () => {
       const lines = screen.raw.trim().split("\n");
       expect(lines).toHaveLength(1);
       expect(JSON.parse(lines[0]!)).toMatchObject({
-        version: 1,
+        v: 1,
         command: "login",
+        event: "result",
         ok: false,
-        exitCode: code,
+        exit: code,
       });
     }
   });
@@ -619,10 +653,11 @@ describe("--json on every verb (both adapters)", () => {
     });
     await y.parseAsync(["polaris-key", "status", "--json"]);
     expect(JSON.parse(screen.raw)).toMatchObject({
-      version: 1,
+      v: 1,
       command: "status",
+      event: "result",
       ok: true,
-      exitCode: 0,
+      exit: 0,
       state: "signed-in",
     });
   });

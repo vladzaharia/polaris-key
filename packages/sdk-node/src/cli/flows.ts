@@ -18,7 +18,7 @@ import {
   register as registerCore,
 } from "./commands.js";
 import type { KitContext } from "./context.js";
-import { EXIT, jsonLine, type CliJsonError, type FlowResult } from "./json.js";
+import { eventLine, EXIT, type CliJsonError, type FlowResult } from "./json.js";
 import {
   activationOutcome,
   clock,
@@ -48,11 +48,18 @@ import {
   tableRows,
   textRow,
 } from "./parts.js";
-import { CANCEL, promptConfirm, promptSecret } from "./term/prompt.js";
+import {
+  CANCEL,
+  plainConfirm,
+  plainSecret,
+  promptConfirm,
+  promptSecret,
+} from "./term/prompt.js";
 import { isCancel } from "./term/keys.js";
 import type { RailRow } from "./term/layout.js";
 import { animate, LiveRegion, spinnerFrames } from "./term/live.js";
 import { osc52 } from "./term/osc.js";
+import { clean } from "./term/sanitize.js";
 import { percent, progressSpans, qrLines } from "./term/progress.js";
 import type { Line } from "./term/width.js";
 
@@ -149,6 +156,28 @@ async function readPiped(ctx: KitContext): Promise<string> {
       .split(/\r?\n/)
       .find((l) => l.trim() !== "")
       ?.trim() ?? ""
+  );
+}
+
+const lastPercent = new WeakMap<KitContext, Map<string, number>>();
+
+/** A `--json` progress line, at most one per whole percent per item. */
+function emitProgress(
+  ctx: KitContext,
+  command: string,
+  done: number,
+  total: number,
+  fields: Record<string, unknown> = {},
+): void {
+  if (!quiet(ctx)) return;
+  const p = percent(done, total);
+  const key = `${command}\u0000${String(fields.packId ?? "")}`;
+  const seen = lastPercent.get(ctx) ?? new Map<string, number>();
+  lastPercent.set(ctx, seen);
+  if (seen.get(key) === p) return;
+  seen.set(key, p);
+  ctx.stdout.write(
+    `${eventLine(command, "progress", { ...fields, done, total, percent: p })}\n`,
   );
 }
 
@@ -549,6 +578,12 @@ async function obtainKey(
       },
     );
   }
+  if (ctx.plainKeys)
+    return plainSecret(
+      ctx.plainKeys,
+      ctx.stdout,
+      `${t("part.keyField.label")}:`,
+    );
   if (ctx.stdin.isTTY) return null;
   const piped = await readPiped(ctx);
   return piped === "" ? null : piped;
@@ -758,10 +793,7 @@ export async function loginFlow(
   const codeUrl = ctx.product.deviceCodeUrl ?? prompt.verificationUri;
   if (quiet(ctx)) {
     ctx.stdout.write(
-      `${jsonLine({
-        version: 1,
-        command: "login",
-        state: "pending",
+      `${eventLine("login", "pending", {
         verificationUri: codeUrl,
         verificationUriComplete: prompt.verificationUriComplete,
         userCode: prompt.userCode,
@@ -904,10 +936,6 @@ export async function loginFlow(
 
   if (r === "cancelled") {
     const error = codeError(ctx, "cancelled");
-    if (quiet(ctx))
-      ctx.stdout.write(
-        `${jsonLine({ version: 1, command: "login", state: "cancelled", ok: false, exitCode: EXIT.cancelled })}\n`,
-      );
     show(ctx, [
       stepRow("fail", error.title),
       endRow(t("signin.cli.signInAgain", { command: cmd(ctx, "login") })),
@@ -923,15 +951,11 @@ export async function loginFlow(
           ? t("cli.signin.signedInEmail", { email: who.email })
           : t("signInHandoff.ok");
     const result = { identity: who, status: client.status() };
-    if (quiet(ctx))
-      ctx.stdout.write(
-        `${jsonLine({ version: 1, command: "login", state: "signedIn", ok: true, exitCode: EXIT.ok, ...result })}\n`,
-      );
     show(ctx, [
       stepRow("ok", line),
       useCode ? endRow() : endRow(t("signin.cli.closeTab")),
     ]);
-    return { exitCode: EXIT.ok, state: "done", result };
+    return { exitCode: EXIT.ok, state: "signedIn", result };
   }
   const expired = r.status === "expired";
   const error: CliJsonError = expired
@@ -941,10 +965,6 @@ export async function loginFlow(
         message: t("signin.cli.signInAgain", { command: cmd(ctx, "login") }),
       }
     : codeError(ctx, "oidc_error");
-  if (quiet(ctx))
-    ctx.stdout.write(
-      `${jsonLine({ version: 1, command: "login", state: expired ? "expired" : "denied", ok: false, exitCode: EXIT.failed, error })}\n`,
-    );
   show(
     ctx,
     expired
@@ -971,10 +991,12 @@ async function confirmSignOut(
   ctx: KitContext,
   args: ConfirmArgs,
 ): Promise<boolean | typeof CANCEL> {
-  if (args.yes || !ctx.keys) return true;
+  if (args.yes) return true;
   const question = ctx.copy.t("signin.cli.logoutConfirm", {
     product: ctx.product.name,
   });
+  if (ctx.plainKeys) return plainConfirm(ctx.plainKeys, ctx.stdout, question);
+  if (!ctx.keys) return true;
   return promptConfirm(
     {
       caps: ctx.caps,
@@ -1439,6 +1461,7 @@ export async function updateApplyFlow(
       onProgress: (done, total) => {
         lastDone = done;
         lastTotal = total;
+        emitProgress(ctx, "update apply", done, total);
         const now = ctx.now();
         // Redraw at most ten times a second (UI-KITS §4.8).
         if (ctx.caps.animate && now - last >= 100) {
@@ -1633,6 +1656,10 @@ export async function packsEnsureFlow(
   let last = 0;
   const off = client.update.packs.on((e) => {
     if (e.phase !== "download" && e.phase !== "apply") return;
+    emitProgress(ctx, "packs ensure", e.done, e.total, {
+      packId: e.packId,
+      phase: e.phase,
+    });
     const now = ctx.now();
     if (!ctx.caps.animate || now - last < 100) return;
     last = now;
@@ -1846,7 +1873,8 @@ export function secretFlow(
       error: { code: null, title: message, message },
     };
   }
-  if (!quiet(ctx)) ctx.stdout.write(`${value}\n`);
+  // A script gets the value as stored; a terminal never gets a control character from it.
+  if (!quiet(ctx)) ctx.stdout.write(`${ctx.caps.tty ? clean(value) : value}\n`);
   return { exitCode: EXIT.ok, result: { key, value } };
 }
 
@@ -1858,7 +1886,8 @@ export async function mintFlow(
 ): Promise<FlowResult> {
   try {
     const tk = await client.config.mintToken(recipeId);
-    if (!quiet(ctx)) ctx.stdout.write(`${tk.token}\n`);
+    if (!quiet(ctx))
+      ctx.stdout.write(`${ctx.caps.tty ? clean(tk.token) : tk.token}\n`);
     return {
       exitCode: EXIT.ok,
       result: { recipeId, token: tk.token, expiresAt: tk.expiresAt },

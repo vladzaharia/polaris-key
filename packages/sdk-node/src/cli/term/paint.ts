@@ -2,12 +2,14 @@
 // generated TERMINAL_SGR, drawn with `util.styleText` so a role is a named Node style, never a
 // hand-written escape. Truecolor appears in one place only, the product chip, and only when the
 // terminal says it can (caps.color === "truecolor"). With colour off every span is plain text;
-// the chip and a user code keep a one-cell pad so they still read as a block.
+// the chip and a user code keep a one-cell pad so they still read as a block. Every text passes
+// the sanitiser (sanitize.ts) here, at the writer, before any escape is put around it.
 
 import { styleText } from "node:util";
 import { TERMINAL_SGR, type TerminalRole } from "../tokens.generated.js";
 import type { TerminalCaps } from "./caps.js";
 import { osc8 } from "./osc.js";
+import { clean } from "./sanitize.js";
 import type { Line, Span } from "./width.js";
 
 /**
@@ -73,7 +75,9 @@ export class Painter {
   }
 
   /** Apply roles to text. */
-  style(text: string, roles: readonly string[] = []): string {
+  style(raw: string, roles: readonly string[] = []): string {
+    // The writer's one sanitiser: no control character from any text reaches the terminal.
+    const text = clean(raw);
     if (!this.colored || text === "" || roles.length === 0) return text;
     let out = text;
     for (const r of roles as Role[]) {
@@ -115,7 +119,8 @@ export class Painter {
   }
 
   /** The chip's colours over already padded text. */
-  chipText(text: string): string {
+  chipText(raw: string): string {
+    const text = clean(raw);
     if (!this.colored) return text;
     if (this.caps.color === "truecolor" && this.accent) {
       const bg = rgb(this.accent.solid);

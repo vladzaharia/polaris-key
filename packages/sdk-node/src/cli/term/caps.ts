@@ -58,8 +58,13 @@ export interface TerminalCaps {
   unicode: boolean;
   /** stdout is a terminal. */
   tty: boolean;
-  /** The flow may prompt: stdin and stdout are terminals, not CI, not `--json`. */
+  /** The flow may prompt: stdin and stdout are terminals, not CI, not `--json`, not TERM=dumb. */
   interactive: boolean;
+  /**
+   * TERM=dumb (SIGN-IN.md D-77): plain lines only, no spinner, no cursor control and no live
+   * redraw. A person may still be there, so the kit asks plain questions (no echo for a key).
+   */
+  dumb: boolean;
   /** Spinners and redrawn lines; false prints every line once (D-77). */
   animate: boolean;
   /** OSC 8 links and OSC 52 copy. */
@@ -178,6 +183,7 @@ export function detectTerminal(opts: DetectOptions = {}): TerminalCaps {
     unicode,
     tty,
     interactive,
+    dumb,
     animate: tty && !ci && !dumb && !json && !reduced,
     links: tty && !dumb && !ci && !json,
     columns: Math.max(20, Math.min(TERMINAL_LAYOUT.columns, termCols)),

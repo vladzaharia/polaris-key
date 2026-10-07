@@ -61,6 +61,8 @@ export {
 export { isCancel, KeyReader, type Key } from "./keys.js";
 export {
   CANCEL,
+  plainConfirm,
+  plainSecret,
   promptConfirm,
   promptSecret,
   promptSelect,
@@ -79,6 +81,7 @@ export {
   qrLines,
 } from "./progress.js";
 export { displayUrl, osc52, osc8 } from "./osc.js";
+export { clean, CONTROL_CHARS, safeLink } from "./sanitize.js";
 export {
   TERMINAL_LAYOUT,
   TERMINAL_SGR,

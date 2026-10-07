@@ -7,6 +7,7 @@ import type { PolarisKeyClient } from "../client.js";
 import { createKitContext, type TerminalIO } from "./context.js";
 import { envelope, EXIT, jsonLine, type FlowResult } from "./json.js";
 import type { CliVerb, VerbFlags } from "./kit.js";
+import { verbUsage } from "./help.js";
 import type { TerminalOutput } from "./term/caps.js";
 import {
   presentationSourceOf,
@@ -62,38 +63,55 @@ export interface RunKitVerbOptions extends KitAdapterOptions {
   print?: (line: string) => void;
 }
 
+/**
+ * The usage problem in what the parser handed over, or null: a required positional missing, or
+ * an option the verb does not take (both adapters declare positionals optional and accept
+ * unknown options, so an argument error reaches the kit and ends in a result line).
+ */
+/** A positional as optional (`<key>` → `[key]`, `<ids...>` → `[ids...]`). */
+export function optionalArg(spec: string): string {
+  return spec.startsWith("<") ? `[${spec.slice(1, -1)}]` : spec;
+}
+
+export function usageProblem(
+  verb: CliVerb,
+  positional: readonly unknown[],
+  /** Every operand the parser saw (commander's `this.args`), when it hands them over. */
+  operands?: readonly string[],
+): boolean {
+  const variadic = verb.args.at(-1)?.includes("...") ?? false;
+  const excess =
+    operands !== undefined && !variadic && operands.length > verb.args.length;
+  const extra = operands ?? [];
+  const missing = verb.args.some((spec, i) => {
+    if (!spec.startsWith("<")) return false;
+    const v = positional[i];
+    return v === undefined || v === "" || (Array.isArray(v) && v.length === 0);
+  });
+  // An option the verb does not take (a negative number such as -1 is a value, not an option).
+  const flagLike = (v: unknown) =>
+    typeof v === "string" && /^--?[A-Za-z]/.test(v);
+  const stray =
+    extra.some(flagLike) ||
+    positional.some((v) => (Array.isArray(v) ? v.some(flagLike) : flagLike(v)));
+  return missing || stray || excess;
+}
+
 /** Run `verb`'s flow and return its exit code. Never throws. */
 export async function runKitVerb(
   verb: CliVerb,
   args: unknown[],
   flags: ParsedVerbFlags,
   buildClient: () => Promise<PolarisKeyClient>,
-  o: RunKitVerbOptions,
+  o: RunKitVerbOptions & { usage?: boolean },
 ): Promise<number> {
-  const base: TerminalOutput =
+  const stdout: TerminalOutput =
     o.io?.stdout ?? (o.print ? lineSink(o.print) : process.stdout);
-  // `login --json` streams its own lines; when it fails before its first one, the envelope
-  // below is the only line, so a script always reads exactly one final state.
-  let wrote = false;
-  const stdout: TerminalOutput = {
-    get isTTY() {
-      return base.isTTY;
-    },
-    get columns() {
-      return base.columns;
-    },
-    get rows() {
-      return base.rows;
-    },
-    write(chunk: string) {
-      wrote = true;
-      return base.write(chunk);
-    },
-  };
   const io: TerminalIO = { ...o.io, stdout };
+  const command = verb.path.join(" ");
   let client: PolarisKeyClient | null = null;
   let clientError: unknown = null;
-  if (!verb.clientless) {
+  if (!verb.clientless && !o.usage) {
     try {
       client = await buildClient();
     } catch (e) {
@@ -117,12 +135,37 @@ export async function runKitVerb(
     ...(flags.deviceCode ? { deviceCode: true } : {}),
   };
   let r: FlowResult;
-  let thrown = false;
   try {
-    if (clientError) throw clientError;
-    r = await verb.flow(ctx, client, args, verbFlags);
+    if (o.usage) {
+      const usage = `${ctx.bin} ${verbUsage(verb)}`;
+      r = {
+        exitCode: EXIT.usage,
+        state: "error",
+        error: {
+          code: "usage",
+          title: ctx.copy.t("cli.help.usage"),
+          message: usage,
+        },
+      };
+      if (!ctx.caps.json)
+        ctx.stderr.write(
+          `${ctx
+            .render([
+              {
+                mark: "fail",
+                spans: [
+                  { text: ctx.copy.t("cli.help.usage"), style: ["strong"] },
+                  { text: `  ${usage}`, keep: true },
+                ],
+              },
+            ])
+            .join("\n")}\n`,
+        );
+    } else {
+      if (clientError) throw clientError;
+      r = await verb.flow(ctx, client, args, verbFlags);
+    }
   } catch (e) {
-    thrown = true;
     const code = (e as { code?: unknown })?.code;
     const c = typeof code === "string" ? code : "unknown";
     r = {
@@ -142,8 +185,7 @@ export async function runKitVerb(
   } finally {
     ctx.close();
   }
-  // `login` streams its own JSON lines (SIGN-IN.md D-68); every other verb prints one object.
-  if (ctx.caps.json && (verb.path[0] !== "login" || thrown || !wrote))
-    ctx.stdout.write(`${jsonLine(envelope(verb.path.join(" "), r))}\n`);
+  // The last line of every `--json` run is its result (progress lines may come before it).
+  if (ctx.caps.json) ctx.stdout.write(`${jsonLine(envelope(command, r))}\n`);
   return r.exitCode;
 }

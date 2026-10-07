@@ -12,7 +12,12 @@
 import { readFile } from "node:fs/promises";
 import type { Command, Help } from "commander";
 import type { ServiceSlug } from "../discovery.js";
-import { runKitVerb, type KitAdapterOptions } from "./adapter.js";
+import {
+  optionalArg,
+  runKitVerb,
+  usageProblem,
+  type KitAdapterOptions,
+} from "./adapter.js";
 import type { ClientFactory } from "./commands.js";
 import { createKitContextSync } from "./context.js";
 import { renderHelp, renderVerbHelp, VERB_OPTIONS } from "./help.js";
@@ -165,7 +170,12 @@ export function registerPolarisCommands(
       }
       parent = g;
     }
-    const name = [verb.path.at(-1)!, ...verb.args].join(" ");
+    // Under the kit, positionals are optional and unknown options pass through, so an argument
+    // error reaches runKitVerb and ends in a usage line (or a `--json` result line).
+    const name = [
+      verb.path.at(-1)!,
+      ...(kit ? verb.args.map(optionalArg) : verb.args),
+    ].join(" ");
     const cmd = parent
       .command(name)
       .description(`[${verb.group}] ${verb.describe}`);
@@ -178,6 +188,8 @@ export function registerPolarisCommands(
         .option("--no-color", "plain text")
         .option("--ascii", "ASCII symbols only");
       for (const o of VERB_OPTIONS[verb.path[0]!] ?? []) cmd.option(o.flags);
+      cmd.allowUnknownOption();
+      cmd.allowExcessArguments?.(true);
     }
     cmd.action(async function action(this: Command, ...args: unknown[]) {
       // commander passes the positionals, then the options object and the command.
@@ -201,6 +213,7 @@ export function registerPolarisCommands(
         },
         () => buildClient(this),
         {
+          usage: usageProblem(verb, positional, this.args),
           slug: slugOf(this),
           bin: binOf(this),
           ...(options.theme ? { theme: options.theme } : {}),

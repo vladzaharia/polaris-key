@@ -67,6 +67,11 @@ export interface KitContext {
   openUrl: (url: string) => Promise<boolean> | boolean;
   /** Keys from stdin while the flow is interactive, else null. */
   keys: KeyReader | null;
+  /**
+   * Keys for plain questions on a TERM=dumb terminal (no cursor control; D-77), else null. Only
+   * one of `keys` and `plainKeys` is ever set.
+   */
+  plainKeys: KeyReader | null;
   /** Print rail rows on stdout. */
   rows(rows: readonly RailRow[]): void;
   /** Lines for rail rows, without printing. */
@@ -171,6 +176,10 @@ function buildContext(
     ascii: !caps.unicode,
   });
   const keys = caps.interactive ? new KeyReader(stdin) : null;
+  const plainKeys =
+    caps.dumb && caps.tty && stdin.isTTY === true && !caps.json && !caps.ci
+      ? new KeyReader(stdin)
+      : null;
   const render = (rows: readonly RailRow[]) =>
     railLines(rows, painter, symbols, caps.columns);
   return {
@@ -189,11 +198,15 @@ function buildContext(
     now: io.now ?? Date.now,
     openUrl: io.openUrl ?? openInBrowser,
     keys,
+    plainKeys,
     render,
     rows: (rows) => {
       const lines = render(rows);
       if (lines.length) stdout.write(`${lines.join("\n")}\n`);
     },
-    close: () => keys?.close(),
+    close: () => {
+      keys?.close();
+      plainKeys?.close();
+    },
   };
 }

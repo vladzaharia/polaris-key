@@ -67,11 +67,9 @@ export async function promptSecret(
   const live = new LiveRegion(ctx.out, { animate: true });
   let value = "";
   let problem: RailRow | null = null;
-  const caret = ctx.painter.style(ctx.symbols.rail === "|" ? "_" : "▌", [
-    "accent",
-  ]);
+  const caret = ctx.symbols.rail === "|" ? "_" : "▌";
   const render = () => {
-    const field: Line = [...p.mask(value), { text: caret }];
+    const field: Line = [...p.mask(value), { text: caret, style: ["accent"] }];
     const rows: RailRow[] = [
       { mark: "active", spans: p.title },
       { mark: "rail", spans: field },
@@ -226,5 +224,53 @@ export async function promptSelect<T>(
     }
   } finally {
     live.close();
+  }
+}
+
+/**
+ * A question on a terminal that takes no cursor control (TERM=dumb, SIGN-IN.md D-77): the label
+ * as a plain line, then the answer read in raw mode with no echo at all, ended by Enter. Nothing
+ * is redrawn and nothing of the secret is shown, not even a mask.
+ */
+export async function plainSecret(
+  keys: KeyReader,
+  out: TerminalOutput,
+  label: string,
+  signal?: AbortSignal,
+): Promise<string | Cancel> {
+  out.write(`${label} `);
+  let value = "";
+  try {
+    for (;;) {
+      const k = await keys.next(signal);
+      if (k === null || isCancel(k)) return CANCEL;
+      if (k.name === "return" || k.name === "enter") return value;
+      if (k.name === "backspace") value = [...value].slice(0, -1).join("");
+      else value = (value + printable(k)).slice(0, MAX_SECRET);
+    }
+  } finally {
+    out.write("\n");
+  }
+}
+
+/** A yes/no question as a plain line (TERM=dumb): y or n, Enter for `initial`, Esc to cancel. */
+export async function plainConfirm(
+  keys: KeyReader,
+  out: TerminalOutput,
+  question: string,
+  initial = false,
+  signal?: AbortSignal,
+): Promise<boolean | Cancel> {
+  out.write(`${question} `);
+  try {
+    for (;;) {
+      const k = await keys.next(signal);
+      if (k === null || isCancel(k)) return CANCEL;
+      if (k.name === "y") return true;
+      if (k.name === "n") return false;
+      if (k.name === "return" || k.name === "enter") return initial;
+    }
+  } finally {
+    out.write("\n");
   }
 }

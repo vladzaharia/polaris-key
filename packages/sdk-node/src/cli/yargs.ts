@@ -11,7 +11,12 @@
 
 import { readFile } from "node:fs/promises";
 import type { Argv, ArgumentsCamelCase, CommandModule } from "yargs";
-import { runKitVerb, type KitAdapterOptions } from "./adapter.js";
+import {
+  optionalArg,
+  runKitVerb,
+  usageProblem,
+  type KitAdapterOptions,
+} from "./adapter.js";
 import type { ClientFactory } from "./commands.js";
 import { ttyProgress } from "./commander.js";
 import { VERB_OPTIONS } from "./help.js";
@@ -87,7 +92,11 @@ export function polarisCommandModule(
   };
 
   const leaf = (verb: CliVerb) => ({
-    command: [verb.path.at(-1)!, ...verb.args.map(yargsArg)].join(" "),
+    // Under the kit, positionals are optional so a missing one ends in the kit's usage result.
+    command: [
+      verb.path.at(-1)!,
+      ...verb.args.map((a) => yargsArg(kit ? optionalArg(a) : a)),
+    ].join(" "),
     aliases: verb.aliases ?? [],
     describe: `[${verb.group}] ${verb.describe}`,
     builder: (y: Argv<CommonArgs>) => {
@@ -133,6 +142,7 @@ export function polarisCommandModule(
         },
         () => buildClient(argv),
         {
+          usage: usageProblem(verb, positional),
           slug,
           bin: options.bin ?? (typeof bag.$0 === "string" ? bag.$0 : slug),
           ...(options.theme ? { theme: options.theme } : {}),

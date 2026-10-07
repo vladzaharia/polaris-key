@@ -487,10 +487,10 @@ describe("cli/commander adapter smoke", () => {
     lines.length = 0;
     await program.parseAsync(["status", "--json"], { from: "user" });
     const out = JSON.parse(lines.join("\n")) as {
-      exitCode: number;
+      exit: number;
       result: { status: { status: string }; store: { backend: string } };
     };
-    expect(out.exitCode).toBe(3);
+    expect(out.exit).toBe(3);
     expect(out.result.status.status).toBe("needs-activation");
     expect(out.result.store.backend).toBe("memory");
     expect(seen.client).toBeInstanceOf(PolarisKeyClient);
