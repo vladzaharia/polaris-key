@@ -47,11 +47,11 @@ activation screen.
 Three timestamps, three different meanings. Getting these confused is the most common way to
 misread a bundle.
 
-| Bound              | Value                                                             | Profile it is checked on                    | What it means                                  |
-| ------------------ | ----------------------------------------------------------------- | ------------------------------------------- | ---------------------------------------------- |
-| Inner `expiresAt`  | `issuedAt + DOC_EXPIRY_SECONDS` (1 hour)                          | **Reload** — not asserted                   | Exactly what the online path mints. Deliberate |
-| Inner `graceUntil` | `issuedAt + graceDays × 86 400`, `graceDays ≤ 365`                | Enforced by the gate against `effectiveNow` | How long the imported install runs             |
-| Bundle `expiresAt` | `issuedAt + BUNDLE_IMPORT_WINDOW_SECONDS` = 2 592 000 s (30 days) | **Network** — a stale bundle is refused     | How long this file may sit on a USB stick      |
+| Bound              | Value                                                                                                                                                                                                                      | Profile it is checked on                    | What it means                                  |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- | ---------------------------------------------- |
+| Inner `expiresAt`  | `issuedAt + DOC_EXPIRY_SECONDS` (1 hour)                                                                                                                                                                                   | **Reload** — not asserted                   | Exactly what the online path mints. Deliberate |
+| Inner `graceUntil` | `issuedAt + graceDays × 86 400`, `graceDays ≤ 365`; no later than the licence's expiry (never earlier than `expiresAt`) while `licensing.clampGraceToExpiry` is on ([§3.6](/docs/services/license/document/#the-envelope)) | Enforced by the gate against `effectiveNow` | How long the imported install runs             |
+| Bundle `expiresAt` | `issuedAt + BUNDLE_IMPORT_WINDOW_SECONDS` = 2 592 000 s (30 days)                                                                                                                                                          | **Network** — a stale bundle is refused     | How long this file may sit on a USB stick      |
 
 ### Why the inner documents expire in an hour
 

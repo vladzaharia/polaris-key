@@ -1575,6 +1575,7 @@ never run any of this against staging or production, and never run `wrangler` ag
    npx wrangler d1 export polaris_key_prod --env prod --remote --output prod.sql   # owner only
    pnpm --filter @polaris-key/worker grace-clamp:report -- --sql prod.sql --out grace-report
    # optional: --now <epoch seconds of the planned deploy> (default: now); --product <slug>
+   # a dump over ~500 MiB: sqlite3 prod.sqlite < prod.sql, then pass --sqlite prod.sqlite instead
    ```
 
    `grace-report/` then holds `report.json` and `report.csv`: per product, whether License is on,
@@ -1592,7 +1593,7 @@ never run any of this against staging or production, and never run `wrangler` ag
 3. **Deploy.** Nothing else to do; there is no migration.
 
 **After the deploy.** A licence that is renewed (its `expires_at` moved later) gets its full window
-back at the next fetch. A licence that expires within the hour gets documents that end with their
+back at the next full fetch (within the hour while online; a `304` keeps the copy it has). A licence that expires within the hour gets documents that end with their
 ordinary hour of validity, which every verifier requires. An offline bundle minted for a licence
 that expires inside `graceDays` is clamped the same way, and its `bundle.minted` audit row says so.
 
