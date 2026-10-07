@@ -51,6 +51,52 @@ Checked against `main` at `148439c4f`. Each item names the package whose review 
 - **Not in scope.** No reset action and no per-licence limit (PX-W9 Q7). Operators raise the product's
   `identity.keyEntry.limit`.
 
+## Corrections from the code (as built, 2026-10-06)
+
+Where the brief and the code disagreed, the code was the fact:
+
+- **Send a new key… and Assign's Email them the key are not built.** Both use LX-27's
+  `POST …/licenses/<id>/send-key`, and LX-27 is still `todo` (it is not one of this package's
+  dependencies). A console action may not call a route that does not exist, so the two entry points
+  move to LX-27 (recorded in its brief). Assign sets the name and email only.
+- **Reassign is by email, keyed by the licence.** I-12's relink names its target by a pairwise
+  subject and needs the licence to be in an account; S-24 §5.2 and §5.5 reassign to another email,
+  from an account or from a waiting address. So the Worker gains three Core admin routes beside
+  I-12's relink (`admin/handlers/users.ts`, logic in Identity's `accounts/productUsers.ts`):
+  `POST …/users/licenses/<id>/make-floating` `{reason, confirm, signOutDevices?}`,
+  `POST …/users/licenses/<id>/reassign` `{email, name?, reason, confirm}` and
+  `GET …/users/licenses/<id>/relinks` (the licence's moves with their undo). Both writes take the
+  step-up, a reason, the daily per-operator alert and a `license_relinks` row; the existing
+  `POST …/users/relinks/<id>/undo` undoes them, restoring the account, `name` and `email`. Make
+  floating writes no block row of its own: `reassignLicense(toAccountId: null)` does, and the undo's
+  move back lifts it. Reassign runs Core's `associateLicenseHolder` (S-24 D3) and answers the same
+  whether or not the new address joined an account (D4). Audit actions `user.license.make_floating`
+  and `user.license.reassign`.
+- **The typed confirmation is the licence's name, else its id**, and the Worker compares it
+  (`400 bad_request`, `reason: confirm_required`). There is no "key ending" to type: keys are
+  stored only as peppered hashes, so nothing knows a key's last characters.
+- **Storage:** one migration, `00XX_license_relinks_holder.sql` (the lead numbers it), adding
+  `license_relinks.holder_json` (the before and after name and email, for the undo). `to_subject` is
+  `NOT NULL` in 0082, so a move that leaves the licence with no account writes `''`, read back as
+  no subject. `LATEST_MIGRATION` stays `0103_account_overrides.sql` until the file is numbered
+  (`platformAdmin` and `recordDeploy` require it to name the last file).
+- **"Also sign out its devices"** deauthorizes each device after the move (`deauthorizeDeviceAsAdmin`,
+  one `device.deauthorize` audit row each), not in the same D1 batch.
+- **LX-28's follow-ups are built here:** the batch list pages (`?limit=1..500&cursor=`, default 100,
+  `nextCursor`), Disable unused keys checks an optional `confirm` against the batch label (the
+  console always sends it), and the activity verbs `license.holder.assign`, `license.batch.create`,
+  `license.batch.disable_unused`, `account.license.auto_attach_block` and the relink tool's verbs,
+  with a `license_batch` target kind and a "Users and license holders" action group.
+- **Batches get a collection page** (`#/p/<slug>/license/batches`, not in the sidebar) besides the
+  batch page, reached from Licenses' **Batches** action and the Batch filter. The Licenses list's
+  Batch column starts hidden below 1440 px (the layout lint's sideways-scroll rule).
+- **Rule 10:** the three routes, the batch list's parameters and the disable-unused body are in the
+  OpenAPI spec and `routeCoverage`'s `products` table (I-12's own relink routes stay narrative); the
+  docs site's `admin/users.md` documents them.
+- **Edit holder** stays on an assigned licence and edits the name only; the Worker's `PATCH` still
+  accepts an email change on an assigned licence (only the console stopped offering it). Refusing it
+  on the Worker is a follow-up (THREAT-MODEL records it as a residual).
+
 ## Goal
 
 An operator can see who holds each licence (or that it is floating), filter by holder and batch,
@@ -111,12 +157,12 @@ visible and changeable after creation, and reassignment must go through one audi
 
 ## Acceptance criteria
 
-- [ ] Each holder state renders correctly on the list and the record (tests, screenshots in both
+- [x] Each holder state renders correctly on the list and the record (tests, screenshots in both
       themes).
-- [ ] Reassign and Make floating require step-up, a reason and the typed confirmation, and can be
+- [x] Reassign and Make floating require step-up, a reason and the typed confirmation, and can be
       undone within 72 hours (tests).
-- [ ] Disable unused disables only never-used licences of the batch (test).
-- [ ] Console CSP parity and the green gate pass (AGENTS.md).
+- [x] Disable unused disables only never-used licences of the batch (test).
+- [x] Console CSP parity and the green gate pass (AGENTS.md).
 
 ## Verify
 

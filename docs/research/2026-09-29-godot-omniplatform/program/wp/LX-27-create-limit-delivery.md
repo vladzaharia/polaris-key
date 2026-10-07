@@ -26,6 +26,17 @@ Checked against `main` at `148439c4f`.
   (`onAccountEmailVerified`), add a variant that says the licence came from the developer ("From
   <Developer>", the origin wording of S-24 D21) and send it on that attach.
 
+## Follow-up from LX-30 (2026-10-06)
+
+LX-30 shipped before this package, so it could not wire the two console entry points that call
+`send-key`. They move here, beside the route:
+
+- **Send a new key…** in the overflow of an assigned licence's record (`LicenseRecord.tsx`), with
+  **Also revoke its other keys** (`revokeOthers`), the 10-minute refusal shown inline, and its
+  mutation entry (`mutations.ts`, ADMIN.md §5.4).
+- **Email them the key** on the record's **Assign…** dialog (`LicenseHolderDialogs.tsx`): after the
+  `PATCH` assigns the licence, a ticked box calls `send-key` (a new key, D12), off by default.
+
 ## Goal
 
 An operator creates a licence with its own device limit and, for an assigned licence, has Polaris
@@ -67,7 +78,8 @@ response (`W/crypto.ts`), so the email must be sent there or with a newly minted
 
 **Out:**
 
-- The console steps (→ LX-29) and the record action (→ LX-30).
+- The console steps (→ LX-29). The record's two `send-key` entry points are now in scope here (the
+  LX-30 follow-up above).
 - Emailing a floating key (never; D11). Scheduled emails (later).
 
 ## Design notes
