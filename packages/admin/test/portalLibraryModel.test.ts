@@ -7,6 +7,9 @@ import {
   detectDevice,
   deviceFamily,
   deviceOsName,
+  isDownloadAction,
+  isJustAdded,
+  JUST_ADDED_SECONDS,
   licenseOrigin,
   licenseStatus,
   mediaUrl,
@@ -14,7 +17,9 @@ import {
   platformsOnlyNote,
   quickAction,
   readPresentation,
+  type QuickAction,
 } from "../src/portal/model/library.js";
+import { applyView, justAddedFirst } from "../src/portal/model/libraryView.js";
 import {
   artifact,
   DAY,
@@ -794,5 +799,147 @@ describe("deviceFamily and deviceOsName (SP-08)", () => {
     expect(deviceOsName("watchos")).toBe("Apple Watch");
     expect(deviceOsName("ios")).toBe("iPhone");
     expect(deviceOsName("unknown")).toBeNull();
+  });
+});
+
+describe("PX-24: Added just now", () => {
+  const H = 3600;
+
+  it("is 24 hours from the Worker's first contact, at the edges", () => {
+    expect(JUST_ADDED_SECONDS).toBe(24 * H);
+    // Just added, a minute ago, one second short of the 24 hours.
+    expect(isJustAdded(NOW_S, NOW_S)).toBe(true);
+    expect(isJustAdded(NOW_S - 60, NOW_S)).toBe(true);
+    expect(isJustAdded(NOW_S - (23 * H + 59 * 60), NOW_S)).toBe(true);
+    expect(isJustAdded(NOW_S - (24 * H - 1), NOW_S)).toBe(true);
+    // At 24 hours it is ordinary again.
+    expect(isJustAdded(NOW_S - 24 * H, NOW_S)).toBe(false);
+    expect(isJustAdded(NOW_S - 30 * DAY, NOW_S)).toBe(false);
+  });
+
+  it("counts a future addedAt (this clock behind the server's) as now", () => {
+    expect(isJustAdded(NOW_S + 90, NOW_S)).toBe(true);
+    expect(isJustAdded(NOW_S + 3 * DAY, NOW_S)).toBe(true);
+  });
+
+  it("is never just added without the Worker's addedAt", () => {
+    expect(isJustAdded(null, NOW_S)).toBe(false);
+    expect(isJustAdded(undefined, NOW_S)).toBe(false);
+    expect(isJustAdded(Number.NaN, NOW_S)).toBe(false);
+  });
+
+  it("reads the Worker's addedAt, never the activation fallback", () => {
+    const fresh = license({ product: "fresh", activatedAt: NOW_S - 60 });
+    const old = license({ product: "old", activatedAt: NOW_S - 60 });
+    const [a, b] = buildLibrary(
+      [
+        libraryItem(fresh, { addedAt: NOW_S - 60 }),
+        // A licence just attached to a product the account met long ago (a re-add after Remove
+        // from my library): first contact is old, so it is not just added.
+        libraryItem(old, { addedAt: NOW_S - 40 * DAY }),
+      ],
+      [fresh, old],
+      [],
+      NOW_S,
+    );
+    expect([a!.justAdded, b!.justAdded]).toEqual([true, false]);
+    // No addedAt from the Worker: the activation still sorts it, but it is not just added.
+    const [c] = buildLibrary(
+      [libraryItem(fresh, { addedAt: null })],
+      [fresh],
+      [],
+      NOW_S,
+    );
+    expect(c!.addedAt).toBe(NOW_S - 60);
+    expect(c!.justAdded).toBe(false);
+    // 24 hours later the same item is ordinary.
+    const [d] = buildLibrary(
+      [libraryItem(fresh, { addedAt: NOW_S - 60 })],
+      [fresh],
+      [],
+      NOW_S - 60 + 24 * H,
+    );
+    expect(d!.justAdded).toBe(false);
+  });
+
+  describe("comes first under the default sort, and keeps its place by name", () => {
+    const items = [
+      license({ product: "alpha", productName: "Alpha" }),
+      license({ product: "zinnia", productName: "Zinnia" }),
+      // No first contact from the Worker, and a newer activation than Zinnia's: still behind it.
+      license({ product: "mid", productName: "Mid", activatedAt: NOW_S - 10 }),
+    ];
+    const at: Record<string, number | null> = {
+      alpha: NOW_S - 3 * DAY,
+      zinnia: NOW_S - 60,
+      mid: null,
+    };
+    const lib = buildLibrary(
+      items.map((l) => libraryItem(l, { addedAt: at[l.product] })),
+      items,
+      [],
+      NOW_S,
+    );
+    const view = { q: "", filter: "all" as const };
+
+    it("recent (the default): the just-added product first", () => {
+      expect(
+        applyView(lib, { ...view, sort: "recent" }).map((p) => p.slug),
+      ).toEqual(["zinnia", "mid", "alpha"]);
+    });
+
+    it("by name: in its place", () => {
+      expect(
+        applyView(lib, { ...view, sort: "name" }).map((p) => p.slug),
+      ).toEqual(["alpha", "mid", "zinnia"]);
+    });
+
+    it("the 2–7 grid (no sort): the just-added product first, the rest in the Worker's order", () => {
+      expect(justAddedFirst(lib).map((p) => p.slug)).toEqual([
+        "zinnia",
+        "alpha",
+        "mid",
+      ]);
+      // Nothing just added: the Worker's order, untouched.
+      const none = lib.filter((p) => !p.justAdded);
+      expect(justAddedFirst(none)).toEqual(none);
+    });
+  });
+
+  it("leads with the product's download, never with See downloads or another action", () => {
+    const link = (
+      label: string,
+      icon: "downloads" | "open" | "details" | "store" | "device",
+    ): QuickAction => ({ kind: "link", label, href: "#/p/x", icon });
+    const l = license({ product: "x" });
+    const r = release({
+      product: "x",
+      version: "1.0",
+      artifacts: [
+        artifact({ artifactId: "m", name: "X.dmg", platform: "macos" }),
+      ],
+    });
+    const p = build([l], [r], NOW_S)[0]!;
+    const download = quickAction(p, MAC, ph);
+    expect(download.kind).toBe("download");
+    expect(isDownloadAction(download)).toBe(true);
+    expect(
+      isDownloadAction({
+        kind: "email",
+        label: "Email me the download",
+        platform: "macos",
+      }),
+    ).toBe(true);
+    // Two Mac builds: "Download for macOS" opens both on the product page.
+    expect(isDownloadAction(link("Download for macOS", "downloads"))).toBe(
+      true,
+    );
+    expect(isDownloadAction(link("Get it on the App Store", "store"))).toBe(
+      true,
+    );
+    expect(isDownloadAction(link("See downloads", "downloads"))).toBe(false);
+    expect(isDownloadAction(link("View details", "details"))).toBe(false);
+    expect(isDownloadAction(link("Free a device", "device"))).toBe(false);
+    expect(isDownloadAction(link("Open Quill", "open"))).toBe(false);
   });
 });
