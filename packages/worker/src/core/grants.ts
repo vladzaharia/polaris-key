@@ -99,7 +99,7 @@ export interface StorePurchaseRef {
 /**
  * The statements that make `grants` and `grant_entitlements` agree with `license_store_grants`
  * for one purchase (`purchase` given) or for every purchase of `product`: one licence-held grant
- * per purchase and one key per counting flag row (see migrations/00XX_m for the rules). Upserts
+ * per purchase and one key per counting flag row (see migrations/0105_m for the rules). Upserts
  * that change nothing when the rows already agree, so they are safe to run in every store-grant
  * write's batch and again in any catch-up. `writer` stamps `created_by` on a new grant and
  * `modified_by` on a changed one.

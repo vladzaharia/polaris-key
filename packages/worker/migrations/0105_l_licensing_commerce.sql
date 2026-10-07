@@ -8,7 +8,7 @@
 
 -- What a mapped store product grants: many keys per store product (S-19 G4). It succeeds
 -- `dist_store_products.flag`, which stays and keeps being written until LX-16. The backfill
--- (00XX_m) writes one row per mapping's flag; the admin mapping write keeps them in step.
+-- (0105_m) writes one row per mapping's flag; the admin mapping write keeps them in step.
 CREATE TABLE IF NOT EXISTS dist_store_product_entitlements (
   product          TEXT NOT NULL REFERENCES products(slug),
   store            TEXT NOT NULL CHECK (store IN ('app-store', 'play', 'steam')),

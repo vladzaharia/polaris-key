@@ -29,7 +29,7 @@
 --   mapping    one `dist_store_product_entitlements` row per `dist_store_products.flag`
 --
 -- No `tiers.rank` write is needed (the default is 0) and `licenses.account_id` was backfilled by
--- I-05. Rollback: scripts/rollback/00XX_licensing.down.sql.
+-- I-05. Rollback: scripts/rollback/0105_licensing.down.sql.
 
 -- A sale-minted licence's external reference is unique per product and source.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_licenses_ext_ref

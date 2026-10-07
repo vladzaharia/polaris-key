@@ -55,11 +55,11 @@ const DIR = join(HERE, "..", "migrations");
 const FILES = readdirSync(DIR)
   .filter((f) => f.endsWith(".sql"))
   .sort();
-const LX08 = FILES.filter((f) => f.startsWith("00XX_"));
-const BEFORE = FILES.filter((f) => !f.startsWith("00XX_"));
+const LX08 = FILES.filter((f) => f.startsWith("0105_"));
+const BEFORE = FILES.filter((f) => !f.startsWith("0105_"));
 const sql = (f: string) => readFileSync(join(DIR, f), "utf8");
 const DOWN = readFileSync(
-  join(HERE, "..", "scripts", "rollback", "00XX_licensing.down.sql"),
+  join(HERE, "..", "scripts", "rollback", "0105_licensing.down.sql"),
   "utf8",
 );
 const SLUG = "djdl";
@@ -317,7 +317,7 @@ describe("the LX-08 migrations on a production-shaped copy", () => {
     for (const f of LX08) raw.exec(sql(f));
     const once = await dump(db);
     for (const f of LX08) {
-      if (/^00XX_[b-k]_/.test(f)) {
+      if (/^0105_[b-k]_/.test(f)) {
         // R11-04: one bare ADD COLUMN per file, so a replay fails here and strands nothing.
         expect(() => raw.exec(sql(f))).toThrow(/duplicate column/);
         continue;

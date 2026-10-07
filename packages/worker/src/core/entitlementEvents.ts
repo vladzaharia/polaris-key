@@ -1,7 +1,7 @@
 /**
  * The `entitlements.changed` feed's subject store (LX-08; plans/LX-01.md §6.1 and §8 Q4).
  *
- * `entitlement_events` (migrations/00XX_a) names the product's pairwise subject a change concerns.
+ * `entitlement_events` (migrations/0105_a) names the product's pairwise subject a change concerns.
  * LX-13 writes it and serves its pull cursor; LX-08 creates the table empty and registers it here,
  * so from its first row an account merge re-keys it and an account deletion or per-product removal
  * removes it, through Core's subject-store registry (`core/subjectHooks.ts`; the registry guard,

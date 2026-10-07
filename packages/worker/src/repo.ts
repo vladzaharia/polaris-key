@@ -203,10 +203,10 @@ export interface TierRow {
   max_version: string | null;
   // Fingerprint enforcement strength for this tier; null inherits the product default.
   policy_fingerprint?: string | null;
-  /** LX-08 (00XX_g): higher is better (anchor choice, the OIDC group map, `syncTierOnSignIn`);
+  /** LX-08 (0105_g): higher is better (anchor choice, the OIDC group map, `syncTierOnSignIn`);
    *  0 by default. Optional only for rows built by hand. */
   rank?: number;
-  /** LX-08 (00XX_h): the tier default for a licence's offline grace (`max_offline_days`); NULL
+  /** LX-08 (0105_h): the tier default for a licence's offline grace (`max_offline_days`); NULL
    *  falls back to the product default. Stored for LX-09's `combined` mode. */
   policy_offline_grace_days?: number | null;
   modified_by: string | null;

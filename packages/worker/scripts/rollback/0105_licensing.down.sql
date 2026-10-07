@@ -1,4 +1,4 @@
--- LX-08 rollback: the `down` path of migrations 00XX_a..m (plans/LX-01.md §6.1).
+-- LX-08 rollback: the `down` path of migrations 0105_a..m (plans/LX-01.md §6.1).
 --
 -- WHEN. Only after rolling the Worker back to a build before LX-08. That Worker reads the old
 -- objects only: `license_store_grants` (which the LX-08 Worker kept writing, so nothing is lost
@@ -17,7 +17,7 @@
 -- deletes it); no provisioning hook writes one (`representabilityIssue`).
 --
 -- HOW. Run once against the database with
---   wrangler d1 execute <DATABASE> --env <ENV> --remote --file scripts/rollback/00XX_licensing.down.sql
+--   wrangler d1 execute <DATABASE> --env <ENV> --remote --file scripts/rollback/0105_licensing.down.sql
 -- It is idempotent: a key it copied is then carried by the column, so a second run copies nothing.
 -- It leaves the LX-08 tables, columns, triggers and grant rows in place: the old Worker never names
 -- them, and keeping them lets a roll-forward pick up where it stopped (the catch-up moves the keys

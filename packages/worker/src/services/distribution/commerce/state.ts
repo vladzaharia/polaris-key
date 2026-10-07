@@ -164,7 +164,7 @@ export async function deleteStoreProduct(
  * Make `dist_store_product_entitlements` agree with `dist_store_products.flag` for one mapping, or
  * every mapping of the product: while `flag` is a mapping's one key (until LX-11 maps several),
  * its entitlement rows are exactly `{flag: true}`, and a deleted mapping keeps none. Idempotent.
- * The same projection as migrations/00XX_m.
+ * The same projection as migrations/0105_m.
  */
 export function storeProductEntitlementStatements(
   product: string,

@@ -1612,7 +1612,7 @@ the Worker back, run the down script once to copy them back:
 ```sh
 # owner only, after deploying the pre-LX-08 build:
 npx wrangler d1 execute polaris_key_prod --env prod --remote \
-  --file packages/worker/scripts/rollback/00XX_licensing.down.sql
+  --file packages/worker/scripts/rollback/0105_licensing.down.sql
 ```
 
 It is idempotent, so a second run copies nothing. It appends each grant's keys after the
