@@ -44,7 +44,7 @@ import {
   upsertReleaseNotes,
 } from "../../src/services/distribution/listing/store.js";
 import { prStepOp } from "../../src/services/distribution/storeSteps.js";
-import { seedHosted, urlRef } from "../hostedFixture.js";
+import { seedHosted, setAssetHosting, urlRef } from "../hostedFixture.js";
 
 const SLUG = "diceroll";
 const CONSOLE = "https://key.example.test";
@@ -412,6 +412,12 @@ describe("the PR plane's CI read (A-18i)", () => {
       `https://img.example.test/${SLUG}/a/${shot}`,
     ]);
     expect(JSON.stringify(i)).not.toContain("cdn.example.test");
+    // HA-10's kill switch off: no hosted copy is handed out, and still no developer URL.
+    await setAssetHosting(w.env, w.db, "off");
+    const off = await inputs(w, "pr/flathub");
+    expect(off.app.screenshots).toEqual([]);
+    expect(JSON.stringify(off)).not.toContain("img.example.test");
+    expect(JSON.stringify(off)).not.toContain("cdn.example.test");
   });
 
   it("scoop: the feed's own manifest, byte-for-byte the public feed's", async () => {
