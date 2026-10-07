@@ -14,6 +14,11 @@
  *
  * Store connections' **Set up** opens it pre-scoped to one store. A store without a team
  * connection is read-only, with the reason. Pills only for what needs attention.
+ *
+ * A BUILT-IN store (`builtIn`, PS-06: its operations run first-party on Polaris Key's own tables)
+ * has nothing to connect and no flow (SETUP.md D48): its tile says so and opens the store's own
+ * page (`distribution/storefronts/<id>`, a `STORE_PANELS` line), and Add to storefronts leaves it
+ * out. Which store is built in comes from the declaration, never from its name.
  */
 
 import * as React from "react";
@@ -46,6 +51,17 @@ import { ImportPanel } from "./ImportPanel.js";
 import { SlotBoard } from "./SlotBoard.js";
 import { StepCard, stepKeyOf } from "./StepCard.js";
 import { followUpOf, StepDialog, type StepIntent } from "./StepDialog.js";
+import { PolarisKeyPanel } from "./PolarisKeyPanel.js";
+
+/**
+ * A storefront's own page, by store id: one line per store that has one. The built-in Polaris Key
+ * storefront's panel is the only one (PS-06); SETUP.md's per-store pages add theirs here.
+ */
+export const STORE_PANELS: Readonly<
+  Record<string, (props: { slug: string }) => React.ReactElement>
+> = {
+  "polaris-key": PolarisKeyPanel,
+};
 
 export const FLOW_STEPS = [
   "choose",
@@ -124,6 +140,7 @@ function StoreTile({
   slug: string;
   store: StorefrontDto;
 }): React.ReactElement {
+  if (store.builtIn) return <BuiltInTile slug={slug} store={store} />;
   const p = progress(store);
   return (
     <section
@@ -175,11 +192,97 @@ function StoreTile({
   );
 }
 
-export function StorefrontsPage({
+/**
+ * A built-in store's tile: always connected (there is no credential), its capabilities from the
+ * declaration ("Built in"), and **Manage**, which opens the store's own page.
+ */
+function BuiltInTile({
   slug,
+  store,
 }: {
   slug: string;
+  store: StorefrontDto;
 }): React.ReactElement {
+  return (
+    <section
+      aria-label={store.label}
+      data-store={store.id}
+      data-built-in=""
+      className="flex h-full flex-col rounded-lg border border-border bg-surface-raised"
+    >
+      <div className="flex min-h-14 items-start justify-between gap-3 border-b border-border px-4 py-3">
+        <div className="min-w-0">
+          <h2 className="text-base font-bold text-fg-strong">{store.label}</h2>
+          <p className="truncate text-sm text-fg-muted">
+            Built in: always connected
+          </p>
+        </div>
+      </div>
+      <div className="flex-1 px-4 py-2">
+        <CapabilityStrip
+          label={`${store.label} capabilities`}
+          items={store.capabilities.filter(
+            (c) =>
+              c.op !== "connect" && c.op !== "listApps" && c.op !== "status",
+          )}
+        />
+      </div>
+      <div className="flex min-h-14 items-center justify-between gap-3 border-t border-border px-4 py-2">
+        <span className="text-sm text-fg-muted">
+          {capabilitySummary(store.capabilities)}
+        </span>
+        {STORE_PANELS[store.id] ? (
+          <Button size="sm" variant="outline" asChild>
+            <Link to={r.storefront(slug, store.id)}>Manage</Link>
+          </Button>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+export function StorefrontsPage({
+  slug,
+  store,
+}: {
+  slug: string;
+  /** A store's own page (`distribution/storefronts/<id>`), when the URL names one. */
+  store?: string;
+}): React.ReactElement {
+  if (store !== undefined) return <StorePage slug={slug} store={store} />;
+  return <Catalogue slug={slug} />;
+}
+
+/** `distribution/storefronts/<id>`: the store's own page, or not found. */
+function StorePage({
+  slug,
+  store,
+}: {
+  slug: string;
+  store: string;
+}): React.ReactElement {
+  const Panel = Object.hasOwn(STORE_PANELS, store) ? STORE_PANELS[store] : null;
+  if (Panel) return <Panel slug={slug} />;
+  return (
+    <div className="space-y-6" data-template="collection">
+      <PageHeader title="Storefronts" />
+      <EmptyState
+        kind="not-found"
+        headingLevel={2}
+        title="This storefront has no page of its own"
+        description="Storefronts with a connection are set up from Add to storefronts."
+        primaryAction={
+          <Button asChild>
+            <Link to={r.storefronts(slug)}>Open Storefronts</Link>
+          </Button>
+        }
+        docs="/docs/admin/storefronts/"
+      />
+    </div>
+  );
+}
+
+function Catalogue({ slug }: { slug: string }): React.ReactElement {
   const q = useStorefronts(slug);
   const [flow] = useSearchParam("flow", flowCodec);
   return (
@@ -214,7 +317,8 @@ export function StorefrontsPage({
           docs="/docs/admin/storefronts/"
         />
       ) : flow ? (
-        <AddFlow slug={slug} stores={q.data.stores} />
+        // A built-in store has no flow (SETUP.md D48): it is always on.
+        <AddFlow slug={slug} stores={q.data.stores.filter((s) => !s.builtIn)} />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {q.data.stores.map((s) => (

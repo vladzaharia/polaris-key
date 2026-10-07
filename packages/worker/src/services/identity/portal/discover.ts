@@ -303,6 +303,30 @@ async function offerView(
   };
 }
 
+/**
+ * PS-06: the Discover tile an evaluation shows, built exactly as `GET /api/discover` builds an
+ * offer, or `null` when its verdict hides the product. The console's persona preview renders it
+ * ("sees the tile exactly as that person would", notes/S-21 §6.6). It records no impression: a
+ * preview is not a person being shown anything.
+ */
+export async function storefrontTileView(
+  env: Env,
+  db: Db,
+  ev: ObtainEvaluation,
+  hooksFor: PortalHooksFor | undefined,
+  now: number,
+): Promise<Record<string, unknown> | null> {
+  if (!ev.verdict.visible) return null;
+  const offer = discoverOffer({
+    product: ev.product,
+    listing: ev.listing,
+    cta: ev.verdict.cta,
+    paths: ev.verdict.paths,
+  });
+  const listing = await productListing(ev.product, hooksFor, now);
+  return offerView(env, db, offer, listing, hooksFor, now, "discover");
+}
+
 /** The kind an impression of this offer counts under: its first path's, or `link`. */
 function impression(offer: DiscoverOffer): Impression {
   return {

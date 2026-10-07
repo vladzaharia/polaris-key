@@ -6239,6 +6239,42 @@ The storefront counts impressions, adds and first activations per product, UTC d
 - **Who reads it.** Nothing in PS-04 serves the counters; PS-06's console card shows them to the
   product's operators as daily totals per path kind.
 
+### The Polaris Key panel and the persona preview (PS-06)
+
+Distribution → Storefronts → Polaris Key (`packages/admin/src/console/areas/storefronts/
+PolarisKeyPanel.tsx`) over three admin routes, `GET|POST /manage/api/products/<p>/storefronts/
+polaris-key[/preview|/analytics]` (`admin/handlers/polarisKeyStorefront.ts`), platform admins only,
+behind the session, CSRF and rate-limit gates of `admin/api.ts` (notes/S-21 §6.6). Pinned by
+`test/polarisKeyPanel.test.ts` and the console's `test/polarisKey.test.tsx`.
+
+- **The preview never identifies a person** (S-21 owner decision 11, the S-21 §10.2 Q12
+  alternative "check an email address" rejected). Its body is closed to five fields
+  (`PERSONA_FIELDS`: `platformAccount`, `groups`, `emailDomain`, `stores`, `holds`); any other key,
+  an email address, an account id or a subject included, is a 422, and `emailDomain` must be a
+  DNS name, so an address is refused. The engine runs on the persona in memory
+  (`previewPersona`): the identity is synthetic (subject `persona`), the held set is the
+  persona's switch, and the licence lookup by subject is skipped (`previewIdentityIssue`'s
+  `existing: false`). A test records every statement the preview runs and finds no read of an
+  account, account-link, portal-account, licence, library or audit table; the one licence-table
+  read is the seat limit of the licence a path WOULD mint, keyed by the empty licence id, which
+  matches no row. So a product operator learns what the product's own settings do, never whether
+  a person exists, holds anything or is in a group.
+- **The panel's routes write nothing.** No row, no audit, no impression: the preview returns the
+  tile through the same view `GET /api/discover` uses but never calls `recordImpressions`, so a
+  preview neither counts nor leaves a trace (tests run the routes on a database that records any
+  write).
+- **Writes keep their existing gate.** The panel changes the listing only through Identity's
+  portal-settings route (PS-02, `writeSetting()`, audited `storefront.polarisKey.update`).
+  Widening the audience to everyone still needs the Worker's
+  `"confirm": "storefront.polarisKey.audience"`, and the console adds a typed confirmation (the
+  product's slug) before it sends it.
+- **Analytics are aggregates.** The card reads `storefront_daily` sums only, by day and path kind
+  (the PS-04 controls above); the route has no parameter that narrows it below a day.
+
+**Residual risk.** The preview evaluates the real policy, so it can tell an operator which groups
+a product's own `groupRoleMap` grants; that is the operator's own configuration, already visible
+on the product's sign-in settings.
+
 ### Licensed portal downloads (PX-W3)
 
 A licensed file held on R2, or in a private GitHub repository that the bytes host streams through

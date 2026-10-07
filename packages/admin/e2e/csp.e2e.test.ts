@@ -419,7 +419,129 @@ const ROUTES: Record<string, unknown> = {
         pushListing: { stageOnly: true },
         confirmationLabel: "Google Play",
       },
+      // PS-06: the built-in storefront, from its declaration.
+      {
+        id: "polaris-key",
+        label: "Polaris Key",
+        builtIn: true,
+        listingStore: "polaris-key",
+        connection: {
+          state: "keyless",
+          credential: null,
+          credentialLabel: null,
+          source: null,
+          lastError: null,
+        },
+        app: null,
+        outlets: [],
+        readOnly: null,
+        capabilities: [
+          {
+            op: "writeListingText",
+            label: "Listing text",
+            support: {
+              mode: "first-party",
+              plane: "worker",
+              handler: "polaris-key.writeListingText",
+            },
+          },
+          {
+            op: "pricing",
+            label: "Price and availability",
+            support: {
+              mode: "unsupported",
+              reason: "Listed products are obtained without payment",
+            },
+          },
+        ],
+        prerequisites: [],
+        steps: [],
+        pushListing: null,
+        confirmationLabel: "Polaris Key",
+      },
     ],
+  },
+  // PS-06: the Polaris Key panel, its analytics card and a persona preview.
+  "/manage/api/products/djdl/storefronts/polaris-key": {
+    enabled: true,
+    portalEnabled: true,
+    listing: {
+      listed: "auto",
+      audience: "eligible",
+      offerPaths: null,
+      groupLabels: { beta: "Aperture Seven" },
+    },
+    available: ["group", "auto_issue"],
+    active: ["group", "auto_issue"],
+    everyone: false,
+    identityEligible: true,
+    licenseEnabled: true,
+    groups: [{ group: "beta", tier: "beta", label: "Aperture Seven" }],
+    autoIssue: { tier: "free", tierLabel: "Free", expiryDays: null },
+    readiness: [
+      {
+        id: "portal",
+        state: "pass",
+        reason: "The portal is on for this product",
+      },
+      {
+        id: "listing",
+        state: "fail",
+        reason: "Add a name, an icon and a short description to the listing",
+      },
+      { id: "obtain-path", state: "pass", reason: "People can add it" },
+      { id: "get-it", state: "warn", reason: "Get it opens the website" },
+      { id: "licence-tier", state: "pass", reason: "Every tier exists" },
+    ],
+  },
+  "/manage/api/products/djdl/storefronts/polaris-key/analytics": {
+    from: "2026-09-09",
+    to: "2026-10-06",
+    days: 28,
+    totals: { impressions: 30, adds: 6, activations: 3 },
+    byKind: [{ kind: "group", impressions: 30, adds: 6, activations: 3 }],
+    daily: Array.from({ length: 28 }, (_, i) => ({
+      day: `2026-09-${String(9 + (i % 20)).padStart(2, "0")}`,
+      impressions: i % 3,
+      adds: 0,
+      activations: 0,
+    })),
+    impressionsCounted: true,
+  },
+  "/manage/api/products/djdl/storefronts/polaris-key/preview": {
+    persona: {
+      platformAccount: true,
+      groups: ["beta"],
+      emailDomain: null,
+      stores: [],
+      holds: false,
+    },
+    visible: true,
+    hidden: null,
+    tile: {
+      product: "djdl",
+      name: "DJDL",
+      developerName: "Fennick",
+      tintColor: null,
+      iconUrl: null,
+      headerUrl: null,
+      platforms: ["macos"],
+      shortDescription: "Mix anywhere.",
+      cta: "add",
+      paths: [
+        {
+          kind: "group",
+          detail: "beta",
+          label: "Aperture Seven",
+          terms: null,
+          action: "add",
+          reason: "group:beta",
+        },
+      ],
+      offer: null,
+      reason: "group:beta",
+      stores: [],
+    },
   },
   "/manage/api/products/djdl/distribution/storefronts/slots": { slots: [] },
   "/manage/api/products/djdl/distribution/listing": {
@@ -651,6 +773,43 @@ describe("overlays under the Worker's CSP", () => {
         .click();
       await page.getByRole("alertdialog").waitFor();
     });
+    await page.context().close();
+  });
+
+  it("Polaris Key (PS-06): the panel, its confirmations, the persona preview and the store switcher", async () => {
+    const page = await open({ width: 1440, height: 900 });
+    await violations(page);
+    for (const [hash, title] of [
+      ["#/p/djdl/distribution/storefronts/polaris-key", "Polaris Key"],
+      ["#/p/djdl/distribution/listing?tab=fit&store=polaris-key", "Listing"],
+    ] as const) {
+      await page.evaluate((h) => {
+        location.hash = h;
+      }, hash);
+      await page
+        .locator("[data-page-title]", { hasText: title })
+        .first()
+        .waitFor();
+      await page.waitForTimeout(200);
+      expect(await violations(page), `${hash}: CSP violations`).toEqual([]);
+    }
+    await page.evaluate(() => {
+      location.hash = "#/p/djdl/distribution/storefronts/polaris-key";
+    });
+    await page.getByRole("radio", { name: /^Listed/ }).waitFor();
+    await check(page, "Polaris Key listing confirm", async () => {
+      await page.getByRole("radio", { name: /^Listed/ }).click();
+      await page.getByRole("alertdialog").waitFor();
+    });
+    await check(page, "Polaris Key typed audience confirm", async () => {
+      await page.getByRole("radio", { name: /Everyone signed in/ }).click();
+      await page.getByRole("alertdialog").waitFor();
+    });
+    await page.getByRole("button", { name: "Preview" }).click();
+    await page.getByRole("article", { name: "DJDL on Discover" }).waitFor();
+    expect(await violations(page), "persona preview: CSP violations").toEqual(
+      [],
+    );
     await page.context().close();
   });
 

@@ -57,6 +57,7 @@ export type WriteMethod =
   | "yankRelease"
   | "unyankRelease"
   | "updatePortalSettings"
+  | "polarisKeyPreview"
   | "putProductSecret"
   | "putOutletCredential"
   | "deleteOutletCredential"
@@ -407,7 +408,17 @@ export const MUTATIONS: MutationTable = {
   },
   updatePortalSettings: {
     label: "portal settings",
-    invalidates: (slug) => [prefix(qk.portal(slug))],
+    // PS-06: the listing state is in this row, so the Polaris Key panel (its paths, readiness
+    // and the storefront tile) reads it too.
+    invalidates: (slug) => [
+      prefix(qk.portal(slug)),
+      prefix(qk.polarisKey(slug)),
+    ],
+  },
+  polarisKeyPreview: {
+    label: "Polaris Key preview",
+    invalidates: () => [],
+    why: "A dry run for a persona: the Worker evaluates it in memory and writes nothing.",
   },
   updateSignInSettings: {
     label: "sign-in settings",

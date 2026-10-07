@@ -21,14 +21,22 @@ One tile per store, with:
 - the product's app on that store, assigned in
   [Platform → Store connections](/docs/admin/store-connections/), or "Published from CI" for a
   store with no team connection (itch.io, Snap);
-- a capability strip, one row per operation with its badge: **API**, **CI**, **PR**, **Link**, or
-  **Not offered** with the reason (Steam's store page, for example, is links only);
+- a capability strip, one row per operation with its badge: **API**, **CI**, **PR**, **Link**,
+  **Built in**, or **Not offered** with the reason (Steam's store page, for example, is links
+  only);
 - how many of the store's steps are done;
 - **Not connected** or **Connection failing** when the team connection needs attention, and
   nothing when it is healthy.
 
 **Set up** opens the flow for that store alone. Store connections' **Set up** on an assigned app
 does the same.
+
+**Polaris Key**, the storefront built into Polaris Key (the customer portal's Discover and
+Library), has a tile like the others, rendered from its adapter the same way. It reads **Built in:
+always connected**, its operations are marked **Built in**, and **Manage** opens
+[its own page](/docs/admin/polaris-key-storefront/): the listing, who sees it, the ways to add it,
+a persona preview and its analytics. It is not part of Add to storefronts, because there is
+nothing to connect or run.
 
 ## Add to storefronts
 

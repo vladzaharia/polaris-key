@@ -568,6 +568,9 @@ export const SECTIONS: NavSection[] = [
         docs: "/docs/admin/storefronts/",
         inNav: true,
         ready: true,
+        // PS-06 (SETUP.md §2.1: one page per storefront): a built-in store's own page,
+        // `distribution/storefronts/polaris-key`.
+        record: { noun: "Storefront", ready: true },
       },
       {
         // A-18j: the shared listing model (T3): locales, fit report, slot board, release notes,

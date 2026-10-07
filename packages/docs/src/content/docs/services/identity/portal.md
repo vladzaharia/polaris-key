@@ -721,6 +721,9 @@ They are the settings `storefront.polarisKey.listed`, `.audience`, `.offerPaths`
   `reason: "confirm_required"`.
 - **A change to any of the four** writes a `storefront.polarisKey.update` activity row naming what
   changed, beside `portal.settings.update`.
+- **In the console** they are edited on Distribution → Storefronts →
+  [Polaris Key](/docs/admin/polaris-key-storefront/), which also shows the readiness checklist,
+  who sees the product, a persona preview and the storefront's analytics.
 
 ## Supported browsers
 

@@ -795,7 +795,8 @@ async function identityTier(
   let tierGroup: string | null = null;
   let tierId: string | null = null;
   for (const g of identity.groups) {
-    const m = map[g];
+    // Own keys only: a group named like an Object member (`constructor`, `__proto__`) is not mapped.
+    const m = Object.prototype.hasOwnProperty.call(map, g) ? map[g] : undefined;
     if (m) {
       if (entitledBy === null) entitledBy = g;
       if (m.tier && !tierId) {
@@ -952,6 +953,12 @@ export async function previewIdentityIssue(
   product: ProductPublic,
   identity: OidcIdentity,
   now: number,
+  /**
+   * PS-06: `existing: false` skips the licence lookup by subject (`existing` reads `null`). The
+   * console's persona preview runs the policy for a SYNTHETIC identity, whose subject must never
+   * be looked up among real licences (notes/S-21 owner decision 11).
+   */
+  opts: { existing?: boolean } = {},
 ): Promise<
   | (AutoIssueGrant & {
       overrides: ManagedPayload;
@@ -964,8 +971,49 @@ export async function previewIdentityIssue(
   return {
     ...grant,
     overrides: await provisionedOverrides(db, product, identity, now),
-    existing: await getLicenseBySub(db, product.slug, identity.sub),
+    existing:
+      opts.existing === false
+        ? null
+        : await getLicenseBySub(db, product.slug, identity.sub),
   };
+}
+
+/** One group of the product's `groupRoleMap`, as the console lists it (PS-06). */
+export interface IdentityPolicyGroup {
+  group: string;
+  /** The tier a member's licence is minted on, or `null` when the mapping names none. */
+  tier: string | null;
+}
+
+/**
+ * PS-06 (notes/S-21 §6.6): the identity policy `identityTier` runs, as the operator configured it
+ * and with no identity in hand: every mapped group (in the map's order) and the `oidcDefault`
+ * tier, `null` when the product does not auto-issue to every signed-in person. The console's
+ * "Ways to add", "Who can see this?" and readiness read it. A malformed map reads as no groups,
+ * exactly as `identityTier` grants nothing from it.
+ */
+export async function identityIssuePolicy(
+  db: Db,
+  product: Pick<ProductPublic, "slug" | "autoIssue">,
+): Promise<{ groups: IdentityPolicyGroup[]; defaultTier: string | null }> {
+  const oidc = await getOidcConfig(db, product.slug);
+  const map =
+    parseJsonColumn<Record<string, { role: string; tier?: string }>>(
+      oidc?.group_role_map_json,
+    ) ?? {};
+  const groups: IdentityPolicyGroup[] = [];
+  if (map && typeof map === "object" && !Array.isArray(map))
+    for (const [group, m] of Object.entries(map))
+      if (m && typeof m === "object")
+        groups.push({
+          group,
+          tier: typeof m.tier === "string" && m.tier !== "" ? m.tier : null,
+        });
+  const defaultTier =
+    allowsOidcDefault(product.autoIssue) && product.autoIssue.tierId
+      ? product.autoIssue.tierId
+      : null;
+  return { groups, defaultTier };
 }
 
 /** Max compare-and-set rounds `updateLicenseOnSignIn` makes before giving up. */

@@ -6,6 +6,8 @@
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import {
   api,
+  type PolarisKeyAnalyticsResponse,
+  type PolarisKeyStatusResponse,
   type ListingFitResponse,
   type ListingReleaseNotesResponse,
   type ListingResponse,
@@ -70,6 +72,29 @@ export function useReleaseNotes(
   );
 }
 
+/** PS-06: the Polaris Key panel (the first-party `status` op). */
+export function usePolarisKey(
+  slug: string,
+): UseQueryResult<PolarisKeyStatusResponse> {
+  return useQuery(
+    { queryKey: qk.polarisKey(slug), queryFn: () => api.polarisKey(slug) },
+    queryClient,
+  );
+}
+
+/** PS-06: the Polaris Key analytics card (the last 28 days). */
+export function usePolarisKeyAnalytics(
+  slug: string,
+): UseQueryResult<PolarisKeyAnalyticsResponse> {
+  return useQuery(
+    {
+      queryKey: qk.polarisKeyAnalytics(slug),
+      queryFn: () => api.polarisKeyAnalytics(slug),
+    },
+    queryClient,
+  );
+}
+
 /** A per-intent key: random, never stored. One per opened dialog, so a retry replays. */
 export function newIdempotencyKey(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto)
@@ -89,4 +114,5 @@ export const LISTING_GROUP_LABELS: Record<string, string> = {
   flathub: "Flathub",
   winget: "winget",
   fdroid: "F-Droid",
+  "polaris-key": "Polaris Key",
 };

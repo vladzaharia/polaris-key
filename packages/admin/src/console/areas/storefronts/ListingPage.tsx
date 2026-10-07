@@ -62,6 +62,7 @@ const TAB_LABELS: Record<ListingTab, string> = {
 const tabCodec = codecs.oneOf(LISTING_TABS, "text");
 const localeCodec = codecs.string("");
 const releaseCodec = codecs.string("");
+const storeCodec = codecs.string("");
 
 export function ListingPage({ slug }: { slug: string }): React.ReactElement {
   const [tab] = useSearchParam("tab", tabCodec);
@@ -93,7 +94,7 @@ export function ListingPage({ slug }: { slug: string }): React.ReactElement {
       ) : tab === "text" ? (
         <TextTab slug={slug} data={q.data} />
       ) : tab === "fit" ? (
-        <FitReport slug={slug} />
+        <FitTab slug={slug} />
       ) : tab === "images" ? (
         <SlotBoard slug={slug} />
       ) : tab === "notes" ? (
@@ -102,6 +103,14 @@ export function ListingPage({ slug }: { slug: string }): React.ReactElement {
         <PushTab slug={slug} />
       )}
     </div>
+  );
+}
+
+/** The fit report with its store switcher, the store in the URL (`?store=`, PS-06). */
+function FitTab({ slug }: { slug: string }): React.ReactElement {
+  const [store, setStore] = useSearchParam("store", storeCodec);
+  return (
+    <FitReport slug={slug} storeFilter={{ value: store, onChange: setStore }} />
   );
 }
 

@@ -9407,7 +9407,7 @@
       "optional": false,
       "refs": ["notes/S-21 §6.6", "notes/S-21 §9 PS-06"],
       "brief": "wp/PS-06-console-polaris-key-storefront.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "PS-07",

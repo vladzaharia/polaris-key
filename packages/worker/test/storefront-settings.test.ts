@@ -249,6 +249,9 @@ describe("storefrontListing and the writer (PS-02)", () => {
     expect(parseGroupLabels({ g: "x".repeat(41) })).toBeUndefined();
     expect(parseGroupLabels({ g: "   " })).toBeUndefined();
     expect(parseGroupLabels({ "": "Staff" })).toBeUndefined();
+    expect(
+      parseGroupLabels(JSON.parse('{"__proto__":"Staff"}')),
+    ).toBeUndefined();
     expect(parseGroupLabels({ g: 1 })).toBeUndefined();
     expect(parseGroupLabels(["Staff"])).toBeUndefined();
     expect(

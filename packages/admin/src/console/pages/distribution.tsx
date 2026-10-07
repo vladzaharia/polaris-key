@@ -25,7 +25,7 @@ export default function DistributionPages({
     case "outlets":
       return <OutletsPage slug={slug} />;
     case "storefronts":
-      return <StorefrontsPage slug={slug} />;
+      return <StorefrontsPage slug={slug} store={route.id} />;
     case "listing":
       return <ListingPage slug={slug} />;
     case "app-store":

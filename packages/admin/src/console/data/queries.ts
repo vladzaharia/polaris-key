@@ -227,6 +227,14 @@ export const qk = {
   storefronts: (slug: string) => product(slug, "distribution", "storefronts"),
   storefrontSlots: (slug: string) =>
     product(slug, "distribution", "storefronts", "slots"),
+  /**
+   * PS-06: the Polaris Key panel (the first-party `status` op). Under `storefronts`, so a
+   * storefront write refreshes it; as a prefix, also its analytics.
+   */
+  polarisKey: (slug: string) =>
+    product(slug, "distribution", "storefronts", "polaris-key"),
+  polarisKeyAnalytics: (slug: string) =>
+    product(slug, "distribution", "storefronts", "polaris-key", "analytics"),
   /** A-18b: the listing model; as a prefix, also its fit report and release notes. */
   listing: (slug: string) => product(slug, "distribution", "listing"),
   listingFit: (slug: string, release: string | null) =>

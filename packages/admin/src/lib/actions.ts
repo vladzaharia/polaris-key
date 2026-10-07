@@ -47,8 +47,15 @@ export const ACTION_LEVELS = {
   "filters.clear": 0,
   // Chunk 9: recomputes the server's own answer; no operator choice to confirm.
   "readiness.refresh": 0,
+  // PS-06: the Polaris Key panel. Narrowing the audience only hides the product from more people,
+  // and a group label is presentation (S-18 registry: down L0, groupLabels L0).
+  "storefront.audienceEligible": 0,
+  "storefront.groupLabels": 0,
 
   // L1 · reversible, impactful
+  // PS-06: how Polaris Key lists the product, and which ways to add count (S-18 registry: L1).
+  "storefront.listing": 1,
+  "storefront.waysToAdd": 1,
   "signing.prepare": 1,
   "signing.activate": 1,
   "license.disable": 1,
@@ -151,6 +158,9 @@ export const ACTION_LEVELS = {
   "signing.breakGlassActivate": 3,
   "kek.reseal": 3,
   "portalAccount.delete": 3,
+  // PS-06 (notes/S-21 owner decision 5): showing a product to everyone signed in is the one
+  // deliberate exception to "only what you can obtain", behind a typed confirmation (the slug).
+  "storefront.audienceEveryone": 3,
   // Users (I-12): the subject's data of this product (config overrides, Cloud Sync) is gone for
   // good. The subject, its licences and the account stay.
   "user.deleteData": 3,
@@ -210,6 +220,7 @@ const TYPED: Partial<Record<ActionId, ActionPolicy["typed"]>> = {
   "signing.breakGlassActivate": "kid",
   "kek.reseal": "reseal",
   "portalAccount.delete": "delete",
+  "storefront.audienceEveryone": "slug",
   "user.deleteData": "delete",
   "license.delete": "deleteId",
   "overrideMigration.run": "migrate",

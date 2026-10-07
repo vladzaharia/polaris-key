@@ -49,6 +49,7 @@ import {
 } from "../../../../core/authorizationListeners.js";
 import {
   isObtainPathKind,
+  OBTAIN_PATH_KINDS,
   type ObtainPathKind,
 } from "../../../../core/storefront/polarisKeyListing.js";
 import { discoverClaimAuditId } from "../repo.js";
@@ -218,6 +219,105 @@ export async function recordFirstActivation(
 }
 
 registerAuthorizationListener("storefront.activations", recordFirstActivation);
+
+// ── The console card (PS-06) ────────────────────────────────────────────────────────────────
+
+/** The console card's window: the last 28 UTC days, today included (notes/S-21 §6.6). */
+export const ANALYTICS_DAYS = 28;
+
+/** The three counters of one row, or of a sum of rows. */
+export interface StorefrontCounts {
+  impressions: number;
+  adds: number;
+  activations: number;
+}
+
+/** One path kind's sums over the window. */
+export interface StorefrontKindCounts extends StorefrontCounts {
+  kind: StorefrontPathKind;
+}
+
+/** One UTC day's sums over every path kind. */
+export interface StorefrontDayCounts extends StorefrontCounts {
+  day: string;
+}
+
+export interface StorefrontAnalytics {
+  /** The window's first and last UTC days, inclusive. */
+  from: string;
+  to: string;
+  days: number;
+  totals: StorefrontCounts;
+  /** Every kind with a count in the window, in `OBTAIN_PATH_KINDS` order, `link` last. */
+  byKind: StorefrontKindCounts[];
+  /** Every day of the window, oldest first, zero where nothing was counted. */
+  daily: StorefrontDayCounts[];
+}
+
+const KIND_ORDER: readonly string[] = [...OBTAIN_PATH_KINDS, LINK_PATH_KIND];
+
+/**
+ * The card's numbers (PS-06): `storefront_daily` summed over the window, per path kind and per
+ * day. Aggregates only, as stored: no row names a person, so nothing here can either. An
+ * activation counts on its add's day, so the newest week's activations are still arriving.
+ */
+export async function storefrontAnalytics(
+  db: Db,
+  product: string,
+  now: number,
+  days: number = ANALYTICS_DAYS,
+): Promise<StorefrontAnalytics> {
+  const from = storefrontDay(now - (days - 1) * 86400);
+  const to = storefrontDay(now);
+  const rows = await db.all<{
+    day: string;
+    path_kind: string;
+    impressions: number;
+    adds: number;
+    activations: number;
+  }>(
+    `SELECT day, path_kind, impressions, adds, activations
+       FROM storefront_daily
+      WHERE product = ? AND day >= ? AND day <= ?`,
+    product,
+    from,
+    to,
+  );
+  const zero = (): StorefrontCounts => ({
+    impressions: 0,
+    adds: 0,
+    activations: 0,
+  });
+  const add = (into: StorefrontCounts, r: StorefrontCounts): void => {
+    into.impressions += r.impressions;
+    into.adds += r.adds;
+    into.activations += r.activations;
+  };
+  const totals = zero();
+  const kinds = new Map<string, StorefrontCounts>();
+  const byDay = new Map<string, StorefrontCounts>();
+  for (const r of rows) {
+    // A kind this Worker does not know (written by a newer one) still counts in the totals.
+    add(totals, r);
+    if (!kinds.has(r.path_kind)) kinds.set(r.path_kind, zero());
+    add(kinds.get(r.path_kind)!, r);
+    if (!byDay.has(r.day)) byDay.set(r.day, zero());
+    add(byDay.get(r.day)!, r);
+  }
+  const rank = (k: string): number => {
+    const i = KIND_ORDER.indexOf(k);
+    return i === -1 ? KIND_ORDER.length : i;
+  };
+  const byKind = [...kinds.entries()]
+    .sort(([a], [b]) => rank(a) - rank(b) || a.localeCompare(b))
+    .map(([kind, c]) => ({ kind: kind as StorefrontPathKind, ...c }));
+  const daily: StorefrontDayCounts[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const day = storefrontDay(now - i * 86400);
+    daily.push({ day, ...(byDay.get(day) ?? zero()) });
+  }
+  return { from, to, days, totals, byKind, daily };
+}
 
 /**
  * The nightly sweep's step for one product: delete its dedupe rows older than yesterday, at most

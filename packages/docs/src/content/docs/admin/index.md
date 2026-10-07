@@ -47,6 +47,7 @@ runbook file wins and the wrapper page is stale.
 | [Activity](/docs/admin/activity/)                                   | What lands in a product's audit log, and how the console pages through it.                                                              |
 | [Operations](/docs/admin/operations/)                               | Cron runs, heartbeats, queue backlog, storage, indexes and store connectors, and what Healthy, Degraded and Failed mean.                |
 | [Storefront listing](/docs/admin/storefront-listing/)               | The shared listing model: one listing per product, each store's fit report, per-release store notes, overrides and the manifest import. |
+| [Polaris Key storefront](/docs/admin/polaris-key-storefront/)       | The built-in storefront: readiness, the listing and audience, ways to add, group labels, a persona preview and 28 days of analytics.    |
 | [Where the security material lives](/docs/admin/security-pointers/) | The disclosure policy, and why the threat model and audit findings stay repo-only.                                                      |
 
 ## Before you start

@@ -8,7 +8,13 @@ import {
 
 /** ADMIN.md §5.2's examples column, by level. */
 const SPEC: Record<0 | 1 | 2 | 3, ActionId[]> = {
-  0: ["attention.dismiss", "preferences.save", "filters.clear"],
+  0: [
+    "attention.dismiss",
+    "preferences.save",
+    "filters.clear",
+    "storefront.audienceEligible",
+    "storefront.groupLabels",
+  ],
   1: [
     "signing.prepare",
     "signing.activate",
@@ -35,6 +41,8 @@ const SPEC: Record<0 | 1 | 2 | 3, ActionId[]> = {
     "connector.iapPrice",
     "user.undoRelink",
     "setting.manifestAuthoritative",
+    "storefront.listing",
+    "storefront.waysToAdd",
   ],
   2: [
     "key.revoke",
@@ -69,6 +77,7 @@ const SPEC: Record<0 | 1 | 2 | 3, ActionId[]> = {
     "connector.submitReview",
     "connector.iapPriceChange",
     "user.deleteData",
+    "storefront.audienceEveryone",
   ],
 };
 

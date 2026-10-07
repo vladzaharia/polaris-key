@@ -1,5 +1,6 @@
 import * as React from "react";
 import {
+  BadgeCheck,
   Ban,
   ExternalLink,
   GitPullRequest,
@@ -19,7 +20,13 @@ import { cn } from "../lib/cn.js";
  * in this console). An `unsupported` operation says so in plain words, and its reason is visible
  * text in a strip (`CapabilityStrip`), never only a tooltip.
  */
-export type CapabilityMode = "api" | "ci" | "pr" | "deep-link" | "unsupported";
+export type CapabilityMode =
+  | "api"
+  | "ci"
+  | "pr"
+  | "deep-link"
+  | "first-party"
+  | "unsupported";
 
 /** The part of a `Support` declaration the badge reads. */
 export interface CapabilitySupport {
@@ -34,6 +41,8 @@ const MODE: Record<CapabilityMode, { label: string; icon: LucideIcon }> = {
   ci: { label: "CI", icon: Workflow },
   pr: { label: "PR", icon: GitPullRequest },
   "deep-link": { label: "Link", icon: ExternalLink },
+  // PS-01, PS-06: the built-in storefront runs it on Polaris Key's own tables (notes/S-21 §6.1).
+  "first-party": { label: "Built in", icon: BadgeCheck },
   unsupported: { label: "Not offered", icon: Ban },
 };
 
@@ -44,6 +53,8 @@ export const CAPABILITY_MEANING: Record<CapabilityMode, string> = {
   pr: "CI opens a pull request for it.",
   "deep-link":
     "Done by hand in the store's own console, from a link with the values to copy.",
+  "first-party":
+    "Built into Polaris Key: it runs on Polaris Key's own records, with nothing to connect.",
   unsupported: "The store or protocol has no such operation.",
 };
 
@@ -132,5 +143,6 @@ export function capabilitySummary(items: CapabilityItem[]): string {
   if (n("pr")) parts.push(`${n("pr")} PR`);
   if (n("deep-link"))
     parts.push(`${n("deep-link")} link${n("deep-link") === 1 ? "" : "s"}`);
+  if (n("first-party")) parts.push(`${n("first-party")} built in`);
   return parts.join(" · ");
 }

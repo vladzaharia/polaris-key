@@ -149,6 +149,12 @@ export interface FlowStepView {
 export interface StoreFlowView {
   id: string;
   label: string;
+  /**
+   * A BUILT-IN store (PS-06): its operations run first-party, on Polaris Key's own tables
+   * (`first-party` Support, PS-01), so there is nothing to connect and no flow to run (SETUP.md
+   * D48). The console opens the store's own panel instead of Add to storefronts.
+   */
+  builtIn: boolean;
   /** The listing column the store's fit report row is (`play` for Google Play). */
   listingStore: ListingStore | null;
   connection: StoreConnection;
@@ -438,6 +444,7 @@ export async function storeView(
   return {
     id: adapter.id,
     label: adapter.label,
+    builtIn: isBuiltIn(adapter),
     listingStore: listingStoreOf(adapter),
     connection: facts.connection,
     app: facts.app,
@@ -451,6 +458,16 @@ export async function storeView(
       : null,
     confirmationLabel: adapter.confirmation.label,
   };
+}
+
+/** A first-party adapter: no credential, and its operations run on Polaris Key's own tables. */
+export function isBuiltIn(adapter: StorefrontAdapter): boolean {
+  return (
+    adapter.credential === null &&
+    Object.values(adapter.capabilities.ops).some(
+      (s) => s.mode === "first-party",
+    )
+  );
 }
 
 /** The checklist S-15 §8.1 step 2 computes for every store. */

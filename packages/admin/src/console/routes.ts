@@ -467,6 +467,9 @@ export const r = {
   /** A-18j: `?flow=1&step=…&stores=…` opens "Add to storefronts"; `?store=` pre-scopes it. */
   storefronts: (slug: string, query?: QueryInit) =>
     productPage(slug, "storefronts", { query }),
+  /** PS-06: one storefront's own page (the built-in Polaris Key's panel). */
+  storefront: (slug: string, store: string) =>
+    productPage(slug, "storefronts", { id: store }),
   listing: (slug: string, query?: QueryInit) =>
     productPage(slug, "listing", { query }),
   appStore: (slug: string, query?: QueryInit) =>
