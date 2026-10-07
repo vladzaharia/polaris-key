@@ -111,8 +111,10 @@ Operators and customers should not share a directory ([S-16 §5.4](../../notes/S
   - **N5:** a `provider: platform` product's `/auth/start` (the page) and `/device/start`
     (`404 disabled`, the answer a device client already gets when sign-in is off) refuse past the
     sunset before anyone is sent to the IdP.
-  - **N9 (follow-up, not changed):** a disabled account's subject still signs in to a product
-    through its floating `sub`-keyed licence, as before I-17.
+  - **N9 (not changed here; fixed by `fix/disabled-account-product-signin`):** a disabled
+    account's subject signed in to a product through its floating `sub`-keyed licence, as before
+    I-17. The product callback and the device-code poll now refuse it (THREAT-MODEL, "A disabled
+    account signs in to no product").
 
 ## Steps
 
@@ -139,10 +141,6 @@ mise exec node@22 -- pnpm --filter @polaris-key/worker test -- identity platform
 ## Hand-off
 
 - The owner sets the sunset date from the count.
-- Follow-up (N9, pre-existing): a product sign-in through the platform IdP for a subject whose
-  account is disabled still completes on its floating `sub`-keyed licence; the claim does not
-  refuse it. Owner: whoever takes account disable across product sign-ins (the login card's
-  `signIn` refuses a disabled account; the legacy product flow never consults it).
 
 The role agent sets `--set I-17 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:

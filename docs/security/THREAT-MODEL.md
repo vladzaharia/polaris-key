@@ -5190,6 +5190,23 @@ directory holds operators only, which closes G5 (operator and customer in one di
   only on products whose provider is `platform` (R5-02), only while floating (an owned licence
   never moves) and only where the product's auto-link resolves on; the portal's link sweep does
   it, so the rules are the ones it already had. A custom-issuer product never claims.
+- **A disabled account signs in to no product (the I-17 review's N9).** A `provider: platform`
+  product's sign-in used to complete for a subject whose account was disabled, its floating
+  `sub`-keyed licence minting a device token in every mode: `off` never read the account, `claim`
+  and `operators-only` heard `signIn`'s `account_disabled` and carried on as before, and I-26's
+  trigger skipped a disabled account and fell through to minting. The callback now reads the
+  subject's method first (issuer key or the pre-I-01 literal, read-only;
+  `platformSubjectAccountRefused`) and, when its account is not active (disabled, or its deletion
+  under way), drops the flow before the claim, the chooser or any activation, mints and writes
+  nothing, and answers the portal's "This account can't sign in". The device-code poll checks
+  again before it shows the identity, activates or mints, because an account can be disabled
+  while the flow waits, and answers the generic `error` (D8). A subject that holds no method (a
+  floating licence only, an erased account, which leaves no link, or a custom-issuer product's
+  subject) signs in as before. Residual: a device or browser session signed in before the
+  disable keeps its token (disabling clears the device's account binding, `devices.subject`, not
+  its licence seat), and on a `requires-identity` product a live browser session can still
+  register devices; this closes new sign-ins only. Ending those is a product decision about
+  licence seats (follow-up).
 - **The switch is deploy-time (AT-2).** `PLATFORM_OIDC_MIGRATION` and `PLATFORM_OIDC_SUNSET` are
   `[vars]`, explained in `NOT_A_SETTING`, never console values: a console session cannot move
   people between sign-in paths or end anyone's sign-in. Off by default; an unrecognised mode reads

@@ -46,6 +46,7 @@ import {
   insertAccount,
   insertLink,
 } from "../src/services/identity/accounts/repo.js";
+import { disableAccount } from "../src/services/identity/accounts/deletion.js";
 import {
   parseSunsetDate,
   platformMigrationReport,
@@ -780,6 +781,265 @@ describe("claim at next sign-in through a provider: platform product", () => {
     expect(res.status).toBe(200);
     expect(await count(db, "SELECT COUNT(*) AS n FROM accounts")).toBe(0);
     expect((await licenseOf())?.account_id).toBeNull();
+  });
+
+  // ── N9 (the I-17 review): a disabled account does not sign in to a product ────────────────
+
+  describe("a subject whose account can no longer sign in (N9)", () => {
+    const ctx = () => ({ db, env, now: NOW, origin: ORIGIN });
+
+    /** Everything a refused sign-in must leave as it was: no licence, no device, no account or
+     *  method touched, no audit row. */
+    async function snapshot() {
+      return {
+        licenses: await count(db, "SELECT COUNT(*) AS n FROM licenses"),
+        devices: await count(db, "SELECT COUNT(*) AS n FROM devices"),
+        accounts: await db.all(
+          "SELECT id, status, last_sign_in_at, modified_at FROM accounts ORDER BY id",
+        ),
+        links: await db.all(
+          "SELECT id, account_id, issuer_key, last_used_at, email FROM account_links ORDER BY id",
+        ),
+        subjects: await count(
+          db,
+          "SELECT COUNT(*) AS n FROM account_product_subjects",
+        ),
+        portalAudit: await count(db, "SELECT COUNT(*) AS n FROM portal_audit"),
+        audit: await count(db, "SELECT COUNT(*) AS n FROM audit"),
+      };
+    }
+
+    async function expectRefusedPage(res: Response): Promise<void> {
+      expect(res.status).toBe(403);
+      expect(res.headers.get("location")).toBeNull();
+      const html = await res.text();
+      expect(html).toMatch(/This account can(&#39;|&#x27;|')t sign in/);
+      expect(html).toContain("Contact Polaris Key support.");
+    }
+
+    /** A device-code flow up to its callback; `poll` is then the device-code holder's poll. */
+    async function deviceSignIn(sub = SUB): Promise<{
+      callback: Response;
+      poll: () => Promise<{ status: string; token?: string }>;
+    }> {
+      const started = await handleAuthDeviceStart(
+        new Request(`${ORIGIN}/djdl/identity/auth/device/start`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ deviceId: "dev-1", deviceName: "Steam Deck" }),
+        }) as unknown as Request,
+        env,
+        db,
+        product,
+      );
+      const { deviceCode, userCode } = (await started.json()) as {
+        deviceCode: string;
+        userCode: string;
+      };
+      const page = await handleAuthDeviceEntry(
+        new Request(
+          `${ORIGIN}/djdl/identity/auth/device?user_code=${userCode}`,
+        ) as unknown as Request,
+        env,
+        product,
+      );
+      const csrf = /name="csrf" value="([^"]+)"/.exec(await page.text())![1]!;
+      const confirmed = await handleAuthDeviceEntry(
+        new Request(`${ORIGIN}/djdl/identity/auth/device`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/x-www-form-urlencoded",
+            "sec-fetch-site": "same-origin",
+          },
+          body: new URLSearchParams({ user_code: userCode, csrf }).toString(),
+        }) as unknown as Request,
+        env,
+        product,
+      );
+      const authorize = new URL(confirmed.headers.get("location")!);
+      const binder = cookieOf(confirmed, LICENSE_CHOICE_BINDER_COOKIE);
+      installIdp({
+        sub,
+        groups: ["members"],
+        nonce: authorize.searchParams.get("nonce"),
+      });
+      const callback = await handleAuthCallback(
+        new Request(
+          `${ORIGIN}/djdl/identity/auth/callback?code=c&state=${authorize.searchParams.get("state")}`,
+          {
+            headers: binder
+              ? { cookie: `${LICENSE_CHOICE_BINDER_COOKIE}=${binder}` }
+              : {},
+          },
+        ) as unknown as Request,
+        env,
+        db,
+        product,
+        NOW,
+      );
+      let at = NOW;
+      const poll = async () => {
+        // Past the advertised interval each time, so no poll is told to slow down.
+        at += 5;
+        const res = await handleAuthDevicePoll(
+          new Request(`${ORIGIN}/djdl/identity/auth/device/poll`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ deviceCode, deviceId: "dev-1" }),
+          }) as unknown as Request,
+          env,
+          db,
+          product,
+          at,
+        );
+        return (await res.json()) as { status: string; token?: string };
+      };
+      return { callback, poll };
+    }
+
+    for (const mode of ["off", "claim", "operators-only"] as const) {
+      it(`${mode}: the browser sign-in is refused and nothing is minted or written`, async () => {
+        const account = await platformLinkedAccount(db, SUB);
+        // The subject's floating `sub`-keyed licence: before N9 this signed it in regardless.
+        await insertSubLicense(db, "djdl", "lic-floating", SUB);
+        await db.run(
+          "UPDATE licenses SET tier_id = 'free' WHERE id = 'lic-floating'",
+        );
+        expect(await disableAccount(ctx(), account)).toEqual({ ok: true });
+        if (mode !== "off") env.PLATFORM_OIDC_MIGRATION = mode;
+        if (mode === "operators-only") env.PLATFORM_OIDC_SUNSET = FUTURE;
+        const before = await snapshot();
+
+        await expectRefusedPage(await browserSignIn());
+        expect(await snapshot()).toEqual(before);
+        // Not the sunset's refusal: the subject did move; its account is what refuses.
+        expect(fetched).toContain(`${ISSUER}/api/oidc/token`);
+      });
+    }
+
+    it("an account whose deletion is under way is refused the same way", async () => {
+      const account = await platformLinkedAccount(db, SUB);
+      await db.run(
+        "UPDATE accounts SET status = 'deleted', deleted_at = ? WHERE id = ?",
+        NOW,
+        account,
+      );
+      const before = await snapshot();
+      await expectRefusedPage(await browserSignIn());
+      expect(await snapshot()).toEqual(before);
+    });
+
+    it("a method still keyed by the pre-I-01 literal counts as the subject's account", async () => {
+      env.PLATFORM_OIDC_MIGRATION = "claim";
+      const account = await platformLinkedAccount(db, SUB);
+      await db.run(
+        "UPDATE account_links SET issuer_key = 'oidc' WHERE account_id = ?",
+        account,
+      );
+      expect(await disableAccount(ctx(), account)).toEqual({ ok: true });
+      const before = await snapshot();
+      await expectRefusedPage(await browserSignIn());
+      // Not even re-keyed: a refused sign-in writes nothing.
+      expect(await snapshot()).toEqual(before);
+    });
+
+    it("I-26: an account that owns a usable licence is refused, not sent to the chooser", async () => {
+      const account = await platformLinkedAccount(db, SUB);
+      await insertSubLicense(db, "djdl", "lic-owned", "someone-else", {
+        account,
+      });
+      await db.run(
+        "UPDATE licenses SET tier_id = 'free' WHERE id = 'lic-owned'",
+      );
+      // Active, the same sign-in opens the chooser.
+      const chooser = await browserSignIn();
+      expect(chooser.status).toBe(303);
+      expect(chooser.headers.get("location")).toBe(
+        `${ORIGIN}/djdl/identity/auth/choose`,
+      );
+
+      expect(await disableAccount(ctx(), account)).toEqual({ ok: true });
+      const before = await snapshot();
+      await expectRefusedPage(await browserSignIn());
+      expect(await snapshot()).toEqual(before);
+      expect(await licenseOf()).toBeNull();
+    });
+
+    it("device code: refused at the callback, and the poll never mints", async () => {
+      const account = await platformLinkedAccount(db, SUB);
+      expect(await disableAccount(ctx(), account)).toEqual({ ok: true });
+      const before = await snapshot();
+      const { callback, poll } = await deviceSignIn();
+      await expectRefusedPage(callback);
+      const answer = await poll();
+      expect(answer.status).toBe("timeout");
+      expect(answer.token).toBeUndefined();
+      expect(await snapshot()).toEqual(before);
+    });
+
+    it("device code: an account disabled while the flow waits is refused at the poll", async () => {
+      env.PLATFORM_OIDC_MIGRATION = "claim";
+      const account = await platformLinkedAccount(db, SUB);
+      const { callback, poll } = await deviceSignIn();
+      expect(callback.status).toBe(200);
+      // The callback stored the identity and wrote no licence; the account is disabled before
+      // the device-code holder polls.
+      expect(await licenseOf()).toBeNull();
+      expect(await disableAccount(ctx(), account)).toEqual({ ok: true });
+      const before = await snapshot();
+      const answer = await poll();
+      expect(answer.status).toBe("error");
+      expect(answer.token).toBeUndefined();
+      expect(await snapshot()).toEqual(before);
+      // The flow is gone: a later poll is told it timed out, and still mints nothing.
+      expect((await poll()).status).toBe("timeout");
+      expect(await licenseOf()).toBeNull();
+    });
+
+    it("an active account still signs in, through the browser and through a device code", async () => {
+      await platformLinkedAccount(db, SUB);
+      const res = await browserSignIn();
+      expect(res.status).toBe(200);
+      expect(await res.text()).toMatch(/You(&#x27;|&#39;|')re signed in/);
+      expect(await licenseOf()).not.toBeNull();
+
+      const { callback, poll } = await deviceSignIn();
+      expect(callback.status).toBe(200);
+      const answer = await poll();
+      expect(answer.status).toBe("ready");
+      expect(answer.token).toMatch(/^pkeyt_/);
+    });
+
+    it("a subject with no account signs in exactly as before, beside a disabled one", async () => {
+      // Someone else's account is disabled; this subject holds no method at all.
+      const other = await platformLinkedAccount(db, "someone-else");
+      expect(await disableAccount(ctx(), other)).toEqual({ ok: true });
+      const res = await browserSignIn();
+      expect(res.status).toBe(200);
+      const lic = await licenseOf();
+      expect(lic).not.toBeNull();
+      expect(lic?.account_id).toBeNull();
+
+      const { callback, poll } = await deviceSignIn();
+      expect(callback.status).toBe(200);
+      expect((await poll()).status).toBe("ready");
+    });
+
+    it("a custom-issuer product's subject resolves no account: unchanged", async () => {
+      // The same subject string under the platform issuer belongs to a disabled account; a
+      // custom issuer's subject is a different identity.
+      const account = await platformLinkedAccount(db, SUB);
+      expect(await disableAccount(ctx(), account)).toEqual({ ok: true });
+      await db.run(
+        "UPDATE oidc_config SET provider = 'custom', issuer = ?, client_id = ? WHERE product = 'djdl'",
+        ISSUER,
+        AUD,
+      );
+      product = (await loadProduct(env, db, "djdl"))!;
+      const res = await browserSignIn();
+      expect(res.status).toBe(200);
+      expect(await licenseOf()).not.toBeNull();
+    });
   });
 });
 

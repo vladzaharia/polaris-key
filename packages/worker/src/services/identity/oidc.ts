@@ -107,6 +107,7 @@ import {
   attachClaimedLicenses,
   claimPlatformSubject,
   platformSignInEnded,
+  platformSubjectAccountRefused,
   PLATFORM_SIGNIN_ENDED,
 } from "./accounts/platformMigration.js";
 import {
@@ -2077,6 +2078,25 @@ export async function handleAuthCallback(
     return errorResponse(401, "unauthorized", "id token invalid");
   }
 
+  // N9 (the I-17 review): a subject whose Polaris Key account can no longer sign in (disabled,
+  // or its deletion under way) does not sign in to a product either, in every migration mode and
+  // whichever way the flow would end (the claim, I-26's chooser, the device-code poll, a new or
+  // existing `sub`-keyed licence). Refused before any of them, so nothing is minted or written;
+  // the flow is dropped, so the poll then answers `timeout`. A subject with no account signs in
+  // exactly as before.
+  if (
+    await signInAccountRefused(
+      db,
+      oidc.row.provider,
+      oidc.issuer,
+      identity.sub,
+      now,
+    )
+  ) {
+    await deleteArtefact(env, stateKey);
+    return accountDisabledPage();
+  }
+
   // I-17: moving end users off the platform IdP. With `PLATFORM_OIDC_MIGRATION` off (the
   // default) this writes nothing and the sign-in continues exactly as before.
   const migration = await migratePlatformSubject(
@@ -2171,7 +2191,10 @@ export async function handleAuthCallback(
  *   - a join offer: the sign-in completes as before, and the page offers the join on the portal,
  *     where the email step asks for proof of the other account (product routes never see the
  *     account realm's cookies, so the offer cannot open here);
- *   - anything else (`off`, an ambiguous email, a disabled account): exactly as before.
+ *   - a disabled account (N9): the flow is dropped and the browser told this account can't sign
+ *     in. The callback's own check refuses it first; this covers an account disabled between the
+ *     two reads;
+ *   - anything else (`off`, an ambiguous email): exactly as before.
  */
 async function migratePlatformSubject(
   env: Env,
@@ -2214,28 +2237,61 @@ async function migratePlatformSubject(
       return { notice: null };
     case "join_offer":
       return { notice: joinOfferNotice(claim.email) };
+    case "refused":
+      if (claim.result.reason === "account_disabled") {
+        await deleteArtefact(env, stateKey);
+        return accountDisabledPage();
+      }
+      return { notice: null };
     default:
       return { notice: null };
   }
 }
 
+/**
+ * N9: whether this product sign-in's subject belongs to a Polaris Key account that can no longer
+ * sign in (`platformSubjectAccountRefused`). Only a `provider: platform` product's subject is the
+ * platform IdP's, the one a Polaris Key account holds; a custom issuer's subject resolves no
+ * account, so its sign-in is unchanged.
+ */
+async function signInAccountRefused(
+  db: Db,
+  provider: string | null,
+  issuer: string,
+  sub: string,
+  now: number,
+): Promise<boolean> {
+  if ((provider ?? "platform") !== "platform") return false;
+  return platformSubjectAccountRefused(db, issuer, sub, now);
+}
+
+/** A branded 403 sign-in refusal page: no caching, no retry on this route. `body` is TRUSTED. */
+function signInRefusalPage(heading: string, body: string): Response {
+  return new Response(renderBrandPage({ title: "Sign in", heading, body }), {
+    status: 403,
+    headers: brandedHtmlSecurityHeaders(
+      new Headers({
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "no-store",
+      }),
+    ),
+  });
+}
+
 /** The platform IdP no longer signs this person in (I-17); 403, no retry on this route. */
 function platformSignInEndedPage(): Response {
-  return new Response(
-    renderBrandPage({
-      title: "Sign in",
-      heading: PLATFORM_SIGNIN_ENDED.heading,
-      body: `<p>${escapeHtml(PLATFORM_SIGNIN_ENDED.body)}</p><p class="actions"><a class="button" href="/">${escapeHtml(PLATFORM_SIGNIN_ENDED.action)}</a></p>`,
-    }),
-    {
-      status: 403,
-      headers: brandedHtmlSecurityHeaders(
-        new Headers({
-          "content-type": "text/html; charset=utf-8",
-          "cache-control": "no-store",
-        }),
-      ),
-    },
+  return signInRefusalPage(
+    PLATFORM_SIGNIN_ENDED.heading,
+    `<p>${escapeHtml(PLATFORM_SIGNIN_ENDED.body)}</p><p class="actions"><a class="button" href="/">${escapeHtml(PLATFORM_SIGNIN_ENDED.action)}</a></p>`,
+  );
+}
+
+/** "This account can't sign in" (SIGN-IN.md §3.13, Account disabled): the answer the portal and
+ *  the login card give a disabled account, on a product's sign-in (N9). 403, names nothing. */
+function accountDisabledPage(): Response {
+  return signInRefusalPage(
+    "This account can't sign in",
+    "<p>Contact Polaris Key support.</p>",
   );
 }
 
@@ -2976,6 +3032,17 @@ async function pollAuthFlow(
   if (!flow.deviceId || flow.deviceId !== deviceId)
     return json({ status: "error" });
   if (!flow.confirmedAt) return json({ status: "pending" });
+  // N9: the callback refused a subject whose account can no longer sign in, but the account can
+  // be disabled (or its deletion begun) while the flow waits for this poll. Checked again before
+  // anything is shown, activated or minted; the flow is dropped and the answer is the generic
+  // `error` (D8), with nothing written.
+  if (
+    flow.identity &&
+    (await pollAccountRefused(env, db, product, flow.identity.sub, now))
+  ) {
+    await deleteArtefact(env, stateKey);
+    return json({ status: "error" });
+  }
 
   let licenseId = flow.licenseId;
   let attached: "claimed" | "migrated" | undefined;
@@ -3069,6 +3136,31 @@ async function pollAuthFlow(
     ...(flow.identity ? { identity: shownIdentity(flow.identity) } : {}),
     ...(attached ? { attached } : {}),
   });
+}
+
+/** {@link signInAccountRefused} at the poll, which has no resolved OIDC config: the product's
+ *  provider from its row, and the platform issuer from the Worker's secrets. Read-only; no
+ *  client secret is opened. */
+async function pollAccountRefused(
+  env: Env,
+  db: Db,
+  product: Product,
+  sub: string,
+  now: number,
+): Promise<boolean> {
+  // A row removed while the flow waited reads as the platform default, as the callback reads
+  // `provider`: the check then still runs (fail closed) rather than being skipped.
+  const row = await getOidcConfig(db, product.slug);
+  const platform = platformOidcConfig(env);
+  // No platform secrets while a platform-provider flow waits: refuse (fail closed).
+  if (!platform) return (row?.provider ?? "platform") === "platform";
+  return signInAccountRefused(
+    db,
+    row?.provider ?? null,
+    platform.issuer,
+    sub,
+    now,
+  );
 }
 
 /** POST /<product>/identity/auth/device/poll — poll a confirmed device sign-in flow. */
