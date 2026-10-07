@@ -260,10 +260,11 @@ describe("pkey validate [path]", () => {
       expect(r.code).toBe(0);
       expect(r.out.trimEnd().split("\n")).toHaveLength(1);
       expect(JSON.parse(r.out)).toEqual({
-        version: 1,
+        v: 1,
         command: "validate",
+        event: "result",
         ok: true,
-        exitCode: 0,
+        exit: 0,
         result: {
           valid: true,
           modules: ["license", "config"],
@@ -286,7 +287,7 @@ describe("pkey validate [path]", () => {
     expect(r.code).toBe(1);
     const body = JSON.parse(r.out) as {
       ok: boolean;
-      exitCode: number;
+      exit: number;
       result: {
         valid: boolean;
         warnings: Array<Record<string, unknown>>;
@@ -294,7 +295,7 @@ describe("pkey validate [path]", () => {
       };
     };
     expect(body.ok).toBe(false);
-    expect(body.exitCode).toBe(1);
+    expect(body.exit).toBe(1);
     expect(body.result.valid).toBe(false);
     expect(body.result.errors).toContainEqual({
       code: "missing_schema",
@@ -316,11 +317,13 @@ describe("pkey validate [path]", () => {
     expect(r.err).toBe("");
     const body = JSON.parse(r.out) as Record<string, unknown>;
     expect(body).toMatchObject({
-      version: 1,
+      v: 1,
       command: "validate",
+      event: "result",
       ok: false,
-      exitCode: 1,
-      error: { code: null, title: "No manifest read" },
+      exit: 1,
+      error: "no-manifest",
+      message: expect.any(String),
     });
     expect(body).not.toHaveProperty("result");
   });

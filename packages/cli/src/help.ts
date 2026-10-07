@@ -143,10 +143,11 @@ export const COMMANDS: readonly PkeyCommand[] = [
       },
       {
         text:
-          "--json prints one JSON object on stdout instead: " +
-          '{"version":1,"command":"validate","ok","exitCode","result":{"valid","modules",' +
+          "--json prints one JSON line on stdout instead, the terminal kits' result line: " +
+          '{"v":1,"command":"validate","event":"result","ok","exit","result":{"valid","modules",' +
           '"requiredSecrets","warnings","errors"}}, each warning and error as ' +
-          '{"code","message","at","file"}.',
+          '{"code","message","at","file"}; "error" and "message" replace "result" when no ' +
+          "manifest can be read.",
       },
     ],
   },

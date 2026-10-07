@@ -92,14 +92,14 @@ The other values are `ok`, `needs-activation`, `expired`, `version-too-new` and
 
 Every verb takes `--json`: one versioned object on stdout, no prompt and no escape sequence, and
 the exit code says how it went (0 done, 1 failed, 2 usage, 3 not usable or a device limit, 4
-offline, 130 cancelled). `login --json` streams one object per line: `pending` with the code,
-then the final state.
+offline, 130 cancelled). Every `--json` run ends with its `"event": "result"` line;
+`login --json` prints a `pending` line with the code first.
 
 ```sh
 tidewater status --json
-# {"version":1,"command":"status","ok":true,"exitCode":0,"state":"key-only","result":{…}}
+# {"v":1,"command":"status","event":"result","ok":true,"exit":0,"state":"key-only","result":{…}}
 tidewater --json              # the gate check: {"command":"check","state":"licensed",…}
-tidewater login --json        # {"state":"pending",…} then {"state":"signedIn",…}
+tidewater login --json        # {"event":"pending",…} then {"event":"result","state":"signedIn",…}
 ```
 
 Colour and Unicode follow the terminal:

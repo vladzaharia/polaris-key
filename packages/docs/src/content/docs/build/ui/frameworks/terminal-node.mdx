@@ -302,16 +302,23 @@ copy's typographic symbols are spelled in ASCII too: `…` as `...` and `·` as 
 
 ## The --json contract
 
-Every verb takes `--json` and prints one JSON object on stdout: no prompt, no colour and no escape
-sequence. The envelope is versioned and stable. `version` changes only for a breaking change, so
-a script can rely on these fields for as long as it reads `version: 1`:
+The words the kit prints for people are localised and may change from one release to the next:
+a script never parses them. It runs the verb with `--json` and reads JSON lines instead.
+
+Every verb takes `--json` and prints NDJSON on stdout: one JSON object per line, never a prompt,
+a colour or an escape sequence, and ASCII only (every other character is a `\u` escape). The
+envelope is versioned and stable, and the same as the Python terminal kit's: `v` changes only for
+a breaking change. Every line carries `"v": 1` and `"command"`; a progress line carries an
+`"event"`; and the **last line of every run**, including an unexpected exception and an argument
+error, is the result line, with `"event": "result"`:
 
 ```json
 {
-  "version": 1,
+  "v": 1,
   "command": "status",
+  "event": "result",
   "ok": true,
-  "exitCode": 0,
+  "exit": 0,
   "state": "key-only",
   "result": {
     "status": { "status": "ok", "graceUntil": 1792565845 },
@@ -320,52 +327,61 @@ a script can rely on these fields for as long as it reads `version: 1`:
 }
 ```
 
-| Field      | What it holds                                                                                                                                                                                  |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `version`  | `1` (`CLI_JSON_VERSION`)                                                                                                                                                                       |
-| `command`  | The verb, as typed: `status`, `devices list`                                                                                                                                                   |
-| `ok`       | Whether `exitCode` is 0                                                                                                                                                                        |
-| `exitCode` | The process's exit code                                                                                                                                                                        |
-| `state`    | The state the screen would have shown, in the catalog's names: `key-only`, `device-limit`, `up-to-date`                                                                                        |
-| `result`   | The verb's data                                                                                                                                                                                |
-| `error`    | Only when `ok` is false: `code`, the registry code, which is stable (null for a local failure such as an empty key), and `title` and `message`, the words a person reads, in the active locale |
+| Field     | What it holds                                                                                                                                    |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `v`       | `1` (`CLI_JSON_VERSION`)                                                                                                                         |
+| `command` | The verb, as typed: `status`, `devices list`                                                                                                     |
+| `event`   | `result` on the last line; `pending` (a sign-in code) or `progress` (a download: `done`, `total`, `percent`) before it                           |
+| `ok`      | Whether `exit` is 0                                                                                                                              |
+| `exit`    | The process's exit code                                                                                                                          |
+| `state`   | The state the screen would have shown, in the catalog's names: `key-only`, `device-limit`, `up-to-date`                                          |
+| `result`  | The verb's data                                                                                                                                  |
+| `error`   | Only when `ok` is false: the registry code (`device_limit`, `network`), which is stable; `usage` for an argument error, `failed` for a local one |
+| `message` | Only when `ok` is false: the sentence a person reads, in the active locale (it may change)                                                       |
 
-| Exit code | Meaning                                              |
-| --------- | ---------------------------------------------------- |
-| 0         | Done; for `status`, the license is usable            |
-| 1         | Failed                                               |
-| 2         | Usage: no key, a malformed key, an unknown shell     |
-| 3         | The license is not usable, or a device limit was hit |
-| 4         | The service could not be reached                     |
-| 130       | Cancelled (Esc or Ctrl-C)                            |
+| Exit code | Meaning                                                                     |
+| --------- | --------------------------------------------------------------------------- |
+| 0         | Done; for `status`, the license is usable                                   |
+| 1         | Failed                                                                      |
+| 2         | Usage: a missing argument, an option the verb does not take, no key to read |
+| 3         | The license is not usable, or a device limit was hit                        |
+| 4         | The service could not be reached                                            |
+| 130       | Cancelled (Esc or Ctrl-C)                                                   |
 
-`login` is the one streaming verb. Under `--json` it never opens a browser; it prints one object
-per line (NDJSON) as the sign-in moves: `pending` first, with the code and the page for the script
-to show, then one line with the final `state` (`signedIn`, `expired`, `denied` or `cancelled`),
-`ok` and `exitCode`. When the sign-in cannot start (the product has no accounts, or the service
-cannot be reached), the envelope above is its only line.
+Under `--json`, `login` never opens a browser: it prints a `pending` line first, with the code and
+the page for the script to show, then the result line with the final `state` (`signedIn`,
+`expired`, `denied` or `cancelled`).
 
 ```text
-{"version":1,"command":"login","state":"pending","verificationUri":"https://key.plrs.im/device","verificationUriComplete":"https://key.plrs.im/device?code=WDJB-MJHT","userCode":"WDJB-MJHT","expiresAt":1791357358}
-{"version":1,"command":"login","state":"signedIn","ok":true,"exitCode":0,"identity":{"name":"Mara Fennick","email":"mara@fennick.studio"},"status":{"status":"ok"}}
+{"v":1,"command":"login","event":"pending","verificationUri":"https://key.plrs.im/device","verificationUriComplete":"https://key.plrs.im/device?code=WDJB-MJHT","userCode":"WDJB-MJHT","expiresAt":1791357358}
+{"v":1,"command":"login","event":"result","ok":true,"exit":0,"state":"signedIn","result":{"identity":{"name":"Mara Fennick","email":"mara@fennick.studio"},"status":{"status":"ok"}}}
 ```
 
 No output carries a license key, a device token or the sign-in poll credential.
 
+## Server text and links
+
+Text that comes from the server or the product (device names, names and emails, the developer's
+name, changelog summaries, URLs, the sign-in page) is drawn as text, never as an escape sequence:
+the kit's one writer removes every control character (C0, DEL and C1) before it reaches the
+terminal, and puts its own colour and link sequences around the cleaned text. A link is an OSC 8
+hyperlink only when its target is an `https` URL (or `http` to a loopback address) with no
+whitespace, control character or user name; anything else is printed as plain text.
+
 ## Accessibility and fallbacks
 
-| When                                                                          | The kit                                                                                                                        |
-| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `NO_COLOR` is set, `--no-color`, `FORCE_COLOR=0`, or stdout is not a terminal | Drops every colour and escape sequence; the chip and a user code keep a one-cell pad so they still read as blocks              |
-| `FORCE_COLOR` is set                                                          | Colours a pipe too                                                                                                             |
-| `TERM=dumb`                                                                   | Drops colour, uses ASCII symbols, never prompts and never animates                                                             |
-| `--ascii`, `PKEY_ASCII=1`, `TERM=linux` or `symbols: "ascii"`                 | Uses ASCII symbols: `+` and a backtick close the rail, `*`, `o`, `+`, `x` and `!` mark the steps, `#` and `-` draw the bar     |
-| `CI` (or `GITHUB_ACTIONS`, `BUILDKITE`) is set                                | Never prompts or animates: each line prints once, and sign-in shows the code                                                   |
-| Reduced motion: `motion: "reduced"` or `"none"`, or `PKEY_REDUCED_MOTION=1`   | Stops the spinner and the redraws                                                                                              |
-| stdin is not a terminal                                                       | Reads the key from the pipe, and asks no question: `logout` and `deactivate` go ahead as with `--yes`                          |
-| An SSH session, CI, or Linux with no `DISPLAY` or `WAYLAND_DISPLAY`           | `login` shows the code instead of opening a browser (also `login --device-code`)                                               |
-| A terminal narrower than 80 columns                                           | Takes the terminal's width, down to 60, which every layout is designed for; keys and URLs are cut in the middle, never wrapped |
-| A light or dark terminal                                                      | Reads it from `PKEY_THEME`, `COLORFGBG` or OSC 11; only the truecolor chip changes                                             |
+| When                                                                          | The kit                                                                                                                                                                                            |
+| ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NO_COLOR` is set, `--no-color`, `FORCE_COLOR=0`, or stdout is not a terminal | Drops every colour and escape sequence; the chip and a user code keep a one-cell pad so they still read as blocks                                                                                  |
+| `FORCE_COLOR` is set                                                          | Colours a pipe too                                                                                                                                                                                 |
+| `TERM=dumb`                                                                   | Plain lines: no colour, ASCII symbols, no spinner, no cursor control and no redraw; it still asks plain questions (the key is read with no echo at all) and headless sign-in still prints the code |
+| `--ascii`, `PKEY_ASCII=1`, `TERM=linux` or `symbols: "ascii"`                 | Uses ASCII symbols: `+` and a backtick close the rail, `*`, `o`, `+`, `x` and `!` mark the steps, `#` and `-` draw the bar                                                                         |
+| `CI` (or `GITHUB_ACTIONS`, `BUILDKITE`) is set                                | Never prompts or animates: each line prints once, and sign-in shows the code                                                                                                                       |
+| Reduced motion: `motion: "reduced"` or `"none"`, or `PKEY_REDUCED_MOTION=1`   | Stops the spinner and the redraws                                                                                                                                                                  |
+| stdin is not a terminal                                                       | Reads the key from the pipe, and asks no question: `logout` and `deactivate` go ahead as with `--yes`                                                                                              |
+| An SSH session, CI, or Linux with no `DISPLAY` or `WAYLAND_DISPLAY`           | `login` shows the code instead of opening a browser (also `login --device-code`)                                                                                                                   |
+| A terminal narrower than 80 columns                                           | Takes the terminal's width, down to 60, which every layout is designed for; keys and URLs are cut in the middle, never wrapped                                                                     |
+| A light or dark terminal                                                      | Reads it from `PKEY_THEME`, `COLORFGBG` or OSC 11; only the truecolor chip changes                                                                                                                 |
 
 For people using the terminal:
 

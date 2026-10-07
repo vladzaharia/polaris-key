@@ -21240,6 +21240,7 @@ function detectTerminal(opts = {}) {
     unicode,
     tty,
     interactive,
+    dumb,
     animate: tty && !ci && !dumb && !json && !reduced,
     links: tty && !dumb && !ci && !json,
     columns: Math.max(20, Math.min(TERMINAL_LAYOUT.columns, termCols)),
@@ -21257,12 +21258,38 @@ import { styleText } from "node:util";
 
 // ../sdk-node/dist/cli/term/osc.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
-var CONTROL = /[\x00-\x1f\x7f]/g;
+
+// ../sdk-node/dist/cli/term/sanitize.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f]/g;
+function clean(text) {
+  return text.replace(CONTROL_CHARS, "");
+}
+var LOOPBACK = /* @__PURE__ */ new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
+function safeLink(url) {
+  if (!url || /[\s\u0000-\u001f\u007f-\u009f]/.test(url))
+    return null;
+  let u;
+  try {
+    u = new URL(url);
+  } catch {
+    return null;
+  }
+  if (u.username || u.password)
+    return null;
+  if (u.protocol === "https:")
+    return url;
+  if (u.protocol === "http:" && LOOPBACK.has(u.hostname))
+    return url;
+  return null;
+}
+
+// ../sdk-node/dist/cli/term/osc.js
 function osc8(url, text) {
-  const clean = url.replace(CONTROL, "");
-  if (!/^https?:\/\//i.test(clean))
+  const safe = safeLink(url);
+  if (!safe)
     return text;
-  return `\x1B]8;;${clean}\x1B\\${text}\x1B]8;;\x1B\\`;
+  return `\x1B]8;;${safe}\x1B\\${text}\x1B]8;;\x1B\\`;
 }
 
 // ../sdk-node/dist/cli/term/paint.js
@@ -21306,7 +21333,8 @@ var Painter = class {
     return this.caps.color !== "none";
   }
   /** Apply roles to text. */
-  style(text, roles = []) {
+  style(raw, roles = []) {
+    const text = clean(raw);
     if (!this.colored || text === "" || roles.length === 0)
       return text;
     let out = text;
@@ -21341,7 +21369,8 @@ var Painter = class {
     return this.chipText(` ${name} `);
   }
   /** The chip's colours over already padded text. */
-  chipText(text) {
+  chipText(raw) {
+    const text = clean(raw);
     if (!this.colored)
       return text;
     if (this.caps.color === "truecolor" && this.accent) {
@@ -21992,7 +22021,7 @@ var COMMANDS = [
         text: "pkey validate reads the .pkey/ under path (relative to the current directory; default the current directory) and runs it through the validator repo-link and resync apply. It prints a verdict, the services the manifest enables, any required secret names, then every warning and error with its document, JSON pointer and the file it was read from, and exits 1 when the manifest is invalid."
       },
       {
-        text: '--json prints one JSON object on stdout instead: {"version":1,"command":"validate","ok","exitCode","result":{"valid","modules","requiredSecrets","warnings","errors"}}, each warning and error as {"code","message","at","file"}.'
+        text: `--json prints one JSON line on stdout instead, the terminal kits' result line: {"v":1,"command":"validate","event":"result","ok","exit","result":{"valid","modules","requiredSecrets","warnings","errors"}}, each warning and error as {"code","message","at","file"}; "error" and "message" replace "result" when no manifest can be read.`
       }
     ]
   },
@@ -38078,10 +38107,10 @@ function tag(t) {
 }
 var str3 = (v) => typeof v === "string" && v.trim() !== "" ? v : void 0;
 function yamlFile(kind, body) {
-  const clean = Object.fromEntries(
+  const clean2 = Object.fromEntries(
     Object.entries(body).filter(([, v]) => v !== void 0 && v !== null)
   );
-  const doc = new import_yaml4.Document(clean);
+  const doc = new import_yaml4.Document(clean2);
   doc.commentBefore = ` Created with Polaris Key (pkey storefront winget)
  yaml-language-server: $schema=https://aka.ms/winget-manifest.${kind}.${WINGET_MANIFEST_VERSION}.schema.json`;
   return doc.toString({ lineWidth: 0 });
@@ -39495,16 +39524,16 @@ async function staleOutFiles(dir, cwd) {
     }
     const pattern2 = OUT_DIRS[name];
     if (pattern2 && st.isDirectory()) {
-      let clean = true;
+      let clean2 = true;
       for (const inner of (await readdir10(full)).sort()) {
         const f = path24.join(full, inner);
         if (pattern2.test(inner) && (await lstat3(f)).isFile()) files.push(f);
         else {
           foreign.push(path24.join(name, inner));
-          clean = false;
+          clean2 = false;
         }
       }
-      if (clean) dirs.push(full);
+      if (clean2) dirs.push(full);
       continue;
     }
     foreign.push(name);
@@ -42614,7 +42643,7 @@ async function validateText(dir, cwd, stdout, term) {
   return result.ok ? 0 : 1;
 }
 async function validateJson(dir, cwd, stdout) {
-  const envelope = (exitCode2, rest) => `${JSON.stringify({ version: 1, command: "validate", ok: exitCode2 === 0, exitCode: exitCode2, ...rest })}
+  const envelope = (exit, rest) => `${JSON.stringify({ v: 1, command: "validate", event: "result", ok: exit === 0, exit, ...rest }).replace(/[\u007f-\uffff]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`)}
 `;
   let manifest;
   try {
@@ -42622,11 +42651,8 @@ async function validateJson(dir, cwd, stdout) {
   } catch (e) {
     stdout.write(
       envelope(1, {
-        error: {
-          code: null,
-          title: "No manifest read",
-          message: e.message
-        }
+        error: "no-manifest",
+        message: e.message
       })
     );
     return 1;

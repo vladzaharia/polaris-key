@@ -149,15 +149,16 @@ $ pkey validate game
 ```
 
 On a terminal the roles are coloured and a long message wraps under its own column; anywhere else
-each message is one plain line. `--json` prints one JSON object on stdout instead, in the Node SDK
-CLI kit's envelope:
+each message is one plain line. `--json` prints one JSON line on stdout instead, the terminal kits'
+result line (the Node and Python CLI kits use the same envelope; shown here pretty-printed):
 
 ```json
 {
-  "version": 1,
+  "v": 1,
   "command": "validate",
+  "event": "result",
   "ok": false,
-  "exitCode": 1,
+  "exit": 1,
   "result": {
     "valid": false,
     "modules": ["config", "release", "update"],
@@ -185,8 +186,10 @@ CLI kit's envelope:
 (Printed on one line.) `at` is the document and JSON pointer, `file` the file it was read from
 relative to the current directory (`null` when the document is missing). The CLI's own warning
 that one document exists under two extensions has `"code": null` and `"at": ".pkey/"`. When no
-manifest can be read at all, `result` is replaced by
-`"error": {"code": null, "title": "No manifest read", "message": "…"}` and the exit code is `1`.
+manifest can be read at all, `result` is replaced by `"error": "no-manifest"` and a
+`"message"` for people, and the exit code is `1`. Every non-ASCII character is written as a `\u`
+escape. Human output (everything without `--json`) may change between releases; scripts read
+`--json`.
 
 The full code list is at [Manifest validation codes](/docs/reference/validation-codes/).
 

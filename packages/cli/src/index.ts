@@ -819,28 +819,26 @@ async function validateText(
 }
 
 /**
- * `pkey validate --json`: one JSON object on stdout in the CLI kit's envelope
- * (`@polaris-key/node`'s cli/json.ts): `{version, command, ok, exitCode, result}`, or `error`
- * instead of `result` when no manifest could be read.
+ * `pkey validate --json`: one JSON line on stdout in the terminal kits' envelope
+ * (`@polaris-key/node`'s cli/json.ts, the Python kit's too):
+ * `{"v":1,"command":"validate","event":"result","ok","exit","result"}`, or `"error"` (a code)
+ * and `"message"` instead of `result` when no manifest could be read. ASCII only.
  */
 async function validateJson(
   dir: string,
   cwd: string,
   stdout: TermOut,
 ): Promise<number> {
-  const envelope = (exitCode: number, rest: Record<string, unknown>) =>
-    `${JSON.stringify({ version: 1, command: "validate", ok: exitCode === 0, exitCode, ...rest })}\n`;
+  const envelope = (exit: number, rest: Record<string, unknown>) =>
+    `${JSON.stringify({ v: 1, command: "validate", event: "result", ok: exit === 0, exit, ...rest }).replace(/[\u007f-\uffff]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`)}\n`;
   let manifest: LoadedManifest;
   try {
     manifest = await loadManifest(dir);
   } catch (e) {
     stdout.write(
       envelope(1, {
-        error: {
-          code: null,
-          title: "No manifest read",
-          message: (e as Error).message,
-        },
+        error: "no-manifest",
+        message: (e as Error).message,
       }),
     );
     return 1;
