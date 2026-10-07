@@ -9392,6 +9392,29 @@
       "status": "todo"
     },
     {
+      "id": "PS-05b",
+      "title": "Storefront library entries: downloads and listing (Worker): a shown library entry opens the downloads view, the download-token mint and redemption for `public` and `authenticated` deliverables only (never `licensed`), and the entry's product view carries `description`, `screenshots` and `shortDescription`",
+      "phase": "PS",
+      "stage": "phase 2: engine and portal",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.8],
+      "deps": ["PS-04", "PS-05"],
+      "planMode": false,
+      "gates": ["rule-10", "threat-model"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-21 §6.3 (the open path: public or authenticated deliverables)",
+        "notes/S-21 §6.4",
+        "notes/S-21 §6.5",
+        "wp/PS-05-storefront-portal-ui.md, hand-off (2026-10-07)"
+      ],
+      "brief": "wp/PS-05b-library-entry-downloads.md",
+      "status": "todo"
+    },
+    {
       "id": "PS-06",
       "title": "Console: Polaris Key hub tile and listing editor through A-18j, the Polaris Key panel (listing, audience, ways to add, group labels), readiness, \"Who can see this?\" persona preview, analytics card",
       "phase": "PS",
@@ -10103,6 +10126,29 @@
       "status": "todo"
     },
     {
+      "id": "PX-W19",
+      "title": "Account API gaps for Account v2 (PX-13): `POST /api/me/methods/<id>/primary` (step-up, an own verified email), passkey rename (`name` column, `PATCH /api/me/passkeys/<id>`, `name` in `PasskeyView`), and the products each email brought in on `GET /api/me/methods`",
+      "phase": "PX",
+      "stage": "phase W: Worker additions",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.8],
+      "deps": ["PX-W12", "PX-13"],
+      "planMode": false,
+      "gates": ["rule-10", "migration", "threat-model"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "design/PORTAL §4.26",
+        "design/PORTAL §10.2 G27",
+        "wp/PX-W12-sign-in-methods-api.md, Corrections (not in G27, left for PX-13)",
+        "wp/PX-13-account-v2.md, follow-ups, review and hand-off (2026-10-07)"
+      ],
+      "brief": "wp/PX-W19-account-api-gaps.md",
+      "status": "todo"
+    },
+    {
       "id": "PX-23",
       "title": "Portal: add a floating key with its devices (\"It's on 2 devices already. They come with it.\"), the licence card's origin wording (\"Key ending …\", \"<Store> key ending …\", \"From <Developer>\"), and **Remove from my library** saying it becomes floating and stays out",
       "phase": "PX",
@@ -10209,6 +10255,27 @@
         "wp/MO-07-portal-library-motion.md, Corrections found while building (2026-10-06)"
       ],
       "brief": "wp/PX-24-library-added-just-now.md",
+      "status": "todo"
+    },
+    {
+      "id": "PX-25",
+      "title": "Account v2 follow-up (PX-13): **Make primary** on an email, **Rename** on a passkey, and the products each address brought in, in PX-13's Sign-in methods page on PX-W19's API",
+      "phase": "PX",
+      "stage": "phase B: new API, S-16, S-17",
+      "lane": "portal",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.2, 0.4],
+      "deps": ["PX-W19", "PX-13"],
+      "planMode": false,
+      "gates": ["console-csp-parity", "portal-e2e"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "design/PORTAL §4.26",
+        "wp/PX-13-account-v2.md, review and hand-off (2026-10-07)"
+      ],
+      "brief": "wp/PX-25-account-v2-gaps-ui.md",
       "status": "todo"
     }
   ]

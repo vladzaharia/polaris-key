@@ -1,16 +1,16 @@
 # PS-04 Portal API for the storefront: additive `GET /api/discover`, `GET /api/discover/<p>`, claim by path through `issueFromPath`, `library_entries`, `DELETE /api/library/<p>`, `storefront_daily` analytics
 
-| Field       | Value                                                                                                                           |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | PS: Polaris Key storefront: the Library as a distribution channel (S-21) (phase 2: engine and portal)                           |
-| Size        | 1–1.5 engineer-weeks                                                                                                            |
-| Depends on  | [PS-03](PS-03-obtain-path-engine.md)                                                                                            |
-| Unblocks    | [PS-05](PS-05-storefront-portal-ui.md), [PS-06](PS-06-console-polaris-key-storefront.md), [CM-05](CM-05-checkout-fulfilment.md) |
-| Role        | `pkey-implementer`                                                                                                              |
-| Plan mode   | no                                                                                                                              |
-| Gates       | rule 10 (OpenAPI and `routeCoverage`); migration; table owners; THREAT-MODEL; workerd                                           |
-| Human input | none                                                                                                                            |
-| Repo        | `vladzaharia/polaris-key`                                                                                                       |
+| Field       | Value                                                                                                                                                                        |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | PS: Polaris Key storefront: the Library as a distribution channel (S-21) (phase 2: engine and portal)                                                                        |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                                         |
+| Depends on  | [PS-03](PS-03-obtain-path-engine.md)                                                                                                                                         |
+| Unblocks    | [PS-05](PS-05-storefront-portal-ui.md), [PS-05b](PS-05b-library-entry-downloads.md), [PS-06](PS-06-console-polaris-key-storefront.md), [CM-05](CM-05-checkout-fulfilment.md) |
+| Role        | `pkey-implementer`                                                                                                                                                           |
+| Plan mode   | no                                                                                                                                                                           |
+| Gates       | rule 10 (OpenAPI and `routeCoverage`); migration; table owners; THREAT-MODEL; workerd                                                                                        |
+| Human input | none                                                                                                                                                                         |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                    |
 
 ## Goal
 
