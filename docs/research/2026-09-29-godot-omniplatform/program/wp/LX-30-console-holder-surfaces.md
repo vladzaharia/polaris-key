@@ -79,7 +79,9 @@ Where the brief and the code disagreed, the code was the fact:
   `license_relinks.holder_json` (the before and after name and email, for the undo). `to_subject` is
   `NOT NULL` in 0082, so a move that leaves the licence with no account writes `''`, read back as
   no subject. `LATEST_MIGRATION` stays `0103_account_overrides.sql` until the file is numbered
-  (`platformAdmin` and `recordDeploy` require it to name the last file).
+  (`platformAdmin` and `recordDeploy` require it to name the last file). Until it is numbered, the
+  worker suite's `checkRepresentable` fails: it orders migrations by their leading number, so
+  `00XX` runs first, before 0082 creates the table (checked: it passes as `0104_…`).
 - **"Also sign out its devices"** deauthorizes each device after the move (`deauthorizeDeviceAsAdmin`,
   one `device.deauthorize` audit row each), not in the same D1 batch.
 - **LX-28's follow-ups are built here:** the batch list pages (`?limit=1..500&cursor=`, default 100,
