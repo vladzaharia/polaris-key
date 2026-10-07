@@ -41,6 +41,7 @@ import {
   stmtInsertSchema,
 } from "../repo.js";
 import { parseServices, serializeServices } from "../core/services.js";
+import { serializePresentation } from "../core/products.js";
 import type { ManifestIngest } from "../core/registry.js";
 import {
   getPublisherPolicy,
@@ -293,9 +294,11 @@ export async function linkSystemProduct(
 
   const stmts: DbStatement[] = [
     {
-      sql: `UPDATE products SET release_source = 'github', modified_at = ?
+      // `presentation_json` (HA-12): the manifest's `presentation`, manifest-only, NULL when the
+      // platform's own `.pkey/product` declares none.
+      sql: `UPDATE products SET release_source = 'github', presentation_json = ?, modified_at = ?
              WHERE slug = ? AND system = 1`,
-      params: [now, slug],
+      params: [serializePresentation(manifest.presentation), now, slug],
     },
   ];
   const manualChannelsJson = rel.manualChannels.length

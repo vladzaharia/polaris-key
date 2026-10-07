@@ -62,6 +62,7 @@ import { releaseKeysForSync } from "./records.js";
 import { serializeServices } from "../../core/services.js";
 import type { ManifestIngest } from "../../core/registry.js";
 import { serializeWebOrigins } from "../../core/cors.js";
+import { serializePresentation } from "../../core/products.js";
 import { stmtUpsertManifestPublisher } from "../../core/publisher.js";
 import { manifestSnapshotStatement } from "../../core/manifestSnapshot.js";
 import { syncHostedAssets } from "../../core/hostedAssetPulls.js";
@@ -868,6 +869,8 @@ async function registerFromManifest(
       compat_source: "manifest",
       // The CORS allowlist (P0-05). Validated by the manifest parser; NULL when undeclared.
       web_origins_json: serializeWebOrigins(manifest.webOrigins),
+      // `.pkey/product` `presentation` (HA-12): manifest-only, NULL when undeclared.
+      presentation_json: serializePresentation(manifest.presentation),
       created_at: now,
       modified_at: now,
     }),

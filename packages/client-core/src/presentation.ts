@@ -211,29 +211,27 @@ function icon(v: unknown): PresentationIcon | undefined {
     return undefined;
   const origin = usableUrlOrigin(original);
   if (origin === null) return undefined;
-  const out: PresentationIcon = {
-    sha256,
-    contentType: contentType as PresentationIconType,
-    original: original as string,
-    sizes: [],
-  };
   const width = dimension(v.width);
-  if (width !== undefined) out.width = width;
   const height = dimension(v.height);
-  if (height !== undefined) out.height = height;
   const ladder = sizes(v.sizes);
   const url = v.url;
-  if (
+  const templated =
     ladder !== null &&
     ladder.length > 0 &&
     typeof url === "string" &&
     url.length <= PRESENTATION_URL_MAX_BYTES &&
     url.split("{w}").length === 2 &&
-    usableUrlOrigin(url.replace("{w}", "1")) === origin
-  ) {
-    out.url = url;
-    out.sizes = ladder;
-  }
+    usableUrlOrigin(url.replace("{w}", "1")) === origin;
+  // Members in the contract's order (§5.5), so an emitted member reads as the contract shows it.
+  const out: PresentationIcon = {
+    sha256,
+    contentType: contentType as PresentationIconType,
+    ...(width !== undefined ? { width } : {}),
+    ...(height !== undefined ? { height } : {}),
+    original: original as string,
+    ...(templated ? { url: url as string } : {}),
+    sizes: templated ? ladder : [],
+  };
   return out;
 }
 

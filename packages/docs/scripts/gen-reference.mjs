@@ -599,6 +599,9 @@ function corpusInventory() {
   const deviceLabel = JSON.parse(
     read("conformance", "corpus", "v2", "device-label.json"),
   );
+  const presentationMatrix = JSON.parse(
+    read("conformance", "corpus", "v2", "presentation-matrix.json"),
+  );
   const content = JSON.parse(
     read("conformance", "corpus", "v2", "content", "cases.json"),
   );
@@ -627,6 +630,7 @@ only corpus. \`corpusVersion ${cases.corpusVersion}\`,
 \`configMatrixVersion ${configMatrix.configMatrixVersion}\`,
 \`updateMatrixVersion ${updateMatrix.updateMatrixVersion}\`, \`outletMatrixVersion ${outletMatrix.outletMatrixVersion}\`,
 \`planMatrixVersion ${planMatrix.planMatrixVersion}\`, \`deviceLabelVersion ${deviceLabel.deviceLabelVersion}\`,
+\`presentationMatrixVersion ${presentationMatrix.presentationMatrixVersion}\`,
 \`contentCorpusVersion ${content.contentCorpusVersion}\`, \`syncScenariosVersion ${syncScenarios.syncScenariosVersion}\`.
 Wire contract v4 (\`docs/security/WIRE-CONTRACT-V4.md\`) adds the \`feedCases\` and
 \`releaseRecordCases\` families, the strict-verifier \`jwsCases\`, a \`nonWireIntegers\` member
@@ -678,6 +682,10 @@ runners of SDKs predating packs never read, and the content corpus and \`plan-ma
       `## Device labels (\`device-label.json\`): ${deviceLabel.cases?.length ?? "?"} cases`,
       "",
       "WIRE-CONTRACT-V4 §12.7.1 (PX-W13): the one normalisation of the device label every SDK sends as `deviceName` and the Worker stores. Every SDK runs every row, and the Worker runs them through `/identity/auth/device/start`. Non-ASCII code points are written escaped.",
+      "",
+      `## Product presentation (\`presentation-matrix.json\`): ${presentationMatrix.parseCases?.length ?? "?"} parse, ${presentationMatrix.pickCases?.length ?? "?"} size-choice and ${presentationMatrix.verifyCases?.length ?? "?"} verification cases`,
+      "",
+      "WIRE-CONTRACT-V4 §5.5 (HA-12): discovery's unsigned `core.presentation`, parsed field by field (a malformed field is dropped, never refusing discovery), the icon size a hero of `px` points at `scale` fetches given the types the platform decodes, and the SHA-256 check before any icon byte is shown. A generator-local reference in `tools/presentation-matrix.ts` recomputes every row and imports nothing it checks; `@polaris-key/client-core/presentation` is checked against the file by its own test, like every SDK. Non-ASCII is written escaped.",
       "",
       `## Content corpus (\`content/cases.json\`): ${Object.keys(content.blobs ?? {}).length} blobs, ${blobBytes.toLocaleString("en-US")} bytes`,
       "",

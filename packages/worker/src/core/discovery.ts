@@ -32,6 +32,14 @@
  * row. The identity carve (P3) gates those routes on `services_json` like every other service,
  * so that exception is gone with it. This file now knows the shape of NO service: it asks the
  * registry, or answers `{"enabled":false}`.
+ *
+ * ── PRESENTATION (HA-12) ────────────────────────────────────────────────────────────────────
+ *
+ * `core.presentation` (WIRE-CONTRACT-V4 §5.5) is unsigned display data, resolved by
+ * `core/presentation.ts`: the product's name, developer, accents and a hash-verifiable icon. It is
+ * present only when something beyond the name resolves, so a product with nothing to show keeps
+ * the document it had. No ETag is added (plans/HA-12.md Q4): `max-age=300` bounds how long a new
+ * icon or accent takes to reach a device.
  */
 
 import { PROTOCOL_VERSION } from "@polaris-key/protocol";
@@ -42,6 +50,7 @@ import { loadPublicSigningKey, loadPublicSigningKeys } from "./products.js";
 import { methodNotAllowed } from "./errors.js";
 import type { DiscoveryContext, ServiceRegistry } from "./registry.js";
 import { buildHooks } from "./hooks.js";
+import { resolvePresentation } from "./presentation.js";
 import { SERVICE_SLUGS, type ServiceSlug } from "./services.js";
 
 /** The discovery document's own `version` (a public, client-read field; not PROTOCOL_VERSION).
@@ -88,6 +97,7 @@ export async function handleDiscovery(
   for (const slug of SERVICE_SLUGS) {
     services[slug] = await fragmentFor(slug, ctx, registry);
   }
+  const presentation = await resolvePresentation(ctx);
 
   const body = {
     version: DISCOVERY_VERSION,
@@ -117,6 +127,7 @@ export async function handleDiscovery(
           ? {}
           : { register: `${base}/devices/register` }),
       },
+      ...(presentation ? { presentation } : {}),
     },
     trust: {
       jwksUrl,

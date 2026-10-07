@@ -4,6 +4,12 @@
 // NOT resolved from a Worker secret by name. Fails closed if there is no active product key
 // or it can't be decrypted: a product with no usable key can never sign config.
 
+import {
+  isHexColour,
+  normalizeAssetRef,
+  type ManifestAssetRef,
+  type ManifestPresentation,
+} from "@polaris-key/manifest";
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import {
@@ -55,6 +61,14 @@ export interface Product {
   /** The operator's device-trust policy (P6-02, `core/deviceTrust.ts`). Optional so a hand-built
    *  product reads as the default policy; the loader always sets it. */
   trustPolicy?: TrustPolicy;
+  /**
+   * `.pkey/product` `presentation` (HA-04), stored by the manifest writers in
+   * `products.presentation_json` (HA-12): the icon ref and the light and dark accents. `null` when
+   * undeclared or unreadable. Optional so a hand-built product reads as none; the loaders always
+   * set it. Discovery's `core.presentation` (`core/presentation.ts`) reads the accents from it;
+   * the icon ref itself never leaves the Worker.
+   */
+  presentation?: ManifestPresentation | null;
 }
 
 export interface PublicSigningKey {
@@ -115,6 +129,65 @@ export async function loadPublicSigningKeys(
  */
 export type ProductPublic = Omit<Product, "signingKeyPem">;
 
+/** A stored icon ref (`ManifestAssetRef`, as `serializePresentation` wrote it), or `null`. */
+function storedAssetRef(v: unknown): ManifestAssetRef | null {
+  if (v === null || typeof v !== "object" || Array.isArray(v)) return null;
+  const r = v as Record<string, unknown>;
+  const ref = normalizeAssetRef(
+    typeof r.sha256 === "string"
+      ? { src: r.src, sha256: r.sha256 }
+      : { src: r.src },
+  );
+  return ref && ref.kind === r.kind ? ref : null;
+}
+
+/**
+ * `products.presentation_json` read back (HA-12), defensively: anything that is not the shape
+ * `serializePresentation` writes reads as `null`, and a member that fails the manifest's own rule
+ * (an `#rrggbb` accent, a valid asset ref) is dropped. `null` too when nothing is declared, so
+ * "unset" has one spelling. The `core.presentation` setting's column adapter decodes with this.
+ */
+export function parseStoredPresentation(
+  raw: unknown,
+): ManifestPresentation | null {
+  if (typeof raw !== "string" || raw === "") return null;
+  let v: unknown;
+  try {
+    v = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (v === null || typeof v !== "object" || Array.isArray(v)) return null;
+  const r = v as Record<string, unknown>;
+  const out: ManifestPresentation = {};
+  const icon = storedAssetRef(r.icon);
+  if (icon) out.icon = icon;
+  if (isHexColour(r.accent)) out.accent = r.accent;
+  if (isHexColour(r.accentDark)) out.accentDark = r.accentDark;
+  return Object.keys(out).length > 0 ? out : null;
+}
+
+/**
+ * The value the manifest writers store in `products.presentation_json` (link, resync, the system
+ * product's deploy hook): the parsed manifest's `presentation` as canonical JSON (members in a
+ * fixed order), or `null` (SQL NULL) when the manifest declares none.
+ */
+export function serializePresentation(
+  presentation: ManifestPresentation | null | undefined,
+): string | null {
+  if (!presentation) return null;
+  const out: ManifestPresentation = {};
+  if (presentation.icon)
+    out.icon = {
+      kind: presentation.icon.kind,
+      src: presentation.icon.src,
+      ...(presentation.icon.sha256 ? { sha256: presentation.icon.sha256 } : {}),
+    };
+  if (presentation.accent) out.accent = presentation.accent;
+  if (presentation.accentDark) out.accentDark = presentation.accentDark;
+  return Object.keys(out).length > 0 ? JSON.stringify(out) : null;
+}
+
 /** The row-derived half of a product, shared by both loaders below. */
 function productFields(
   row: NonNullable<Awaited<ReturnType<typeof getProduct>>>,
@@ -142,6 +215,7 @@ function productFields(
     ),
     webOrigins: parseWebOrigins(row.web_origins_json),
     trustPolicy: parseTrustPolicy(row.trust_policy_json),
+    presentation: parseStoredPresentation(row.presentation_json),
   };
 }
 

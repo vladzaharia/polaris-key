@@ -83,6 +83,9 @@
 //                   commerceBinding / commerceClaim: "ok", or the wire code the call was refused
 //                     with (`forbidden`, `not_entitled`, `bad_request`, `unavailable`, …)
 //   services        discover: the capability map afterwards, slug → enabled
+//   presentation    discover (HA-12, WIRE-CONTRACT-V4 §5.5): the normalised `core.presentation`
+//                   the client exposes afterwards (client-core `parsePresentation`), compared by
+//                   value, or null when the document carried none (a client drops what it had)
 //   applied / unauthorized / blocked      sync: the SyncResult flags
 //   documents       sync: slice → "applied" | "unchanged" | "unauthorized" | "blocked" |
 //                   "device-cap" | "error" (only the slices the product runs)

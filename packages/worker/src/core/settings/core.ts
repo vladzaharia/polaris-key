@@ -248,10 +248,17 @@ export const CORE_SLICE: readonly SettingDef[] = [
     manifest: { path: "product:presentation" },
     confirm: { change: "L0" },
     wire: ["discovery"],
-    storage: { kind: "scalar" },
+    // HA-04 added the manifest field; HA-12 stores it in its own manifest-only column (plans/HA-11.md
+    // Q5) and carries the accents in discovery's `core.presentation` (WIRE-CONTRACT-V4 §5.5). The
+    // column adapter is decode-only, so a console write is refused.
+    storage: { kind: "column", table: "products", column: "presentation_json" },
+    readers: [
+      "core/products.ts",
+      "core/presentation.ts",
+      "core/discovery.ts",
+      "services/identity/portal/library.ts",
+    ],
     since: "ST-06",
-    // HA-04 added the manifest field; HA-12 stores it and carries it in discovery.
-    pending: { wp: "HA-12" },
   }),
   setting({
     key: "core.trustPolicy",

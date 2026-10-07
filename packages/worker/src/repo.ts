@@ -44,6 +44,10 @@ export interface ProductRow {
   // ingest. NULL reads back as the default policy (`core/deviceTrust.ts`).
   trust_policy_json?: string | null;
   trust_policy_source?: string;
+  // `.pkey/product` `presentation` (migrations/0104, HA-12), as `serializePresentation` writes it
+  // (`core/products.ts`). Manifest-only: link, resync and the system product's deploy hook write
+  // it; NULL when undeclared. Read by `core/products.ts` for discovery's `core.presentation`.
+  presentation_json?: string | null;
   created_at: number;
   modified_at: number;
 }
@@ -314,8 +318,9 @@ export async function listAllProductSlugs(db: Db): Promise<string[]> {
 export async function insertProduct(db: Db, row: ProductRow): Promise<void> {
   await db.run(
     `INSERT INTO products (slug, name, signing_kid, signing_pub, compat_min, compat_max,
-       default_max_offline_days, default_device_limit, admin_group, branding_json, release_source, created_at, modified_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       default_max_offline_days, default_device_limit, admin_group, branding_json, release_source,
+       presentation_json, created_at, modified_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     row.slug,
     row.name,
     row.signing_kid,
@@ -327,6 +332,7 @@ export async function insertProduct(db: Db, row: ProductRow): Promise<void> {
     row.admin_group,
     row.branding_json,
     row.release_source,
+    row.presentation_json ?? null,
     row.created_at,
     row.modified_at,
   );
@@ -822,8 +828,9 @@ export function stmtInsertProduct(row: ProductRow): DbStatement {
   return {
     sql: `INSERT INTO products (slug, name, signing_kid, signing_pub, compat_min, compat_max,
             default_max_offline_days, default_device_limit, admin_group, branding_json, release_source,
-            services_json, services_source, compat_source, web_origins_json, created_at, modified_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            services_json, services_source, compat_source, web_origins_json, presentation_json,
+            created_at, modified_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     params: [
       row.slug,
       row.name,
@@ -840,6 +847,7 @@ export function stmtInsertProduct(row: ProductRow): DbStatement {
       row.services_source ?? null,
       row.compat_source ?? null,
       row.web_origins_json ?? null,
+      row.presentation_json ?? null,
       row.created_at,
       row.modified_at,
     ],

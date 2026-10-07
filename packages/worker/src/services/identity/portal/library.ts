@@ -17,7 +17,11 @@
  *   presentation   the product's own store listing (`.pkey/distribution`'s root `listing`), read
  *                  through Distribution's `delivery` hook (rule 6: Identity never reads `dist_*`).
  *                  A product without Distribution, or without a listing, falls back to its
- *                  `products.name` and nulls — the portal's letter-and-tint fallback. The page
+ *                  `products.name` and nulls — the portal's letter-and-tint fallback. The name,
+ *                  developer and tint are discovery's `core.presentation` text half
+ *                  (`core/presentation.ts` `presentationText`, HA-12), so the tint follows a
+ *                  declared `.pkey/product` `presentation.accent` before the listing's
+ *                  `tintColor`, as the SDK kits do (UI-KITS §1.2). The page
  *                  never holds a developer URL. Art is Polaris Key's hosted copy on the image host
  *                  (HA-07, `core/hostedImages.ts`): the icon of `presentation.icon`, else
  *                  `listing.icon`, and the header of `listing.header`, exactly as the image host's
@@ -60,6 +64,7 @@ import {
   hostedImageUrl,
   hostedImages,
 } from "../../../core/hostedImages.js";
+import { presentationText } from "../../../core/presentation.js";
 import { err, notFound, portalJson, type PortalHooksFor } from "./api.js";
 import { entitlementView } from "./entitlements.js";
 import { mediaUrlFor } from "./media.js";
@@ -237,10 +242,11 @@ export async function presentationOf(
 ): Promise<Presentation> {
   const supportUrl = str(listing?.supportUrl);
   const supportEmail = str(listing?.supportEmail);
+  const text = presentationText(product, listing);
   return {
-    name: str(listing?.name) ?? product.name,
-    developerName: str(listing?.developerName),
-    tintColor: str(listing?.tintColor),
+    name: text.name,
+    developerName: text.developerName,
+    tintColor: text.accent,
     website: str(listing?.website),
     ...(await presentationArt(env, db, product, listing, surface)),
     support:

@@ -21,6 +21,7 @@ only corpus. `corpusVersion 2`,
 `configMatrixVersion 1`,
 `updateMatrixVersion 1`, `outletMatrixVersion 1`,
 `planMatrixVersion 2`, `deviceLabelVersion 1`,
+`presentationMatrixVersion 1`,
 `contentCorpusVersion 2`, `syncScenariosVersion 1`.
 Wire contract v4 (`docs/security/WIRE-CONTRACT-V4.md`) adds the `feedCases` and
 `releaseRecordCases` families, the strict-verifier `jwsCases`, a `nonWireIntegers` member
@@ -86,6 +87,10 @@ WIRE-CONTRACT-V4 §11.5, client behaviour beside the contract: the journal, the 
 ## Device labels (`device-label.json`): 25 cases
 
 WIRE-CONTRACT-V4 §12.7.1 (PX-W13): the one normalisation of the device label every SDK sends as `deviceName` and the Worker stores. Every SDK runs every row, and the Worker runs them through `/identity/auth/device/start`. Non-ASCII code points are written escaped.
+
+## Product presentation (`presentation-matrix.json`): 108 parse, 32 size-choice and 6 verification cases
+
+WIRE-CONTRACT-V4 §5.5 (HA-12): discovery's unsigned `core.presentation`, parsed field by field (a malformed field is dropped, never refusing discovery), the icon size a hero of `px` points at `scale` fetches given the types the platform decodes, and the SHA-256 check before any icon byte is shown. A generator-local reference in `tools/presentation-matrix.ts` recomputes every row and imports nothing it checks; `@polaris-key/client-core/presentation` is checked against the file by its own test, like every SDK. Non-ASCII is written escaped.
 
 ## Content corpus (`content/cases.json`): 71 blobs, 3,743,530 bytes
 
