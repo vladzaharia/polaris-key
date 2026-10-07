@@ -58,7 +58,8 @@ export function mockFetch(routes: Record<string, MockRoute>): void {
         routes[`${method} ${path}`] ??
         routes[path];
       if (route === "network") throw new TypeError("Failed to fetch");
-      if (typeof route === "function") route = route(init, full);
+      // A route may answer later (a Promise): a slow Worker.
+      if (typeof route === "function") route = await route(init, full);
       if (route === undefined)
         route = { status: 404, body: { error: "not_found" } };
       const status = isMockResponse(route) ? route.status : 200;

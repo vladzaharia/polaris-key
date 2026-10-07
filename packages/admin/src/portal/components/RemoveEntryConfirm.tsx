@@ -21,12 +21,18 @@ import { focusPageHeading } from "../router.js";
 export function RemoveEntryConfirm({
   slug,
   name,
+  ask = 0,
   onCancel,
   onRemoved,
   className,
 }: {
   slug: string;
   name: string;
+  /**
+   * How many times Remove was chosen: choosing it again while the confirmation is open puts focus
+   * back on **Keep it**.
+   */
+  ask?: number;
   /** Keep it (or Escape): close the confirmation and hand focus back to its opener. */
   onCancel: () => void;
   /** After the Worker removed the entry; default: focus the page's `h1`. */
@@ -35,6 +41,7 @@ export function RemoveEntryConfirm({
 }): React.ReactElement {
   const remove = useRemoveLibraryEntry();
   const keep = React.useRef<HTMLButtonElement>(null);
+  const group = React.useRef<HTMLDivElement>(null);
   const [error, setError] = React.useState<string | null>(null);
   React.useEffect(() => {
     keep.current?.focus();
@@ -45,10 +52,13 @@ export function RemoveEntryConfirm({
       if (!at || at === document.body) keep.current?.focus();
     }, 0);
     return () => window.clearTimeout(t);
-  }, []);
+  }, [ask]);
   const id = `remove-entry-${slug}`;
   const confirm = (): void => {
     setError(null);
+    // Both buttons are disabled while the request runs: focus waits on the confirmation itself,
+    // never on the page's body.
+    group.current?.focus();
     remove.mutate(slug, {
       onSuccess: () => {
         toast.success(`${name} was removed from your library`);
@@ -63,6 +73,8 @@ export function RemoveEntryConfirm({
   };
   return (
     <div
+      ref={group}
+      tabIndex={-1}
       role="group"
       aria-labelledby={`${id}-h`}
       aria-describedby={`${id}-d`}
@@ -73,7 +85,7 @@ export function RemoveEntryConfirm({
         }
       }}
       className={cn(
-        "relative space-y-3 rounded-lg border border-danger-border bg-surface-sunken p-4",
+        "relative space-y-3 rounded-lg border border-danger-border bg-surface-sunken p-4 outline-none",
         className,
       )}
     >

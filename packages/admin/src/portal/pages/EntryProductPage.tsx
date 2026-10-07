@@ -44,7 +44,8 @@ export function EntryProductBody({
   );
   const headingRef = React.useRef<HTMLHeadingElement>(null);
   const menuButton = React.useRef<HTMLButtonElement>(null);
-  const [confirming, setConfirming] = React.useState(false);
+  // How many times Remove was chosen; 0 = no confirmation (choosing it again refocuses Keep it).
+  const [ask, setAsk] = React.useState(0);
 
   // After adding this product (Discover's storefront page), focus its heading (§9.4).
   React.useEffect(() => {
@@ -64,15 +65,16 @@ export function EntryProductBody({
         action={action}
         headingRef={headingRef}
         menuTriggerRef={menuButton}
-        onRemove={() => setConfirming(true)}
+        onRemove={() => setAsk((n) => n + 1)}
       />
-      {confirming ? (
+      {ask > 0 ? (
         <RemoveEntryConfirm
           slug={product.slug}
           name={product.name}
+          ask={ask}
           className="max-w-xl"
           onCancel={() => {
-            setConfirming(false);
+            setAsk(0);
             menuButton.current?.focus();
           }}
           // The page goes with the entry: back to the Library, whose heading takes focus.

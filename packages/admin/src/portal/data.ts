@@ -230,13 +230,26 @@ export function useDiscover(
  * The storefront product page (PS-04, notes/S-21 §6.5; `GET /api/discover/<p>`): the listing,
  * every way to add it with its terms, and its store pages. Unknown, unlisted, ineligible and held
  * products all answer the same `404`, which the page shows as one not-found state.
+ *
+ * Opened from Discover, the offer the tile showed stands in until the page answers (its name,
+ * art, reason and paths; no description or screenshots yet), so the page has its header from the
+ * first frame and the tile's art, icon and name fly into it (MO-05).
  */
 export function useStorefrontProduct(
   product: string,
 ): UseQueryResult<PortalStorefrontProduct> {
+  const qc = useQueryClient();
   return useQuery({
     queryKey: qk.portalStorefront(product),
     queryFn: () => portalApi.storefrontProduct(product),
+    placeholderData: () => {
+      const offer = qc
+        .getQueryData<PortalDiscoverOffer[]>(qk.portalDiscover())
+        ?.find((o) => o.product === product);
+      return offer
+        ? { ...offer, description: null, screenshots: [] }
+        : undefined;
+    },
   });
 }
 
@@ -252,12 +265,14 @@ export function useClaimDiscover() {
     mutationFn: (v: { product: string; path?: string }) =>
       portalApi.claimDiscover(v.product, v.path),
     onSuccess: (_res, v) => {
-      void qc.invalidateQueries({ queryKey: portalKeys.library });
       void qc.invalidateQueries({ queryKey: portalKeys.licenses });
       void qc.invalidateQueries({ queryKey: portalKeys.discover });
       void qc.invalidateQueries({ queryKey: portalKeys.product(v.product) });
       // The storefront page is left as it is: the page that added it moves on to the library
       // page, and a held product's storefront page goes there too (StorefrontPage).
+      // Returned, so the Add resolves only once the library holds the product: a page that moves
+      // on to it then never finds it missing ("That product isn't in your library").
+      return qc.invalidateQueries({ queryKey: portalKeys.library });
     },
   });
 }

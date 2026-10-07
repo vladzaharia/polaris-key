@@ -85,6 +85,19 @@ Discover tiles show every way to add with the S-21 reason copy, `#/discover/:pro
   `target-size` rule reads as an obscured target (a property of the sticky header, not of
   these screens).
 
+- **Discover's just-added state waits for its toast** (`e2e/portalStates.ts`, `discover-added`):
+  under emulation the screenshot raced the toast, so the recorded linux baseline sometimes had it
+  and sometimes not. The state now waits for "Mossgarden is in your library", and its baselines
+  are re-recorded with it (b2a0ac33e).
+- **Review fix round.** Add resolves only once the library holds the product
+  (`useClaimDiscover` returns the library refetch), so the library page after Add never shows
+  "That product isn't in your library" however slow `GET /api/library` is (tested for a licence
+  path and an open product). Opened from Discover, the tile's offer seeds the storefront page
+  (`placeholderData`), so its header is in the transition's first frame. While the removal runs,
+  focus waits on the confirmation group; choosing Remove again refocuses **Keep it**. A
+  link-only page says "Get it from a store above" only when there is one (or "from their
+  website above").
+
 ## Steps
 
 1. Re-read the S-21 sections above; verify this brief against the code and record any correction here.
@@ -112,6 +125,22 @@ mise exec node@22 -- pnpm --filter @polaris-key/admin test -- portal
 ## Hand-off
 
 PS-11 documents the pages.
+
+Follow-ups (not in this package):
+
+- **PS-05b** (registered): the Worker serves an entry's downloads (the downloads view, the token
+  mint and the redemption accept a shown library entry for `public` and `authenticated`
+  deliverables) and carries the listing (`description`, `screenshots`, `shortDescription`) on an
+  entry's product view.
+- **CM-16 / S-22**: the portal names a path on a claim only when the person chose another than
+  the first; with priced paths, always send the path kind.
+- **PS-11**: Discover's "Only products you can add for free appear here" footnote (link-only
+  tiles are shown too), and PORTAL.md §4.16 and §4.20 for the storefront page and entries.
+- **Portal shell**: `scroll-padding-top` for the sticky header, and taller tile name links, so a
+  scrolled tile's link is never an obscured `target-size` target.
+- **Worker**: `DELETE /api/library/<p>` answers `404` when the entry was replaced by a licence
+  meanwhile; the portal treats it as removed, which leaves the licence in place (correct), but
+  the toast says the product was removed.
 
 The role agent sets `--set PS-05 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:

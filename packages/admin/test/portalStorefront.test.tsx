@@ -168,8 +168,16 @@ function storefrontWorker(
     held?: PortalLicenseSummary[];
     entries?: PortalEntryItem[];
     pages?: Record<string, unknown>;
+    /** Milliseconds `GET /api/library` takes (a slow Worker); 0 answers at once. */
+    slowLibrary?: number;
+    /** Milliseconds `DELETE /api/library/<p>` takes. */
+    slowDelete?: number;
   } = {},
 ) {
+  const later = <T,>(ms: number, value: () => T): T | Promise<T> =>
+    ms > 0
+      ? new Promise((resolve) => setTimeout(() => resolve(value()), ms))
+      : value();
   const held = [...(opts.held ?? [])];
   let entries = [...(opts.entries ?? [])];
   const holds = (slug: string) =>
@@ -178,10 +186,11 @@ function storefrontWorker(
   const open = () => offers.filter((o) => !holds(o.product));
   const routes: Record<string, unknown> = {
     "/api/licenses": () => ({ licenses: held }),
-    "/api/library": () => ({
-      products: [...held.map((l) => libraryItem(l)), ...entries],
-      discoverCount: open().filter((o) => o.cta === "add").length,
-    }),
+    "/api/library": () =>
+      later(opts.slowLibrary ?? 0, () => ({
+        products: [...held.map((l) => libraryItem(l)), ...entries],
+        discoverCount: open().filter((o) => o.cta === "add").length,
+      })),
     "/api/discover": () => ({ offers: open() }),
   };
   for (const o of offers) {
@@ -242,12 +251,13 @@ function storefrontWorker(
     };
   }
   for (const e of opts.entries ?? [])
-    routes[`DELETE /api/library/${e.product}`] = () => {
-      if (!entries.some((x) => x.product === e.product))
-        return { status: 404, body: { error: "not_found" } };
-      entries = entries.filter((x) => x.product !== e.product);
-      return { ok: true, product: e.product };
-    };
+    routes[`DELETE /api/library/${e.product}`] = () =>
+      later(opts.slowDelete ?? 0, () => {
+        if (!entries.some((x) => x.product === e.product))
+          return { status: 404, body: { error: "not_found" } };
+        entries = entries.filter((x) => x.product !== e.product);
+        return { ok: true, product: e.product };
+      });
   // The entries' product view (PS-04: `kind: "entry"`, no licences).
   for (const e of [
     ...(opts.entries ?? []),
@@ -435,6 +445,74 @@ describe("the storefront product page, #/discover/:product (PS-05)", () => {
     ).toBeTruthy();
   });
 
+  for (const [what, slug, name] of [
+    ["a licence path", "lumen-raw", "Lumen RAW"],
+    ["an open product", "driftwood", "Driftwood Notes"],
+  ] as const)
+    it(`after Add (${what}), the library page never says the product is missing, however slow the library`, async () => {
+      window.history.replaceState(null, "", `/#/discover/${slug}`);
+      mockFetch(
+        storefrontWorker([LUMEN, DRIFTWOOD], {
+          held: [NIGHTFALL],
+          slowLibrary: 150,
+        }),
+      );
+      const seen: string[] = [];
+      const watch = new MutationObserver(() => {
+        if (document.body.textContent?.includes("isn't in your library"))
+          seen.push(window.location.hash);
+      });
+      watch.observe(document.body, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+      });
+      try {
+        renderPortal();
+        await screen.findByRole("heading", { level: 1, name });
+        await userEvent.click(
+          screen.getByRole("button", { name: "Add to library" }),
+        );
+        await waitFor(() => expect(window.location.hash).toBe(`#/p/${slug}`));
+        const h1 = await screen.findByRole("heading", { level: 1, name });
+        await waitFor(() => expect(document.activeElement).toBe(h1));
+      } finally {
+        watch.disconnect();
+      }
+      expect(seen).toEqual([]);
+    });
+
+  it("opened from Discover, the tile's offer is the page until it answers", async () => {
+    window.history.replaceState(null, "", "/#/discover");
+    let answer: (v: unknown) => void = () => undefined;
+    mockFetch({
+      ...storefrontWorker([LUMEN, DRIFTWOOD]),
+      "GET /api/discover/lumen-raw": () =>
+        new Promise((resolve) => {
+          answer = resolve;
+        }),
+    });
+    renderPortal();
+    const tile = await screen.findByRole("article", { name: "Lumen RAW" });
+    await userEvent.click(
+      within(tile).getByRole("link", { name: "Lumen RAW", exact: true } as {
+        name: string;
+      }),
+    );
+    // The header, the reason and Add, before the page has answered.
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Lumen RAW" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("radio", { name: /Included with Aperture Seven/ }),
+    ).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "Screenshots" })).toBeNull();
+    answer(PAGE);
+    expect(
+      await screen.findByRole("region", { name: "Screenshots" }),
+    ).toBeTruthy();
+  });
+
   it("answers unknown, ineligible and withdrawn products with one not-found state", async () => {
     mockFetch(storefrontWorker([LUMEN]));
     const texts: string[] = [];
@@ -486,6 +564,19 @@ describe("the storefront product page, #/discover/:product (PS-05)", () => {
     expect(
       await screen.findByRole("heading", { level: 1, name: "Nightfall" }),
     ).toBeTruthy();
+  });
+
+  it("a link-only listing with nowhere to get it says only who shows it", async () => {
+    window.history.replaceState(null, "", "/#/discover/starfall");
+    mockFetch(storefrontWorker([{ ...STARFALL, stores: [] }]));
+    renderPortal();
+    await screen.findByRole("heading", { level: 1, name: "Starfall Arena" });
+    expect(
+      screen.getByText(
+        "Comet Forge shows it to everyone with a Polaris Key account.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(/above\./)).toBeNull();
   });
 
   it("a link-only listing: its store pages are the action, no Add", async () => {
@@ -582,6 +673,49 @@ describe("open products in the Library (PS-05)", () => {
       screen.getByRole("heading", { level: 1, name: "Your library" }),
     );
     expect(fetchedRequests()).toContain("DELETE /api/library/driftwood");
+  });
+
+  it("Remove chosen again puts focus back on Keep it; while it removes, focus waits on the confirmation", async () => {
+    window.history.replaceState(null, "", "/");
+    mockFetch(
+      storefrontWorker([DRIFTWOOD], {
+        held: [NIGHTFALL],
+        entries: [DRIFT_ENTRY],
+        slowDelete: 150,
+      }),
+    );
+    renderPortal();
+    const drift = await tile("Driftwood Notes");
+    const menu = within(drift).getByRole("button", {
+      name: "More for Driftwood Notes",
+    });
+    const ask = async (): Promise<void> => {
+      await userEvent.click(menu);
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: "Remove from library" }),
+      );
+    };
+    await ask();
+    const confirm = await within(drift).findByRole("group");
+    const keep = within(confirm).getByRole("button", { name: "Keep it" });
+    await waitFor(() => expect(document.activeElement).toBe(keep));
+    // Away from it, then Remove again: Keep it has focus once more.
+    menu.focus();
+    await ask();
+    await waitFor(() => expect(document.activeElement).toBe(keep));
+    await userEvent.click(
+      within(confirm).getByRole("button", { name: "Remove from library" }),
+    );
+    // Both buttons are disabled while the request runs; focus is on the confirmation.
+    expect(document.activeElement).toBe(confirm);
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("article", { name: "Driftwood Notes" }),
+      ).toBeNull(),
+    );
+    expect(document.activeElement).toBe(
+      screen.getByRole("heading", { level: 1, name: "Your library" }),
+    );
   });
 
   it("an entry's product page: no licence card or devices, Get it, Help, and Remove back to the Library", async () => {

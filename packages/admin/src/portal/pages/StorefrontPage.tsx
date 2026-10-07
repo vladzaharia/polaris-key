@@ -258,7 +258,13 @@ function StorefrontBody({
         <Compass aria-hidden className="mt-0.5 size-4 shrink-0" />
         {product.cta === "add"
           ? "Adding it is free and puts it in your library."
-          : `${product.developerName ?? "Its developer"} shows it to everyone with a Polaris Key account. Get it from a store above.`}
+          : `${product.developerName ?? "Its developer"} shows it to everyone with a Polaris Key account.${
+              product.stores.length
+                ? " Get it from a store above."
+                : siteOf(product)
+                  ? " Get it from their website above."
+                  : ""
+            }`}
       </p>
     </div>
   );
@@ -268,7 +274,8 @@ function StorefrontBody({
  * The header: back to Discover, the cover (as the library's product page draws it), the icon in
  * front of its lower edge, the name as the page's `h1`, "by <developer>", the one-line
  * description, and the page's one action. The art, icon and name carry the hero names the
- * router flies the Discover tile into (MO-05).
+ * router flies the Discover tile into (MO-05): opened from Discover, the tile's offer seeds the
+ * page (`useStorefrontProduct`), so the header is there in the transition's first frame.
  */
 function StorefrontHeader({
   product,
@@ -444,10 +451,7 @@ function StoreButtons({
   product: PortalStorefrontProduct;
   lead?: boolean;
 }): React.ReactElement | null {
-  const site =
-    product.website && /^https:\/\//.test(product.website)
-      ? product.website
-      : null;
+  const site = siteOf(product);
   const links = product.stores.length
     ? product.stores.map((s) => ({
         id: s.id,
@@ -489,6 +493,13 @@ function StoreButtons({
       ))}
     </ul>
   );
+}
+
+/** The developer's website, when it is an `https:` page. */
+function siteOf(product: PortalStorefrontProduct): string | null {
+  return product.website && /^https:\/\//.test(product.website)
+    ? product.website
+    : null;
 }
 
 /** An Add that didn't go through, in the person's words (§6.4). */

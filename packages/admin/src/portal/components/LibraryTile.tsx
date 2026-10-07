@@ -37,7 +37,9 @@ export function LibraryTile({
   compact?: boolean;
 }): React.ReactElement {
   const { presentation: pres } = product;
-  const [confirming, setConfirming] = React.useState(false);
+  // How many times Remove was chosen; 0 = no confirmation (choosing it again refocuses Keep it).
+  const [ask, setAsk] = React.useState(0);
+  const confirming = ask > 0;
   const menuButton = React.useRef<HTMLButtonElement>(null);
   const entry = product.kind === "entry";
   return (
@@ -130,7 +132,7 @@ export function LibraryTile({
               slug={product.slug}
               name={product.name}
               entry={entry}
-              onRemove={entry ? () => setConfirming(true) : undefined}
+              onRemove={entry ? () => setAsk((n) => n + 1) : undefined}
               triggerRef={menuButton}
               className={cn(
                 "inline-flex shrink-0 items-center justify-center rounded-md border border-border-strong text-fg-strong hover:bg-hover",
@@ -142,9 +144,10 @@ export function LibraryTile({
             <RemoveEntryConfirm
               slug={product.slug}
               name={product.name}
+              ask={ask}
               className="mt-3"
               onCancel={() => {
-                setConfirming(false);
+                setAsk(0);
                 menuButton.current?.focus();
               }}
             />
