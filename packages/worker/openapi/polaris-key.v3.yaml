@@ -14327,21 +14327,41 @@ paths:
         `used` (licences a device was ever bound to: a device row names it, whatever its status, or
         one of its keys was ever presented successfully), `unused` (active licences never used:
         what Disable unused keys would disable) and `disabled`. Keys are never in a batch read.
-        Platform admins only; admin session cookie.
+        One page at a time (LX-30): `limit` batches (default 100, at most 500), and `nextCursor`
+        to pass as `cursor` for the next page (`null` on the last). Platform admins only; admin
+        session cookie.
       parameters:
         - { name: product, in: path, required: true, schema: { type: string } }
+        - name: limit
+          in: query
+          required: false
+          description: "How many batches (1 to 500, default 100)."
+          schema: { type: integer, minimum: 1, maximum: 500 }
+        - name: cursor
+          in: query
+          required: false
+          description: "The previous page's `nextCursor` (opaque)."
+          schema: { type: string }
       responses:
         "200":
-          description: The batches, newest first.
+          description: A page of batches, newest first.
           content:
             application/json:
               schema:
                 type: object
-                required: [batches]
+                required: [batches, nextCursor]
                 properties:
                   batches:
                     type: array
                     items: { $ref: "#/components/schemas/AdminLicenseBatch" }
+                  nextCursor:
+                    type: [string, "null"]
+                    description: "The `cursor` of the next page; `null` on the last page."
+        "400":
+          description: "A `limit` outside 1 to 500 or a `cursor` this list did not write (`bad_request`, `fields`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
         "401": { $ref: "#/components/responses/AdminUnauthorized" }
         "403": { $ref: "#/components/responses/AdminForbidden" }
         "404":
@@ -14452,11 +14472,28 @@ paths:
         write, and answers how many. Used licences (a device row names it, whatever its status, or
         one of its keys was ever presented successfully) and licences outside the batch are
         untouched; a licence is re-enabled one at a time. Audited `license.batch.disable_unused`
-        with the count. Platform admins only; admin session cookie and CSRF header.
+        with the count. The console's typed confirmation is the batch label: when `confirm` is
+        sent it must be the label exactly (LX-30). Platform admins only; admin session cookie and
+        CSRF header.
       parameters:
         - { name: product, in: path, required: true, schema: { type: string } }
         - { name: batchId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                confirm:
+                  type: string
+                  description: "The batch label, typed by the operator. Checked when present."
       responses:
+        "400":
+          description: "`confirm` was sent and is not the batch label (`bad_request`, `reason: confirm_required`, `fields: [confirm]`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
         "200":
           description: Done.
           content:
@@ -14804,6 +14841,224 @@ paths:
               schema: { $ref: "#/components/schemas/AdminError" }
         "422":
           description: "A `flag` key, or a value the catalog refuses (`fields`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  # ── Licence holder moves (LX-30: the relink tool's Make floating and Reassign…) ──
+  /manage/api/products/{product}/users/licenses/{licenseId}/make-floating:
+    post:
+      operationId: makeAdminLicenseFloating
+      tags: [admin]
+      summary: Make a licence floating (the relink tool; step-up, reason, typed confirmation)
+      description: >
+        Takes the licence off its holder (LX-30, notes/S-24 §5.5, D20): it leaves the account it
+        is in (which may never attach it automatically again: the auto-attach block) and its own
+        `name` and `email` are cleared, so it is floating: whoever has the key uses it. A licence
+        waiting for its email is reached too. The side it leaves is emailed first (every verified
+        address of the account, or the waiting address). With `signOutDevices` every authorised
+        device of the licence is deauthorised as well; otherwise they keep running. Recorded with
+        the relink tool's 72-hour undo (`POST …/users/relinks/{relinkId}/undo`) and audited
+        `user.license.make_floating`; it counts towards the operator's daily relink alert. Needs
+        an interactive sign-in from the last 5 minutes (403 `step_up_required`). Platform admins
+        only; admin session cookie and CSRF header.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+        - {
+            name: licenseId,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason, confirm]
+              properties:
+                reason:
+                  {
+                    type: string,
+                    minLength: 1,
+                    maxLength: 500,
+                    description: "Recorded in the audit log.",
+                  }
+                confirm:
+                  type: string
+                  description: "The typed confirmation: the licence's name, or its id."
+                signOutDevices:
+                  type: boolean
+                  description: "Also deauthorise every device of the licence (default false)."
+      responses:
+        "200":
+          description: Done.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  [
+                    ok,
+                    relinkId,
+                    undoUntil,
+                    noticesSent,
+                    alert,
+                    devicesSignedOut,
+                  ]
+                properties:
+                  ok: { type: boolean, const: true }
+                  relinkId: { type: string }
+                  undoUntil:
+                    {
+                      type: integer,
+                      description: "Epoch seconds; the undo closes then.",
+                    }
+                  noticesSent: { type: integer, minimum: 0 }
+                  alert:
+                    type: boolean
+                    description: "The operator passed the daily relink count; the platform activity has an alert."
+                  devicesSignedOut: { type: integer, minimum: 0 }
+        "400":
+          description: "`confirm` is not the licence's name or id (`bad_request`, `reason: confirm_required`, `fields: [confirm]`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403":
+          description: "Not a platform admin, or the sign-in is older than 5 minutes (`step_up_required`, with `maxAgeSeconds`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "404":
+          description: "No such product, or no such licence of this product (`license_not_found`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: "Already floating (`already_floating`), or the licence moved meanwhile (`conflict`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "422":
+          description: "No reason, or one over 500 characters (`reason_required`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/{product}/users/licenses/{licenseId}/reassign:
+    post:
+      operationId: reassignAdminLicense
+      tags: [admin]
+      summary: Reassign a licence to another person by email (the relink tool; step-up, reason, typed confirmation)
+      description: >
+        Gives an assigned licence (in an account, or waiting for its email) to another person
+        (LX-30, notes/S-24 §5.5, D20): it leaves the account it is in (auto-attach block), takes
+        the new `email` and `name` (absent or blank: none), and joins the account that has
+        verified the new address if one has (S-24 D3), or waits for it. The answer is the same
+        either way (D4). The side it leaves and the new address are emailed first; the new
+        address's notice never says whether an account holds it. Recorded with the relink tool's
+        72-hour undo and audited `user.license.reassign`; it counts towards the operator's daily
+        relink alert. A floating licence is given a holder with `PATCH …/license/licenses/{id}`
+        (`email`), not here. Needs an interactive sign-in from the last 5 minutes. Platform
+        admins only; admin session cookie and CSRF header.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+        - {
+            name: licenseId,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, reason, confirm]
+              properties:
+                email: { type: string, maxLength: 254 }
+                name: { type: [string, "null"] }
+                reason: { type: string, minLength: 1, maxLength: 500 }
+                confirm:
+                  type: string
+                  description: "The typed confirmation: the licence's name, or its id."
+      responses:
+        "200":
+          description: Done. It never says whether the licence joined an account.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, relinkId, undoUntil, noticesSent, alert]
+                properties:
+                  ok: { type: boolean, const: true }
+                  relinkId: { type: string }
+                  undoUntil: { type: integer }
+                  noticesSent: { type: integer, minimum: 0 }
+                  alert: { type: boolean }
+        "400":
+          description: "`confirm` is not the licence's name or id (`bad_request`, `reason: confirm_required`, `fields: [confirm]`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403":
+          description: "Not a platform admin, or the sign-in is older than 5 minutes (`step_up_required`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "404":
+          description: "No such product, or no such licence of this product (`license_not_found`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: "A floating licence (`license_floating`: use Assign), the address it already carries (`same_holder`), or the licence moved meanwhile (`conflict`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "422":
+          description: "No usable email (`bad_request`, `fields: [email]`), a name that is not a string or a signed document cannot carry (`fields: [name]`), or no reason (`reason_required`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/{product}/users/licenses/{licenseId}/relinks:
+    get:
+      operationId: listAdminLicenseHolderMoves
+      tags: [admin]
+      summary: A licence's relinks and holder moves, newest first, with their undo
+      description: >
+        The licence record's history of the relink tool (LX-30): I-12 relinks (`relink`), Make
+        floating (`floating`) and Reassign… (`reassign`), newest first, at most 20, this product's
+        licence only. A holder move carries the licence's own name and email before and after
+        (never the account's details); `undoable` says whether `POST …/users/relinks/{id}/undo`
+        would still work. Platform admins only; admin session cookie.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+        - {
+            name: licenseId,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
+      responses:
+        "200":
+          description: The moves.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [relinks]
+                properties:
+                  relinks:
+                    type: array
+                    items:
+                      { $ref: "#/components/schemas/AdminLicenseHolderMove" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: "No such product, or no such licence of this product (`license_not_found`)."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
@@ -17163,6 +17418,55 @@ components:
               minSupported: { type: string }
               modifiedAt: { type: integer }
               modifiedBy: { type: [string, "null"] }
+    AdminLicenseHolderMove:
+      type: object
+      description: >
+        One move of a licence by the relink tool (LX-30). `fromSubject` and `toSubject` are this
+        product's pairwise subjects, `null` on a side with no account.
+      required:
+        [
+          id,
+          kind,
+          reason,
+          actorName,
+          createdAt,
+          undoUntil,
+          undoneAt,
+          undoable,
+          fromSubject,
+          toSubject,
+          from,
+          to,
+          devicesSignedOut,
+        ]
+      properties:
+        id: { type: string }
+        kind: { type: string, enum: [relink, floating, reassign] }
+        reason: { type: string }
+        actorName: { type: [string, "null"] }
+        createdAt: { type: integer }
+        undoUntil: { type: integer }
+        undoneAt: { type: [integer, "null"] }
+        undoable: { type: boolean }
+        fromSubject: { type: [string, "null"] }
+        toSubject: { type: [string, "null"] }
+        from:
+          description: "The licence's own name and email before a holder move; `null` for a relink."
+          oneOf:
+            - type: "null"
+            - $ref: "#/components/schemas/AdminLicenseHolderFacts"
+        to:
+          description: "After a holder move (both `null` for Make floating); `null` for a relink."
+          oneOf:
+            - type: "null"
+            - $ref: "#/components/schemas/AdminLicenseHolderFacts"
+        devicesSignedOut: { type: integer, minimum: 0 }
+    AdminLicenseHolderFacts:
+      type: object
+      required: [name, email]
+      properties:
+        name: { type: [string, "null"] }
+        email: { type: [string, "null"] }
     AdminError:
       type: object
       description: >
