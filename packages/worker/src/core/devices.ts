@@ -929,10 +929,10 @@ export async function handleDevices(
     } catch {
       return errorResponse(400, ErrorCode.BadRequest, "invalid json");
     }
-    const label =
-      typeof body.label === "string" && body.label.trim()
-        ? body.label.trim().slice(0, 120)
-        : null;
+    // PX-W13's one label rule (controls stripped, spaces collapsed, 64 code points), the same
+    // normaliser registration and the portal apply: a label is display text every surface prints,
+    // so an unnormalised one could carry terminal escapes into a CLI (UK-13 review).
+    const label = normalizeDeviceLabel(body.label);
     await setDeviceLabel(db, product.slug, deviceId, label);
     return json({
       ok: true,
