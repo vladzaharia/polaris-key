@@ -89,7 +89,7 @@ The positional `activate <key>` leaks the key into shell history, and the CLIs a
 - [x] The kit's framework page and its tab on each component page exist in the docs `build/ui/` section (UK-16 scaffold); the kit README is install + one-line flow + link.
 - [x] A design review against the mockups (`terminal.html`) is recorded in the PR (§7.4); any disagreement between mockup and spec is fixed first. Recorded in the hand-off report; the board was redrawn first (commit 281fe2d3b).
 - [ ] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs. Open: UK-02b has not added the ten `ui.*` rows; `ui.cli`'s note names the goldens, and the rows follow UK-02b.
-- [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
+- [x] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify
 
