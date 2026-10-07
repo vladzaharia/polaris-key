@@ -64,6 +64,31 @@ const DOWN = readFileSync(
 );
 const SLUG = "djdl";
 
+/** Run the rollback script as `wrangler d1 execute --file` does: every statement, in order. */
+function runDown(db: SqliteDb): void {
+  (db as unknown as { db: Database.Database }).db.exec(DOWN);
+}
+
+/** `db` with D1's limit of 100 bound parameters per statement enforced (better-sqlite3 allows
+ *  thousands), so a statement that binds one parameter per declared key fails here as on D1. */
+function d1Limited(db: SqliteDb): Db {
+  const check = (params: readonly unknown[]) => {
+    if (params.length > 100)
+      throw new Error(`too many SQL variables (${params.length})`);
+  };
+  return {
+    all: (q, ...p) => (check(p), db.all(q, ...p)),
+    first: (q, ...p) => (check(p), db.first(q, ...p)),
+    run: (q, ...p) => (check(p), db.run(q, ...p)),
+    runChanges: (q, ...p) => (check(p), db.runChanges(q, ...p)),
+    batch: (st) => (st.forEach((x) => check(x.params)), db.batch(st)),
+    batchChanges: (st) => (
+      st.forEach((x) => check(x.params)),
+      db.batchChanges(st)
+    ),
+  };
+}
+
 /** Every row of the licensing model's tables (and the old ones the backfill reads), for a replay
  *  comparison. */
 async function dump(db: Db): Promise<string> {
@@ -648,6 +673,53 @@ describe("the provisioned-keys move (S-19 §7.14 step 4)", () => {
     });
   });
 
+  it("moves only OIDC licences: an admin licence's override of a declared key stays in its column", async () => {
+    const w = await world();
+    const operator = {
+      config: {},
+      secrets: {},
+      entitlements: {
+        polarisVpn: { state: "enforced", value: false, updatedAt: NOW - 1 },
+      },
+    };
+    await w.db.run(
+      `INSERT INTO licenses (product, id, status, activated_at, overrides_json, origin, modified_at)
+       VALUES (?, 'lic_admin', 'active', ?, ?, 'admin', ?)`,
+      SLUG,
+      NOW,
+      JSON.stringify(operator),
+      NOW,
+    );
+    expect(await moveProvisionedKeys(w.db, NOW + 50)).toMatchObject({
+      moved: 0,
+      deferred: 0,
+    });
+    expect((await getLicense(w.db, SLUG, "lic_admin"))!.overrides_json).toBe(
+      JSON.stringify(operator),
+    );
+    expect(
+      await w.db.first(
+        "SELECT COUNT(*) AS n FROM grants WHERE product = ? AND license_id = 'lic_admin'",
+        SLUG,
+      ),
+    ).toEqual({ n: 0 });
+  });
+
+  it("binds the declared keys as one parameter: more than 100 of them stay within D1's limit", async () => {
+    const keys = [
+      "polarisVpn",
+      ...Array.from({ length: 120 }, (_, i) => `k${i}`),
+    ];
+    const w = await world(keys);
+    const db = d1Limited(w.db);
+    // A sign-in rewrites the grant's declared keys, and the move scans for all of them.
+    await activateFromIdentity(db, w.product, identity(), NOW + 10);
+    expect(await grantKeys(w)).toEqual(["polarisVpn"]);
+    await preLx08(w);
+    expect((await moveProvisionedKeys(db, NOW + 20)).moved).toBe(1);
+    expect(await grantKeys(w)).toEqual(["polarisVpn"]);
+  });
+
   it("loses no race: a column that changed between the read and the write is left for the next pass", async () => {
     const w = await world();
     await preLx08(w);
@@ -727,7 +799,7 @@ describe("the provisioned-keys move (S-19 §7.14 step 4)", () => {
     });
   });
 
-  it("the rollback script hands an old Worker the moved keys, byte for byte", async () => {
+  it("the rollback script hands an old Worker the moved keys, byte for byte, and empties the grants", async () => {
     const w = await world(["polarisVpn", "beta.lab"]);
     await preLx08(
       w,
@@ -741,19 +813,67 @@ describe("the provisioned-keys move (S-19 §7.14 step 4)", () => {
     const lic = (await getLicense(w.db, SLUG, w.licenseId))!;
     const lx08 = await resolveMergedPayload(w.db, SLUG, lic, null, NOW);
 
-    await w.db.run(DOWN);
+    runDown(w.db);
     const rolled = (await getLicense(w.db, SLUG, w.licenseId))!;
     // The old Worker's composition: the column alone, no `oidc` grant layer.
     const old = await resolveMergedPayload(w.db, SLUG, rolled, null, NOW, {
       withoutOidcGrant: true,
     });
     expect(JSON.stringify(old.payload)).toBe(JSON.stringify(lx08.payload));
-    // Idempotent: a second run copies nothing.
+    // The column is the only source again: no `oidc` grant entry, no emptied grant row.
+    expect(await grantKeys(w)).toEqual([]);
+    expect(
+      await w.db.first(
+        "SELECT COUNT(*) AS n FROM grants WHERE source = 'oidc'",
+      ),
+    ).toEqual({ n: 0 });
+    // Idempotent: a second run copies and deletes nothing.
     const once = rolled.overrides_json;
-    await w.db.run(DOWN);
+    runDown(w.db);
     expect((await getLicense(w.db, SLUG, w.licenseId))!.overrides_json).toBe(
       once,
     );
+  });
+
+  it("a key the old Worker revoked after a rollback stays revoked when LX-08 rolls forward", async () => {
+    const w = await world();
+    // The deployed LX-08 Worker: the key lives on the `oidc` grant.
+    expect(await grantKeys(w)).toEqual(["polarisVpn"]);
+    runDown(w.db);
+    expect(Object.keys((await column(w)).entitlements)).toEqual(["polarisVpn"]);
+
+    // The old (LX-02) Worker: the claim disappears at a sign-in, so its rewrite drops the
+    // declared key from the column.
+    const before = (await getLicense(w.db, SLUG, w.licenseId))!.overrides_json;
+    await w.db.run(
+      "UPDATE licenses SET overrides_json = ? WHERE product = ? AND id = ?",
+      mergeProvisionedOverrides(
+        before,
+        { config: {}, secrets: {}, entitlements: {} },
+        {
+          entitlements: new Set(["polarisVpn"]),
+          secrets: new Set(["proxy.subscriptionUrl"]),
+        },
+      ),
+      SLUG,
+      w.licenseId,
+    );
+
+    // Roll forward: nothing brings the revoked key back, neither the document nor the catch-up.
+    const forward = async () =>
+      (
+        await resolveMergedPayload(
+          w.db,
+          SLUG,
+          (await getLicense(w.db, SLUG, w.licenseId))!,
+          null,
+          NOW,
+        )
+      ).payload.entitlements;
+    expect(await forward()).not.toHaveProperty("polarisVpn");
+    await runLicensingCatchUp(w.db, SERVICES, NOW + 100);
+    expect(await forward()).not.toHaveProperty("polarisVpn");
+    expect(await grantKeys(w)).toEqual([]);
   });
 });
 

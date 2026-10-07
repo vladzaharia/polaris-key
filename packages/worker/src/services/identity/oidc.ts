@@ -75,7 +75,11 @@ import {
   type LicenseRow,
   type TierRow,
 } from "../../core/data.js";
-import { guardedWrite, oidcGrantStatements } from "../../core/grants.js";
+import {
+  guardedInsert,
+  guardedWrite,
+  oidcGrantStatements,
+} from "../../core/grants.js";
 import { readSyncTierOnSignIn } from "./settings.js";
 import {
   mergeLicenseInto,
@@ -1102,21 +1106,45 @@ async function updateLicenseOnSignIn(
   let current = existing.overrides_json;
   for (let attempt = 0; attempt < SIGNIN_UPDATE_ATTEMPTS; attempt++) {
     const merged = mergeProvisionedOverrides(current, column, declared);
+    const guard = {
+      product: product.slug,
+      licenseId: existing.id,
+      overridesJson: current,
+    };
     const applied = await guardedWrite(
       db,
-      oidcGrantStatements({
-        product: product.slug,
-        licenseId: existing.id,
-        entries: signIn.provisioned.entitlements,
-        declared: declared.entitlements,
-        now,
-        writer: "oidc",
-        guard: {
+      [
+        ...oidcGrantStatements({
           product: product.slug,
           licenseId: existing.id,
-          overridesJson: current,
-        },
-      }),
+          entries: signIn.provisioned.entitlements,
+          declared: declared.entitlements,
+          now,
+          writer: "oidc",
+          guard,
+        }),
+        // The tier move's audit row rides the same guarded batch: no row without the move.
+        ...(tier
+          ? [
+              guardedInsert(
+                auditStatement({
+                  product: product.slug,
+                  id: randomId("aud"),
+                  at: now,
+                  actor_sub: identity.sub,
+                  actor_name: identity.name ?? null,
+                  actor_email: identity.email ?? null,
+                  action: "license.tier.change",
+                  target_kind: "license",
+                  target_id: existing.id,
+                  parent_id: null,
+                  summary: `Moved from tier ${existing.tier_id} to the higher-rank tier ${tier.id} at sign-in (syncTierOnSignIn: upgradeOnly)`,
+                }),
+                guard,
+              ),
+            ]
+          : []),
+      ],
       {
         sql: `UPDATE licenses SET name = ?, email = ?, groups_json = ?, overrides_json = ?,
                 ${tier ? "tier_id = ?, " : ""}modified_by = ?, modified_at = ?
@@ -1136,23 +1164,7 @@ async function updateLicenseOnSignIn(
       },
       { product: product.slug, licenseId: existing.id, overridesJson: merged },
     );
-    if (applied) {
-      if (tier)
-        await appendAudit(db, {
-          product: product.slug,
-          id: randomId("aud"),
-          at: now,
-          actor_sub: identity.sub,
-          actor_name: identity.name ?? null,
-          actor_email: identity.email ?? null,
-          action: "license.tier.change",
-          target_kind: "license",
-          target_id: existing.id,
-          parent_id: null,
-          summary: `Moved from tier ${existing.tier_id} to the higher-rank tier ${tier.id} at sign-in (syncTierOnSignIn: upgradeOnly)`,
-        });
-      return;
-    }
+    if (applied) return;
     const reread = await getLicense(db, product.slug, existing.id);
     if (!reread) throw new Error("license not found");
     current = reread.overrides_json;

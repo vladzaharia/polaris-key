@@ -19,7 +19,9 @@
  *      break-glass claim whose 7 days ran out or whose field the manifest changed, and the answer
  *      lists the live ones (`breakGlass`, key and expiry) for the deploy summary.
  *   3. LX-08: one bounded pass of the licensing catch-up (`core/licensingCatchUp.ts`): store grants
- *      re-projected, OIDC-provisioned keys moved to their `oidc` grants; counts in `licensing`.
+ *      re-projected, OIDC-provisioned keys moved to their `oidc` grants. It runs after the answer
+ *      (`waitUntil`; `licensing: {scheduled: true}`) and records its counts as a platform activity
+ *      row (`licensing.catch_up`); without an execution context the answer carries them.
  *   4. The answer reports `uploads: {ready, missing}`: whether this Worker can issue the upload
  *      tickets every publish needs (the `BLOBS` binding and the parent R2 token, by name only).
  *      `scripts/register-platform.mjs` fails the deploy job on `ready: false`, so a missing R2
@@ -135,11 +137,65 @@ const refuse = (
   extra: Record<string, unknown> = {},
 ) => errorResponse(status, code, message, { reason, ...extra });
 
+/**
+ * LX-08: one bounded licensing catch-up pass after a deploy. Never throws: a failure is the
+ * outcome's `error`, and the nightly maintenance runs the pass again. A pass that runs after the
+ * answer (`record`) leaves its outcome as a platform activity row (`licensing.catch_up`, counts
+ * only), since the answer is gone by then.
+ */
+async function deployLicensingCatchUp(
+  db: Db,
+  now: number,
+  actor: string,
+  record: boolean,
+): Promise<Record<string, unknown>> {
+  let outcome: Record<string, unknown>;
+  try {
+    const r = await runLicensingCatchUp(
+      db,
+      SERVICES,
+      now,
+      DEPLOY_HOOK_LICENSING_BUDGET,
+    );
+    outcome = {
+      products: r.products,
+      failed: Object.keys(r.failures),
+      provisioned: r.provisioned,
+    };
+  } catch (e) {
+    outcome = { error: e instanceof Error ? e.message : String(e) };
+  }
+  if (!record) return outcome;
+  try {
+    await appendPlatformAudit(db, {
+      id: randomId("paud"),
+      at: now,
+      actor_sub: actor,
+      actor_name: "Deploy",
+      actor_email: null,
+      action: "licensing.catch_up",
+      target_kind: "platform",
+      target_id: null,
+      summary:
+        "error" in outcome
+          ? `The licensing catch-up failed (${String(outcome.error).slice(0, 300)}); the nightly maintenance runs it again`
+          : `Ran the licensing catch-up: ${String(outcome.products)} products re-projected; provisioned keys moved on ${JSON.stringify(outcome.provisioned)}`,
+      before_json: null,
+      after_json: JSON.stringify(outcome),
+    });
+  } catch {
+    // Recording the outcome is best effort; the pass itself is idempotent and runs nightly.
+  }
+  return outcome;
+}
+
 export async function handleDeployHook(
   req: Request,
   env: Env,
   db: Db,
   now: number,
+  /** The request's execution context: the licensing catch-up runs after the answer (LX-08). */
+  exec?: { waitUntil(promise: Promise<unknown>): void },
 ): Promise<Response> {
   const policy = deployHookPolicy(env);
   if (!policy) return errorResponse(404, ErrorCode.NotFound);
@@ -353,23 +409,18 @@ export async function handleDeployHook(
 
   // LX-08 (plans/LX-01.md §6.2 steps 2–4): the deploy-hook job `licensing.migrateProvisioned`
   // and the store-grant re-projection, one bounded pass right after the deploy that starts the
-  // dual-write (`core/licensingCatchUp.ts`); the nightly maintenance finishes whatever remains. It
-  // changes no document, and a failure is reported here, never a failed deploy.
+  // dual-write (`core/licensingCatchUp.ts`). The request's single-use `jti` is spent by now, so
+  // the pass runs AFTER the answer (`waitUntil`): a pass the runtime cuts short can never turn the
+  // deploy job's retry into `oidc_token_replayed`. Its outcome is then a platform activity row;
+  // the nightly maintenance finishes whatever remains. Without an execution context (tests, a
+  // direct call) it runs inline and the answer carries its outcome, a failure included, never a
+  // failed deploy.
   let licensing: Record<string, unknown>;
-  try {
-    const r = await runLicensingCatchUp(
-      db,
-      SERVICES,
-      now,
-      DEPLOY_HOOK_LICENSING_BUDGET,
-    );
-    licensing = {
-      products: r.products,
-      failed: Object.keys(r.failures),
-      provisioned: r.provisioned,
-    };
-  } catch (e) {
-    licensing = { error: e instanceof Error ? e.message : String(e) };
+  if (exec) {
+    exec.waitUntil(deployLicensingCatchUp(db, now, actor, true));
+    licensing = { scheduled: true };
+  } else {
+    licensing = await deployLicensingCatchUp(db, now, actor, false);
   }
 
   return json({

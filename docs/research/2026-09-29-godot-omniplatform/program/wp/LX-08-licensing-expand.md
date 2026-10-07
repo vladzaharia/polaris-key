@@ -144,10 +144,35 @@ disagreed, the code won, as follows:
   column. Provisioned secrets keep following U-03 (column until the run, then account rows).
 - **Admin tier API unchanged.** The console tier editor (LX-14) adds `rank` and
   `policyOfflineGraceDays`. The admin upsert leaves both columns as they are.
+- **`dist_purchases.grant_id` is written in a second batch.** Distribution names the grant after
+  License's store-grant write returns (`recordPurchase` and `revokeRecordedPurchase` in
+  `commerce/state.ts`), because the two writes belong to two services. A failure between them
+  leaves `grant_id` empty or stale; the catch-up's `licensingReconcile` repairs it, and
+  `storeGrantDrift` reports it until then.
+- **Review fixes (2026-10-07).**
+  - The move touches only OIDC licences (`sub IS NOT NULL`): on any other licence a declared key
+    is an operator's override.
+  - The rollback script also deletes the copied keys from the `oidc` grants and the emptied
+    grants, so a roll-forward cannot revive a key the old Worker revoked in between.
+  - Declared keys bind as one JSON parameter (`json_each`), within D1's 100-parameter limit.
+  - The deploy hook runs the catch-up after its answer (`waitUntil`) and records the outcome as a
+    platform activity row (`licensing.catch_up`).
+  - The `upgradeOnly` audit row rides the sign-in's guarded batch.
 
 ## Hand-off
 
 - LX-09 switches reads; LX-12 and LX-13 write grants.
+- **Follow-ups from LX-08's review:**
+  - **N2.** The move pass restarts from the first licence each time, so a large number of deferred
+    licences can starve the ones after them within a pass's budget. Resume from a stored cursor.
+  - **N6.** LX-14 shows the `oidc` grant: provisioned keys no longer appear among a licence's
+    console overrides or in the catalog's usage count.
+  - **N7.** LX-11 and LX-13 add the deletes for `device_store_identities`, `dist_holder_bindings`
+    and `dist_binding_aliases` (licence deletion, account merge and deletion) as they start
+    writing them, with PRIVACY rows.
+  - LX-09 adds the `holder_versions` bumps; LX-11 retires the catch-up's one-key-per-mapping rule;
+    LX-13 moves and deletes account-held grants; LX-14 adds `rank` and `policyOfflineGraceDays`
+    to the admin tier API.
 
 The role agent sets `--set LX-08 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:

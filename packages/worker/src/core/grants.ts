@@ -290,6 +290,24 @@ function guardSql(guard: OverridesGuard | null): {
 }
 
 /**
+ * A single-row `INSERT … VALUES (…)` (an audit row, say) conditioned on the same guard as the
+ * `oidc` grant statements, so it lands with the guarded write or not at all.
+ */
+export function guardedInsert(
+  insert: DbStatement,
+  guard: OverridesGuard,
+): DbStatement {
+  const m = /^([\s\S]*?)\bVALUES\s*\(([\s\S]*)\)\s*$/.exec(insert.sql);
+  if (!m)
+    throw new Error("guardedInsert: not a single-row INSERT … VALUES (…)");
+  const g = guardSql(guard);
+  return {
+    sql: `${m[1]}SELECT ${m[2]} WHERE ${g.sql}`,
+    params: [...insert.params, ...g.params],
+  };
+}
+
+/**
  * Write the `oidc` grant of one licence: the grant row (created on first use, kept `active`), and
  * for every key in `declared` the entry `entries` carries, or none (a declared key whose claim
  * disappeared is removed: revocation on claim loss, as LX-02's rewrite did). A key the grant holds
@@ -335,13 +353,15 @@ export function oidcGrantStatements(args: {
         ...guard.params,
       ],
     });
+  // The declared keys bind as ONE JSON parameter: D1 binds at most 100 per statement, and a
+  // product may declare more keys than that.
   if (declared.length > 0)
     out.push({
       sql: `DELETE FROM grant_entitlements
              WHERE product = ? AND grant_id = ?
-               AND key IN (${declared.map(() => "?").join(", ")})
+               AND key IN (SELECT value FROM json_each(?))
                AND ${guard.sql}`,
-      params: [product, id, ...declared, ...guard.params],
+      params: [product, id, JSON.stringify(declared), ...guard.params],
     });
   for (const key of Object.keys(entries).sort()) {
     const e = entries[key]!;
@@ -508,11 +528,13 @@ export function planProvisionedMove(
 
   // The key order the merge sees from these two layers, before and after.
   const keptOrder = Object.keys(kept);
-  const before = [...order, ...grantKeys.filter((k) => !(k in column)).sort()];
+  const own = (o: Record<string, unknown>, k: string) =>
+    Object.prototype.hasOwnProperty.call(o, k);
+  const before = [...order, ...grantKeys.filter((k) => !own(column, k)).sort()];
   const after = [
     ...keptOrder,
     ...[...new Set([...grantKeys, ...moved])]
-      .filter((k) => !(k in kept))
+      .filter((k) => !own(kept, k))
       .sort(),
   ];
   // The grant renders each entry as `{state, value, updatedAt}` (`oidcGrantLayer`): an entry stored
@@ -556,9 +578,10 @@ export interface ProvisionedMoveReport {
 const MOVE_PAGE = 200;
 
 /**
- * Move every licence's OIDC-provisioned entitlement keys to its `oidc` grant (§7.14 step 4, the
+ * Move every OIDC licence's provisioned entitlement keys to its `oidc` grant (§7.14 step 4, the
  * deploy-hook job `licensing.migrateProvisioned`). A sign-in moves its own licence; this moves the
- * rest. Stateless and idempotent: a moved licence no longer matches, so a pass that stopped at its
+ * rest. Only licences with a `sub` (the ones the sign-in writer owns) are touched: on any other
+ * licence a declared key is an operator's override, and it stays in the column. Stateless and idempotent: a moved licence no longer matches, so a pass that stopped at its
  * budget, or ran twice at once, simply continues. Each licence is one batch, guarded by its column
  * (compare-and-set): the grant and the column change together or not at all, and a column an
  * operator or a sign-in changed in between is left for the next pass.
@@ -590,24 +613,28 @@ export async function moveProvisionedKeys(
   }
   let examined = 0;
   for (const [product, declared] of declaredBy) {
-    const marks = [...declared].map(() => "?").join(", ");
+    // One JSON parameter, not one per key (D1 binds at most 100 per statement).
+    const declaredJson = JSON.stringify([...declared]);
     let after = "";
     for (;;) {
       if (examined >= budget) {
         report.more = true;
         return report;
       }
+      // Only OIDC licences (`sub` set): the sign-in writer owns their declared keys, so a declared
+      // key in their column is a provisioned value. On any other licence (an admin or enrolled
+      // licence nobody signed in to) the same key is an operator's override and stays put.
       const rows = await db.all<{ id: string; overrides_json: string }>(
         `SELECT id, overrides_json FROM licenses
-          WHERE product = ? AND id > ? AND overrides_json IS NOT NULL
+          WHERE product = ? AND id > ? AND sub IS NOT NULL AND overrides_json IS NOT NULL
             AND json_valid(overrides_json)
             AND json_type(overrides_json, '$.entitlements') = 'object'
             AND EXISTS (SELECT 1 FROM json_each(overrides_json, '$.entitlements') je
-                         WHERE je.key IN (${marks}))
+                         WHERE je.key IN (SELECT value FROM json_each(?)))
           ORDER BY id LIMIT ?`,
         product,
         after,
-        ...declared,
+        declaredJson,
         Math.min(MOVE_PAGE, budget - examined),
       );
       if (rows.length === 0) break;

@@ -6146,12 +6146,19 @@ the model's full threat-model rows (T1–T10, P1–P3) once reads switch in LX-0
   grant in the same D1 batch. The projection is a pure function of the old rows, so the new rows
   can only lag (a pre-LX-08 Worker during the deploy window). The catch-up (deploy hook and
   nightly) closes that gap. A zero-drift check runs after every commerce scenario in the suite.
-- **Concurrent writes do not clobber.** The move and the sign-in writer each write the column
-  and the grant in one batch. Every grant statement is guarded by the same compare-and-set as the
-  column, so a concurrent operator edit or sign-in is never overwritten: the move leaves that
-  licence for a later pass, and the sign-in re-plans. U-03's sweep empties only the column's
-  `config` and `secrets` members, and in SQL, so it cannot lose an entitlement key and LX-08
-  cannot lose a secret.
+- **LX-08's writers do not clobber a concurrent write.** The move and the sign-in writer each
+  write the column and the grant in one batch. Every grant statement is guarded by the same
+  compare-and-set as the column, so neither overwrites a concurrent operator edit or sign-in: the
+  move leaves that licence for a later pass, and the sign-in re-plans. U-03's sweep empties only
+  the column's `config` and `secrets` members, and in SQL, so it cannot lose an entitlement key
+  and LX-08 cannot lose a secret. The other direction is not guarded: the console's licence
+  overrides write has no compare-and-set, so an operator's save that read the column before a
+  sign-in's write can put a provisioned key back into the column. That is benign and heals
+  itself: an override in the column wins over the grant, as it did before LX-08, and the
+  licence's next sign-in moves the key out again.
+- **The move takes only provisioned values.** It moves declared keys only on OIDC licences
+  (`sub` set), whose declared keys the sign-in writer owns. On an admin or enrolled licence the
+  same key is an operator's override and stays in the column.
 - **No account id leaves; new personal data is erased.** `grants.account_id` is the global
   account id and never leaves the Worker (S-16 §5.1); nothing writes an account-held grant before
   LX-13. `entitlement_events` is keyed by the product's pairwise subject and is a registered

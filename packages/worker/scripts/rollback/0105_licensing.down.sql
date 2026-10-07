@@ -16,13 +16,20 @@
 -- are the LX-08 Worker's byte for byte. A value of JSON `null` cannot survive `json_patch` (RFC 7396
 -- deletes it); no provisioning hook writes one (`representabilityIssue`).
 --
+-- THEN IT EMPTIES THE `oidc` GRANTS. Every `oidc` grant entry whose key the column now carries is
+-- deleted, and so is every `oidc` grant left with no entry, so the column is again the ONLY source
+-- of the provisioned keys. Otherwise a roll-forward would revive what the old Worker revoked in
+-- between: its sign-in removes a key whose claim disappeared from the column, and an LX-08 Worker
+-- would then render the stale grant entry in its place.
+--
 -- HOW. Run once against the database with
 --   wrangler d1 execute <DATABASE> --env <ENV> --remote --file scripts/rollback/0105_licensing.down.sql
--- It is idempotent: a key it copied is then carried by the column, so a second run copies nothing.
--- It leaves the LX-08 tables, columns, triggers and grant rows in place: the old Worker never names
--- them, and keeping them lets a roll-forward pick up where it stopped (the catch-up moves the keys
--- out again, and the projection re-converges the store grants). It is exercised by
--- test/licensingExpand.test.ts.
+-- It is idempotent: a key it copied is then carried by the column and no longer in a grant, so a
+-- second run copies and deletes nothing. It leaves the LX-08 tables, columns, triggers and the
+-- store grants' rows in place: the old Worker never names them. A roll-forward afterwards starts
+-- the provisioned-keys move over, exactly as the first deploy did (each sign-in and the catch-up
+-- move the keys out of the column again), and the catch-up re-projects the store grants the old
+-- Worker wrote meanwhile. It is exercised by test/licensingExpand.test.ts.
 
 UPDATE licenses
    SET overrides_json = json_patch(
@@ -59,3 +66,22 @@ UPDATE licenses
             CASE WHEN json_valid(licenses.overrides_json)
                  THEN licenses.overrides_json ELSE '{}' END,
             '$.entitlements."' || ge.key || '"') IS NULL);
+
+-- The copied keys leave the `oidc` grants: the column is their only source again.
+DELETE FROM grant_entitlements
+ WHERE EXISTS (
+   SELECT 1
+     FROM grants g
+     JOIN licenses l ON l.product = g.product AND l.id = g.license_id
+    WHERE g.product = grant_entitlements.product
+      AND g.id = grant_entitlements.grant_id
+      AND g.source = 'oidc'
+      AND g.id = 'grt_oidc_' || l.id
+      AND json_type(
+            CASE WHEN json_valid(l.overrides_json) THEN l.overrides_json ELSE '{}' END,
+            '$.entitlements."' || grant_entitlements.key || '"') IS NOT NULL);
+
+DELETE FROM grants
+ WHERE source = 'oidc'
+   AND NOT EXISTS (SELECT 1 FROM grant_entitlements ge
+                    WHERE ge.product = grants.product AND ge.grant_id = grants.id);

@@ -1592,9 +1592,12 @@ stays on the old objects until LX-09. Three things change underneath:
    - it moves the provisioned keys of licences that have not signed in since. That is the job
      `licensing.migrateProvisioned` in plans/LX-01.md §6.2.
 
-   Check the deploy job's log: the hook's answer carries
-   `licensing: {products, failed, provisioned: {moved, deferred, raced, more}}`. `failed` should be
-   empty. `more: true` means the nightly pass finishes the work.
+   The hook runs its pass after it has answered (its answer says `licensing: {scheduled: true}`),
+   so a pass cut short never fails or replays the deploy. Check the outcome in the console under
+   Platform → Activity: the row "ran the licensing catch-up" (`licensing.catch_up`) carries
+   `{products, failed, provisioned: {moved, deferred, raced, more}}`. `failed` should be empty.
+   `more: true` means the nightly pass finishes the work. Only OIDC licences move: on any other
+   licence a provisioned key is an operator's override and stays in the column.
 
    A licence is **deferred** when moving it would reorder the keys in its document. That happens
    when an operator added an override key after the licence's last sign-in. A deferred licence is
@@ -1615,10 +1618,16 @@ npx wrangler d1 execute polaris_key_prod --env prod --remote \
   --file packages/worker/scripts/rollback/0105_licensing.down.sql
 ```
 
-It is idempotent, so a second run copies nothing. It appends each grant's keys after the
-licence's other keys, where LX-02's writer kept them, so the old Worker's documents are the
-LX-08 Worker's byte for byte. It leaves every LX-08 table, column and row in place, so a roll
-forward resumes: the catch-up moves the keys out again.
+It appends each grant's keys after the licence's other keys, where LX-02's writer kept them, so
+the old Worker's documents are the LX-08 Worker's byte for byte. It then deletes the copied keys
+from the `oidc` grants, and the grants they empty, so the column is their only source again. Without
+that step, a key the old Worker revoked (its claim disappeared at a sign-in) would come back when
+the LX-08 Worker is rolled forward. The script is idempotent: a second run copies and deletes
+nothing.
+
+It leaves the LX-08 tables, columns and store-grant rows in place. A roll forward starts the move
+over, as the first deploy did: each sign-in and the catch-up move the keys out of the column again,
+and the catch-up re-projects the store grants the old Worker wrote in between.
 
 ## The blob collector (P4-14)
 
