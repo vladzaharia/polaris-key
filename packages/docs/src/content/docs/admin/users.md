@@ -121,6 +121,11 @@ the typed value too.
 sits where the move put it. Adding the key to an account, a later change of its email, or the end
 of the window closes it.
 
+These are the only ways to change who holds a license that has an email. Editing the license
+changes its name, and can correct the case of its email, but refuses another address (use
+Reassign) and refuses to clear it (use Make floating). A license with no email gets one with
+**Assign…**.
+
 The routes, for scripts that use the admin session:
 
 | Route                                                                | Body                                           |

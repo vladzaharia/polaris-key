@@ -266,7 +266,7 @@ describe("Make floating", () => {
       before: { name: "Studio Pro", email: "ada@example.com" },
       after: null,
       reason: "Refunded (ticket 77)",
-      devicesSignedOut: 0,
+      signOutDevices: false,
     });
   });
 
@@ -294,6 +294,62 @@ describe("Make floating", () => {
     expect(
       (moves.body.relinks as Array<Record<string, unknown>>)[0],
     ).toMatchObject({ kind: "floating", devicesSignedOut: 2 });
+  });
+
+  it("a sign-out that fails partway keeps the move, its undo, its audit row and the alert count, and answers the partial count", async () => {
+    await account("ada@example.com");
+    const id = await create({ name: "Studio Pro", email: "ada@example.com" });
+    await addDevice(id, "dev-a");
+    await addDevice(id, "dev-b");
+    // dev-b's token cannot be evicted: its deauthorize throws, and the sign-out stops there.
+    await db.run(
+      "UPDATE devices SET token_hash = 'tok-bad' WHERE product = ? AND device_id = 'dev-b'",
+      SLUG,
+    );
+    const realDelete = env.HOT.delete.bind(env.HOT);
+    env.HOT.delete = (async (key: string) => {
+      if (key.includes("tok-bad")) throw new Error("KV unavailable");
+      return realDelete(key);
+    }) as typeof env.HOT.delete;
+    const prior = await db.first<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM license_relinks WHERE actor_sub = 'op-1'",
+    );
+    const res = await call("POST", floatPath(id), {
+      reason: "Leaked key",
+      confirm: "Studio Pro",
+      signOutDevices: true,
+    });
+    expect(res.status).toBe(200);
+    // Whichever device came first: one signed out before the failure, or none.
+    const signedOut = res.body.devicesSignedOut as number;
+    expect(signedOut).toBeLessThan(2);
+    // Each device signed out has its own audit row; the one that failed has none.
+    const deauthorized = await db.all<{ target_id: string }>(
+      "SELECT target_id FROM audit WHERE product = ? AND action = 'device.deauthorize'",
+      SLUG,
+    );
+    expect(deauthorized.length).toBe(signedOut);
+    const moves = await call("GET", `/users/licenses/${id}/relinks`);
+    expect(
+      (moves.body.relinks as Array<Record<string, unknown>>)[0],
+    ).toMatchObject({ kind: "floating", devicesSignedOut: signedOut });
+    // The move's row is there (the undo works), counted towards the alert, and audited.
+    const after = await db.first<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM license_relinks WHERE actor_sub = 'op-1'",
+    );
+    expect(after!.n).toBe(prior!.n + 1);
+    const audited = await db.all<{ action: string }>(
+      "SELECT action FROM audit WHERE product = ? AND target_id = ? AND action = 'user.license.make_floating'",
+      SLUG,
+      id,
+    );
+    expect(audited.length).toBe(1);
+    env.HOT.delete = realDelete as typeof env.HOT.delete;
+    const undo = await call("POST", undoPath(res.body.relinkId as string), {
+      reason: "Wrong licence",
+    });
+    expect(undo.status).toBe(200);
+    expect((await row(id)).email).toBe("ada@example.com");
   });
 
   it("reaches a licence waiting for its email, which has no account and no subject", async () => {
@@ -533,6 +589,24 @@ describe("Reassign", () => {
     expect(await blocks(id)).toEqual([bo.id]);
   });
 
+  it("a second undo of the same move is refused", async () => {
+    await account("ada@example.com");
+    const id = await create({ name: "Studio Pro", email: "ada@example.com" });
+    const res = await call("POST", reassignPath(id), {
+      email: "bo@example.com",
+      reason: "Sold",
+      confirm: "Studio Pro",
+    });
+    const relink = res.body.relinkId as string;
+    expect(
+      (await call("POST", undoPath(relink), { reason: "undo" })).status,
+    ).toBe(200);
+    const again = await call("POST", undoPath(relink), { reason: "undo" });
+    expect(again.status).toBe(409);
+    expect(again.body.code).toBe("undo_unavailable");
+    expect((await row(id)).email).toBe("ada@example.com");
+  });
+
   it("a later email edit closes the undo", async () => {
     await account("ada@example.com");
     const id = await create({ name: "Studio Pro", email: "ada@example.com" });
@@ -551,6 +625,68 @@ describe("Reassign", () => {
     });
     expect(undo.status).toBe(409);
     expect(undo.body.code).toBe("undo_unavailable");
+  });
+});
+
+describe("holder moves count towards the operator's daily relink alert", () => {
+  it("the sixth move in 24 hours raises identity.relink.alert", async () => {
+    const answers: boolean[] = [];
+    for (let i = 0; i < 6; i++) {
+      const id = await create({ name: `Lic ${i}`, email: `p${i}@example.com` });
+      const res =
+        i % 2 === 0
+          ? await call("POST", floatPath(id), {
+              reason: "Refunded",
+              confirm: `Lic ${i}`,
+            })
+          : await call("POST", reassignPath(id), {
+              email: `q${i}@example.com`,
+              reason: "Sold",
+              confirm: `Lic ${i}`,
+            });
+      expect(res.status).toBe(200);
+      answers.push(res.body.alert as boolean);
+    }
+    expect(answers).toEqual([false, false, false, false, false, true]);
+    const alerts = await db.all<{ action: string }>(
+      "SELECT action FROM platform_audit WHERE action = 'identity.relink.alert'",
+    );
+    expect(alerts.length).toBe(1);
+  });
+});
+
+describe("a product deletion takes its relink history", () => {
+  it("leaves no license_relinks row (names, emails, accounts) behind", async () => {
+    const { deleteProduct } = await import("../src/admin/repo.js");
+    await account("ada@example.com");
+    const id = await create({ name: "Studio Pro", email: "ada@example.com" });
+    expect(
+      (
+        await call("POST", floatPath(id), {
+          reason: "Refunded",
+          confirm: "Studio Pro",
+        })
+      ).status,
+    ).toBe(200);
+    const count = async (product: string) =>
+      (await db.first<{ n: number }>(
+        "SELECT COUNT(*) AS n FROM license_relinks WHERE product = ?",
+        product,
+      ))!.n;
+    const other = await create(
+      { name: "Other", email: "o@example.com" },
+      OTHER,
+    );
+    await call(
+      "POST",
+      floatPath(other),
+      { reason: "Refunded", confirm: "Other" },
+      { product: OTHER },
+    );
+    expect(await count(SLUG)).toBe(1);
+    await deleteProduct(db, SLUG, NOW);
+    expect(await count(SLUG)).toBe(0);
+    expect(await count(OTHER)).toBe(1);
   });
 });
 

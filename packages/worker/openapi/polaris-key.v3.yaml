@@ -14259,10 +14259,12 @@ paths:
       description: >
         Changes the fields given. LX-26 (notes/S-24 §6.3): setting `email` on a floating licence
         assigns it (audited `license.holder.assign`) and, as at creation, joins the account that
-        verified the address when one did; a new email on a waiting licence does the same.
-        Clearing the email of a licence that has one (`null` or blank) is refused with `400
-        bad_request`: removing a holder is the relink tool's Make floating, which takes a reason
-        and has an undo. A tier or device-limit change also answers `overLimit` when the licence
+        verified the address when one did. Clearing the email of a licence that has one (`null`
+        or blank) is refused with `400 bad_request`: removing a holder is the relink tool's Make
+        floating, which takes a reason and has an undo. So is changing it to another address
+        (LX-30): that is Reassign (`…/users/licenses/{licenseId}/reassign`). A case-only edit of
+        the same address, and a first email on a licence in an account that has none, stay a
+        PATCH. A tier or device-limit change also answers `overLimit` when the licence
         already has more devices than the new effective limit. Platform admins only; admin
         session cookie and CSRF header.
       parameters:
@@ -14298,7 +14300,7 @@ paths:
                       deviceCount: { type: integer }
                       deviceLimit: { type: integer }
         "400":
-          description: "Clearing an assigned licence's email (`bad_request`, `fields: [email]`): use Make floating."
+          description: "Clearing an assigned licence's email (use Make floating) or changing it to another address (use Reassign): `bad_request`, `fields: [email]`."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }

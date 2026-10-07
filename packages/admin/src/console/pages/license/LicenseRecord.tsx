@@ -190,6 +190,32 @@ function LicenseRecordBody({
   const moves = useLicenseHolderMoves(slug, id).data?.relinks;
   const undoable = undoableMove(moves);
   const [undoing, setUndoing] = React.useState<typeof undoable>(null);
+  // ADMIN.md §5.6: an undo removes the callout whose button opened it; once it has gone, focus
+  // moves to the page's heading rather than dropping to <body>.
+  const focusAfterUndo = React.useRef(false);
+  const undoableId = undoable?.id ?? null;
+  const undoOpen = undoing !== null;
+  React.useEffect(() => {
+    // Wait for both: the note gone (the refetch) and the dialog closed (its focus scope released).
+    if (!focusAfterUndo.current || undoableId !== null || undoOpen) return;
+    focusAfterUndo.current = false;
+    let tries = 0;
+    let frame = 0;
+    const attempt = (): void => {
+      const title = document.querySelector<HTMLElement>("h1[data-page-title]");
+      const active = document.activeElement;
+      // Only where focus was lost: never steal it from something that took it on purpose.
+      if (title && (!active || active === document.body)) {
+        if (!title.hasAttribute("tabindex"))
+          title.setAttribute("tabindex", "-1");
+        title.focus({ preventScroll: true });
+      }
+      if (document.activeElement !== title && ++tries < 10)
+        frame = requestAnimationFrame(attempt);
+    };
+    frame = requestAnimationFrame(attempt);
+    return () => cancelAnimationFrame(frame);
+  }, [undoableId, undoOpen]);
   // PX-W9: a licence with no account counts the devices that entered its key (Identity on).
   const keyEntries = inAccount ? null : (license.keyEntries ?? null);
   // LX-14a: the limit the Worker enforces and where it comes from.
@@ -440,6 +466,9 @@ function LicenseRecordBody({
         licenseId={id}
         move={undoing}
         onClose={() => setUndoing(null)}
+        onUndone={() => {
+          focusAfterUndo.current = true;
+        }}
       />
       <DeviceLimitSheet
         slug={slug}

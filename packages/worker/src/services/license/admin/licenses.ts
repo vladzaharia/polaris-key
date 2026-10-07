@@ -10,7 +10,8 @@
  * with an email, or given one by PATCH while floating, joins the account that verified that
  * address in the same request (Core's `associateLicenseHolder`, implemented by Identity); the
  * answer has the same shape whether or not one did (D4). Clearing an assigned licence's email is
- * refused: making a licence floating is the relink tool's Make floating (LX-30, I-12).
+ * refused: making a licence floating is the relink tool's Make floating (LX-30, I-12). So is
+ * changing it to another address: that is Reassign… (LX-30); a case-only edit stays a PATCH.
  *
  * LX-28: every licence read carries `batchId` (the batch it was created in, or `null`) and the
  * list filters on it (`?batch=`). Batches themselves are `batches.ts`.
@@ -509,6 +510,21 @@ export async function handleLicenses(
           400,
           ErrorCode.BadRequest,
           "an assigned license's email cannot be cleared; use Make floating to remove its holder",
+          { fields: ["email"] },
+        );
+      // LX-30 (S-24 D20): giving a licence that has an email to another address is Reassign…, the
+      // relink tool's audited move (step-up, reason, notices, undo), never a PATCH. A case-only
+      // edit of the same address stays allowed, as does a first email (Assign on a floating
+      // licence, or a licence in an account that has none).
+      if (
+        typeof nextEmail === "string" &&
+        currentEmail !== null &&
+        nextEmail.trim().toLowerCase() !== currentEmail.trim().toLowerCase()
+      )
+        return err(
+          400,
+          ErrorCode.BadRequest,
+          "this license already has an email; use Reassign to give it to someone else",
           { fields: ["email"] },
         );
       const emailChanged =

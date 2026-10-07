@@ -7035,8 +7035,10 @@ the I-12 relink tool keyed by the licence, so they also reach a licence waiting 
   the owner move is `reassignLicense`'s compare-and-set and the name and email write is
   conditional on the licence still having no account and the address read.
 - **A typed confirmation the Worker checks** (R7): `confirm` must be the licence's name or its id,
-  or the answer is `400 bad_request` (`confirm_required`) and nothing is sent or written. A
-  replayed or scripted call without it cannot move a licence.
+  or the answer is `400 bad_request` (`confirm_required`) and nothing is sent or written. It guards
+  against an accident (the wrong licence, a stray click), not against a script: the licence id is
+  in the URL, so a caller holding a fresh session can always supply it. The step-up, the CSRF
+  token and the audit trail are what stand against a hostile caller.
 - **Notices to the old and the new address.** The account a licence leaves is told at every
   verified address (a security notice, with the undo window); a waiting licence's address gets
   the same message without "Secure your account" (it has no account). Reassign also tells the new
@@ -7061,9 +7063,12 @@ the I-12 relink tool keyed by the licence, so they also reach a licence waiting 
   device).
 - Residual, accepted: Reassign mails an operator-typed address. It is behind the step-up, the
   daily alert and the audit trail, and the message carries no key and no link that signs anyone in.
-- Residual, accepted: the console PATCH still lets an operator change the email of a licence that
-  is waiting or in an account (only clearing it is refused). That edit has no step-up and no undo;
-  the console offers Reassign instead and no longer edits an assigned licence's email (LX-30).
+- **No way round it through the licence PATCH.** `PATCH …/license/licenses/<id>` refuses to clear
+  the email of a licence that has one (use Make floating) and to change it to another address
+  (`400 bad_request`, `fields: ["email"]`: use Reassign); only a case-only edit of the same address,
+  and a first email (Assign on a floating licence, or a licence in an account that has none), stay
+  a PATCH. So every change of who holds a licence goes through the step-up, the reason, the notices
+  and the undo.
 
 ### Bulk floating keys: licence batches and Disable unused keys (LX-28)
 

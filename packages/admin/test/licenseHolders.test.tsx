@@ -468,6 +468,39 @@ describe("the newest move and its undo", () => {
     devicesSignedOut: 0,
   };
 
+  it("moves focus to the page heading once the undone change's note has gone", async () => {
+    let undone = false;
+    bootLicense("#/p/djdl/license/licenses/lic_float", {
+      me: FRESH,
+      routes: {
+        ...ROUTES,
+        [`${API}/users/licenses/lic_float/relinks`]: () => ({
+          relinks: undone
+            ? [{ ...MOVE, undoable: false, undoneAt: NOW_S }]
+            : [MOVE],
+        }),
+        [`POST ${API}/users/relinks/rlk_9/undo`]: () => {
+          undone = true;
+          return { ok: true, licenseId: "lic_float", subject: null };
+        },
+      },
+    });
+    await screen.findByRole("heading", { level: 1, name: "Floating license" });
+    await userEvent.click(await screen.findByRole("button", { name: "Undo…" }));
+    const dialog = await screen.findByRole("alertdialog");
+    await userEvent.type(within(dialog).getByLabelText(/^Reason/), "Mistake");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Undo" }));
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Undo…" })).toBeNull(),
+    );
+    const h1 = screen.getByRole("heading", {
+      level: 1,
+      name: "Floating license",
+    });
+    await waitFor(() => expect(document.activeElement).toBe(h1));
+    expect(h1.getAttribute("tabindex")).toBe("-1");
+  });
+
   it("shows what changed and undoes it with a reason", async () => {
     const log = bootLicense("#/p/djdl/license/licenses/lic_float", {
       me: FRESH,

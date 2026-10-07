@@ -92,9 +92,17 @@ Where the brief and the code disagreed, the code was the fact:
 - **Rule 10:** the three routes, the batch list's parameters and the disable-unused body are in the
   OpenAPI spec and `routeCoverage`'s `products` table (I-12's own relink routes stay narrative); the
   docs site's `admin/users.md` documents them.
-- **Edit holder** stays on an assigned licence and edits the name only; the Worker's `PATCH` still
-  accepts an email change on an assigned licence (only the console stopped offering it). Refusing it
-  on the Worker is a follow-up (THREAT-MODEL records it as a residual).
+- **Edit holder** stays on an assigned licence and edits the name only, and the Worker's `PATCH` now
+  refuses what Edit holder no longer offers (review B3): changing the email of a licence that has one
+  to another address is `400 bad_request` (`fields: ["email"]`, "use Reassign"). A case-only edit, a
+  first email on a floating licence (Assign) and a first email on an in-account licence stay a PATCH.
+  LX-26's test that edited a removed licence's email now expects the refusal and goes through
+  Reassign instead.
+- **Review fix round (2026-10-07):** a product deletion deletes its `license_relinks` rows (they
+  hold names, emails and account ids); Make floating writes its relink row and the handler its
+  audit row and alert BEFORE signing devices out, and a sign-out that fails partway answers 200
+  with the count it reached (the undo and the audit stay); focus moves to the page heading after an
+  undo removes its note; the Users page names a holder move's account-less side "an email address".
 
 ## Goal
 
@@ -173,6 +181,17 @@ mise exec node@22 -- pnpm --filter @polaris-key/worker test -- relink license
 ## Hand-off
 
 LX-31 documents the holder surfaces.
+
+Follow-ups recorded by the LX-30 review (2026-10-07), none blocking:
+
+- The undo is not one D1 batch (the owner move, the name and email restore and the undone mark are
+  separate writes), the same class as I-12's relink.
+- Notices go out before the compare-and-set, so a move that then answers `conflict` has already
+  told both sides (I-12's class too).
+- A keyless licence made floating (no key ever handed out) is unreachable by anyone once the 72-hour
+  undo closes; consider a warning in Make floating when the licence has no active key.
+- The Licenses table remounts once when the first batch read lands (its Batch column); focus
+  inside the table at that instant is lost.
 
 The role agent sets `--set LX-30 in-review` when it hands off. After review, the lead adds the last
 commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set LX-30

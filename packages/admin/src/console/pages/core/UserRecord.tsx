@@ -509,7 +509,12 @@ function UserLicenses({
                           ? "moved here from "
                           : "moved to "}
                         <span className="font-mono text-xs">
-                          {x.otherSubject ?? "a deleted account"}
+                          {x.otherSubject ??
+                            // A holder move's other side with no subject is an email address
+                            // (a reassignment came from a waiting licence), not a deleted account.
+                            (x.kind && x.kind !== "relink"
+                              ? "an email address"
+                              : "a deleted account")}
                         </span>
                       </>
                     )}

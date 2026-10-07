@@ -430,6 +430,51 @@ describe("relink", () => {
     );
   });
 
+  it("names the side of a holder move that had no account as an email address (LX-30)", async () => {
+    const move = {
+      licenseId: "lic_1",
+      reason: "Sold",
+      actorName: "Ada",
+      createdAt: NOW - 100,
+      undoUntil: NOW + 3600,
+      undoneAt: null,
+      undoable: false,
+    };
+    productUser.mockResolvedValue({
+      user: detail({
+        relinks: [
+          // Reassigned from a waiting address into this user's account.
+          {
+            ...move,
+            id: "rlk_2",
+            kind: "reassign",
+            direction: "in",
+            otherSubject: null,
+          },
+          // An I-12 relink from an account deleted since.
+          {
+            ...move,
+            id: "rlk_3",
+            kind: "relink",
+            direction: "in",
+            otherSubject: null,
+          },
+          {
+            ...move,
+            id: "rlk_4",
+            kind: "floating",
+            direction: "out",
+            otherSubject: null,
+          },
+        ],
+      }),
+    });
+    mount(`#/p/djdl/users/${SUBJECT}/licenses`);
+    expect(await screen.findByText("an email address")).toBeTruthy();
+    expect(screen.getByText("a deleted account")).toBeTruthy();
+    expect(screen.getByText(/made floating/)).toBeTruthy();
+  });
+
   it("reads the step-up window from me", () => {
     expect(isSteppedUp(meWith(NOW - 10), NOW)).toBe(true);
     expect(isSteppedUp(meWith(NOW - 290), NOW)).toBe(false);

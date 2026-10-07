@@ -58,6 +58,7 @@ import {
   makeLicenseFloating,
   productUserDetail,
   reassignLicenseHolder,
+  recordDevicesSignedOut,
   relinkLicense,
   undoRelink,
   type HolderMoveResult,
@@ -287,26 +288,6 @@ export async function handleProductUsers(
         reason: body.reason,
         confirm: body.confirm,
         actor,
-        ...(body.signOutDevices === true
-          ? {
-              signOutDevices: async () => {
-                let n = 0;
-                for (const device of await listDevicesByLicense(
-                  db,
-                  slug,
-                  licenseId,
-                )) {
-                  if (device.status !== "authorized") continue;
-                  await deauthorizeDeviceAsAdmin(
-                    { env, db, session, now },
-                    device,
-                  );
-                  n += 1;
-                }
-                return n;
-              },
-            }
-          : {}),
       });
     } else {
       // The new holder's name and email are free text the signed profile carries.
@@ -335,6 +316,9 @@ export async function handleProductUsers(
     }
     if (!result.ok) return refused(result.reason);
     const floating = third === "make-floating";
+    const signOut = floating && body.signOutDevices === true;
+    // The move and its relink row (the undo) are written; the audit row and the alert follow
+    // before any device is touched, so a sign-out that fails partway leaves both in place.
     await audit(
       db,
       slug,
@@ -347,17 +331,22 @@ export async function handleProductUsers(
         before: result.before,
         after: result.after,
         reason: typeof body.reason === "string" ? body.reason.trim() : "",
-        ...(floating ? { devicesSignedOut: result.devicesSignedOut } : {}),
+        ...(floating ? { signOutDevices: signOut } : {}),
       }),
     );
     if (result.alert) await relinkAlert(db, session, slug, now);
+    const devicesSignedOut = signOut
+      ? await signOutLicenseDevices(env, db, session, slug, licenseId, now)
+      : 0;
+    if (devicesSignedOut > 0)
+      await recordDevicesSignedOut(db, slug, result.relinkId, devicesSignedOut);
     return adminJson({
       ok: true,
       relinkId: result.relinkId,
       undoUntil: result.undoUntil,
       noticesSent: result.noticesSent,
       alert: result.alert,
-      ...(floating ? { devicesSignedOut: result.devicesSignedOut } : {}),
+      ...(floating ? { devicesSignedOut } : {}),
     });
   }
 
@@ -489,6 +478,33 @@ export async function handleProductUsers(
   }
 
   return notFound();
+}
+
+/**
+ * Make floating's "Also sign out its devices": deauthorize each authorized device of the licence
+ * (each audited as `device.deauthorize`, exactly as the Devices tab does). It runs after the move
+ * is recorded and audited; the first device that fails stops it, and the answer is how many were
+ * signed out, so a partial sign-out is reported rather than turned into an error.
+ */
+async function signOutLicenseDevices(
+  env: Env,
+  db: Db,
+  session: AdminSession,
+  slug: string,
+  licenseId: string,
+  now: number,
+): Promise<number> {
+  let n = 0;
+  try {
+    for (const device of await listDevicesByLicense(db, slug, licenseId)) {
+      if (device.status !== "authorized") continue;
+      await deauthorizeDeviceAsAdmin({ env, db, session, now }, device);
+      n += 1;
+    }
+  } catch {
+    // Stop at the first failure; the count says how far it got.
+  }
+  return n;
 }
 
 /**

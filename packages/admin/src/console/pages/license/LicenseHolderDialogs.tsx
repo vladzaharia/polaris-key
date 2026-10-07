@@ -404,11 +404,14 @@ export function UndoHolderMoveDialog({
   licenseId,
   move,
   onClose,
+  onUndone,
 }: {
   slug: string;
   licenseId: string;
   move: LicenseHolderMove | null;
   onClose: () => void;
+  /** After a successful undo: the callout that opened this goes, so the page moves focus. */
+  onUndone?: () => void;
 }): React.ReactElement {
   const open = move !== null;
   const { fresh, markStale } = useStepUp(open);
@@ -437,6 +440,7 @@ export function UndoHolderMoveDialog({
         await mutate("undoRelink", slug, move!.id, {
           reason: reason.trim(),
         }).catch(stepUpAware(markStale));
+        onUndone?.();
         toast.success("Change undone");
       }}
     >

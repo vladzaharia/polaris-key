@@ -1291,9 +1291,11 @@ async function recordHolderMove(
 }
 
 /**
- * Make floating (S-24 §5.5): take the licence off its holder. The caller has checked the step-up,
- * signs devices out through `signOutDevices` when the operator asked (it runs after the move), and
- * writes the console audit row.
+ * Make floating (S-24 §5.5): take the licence off its holder. The caller has checked the step-up
+ * and writes the console audit row. Signing devices out is the CALLER's step, AFTER this returns:
+ * the move, its relink row (the undo) and the caller's audit row are all written before any device
+ * is touched, so a sign-out that fails partway leaves the move undoable and audited; the caller
+ * then records how many it signed out (`recordDevicesSignedOut`, best effort).
  */
 export async function makeLicenseFloating(
   ctx: AccountContext,
@@ -1303,8 +1305,6 @@ export async function makeLicenseFloating(
     reason: unknown;
     confirm: unknown;
     actor: { sub: string; name: string | null };
-    /** Sign every device of the licence out; answers how many. Runs after the move. */
-    signOutDevices?: () => Promise<number>;
   },
 ): Promise<HolderMoveResult> {
   const { db, now } = ctx;
@@ -1355,9 +1355,6 @@ export async function makeLicenseFloating(
   );
   if (cleared !== 1) return { ok: false, reason: "conflict" };
 
-  const devicesSignedOut = args.signOutDevices
-    ? await args.signOutDevices()
-    : 0;
   const recorded = await recordHolderMove(ctx, {
     product: args.product,
     licenseId: args.licenseId,
@@ -1372,7 +1369,7 @@ export async function makeLicenseFloating(
       kind: "floating",
       from,
       to: { name: null, email: null },
-      devicesSignedOut,
+      devicesSignedOut: 0,
     },
   });
   return {
@@ -1381,8 +1378,34 @@ export async function makeLicenseFloating(
     noticesSent,
     before: { subject: fromSubject, ...from },
     after: null,
-    devicesSignedOut,
+    devicesSignedOut: 0,
   };
+}
+
+/**
+ * After a Make floating's optional sign-out: put the count on its relink row (shown with the move).
+ * Best effort: each device already has its own `device.deauthorize` audit row, so a failure here
+ * loses only the summary, never the undo.
+ */
+export async function recordDevicesSignedOut(
+  db: Db,
+  product: string,
+  relinkId: string,
+  count: number,
+): Promise<void> {
+  if (count <= 0) return;
+  try {
+    await db.run(
+      `UPDATE license_relinks
+          SET holder_json = json_set(holder_json, '$.devicesSignedOut', ?)
+        WHERE product = ? AND id = ? AND holder_json IS NOT NULL`,
+      count,
+      product,
+      relinkId,
+    );
+  } catch {
+    // Swallowed on purpose (see above); the Worker has no console logging (R12).
+  }
 }
 
 /**
