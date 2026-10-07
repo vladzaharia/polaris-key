@@ -1421,9 +1421,12 @@ the game's menu.
 #### Terminal (Node and Python CLIs, Textual)
 
 The terminal board is drawn in a real cell grid at line-height 1.2, 80 columns. It covers
-device-code sign-in with a half-block QR, masked key entry, the device-limit picker, status and
-update progress, a blocked status with its fix as a command, grouped help, the four colour and
-symbol fallbacks, a 60-column render and a Textual app. Textual buttons share one shape (a one-row block with one cell of padding): the
+device-code sign-in without a QR (SIGN-IN.md D-67, D-68), masked key entry that never echoes the
+key, the device limit's browser hand-off (SIGN-IN.md §4.15: the terminal opens `manageUrl` to
+replace a device), status and update progress, a blocked status with its fix as a command, grouped
+help, the four colour and symbol fallbacks, a 60-column render and a Textual app. The sign-in,
+activate, device-limit, help, fallback and 60-column shots follow the Node kit's goldens
+(`packages/sdk-node/test/cli/golden/`). Textual buttons share one shape (a one-row block with one cell of padding): the
 primary in the accent, the secondary as a tonal block, never bracketed `[ text ]` buttons beside
 blocks.
 
