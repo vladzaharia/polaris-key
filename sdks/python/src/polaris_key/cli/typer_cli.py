@@ -71,7 +71,9 @@ def _typer_verb(factory: core.ClientFactory, verb: "verbs.Verb", emit, theme: An
         P("trust", P.KEYWORD_ONLY, default=typer.Option([]), annotation=List[str]),
         P("service", P.KEYWORD_ONLY, default=typer.Option([]), annotation=List[str]),
     ]
-    if verb.words:
+    if verb.arg:
+        params.insert(0, P(verb.arg, P.POSITIONAL_OR_KEYWORD, default=typer.Argument(None), annotation=Optional[str]))
+    elif verb.words:
         params.insert(0, P("words", P.POSITIONAL_OR_KEYWORD, default=typer.Argument(None), annotation=Optional[List[str]]))
     for o in verb.opts + verbs.UI_OPTS:
         ann: Any = bool if o.kind == "flag" else (Optional[int] if o.kind == "int" else Optional[str])
@@ -81,7 +83,11 @@ def _typer_verb(factory: core.ClientFactory, verb: "verbs.Verb", emit, theme: An
     def run(**kw: Any) -> None:
         opts = _options(kw.pop("product"), kw.pop("version"), kw.pop("base_url"), kw.pop("config_dir"),
                         kw.pop("trust"), kw.pop("service"))
-        words = kw.pop("words", None) or []
+        if verb.arg:
+            value = kw.pop(verb.arg, None)
+            words = [value] if value else []
+        else:
+            words = kw.pop("words", None) or []
         ns = verbs.namespace(verb, words, kw)
         emit(verbs.run(factory, opts, verb, ns, theme=theme, prog=prog))
 

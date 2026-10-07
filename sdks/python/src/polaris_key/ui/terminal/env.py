@@ -6,7 +6,8 @@
 * **Symbols.** Unicode, or ASCII with ``--ascii``, ``theme.symbols = "ascii"`` or ``TERM=dumb``.
 * **Width.** The layout targets 80 columns and degrades to 60; a narrower terminal still gets 60.
 * **Scheme.** The theme's ``color_scheme``, then ``PKEY_THEME``, then the terminal's background
-  (OSC 11, asked only on an interactive terminal), then ``COLORFGBG``, then dark.
+  (OSC 11, asked only on an interactive terminal and only when the answer matters: truecolor, or
+  no colour, where the QR inverts), then ``COLORFGBG``, then dark.
 * **Motion.** Spinners animate only on an interactive terminal, never with ``CI`` set, ``TERM=dumb``
   or ``theme.motion`` reduced or none (UI-KITS §4.8).
 * **Headless** (SIGN-IN.md D-68): ``SSH_CONNECTION`` or ``SSH_TTY``; on Linux no ``DISPLAY`` and no
@@ -179,7 +180,9 @@ def detect(
     scheme: Optional[str] = color_scheme if color_scheme in ("dark", "light") else None
     if scheme is None and e.get("PKEY_THEME") in ("dark", "light"):
         scheme = e["PKEY_THEME"]
-    if scheme is None and interactive and not dumb:
+    # The background matters for the truecolor accent and for a QR drawn without colour; only
+    # then is the terminal asked, so a terminal that never answers costs nothing elsewhere.
+    if scheme is None and interactive and not dumb and color in ("truecolor", "none"):
         scheme = (osc11 or query_osc11)()
     if scheme is None:
         scheme = parse_colorfgbg(e.get("COLORFGBG"))

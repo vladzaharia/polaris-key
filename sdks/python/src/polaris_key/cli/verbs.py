@@ -66,6 +66,9 @@ class Verb:
     #: Free positional words (the action and its arguments), or none.
     words: bool = False
     opts: Tuple[Opt, ...] = field(default_factory=tuple)
+    #: One optional positional with its own name (``activate``'s ``key``, ``import-bundle``'s
+    #: ``bundle``), kept under that name for hosts that read the parsed arguments.
+    arg: Optional[str] = None
 
 
 #: The terminal kit's flags, on every verb.
@@ -275,7 +278,7 @@ _YES = (Opt("yes", "flag", "Do not ask for confirmation."),)
 #: Every verb. ``login`` and ``logout`` are ``sign-in`` and ``sign-out`` (SIGN-IN.md §4.15).
 VERBS: Tuple[Verb, ...] = (
     Verb("activate", "license", "Add a license key (prompts; never an argument).", activate,
-         words=True, opts=_KEY_SOURCE),
+         opts=_KEY_SOURCE, arg="key"),
     Verb("enroll", "license", "Get a license with no key and no sign-in.", enroll),
     Verb("deactivate", "license", "Release this device's seat and wipe local credentials.", deactivate),
     Verb("status", "license", "License, devices and offline time.", status),
@@ -297,7 +300,7 @@ VERBS: Tuple[Verb, ...] = (
     Verb("boot", "core", "Run the one-call boot, a live line per stage.", boot,
          opts=(Opt("yes", "flag", "Download required content without asking."),)),
     Verb("import-bundle", "core", "Import an offline activation file (a path, or -).", import_bundle,
-         words=True),
+         arg="bundle"),
     Verb("offline-request", "core", "The request code for an offline activation bundle.", offline_request,
          opts=(Opt("no-qr", "flag", "Do not draw the QR code."),)),
     Verb("doctor", "core", "Diagnostics: discovery, services, store and supports.", doctor),

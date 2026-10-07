@@ -262,10 +262,10 @@ def activate(client: Any, t: Terminal, key: Optional[str]) -> Outcome:
     verb = t.verb or "activate"
     if key is None:
         if not t.env.interactive:
-            return _error_outcome(t, "key-entry-unsupported", verb)
+            return usage(t, "activate --key-stdin | --key-file <path>")
         key = read_key(t)
         if key is None:
-            return Outcome(1, screens.sign_in(k, SignInModel().cancelled(), verb), {"kind": "cancelled"})
+            return Outcome(1, [], {"kind": "cancelled"})
     verdict = parse_key(key, final=True)
     while True:
         result = _busy(t, lambda: client.license.activate_with_key(key), lambda f: screens.key_entry(k, key, verdict, busy=True, frame=f))
@@ -591,7 +591,7 @@ def update(client: Any, t: Terminal, words: Sequence[str], *, channel: Optional[
                 return Outcome(1, screens.diagnostic(k, verb, [("", "This build configures no signed updates (UpdateClientOptions).")], ok=False), {"error": "not-configured"})
             vc = client.update.check(channel=channel)
             state = "available" if vc.updateAvailable else "up-to-date"
-            view = UpdateView("UpdatePrompt", state, vc.version if vc.updateAvailable else None, current, notes_url=vc.url or None)
+            view = UpdateView("UpdatePrompt", state, vc.version if vc.updateAvailable else None, current, notes_url=vc.url or None, installable=False)
             return Outcome(0, screens.update(k, view, verb), {"state": state, "version": vc.version, "updateAvailable": vc.updateAvailable})
         check = client.update.decide(channel=channel)
         d = check.decision

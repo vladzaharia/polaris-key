@@ -156,7 +156,7 @@ class Kit:
     def header(self, verb: str) -> Line:
         """``┌  [ Product ] · verb``: the product chip opens every flow."""
         if not self.product:
-            return Line(self._prefix("railStart") + [self.d(verb, "command", "muted" if self.decor else "")])
+            return Line(self._prefix("railStart") + [self.d(verb, "command", *(("muted",) if self.decor else ()))])
         chip = Span(" " + self.product + " ", ("chip",), None, "data:product")
         if not self.decor:
             return Line([Span(self.product, (), None, "data:product"), self.sep(), self.d(verb, "command")])

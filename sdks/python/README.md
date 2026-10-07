@@ -37,6 +37,8 @@ polaris-key = { index = "polaris-key" }
 uv add "polaris-key[keyring]"
 # servers, containers and CI: the bare package (credentials in a 0600 file)
 uv add polaris-key
+# the terminal kit's styled output (rich), and its optional Textual app
+uv add "polaris-key[keyring,cli]"        # or [tui]
 # alternate CLI front ends
 uv add "polaris-key[keyring,click,typer]"
 ```
@@ -126,8 +128,8 @@ cannot re-register (that needs a browser session) and lands on the hard 401.
   token write moves it to the keyring).
 
 Writes are verified by reading back, and reads are file-first: only a write that fell back leaves
-a file, so a file token is always the newest copy. The CLI `status` command prints the same as a
-`Token store:` line.
+a file, so a file token is always the newest copy. The CLI `status` command names a degraded store
+in a `Token store:` line (and always in `--json` as `tokenStore`); `doctor` names it either way.
 
 ### Directories
 
@@ -364,8 +366,8 @@ immediately, and `events.stream()` is an async iterator.
 | Pyodide (`platform.system()` = Emscripten) | Unsupported: no fingerprint or outlet reader, and no platform header value (the corpus maps `Emscripten` to none). |
 | Python on iOS or Android (BeeWare, Kivy)   | Unsupported until fingerprint and outlet readers exist for them; use the Swift or Kotlin SDK in the native shell.  |
 
-Samples: `examples/python-cli/` (a CLI mounting the verb set) and `examples/python-renpy/` (a
-Ren'Py boot snippet).
+Samples: `examples/python-cli/` (a CLI mounting the verb set), `examples/ui/terminal-python/` (the
+terminal kit's `tidewater` demo) and `examples/python-renpy/` (a Ren'Py boot snippet).
 
 ## Gate statuses
 
@@ -537,7 +539,7 @@ the service that owns them:
 | Service    | Verbs                                                                                    |
 | ---------- | ---------------------------------------------------------------------------------------- |
 | `license`  | `activate` · `enroll` · `deactivate` · `status`                                          |
-| `identity` | `sign-in` (`--browser`, `--attach`, a terminal QR) · `sign-out`                          |
+| `identity` | `sign-in` / `login` (the browser, or a code: `--device-code`) · `sign-out` / `logout`    |
 | `devices`  | `register` · `devices list` · `devices rename <id> <label>` · `devices deauthorize <id>` |
 | `config`   | `config list` · `config get <key>` · `config set <key> <value>` · `config reset <key>`   |
 |            | `secret <key>` (presence only, never printed) · `mint <recipe>` (never printed)          |
@@ -547,6 +549,21 @@ the service that owns them:
 
 The verbs are described once in `polaris_key.cli.verbs.VERBS`, so the three front ends carry the
 same set with the same options.
+
+### The terminal kit
+
+Every verb draws through the terminal kit, `polaris_key.ui.terminal`: the product's chip, a rail,
+key hints, masked key entry, live progress, and `--json` on every verb (one object per line, the
+last `"event": "result"`; it never prompts). Install `polaris-key[cli]` for rich; without it the
+kit writes the same output itself. `NO_COLOR`, pipes and `TERM=dumb` print plain lines. Mount the
+verbs under your own command so the kit names it:
+
+```python
+register_argparse(parser.add_subparsers(dest="command", required=True), client_factory, prog="tidewater")
+```
+
+The kit's page, with the `--json` shapes, the theme and the Textual app:
+[Terminal (Python)](/docs/build/ui/frameworks/terminal-python/). Sample: `examples/ui/terminal-python/`.
 
 Trust keys are passed as repeatable `--trust kid=rawBase64url` pairs so the CLI stays
 product-agnostic; `--service <slug>` (repeatable) carries the capability expectation.
@@ -577,7 +594,7 @@ source first:
 | 2     | `--key-stdin` (one line from stdin)                                              |
 | 3     | `$POLARIS_KEY_ACTIVATION_KEY`                                                    |
 | 4     | the positional argument — still supported for scripting, but it prints a warning |
-| 5     | an interactive prompt, when stdin is a TTY                                       |
+| 5     | masked entry, when stdin and stdout are a terminal                               |
 
 ```sh
 printf '%s' "$KEY" | polaris-key activate --key-stdin --product djdl

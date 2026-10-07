@@ -49,3 +49,27 @@ def test_renpy_snippet_python_blocks_compile() -> None:
         if m:
             ast.parse(m.group(1))
     assert "polaris_key.create(" in source and "pkey.boot()" in source
+
+
+def test_terminal_kit_sample_runs_against_its_fixtures(capsys: pytest.CaptureFixture[str], monkeypatch, tmp_path) -> None:
+    """examples/ui/terminal-python (UK-13): the tidewater demo CLI mounts every verb under its own
+    name and runs against its fixture adapter with no Worker (UI-KITS §6.1)."""
+    import json
+
+    sample = _load(EXAMPLES / "ui" / "terminal-python" / "tidewater.py")
+    fixtures = __import__("tidewater_fixtures")
+    monkeypatch.setattr(fixtures, "STATE", str(tmp_path / "state.json"))
+    with pytest.raises(SystemExit) as exit_:
+        sample.main(["--help"])
+    assert exit_.value.code == 0
+    out = capsys.readouterr().out
+    assert out.startswith("tidewater")
+    for verb in VERB_NAMES:
+        assert verb in out, verb
+    assert sample.main(["status", "--json"]) == 1
+    assert json.loads(capsys.readouterr().out)["status"] == "needs-activation"
+    monkeypatch.setattr("sys.stdin", __import__("io").StringIO("pkey_tidewater_7Q2MzK8vRb1xLp4n3WPLDA\n"))
+    assert sample.main(["activate", "--key-stdin", "--json"]) == 0
+    capsys.readouterr()
+    assert sample.main(["status"]) == 0
+    assert "Tidewater Studio" in capsys.readouterr().out

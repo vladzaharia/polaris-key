@@ -5,6 +5,9 @@ tokens (``polaris_key.ui._tokens``), the ANSI tables for the terminal kit (``pol
 the Qt Quick theme and QWidget stylesheets (``polaris_key/ui/qt/``), the bundled variable Rubik and
 JetBrains Mono (``polaris_key/ui/fonts/``) and the product accent resolver
 (``polaris_key.ui.accent``). Pure Python, no GUI dependency: the Qt and terminal kits build on it.
+
+The kits' shared headless layer is ``polaris_key.ui.core`` (copy, product identity, theme,
+models); the terminal kit is ``polaris_key.ui.terminal`` (UK-13).
 """
 
 from __future__ import annotations

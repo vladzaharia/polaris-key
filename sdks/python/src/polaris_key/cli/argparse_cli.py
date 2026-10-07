@@ -93,7 +93,9 @@ def register_argparse(
     for verb in verbs.VERBS:
         p = subparsers.add_parser(verb.name, help=f"[{verb.group}] {verb.help}")
         _add_common(p)
-        if verb.words:
+        if verb.arg:
+            p.add_argument(verb.arg, nargs="?", default=None, help=verb.help)
+        elif verb.words:
             p.add_argument("words", nargs="*", metavar="ARG", help=verb.help)
         for o in verb.opts:
             flag = f"--{o.name}"
@@ -112,7 +114,12 @@ def _verb(factory: core.ClientFactory, verb: "verbs.Verb", theme: Any, prog: str
             verbs.option_dest(o.name): getattr(args, verbs.option_dest(o.name), o.default)
             for o in verb.opts + verbs.UI_OPTS
         }
-        ns = verbs.namespace(verb, getattr(args, "words", []), values)
+        if verb.arg:
+            value = getattr(args, verb.arg, None)
+            words = [value] if value else []
+        else:
+            words = getattr(args, "words", [])
+        ns = verbs.namespace(verb, words, values)
         result = verbs.run(factory, _options(args), verb, ns, theme=theme, prog=prog)
         result.emit()
         return result.code

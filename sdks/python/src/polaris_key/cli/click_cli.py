@@ -90,11 +90,16 @@ def polaris_click_group(
 def _click_verb(factory: core.ClientFactory, verb: "verbs.Verb", emit, theme: Any = None, prog: str = "polaris-key") -> click.Command:  # noqa: ANN001
     def callback(product, version, base_url, config_dir, trust, service, words=(), **values):  # noqa: ANN001
         opts = _options(product, version, base_url, config_dir, trust, service)
+        if verb.arg:
+            value = values.pop(verb.arg, None)
+            words = (value,) if value else ()
         ns = verbs.namespace(verb, list(words), values)
         emit(verbs.run(factory, opts, verb, ns, theme=theme, prog=prog))
 
     params = []
-    if verb.words:
+    if verb.arg:
+        params.append(click.Argument([verb.arg], required=False, default=None))
+    elif verb.words:
         params.append(click.Argument(["words"], nargs=-1))
     for o in verb.opts + verbs.UI_OPTS:
         if o.kind == "flag":

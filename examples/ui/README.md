@@ -29,7 +29,7 @@ Every sample:
 | Android Views  | An XML app using `PolarisKeyActivity`                                                                     | `android-views/`                     | Not yet |
 | Godot          | A demo project: a title screen, a settings menu with the Account tab, a pack download; and its C# twin    | `godot/`, `godot-dotnet/`            | Not yet |
 | Qt             | A PySide6 app                                                                                             | `qt/`                                | Not yet |
-| Terminal       | The `tidewater` demo CLI, in Node and in Python                                                           | `terminal-node/`, `terminal-python/` | Not yet |
+| Terminal       | The `tidewater` demo CLI, in Node and in Python                                                           | `terminal-node/`, `terminal-python/` | Python  |
 
 Until the kits are rebuilt, [`../node-electron`](../node-electron) shows today's React kit in
 Electron over the `PolarisBridge`.

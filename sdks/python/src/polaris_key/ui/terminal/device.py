@@ -222,6 +222,22 @@ class KeyReader:
 # ── The device ───────────────────────────────────────────────────────────────────────────────
 
 
+def _enable_vt() -> bool:
+    """Turn on virtual-terminal processing for this Windows console (Windows 10 and later), so
+    escapes draw instead of printing. False when the console cannot."""
+    try:
+        import ctypes
+
+        kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
+        handle = kernel32.GetStdHandle(-11)
+        mode = ctypes.c_uint32()
+        if not kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+            return False
+        return bool(kernel32.SetConsoleMode(handle, mode.value | 0x0004))
+    except Exception:
+        return False
+
+
 class Device:
     """Where a flow's lines go. ``print`` writes lines, ``live`` redraws a region in place,
     ``keys`` reads raw keys, ``emit`` writes one JSON object per line (``--json``)."""
@@ -241,6 +257,9 @@ class Device:
         self.inp = stdin or sys.stdin
         self.use_rich = rich_available() if use_rich is None else use_rich
         self._console: Any = None
+        if not self.use_rich and env.color != "none" and os.name == "nt" and not _enable_vt():
+            # A legacy Windows console without virtual-terminal processing: plain lines.
+            self.palette = Palette(color="none")
 
     @property
     def console(self) -> Any:
@@ -299,13 +318,19 @@ class LiveRegion:
         self._live: Any = None
         self._lock = threading.Lock()
 
+    @property
+    def _redraws(self) -> bool:
+        """A region redraws on an interactive terminal (key entry needs it even with motion off;
+        motion only decides whether spinners turn)."""
+        return self.d.env.interactive or self.d.env.motion
+
     def __enter__(self) -> "LiveRegion":
-        if self.d.use_rich and self.d.env.motion:
+        if self.d.use_rich and self._redraws:
             from rich.live import Live
 
             self._live = Live(console=self.d.console, auto_refresh=False, transient=True, redirect_stdout=False, redirect_stderr=False)
             self._live.__enter__()
-        elif self.d.env.motion:
+        elif self._redraws:
             self.d.out.write("\x1b[?25l")
         return self
 
@@ -315,7 +340,7 @@ class LiveRegion:
             if self._live is not None:
                 self._live.update(to_rich(self._lines, self.d.palette), refresh=True)
                 return
-            if not self.d.env.motion:
+            if not self._redraws:
                 return
             out = self.d.out
             if self._drawn:
@@ -329,7 +354,7 @@ class LiveRegion:
         with self._lock:
             if self._live is not None:
                 self._live.update(to_rich([], self.d.palette), refresh=True)
-            elif self._drawn and self.d.env.motion:
+            elif self._drawn and self._redraws:
                 self.d.out.write(f"\x1b[{self._drawn}F\x1b[J")
                 self.d.out.flush()
                 self._drawn = 0
@@ -338,7 +363,7 @@ class LiveRegion:
         self.clear()
         if self._live is not None:
             self._live.__exit__(None, None, None)
-        elif self.d.env.motion:
+        elif self._redraws:
             self.d.out.write("\x1b[?25h")
             self.d.out.flush()
 

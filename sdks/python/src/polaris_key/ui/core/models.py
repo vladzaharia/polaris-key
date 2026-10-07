@@ -327,6 +327,8 @@ class UpdateView:
     done: Optional[str] = None
     total: Optional[str] = None
     eta: Optional[str] = None
+    #: Whether this build can install it (a build without signed updates can only point at it).
+    installable: bool = True
 
 
 def update_view(decision: Any, *, current: Optional[str] = None, notes: Sequence[str] = (), notes_url: Optional[str] = None, size: Optional[str] = None) -> UpdateView:

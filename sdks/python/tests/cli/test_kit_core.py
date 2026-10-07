@@ -350,7 +350,8 @@ def test_detect_width_scheme_motion_and_headless() -> None:
     assert _detect(env={}).scheme == "dark"
     assert _detect(env={"COLORFGBG": "0;15"}).scheme == "light"
     assert _detect(env={"PKEY_THEME": "light"}).scheme == "light"
-    assert _detect(env={}, osc11=lambda: "light").scheme == "light"
+    assert _detect(env={"COLORTERM": "truecolor"}, osc11=lambda: "light").scheme == "light"
+    assert _detect(env={}, osc11=lambda: "light").scheme == "dark", "ANSI-16 never asks"
     assert _detect(env={}, color_scheme="dark", osc11=lambda: "light").scheme == "dark"
     assert _detect(env={"CI": "1"}).motion is False and _detect(env={}).motion is True
     assert _detect(env={}, motion="reduced").motion is False

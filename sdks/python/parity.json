@@ -321,7 +321,8 @@
       "reason": "runtime"
     },
     "ui.cli": {
-      "status": "implemented"
+      "status": "implemented",
+      "note": "The terminal kit (polaris_key.ui.terminal, UK-13): every verb of the argparse, click and typer front ends drawn to UI-KITS §1.4 Terminal, with --json on every verb, over polaris_key.ui.core's headless models. Proofs: tests/cli/test_golden.py (golden ANSI in every variant and SVG for 70 component states in both themes), tests/cli/test_lint.py (catalog strings, 80/60 columns, piped output, RTL-safe source), tests/cli/test_flows.py (interactive flows with scripted keys, and rich's bytes against the kit's) and tests/cli/test_textual.py. The ui.gate … ui.i18n rows are UK-02b's and do not exist yet."
     },
     "commerce.receipt": {
       "status": "implemented",

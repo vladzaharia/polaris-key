@@ -520,7 +520,8 @@ def update(k: Kit, v: UpdateView, verb: str = "update") -> Lines:
         elif v.state == "platform":
             body += k.body([k.t("update.platform.generic", product=k.inline_product)])
         else:
-            body += _fixes(k, [("update apply", "update.install"), ("changelog", "update.whatsNew")])
+            fixes = [("update apply", "update.install")] if v.installable else []
+            body += _fixes(k, fixes + [("changelog", "update.whatsNew")])
     return _frame(k, verb, body, end)
 
 
