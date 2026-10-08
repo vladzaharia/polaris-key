@@ -15,8 +15,11 @@ name: Publish SDKs
 # version file (tools/sdk-version.mjs stamp) after that SDK's tests have run on the committed
 # tree; nothing is versioned by hand and nothing is committed back. Each SDK is built and packed
 # here, then published through publish-package.yml, the system product's one trusted publisher
-# (`package-registry` environment, OIDC, no stored secret). The drift job then reads every feed back
-# and fails unless each package's newest version of its kind is this build's.
+# (`package-registry` environment, OIDC, no stored secret). The npm packages pin each other
+# exactly, so they publish in dependency tiers and never before every version they pin is on the
+# feed (P0-52, the npm-tier-* jobs). The drift job then reads every feed back and fails unless each
+# package's newest version of its kind is this build's and every @polaris-key pin of this version
+# resolves; npm-install installs from the feed as an adopter would.
 #
 # Feeds only: never npmjs, GitHub Packages, PyPI, Maven Central, the Swift Package Index, Docker
 # Hub, GHCR or a Godot store. Install: /docs/build/install-from-feeds/.
@@ -121,28 +124,39 @@ jobs:
           path: dist-pkg/
           if-no-files-found: error
 
-  npm:
-    name: npm feed
+  # The packages pin each other at exactly this version, so a package may publish only once every
+  # package it depends on is on the feed at this version (P0-52). One matrix of all ten legs with
+  # fail-fast off broke that twice: GitHub creates each leg's deployment to the shared
+  # `package-registry` environment in the same second and occasionally never advances one from
+  # `waiting` (no reviewers or timer, so nothing can release it), and the other legs published
+  # anyway. v0.8.28 published node, cli and client-core without jws; v0.8.29 published six
+  # packages without protocol (and node). Nine versions on the feed pin a sibling it never got
+  # (tools/feed-closure.mjs lists them; npm-repair.yml backfills them).
+  #
+  # So the legs publish in dependency tiers, one job each, and every tier `needs` the one below
+  # it: a leg that fails, is cancelled or never leaves `waiting` stops every tier above it, so no
+  # dependent publishes at that version. Packages in one tier never depend on each other:
+  #
+  #   tier 0  brand, protocol, zstd-wasm     no @polaris-key dependency
+  #   tier 1  catalog, jws                   protocol
+  #   tier 2  client-core, manifest          jws or catalog
+  #   tier 3  node, react                    client-core (react: brand)
+  #   tier 4  cli                            node, manifest
+  #
+  # releaseWorkflows.test.ts derives the tiers from the packages' own dependencies and simulates a
+  # stuck leg in each tier. On top of the order, publish-package.yml reads every @polaris-key pin
+  # of the packed tarball and waits until the feed lists each one before it publishes (render lag
+  # included), so a re-run of one leg cannot skip a missing dependency either. max-parallel keeps
+  # the burst of simultaneous deployments down; fail-fast stays off because a tier's legs are
+  # independent and the drift job should name every one that did not land.
+  npm-tier-0:
+    name: npm feed, tier 0
     needs: [version, npm-pack]
     strategy:
       fail-fast: false
-      # Each leg is a deployment to the shared `package-registry` environment. GitHub creates every
-      # leg's deployment in the same second and occasionally never advances one from `waiting`
-      # (v0.8.28 npm.jws; v0.8.29 npm.node, npm.protocol: no reviewers or timer, so nothing can
-      # release it). A small window keeps the burst of simultaneous deployments down.
       max-parallel: 3
       matrix:
-        package:
-          - brand
-          - catalog
-          - cli
-          - client-core
-          - jws
-          - manifest
-          - node
-          - protocol
-          - react
-          - zstd-wasm
+        package: [brand, protocol, zstd-wasm]
     permissions:
       contents: read
       id-token: write
@@ -153,6 +167,132 @@ jobs:
       dir: ${{ matrix.package }}
       version: ${{ needs.version.outputs.version }}
       channel: ${{ needs.version.outputs.channel }}
+
+  npm-tier-1:
+    name: npm feed, tier 1
+    needs: [version, npm-pack, npm-tier-0]
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        package: [catalog, jws]
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/publish-package.yml
+    with:
+      deliverable: npm.${{ matrix.package }}
+      artifact: npm-packages
+      dir: ${{ matrix.package }}
+      version: ${{ needs.version.outputs.version }}
+      channel: ${{ needs.version.outputs.channel }}
+
+  npm-tier-2:
+    name: npm feed, tier 2
+    needs: [version, npm-pack, npm-tier-1]
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        package: [client-core, manifest]
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/publish-package.yml
+    with:
+      deliverable: npm.${{ matrix.package }}
+      artifact: npm-packages
+      dir: ${{ matrix.package }}
+      version: ${{ needs.version.outputs.version }}
+      channel: ${{ needs.version.outputs.channel }}
+
+  npm-tier-3:
+    name: npm feed, tier 3
+    needs: [version, npm-pack, npm-tier-2]
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        package: [node, react]
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/publish-package.yml
+    with:
+      deliverable: npm.${{ matrix.package }}
+      artifact: npm-packages
+      dir: ${{ matrix.package }}
+      version: ${{ needs.version.outputs.version }}
+      channel: ${{ needs.version.outputs.channel }}
+
+  npm-tier-4:
+    name: npm feed, tier 4
+    needs: [version, npm-pack, npm-tier-3]
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        package: [cli]
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/publish-package.yml
+    with:
+      deliverable: npm.${{ matrix.package }}
+      artifact: npm-packages
+      dir: ${{ matrix.package }}
+      version: ${{ needs.version.outputs.version }}
+      channel: ${{ needs.version.outputs.channel }}
+
+  # What an adopter's first install gets, once the whole set is on the feed (P0-52), each in an
+  # empty directory with only the scope line of /docs/build/install-from-feeds/: pnpm 11 with its
+  # defaults (a one-day minimumReleaseAge, so the newest version at least a day old: the one an
+  # age gate lands on), npm with React's peers, and this build's exact set. The closure check
+  # first waits until every package lists this version (the render queue) and every pin of it
+  # resolves.
+  npm-install:
+    name: npm installs from the feed
+    needs: [version, npm-tier-4]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter @polaris-key/tools --ignore-scripts
+      - name: Every package lists this version, and every pin of it resolves
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: >-
+          node tools/feed-closure.mjs --origin https://pkg.plrs.im --owner polaris-key
+          --ecosystem npm --version "$VERSION" --complete --timeout 600
+      - name: pnpm 11, its defaults
+        run: |
+          dir="$RUNNER_TEMP/pnpm-11"
+          mkdir -p "$dir" && cd "$dir"
+          printf '@polaris-key:registry=https://pkg.plrs.im/npm/polaris-key/\n' > .npmrc
+          echo '{"name":"feed-install","private":true}' > package.json
+          npx --yes pnpm@11 add @polaris-key/node
+      - name: npm, React and its peers
+        run: |
+          dir="$RUNNER_TEMP/npm-react"
+          mkdir -p "$dir" && cd "$dir"
+          printf '@polaris-key:registry=https://pkg.plrs.im/npm/polaris-key/\n' > .npmrc
+          echo '{"name":"feed-install","private":true}' > package.json
+          npm install --no-audit --no-fund @polaris-key/react react react-dom
+      - name: npm, this build's set
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          dir="$RUNNER_TEMP/npm-set"
+          mkdir -p "$dir" && cd "$dir"
+          printf '@polaris-key:registry=https://pkg.plrs.im/npm/polaris-key/\n' > .npmrc
+          echo '{"name":"feed-install","private":true}' > package.json
+          npm install --no-audit --no-fund "@polaris-key/node@$VERSION" "@polaris-key/react@$VERSION" \
+            "@polaris-key/cli@$VERSION" react react-dom
 
   # ── PyPI: polaris-key (wheel and sdist) ────────────────────────────────────────────────────
   python-build:
@@ -563,7 +703,20 @@ jobs:
   # ── Drift: every feed shows this build's version ──────────────────────────────────────────
   drift:
     name: Feed drift check
-    needs: [version, npm, python, swift, maven, godot, image]
+    needs:
+      [
+        version,
+        npm-tier-0,
+        npm-tier-1,
+        npm-tier-2,
+        npm-tier-3,
+        npm-tier-4,
+        python,
+        swift,
+        maven,
+        godot,
+        image,
+      ]
     if: ${{ !cancelled() && needs.version.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
@@ -586,6 +739,17 @@ jobs:
         run: >-
           node tools/feed-drift.mjs --origin https://pkg.plrs.im --owner polaris-key
           --version "$VERSION" --pep440 "$PEP440" --channel "$CHANNEL" --timeout 600
+      # P0-52: every @polaris-key pin of every package at this version is a version the feed
+      # lists. Only this version's broken pins fail the run; a broken pin on an older version is
+      # a warning here and an error in the daily feed-closure.yml. It runs after a red drift
+      # check too: a partial set must still be a closed one.
+      - name: Every @polaris-key pin of this version is on the feed
+        if: ${{ !cancelled() }}
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: >-
+          node tools/feed-closure.mjs --origin https://pkg.plrs.im --owner polaris-key
+          --ecosystem npm --version "$VERSION" --timeout 120
 
   # ── Retention: prune the builds of main a stable release supersedes ─────────────────────────
   # The Worker already deletes each package's builds of main (semver X-main.N, PEP 440 X.devN,
@@ -604,7 +768,21 @@ jobs:
   #     stops. A prune problem never turns the release red (continue-on-error): the publish is done.
   prune:
     name: Prune builds of main (stable tag)
-    needs: [version, npm, python, swift, maven, godot, image, drift]
+    needs:
+      [
+        version,
+        npm-tier-0,
+        npm-tier-1,
+        npm-tier-2,
+        npm-tier-3,
+        npm-tier-4,
+        python,
+        swift,
+        maven,
+        godot,
+        image,
+        drift,
+      ]
     if: needs.version.outputs.channel == 'stable' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     environment: package-registry
