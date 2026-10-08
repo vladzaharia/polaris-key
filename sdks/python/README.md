@@ -437,8 +437,9 @@ licence profile (`name`, `email`) — show, for example, "Signed in as Ada Lovel
 (`polaris_key.qr.terminal(prompt.verificationUriComplete)`) for a browser on another device.
 `begin_sign_in(..., confirm_identity=True)` with `on_confirm` is the attach opt-in: the poll
 stops at `confirm` (with `identity` and `attachable`) until the player accepts, and
-`accept_sign_in(prompt, attach_license=True)` attaches this device's free licence. The deprecated
-`/identity/auth/poll` route is never used.
+`accept_sign_in(prompt, attach_license=True)` attaches this device's free licence. It polls
+`/identity/auth/device/poll` like any device-code sign-in; the old `/identity/auth/poll` route is
+retired and the Worker no longer serves it.
 
 The prompt's `repr` leaves out `deviceCode`, and a `MintedToken`'s leaves out `token`, so
 logging either object does not leak the credential.
