@@ -360,7 +360,7 @@ export {
 
 export { effectiveNow, highWaterMark, type DatedArtifact } from "./clock.js";
 
-export { PolarisError } from "./errors.js";
+export { PolarisError, type PolarisErrorDetails } from "./errors.js";
 
 export {
   UNSUPPORTED_CODE,
