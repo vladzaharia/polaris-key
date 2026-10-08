@@ -312,9 +312,12 @@ function SettingsBody({
                   Not enforced
                 </StatusPill>
               }
-              help={`${linked ? "Set by adminGroup in .pkey/product. " : ""}It grants nothing: console access is platform-wide.`}
+              help={`${linked ? "Set by adminGroup in .pkey/product. " : ""}Not enforced: console access is platform-wide.`}
             >
-              <span className="font-mono text-sm">{product.adminGroup}</span>
+              {/* A long group (an LDAP DN) wraps under the label on a phone: read it from the left. */}
+              <span className="min-w-0 font-mono text-sm [overflow-wrap:anywhere] max-sm:text-left">
+                {product.adminGroup}
+              </span>
             </SettingsRow>
           ) : null}
         </SettingsSection>

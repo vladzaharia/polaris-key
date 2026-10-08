@@ -68,7 +68,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
     area: "access",
     label: "Admin group",
     description:
-      "The identity-provider group named by the manifest as this product's administrators. Not enforced: it grants nothing, and console access is platform-wide. Manifest-only (owner decision 1).",
+      "The identity-provider group named by the manifest as this product's administrators. Not enforced: console access is platform-wide. Manifest-only (owner decision 1).",
     docs: "/docs/admin/products/",
     value: { kind: "string", maxLength: 200 },
     defaultValue: null,

@@ -276,7 +276,7 @@ describe("Core → Settings", () => {
   });
 
   it("has no admin group input on any product, and marks a stored one Not enforced (P0-47)", async () => {
-    // A manual product used to edit it; it grants nothing, so nothing edits it now.
+    // A manual product used to edit it; nothing enforces it, so nothing edits it now.
     fns.product.mockResolvedValue({
       product: product({ releaseSource: "manual" }),
     });
@@ -287,8 +287,10 @@ describe("Core → Settings", () => {
     const row = value.closest("[data-align]") as HTMLElement;
     expect(within(row).getByText("Not enforced")).toBeTruthy();
     expect(row.textContent).toContain(
-      "It grants nothing: console access is platform-wide.",
+      "Not enforced: console access is platform-wide.",
     );
+    // A long group wraps under the label on a phone and reads from the left.
+    expect(value.className).toContain("max-sm:text-left");
     cleanup();
     resetCore();
     // A product with no admin group shows no row at all.
