@@ -655,12 +655,13 @@ claim error "owned by another account" (§4.19).
 - A full-width **hero**: key art (left, 1.45 fr) and a side panel with icon, name, developer,
   status and tier, the **primary download** as a two-line button, an **Also yours on** row, a short
   summary (license, devices, includes, runs on) and a link to the product page. Side by side from
-  1180 px.
+  1024 px: at 1024–1179 px the art keeps 16:9 at the top of its column (never cropped, §0.3), and
+  from 1180 px it fills the column's height.
 - A closing line: "That's everything linked to <email>. There are 4 more you can add in Discover."
-- **Below 1180 px** the hero stacks: the art at 16:9 across the full width, as the developer
-  supplied it (§0.3), the panel underneath. On a short screen from 761 px the two stay side by side
-  with the art at 16:9, so the art and the primary download share the first screen. **Phone:** the
-  primary action becomes the phone action.
+- **At 761–1023 px** the hero stacks: the art at 16:9 across the full width, the panel underneath.
+  On a short screen from 761 px the two stay side by side with the art at 16:9, and the page's
+  top spacing and the panel tighten, so the primary download is on the first screen. **Phone:**
+  the primary action becomes the phone action.
 
 ### 4.14 Library: a few products (2–7)
 
@@ -691,13 +692,15 @@ claim error "owned by another account" (§4.19).
   device limit → **Free a device**; expires within 14 days → **Renew with <developer>** (G16, else
   "Contact"); Steam key not activated → **Activate on Steam**; expired with a newer version →
   **Renew**. Never news. Hidden when empty. The card's title names the product, so the reason does
-  not ("Both devices are in use. Remove one to use it on another device."), and a date in it never
-  breaks across lines.
+  not ("Both devices are in use. Remove one to use it on another device."); an ended license's
+  reason names the developer ("Kiln Games can renew it."), since a long name truncates on the
+  action, whose full label shows on hover. A date in a reason never breaks across lines.
 - **All products:** 4-column compact grid (3 at 761–1179 px), or the **list**: icon · Product ·
   Status · Latest · Devices · **Quick action for this Mac** · chevron; 72 px rows; the whole row
-  opens the product page. A compact tile's status line takes up to two lines, and on a tile whose
-  action row is under 15rem wide "Download for macOS" reads **Download** (its accessible name keeps
-  the full label).
+  opens the product page. A compact tile's status line takes up to two lines. On a tile whose
+  content is under 15rem wide (761–about 920 px, 1180–about 1250 px) "Download for macOS" reads
+  **Download** (its accessible name keeps the full label), the status pill moves to the art's
+  top-right corner, clear of the icon, and the name takes up to two lines.
 - **⌘K trigger** in the header (§4.27). Products without art use the fallback (§5.2).
 - **Phone:** search and view toggle share a row, chips scroll; **List by default above 6
   products** (the remembered choice wins, so someone who picked Grid keeps the desktop's compact
@@ -879,7 +882,8 @@ Devices, Cloud Sync, product sign-in, What's new, Package access, Help). Below 1
 tabs** (under the header; at the top on a short screen, where the header scrolls away)
 list the sections **in that same phone order** (Get it, License, Devices, Cloud Sync, What's
 new, Package access, Help) and highlight the section on screen (**Get it** on load). A device's
-name wraps rather than being cut short. Sections that
+name wraps rather than being cut short; in a narrow card (the side column from 1024 px, a phone)
+its **Remove** sits under the meta line, so the name has the row's full width. Sections that
 don't apply are **omitted**, with their TOC entry and pill (P14).
 
 **Get it:** the recommended panel (honest platform detection: a Universal build is named as such;
@@ -1404,10 +1408,11 @@ again." with the reference id. Never render the HTTP status or an internal code 
 - **Compact header (761–1179 px):** the same row, so the account menu never leaves the screen: the
   account chip is its avatar and the ⌘K trigger a 40 px icon; below 900 px the lockup drops to its
   52 px phone size, the header's gaps to 24 px and the action reads **Activate** (its accessible
-  name stays "Activate license"). From 1180 px the chip adds the given name (the name's first
-  word; the menu keeps the full name and the email; with no name, the avatar alone), and when the
-  row is tight the ⌘K field gives way first (256 down to 176 px), before the name truncates. ⌘K,
-  Activate and the chip are 40 px tall, 44 px on a coarse pointer.
+  name stays "Activate license"). From 1180 px the chip adds the full name (never its first word
+  alone: "Dr.", a compound prefix, a family name first; the menu keeps the full name and the
+  email; with no name, the avatar alone), and when the row is tight the ⌘K field gives way first
+  (256 down to 176 px), before the name truncates. ⌘K, Activate and the chip are 40 px tall, 44 px
+  on a coarse pointer.
 - **Shelves on tablets:** Needs attention uses two columns at 761–899 px and three from 900 px;
   Ready to add two at 761–1179 px and three from 1180 px. In two columns an odd last card spans
   both. An attention card's action has its own row at the card's foot, full width and on one line
@@ -1417,9 +1422,10 @@ again." with the reference id. Never render the HTTP status or an internal code 
   instead of sticking, and what stuck under it (the section pills) sticks to the top; a section
   jump lands 0.75rem under whatever still sticks, and Tab never leaves focus under it. Art steps
   aside for the task and the icon carries the product's identity: no banner on the product page
-  (the icon beside the name, so the primary action shows on load) or on Activate's confirm step
-  (the facts and the key start on the first screen). The empty library's star and the one-product
-  hero follow §4.12 and §4.13.
+  (the icon beside the name, so the primary action shows on load), on Activate's confirm step
+  (the facts and the key start on the first screen) or on a focused flow's card (Free a device,
+  Download; the icon no longer overlaps). The empty library's star and the one-product hero follow
+  §4.12 and §4.13.
 - **No horizontal page scroll at 360 px**, ever (the render script checks every screen). Only code
   blocks scroll inside themselves. The quality bar checks every screen with pixels at 1440 and
   390 px (and 768 px for the seven key pages), and without at 320, 360, 768, 820, 1024, 844 × 390
