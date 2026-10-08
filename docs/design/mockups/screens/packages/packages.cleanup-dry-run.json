@@ -44,6 +44,23 @@
         "severity": "minor",
         "issue": "[Visual] The light --pk-warning-subtle fill (#eae7e6) reads as a grey, disabled box (the cleanup dry run's lockfile warning and the Play callout on Updates (Godot)).",
         "resolution": "declined: --pk-warning-subtle is the brand token the kit carries verbatim from packages/brand/css; warming it in the mockup kit alone would make every mockup disagree with the built console. Flagged for the brand package (the lead's call), where one change fixes mockups and screens together."
+      },
+      {
+        "severity": "major",
+        "issue": "The phone sheet hides the totals and the most important warning below the fold with no cue.",
+        "resolution": "The 'recent installs' warning is directly under the lede; the sheet is a scrolling .dialog.scroll.fade at most 90vh; lede 'Dry run Oct 7, 09:00. These go with the first stable release after Oct 14; never from PyPI.org.'; the Kept footnote is the column header 'Keeps (stable + newer)'; 'Turn off cleanup' stays a left text link with 24px before the primary (.set-apart).",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "issue": "Require a typed confirmation for 'Delete 41 versions now', add a Close button, demote 'Keep the Oct 14 start'.",
+        "resolution": "declined: changes flow and adds states; the button order is correct. Flagged to the lead as a product question (a missing confirm on a destructive action).",
+        "round": "multi-review"
       }
     ]
   }

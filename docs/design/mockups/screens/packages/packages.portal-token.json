@@ -13,7 +13,7 @@
     "Opens over Account → Packages, which stays dimmed and already lists the new 'Work laptop' token with a 'New' marker beside the two older ones.",
     "The title says what to do now ('Copy your packages token now'); the first line says it is shown only once and what to do if it is lost.",
     "The token sits in the key field with its own Copy; under it, two lines: 'Work laptop · packages only · expires Jan 5, 2027' and 'Reaches DJDL, Diceroll and any product you get a license for later', with non-breaking spaces in the date.",
-    "The combined setup uses the same tabs and renderer as the page with the real token in place of PKEY_PACKAGES_TOKEN; its foot says the file is for the home folder, never a project.",
+    "The combined setup uses the same tabs and renderer as the page with the real token in place of PKEY_PACKAGES_TOKEN; its foot says the file is for the home folder, never a project, because the token is in it.",
     "No scope picker, product picker or binding: a personal token is packages-only by construction.",
     "'I've stored the token somewhere safe' is unchecked, and Done, the close button and Escape all wait for it.",
     "Phone: the kit's bottom sheet; the token ellipsizes inside its field with Copy visible, the code tabs scroll under a fade that ends before Copy, the code scrolls sideways, and Done takes the full width."
@@ -44,6 +44,30 @@
         "severity": "minor",
         "issue": "[Copy/visual] 'Read and write Read and write DJDL crates'; djdl-crates is a Public feed under 'With your Standard license'; Revoke has no confirmation; on phone the Docker tab is clipped under Copy ('Dc'); Sign out sits lower than the H1.",
         "resolution": "Duplicate fixed ('Read and write DJDL crates'). The djdl-crates row says 'Public, also on PyPI.org'. Revoke opens packages.portal-token-revoke ('Package installs on mara-mbp stop…', naming the token that keeps working). On phone the code tabs scroll under a fade that ends before Copy, so Docker shows as a fading tab. Sign out lines up with the H1."
+      },
+      {
+        "severity": "major",
+        "issue": "On phone the token and code are truncated; the disabled Done looks broken.",
+        "resolution": "Token wraps across lines (.wrap-phone-token); code soft-wraps at 12px with a fade; checkbox on a 44px row (.tap-row); disabled Done uses the kit's muted disabled style with a 'Tick the box to continue' hint; the repeated 'Reaches DJDL, Diceroll…' line and 'packages only' segment are gone.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX3",
+          "UX4",
+          "UX2"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "[Phone] Code blocks, terminals and tab strips are silently clipped with no scroll cue; 'also required' cuts Info.plist and Docker.",
+        "resolution": "Kit: .fade-x (edge fade, tabindex 0, role region) and .wrap-phone (soft wrap at 12px on phone) on every code block and terminal; 'also required' is a dot. Gutters (16 phone, 24 up) and card padding (16 phone, 24 up) were already the kit's.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
       }
     ]
   }

@@ -72,6 +72,95 @@
         "severity": "minor",
         "issue": "[Visual/scannability] Two service tokens squeezed into one sentence with no CI command; the bare count '3' is ambiguous; on phone the package tables show only two columns with no scroll hint.",
         "resolution": "The CI card lists the tokens as rows (label, pkeyci_ hint, last use) and adds 'pkey feeds setup --print --token-env PKEY_TOKEN'. The count reads '3 feeds'. Under 640px each package row stacks: name, the version on each release track in mono, then versions, installs and the last publish, with no sideways scroll."
+      },
+      {
+        "severity": "major",
+        "issue": "The subtitle 'One feed per package declared in .pkey/release' restates the title and is false (3 feeds, 4 packages).",
+        "resolution": "Removed; the '3 feeds' pill stays.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Several sentences repeat the same facts (Oct 14, 41, Nothing is deleted).",
+        "resolution": "Cleanup banner: 'Deletes 41 dev and beta versions (18.6 MB) once the next stable release publishes.'; foot card 'Stops every install and CI publish.' ('Nothing is deleted' lives in the turn-off dialog); helper 'Signs in and sets up every package manager.'; Swift code footnote and PyPI foot shortened, approver kept.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Dead space under the single command of 'On your machine'; the wide rail leaves 600px empty.",
+        "resolution": "Card pair uses .top (no stretch); the rail is .sticky-rail (sticky, 360px).",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "The npm 'Publish refused' strip is crowded.",
+        "resolution": "Two lines (.attn-stack): pill, name and 'Open the CI run', then one muted sentence 'A published version can't be replaced. Bump it in package.json and push.'; feed meta lines use .meta-line (no dangling dot).",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2"
+        ]
+      },
+      {
+        "issue": "Add loading, API-error and permission-denied mocks.",
+        "resolution": "declined: adds new states; this pass is spacing and rhythm of existing screens. Follow-up.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Move 'On your machine' above the feed cards on phone, collapse the Swift code card, or collapse Update rules (UX1).",
+        "resolution": "declined: reorders or hides content on one size; the owner wants the content kept.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Remove the Swift 'Declared' step and the 'Feed created' row.",
+        "resolution": "declined: the step list is state data the owner wants kept; only the duplicated .pkey/release mention is trimmed.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Drop the subtitle on every screen; restyle the sidebar active state and tablet rail (UX1, UX4).",
+        "resolution": "declined: the subtitle is removed only where it duplicates; sidebar and rail are shared console chrome (kit item).",
+        "round": "multi-review"
+      },
+      {
+        "severity": "major",
+        "issue": "[Phone] Code blocks, terminals and tab strips are silently clipped with no scroll cue; 'also required' cuts Info.plist and Docker.",
+        "resolution": "Kit: .fade-x (edge fade, tabindex 0, role region) and .wrap-phone (soft wrap at 12px on phone) on every code block and terminal; 'also required' is a dot. Gutters (16 phone, 24 up) and card padding (16 phone, 24 up) were already the kit's.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "[Wide] Single-column screens hug the left of a 1920 canvas; the rail leaves 600-750px empty.",
+        "resolution": "Kit: .page.contained (1280, centred), .page.form.centered, and .sticky-rail (360px rail, sticky at top 88px from 1600px); card pairs use .top (align-items:start).",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3"
+        ]
       }
     ]
   }

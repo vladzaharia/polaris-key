@@ -1,285 +1,3 @@
-<style>
-  /* packages.feeds-turn-off: the Packages page (as packages.feeds) behind the turn-off confirmation. */
-  [data-screen="packages.feeds-turn-off"] .eco {
-    display: inline-flex;
-    flex: none;
-    align-items: center;
-    justify-content: center;
-    min-width: 40px;
-    height: 40px;
-    padding: 0 8px;
-    border-radius: var(--pk-radius-lg);
-    background: var(--pk-accent-subtle);
-    color: var(--pk-accent-fg);
-    font: 700 12px/1 var(--pk-font-mono);
-    letter-spacing: -0.01em;
-  }
-  [data-screen="packages.feeds-turn-off"] .feed-url {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px 10px;
-    font-size: 13px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="packages.feeds-turn-off"] .feed-url .mono {
-    color: var(--pk-text-default);
-  }
-  [data-screen="packages.feeds-turn-off"] .feed-access {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 2px;
-    text-align: right;
-  }
-  [data-screen="packages.feeds-turn-off"] .feed-access .access {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-weight: 700;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="packages.feeds-turn-off"] .feed-access .access .ic {
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="packages.feeds-turn-off"] .feed-access .link {
-    font-size: 12px;
-  }
-  [data-screen="packages.feeds-turn-off"] .track {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-family: var(--pk-font-mono);
-    font-size: 13px;
-    color: var(--pk-text-default);
-    white-space: nowrap;
-  }
-  [data-screen="packages.feeds-turn-off"] .table th.trk {
-    font-family: var(--pk-font-mono);
-    text-transform: none;
-    letter-spacing: 0;
-  }
-  [data-screen="packages.feeds-turn-off"] .feed .table-wrap {
-    overflow-x: auto;
-  }
-  [data-screen="packages.feeds-turn-off"] .feed .table {
-    table-layout: fixed;
-    min-width: 820px;
-  }
-  [data-screen="packages.feeds-turn-off"] .feed .table td,
-  [data-screen="packages.feeds-turn-off"] .feed .table th {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  [data-screen="packages.feeds-turn-off"] .feed .table .c-pkg {
-    width: 26%;
-  }
-  [data-screen="packages.feeds-turn-off"] .feed .table .c-trk {
-    width: 12%;
-  }
-  [data-screen="packages.feeds-turn-off"] .feed .table .c-num {
-    width: 8%;
-  }
-  [data-screen="packages.feeds-turn-off"] .feed .table .c-inst {
-    width: 12%;
-  }
-  [data-screen="packages.feeds-turn-off"] .feed .table td:first-child,
-  [data-screen="packages.feeds-turn-off"] .feed .table th:first-child {
-    padding-left: 20px;
-  }
-  [data-screen="packages.feeds-turn-off"] .feed .table td:last-child,
-  [data-screen="packages.feeds-turn-off"] .feed .table th:last-child {
-    padding-right: 20px;
-  }
-  [data-screen="packages.feeds-turn-off"] .also {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    margin-left: 8px;
-    font: 400 12px/16px var(--pk-font-sans);
-    color: var(--pk-text-muted);
-    vertical-align: 1px;
-  }
-  [data-screen="packages.feeds-turn-off"] .also .ic {
-    width: 12px;
-    height: 12px;
-  }
-  [data-screen="packages.feeds-turn-off"] .pkg-m {
-    margin-top: 6px;
-    font-size: 12px;
-    line-height: 18px;
-    color: var(--pk-text-muted);
-    white-space: normal;
-  }
-  [data-screen="packages.feeds-turn-off"] .pkg-m .vers {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2px 12px;
-    font-family: var(--pk-font-mono);
-    color: var(--pk-text-default);
-  }
-  [data-screen="packages.feeds-turn-off"] .pkg-m .vers b {
-    font-weight: 400;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="packages.feeds-turn-off"] .refused {
-    color: var(--pk-danger);
-  }
-  [data-screen="packages.feeds-turn-off"] .publish-fail {
-    border-top: 1px solid var(--mk-line);
-  }
-  [data-screen="packages.feeds-turn-off"] .publish-fail .attn-text {
-    white-space: normal;
-  }
-  [data-screen="packages.feeds-turn-off"] .feed-foot {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px 20px;
-    font-size: 13px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="packages.feeds-turn-off"] .feed-foot > span {
-    display: inline-flex;
-    align-items: flex-start;
-    gap: 6px;
-  }
-  [data-screen="packages.feeds-turn-off"] .feed-foot .ic {
-    flex: none;
-    margin-top: 2px;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="packages.feeds-turn-off"] .waiting-card .card-split > div {
-    min-width: 0;
-  }
-  [data-screen="packages.feeds-turn-off"] .waiting-card .code pre {
-    font-size: 12.5px;
-  }
-  [data-screen="packages.feeds-turn-off"] .side-card .card-body {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-  [data-screen="packages.feeds-turn-off"] .side-card .card-body > p {
-    font-size: 13px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="packages.feeds-turn-off"] .tok {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 0 12px;
-    padding: 8px 0;
-    border-top: 1px solid var(--mk-line);
-    font-size: 13px;
-    line-height: 18px;
-  }
-  [data-screen="packages.feeds-turn-off"] .tok:last-child {
-    border-bottom: 1px solid var(--mk-line);
-  }
-  [data-screen="packages.feeds-turn-off"] .tok-name {
-    font-weight: 700;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="packages.feeds-turn-off"] .tok-hint {
-    font-family: var(--pk-font-mono);
-    font-size: 12px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="packages.feeds-turn-off"] .tok-used {
-    grid-row: 1 / span 2;
-    grid-column: 2;
-    align-self: center;
-    color: var(--pk-text-muted);
-    white-space: nowrap;
-  }
-  [data-screen="packages.feeds-turn-off"] .callout > .btn {
-    flex: none;
-  }
-  [data-screen="packages.feeds-turn-off"] .feeds-off-row .setting-desc {
-    max-width: 68ch;
-  }
-  @container screen (max-width: 639px) {
-    [data-screen="packages.feeds-turn-off"] .feed > .card-head {
-      flex-wrap: wrap;
-    }
-    [data-screen="packages.feeds-turn-off"] .feed > .card-head > .title {
-      flex: 1 1 0%;
-    }
-    [data-screen="packages.feeds-turn-off"] .feed-access {
-      order: 3;
-      flex-direction: row;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 4px 10px;
-      width: 100%;
-      padding-left: 52px;
-      text-align: left;
-    }
-    /* Phone: each package is one stacked row (name, the version on each release track, then the numbers). */
-    [data-screen="packages.feeds-turn-off"] .feed .table {
-      min-width: 0;
-      table-layout: auto;
-    }
-    [data-screen="packages.feeds-turn-off"] .feed .table td:first-child {
-      padding: 12px 16px;
-      white-space: normal;
-    }
-    [data-screen="packages.feeds-turn-off"] .feeds-off-row {
-      grid-template-columns: minmax(0, 1fr);
-      gap: 12px;
-      padding: 16px;
-    }
-    [data-screen="packages.feeds-turn-off"] .feeds-off-row > .btn {
-      justify-self: start;
-    }
-  }
-  [data-screen="packages.feeds-turn-off"] .state {
-    padding: 8px 0 4px;
-  }
-  [data-screen="packages.feeds-turn-off"] .state .empty p {
-    max-width: 60ch;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="packages.feeds-turn-off"] .state .empty .code {
-    width: 100%;
-    max-width: 640px;
-    margin-top: 12px;
-    text-align: left;
-  }
-  [data-screen="packages.feeds-turn-off"] .state .empty-icon.muted {
-    background: var(--mk-fill);
-    color: var(--pk-text-muted);
-  }
-  [data-screen="packages.feeds-turn-off"] .kept {
-    display: flex;
-    flex-direction: column;
-  }
-  [data-screen="packages.feeds-turn-off"] .kept-row {
-    display: grid;
-    grid-template-columns: 40px minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 20px;
-    border-top: 1px solid var(--mk-line);
-    color: var(--pk-text-muted);
-  }
-  [data-screen="packages.feeds-turn-off"] .kept-row .eco {
-    opacity: 0.6;
-  }
-  [data-screen="packages.feeds-turn-off"] .kept-row strong {
-    color: var(--pk-text-default);
-  }
-  [data-screen="packages.feeds-turn-off"] .kept-row .status {
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="packages.feeds-turn-off"] .dialog-body > * {
-    flex: none;
-  }
-  [data-screen="packages.feeds-turn-off"] .dialog ul.bullets strong {
-    color: var(--pk-text-strong);
-  }
-</style>
-
 <div class="console" data-service="core">
   <header class="topbar">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
@@ -303,10 +21,10 @@
     <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
     <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
     <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
-    <div class="nav-group closed" data-service="license"><div class="nav-label">Licensing<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="config" style="padding-top: 4px"><div class="nav-label">Managed config<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group" data-service="release" style="padding-top: 4px">
-      <div class="nav-label">Ship builds<i class="ic ic-chevron-down sm"></i></div>
+    <div class="nav-group closed" data-service="license"><button class="nav-label" aria-expanded="false">Licensing<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group" data-service="release">
+      <button class="nav-label" aria-expanded="true">Ship builds<i class="ic ic-chevron-down sm"></i></button>
       <a class="nav-item" href="#"><i class="ic ic-package"></i><span class="nav-text">Releases</span></a>
       <a class="nav-item" href="#"><i class="ic ic-git-branch"></i><span class="nav-text">Release tracks</span></a>
       <a class="nav-item" href="#"><i class="ic ic-trending-up"></i><span class="nav-text">Rollouts</span></a>
@@ -315,8 +33,8 @@
       <a class="nav-item" href="#"><i class="ic ic-circle-arrow-up"></i><span class="nav-text">Updates</span></a>
       <a class="nav-item" href="#"><i class="ic ic-heart-pulse"></i><span class="nav-text">Health</span></a>
     </div>
-    <div class="nav-group closed" data-service="identity" style="padding-top: 4px"><div class="nav-label">Sign-in<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="sync" style="padding-top: 4px"><div class="nav-label">Cloud Sync<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
       <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
@@ -324,12 +42,12 @@
   </nav>
 
   <main class="main" data-service="distribution">
-    <div class="page">
+    <!-- Wide (≥ 1600): the feeds in the main column, where to install from in the aside. -->
+    <div class="page columns sticky-rail">
       <header class="page-head">
         <div class="page-heading"><h1>Packages</h1><span class="count">3 feeds</span></div>
-        <p class="page-sub"><span>Package feeds on <span class="mono">pkg.plrs.im</span> for the packages DJDL declares in <span class="nowrap"><code>.pkey/release</code>.</span> A declared package gets its feed on the next resync, open to Customers until you change it on Access.</span></p>
         <div class="page-actions">
-          <button class="btn outline"><i class="ic ic-key-round"></i>Service tokens<span class="count">2</span></button>
+          <button class="btn outline"><i class="ic ic-key-round"></i>Service tokens</button>
         </div>
       </header>
 
@@ -337,180 +55,145 @@
       <div class="callout info">
         <i class="ic ic-calendar-clock"></i>
         <div class="grow">
-          <div class="callout-title">Cleanup turns on for DJDL on Oct 14</div>
-          <div class="callout-text">From then, each time a version ships on stable, the dev and beta versions at or below it are deleted from DJDL’s feeds. The dry run on Oct 7 found 41 versions (18.6 MB); they’re deleted when the next stable release ships after Oct 14.</div>
+          <div class="callout-title">Cleanup starts Oct 14</div>
+          <div class="callout-text">Deletes 41 dev and beta versions (18.6 MB) once the next stable release publishes.</div>
         </div>
         <button class="btn outline sm"><i class="ic ic-list-checks"></i>See the dry run</button>
       </div>
 
-      <!-- One card per feed: provisioned from the manifest (F-34), access read-only (P2-10). -->
-      <section class="card feed" aria-labelledby="feed-npm">
+      <!-- One card per feed: provisioned from the manifest (F-34), access read-only (P2-10); Change access and Settings are in ⋯. -->
+      <section class="card" aria-labelledby="feed-npm">
         <div class="card-head">
-          <span class="eco">npm</span>
           <div class="title">
             <h2 id="feed-npm">npm</h2>
-            <div class="feed-url"><span class="mono">pkg.plrs.im/npm/djdl/</span><span>Scope <span class="mono">@djdl</span>, from the declared names</span></div>
-          </div>
-          <div class="feed-access">
-            <span class="access"><i class="ic ic-lock sm"></i>Customers</span>
-            <a class="link" href="#">Change on Access<i class="ic ic-arrow-right"></i></a>
+            <p class="meta-line"><span class="mono">pkg.plrs.im/npm/djdl/</span><span class="nowrap"><i class="ic ic-lock sm"></i> Customers</span></p>
           </div>
           <button class="btn ghost icon sm" aria-label="More for the npm feed"><i class="ic ic-ellipsis"></i></button>
         </div>
-        <div class="table-wrap">
-          <table class="table compact">
-            <thead class="hide-phone"><tr><th class="c-pkg">Package</th><th class="trk c-trk">stable</th><th class="trk c-trk">beta</th><th class="trk c-trk">dev</th><th class="num c-num">Versions</th><th class="num c-inst">30-day installs</th><th>Last publish</th></tr></thead>
-            <tbody>
-              <tr>
-                <td><div class="cell-title mono">@djdl/source-kit</div><div class="cell-sub">Write DJDL source plugins</div>
-                  <div class="pkg-m show-phone"><div class="vers"><span><b>stable</b> 2.3.0</span><span><b>beta</b> 2.4.0-beta.3</span><span><b>dev</b> 2.4.0-dev.21</span></div><div>47 versions · 1,912 installs in 30 days · <span class="refused">publish refused at 10:02</span></div></div></td>
-                <td class="hide-phone"><span class="track">2.3.0</span></td>
-                <td class="hide-phone"><span class="track">2.4.0-beta.3</span></td>
-                <td class="hide-phone"><span class="track">2.4.0-dev.21</span></td>
-                <td class="num tnum hide-phone">47</td>
-                <td class="num tnum hide-phone">1,912</td>
-                <td class="hide-phone"><div>Oct 7, 08:41</div><div class="cell-sub refused">Refused at 10:02</div></td>
-              </tr>
-              <tr>
-                <td><div class="cell-title mono">@djdl/crate-schema</div><div class="cell-sub">Types for DJDL crate files</div>
-                  <div class="pkg-m show-phone"><div class="vers"><span><b>stable</b> 1.0.2</span></div><div>6 versions · 734 installs in 30 days · Sep 24 from CI</div></div></td>
-                <td class="hide-phone"><span class="track">1.0.2</span></td>
-                <td class="hide-phone"><span class="subtle">—</span></td>
-                <td class="hide-phone"><span class="subtle">—</span></td>
-                <td class="num tnum hide-phone">6</td>
-                <td class="num tnum hide-phone">734</td>
-                <td class="hide-phone"><div>Sep 24, 16:12</div><div class="cell-sub">CI · <span class="mono">example-org/djdl</span></div></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
         <!-- A failed CI publish: what went wrong and how to fix it, on the feed it happened to. -->
-        <div class="attn-row publish-fail">
-          <span class="pill danger sm"><i class="ic ic-circle-x"></i>Publish refused</span>
-          <span class="attn-subject mono">@djdl/source-kit</span>
-          <span class="attn-text">CI tried to publish 2.4.0-beta.3 again at 10:02, and that version already exists. A published version can’t be replaced: bump the version in <span class="mono">package.json</span> and push.</span>
-          <a class="link" href="#">Open the CI run<i class="ic ic-arrow-up-right"></i></a>
-        </div>
-        <div class="card-foot start">
-          <div class="feed-foot">
-            <span><i class="ic ic-sparkles sm"></i><span>Created automatically on Sep 30 from <span class="mono">.pkey/release</span></span></span>
-            <span><i class="ic ic-calendar-clock sm"></i><span>From Oct 14, cleanup deletes 35 versions here</span></span>
+        <div class="card-rows">
+          <div class="attn-stack">
+            <div class="attn-line">
+              <span class="pill danger sm"><i class="ic ic-circle-x"></i>Publish refused</span>
+              <span class="attn-subject mono">@djdl/source-kit</span>
+              <a class="link" href="#">Open the CI run<i class="ic ic-arrow-up-right"></i></a>
+            </div>
+            <div class="type-small muted">A published version can’t be replaced. Bump it in <span class="mono">package.json</span> and push.</div>
           </div>
         </div>
+        <table class="table fixed stack-phone flush" aria-label="npm packages">
+          <colgroup><col style="width: 24%"><col style="width: 15%"><col style="width: 15%"><col style="width: 15%"><col style="width: 15%"><col style="width: 16%"></colgroup>
+          <thead><tr><th>Package</th><th class="mono">stable</th><th class="mono">beta</th><th class="mono">dev</th><th class="num">30-day installs</th><th>Last publish</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><div class="cell-title type-mono">@djdl/source-kit</div><div class="cell-sub">Write DJDL source plugins</div></td>
+              <td><span class="cell-label">stable</span><span class="type-mono">2.3.0</span></td>
+              <td><span class="cell-label">beta</span><span class="type-mono">2.4.0-beta.3</span></td>
+              <td><span class="cell-label">dev</span><span class="type-mono">2.4.0-dev.21</span></td>
+              <td class="num"><span class="cell-label">Installs</span>1,912</td>
+              <td><span class="cell-label">Last publish</span>Oct 7, 08:41</td>
+            </tr>
+            <tr>
+              <td><div class="cell-title type-mono">@djdl/crate-schema</div><div class="cell-sub">Types for DJDL crate files</div></td>
+              <td><span class="cell-label">stable</span><span class="type-mono">1.0.2</span></td>
+              <td class="hide-narrow"><span class="subtle">—</span></td>
+              <td class="hide-narrow"><span class="subtle">—</span></td>
+              <td class="num"><span class="cell-label">Installs</span>734</td>
+              <td><span class="cell-label">Last publish</span>Sep 24, 16:12</td>
+            </tr>
+          </tbody>
+        </table>
       </section>
 
-      <section class="card feed" aria-labelledby="feed-pypi">
+      <section class="card" aria-labelledby="feed-pypi">
         <div class="card-head">
-          <span class="eco">PyPI</span>
           <div class="title">
             <h2 id="feed-pypi">PyPI</h2>
-            <div class="feed-url"><span class="mono">pkg.plrs.im/pypi/djdl/simple/</span><span>Project <span class="mono">djdl-crates</span></span></div>
-          </div>
-          <div class="feed-access">
-            <span class="access"><i class="ic ic-globe sm"></i>Public</span>
-            <a class="link" href="#">Change on Access<i class="ic ic-arrow-right"></i></a>
+            <p class="meta-line"><span class="mono">pkg.plrs.im/pypi/djdl/simple/</span><span class="nowrap"><i class="ic ic-globe sm"></i> Public</span></p>
           </div>
           <button class="btn ghost icon sm" aria-label="More for the PyPI feed"><i class="ic ic-ellipsis"></i></button>
         </div>
-        <div class="table-wrap">
-          <table class="table compact">
-            <thead class="hide-phone"><tr><th class="c-pkg">Package</th><th class="trk c-trk">stable</th><th class="trk c-trk">beta</th><th class="trk c-trk">dev</th><th class="num c-num">Versions</th><th class="num c-inst">30-day installs</th><th>Last publish</th></tr></thead>
-            <tbody>
-              <tr>
-                <td><div class="cell-title mono">djdl-crates<span class="also"><i class="ic ic-arrow-up-right"></i>Also on PyPI.org</span></div><div class="cell-sub">Read and write DJDL crates</div>
-                  <div class="pkg-m show-phone"><div class="vers"><span><b>stable</b> 1.1.0</span><span><b>beta</b> 1.2.0b2</span></div><div>14 versions · 486 installs in 30 days · Oct 3 from CI</div></div></td>
-                <td class="hide-phone"><span class="track">1.1.0</span></td>
-                <td class="hide-phone"><span class="track">1.2.0b2</span></td>
-                <td class="hide-phone"><span class="subtle">—</span></td>
-                <td class="num tnum hide-phone">14</td>
-                <td class="num tnum hide-phone">486</td>
-                <td class="hide-phone"><div>Oct 3, 11:27</div><div class="cell-sub">CI · <span class="mono">example-org/djdl</span></div></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <table class="table fixed stack-phone flush" aria-label="PyPI packages">
+          <colgroup><col style="width: 24%"><col style="width: 15%"><col style="width: 15%"><col style="width: 15%"><col style="width: 15%"><col style="width: 16%"></colgroup>
+          <thead><tr><th>Package</th><th class="mono">stable</th><th class="mono">beta</th><th class="mono">dev</th><th class="num">30-day installs</th><th>Last publish</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><div class="cell-title type-mono">djdl-crates</div><div class="cell-sub">Read and write DJDL crates</div></td>
+              <td><span class="cell-label">stable</span><span class="type-mono">1.1.0</span></td>
+              <td><span class="cell-label">beta</span><span class="type-mono">1.2.0b2</span></td>
+              <td class="hide-narrow"><span class="subtle">—</span></td>
+              <td class="num"><span class="cell-label">Installs</span>486</td>
+              <td><span class="cell-label">Last publish</span>Oct 3, 11:27</td>
+            </tr>
+          </tbody>
+        </table>
         <div class="card-foot start">
-          <div class="feed-foot">
-            <span><i class="ic ic-globe sm"></i><span>Made public by Ana Lima on Sep 12. Anyone can install it without a token.</span></span>
-            <span><i class="ic ic-arrow-up-right sm"></i><span>Stable and beta also go to PyPI.org, approved by Ana Lima on Oct 2</span></span>
-            <span><i class="ic ic-calendar-clock sm"></i><span>From Oct 14, cleanup deletes 6 versions here, never on PyPI.org</span></span>
-          </div>
+          <span class="icon-line type-small muted"><i class="ic ic-arrow-up-right"></i><span>Also on PyPI.org: stable and beta, approved by Ana Lima on Oct 2</span></span>
         </div>
       </section>
 
       <!-- A feed created from a fresh declaration: nothing to turn on, waiting for CI (UX-33). -->
-      <section class="card feed waiting-card" aria-labelledby="feed-swift">
+      <section class="card" aria-labelledby="feed-swift">
         <div class="card-head">
-          <span class="eco">Swift</span>
           <div class="title">
             <h2 id="feed-swift">Swift</h2>
-            <div class="feed-url"><span class="mono">pkg.plrs.im/swift/djdl/</span><span>Scope <span class="mono">djdl</span></span></div>
-          </div>
-          <div class="feed-access">
-            <span class="access"><i class="ic ic-lock sm"></i>Customers</span>
-            <span class="waiting-dot small">Waiting for the first package</span>
+            <p class="meta-line"><span class="mono">pkg.plrs.im/swift/djdl/</span><span class="nowrap"><i class="ic ic-lock sm"></i> Customers</span></p>
           </div>
           <button class="btn ghost icon sm" aria-label="More for the Swift feed"><i class="ic ic-ellipsis"></i></button>
         </div>
         <div class="card-split wide-end">
           <div>
-            <div class="tasks">
-              <div class="task done">
-                <span class="task-mark"></span>
-                <div class="task-title">Declared in <code>.pkey/release</code></div>
-                <div class="task-desc"><span class="mono">djdl.SourceKit</span>, added in <span class="mono">a3f9e1c</span> on Oct 7.</div>
-              </div>
-              <div class="task done">
-                <span class="task-mark"></span>
-                <div class="task-title">Feed created</div>
-                <div class="task-desc">Oct 7, 09:12 · open to Customers</div>
-              </div>
-              <div class="task waiting">
-                <span class="task-mark"></span>
-                <div class="task-title">First package</div>
-                <div class="task-desc">The next tag that runs <span class="mono">release.yml</span> with the Swift step publishes <span class="mono">djdl.SourceKit</span> here.</div>
-              </div>
+          <div class="tasks">
+            <div class="task done">
+              <span class="task-mark"></span>
+              <div class="task-title">Declared in <code>.pkey/release</code></div>
+              <div class="task-desc"><span class="mono">djdl.SourceKit</span> in <span class="mono">a3f9e1c</span>, Oct 7</div>
+            </div>
+            <div class="task done">
+              <span class="task-mark"></span>
+              <div class="task-title">Feed created</div>
+              <div class="task-desc">Oct 7, 09:12</div>
+            </div>
+            <div class="task waiting">
+              <span class="task-mark"></span>
+              <div class="task-title">Waiting for the first package</div>
+              <div class="task-desc">The next tag publishes it, once <span class="mono">release.yml</span> has the Swift step.</div>
             </div>
           </div>
+          </div>
           <div>
-            <p class="eyebrow">Add it to your workflow</p>
-            <div class="code">
-              <div class="code-head"><span class="code-file">.github/workflows/release.yml · 2 lines to add</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
-<pre>  <span class="t-p">- run</span><span class="t-o">:</span> pkey release publish --deliverable <span class="t-s">npm.sourcekit</span> --dir dist/npm
+          <div class="code fade-x wrap-phone">
+            <div class="code-head"><span class="code-file">.github/workflows/release.yml</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
+<pre tabindex="0" role="region" aria-label="Code">  <span class="t-p">- run</span><span class="t-o">:</span> pkey release publish --deliverable <span class="t-s">npm.sourcekit</span> --dir dist/npm
   <span class="t-p">- run</span><span class="t-o">:</span> pkey release publish --deliverable <span class="t-s">npm.crateschema</span> --dir dist/npm
   <span class="t-p">- run</span><span class="t-o">:</span> pkey release publish --deliverable <span class="t-s">pypi.crates</span> --dir dist/pypi
 <span class="hl"><span class="t-o">+</span> <span class="t-p">- run</span><span class="t-o">:</span> pkey release publish --deliverable <span class="t-s">swift.sourcekit</span></span>
 <span class="hl"><span class="t-o">+</span>     --dir dist/swift --version <span class="t-v">${{ github.ref_name }}</span></span></pre>
-              <div class="code-foot"><i class="ic ic-info sm"></i><span>Each package publishes in its own step, so the Swift one needs this step after the npm and PyPI ones. <span class="mono">dist/swift</span> is where <span class="mono">swift package-registry publish --dry-run</span> writes.</span></div>
-            </div>
+            <div class="code-foot"><i class="ic ic-info sm"></i><span><span class="mono">dist/swift</span> is where <span class="mono">swift package-registry publish --dry-run</span> writes.</span></div>
+          </div>
           </div>
         </div>
       </section>
 
-      <!-- Where people install from: personal tokens (F-33, F-37) and service tokens for CI. -->
-      <div class="grid cols-2">
-        <section class="card side-card" aria-labelledby="mine">
-          <div class="card-head plain">
-            <span class="icon-tile sm"><i class="ic ic-laptop"></i></span>
-            <div class="title"><h3 id="mine">On your machine</h3></div>
+      <!-- Where people install from: personal tokens (F-33, F-37) and service tokens for CI. Side by side; at wide, the aside. -->
+      <div class="aside span-4 mk-grid-2 top">
+        <section class="card" aria-labelledby="mine">
+          <div class="card-head">
+            <div class="title"><h2 id="mine">On your machine</h2><p>Signs in and sets up every package manager.</p></div>
           </div>
           <div class="card-body">
-            <p>Your personal token installs every package you can read, in every product. This command signs you in, makes a packages-only token and sets up every package manager DJDL’s feeds use.</p>
             <div class="cmd"><span>pkey feeds setup --write</span><button class="btn ghost icon xs" aria-label="Copy"><i class="ic ic-copy"></i></button></div>
           </div>
         </section>
-        <section class="card side-card" aria-labelledby="ci">
-          <div class="card-head plain">
-            <span class="icon-tile sm"><i class="ic ic-server-cog"></i></span>
-            <div class="title"><h3 id="ci">In CI and on servers</h3></div>
-            <a class="link small" href="#">Service tokens<i class="ic ic-arrow-right"></i></a>
+        <section class="card" aria-labelledby="ci">
+          <div class="card-head">
+            <div class="title"><h2 id="ci">In CI and on servers</h2><p>Use a service token that can read packages.</p></div>
+          </div>
+          <div class="card-rows">
+            <div class="card-row"><div class="grow"><div class="cell-title">Plugin CI</div><div class="cell-sub mono">pkeyci_…R8VQ</div></div><span class="meta">Used 14 min ago</span></div>
+            <div class="card-row"><div class="grow"><div class="cell-title">Docs build</div><div class="cell-sub mono">pkeyci_…2MDX</div></div><span class="meta">Used Oct 5</span></div>
           </div>
           <div class="card-body">
-            <p>Machines install with one of DJDL’s service tokens that can read packages.</p>
-            <div>
-              <div class="tok"><span class="tok-name">Plugin CI</span><span class="tok-used">Used 14 min ago</span><span class="tok-hint">pkeyci_…R8VQ</span></div>
-              <div class="tok"><span class="tok-name">Docs build</span><span class="tok-used">Used Oct 5</span><span class="tok-hint">pkeyci_…2MDX</span></div>
-            </div>
             <div class="cmd"><span>pkey feeds setup --print --token-env PKEY_TOKEN</span><button class="btn ghost icon xs" aria-label="Copy"><i class="ic ic-copy"></i></button></div>
           </div>
         </section>
@@ -518,17 +201,18 @@
 
       <!-- packageFeeds is now only an off switch: quiet, at the foot, with what it stops. -->
       <section class="card" aria-labelledby="feeds-off-title">
-        <div class="setting-row feeds-off-row">
+        <div class="setting-row">
           <div>
-            <div class="setting-title" id="feeds-off-title">Package feeds are on for DJDL</div>
-            <div class="setting-desc">Turning them off stops every install and every CI publish on DJDL’s 3 feeds. Nothing is deleted.</div>
+            <div class="setting-title" id="feeds-off-title">Package feeds</div>
+            <div class="setting-desc">Stops every install and CI publish.</div>
           </div>
           <button class="btn outline sm">Turn off package feeds</button>
         </div>
       </section>
     </div>
   </main>
-  <!-- F-34: packageFeeds is only an off switch; turning it off names everything that stops. -->
+
+  <!-- Opened from the foot row on Packages; the page stays dimmed behind it. -->
   <div class="overlay sheet" data-service="distribution">
     <div class="dialog danger" role="dialog" aria-labelledby="off-title">
       <div class="dialog-head">
@@ -537,13 +221,12 @@
         <button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button>
       </div>
       <div class="dialog-body">
-        <p>Everything on DJDL’s 3 feeds stops until you turn them back on:</p>
+        <p>Nothing is deleted. Copies on PyPI.org stay.</p>
         <ul class="bullets">
-          <li><strong>Installs</strong>: 3 packages, 3,132 installs in the last 30 days. npm, pip and Swift get an error that names DJDL.</li>
-          <li><strong>CI publishes</strong>: the next <span class="mono">release.yml</span> run can’t publish <span class="mono">@djdl/source-kit</span>, <span class="mono">@djdl/crate-schema</span> or <span class="mono">djdl-crates</span>.</li>
-          <li><strong>Service tokens</strong>: Plugin CI and Docs build can’t install from DJDL.</li>
+          <li><strong>Installs</strong>: 3 packages, 3,132 installs in 30 days</li>
+          <li><strong>CI publishes</strong>: <span class="mono">release.yml</span> can’t publish</li>
+          <li><strong>Service tokens</strong>: Plugin CI and Docs build can’t install</li>
         </ul>
-        <p class="small muted">Nothing is deleted: versions, tokens and access stay as they are. Copies already on PyPI.org stay there.</p>
         <div class="field">
           <label class="field-label">Type <span class="confirm-word">djdl</span> to confirm</label>
           <div class="input mono focus"><span class="grow">djdl</span></div>

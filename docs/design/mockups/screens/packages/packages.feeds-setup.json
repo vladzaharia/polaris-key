@@ -18,9 +18,9 @@
     "'You can install from' lists products and feeds the account can read, by ecosystem and namespace, across DJDL and Diceroll. A customer never sees Polaris Key's SDK feeds.",
     "Every file written is in the home folder, with the heading saying so: ~/.npmrc, ~/.yarnrc.yml, ~/.bunfig.toml, ~/.netrc for uv and pip, Docker through the OS keychain. This list is the reference the console card and the portal copy follow.",
     "Where a client can't be scoped safely at user level (pip's index), the run does not write it and says why and the command that prints it per project. Ecosystems with nothing to install (Swift, Gradle) are skipped in one dim line.",
-    "The CI terminal shows '--print' with '--token-env': the same renderer's output with an environment variable in place of the token, the product it printed for, the service token named by its pkeyci_ hint and label as coming from the repository's secrets, and that nothing was signed in to and no token was made.",
+    "The CI terminal shows '--print' with '--token-env': the product it printed for, the service token named by its pkeyci_ hint and label, and 'Nothing signed in, no token made'; the caption adds only that the token comes from the repository's secrets.",
     "The rerun shows the failure and recovery paths: an expired code says so and the command to get a new one; a rerun on the same machine replaces only the token it made there and says other tokens are untouched; a scope already sent to another registry in ~/.npmrc is kept with a ▲ and the '--force' flag that replaces it; the run ends 'Done, with 1 warning.'",
-    "Phone: the terminals keep 80 columns and scroll sideways inside themselves; the captions wrap under them."
+    "Desktop and wide: the laptop run beside the CI run and the rerun (at wide each column as wide as its 80-column terminal); tablet and phone: one column. Phone: the terminals keep 80 columns and scroll sideways inside themselves; the captions wrap under them. Captions name the scene and add one fact the run doesn't print."
   ],
   "status": "mockup",
   "designReview": {
@@ -38,6 +38,34 @@
         "severity": "major",
         "issue": "[Copy says something that doesn't happen] The console card, the portal and the CLI each list different package managers for 'pkey feeds setup --write'; the portal promises pip settings the CLI says it does not write.",
         "resolution": "The CLI run is the reference (npm and pnpm, Yarn, Bun, uv and pip credentials in ~/.netrc, Docker; pip's index not written; Swift and Gradle only when a feed has something to install). The console card now says the command 'sets up every package manager DJDL's feeds use'; the portal says it 'sets up npm, pnpm, Yarn, Bun, uv, pip and Docker in your home folder. pip's index is added per project.', which is what the run writes for Mara's feeds."
+      },
+      {
+        "severity": "major",
+        "issue": "At 1920 the pane bottoms are 130px apart; on phone the terminals are clipped mid-word.",
+        "resolution": "Two equal columns whose bottoms align (.board-grid.equal, each terminal fills its pane); captions are labels 8px above their pane; intro 'Sets up every package manager with its own packages-only token. Never writes into a project.'; three terminal lines dropped; phone terminals wrap at 12px in a focusable region.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX4"
+        ]
+      },
+      {
+        "issue": "Move captions into terminal title bars (UX2).",
+        "resolution": "declined: changes component structure; a label above the pane gives the gain.",
+        "round": "multi-review"
+      },
+      {
+        "severity": "major",
+        "issue": "[Phone] Code blocks, terminals and tab strips are silently clipped with no scroll cue; 'also required' cuts Info.plist and Docker.",
+        "resolution": "Kit: .fade-x (edge fade, tabindex 0, role region) and .wrap-phone (soft wrap at 12px on phone) on every code block and terminal; 'also required' is a dot. Gutters (16 phone, 24 up) and card padding (16 phone, 24 up) were already the kit's.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
       }
     ]
   }

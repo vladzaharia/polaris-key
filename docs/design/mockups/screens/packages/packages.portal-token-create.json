@@ -11,11 +11,30 @@
   "summary": "The step after Create token on Account → Packages and before the token exists: a Label field prefilled from the browser and renamed for the machine, what the token can do and when it expires, and that other tokens keep working.",
   "compare": [
     "Opens over Account → Packages (the page stays dimmed); a small dialog with the title 'New packages token'.",
-    "Label is the one field, focused, here typed as 'Work laptop'; its hint gives the browser's suggestion ('Mac · Safari') and why to name it (to tell tokens apart).",
-    "A fixed, read-only line: 'Packages only · expires in 90 days, on Jan 5, 2027 · reaches DJDL, Diceroll and any product you get a license for later'. No scope, product or expiry picker.",
+    "Label is the one field, focused, here typed as 'Work laptop'; its hint gives the browser's suggestion ('Mac · Safari') and why to name the machine (to tell tokens apart).",
+    "Three fixed facts, each led by its glyph: 'Packages only', 'Expires in 90 days, on Jan 5, 2027', 'Reaches DJDL, Diceroll and any product you get a license for later'. No scope, product or expiry picker.",
     "'Your other tokens keep working.' under it; Cancel (outline) and the primary 'Create token', which leads to packages.portal-token.",
     "Phone: the kit's bottom sheet with the buttons pinned full width, the primary on top."
   ],
   "status": "mockup",
-  "designReview": null
+  "designReview": {
+    "round": "multi-review",
+    "reviewer": "4 UX designers, triaged by a lead designer",
+    "date": "2026-10-08",
+    "verdict": "Spacing and copy trimmed per the multi-review triage; see findings.",
+    "findings": [
+      {
+        "severity": "minor",
+        "issue": "Sentences repeat a fact said in the sibling dialog.",
+        "resolution": "Helper 'Name the machine, to tell tokens apart'; 'Expires Jan 5, 2027 (90 days)'; 'Your other tokens keep working' removed (the revoke dialog carries it).",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      }
+    ]
+  }
 }

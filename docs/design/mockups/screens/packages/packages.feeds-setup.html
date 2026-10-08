@@ -1,55 +1,33 @@
 <style>
-  /* packages.feeds-setup: a board with the terminal run and the CI form beside it. */
-  [data-screen="packages.feeds-setup"] .board {
-    justify-content: center;
-  }
-  [data-screen="packages.feeds-setup"] .board-title {
-    max-width: calc(80ch + 34px);
-    margin: 0 auto;
-  }
-  [data-screen="packages.feeds-setup"] .stage {
-    display: flex;
-    flex-direction: column;
-    gap: 32px;
-    width: 100%;
-    max-width: calc(80ch + 34px);
-    margin: 0 auto;
-  }
-  [data-screen="packages.feeds-setup"] .board-title h1 {
-    font-family: var(--pk-font-mono);
-    letter-spacing: -0.01em;
-  }
-  [data-screen="packages.feeds-setup"] .board-item {
-    width: 100%;
-  }
-  [data-screen="packages.feeds-setup"] .board-item > figcaption {
-    max-width: 72ch;
-  }
-  @container screen (max-width: 639px) {
-    [data-screen="packages.feeds-setup"] .stage {
-      gap: 24px;
-    }
+  /* packages.feeds-setup: the laptop run beside the CI run and the rerun from 1280px (at wide, each
+     column as wide as its 80-column terminal); one column below. */
+  [data-screen="packages.feeds-setup"] .board-grid {
+    --cols-desktop: minmax(0, 1fr) minmax(0, 1fr);
+    --cols-wide: minmax(0, 1fr) minmax(0, 1fr);
   }
 </style>
 
 <div class="board" data-service="core">
-  <div class="board-title">
-    <h1>pkey feeds setup --write</h1>
-    <p>One command sets up every package manager for every product a person can install from. It signs in through the account’s device code, makes its own packages-only token and writes user-level settings. It never writes into a project and never uses the admin token from <span class="mono">pkey login</span>.</p>
-  </div>
+  <div class="board-page">
+    <header class="board-head">
+      <h1>pkey feeds setup --write</h1>
+      <p>Sets up every package manager with its own packages-only token. Never writes into a project.</p>
+    </header>
 
-  <div class="stage">
-    <figure class="board-item">
-      <div class="term cols-80">
-        <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — ~/code/djdl-sources</span></div>
-<pre class="term-body"><span class="c-prompt">❯</span> pkey feeds setup --write
+    <div class="board-grid equal">
+      <div class="board-col">
+        <figure class="board-item">
+          <figcaption><strong>On a laptop</strong>Each file is merged, never replaced: other registries in ~/.npmrc stay as they were.</figcaption>
+          <div class="term cols-80 fade-x wrap-phone">
+            <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — ~/code/djdl-sources</span></div>
+<pre class="term-body" tabindex="0" role="region" aria-label="Terminal output"><span class="c-prompt">❯</span> pkey feeds setup --write
 <span class="c-b">Polaris Key packages</span> <span class="c-dim">· key.plrs.im</span>
 
 To sign in, open <span class="c-accent c-u">https://key.plrs.im/device</span> and enter <span class="c-b">QFJT-7KWD</span>
 <span class="c-dim">Opened it in your browser. Waiting for you to approve…</span>
 <span class="c-ok">✓</span> Signed in as <span class="c-b">Mara Fennick</span> <span class="c-dim">(mara@example.com)</span>
 <span class="c-ok">✓</span> Made a packages-only token <span class="c-accent">pkeyp_…7Q2M</span> <span class="c-dim">“pkey feeds setup on mara-mbp”</span>
-  <span class="c-dim">It installs packages and can’t change anything. Expires Jan 5, 2027.</span>
+  <span class="c-dim">Expires Jan 5, 2027.</span>
 
 <span class="c-b">You can install from 4 feeds in 2 products</span>
   DJDL       <span class="c-dim">npm</span> @djdl <span class="c-dim">· PyPI</span> djdl-crates
@@ -69,32 +47,32 @@ To sign in, open <span class="c-accent c-u">https://key.plrs.im/device</span> an
   npm install @djdl/source-kit
   docker pull pkg.plrs.im/diceroll/table-server:1.7.3
 
-<span class="c-dim">In CI, use a service token:</span> pkey feeds setup --print --token-env PKEY_TOKEN
 <span class="c-prompt">❯</span> <span class="cursor"></span></pre>
+          </div>
+        </figure>
       </div>
-      <figcaption><strong>On a laptop</strong>The token comes from the account’s device-code sign-in, so it is packages-only by construction. Each file is merged, never replaced: other registries in ~/.npmrc stay as they were.</figcaption>
-    </figure>
 
-    <figure class="board-item">
-      <div class="term cols-80">
-        <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">GitHub Actions — djdl-plugins</span></div>
-<pre class="term-body"><span class="c-prompt">❯</span> pkey feeds setup --print npm --token-env PKEY_TOKEN &gt;&gt; ~/.npmrc
-<span class="c-dim">Printed for DJDL (from polaris-key.json). The token comes from $PKEY_TOKEN.</span>
-<span class="c-dim">PKEY_TOKEN holds the service token</span> <span class="c-accent">pkeyci_…R8VQ</span> <span class="c-dim">“Plugin CI” from the</span>
-<span class="c-dim">repository’s secrets. Nothing was signed in to and no token was made.</span>
+      <div class="board-col">
+        <figure class="board-item">
+          <figcaption><strong>In CI</strong>The service token comes from the repository’s secrets.</figcaption>
+          <div class="term cols-80 fade-x wrap-phone">
+            <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">GitHub Actions — djdl-plugins</span></div>
+<pre class="term-body" tabindex="0" role="region" aria-label="Terminal output"><span class="c-prompt">❯</span> pkey feeds setup --print npm --token-env PKEY_TOKEN &gt;&gt; ~/.npmrc
+<span class="c-dim">Printed for DJDL (polaris-key.json), using $PKEY_TOKEN: service token</span>
+<span class="c-accent">pkeyci_…R8VQ</span> <span class="c-dim">“Plugin CI”. Nothing signed in, no token made.</span>
 <span class="c-prompt">❯</span> cat ~/.npmrc
 @djdl:registry=https://pkg.plrs.im/npm/djdl/
 //pkg.plrs.im/npm/:_authToken=${PKEY_TOKEN}
 <span class="c-prompt">❯</span> npm ci
 added 214 packages in 6s</pre>
-      </div>
-      <figcaption><strong>In CI</strong><span class="mono">--print</span> writes nothing by itself and mints nothing; the service token (<span class="mono">pkeyci_</span>) comes from the repository’s secrets.</figcaption>
-    </figure>
+          </div>
+        </figure>
 
-    <figure class="board-item">
-      <div class="term cols-80">
-        <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — ~/code/djdl-sources, Oct 14</span></div>
-<pre class="term-body"><span class="c-prompt">❯</span> pkey feeds setup --write
+        <figure class="board-item">
+          <figcaption><strong>Again, a week later</strong>An expired code, then a rerun that replaces only this machine’s token.</figcaption>
+          <div class="term cols-80 fade-x wrap-phone">
+            <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — ~/code/djdl-sources, Oct 14</span></div>
+<pre class="term-body" tabindex="0" role="region" aria-label="Terminal output"><span class="c-prompt">❯</span> pkey feeds setup --write
 To sign in, open <span class="c-accent c-u">https://key.plrs.im/device</span> and enter <span class="c-b">MZRP-4HXC</span>
 <span class="c-err">✗</span> The code MZRP-4HXC expired before it was approved (codes last 10 minutes).
   Run it again for a new code: <span class="c-accent">pkey feeds setup --write</span>
@@ -111,10 +89,11 @@ To sign in, open <span class="c-accent c-u">https://key.plrs.im/device</span> an
                  Replace it: <span class="c-accent">pkey feeds setup --write --force</span>
   <span class="c-ok">✓</span> Yarn, Bun, uv, pip, Docker  <span class="c-dim">updated with the new token</span>
 
-<span class="c-warn">Done, with 1 warning.</span> @djdl packages still come from npm.example.com.
+<span class="c-warn">Done, with 1 warning.</span>
 <span class="c-prompt">❯</span> <span class="cursor"></span></pre>
+          </div>
+        </figure>
       </div>
-      <figcaption><strong>Again, a week later</strong>An expired code says so and how to get a new one. A rerun replaces the token it made for this machine, never one made elsewhere. A scope already sent somewhere else is kept, with the flag that replaces it.</figcaption>
-    </figure>
+    </div>
   </div>
 </div>

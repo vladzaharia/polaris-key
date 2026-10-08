@@ -20,7 +20,7 @@
     "Timeline: 1.8.1 published Oct 7, 09:40; 1.8.0 demoted Oct 7, 11:30 by Ana Lima with the reason, still on beta and dev; stable back on 1.7.3, 'Published Sep 26'; dev's '11 dev builds cleaned up' on Sep 30, 16:40, when 1.7.3 reached stable.",
     "The demote partly failed: stable's lane has a warning callout 'itch.io still serves 1.8.0' (butler timed out at 11:31 on windows-x64; the other channels went back) with 'Retry itch.io', and the toast says 'Demoted 1.8.0, except on itch.io' with Retry. Home gets an attention item for the same failure (products area).",
     "'Promote 1.8.1 to stable' is the page's one filled primary, in beta's lane; it opens packages.promote.",
-    "The map has a Polaris Key column (download page and update checks for every track) and Diceroll's store channels only. Stable cells that go live by themselves carry 'Goes live with stable' (Polaris Key, Google Play with the staged rollout set when promoting, itch.io); the App Store says 'You submit: one typed click'. The subtitle says the same in words.",
+    "The map has a Polaris Key column (download page and update checks for every track) and Diceroll's store channels only. The App Store's stable cell says 'You submit: one typed click'; no section subtitle repeats it.",
     "Steam matches Home and Channels: every Steam cell keeps its default lane but says 'Not sent: Steam isn't connected', and an attention row under the table explains it (no Steamworks publisher key) with Connect Steam. itch.io's channels are windows-x64 and linux-x86_64.",
     "The toast is raised in dark (stronger fill and border) and sits over empty space, not over lane content.",
     "Phone: the sidebar folds into the menu button, the lanes stack, Promote takes a full row, the map scrolls sideways inside its card with the Steam row under it, and the toast is pinned to the bottom safe area."
@@ -66,6 +66,67 @@
         "severity": "minor",
         "issue": "[Visual] No single primary; in dark the toast is barely raised and sits over the playtest log; on phone it covers beta's version.",
         "resolution": "'Promote 1.8.1 to stable' is the filled primary (Release cyan); Add a track is outline. The toast is raised in dark (--mk-fill-strong fill, --pk-border-strong border), sits over beta's empty space in the mockup, and is pinned to the bottom safe area on phone, where it covers an older log line, not a current version."
+      },
+      {
+        "severity": "major",
+        "issue": "[Wide] The toast covers the Steam column header and duplicates the lane's Retry.",
+        "resolution": "Toast is now .toasts.at-end (drawn at the page's end, bottom right, clear of content; the page keeps 72px+ below); the toast's Retry is removed, the lane's 'Retry itch.io' stays.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "[Phone] The 6-column matrix is clipped with no cue.",
+        "resolution": "Phone: .table.stack-phone turns it into one card per track (pill header, label/value rows on the 80px label grid). Tablet: scrolls inside its own container with an edge fade (.table-card.fade-edge).",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Lane cards leave 200-300px of dead space above the footer.",
+        "resolution": "Equal-height lanes with the footer pinned (.lane-card, margin-top:auto); activity capped (stable shows 2 because of its callout, the others 2) with 'View all' in a cut lane's footer; identical lane padding.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Facts repeat in header, footer, matrix and dialog.",
+        "resolution": "Lane meta is 'Built in'; 'also get stable/beta' moves to the footer beside the license count; stable footer 'All 18,240 licenses'; five 'Not sent' cells are an em dash with one legend; 'Destinations'; shorter footnote.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3"
+        ]
+      },
+      {
+        "issue": "Switch lanes to align-self:start or masonry instead of equal heights.",
+        "resolution": "declined: equal-height cards with aligned footers look right once the row cap is applied; top-aligned unequal cards would make the row ragged.",
+        "round": "multi-review"
+      },
+      {
+        "severity": "major",
+        "issue": "[Phone] Code blocks, terminals and tab strips are silently clipped with no scroll cue; 'also required' cuts Info.plist and Docker.",
+        "resolution": "Kit: .fade-x (edge fade, tabindex 0, role region) and .wrap-phone (soft wrap at 12px on phone) on every code block and terminal; 'also required' is a dot. Gutters (16 phone, 24 up) and card padding (16 phone, 24 up) were already the kit's.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
       }
     ]
   }

@@ -12,13 +12,64 @@
   "summary": "F-35's registry wizard for DJDL's public package djdl-crates on Oct 2, at its last step: the name claimed on PyPI.org, the trusted publisher added through a deep link, the CI step verified, and the per-package approval, irreversible and limited to stable and beta, with a typed confirmation.",
   "compare": [
     "Reached from the PyPI feed's ⋯ menu ('Publish to PyPI.org…'); crumbs Packages › PyPI › djdl-crates; Distribution accent; Packages active in the sidebar with the count of feeds on Oct 2 (2).",
-    "The subtitle says what happens and the security property: stable and beta releases go to PyPI.org from DJDL's own CI through trusted publishing; Polaris Key never holds a PyPI password or token.",
-    "The card head says how far along it is ('4 steps, 3 done') and the precondition: only a Public package can go, djdl-crates is Public since Sep 12.",
+    "The subtitle says how and the security property: from DJDL's own CI, through PyPI's trusted publishing; Polaris Key never holds a PyPI password or token. Which tracks go is said once, in the Approve step's chips.",
+    "The card head is 'Trusted publishing' with its progress ('3 of 4 done' and a bar) and the precondition: only a Public package can go; djdl-crates is Public since Sep 12.",
     "Steps: Claim the name (a pending publisher reserves djdl-crates for example-org/djdl), Add the trusted publisher on PyPI.org (the exact owner, repository, workflow and environment values, who added it and when, 'Open on PyPI.org'), Verify (what was checked, with the release.yml job: environment pypi, id-token: write, 'pkey feeds publish-public --deliverable pypi.crates').",
-    "Approve: chips for what goes (stable; beta as pre-releases) and what never goes (dev, dashed), a warning that it can't be undone (PyPI.org keeps every version; cleanup never deletes them; stopping only stops new versions), a typed confirmation with the package name, and 'Approve publishing to PyPI.org' with Cancel.",
+    "Approve: chips for what goes (stable; beta as pre-releases) and what never goes (dev, dashed), a warning that it can't be undone (PyPI.org keeps every version; cleanup never deletes them; stopping only stops new versions), a typed confirmation with the package name in a field capped at 400px, and Cancel with 'Approve publishing to PyPI.org' in the card's foot.",
     "After approval, Packages shows 'Also on PyPI.org' on the djdl-crates row and the approval in the feed's foot, and the portal row says 'also on PyPI.org'.",
-    "Phone: the steps stack, the code scrolls inside its block, and the two buttons take full rows with the primary on top."
+    "Phone: the steps stack, the code scrolls inside its block, and the foot's two buttons take full rows with the primary on top. Wide: the flow keeps the 960px narrow page, so no line stretches."
   ],
   "status": "mockup",
-  "designReview": null
+  "designReview": {
+    "round": "multi-review",
+    "reviewer": "4 UX designers, triaged by a lead designer",
+    "date": "2026-10-08",
+    "verdict": "Spacing and copy trimmed per the multi-review triage; see findings.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "About 700px of canvas empty at wide; Approve is not under the field it confirms; input 8px from the footer on phone.",
+        "resolution": "Page is .page.form.centered (760, centred in the container); Cancel and Approve sit directly under the field, left-aligned with it (.actions-under), 16px below it on phone with Cancel as a lower-emphasis button.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Subtitle and card header duplicate; the five parameters read as one dense sentence.",
+        "resolution": "Second subtitle sentence and the card sub-line dropped; warning 'PyPI.org keeps every version it receives. Stopping later only stops new ones.' at 70ch; step 2 is a key/value grid (.kv-grid) with the timestamp right-aligned.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3"
+        ]
+      },
+      {
+        "issue": "Change the Approve button colour to the amber warning; set the focus ring to the area colour.",
+        "resolution": "declined: primary actions stay in the service accent; the focus ring is a single kit token.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Hide PyPI parameters behind a 'Details' disclosure (UX1).",
+        "resolution": "declined: disclosures hide real data; the key/value grid solves the density.",
+        "round": "multi-review"
+      },
+      {
+        "severity": "major",
+        "issue": "[Wide] Single-column screens hug the left of a 1920 canvas; the rail leaves 600-750px empty.",
+        "resolution": "Kit: .page.contained (1280, centred), .page.form.centered, and .sticky-rail (360px rail, sticky at top 88px from 1600px); card pairs use .top (align-items:start).",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3"
+        ]
+      }
+    ]
+  }
 }

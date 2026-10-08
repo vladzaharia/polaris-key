@@ -1,148 +1,3 @@
-<style>
-  /* packages.updates-failing: DJDL’s Updates on Oct 9, when a build shipped with the wrong Sparkle key. */
-  [data-screen="packages.updates-failing"] .scope {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px 10px;
-    font-size: 13px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="packages.updates-failing"] .updater .card-head > .icon-tile .ic {
-    width: 20px;
-    height: 20px;
-  }
-  [data-screen="packages.updates-failing"] .head-status {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 2px;
-    flex: none;
-    text-align: right;
-  }
-  [data-screen="packages.updates-failing"] .head-status .small {
-    color: var(--pk-text-muted);
-  }
-  [data-screen="packages.updates-failing"] .of {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13px;
-    color: var(--pk-text-default);
-    white-space: nowrap;
-  }
-  [data-screen="packages.updates-failing"] .of .meter {
-    width: 44px;
-  }
-  [data-screen="packages.updates-failing"] .of .meter > i.on {
-    background: var(--pk-text-muted);
-  }
-  [data-screen="packages.updates-failing"] .pick {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px 14px;
-    padding: 14px 20px;
-    border-bottom: 1px solid var(--mk-line);
-  }
-  [data-screen="packages.updates-failing"] .pick .chosen {
-    display: inline-flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px 8px;
-  }
-  [data-screen="packages.updates-failing"] .pick .chosen .field-label {
-    margin: 0;
-  }
-  [data-screen="packages.updates-failing"] .pick .hint {
-    flex: 1 1 320px;
-    font-size: 13px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="packages.updates-failing"] .task-desc code {
-    white-space: nowrap;
-  }
-  [data-screen="packages.updates-failing"] .callout .cmd {
-    margin-top: 8px;
-  }
-  [data-screen="packages.updates-failing"] .facts {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px 24px;
-    font-size: 13px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="packages.updates-failing"] .facts strong {
-    color: var(--pk-text-strong);
-    font-variant-numeric: tabular-nums;
-  }
-  [data-screen="packages.updates-failing"] .facts .bad strong,
-  [data-screen="packages.updates-failing"] .facts .bad {
-    color: var(--pk-danger);
-  }
-  [data-screen="packages.updates-failing"] .store-row .icon-tile .ic {
-    width: 18px;
-    height: 18px;
-  }
-  [data-screen="packages.updates-failing"] .not-shown {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    font-size: 13px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="packages.updates-failing"] .not-shown .ic {
-    flex: none;
-    margin-top: 2px;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="packages.updates-failing"] .setting-row .link,
-  [data-screen="packages.updates-failing"] .setting-row .btn,
-  [data-screen="packages.updates-failing"] .setting-row > .status,
-  [data-screen="packages.updates-failing"] .setting-row > .stack {
-    flex: none;
-  }
-  [data-screen="packages.updates-failing"] .setting-row > .pill {
-    justify-self: start;
-  }
-  /* Every platform cell has the same two lines: name and status, then the detail. */
-  [data-screen="packages.updates-failing"] .platform-check {
-    display: grid;
-    grid-template-columns: auto auto;
-    justify-content: start;
-    gap: 2px 10px;
-  }
-  [data-screen="packages.updates-failing"] .platform-check > .meta {
-    grid-column: 1 / -1;
-    padding-left: 22px;
-  }
-  [data-screen="packages.updates-failing"] .updater .callout .link {
-    margin-top: 6px;
-    font-size: 13px;
-  }
-  [data-screen="packages.updates-failing"] .updater .callout > .btn {
-    flex: none;
-  }
-  @container screen (max-width: 639px) {
-    [data-screen="packages.updates-failing"] .updater > .card-head {
-      flex-wrap: wrap;
-    }
-    [data-screen="packages.updates-failing"] .head-status {
-      width: 100%;
-      padding-left: 52px;
-      align-items: flex-start;
-      text-align: left;
-    }
-    [data-screen="packages.updates-failing"] .pick {
-      padding: 14px 16px;
-    }
-    [data-screen="packages.updates-failing"] .platform-checks {
-      flex-direction: column;
-      align-items: flex-start;
-    }
-  }
-</style>
-
 <div class="console" data-service="core">
   <header class="topbar">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
@@ -153,7 +8,7 @@
     <span class="avatar violet">AL</span>
   </header>
 
-  <!-- Product context (ST-45). Updates is the renamed Update → Feed page, under Ship builds (C-50). -->
+  <!-- Product context (ST-45). Updates carries a danger count while signatures fail. -->
   <nav class="sidebar" aria-label="DJDL">
     <div class="ctx">
       <span class="logo sm" data-product="djdl"></span>
@@ -166,10 +21,10 @@
     <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
     <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
     <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
-    <div class="nav-group closed" data-service="license"><div class="nav-label">Licensing<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="config" style="padding-top: 4px"><div class="nav-label">Managed config<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group" data-service="release" style="padding-top: 4px">
-      <div class="nav-label">Ship builds<i class="ic ic-chevron-down sm"></i></div>
+    <div class="nav-group closed" data-service="license"><button class="nav-label" aria-expanded="false">Licensing<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group" data-service="release">
+      <button class="nav-label" aria-expanded="true">Ship builds<i class="ic ic-chevron-down sm"></i></button>
       <a class="nav-item" href="#"><i class="ic ic-package"></i><span class="nav-text">Releases</span></a>
       <a class="nav-item" href="#"><i class="ic ic-git-branch"></i><span class="nav-text">Release tracks</span></a>
       <a class="nav-item" href="#"><i class="ic ic-trending-up"></i><span class="nav-text">Rollouts</span></a>
@@ -178,8 +33,8 @@
       <a class="nav-item active" href="#" data-service="update"><i class="ic ic-circle-arrow-up"></i><span class="nav-text">Updates</span><span class="count danger">1</span></a>
       <a class="nav-item" href="#"><i class="ic ic-heart-pulse"></i><span class="nav-text">Health</span></a>
     </div>
-    <div class="nav-group closed" data-service="identity" style="padding-top: 4px"><div class="nav-label">Sign-in<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="sync" style="padding-top: 4px"><div class="nav-label">Cloud Sync<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
       <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
@@ -187,106 +42,94 @@
   </nav>
 
   <main class="main" data-service="update">
-    <div class="page">
+    <!-- Wide (≥ 1600): the updaters in the main column, the update rules in the aside. -->
+    <div class="page columns sticky-rail">
       <header class="page-head">
         <div class="page-heading"><h1>Updates</h1></div>
-        <p class="page-sub"><span>How installed copies of DJDL update themselves. Each updater shows Verified after its first real update check.</span></p>
+        <!-- A-20: scoped to what DJDL builds; only those get a card. -->
+        <p class="page-sub">For DJDL’s builds</p>
         <div class="page-actions">
           <button class="btn ghost hide-phone"><i class="ic ic-book-open"></i>Guide</button>
         </div>
       </header>
 
-      <!-- A-20: scoped to what DJDL builds. -->
-      <div class="scope">
-        <span>From DJDL’s builds</span>
-        <span class="pill"><i class="ic ic-apple"></i>macOS · Apple silicon, Intel</span>
-        <span class="pill"><i class="ic ic-windows"></i>Windows · x64 (.msi)</span>
-      </div>
-
-      <!-- macOS: Sparkle, Verified from a real update check (update-health events, the Ship builds fact). -->
-      <section class="card updater" aria-labelledby="u-mac">
+      <!-- macOS: 4.2.2 shipped with the wrong SUPublicEDKey, so its copies refuse every signed update. -->
+      <section class="card" aria-labelledby="u-mac">
         <div class="card-head">
           <span class="icon-tile"><i class="ic ic-apple"></i></span>
           <div class="title">
             <h2 id="u-mac">macOS · Sparkle</h2>
-            <p>4.2.2 on stable and 4.3.0-beta.3 on beta, for Apple silicon and Intel.</p>
+            <p class="mk-cluster"><span class="pill danger sm"><i class="ic ic-circle-x"></i>12 signature failures</span><span>since Oct 9, 10:20</span></p>
           </div>
-          <span class="head-status"><span class="pill danger sm"><i class="ic ic-circle-x"></i>12 signature failures</span><span class="small">since Oct 9, 10:20</span></span>
         </div>
-        <div class="card-split wide-end">
+        <div class="card-split wide-end code-first sticky-end">
           <div>
-            <p class="eyebrow">Setup</p>
-            <div class="tasks">
-              <div class="task done">
-                <span class="task-mark"></span>
-                <div class="task-title">Sparkle signing key</div>
-                <div class="task-desc">Made with <code>pkey release keys init --sparkle</code> on Oct 7, 11:05. The public half is in <span class="mono">.pkey/release</span>.</div>
-              </div>
-              <div class="task done">
-                <span class="task-mark"></span>
-                <div class="task-title">Signed appcast</div>
-                <div class="task-desc">Every update in it is signed with that key.</div>
-              </div>
-              <div class="task blocked">
-                <span class="task-mark"></span>
-                <div class="task-title">Builds carry the same key</div>
-                <div class="task-desc">4.2.2 doesn’t: its <span class="mono">SUPublicEDKey</span> is different.</div>
-              </div>
-            </div>
-            <div class="callout danger mt-4">
-              <i class="ic ic-circle-x"></i>
-              <div class="grow">
-                <div class="callout-title">DJDL 4.2.2 has the wrong SUPublicEDKey</div>
-                <div class="callout-text">4.2.2, published Oct 9, was built with <span class="mono">kZ8r…Q1c=</span> in its Info.plist, not <span class="mono">pJ3m…vWc=</span> from <span class="mono">.pkey/release</span>. Copies on 4.2.2 refuse every update Polaris Key signs: 12 tried 4.3.0-beta.3 since 10:20.</div>
-                <div class="callout-text mt-2"><strong>To fix it:</strong> put the key this prints back in Info.plist and publish 4.2.3. Copies on 4.2.2 can’t update themselves: their owners get 4.2.3 from the download page or Library.</div>
-                <div class="cmd"><span>pkey release keys init --sparkle --show-public</span><button class="btn ghost icon xs" aria-label="Copy"><i class="ic ic-copy"></i></button></div>
-                <a class="link" href="#"><i class="ic ic-mail"></i>Email the 37 people on 4.2.2</a>
+            <div>
+              <p class="eyebrow">Setup</p>
+              <div class="tasks">
+                <div class="task done">
+                  <span class="task-mark"></span>
+                  <div class="task-title">Sparkle signing key</div>
+                  <div class="task-desc"><code>pkey release keys init --sparkle</code>, Oct 7</div>
+                </div>
+                <div class="task done">
+                  <span class="task-mark"></span>
+                  <div class="task-title">Signed appcast</div>
+                  <div class="task-desc">Every update in it is signed with that key.</div>
+                </div>
+                <div class="task blocked">
+                  <span class="task-mark"></span>
+                  <div class="task-title">Builds carry the same key</div>
+                  <div class="task-desc">Version 4.2.2 was built with the wrong key (<span class="mono">kZ8r…Q1c=</span>, expected <span class="mono">pJ3m…vWc=</span>).</div>
+                  <div class="task-body">
+                    <p class="type-small">Put back the key from the command below and publish 4.2.3.</p>
+                    <div class="cmd"><span>pkey release keys init --sparkle --show-public</span><button class="btn ghost icon xs" aria-label="Copy"><i class="ic ic-copy"></i></button></div>
+                    <div><button class="btn outline sm"><i class="ic ic-mail"></i>Email the 37 owners of 4.2.2</button></div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
           <div>
             <p class="eyebrow">In your app</p>
-            <div class="code">
+            <div class="code fade-x wrap-phone">
               <div class="code-head">
-                <div class="code-tabs"><span class="active">Swift<small>PolarisKeyUpdate</small></span><span>Info.plist<small>also required</small></span></div>
+                <div class="code-tabs"><span class="active">Swift<small>PolarisKeyUpdate</small></span><span>Info.plist<small role="img" aria-label="also required">•</small></span></div>
                 <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
               </div>
-<pre><span class="t-k">import</span> <span class="t-t">PolarisKeyUpdate</span>
+<pre tabindex="0" role="region" aria-label="Code"><span class="t-k">import</span> <span class="t-t">PolarisKeyUpdate</span>
 
 <span class="t-c">// In applicationDidFinishLaunching, after PolarisKey starts.</span>
-<span class="t-c">// Sparkle reads the feed for this license’s release track and</span>
-<span class="t-c">// sends the device’s license token with every check.</span>
 <span class="t-k">let</span> updates <span class="t-o">=</span> <span class="t-k">try</span> <span class="t-t">PolarisSparkle</span>(client: polarisKey)
 updates.<span class="t-f">startUpdater</span>()</pre>
-              <div class="code-foot"><i class="ic ic-lock sm"></i><span>Each check carries the device’s license token, so only Customers get updates. Sparkle also needs <span class="mono">SUFeedURL</span> and <span class="mono">SUPublicEDKey</span> from the Info.plist tab.</span></div>
+              <div class="code-foot"><i class="ic ic-lock sm"></i><span>Each check carries the device’s license token.</span></div>
             </div>
           </div>
         </div>
         <div class="card-foot start">
-          <div class="facts">
-            <span>Since Oct 9, 10:20</span>
-            <span><strong>212</strong> update checks</span>
-            <span><strong>37</strong> copies on 4.2.2</span>
-            <span class="bad"><strong>12</strong> signature failures</span>
-          </div>
+          <span class="mk-cluster-6 type-small muted"><span><strong>212</strong> update checks</span><span><strong>37</strong> copies on 4.2.2</span></span>
         </div>
       </section>
 
       <!-- Windows: WinSparkle chosen; Velopack possible; App Installer needs an MSIX build, which DJDL doesn't make. -->
-      <section class="card updater" aria-labelledby="u-win">
+      <section class="card" aria-labelledby="u-win">
         <div class="card-head">
           <span class="icon-tile"><i class="ic ic-windows"></i></span>
           <div class="title">
             <h2 id="u-win">Windows · WinSparkle</h2>
-            <p>4.2.2 on stable for x64, as an .msi installer.</p>
+            <p><span class="unseen">Not seen yet</span></p>
           </div>
-          <span class="head-status"><span class="unseen">Not seen yet</span><span class="small">no Windows build has checked in</span></span>
         </div>
-        <div class="pick">
-          <span class="chosen"><span class="field-label">Updater</span><strong>WinSparkle</strong><span class="small muted">chosen by Ana Lima on Oct 7</span><button class="btn ghost sm">Change</button></span>
-          <span class="hint">Velopack also fits, for apps packaged with <span class="mono">vpk</span>. App Installer needs an MSIX build, and DJDL makes an .msi.</span>
+        <div class="card-body tight">
+          <div class="mk-split center">
+            <div class="mk-stack-1">
+              <span>Updater: WinSparkle, chosen by Ana Lima on Oct 7</span>
+              <span class="hint">Velopack also fits apps packaged with <span class="mono">vpk</span>. App Installer needs MSIX; DJDL makes an .msi.</span>
+            </div>
+            <div><button class="btn outline sm">Change</button></div>
+          </div>
         </div>
-        <div class="card-split wide-end">
+        <div class="card-split wide-end code-first sticky-end">
           <div>
             <p class="eyebrow">Setup</p>
             <div class="tasks">
@@ -303,18 +146,18 @@ updates.<span class="t-f">startUpdater</span>()</pre>
               <div class="task waiting">
                 <span class="task-mark"></span>
                 <div class="task-title">First update check</div>
-                <div class="task-desc">Ship a Windows build with this code. It shows Verified after its first check.</div>
+                <div class="task-desc">Ship a Windows build with this code; it shows Verified after its first check.</div>
               </div>
             </div>
           </div>
           <div>
             <p class="eyebrow">In your app</p>
-            <div class="code">
+            <div class="code fade-x wrap-phone">
               <div class="code-head">
                 <div class="code-tabs"><span class="active">Kotlin<small>WinSparkle via JNA</small></span><span>C++</span></div>
                 <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
               </div>
-<pre><span class="t-c">// Before DJDL’s main window opens, after PolarisKey starts.</span>
+<pre tabindex="0" role="region" aria-label="Code"><span class="t-c">// Before DJDL’s main window opens, after PolarisKey starts.</span>
 <span class="t-t">WinSparkle</span>.<span class="t-f">win_sparkle_set_appcast_url</span>(
     <span class="t-s">"https://key.plrs.im/djdl/update/stable/winsparkle.xml"</span>)
 <span class="t-t">WinSparkle</span>.<span class="t-f">win_sparkle_set_eddsa_public_key</span>(
@@ -322,18 +165,18 @@ updates.<span class="t-f">startUpdater</span>()</pre>
 <span class="t-t">WinSparkle</span>.<span class="t-f">win_sparkle_set_http_header</span>(
     <span class="t-s">"Authorization"</span>, <span class="t-s">"Bearer "</span> <span class="t-o">+</span> polarisKey.<span class="t-f">updateToken</span>())
 <span class="t-t">WinSparkle</span>.<span class="t-f">win_sparkle_init</span>()</pre>
-              <div class="code-foot"><i class="ic ic-lock sm"></i><span>The header carries the device’s license token, so only Customers get updates. Licenses on beta read <span class="mono">update/beta/winsparkle.xml</span>.</span></div>
+              <div class="code-foot"><i class="ic ic-lock sm"></i><span>The header carries the device’s license token. Licenses on beta read <span class="mono">update/beta/winsparkle.xml</span>.</span></div>
             </div>
           </div>
         </div>
       </section>
 
-      <p class="not-shown"><i class="ic ic-eye-off sm"></i><span>Not shown: zsync for Linux AppImages and Play in-app updates for Android, because DJDL doesn’t ship there, and the Godot updater, because DJDL isn’t a Godot game. <a class="link" href="#">Plan a platform in Settings</a></span></p>
+      <p class="icon-line type-small muted"><i class="ic ic-eye-off sm"></i><span>Not shown: zsync, Play in-app updates (no Linux or Android builds). <a class="link" href="#">Plan a platform in Settings</a></span></p>
 
-      <!-- The page's settings rows, also reachable from the settings hub. Access is read-only here (P2-10). -->
-      <section class="card" aria-labelledby="rules">
+      <!-- The page's settings rows, also reachable from the settings hub. Access is read-only here (P2-10). At wide, the aside. -->
+      <section class="card aside span-3" aria-labelledby="rules">
         <div class="card-head">
-          <div class="title"><h2 id="rules">Update rules</h2><p>For every updater above.</p></div>
+          <div class="title"><h2 id="rules">Update rules</h2></div>
         </div>
         <div class="card-rows">
           <div class="setting-row">
@@ -341,11 +184,11 @@ updates.<span class="t-f">startUpdater</span>()</pre>
             <button class="btn outline sm">Change</button>
           </div>
           <div class="setting-row">
-            <div><div class="setting-title">Who can check for updates</div><div class="setting-desc">Customers: a device with a usable DJDL license. Set on the Access page.</div></div>
-            <a class="link" href="#">Open Access<i class="ic ic-arrow-right"></i></a>
+            <div><div class="setting-title">Who can check for updates</div><div class="setting-desc">Customers: a device with a usable DJDL license.</div></div>
+            <a class="link" href="#">Change on Access<i class="ic ic-arrow-right"></i></a>
           </div>
           <div class="setting-row">
-            <div><div class="setting-title">Release track</div><div class="setting-desc">Each license follows its own release track: stable, or beta for 12 licenses.</div></div>
+            <div><div class="setting-title">Release track</div><div class="setting-desc">Stable, or beta for 12 licenses.</div></div>
             <a class="link" href="#">Release tracks<i class="ic ic-arrow-right"></i></a>
           </div>
         </div>

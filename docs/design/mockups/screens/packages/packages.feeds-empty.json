@@ -19,5 +19,39 @@
     "Phone: the card fills the width and the snippet scrolls sideways inside its block."
   ],
   "status": "mockup",
-  "designReview": null
+  "designReview": {
+    "round": "multi-review",
+    "reviewer": "4 UX designers, triaged by a lead designer",
+    "date": "2026-10-08",
+    "verdict": "Spacing and copy trimmed per the multi-review triage; see findings.",
+    "findings": [
+      {
+        "severity": "minor",
+        "issue": "Dead space under the docs link, a command wrapping inside the code footer, 'open to Customers' mechanism aside.",
+        "resolution": "Page container width; body 'Declare a package in .pkey/release; its feed appears here on the next resync.'; left pane centred against the code pane (.card-split.v-center); the publish command is its own copyable line.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3"
+        ]
+      },
+      {
+        "issue": "Add a 'What you get' row with three feed URLs (UX1).",
+        "resolution": "declined: adds content.",
+        "round": "multi-review"
+      },
+      {
+        "severity": "major",
+        "issue": "[Wide] Single-column screens hug the left of a 1920 canvas; the rail leaves 600-750px empty.",
+        "resolution": "Kit: .page.contained (1280, centred), .page.form.centered, and .sticky-rail (360px rail, sticky at top 88px from 1600px); card pairs use .top (align-items:start).",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3"
+        ]
+      }
+    ]
+  }
 }

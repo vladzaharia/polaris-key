@@ -1,414 +1,115 @@
-<style>
-  /* packages.portal-token-create: the label step after Create token, over Account → Packages. */
-  [data-screen="packages.portal-token-create"] .portal-page {
-    max-width: 1080px;
-  }
-  [data-screen="packages.portal-token-create"] .acct-head {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px 24px;
-  }
-  [data-screen="packages.portal-token-create"] .acct-head p {
-    margin-top: 6px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="packages.portal-token-create"] .acct {
-    display: grid;
-    grid-template-columns: 200px minmax(0, 1fr);
-    gap: 24px;
-    align-items: start;
-  }
-  [data-screen="packages.portal-token-create"] .acct-nav {
-    position: sticky;
-    top: 88px;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  [data-screen="packages.portal-token-create"] .acct-nav > a {
-    display: flex;
-    align-items: center;
-    height: 34px;
-    padding: 0 12px;
-    border-radius: var(--pk-radius-md);
-    font-size: 14px;
-    color: var(--pk-text-muted);
-    white-space: nowrap;
-  }
-  [data-screen="packages.portal-token-create"] .acct-nav > a.active {
-    background: var(--mk-fill);
-    color: var(--pk-text-strong);
-    font-weight: 700;
-    box-shadow: inset 2px 0 0 var(--pk-accent);
-  }
-  [data-screen="packages.portal-token-create"] .acct-main {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    min-width: 0;
-  }
-  [data-screen="packages.portal-token-create"] .prod {
-    display: flex;
-    flex-direction: column;
-  }
-  [data-screen="packages.portal-token-create"] .prod + .prod {
-    margin-top: 18px;
-  }
-  [data-screen="packages.portal-token-create"] .prod-head {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 6px;
-  }
-  [data-screen="packages.portal-token-create"] .prod-head h3 {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="packages.portal-token-create"] .prod-head span:last-child {
-    font-size: 13px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="packages.portal-token-create"] .pkg {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 76px 64px;
-    align-items: center;
-    gap: 2px 16px;
-    padding: 10px 0;
-    border-top: 1px solid var(--mk-line);
-  }
-  [data-screen="packages.portal-token-create"] .pkg-name {
-    font: 400 14px/20px var(--pk-font-mono);
-    color: var(--pk-text-strong);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  [data-screen="packages.portal-token-create"] .pkg-desc {
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="packages.portal-token-create"] .eco {
-    justify-self: start;
-    font: 400 12px/18px var(--pk-font-mono);
-    color: var(--pk-text-muted);
-  }
-  [data-screen="packages.portal-token-create"] .pkg-ver {
-    justify-self: end;
-    font: 400 13px/18px var(--pk-font-mono);
-    color: var(--pk-text-default);
-  }
-  [data-screen="packages.portal-token-create"] .token {
-    display: grid;
-    grid-template-columns: 36px minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 2px 14px;
-  }
-  [data-screen="packages.portal-token-create"] .token-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-    background: var(--mk-fill);
-    color: var(--pk-text-default);
-  }
-  [data-screen="packages.portal-token-create"] .token-title {
-    font-weight: 700;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="packages.portal-token-create"] .token-meta {
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="packages.portal-token-create"] .cli {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  [data-screen="packages.portal-token-create"] .cli .hint {
-    font-size: 13px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="packages.portal-token-create"] .or {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    font-size: 12px;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="packages.portal-token-create"] .or::before,
-  [data-screen="packages.portal-token-create"] .or::after {
-    content: "";
-    flex: 1;
-    height: 1px;
-    background: var(--mk-line);
-  }
-  @container screen (max-width: 639px) {
-    [data-screen="packages.portal-token-create"] .portal-page h1 {
-      font-size: 28px;
-      line-height: 34px;
-    }
-    [data-screen="packages.portal-token-create"] .acct {
-      grid-template-columns: minmax(0, 1fr);
-      gap: 16px;
-    }
-    [data-screen="packages.portal-token-create"] .acct-nav {
-      position: static;
-      flex-direction: row;
-      gap: 6px;
-      overflow-x: auto;
-      margin: 0 -16px;
-      padding: 0 16px 4px;
-    }
-    [data-screen="packages.portal-token-create"] .acct-nav > a {
-      border: 1px solid var(--mk-line);
-      border-radius: 999px;
-    }
-    /* Drawn scrolled so the current section is in view, as the built row scrolls it there. */
-    [data-screen="packages.portal-token-create"] .acct-nav > a:first-child {
-      margin-left: -190px;
-    }
-    [data-screen="packages.portal-token-create"] .acct-nav > a.active {
-      box-shadow: none;
-      background: var(--pk-text-strong);
-      color: var(--pk-surface-page);
-      border-color: transparent;
-    }
-    [data-screen="packages.portal-token-create"] .pkg {
-      grid-template-columns: minmax(0, 1fr) auto;
-    }
-    [data-screen="packages.portal-token-create"] .pkg .eco {
-      grid-column: 2;
-      grid-row: 2;
-      justify-self: end;
-    }
-    [data-screen="packages.portal-token-create"] .pkg-ver {
-      grid-column: 2;
-      grid-row: 1;
-    }
-    [data-screen="packages.portal-token-create"] .token {
-      grid-template-columns: 36px minmax(0, 1fr);
-    }
-    [data-screen="packages.portal-token-create"] .token > .btn {
-      grid-column: 2;
-      justify-self: start;
-      margin-top: 6px;
-    }
-    [data-screen="packages.portal-token-create"] .portal-page {
-      padding: 24px 16px 112px;
-    }
-  }
-  /* Sign out lines up with the H1, not the name line under it. */
-  [data-screen="packages.portal-token-create"] .acct-head > .btn {
-    margin-top: 6px;
-  }
-  [data-screen="packages.portal-token-create"] .pub {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    color: var(--pk-text-default);
-  }
-  [data-screen="packages.portal-token-create"] .pub .ic {
-    width: 12px;
-    height: 12px;
-  }
-  [data-screen="packages.portal-token-create"] .token + .token {
-    margin-top: 0;
-  }
-  [data-screen="packages.portal-token-create"] .token .new {
-    margin-left: 6px;
-  }
-  [data-screen="packages.portal-token-create"] .no-pkey {
-    font-size: 13px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="packages.portal-token-create"] .no-pkey .link {
-    font-size: 13px;
-  }
-  [data-screen="packages.portal-token-create"] .dialog .key-field {
-    margin: 0;
-  }
-  [data-screen="packages.portal-token-create"] .dialog .key-field > span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  [data-screen="packages.portal-token-create"] .dialog .meta {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="packages.portal-token-create"] .dialog .meta strong {
-    color: var(--pk-text-default);
-  }
-  [data-screen="packages.portal-token-create"] .fixed {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 10px 12px;
-    border-radius: var(--pk-radius-md);
-    background: var(--mk-fill);
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-text-default);
-  }
-  [data-screen="packages.portal-token-create"] .fixed .ic {
-    flex: none;
-    margin-top: 1px;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="packages.portal-token-create"] .dialog-body > * {
-    flex: none;
-  }
-  @container screen (max-width: 639px) {
-    /* The code tabs scroll under a fade that stops before Copy, so the last tab never hides under it. */
-    [data-screen="packages.portal-token-create"] .code-tabs {
-      flex: 1 1 auto;
-      -webkit-mask-image: linear-gradient(to right, black calc(100% - 28px), transparent);
-      mask-image: linear-gradient(to right, black calc(100% - 28px), transparent);
-      padding-right: 20px;
-    }
-    [data-screen="packages.portal-token-create"] .acct-head > .btn {
-      margin-top: 0;
-    }
-  }
-</style>
-
-<div class="portal" data-service="core">
+<!-- packages.portal-token-create: name a packages token, over Account → Packages. -->
+<div class="portal modal-open" data-service="core">
   <header class="portal-top">
     <a class="portal-brand" href="#"><i class="pk-mark sm"></i>Polaris Key</a>
-    <nav class="portal-nav hide-phone"><a href="#">Library <span class="count">2</span></a><a href="#">Discover <span class="count">4</span></a></nav>
+    <nav class="portal-nav" aria-label="Portal"><a href="#">Library <span class="count">2</span></a><a href="#">Discover <span class="count">4</span></a></nav>
     <div class="portal-actions">
-      <button class="btn outline sm hide-phone"><i class="ic ic-key-round"></i>Activate license</button>
-      <span class="account"><span class="avatar sm">MF</span><span class="hide-phone">Mara Fennick</span><i class="ic ic-chevron-down"></i></span>
+      <button class="btn outline sm"><i class="ic ic-key-round"></i>Activate license</button>
+      <span class="account"><span class="avatar sm">MF</span><span>Mara Fennick</span><i class="ic ic-chevron-down"></i></span>
     </div>
   </header>
 
   <main class="portal-page">
-    <div class="acct-head">
-      <div>
-        <h1>Account</h1>
-        <p>Mara Fennick · mara@example.com</p>
-      </div>
-      <button class="btn outline sm"><i class="ic ic-log-out"></i>Sign out</button>
+    <div class="mk-split">
+      <div class="mk-stack-2"><h1>Account</h1><p class="muted">Mara Fennick · mara@example.com</p></div>
+      <div><button class="btn outline sm"><i class="ic ic-log-out"></i>Sign out</button></div>
     </div>
 
-    <div class="acct">
-      <nav class="acct-nav" aria-label="Account">
-        <a href="#">Profile</a>
-        <a href="#">Sign-in methods</a>
-        <a href="#">Where you’re signed in</a>
-        <a class="active" href="#">Packages</a>
-        <a href="#">Appearance</a>
-        <a href="#">Your data</a>
-      </nav>
+    <!-- Account's sections: a side nav from 1280px, the pill row from 640px, a picker on phone. -->
+    <div class="with-toc">
+      <nav class="toc-nav" aria-label="Account"><a href="#">Profile</a><a href="#">Sign-in methods</a><a href="#">Connected apps</a><a href="#">Access tokens</a><a href="#">Where you’re signed in</a><a class="on" href="#" aria-current="page">Packages</a><a href="#">Appearance</a><a href="#">Your data</a></nav>
+      <nav class="jump-nav" aria-label="Account"><a href="#">Profile</a><a href="#">Sign-in methods</a><a href="#">Connected apps</a><a href="#">Access tokens</a><a href="#">Where you’re signed in</a><a class="on" href="#" aria-current="page">Packages</a><a href="#">Appearance</a><a href="#">Your data</a></nav>
+      <div class="select toc-select" role="button" aria-label="Account section: Packages"><i class="ic ic-boxes"></i><span class="grow">Packages</span><i class="ic ic-chevrons-up-down"></i></div>
 
-      <div class="acct-main">
+      <div class="toc-body">
         <!-- F-33: every package the account may install, across products, from its usable licenses. -->
         <section class="card" aria-labelledby="pk-title">
           <div class="card-head">
-            <span class="icon-tile"><i class="ic ic-boxes"></i></span>
-            <div class="title">
-              <h2 id="pk-title">Packages</h2>
-              <p>Libraries and tools from your products. One token installs all of them, in every package manager.</p>
-            </div>
+            <div class="title"><h2 id="pk-title">Packages</h2></div>
           </div>
-          <div class="card-body">
-            <div class="prod">
-              <div class="prod-head"><span class="logo xs" data-product="djdl"></span><h3>DJDL</h3><span>With your Standard license</span></div>
-              <div class="pkg">
-                <div><div class="pkg-name">@djdl/source-kit</div><div class="pkg-desc">Write DJDL source plugins</div></div>
-                <span class="eco">npm</span><span class="pkg-ver">2.3.0</span>
-              </div>
-              <div class="pkg">
-                <div><div class="pkg-name">@djdl/crate-schema</div><div class="pkg-desc">Types for DJDL crate files</div></div>
-                <span class="eco">npm</span><span class="pkg-ver">1.0.2</span>
-              </div>
-              <div class="pkg">
-                <div><div class="pkg-name">djdl-crates</div><div class="pkg-desc">Read and write DJDL crates · <span class="pub"><i class="ic ic-globe"></i>Public</span>, also on PyPI.org</div></div>
-                <span class="eco">PyPI</span><span class="pkg-ver">1.1.0</span>
-              </div>
-            </div>
-            <div class="prod">
-              <div class="prod-head"><span class="logo xs" data-product="diceroll"></span><h3>Diceroll</h3><span>With your Supporter license</span></div>
-              <div class="pkg">
-                <div><div class="pkg-name">@diceroll/dice-notation</div><div class="pkg-desc">Parse and roll “2d6+1” in your bots and tools</div></div>
-                <span class="eco">npm</span><span class="pkg-ver">3.0.1</span>
-              </div>
-              <div class="pkg">
-                <div><div class="pkg-name">diceroll/table-server</div><div class="pkg-desc">Host a private Diceroll table for your group</div></div>
-                <span class="eco">Docker</span><span class="pkg-ver">1.7.3</span>
-              </div>
-            </div>
-          </div>
+          <table class="table fixed stack-phone flow" aria-label="Packages you can install">
+            <colgroup><col style="width: 52%"><col style="width: 28%"><col style="width: 20%"></colgroup>
+            <thead><tr><th>Package</th><th>Ecosystem</th><th class="num">Stable</th></tr></thead>
+            <tbody>
+              <tr class="group-row"><td colspan="3"><span class="mk-cluster"><span class="logo xs" data-product="djdl"></span><span>DJDL · Standard license</span></span></td></tr>
+              <tr>
+                <td><div class="cell-title type-mono">@djdl/source-kit</div><div class="cell-sub">Write DJDL source plugins</div></td>
+                <td>npm</td>
+                <td class="num type-mono">2.3.0</td>
+              </tr>
+              <tr>
+                <td><div class="cell-title type-mono">@djdl/crate-schema</div><div class="cell-sub">Types for DJDL crate files</div></td>
+                <td>npm</td>
+                <td class="num type-mono">1.0.2</td>
+              </tr>
+              <tr>
+                <td><div class="cell-title type-mono">djdl-crates</div><div class="cell-sub">Read and write DJDL crates</div></td>
+                <td><div class="cell-stack"><span>PyPI</span><span class="cell-sub"><span class="pill sm"><i class="ic ic-globe"></i>Also on PyPI.org</span></span></div></td>
+                <td class="num type-mono">1.1.0</td>
+              </tr>
+              <tr class="group-row"><td colspan="3"><span class="mk-cluster"><span class="logo xs" data-product="diceroll"></span><span>Diceroll · Supporter license</span></span></td></tr>
+              <tr>
+                <td><div class="cell-title type-mono">@diceroll/dice-notation</div><div class="cell-sub">Parse and roll “2d6+1” in your bots and tools</div></td>
+                <td>npm</td>
+                <td class="num type-mono">3.0.1</td>
+              </tr>
+              <tr>
+                <td><div class="cell-title type-mono">diceroll/table-server</div><div class="cell-sub">Host a private Diceroll table for your group</div></td>
+                <td>Docker</td>
+                <td class="num type-mono">1.7.3</td>
+              </tr>
+            </tbody>
+          </table>
         </section>
 
-        <!-- Personal tokens (pkeyp_), packages only, one per machine. License-bound portal tokens are gone. -->
+        <!-- Personal tokens (pkeyp_), packages only, one per machine. -->
         <section class="card" aria-labelledby="tok-title">
           <div class="card-head">
-            <div class="title">
-              <h2 id="tok-title">Your packages tokens</h2>
-              <p>Each one installs packages and can’t change anything else. A new token never replaces another, and each is shown once, when it’s made.</p>
-            </div>
+            <div class="title"><h2 id="tok-title">Your packages tokens</h2><p>Each token is shown once.</p></div>
             <button class="btn primary sm"><i class="ic ic-plus"></i>Create token</button>
           </div>
-          <div class="card-rows">
-            <div class="card-row">
-              <div class="token" style="width: 100%">
-                <span class="token-icon"><i class="ic ic-laptop"></i></span>
-                <div>
-                  <div class="token-title">pkey feeds setup on mara-mbp</div>
-                  <div class="token-meta"><span class="mono">pkeyp_…7Q2M</span> · made by the CLI on Oct 7 · last used 2 hours ago · expires Jan&nbsp;5,&nbsp;2027</div>
-                </div>
-                <button class="btn ghost sm">Revoke</button>
-              </div>
-            </div>
-            <div class="card-row">
-              <div class="token" style="width: 100%">
-                <span class="token-icon"><i class="ic ic-server"></i></span>
-                <div>
-                  <div class="token-title">Build server</div>
-                  <div class="token-meta"><span class="mono">pkeyp_…K4TN</span> · made here on Sep 21 · last used Oct 6 · expires Dec&nbsp;20,&nbsp;2026</div>
-                </div>
-                <button class="btn ghost sm">Revoke</button>
-              </div>
-            </div>
-          </div>
+          <table class="table fixed stack-phone" aria-label="Your packages tokens">
+            <colgroup><col style="width: 46%"><col style="width: 19%"><col style="width: 19%"><col style="width: 16%"></colgroup>
+            <thead><tr><th>Token</th><th>Last used</th><th>Expires</th><th class="end"><span class="sr-only">Actions</span></th></tr></thead>
+            <tbody>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-laptop"></i></span><div><div class="cell-title">pkey feeds setup on mara-mbp</div><div class="cell-sub"><span class="mono">pkeyp_…7Q2M</span> · made by the CLI, Oct 7</div></div></div></td>
+                <td><span class="cell-label">Last used</span>2 hours ago</td>
+                <td><span class="cell-label">Expires</span><span class="nowrap">Jan 5, 2027</span></td>
+                <td class="end"><button class="btn outline sm tap-44">Revoke</button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-server"></i></span><div><div class="cell-title">Build server</div><div class="cell-sub"><span class="mono">pkeyp_…K4TN</span> · made here, Sep 21</div></div></div></td>
+                <td><span class="cell-label">Last used</span>Oct 6</td>
+                <td><span class="cell-label">Expires</span><span class="nowrap">Dec 20, 2026</span></td>
+                <td class="end"><button class="btn outline sm tap-44">Revoke</button></td>
+              </tr>
+            </tbody>
+          </table>
         </section>
 
         <!-- F-37: one combined setup for every package manager, the same renderer the CLI writes from. -->
         <section class="card" aria-labelledby="setup-title">
           <div class="card-head">
-            <div class="title">
-              <h2 id="setup-title">Set up your package managers</h2>
-              <p>One setup covers DJDL and Diceroll. It never goes in a project, so your token stays out of your repositories.</p>
-            </div>
+            <div class="title"><h2 id="setup-title">Set up your package managers</h2><p>In your home folder, never a repository.</p></div>
           </div>
-          <div class="card-body stack gap-4">
-            <div class="cli">
-              <div class="cmd"><span>pkey feeds setup --write</span><button class="btn ghost icon xs" aria-label="Copy"><i class="ic ic-copy"></i></button></div>
-              <span class="hint">Signs in, makes its own packages token and sets up npm, pnpm, Yarn, Bun, uv, pip and Docker in your home folder. pip’s index is added per project.</span>
-              <span class="no-pkey">Don’t have <span class="mono">pkey</span>? With Node 22, npx runs it once without installing it. <a class="link" href="#"><i class="ic ic-copy"></i>Copy the npx command</a> · <a class="link" href="#">Docs: the pkey CLI<i class="ic ic-arrow-up-right"></i></a></span>
-            </div>
-            <div class="or">or by hand</div>
-            <div class="code">
+          <div class="card-body mk-stack-3">
+            <div class="cmd"><span>pkey feeds setup --write</span><button class="btn ghost icon xs" aria-label="Copy"><i class="ic ic-copy"></i></button></div>
+            <p class="type-small muted">Signs in, makes a token and sets up npm, pnpm, Yarn, Bun, uv, pip and Docker</p>
+            <span class="links links-end"><a class="link" href="#"><i class="ic ic-copy"></i>Copy the npx command</a><a class="link quiet" href="#">pkey CLI docs<i class="ic ic-arrow-up-right"></i></a></span>
+          </div>
+          <div class="card-body mk-stack-3">
+            <p class="eyebrow">Or by hand</p>
+            <div class="code fade-x wrap-phone">
               <div class="code-head">
-                <div class="code-tabs"><span class="active">npm, pnpm</span><span>Yarn</span><span>Bun</span><span>uv, pip</span><span>Docker</span></div>
+                <div class="code-tabs fade"><span class="active">npm, pnpm</span><span>Yarn</span><span>Bun</span><span>uv, pip</span><span>Docker</span></div>
                 <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
               </div>
-<pre><span class="t-c"># ~/.npmrc</span>
+<pre tabindex="0" role="region" aria-label="Code"><span class="t-c"># ~/.npmrc</span>
 <span class="t-p">@djdl:registry</span>=<span class="t-s">https://pkg.plrs.im/npm/djdl/</span>
 <span class="t-p">@diceroll:registry</span>=<span class="t-s">https://pkg.plrs.im/npm/diceroll/</span>
 <span class="t-p">//pkg.plrs.im/npm/:_authToken</span>=<span class="t-v">${PKEY_PACKAGES_TOKEN}</span></pre>
-              <div class="code-foot"><i class="ic ic-info sm"></i><span>Only <span class="mono">@djdl</span> and <span class="mono">@diceroll</span> packages are looked up here; everything else stays on npmjs.com. Set <span class="mono">PKEY_PACKAGES_TOKEN</span> to your token.</span></div>
+              <div class="code-foot"><i class="ic ic-info sm"></i><span>Only <span class="mono">@djdl</span> and <span class="mono">@diceroll</span> come from here; everything else stays on npmjs.com. Set <span class="mono">PKEY_PACKAGES_TOKEN</span> to your token.</span></div>
             </div>
           </div>
         </section>
@@ -416,10 +117,10 @@
     </div>
   </main>
 
-  <footer class="portal-foot">Polaris Key · <a href="#">key.plrs.im</a></footer>
-  <nav class="portal-tabbar"><a href="#"><i class="ic ic-layout-grid"></i>Library</a><a href="#"><i class="ic ic-key-round"></i>Activate</a><a href="#"><i class="ic ic-sparkles"></i>Discover</a></nav>
-  <!-- F-33: the step before the token exists: name it for the machine, see what it can do and when it expires. -->
-  <div class="overlay sheet">
+  <footer class="portal-foot">Polaris Key · <a href="#">key.plrs.im</a> · Help · Privacy · Terms</footer>
+  <nav class="portal-tabbar"><a href="#"><i class="ic ic-layout-grid"></i>Library</a><a class="act" href="#"><i class="ic ic-key-round"></i>Activate</a><a href="#"><i class="ic ic-sparkles"></i>Discover</a></nav>
+  <!-- The step after Create token: the one field, what the token can do, and that nothing else changes. -->
+  <div class="overlay center sheet">
     <div class="dialog" role="dialog" aria-labelledby="tok-new">
       <div class="dialog-head">
         <h2 id="tok-new">New packages token</h2>
@@ -429,10 +130,13 @@
         <div class="field">
           <label class="field-label">Label</label>
           <div class="input focus"><span class="grow">Work laptop</span></div>
-          <span class="hint">Suggested from this browser: “Mac · Safari”. Name the machine it’s for, so you can tell your tokens apart.</span>
+          <span class="hint">Name the machine, to tell tokens apart</span>
         </div>
-        <div class="fixed"><i class="ic ic-lock"></i><span>Packages only · expires in 90 days, on Jan&nbsp;5,&nbsp;2027 · reaches DJDL, Diceroll and any product you get a license for later</span></div>
-        <p class="small muted">Your other tokens keep working.</p>
+        <ul class="icon-lines">
+          <li><i class="ic ic-lock"></i><span>Packages only</span></li>
+          <li><i class="ic ic-calendar-clock"></i><span>Expires Jan&nbsp;5,&nbsp;2027 (90 days)</span></li>
+          <li><i class="ic ic-boxes"></i><span>Reaches DJDL, Diceroll and any product you get a license for later</span></li>
+        </ul>
       </div>
       <div class="dialog-foot">
         <button class="btn outline">Cancel</button>

@@ -14,15 +14,15 @@
   "uxRows": [],
   "summary": "Diceroll's Updates page on Oct 7, the same page for a Godot game on iOS, Android, Windows and Linux: Play in-app updates (Verified) with the halted 1.8.0 rollout and the way forward, the Godot updater for Windows and Linux copies with Verified on 1 of 2, the App Store as store-managed and Steam as not connected, and no Sparkle-family updaters.",
   "compare": [
-    "Same page as packages.updates, scoped differently: the scope line reads 'Godot 4.4 exports for' as plain text before the platform pills (Android, iOS, Windows x64, Linux x86_64, as on distribution.channels; no macOS).",
-    "Google Play: Play in-app updates, 'Verified' with 'first update check Oct 3, 20:12' in the head, the update priority per release, and the GDScript snippet (Kotlin tab beside it); the code foot says only the Play build runs it.",
-    "The halted 1.8.0 Play rollout is a warning callout in the Play card: it reached 20% before the demote on Oct 7, players are offered nothing new until a newer release reaches stable, 1.8.1 has the fix, and 'Promote 1.8.1 on Release tracks'. Consistent with packages.release-tracks and packages.demote.",
-    "The Godot updater covers Windows and Linux copies from itch.io and the download page and says what it serves per release track. The head shows 'Verified on 1 of 2' in neutral text with a two-segment neutral meter; it turns green only when every platform is verified.",
-    "The Verified foot gives every platform the same two lines: Windows 'Verified' then 'Oct 2, 21:40 · first check, 1.7.2 to 1.7.3'; Linux 'Waiting for the first update check' (the kit's neutral clock) then 'Linux copies have started since Oct 4; none has checked yet'.",
-    "Updated by the store: the App Store row is muted 'Store-managed'; the Steam row says Steam will update from each player's branch but no build reaches Steam yet (no Steamworks publisher key), with Connect Steam and a 'Not connected' warning pill, matching Home.",
+    "Same page as packages.updates, scoped differently: the scope line reads 'Godot 4.4 exports for' as plain text before the platform pills (Android, iOS, Windows x64, Linux x86_64, as on distribution.channels; no macOS); no subtitle explains the page.",
+    "Google Play: Play in-app updates, 'Verified' with the time of its first update check (Oct 3, 20:12) under the title, the update priority per release, and the GDScript snippet (Kotlin tab beside it); the code foot says only the Play build runs it.",
+    "The halted 1.8.0 Play rollout is an attention row at the top of the Play card: 'Rollout halted', 1.8.0, it stopped at 20% when demoted on Oct 7, other players get nothing new until a newer release reaches stable, 1.8.1 has the fix and is on beta, and 'Promote 1.8.1'. Consistent with packages.release-tracks and packages.demote.",
+    "The Godot updater covers Windows and Linux copies from itch.io and key.plrs.im/diceroll and says what it serves per release track. Its Verified state is said once, per platform, in the card's foot; the head carries no summary.",
+    "The Verified foot gives every platform the same two parts: Windows 'Verified' then 'Oct 2, 21:40 · 1.7.2 to 1.7.3'; Linux 'Waiting for the first update check' (the kit's neutral clock) then 'Copies running since Oct 4'.",
+    "Updated by the store (its subtitle: nothing to set up): the App Store row says 1.8.0 is live on iPhone and iPad; the Steam row says updates come from each player's branch once a build reaches Steam, with a 'Not connected' warning pill and Connect Steam, matching Home.",
     "The 'Not shown' line names Sparkle, WinSparkle, Velopack, App Installer and zsync and why.",
-    "Update rules: 'Who can check for updates' is Public (free players get fixes), read-only with Open Access; Release track names 312 licenses (the Supporter tier and 38 more).",
-    "Phone: the sidebar folds into the menu button, the scope pills wrap, card status drops under the title, the Play callout stays in the setup column, code scrolls inside its block and the platform cells stack, each keeping its two lines."
+    "Update rules (the aside at wide): 'Who can check for updates' is Public (free players included), read-only with 'Change on Access'; Release track names 312 licenses (the Supporter tier and 38 more).",
+    "Phone: the sidebar folds into the menu button, the scope pills wrap, the Play attention row stacks above the setup, setup stacks above the code, code scrolls inside its block and the platform cells stack, each keeping its two parts."
   ],
   "status": "mockup",
   "designReview": {
@@ -55,6 +55,30 @@
         "severity": "minor",
         "issue": "[Visual] The light --pk-warning-subtle fill (#eae7e6) reads as a grey, disabled box (the cleanup dry run's lockfile warning and the Play callout on Updates (Godot)).",
         "resolution": "declined: --pk-warning-subtle is the brand token the kit carries verbatim from packages/brand/css; warming it in the mockup kit alone would make every mockup disagree with the built console. Flagged for the brand package (the lead's call), where one change fixes mockups and screens together."
+      },
+      {
+        "severity": "major",
+        "issue": "Same layout rule and trims as Updates.",
+        "resolution": "Platform chips removed (the headers say it); 'First update check' removed from the Verified Android card; meta 'itch.io and key.plrs.im/diceroll'; rollout alert 'Halted at 20% on Oct 7 (1.8.0 demoted).' with Promote 1.8.1; sticky rail and code-first on phone.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "[Phone] Code blocks, terminals and tab strips are silently clipped with no scroll cue; 'also required' cuts Info.plist and Docker.",
+        "resolution": "Kit: .fade-x (edge fade, tabindex 0, role region) and .wrap-phone (soft wrap at 12px on phone) on every code block and terminal; 'also required' is a dot. Gutters (16 phone, 24 up) and card padding (16 phone, 24 up) were already the kit's.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
       }
     ]
   }
