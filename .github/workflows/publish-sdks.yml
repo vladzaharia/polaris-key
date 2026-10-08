@@ -291,7 +291,7 @@ jobs:
           mkdir -p "$dir" && cd "$dir"
           printf '@polaris-key:registry=https://pkg.plrs.im/npm/polaris-key/\n' > .npmrc
           echo '{"name":"feed-install","private":true}' > package.json
-          npm install --no-audit --no-fund "@polaris-key/node@$VERSION" "@polaris-key/react@$VERSION" \
+          npm install --no-audit --no-fund --prefer-online "@polaris-key/node@$VERSION" "@polaris-key/react@$VERSION" \
             "@polaris-key/cli@$VERSION" react react-dom
 
   # ── PyPI: polaris-key (wheel and sdist) ────────────────────────────────────────────────────
