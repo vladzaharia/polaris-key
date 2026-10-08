@@ -643,7 +643,8 @@ const dir = await client.update.packs.path("diceroll.l10n"); // the running tree
   `content-stamp-invalid`, `pack-not-pinned`, `record-rejected`, `record-mismatch`,
   `pack-type-unsupported`, `pack-not-entitled`, `pack-no-variant`, `pack-state-unreadable`, the
   `plan-*` and applier codes, `network-error`. `PackError` is exported from `@polaris-key/node`
-  and `@polaris-key/node/packs`.
+  and `@polaris-key/node/packs`. Unlike the rest of the SDK (see [Errors](#errors)), a record or
+  object fetch the server refuses, a 5xx included, is `network-error`, not `server-error`.
 - **Delegated content** (P4-19). A compatible or standalone pack release signed by a delegated
   content key installs through the same engine: the delegation its `pkd1-` kid names is fetched
   from the record route (at most 16 per check, cached per process), verified against
