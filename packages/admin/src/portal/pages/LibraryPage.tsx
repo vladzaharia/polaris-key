@@ -62,7 +62,8 @@ export function LibraryPage({
   const firstLoad = useFirstLoad("library", lib.isPending);
 
   return (
-    <section className="pk-vt-scope space-y-8">
+    // A short screen (§8) tightens the gap under the title, so a hero's download is on screen.
+    <section className="pk-vt-scope space-y-8 short:space-y-4">
       <div className="space-y-2">
         <h1 className="text-3xl font-bold leading-tight text-fg-strong desk:text-display">
           Your library

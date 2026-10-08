@@ -135,7 +135,8 @@ export function PortalShell({
         id="content"
         ref={mainRef}
         tabIndex={-1}
-        className="mx-auto w-full max-w-[82rem] flex-1 px-4 pb-28 pt-6 outline-none desk:px-8 desk:pb-16 desk:pt-10"
+        // A short screen (§8) keeps the space above the page's title small.
+        className="mx-auto w-full max-w-[82rem] flex-1 px-4 pb-28 pt-6 outline-none desk:px-8 desk:pb-16 desk:pt-10 short:pt-4"
       >
         {children}
       </main>

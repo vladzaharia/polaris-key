@@ -16,10 +16,11 @@ import { StorePills } from "./StorePills.js";
  * tier, the primary action (solid: the one lead), "Also yours on" (live store links, G2), a short
  * summary with the seat meter (G5) and the product-page link.
  *
- * Side by side from 1180 px. Below that the hero stacks as on phones: the art at 16:9 across the
- * full width, shown as the developer supplied it (§0.3), the panel underneath. On a short screen
- * from 761 px the two stay side by side with the art at 16:9, so the art and the primary download
- * share the first screen.
+ * Side by side from 1024 px (`split`): at 1024–1179 px, and on a short screen from 761 px, with the
+ * art at 16:9 (never cropped, §0.3) at the top of its column, so the art and the primary download
+ * share the first screen; from 1180 px the art fills its column's height. At 761–1023 px the hero
+ * stacks as on phones: the art at 16:9 across the full width, the panel underneath. A short screen
+ * also tightens the panel, so the download is on the first screen.
  */
 export function LibraryHero({
   product,
@@ -36,7 +37,7 @@ export function LibraryHero({
   return (
     <article
       aria-labelledby="hero-name"
-      className="grid overflow-hidden rounded-xl border border-border bg-surface-raised shadow-elevation-1 wide:grid-cols-[1.45fr_1fr] short:desk:grid-cols-[1.45fr_1fr]"
+      className="grid overflow-hidden rounded-xl border border-border bg-surface-raised shadow-elevation-1 split:grid-cols-[1.45fr_1fr] short:desk:grid-cols-[1.45fr_1fr]"
     >
       <ProductArt
         slug={product.slug}
@@ -46,9 +47,9 @@ export function LibraryHero({
         variant="banner"
         // No cover: a bare tint field; the icon beside the name already shows the letter.
         letter={false}
-        className="aspect-video wide:aspect-auto wide:min-h-[26rem] short:aspect-video short:min-h-0 short:self-start"
+        className="aspect-video split:self-start wide:aspect-auto wide:min-h-[26rem] wide:self-stretch short:aspect-video short:min-h-0 short:self-start"
       />
-      <div className="flex flex-col gap-5 p-6 wide:p-9 short:p-6">
+      <div className="flex flex-col gap-5 p-6 wide:p-9 short:gap-3 short:p-5">
         <div className="flex items-center gap-4">
           <ProductIcon
             slug={product.slug}
