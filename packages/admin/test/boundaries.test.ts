@@ -12,6 +12,8 @@
  *   4. The customer bundle carries no console code: no module reachable from `portal/main.tsx`
  *      (static and dynamic imports; `import type` is erased and does not count) is under
  *      `console/` or is `api.ts`, the console's API client with every `/manage/api` path in it.
+ *      An offence is named after the import that crosses in (`lib/errorCopy.ts -> api.ts`), so
+ *      every new way in fails on its own, even while a listed one still exists.
  *
  * Rules 1 and 2 count `import type` too: a type import still ties the kit to an app's shapes.
  *
@@ -41,15 +43,15 @@ const UI_MAY_IMPORT = new Set([
 ]);
 
 /**
- * Edges that break a rule today, as `from -> to` (paths under `src/`), each with its owner. The
- * portal entry's reach into `api.ts` is listed as `portal/main.tsx -> api.ts`.
+ * Edges that break a rule today, as `from -> to` (paths under `src/`), each with its owner. One
+ * entry covers every rule the edge breaks: `lib/errorCopy.ts -> api.ts` is both a `lib/` import
+ * of an app module (rule 1) and the portal's one way into `api.ts` (rule 4, through
+ * `ui/toast.tsx`).
  */
 const KNOWN: Record<string, string> = {
   // P0-32 (one data layer): errorCopy words HttpError, not the console's ApiError.
   "lib/errorCopy.ts -> api.ts": "P0-32",
   "ui/form.tsx -> api.ts": "P0-32",
-  "portal/main.tsx -> api.ts":
-    "P0-32 (through ui/toast.tsx -> lib/errorCopy.ts)",
   // P0-34 (shared router core): the guard blocks navigation through the core, not the console's.
   "ui/useUnsavedChangesGuard.tsx -> console/router.tsx": "P0-34",
   // P0-33 (Worker-owned DTO types): the shapes come from @polaris-key/worker/dto, not api.ts.
@@ -150,9 +152,9 @@ const ALL = edges();
 const top = (path: string): string => path.split("/")[0]!;
 
 /** Rules 1 to 3: the edges that break a layer rule, as `from -> to`. */
-function layerOffences(): string[] {
+function layerOffences(edges: Edge[] = ALL): string[] {
   const offences = new Set<string>();
-  for (const { from, to } of ALL) {
+  for (const { from, to } of edges) {
     const a = top(from);
     const b = top(to);
     const ok =
@@ -170,33 +172,49 @@ function layerOffences(): string[] {
   return [...offences].sort();
 }
 
-/** Rule 4: what the portal entry reaches that it must not, with the path it takes. */
-function portalReach(): Map<string, string[]> {
+const PORTAL_ENTRY = "portal/main.tsx";
+
+/** Console code the customer bundle must not carry (rule 4). */
+const consoleOnly = (module: string): boolean =>
+  top(module) === "console" || module === "api.ts";
+
+/**
+ * Rule 4: every runtime import by which the portal entry's bundle crosses into console code, as
+ * `from -> to`, with the import chain from the entry that reaches it. The walk stops at the
+ * crossing: what console code imports in turn is rules 1 to 3's business.
+ */
+function portalReach(edges: Edge[] = ALL): Map<string, string[]> {
   const next = new Map<string, string[]>();
-  for (const { from, to, typeOnly } of ALL) {
+  for (const { from, to, typeOnly } of edges) {
     if (typeOnly) continue;
     next.set(from, [...(next.get(from) ?? []), to]);
   }
-  const entry = "portal/main.tsx";
-  const via = new Map<string, string | null>([[entry, null]]);
-  const queue = [entry];
+  const via = new Map<string, string | null>([[PORTAL_ENTRY, null]]);
+  const queue = [PORTAL_ENTRY];
+  const bad = new Map<string, string[]>();
   while (queue.length) {
     const at = queue.shift()!;
     for (const to of next.get(at) ?? []) {
+      if (consoleOnly(to)) {
+        const chain = [to];
+        for (let m: string | null = at; m; m = via.get(m) ?? null)
+          chain.unshift(m);
+        bad.set(`${at} -> ${to}`, chain);
+        continue;
+      }
       if (via.has(to)) continue;
       via.set(to, at);
       queue.push(to);
     }
   }
-  const bad = new Map<string, string[]>();
-  for (const module of via.keys()) {
-    if (top(module) !== "console" && module !== "api.ts") continue;
-    const chain: string[] = [];
-    for (let m: string | null = module; m; m = via.get(m) ?? null)
-      chain.unshift(m);
-    bad.set(`${entry} -> ${module}`, chain);
-  }
   return bad;
+}
+
+/** Rule 4's offences that `KNOWN` does not list, as their import chains. */
+function unknownPortalReach(edges: Edge[] = ALL): string[] {
+  return [...portalReach(edges)]
+    .filter(([edge]) => !(edge in KNOWN))
+    .map(([, chain]) => chain.join(" -> "));
 }
 
 describe("admin layer boundaries", () => {
@@ -216,10 +234,39 @@ describe("admin layer boundaries", () => {
   });
 
   it("the customer bundle reaches no console module and not api.ts", () => {
-    const unknown = [...portalReach()]
-      .filter(([edge]) => !(edge in KNOWN))
-      .map(([, chain]) => chain.join(" -> "));
-    expect(unknown, "the portal entry reaches console code through").toEqual(
+    expect(
+      unknownPortalReach(),
+      "the portal entry reaches console code through",
+    ).toEqual([]);
+  });
+
+  it("a new way into api.ts fails even while a listed one exists (the rule 4 probe)", () => {
+    // A portal module the entry reaches today: a new runtime import of api.ts from it is a new
+    // crossing, named after itself, not hidden behind lib/errorCopy.ts's listed one.
+    const reached = ALL.find(
+      (e) => e.from === PORTAL_ENTRY && top(e.to) === "portal" && !e.typeOnly,
+    )!.to;
+    expect(portalReach().has("lib/errorCopy.ts -> api.ts")).toBe(true);
+    const probe: Edge = { from: reached, to: "api.ts", typeOnly: false };
+    expect(unknownPortalReach([...ALL, probe])).toEqual([
+      `${PORTAL_ENTRY} -> ${reached} -> api.ts`,
+    ]);
+    // The same through the kit, and into console/ …
+    const kit: Edge = { from: "ui/toast.tsx", to: "api.ts", typeOnly: false };
+    expect(unknownPortalReach([...ALL, kit])).toHaveLength(1);
+    expect(unknownPortalReach([...ALL, kit])[0]).toMatch(
+      /^portal\/main\.tsx -> .*ui\/toast\.tsx -> api\.ts$/,
+    );
+    const router: Edge = {
+      from: reached,
+      to: "console/router.tsx",
+      typeOnly: false,
+    };
+    expect(unknownPortalReach([...ALL, router])).toEqual([
+      `${PORTAL_ENTRY} -> ${reached} -> console/router.tsx`,
+    ]);
+    // … while a type-only import is erased from the bundle and does not count.
+    expect(unknownPortalReach([...ALL, { ...probe, typeOnly: true }])).toEqual(
       [],
     );
   });
