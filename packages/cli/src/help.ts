@@ -851,25 +851,32 @@ function twoColumns(
   const width = Math.max(1, caps.columns - descCol);
   const out: string[] = [];
   for (const [t, text] of rows) {
-    const lines = wrapSpans([{ text, style: ["muted"] }], width);
     const name = painter.style(t, ["strong"]);
     const fits = !stacked && cellWidth(t) <= column;
-    // A term wider than the line wraps at its spaces, continued two cells further in.
-    if (!fits)
-      wrapSpans(
-        [{ text: t, style: ["strong"] }],
-        Math.max(1, caps.columns - indent - 2),
-      ).forEach((l, i) =>
-        out.push(
-          `${" ".repeat(i === 0 ? indent : indent + 2)}${painter.line(l)}`,
-        ),
-      );
+    // A term wider than the line wraps at its spaces, continued two cells further in; a stacked
+    // command that wrapped indents its description by four, so the two read apart without bold.
+    const termLines = fits
+      ? []
+      : wrapSpans(
+          [{ text: t, style: ["strong"] }],
+          Math.max(1, caps.columns - indent - 2),
+        );
+    const col = stacked && termLines.length > 1 ? indent + 4 : descCol;
+    const lines = wrapSpans(
+      [{ text, style: ["muted"] }],
+      Math.max(1, caps.columns - col),
+    );
+    termLines.forEach((l, i) =>
+      out.push(
+        `${" ".repeat(i === 0 ? indent : indent + 2)}${painter.line(l)}`,
+      ),
+    );
     lines.forEach((l, i) => {
       const body = painter.line(l);
       out.push(
         i === 0 && fits
           ? `${" ".repeat(indent)}${name}${" ".repeat(column - cellWidth(t) + 2)}${body}`
-          : `${" ".repeat(descCol)}${body}`,
+          : `${" ".repeat(col)}${body}`,
       );
     });
   }
@@ -1060,13 +1067,17 @@ export function renderCommandHelp(
     : undefined;
   const title = known ? `pkey ${cmd.name} ${sub}` : `pkey ${cmd.name}`;
   const out: string[] = [
-    line([
-      { text: title, style: ["strong"] },
-      {
-        text: ` ${symbols.separator} ${row ? row[1] : cmd.summary}`,
-        style: ["muted"],
-      },
-    ]),
+    // The title and its summary wrap to the terminal like every other line.
+    ...wrapSpans(
+      [
+        { text: title, style: ["strong"] },
+        {
+          text: ` ${symbols.separator} ${row ? row[1] : cmd.summary}`,
+          style: ["muted"],
+        },
+      ],
+      term.caps.columns,
+    ).map(line),
     "",
     line([{ text: "Usage", style: ["strong"] }]),
   ];

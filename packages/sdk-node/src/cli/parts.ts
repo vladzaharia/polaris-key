@@ -32,7 +32,13 @@ import {
   type RailRow,
 } from "./term/layout.js";
 import { displayUrl } from "./term/osc.js";
-import { cellWidth, wrapSpans, type Line, type Span } from "./term/width.js";
+import {
+  cellWidth,
+  truncateMiddle,
+  wrapSpans,
+  type Line,
+  type Span,
+} from "./term/width.js";
 
 /**
  * A blank rail row between blocks (none under `density: "compact"`). On a live screen it carries a
@@ -275,15 +281,35 @@ export function tableRows(
   return out;
 }
 
-/** What the masked key field shows: never a character of the secret (UI-KITS §4.3). */
-export function keyMask(ctx: KitContext, value: string, fixed = false): Line {
+/**
+ * What the masked key field shows: never a character of the secret (UI-KITS §4.3). The public
+ * `pkey_<product>_` prefix, then bullets. When that does not fit the line (`reserve` cells are
+ * taken by what sits beside it), `pkey_` and the bullets stay and the slug is cut in the middle,
+ * never to `pkey_t…`.
+ */
+export function keyMask(
+  ctx: KitContext,
+  value: string,
+  fixed = false,
+  reserve = 0,
+): Line {
   const v = keyVerdict(value);
   const bullet = ctx.caps.unicode ? "•" : "*";
   // Only the public prefix is ever shown, and only once it is the key format's own.
   const prefix = v.prefix ?? "";
   const secret = [...value.trim()].length - [...prefix].length;
   const count = fixed ? 6 : Math.max(0, Math.min(secret, 40));
-  return [{ text: prefix, style: ["muted"] }, { text: bullet.repeat(count) }];
+  const room = contentWidth(ctx.caps.columns) - reserve - count - 1;
+  let shown = prefix;
+  if (cellWidth(prefix) > room) {
+    const head = prefix.slice(0, 5);
+    const left = room - cellWidth(head);
+    shown =
+      left > 1
+        ? head + truncateMiddle(prefix.slice(5), left, ctx.symbols.ellipsis)
+        : head + ctx.symbols.ellipsis;
+  }
+  return [{ text: shown, style: ["muted"] }, { text: bullet.repeat(count) }];
 }
 
 /** A catalog string with its " · " in the symbol set's spelling. */

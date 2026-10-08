@@ -705,7 +705,7 @@ export async function activateFlow(
   hist.push(
     stepRow("done", t("part.keyField.label"), [
       { text: `${ctx.symbols.separator} `, style: ["muted"] },
-      ...keyMask(ctx, key, true),
+      ...keyMask(ctx, key, true, cellWidth(t("part.keyField.label")) + 3),
     ]),
   );
   const verdict = keyVerdict(key, true);

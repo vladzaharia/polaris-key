@@ -621,9 +621,7 @@ async function runCommand(
           { cwd, stdout, stderr, ...ci },
         );
       default:
-        stderr.write(
-          `Unknown command "${parsed.command}".\n\n${renderHelp(term(stderr))}`,
-        );
+        stderr.write(unknownCommand(parsed.command, term(stderr)));
         return 2;
     }
   } catch (err) {
@@ -632,6 +630,23 @@ async function runCommand(
     stderr.write(`${untrustedLines((err as Error).message, ci.env)}\n`);
     return 1;
   }
+}
+
+/**
+ * `✗  Unknown command "bogus". Run pkey help to see every command.` and nothing else: the hundred
+ * lines of help would push the error out of view.
+ */
+function unknownCommand(name: string, term: Term): string {
+  const { painter, symbols, caps } = term;
+  const text = `Unknown command "${name}". Run pkey help to see every command.`;
+  const lines = wrapSpans([{ text }], Math.max(1, caps.columns - 3));
+  return `${lines
+    .map((l, i) =>
+      i === 0
+        ? `${painter.style(symbols.fail, ["danger"])}  ${painter.line(l)}`
+        : `   ${painter.line(l)}`,
+    )
+    .join("\n")}\n`;
 }
 
 /**
@@ -651,7 +666,7 @@ function cmdHelp(
   }
   const cmd = findCommand(name);
   if (!cmd) {
-    stderr.write(`Unknown command "${name}".\n\n${renderHelp(term(stderr))}`);
+    stderr.write(unknownCommand(name, term(stderr)));
     return 2;
   }
   stdout.write(renderCommandHelp(term(stdout), cmd, sub));
@@ -850,7 +865,7 @@ async function validateText(
   const gap = " ".repeat(2);
   for (const row of rows) {
     const lines = caps.tty
-      ? wrapSpans(row.spans, Math.max(20, caps.columns - 3), symbols.ellipsis)
+      ? wrapSpans(row.spans, Math.max(1, caps.columns - 3), symbols.ellipsis)
       : [row.spans];
     lines.forEach((l, i) =>
       stdout.write(`${i === 0 ? row.mark : " "}${gap}${painter.line(l)}\n`),

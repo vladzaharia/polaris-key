@@ -64,36 +64,53 @@ function twoColumns(
   const width = Math.max(1, columns - descCol);
   const out: string[] = [];
   for (const r of rows) {
-    const lines = wrapSpans([{ text: r.text }], width);
     const term = ctx.painter.style(r.term, ["strong"]);
-    const pad =
-      stacked || cellWidth(r.term) > termWidth
-        ? null
-        : " ".repeat(termWidth - cellWidth(r.term) + 2);
-    if (pad === null) {
-      // A term wider than the line wraps at its spaces, continued two cells further in.
-      wrapSpans(
-        [{ text: r.term, style: ["strong"] }],
-        Math.max(1, columns - indent - 2),
-      ).forEach((l, i) =>
-        out.push(
-          `${" ".repeat(i === 0 ? indent : indent + 2)}${ctx.painter.line(l)}`,
-        ),
-      );
-      lines.forEach((l) =>
-        out.push(`${" ".repeat(descCol)}${ctx.painter.line(l)}`),
-      );
-      continue;
-    }
+    const fits = !stacked && cellWidth(r.term) <= termWidth;
+    // A term wider than the line wraps at its spaces, continued two cells further in; a stacked
+    // command that wrapped indents its description by four, so the two read apart without bold.
+    const termLines = fits
+      ? []
+      : wrapSpans(
+          [{ text: r.term, style: ["strong"] }],
+          Math.max(1, columns - indent - 2),
+        );
+    const col = stacked && termLines.length > 1 ? indent + 4 : descCol;
+    const lines = wrapSpans([{ text: r.text }], Math.max(1, columns - col));
+    termLines.forEach((l, i) =>
+      out.push(
+        `${" ".repeat(i === 0 ? indent : indent + 2)}${ctx.painter.line(l)}`,
+      ),
+    );
     lines.forEach((l, i) =>
       out.push(
-        i === 0
-          ? `${" ".repeat(indent)}${term}${pad}${ctx.painter.line(l)}`
-          : `${" ".repeat(descCol)}${ctx.painter.line(l)}`,
+        i === 0 && fits
+          ? `${" ".repeat(indent)}${term}${" ".repeat(termWidth - cellWidth(r.term) + 2)}${ctx.painter.line(l)}`
+          : `${" ".repeat(col)}${ctx.painter.line(l)}`,
       ),
     );
   }
   return out;
+}
+
+/**
+ * `Usage  tidewater <command> [options]`, wrapped between tokens with a hanging indent under the
+ * command (`Verwendung` in German is longer, so the hang follows the label).
+ */
+function hung(ctx: KitContext, label: string, text: string): string[] {
+  const hang = cellWidth(label) + 2;
+  return wrapSpans(
+    text
+      .split(" ")
+      .flatMap((w, i) => [
+        ...(i ? [{ text: " " }] : []),
+        { text: w, unit: true },
+      ]),
+    Math.max(1, ctx.caps.columns - hang),
+  ).map((l, i) =>
+    i === 0
+      ? `${ctx.painter.style(label, ["muted"])}  ${ctx.painter.line(l)}`
+      : `${" ".repeat(hang)}${ctx.painter.line(l)}`,
+  );
 }
 
 /** The verb's description in the catalog's words. */
@@ -117,10 +134,7 @@ export function renderHelp(ctx: KitContext, verbs: readonly CliVerb[]): string {
       ctx.caps.columns,
     ).map(line),
     "",
-    line([
-      { text: t("cli.help.usage"), style: ["muted"] },
-      { text: `  ${ctx.bin} <command> [options]` },
-    ]),
+    ...hung(ctx, t("cli.help.usage"), `${ctx.bin} <command> [options]`),
   ];
   // One column for every group: the widest usage that fits in 24 cells (longer ones wrap).
   const column = Math.min(
@@ -183,10 +197,7 @@ export function renderVerbHelp(ctx: KitContext, v: CliVerb): string {
       ctx.caps.columns,
     ).map(line),
     "",
-    line([
-      { text: t("cli.help.usage"), style: ["muted"] },
-      { text: `  ${ctx.bin} ${verbUsage(v)} [options]` },
-    ]),
+    ...hung(ctx, t("cli.help.usage"), `${ctx.bin} ${verbUsage(v)} [options]`),
     "",
     line([{ text: t("cli.help.options"), style: ["strong"] }]),
     ...twoColumns(

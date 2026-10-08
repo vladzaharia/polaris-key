@@ -178,7 +178,8 @@ function buildContext(
     caps,
     product.chip,
     theme.preset === "native" ? {} : (theme.colors?.[caps.scheme] ?? {}),
-    product.accentSource === "ink",
+    // The native preset keeps the terminal's palette: its accent role is ANSI cyan, never ink.
+    product.accentSource === "ink" && theme.preset !== "native",
   );
   const symbols = symbolsFor(caps);
   const copy = new KitCopy({
