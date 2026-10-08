@@ -339,7 +339,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     area: "access",
     label: "Admin group",
     description:
-      "The identity-provider group named by the manifest as this product's administrators. Manifest-only (owner decision 1).",
+      "The identity-provider group named by the manifest as this product's administrators. Not enforced: it grants nothing, and console access is platform-wide. Manifest-only (owner decision 1).",
     keywords: [],
     docs: "/docs/admin/products/",
     ownership: "manifest",

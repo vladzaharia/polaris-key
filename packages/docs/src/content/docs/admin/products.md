@@ -137,8 +137,9 @@ which every production deploy runs with the root `.pkey/` at the deployed commit
 
 ### The `adminGroup` field is metadata, not a grant
 
-Settings carries an "Admin group" field labeled _metadata only_ (New product does not ask for it). It's recorded
-on the product row and shown back to you, and it authorizes **nothing**: there is no
+Settings has no input for it: a product that has one shows it read-only, marked
+**Not enforced** (New product does not ask for it either). It's recorded on the
+product row and shown back to you, and it authorizes **nothing**: there is no
 per-product admin tier. The console authorizes every request on the platform-wide
 `PLATFORM_ADMIN_GROUP` alone (see [Operating: the KEK keyring](/docs/admin/kek/) → _Secrets_).
 The field exists because a product's own OIDC configuration (`.pkey/product`'s `oidc.groupRoleMap`)
@@ -202,7 +203,7 @@ claims it for the console: you confirm first, the row's source badge then reads 
 console**, and resyncs leave it alone. **Revert…** in that badge restores the value from the
 last applied manifest at once, or at the next resync for a product not applied since claims
 arrived. Publishing the catalog claims it the same way, with Revert in the catalog's source
-badge. The admin group is read-only there: change it in `.pkey/product`.
+badge. The admin group is read-only on every product: change it in `.pkey/product`.
 
 ### Manifest-authoritative mode
 
