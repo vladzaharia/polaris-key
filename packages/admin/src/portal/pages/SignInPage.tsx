@@ -32,7 +32,9 @@ import { returnUrl, stashCarriedKey } from "../carriedKey.js";
  *   cells, submitted on the sixth digit; the link still signs this tab in by itself
  *   (`useSessionRecheck`). **Send a new code** is PX-W4's resend for this sign-in, after the
  *   Worker's `resendIn` countdown; a sign-in that has expired goes back to the email step with
- *   the address kept.
+ *   the address kept. A right code whose account can't sign in (a disabled account, 403) ends
+ *   the step: **RefusedStep** says so, with no Continue and no resend, and **Use a different
+ *   email** is the way on (§3.13).
  * - **KeyStep** (the on-ramp): the key field; Continue keeps the key in `#/?activate=` and moves
  *   on to sign-in, after which the Activate dialog opens with it filled in (the same round trip
  *   as `/activate#key=…`).
@@ -42,6 +44,9 @@ import { returnUrl, stashCarriedKey } from "../carriedKey.js";
 type Step =
   | { kind: "methods"; email?: string; notice?: string }
   | { kind: "code"; email: string; resendIn: number }
+  /** The code was right but its account can't sign in (§3.13, Account disabled): a dead end
+   *  for that address, so the step ends here (PS-05 review M3). */
+  | { kind: "refused"; email: string }
   | { kind: "key" };
 
 /** The countdown when an answer carries no `resendIn` (a Worker from before PX-W4). */
@@ -89,9 +94,11 @@ export function SignInPage(): React.ReactElement {
   useDocumentTitle(
     step.kind === "code"
       ? "Check your email"
-      : step.kind === "key"
-        ? "Have a license key?"
-        : "Sign in",
+      : step.kind === "refused"
+        ? "This account can't sign in"
+        : step.kind === "key"
+          ? "Have a license key?"
+          : "Sign in",
   );
 
   const ctx = caps.data?.product;
@@ -121,6 +128,7 @@ export function SignInPage(): React.ReactElement {
           email={step.email}
           resendIn={step.resendIn}
           onChangeEmail={() => go({ kind: "methods" }, "back")}
+          onRefused={() => go({ kind: "refused", email: step.email })}
           onExpired={() =>
             go(
               {
@@ -132,6 +140,11 @@ export function SignInPage(): React.ReactElement {
               "back",
             )
           }
+        />
+      ) : step.kind === "refused" ? (
+        <RefusedStep
+          email={step.email}
+          onChangeEmail={() => go({ kind: "methods" }, "back")}
         />
       ) : step.kind === "key" ? (
         <KeyStep
@@ -485,12 +498,15 @@ function CodeStep({
   email,
   resendIn,
   onChangeEmail,
+  onRefused,
   onExpired,
 }: {
   email: string;
   /** Seconds before the first "Send a new code" (the start's `resendIn`). */
   resendIn: number;
   onChangeEmail: () => void;
+  /** The code was right, but its account can't sign in (the verify answered 403). */
+  onRefused: () => void;
   /** The sign-in itself is gone (the resend answered `signin_expired`): back to the email. */
   onExpired: () => void;
 }): React.ReactElement {
@@ -523,6 +539,12 @@ function CodeStep({
       await portalApi.verifySignInCode(value);
       await qc.invalidateQueries({ queryKey: portalKeys.me });
     } catch (err) {
+      // The verify's only 403: a right code for an account that can't sign in (the Worker's
+      // `forbidden`, §3.13). Another code or a resend would end the same way.
+      if (err instanceof PortalApiError && err.status === 403) {
+        onRefused();
+        return;
+      }
       setError(codeErrorText(err));
       setCode("");
       // Out of tries, or the code expired: "Send a new code" is the way on, at once.
@@ -683,6 +705,42 @@ function CodeStep({
           Use a different email
         </QuietLink>
       </QuietLinks>
+    </>
+  );
+}
+
+/**
+ * "This account can't sign in" (SIGN-IN.md §3.13, Account disabled), where the code step ends
+ * for a disabled account: the address names the account, so only another address (or another way
+ * to sign in) goes anywhere. No Continue, no resend.
+ */
+function RefusedStep({
+  email,
+  onChangeEmail,
+}: {
+  email: string;
+  onChangeEmail: () => void;
+}): React.ReactElement {
+  return (
+    <>
+      <div className="space-y-2">
+        {/* signin.disabled.title */}
+        <Title>This account can't sign in</Title>
+        <p className="text-fg">
+          {/* signin.disabled.lede */}
+          <span className="font-bold text-fg-strong">{email}</span> belongs to
+          an account that can't sign in. Try a different email or another way to
+          sign in.
+        </p>
+      </div>
+      <Button
+        size="lg"
+        className="h-12 w-full text-base font-bold"
+        onClick={onChangeEmail}
+      >
+        {/* signin.code.differentEmail */}
+        Use a different email
+      </Button>
     </>
   );
 }
