@@ -31,11 +31,11 @@ import {
 } from "./models.js";
 import {
   codeRows,
+  commandRows,
   endRow,
   fixRows,
   gap,
   hintsRow,
-  isShort,
   keyMask,
   linkSpan,
   problemRows,
@@ -49,13 +49,14 @@ import {
 import {
   CANCEL,
   INTERRUPT,
+  interactiveRegion,
   plainConfirm,
   plainSecret,
   promptConfirm,
   promptSecret,
 } from "./term/prompt.js";
 import { isCancel, isInterrupt } from "./term/keys.js";
-import { contentWidth, type RailRow } from "./term/layout.js";
+import { contentWidth, DROP, keyHints, type RailRow } from "./term/layout.js";
 import { animate, LiveRegion, spinnerFrames } from "./term/live.js";
 import { osc52 } from "./term/osc.js";
 import { clean } from "./term/sanitize.js";
@@ -108,11 +109,16 @@ function interrupted(fields: Record<string, unknown> = {}): FlowResult {
 }
 
 /** Draw a thrown error and return its result. */
-function failed(ctx: KitContext, e: unknown): FlowResult {
+function failed(
+  ctx: KitContext,
+  e: unknown,
+  lead: readonly RailRow[] = [],
+): FlowResult {
   const code = errorCode(e);
   const error = codeError(ctx, code);
   const network = code !== null && NETWORK.has(code);
   show(ctx, [
+    ...lead,
     ...problemRows(network ? "warn" : "fail", error.title, error.message),
     endRow(),
   ]);
@@ -131,6 +137,8 @@ async function busy<T>(
   ctx: KitContext,
   label: string,
   work: () => Promise<T>,
+  /** Rows above the spinner (the flow's header), so the screen reads the same as it fills in. */
+  lead: () => readonly RailRow[] = () => [],
 ): Promise<T> {
   // A short wait is not worth a line in a log: without animation nothing is drawn (D-77).
   if (quiet(ctx) || !ctx.caps.animate) return work();
@@ -139,21 +147,20 @@ async function busy<T>(
   const stop = animate(
     ctx.caps,
     (f) =>
-      live.draw(() =>
-        ctx.render([
-          {
-            mark: { glyph: frames[f % frames.length]! },
-            spans: [{ text: label }],
-          },
-        ]),
-      ),
+      live.draw(() => [
+        ...lead(),
+        {
+          mark: { glyph: frames[f % frames.length]! },
+          spans: [{ text: label }],
+        },
+      ]),
     ctx.ticker,
   );
   try {
     return await work();
   } finally {
     stop();
-    live.commit([]);
+    live.close();
   }
 }
 
@@ -430,7 +437,11 @@ export async function checkFlow(
 
 // ── activate, enroll, DeviceLimit ──────────────────────────────────────────────────────────
 
-/** The DeviceLimit rows (browser mode: the portal page that frees a seat). */
+/**
+ * The DeviceLimit rows (browser mode: the portal page that frees a seat), as the terminal board
+ * draws them: the title, the meter as dots only (the title already says "3 of 3"), one sentence,
+ * then the page that frees a seat.
+ */
 function deviceLimitRows(ctx: KitContext, v: DeviceLimitView): RailRow[] {
   const t = ctx.copy.t.bind(ctx.copy);
   const rows: RailRow[] = [];
@@ -445,7 +456,8 @@ function deviceLimitRows(ctx: KitContext, v: DeviceLimitView): RailRow[] {
   else rows.push(stepRow("warn", t("core.activation.device-limit.title")));
   if (v.manageUrl)
     rows.push(
-      textRow(t("deviceLimit.browser", { product: ctx.product.name })),
+      // The terminal does not poll: it never promises the product continues by itself.
+      textRow(t("cli.deviceLimit.body")),
       textRow([linkSpan(v.manageUrl)]),
     );
   else rows.push(textRow(t("core.activation.device-limit.message")));
@@ -524,6 +536,7 @@ export interface ActivateArgs {
 async function obtainKey(
   ctx: KitContext,
   args: ActivateArgs,
+  lead: () => readonly RailRow[],
 ): Promise<string | typeof CANCEL | typeof INTERRUPT | null> {
   const t = ctx.copy.t.bind(ctx.copy);
   if (args.key) {
@@ -546,6 +559,7 @@ async function obtainKey(
         host: ctx,
       },
       {
+        lead,
         title: [
           { text: t("part.keyField.label"), style: ["strong"] },
           { text: `  ${t("activate.lede")}`, style: ["muted"] },
@@ -553,21 +567,36 @@ async function obtainKey(
         mask: (v) => keyMask(ctx, v),
         verdict: (v) => {
           const kv = keyVerdict(v);
-          if (kv.state === "parsed")
+          if (kv.state === "parsed") {
+            // A key for another product is a warning, never a green tick.
+            if (kv.slug && kv.slug !== ctx.slug)
+              return stepRow("warn", [
+                {
+                  text: t("cli.activate.otherProduct", {
+                    app: kv.slug,
+                    product,
+                  }),
+                },
+              ]);
             return stepRow("ok", [
-              {
-                text: t("part.keyField.forProduct", {
-                  product:
-                    kv.slug === ctx.slug ? product : (kv.slug ?? product),
-                }),
-              },
+              { text: t("part.keyField.forProduct", { product }) },
             ]);
+          }
           if (kv.state === "rejected")
             return stepRow("fail", [{ text: t("part.keyField.malformed") }]);
           return null;
         },
         check: (v) => {
           const kv = keyVerdict(v, true);
+          if (kv.state === "parsed" && kv.slug && kv.slug !== ctx.slug)
+            return stepRow("warn", [
+              {
+                text: t("cli.activate.otherProduct", {
+                  app: kv.slug,
+                  product,
+                }),
+              },
+            ]);
           if (kv.state === "rejected")
             return stepRow("fail", [
               {
@@ -591,12 +620,8 @@ async function obtainKey(
           return null;
         },
         hints: hintsRow(ctx, t("cli.keys.activate")).spans,
-        done: (v) => [
-          stepRow("done", t("part.keyField.label"), [
-            { text: `${ctx.symbols.separator} `, style: ["muted"] },
-            ...keyMask(ctx, v, true),
-          ]),
-        ],
+        // The answered step is drawn by the next screen (it is part of the flow's header block).
+        done: () => [],
         cancelled: () => [
           stepRow("done", t("part.keyField.label")),
           endRow(t("cli.nothingChanged")),
@@ -625,8 +650,11 @@ export async function activateFlow(
   args: ActivateArgs = {},
 ): Promise<FlowResult> {
   const t = ctx.copy.t.bind(ctx.copy);
-  show(ctx, productHeader(ctx, "activate"));
-  const key = await obtainKey(ctx, args);
+  // The flow's screen so far (header, then the answered key row): every later screen starts with
+  // it, so a resize lays the whole flow out again.
+  const hist: RailRow[] = [...productHeader(ctx, "activate")];
+  const lead = () => hist;
+  const key = await obtainKey(ctx, args, lead);
   if (key === CANCEL)
     return {
       exitCode: EXIT.failed,
@@ -636,7 +664,7 @@ export async function activateFlow(
   if (key === INTERRUPT) return interrupted();
   if (key === null) {
     const message = t("cli.activate.noKey", { command: cmd(ctx, "activate") });
-    show(ctx, [stepRow("fail", [{ text: message }]), endRow()]);
+    show(ctx, [...hist, stepRow("fail", [{ text: message }]), endRow()]);
     return {
       exitCode: EXIT.usage,
       state: "rejected",
@@ -649,13 +677,12 @@ export async function activateFlow(
       },
     };
   }
-  if (!ctx.keys)
-    show(ctx, [
-      stepRow("done", t("part.keyField.label"), [
-        { text: `${ctx.symbols.separator} `, style: ["muted"] },
-        ...keyMask(ctx, key, true),
-      ]),
-    ]);
+  hist.push(
+    stepRow("done", t("part.keyField.label"), [
+      { text: `${ctx.symbols.separator} `, style: ["muted"] },
+      ...keyMask(ctx, key, true),
+    ]),
+  );
   const verdict = keyVerdict(key, true);
   if (verdict.state === "rejected" || verdict.state === "cut-short") {
     const message =
@@ -671,6 +698,7 @@ export async function activateFlow(
               : "part.keyField.malformed",
           );
     show(ctx, [
+      ...hist,
       stepRow(verdict.state === "cut-short" ? "warn" : "fail", [
         { text: message },
       ]),
@@ -689,15 +717,18 @@ export async function activateFlow(
   for (let attempt = 0; ; attempt++) {
     let r;
     try {
-      r = await busy(ctx, t("activate.busy"), () =>
-        client.license.activateWithKey(key),
+      r = await busy(
+        ctx,
+        t("activate.busy"),
+        () => client.license.activateWithKey(key),
+        lead,
       );
     } catch (e) {
-      return failed(ctx, e);
+      return failed(ctx, e, hist);
     }
     const o = activationOutcome(r, client.license.licenseInfo());
     if (o.state !== "device-limit") {
-      show(ctx, [...outcomeRows(ctx, o), endRow()]);
+      show(ctx, [...hist, ...outcomeRows(ctx, o), endRow()]);
       return {
         exitCode: outcomeExit(o),
         state: o.state,
@@ -711,31 +742,27 @@ export async function activateFlow(
       result: outcomeResult(client, r, o),
     };
     if (quiet(ctx)) return result;
-    ctx.rows(deviceLimitRows(ctx, dl));
+    const outcome = (): RailRow[] => [
+      ...deviceLimitRows(ctx, dl),
+      endRow(t("cli.deviceLimit.again", { command: cmd(ctx, "activate") })),
+    ];
     if (!ctx.keys || !dl.manageUrl || attempt >= 5) {
-      ctx.rows([
-        endRow(t("cli.deviceLimit.again", { command: cmd(ctx, "activate") })),
-      ]);
+      show(ctx, [...hist, ...outcome()]);
       return result;
     }
-    // Enter opens the portal page; then Enter tries again (one more key entry), Esc stops.
-    const live = new LiveRegion(
-      ctx.stdout,
-      {
-        animate: true,
-        get rows() {
-          return ctx.caps.rows;
-        },
-      },
-      ctx,
-    );
+    // Enter opens the portal page; then Enter tries again (one more activation), Esc stops. The
+    // block is one live screen: a second limit replaces it, never prints a second copy.
+    const live = interactiveRegion(ctx.stdout, ctx);
     let opened = false;
     let again = false;
     let interrupt = false;
     try {
       for (;;) {
-        const keys = t(opened ? "cli.keys.retry" : "cli.keys.deviceLimit");
-        live.draw(() => ctx.render([hintsRow(ctx, keys)]));
+        const hints = hintsRow(
+          ctx,
+          t(opened ? "cli.keys.retry" : "cli.keys.deviceLimit"),
+        );
+        live.draw(() => [...hist, ...deviceLimitRows(ctx, dl), hints]);
         const k = await ctx.keys.next();
         if (k !== null && isInterrupt(k)) interrupt = true;
         if (k === null || isCancel(k)) break;
@@ -749,16 +776,11 @@ export async function activateFlow(
         break;
       }
     } finally {
-      live.commit([]);
+      if (again) live.close();
+      else live.commit(() => [...hist, ...outcome()]);
     }
     if (interrupt) return interrupted(result.result);
-    if (!again) {
-      ctx.rows([
-        endRow(t("cli.deviceLimit.again", { command: cmd(ctx, "activate") })),
-      ]);
-      return result;
-    }
-    ctx.rows(gap(ctx));
+    if (!again) return result;
   }
 }
 
@@ -792,6 +814,8 @@ export async function enrollFlow(
 export interface LoginArgs {
   /** `--device-code`: skip the browser (SIGN-IN.md D-68). */
   deviceCode?: boolean;
+  /** The verb the person ran (`login`, or `sign-in`): next-step commands name it. */
+  verb?: string;
 }
 
 /**
@@ -826,14 +850,18 @@ export async function loginFlow(
       },
     };
   }
-  show(ctx, productHeader(ctx, "login"));
+  const verb = args.verb ?? "login";
+  const header = () => productHeader(ctx, verb);
   let prompt: SignInPrompt;
   try {
-    prompt = await busy(ctx, t("signInHandoff.starting"), () =>
-      client.identity.beginSignIn(),
+    prompt = await busy(
+      ctx,
+      t("signInHandoff.starting"),
+      () => client.identity.beginSignIn(),
+      header,
     );
   } catch (e) {
-    return { ...failed(ctx, e), result: { state: "error" } };
+    return { ...failed(ctx, e, header()), result: { state: "error" } };
   }
   const codeUrl = ctx.product.deviceCodeUrl ?? prompt.verificationUri;
   if (quiet(ctx)) {
@@ -847,13 +875,49 @@ export async function loginFlow(
     );
   }
   let useCode = args.deviceCode === true || ctx.caps.headless || quiet(ctx);
-  let headlessNote = useCode && !args.deviceCode && !quiet(ctx);
+  // Only an auto-detected headless computer is told so; --device-code asked for the code.
+  const headlessNote = useCode && !args.deviceCode && !quiet(ctx);
+  let noBrowser = false;
+  // A browser is on offer until it fails to open (or the computer is headless).
+  let browser = !useCode;
   if (!useCode) {
     const opened = await Promise.resolve(
       ctx.openUrl(prompt.verificationUriComplete),
     ).catch(() => false);
-    if (opened) {
-      show(ctx, [
+    if (!opened) {
+      useCode = true;
+      noBrowser = true;
+      browser = false;
+    }
+  }
+  const abort = new AbortController();
+  const live = quiet(ctx) ? null : ctx.live();
+  const frames = spinnerFrames(ctx.caps.unicode);
+  let copiedAt = -Infinity;
+  let frame = 0;
+  // The whole screen, header to key hints: it is laid out spaced and compacts by fit (screen.ts).
+  const screen = (): RailRow[] => {
+    const rows: RailRow[] = [...header()];
+    if (useCode) {
+      if (headlessNote)
+        rows.push(stepRow("done", [{ text: t("signin.cli.headless") }]));
+      else if (noBrowser)
+        rows.push(stepRow("warn", t("signin.handoff.noBrowser")));
+      else rows.push(stepRow("active", t("signin.handoff.codeTitle")));
+      rows.push(
+        textRow(withLink(ctx, "signin.handoff.codeBody", codeUrl)),
+        ...codeRows(ctx, prompt.userCode),
+        { ...textRow(t("signin.handoff.check")), drop: DROP.checkLine },
+      );
+      const left = prompt.expiresAt - ctx.now() / 1000;
+      rows.push({
+        ...textRow(t("signin.handoff.expires", { time: clock(left) }), [
+          "muted",
+        ]),
+        drop: DROP.countdown,
+      });
+    } else {
+      rows.push(
         stepRow("done", [{ text: t("signin.cli.opening") }]),
         textRow(
           withLink(
@@ -862,42 +926,10 @@ export async function loginFlow(
             prompt.verificationUriComplete,
           ),
         ),
-        ...gap(ctx),
-      ]);
-    } else {
-      useCode = true;
-      show(ctx, [stepRow("warn", t("signin.handoff.noBrowser"))]);
-      headlessNote = false;
-    }
-  }
-  const abort = new AbortController();
-  const codeView = () => {
-    show(ctx, [
-      ...(headlessNote
-        ? [stepRow("done", [{ text: t("signin.cli.headless") }])]
-        : []),
-      textRow(withLink(ctx, "signin.handoff.codeBody", codeUrl)),
-      ...codeRows(ctx, prompt.userCode),
-      textRow(t("signin.handoff.check")),
-    ]);
-  };
-  if (useCode) codeView();
-
-  // The live part: the countdown (code view), the spinner line and the keys. On a short terminal
-  // the keys sit on the spinner's line, so the code, the URL and the keys all stay in view.
-  const live = quiet(ctx) ? null : ctx.live();
-  const frames = spinnerFrames(ctx.caps.unicode);
-  let copied = false;
-  let frame = 0;
-  const liveRows = (): RailRow[] => {
-    const left = prompt.expiresAt - ctx.now() / 1000;
-    const rows: RailRow[] = [];
-    if (useCode)
-      rows.push(
-        textRow(t("signin.handoff.expires", { time: clock(left) }), ["muted"]),
-        ...gap(ctx),
       );
-    const waiting: RailRow = {
+    }
+    rows.push(...gap(ctx));
+    rows.push({
       mark: ctx.caps.animate
         ? { glyph: frames[frame % frames.length]! }
         : "active",
@@ -908,30 +940,30 @@ export async function loginFlow(
             : t("signin.handoff.waiting"),
         },
       ],
-    };
-    rows.push(waiting);
+      role: "spinner",
+    });
     if (ctx.keys) {
-      const hints = hintsRow(
-        ctx,
-        useCode ? t("cli.keys.code") : t("signin.cli.keys"),
-        "rail",
-      );
-      if (copied)
-        hints.spans.push({
-          text: `  ${ctx.symbols.ok} ${t("common.copied")}`,
-          style: ["success"],
-        });
-      const inline: Line = [
-        ...waiting.spans,
-        { text: ` ${ctx.symbols.separator} `, style: ["muted"] },
-        ...hints.spans,
-      ];
-      if (isShort(ctx) && fitsLine(ctx, inline)) waiting.spans = inline;
-      else rows.push(hints);
+      const text = useCode
+        ? t(browser ? "cli.keys.codeBrowser" : "cli.keys.code")
+        : t("signin.cli.keys");
+      const hints = hintsRow(ctx, text, "rail");
+      if (useCode && ctx.now() - copiedAt < 2000) {
+        // The copy hint gives way to "Copied" on the same row; never an extra row.
+        const rest = text.split(" · ").slice(1).join(" · ");
+        hints.spans = [
+          {
+            text: `${ctx.symbols.ok} ${t("common.copied")}`,
+            style: ["success"],
+          },
+          { text: ` ${ctx.symbols.separator} `, style: ["muted"] },
+          ...keyHints(rest, ctx.symbols),
+        ];
+      }
+      rows.push(hints);
     }
     return rows;
   };
-  const draw = () => live?.draw(() => ctx.render(liveRows()));
+  const draw = () => live?.draw(screen);
   const stopSpin = animate(
     ctx.caps,
     (f) => {
@@ -940,7 +972,7 @@ export async function loginFlow(
     },
     ctx.ticker,
   );
-  // Keys run beside the wait; Esc cancels it.
+  // Keys run beside the wait; Esc and Ctrl-C cancel it.
   let interrupt = false;
   const keyLoop = (async () => {
     if (!ctx.keys) return;
@@ -957,15 +989,15 @@ export async function loginFlow(
           ctx.openUrl(prompt.verificationUriComplete),
         ).catch(() => false);
       else if (k.name === "c") {
-        if (!useCode) {
-          useCode = true;
-          live?.commit([]);
-          codeView();
-        } else if (ctx.caps.links) {
+        if (!useCode) useCode = true;
+        else if (ctx.caps.links) {
           ctx.stdout.write(osc52(prompt.userCode));
-          copied = true;
+          copiedAt = ctx.now();
         }
-      }
+      } else if (k.name === "o" && useCode && browser)
+        await Promise.resolve(
+          ctx.openUrl(prompt.verificationUriComplete),
+        ).catch(() => false);
       draw();
     }
   })();
@@ -977,24 +1009,33 @@ export async function loginFlow(
     if (abort.signal.aborted) r = "cancelled";
     else {
       stopSpin();
-      live?.commit([]);
       abort.abort();
       await keyLoop;
-      return { ...failed(ctx, e), result: { state: "error" } };
+      live?.close();
+      return { ...failed(ctx, e, header()), result: { state: "error" } };
     }
   } finally {
     stopSpin();
   }
   abort.abort();
   await keyLoop;
-  live?.commit([]);
+  // The outcome replaces the whole screen, header included: one result block, never the code view
+  // above it. Without animation only the result prints (the screen was printed once already).
+  const finish = (result: RailRow[]) => {
+    const rows = [...header(), ...result];
+    if (live) live.commit(() => rows, result);
+  };
+  const again = (): RailRow[] =>
+    commandRows(ctx, [
+      {
+        label: [{ text: cmd(ctx, verb), style: ["strong"], keep: true }],
+        value: [{ text: t("signin.again"), style: ["muted"] }],
+      },
+    ]);
 
   if (r === "cancelled") {
     const error = codeError(ctx, "cancelled");
-    show(ctx, [
-      stepRow("fail", error.title),
-      endRow(t("signin.cli.signInAgain", { command: cmd(ctx, "login") })),
-    ]);
+    finish([stepRow("fail", error.title), ...gap(ctx), ...again(), endRow()]);
     if (interrupt) return interrupted({ state: "cancelled" });
     // Esc: cancelled, exit 1 (the Python kit's `{"state": "cancelled"}`).
     return {
@@ -1018,7 +1059,7 @@ export async function loginFlow(
       attached: r.attached ?? null,
       status: client.status().status,
     };
-    show(ctx, [
+    finish([
       stepRow("ok", line),
       useCode ? endRow() : endRow(t("signin.cli.closeTab")),
     ]);
@@ -1028,19 +1069,15 @@ export async function loginFlow(
   const error: CliJsonError = expired
     ? {
         code: "signin_expired",
-        title: t("signin.handoff.tooLong"),
-        message: t("signin.cli.signInAgain", { command: cmd(ctx, "login") }),
+        title: ctx.copy.code("sign-in-expired", "title"),
+        message: t("signin.cli.signInAgain", { command: cmd(ctx, verb) }),
       }
-    : codeError(ctx, "oidc_error");
-  show(
-    ctx,
-    expired
-      ? [stepRow("fail", error.title), endRow(error.message)]
-      : [
-          ...problemRows("fail", error.title, error.message),
-          endRow(t("signin.cli.signInAgain", { command: cmd(ctx, "login") })),
-        ],
-  );
+    : {
+        code: "sign-in-denied",
+        title: ctx.copy.code("sign-in-denied", "title"),
+        message: t("signin.cli.signInAgain", { command: cmd(ctx, verb) }),
+      };
+  finish([stepRow("fail", error.title), ...gap(ctx), ...again(), endRow()]);
   return {
     exitCode: EXIT.failed,
     state: expired ? "expired" : "denied",
@@ -1457,41 +1494,114 @@ export async function updateCheckFlow(
   }
 }
 
-/** A progress row: the bar, the percentage, then size and time left (UI-KITS update board). */
-function progressRow(
+/** The unit a size is shown in: megabytes from 1 MB up, else kilobytes. */
+function sizeUnit(bytes: number): {
+  unit: "megabyte" | "kilobyte";
+  div: number;
+} {
+  return bytes >= 1_000_000
+    ? { unit: "megabyte", div: 1_000_000 }
+    : { unit: "kilobyte", div: 1000 };
+}
+
+/** "38" and "61 MB": the finished part as a bare number, the whole with the unit. */
+function sizePair(
+  ctx: KitContext,
+  done: number,
+  total: number,
+): { size: string; total: string } {
+  const { unit, div } = sizeUnit(total);
+  const digits = (n: number) => (n >= 10 || n < 1 ? 0 : 1);
+  const num = new Intl.NumberFormat(ctx.copy.locale, {
+    maximumFractionDigits: digits(total / div),
+  });
+  const withUnit = new Intl.NumberFormat(ctx.copy.locale, {
+    style: "unit",
+    unit,
+    unitDisplay: "short",
+    maximumFractionDigits: digits(total / div),
+  });
+  return { size: num.format(done / div), total: withUnit.format(total / div) };
+}
+
+/** "20 s": the time left, with a space before the unit and never "0 s". */
+function timeLeft(ctx: KitContext, seconds: number): string | null {
+  const s = Math.round(seconds);
+  if (!(s >= 1)) return null;
+  const [value, unit] =
+    s >= 3600
+      ? [Math.round(s / 3600), "hour"]
+      : s >= 60
+        ? [Math.round(s / 60), "minute"]
+        : [s, "second"];
+  const narrow = new Intl.NumberFormat(ctx.copy.locale, {
+    style: "unit",
+    unit,
+    unitDisplay: "narrow",
+  }).format(value);
+  return ctx.copy.t("cli.update.timeLeft", {
+    time: narrow.replace(/^(\d+)(\D)/u, "$1 $2"),
+  });
+}
+
+/**
+ * The download's progress: the bar (at least 16 cells), the percentage, then the figures. As the
+ * line narrows the figures give way in order: the time left goes, then the sizes shorten to
+ * "38/61 MB", then they move to their own muted line under the bar. Each number keeps its unit.
+ */
+function progressRows(
   ctx: KitContext,
   done: number,
   total: number,
   startedAt: number,
-): RailRow {
+): RailRow[] {
   const t = ctx.copy.t.bind(ctx.copy);
   const v = progressView(done, total);
   const elapsed = (ctx.now() - startedAt) / 1000;
   const rate = elapsed > 0 ? done / elapsed : 0;
-  const width = Math.max(10, Math.min(36, ctx.caps.columns - 40));
-  const figures =
+  const pct = `  ${percent(done, total)}%`;
+  const sep = ` ${ctx.symbols.separator} `;
+  const sizes = sizePair(ctx, done, total);
+  const eta =
     v.state === "downloading" && rate > 0
-      ? t("updateProgress.downloading", {
-          size: formatBytes(ctx, done),
-          total: formatBytes(ctx, total),
-          time: formatDuration(ctx, (total - done) / rate),
-        })
-      : v.state === "queued"
-        ? t("updateProgress.queued")
-        : // A finished download shows what it fetched, not "Up to date": the step below says
-          // the update is ready and needs a restart.
-          formatBytes(ctx, total);
-  return {
-    mark: "rail",
-    spans: [
-      ...progressSpans(v.fraction, ctx.symbols, width),
-      { text: `  ${percent(done, total)}%`, style: ["strong"] },
-      {
-        text: ` ${ctx.symbols.separator} ${sep(ctx, figures)}`,
-        style: ["muted"],
-      },
-    ],
-  };
+      ? timeLeft(ctx, (total - done) / rate)
+      : null;
+  const long = t("cli.update.figures", sizes);
+  const short = t("cli.update.figuresShort", sizes);
+  const variants = (
+    v.state === "downloading"
+      ? [[long, eta], [long], [short]].map((x) =>
+          x.filter((p): p is string => !!p),
+        )
+      : [[v.state === "queued" ? t("updateProgress.queued") : sizes.total]]
+  ).map((parts) => parts.join(sep));
+  const cw = contentWidth(ctx.caps.columns);
+  const bar = (w: number) =>
+    progressSpans(v.fraction, ctx.symbols, Math.max(10, Math.min(36, w)));
+  for (const meta of variants) {
+    const room = cw - cellWidth(pct) - cellWidth(sep) - cellWidth(meta);
+    if (room >= 16)
+      return [
+        {
+          mark: "rail",
+          spans: [
+            ...bar(room),
+            { text: pct, style: ["strong"] },
+            { text: `${sep}${meta}`, style: ["muted"] },
+          ],
+        },
+      ];
+  }
+  return [
+    {
+      mark: "rail",
+      spans: [...bar(cw - cellWidth(pct)), { text: pct, style: ["strong"] }],
+    },
+    {
+      mark: "rail",
+      spans: [{ text: variants[0]!, style: ["muted"], unit: true }],
+    },
+  ];
 }
 
 /** `update apply`: decide, then download with a redrawn bar, then install. */
@@ -1501,17 +1611,23 @@ export async function updateApplyFlow(
 ): Promise<FlowResult> {
   const t = ctx.copy.t.bind(ctx.copy);
   const product = ctx.product.name;
-  show(ctx, productHeader(ctx, "update apply"));
+  const header = () => productHeader(ctx, "update apply");
   let r;
   try {
-    r = await busy(ctx, t("boot.deciding"), () => client.update.decide());
+    r = await busy(
+      ctx,
+      t("boot.deciding"),
+      () => client.update.decide(),
+      header,
+    );
   } catch (e) {
-    return failed(ctx, e);
+    return failed(ctx, e, header());
   }
   const d = r.decision;
   if (d.action !== "binary" && d.action !== "store") {
     const view = updateView(d);
     show(ctx, [
+      ...header(),
       ...(view.state === "up-to-date"
         ? [stepRow("ok", t("update.upToDate"))]
         : view.state === "blocked"
@@ -1536,25 +1652,28 @@ export async function updateApplyFlow(
       result: { state: view.state, decision: r.decision, channel: r.channel },
     };
   }
-  show(ctx, [
-    stepRow(
-      "active",
-      t("update.title", { product, version: d.release.version }),
-    ),
-  ]);
   const live = quiet(ctx) ? null : ctx.live();
   const abort = new AbortController();
   const started = ctx.now();
   let last = 0;
   let lastDone = 0;
   let lastTotal = 0;
-  const redraw = () =>
-    live?.draw(() =>
-      ctx.render([
-        progressRow(ctx, lastDone, lastTotal, started),
-        ...(ctx.keys ? [hintsRow(ctx, t("cli.keys.download"))] : []),
-      ]),
+  const title = () =>
+    stepRow(
+      "active",
+      t("update.title", { product, version: d.release.version }),
     );
+  // The whole screen, header to key hints, redrawn as one (a resize lays it out again).
+  const screen = (): RailRow[] => [
+    ...header(),
+    title(),
+    ...(ctx.caps.animate
+      ? progressRows(ctx, lastDone, lastTotal, started)
+      : []),
+    ...(ctx.keys ? [hintsRow(ctx, t("cli.keys.download"))] : []),
+  ];
+  const redraw = () => live?.draw(screen);
+  redraw();
   let interrupt = false;
   const keyLoop = (async () => {
     if (!ctx.keys) return;
@@ -1571,6 +1690,11 @@ export async function updateApplyFlow(
   const fields = {
     decision: d,
     channel: r.channel,
+  };
+  const finish = (result: RailRow[]) => {
+    const rows = [...header(), ...result];
+    if (live) live.commit(() => rows, result);
+    else show(ctx, rows);
   };
   let out;
   try {
@@ -1592,9 +1716,8 @@ export async function updateApplyFlow(
     const cancelled = abort.signal.aborted;
     abort.abort();
     await keyLoop;
-    live?.commit([]);
     if (cancelled) {
-      show(ctx, [stepRow("fail", t("cli.update.cancelled")), endRow()]);
+      finish([stepRow("fail", t("cli.update.cancelled")), endRow()]);
       if (interrupt) return interrupted({ state: "cancelled", ...fields });
       return {
         exitCode: EXIT.failed,
@@ -1602,36 +1725,57 @@ export async function updateApplyFlow(
         result: { state: "cancelled", ...fields },
       };
     }
-    return failed(ctx, e);
+    // Say what happened, that nothing was installed, and the command to try again.
+    const code = errorCode(e);
+    const error = codeError(ctx, code);
+    finish([
+      stepRow("fail", error.title),
+      textRow(t("cli.update.nothingInstalled")),
+      ...gap(ctx),
+      ...commandRows(ctx, [
+        {
+          label: [
+            { text: cmd(ctx, "update apply"), style: ["strong"], keep: true },
+          ],
+          value: [{ text: t("common.tryAgain"), style: ["muted"] }],
+        },
+      ]),
+      endRow(),
+    ]);
+    return {
+      exitCode: EXIT.failed,
+      state: "error",
+      error: code ? error : { ...error, code: "internal" },
+    };
   }
   abort.abort();
   await keyLoop;
-  live?.commit(
-    lastTotal > 0
-      ? () => ctx.render([progressRow(ctx, lastTotal, lastTotal, started)])
-      : [],
-  );
   const view = installView(out);
   const version = "version" in out ? out.version : d.release.version;
   switch (view.state) {
-    case "ready":
-      show(ctx, [
-        ...problemRows(
+    case "ready": {
+      // One result block replaces the title and the bar; the chip already names the product.
+      const size = lastTotal > 0 ? formatBytes(ctx, lastTotal) : null;
+      finish([
+        stepRow(
           "ok",
-          t("update.readyTitle", { product, version }),
-          t("update.readyBody", { product }),
+          size
+            ? t("cli.update.ready", { version, size })
+            : t("cli.update.readyNoSize", { version }),
         ),
+        textRow(t("cli.update.restart")),
         endRow(),
       ]);
       break;
+    }
     case "platform":
-      show(ctx, [
+      finish([
         stepRow("ok", t("update.platform.generic", { product })),
         endRow(),
       ]);
       break;
     case "store":
-      show(ctx, [
+      finish([
         stepRow("ok", t("update.platform.generic", { product })),
         ...("url" in out ? [textRow([linkSpan(out.url)])] : []),
         endRow(),
@@ -1639,7 +1783,7 @@ export async function updateApplyFlow(
       break;
     case "blocked": {
       const error = codeError(ctx, "unsupported");
-      show(ctx, [...problemRows("fail", error.title, error.message), endRow()]);
+      finish([...problemRows("fail", error.title, error.message), endRow()]);
       return {
         exitCode: EXIT.failed,
         state: "blocked",
@@ -1760,7 +1904,7 @@ export async function packsStatusFlow(
   for (const [id, f] of Object.entries(s.inflight))
     rows.push(
       { mark: "active", spans: [{ text: id, style: ["strong"], keep: true }] },
-      progressRow(ctx, f.done, f.total, ctx.now()),
+      ...progressRows(ctx, f.done, f.total, ctx.now()),
     );
   if (s.stateIssue) {
     const error = {
@@ -1814,8 +1958,9 @@ export async function packsEnsureFlow(
   packIds: string[],
 ): Promise<FlowResult> {
   const t = ctx.copy.t.bind(ctx.copy);
-  show(ctx, productHeader(ctx, "packs ensure"));
+  const header = () => productHeader(ctx, "packs ensure");
   const live = quiet(ctx) ? null : ctx.live();
+  live?.draw(header);
   const started = ctx.now();
   let last = 0;
   const off = client.update.packs.on((e) => {
@@ -1827,31 +1972,33 @@ export async function packsEnsureFlow(
     const now = ctx.now();
     if (!ctx.caps.animate || now - last < 100) return;
     last = now;
-    live?.draw(() =>
-      ctx.render([
-        {
-          mark: "active",
-          spans: [
-            { text: e.packId, style: ["strong"], keep: true },
-            ...(e.phase === "apply"
-              ? [
-                  {
-                    text: `  ${t("updateProgress.installing")}`,
-                    style: ["muted"],
-                  },
-                ]
-              : []),
-          ],
-        },
-        progressRow(ctx, e.done, e.total, started),
-      ]),
-    );
+    live?.draw(() => [
+      ...header(),
+      {
+        mark: "active",
+        spans: [
+          { text: e.packId, style: ["strong"], keep: true },
+          ...(e.phase === "apply"
+            ? [
+                {
+                  text: `  ${t("updateProgress.installing")}`,
+                  style: ["muted"] as string[],
+                },
+              ]
+            : []),
+        ],
+      },
+      ...progressRows(ctx, e.done, e.total, started),
+    ]);
   });
+  const finish = (result: RailRow[]) => {
+    const rows = [...header(), ...result];
+    if (live) live.commit(() => rows, result);
+    else show(ctx, rows);
+  };
   try {
     const installs = await client.update.packs.ensure(packIds);
-    live?.commit([]);
-    show(
-      ctx,
+    finish(
       installs.length
         ? [
             ...installs.map((i) => ({
@@ -1873,8 +2020,8 @@ export async function packsEnsureFlow(
       },
     };
   } catch (e) {
-    live?.commit([]);
-    return failed(ctx, e);
+    live?.close();
+    return failed(ctx, e, header());
   } finally {
     off();
   }

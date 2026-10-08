@@ -7,7 +7,9 @@
 
 import { TERMINAL_SPINNER } from "../tokens.generated.js";
 import type { TerminalCaps, TerminalOutput } from "./caps.js";
-import { cellWidth, stripAnsi } from "./width.js";
+import type { RailRow } from "./layout.js";
+import type { Fitted } from "./screen.js";
+import { cellWidth } from "./width.js";
 
 /** The timer seam (tests pass a manual one). */
 export interface Ticker {
@@ -29,27 +31,18 @@ const UP = "\x1b[1A";
 const HIDE_CURSOR = "\x1b[?25l";
 const SHOW_CURSOR = "\x1b[?25h";
 
-/** The region's lines, or a function that draws them at the terminal's current size. */
-export type Frame = readonly string[] | (() => readonly string[]);
+/** A live screen: rail rows, or a function that builds them (called again on every redraw). */
+export type Screen = readonly RailRow[] | (() => readonly RailRow[]);
 
-/** Lines a flow printed above its live region, kept so a resize can lay them out again. */
-export interface PrintedBlock {
-  /** The lines as they were last drawn. */
-  lines: readonly string[];
-  /** Their cell widths, as drawn. */
-  widths: number[];
-  /** The same lines at the terminal's current size, or null: they are reprinted as they were. */
-  redraw: (() => readonly string[]) | null;
-  /** The region that printed these lines above itself because its frame was taller than the screen. */
-  owner?: LiveRegion;
-}
-
-/** What a live region shares with the flow that owns it (the kit context). */
+/** What a live region needs from the flow's context. */
 export interface LiveHost {
-  /** Re-read the terminal's size into the caps the flow lays its lines out with. */
+  caps: Pick<TerminalCaps, "animate" | "rows" | "columns">;
+  /** Re-read the terminal's size into `caps` (a resize). */
   refreshSize(): void;
-  /** Everything the flow has printed so far, oldest first; a region adds its committed lines. */
-  readonly printed: PrintedBlock[];
+  /** Rail rows to lines at the current width, uncompacted. */
+  render(rows: readonly RailRow[]): string[];
+  /** Rail rows to lines that fit the terminal: compacted by tier, then cut from the top. */
+  fit(rows: readonly RailRow[]): Fitted;
 }
 
 /** Rows `widths` take on a terminal `columns` cells wide (a line wider than that wraps). */
@@ -70,10 +63,8 @@ function eraseRows(n: number): string {
 }
 
 const widthsOf = (lines: readonly string[]) => lines.map((l) => cellWidth(l));
-
-/** A blank rail row (the rail glyph alone, or nothing): the first thing a short screen drops. */
-const BLANK_RAIL = /^\s*[│|]?\s*$/;
-const linesOf = (f: Frame) => (typeof f === "function" ? f() : f);
+const rowsOf = (f: Screen): readonly RailRow[] =>
+  typeof f === "function" ? f() : f;
 
 /**
  * While a region hides the cursor, an interrupt must not leave the user's terminal without one.
@@ -99,24 +90,22 @@ function guardCursor(out: TerminalOutput): () => void {
 }
 
 /**
- * Lines redrawn in place. Each frame replaces the last, erased by the rows it really took on the
- * screen (a line wider than the terminal wraps, so it takes more than one).
+ * A flow's whole screen, redrawn in place. The flow hands over its rail rows (header to key hints)
+ * as a function; each draw lays them out spaced, compacts them to fit the terminal (screen.ts) and
+ * replaces the previous frame, erased by the rows it really took on the (reflowed) screen.
  *
- * A frame taller than the terminal does not fit: the lines at its top that do not fit are printed
- * once above the region and scroll away with the scrollback (the product header first), so the
- * rows that matter, at the bottom (the code, the URL, the keys), stay in view and redraw cleanly.
- *
- * On a resize (SIGWINCH: the stream's `resize` event) the region re-reads the size, erases what it
- * drew by the rows that now take on the reflowed screen, and draws its frame again at the new
- * width. When the flow's earlier lines are all still on the screen they are laid out again too, so
- * narrowing a terminal mid-flow never leaves a line wider than it, a duplicate header or a stack
- * of half-erased progress bars.
+ * Nothing is written above the region while it is up, so there is no stale line left at an old
+ * width: on a resize (SIGWINCH, the stream's `resize` event) the region re-reads the size, erases
+ * what it drew, and lays the same screen out again at the new size, as a fresh launch would. Only
+ * a screen that cannot fit even compacted loses its top lines from view.
  */
 export class LiveRegion {
   private drawn: number[] = [];
-  private frame: Frame | null = null;
-  /** Lines at the top of the current frame already printed above the region. */
+  /** Leading drawn lines that are the flow's header. */
   private head = 0;
+  /** A resize pushed the header into the scrollback: it is never drawn again. */
+  private headerGone = false;
+  private screen: Screen | null = null;
   private printedOnce = false;
   private hidden = false;
   private listening = false;
@@ -124,58 +113,26 @@ export class LiveRegion {
 
   constructor(
     private readonly out: TerminalOutput,
-    private readonly caps: Pick<TerminalCaps, "animate"> &
-      Partial<Pick<TerminalCaps, "rows">>,
-    private readonly host?: LiveHost,
+    private readonly host: LiveHost,
   ) {}
 
-  private get columns(): number | undefined {
-    return this.out.columns;
-  }
-
-  private get rows(): number {
-    return this.caps.rows ?? this.out.rows ?? Infinity;
-  }
-
   private erase(): string {
-    const s = eraseRows(physicalRows(this.drawn, this.columns));
+    const s = eraseRows(physicalRows(this.drawn, this.out.columns));
     this.drawn = [];
     return s;
   }
 
-  /**
-   * The frame's lines from `head` on, fitted to the screen: when they are taller than it, the
-   * blank rail rows go first, then the top lines that still do not fit are printed above the
-   * region (they scroll away; the header first).
-   */
-  private place(frame: readonly string[]): string {
-    let lines = frame;
-    if (
-      physicalRows(widthsOf(lines.slice(this.head)), this.columns) > this.rows
-    )
-      lines = lines.filter((l) => !BLANK_RAIL.test(stripAnsi(l)));
-    const widths = widthsOf(lines);
-    let start = Math.min(this.head, lines.length);
-    while (
-      start < lines.length - 1 &&
-      physicalRows(widths.slice(start), this.columns) > this.rows
-    )
-      start++;
-    let s = "";
-    if (start > this.head) {
-      const fixed = lines.slice(this.head, start);
-      s += `${fixed.join("\n")}\n`;
-      this.host?.printed.push({
-        lines: fixed,
-        widths: widths.slice(this.head, start),
-        redraw: null,
-        owner: this,
-      });
-      this.head = start;
-    }
-    s += lines.slice(start).join("\n");
-    this.drawn = widths.slice(start);
-    return s;
+  /** The screen's rows, without the header once it has scrolled into the scrollback. */
+  private rows(screen: Screen): readonly RailRow[] {
+    const rows = rowsOf(screen);
+    return this.headerGone ? rows.filter((r) => r.role !== "header") : rows;
+  }
+
+  private paint(screen: Screen): string {
+    const { lines, head } = this.host.fit(this.rows(screen));
+    this.drawn = widthsOf(lines);
+    this.head = head;
+    return lines.join("\n");
   }
 
   private listen(on: boolean): void {
@@ -188,46 +145,31 @@ export class LiveRegion {
     }
   }
 
-  /** SIGWINCH: lay the region (and the flow's lines above it, when they are all on the screen) out again. */
+  /** SIGWINCH: lay the whole screen out again at the new size. */
   private readonly onResize = (): void => {
-    if (!this.caps.animate || this.frame === null) return;
-    this.host?.refreshSize();
-    const region = physicalRows(this.drawn, this.columns);
-    const printed = this.host?.printed ?? [];
-    const above = printed.reduce(
-      (n, b) => n + physicalRows(b.widths, this.columns),
-      0,
-    );
-    let s: string;
-    if (printed.length > 0 && above + region <= this.rows) {
-      s = eraseRows(above + region);
-      // This region's own overflow lines are part of its frame: drawn again with it below.
-      for (let i = printed.length - 1; i >= 0; i--)
-        if (printed[i]!.owner === this) printed.splice(i, 1);
-      this.head = 0;
-      for (const b of printed) {
-        if (b.redraw) {
-          b.lines = b.redraw();
-          b.widths = widthsOf(b.lines);
-        }
-        if (b.lines.length) s += `${b.lines.join("\n")}\n`;
-      }
-    } else s = eraseRows(region);
+    if (!this.host.caps.animate || this.screen === null) return;
+    // The terminal reflowed what we drew. Rows beyond the new height went into its scrollback,
+    // where they cannot be erased: if they included the header, it is never drawn again.
+    const reflowed = physicalRows(this.drawn, this.out.columns);
+    const rows = this.out.rows ?? Infinity;
+    const gone = Math.max(0, reflowed - rows);
+    if (gone > 0 && this.head > 0) this.headerGone = true;
+    const s = eraseRows(reflowed - gone);
     this.drawn = [];
-    s += this.place(linesOf(this.frame));
-    this.out.write(s);
+    this.host.refreshSize();
+    this.out.write(s + this.paint(this.screen));
   };
 
-  /** Show `frame` in place of the previous one. */
-  draw(frame: Frame): void {
-    if (!this.caps.animate) {
-      const lines = linesOf(frame);
+  /** Show `screen` in place of the previous one. */
+  draw(screen: Screen): void {
+    if (!this.host.caps.animate) {
+      const lines = this.host.render(rowsOf(screen));
       if (!this.printedOnce && lines.length)
         this.out.write(`${lines.join("\n")}\n`);
       this.printedOnce = true;
       return;
     }
-    this.frame = frame;
+    this.screen = screen;
     let s = this.erase();
     if (!this.hidden) {
       s = HIDE_CURSOR + s;
@@ -235,26 +177,7 @@ export class LiveRegion {
       this.unguard = guardCursor(this.out);
     }
     this.listen(true);
-    s += this.place(linesOf(frame));
-    this.out.write(s);
-  }
-
-  /** Print lines above the region (they stay), then redraw nothing until the next draw. */
-  print(frame: Frame): void {
-    const lines = linesOf(frame);
-    const s = this.caps.animate ? this.erase() : "";
-    this.out.write(`${s}${lines.join("\n")}\n`);
-    this.keep(frame, lines);
-    this.printedOnce = false;
-  }
-
-  private keep(frame: Frame, lines: readonly string[]): void {
-    if (lines.length)
-      this.host?.printed.push({
-        lines,
-        widths: widthsOf(lines),
-        redraw: typeof frame === "function" ? frame : null,
-      });
+    this.out.write(s + this.paint(screen));
   }
 
   private stop(): string {
@@ -263,24 +186,30 @@ export class LiveRegion {
     this.unguard();
     this.unguard = () => undefined;
     this.listen(false);
-    this.frame = null;
+    this.screen = null;
+    this.headerGone = false;
     this.head = 0;
     return show;
   }
 
-  /** Replace the region with its final lines and stop. */
-  commit(frame: Frame = []): void {
-    const lines = linesOf(frame);
-    const s = this.caps.animate ? this.erase() : "";
+  /**
+   * Replace the region with its final screen (it stays) and stop. Without animation the first
+   * frame was already printed once, so only `plain` (the result, no header) prints.
+   */
+  commit(screen: Screen = [], plain?: Screen): void {
+    const animate = this.host.caps.animate;
+    const rows =
+      animate || plain === undefined ? this.rows(screen) : rowsOf(plain);
+    const s = animate ? this.erase() : "";
     const show = this.stop();
+    const lines = animate ? this.host.fit(rows).lines : this.host.render(rows);
     this.out.write(`${s}${lines.length ? `${lines.join("\n")}\n` : ""}${show}`);
-    this.keep(frame, lines);
     this.printedOnce = false;
   }
 
   /** Clear the region without printing (Ctrl-C, an error path). */
   close(): void {
-    const s = this.caps.animate ? this.erase() : "";
+    const s = this.host.caps.animate ? this.erase() : "";
     const show = this.stop();
     if (s || show) this.out.write(s + show);
   }

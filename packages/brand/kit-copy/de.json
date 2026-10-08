@@ -564,6 +564,16 @@
     "cli.doctor.reachable": "Erreichbar",
     "cli.doctor.services": "Dienste",
     "cli.doctor.installedFrom": "Installiert über",
-    "cli.doctor.unsupported": "Hier nicht unterstützt"
+    "cli.doctor.unsupported": "Hier nicht unterstützt",
+    "cli.keys.codeBrowser": "c Code kopieren · o im Browser öffnen · Esc abbrechen",
+    "cli.activate.otherProduct": "Dieser Schlüssel gehört zu einem anderen Produkt ({app}). Verwenden Sie Ihren Schlüssel für {product}.",
+    "cli.update.figures": "{size} von {total}",
+    "cli.update.figuresShort": "{size}/{total}",
+    "cli.update.timeLeft": "noch {time}",
+    "cli.update.ready": "{version} ist bereit · {size}",
+    "cli.update.readyNoSize": "{version} ist bereit",
+    "cli.update.restart": "Zum Abschließen des Updates neu starten.",
+    "cli.update.nothingInstalled": "Es wurde nichts installiert.",
+    "cli.deviceLimit.body": "Ersetzen Sie ein Gerät in Ihrem Browser und versuchen Sie es dann hier erneut."
   }
 }

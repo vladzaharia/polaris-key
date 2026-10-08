@@ -22,14 +22,9 @@ import {
   type RailRow,
   type Symbols,
 } from "./term/layout.js";
-import {
-  LiveRegion,
-  realTicker,
-  type PrintedBlock,
-  type Ticker,
-} from "./term/live.js";
+import { LiveRegion, realTicker, type Ticker } from "./term/live.js";
 import { safeLink } from "./term/sanitize.js";
-import { cellWidth } from "./term/width.js";
+import { fitScreen, type Fitted } from "./term/screen.js";
 import { Painter } from "./term/paint.js";
 import {
   bundleIdentity,
@@ -84,14 +79,11 @@ export interface KitContext {
   rows(rows: readonly RailRow[]): void;
   /** Lines for rail rows, without printing. */
   render(rows: readonly RailRow[]): string[];
-  /**
-   * What this flow printed so far (its rail rows and its committed live regions), so a resize
-   * can lay it out again while it is all still on the screen.
-   */
-  printed: PrintedBlock[];
+  /** Lines for rail rows that fit the terminal: compacted by tier, then cut from the top. */
+  fit(rows: readonly RailRow[]): Fitted;
   /** Re-read the terminal's size into `caps` (a live region calls it on SIGWINCH). */
   refreshSize(): void;
-  /** A live region on stdout that follows the terminal's size. */
+  /** A live region on stdout that lays its whole screen out again on a resize. */
   live(): LiveRegion;
   /** Release the keyboard (raw mode off). Call when the flow ends. */
   close(): void;
@@ -201,7 +193,13 @@ function buildContext(
       : null;
   const render = (rows: readonly RailRow[]) =>
     railLines(rows, painter, symbols, caps.columns);
-  const printed: PrintedBlock[] = [];
+  const fit = (rows: readonly RailRow[]) =>
+    fitScreen(rows, {
+      maxRows: caps.rows - 1,
+      columns: caps.columns,
+      separator: symbols.separator,
+      render,
+    });
   const ctx: KitContext = {
     caps,
     painter,
@@ -225,23 +223,17 @@ function buildContext(
     keys,
     plainKeys,
     render,
-    printed,
+    fit,
     rows: (rows) => {
       const lines = render(rows);
-      if (!lines.length) return;
-      stdout.write(`${lines.join("\n")}\n`);
-      printed.push({
-        lines,
-        widths: lines.map((l) => cellWidth(l)),
-        redraw: () => render(rows),
-      });
+      if (lines.length) stdout.write(`${lines.join("\n")}\n`);
     },
     refreshSize: () => {
       if (!caps.tty) return;
       if (stdout.columns) caps.columns = layoutColumns(stdout.columns);
       if (stdout.rows) caps.rows = stdout.rows;
     },
-    live: () => new LiveRegion(stdout, caps, ctx),
+    live: () => new LiveRegion(stdout, ctx),
     close: () => {
       keys?.close();
       plainKeys?.close();

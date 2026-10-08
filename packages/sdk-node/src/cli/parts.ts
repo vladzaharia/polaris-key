@@ -12,18 +12,19 @@
 //                   it wraps at `/ ? &` and is never cut
 //   fixRows         `tidewater activate   Use a different key` command rows, the command above
 //                   its label below 50 columns
-//
-// Spacing is one rail rhythm: one blank rail row between blocks, never two. A short terminal (16
-// rows or fewer, a "landscape" window) drops the blank rows altogether, so the code, the URL and
-// the key hints stay on the screen.
 //   keyMask         the masked key field: the public `pkey_<product>_` prefix, then bullets
+//
+// Spacing is one rail rhythm: one blank rail row between blocks, never two. A live screen taller
+// than the terminal compacts by fit, not by row count (term/screen.ts): the hints join the spinner
+// line, then the blank rows, the check line and the countdown go, and only then do the top lines
+// leave the view. Printed output never compacts; it scrolls.
 
 import type { KitContext } from "./context.js";
 import { keyVerdict, seatCells, type StatusFix } from "./models.js";
-import { SHORT_ROWS } from "./term/caps.js";
 import {
   columnsOf,
   contentWidth,
+  DROP,
   keyHints,
   separated,
   type Mark,
@@ -32,16 +33,17 @@ import {
 import { displayUrl } from "./term/osc.js";
 import { cellWidth, type Line, type Span } from "./term/width.js";
 
-/** A short terminal (16 rows or fewer): no blank rows, key hints inline. */
-export function isShort(ctx: KitContext): boolean {
-  return ctx.caps.tty && ctx.caps.rows <= SHORT_ROWS;
-}
-
-/** A blank rail row between steps (none under `density: "compact"` or on a short terminal). */
-export function gap(ctx: KitContext): RailRow[] {
-  return ctx.theme.density === "compact" || isShort(ctx)
+/**
+ * A blank rail row between blocks (none under `density: "compact"`). On a live screen it carries a
+ * compaction `tier`: the row is dropped only when the screen is taller than the terminal.
+ */
+export function gap(
+  ctx: KitContext,
+  tier: number = DROP.blankProse,
+): RailRow[] {
+  return ctx.theme.density === "compact"
     ? []
-    : [{ mark: "rail", spans: [] }];
+    : [{ mark: "rail", spans: [], drop: tier }];
 }
 
 /**
@@ -62,8 +64,9 @@ export function productHeader(ctx: KitContext, command: string): RailRow[] {
         },
         { text: ` ${sep} ${command}`, style: ["muted"] },
       ],
+      role: "header",
     },
-    ...gap(ctx),
+    ...gap(ctx).map((r) => ({ ...r, role: "header" as const })),
   ];
 }
 
@@ -99,7 +102,7 @@ export function hintsRow(
   text: string,
   mark: Mark = "end",
 ): RailRow {
-  return { mark, spans: keyHints(text, ctx.symbols) };
+  return { mark, spans: keyHints(text, ctx.symbols), role: "hints" };
 }
 
 /** The flow's last row: muted text after the end mark, or the bare mark. */
@@ -119,11 +122,15 @@ export function linkSpan(url: string, style: string[] = ["link"]): Span {
   return { text: displayUrl(url), style, link: url, break: "url" };
 }
 
-/** The seat meter: filled cells for used seats, a caption with the numbers (§1.5 rule 9). */
+/**
+ * The seat meter: filled cells for used seats (§1.5 rule 9). Dots only by default, since the
+ * title beside it already says "3 of 3"; `caption` adds the numbers for a screen with no title.
+ */
 export function seatMeter(
   ctx: KitContext,
   used: number,
   limit: number,
+  caption = false,
 ): RailRow {
   const { filled, empty } = seatCells(used, limit);
   const [on, off] = ctx.caps.unicode ? ["●", "○"] : ["#", "-"];
@@ -132,10 +139,14 @@ export function seatMeter(
     spans: [
       { text: on.repeat(filled), style: ["strong"] },
       { text: off.repeat(empty), style: ["muted"] },
-      {
-        text: ` ${ctx.copy.t("part.seatMeter.caption", { used, limit })}`,
-        style: ["muted"],
-      },
+      ...(caption
+        ? [
+            {
+              text: ` ${ctx.copy.t("part.seatMeter.caption", { used, limit })}`,
+              style: ["muted"],
+            },
+          ]
+        : []),
     ],
   };
 }
@@ -146,7 +157,7 @@ export function seatMeter(
  */
 export function codeRows(ctx: KitContext, code: string): RailRow[] {
   return [
-    ...gap(ctx),
+    ...gap(ctx, DROP.blankCode),
     {
       mark: "rail",
       spans: [
@@ -154,7 +165,7 @@ export function codeRows(ctx: KitContext, code: string): RailRow[] {
         { text: ` ${code} `, style: ["code"], break: "code" },
       ],
     },
-    ...gap(ctx),
+    ...gap(ctx, DROP.blankCode),
   ];
 }
 

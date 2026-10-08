@@ -564,6 +564,16 @@
     "cli.doctor.reachable": "Accessible",
     "cli.doctor.services": "Services",
     "cli.doctor.installedFrom": "Installé depuis",
-    "cli.doctor.unsupported": "Non pris en charge ici"
+    "cli.doctor.unsupported": "Non pris en charge ici",
+    "cli.keys.codeBrowser": "c copier le code · o ouvrir dans le navigateur · Échap annuler",
+    "cli.activate.otherProduct": "Cette clé est celle d’un autre produit ({app}). Utilisez votre clé {product}.",
+    "cli.update.figures": "{size} sur {total}",
+    "cli.update.figuresShort": "{size}/{total}",
+    "cli.update.timeLeft": "{time} restant",
+    "cli.update.ready": "{version} est prête · {size}",
+    "cli.update.readyNoSize": "{version} est prête",
+    "cli.update.restart": "Redémarrez pour terminer la mise à jour.",
+    "cli.update.nothingInstalled": "Rien n’a été installé.",
+    "cli.deviceLimit.body": "Remplacez un appareil dans votre navigateur, puis réessayez ici."
   }
 }

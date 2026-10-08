@@ -33,6 +33,7 @@ export {
 export {
   columnsOf,
   contentWidth,
+  DROP,
   GUTTER,
   keyHints,
   railLines,
@@ -61,9 +62,8 @@ export {
   physicalRows,
   realTicker,
   spinnerFrames,
-  type Frame,
   type LiveHost,
-  type PrintedBlock,
+  type Screen,
   type Ticker,
 } from "./live.js";
 export { isCancel, isInterrupt, KeyReader, type Key } from "./keys.js";
@@ -90,6 +90,7 @@ export {
   qrLines,
 } from "./progress.js";
 export { displayUrl, osc52, osc8 } from "./osc.js";
+export { fitScreen, inlineHints, type FitOptions } from "./screen.js";
 export { clean, CONTROL_CHARS, safeLink } from "./sanitize.js";
 export {
   TERMINAL_LAYOUT,

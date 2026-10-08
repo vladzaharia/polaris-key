@@ -24,7 +24,8 @@ import {
 } from "../../src/cli/flows.js";
 import { renderHelp } from "../../src/cli/help.js";
 import { CLI_VERBS } from "../../src/cli/kit.js";
-import { LiveRegion } from "../../src/cli/term/live.js";
+import { DROP, type RailRow } from "../../src/cli/term/layout.js";
+import { fitScreen, inlineHints } from "../../src/cli/term/screen.js";
 import { breakPieces, wrapSpans } from "../../src/cli/term/width.js";
 import {
   deferred,
@@ -142,7 +143,13 @@ function signInClient(v: Values, gate: Promise<unknown>) {
         interval: 5,
         expiresAt: NOW / 1000 + 252,
       }),
-      waitForSignIn: () => gate,
+      waitForSignIn: (_p: unknown, o: { signal?: AbortSignal } = {}) =>
+        new Promise((resolve, reject) => {
+          void gate.then(resolve, reject);
+          o.signal?.addEventListener("abort", () =>
+            reject(new Error("cancelled")),
+          );
+        }),
     },
   });
 }
@@ -156,11 +163,20 @@ function check(
   label: string,
   screen: XtermScreen,
   view: Row[],
-  want: { code?: string; url?: string; hints?: boolean },
+  want: {
+    code?: string;
+    url?: string;
+    hints?: boolean;
+    /** After a resize the terminal reflows what was already drawn, and the rows it pushed into its
+     * scrollback keep the old width: only what is on the screen is held to the window's width. */
+    viewportOnly?: boolean;
+  },
 ): void {
   const all = screen.all();
   expect(
-    all.filter((r) => r.wrapped).map((r) => r.text),
+    (want.viewportOnly ? screen.viewport() : all)
+      .filter((r) => r.wrapped)
+      .map((r) => r.text),
     `${label}: a line wider than the terminal`,
   ).toEqual([]);
   const text = all.map((r) => r.text).join("\n");
@@ -289,39 +305,74 @@ describe("URLs and codes wrap and are never cut", () => {
   });
 });
 
-describe("a live region taller than the screen", () => {
-  it("drops its blank rows first, then lets the top lines scroll away", async () => {
-    const screen = new XtermScreen(40, 5);
-    const live = new LiveRegion(screen, { animate: true, rows: 5 });
-    live.draw(["┌  Header", "│", "│  one", "│", "│  two", "└  Esc cancel"]);
-    await screen.flush();
-    expect(screen.viewport().map((r) => r.text)).toEqual([
-      "┌  Header",
-      "│  one",
-      "│  two",
-      "└  Esc cancel",
+describe("a live screen taller than the terminal", () => {
+  const text = (rows: readonly RailRow[]) =>
+    rows.map((r) => r.spans.map((x) => x.text).join(""));
+  const row = (t: string, drop?: number): RailRow => ({
+    mark: "none",
+    spans: [{ text: t }],
+    ...(drop === undefined ? {} : { drop }),
+  });
+  const fit = (rows: RailRow[], max: number) =>
+    fitScreen(rows, {
+      maxRows: max,
+      columns: 40,
+      separator: "·",
+      render: text,
+    }).lines;
+
+  it("is laid out spaced when it fits, and compacts in tier order when it does not", () => {
+    const rows = [
+      row("header"),
+      row("", DROP.blankProse),
+      row("go to url"),
+      row("", DROP.blankCode),
+      row("CODE"),
+      row("", DROP.blankCode),
+      row("check", DROP.checkLine),
+      row("expires", DROP.countdown),
+      row("hints"),
+    ];
+    expect(fit(rows, 9)).toHaveLength(9);
+    // Blank rows between prose go first, then the check line, then the blanks around the code.
+    expect(fit(rows, 8)).toHaveLength(8);
+    expect(fit(rows, 8)).toEqual([
+      "header",
+      "go to url",
       "",
+      "CODE",
+      "",
+      "check",
+      "expires",
+      "hints",
     ]);
-    live.draw([
-      "┌  Header",
-      "│",
-      "│  one",
-      "│  two",
-      "│  three",
-      "│  four",
-      "└  Esc cancel",
-    ]);
-    await screen.flush();
-    const rows = screen.all().map((r) => r.text);
-    expect(rows.slice(-5)).toEqual([
-      "│  one",
-      "│  two",
-      "│  three",
-      "│  four",
-      "└  Esc cancel",
-    ]);
-    expect(rows.filter((r) => r === "┌  Header")).toHaveLength(1);
-    live.close();
+    expect(fit(rows, 6)).not.toContain("check");
+    expect(fit(rows, 6)).toContain("expires");
+    expect(fit(rows, 5)).toEqual(
+      ["header", "go to url", "CODE", "expires", "hints"].slice(0, 5),
+    );
+    // Never the URL line, the code or the hints; the top lines leave the view last.
+    expect(fit(rows, 3)).toEqual(["go to url", "CODE", "hints"]);
+  });
+
+  it("puts the key hints on the spinner line when the joined line fits", () => {
+    const spinner: RailRow = {
+      mark: "rail",
+      spans: [{ text: "Waiting" }],
+      role: "spinner",
+    };
+    const hints: RailRow = {
+      mark: "rail",
+      spans: [{ text: "Esc cancel" }],
+      role: "hints",
+    };
+    const joined = inlineHints([row("a"), spinner, hints], 80, "·");
+    expect(joined).toHaveLength(2);
+    expect(joined[1]!.spans.map((x) => x.text).join("")).toBe(
+      "Waiting · Esc cancel",
+    );
+    // Too narrow: left as two rows.
+    expect(inlineHints([row("a"), spinner, hints], 12, "·")).toHaveLength(3);
   });
 });
 
@@ -354,9 +405,11 @@ describe("the resolution matrix (40/60/80/120 × 12/24, long values)", () => {
             url: values.url,
             hints: true,
           });
-          // A short terminal has no blank rows at all.
-          if (rows <= 16)
-            expect(snaps[0]!.filter((r) => r.text === "│")).toEqual([]);
+          // The screen is laid out spaced when it fits; it compacts only when it does not.
+          if (rows >= 24 && columns >= 60 && values === SHORT)
+            expect(
+              snaps[0]!.filter((r) => r.text === "│").length,
+            ).toBeGreaterThan(0);
         });
 
         it(`login in the browser at ${size}: the fallback URL and the keys stay in view`, async () => {
@@ -479,10 +532,13 @@ describe("the resolution matrix (40/60/80/120 × 12/24, long values)", () => {
             .map((r) => r.text)
             .join("\n");
           // Below 50 columns a command row stacks: the command, then its label under it.
-          if (columns < 50) expect(text).toMatch(/│ {2}tidewater activate\n/);
+          if (columns < 50)
+            expect(text).toMatch(/│ {2}tidewater activate\n/);
           // A finished download never reads "Up to date" above "Restart to finish updating".
           expect(text).not.toContain("Up to date");
-          expect(text).toContain("100%");
+          // The finished block replaces the bar: ready, the size, then what to do next.
+          expect(text).toContain("2.5.0 is ready · 61 MB");
+          expect(text).toContain("Restart to finish updating.");
         });
       }
 });
@@ -535,6 +591,145 @@ describe("German and Japanese at 40 and 60 columns", () => {
         });
 });
 
+describe("a window dragged through several sizes mid-flow", () => {
+  const drags: Array<[string, Array<[number, number]>]> = [
+    ["80x24 → 40x12", [[40, 12]]],
+    ["120x40 → 40x12", [[40, 12]]],
+    ["60x24 → 60x10", [[60, 10]]],
+    ["80x24 → 80x12", [[80, 12]]],
+    ["40x12 → 120x40", [[120, 40]]],
+    [
+      "80x24 → 32x10 → 110x30",
+      [
+        [32, 10],
+        [110, 30],
+      ],
+    ],
+  ];
+  const start = (name: string): [number, number] => {
+    const [c, r] = name.split(" → ")[0]!.split("x").map(Number);
+    return [c!, r!];
+  };
+  for (const [name, steps] of drags)
+    for (const values of [SHORT, LONG])
+      it(`${name}, ${values === LONG ? "long" : "short"} values: one screen, nothing wider than the window, the URL and the code whole`, async () => {
+        const [columns, rows] = start(name);
+        const gate = deferred<unknown>();
+        const { screen, snaps } = await run(
+          { columns, rows, values, interactive: true },
+          async (h) => {
+            const done = loginFlow(h.ctx, signInClient(values, gate.promise), {
+              deviceCode: true,
+            });
+            await settle();
+            for (const [c, r] of steps) {
+              await h.screen.resize(c, r);
+              await settle();
+            }
+            await h.snap();
+            gate.resolve({ status: "expired" });
+            await done;
+          },
+        );
+        const last = steps.at(-1)!;
+        // Fits the final window: only as many rows as it has, nothing soft-wrapped anywhere.
+        expect(snaps[0]!.length).toBeLessThanOrEqual(last[1]);
+        check(
+          `${name} ${values === LONG ? "long" : "short"}`,
+          screen,
+          snaps[0]!,
+          {
+            code: values.code,
+            url: values.url,
+            hints: true,
+            viewportOnly: true,
+          },
+        );
+        // One header at most while it is up; and after the outcome exactly one, no fragment left.
+        expect(
+          snaps[0]!.filter((r) => r.text.startsWith("┌")).length,
+        ).toBeLessThanOrEqual(1);
+        const end = screen.all().map((r) => r.text);
+        expect(end.filter((t) => t.startsWith("┌"))).toHaveLength(1);
+        // Rows the terminal itself pushed into its scrollback while reflowing cannot be erased;
+        // what is on the screen is only the result.
+        expect(
+          screen
+            .viewport()
+            .map((r) => r.text)
+            .join("\n"),
+        ).not.toContain("Waiting for you to sign in");
+      });
+});
+
+describe("a flow's end states leave one result block under one header", () => {
+  const outcomes: Array<[string, unknown, string]> = [
+    ["expired", { status: "expired" }, "Code expired"],
+    [
+      "declined",
+      { status: "error", message: "access_denied" },
+      "Sign-in declined",
+    ],
+    [
+      "signed in",
+      {
+        status: "ready",
+        identity: { name: "Mara Fennick", email: "mara@fennick.studio" },
+      },
+      "Signed in as Mara Fennick",
+    ],
+  ];
+  for (const [columns, rows] of [
+    [40, 12],
+    [32, 12],
+    [40, 8],
+    [80, 24],
+  ] as const)
+    for (const [label, result, title] of outcomes)
+      it(`${label} at ${columns}×${rows}`, async () => {
+        const gate = deferred<unknown>();
+        const { screen } = await run(
+          { columns, rows, values: LONG, interactive: true },
+          async (h) => {
+            const done = loginFlow(h.ctx, signInClient(LONG, gate.promise), {
+              deviceCode: true,
+            });
+            await settle();
+            gate.resolve(result);
+            await done;
+          },
+        );
+        const all = screen.all().map((r) => r.text);
+        check(`${label} ${columns}x${rows}`, screen, screen.viewport(), {});
+        expect(all.filter((t) => t.startsWith("┌")).length).toBeLessThanOrEqual(
+          1,
+        );
+        expect(all.join("")).toContain(title.split(" ")[0]!);
+        expect(all.join("\n")).not.toContain("Check the code there");
+      });
+  it("cancelling with Esc replaces the code view with the result and the verb that was run", async () => {
+    const gate = deferred<unknown>();
+    const { screen } = await run(
+      { columns: 40, rows: 12, values: SHORT, interactive: true },
+      async (h) => {
+        const done = loginFlow(h.ctx, signInClient(SHORT, gate.promise), {
+          deviceCode: true,
+        });
+        await settle();
+        h.stdin.press("escape", { sequence: "\x1b" });
+        await done;
+      },
+    );
+    const text = screen
+      .all()
+      .map((r) => r.text)
+      .join("\n");
+    expect(text).toContain("Sign-in cancelled");
+    expect(text).toMatch(/tidewater login\n│\s+Sign in again/);
+    expect(text).not.toContain("WDJB-MJHT");
+  });
+});
+
 describe("a terminal resized in the middle of a live region (80 → 50)", () => {
   it("lays the sign-in code out again: one header, nothing wider than the terminal", async () => {
     const gate = deferred<unknown>();
@@ -566,7 +761,7 @@ describe("a terminal resized in the middle of a live region (80 → 50)", () => 
   it("redraws the progress bar in place: one bar, never a stack", async () => {
     const step = deferred<void>();
     const resized = deferred<void>();
-    const { screen } = await run(
+    const { screen, snaps } = await run(
       { columns: 80, rows: 24, interactive: true },
       async (h) => {
         const done = updateApplyFlow(
@@ -597,13 +792,20 @@ describe("a terminal resized in the middle of a live region (80 → 50)", () => 
         await step.promise;
         await settle();
         await h.screen.resize(50, 24);
+        await settle();
+        await h.snap();
         resized.resolve();
         await done;
       },
     );
-    check("resize update", screen, [], {});
+    // Mid-download, after the resize: one bar, one header, nothing wider than the terminal.
+    const mid = snaps[0]!.map((r) => r.text);
+    expect(mid.filter((t) => t.includes("%"))).toHaveLength(1);
+    expect(mid.filter((t) => t.includes("· update apply"))).toHaveLength(1);
+    check("resize update", screen, snaps[0]!, {});
+    // At the end the finished block replaced the bar, under the one header.
     const all = screen.all().map((r) => r.text);
-    expect(all.filter((t) => t.includes("%"))).toHaveLength(1);
+    expect(all.filter((t) => t.includes("%"))).toHaveLength(0);
     expect(all.filter((t) => t.includes("· update apply"))).toHaveLength(1);
   });
 });

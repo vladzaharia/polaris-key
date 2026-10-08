@@ -52,9 +52,11 @@ export interface RailRow {
   drop?: number;
   /**
    * `spinner` marks the waiting line that the key hints merge onto first; `hints` marks the hints
-   * row that merges. A `blank` spacing row is dropped at its tier even when empty.
+   * row that merges; `header` marks the flow's header rows, which a live region leaves out once a
+   * resize has pushed them into the terminal's scrollback (they cannot be erased, and are never
+   * printed a second time).
    */
-  role?: "spinner" | "hints";
+  role?: "spinner" | "hints" | "header";
 }
 
 /** The compaction tiers a live screen drops in order when it is taller than the terminal. */

@@ -564,6 +564,16 @@
     "cli.doctor.reachable": "接続可能",
     "cli.doctor.services": "サービス",
     "cli.doctor.installedFrom": "インストール元",
-    "cli.doctor.unsupported": "このデバイスでは非対応"
+    "cli.doctor.unsupported": "このデバイスでは非対応",
+    "cli.keys.codeBrowser": "c コードをコピー · o ブラウザで開く · Esc キャンセル",
+    "cli.activate.otherProduct": "このキーは別の製品（{app}）用です。{product}のキーを使ってください。",
+    "cli.update.figures": "{total}中{size}",
+    "cli.update.figuresShort": "{size}/{total}",
+    "cli.update.timeLeft": "残り{time}",
+    "cli.update.ready": "{version}の準備ができました · {size}",
+    "cli.update.readyNoSize": "{version}の準備ができました",
+    "cli.update.restart": "アップデートを完了するには再起動してください。",
+    "cli.update.nothingInstalled": "何もインストールされていません。",
+    "cli.deviceLimit.body": "ブラウザでデバイスを入れ替えてから、ここでもう一度お試しください。"
   }
 }
