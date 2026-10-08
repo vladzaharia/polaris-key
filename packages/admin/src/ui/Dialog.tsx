@@ -484,20 +484,54 @@ export function Dialog({
   );
 }
 
-/** The scrolling middle of a dialog. */
+/**
+ * The scrolling middle of a dialog. When its content overflows (a phone on its side, 200 % zoom)
+ * it joins the tab order, so a keyboard can scroll it even when it holds nothing focusable
+ * (WCAG 2.1.1; axe `scrollable-region-focusable`), with the focus ring drawn inside it.
+ */
 export function DialogBody({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>): React.ReactElement {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const overflows = useOverflowsY(ref);
   return (
     <div
+      ref={ref}
+      tabIndex={overflows ? 0 : undefined}
       className={cn(
         "pk-scroll min-h-0 flex-1 overflow-y-auto px-6 py-2 text-base",
+        "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus",
         className,
       )}
       {...props}
     />
   );
+}
+
+/** Whether the element's content is taller than its box, kept current as either resizes. */
+function useOverflowsY(ref: React.RefObject<HTMLElement | null>): boolean {
+  const [overflows, setOverflows] = React.useState(false);
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const measure = (): void =>
+      setOverflows(el.scrollHeight > el.clientHeight + 1);
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    for (const child of Array.from(el.children)) ro.observe(child);
+    const mo = new MutationObserver(() => {
+      for (const child of Array.from(el.children)) ro.observe(child);
+      measure();
+    });
+    mo.observe(el, { childList: true });
+    measure();
+    return () => {
+      ro.disconnect();
+      mo.disconnect();
+    };
+  }, [ref]);
+  return overflows;
 }
 
 /** The one footer: actions end-aligned on desktop, stacked full-width on phones. */
