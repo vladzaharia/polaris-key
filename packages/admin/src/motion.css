@@ -10,8 +10,8 @@
  *     not motion and stay;
  *   - transform and opacity only, with three named exceptions: the expand pattern's grid rows,
  *     colour on small elements, and SVG stroke-dashoffset;
- *   - only loading indicators loop (the refetch sweep, the skeleton shimmer; the spinner lives in
- *     styles.css and keeps turning under reduced motion);
+ *   - only loading indicators loop (the refetch sweep, the skeleton shimmer, the spinner of
+ *     styles.css), and under reduced motion they stand still too;
  *   - enter animations fill `backwards` (never `both`), so a finished enter leaves no animation
  *     behind and `document.getAnimations()` is empty once the page is at rest;
  *   - nothing here is markup: dynamic values reach these rules through the CSSOM
@@ -253,10 +253,11 @@
       infinite;
   }
 
-  /* Reduced motion: no animation at all, so Radix unmounts a closing overlay at once and the
-     refetch bar stands still (its motion-reduce utilities show it full-width and dimmed). The
-     trailing :is() lifts these to the specificity of the most specific rule above, so they win by
-     order. */
+  /* Reduced motion: no animation at all, so Radix unmounts a closing overlay at once, the
+     refetch bar stands still (its motion-reduce utilities show it full-width and dimmed) and the
+     spinner (ui/Spinner.tsx) is a still ring; the busy control around it already says it is
+     working. The trailing :is() lifts these to the specificity of the most specific rule above,
+     so they win by order. */
   @media (prefers-reduced-motion: reduce) {
     :is(
       .animate-pk-in,
@@ -265,7 +266,8 @@
       .pk-overlay,
       .pk-drawer,
       .pk-sheet,
-      .animate-pk-refetch
+      .animate-pk-refetch,
+      .animate-pk-spin
     ):is(*, [data-state], [data-side][data-state]) {
       animation: none;
     }
@@ -278,7 +280,8 @@
       .pk-overlay,
       .pk-drawer,
       .pk-sheet,
-      .animate-pk-refetch
+      .animate-pk-refetch,
+      .animate-pk-spin
     ):is(*, [data-state], [data-side][data-state]) {
     animation: none;
   }
@@ -336,7 +339,11 @@
     opacity var(--pk-duration-fast) var(--pk-ease-standard),
     transform var(--pk-duration-fast) var(--pk-ease-standard);
 }
-/* sonner's loading spinner (sonner-spin) is a loading indicator and keeps its own loop. */
+/* sonner's loading spinner (sonner-spin) keeps its own loop, which sonner's own reduced-motion
+   rule stops for the OS setting; this stops it for the in-app preference too. */
+:root[data-motion="reduce"] .sonner-loading-bar {
+  animation: none;
+}
 
 /* ── 4. Patterns (the hand-off classes for MO-03 to MO-12) ────────────────────────────────────── */
 @layer components {

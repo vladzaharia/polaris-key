@@ -30,7 +30,8 @@ export type PortalScenario =
   | "storefront";
 
 type Reply = { status?: number; body: unknown };
-export type Handler = Reply | ((req: Request) => Reply);
+/** A reply, or a function of the request; an async one holds the request open until it settles. */
+export type Handler = Reply | ((req: Request) => Reply | Promise<Reply>);
 
 /**
  * The fixtures' clock, fixed so the visual baselines (PX-20) are reproducible: the harness pins the

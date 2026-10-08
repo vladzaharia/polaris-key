@@ -174,7 +174,8 @@ export async function startPortal(): Promise<PortalHarness> {
         if (handler === "abort") return route.abort("connectionfailed");
         if (!handler)
           return route.fulfill({ status: 404, json: { error: "not_found" } });
-        const res = typeof handler === "function" ? handler(req) : handler;
+        const res =
+          typeof handler === "function" ? await handler(req) : handler;
         return route.fulfill({ status: res.status ?? 200, json: res.body });
       }
       // PX-08: developer art as the media proxy answers it (same origin, its own headers).
