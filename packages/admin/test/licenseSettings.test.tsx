@@ -181,7 +181,7 @@ describe("License → Settings", () => {
       ),
     ).toBeTruthy();
     expect(
-      within(group).getByText("Today a refund revokes the grant at once."),
+      within(group).getByText("Today a refund takes effect at once."),
     ).toBeTruthy();
     expect(screen.queryByText(/behaviour/)).toBeNull();
     expect(

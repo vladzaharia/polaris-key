@@ -28,7 +28,7 @@ export const LICENSING_COPY: Record<string, SettingCopy> = {
     consequences: (to) =>
       to === "combined"
         ? [
-            "A device sees the entitlements of every license and grant its holder has, combined, not just its own license's.",
+            "A device sees everything its holder has for this product, combined, not just its own license's entitlements.",
             "Devices pick up the change at their next license refresh.",
           ]
         : [
@@ -96,7 +96,7 @@ export const LICENSING_PENDING: Record<string, string> = {
     "Today a device runs on the license it was activated with.",
   "licensing.reanchor":
     "Today a device never moves to another license on its own.",
-  "licensing.refundGraceHours": "Today a refund revokes the grant at once.",
+  "licensing.refundGraceHours": "Today a refund takes effect at once.",
 };
 
 export function LicenseSettingsPage({
@@ -111,7 +111,7 @@ export function LicenseSettingsPage({
           title="Settings"
           description={
             <>
-              How licenses, grants and entitlements combine for this product.
+              How licenses and their entitlements combine for this product.
               Declared in{" "}
               <code className="font-mono text-xs">.pkey/product</code> under{" "}
               <code className="font-mono text-xs">licensing</code>; a change
