@@ -376,7 +376,7 @@ describe("@polaris-key/cli", () => {
 
   it("lists every service slug from the table in the init help", async () => {
     const help = capture();
-    expect(await runPkey(["--help"], help)).toBe(0);
+    expect(await runPkey(["init", "--help"], help)).toBe(0);
     expect(help.out()).toContain(`[--modules ${SERVICE_SLUGS.join(",")}]`);
   });
 

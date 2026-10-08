@@ -1,0 +1,437 @@
+---
+title: "Terminal (Node)"
+description: "@polaris-key/node/cli: the Node SDK's terminal kit for commander and yargs programs, with the one-line flow, the styled parts, the headless views, theming, the --json contract and the fallbacks."
+sidebar:
+  order: 7
+---
+
+import KitCoverage from "../../../../../components/ui/KitCoverage.astro";
+import KitFacts from "../../../../../components/ui/KitFacts.astro";
+
+The Node SDK's terminal kit. One call adds every Polaris Key verb to a commander or yargs program
+and draws each one on a rail: the product chip in the product's accent, clack-style prompts with
+masked key entry, sign-in in the browser or with a code, the device limit's hand-off to the
+customer portal, spinners and a progress bar, grouped help and shell completion, and `--json` on
+every verb. It follows `NO_COLOR`, `TERM=dumb`, CI and reduced motion, lays out for 80 columns
+and still reads at 60, and every string it shows is a catalog key in nine locales. The primitives
+underneath, `@polaris-key/node/terminal`, are the ones `pkey` draws with. The rest of the Node SDK
+is on the [Node](/docs/build/sdks/node/) page.
+
+<KitFacts kit="terminal-node" />
+
+## Install
+
+The kit is part of `@polaris-key/node`, from Polaris Key's npm feed
+([Installing the SDKs from the feeds](/docs/build/install-from-feeds/)), beside the command-line
+parser the program already uses:
+
+```sh
+# .npmrc: @polaris-key:registry=https://pkg.plrs.im/npm/polaris-key/
+npm install @polaris-key/node commander   # or yargs
+```
+
+commander (12 to 14) and yargs (17 or 18) are optional peer dependencies: the kit imports only
+their types, and the program hands its own parser in. It needs Node 22.13 or later. There is no
+stylesheet and no font: the terminal's own face and palette draw everything.
+
+## The one-line flow
+
+```ts
+import { Command } from "commander";
+import { PolarisKeyClient } from "@polaris-key/node";
+import { registerPolarisCommands } from "@polaris-key/node/cli";
+
+const program = new Command("tidewater");
+registerPolarisCommands(
+  program,
+  (o) =>
+    PolarisKeyClient.create({
+      productSlug: o.productSlug,
+      trust: { pinnedKeys: o.pinnedKeys },
+    }),
+  {
+    productSlug: "tidewater",
+    pinnedKeys: { "pkey-tidewater-prod-2026-10": "…" },
+  },
+);
+await program.parseAsync();
+```
+
+The slug and the pinned keys come from the file `pkey sdk --lang node --write` generates. The
+program now has every verb, grouped on its help page by the service that owns it:
+
+| Group    | Verbs                                                                                                                  |
+| -------- | ---------------------------------------------------------------------------------------------------------------------- |
+| License  | `activate`, `status`, `enroll`, `deactivate`                                                                           |
+| Account  | `login` (also `sign-in`), `logout` (also `sign-out`)                                                                   |
+| Devices  | `register`, `devices list`, `devices rename <deviceId> [label...]`, `devices deauthorize <deviceId>`                   |
+| Settings | `config get <key>`, `config list`, `config set <key> <value>`, `config reset <key>`, `secret <key>`, `mint <recipeId>` |
+| Updates  | `update check`, `update apply`, `changelog`                                                                            |
+| Content  | `packs status`, `packs ensure <packIds...>`                                                                            |
+| Support  | `offline-request`, `import-bundle <file>`, `doctor`, `completion <shell>`                                              |
+
+`activate` asks for the key with masked entry. A key piped on stdin works too
+(`echo "$KEY" | tidewater activate`); a key typed on the command line still works, and warns that
+it is now in the shell's history. `completion bash`, `zsh` or `fish` prints a completion script
+generated from the same verb table.
+
+The options, beside `productSlug`, `version`, `pinnedKeys` and `expectedServices` (handed to the
+client factory):
+
+| Option         | What it does                                                                                                                                                        |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `theme`        | The terminal theme ([Theming](#theming))                                                                                                                            |
+| `bin`          | The command name help, completion and "Run … again" lines use. Default: the program's name                                                                          |
+| `presentation` | The SDK's presentation accessor, for the product's name, developer and accent. Default: `client.presentation()` when the client has one                             |
+| `io`           | The streams, environment, clock and browser opener. Default: the process's own                                                                                      |
+| `help`         | `"kit"` (default) draws the grouped help page while every subcommand is a Polaris Key verb; `"host"` keeps the program's own. A verb's `--help` is always the kit's |
+| `kit`          | `false` keeps the pre-kit output: each verb's plain message, with no rail, no prompts and no `--json`                                                               |
+| `print`        | A sink for each printed line instead of stdout                                                                                                                      |
+
+With yargs, `registerYargsCommands(yargs(hideBin(process.argv)), factory, options)` takes the same
+options and mounts the verbs under a `polaris-key` command (`tidewater polaris-key activate`);
+`polarisCommandModule(factory, options)` returns that command module to mount elsewhere. Both
+adapters build from one verb table and run each verb through `runKitVerb`, so they draw the same
+screens and print the same JSON.
+
+### A product's own gate check
+
+`checkFlow` is the check a product runs before its own work: it syncs behind a spinner, then
+prints one line (`✓ Tidewater Studio Pro · Ready`), or falls through to the `status` screen with
+the commands that fix it and exit code 1. `runKitVerb` runs it, or any verb of the program's own,
+with the kit's flags and its `--json` envelope. Here it is what the program does with no verb:
+
+```ts
+import {
+  checkFlow,
+  runKitVerb,
+  status,
+  type CliVerb,
+} from "@polaris-key/node/cli";
+
+const check: CliVerb = {
+  group: "license",
+  path: ["check"],
+  args: [],
+  describe: "Check the license",
+  describeKey: "cli.verb.status",
+  run: (c) => status(c),
+  flow: (ctx, c) => checkFlow(ctx, c!),
+};
+
+program
+  .enablePositionalOptions() // so `tidewater status --json` still reaches the verb
+  .option("--json")
+  .action(async () => {
+    process.exitCode = await runKitVerb(
+      check,
+      [],
+      { json: program.opts().json === true },
+      () =>
+        PolarisKeyClient.create({
+          productSlug: "tidewater",
+          trust: { pinnedKeys },
+        }),
+      { slug: "tidewater", bin: "tidewater" },
+    );
+  });
+```
+
+A commander program reads its own options wherever they are typed, so one that declares `--json`,
+`--no-color` or `--ascii` itself either makes its options positional, as above, or hands them to
+the verb in a `preAction` hook, as the [sample](#sample) does.
+
+## Piecemeal
+
+Every screen is built from styled parts, each a function that returns rail rows for one piece of
+a screen, so a program's own commands can draw on the same rail. They take a `KitContext`, which
+`createKitContext` builds once per command from the terminal, the theme and the product, and
+their words come from the context's copy or from the program:
+
+```ts
+import {
+  createKitContext,
+  endRow,
+  presentationSourceOf,
+  productHeader,
+  stepRow,
+  textRow,
+} from "@polaris-key/node/cli";
+
+const ctx = await createKitContext({
+  slug: "tidewater",
+  bin: "tidewater",
+  presentation: presentationSourceOf(client),
+});
+ctx.rows([
+  ...productHeader(ctx, "export"),
+  stepRow("ok", "Stems exported", `${ctx.symbols.separator} 12 files`),
+  textRow("Saved to ~/Music/Tidewater/Exports"),
+  endRow(),
+]);
+ctx.close();
+```
+
+| Part                                 | What it draws                                                                                        |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| `productHeader(ctx, command)`        | The first row: the product chip in its accent, then the command in muted                             |
+| `stepRow(mark, title, meta?)`        | One step: a mark (`active` ◆, `done` ◇, `ok` ✓, `fail` ✗, `warn` ▲), the title in strong, muted meta |
+| `textRow(text, style?)`              | Body text on the rail                                                                                |
+| `problemRows(mark, title, message?)` | A problem: the mark and title, the message below                                                     |
+| `fixRows(ctx, fixes)`                | The commands that fix a state, `tidewater activate` beside what it does                              |
+| `tableRows(rows)`                    | Label and value rows in two aligned columns (`status`, `doctor`)                                     |
+| `seatMeter(ctx, used, limit)`        | ●●○ and "2 of 3 in use": neutral, never a warning colour                                             |
+| `codeRows(ctx, code)`                | A user code in reverse video, indented, with air above and below                                     |
+| `keyMask(ctx, value, fixed?)`        | The masked key: the public `pkey_<product>_` prefix, then bullets                                    |
+| `linkSpan(url)`                      | A URL without its scheme, an OSC 8 link where the terminal takes one                                 |
+| `hintsRow(ctx, text, mark?)`         | Key hints: keys in strong, actions in muted                                                          |
+| `gap(ctx)`, `endRow(text?)`          | A blank rail row (none under `density: "compact"`); the closing row                                  |
+
+Under the parts is `@polaris-key/node/terminal`, the primitives the kit and `pkey` share. It holds
+no copy: callers pass their words in.
+
+| Primitive                                                                 | What it is                                                                                                                                       |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `detectTerminal(options)`                                                 | One pure decision on colour level, Unicode, prompting, animation, links, width, scheme, CI and headless, from the environment, streams and flags |
+| `Painter`, `roleStyles`                                                   | Paints spans by role (`accent`, `success`, `warning`, `danger`, `info`, `muted`, `strong`, `link`, `chip`, `code`) with `util.styleText`         |
+| `railLines`, `symbolsFor`, `keyHints`, `columnsOf`                        | The rail layout, the Unicode and ASCII symbol sets, key hints, aligned columns                                                                   |
+| `cellWidth`, `truncateMiddle`, `truncateEnd`, `wrapSpans`, `wrapText`     | Text measured in terminal cells (wide CJK and emoji included); keys and URLs are cut in the middle                                               |
+| `LiveRegion`, `animate`, `spinnerFrames`                                  | Redrawing in place, and the braille spinner at 80 ms a frame, only where the terminal animates                                                   |
+| `KeyReader`, `isCancel`                                                   | Raw-mode keys; Esc, Ctrl-C and Ctrl-D cancel                                                                                                     |
+| `promptSecret`, `promptConfirm`, `promptSelect`, `CANCEL`                 | The clack-style prompts: masked secret entry, a yes/no question, a radio select                                                                  |
+| `progressSpans`, `percent`, `qrLines`                                     | The progress bar, and the half-block QR (`offline-request` only)                                                                                 |
+| `osc8`, `osc52`, `displayUrl`                                             | Hyperlinks, copying to the clipboard, a URL as people read it                                                                                    |
+| `TERMINAL_SGR`, `TERMINAL_SYMBOLS`, `TERMINAL_SPINNER`, `TERMINAL_LAYOUT` | The terminal tokens generated from `@polaris-key/brand`                                                                                          |
+
+## Headless
+
+The headless views are pure functions from the SDK's answers to `{ component, state, copy }`: the
+catalog component and state the screen shows, the copy keys of its visible strings, and the data
+it needs. A program that draws its own output gets the same steps, states and words as the
+drop-in.
+
+| View                                | Component and states                                                                                                                                                                                                                                 |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `keyVerdict(input, submitted?)`     | Activate: `empty`, `typing`, `parsed`, `cut-short`, `rejected`                                                                                                                                                                                       |
+| `activationOutcome(result, info?)`  | Activate: `done`, `device-limit`, `rejected`; on a device limit, `deviceLimit` is DeviceLimit `browser-mode` (with the portal link) or `default`                                                                                                     |
+| `handoffView(state, data?)`         | SignInHandoff: `starting`, `waiting`, `no-browser`, `code`, `link-copied`, `finishing`, `denied`, `expired`, `cancelled`                                                                                                                             |
+| `statusView(input)`                 | AccountAndLicense `signed-in` or `key-only`; GraceBanner `days-left` or `last-day`; StatusScreen `revoked`, `expired`, `version-too-old`, `version-too-new`, `channel-not-entitled`, with its fixes; PolarisKeyGate `needs-activation` or `licensed` |
+| `updateView(decision)`              | UpdatePrompt: `up-to-date`, `available`, `mandatory`, `store`, `platform`, `ready`, `blocked`                                                                                                                                                        |
+| `progressView(done, total, phase?)` | UpdateProgress: `queued`, `downloading`, `installing`, `done`                                                                                                                                                                                        |
+| `installView(outcome)`              | UpdatePrompt after an install: `ready`, `platform`, `store`, `blocked`                                                                                                                                                                               |
+| `devicesView(devices)`              | Devices: `list`, `empty`                                                                                                                                                                                                                             |
+
+`statusExit`, `seatCells`, `clock` and `KEY_SECRET_LENGTH` are the small rules the flows share:
+the exit code for a gate status, the seat meter's cells, a `m:ss` countdown, the key's length.
+`KitCopy` turns a view's keys into words in the active locale:
+
+```ts
+import { KitCopy, statusView } from "@polaris-key/node/cli";
+
+const copy = new KitCopy({ locale: "de" });
+const view = statusView({
+  ...client.status(),
+  info: client.license.licenseInfo(),
+  now: Math.floor(Date.now() / 1000),
+});
+if (view.component === "AccountAndLicense" && view.tier !== null)
+  draw(view.state, copy.t("account.tier", { tier: view.tier })); // "signed-in", "Pro-Lizenz"
+```
+
+## Theming
+
+The theme goes in the adapter's options as `theme` (or to `createKitContext`). Its fields are the
+[one theme](/docs/build/ui/theming/) every kit takes; in a terminal they do this:
+
+| Field                                                        | In a terminal                                                                                                                                                                                                                                                 |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `preset`                                                     | `"polaris-key"` (default) draws the product chip in the product's accent; `"native"` hands the look to the terminal: ANSI roles only, and an inverse chip                                                                                                     |
+| `colorScheme`                                                | `"system"` (default) follows `PKEY_THEME`, then `COLORFGBG`, then the terminal's answer to OSC 11; `"dark"` and `"light"` pin it. It changes only the truecolor chip and the QR's polarity                                                                    |
+| `accent`                                                     | `"product"` (default) takes the integrator's colour, then the presentation's, then one derived from the icon, then ink; `"core"` is Polaris violet; a hex colour is the integrator's own; `"service"` has no section in a terminal and behaves as `"product"` |
+| `colors`                                                     | Per-role truecolor overrides, per scheme: `{ dark: { success: "#…" } }`                                                                                                                                                                                       |
+| `density`                                                    | `"compact"` drops the blank rail rows between steps; `"comfortable"` (default) and `"spacious"` keep them                                                                                                                                                     |
+| `motion`                                                     | `"reduced"` and `"none"` stop the spinner and the redraws, so each line prints once                                                                                                                                                                           |
+| `product`                                                    | The integrator's `ProductIdentity` (`name`, `shortName`, `developer`, `accent`, `accentDark`, `iconPixels`, `deviceCodeUrl`), which wins over every other source                                                                                              |
+| `copy`                                                       | `{ locale, overrides }` ([Localisation](#localisation))                                                                                                                                                                                                       |
+| `poweredBy`                                                  | `"line"` or `"badge"` add the Powered by Polaris Key line under `status` and `doctor`                                                                                                                                                                         |
+| `symbols`                                                    | The terminal's restyle hook: `"unicode"` (default) or `"ascii"`                                                                                                                                                                                               |
+| `serviceCues`, `radius`, `typography`, `ambient`, `platform` | Accepted, so one theme value serves every kit, and without effect: a terminal has no tiles, radii, faces or ambient art                                                                                                                                       |
+
+```ts
+registerPolarisCommands(program, factory, {
+  productSlug: "tidewater",
+  pinnedKeys,
+  theme: { preset: "native", density: "compact", poweredBy: "line" },
+});
+```
+
+(`factory` is the client factory of [the one-line flow](#the-one-line-flow).)
+
+The chip names the product from, in order: the theme's `product`; the SDK's presentation
+accessor; the bundle (`productName` and `author` in the `package.json` above the entry script);
+the slug in title case. The accent follows the same order, then is derived from `iconPixels`, then
+falls back to ink. The kit never fetches discovery or an icon itself. Status colours are the
+terminal's own ANSI-16 roles, so they follow its theme; truecolor appears only in the chip, and
+only when `COLORTERM` is `truecolor` or `24bit`.
+
+## Localisation
+
+The kit reads `kitCopy.generated.ts`, the catalog's table generated into the SDK, so
+`@polaris-key/node` needs no brand dependency. It ships the nine launch locales: `en`, `de`, `fr`,
+`es`, `pt-BR`, `it`, `ja`, `ko` and `zh-Hans`. The locale is `theme.copy.locale`, else `LC_ALL`,
+`LC_MESSAGES`, `LANG` or the first entry of `LANGUAGE`; a POSIX name such as `de_DE.UTF-8` maps
+onto its launch locale (`pt_PT` reads `pt-BR`, `zh_CN` reads `zh-Hans`), and anything else reads
+English.
+
+`copy.overrides` replaces catalog strings per locale. A string falls back key by key: your
+override for the locale, the catalog's string in the locale, your English override, the catalog's
+English.
+
+```ts
+theme: {
+  copy: {
+    overrides: {
+      en: { "activate.lede": "It's in your Harbor Audio receipt." },
+    },
+  },
+},
+```
+
+Dates, durations and sizes are formatted with `Intl` in the active locale. With ASCII symbols the
+copy's typographic symbols are spelled in ASCII too: `…` as `...` and `·` as `-`.
+
+## The --json contract
+
+The words the kit prints for people are localised and may change from one release to the next:
+a script never parses them. It runs the verb with `--json` and reads JSON lines instead. The
+envelope is the one both terminal kits share, written once in the UI-kit specification
+(`docs/design/UI-KITS.md` §1.4, "Terminal output for scripts"); the Python terminal kit follows
+the same rule.
+
+Under `--json` the kit never prompts and never writes an escape, and writes ASCII only (every other
+character, server text included, as a `\u` escape). Every line on stdout is one JSON object with
+`"v": 1` and `"command"`. Progress lines carry an `"event"` (`pending` for a sign-in code,
+`progress` for a download, with `done` and `total`), and the **last line of every run** is
+`"event": "result"` with `"ok"`, `"exit"` and the verb's fields beside them, including when
+something fails: an argument error ends with `"error": "usage"` and exit 2, anything unexpected
+with `"error": "internal"` and exit 1.
+
+```json
+{
+  "v": 1,
+  "command": "status",
+  "event": "result",
+  "ok": true,
+  "exit": 0,
+  "status": "ok",
+  "usable": true,
+  "component": "AccountAndLicense",
+  "state": "key-only",
+  "graceUntil": 1792565845,
+  "allowedRange": null,
+  "profile": null,
+  "version": "2.4.1",
+  "channel": "stable",
+  "tier": "Pro",
+  "tokenStore": "keyring"
+}
+```
+
+| Verb                                        | Fields on the result line                                                                                                     |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `status`                                    | `status`, `usable`, `component`, `state`, `graceUntil`, `allowedRange`, `profile`, `version`, `channel`, `tier`, `tokenStore` |
+| `activate`, `enroll`                        | `kind`, `code`, `deviceCount`, `limit`, `manageUrl`; `status` and `tier` once activated                                       |
+| `login`                                     | `state` (`signedIn`, `expired`, `denied`, `cancelled`, `error`); `name`, `email`, `attached`, `status` when signed in         |
+| `logout`, `deactivate`                      | `signedOut` (and `state: "cancelled"` when declined)                                                                          |
+| `register`                                  | `deviceId`, `status`                                                                                                          |
+| `devices list`, `rename`, `deauthorize`     | `devices` (`id`, `label`, `platform`, `current`); `renamed`, `label`; `deauthorized`, `self`                                  |
+| `config get`, `set`, `reset`; `config list` | `key`, `value`, `source`; `settings`                                                                                          |
+| `secret`, `mint`                            | `key`, `present`; `recipe`, `expiresAt` (never the value or the token)                                                        |
+| `update check`, `update apply`              | `state`, `decision`, `channel`; `installed` after `apply`; or `state`, `version`, `updateAvailable`                           |
+| `changelog`                                 | `entries` (`version`, `date`, `summary`, `url`)                                                                               |
+| `packs status`, `packs ensure`              | `packs`                                                                                                                       |
+| `offline-request`, `import-bundle`          | `product`, `requestCode`; `bundleId`, `imported`, `status`                                                                    |
+
+`"error"` appears on a failure that has a code: a registry code (`device_limit`, `network`),
+`usage`, `internal`, or `interrupted` for Ctrl-C. `"message"` appears only with a usage error and
+an `import-bundle` failure. A refusal from the server is `ok: false` with its `kind` and `code`,
+and an unusable license is `ok: false` with its `status`.
+
+| Exit code | Meaning                                                                                                                 |
+| --------- | ----------------------------------------------------------------------------------------------------------------------- |
+| 0         | Done; for `status`, the license is usable                                                                               |
+| 1         | A refusal, an unusable license, a device limit, a cancelled or declined step, an unreachable service, any other failure |
+| 2         | Usage: a missing argument, an option the verb does not take, no key to read                                             |
+| 130       | Interrupted (Ctrl-C)                                                                                                    |
+
+Under `--json`, `login` never opens a browser: it prints a `pending` line first, with the code and
+the page for the script to show, then the result line.
+
+```text
+{"v":1,"command":"login","event":"pending","verificationUri":"https://key.plrs.im/device","verificationUriComplete":"https://key.plrs.im/device?code=WDJB-MJHT","userCode":"WDJB-MJHT","expiresAt":1791357358}
+{"v":1,"command":"login","event":"result","ok":true,"exit":0,"state":"signedIn","name":"Mara Fennick","email":"mara@fennick.studio","attached":null,"status":"ok"}
+```
+
+No `--json` line carries a license key, a device token, the sign-in poll credential, a secret's
+value or a minted token. Off `--json`, `secret` and `mint` print the value alone on stdout for a
+script that pipes it.
+
+## Server text and links
+
+Text that comes from the server or the product (device names, names and emails, the developer's
+name, changelog summaries, URLs, the sign-in page) is drawn as text, never as an escape sequence:
+the kit's one writer removes every control character (C0, DEL and C1) before it reaches the
+terminal, and puts its own colour and link sequences around the cleaned text. A link is an OSC 8
+hyperlink only when its target is an `https` URL (or `http` to a loopback address) with no
+whitespace, control character or user name; anything else is printed as plain text.
+
+## Accessibility and fallbacks
+
+| When                                                                          | The kit                                                                                                                                                                                            |
+| ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NO_COLOR` is set, `--no-color`, `FORCE_COLOR=0`, or stdout is not a terminal | Drops every colour and escape sequence; the chip and a user code keep a one-cell pad so they still read as blocks                                                                                  |
+| `FORCE_COLOR` is set                                                          | Colours a pipe too                                                                                                                                                                                 |
+| `TERM=dumb`                                                                   | Plain lines: no colour, ASCII symbols, no spinner, no cursor control and no redraw; it still asks plain questions (the key is read with no echo at all) and headless sign-in still prints the code |
+| `--ascii`, `PKEY_ASCII=1`, `TERM=linux` or `symbols: "ascii"`                 | Uses ASCII symbols: `+` and a backtick close the rail, `*`, `o`, `+`, `x` and `!` mark the steps, `#` and `-` draw the bar                                                                         |
+| `CI` (or `GITHUB_ACTIONS`, `BUILDKITE`) is set                                | Never prompts or animates: each line prints once, and sign-in shows the code                                                                                                                       |
+| Reduced motion: `motion: "reduced"` or `"none"`, or `PKEY_REDUCED_MOTION=1`   | Stops the spinner and the redraws                                                                                                                                                                  |
+| stdin is not a terminal                                                       | Reads the key from the pipe, and asks no question: `logout` and `deactivate` go ahead as with `--yes`                                                                                              |
+| An SSH session, CI, or Linux with no `DISPLAY` or `WAYLAND_DISPLAY`           | `login` shows the code instead of opening a browser (also `login --device-code`)                                                                                                                   |
+| A terminal narrower than 80 columns                                           | Takes the terminal's width, down to 60, which every layout is designed for; keys and URLs are cut in the middle, never wrapped                                                                     |
+| A light or dark terminal                                                      | Reads it from `PKEY_THEME`, `COLORFGBG` or OSC 11; only the truecolor chip changes                                                                                                                 |
+
+For people using the terminal:
+
+- Status is always a mark and a word, never colour alone.
+- The key field never shows a character of the secret, only the public `pkey_<product>_` prefix
+  and bullets, and a key is never printed, logged or put in JSON.
+- Every key a step takes is named on its last row (`Enter activate · Esc cancel`). Esc and Ctrl-D
+  cancel a prompt or a wait (exit 1); Ctrl-C interrupts it (exit 130). The terminal leaves raw mode
+  on every path out.
+- A link is printed as text, without its scheme, and is an OSC 8 hyperlink where the terminal
+  supports one; `c` copies the sign-in code with OSC 52.
+- Without animation, every line prints once, which reads well in a screen reader and in a log.
+- Sign-in never draws a QR code (SIGN-IN.md D-67): the browser opens, or the code shows. The only
+  QR is `offline-request`'s, and only on a terminal of at least 70 columns by 20 rows.
+
+## Baselines
+
+The kit's goldens in `packages/sdk-node/test/cli/golden/`: each state as ANSI text in ten variants
+(truecolor dark and light, ANSI-16, `NO_COLOR` and ASCII, at 80 and 60 columns), an SVG per theme,
+and the PNG these pages show. Their test also runs the 80- and 60-column lint, the no-secret check
+and a pseudo-locale string lint. `help` and `help-activate` are the grouped help page and one
+verb's help, so they match no component.
+
+<KitCoverage kit="terminal-node" />
+
+## Sample
+
+`examples/ui/terminal-node/` is `tidewater`, the demo CLI of Tidewater Studio by Harbor Audio: a
+commander program with `registerPolarisCommands`, whose bare `tidewater` runs `checkFlow` through
+`runKitVerb`. By default it runs on a fixture client with no Worker: the fixture key activates,
+any other Tidewater key hits the device limit with the portal link, `login` finishes by itself
+after a few seconds, the state is kept between runs, and `TIDEWATER_STATE` pins the gate (`grace`,
+`revoked`, `version-too-old` and the rest) to show every screen. `--live` builds a real
+`PolarisKeyClient` from `--product`, `--pinned-key` and `--app-version`, or their `TIDEWATER_*`
+environment variables. Its README has the commands, the `NO_COLOR` and `--json` runs, and how to
+run it inside this repository without the feed.

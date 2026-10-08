@@ -31,4 +31,16 @@ Offline grace: the deadline and countdown, Reconnect, and a dismissal that lasts
     **Headless.** `gate_view("grace", grace_until=…)` in `polaris_key.ui.core.models`.
 
   </TabItem>
+  <TabItem label="Terminal (Node)">
+    **Drop-in.** `status` (`statusFlow`) while the license works offline in grace: `days-left` or
+    `last-day`, with the date to reconnect by. The exit code stays 0: the product still runs.
+
+    **Styled part.** `stepRow` with the `warn` mark, and `textRow`.
+
+    **Headless.** `statusView(input)`: GraceBanner with `daysLeft` and `graceUntil`.
+
+    [Terminal (Node)](/docs/build/ui/frameworks/terminal-node/) has the adapter's options, the
+    `--json` contract and the fallbacks.
+
+  </TabItem>
 </Tabs>

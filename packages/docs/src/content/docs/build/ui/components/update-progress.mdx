@@ -31,4 +31,19 @@ Compact download and install progress for app updates and content packs, as a to
     **Headless.** `ProgressView` in `polaris_key.ui.core.models`.
 
   </TabItem>
+  <TabItem label="Terminal (Node)">
+    **Drop-in.** `update apply` (`updateApplyFlow`): the download as a bar with its percentage, size
+    and time left, redrawn at most ten times a second (Esc cancels), then the install's outcome.
+    `packs ensure <packIds...>` draws the same bar for each pack.
+
+    **Styled part.** The `progressSpans` and `percent` primitives in a rail row, and `LiveRegion` for
+    the redraws.
+
+    **Headless.** `progressView(done, total, phase?)`: `queued`, `downloading`, `installing` or
+    `done`, with the `fraction`.
+
+    [Terminal (Node)](/docs/build/ui/frameworks/terminal-node/) has the adapter's options, the
+    `--json` contract and the fallbacks.
+
+  </TabItem>
 </Tabs>

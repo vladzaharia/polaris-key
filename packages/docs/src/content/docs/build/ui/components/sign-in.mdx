@@ -31,4 +31,20 @@ The one sign-in form. Its body morphs in place through the sign-in methods, the 
     **Headless.** `SignInModel` over `identity.begin_sign_in` and `wait_for_sign_in` in `polaris_key.ui.core.models`.
 
   </TabItem>
+  <TabItem label="Terminal (Node)">
+    **Drop-in.** `login` (`loginFlow`) is the terminal's sign-in: it hands off to the browser
+    ([SignInHandoff](/docs/build/ui/components/sign-in-handoff/)) and ends on the signed-in line
+    (`done`), or says the product has no accounts when Identity is off (`error`). A terminal shows
+    no sign-in form and no license rows: the license is chosen in the browser. A key goes through
+    `activate`.
+
+    **Styled part.** `productHeader`, `stepRow` and `endRow`.
+
+    **Headless.** None of its own: `login --json` streams the states, and `handoffView` covers the
+    hand-off.
+
+    [Terminal (Node)](/docs/build/ui/frameworks/terminal-node/) has the adapter's options, the
+    `--json` contract and the fallbacks.
+
+  </TabItem>
 </Tabs>

@@ -116,7 +116,8 @@ npx --yes -p @polaris-key/cli pkey release publish --product your-product \
 ```
 
 Pin a version with `-p @polaris-key/cli@<version>`. `npx -p @polaris-key/cli pkey validate` checks
-`.pkey/` locally the same way, and `npx -p @polaris-key/cli pkey manifest schemas --out
+`.pkey/` locally the same way (`pkey validate <path>` for a `.pkey/` in another directory,
+`--json` for one JSON object a later step can read), and `npx -p @polaris-key/cli pkey manifest schemas --out
 .pkey/schemas` vendors the manifest JSON Schemas, so an editor's `yaml-language-server: $schema=`
 header can point at a local copy.
 

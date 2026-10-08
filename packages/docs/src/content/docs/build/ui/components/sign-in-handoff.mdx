@@ -31,4 +31,21 @@ Step two of the sign-in form, in place: Finish in your browser, with Open browse
     **Headless.** `SignInModel` (`prompted`, `use_code`, `tick`, `copied`, `finished`, `cancelled`) in `polaris_key.ui.core.models`.
 
   </TabItem>
+  <TabItem label="Terminal (Node)">
+    **Drop-in.** `login` (`loginFlow`) opens the browser and waits: Enter opens it again, `c` shows
+    the code, Esc cancels. `login --device-code`, an SSH session, CI or Linux without a display show
+    the code instead, with a countdown and `c` to copy it. No QR code. Under `--json` it streams
+    `pending`, then the final state.
+
+    **Styled part.** `codeRows` (the code in reverse video), `linkSpan` (an OSC 8 link) and
+    `hintsRow`, with the `LiveRegion`, `spinnerFrames` and `osc52` primitives.
+
+    **Headless.** `handoffView(state, data?)`: `starting`, `waiting`, `no-browser`, `code`,
+    `link-copied`, `finishing`, `denied`, `expired` or `cancelled`, with the URL, the code and the
+    seconds left; `clock(seconds)` formats the countdown.
+
+    [Terminal (Node)](/docs/build/ui/frameworks/terminal-node/) has the adapter's options, the
+    `--json` contract and the fallbacks.
+
+  </TabItem>
 </Tabs>

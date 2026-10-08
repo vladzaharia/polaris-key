@@ -2405,6 +2405,411 @@
       "value": "6-digit code",
       "role": "label",
       "note": "Email code step (SIGN-IN.md §3.4)."
+    },
+    "cli.group.license": {
+      "value": "License",
+      "role": "label",
+      "note": "Terminal help: the heading over the license commands (activate, status…)."
+    },
+    "cli.group.account": {
+      "value": "Account",
+      "role": "label",
+      "note": "Terminal help: the heading over the sign-in and sign-out commands."
+    },
+    "cli.group.devices": {
+      "value": "Devices",
+      "role": "label",
+      "note": "Terminal help: the heading over the device commands."
+    },
+    "cli.group.settings": {
+      "value": "Settings",
+      "role": "label",
+      "note": "Terminal help: the heading over the settings (config) commands."
+    },
+    "cli.group.updates": {
+      "value": "Updates",
+      "role": "label",
+      "note": "Terminal help: the heading over the update and release-notes commands."
+    },
+    "cli.group.content": {
+      "value": "Content",
+      "role": "label",
+      "note": "Terminal help: the heading over the downloadable content (packs) commands."
+    },
+    "cli.group.support": {
+      "value": "Support",
+      "role": "label",
+      "note": "Terminal help: the heading over diagnostics and offline activation commands."
+    },
+    "cli.help.usage": {
+      "value": "Usage",
+      "role": "label",
+      "note": "Terminal help: the label before the command's usage line, like 'Usage  tidewater <command> [options]'."
+    },
+    "cli.help.options": {
+      "value": "Options",
+      "role": "label",
+      "note": "Terminal help: the heading over the flags every command takes."
+    },
+    "cli.help.lede": {
+      "value": "{product} license and updates",
+      "role": "body",
+      "note": "Terminal help: one line under the command name saying what the command-line tool does."
+    },
+    "cli.help.more": {
+      "value": "Run {command} for one command's options.",
+      "role": "hint",
+      "note": "Terminal help footer. {command} is a command line such as 'tidewater activate --help'."
+    },
+    "cli.verb.activate": {
+      "value": "Add a license key (prompts; never an argument)",
+      "role": "body",
+      "note": "Terminal help: what the activate command does. The key is typed at a prompt or piped in, never written on the command line."
+    },
+    "cli.verb.enroll": {
+      "value": "Get the free license, when {product} offers one",
+      "role": "body",
+      "note": "Terminal help: what the enroll command does."
+    },
+    "cli.verb.deactivate": {
+      "value": "Stop using your license on this device and free its seat",
+      "role": "body",
+      "note": "Terminal help: what the deactivate command does."
+    },
+    "cli.verb.status": {
+      "value": "License, devices and offline time",
+      "role": "body",
+      "note": "Terminal help: what the status command shows."
+    },
+    "cli.verb.offlineRequest": {
+      "value": "Print the request code for offline activation",
+      "role": "body",
+      "note": "Terminal help: what the offline-request command does."
+    },
+    "cli.verb.importBundle": {
+      "value": "Activate from an offline activation file",
+      "role": "body",
+      "note": "Terminal help: what the import-bundle command does."
+    },
+    "cli.verb.login": {
+      "value": "Sign in with your account in the browser",
+      "role": "body",
+      "note": "Terminal help: what the login command does."
+    },
+    "cli.verb.logout": {
+      "value": "Sign out on this device",
+      "role": "body",
+      "note": "Terminal help: what the logout command does."
+    },
+    "cli.verb.register": {
+      "value": "Register this device without a license key",
+      "role": "body",
+      "note": "Terminal help: what the register command does."
+    },
+    "cli.verb.devicesList": {
+      "value": "List the devices using your license",
+      "role": "body",
+      "note": "Terminal help: what 'devices list' does."
+    },
+    "cli.verb.devicesRename": {
+      "value": "Rename a device (no name clears it)",
+      "role": "body",
+      "note": "Terminal help: what 'devices rename' does."
+    },
+    "cli.verb.devicesRemove": {
+      "value": "Remove a device and free its seat",
+      "role": "body",
+      "note": "Terminal help: what 'devices deauthorize' does."
+    },
+    "cli.verb.configGet": {
+      "value": "Show one setting and where its value comes from",
+      "role": "body",
+      "note": "Terminal help: what 'config get' does."
+    },
+    "cli.verb.configList": {
+      "value": "List the settings you can see",
+      "role": "body",
+      "note": "Terminal help: what 'config list' does."
+    },
+    "cli.verb.configSet": {
+      "value": "Change a setting on this device",
+      "role": "body",
+      "note": "Terminal help: what 'config set' does."
+    },
+    "cli.verb.configReset": {
+      "value": "Reset a setting to its default",
+      "role": "body",
+      "note": "Terminal help: what 'config reset' does."
+    },
+    "cli.verb.secret": {
+      "value": "Print a secret delivered to this device",
+      "role": "body",
+      "note": "Terminal help: what the secret command does."
+    },
+    "cli.verb.mint": {
+      "value": "Get a short-lived token from a recipe",
+      "role": "body",
+      "note": "Terminal help: what the mint command does."
+    },
+    "cli.verb.updateCheck": {
+      "value": "Check for a newer version",
+      "role": "body",
+      "note": "Terminal help: what 'update check' does."
+    },
+    "cli.verb.updateApply": {
+      "value": "Download and install the newer version",
+      "role": "body",
+      "note": "Terminal help: what 'update apply' does."
+    },
+    "cli.verb.changelog": {
+      "value": "Show what's new in each version",
+      "role": "body",
+      "note": "Terminal help: what the changelog command does."
+    },
+    "cli.verb.packsStatus": {
+      "value": "Show installed and downloading content",
+      "role": "body",
+      "note": "Terminal help: what 'packs status' does."
+    },
+    "cli.verb.packsEnsure": {
+      "value": "Download and install content, with progress",
+      "role": "body",
+      "note": "Terminal help: what 'packs ensure' does."
+    },
+    "cli.verb.doctor": {
+      "value": "Show what this device can do, for support",
+      "role": "body",
+      "note": "Terminal help: what the doctor command does."
+    },
+    "cli.verb.completion": {
+      "value": "Print shell completion for bash, zsh or fish",
+      "role": "body",
+      "note": "Terminal help: what the completion command does. bash, zsh and fish are shell names; keep them."
+    },
+    "cli.option.json": {
+      "value": "JSON output for scripts, on every command",
+      "role": "body",
+      "note": "Terminal help: what the --json flag does."
+    },
+    "cli.option.noColor": {
+      "value": "Plain text (also NO_COLOR=1)",
+      "role": "body",
+      "note": "Terminal help: what the --no-color flag does. NO_COLOR=1 is an environment variable; keep it."
+    },
+    "cli.option.ascii": {
+      "value": "ASCII symbols only",
+      "role": "body",
+      "note": "Terminal help: what the --ascii flag does."
+    },
+    "cli.option.help": {
+      "value": "Help for a command",
+      "role": "body",
+      "note": "Terminal help: what the -h, --help flag does."
+    },
+    "cli.option.yes": {
+      "value": "Don't ask before signing out",
+      "role": "body",
+      "note": "Terminal help: what the --yes flag does."
+    },
+    "cli.option.deviceCode": {
+      "value": "Sign in with a code instead of this computer's browser",
+      "role": "body",
+      "note": "Terminal help: what the --device-code flag does."
+    },
+    "cli.keys.activate": {
+      "value": "Enter activate · Esc cancel",
+      "role": "hint",
+      "note": "Terminal key hints under the license key prompt. Each part is a key name, a space, then what it does; keep the key first and the ' · ' separators."
+    },
+    "cli.keys.code": {
+      "value": "c copy the code · Esc cancel",
+      "role": "hint",
+      "note": "Terminal key hints while waiting for a code sign-in. 'c' is the key to press; keep the key first and the ' · ' separators."
+    },
+    "cli.keys.deviceLimit": {
+      "value": "Enter open in browser · Esc cancel",
+      "role": "hint",
+      "note": "Terminal key hints when every device on the license is in use: Enter opens the page that replaces a device. Keep the key first and the ' · ' separators."
+    },
+    "cli.keys.retry": {
+      "value": "Enter try again · Esc cancel",
+      "role": "hint",
+      "note": "Terminal key hints after the browser opened to free a device: Enter tries the activation again. Keep the key first and the ' · ' separators."
+    },
+    "cli.keys.download": {
+      "value": "Esc cancel",
+      "role": "hint",
+      "note": "Terminal key hint while an update downloads. Keep the key first."
+    },
+    "cli.signin.waitingCode": {
+      "value": "Waiting for you to sign in…",
+      "role": "label",
+      "note": "Terminal: shown beside the spinner while the person enters the code on another device."
+    },
+    "cli.signin.signedInEmail": {
+      "value": "Signed in as {email}",
+      "role": "body",
+      "note": "Terminal: the sign-in finished and only the email is known."
+    },
+    "cli.activate.argWarning": {
+      "value": "A key typed after the command is saved in your shell history. Next time, run {command} and paste the key when it asks.",
+      "role": "body",
+      "note": "Terminal warning when a license key was given on the command line. {command} is a command line such as 'tidewater activate'."
+    },
+    "cli.activate.noKey": {
+      "value": "No license key. Run {command} in a terminal, or pipe the key to it.",
+      "role": "body",
+      "note": "Terminal: activate ran where it cannot ask for the key (no terminal) and nothing was piped in."
+    },
+    "cli.deviceLimit.again": {
+      "value": "Free a device, then run {command} again.",
+      "role": "body",
+      "note": "Terminal: every device on the license is in use; free one in the browser, then activate again. {command} is a command line."
+    },
+    "cli.status.license": {
+      "value": "License",
+      "role": "label",
+      "note": "Terminal status: the row label for the license (tier and holder)."
+    },
+    "cli.status.offline": {
+      "value": "Offline",
+      "role": "label",
+      "note": "Terminal status: the row label for how long the app works without the internet."
+    },
+    "cli.status.offlineUntil": {
+      "value": "Works offline until {date}",
+      "role": "body",
+      "note": "Terminal status: the license keeps working without the internet until {date} (a short date)."
+    },
+    "cli.status.version": {
+      "value": "Version",
+      "role": "label",
+      "note": "Terminal status: the row label for the app's version and release channel."
+    },
+    "cli.status.fixes": {
+      "value": "To keep using {product}:",
+      "role": "label",
+      "note": "Terminal status: the heading over the commands that fix a blocked license."
+    },
+    "cli.fix.signIn": {
+      "value": "Use the license on your account",
+      "role": "body",
+      "note": "Terminal status: what the login command does as a fix for a blocked license."
+    },
+    "cli.logout.done": {
+      "value": "Signed out of {product} on this device.",
+      "role": "body",
+      "note": "Terminal: sign-out finished."
+    },
+    "cli.deactivate.done": {
+      "value": "{product} no longer uses your license on this device. Its seat is free.",
+      "role": "body",
+      "note": "Terminal: deactivate finished; the license's seat on this device is released."
+    },
+    "cli.nothingChanged": {
+      "value": "Nothing changed.",
+      "role": "body",
+      "note": "Terminal: the person answered no to a confirmation."
+    },
+    "cli.register.done": {
+      "value": "This device is registered.",
+      "role": "body",
+      "note": "Terminal: keyless device registration finished."
+    },
+    "cli.devices.renamed": {
+      "value": "Renamed to {device}.",
+      "role": "body",
+      "note": "Terminal: a device was renamed; {device} is the new name."
+    },
+    "cli.devices.nameCleared": {
+      "value": "{device} has no name now.",
+      "role": "body",
+      "note": "Terminal: a device's name was cleared; {device} is the device's id."
+    },
+    "cli.devices.removed": {
+      "value": "{device} was removed. Its seat is free.",
+      "role": "body",
+      "note": "Terminal: a device was removed from the license."
+    },
+    "cli.update.cancelled": {
+      "value": "Update cancelled. Nothing was installed.",
+      "role": "body",
+      "note": "Terminal: the person stopped an update download."
+    },
+    "cli.packs.none": {
+      "value": "No content is installed.",
+      "role": "body",
+      "note": "Terminal: there are no downloadable content packs on this device."
+    },
+    "cli.packs.afterRestart": {
+      "value": "after a restart",
+      "role": "label",
+      "note": "Terminal: a content pack is installed and takes effect after the app restarts. Shown after the pack's version."
+    },
+    "cli.config.unset": {
+      "value": "{name} has no value.",
+      "role": "body",
+      "note": "Terminal: a setting has no value and no default. {name} is the setting's key."
+    },
+    "cli.secret.none": {
+      "value": "No secret named {name} is delivered to this device.",
+      "role": "body",
+      "note": "Terminal: the secret command found nothing. {name} is the secret's key."
+    },
+    "cli.offline.import": {
+      "value": "Then run {command} with the file you get back.",
+      "role": "body",
+      "note": "Terminal offline activation: what to do with the activation file. {command} is a command line."
+    },
+    "cli.doctor.sdk": {
+      "value": "SDK",
+      "role": "label",
+      "note": "Terminal diagnostics: the row label for the SDK name and version."
+    },
+    "cli.doctor.product": {
+      "value": "Product",
+      "role": "label",
+      "note": "Terminal diagnostics: the row label for the product and its version."
+    },
+    "cli.doctor.server": {
+      "value": "Server",
+      "role": "label",
+      "note": "Terminal diagnostics: the row label for the server address."
+    },
+    "cli.doctor.device": {
+      "value": "Device",
+      "role": "label",
+      "note": "Terminal diagnostics: the row label for this device's id."
+    },
+    "cli.doctor.store": {
+      "value": "Token store",
+      "role": "label",
+      "note": "Terminal diagnostics: the row label for where the device's credential is kept (keyring or file)."
+    },
+    "cli.doctor.discovery": {
+      "value": "Discovery",
+      "role": "label",
+      "note": "Terminal diagnostics: the row label for whether the product's service description could be read."
+    },
+    "cli.doctor.reachable": {
+      "value": "Reachable",
+      "role": "label",
+      "note": "Terminal diagnostics: the product's service description was read."
+    },
+    "cli.doctor.services": {
+      "value": "Services",
+      "role": "label",
+      "note": "Terminal diagnostics: the row label for the services the product turned on."
+    },
+    "cli.doctor.installedFrom": {
+      "value": "Installed from",
+      "role": "label",
+      "note": "Terminal diagnostics: the row label for the store or channel the app was installed from."
+    },
+    "cli.doctor.unsupported": {
+      "value": "Not supported here",
+      "role": "label",
+      "note": "Terminal diagnostics: the heading over features this device cannot use, each with its reason."
     }
   }
 }

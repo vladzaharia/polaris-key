@@ -23,6 +23,10 @@
         "sdks/python/src/polaris_key/ui/core"
       ],
       "extensions": [".py"]
+    },
+    "terminal-node": {
+      "roots": ["packages/sdk-node/src/cli"],
+      "extensions": [".ts"]
     }
   },
   "rules": [
@@ -190,6 +194,35 @@
       "pattern": "\\bconsole\\.status\\(|\\brich\\.spinner\\b|\\bSpinner\\(",
       "spec": "§1.5 rule 4",
       "says": "No stock spinner: the braille spinner in mute from the generated tables, at 80 ms a frame."
+    },
+    {
+      "id": "terminal-raw-escape",
+      "kit": "terminal-node",
+      "pattern": "\\\\x1b\\[|\\\\u001b\\[|\\\\033\\[",
+      "spec": "§1.4 Terminal, §2.1, §7.3",
+      "says": "No raw escape sequence outside the terminal primitives (src/cli/term/): colour goes through the role painter, so NO_COLOR, --no-color and a pipe drop it.",
+      "exclude": ["/cli/term/"]
+    },
+    {
+      "id": "terminal-stock-prompt",
+      "kit": "terminal-node",
+      "pattern": "\\breadline\\.question\\b|\\bcreateInterface\\(|\\.question\\(",
+      "spec": "§1.4 Terminal, §5.1 Node row",
+      "says": "No stock readline prompt: the kit's prompts (term/prompt.ts) mask a key and never echo it."
+    },
+    {
+      "id": "terminal-console",
+      "kit": "terminal-node",
+      "pattern": "\\bconsole\\.(log|error|warn|info)\\(",
+      "spec": "§1.4 Terminal, §7.1",
+      "says": "No console output from a flow: write to the context's streams, so the goldens see what a terminal gets and --json stays one object."
+    },
+    {
+      "id": "terminal-uppercase",
+      "kit": "terminal-node",
+      "pattern": "\\.toUpperCase\\(\\)|\\.toLocaleUpperCase\\(",
+      "spec": "§1.5 rule 6, rule 11",
+      "says": "No all-caps copy: the catalog's sentence case is what the terminal shows."
     }
   ]
 }

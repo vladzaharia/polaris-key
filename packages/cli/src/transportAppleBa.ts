@@ -46,6 +46,7 @@ import { treeDigest } from "@polaris-key/client-core/packs";
 import { MARKER_SUFFIX, TREE_MARKER_PATH } from "@polaris-key/protocol/packs";
 import { readTree } from "./packArtifacts.js";
 import { defaultSleep, type Sleep } from "./ci.js";
+import { untrusted } from "./untrusted.js";
 import {
   contentLevel,
   loadTransportPack,
@@ -278,7 +279,7 @@ class AscApi {
       if (!r.ok)
         throw new AscUploadError(
           "asc-http-error",
-          `${method} ${p} answered ${r.status}: ${text.slice(0, 500)}`,
+          `${method} ${p} answered ${r.status}: ${untrusted(text.slice(0, 500), {})}`,
         );
       return text ? (JSON.parse(text) as { data?: AscResource }) : {};
     }
@@ -438,6 +439,8 @@ export async function baUpload(o: BaUploadOptions): Promise<BaUploadResult> {
   const expected = recorded?.resource ?? o.expectResource;
   const creds = await ascCredentials(o);
   const api = new AscApi(creds, o.fetchImpl ?? fetch, o.sleep ?? defaultSleep);
+  // App Store Connect's ids and states are its answer, not pkey's: cleaned (`untrusted.ts`).
+  const u = (v: unknown) => untrusted(v, o.env);
 
   // 1. The asset pack: found by identifier and checked, or created on the very first upload.
   const found = await api.call(
@@ -454,12 +457,12 @@ export async function baUpload(o: BaUploadOptions): Promise<BaUploadResult> {
     if (expected === undefined)
       throw new AscUploadError(
         "asset-pack-unrecorded",
-        `App Store Connect already has asset pack ${assetPackId} (resource ${resource}), but ${path.relative(o.cwd, lockFile)} records none. Confirm in App Store Connect that it is ${product.pack.id}'s, then pass --expect-resource ${resource}.`,
+        `App Store Connect already has asset pack ${assetPackId} (resource ${u(resource)}), but ${path.relative(o.cwd, lockFile)} records none. Confirm in App Store Connect that it is ${product.pack.id}'s, then pass --expect-resource ${u(resource)}.`,
       );
     if (resource !== expected)
       throw new AscUploadError(
         "asset-pack-resource-mismatch",
-        `asset pack ${assetPackId} is resource ${resource}, but ${expected} is recorded: refusing to upload into another pack's asset pack.`,
+        `asset pack ${assetPackId} is resource ${u(resource)}, but ${expected} is recorded: refusing to upload into another pack's asset pack.`,
       );
   } else {
     if (expected !== undefined)
@@ -477,7 +480,7 @@ export async function baUpload(o: BaUploadOptions): Promise<BaUploadResult> {
     resource = (r.data as AscResource).id;
     created = true;
     o.stdout.write(
-      `Created asset pack ${assetPackId} (resource ${resource})\n`,
+      `Created asset pack ${assetPackId} (resource ${u(resource)})\n`,
     );
   }
   if (!recorded) {
@@ -493,7 +496,7 @@ export async function baUpload(o: BaUploadOptions): Promise<BaUploadResult> {
     await mkdir(path.dirname(lockFile), { recursive: true });
     await writeFile(lockFile, prettyJson(lock));
     o.stdout.write(
-      `Recorded ${assetPackId} → ${resource} in ${path.relative(o.cwd, lockFile)}: commit it, so later uploads can prove the asset pack is this pack's.\n`,
+      `Recorded ${assetPackId} → ${u(resource)} in ${path.relative(o.cwd, lockFile)}: commit it, so later uploads can prove the asset pack is this pack's.\n`,
     );
   }
 
@@ -515,7 +518,7 @@ export async function baUpload(o: BaUploadOptions): Promise<BaUploadResult> {
         ? Number(version.attributes.version)
         : null;
   o.stdout.write(
-    `Created version ${ascVersion ?? "?"} of ${assetPackId} (${version.id})\n`,
+    `Created version ${ascVersion ?? "?"} of ${assetPackId} (${u(version.id)})\n`,
   );
   await uploadFile(api, o, version.id, manifestFile, "MANIFEST");
   await uploadFile(api, o, version.id, aar, "ASSET");
@@ -533,7 +536,7 @@ export async function baUpload(o: BaUploadOptions): Promise<BaUploadResult> {
     if ((o.now?.() ?? Date.now()) >= until) break;
     await (o.sleep ?? defaultSleep)(30_000);
   }
-  if (state) o.stdout.write(`Version ${version.id}: ${state}\n`);
+  if (state) o.stdout.write(`Version ${u(version.id)}: ${u(state)}\n`);
   if (state === "FAILED")
     throw new AscUploadError(
       "asc-http-error",

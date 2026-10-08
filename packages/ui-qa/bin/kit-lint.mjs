@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // The per-kit equivalents of the modernity lint (UI-KITS.md §7.3) as source rules over each native
-// kit (SwiftUI, Compose, Godot, Qt). Zero dependencies, so each kit's CI lane runs it with plain
+// kit (SwiftUI, Compose, Godot, Qt) and the Node terminal kit (terminal-node). Zero dependencies, so each kit's CI lane runs it with plain
 // Node and no install:
 //
-//   node packages/ui-qa/bin/kit-lint.mjs [--kit=swiftui,compose,godot,qt] [--record] [--json]
+//   node packages/ui-qa/bin/kit-lint.mjs [--kit=swiftui,compose,godot,qt,terminal-node] [--record] [--json]
 //
 // Rules: packages/ui-qa/rules/kit-rules.json. Debt: packages/ui-qa/rules/kit-debt.json counts, per
 // rule and file, the hits that existed when the lint landed; each kit's modernisation work package

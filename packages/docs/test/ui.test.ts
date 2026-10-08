@@ -9,7 +9,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { BASELINE_DIRS } from "../../ui-qa/src/config";
-import { DIRS } from "../src/lib/baselines";
+import { BASELINES, DIRS } from "../src/lib/baselines";
 import { CATALOG, classify, kebab } from "../src/lib/shots";
 import { UI_KITS } from "../src/lib/uiKits";
 
@@ -52,6 +52,18 @@ describe("baseline directories", () => {
   it("every kit that records baselines is a kit the section knows", () => {
     const ids = new Set(UI_KITS.map((k) => k.id));
     for (const kit of Object.keys(DIRS)) expect(ids.has(kit), kit).toBe(true);
+  });
+
+  // Vite shortens a glob key to its shortest relative path, so a kit under packages/ comes back
+  // as ../../../sdk-node/…: the collector must resolve keys, not compare them with the pattern.
+  it("collects a kit's committed baselines from under packages/ (terminal-node)", () => {
+    const tn = BASELINES.filter((b) => b.kit === "terminal-node");
+    expect(tn.length).toBeGreaterThan(0);
+    for (const b of tn)
+      expect(b.file.startsWith(`${DIRS["terminal-node"]}/`), b.file).toBe(true);
+    expect(
+      tn.some((b) => b.component === "Activate" && b.state === "parsed"),
+    ).toBe(true);
   });
 });
 

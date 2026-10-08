@@ -31,4 +31,19 @@ The account and license settings pane: product and tier, the holder, Manage, dev
     **Headless.** `gate_view("ok", …)` → `GateView(component="AccountAndLicense")` in `polaris_key.ui.core.models`.
 
   </TabItem>
+  <TabItem label="Terminal (Node)">
+    **Drop-in.** `status` (`statusFlow`) on a usable license: the tier and who holds it
+    (`signed-in`, or `key-only`), how long it works offline, the version and channel. `logout`
+    (`logoutFlow`) asks before it signs out; `deactivate` (`deactivateFlow`) releases the license
+    on this device. Both take `--yes`.
+
+    **Styled part.** `tableRows` for the aligned rows, and the `promptConfirm` primitive for the
+    question.
+
+    **Headless.** `statusView(input)`: AccountAndLicense with `tier`, `holder` and `graceUntil`.
+
+    [Terminal (Node)](/docs/build/ui/frameworks/terminal-node/) has the adapter's options, the
+    `--json` contract and the fallbacks.
+
+  </TabItem>
 </Tabs>

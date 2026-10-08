@@ -1121,6 +1121,168 @@
     <string name="signin_mail_open">Abrir o Polaris Key</string>
     <!-- Email code step (SIGN-IN.md §3.4). -->
     <string name="signin_code_label">Código de 6 dígitos</string>
+    <!-- Terminal help: the heading over the license commands (activate, status…). -->
+    <string name="cli_group_license">Licença</string>
+    <!-- Terminal help: the heading over the sign-in and sign-out commands. -->
+    <string name="cli_group_account">Conta</string>
+    <!-- Terminal help: the heading over the device commands. -->
+    <string name="cli_group_devices">Dispositivos</string>
+    <!-- Terminal help: the heading over the settings (config) commands. -->
+    <string name="cli_group_settings">Configurações</string>
+    <!-- Terminal help: the heading over the update and release-notes commands. -->
+    <string name="cli_group_updates">Atualizações</string>
+    <!-- Terminal help: the heading over the downloadable content (packs) commands. -->
+    <string name="cli_group_content">Conteúdo</string>
+    <!-- Terminal help: the heading over diagnostics and offline activation commands. -->
+    <string name="cli_group_support">Suporte</string>
+    <!-- Terminal help: the label before the command's usage line, like 'Usage  tidewater &lt;command&gt; [options]'. -->
+    <string name="cli_help_usage">Uso</string>
+    <!-- Terminal help: the heading over the flags every command takes. -->
+    <string name="cli_help_options">Opções</string>
+    <!-- Terminal help: one line under the command name saying what the command-line tool does. Arguments: 1=product. -->
+    <string name="cli_help_lede">Licença e atualizações de %1$s</string>
+    <!-- Terminal help footer. {command} is a command line such as 'tidewater activate -help'. Arguments: 1=command. -->
+    <string name="cli_help_more">Execute %1$s para ver as opções de um comando.</string>
+    <!-- Terminal help: what the activate command does. The key is typed at a prompt or piped in, never written on the command line. -->
+    <string name="cli_verb_activate">Adicionar chave de licença (pedida, nunca como argumento)</string>
+    <!-- Terminal help: what the enroll command does. Arguments: 1=product. -->
+    <string name="cli_verb_enroll">Obter a licença gratuita, se %1$s oferecer uma</string>
+    <!-- Terminal help: what the deactivate command does. -->
+    <string name="cli_verb_deactivate">Parar de usar a licença neste dispositivo e liberar a vaga</string>
+    <!-- Terminal help: what the status command shows. -->
+    <string name="cli_verb_status">Licença, dispositivos e tempo offline</string>
+    <!-- Terminal help: what the offline-request command does. -->
+    <string name="cli_verb_offlineRequest">Mostrar o código de solicitação para ativação offline</string>
+    <!-- Terminal help: what the import-bundle command does. -->
+    <string name="cli_verb_importBundle">Ativar com um arquivo de ativação offline</string>
+    <!-- Terminal help: what the login command does. -->
+    <string name="cli_verb_login">Entrar com sua conta no navegador</string>
+    <!-- Terminal help: what the logout command does. -->
+    <string name="cli_verb_logout">Sair neste dispositivo</string>
+    <!-- Terminal help: what the register command does. -->
+    <string name="cli_verb_register">Registrar este dispositivo sem chave de licença</string>
+    <!-- Terminal help: what 'devices list' does. -->
+    <string name="cli_verb_devicesList">Listar os dispositivos que usam sua licença</string>
+    <!-- Terminal help: what 'devices rename' does. -->
+    <string name="cli_verb_devicesRename">Renomear um dispositivo (sem nome, o nome é apagado)</string>
+    <!-- Terminal help: what 'devices deauthorize' does. -->
+    <string name="cli_verb_devicesRemove">Remover um dispositivo e liberar a vaga</string>
+    <!-- Terminal help: what 'config get' does. -->
+    <string name="cli_verb_configGet">Mostrar uma configuração e a origem do valor</string>
+    <!-- Terminal help: what 'config list' does. -->
+    <string name="cli_verb_configList">Listar as configurações que você pode ver</string>
+    <!-- Terminal help: what 'config set' does. -->
+    <string name="cli_verb_configSet">Alterar uma configuração neste dispositivo</string>
+    <!-- Terminal help: what 'config reset' does. -->
+    <string name="cli_verb_configReset">Restaurar o padrão de uma configuração</string>
+    <!-- Terminal help: what the secret command does. -->
+    <string name="cli_verb_secret">Mostrar um segredo entregue a este dispositivo</string>
+    <!-- Terminal help: what the mint command does. -->
+    <string name="cli_verb_mint">Obter um token de curta duração a partir de uma receita</string>
+    <!-- Terminal help: what 'update check' does. -->
+    <string name="cli_verb_updateCheck">Verificar se há uma versão mais nova</string>
+    <!-- Terminal help: what 'update apply' does. -->
+    <string name="cli_verb_updateApply">Baixar e instalar a versão mais nova</string>
+    <!-- Terminal help: what the changelog command does. -->
+    <string name="cli_verb_changelog">Mostrar as novidades de cada versão</string>
+    <!-- Terminal help: what 'packs status' does. -->
+    <string name="cli_verb_packsStatus">Mostrar conteúdo instalado e em download</string>
+    <!-- Terminal help: what 'packs ensure' does. -->
+    <string name="cli_verb_packsEnsure">Baixar e instalar conteúdo, com progresso</string>
+    <!-- Terminal help: what the doctor command does. -->
+    <string name="cli_verb_doctor">Mostrar o que este dispositivo pode fazer, para suporte</string>
+    <!-- Terminal help: what the completion command does. bash, zsh and fish are shell names; keep them. -->
+    <string name="cli_verb_completion">Gerar o autocompletar do shell para bash, zsh ou fish</string>
+    <!-- Terminal help: what the -json flag does. -->
+    <string name="cli_option_json">Saída JSON para scripts, em todos os comandos</string>
+    <!-- Terminal help: what the -no-color flag does. NO_COLOR=1 is an environment variable; keep it. -->
+    <string name="cli_option_noColor">Texto simples (também NO_COLOR=1)</string>
+    <!-- Terminal help: what the -ascii flag does. -->
+    <string name="cli_option_ascii">Somente símbolos ASCII</string>
+    <!-- Terminal help: what the -h, -help flag does. -->
+    <string name="cli_option_help">Ajuda de um comando</string>
+    <!-- Terminal help: what the -yes flag does. -->
+    <string name="cli_option_yes">Não perguntar antes de sair</string>
+    <!-- Terminal help: what the -device-code flag does. -->
+    <string name="cli_option_deviceCode">Entrar com um código, sem o navegador deste computador</string>
+    <!-- Terminal key hints under the license key prompt. Each part is a key name, a space, then what it does; keep the key first and the ' · ' separators. -->
+    <string name="cli_keys_activate">Enter ativa · Esc cancela</string>
+    <!-- Terminal key hints while waiting for a code sign-in. 'c' is the key to press; keep the key first and the ' · ' separators. -->
+    <string name="cli_keys_code">c copia o código · Esc cancela</string>
+    <!-- Terminal key hints when every device on the license is in use: Enter opens the page that replaces a device. Keep the key first and the ' · ' separators. -->
+    <string name="cli_keys_deviceLimit">Enter abre no navegador · Esc cancela</string>
+    <!-- Terminal key hints after the browser opened to free a device: Enter tries the activation again. Keep the key first and the ' · ' separators. -->
+    <string name="cli_keys_retry">Enter tenta de novo · Esc cancela</string>
+    <!-- Terminal key hint while an update downloads. Keep the key first. -->
+    <string name="cli_keys_download">Esc cancela</string>
+    <!-- Terminal: shown beside the spinner while the person enters the code on another device. -->
+    <string name="cli_signin_waitingCode">Aguardando você entrar…</string>
+    <!-- Terminal: the sign-in finished and only the email is known. Arguments: 1=email. -->
+    <string name="cli_signin_signedInEmail">Conectado como %1$s</string>
+    <!-- Terminal warning when a license key was given on the command line. {command} is a command line such as 'tidewater activate'. Arguments: 1=command. -->
+    <string name="cli_activate_argWarning">Uma chave digitada depois do comando fica salva no histórico do shell. Da próxima vez, execute %1$s e cole a chave quando ela for pedida.</string>
+    <!-- Terminal: activate ran where it cannot ask for the key (no terminal) and nothing was piped in. Arguments: 1=command. -->
+    <string name="cli_activate_noKey">Nenhuma chave de licença. Execute %1$s em um terminal ou envie a chave para ele por pipe.</string>
+    <!-- Terminal: every device on the license is in use; free one in the browser, then activate again. {command} is a command line. Arguments: 1=command. -->
+    <string name="cli_deviceLimit_again">Libere um dispositivo e execute %1$s novamente.</string>
+    <!-- Terminal status: the row label for the license (tier and holder). -->
+    <string name="cli_status_license">Licença</string>
+    <!-- Terminal status: the row label for how long the app works without the internet. -->
+    <string name="cli_status_offline">Offline</string>
+    <!-- Terminal status: the license keeps working without the internet until {date} (a short date). Arguments: 1=date. -->
+    <string name="cli_status_offlineUntil">Funciona offline até %1$s</string>
+    <!-- Terminal status: the row label for the app's version and release channel. -->
+    <string name="cli_status_version">Versão</string>
+    <!-- Terminal status: the heading over the commands that fix a blocked license. Arguments: 1=product. -->
+    <string name="cli_status_fixes">Para continuar usando %1$s:</string>
+    <!-- Terminal status: what the login command does as a fix for a blocked license. -->
+    <string name="cli_fix_signIn">Usar a licença da sua conta</string>
+    <!-- Terminal: sign-out finished. Arguments: 1=product. -->
+    <string name="cli_logout_done">Você saiu de %1$s neste dispositivo.</string>
+    <!-- Terminal: deactivate finished; the license's seat on this device is released. Arguments: 1=product. -->
+    <string name="cli_deactivate_done">%1$s não usa mais sua licença neste dispositivo. A vaga está livre.</string>
+    <!-- Terminal: the person answered no to a confirmation. -->
+    <string name="cli_nothingChanged">Nada foi alterado.</string>
+    <!-- Terminal: keyless device registration finished. -->
+    <string name="cli_register_done">Este dispositivo está registrado.</string>
+    <!-- Terminal: a device was renamed; {device} is the new name. Arguments: 1=device. -->
+    <string name="cli_devices_renamed">Renomeado para %1$s.</string>
+    <!-- Terminal: a device's name was cleared; {device} is the device's id. Arguments: 1=device. -->
+    <string name="cli_devices_nameCleared">%1$s agora está sem nome.</string>
+    <!-- Terminal: a device was removed from the license. Arguments: 1=device. -->
+    <string name="cli_devices_removed">%1$s foi removido. A vaga está livre.</string>
+    <!-- Terminal: the person stopped an update download. -->
+    <string name="cli_update_cancelled">Atualização cancelada. Nada foi instalado.</string>
+    <!-- Terminal: there are no downloadable content packs on this device. -->
+    <string name="cli_packs_none">Nenhum conteúdo instalado.</string>
+    <!-- Terminal: a content pack is installed and takes effect after the app restarts. Shown after the pack's version. -->
+    <string name="cli_packs_afterRestart">após reiniciar</string>
+    <!-- Terminal: a setting has no value and no default. {name} is the setting's key. Arguments: 1=name. -->
+    <string name="cli_config_unset">%1$s não tem valor.</string>
+    <!-- Terminal: the secret command found nothing. {name} is the secret's key. Arguments: 1=name. -->
+    <string name="cli_secret_none">Este dispositivo não recebe nenhum segredo chamado %1$s.</string>
+    <!-- Terminal offline activation: what to do with the activation file. {command} is a command line. Arguments: 1=command. -->
+    <string name="cli_offline_import">Depois, execute %1$s com o arquivo que você receber.</string>
+    <!-- Terminal diagnostics: the row label for the SDK name and version. -->
+    <string name="cli_doctor_sdk">SDK</string>
+    <!-- Terminal diagnostics: the row label for the product and its version. -->
+    <string name="cli_doctor_product">Produto</string>
+    <!-- Terminal diagnostics: the row label for the server address. -->
+    <string name="cli_doctor_server">Servidor</string>
+    <!-- Terminal diagnostics: the row label for this device's id. -->
+    <string name="cli_doctor_device">Dispositivo</string>
+    <!-- Terminal diagnostics: the row label for where the device's credential is kept (keyring or file). -->
+    <string name="cli_doctor_store">Armazenamento do token</string>
+    <!-- Terminal diagnostics: the row label for whether the product's service description could be read. -->
+    <string name="cli_doctor_discovery">Descoberta</string>
+    <!-- Terminal diagnostics: the product's service description was read. -->
+    <string name="cli_doctor_reachable">Acessível</string>
+    <!-- Terminal diagnostics: the row label for the services the product turned on. -->
+    <string name="cli_doctor_services">Serviços</string>
+    <!-- Terminal diagnostics: the row label for the store or channel the app was installed from. -->
+    <string name="cli_doctor_installedFrom">Instalado de</string>
+    <!-- Terminal diagnostics: the heading over features this device cannot use, each with its reason. -->
+    <string name="cli_doctor_unsupported">Sem suporte aqui</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Algo deu errado</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

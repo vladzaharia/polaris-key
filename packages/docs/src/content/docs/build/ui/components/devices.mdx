@@ -31,4 +31,19 @@ The device list: an icon for the form factor, the name, platform and last seen, 
     **Headless.** `DevicesView`, `DeviceRow` in `polaris_key.ui.core.models`.
 
   </TabItem>
+  <TabItem label="Terminal (Node)">
+    **Drop-in.** `devices list` (`devicesListFlow`): this device first and marked, each with its
+    platform and id (`list`, `empty`); `devices rename <deviceId> [label...]` and
+    `devices deauthorize <deviceId>`.
+
+    **Styled part.** Rail rows with the radio symbols (`●` this device, `○` the others), the id kept
+    whole.
+
+    **Headless.** `devicesView(devices)`: `list` or `empty`, with each row's `name`, `platform`,
+    `current` and `lastSeenAt`.
+
+    [Terminal (Node)](/docs/build/ui/frameworks/terminal-node/) has the adapter's options, the
+    `--json` contract and the fallbacks.
+
+  </TabItem>
 </Tabs>

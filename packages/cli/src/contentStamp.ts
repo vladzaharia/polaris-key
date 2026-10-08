@@ -56,6 +56,7 @@ import { ciClient, type CiClient, type Out, type Sleep } from "./ci.js";
 import { loadManifest, validateLoadedManifest } from "./manifest.js";
 import { resolveCiToken, type CiEnv } from "./oidc.js";
 import { packContext, requirePacksDiscovery } from "./packManifest.js";
+import { untrusted, type UntrustedEnv } from "./untrusted.js";
 import { payloadIdentity, readTree, sha256Hex } from "./packArtifacts.js";
 
 export const CONTENT_STAMP_USAGE =
@@ -471,25 +472,31 @@ export async function markerPins(
   return pins;
 }
 
+/**
+ * The content a release carries. A pin's seq and record hash are Polaris Key's answer to
+ * `resolvePins`, so they are cleaned (`untrusted.ts`) like any other server text.
+ */
 export function describeContent(
   out: Out,
   content: AppContent,
   pins: readonly SourcedPin[],
+  env: UntrustedEnv = {},
 ): void {
-  out.write(`Content: contentApi ${content.contentApi}\n`);
+  const u = (v: unknown) => untrusted(v, env);
+  out.write(`Content: contentApi ${u(content.contentApi)}\n`);
   if (content.pins.length === 0) out.write("  pins: none\n");
   for (const p of content.pins) {
     const src = pins.find((x) => x.pack === p.pack)?.source;
     const e = content.expects.find((x) => x.pack === p.pack);
     out.write(
-      `  pin ${p.pack}@${p.release.version} (seq ${p.release.seq}, record ${p.release.sha256.slice(0, 12)}…)` +
-        `${e ? ` ${e.required ? "required" : "optional"}, ${e.delivery}` : ""}${src ? ` — from ${src}` : ""}\n`,
+      `  pin ${u(p.pack)}@${u(p.release.version)} (seq ${u(p.release.seq)}, record ${u(String(p.release.sha256).slice(0, 12))}…)` +
+        `${e ? ` ${e.required ? "required" : "optional"}, ${u(e.delivery)}` : ""}${src ? ` — from ${u(src)}` : ""}\n`,
     );
   }
   for (const h of content.holds ?? [])
     out.write(
-      `  hold ${h.pack}@${h.release.version} (seq ${h.release.seq}, record ${h.release.sha256.slice(0, 12)}…)` +
-        `${h.reason !== undefined ? ` — ${h.reason}` : ""}\n`,
+      `  hold ${u(h.pack)}@${u(h.release.version)} (seq ${u(h.release.seq)}, record ${u(String(h.release.sha256).slice(0, 12))}…)` +
+        `${h.reason !== undefined ? ` — ${u(h.reason)}` : ""}\n`,
     );
 }
 
@@ -562,6 +569,7 @@ export async function writeContentStampFile(
       fetchImpl: opts.fetchImpl,
       sleep: opts.sleep,
       log: opts.stderr,
+      env: opts.env,
     });
     await requirePacksDiscovery(client, opts.fetchImpl);
     pins.push(...(await resolvePins(client, opts.pins ?? [])));
@@ -579,7 +587,7 @@ export async function writeContentStampFile(
     );
   const file = path.resolve(opts.cwd, opts.out);
   await writeFile(file, stampText(content));
-  describeContent(opts.stdout, content, merged);
+  describeContent(opts.stdout, content, merged, opts.env);
   opts.stdout.write(`Wrote ${path.relative(opts.cwd, file) || file}\n`);
   return { content, file };
 }

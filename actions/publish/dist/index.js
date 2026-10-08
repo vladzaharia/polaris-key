@@ -5755,7 +5755,7 @@ var require_merge = __commonJS({
     var identity = require_identity();
     var Scalar = require_Scalar();
     var MERGE_KEY = "<<";
-    var merge = {
+    var merge2 = {
       identify: (value) => value === MERGE_KEY || typeof value === "symbol" && value.description === MERGE_KEY,
       default: "key",
       tag: "tag:yaml.org,2002:merge",
@@ -5765,7 +5765,7 @@ var require_merge = __commonJS({
       }),
       stringify: () => MERGE_KEY
     };
-    var isMergeKey = (ctx, key) => (merge.identify(key) || identity.isScalar(key) && (!key.type || key.type === Scalar.Scalar.PLAIN) && merge.identify(key.value)) && ctx?.doc.schema.tags.some((tag2) => tag2.tag === merge.tag && tag2.default);
+    var isMergeKey = (ctx, key) => (merge2.identify(key) || identity.isScalar(key) && (!key.type || key.type === Scalar.Scalar.PLAIN) && merge2.identify(key.value)) && ctx?.doc.schema.tags.some((tag2) => tag2.tag === merge2.tag && tag2.default);
     function addMergeToJSMap(ctx, map, value) {
       const source = resolveAliasValue(ctx, value);
       if (identity.isSeq(source))
@@ -5804,7 +5804,7 @@ var require_merge = __commonJS({
     }
     exports.addMergeToJSMap = addMergeToJSMap;
     exports.isMergeKey = isMergeKey;
-    exports.merge = merge;
+    exports.merge = merge2;
   }
 });
 
@@ -5814,15 +5814,15 @@ var require_addPairToJSMap = __commonJS({
     "use strict";
     init_define_PKEY_EMBEDDED_SCHEMAS();
     var log = require_log();
-    var merge = require_merge();
+    var merge2 = require_merge();
     var stringify2 = require_stringify();
     var identity = require_identity();
     var toJS = require_toJS();
     function addPairToJSMap(ctx, map, { key, value }) {
       if (identity.isNode(key) && key.addToJSMap)
         key.addToJSMap(ctx, map, value);
-      else if (merge.isMergeKey(ctx, key))
-        merge.addMergeToJSMap(ctx, map, value);
+      else if (merge2.isMergeKey(ctx, key))
+        merge2.addMergeToJSMap(ctx, map, value);
       else {
         const jsKey = toJS.toJS(key, "", ctx);
         if (map instanceof Map) {
@@ -7236,7 +7236,7 @@ var require_schema3 = __commonJS({
     var bool2 = require_bool2();
     var float = require_float2();
     var int = require_int2();
-    var merge = require_merge();
+    var merge2 = require_merge();
     var omap = require_omap();
     var pairs = require_pairs();
     var set = require_set();
@@ -7256,7 +7256,7 @@ var require_schema3 = __commonJS({
       float.floatExp,
       float.float,
       binary.binary,
-      merge.merge,
+      merge2.merge,
       omap.omap,
       pairs.pairs,
       set.set,
@@ -7283,7 +7283,7 @@ var require_tags = __commonJS({
     var schema = require_schema();
     var schema$1 = require_schema2();
     var binary = require_binary();
-    var merge = require_merge();
+    var merge2 = require_merge();
     var omap = require_omap();
     var pairs = require_pairs();
     var schema$2 = require_schema3();
@@ -7308,7 +7308,7 @@ var require_tags = __commonJS({
       intOct: int.intOct,
       intTime: timestamp.intTime,
       map: map.map,
-      merge: merge.merge,
+      merge: merge2.merge,
       null: _null.nullTag,
       omap: omap.omap,
       pairs: pairs.pairs,
@@ -7318,7 +7318,7 @@ var require_tags = __commonJS({
     };
     var coreKnownTags = {
       "tag:yaml.org,2002:binary": binary.binary,
-      "tag:yaml.org,2002:merge": merge.merge,
+      "tag:yaml.org,2002:merge": merge2.merge,
       "tag:yaml.org,2002:omap": omap.omap,
       "tag:yaml.org,2002:pairs": pairs.pairs,
       "tag:yaml.org,2002:set": set.set,
@@ -7327,7 +7327,7 @@ var require_tags = __commonJS({
     function getTags(customTags, schemaName, addMergeTag) {
       const schemaTags = schemas.get(schemaName);
       if (schemaTags && !customTags) {
-        return addMergeTag && !schemaTags.includes(merge.merge) ? schemaTags.concat(merge.merge) : schemaTags.slice();
+        return addMergeTag && !schemaTags.includes(merge2.merge) ? schemaTags.concat(merge2.merge) : schemaTags.slice();
       }
       let tags = schemaTags;
       if (!tags) {
@@ -7345,7 +7345,7 @@ var require_tags = __commonJS({
         tags = customTags(tags.slice());
       }
       if (addMergeTag)
-        tags = tags.concat(merge.merge);
+        tags = tags.concat(merge2.merge);
       return tags.reduce((tags2, tag2) => {
         const tagObj = typeof tag2 === "string" ? tagsByName[tag2] : tag2;
         if (!tagObj) {
@@ -7375,11 +7375,11 @@ var require_Schema = __commonJS({
     var tags = require_tags();
     var sortMapEntriesByKey = (a, b) => a.key < b.key ? -1 : a.key > b.key ? 1 : 0;
     var Schema = class _Schema {
-      constructor({ compat, customTags, merge, resolveKnownTags, schema, sortMapEntries, toStringDefaults }) {
+      constructor({ compat, customTags, merge: merge2, resolveKnownTags, schema, sortMapEntries, toStringDefaults }) {
         this.compat = Array.isArray(compat) ? tags.getTags(compat, "compat") : compat ? tags.getTags(null, compat) : null;
         this.name = typeof schema === "string" && schema || "core";
         this.knownTags = resolveKnownTags ? tags.coreKnownTags : {};
-        this.tags = tags.getTags(customTags, this.name, merge);
+        this.tags = tags.getTags(customTags, this.name, merge2);
         this.toStringOptions = toStringDefaults ?? null;
         Object.defineProperty(this, identity.MAP, { value: map.map });
         Object.defineProperty(this, identity.SCALAR, { value: string.string });
@@ -11481,6 +11481,860 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 import { mkdir as mkdir12, readFile as readFile23, writeFile as writeFile19 } from "node:fs/promises";
 import path28 from "node:path";
 
+// src/bundle.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+import { stat, writeFile } from "node:fs/promises";
+import path from "node:path";
+
+// src/untrusted.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+
+// ../sdk-node/dist/cli/term/index.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+
+// ../sdk-node/dist/cli/term/caps.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+
+// ../sdk-node/dist/cli/tokens.generated.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var TERMINAL_SGR = {
+  accent: "36",
+  success: "32",
+  warning: "33",
+  danger: "31",
+  info: "35",
+  muted: "90",
+  strong: "1",
+  link: "4",
+  chip: "7",
+  reset: "0"
+};
+var TERMINAL_SYMBOLS = {
+  unicode: {
+    stepActive: "◆",
+    stepDone: "◇",
+    ok: "✓",
+    fail: "✗",
+    warn: "▲",
+    radioOn: "●",
+    radioOff: "○",
+    rail: "│",
+    railStart: "┌",
+    railEnd: "└",
+    barFull: "━",
+    barEmpty: "━",
+    separator: "·",
+    ellipsis: "…",
+    arrows: "↑↓"
+  },
+  ascii: {
+    stepActive: "*",
+    stepDone: "o",
+    ok: "+",
+    fail: "x",
+    warn: "!",
+    radioOn: "(*)",
+    radioOff: "( )",
+    rail: "|",
+    railStart: "+",
+    railEnd: "`",
+    barFull: "#",
+    barEmpty: "-",
+    separator: "-",
+    ellipsis: "...",
+    arrows: "^v"
+  }
+};
+var TERMINAL_SPINNER = {
+  unicode: ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"],
+  ascii: ["|", "/", "-", "\\"],
+  frameMs: 80
+};
+var TERMINAL_LAYOUT = {
+  columns: 80,
+  minColumns: 60,
+  gutter: 2,
+  barWidth: 36
+};
+
+// ../sdk-node/dist/cli/term/caps.js
+var truthy = (v) => v !== void 0 && v !== "" && v !== "0" && v.toLowerCase() !== "false";
+function isCi(env) {
+  return truthy(env.CI) || truthy(env.GITHUB_ACTIONS) || truthy(env.BUILDKITE);
+}
+function isHeadless(env, platform = process.platform) {
+  if (truthy(env.SSH_CONNECTION) || truthy(env.SSH_TTY) || isCi(env))
+    return true;
+  return platform === "linux" && !truthy(env.DISPLAY) && !truthy(env.WAYLAND_DISPLAY);
+}
+function schemeFromColorFgBg(value) {
+  if (!value)
+    return null;
+  const last = value.split(";").at(-1);
+  const n = Number(last);
+  if (!Number.isInteger(n) || n < 0 || n > 15)
+    return null;
+  return n === 7 || n >= 9 ? "light" : "dark";
+}
+function colorLevel(env, tty, flags) {
+  if (flags.json)
+    return "none";
+  if (flags.color === false)
+    return "none";
+  if (env.NO_COLOR !== void 0 && env.NO_COLOR !== "")
+    return "none";
+  if (env.TERM === "dumb")
+    return "none";
+  const deep = env.COLORTERM === "truecolor" || env.COLORTERM === "24bit" || env.FORCE_COLOR === "3";
+  const forced = flags.color === true || env.FORCE_COLOR !== void 0 && env.FORCE_COLOR !== "0" && env.FORCE_COLOR !== "false";
+  if (env.FORCE_COLOR === "0" || env.FORCE_COLOR === "false")
+    return "none";
+  if (!tty && !forced)
+    return "none";
+  return deep ? "truecolor" : "ansi16";
+}
+function detectTerminal(opts = {}) {
+  const env = opts.env ?? process.env;
+  const flags = opts.flags ?? {};
+  const platform = opts.platform ?? process.platform;
+  const out = opts.stdout;
+  const tty = out?.isTTY === true;
+  const ci = isCi(env);
+  const json = flags.json === true;
+  const dumb = env.TERM === "dumb";
+  const color = colorLevel(env, tty, flags);
+  const unicode = !flags.ascii && !dumb && env.TERM !== "linux" && !truthy(env.PKEY_ASCII);
+  const motion = opts.theme?.motion ?? "system";
+  const reduced = motion === "none" || motion === "reduced" || truthy(env.PKEY_REDUCED_MOTION);
+  const interactive = !json && !ci && tty && opts.stdin?.isTTY === true && !dumb;
+  const termCols = tty && out?.columns ? out.columns : TERMINAL_LAYOUT.columns;
+  const explicit = opts.theme?.colorScheme === "dark" || opts.theme?.colorScheme === "light" ? opts.theme.colorScheme : env.PKEY_THEME === "dark" || env.PKEY_THEME === "light" ? env.PKEY_THEME : null;
+  return {
+    color,
+    unicode,
+    tty,
+    interactive,
+    dumb,
+    animate: tty && !ci && !dumb && !json && !reduced,
+    links: tty && !dumb && !ci && !json,
+    columns: Math.max(20, Math.min(TERMINAL_LAYOUT.columns, termCols)),
+    rows: tty && out?.rows ? out.rows : 24,
+    scheme: explicit ?? schemeFromColorFgBg(env.COLORFGBG) ?? "dark",
+    ci,
+    headless: isHeadless(env, platform),
+    json
+  };
+}
+
+// ../sdk-node/dist/cli/term/paint.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+import { styleText } from "node:util";
+
+// ../sdk-node/dist/cli/term/osc.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+
+// ../sdk-node/dist/cli/term/sanitize.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f]/g;
+function clean(text) {
+  return text.replace(CONTROL_CHARS, "");
+}
+var LOOPBACK = /* @__PURE__ */ new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
+function safeLink(url) {
+  if (!url || /[\s\u0000-\u001f\u007f-\u009f]/.test(url))
+    return null;
+  let u;
+  try {
+    u = new URL(url);
+  } catch {
+    return null;
+  }
+  if (u.username || u.password)
+    return null;
+  if (u.protocol === "https:")
+    return url;
+  if (u.protocol === "http:" && LOOPBACK.has(u.hostname))
+    return url;
+  return null;
+}
+
+// ../sdk-node/dist/cli/term/osc.js
+function osc8(url, text) {
+  const safe = safeLink(url);
+  if (!safe)
+    return text;
+  return `\x1B]8;;${safe}\x1B\\${text}\x1B]8;;\x1B\\`;
+}
+
+// ../sdk-node/dist/cli/term/paint.js
+var STYLE_NAMES = {
+  "1": "bold",
+  "4": "underline",
+  "7": "inverse",
+  "31": "red",
+  "32": "green",
+  "33": "yellow",
+  "35": "magenta",
+  "36": "cyan",
+  "90": "gray"
+};
+function roleStyles(role) {
+  if (role === "code")
+    return ["inverse", "bold"];
+  if (role === "reset")
+    return [];
+  return TERMINAL_SGR[role].split(";").map((code) => STYLE_NAMES[code]).filter((s) => s !== void 0);
+}
+function rgb(hex5) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex5.trim());
+  if (!m)
+    return null;
+  const n = parseInt(m[1], 16);
+  return [n >> 16 & 255, n >> 8 & 255, n & 255];
+}
+var Painter = class {
+  caps;
+  accent;
+  overrides;
+  ink;
+  constructor(caps, accent = null, overrides = {}, ink = false) {
+    this.caps = caps;
+    this.accent = accent;
+    this.overrides = overrides;
+    this.ink = ink;
+  }
+  get colored() {
+    return this.caps.color !== "none";
+  }
+  /** Apply roles to text. */
+  style(raw, roles = []) {
+    const text = clean(raw);
+    if (!this.colored || text === "" || roles.length === 0)
+      return text;
+    let out = text;
+    for (const r of roles) {
+      const role = this.ink && r === "accent" ? "strong" : r;
+      const hex5 = this.caps.color === "truecolor" && role !== "code" ? this.overrides[role] : void 0;
+      const c = hex5 ? rgb(hex5) : null;
+      if (c) {
+        out = `\x1B[38;2;${c[0]};${c[1]};${c[2]}m${out}\x1B[39m`;
+        continue;
+      }
+      const names = roleStyles(role);
+      if (names.length)
+        out = styleText(names, out, { validateStream: false });
+    }
+    return out;
+  }
+  /** One span: its roles, a code's pad, and an OSC 8 link when the terminal takes them. */
+  span(s) {
+    const roles = s.style ?? [];
+    const painted = roles.includes("chip") ? this.chipText(s.text) : this.style(s.text, roles);
+    return s.link && this.caps.links ? osc8(s.link, painted) : painted;
+  }
+  line(line) {
+    return line.map((s) => this.span(s)).join("");
+  }
+  /**
+   * The product chip: the name on the accent (truecolor), inverse cyan (ANSI-16 with an accent),
+   * plain inverse (the ink chip) or a padded name (no colour).
+   */
+  chip(name) {
+    return this.chipText(` ${name} `);
+  }
+  /** The chip's colours over already padded text. */
+  chipText(raw) {
+    const text = clean(raw);
+    if (!this.colored)
+      return text;
+    if (this.caps.color === "truecolor" && this.accent) {
+      const bg = rgb(this.accent.solid);
+      const fg = rgb(this.accent.on);
+      if (bg && fg)
+        return `\x1B[48;2;${bg[0]};${bg[1]};${bg[2]}m\x1B[38;2;${fg[0]};${fg[1]};${fg[2]}m${text}\x1B[39m\x1B[49m`;
+    }
+    return this.accent && !this.ink ? styleText(["cyan", "inverse"], text, { validateStream: false }) : styleText("inverse", text, { validateStream: false });
+  }
+};
+
+// ../sdk-node/dist/cli/term/layout.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+
+// ../sdk-node/dist/cli/term/width.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var ESCAPES = /\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g;
+function stripAnsi(s) {
+  return s.replace(ESCAPES, "");
+}
+function isWide(cp3) {
+  return cp3 >= 4352 && cp3 <= 4447 || cp3 >= 11904 && cp3 <= 12350 || cp3 >= 12353 && cp3 <= 13311 || cp3 >= 13312 && cp3 <= 19903 || cp3 >= 19968 && cp3 <= 40959 || cp3 >= 40960 && cp3 <= 42191 || cp3 >= 44032 && cp3 <= 55203 || cp3 >= 63744 && cp3 <= 64255 || cp3 >= 65072 && cp3 <= 65103 || cp3 >= 65280 && cp3 <= 65376 || cp3 >= 65504 && cp3 <= 65510 || cp3 >= 127744 && cp3 <= 128591 || cp3 >= 129280 && cp3 <= 129535 || cp3 >= 131072 && cp3 <= 262141;
+}
+var ZERO = /[\p{Mn}\p{Me}\u200b-\u200f\u2060\ufe0f]/u;
+function charWidth(ch) {
+  if (ZERO.test(ch))
+    return 0;
+  const cp3 = ch.codePointAt(0) ?? 0;
+  if (cp3 < 32 || cp3 >= 127 && cp3 < 160)
+    return 0;
+  return isWide(cp3) ? 2 : 1;
+}
+function cellWidth(s) {
+  let w = 0;
+  for (const ch of stripAnsi(s))
+    w += charWidth(ch);
+  return w;
+}
+function truncateMiddle(s, max, ellipsis = "…") {
+  if (cellWidth(s) <= max)
+    return s;
+  const room = Math.max(2, max - cellWidth(ellipsis));
+  const chars = [...s];
+  const headRoom = Math.ceil(room / 2);
+  const tailRoom = room - headRoom;
+  let head = "";
+  let hw = 0;
+  for (const ch of chars) {
+    const cw = charWidth(ch);
+    if (hw + cw > headRoom)
+      break;
+    head += ch;
+    hw += cw;
+  }
+  let tail = "";
+  let tw = 0;
+  for (let i = chars.length - 1; i >= 0; i--) {
+    const cw = charWidth(chars[i]);
+    if (tw + cw > tailRoom)
+      break;
+    tail = chars[i] + tail;
+    tw += cw;
+  }
+  return head + ellipsis + tail;
+}
+function truncateEnd(s, max, ellipsis = "…") {
+  if (cellWidth(s) <= max)
+    return s;
+  let out = "";
+  let w = 0;
+  const room = max - cellWidth(ellipsis);
+  for (const ch of s) {
+    const cw = charWidth(ch);
+    if (w + cw > room)
+      break;
+    out += ch;
+    w += cw;
+  }
+  return out + ellipsis;
+}
+function pieces(span) {
+  if (span.keep)
+    return [span];
+  const out = [];
+  const re = /[^\s]+\s*|\s+/gu;
+  for (const m of span.text.matchAll(re)) {
+    const word = m[0];
+    if ([...word].some((c) => charWidth(c) === 2)) {
+      let cur = "";
+      for (const ch of word) {
+        if (charWidth(ch) === 2 && cur !== "") {
+          out.push({ ...span, text: cur });
+          cur = "";
+        }
+        cur += ch;
+      }
+      if (cur)
+        out.push({ ...span, text: cur });
+    } else
+      out.push({ ...span, text: word });
+  }
+  return out;
+}
+function wrapSpans(spans, width, ellipsis = "…") {
+  const lines3 = wrapPieces(spans, width, ellipsis);
+  balanceLast(lines3, width);
+  return lines3.map(merge);
+}
+var textOf = (pieces2) => pieces2.map((p) => p.text).join("");
+var widthOf = (pieces2) => cellWidth(textOf(pieces2).trimEnd());
+var words = (pieces2) => pieces2.filter((p) => p.text.trim() !== "");
+function isOrphan(pieces2) {
+  const ws = words(pieces2);
+  if (ws.length !== 1 || ws[0].keep)
+    return false;
+  return ![...ws[0].text].some((c) => charWidth(c) === 2);
+}
+function balanceLast(lines3, width) {
+  const n = lines3.length;
+  if (n < 2 || !isOrphan(lines3[n - 1]))
+    return;
+  const prev = lines3[n - 2];
+  const last = lines3[n - 1];
+  for (let k = prev.length - 1; k >= 1; k--) {
+    const head = prev.slice(0, k);
+    const moved = prev.slice(k).map((p, i, all) => i === all.length - 1 && !/\s$/.test(p.text) ? { ...p, text: `${p.text} ` } : p);
+    const tail = [...moved, ...last];
+    if (words(head).length === 0)
+      return;
+    if (widthOf(head) <= width && widthOf(tail) <= width && words(tail).length >= 2) {
+      lines3[n - 2] = head;
+      lines3[n - 1] = tail;
+      return;
+    }
+  }
+}
+function wrapPieces(spans, width, ellipsis) {
+  const lines3 = [[]];
+  let w = 0;
+  for (const span of spans) {
+    for (let p of pieces(span)) {
+      const pw = cellWidth(p.text.trimEnd());
+      if (w > 0 && w + pw > width) {
+        lines3.push([]);
+        w = 0;
+        if (/^\s+$/.test(p.text))
+          continue;
+      }
+      if (pw > width && p.keep)
+        p = { ...p, text: truncateMiddle(p.text, width, ellipsis) };
+      lines3[lines3.length - 1].push(p);
+      w += cellWidth(p.text);
+    }
+  }
+  return lines3;
+}
+function merge(pieces2) {
+  const out = [];
+  for (const p of pieces2) {
+    const last2 = out[out.length - 1];
+    if (last2 && last2.link === p.link && last2.keep === p.keep && (last2.style ?? []).join() === (p.style ?? []).join())
+      last2.text += p.text;
+    else
+      out.push({ ...p });
+  }
+  const last = out[out.length - 1];
+  if (last && !last.keep)
+    last.text = last.text.trimEnd();
+  return out.filter((s) => s.text !== "");
+}
+
+// ../sdk-node/dist/cli/term/layout.js
+function symbolsFor(caps) {
+  return caps.unicode ? TERMINAL_SYMBOLS.unicode : TERMINAL_SYMBOLS.ascii;
+}
+var GUTTER = TERMINAL_LAYOUT.gutter;
+
+// ../sdk-node/dist/cli/term/live.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var realTicker = {
+  setInterval: (fn, ms) => {
+    const h = setInterval(fn, ms);
+    h.unref?.();
+    return h;
+  },
+  clearInterval: (h) => clearInterval(h)
+};
+var ERASE_LINE = "\r\x1B[2K";
+var UP = "\x1B[1A";
+var HIDE_CURSOR = "\x1B[?25l";
+var SHOW_CURSOR = "\x1B[?25h";
+function guardCursor(out) {
+  if (!out.isTTY || typeof process === "undefined")
+    return () => void 0;
+  const restore = () => {
+    out.write(SHOW_CURSOR);
+  };
+  const ownSigint = process.listenerCount("SIGINT") === 0;
+  const onSigint = () => {
+    restore();
+    process.exit(130);
+  };
+  process.once("exit", restore);
+  if (ownSigint)
+    process.once("SIGINT", onSigint);
+  return () => {
+    process.removeListener("exit", restore);
+    if (ownSigint)
+      process.removeListener("SIGINT", onSigint);
+  };
+}
+var LiveRegion = class {
+  out;
+  caps;
+  drawn = 0;
+  printedOnce = false;
+  hidden = false;
+  unguard = () => void 0;
+  constructor(out, caps) {
+    this.out = out;
+    this.caps = caps;
+  }
+  erase() {
+    if (this.drawn === 0)
+      return "";
+    let s = ERASE_LINE;
+    for (let i = 1; i < this.drawn; i++)
+      s += UP + ERASE_LINE;
+    this.drawn = 0;
+    return s;
+  }
+  /** Show `lines` in place of the previous frame. */
+  draw(lines3) {
+    if (!this.caps.animate) {
+      if (!this.printedOnce && lines3.length)
+        this.out.write(`${lines3.join("\n")}
+`);
+      this.printedOnce = true;
+      return;
+    }
+    let s = this.erase();
+    if (!this.hidden) {
+      s = HIDE_CURSOR + s;
+      this.hidden = true;
+      this.unguard = guardCursor(this.out);
+    }
+    s += lines3.join("\n");
+    this.drawn = lines3.length;
+    this.out.write(s);
+  }
+  /** Print lines above the region (they stay), then redraw nothing until the next draw. */
+  print(lines3) {
+    const s = this.caps.animate ? this.erase() : "";
+    this.out.write(`${s}${lines3.join("\n")}
+`);
+    this.printedOnce = false;
+  }
+  /** Replace the region with its final lines and stop. */
+  commit(lines3) {
+    const s = this.caps.animate ? this.erase() : "";
+    const show3 = this.hidden ? SHOW_CURSOR : "";
+    this.hidden = false;
+    this.unguard();
+    this.unguard = () => void 0;
+    this.out.write(`${s}${lines3.length ? `${lines3.join("\n")}
+` : ""}${show3}`);
+    this.printedOnce = false;
+  }
+  /** Clear the region without printing (Ctrl-C, an error path). */
+  close() {
+    const s = this.caps.animate ? this.erase() : "";
+    const show3 = this.hidden ? SHOW_CURSOR : "";
+    this.hidden = false;
+    this.unguard();
+    this.unguard = () => void 0;
+    if (s || show3)
+      this.out.write(s + show3);
+  }
+};
+function spinnerFrames(unicode) {
+  return unicode ? TERMINAL_SPINNER.unicode : TERMINAL_SPINNER.ascii;
+}
+function animate(caps, render, ticker = realTicker, frameMs = TERMINAL_SPINNER.frameMs) {
+  let frame = 0;
+  render(frame);
+  if (!caps.animate)
+    return () => void 0;
+  const h = ticker.setInterval(() => render(++frame), frameMs);
+  return () => ticker.clearInterval(h);
+}
+
+// ../sdk-node/dist/cli/term/progress.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+function progressSpans(fraction, symbols, width = TERMINAL_LAYOUT.barWidth) {
+  const f = Number.isFinite(fraction) ? Math.min(1, Math.max(0, fraction)) : 0;
+  const filled = Math.round(f * width);
+  return [
+    { text: symbols.barFull.repeat(filled), style: ["accent"] },
+    { text: symbols.barEmpty.repeat(width - filled), style: ["muted"] }
+  ];
+}
+
+// src/untrusted.ts
+var COMMAND_BREAK = "​";
+function underActions(env) {
+  const v = env.GITHUB_ACTIONS;
+  return v !== void 0 && v !== "" && v !== "0" && v.toLowerCase() !== "false";
+}
+function defuse(line) {
+  const s = line.replace(/##\[/g, `##${COMMAND_BREAK}[`);
+  return s.trimStart().startsWith("::") ? `${COMMAND_BREAK}${s}` : s;
+}
+function untrusted(value, env) {
+  const text = clean(String(value));
+  return underActions(env) ? defuse(text) : text;
+}
+function untrustedLines(text, env) {
+  return String(text).split("\n").map((line) => untrusted(line, env)).join("\n");
+}
+function untrustedJson(value, space) {
+  return (JSON.stringify(value, null, space) ?? "null").replace(
+    /[\u007f-\u009f\u2028\u2029]/g,
+    (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`
+  ).replace(/##\[/g, "#\\u0023[");
+}
+function escapeData(s) {
+  return s.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
+}
+var OWN_COMMANDS = ["::add-mask::", "::error title=pkey "];
+var GUARDED = /\x1b\[[0-9;]*m|[\u0000-\u0008\u000a-\u001f\u007f-\u009f]/g;
+function guardLine(line) {
+  const s = line.replace(GUARDED, (m) => m.length > 1 ? m : "");
+  if (OWN_COMMANDS.some((c) => s.startsWith(c))) return s;
+  return defuse(s);
+}
+function guardOutput(out, env) {
+  if (!underActions(env)) return { stream: out, flush: () => void 0 };
+  const decoder2 = new TextDecoder();
+  let pending = "";
+  const write = (chunk, ...rest) => {
+    pending += typeof chunk === "string" ? chunk : decoder2.decode(chunk, { stream: true });
+    const cb = rest.find((r) => typeof r === "function");
+    const end = pending.lastIndexOf("\n");
+    if (end < 0) {
+      if (cb) queueMicrotask(cb);
+      return true;
+    }
+    const complete = pending.slice(0, end);
+    pending = pending.slice(end + 1);
+    const text = `${complete.split("\n").map(guardLine).join("\n")}
+`;
+    return cb ? out.write(text, cb) : out.write(text);
+  };
+  const stream = {
+    write,
+    get isTTY() {
+      return out.isTTY;
+    },
+    get columns() {
+      return out.columns;
+    },
+    get rows() {
+      return out.rows;
+    }
+  };
+  return {
+    stream,
+    flush() {
+      pending += decoder2.decode();
+      if (!pending) return;
+      const last = pending;
+      pending = "";
+      out.write(guardLine(last));
+    }
+  };
+}
+
+// src/bundle.ts
+var DEFAULT_BASE_URL = "https://key.plrs.im";
+var ADMIN_COOKIE_ENV = "PKEY_ADMIN_COOKIE";
+var ADMIN_COOKIE_NAME = "__Host-pkey_admin";
+var CSRF_HEADER = "X-PKey-CSRF";
+var MAX_GRACE_DAYS = 365;
+var DEVICE_ID = /^[A-Za-z0-9_-]{32}$/;
+var BUNDLE_EXTENSION = ".pkeybundle";
+var BUNDLE_USAGE = "Usage: pkey bundle --product <slug> --device <id> --grace-days <n> [--no-config] [--license <id>] [--base-url <url>] [--out <file>] [--force]";
+function bundleFileName(product, deviceId) {
+  const safe = product.replace(/[^A-Za-z0-9._-]+/g, "-");
+  return `${safe}-${deviceId.slice(0, 8)}${BUNDLE_EXTENSION}`;
+}
+async function mintBundle(opts) {
+  const product = opts.product.trim();
+  if (!product) throw new Error(`--product is required.
+${BUNDLE_USAGE}`);
+  const deviceId = opts.deviceId.trim();
+  if (!DEVICE_ID.test(deviceId)) {
+    throw new Error(
+      `--device must be 32 base64url characters (A-Z a-z 0-9 - _); got ${deviceId.length}. Copy it from the offline machine's activation screen exactly, without spaces or line breaks.`
+    );
+  }
+  if (!Number.isInteger(opts.graceDays) || opts.graceDays < 1 || opts.graceDays > MAX_GRACE_DAYS) {
+    throw new Error(
+      `--grace-days must be a whole number from 1 to ${MAX_GRACE_DAYS}${Number.isFinite(opts.graceDays) ? ` (got ${opts.graceDays})` : ""}. It is the offline window the minted documents grant, in days.`
+    );
+  }
+  const licenseId = opts.licenseId?.trim() || void 0;
+  const cookie = adminCookie(opts.cookie);
+  const baseUrl = (opts.baseUrl?.trim() || DEFAULT_BASE_URL).replace(
+    /\/+$/,
+    ""
+  );
+  const file = path.resolve(
+    opts.cwd,
+    opts.out?.trim() || bundleFileName(product, deviceId)
+  );
+  const force = opts.force === true;
+  await refuseIfExists(file, force);
+  const f = opts.fetchImpl ?? fetch;
+  const csrf = await readCsrf(f, baseUrl, cookie, opts.signal);
+  const url = `${baseUrl}/manage/api/products/${encodeURIComponent(product)}/bundles`;
+  const body = JSON.stringify({
+    deviceId,
+    graceDays: opts.graceDays,
+    ...opts.includeConfig === false ? { includeConfig: false } : {},
+    ...licenseId ? { licenseId } : {}
+  });
+  const res = await request(f, url, {
+    method: "POST",
+    headers: {
+      accept: "application/json",
+      "content-type": "application/json",
+      cookie,
+      [CSRF_HEADER]: csrf
+    },
+    body,
+    signal: opts.signal
+  });
+  if (!res.ok) throw await httpError(res, `Minting a bundle at ${url}`);
+  const payload = await readJson(res, url);
+  const bundleId = asString(payload.bundleId);
+  const bundle = asString(payload.bundle);
+  if (!bundleId || !bundle) {
+    throw new Error(
+      `${url} answered ${res.status} without a bundle. Expected {bundleId, bundle}.`
+    );
+  }
+  await writeNewFile(file, bundle, force);
+  return {
+    bundleId,
+    bundle,
+    file,
+    deviceId,
+    graceDays: opts.graceDays,
+    baseUrl,
+    url
+  };
+}
+async function readCsrf(f, baseUrl, cookie, signal) {
+  const url = `${baseUrl}/manage/api/me`;
+  const res = await request(f, url, {
+    headers: { accept: "application/json", cookie },
+    signal
+  });
+  if (!res.ok)
+    throw await httpError(res, `Reading the admin session at ${url}`);
+  const body = await readJson(res, url);
+  const csrf = asString(body.csrf);
+  if (!csrf) {
+    throw new Error(
+      `${url} returned no CSRF token, so the mint cannot be authorised. Check that ${ADMIN_COOKIE_ENV} holds a console session cookie and not, say, a proxy's.`
+    );
+  }
+  return csrf;
+}
+function adminCookie(raw, command = "`pkey bundle` mints") {
+  const value = raw?.trim();
+  if (!value) {
+    throw new Error(
+      `${ADMIN_COOKIE_ENV} is not set.
+${command} through the admin API, which is authenticated by the console's browser session — there is no API token yet.
+Sign in to the console, then in devtools: Application -> Cookies -> the console origin -> copy the \`${ADMIN_COOKIE_NAME}\` cookie, and run:
+  export ${ADMIN_COOKIE_ENV}='${ADMIN_COOKIE_NAME}=<value>'
+It is a short-lived session credential carrying full admin authority: do not commit it and do not export it into a shared shell.`
+    );
+  }
+  return value.includes("=") ? value : `${ADMIN_COOKIE_NAME}=${value}`;
+}
+async function request(f, url, init) {
+  try {
+    return await f(url, init);
+  } catch (e) {
+    throw new Error(`Could not reach ${url}: ${e.message}`);
+  }
+}
+async function httpError(res, what, hintFor = statusHint) {
+  const detail = await errorDetail(res);
+  const u = (v) => untrusted(v, {});
+  const label = [String(res.status), detail.code && u(detail.code)].filter(Boolean).join(" ");
+  const message = detail.message ? `: ${u(detail.message)}` : "";
+  const fields = detail.fields?.length ? ` (fields: ${detail.fields.map(u).join(", ")})` : "";
+  const hint = hintFor(res.status);
+  return new Error(
+    `${what} failed (${label})${message}${fields}${hint ? `
+${hint}` : ""}`
+  );
+}
+function statusHint(status) {
+  if (status === 401) {
+    return `The admin session cookie in ${ADMIN_COOKIE_ENV} is missing or expired. Sign in to the console again and copy a fresh \`${ADMIN_COOKIE_NAME}\` cookie (devtools -> Application -> Cookies).`;
+  }
+  if (status === 403) {
+    return `Rejected on authorization or CSRF. Confirm the account is a platform admin, and that ${ADMIN_COOKIE_ENV} holds the CURRENT \`${ADMIN_COOKIE_NAME}\` value — the ${CSRF_HEADER} token is read from /manage/api/me with that same cookie, so a half-stale session fails here.`;
+  }
+  if (status === 404) {
+    return "No such product, or it has no usable signing key — a product that cannot sign cannot mint.";
+  }
+  if (status === 429) {
+    return "The admin API rate limit tripped. Wait a minute and retry.";
+  }
+  return void 0;
+}
+async function errorDetail(res) {
+  const text = await res.text().catch(() => "");
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    const trimmed2 = text.trim();
+    return trimmed2 ? { message: clip(trimmed2) } : {};
+  }
+  if (!isRecord(parsed)) return {};
+  const nested = isRecord(parsed.error) ? parsed.error : {};
+  const detail = {};
+  const code = asString(parsed.code) ?? asString(nested.code);
+  const message = asString(parsed.message) ?? asString(nested.message);
+  const fields = asStrings(parsed.fields) ?? asStrings(nested.fields);
+  if (code) detail.code = code;
+  if (message) detail.message = message;
+  if (fields) detail.fields = fields;
+  return detail;
+}
+async function readJson(res, url) {
+  const text = await res.text();
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new Error(
+      `${url} answered ${res.status} with a body that is not JSON: ${clip(text.trim())}`
+    );
+  }
+  if (!isRecord(parsed))
+    throw new Error(
+      `${url} answered ${res.status} with a non-object JSON body.`
+    );
+  return parsed;
+}
+async function refuseIfExists(file, force) {
+  if (force) return;
+  try {
+    await stat(file);
+  } catch (err) {
+    if (err.code !== "ENOENT") throw err;
+    return;
+  }
+  throw new Error(`${file} already exists. Pass --force to overwrite.`);
+}
+async function writeNewFile(file, body, force) {
+  await refuseIfExists(file, force);
+  await writeFile(file, body, "utf8");
+}
+function clip(value, max = 200) {
+  return value.length > max ? `${value.slice(0, max)}…` : value;
+}
+function asString(value) {
+  return typeof value === "string" && value.trim() ? value : void 0;
+}
+function asStrings(value) {
+  if (!Array.isArray(value)) return void 0;
+  const out = value.filter((item) => typeof item === "string");
+  return out.length ? out : void 0;
+}
+function isRecord(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+// src/help.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+
 // ../shared-manifest/dist/index.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
@@ -12713,7 +13567,7 @@ function byLength(terms) {
   return terms.sort((a, b) => b.w.length - a.w.length);
 }
 function reservedDisplayTerm(text, extraTerms = []) {
-  const words = displayNameSkeleton(text);
+  const words2 = displayNameSkeleton(text);
   const terms = byLength([
     ...RESERVED_DISPLAY_TERMS.map((term, i) => ({ term, w: TERM_WORDS[i] })),
     ...extraTerms.map((term) => ({ term, w: displayNameSkeleton(term) }))
@@ -12721,11 +13575,11 @@ function reservedDisplayTerm(text, extraTerms = []) {
   for (const { term, w } of terms) {
     if (w.length === 0) continue;
     const joined = w.join("");
-    for (let i = 0; i < words.length; i++) {
-      if (words[i] === joined) return term;
-      if (i + w.length > words.length) continue;
+    for (let i = 0; i < words2.length; i++) {
+      if (words2[i] === joined) return term;
+      if (i + w.length > words2.length) continue;
       let all = true;
-      for (let j = 0; j < w.length && all; j++) all = words[i + j] === w[j];
+      for (let j = 0; j < w.length && all; j++) all = words2[i + j] === w[j];
       if (all) return term;
     }
   }
@@ -12832,7 +13686,7 @@ var ARRAY_KEYWORDS = /* @__PURE__ */ new Set([
   "minItems",
   "maxItems"
 ]);
-function isRecord(v) {
+function isRecord2(v) {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 function valueMatches(type, v) {
@@ -12849,7 +13703,7 @@ function extraKeyword(schema, allowed) {
   return Object.keys(schema).find((k) => !allowed.has(k));
 }
 function schemaProblem(type, schema, where2 = "schema") {
-  if (!isRecord(schema)) return `${where2} must be an object`;
+  if (!isRecord2(schema)) return `${where2} must be an object`;
   const want = type === "string" ? "string" : type === "integer" ? "integer" : "array";
   if (schema.type !== want)
     return `${where2}.type must be "${want}" (the system key is ${TYPE_WORDS[type]})`;
@@ -12881,7 +13735,7 @@ function requiredType(key) {
   return null;
 }
 function reservedNameProblem(entry) {
-  if (!isRecord(entry) || entry.kind !== "flag") return null;
+  if (!isRecord2(entry) || entry.kind !== "flag") return null;
   const key = entry.key;
   if (typeof key !== "string" || !isReservedEntitlementName(key)) return null;
   const type = requiredType(key);
@@ -12899,10 +13753,10 @@ function reservedNameProblem(entry) {
   return null;
 }
 function reservedNameDeclarations(catalog) {
-  const entries = isRecord(catalog) ? Array.isArray(catalog.entries) ? catalog.entries : Array.isArray(catalog.catalog) ? catalog.catalog : [] : [];
+  const entries = isRecord2(catalog) ? Array.isArray(catalog.entries) ? catalog.entries : Array.isArray(catalog.catalog) ? catalog.catalog : [] : [];
   const out = [];
   entries.forEach((entry, index) => {
-    if (!isRecord(entry) || entry.kind !== "flag" || typeof entry.key !== "string" || !isReservedEntitlementName(entry.key))
+    if (!isRecord2(entry) || entry.kind !== "flag" || typeof entry.key !== "string" || !isReservedEntitlementName(entry.key))
       return;
     const problem = reservedNameProblem(entry);
     out.push({ index, key: entry.key, compatible: problem === null, problem });
@@ -12946,7 +13800,7 @@ function validateCloudSync(errors, warnings, ctx) {
   let declaresSync = false;
   if (ctx.catalogChecked && ctx.entries) {
     for (const [i, raw] of ctx.entries.entries()) {
-      if (!isRecord2(raw) || raw.user === void 0) continue;
+      if (!isRecord22(raw) || raw.user === void 0) continue;
       if (validateUserBlock(errors, raw, `/entries/${i}/user`)) {
         if (raw.user.sync !== "local")
           declaresSync = true;
@@ -12977,7 +13831,7 @@ function validateUserBlock(errors, entry, path30) {
     const where2 = issue.at === "schema" ? path30.replace(/\/user$/, "/schema") : issue.at === "user" ? path30 : `${path30}/${issue.at.slice("user.".length)}`;
     add(errors, "schema", where2, issue.code, issue.message);
   }
-  return isRecord2(entry.user) && isOneOf(entry.user.sync, USER_SETTING_SYNC_SCOPES) && !issues.some(
+  return isRecord22(entry.user) && isOneOf(entry.user.sync, USER_SETTING_SYNC_SCOPES) && !issues.some(
     (i) => i.code === "invalid_user_setting" && i.at !== "user.listed" && i.at !== "user.conflict"
   );
 }
@@ -12993,7 +13847,7 @@ function mergeMemberLimit(errors, schema, path30) {
 }
 function validateCatalogBlock(errors, block, flags, keys) {
   const base = "/cloudSync";
-  if (!isRecord2(block)) {
+  if (!isRecord22(block)) {
     shape(errors, "schema", base, "cloudSync must be an object.");
     return;
   }
@@ -13040,7 +13894,7 @@ function validateCollections(errors, collections, base) {
   const names = [];
   for (const [i, raw] of collections.entries()) {
     const path30 = `${base}/${i}`;
-    if (!isRecord2(raw)) {
+    if (!isRecord22(raw)) {
       shape(errors, "schema", path30, "A collection must be an object.");
       continue;
     }
@@ -13069,7 +13923,7 @@ function validateCollections(errors, collections, base) {
         "A collection's onAttach must be keepCloud, keepLocal, merge or prompt."
       );
     }
-    if (raw.schema !== void 0 && !isRecord2(raw.schema)) {
+    if (raw.schema !== void 0 && !isRecord22(raw.schema)) {
       shape(
         errors,
         "schema",
@@ -13077,7 +13931,7 @@ function validateCollections(errors, collections, base) {
         "A collection's schema must be an object."
       );
     }
-    const schema = isRecord2(raw.schema) ? raw.schema : {};
+    const schema = isRecord22(raw.schema) ? raw.schema : {};
     if (raw.conflict === "union" && !(schemaTypeIs(schema, ["array"]) && schema.uniqueItems === true)) {
       add(
         errors,
@@ -13133,7 +13987,7 @@ function namesOverlap(a, b) {
   return false;
 }
 function validateSaves(errors, saves, flags, path30) {
-  if (!isRecord2(saves)) {
+  if (!isRecord22(saves)) {
     shape(errors, "schema", path30, "cloudSync.saves must be an object.");
     return;
   }
@@ -13166,9 +14020,9 @@ function validateSaves(errors, saves, flags, path30) {
   }
   if (saves.metadata !== void 0) {
     const md = saves.metadata;
-    if (!isRecord2(md) || Object.keys(md).some(
+    if (!isRecord22(md) || Object.keys(md).some(
       (k) => !["schema", "playtimeField", "progressField"].includes(k)
-    ) || md.schema !== void 0 && !isRecord2(md.schema) || md.playtimeField !== void 0 && typeof md.playtimeField !== "string" || md.progressField !== void 0 && typeof md.progressField !== "string") {
+    ) || md.schema !== void 0 && !isRecord22(md.schema) || md.playtimeField !== void 0 && typeof md.playtimeField !== "string" || md.progressField !== void 0 && typeof md.progressField !== "string") {
       shape(
         errors,
         "schema",
@@ -13179,7 +14033,7 @@ function validateSaves(errors, saves, flags, path30) {
   }
   if (saves.thumbnail !== void 0) {
     const t = saves.thumbnail;
-    if (!isRecord2(t) || Object.keys(t).some((k) => k !== "maxBytes") || t.maxBytes !== void 0 && !nonNegativeInteger(t.maxBytes)) {
+    if (!isRecord22(t) || Object.keys(t).some((k) => k !== "maxBytes") || t.maxBytes !== void 0 && !nonNegativeInteger(t.maxBytes)) {
       shape(
         errors,
         "schema",
@@ -13190,7 +14044,7 @@ function validateSaves(errors, saves, flags, path30) {
   }
   if (saves.format !== void 0) {
     const f = saves.format;
-    if (!isRecord2(f) || Object.keys(f).some((k) => k !== "refuseNewer") || f.refuseNewer !== void 0 && typeof f.refuseNewer !== "boolean") {
+    if (!isRecord22(f) || Object.keys(f).some((k) => k !== "refuseNewer") || f.refuseNewer !== void 0 && typeof f.refuseNewer !== "boolean") {
       shape(
         errors,
         "schema",
@@ -13201,7 +14055,7 @@ function validateSaves(errors, saves, flags, path30) {
   }
 }
 function validateMigration(errors, m, keys, path30) {
-  if (!isRecord2(m)) {
+  if (!isRecord22(m)) {
     shape(errors, "schema", path30, "A migration must be an object.");
     return;
   }
@@ -13215,7 +14069,7 @@ function validateMigration(errors, m, keys, path30) {
     );
   }
   const rename = m.rename;
-  if (rename !== void 0 && (!isRecord2(rename) || Object.values(rename).some((v) => typeof v !== "string"))) {
+  if (rename !== void 0 && (!isRecord22(rename) || Object.values(rename).some((v) => typeof v !== "string"))) {
     shape(
       errors,
       "schema",
@@ -13224,7 +14078,7 @@ function validateMigration(errors, m, keys, path30) {
     );
   }
   const mapValues = m.mapValues;
-  if (mapValues !== void 0 && (!isRecord2(mapValues) || Object.values(mapValues).some((v) => !isRecord2(v)))) {
+  if (mapValues !== void 0 && (!isRecord22(mapValues) || Object.values(mapValues).some((v) => !isRecord22(v)))) {
     shape(
       errors,
       "schema",
@@ -13242,7 +14096,7 @@ function validateMigration(errors, m, keys, path30) {
     );
   }
   const dropped = new Set(Array.isArray(drop) ? drop : []);
-  if (isRecord2(rename)) {
+  if (isRecord22(rename)) {
     for (const [from, to] of Object.entries(rename)) {
       if (typeof to === "string" && !keys.has(to)) {
         add(
@@ -13267,7 +14121,7 @@ function validateMigration(errors, m, keys, path30) {
 }
 function validateProductBlock(errors, block, tierIds, flags) {
   const base = "/cloudSync";
-  if (!isRecord2(block)) {
+  if (!isRecord22(block)) {
     shape(errors, "product", base, "cloudSync must be an object.");
     return;
   }
@@ -13275,7 +14129,7 @@ function validateProductBlock(errors, block, tierIds, flags) {
   let licensed = {};
   if (block.limits !== void 0) {
     const limits = block.limits;
-    if (!isRecord2(limits)) {
+    if (!isRecord22(limits)) {
       shape(
         errors,
         "product",
@@ -13287,7 +14141,7 @@ function validateProductBlock(errors, block, tierIds, flags) {
       const extra = /* @__PURE__ */ new Set([...LIMIT_MEMBERS, "byTier", "byEntitlement"]);
       limitsBlock(errors, limits, `${base}/limits`, extra);
       if (limits.byTier !== void 0) {
-        if (!isRecord2(limits.byTier)) {
+        if (!isRecord22(limits.byTier)) {
           shape(
             errors,
             "product",
@@ -13306,7 +14160,7 @@ function validateProductBlock(errors, block, tierIds, flags) {
                 `cloudSync.limits.byTier names ${tier}, which is not a declared tier.`
               );
             }
-            if (!isRecord2(tierLimits)) {
+            if (!isRecord22(tierLimits)) {
               shape(
                 errors,
                 "product",
@@ -13332,7 +14186,7 @@ function validateProductBlock(errors, block, tierIds, flags) {
   if (block.unlicensed !== void 0) {
     const u = block.unlicensed;
     const path30 = `${base}/unlicensed`;
-    if (!isRecord2(u)) {
+    if (!isRecord22(u)) {
       shape(errors, "product", path30, "cloudSync.unlicensed must be an object.");
     } else {
       unknownMembers(errors, "product", u, /* @__PURE__ */ new Set(["limits", "saves"]), path30);
@@ -13345,7 +14199,7 @@ function validateProductBlock(errors, block, tierIds, flags) {
         );
       }
       if (u.limits !== void 0) {
-        if (!isRecord2(u.limits)) {
+        if (!isRecord22(u.limits)) {
           shape(
             errors,
             "product",
@@ -13367,7 +14221,7 @@ function validateProductBlock(errors, block, tierIds, flags) {
   if (block.writes !== void 0) {
     const w = block.writes;
     const path30 = `${base}/writes`;
-    if (!isRecord2(w) || Object.keys(w).some((k) => k !== "requireLicense" && k !== "minTrust") || w.requireLicense !== void 0 && typeof w.requireLicense !== "boolean" || w.minTrust !== void 0 && w.minTrust !== null && !isOneOf(w.minTrust, CLOUD_SYNC_TRUST_LEVELS)) {
+    if (!isRecord22(w) || Object.keys(w).some((k) => k !== "requireLicense" && k !== "minTrust") || w.requireLicense !== void 0 && typeof w.requireLicense !== "boolean" || w.minTrust !== void 0 && w.minTrust !== null && !isOneOf(w.minTrust, CLOUD_SYNC_TRUST_LEVELS)) {
       shape(
         errors,
         "product",
@@ -13383,7 +14237,7 @@ function limitsBlock(errors, limits, path30, allowed) {
     ceilingCheck(errors, limits[member], ceiling, `${path30}/${member}`);
   }
   if (limits.saves !== void 0) {
-    if (!isRecord2(limits.saves)) {
+    if (!isRecord22(limits.saves)) {
       shape(
         errors,
         "product",
@@ -13436,8 +14290,8 @@ function unlicensedWithinLicensed(errors, unlicensed, licensed, path30) {
       `${path30}/${member}`
     );
   }
-  if (isRecord2(unlicensed.saves)) {
-    const ls = isRecord2(licensed.saves) ? licensed.saves : {};
+  if (isRecord22(unlicensed.saves)) {
+    const ls = isRecord22(licensed.saves) ? licensed.saves : {};
     for (const { member } of CLOUD_SYNC_SAVE_LIMIT_MEMBERS) {
       const own = ls[member];
       over(
@@ -13461,7 +14315,7 @@ function over(errors, value, licensed, path30) {
   }
 }
 function byEntitlement(errors, raw, flags, path30) {
-  if (!isRecord2(raw)) {
+  if (!isRecord22(raw)) {
     shape(
       errors,
       "product",
@@ -13494,7 +14348,7 @@ function byEntitlement(errors, raw, flags, path30) {
       );
       continue;
     }
-    const schema = isRecord2(entry.schema) ? entry.schema : {};
+    const schema = isRecord22(entry.schema) ? entry.schema : {};
     const combine = entry.combine;
     if (!schemaTypeIs(schema, ["number", "integer"]) || combine !== void 0 && combine !== "max") {
       add(
@@ -13510,7 +14364,7 @@ function byEntitlement(errors, raw, flags, path30) {
 function flagEntries(entries) {
   const out = /* @__PURE__ */ new Map();
   for (const e of entries ?? []) {
-    if (isRecord2(e) && e.kind === "flag" && typeof e.key === "string")
+    if (isRecord22(e) && e.kind === "flag" && typeof e.key === "string")
       out.set(e.key, e);
   }
   return out;
@@ -13518,7 +14372,7 @@ function flagEntries(entries) {
 function declaredKeys(entries) {
   const out = /* @__PURE__ */ new Set();
   for (const e of entries ?? []) {
-    if (isRecord2(e) && typeof e.key === "string") out.add(e.key);
+    if (isRecord22(e) && typeof e.key === "string") out.add(e.key);
   }
   return out;
 }
@@ -13553,7 +14407,7 @@ function nonNegativeInteger(v) {
 function isOneOf(v, values) {
   return typeof v === "string" && values.includes(v);
 }
-function isRecord2(v) {
+function isRecord22(v) {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 function add(list2, file, path30, code, message) {
@@ -20933,216 +21787,1289 @@ function add4(list2, file, path30, code, message) {
   list2.push({ file, path: path30, code, message });
 }
 
-// src/bundle.ts
+// src/oidc.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { stat, writeFile } from "node:fs/promises";
-import path from "node:path";
-var DEFAULT_BASE_URL = "https://key.plrs.im";
-var ADMIN_COOKIE_ENV = "PKEY_ADMIN_COOKIE";
-var ADMIN_COOKIE_NAME = "__Host-pkey_admin";
-var CSRF_HEADER = "X-PKey-CSRF";
-var MAX_GRACE_DAYS = 365;
-var DEVICE_ID = /^[A-Za-z0-9_-]{32}$/;
-var BUNDLE_EXTENSION = ".pkeybundle";
-var BUNDLE_USAGE = "Usage: pkey bundle --product <slug> --device <id> --grace-days <n> [--no-config] [--license <id>] [--base-url <url>] [--out <file>] [--force]";
-function bundleFileName(product, deviceId) {
-  const safe = product.replace(/[^A-Za-z0-9._-]+/g, "-");
-  return `${safe}-${deviceId.slice(0, 8)}${BUNDLE_EXTENSION}`;
+import { appendFile } from "node:fs/promises";
+
+// src/ci.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var defaultSleep = (ms) => new Promise((resolve2) => setTimeout(resolve2, ms));
+var MAX_ATTEMPTS = 4;
+var BASE_BACKOFF_MS = 1e3;
+var MAX_BACKOFF_MS = 3e4;
+var CiRequestError = class extends Error {
+  status;
+  reason;
+  retryable;
+  body;
+  constructor(message, status, body, retryable) {
+    super(message);
+    this.name = "CiRequestError";
+    this.status = status;
+    this.body = body;
+    this.reason = typeof body.reason === "string" ? body.reason : void 0;
+    this.retryable = retryable;
+  }
+};
+function normalizeBaseUrl(baseUrl) {
+  const raw = (baseUrl?.trim() || DEFAULT_BASE_URL).replace(/\/+$/, "");
+  let url;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new Error(`--base-url ${JSON.stringify(raw)} is not a URL.`);
+  }
+  if (url.protocol !== "https:" && url.hostname !== "localhost")
+    throw new Error(
+      `--base-url must be https (got ${url.protocol}//${url.host}); a CI token must never cross plain HTTP.`
+    );
+  return raw;
 }
-async function mintBundle(opts) {
+function ciClient(opts) {
+  const baseUrl = normalizeBaseUrl(opts.baseUrl);
   const product = opts.product.trim();
-  if (!product) throw new Error(`--product is required.
-${BUNDLE_USAGE}`);
-  const deviceId = opts.deviceId.trim();
-  if (!DEVICE_ID.test(deviceId)) {
+  if (!PRODUCT_SLUG_RE.test(product))
     throw new Error(
-      `--device must be 32 base64url characters (A-Z a-z 0-9 - _); got ${deviceId.length}. Copy it from the offline machine's activation screen exactly, without spaces or line breaks.`
+      `--product must be a product slug (got ${JSON.stringify(opts.product)}).`
     );
-  }
-  if (!Number.isInteger(opts.graceDays) || opts.graceDays < 1 || opts.graceDays > MAX_GRACE_DAYS) {
-    throw new Error(
-      `--grace-days must be a whole number from 1 to ${MAX_GRACE_DAYS}${Number.isFinite(opts.graceDays) ? ` (got ${opts.graceDays})` : ""}. It is the offline window the minted documents grant, in days.`
-    );
-  }
-  const licenseId = opts.licenseId?.trim() || void 0;
-  const cookie = adminCookie(opts.cookie);
-  const baseUrl = (opts.baseUrl?.trim() || DEFAULT_BASE_URL).replace(
-    /\/+$/,
-    ""
-  );
-  const file = path.resolve(
-    opts.cwd,
-    opts.out?.trim() || bundleFileName(product, deviceId)
-  );
-  const force = opts.force === true;
-  await refuseIfExists(file, force);
   const f = opts.fetchImpl ?? fetch;
-  const csrf = await readCsrf(f, baseUrl, cookie, opts.signal);
-  const url = `${baseUrl}/manage/api/products/${encodeURIComponent(product)}/bundles`;
-  const body = JSON.stringify({
-    deviceId,
-    graceDays: opts.graceDays,
-    ...opts.includeConfig === false ? { includeConfig: false } : {},
-    ...licenseId ? { licenseId } : {}
-  });
-  const res = await request(f, url, {
-    method: "POST",
-    headers: {
-      accept: "application/json",
-      "content-type": "application/json",
-      cookie,
-      [CSRF_HEADER]: csrf
-    },
-    body,
-    signal: opts.signal
-  });
-  if (!res.ok) throw await httpError(res, `Minting a bundle at ${url}`);
-  const payload = await readJson(res, url);
-  const bundleId = asString(payload.bundleId);
-  const bundle = asString(payload.bundle);
-  if (!bundleId || !bundle) {
-    throw new Error(
-      `${url} answered ${res.status} without a bundle. Expected {bundleId, bundle}.`
+  const sleep = opts.sleep ?? defaultSleep;
+  const maxAttempts = opts.maxAttempts ?? MAX_ATTEMPTS;
+  const env = opts.env ?? {};
+  const url = (path30) => `${baseUrl}/${encodeURIComponent(product)}/${path30.replace(/^\/+/, "")}`;
+  async function postJson(path30, p) {
+    const target = url(path30);
+    const auth = p.auth !== false;
+    if (auth && !opts.token)
+      throw new Error(`${p.what}: no CI token (this is a bug in pkey).`);
+    for (let attempt = 1; ; attempt++) {
+      const body = typeof p.body === "function" ? await p.body() : p.body;
+      let res;
+      try {
+        res = await f(target, {
+          method: "POST",
+          headers: {
+            accept: "application/json",
+            "content-type": "application/json",
+            ...auth ? { authorization: `Bearer ${opts.token}` } : {}
+          },
+          body: JSON.stringify(body)
+        });
+      } catch (e) {
+        throw new Error(
+          `${p.what}: could not reach ${target}: ${e.message}`
+        );
+      }
+      const parsed = await readBody(res);
+      if (res.ok) return parsed;
+      const retryable = parsed.retryable === true || p.retryRateLimit === true && res.status === 429 && parsed.reason === "rate_limited";
+      const err = new CiRequestError(
+        renderRefusal(p.what, target, res.status, parsed, env),
+        res.status,
+        parsed,
+        retryable
+      );
+      if (!retryable || attempt >= maxAttempts) throw err;
+      const wait = backoff(attempt, res.headers.get("retry-after"));
+      opts.log?.write(
+        `${p.what}: ${res.status} ${untrusted(err.reason ?? "", env)} is retryable; attempt ${attempt + 1} of ${maxAttempts} in ${Math.round(wait / 1e3)}s
+`
+      );
+      await sleep(wait);
+    }
+  }
+  async function getJson(path30, p) {
+    const target = url(path30);
+    if (!opts.token)
+      throw new Error(`${p.what}: no CI token (this is a bug in pkey).`);
+    let res;
+    try {
+      res = await f(target, {
+        method: "GET",
+        headers: {
+          accept: "application/json",
+          authorization: `Bearer ${opts.token}`
+        }
+      });
+    } catch (e) {
+      throw new Error(
+        `${p.what}: could not reach ${target}: ${e.message}`
+      );
+    }
+    const parsed = await readBody(res);
+    if (res.ok) return parsed;
+    throw new CiRequestError(
+      renderRefusal(p.what, target, res.status, parsed, env),
+      res.status,
+      parsed,
+      false
     );
   }
-  await writeNewFile(file, bundle, force);
-  return {
-    bundleId,
-    bundle,
-    file,
-    deviceId,
-    graceDays: opts.graceDays,
-    baseUrl,
-    url
-  };
+  return { baseUrl, product, url, postJson, getJson };
 }
-async function readCsrf(f, baseUrl, cookie, signal) {
-  const url = `${baseUrl}/manage/api/me`;
-  const res = await request(f, url, {
-    headers: { accept: "application/json", cookie },
-    signal
-  });
-  if (!res.ok)
-    throw await httpError(res, `Reading the admin session at ${url}`);
-  const body = await readJson(res, url);
-  const csrf = asString(body.csrf);
-  if (!csrf) {
-    throw new Error(
-      `${url} returned no CSRF token, so the mint cannot be authorised. Check that ${ADMIN_COOKIE_ENV} holds a console session cookie and not, say, a proxy's.`
-    );
-  }
-  return csrf;
+function backoff(attempt, retryAfter) {
+  const seconds = retryAfter ? Number(retryAfter) : NaN;
+  if (Number.isFinite(seconds) && seconds >= 0)
+    return Math.min(seconds * 1e3, MAX_BACKOFF_MS);
+  return Math.min(BASE_BACKOFF_MS * 2 ** (attempt - 1), MAX_BACKOFF_MS);
 }
-function adminCookie(raw, command = "`pkey bundle` mints") {
-  const value = raw?.trim();
-  if (!value) {
-    throw new Error(
-      `${ADMIN_COOKIE_ENV} is not set.
-${command} through the admin API, which is authenticated by the console's browser session — there is no API token yet.
-Sign in to the console, then in devtools: Application -> Cookies -> the console origin -> copy the \`${ADMIN_COOKIE_NAME}\` cookie, and run:
-  export ${ADMIN_COOKIE_ENV}='${ADMIN_COOKIE_NAME}=<value>'
-It is a short-lived session credential carrying full admin authority: do not commit it and do not export it into a shared shell.`
-    );
-  }
-  return value.includes("=") ? value : `${ADMIN_COOKIE_NAME}=${value}`;
-}
-async function request(f, url, init) {
-  try {
-    return await f(url, init);
-  } catch (e) {
-    throw new Error(`Could not reach ${url}: ${e.message}`);
-  }
-}
-async function httpError(res, what, hintFor = statusHint) {
-  const detail = await errorDetail(res);
-  const label = [String(res.status), detail.code].filter(Boolean).join(" ");
-  const message = detail.message ? `: ${detail.message}` : "";
-  const fields = detail.fields?.length ? ` (fields: ${detail.fields.join(", ")})` : "";
-  const hint = hintFor(res.status);
-  return new Error(
-    `${what} failed (${label})${message}${fields}${hint ? `
-${hint}` : ""}`
-  );
-}
-function statusHint(status) {
-  if (status === 401) {
-    return `The admin session cookie in ${ADMIN_COOKIE_ENV} is missing or expired. Sign in to the console again and copy a fresh \`${ADMIN_COOKIE_NAME}\` cookie (devtools -> Application -> Cookies).`;
-  }
-  if (status === 403) {
-    return `Rejected on authorization or CSRF. Confirm the account is a platform admin, and that ${ADMIN_COOKIE_ENV} holds the CURRENT \`${ADMIN_COOKIE_NAME}\` value — the ${CSRF_HEADER} token is read from /manage/api/me with that same cookie, so a half-stale session fails here.`;
-  }
-  if (status === 404) {
-    return "No such product, or it has no usable signing key — a product that cannot sign cannot mint.";
-  }
-  if (status === 429) {
-    return "The admin API rate limit tripped. Wait a minute and retry.";
-  }
-  return void 0;
-}
-async function errorDetail(res) {
+async function readBody(res) {
   const text = await res.text().catch(() => "");
-  let parsed;
   try {
-    parsed = JSON.parse(text);
+    const parsed = JSON.parse(text);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed))
+      return parsed;
   } catch {
-    const trimmed2 = text.trim();
-    return trimmed2 ? { message: clip(trimmed2) } : {};
   }
-  if (!isRecord7(parsed)) return {};
-  const nested = isRecord7(parsed.error) ? parsed.error : {};
-  const detail = {};
-  const code = asString(parsed.code) ?? asString(nested.code);
-  const message = asString(parsed.message) ?? asString(nested.message);
-  const fields = asStrings(parsed.fields) ?? asStrings(nested.fields);
-  if (code) detail.code = code;
-  if (message) detail.message = message;
-  if (fields) detail.fields = fields;
-  return detail;
+  const trimmed2 = text.trim();
+  return trimmed2 ? { message: clip2(trimmed2) } : {};
 }
-async function readJson(res, url) {
-  const text = await res.text();
-  let parsed;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    throw new Error(
-      `${url} answered ${res.status} with a body that is not JSON: ${clip(text.trim())}`
-    );
+function renderRefusal(what, target, status, body, env = {}) {
+  const u = (v) => untrusted(v, env);
+  const reason = typeof body.reason === "string" ? body.reason : void 0;
+  const code = typeof body.error === "string" ? body.error : void 0;
+  const label = [String(status), reason ?? code].filter(Boolean).map(u).join(" ");
+  const lines3 = [`${what} failed (${label}) at ${target}`];
+  if (typeof body.message === "string") lines3.push(`  ${u(body.message)}`);
+  if (typeof body.claim === "string")
+    lines3.push(`  failing claim: ${u(body.claim)}`);
+  if (typeof body.key === "string") lines3.push(`  object: ${u(body.key)}`);
+  if (Array.isArray(body.fields) && body.fields.length)
+    lines3.push(`  fields: ${body.fields.map(u).join(", ")}`);
+  if (Array.isArray(body.errors)) {
+    for (const e of body.errors.slice(0, 50)) {
+      const rec = e ?? {};
+      lines3.push(
+        `  ${u(rec.path ?? "")} ${u(rec.code ?? "")}: ${u(rec.message ?? "")}`
+      );
+    }
   }
-  if (!isRecord7(parsed))
-    throw new Error(
-      `${url} answered ${res.status} with a non-object JSON body.`
-    );
-  return parsed;
+  const hint = refusalHint(status, reason);
+  if (hint) lines3.push(hint);
+  return lines3.join("\n");
 }
-async function refuseIfExists(file, force) {
-  if (force) return;
-  try {
-    await stat(file);
-  } catch (err) {
-    if (err.code !== "ENOENT") throw err;
-    return;
+function refusalHint(status, reason) {
+  switch (reason) {
+    case "policy_mismatch":
+      return "The job's OIDC token does not satisfy the product's publisher policy. Check the workflow file and environment named in .pkey/release publishing.trustedPublisher, that a branch or tag ruleset protects the ref (ref_protected), and that the job runs on a GitHub-hosted runner. See /docs/build/ci/#troubleshooting.";
+    case "publisher_not_configured":
+      return "The product has no publisher policy: add publishing.trustedPublisher to .pkey/release and resync.";
+    case "invalid_oidc_token":
+      return "Request the OIDC token for the audience <base-url>/<product>/release/publish (pkey does this itself).";
+    case "missing_scope":
+      return "The CI token lacks this operation's scope; an operator grants scopes in the console.";
+    case "oidc_token_replayed":
+      return "Each OIDC token is exchanged once; pkey requests a fresh one per exchange, so another step reused it.";
+    case "ticket_redeemed":
+      return "This upload ticket was already redeemed by an earlier submit. Re-run the publish; it requests a new ticket, and an identical release is a no-op.";
+    case "rate_limited":
+      return "Rate limited. Wait a minute and re-run the job.";
+    default:
+      if (status === 401)
+        return "The CI token is missing, expired or revoked. OIDC tokens live 30 minutes; re-run the job.";
+      if (status === 404)
+        return "Not found: check --product and --base-url, and that the product has Release enabled.";
+      return "";
   }
-  throw new Error(`${file} already exists. Pass --force to overwrite.`);
 }
-async function writeNewFile(file, body, force) {
-  await refuseIfExists(file, force);
-  await writeFile(file, body, "utf8");
-}
-function clip(value, max = 200) {
+function clip2(value, max = 300) {
   return value.length > max ? `${value.slice(0, max)}…` : value;
 }
-function asString(value) {
-  return typeof value === "string" && value.trim() ? value : void 0;
+
+// src/oidc.ts
+var CI_TOKEN_ENV = "PKEY_CI_TOKEN";
+var CI_TOKEN_SHAPE = /^pkeyci_[A-Za-z0-9_-]{43,}$/;
+function publishAudience(baseUrl, product) {
+  return `${new URL(baseUrl).origin}/${product}/release/publish`;
 }
-function asStrings(value) {
-  if (!Array.isArray(value)) return void 0;
-  const out = value.filter((item) => typeof item === "string");
-  return out.length ? out : void 0;
+function canRequestGithubOidc(env) {
+  return Boolean(
+    env.ACTIONS_ID_TOKEN_REQUEST_URL && env.ACTIONS_ID_TOKEN_REQUEST_TOKEN
+  );
 }
-function isRecord7(value) {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
+function inGithubActions(env) {
+  return env.GITHUB_ACTIONS === "true";
 }
+function mask(env, out, value) {
+  if (inGithubActions(env) && typeof value === "string" && value)
+    out.write(`::add-mask::${escapeData(value)}
+`);
+}
+async function requestGithubOidcToken(env, audience, fetchImpl = fetch) {
+  const base = env.ACTIONS_ID_TOKEN_REQUEST_URL;
+  const bearer = env.ACTIONS_ID_TOKEN_REQUEST_TOKEN;
+  if (!base || !bearer)
+    throw new Error(
+      "This job cannot request a GitHub OIDC token: ACTIONS_ID_TOKEN_REQUEST_URL is unset. Grant the job `permissions: id-token: write` (and contents: read)."
+    );
+  const url = `${base}${base.includes("?") ? "&" : "?"}audience=${encodeURIComponent(audience)}`;
+  let res;
+  try {
+    res = await fetchImpl(url, {
+      headers: {
+        authorization: `bearer ${bearer}`,
+        accept: "application/json"
+      }
+    });
+  } catch (e) {
+    throw new Error(
+      `Could not reach the Actions OIDC endpoint: ${e.message}`
+    );
+  }
+  if (!res.ok)
+    throw new Error(
+      `The Actions OIDC endpoint answered ${res.status}. Check the job's id-token: write permission.`
+    );
+  const body = await res.json().catch(() => ({}));
+  if (typeof body.value !== "string" || body.value.split(".").length !== 3)
+    throw new Error("The Actions OIDC endpoint returned no token.");
+  return body.value;
+}
+async function exchangeGithubOidc(opts) {
+  const client = ciClient({
+    baseUrl: opts.baseUrl,
+    product: opts.product,
+    fetchImpl: opts.fetchImpl,
+    sleep: opts.sleep,
+    log: opts.log,
+    env: opts.env
+  });
+  const audience = publishAudience(client.baseUrl, client.product);
+  const body = await client.postJson(
+    "release/publish/token",
+    {
+      auth: false,
+      retryRateLimit: true,
+      what: "Exchanging the GitHub OIDC token",
+      body: async () => ({
+        token: await requestGithubOidcToken(opts.env, audience, opts.fetchImpl)
+      })
+    }
+  );
+  const token = typeof body.token === "string" ? body.token : "";
+  if (!CI_TOKEN_SHAPE.test(token))
+    throw new Error(
+      `${client.url("release/publish/token")} answered without a pkeyci_ token.`
+    );
+  mask(opts.env, opts.out, token);
+  return {
+    token,
+    expiresAt: typeof body.expiresAt === "number" ? body.expiresAt : 0,
+    scopes: Array.isArray(body.scopes) ? body.scopes.filter((s) => typeof s === "string") : []
+  };
+}
+async function authGithubOidc(opts) {
+  const githubEnv = opts.env.GITHUB_ENV;
+  if (!githubEnv || !canRequestGithubOidc(opts.env))
+    throw new Error(
+      `pkey auth github-oidc runs inside a GitHub Actions job with \`permissions: id-token: write\`. Elsewhere, export ${CI_TOKEN_ENV} with a static pkeyci_ token an operator issued.`
+    );
+  const issued = await exchangeGithubOidc(opts);
+  await appendFile(githubEnv, `${CI_TOKEN_ENV}=${issued.token}
+`, "utf8");
+  return issued;
+}
+async function resolveCiToken(opts) {
+  const fromEnv = opts.env[CI_TOKEN_ENV]?.trim();
+  if (fromEnv) {
+    if (!CI_TOKEN_SHAPE.test(fromEnv))
+      throw new Error(
+        `${CI_TOKEN_ENV} is set but is not a pkeyci_ token. Unset it to use the job's OIDC token.`
+      );
+    mask(opts.env, opts.out, fromEnv);
+    return fromEnv;
+  }
+  if (canRequestGithubOidc(opts.env))
+    return (await exchangeGithubOidc(opts)).token;
+  throw new Error(
+    `No CI credential. In GitHub Actions, grant the job \`permissions: id-token: write\` and pkey exchanges the job's OIDC token itself; elsewhere, export ${CI_TOKEN_ENV} with a static pkeyci_ token an operator issued in the console.`
+  );
+}
+
+// src/help.ts
+var GROUPS = [
+  ["manifest", "Manifest"],
+  ["sdk", "SDK and tools"],
+  ["bundles", "Offline bundles"],
+  ["ci", "CI release"],
+  ["distribution", "Distribution"],
+  ["feeds", "Feeds"],
+  ["listing", "Listing and assets"],
+  ["transport", "Transport"],
+  ["storefront", "Storefront"],
+  ["shell", "Shell"]
+];
+var CI_PARA = `A CI command runs in GitHub Actions with permissions: id-token: write, or with ${CI_TOKEN_ENV}. The CI commands exchange the job's GitHub OIDC token for a short-lived pkeyci_ token themselves; no secret is stored in the repository. See /docs/build/ci/.`;
+var CI_ENV = {
+  name: CI_TOKEN_ENV,
+  text: "Optional for the CI commands: a static pkeyci_ token an operator issued, for CI that is not GitHub Actions. Unset in Actions, where the job's OIDC token is exchanged instead."
+};
+var COOKIE_ENV = {
+  name: ADMIN_COOKIE_ENV,
+  text: `Required by \`pkey bundle\` and \`pkey listing import\`. The console's admin session cookie, as \`${ADMIN_COOKIE_NAME}=<value>\` (the bare value is accepted too). The admin API is authenticated by the console's browser session — there is no API token yet — so copy the cookie from an authenticated console tab: devtools -> Application -> Cookies -> the console origin. It is a SHORT-LIVED session credential carrying full admin authority: do not commit it, and do not export it into a shared shell.`
+};
+var ciEnvFor = (subs) => ({ ...CI_ENV, subs });
+var STORE_SUBS = ["winget", "homebrew", "scoop", "flathub"];
+var COMMANDS = [
+  {
+    name: "init",
+    group: "manifest",
+    summary: "Scaffold .pkey/ in this directory",
+    rows: [["init", "Scaffold .pkey/ in this directory"]],
+    usage: [
+      `pkey init [--product slug] [--name name] [--modules ${SERVICE_SLUGS.join(",")}] [--admin-group group] [--release-owner owner] [--release-repo repo] [--force]`
+    ],
+    about: [
+      {
+        text: "pkey init scaffolds .pkey/ in the current directory: product.yaml and schema.yaml always, release.yaml when Release is on. --modules takes the service slugs or the legacy module names (licensing, releases, oidc, edgeMint) and writes service slugs; without it you get license,config. --product (or --slug) defaults to the directory's name and --name to a titleized slug. Existing files are never overwritten without --force."
+      }
+    ]
+  },
+  {
+    name: "validate",
+    group: "manifest",
+    summary: "Check .pkey/ with the rules the platform applies",
+    rows: [
+      ["validate [path]", "Check .pkey/ with the rules the platform applies"]
+    ],
+    usage: ["pkey validate [path] [--json]"],
+    about: [
+      {
+        text: "pkey validate reads the .pkey/ under path (relative to the current directory; default the current directory) and runs it through the validator repo-link and resync apply. It prints a verdict, the services the manifest enables, any required secret names, then every warning and error with its document, JSON pointer and the file it was read from, and exits 1 when the manifest is invalid."
+      },
+      {
+        text: `--json prints one JSON line on stdout instead, the terminal kits' result line, its fields beside the envelope's: {"v":1,"command":"validate","event":"result","ok","exit","valid","modules","requiredSecrets","warnings","errors"}, each warning and error as {"code","message","at","file"}. When no manifest can be read it is {"v":1,"command":"validate","event":"result","ok":false,"exit":1,"error":"no-manifest","message"}.`
+      }
+    ]
+  },
+  {
+    name: "doctor",
+    group: "manifest",
+    summary: "Validate, then check the live product's discovery",
+    rows: [["doctor", "Validate, then check the live product's discovery"]],
+    usage: ["pkey doctor [--base-url url --product slug]"],
+    about: [
+      {
+        text: "pkey doctor runs validate first. With both --base-url and --product it also fetches <base-url>/<product>/.well-known/polaris.json and reports whether discovery answers, which services it enables and which signing keys it exposes; a failed remote check exits 1."
+      }
+    ]
+  },
+  {
+    name: "manifest",
+    group: "manifest",
+    summary: "Write the .pkey/ JSON Schemas for editors",
+    rows: [["manifest schemas", "Write the .pkey/ JSON Schemas for editors"]],
+    tree: { schemas: [] },
+    usage: ["pkey manifest schemas --out dir"],
+    about: [
+      {
+        text: "pkey manifest schemas writes the .pkey/ JSON Schemas into a directory, for editors in a repository with no node_modules."
+      }
+    ]
+  },
+  {
+    name: "sdk",
+    group: "sdk",
+    summary: "Print an SDK snippet, or one SDK's config file",
+    rows: [["sdk", "Print an SDK snippet, or one SDK's config file"]],
+    usage: [
+      "pkey sdk --product slug [--base-url url] [--kid kid --public-key key]",
+      "pkey sdk --lang node|react|python|swift|kotlin|godot [--product slug] [--base-url url] [--write [--out path] [--force]] [--kid kid --public-key key] [--release-key kid=key ...] [--package kotlin.package]"
+    ],
+    about: [
+      {
+        text: "Without --lang, pkey sdk prints a Node example with the pins given. With --lang it reads the product's discovery (and, in the product's repo, .pkey/release's releaseKeys) and prints that SDK's config file; --write writes it to the SDK's default path or --out, and --force replaces a file pkey sdk did not write."
+      }
+    ]
+  },
+  {
+    name: "trust",
+    group: "sdk",
+    summary: "Format a signing key for every SDK's pinned keys",
+    rows: [["trust", "Format a signing key for every SDK's pinned keys"]],
+    usage: ["pkey trust --kid kid --public-key key"]
+  },
+  {
+    name: "mirror",
+    group: "sdk",
+    summary: "Write typed catalog mirrors for each language",
+    rows: [["mirror", "Write typed catalog mirrors for each language"]],
+    usage: [
+      "pkey mirror --lang ts,python,swift,gdscript,kotlin [--out-dir dir] [--catalog file | --product slug [--base-url url]] [--package kotlin.package] [--check]"
+    ],
+    about: [
+      {
+        text: "--check writes nothing and exits 1 when a mirror is stale (a CI drift gate)."
+      }
+    ]
+  },
+  {
+    name: "bundle",
+    group: "bundles",
+    summary: "Mint an offline activation bundle for one device",
+    rows: [["bundle", "Mint an offline activation bundle for one device"]],
+    usage: [
+      "pkey bundle --product slug --device id --grace-days n [--no-config] [--license id] [--base-url url] [--out file] [--force]"
+    ],
+    about: [
+      {
+        text: `pkey bundle mints one offline activation bundle and writes it to a file (default <product>-<first 8 of device id>.pkeybundle; --base-url defaults to ${DEFAULT_BASE_URL}). Copy that file to the air-gapped machine and import it there.`
+      }
+    ],
+    env: [COOKIE_ENV]
+  },
+  {
+    name: "auth",
+    group: "ci",
+    summary: "Exchange the job's OIDC token for a CI token",
+    rows: [
+      ["auth github-oidc", "Exchange the job's OIDC token for a CI token"]
+    ],
+    tree: { "github-oidc": [] },
+    usage: ["pkey auth github-oidc --product slug [--base-url url]"],
+    about: [
+      {
+        text: `pkey auth github-oidc exchanges the Actions job's OIDC token for a pkeyci_ token, masks it, and writes ${CI_TOKEN_ENV} to $GITHUB_ENV for the job's later steps.`
+      },
+      { text: CI_PARA }
+    ],
+    env: [CI_ENV]
+  },
+  {
+    name: "release",
+    group: "ci",
+    summary: "Publish, sign and move releases from CI",
+    rows: [
+      ["release publish", "Publish an app or pack release from build output"],
+      ["release content-stamp", "Write the pkey-content.json a build embeds"],
+      ["release revoke", "Revoke a pack release or a delegation"],
+      ["release keys generate", "Generate a release key or a content key"],
+      ["release delegate", "Let a content key sign data-only pack releases"],
+      ["release promote", "Point a channel at a release"],
+      ["release pin|unpin", "Hold a channel on one release, or let it move"],
+      ["release yank", "Withdraw a release"]
+    ],
+    tree: {
+      publish: [],
+      "content-stamp": [],
+      revoke: [],
+      keys: ["generate"],
+      delegate: [],
+      promote: [],
+      pin: [],
+      unpin: [],
+      yank: []
+    },
+    usage: [
+      "pkey release publish --product slug --version v --dir path [--deliverable app] [--tag vX.Y.Z] [--channel c] [--source r2|github] [--meta builds.json] [--base-url url] [--release-key-file pem] [--min-supported-seq n] [--no-record] [--content-stamp file | --embedded dir --pin pack@v ...] [--content-interface registry.json [--strict]] [--dry-run]",
+      "pkey release publish --product slug --version v --dir path --deliverable packId [--out dir] [--bases dir] [--release-key-file pem] [--base-url url] [--dry-run] [--content-key-file pem --delegation sha256] [--provides ids.json] [--removes id[,id...] ...] [--script-extensions ext[,ext...]] [--script-types Type[,Type...]]",
+      "pkey release content-stamp --product slug --out pkey-content.json [--embedded dir] [--pin packId@version ...] [--hold packId@version[=reason] ...] [--base-url url]",
+      "pkey release revoke packId@version --reason text --product slug [--replacement version] [--release-key-file pem] [--base-url url] [--dry-run]",
+      "pkey release revoke --delegation sha256|file --reason text --product slug [--release-key-file pem] [--base-url url] [--dry-run]",
+      "pkey release keys generate --kid kid --out file [--force]",
+      "pkey release keys generate --content --out file",
+      "pkey release delegate --product slug --prefix packId --types type,... --public-key key [--expires-in days] [--notes text] [--release-key-file pem] [--base-url url] [--dry-run]",
+      "pkey release promote|pin releaseId --channel c --product slug [--deliverable id]",
+      "pkey release unpin --channel c --product slug [--deliverable id]",
+      "pkey release yank releaseId --reason text --product slug"
+    ],
+    about: [
+      {
+        subs: ["publish"],
+        text: "pkey release publish matches the files under --dir against .pkey/release's deliverables.app.artifacts map (<file>.sig and <file>.sha256 ride along as sidecars), hashes them, uploads what Polaris Key does not already hold, and submits the release descriptor. --dry-run prints the descriptor and the server's verdict and uploads and writes nothing."
+      },
+      {
+        subs: ["publish", "keys"],
+        text: "With a release key (PKEY_RELEASE_KEY, or --release-key-file) it also signs the release record (pkey-release+jws) under the .pkey/release releaseKeys entry whose public key matches, checks it, and submits it with the descriptor; a dry run prints the record unsigned. pkey release keys generate writes a new private release key to --out and prints its releaseKeys entry."
+      },
+      {
+        subs: ["publish", "content-stamp"],
+        text: "When .pkey/release declares packs, an app publish states its pins: --content-stamp is the pkey-content.json pkey release content-stamp wrote before the export (from the pkey-marker/1 markers under --embedded, verified, and --pin packId@version resolved through Polaris Key), and each build's embeds come from the artifact map; both go into the descriptor, which the record is moved from."
+      },
+      {
+        subs: ["publish"],
+        text: `--deliverable <packId> publishes a pack: per declared variant, the payload at <dir>/<variant key or "default">/ (one .pck file, or the tree), checked, stripped of project.binary and the class cache, linted, indexed (pkey-files/1), with a full object, file blobs, a gaps object and deltas against the releases --bases keeps (zstd >= 1.5.5 on PATH), and for a PCK variant of 4 MiB or more a pkey-chunks/1 chunk index with chunk bundles shared along the --bases chain (patch.strategies chunk, discovery release.chunks); it signs the pack record, uploads in stage rounds, submits it, and writes a marker beside each payload. --out keeps the record, payloads and chunk indexes for the next publish's --bases.`
+      },
+      {
+        subs: ["publish"],
+        text: "A godot.pck lint (P4-28) refuses a resource that references an app script or a UID outside the pack's uid cache unless .pkey/release lists it in deliverables.app.content.attachable (the device's PKeyOptions.pack_attachable), and refuses as scripts .gd, .gdc, .cs plus --script-extensions (bare extensions of a GDExtension script language) and the class names --script-types gives (the device asks its engine for both)."
+      },
+      {
+        subs: ["publish"],
+        text: "Save compatibility (P4-20): a pack release signs the content ids it provides, from --provides or the pack's declared provides.from (default .pkey/provides.json; provides.required fails a publish without it); Polaris Key refuses a release that stops providing an id its predecessor provided at a live contentApi level both support, unless --removes acknowledges it. An app publish with --content-interface hashes that registry (canonical JSON, SHA-256), stores it with the release and warns when it changed since the channel's current app release while contentApi did not (--strict fails instead, before anything is uploaded)."
+      },
+      {
+        subs: ["content-stamp"],
+        text: "pkey release content-stamp --hold packId@version[=reason] keeps a compatible pack at one release for this app release (written into the stamp's holds; never a pinned pack)."
+      },
+      {
+        subs: ["revoke"],
+        text: "pkey release revoke signs a kind: revocation release record with the release key and submits it: devices stop using that pack release, and --replacement names the release of the same pack they take instead. Revocations are permanent; a later revoke of the same release supersedes the replacement or reason, never the revoked status."
+      },
+      {
+        subs: ["keys", "delegate", "publish"],
+        text: "pkey release keys generate --content writes a new content key (no kid) and prints its public key; pkey release delegate signs a kind: delegation record with the release key that lets that key sign data-only pack releases (files.tree, data.json, l10n.table) of compatible or standalone packs under --prefix (whole segments) for --expires-in days (default 180, at most 366). A content team then publishes with PKEY_CONTENT_KEY (or --content-key-file) and --delegation <sha256>: the files must pass the data-only rule, and the record is signed under the kid pkd1-<sha256>."
+      },
+      {
+        subs: ["revoke", "delegate"],
+        text: "pkey release revoke --delegation revokes a delegation and every pack release signed under it."
+      },
+      {
+        subs: ["publish"],
+        text: `--meta is a JSON file {"<buildId>": {"buildNumber", "minOS", "requires"}}. An ipa or apk payload's facts (bundle id, versions, entitlements; package, version code, ABIs, signer) are read into the descriptor for the storefront feeds.`
+      },
+      { text: CI_PARA }
+    ],
+    env: [CI_ENV]
+  },
+  {
+    name: "distribution",
+    group: "distribution",
+    summary: "Outlet ids for a build, store reports and rollouts",
+    rows: [
+      ["distribution outlet-ids", "Print a build outlet's store ids as JSON"],
+      [
+        "distribution report",
+        "Report a store's availability, submission or key"
+      ],
+      ["distribution rollout", "Start or change an outlet rollout"],
+      [
+        "distribution pause|resume|halt|complete",
+        "Pause, resume, halt or complete that rollout"
+      ]
+    ],
+    tree: {
+      "outlet-ids": [],
+      report: ["availability", "submission", "key"],
+      rollout: [],
+      pause: [],
+      resume: [],
+      halt: [],
+      complete: []
+    },
+    usage: [
+      "pkey distribution outlet-ids --outlet id",
+      "pkey distribution report availability|submission --product slug --outlet id (--release id | --version v [--deliverable id]) --state s [--build id] [--since epoch] [--platform-ref json] [--detail json]",
+      "pkey distribution report key --product slug --purpose p --sha256 hex [--outlet id]",
+      "pkey distribution rollout --product slug --outlet id --channel c --release id --bp n [--deliverable id]",
+      "pkey distribution pause|resume|halt|complete --product slug --outlet id --channel c [--release id] [--deliverable id]"
+    ],
+    about: [
+      {
+        subs: ["outlet-ids"],
+        text: "pkey distribution outlet-ids prints the build outlet's store ids from .pkey/distribution as one JSON object of strings (steamAppId, itchGameId, flatpakId, snapName, caskToken, homebrewFormula, msixFamilyName, bundleId), for CI to pass to a Godot export as PKEY_OUTLET_IDS. With no .pkey/distribution it prints {}."
+      },
+      {
+        subs: ["report"],
+        text: "pkey distribution report tells Polaris Key what a store says until its connector exists: availability (pending, processing, in-review, approved, live, rejected, removed) and the submission state (prepared, submitted, in-review, approved, rejected, pending-developer-release, released, cancelled) of a release on an outlet. report key sends the SHA-256 fingerprint the job signed with (colons allowed); one that is not in the product's key inventory is flagged for an operator and the command exits 1."
+      },
+      {
+        subs: ["rollout", "pause", "resume", "halt", "complete"],
+        text: "rollout, pause, resume, halt and complete drive the outlet rollout; --bp is basis points (2500 = 25%), and they need a token an operator granted distribution:rollout."
+      },
+      {
+        subs: ["report", "rollout", "pause", "resume", "halt", "complete"],
+        text: CI_PARA
+      }
+    ],
+    env: [
+      ciEnvFor(["report", "rollout", "pause", "resume", "halt", "complete"])
+    ]
+  },
+  {
+    name: "feeds",
+    group: "feeds",
+    summary: "The F-Droid feed, package-feed setup and feed pruning",
+    rows: [
+      ["feeds fdroid", "Build, sign and register a channel's F-Droid repo"],
+      ["feeds setup", "Print the setup for one package feed"],
+      ["feeds prune", "Delete main builds below the newest stable"]
+    ],
+    tree: { fdroid: [], setup: [], prune: [] },
+    usage: [
+      "pkey feeds fdroid --product slug --channel c --out dir [--keystore path --alias a] [--ks-pass-env NAME] [--apksigner path] [--icon png] [--base-url url] [--dry-run]",
+      "pkey feeds setup --ecosystem npm|pypi|swift|maven|oci|godot --owner slug [--namespace key=value ...] [--package name [--version v]] [--origin url] [--token-env NAME] [--json]",
+      "pkey feeds prune --product slug [--deliverable id] [--apply] [--json] [--base-url url]"
+    ],
+    about: [
+      {
+        subs: ["fdroid"],
+        text: "pkey feeds fdroid builds the channel's F-Droid repository (index-v2.json, entry.json, a diff) from Polaris Key's releases, signs entry.jar with apksigner and the CI-held repo key (the password in $PKEY_FDROID_KS_PASS), uploads it and registers it; the token needs distribution:feeds. Without --keystore it writes the unsigned files and stops."
+      },
+      {
+        subs: ["prune"],
+        text: "pkey feeds prune deletes each package's builds of main (X-main.N, PyPI X.devN) below its newest stable release, the backfill of the Worker's automatic feed retention. It is a dry run unless --apply: it prints what would go, per package, with counts and bytes. With --apply it also lists any version skipped (held since the plan, so kept) and exits non-zero if any version failed. The token needs release:yank, which an operator grants."
+      },
+      {
+        subs: ["setup"],
+        text: "pkey feeds setup prints the copy-paste setup for one package feed on the registry host (default https://pkg.plrs.im), the same snippets the console's Setup tab shows: strict routing only (the npm scope, uv explicit = true, Gradle exclusiveContent, SwiftPM --scope, a fully qualified image reference, the Godot editor URLs). --namespace sets the feed's namespace (scope=@acme, groupPrefixes=gg.acme,gg.acme.tools); --token-env NAME adds the credential lines, reading the registry token from that environment variable. Offline: nothing is sent anywhere."
+      },
+      { subs: ["fdroid", "prune"], text: CI_PARA }
+    ],
+    env: [ciEnvFor(["fdroid", "prune"])]
+  },
+  {
+    name: "listing",
+    group: "listing",
+    summary: "Import a Godot listing, or derive every store's assets",
+    rows: [
+      ["listing import", "Import a Godot project into the product's listing"],
+      ["listing assets", "Derive every store's icons, art and screenshots"]
+    ],
+    tree: { import: [], assets: [] },
+    usage: [
+      "pkey listing import --godot project --product slug [--preset name ...] [--locale code] [--overwrite] [--apply [--fields a,b]] [--json] [--base-url url]",
+      "pkey listing import --godot project --dry-run [--preset name ...]",
+      "pkey listing assets --out dir [--icon png] [--key-art png] [--key-art-portrait png] [--wordmark png] [--screenshots dir] [--focal x,y] [--focal-portrait x,y] [--background #rrggbb] [--accept store/class/name ...] [--pad store/class/name ...] [--locale code] [--upload --product slug [--base-url url] [--dry-run]]"
+    ],
+    about: [
+      {
+        subs: ["import"],
+        text: "pkey listing import reads the Godot project and imports it into the product's shared listing: the diff first, written only with --apply."
+      },
+      {
+        subs: ["assets"],
+        text: "pkey listing assets derives every store's icons from one square icon master (Play 512, the Microsoft tile 300, Steam's 184 JPG and 256 icons, Flathub, Snap, winget and F-Droid; Android's adaptive layers only when the mark sits inside the central 66 of 108 dp), composes every store's art from logo-free key art and the wordmark (Play and F-Droid feature graphics, Steam's capsules and library set, the Microsoft super hero, poster and box art, the itch.io cover, the Snap banner; cropped around --focal, the wordmark only on slots that allow a title), and fits each screenshot under --screenshots (one directory per size class) for the App Store, Play, the Microsoft Store and Steam. A screenshot that does not fit gets a crop or pad proposal, used only for the images named with --accept or --pad. Everything goes under --out with report.json (the fit report), preview.html and one ZIP pack per store. --upload stores the masters, outputs and packs in the listing model (the token needs distribution:listing); nothing is pushed to a store. Needs the sharp library."
+      },
+      { subs: ["assets"], text: CI_PARA }
+    ],
+    env: [{ ...COOKIE_ENV, subs: ["import"] }, ciEnvFor(["assets"])]
+  },
+  {
+    name: "assets",
+    group: "listing",
+    summary: "Host a file in a presentation or listing slot",
+    rows: [["assets push", "Host a file in a presentation or listing slot"]],
+    tree: { push: [] },
+    usage: [
+      "pkey assets push file --slot slot [--locale code] --product slug [--base-url url] [--dry-run]"
+    ],
+    about: [
+      {
+        text: "pkey assets push hosts a file that is not on the web in a slot: presentation.icon, listing.icon, listing.header, listing.screenshot:<1-16> or a listing image slot (icon-master, play:feature-graphic, ...). Polaris Key hosts a copy and serves it from its image host; PNG, JPEG, WebP, GIF or AVIF only (never SVG), up to 10 MiB for icon slots and 20 MiB for the rest. A slot an operator uploaded in the console, or one a manifest declares, is kept as it is (console, then manifest, then CI). The token needs assets:write, an opt-in scope, and Release must be on (the upload ticket comes from its uploads route)."
+      },
+      { text: CI_PARA }
+    ],
+    env: [CI_ENV]
+  },
+  {
+    name: "transport",
+    group: "transport",
+    summary: "Package a published pack for a store transport",
+    rows: [
+      [
+        "transport apple-ba package",
+        "Package a pack for Apple Background Assets"
+      ],
+      [
+        "transport apple-ba upload",
+        "Upload that asset pack to App Store Connect"
+      ],
+      ["transport play-pad modules", "Write Play Asset Delivery modules"],
+      ["transport steam-depot vdf", "Write a content-only SteamPipe build"]
+    ],
+    tree: {
+      "apple-ba": ["package", "upload"],
+      "play-pad": ["modules"],
+      "steam-depot": ["vdf"]
+    },
+    usage: [
+      "pkey transport apple-ba package --deliverable packId --release v --from dir [--content-api n] [--variant key] [--out dir] [--platforms iOS[,macOS]] [--no-archive] [--no-report]",
+      "pkey transport apple-ba upload --deliverable packId --release v [--dir dir] [--from dir] [--content-api n] [--expect-resource id] [--lock file] [--wait minutes] [--no-report]",
+      "pkey transport play-pad modules --deliverable packId --release v --from dir --project dir [--delivery fast-follow|on-demand] [--default-texture fmt] [--variant key] [--no-report]",
+      "pkey transport steam-depot vdf --deliverable packId --release v --from dir --depot id (--branch b | --channel c) [--setlive] [--app id] [--out dir] [--no-report]"
+    ],
+    about: [
+      {
+        text: "pkey transport packages a published pack release (the --out cache of pkey release publish --deliverable <packId>, re-hashed against its record and linted again, so a pack with scripts never reaches a store) for the transport .pkey/distribution routes it through, writes the pkey-marker/1 marker beside the payload, and reports the transport's availability: apple-ba package writes Manifest.json for asset pack <pack>-c<contentApi> (dots become hyphens; every apple-ba pack is mapped at once and a collision, double hyphen or id over 64 characters is refused before anything is written) and runs xcrun ba-package (macOS); apple-ba upload sends it to App Store Connect with CI's key (ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY or ASC_KEY_PATH) and records the asset pack's resource id in .pkey/asset-packs.json (commit it; a later upload into any other resource is refused); play-pad modules writes com.android.asset-pack modules (a #tcf_ directory per texture variant) into a Godot Android Gradle build and patches it; steam-depot vdf writes a content-only SteamPipe build (SetLive on named branches only)."
+      },
+      { text: CI_PARA }
+    ],
+    env: [CI_ENV]
+  },
+  {
+    name: "storefront",
+    group: "storefront",
+    summary: "Run store CLIs from CI and open store pull requests",
+    rows: [
+      ["storefront itch push", "Push a build to itch.io with butler"],
+      ["storefront snap metadata", "Write the listing into snapcraft.yaml"],
+      ["storefront snap upload", "Upload a snap to its declared channels"],
+      [
+        "storefront snap upload-metadata",
+        "Send the snap's summary, description and icon"
+      ],
+      ["storefront exec", "Run another allow-listed store command"],
+      ["storefront allow-list", "Print the commands each store's CI admits"],
+      [
+        "storefront <store> pr",
+        "Open the winget, Homebrew, Scoop or Flathub PR"
+      ],
+      ["storefront <store> status", "Read that pull request's state"],
+      ["storefront flathub init", "Write a first Flathub submission"]
+    ],
+    tree: {
+      itch: ["push"],
+      snap: ["metadata", "upload", "upload-metadata"],
+      exec: [],
+      "allow-list": [],
+      winget: ["pr", "status"],
+      homebrew: ["pr", "status"],
+      scoop: ["pr", "status"],
+      flathub: ["pr", "status", "init"]
+    },
+    usage: [
+      "pkey storefront itch push --platform windows|linux|mac|android --dir dir --version v [--channel c] [--outlet id] [--dry-run] [--no-report]",
+      "pkey storefront snap metadata --yaml snapcraft.yaml [--dry-run]",
+      "pkey storefront snap upload --snap file.snap --channel c[,c...] [--outlet id] [--dry-run] [--no-report]",
+      "pkey storefront snap upload-metadata --snap file.snap [--dry-run] [--no-report]",
+      "pkey storefront exec store command --op operation [--outlet id] [--tool-path path] -- argv...",
+      "pkey storefront allow-list [--store s] [--json]",
+      "pkey storefront winget|homebrew|scoop|flathub pr [--channel c] [--outlet id] [--dry-run [--out dir]] [--portable path] [--command name] [--license l] [--app name] [--project-license spdx] [--no-report]",
+      "pkey storefront winget|homebrew|scoop|flathub status [--channel c] [--version v] [--outlet id] [--no-report]",
+      "pkey storefront flathub init [--out dir] [--channel c] [--outlet id] [--command path] [--runtime-version v]"
+    ],
+    about: [
+      {
+        subs: ["itch", "snap", "exec", "allow-list"],
+        text: "pkey storefront runs a store's vendor CLI from CI, and only as a command its CI allow-list admits (pkey storefront allow-list prints them): itch push is butler push <dir> <user/game>:<platform[-channel]> --userversion <v>, the target from the itch outlet's identity (BUTLER_API_KEY in the environment); snap upload is snapcraft upload <snap> --release=<snap channels>, only the channels the snap outlet's channels map declares, and snap upload-metadata sends the summary, description and icon the snap carries, which snap metadata writes into snapcraft.yaml from the listing model before the build (SNAPCRAFT_STORE_CREDENTIALS, a scoped export-login). exec runs any other allow-listed command (steamcmd +run_app_build, whose script may set live only a named branch; msstore publish, refused while the console has a staged draft; BuildPatchTool -mode=UploadBinary). Each step is reported back to Polaris Key before and after it runs (distribution:report), so the store's ledger shows it beside console steps; a step already done in the same run is skipped. --dry-run checks and prints the command lines."
+      },
+      {
+        subs: STORE_SUBS,
+        text: "pkey storefront <store> pr writes winget's manifests (schema 1.12.0), the cask in your own Homebrew tap (direct.homebrewTap), the Scoop feed's manifest in your own bucket (direct.scoopBucket) or Flathub's updated manifest and MetaInfo for the channel's newest release, and opens one pull request per version with the GitHub token in PKEY_PR_TOKEN (a CI secret, never argv); a PR already open or merged for the version is recorded and nothing is written. status reads the pull request's state and review labels. flathub init writes the first submission's files, which a person opens against flathub/flathub's new-pr branch."
+      },
+      { text: CI_PARA }
+    ],
+    env: [CI_ENV]
+  },
+  {
+    name: "completion",
+    group: "shell",
+    summary: "Print a shell completion script",
+    rows: [["completion bash|zsh|fish", "Print a shell completion script"]],
+    tree: { bash: [], zsh: [], fish: [] },
+    usage: ["pkey completion bash|zsh|fish"],
+    about: [
+      {
+        text: `The script is generated from pkey's own command table: the commands, their subcommands and their flags. bash: eval "$(pkey completion bash)" in ~/.bashrc. zsh: eval "$(pkey completion zsh)" in ~/.zshrc, after compinit. fish: pkey completion fish > ~/.config/fish/completions/pkey.fish.`
+      }
+    ]
+  },
+  {
+    name: "help",
+    group: "shell",
+    summary: "Show this help, or one command's",
+    rows: [["help [command]", "Show this help, or one command's"]],
+    usage: ["pkey help [command]"],
+    about: [
+      {
+        text: "pkey <command> --help (or -h) prints the same as pkey help <command> and runs nothing. Colour is used only on a terminal; NO_COLOR, --no-color and a pipe give plain text, and --ascii (or TERM=dumb) ASCII symbols."
+      }
+    ]
+  }
+];
+var COMMON_OPTIONS = [
+  ["--product slug", "The product a command acts on"],
+  ["--base-url url", "The Polaris Key origin to talk to"],
+  ["--dry-run", "Check and print; upload and write nothing"],
+  ["--json", "One JSON object on stdout, where a command has it"],
+  ["--no-color", "Plain text (also NO_COLOR=1, or a pipe)"],
+  ["--ascii", "ASCII symbols only"],
+  ["-h, --help", "Help for pkey, or for one command"]
+];
+var VALUELESS = [
+  "--dry-run",
+  "--force",
+  "--no-config",
+  "--write",
+  "--check",
+  "--overwrite",
+  "--apply",
+  "--no-record",
+  "--strict",
+  "--content",
+  "--upload",
+  "--no-archive",
+  "--no-report",
+  "--setlive"
+];
+function findCommand(name) {
+  return COMMANDS.find((c) => c.name === name);
+}
+function twoColumns(term, rows, column, indent = 2) {
+  const { painter, caps } = term;
+  const descCol = indent + column + 2;
+  const width = Math.max(20, caps.columns - descCol);
+  const out = [];
+  for (const [t, text] of rows) {
+    const lines3 = wrapSpans([{ text, style: ["muted"] }], width);
+    const name = painter.style(t, ["strong"]);
+    const fits = cellWidth(t) <= column;
+    if (!fits) out.push(`${" ".repeat(indent)}${name}`);
+    lines3.forEach((l, i) => {
+      const body = painter.line(l);
+      out.push(
+        i === 0 && fits ? `${" ".repeat(indent)}${name}${" ".repeat(column - cellWidth(t) + 2)}${body}` : `${" ".repeat(descCol)}${body}`
+      );
+    });
+  }
+  return out;
+}
+function termColumn(term, terms, cap = term.caps.columns < 70 ? 18 : 26) {
+  return Math.min(
+    cap,
+    Math.max(0, ...terms.map(cellWidth).filter((w) => w <= cap))
+  );
+}
+function renderHelp(term) {
+  const { painter, symbols } = term;
+  const line = (spans) => painter.line(spans);
+  const allRows = COMMANDS.flatMap((c) => c.rows);
+  const column = termColumn(term, [
+    ...allRows.map(([t]) => t),
+    ...COMMON_OPTIONS.map(([t]) => t)
+  ]);
+  const out = [
+    line([
+      { text: "pkey", style: ["strong"] },
+      {
+        text: ` ${symbols.separator} Polaris Key platform CLI`,
+        style: ["muted"]
+      }
+    ]),
+    "",
+    line([
+      { text: "Usage", style: ["muted"] },
+      { text: "  pkey <command> [options]" }
+    ])
+  ];
+  for (const [group, heading] of GROUPS) {
+    const rows = COMMANDS.filter((c) => c.group === group).flatMap(
+      (c) => c.rows
+    );
+    if (!rows.length) continue;
+    out.push("", line([{ text: heading, style: ["strong"] }]));
+    out.push(...twoColumns(term, rows, column));
+  }
+  out.push("", line([{ text: "Options", style: ["strong"] }]));
+  out.push(...twoColumns(term, COMMON_OPTIONS, column));
+  out.push(
+    "",
+    line([
+      {
+        text: "Run pkey <command> --help for a command's options.",
+        style: ["muted"]
+      }
+    ])
+  );
+  return `${out.join("\n")}
+`;
+}
+function usageUnits(text) {
+  const raw = [];
+  let depth = 0;
+  let cur = "";
+  for (const ch of text) {
+    if (ch === "[" || ch === "(") depth += 1;
+    if (ch === "]" || ch === ")") depth -= 1;
+    if (ch === " " && depth === 0) {
+      if (cur) raw.push(cur);
+      cur = "";
+      continue;
+    }
+    cur += ch;
+  }
+  if (cur) raw.push(cur);
+  const units = [];
+  for (let i = 0; i < raw.length; i += 1) {
+    const u = raw[i];
+    const next = raw[i + 1];
+    if (u.startsWith("-") && next !== void 0 && !/^[-[(]/.test(next) && !u.includes("[")) {
+      units.push(`${u} ${next}`);
+      i += 1;
+    } else units.push(u);
+  }
+  return units;
+}
+function usageLines(term, cmd, text, indent = 2) {
+  const { painter, caps } = term;
+  const cont = indent + 4;
+  const units = usageUnits(text);
+  const isIn = (word, words2) => word !== void 0 && word.split("|").every((w2) => words2.includes(w2));
+  let lead = 2;
+  if (cmd.tree && isIn(units[2], Object.keys(cmd.tree))) {
+    lead = 3;
+    const next = cmd.tree[units[2].split("|")[0]] ?? [];
+    if (isIn(units[3], next)) lead = 4;
+  }
+  const lines3 = [[]];
+  let w = indent;
+  units.forEach((u, i) => {
+    const cur = lines3[lines3.length - 1];
+    const uw = cellWidth(u);
+    if (cur.length > 0 && w + 1 + uw > caps.columns) {
+      lines3.push([]);
+      w = cont;
+    }
+    const target = lines3[lines3.length - 1];
+    w += (target.length > 0 ? 1 : 0) + uw;
+    target.push(i < lead ? painter.style(u, ["strong"]) : u);
+  });
+  return lines3.map(
+    (l, i) => `${" ".repeat(i === 0 ? indent : cont)}${l.join(" ")}`
+  );
+}
+function usageSubs(cmd, text) {
+  if (!cmd.tree) return null;
+  const word = text.split(" ")[2] ?? "";
+  const subs = word.split("|");
+  return subs.every((s) => s in cmd.tree) ? subs : null;
+}
+function rowSubs(term) {
+  return (term.split(" ")[1] ?? "").split("|");
+}
+function paragraph(term, text, indent = 2) {
+  const width = Math.max(20, term.caps.columns - indent);
+  return wrapSpans([{ text }], width).map(
+    (l) => `${" ".repeat(indent)}${term.painter.line(l)}`
+  );
+}
+function renderCommandHelp(term, cmd, sub) {
+  const { painter, symbols } = term;
+  const line = (spans) => painter.line(spans);
+  const known = sub !== void 0 && cmd.tree !== void 0 && sub in cmd.tree;
+  const usage = cmd.usage.filter((u) => {
+    if (!known) return true;
+    const subs = usageSubs(cmd, u);
+    return subs === null || subs.includes(sub);
+  });
+  const about = (cmd.about ?? []).filter(
+    (p) => !known || !p.subs || p.subs.includes(sub)
+  );
+  const row2 = known ? cmd.rows.find(([t]) => rowSubs(t).includes(sub)) : void 0;
+  const title = known ? `pkey ${cmd.name} ${sub}` : `pkey ${cmd.name}`;
+  const out = [
+    line([
+      { text: title, style: ["strong"] },
+      {
+        text: ` ${symbols.separator} ${row2 ? row2[1] : cmd.summary}`,
+        style: ["muted"]
+      }
+    ]),
+    "",
+    line([{ text: "Usage", style: ["strong"] }])
+  ];
+  for (const u of usage) out.push(...usageLines(term, cmd, u));
+  for (const p of about) out.push("", ...paragraph(term, p.text));
+  const env = (cmd.env ?? []).filter(
+    (e) => !known || !e.subs || e.subs.includes(sub)
+  );
+  if (env.length) {
+    const rows = env.map((e) => [e.name, e.text]);
+    out.push("", line([{ text: "Environment", style: ["strong"] }]));
+    out.push(
+      ...twoColumns(
+        term,
+        rows,
+        termColumn(
+          term,
+          rows.map(([n]) => n)
+        )
+      )
+    );
+  }
+  const shown2 = usage.join(" ");
+  const valueless = VALUELESS.filter(
+    (f) => new RegExp(`${f}(?![\\w-])`).test(shown2)
+  );
+  if (valueless.length) {
+    const list2 = valueless.length === 1 ? valueless[0] : `${valueless.slice(0, -1).join(", ")} and ${valueless.at(-1)}`;
+    out.push(
+      "",
+      ...wrapSpans(
+        [
+          {
+            text: `Note: ${list2} ${valueless.length === 1 ? "takes" : "take"} no value. A valueless flag swallows the next bare word, so pass it last or as ${valueless[0]}=true.`,
+            style: ["muted"]
+          }
+        ],
+        term.caps.columns
+      ).map(line)
+    );
+  }
+  out.push(
+    "",
+    line([{ text: "Run pkey help for every command.", style: ["muted"] }])
+  );
+  return `${out.join("\n")}
+`;
+}
+var COMPLETION_SHELLS = [
+  "bash",
+  "zsh",
+  "fish"
+];
+var GLOBAL_FLAGS = ["--help", "-h", "--no-color", "--ascii"];
+function commandFlags(cmd) {
+  const named = cmd.usage.flatMap(
+    (u) => u.match(/--[a-z][a-z0-9-]*/g) ?? []
+  );
+  return [.../* @__PURE__ */ new Set([...named, ...GLOBAL_FLAGS])];
+}
+function completionTree() {
+  const nodes = [
+    {
+      path: [],
+      words: COMMANDS.map((c) => ({ word: c.name, text: c.summary }))
+    }
+  ];
+  const describe = (cmd, words2) => {
+    const term = [cmd.name, ...words2].join(" ");
+    const row2 = cmd.rows.find(([t]) => t === term) ?? (words2.length === 1 ? cmd.rows.find(([t]) => rowSubs(t).includes(words2[0])) : void 0);
+    return row2?.[1] ?? "";
+  };
+  for (const cmd of COMMANDS) {
+    if (cmd.name === "help") {
+      nodes.push({
+        path: ["help"],
+        words: COMMANDS.filter((c) => c.name !== "help").map((c) => ({
+          word: c.name,
+          text: c.summary
+        }))
+      });
+      continue;
+    }
+    if (!cmd.tree) continue;
+    nodes.push({
+      path: [cmd.name],
+      words: Object.keys(cmd.tree).map((w) => ({
+        word: w,
+        text: describe(cmd, [w])
+      }))
+    });
+    for (const [w, next] of Object.entries(cmd.tree))
+      if (next.length)
+        nodes.push({
+          path: [cmd.name, w],
+          words: next.map((n) => ({ word: n, text: describe(cmd, [w, n]) }))
+        });
+  }
+  return nodes;
+}
+var sq = (s) => s.replace(/'/g, "'\\''");
+function completionScript(shell) {
+  const tree = completionTree();
+  if (shell === "bash") {
+    const flagCases = COMMANDS.map(
+      (c) => `      ${c.name}) words="${commandFlags(c).join(" ")}" ;;`
+    );
+    const wordCases = tree.map(
+      (n) => `      "${n.path.join(" ")}") words="${n.words.map((w) => w.word).join(" ")}" ;;`
+    );
+    return [
+      '# pkey completion for bash. Add to ~/.bashrc:  eval "$(pkey completion bash)"',
+      "_pkey_complete() {",
+      '  local cur="${COMP_WORDS[COMP_CWORD]}" words=""',
+      '  local sofar="${COMP_WORDS[*]:1:COMP_CWORD-1}"',
+      '  if [[ "$cur" == -* ]]; then',
+      '    case "${COMP_WORDS[1]}" in',
+      ...flagCases,
+      `      *) words="${GLOBAL_FLAGS.join(" ")}" ;;`,
+      "    esac",
+      "  else",
+      '    case "$sofar" in',
+      ...wordCases,
+      "    esac",
+      "  fi",
+      '  COMPREPLY=( $(compgen -W "$words" -- "$cur") )',
+      "}",
+      "complete -o default -F _pkey_complete pkey",
+      ""
+    ].join("\n");
+  }
+  if (shell === "zsh") {
+    const flagCases = COMMANDS.map(
+      (c) => `      ${c.name}) opts=(${commandFlags(c).map((f) => `'${sq(f)}'`).join(" ")}) ;;`
+    );
+    const wordCases = tree.map(
+      (n) => `    '${sq(n.path.join(" "))}') cmds=(${n.words.map((w) => `'${sq(w.text ? `${w.word}:${w.text}` : w.word)}'`).join(" ")}) ;;`
+    );
+    return [
+      "#compdef pkey",
+      '# pkey completion for zsh. Add to ~/.zshrc (after compinit):  eval "$(pkey completion zsh)"',
+      "_pkey_complete() {",
+      "  local -a cmds opts",
+      "  local cur=$words[CURRENT]",
+      '  local sofar="${(j: :)words[2,CURRENT-1]}"',
+      "  if [[ $cur == -* ]]; then",
+      "    case $words[2] in",
+      ...flagCases,
+      `      *) opts=(${GLOBAL_FLAGS.map((f) => `'${f}'`).join(" ")}) ;;`,
+      "    esac",
+      "    compadd -- $opts",
+      "    return",
+      "  fi",
+      "  case $sofar in",
+      ...wordCases,
+      "    *) _files; return ;;",
+      "  esac",
+      "  _describe 'command' cmds",
+      "}",
+      "compdef _pkey_complete pkey",
+      ""
+    ].join("\n");
+  }
+  const lines3 = [
+    "# pkey completion for fish. Save as ~/.config/fish/completions/pkey.fish:",
+    "#   pkey completion fish > ~/.config/fish/completions/pkey.fish",
+    "# True when exactly these words follow pkey on the command line so far.",
+    "function __pkey_at",
+    "    set -l t (commandline -opc)",
+    "    test (count $t) -eq (math (count $argv) + 1); or return 1",
+    "    for i in (seq (count $argv))",
+    '        test "$t[(math $i + 1)]" = "$argv[$i]"; or return 1',
+    "    end",
+    "end",
+    "complete -c pkey -f",
+    ...tree.flatMap(
+      (n) => n.words.map(
+        (w) => `complete -c pkey -n '${sq(["__pkey_at", ...n.path].join(" "))}' -a '${sq(w.word)}'${w.text ? ` -d '${sq(w.text)}'` : ""}`
+      )
+    ),
+    "complete -c pkey -n '__pkey_at validate' -a '(__fish_complete_directories)'",
+    ...COMMANDS.flatMap(
+      (c) => commandFlags(c).filter((f) => f.startsWith("--") && !GLOBAL_FLAGS.includes(f)).map(
+        (f) => `complete -c pkey -n '__fish_seen_subcommand_from ${c.name}' -l '${sq(f.slice(2))}'`
+      )
+    ),
+    "complete -c pkey -s h -l help -d 'Help for pkey, or for one command'",
+    "complete -c pkey -l no-color -d 'Plain text'",
+    "complete -c pkey -l ascii -d 'ASCII symbols only'",
+    ""
+  ];
+  return lines3.join("\n");
+}
+
+// src/terminal.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+function termFor(out, env, flags = {}) {
+  const caps = detectTerminal({ env, stdout: out, flags });
+  return {
+    caps,
+    painter: new Painter(caps, null, {}, true),
+    symbols: symbolsFor(caps)
+  };
+}
+var BAR_WIDTH = 20;
+var Spinner = class {
+  constructor(err, env, flags = {}, ticker = realTicker) {
+    this.ticker = ticker;
+    this.term = termFor(err, env, flags);
+    this.region = this.term.caps.animate ? new LiveRegion(err, this.term.caps) : null;
+  }
+  ticker;
+  term;
+  region;
+  label = "";
+  done = 0;
+  total = 0;
+  frame = 0;
+  stopTicking = null;
+  /** False while the last write through `wrap` left the cursor mid-line. */
+  atLineStart = true;
+  /** Whether this spinner draws at all. */
+  get active() {
+    return this.region !== null;
+  }
+  stage(label) {
+    if (!this.region) return;
+    this.label = label;
+    this.done = 0;
+    this.total = 0;
+    if (!label) {
+      this.region.close();
+      return;
+    }
+    if (!this.stopTicking)
+      this.stopTicking = animate(
+        this.term.caps,
+        (frame) => {
+          this.frame = frame;
+          this.draw();
+        },
+        this.ticker
+      );
+    else this.draw();
+  }
+  advance(done, total) {
+    if (!this.region) return;
+    this.done = done;
+    this.total = total;
+    this.draw();
+  }
+  /** Stop ticking and erase the line (call it in a `finally`). */
+  stop() {
+    this.stopTicking?.();
+    this.stopTicking = null;
+    this.label = "";
+    this.region?.close();
+  }
+  /**
+   * `out`, erasing the spinner before each write so a command's own lines never land beside it;
+   * the next frame draws the spinner again below them. Off a terminal `out` comes back as is.
+   */
+  wrap(out) {
+    const region = this.region;
+    if (!region) return out;
+    const write = (chunk, ...rest) => {
+      region.close();
+      if (typeof chunk === "string" && chunk.length > 0)
+        this.atLineStart = chunk.endsWith("\n");
+      return out.write(
+        chunk,
+        ...rest
+      );
+    };
+    return {
+      write,
+      isTTY: out.isTTY,
+      columns: out.columns,
+      rows: out.rows
+    };
+  }
+  draw() {
+    if (!this.region || !this.label || !this.atLineStart) return;
+    this.region.draw([this.line()]);
+  }
+  /** One line, never wider than the terminal (a wrapped line would break the redraw). */
+  line() {
+    const { painter, symbols, caps } = this.term;
+    const frames = spinnerFrames(caps.unicode);
+    const glyph = painter.style(frames[this.frame % frames.length], ["muted"]);
+    const max = Math.max(10, caps.columns - 1);
+    const counted = this.total > 0;
+    const count = counted ? `${this.done}/${this.total}` : "";
+    const withBar = 3 + 2 + BAR_WIDTH + 1 + cellWidth(count);
+    const withCount = 3 + 2 + cellWidth(count);
+    if (counted && cellWidth(this.label) + withBar <= max) {
+      const bar = progressSpans(
+        this.done / this.total,
+        symbols,
+        BAR_WIDTH
+      );
+      return `${glyph}  ${this.label}  ${painter.line(bar)} ${painter.style(count, ["muted"])}`;
+    }
+    if (counted) {
+      const label = truncateEnd(
+        this.label,
+        Math.max(1, max - withCount),
+        symbols.ellipsis
+      );
+      return `${glyph}  ${label}  ${painter.style(count, ["muted"])}`;
+    }
+    return `${glyph}  ${truncateEnd(this.label, max - 3, symbols.ellipsis)}`;
+  }
+};
 
 // src/manifest.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -21206,7 +23133,7 @@ async function loadManifest(cwd) {
       );
   }
   const product = parseFile(productFile, await readFile(productFile, "utf8"));
-  if (!isRecord8(product))
+  if (!isRecord7(product))
     throw new Error(
       `${path2.relative(cwd, productFile)} must parse to an object.`
     );
@@ -21434,7 +23361,7 @@ function parseFile(file, raw) {
   if (file.endsWith(".json")) return JSON.parse(raw);
   return (0, import_yaml2.parse)(raw);
 }
-function isRecord8(value) {
+function isRecord7(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 function isProductModule(value) {
@@ -21442,301 +23369,6 @@ function isProductModule(value) {
 }
 function quoteYaml(value) {
   return JSON.stringify(value);
-}
-
-// src/oidc.ts
-init_define_PKEY_EMBEDDED_SCHEMAS();
-import { appendFile } from "node:fs/promises";
-
-// src/ci.ts
-init_define_PKEY_EMBEDDED_SCHEMAS();
-var defaultSleep = (ms) => new Promise((resolve2) => setTimeout(resolve2, ms));
-var MAX_ATTEMPTS = 4;
-var BASE_BACKOFF_MS = 1e3;
-var MAX_BACKOFF_MS = 3e4;
-var CiRequestError = class extends Error {
-  status;
-  reason;
-  retryable;
-  body;
-  constructor(message, status, body, retryable) {
-    super(message);
-    this.name = "CiRequestError";
-    this.status = status;
-    this.body = body;
-    this.reason = typeof body.reason === "string" ? body.reason : void 0;
-    this.retryable = retryable;
-  }
-};
-function normalizeBaseUrl(baseUrl) {
-  const raw = (baseUrl?.trim() || DEFAULT_BASE_URL).replace(/\/+$/, "");
-  let url;
-  try {
-    url = new URL(raw);
-  } catch {
-    throw new Error(`--base-url ${JSON.stringify(raw)} is not a URL.`);
-  }
-  if (url.protocol !== "https:" && url.hostname !== "localhost")
-    throw new Error(
-      `--base-url must be https (got ${url.protocol}//${url.host}); a CI token must never cross plain HTTP.`
-    );
-  return raw;
-}
-function ciClient(opts) {
-  const baseUrl = normalizeBaseUrl(opts.baseUrl);
-  const product = opts.product.trim();
-  if (!PRODUCT_SLUG_RE.test(product))
-    throw new Error(
-      `--product must be a product slug (got ${JSON.stringify(opts.product)}).`
-    );
-  const f = opts.fetchImpl ?? fetch;
-  const sleep = opts.sleep ?? defaultSleep;
-  const maxAttempts = opts.maxAttempts ?? MAX_ATTEMPTS;
-  const url = (path30) => `${baseUrl}/${encodeURIComponent(product)}/${path30.replace(/^\/+/, "")}`;
-  async function postJson(path30, p) {
-    const target = url(path30);
-    const auth = p.auth !== false;
-    if (auth && !opts.token)
-      throw new Error(`${p.what}: no CI token (this is a bug in pkey).`);
-    for (let attempt = 1; ; attempt++) {
-      const body = typeof p.body === "function" ? await p.body() : p.body;
-      let res;
-      try {
-        res = await f(target, {
-          method: "POST",
-          headers: {
-            accept: "application/json",
-            "content-type": "application/json",
-            ...auth ? { authorization: `Bearer ${opts.token}` } : {}
-          },
-          body: JSON.stringify(body)
-        });
-      } catch (e) {
-        throw new Error(
-          `${p.what}: could not reach ${target}: ${e.message}`
-        );
-      }
-      const parsed = await readBody(res);
-      if (res.ok) return parsed;
-      const retryable = parsed.retryable === true || p.retryRateLimit === true && res.status === 429 && parsed.reason === "rate_limited";
-      const err = new CiRequestError(
-        renderRefusal(p.what, target, res.status, parsed),
-        res.status,
-        parsed,
-        retryable
-      );
-      if (!retryable || attempt >= maxAttempts) throw err;
-      const wait = backoff(attempt, res.headers.get("retry-after"));
-      opts.log?.write(
-        `${p.what}: ${res.status} ${err.reason ?? ""} is retryable; attempt ${attempt + 1} of ${maxAttempts} in ${Math.round(wait / 1e3)}s
-`
-      );
-      await sleep(wait);
-    }
-  }
-  async function getJson(path30, p) {
-    const target = url(path30);
-    if (!opts.token)
-      throw new Error(`${p.what}: no CI token (this is a bug in pkey).`);
-    let res;
-    try {
-      res = await f(target, {
-        method: "GET",
-        headers: {
-          accept: "application/json",
-          authorization: `Bearer ${opts.token}`
-        }
-      });
-    } catch (e) {
-      throw new Error(
-        `${p.what}: could not reach ${target}: ${e.message}`
-      );
-    }
-    const parsed = await readBody(res);
-    if (res.ok) return parsed;
-    throw new CiRequestError(
-      renderRefusal(p.what, target, res.status, parsed),
-      res.status,
-      parsed,
-      false
-    );
-  }
-  return { baseUrl, product, url, postJson, getJson };
-}
-function backoff(attempt, retryAfter) {
-  const seconds = retryAfter ? Number(retryAfter) : NaN;
-  if (Number.isFinite(seconds) && seconds >= 0)
-    return Math.min(seconds * 1e3, MAX_BACKOFF_MS);
-  return Math.min(BASE_BACKOFF_MS * 2 ** (attempt - 1), MAX_BACKOFF_MS);
-}
-async function readBody(res) {
-  const text = await res.text().catch(() => "");
-  try {
-    const parsed = JSON.parse(text);
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed))
-      return parsed;
-  } catch {
-  }
-  const trimmed2 = text.trim();
-  return trimmed2 ? { message: clip2(trimmed2) } : {};
-}
-function renderRefusal(what, target, status, body) {
-  const reason = typeof body.reason === "string" ? body.reason : void 0;
-  const code = typeof body.error === "string" ? body.error : void 0;
-  const label = [String(status), reason ?? code].filter(Boolean).join(" ");
-  const lines3 = [`${what} failed (${label}) at ${target}`];
-  if (typeof body.message === "string") lines3.push(`  ${body.message}`);
-  if (typeof body.claim === "string")
-    lines3.push(`  failing claim: ${body.claim}`);
-  if (typeof body.key === "string") lines3.push(`  object: ${body.key}`);
-  if (Array.isArray(body.fields) && body.fields.length)
-    lines3.push(`  fields: ${body.fields.join(", ")}`);
-  if (Array.isArray(body.errors)) {
-    for (const e of body.errors.slice(0, 50)) {
-      const rec = e;
-      lines3.push(
-        `  ${String(rec.path ?? "")} ${String(rec.code ?? "")}: ${String(rec.message ?? "")}`
-      );
-    }
-  }
-  const hint = refusalHint(status, reason);
-  if (hint) lines3.push(hint);
-  return lines3.join("\n");
-}
-function refusalHint(status, reason) {
-  switch (reason) {
-    case "policy_mismatch":
-      return "The job's OIDC token does not satisfy the product's publisher policy. Check the workflow file and environment named in .pkey/release publishing.trustedPublisher, that a branch or tag ruleset protects the ref (ref_protected), and that the job runs on a GitHub-hosted runner. See /docs/build/ci/#troubleshooting.";
-    case "publisher_not_configured":
-      return "The product has no publisher policy: add publishing.trustedPublisher to .pkey/release and resync.";
-    case "invalid_oidc_token":
-      return "Request the OIDC token for the audience <base-url>/<product>/release/publish (pkey does this itself).";
-    case "missing_scope":
-      return "The CI token lacks this operation's scope; an operator grants scopes in the console.";
-    case "oidc_token_replayed":
-      return "Each OIDC token is exchanged once; pkey requests a fresh one per exchange, so another step reused it.";
-    case "ticket_redeemed":
-      return "This upload ticket was already redeemed by an earlier submit. Re-run the publish; it requests a new ticket, and an identical release is a no-op.";
-    case "rate_limited":
-      return "Rate limited. Wait a minute and re-run the job.";
-    default:
-      if (status === 401)
-        return "The CI token is missing, expired or revoked. OIDC tokens live 30 minutes; re-run the job.";
-      if (status === 404)
-        return "Not found: check --product and --base-url, and that the product has Release enabled.";
-      return "";
-  }
-}
-function clip2(value, max = 300) {
-  return value.length > max ? `${value.slice(0, max)}…` : value;
-}
-
-// src/oidc.ts
-var CI_TOKEN_ENV = "PKEY_CI_TOKEN";
-var CI_TOKEN_SHAPE = /^pkeyci_[A-Za-z0-9_-]{43,}$/;
-function publishAudience(baseUrl, product) {
-  return `${new URL(baseUrl).origin}/${product}/release/publish`;
-}
-function canRequestGithubOidc(env) {
-  return Boolean(
-    env.ACTIONS_ID_TOKEN_REQUEST_URL && env.ACTIONS_ID_TOKEN_REQUEST_TOKEN
-  );
-}
-function inGithubActions(env) {
-  return env.GITHUB_ACTIONS === "true";
-}
-function mask(env, out, value) {
-  if (inGithubActions(env) && value) out.write(`::add-mask::${value}
-`);
-}
-async function requestGithubOidcToken(env, audience, fetchImpl = fetch) {
-  const base = env.ACTIONS_ID_TOKEN_REQUEST_URL;
-  const bearer = env.ACTIONS_ID_TOKEN_REQUEST_TOKEN;
-  if (!base || !bearer)
-    throw new Error(
-      "This job cannot request a GitHub OIDC token: ACTIONS_ID_TOKEN_REQUEST_URL is unset. Grant the job `permissions: id-token: write` (and contents: read)."
-    );
-  const url = `${base}${base.includes("?") ? "&" : "?"}audience=${encodeURIComponent(audience)}`;
-  let res;
-  try {
-    res = await fetchImpl(url, {
-      headers: {
-        authorization: `bearer ${bearer}`,
-        accept: "application/json"
-      }
-    });
-  } catch (e) {
-    throw new Error(
-      `Could not reach the Actions OIDC endpoint: ${e.message}`
-    );
-  }
-  if (!res.ok)
-    throw new Error(
-      `The Actions OIDC endpoint answered ${res.status}. Check the job's id-token: write permission.`
-    );
-  const body = await res.json().catch(() => ({}));
-  if (typeof body.value !== "string" || body.value.split(".").length !== 3)
-    throw new Error("The Actions OIDC endpoint returned no token.");
-  return body.value;
-}
-async function exchangeGithubOidc(opts) {
-  const client = ciClient({
-    baseUrl: opts.baseUrl,
-    product: opts.product,
-    fetchImpl: opts.fetchImpl,
-    sleep: opts.sleep,
-    log: opts.log
-  });
-  const audience = publishAudience(client.baseUrl, client.product);
-  const body = await client.postJson(
-    "release/publish/token",
-    {
-      auth: false,
-      retryRateLimit: true,
-      what: "Exchanging the GitHub OIDC token",
-      body: async () => ({
-        token: await requestGithubOidcToken(opts.env, audience, opts.fetchImpl)
-      })
-    }
-  );
-  const token = typeof body.token === "string" ? body.token : "";
-  if (!CI_TOKEN_SHAPE.test(token))
-    throw new Error(
-      `${client.url("release/publish/token")} answered without a pkeyci_ token.`
-    );
-  mask(opts.env, opts.out, token);
-  return {
-    token,
-    expiresAt: typeof body.expiresAt === "number" ? body.expiresAt : 0,
-    scopes: Array.isArray(body.scopes) ? body.scopes.filter((s) => typeof s === "string") : []
-  };
-}
-async function authGithubOidc(opts) {
-  const githubEnv = opts.env.GITHUB_ENV;
-  if (!githubEnv || !canRequestGithubOidc(opts.env))
-    throw new Error(
-      `pkey auth github-oidc runs inside a GitHub Actions job with \`permissions: id-token: write\`. Elsewhere, export ${CI_TOKEN_ENV} with a static pkeyci_ token an operator issued.`
-    );
-  const issued = await exchangeGithubOidc(opts);
-  await appendFile(githubEnv, `${CI_TOKEN_ENV}=${issued.token}
-`, "utf8");
-  return issued;
-}
-async function resolveCiToken(opts) {
-  const fromEnv = opts.env[CI_TOKEN_ENV]?.trim();
-  if (fromEnv) {
-    if (!CI_TOKEN_SHAPE.test(fromEnv))
-      throw new Error(
-        `${CI_TOKEN_ENV} is set but is not a pkeyci_ token. Unset it to use the job's OIDC token.`
-      );
-    mask(opts.env, opts.out, fromEnv);
-    return fromEnv;
-  }
-  if (canRequestGithubOidc(opts.env))
-    return (await exchangeGithubOidc(opts)).token;
-  throw new Error(
-    `No CI credential. In GitHub Actions, grant the job \`permissions: id-token: write\` and pkey exchanges the job's OIDC token itself; elsewhere, export ${CI_TOKEN_ENV} with a static pkeyci_ token an operator issued in the console.`
-  );
 }
 
 // src/publish.ts
@@ -21868,7 +23500,7 @@ async function putFile(opts) {
       );
     const wait = BASE_BACKOFF_MS * 2 ** (attempt - 1);
     opts.log?.write(
-      `Uploading ${opts.key}: ${failure}; retrying (attempt ${attempt + 1} of ${maxAttempts})
+      `Uploading ${untrusted(opts.key, opts.env ?? {})}: ${untrusted(failure, opts.env ?? {})}; retrying (attempt ${attempt + 1} of ${maxAttempts})
 `
     );
     await sleep(wait);
@@ -22807,7 +24439,7 @@ function judgeContentInterface(answer, fingerprint2, contentApi, strict) {
       warning: null,
       note: "the channel serves no app release yet: nothing to compare"
     };
-  const name = `${String(prev.releaseId)}`;
+  const name = clean(String(prev.releaseId));
   if (typeof prev.sha256 !== "string")
     return {
       warning: null,
@@ -22818,7 +24450,7 @@ function judgeContentInterface(answer, fingerprint2, contentApi, strict) {
   if (prev.contentApi !== contentApi)
     return {
       warning: null,
-      note: `changed since ${name}, with contentApi ${String(prev.contentApi)} → ${String(contentApi)}`
+      note: `changed since ${name}, with contentApi ${clean(String(prev.contentApi))} → ${String(contentApi)}`
     };
   const warning = `the content interface changed since ${name} (${prev.sha256.slice(0, 12)}… → ${fingerprint2.slice(0, 12)}…), but contentApi is still ${String(contentApi)}: packs on that contentApi line may not have the content shape this build expects. Bump deliverables.app.content.contentApi${strict ? "" : ", or pass --strict to fail on this"}.`;
   if (strict) throw new Error(`--strict: ${warning}`);
@@ -26065,21 +27697,22 @@ async function markerPins(dir, ctx) {
   }
   return pins;
 }
-function describeContent(out, content, pins) {
-  out.write(`Content: contentApi ${content.contentApi}
+function describeContent(out, content, pins, env = {}) {
+  const u = (v) => untrusted(v, env);
+  out.write(`Content: contentApi ${u(content.contentApi)}
 `);
   if (content.pins.length === 0) out.write("  pins: none\n");
   for (const p of content.pins) {
     const src = pins.find((x) => x.pack === p.pack)?.source;
     const e = content.expects.find((x) => x.pack === p.pack);
     out.write(
-      `  pin ${p.pack}@${p.release.version} (seq ${p.release.seq}, record ${p.release.sha256.slice(0, 12)}…)${e ? ` ${e.required ? "required" : "optional"}, ${e.delivery}` : ""}${src ? ` — from ${src}` : ""}
+      `  pin ${u(p.pack)}@${u(p.release.version)} (seq ${u(p.release.seq)}, record ${u(String(p.release.sha256).slice(0, 12))}…)${e ? ` ${e.required ? "required" : "optional"}, ${u(e.delivery)}` : ""}${src ? ` — from ${u(src)}` : ""}
 `
     );
   }
   for (const h of content.holds ?? [])
     out.write(
-      `  hold ${h.pack}@${h.release.version} (seq ${h.release.seq}, record ${h.release.sha256.slice(0, 12)}…)${h.reason !== void 0 ? ` — ${h.reason}` : ""}
+      `  hold ${u(h.pack)}@${u(h.release.version)} (seq ${u(h.release.seq)}, record ${u(String(h.release.sha256).slice(0, 12))}…)${h.reason !== void 0 ? ` — ${u(h.reason)}` : ""}
 `
     );
 }
@@ -26130,7 +27763,8 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
       token,
       fetchImpl: opts.fetchImpl,
       sleep: opts.sleep,
-      log: opts.stderr
+      log: opts.stderr,
+      env: opts.env
     });
     await requirePacksDiscovery(client, opts.fetchImpl);
     pins.push(...await resolvePins(client, opts.pins ?? []));
@@ -26149,7 +27783,7 @@ ${problems.map((p) => `  ${p}`).join("\n")}`
     );
   const file = path5.resolve(opts.cwd, opts.out);
   await writeFile4(file, stampText(content));
-  describeContent(opts.stdout, content, merged);
+  describeContent(opts.stdout, content, merged, opts.env);
   opts.stdout.write(`Wrote ${path5.relative(opts.cwd, file) || file}
 `);
   return { content, file };
@@ -26444,6 +28078,9 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
     app.artifacts.map((e) => e.id)
   ) : {};
   const hashed = [];
+  const toHash = match.builds.reduce((n, b) => n + b.files.length, 0);
+  opts.progress?.stage(`Hashing ${toHash} file${toHash === 1 ? "" : "s"}`);
+  let hashedCount = 0;
   for (const b of match.builds) {
     const files = [];
     for (const f of b.files) {
@@ -26453,6 +28090,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
           `${f.name} is ${size} bytes; one upload is at most ${MAX_SINGLE_PUT_BYTES} bytes (a single-part PUT).`
         );
       files.push({ ...f, ...await hashFile(f.path) });
+      opts.progress?.advance(hashedCount += 1, toHash);
     }
     hashed.push({ entry: b.entry, files });
   }
@@ -26589,11 +28227,12 @@ ${local.errors.map((e) => `  ${e.path} ${e.code}: ${e.message}`).join("\n")}`
       descriptor.content?.contentApi ?? null,
       opts.strict === true
     );
-    out.write(`Content interface: ${verdict.note}
+    out.write(`Content interface: ${untrusted(verdict.note, opts.env)}
 `);
     if (verdict.warning) {
-      result.warnings.push(verdict.warning);
-      opts.stderr.write(`warning: ${verdict.warning}
+      const warning = untrusted(verdict.warning, opts.env);
+      result.warnings.push(warning);
+      opts.stderr.write(`warning: ${warning}
 `);
     }
   };
@@ -26606,7 +28245,7 @@ ${JSON.stringify(descriptor, null, 2)}
     );
     out.write("Local validation: ok\n");
     if (descriptor.content)
-      describeContent(out, descriptor.content, pinSources);
+      describeContent(out, descriptor.content, pinSources, opts.env);
     else if (pinsPending)
       out.write(
         "Content: --pin resolves through Polaris Key; shown once a CI credential is available\n"
@@ -26619,6 +28258,7 @@ ${JSON.stringify(descriptor, null, 2)}
         );
   }
   let token;
+  opts.progress?.stage("Getting a CI token");
   try {
     token = await resolveCiToken({
       baseUrl: opts.baseUrl,
@@ -26644,8 +28284,10 @@ ${JSON.stringify(record, null, 2)}
 `
         );
       }
-      out.write(`Server validation: skipped (${e.message})
-`);
+      out.write(
+        `Server validation: skipped (${untrusted(e.message, opts.env)})
+`
+      );
       return result;
     }
     throw e;
@@ -26656,7 +28298,8 @@ ${JSON.stringify(record, null, 2)}
     token,
     fetchImpl: opts.fetchImpl,
     sleep: opts.sleep,
-    log: opts.stderr
+    log: opts.stderr,
+    env: opts.env
   });
   if (packs.length > 0) await requirePacksDiscovery(client, opts.fetchImpl);
   if (pinsPending) {
@@ -26668,11 +28311,13 @@ ${JSON.stringify(record, null, 2)}
         `The release descriptor does not validate with its content:
 ${again.errors.map((e) => `  ${e.path} ${e.code}: ${e.message}`).join("\n")}`
       );
-    if (opts.dryRun) describeContent(out, descriptor.content, pinSources);
+    if (opts.dryRun)
+      describeContent(out, descriptor.content, pinSources, opts.env);
   }
   if (descriptor.content) result.content = descriptor.content;
   const objects = /* @__PURE__ */ new Map();
   for (const b of hashed) for (const f of b.files) objects.set(f.sha256, f);
+  opts.progress?.stage("Requesting an upload ticket");
   const ticket = asTicket(
     await client.postJson("release/publish/uploads", {
       what: "Requesting an upload ticket",
@@ -26744,6 +28389,11 @@ ${JSON.stringify(record, null, 2)}
       })).contentInterface
     );
   if (source === "r2") {
+    const toUpload = opts.dryRun ? 0 : ticket.objects.filter((o) => !o.present).length;
+    if (toUpload > 0)
+      opts.progress?.stage(
+        `Uploading ${toUpload} object${toUpload === 1 ? "" : "s"}`
+      );
     for (const o of ticket.objects) {
       if (o.present) {
         result.skipped.push(o.target);
@@ -26763,9 +28413,11 @@ ${JSON.stringify(record, null, 2)}
         sha256: file.sha256,
         fetchImpl: opts.fetchImpl,
         sleep: opts.sleep,
-        log: opts.stderr
+        log: opts.stderr,
+        env: opts.env
       });
       result.uploaded.push(o.target);
+      opts.progress?.advance(result.uploaded.length, toUpload);
     }
     if (!opts.dryRun)
       out.write(
@@ -26773,6 +28425,9 @@ ${JSON.stringify(record, null, 2)}
 `
       );
   }
+  opts.progress?.stage(
+    opts.dryRun ? "Validating the release (dry run)" : "Submitting the release"
+  );
   const server = await client.postJson("release/publish/submit", {
     what: opts.dryRun ? "Validating the release (dry run)" : "Submitting the release",
     body: {
@@ -26788,13 +28443,13 @@ ${JSON.stringify(record, null, 2)}
   if (opts.dryRun) {
     const unverified = Array.isArray(server.unverified) ? server.unverified.length : 0;
     out.write(
-      `Server validation: ok — would be ${String(server.outcome)} as ${String(server.releaseId)}${unverified ? ` (${unverified} object${unverified === 1 ? "" : "s"} judged as if uploaded)` : ""}
+      `Server validation: ok — would be ${untrusted(server.outcome, opts.env)} as ${untrusted(server.releaseId, opts.env)}${unverified ? ` (${unverified} object${unverified === 1 ? "" : "s"} judged as if uploaded)` : ""}
 `
     );
     out.write("Dry run: nothing uploaded, nothing written.\n");
   } else {
     out.write(
-      `Published ${String(server.releaseId)} (${String(server.outcome)})
+      `Published ${untrusted(server.releaseId, opts.env)} (${untrusted(server.outcome, opts.env)})
 `
     );
   }
@@ -26822,6 +28477,7 @@ var SDK_CONFIG_DEFAULT_OUT = {
   kotlin: "PolarisConfig.kt",
   godot: "polaris_key_config.gd"
 };
+var shown = (v) => untrusted(v, {});
 var PRODUCT_RE = /^[a-z0-9][a-z0-9_-]*$/;
 var KID_RE2 = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 var KEY_RE = /^[A-Za-z0-9_-]{43}$/;
@@ -26858,7 +28514,7 @@ function parseReleaseKeyFlags(values) {
     return { kid: v.slice(0, eq), publicKey: v.slice(eq + 1) };
   });
 }
-function isRecord9(v) {
+function isRecord8(v) {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 async function resolveSdkFacts(opts) {
@@ -26887,23 +28543,23 @@ async function resolveSdkFacts(opts) {
   } catch {
     throw new Error(`${discoveryUrl} did not answer JSON.`);
   }
-  if (!isRecord9(doc)) throw new Error(`${discoveryUrl} is not an object.`);
+  if (!isRecord8(doc)) throw new Error(`${discoveryUrl} is not an object.`);
   if (doc.product !== opts.product)
     throw new Error(
-      `Discovery names product ${JSON.stringify(doc.product)}, not ${opts.product}.`
+      `Discovery names product ${shown(JSON.stringify(doc.product))}, not ${opts.product}.`
     );
   if (doc.protocolVersion !== PROTOCOL_VERSION)
     throw new Error(
-      `Discovery speaks protocol ${String(doc.protocolVersion)}; this pkey speaks ${PROTOCOL_VERSION}. Update pkey or the server.`
+      `Discovery speaks protocol ${shown(doc.protocolVersion)}; this pkey speaks ${PROTOCOL_VERSION}. Update pkey or the server.`
     );
-  const trust = isRecord9(doc.trust) ? doc.trust : {};
-  const pins = isRecord9(trust.pinnedKeys) ? trust.pinnedKeys : {};
+  const trust = isRecord8(doc.trust) ? doc.trust : {};
+  const pins = isRecord8(trust.pinnedKeys) ? trust.pinnedKeys : {};
   const pinnedKeys = {};
   for (const kid of Object.keys(pins).sort()) {
     const key = pins[kid];
     if (!KID_RE2.test(kid) || typeof key !== "string" || !KEY_RE.test(key))
       throw new Error(
-        `Discovery's trust.pinnedKeys has a malformed entry (${kid}).`
+        `Discovery's trust.pinnedKeys has a malformed entry (${shown(kid)}).`
       );
     pinnedKeys[kid] = key;
   }
@@ -26916,12 +28572,12 @@ async function resolveSdkFacts(opts) {
         `Discovery does not pin ${kid} with the key you gave (--kid/--public-key); nothing was written. Compare the console's signing keys with ${discoveryUrl}.`
       );
   }
-  const services = isRecord9(doc.services) ? doc.services : {};
+  const services = isRecord8(doc.services) ? doc.services : {};
   const enabled = SERVICE_SLUGS.filter((slug) => {
     const s = services[slug];
-    return isRecord9(s) && s.enabled === true;
+    return isRecord8(s) && s.enabled === true;
   });
-  const release = isRecord9(services.release) ? services.release : {};
+  const release = isRecord8(services.release) ? services.release : {};
   const advertised = Array.isArray(release.releaseKeyFingerprints) ? release.releaseKeyFingerprints.filter(
     (f) => typeof f === "string"
   ) : [];
@@ -26953,7 +28609,7 @@ async function resolveSdkFacts(opts) {
   const undeclared = advertised.filter((fp) => !declaredPrints.has(fp));
   if (undeclared.length > 0)
     throw new Error(
-      `Discovery advertises ${undeclared.length} release key${undeclared.length === 1 ? "" : "s"} you did not declare (fingerprint ${undeclared.join(", ")}). Run pkey sdk in the product repo (it reads .pkey/release), or pass each key with --release-key <kid>=<key>.`
+      `Discovery advertises ${undeclared.length} release key${undeclared.length === 1 ? "" : "s"} you did not declare (fingerprint ${undeclared.map(shown).join(", ")}). Run pkey sdk in the product repo (it reads .pkey/release), or pass each key with --release-key <kid>=<key>.`
     );
   return {
     product: opts.product,
@@ -27895,7 +29551,8 @@ async function clientFor(opts) {
     token,
     fetchImpl: opts.fetchImpl,
     sleep: opts.sleep,
-    log: opts.stderr
+    log: opts.stderr,
+    env: opts.env
   });
 }
 async function movePointer(opts) {
@@ -29702,8 +31359,10 @@ Local validation: ok
       });
     } catch (e) {
       if (opts.dryRun && !(e instanceof CiRequestError)) {
-        out.write(`Server validation: skipped (${e.message})
-`);
+        out.write(
+          `Server validation: skipped (${untrusted(e.message, opts.env)})
+`
+        );
         return result;
       }
       throw e;
@@ -29714,7 +31373,8 @@ Local validation: ok
       token,
       fetchImpl: opts.fetchImpl,
       sleep: opts.sleep,
-      log: opts.stderr
+      log: opts.stderr,
+      env: opts.env
     });
     const objects = new Map(hashed.map((f) => [f.sha256, f]));
     const ticket = await client.postJson("release/publish/uploads", {
@@ -29746,7 +31406,7 @@ Local validation: ok
     if (opts.dryRun) {
       result.server = verdict;
       out.write(
-        `Server validation: ok — would be ${String(verdict.outcome)} as ${String(verdict.releaseId)}
+        `Server validation: ok — would be ${untrusted(verdict.outcome, opts.env)} as ${untrusted(verdict.releaseId, opts.env)}
 Dry run: nothing uploaded, nothing written.
 `
       );
@@ -29770,7 +31430,8 @@ Dry run: nothing uploaded, nothing written.
         sha256: file.sha256,
         fetchImpl: opts.fetchImpl,
         sleep: opts.sleep,
-        log: opts.stderr
+        log: opts.stderr,
+        env: opts.env
       });
       result.uploaded.push(o.target);
     }
@@ -29784,7 +31445,7 @@ Dry run: nothing uploaded, nothing written.
     });
     result.server = server;
     out.write(
-      `Published ${String(server.releaseId)} (${String(server.outcome)})
+      `Published ${untrusted(server.releaseId, opts.env)} (${untrusted(server.outcome, opts.env)})
 `
     );
     return result;
@@ -30501,12 +32162,15 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
       token,
       fetchImpl: opts.fetchImpl,
       sleep: opts.sleep,
-      log: opts.stderr
+      log: opts.stderr,
+      env: opts.env
     });
   } catch (e) {
     if (!opts.dryRun || e instanceof CiRequestError) throw e;
-    out.write(`Server checks: skipped (${e.message})
-`);
+    out.write(
+      `Server checks: skipped (${untrusted(e.message, opts.env)})
+`
+    );
   }
   let seq = 1;
   if (client) {
@@ -30517,7 +32181,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
     );
     if (reused)
       throw new Error(
-        `The key ${fingerprint2.slice(0, 12)}… is already named by delegation ${reused.sha256.slice(0, 12)}… (${reused.deliverable}, seq ${reused.seq}${reused.revoked ? ", revoked" : ""}): one content key, one delegation. Generate a new key to rotate.`
+        `The key ${fingerprint2.slice(0, 12)}… is already named by delegation ${untrusted(String(reused.sha256).slice(0, 12), opts.env)}… (${untrusted(reused.deliverable, opts.env)}, seq ${untrusted(reused.seq, opts.env)}${reused.revoked ? ", revoked" : ""}): one content key, one delegation. Generate a new key to rotate.`
       );
     if (listed.nextSeq === void 0)
       throw new Error(
@@ -30597,7 +32261,7 @@ Content kid: ${kid}
     );
   }
   out.write(
-    `Delegated ${opts.prefix} to ${kid} (${String(server.outcome ?? "submitted")})
+    `Delegated ${opts.prefix} to ${kid} (${untrusted(server.outcome ?? "submitted", opts.env)})
 `
   );
   return { record, jws, sha256: sha2566, kid, server };
@@ -32268,6 +33932,7 @@ function markerPathFor(type, location) {
 }
 async function publishPack(opts) {
   const out = opts.stdout;
+  const u = (v) => untrusted(v, opts.env);
   const warnings = [];
   const warn = (w) => {
     warnings.push(w);
@@ -32327,7 +33992,11 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
 `);
   const root = path14.resolve(opts.cwd, opts.dir);
   const variants = [];
-  for (const v of declaredVariants(pack))
+  const declared = declaredVariants(pack);
+  opts.progress?.stage(
+    `Checking ${declared.length} variant${declared.length === 1 ? "" : "s"} of ${packId}`
+  );
+  for (const v of declared)
     variants.push(
       await loadVariant(pack, v, root, {
         ...ctx.app?.content?.attachable ? { attachable: ctx.app.content.attachable } : {},
@@ -32392,10 +34061,14 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
   try {
     const z = zstdCli(work, opts.zstdBin);
     const built = /* @__PURE__ */ new Map();
+    opts.progress?.stage(
+      `Building and hashing ${variants.length} payload${variants.length === 1 ? "" : "s"}`
+    );
     for (const v of variants) {
       const b = await buildPayload(z, v.payload);
       await selfCheckPayload(z, b);
       built.set(v.key, b);
+      opts.progress?.advance(built.size, variants.length);
     }
     out.write(
       `Self-check: every files index parses and rebuilds its payload byte for byte (zstd ${z.version})
@@ -32421,6 +34094,7 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
         );
     }
     let client = null;
+    opts.progress?.stage("Asking Polaris Key about earlier releases");
     try {
       const token = await resolveCiToken({
         baseUrl: opts.baseUrl,
@@ -32437,12 +34111,15 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
         token,
         fetchImpl: opts.fetchImpl,
         sleep: opts.sleep,
-        log: opts.stderr
+        log: opts.stderr,
+        env: opts.env
       });
     } catch (e) {
       if (!opts.dryRun || e instanceof CiRequestError) throw e;
-      out.write(`Server checks: skipped (${e.message})
-`);
+      out.write(
+        `Server checks: skipped (${untrusted(e.message, opts.env)})
+`
+      );
     }
     if (client) {
       const discovery = await requirePacksDiscovery(client, opts.fetchImpl);
@@ -32472,7 +34149,7 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
         });
         sign2 = opts.signRecord ?? content.sign;
         out.write(
-          `Delegation ${opts.delegation.slice(0, 12)}…: ${content.delegation.deliverable} for ${content.delegation.types.join(", ")}; signing as ${content.kid.slice(0, 17)}…
+          `Delegation ${opts.delegation.slice(0, 12)}…: ${u(content.delegation.deliverable)} for ${content.delegation.types.map(u).join(", ")}; signing as ${u(content.kid.slice(0, 17))}…
 `
         );
       } else
@@ -32525,7 +34202,7 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
       seq = mine.seq;
       gate = mine.entitlement;
       out.write(
-        `Release ${releaseId}: seq ${seq}; delivery gate: ${gate ?? "none (ungated)"}
+        `Release ${releaseId}: seq ${seq}; delivery gate: ${gate == null ? "none (ungated)" : u(gate)}
 `
       );
       if (pack.entitlement !== null && pack.entitlement !== gate)
@@ -32600,6 +34277,7 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
         );
       }
     }
+    opts.progress?.stage("Building the objects and deltas");
     const objects = /* @__PURE__ */ new Map();
     const addObject = (bytes, label) => {
       const sha2566 = sha256Hex2(bytes);
@@ -32807,6 +34485,7 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
     const list2 = [...objects.values()];
     if (opts.dryRun) {
       if (client) {
+        opts.progress?.stage("Asking which objects are stored");
         let present2 = 0;
         for (let i = 0; i < list2.length; i += STAGE_ROUND_OBJECTS) {
           const ticket = await requestTicket(
@@ -32822,16 +34501,17 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
 `
         );
       }
-      const { seq: _seq, ...shown } = record;
+      const { seq: _seq, ...shown2 } = record;
       out.write(
         `
 Pack record (unsigned; a dry run signs nothing${seq === void 0 ? "; seq is the preflight's answer" : ""}):
-${JSON.stringify(seq === void 0 ? shown : record, null, 2)}
+${JSON.stringify(seq === void 0 ? shown2 : record, null, 2)}
 `
       );
       out.write("Dry run: nothing uploaded, signed or written.\n");
       return result;
     }
+    opts.progress?.stage("Signing the pack record");
     const jws = await sign2(record);
     if (jws.length > MAX_RECORD_JWS_BYTES)
       throw new Error(
@@ -32862,18 +34542,30 @@ ${JSON.stringify(seq === void 0 ? shown : record, null, 2)}
       }
     const objDir = path14.join(work, "objects");
     await mkdir3(objDir, { recursive: true });
+    opts.progress?.stage(
+      `Uploading ${list2.length} object${list2.length === 1 ? "" : "s"}`
+    );
     for (let i = 0; i < list2.length; i += STAGE_ROUND_OBJECTS) {
       const round = list2.slice(i, i + STAGE_ROUND_OBJECTS);
       let attempt = 0;
       for (; ; ) {
         try {
-          await stageRound(client, round, gated, packId, objDir, opts, result);
+          await stageRound(
+            client,
+            round,
+            gated,
+            packId,
+            objDir,
+            opts,
+            result,
+            list2.length
+          );
           break;
         } catch (e) {
           attempt += 1;
           if (attempt > 1 || !(e instanceof CiRequestError)) throw e;
           opts.stderr.write(
-            `Stage round failed (${e.message.split("\n")[0]}); retrying with a new ticket
+            `Stage round failed (${u(e.message.split("\n")[0])}); retrying with a new ticket
 `
           );
         }
@@ -32883,17 +34575,18 @@ ${JSON.stringify(seq === void 0 ? shown : record, null, 2)}
       `Uploaded ${result.uploaded.length} object${result.uploaded.length === 1 ? "" : "s"}; ${result.skipped.length} already stored
 `
     );
+    opts.progress?.stage("Submitting the pack record");
     const server = await client.postJson("release/publish/submit", {
       what: "Submitting the pack record",
       body: { record: jws }
     });
     result.server = server;
     out.write(
-      `Published ${String(server.releaseId ?? releaseId)} (${String(server.outcome)})
+      `Published ${u(server.releaseId ?? releaseId)} (${u(server.outcome)})
 `
     );
     if (Array.isArray(server.warnings)) {
-      for (const w of server.warnings) if (typeof w === "string") warn(w);
+      for (const w of server.warnings) if (typeof w === "string") warn(u(w));
     }
     const marker2 = markerJson(packId, version, jws);
     for (const v of variants) {
@@ -32967,7 +34660,7 @@ async function requestTicket(client, objects, gated, opts) {
   mask(opts.env, opts.stdout, t.credentials.sessionToken);
   return t;
 }
-async function stageRound(client, round, gated, packId, objDir, opts, result) {
+async function stageRound(client, round, gated, packId, objDir, opts, result, objectTotal) {
   const ticket = await requestTicket(client, round, gated, opts);
   const bySha = new Map(round.map((o) => [o.sha256, o]));
   const answered = new Set(ticket.objects.map((o) => o.sha256));
@@ -33000,9 +34693,14 @@ async function stageRound(client, round, gated, packId, objDir, opts, result) {
       sha256: obj.sha256,
       fetchImpl: opts.fetchImpl,
       sleep: opts.sleep,
-      log: opts.stderr
+      log: opts.stderr,
+      env: opts.env
     });
     uploaded.push(o.target);
+    opts.progress?.advance(
+      result.uploaded.length + result.skipped.length + uploaded.length,
+      objectTotal
+    );
   }
   if (uploaded.length > 0)
     await client.postJson("release/publish/stage", {
@@ -33164,7 +34862,8 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
     token,
     fetchImpl: opts.fetchImpl,
     sleep: opts.sleep,
-    log: opts.stderr
+    log: opts.stderr,
+    env: opts.env
   });
   await requireRevocationsDiscovery(client, opts.fetchImpl);
   const flags = [`${pack}@${version}`];
@@ -33204,7 +34903,7 @@ ${jws}
     { what: "Submitting the revocation record", body: { record: jws } }
   );
   out.write(
-    `Revoked ${pack}@${version} (${String(server.outcome ?? "submitted")})
+    `Revoked ${pack}@${version} (${untrusted(server.outcome ?? "submitted", opts.env)})
 `
   );
   return { record, jws, sha256: sha2566, server };
@@ -33258,7 +34957,8 @@ ${REVOKE_DELEGATION_USAGE}`
     token,
     fetchImpl: opts.fetchImpl,
     sleep: opts.sleep,
-    log: opts.stderr
+    log: opts.stderr,
+    env: opts.env
   });
   await requireRevocationsDiscovery(client, opts.fetchImpl);
   await requireDelegationsDiscovery(client, opts.fetchImpl);
@@ -33316,7 +35016,7 @@ ${signed}
     }
   );
   out.write(
-    `Revoked delegation ${hash.slice(0, 12)}… (${String(server.outcome ?? "submitted")}); every pack release signed under it is refused from now on.
+    `Revoked delegation ${hash.slice(0, 12)}… (${untrusted(server.outcome ?? "submitted", opts.env)}); every pack release signed under it is refused from now on.
 `
   );
   return { record, jws: signed, sha256: sha2566, server, supplied };
@@ -33348,7 +35048,8 @@ async function clientFor2(opts) {
     token,
     fetchImpl: opts.fetchImpl,
     sleep: opts.sleep,
-    log: opts.stderr
+    log: opts.stderr,
+    env: opts.env
   });
 }
 function normalizeFingerprint2(raw) {
@@ -33432,25 +35133,26 @@ async function reportDistribution(opts) {
     what,
     body: payload
   });
+  const u = (v) => untrusted(v, opts.env);
   if (opts.type === "key") {
     const key = body.key ?? {};
     if (key.match === true) {
       opts.stdout.write(
-        `The ${String(key.purpose)} key ${String(key.sha256)} is in the key inventory.
+        `The ${u(key.purpose)} key ${u(key.sha256)} is in the key inventory.
 `
       );
       return { body, ok: true };
     }
     opts.stderr.write(
-      `The ${String(key.purpose)} key ${String(key.sha256)} is NOT in the product's key inventory. Polaris Key flagged it for an operator; the inventory is unchanged. If the key was rotated on purpose, an operator adopts it in the console (Distribution → Keys).
+      `The ${u(key.purpose)} key ${u(key.sha256)} is NOT in the product's key inventory. Polaris Key flagged it for an operator; the inventory is unchanged. If the key was rotated on purpose, an operator adopts it in the console (Distribution → Keys).
 `
     );
     return { body, ok: false };
   }
   const rec = body[opts.type] ?? {};
-  const target = `${String(rec.releaseId)}${rec.buildId ? `/${String(rec.buildId)}` : ""}`;
+  const target = `${u(rec.releaseId)}${rec.buildId ? `/${u(rec.buildId)}` : ""}`;
   opts.stdout.write(
-    `Reported ${opts.type} of ${target} on ${String(rec.outletId)}: ${String(rec.state)}
+    `Reported ${opts.type} of ${target} on ${u(rec.outletId)}: ${u(rec.state)}
 `
   );
   return { body, ok: true };
@@ -33485,9 +35187,10 @@ ${DISTRIBUTION_CI_USAGE}`
       ...bp !== void 0 ? { bp } : {}
     }
   });
+  const u = (v) => untrusted(v, opts.env);
   const r = body.rollout ?? {};
   opts.stdout.write(
-    `${String(r.deliverableId)} ${String(r.releaseId)} on ${String(r.outletId)}/${String(r.channel)}: ${String(r.state)} at ${Number(r.rolloutBp) / 100}%
+    `${u(r.deliverableId)} ${u(r.releaseId)} on ${u(r.outletId)}/${u(r.channel)}: ${u(r.state)} at ${Number(r.rolloutBp) / 100}%
 `
   );
   return body;
@@ -33908,7 +35611,7 @@ var AscApi = class {
       if (!r.ok)
         throw new AscUploadError(
           "asc-http-error",
-          `${method} ${p} answered ${r.status}: ${text.slice(0, 500)}`
+          `${method} ${p} answered ${r.status}: ${untrusted(text.slice(0, 500), {})}`
         );
       return text ? JSON.parse(text) : {};
     }
@@ -34001,6 +35704,7 @@ async function baUpload(o) {
   const expected = recorded?.resource ?? o.expectResource;
   const creds = await ascCredentials(o);
   const api = new AscApi(creds, o.fetchImpl ?? fetch, o.sleep ?? defaultSleep);
+  const u = (v2) => untrusted(v2, o.env);
   const found = await api.call(
     "GET",
     `/v1/apps/${encodeURIComponent(appId)}/backgroundAssets?filter[assetPackIdentifier]=${encodeURIComponent(assetPackId)}`
@@ -34015,12 +35719,12 @@ async function baUpload(o) {
     if (expected === void 0)
       throw new AscUploadError(
         "asset-pack-unrecorded",
-        `App Store Connect already has asset pack ${assetPackId} (resource ${resource}), but ${path18.relative(o.cwd, lockFile)} records none. Confirm in App Store Connect that it is ${product.pack.id}'s, then pass --expect-resource ${resource}.`
+        `App Store Connect already has asset pack ${assetPackId} (resource ${u(resource)}), but ${path18.relative(o.cwd, lockFile)} records none. Confirm in App Store Connect that it is ${product.pack.id}'s, then pass --expect-resource ${u(resource)}.`
       );
     if (resource !== expected)
       throw new AscUploadError(
         "asset-pack-resource-mismatch",
-        `asset pack ${assetPackId} is resource ${resource}, but ${expected} is recorded: refusing to upload into another pack's asset pack.`
+        `asset pack ${assetPackId} is resource ${u(resource)}, but ${expected} is recorded: refusing to upload into another pack's asset pack.`
       );
   } else {
     if (expected !== void 0)
@@ -34038,7 +35742,7 @@ async function baUpload(o) {
     resource = r.data.id;
     created = true;
     o.stdout.write(
-      `Created asset pack ${assetPackId} (resource ${resource})
+      `Created asset pack ${assetPackId} (resource ${u(resource)})
 `
     );
   }
@@ -34055,7 +35759,7 @@ async function baUpload(o) {
     await mkdir6(path18.dirname(lockFile), { recursive: true });
     await writeFile12(lockFile, prettyJson(lock));
     o.stdout.write(
-      `Recorded ${assetPackId} → ${resource} in ${path18.relative(o.cwd, lockFile)}: commit it, so later uploads can prove the asset pack is this pack's.
+      `Recorded ${assetPackId} → ${u(resource)} in ${path18.relative(o.cwd, lockFile)}: commit it, so later uploads can prove the asset pack is this pack's.
 `
     );
   }
@@ -34070,7 +35774,7 @@ async function baUpload(o) {
   const version = v.data;
   const ascVersion = typeof version.attributes?.version === "number" ? version.attributes.version : typeof version.attributes?.version === "string" && /^[0-9]+$/.test(version.attributes.version) ? Number(version.attributes.version) : null;
   o.stdout.write(
-    `Created version ${ascVersion ?? "?"} of ${assetPackId} (${version.id})
+    `Created version ${ascVersion ?? "?"} of ${assetPackId} (${u(version.id)})
 `
   );
   await uploadFile(api, o, version.id, manifestFile, "MANIFEST");
@@ -34087,7 +35791,7 @@ async function baUpload(o) {
     if ((o.now?.() ?? Date.now()) >= until) break;
     await (o.sleep ?? defaultSleep)(3e4);
   }
-  if (state) o.stdout.write(`Version ${version.id}: ${state}
+  if (state) o.stdout.write(`Version ${u(version.id)}: ${u(state)}
 `);
   if (state === "FAILED")
     throw new AscUploadError(
@@ -35962,7 +37666,7 @@ function githubClient(o = {}) {
       parsed = null;
     }
     if (res.ok) return parsed;
-    const message = parsed && typeof parsed === "object" && "message" in parsed ? String(parsed.message) : `HTTP ${res.status}`;
+    const message = parsed && typeof parsed === "object" && "message" in parsed ? untrusted(parsed.message, {}) : `HTTP ${res.status}`;
     const remaining = res.headers.get("x-ratelimit-remaining");
     throw new GitHubError(
       `GitHub ${method} ${path30.split("?")[0]}: ${res.status} ${message}${remaining === "0" ? " (the token's rate limit is spent; retry after X-RateLimit-Reset)" : ""}`,
@@ -36351,7 +38055,7 @@ async function runStoreSteps(steps, o) {
   if (o.dryRun) {
     for (const step of steps)
       o.stdout.write(
-        `Would run: ${commandLine(o.toolPath ?? step.tool, step.argv)}
+        `Would run: ${untrusted(commandLine(o.toolPath ?? step.tool, step.argv), o.env)}
 `
       );
     return steps.map((step) => ({ step, outcome: "dry-run", exitCode: null }));
@@ -36373,7 +38077,8 @@ async function runStoreSteps(steps, o) {
       token,
       fetchImpl: o.fetchImpl,
       sleep: o.sleep,
-      log: o.stderr
+      log: o.stderr,
+      env: o.env
     });
   }
   const runId = stepRunId(o.env);
@@ -36393,7 +38098,10 @@ async function runStoreSteps(steps, o) {
       ...exitCode2 !== void 0 ? { exitCode: exitCode2 } : {},
       ...runUrl ? { runUrl } : {}
     });
-    const line = commandLine(o.toolPath ?? step.tool, step.argv);
+    const line = untrusted(
+      commandLine(o.toolPath ?? step.tool, step.argv),
+      o.env
+    );
     if (client) {
       let opened;
       try {
@@ -36548,10 +38256,10 @@ function tag(t) {
 }
 var str3 = (v) => typeof v === "string" && v.trim() !== "" ? v : void 0;
 function yamlFile(kind, body) {
-  const clean = Object.fromEntries(
+  const clean2 = Object.fromEntries(
     Object.entries(body).filter(([, v]) => v !== void 0 && v !== null)
   );
-  const doc = new import_yaml4.Document(clean);
+  const doc = new import_yaml4.Document(clean2);
   doc.commentBefore = ` Created with Polaris Key (pkey storefront winget)
  yaml-language-server: $schema=https://aka.ms/winget-manifest.${kind}.${WINGET_MANIFEST_VERSION}.schema.json`;
   return doc.toString({ lineWidth: 0 });
@@ -36870,7 +38578,8 @@ async function reporter(o) {
     token,
     fetchImpl: o.fetchImpl,
     sleep: o.sleep,
-    log: o.stderr
+    log: o.stderr,
+    env: o.env
   });
   return {
     post: (body, what) => client.postJson("distribution/report", { what, body })
@@ -36892,7 +38601,8 @@ async function inputsClient(o) {
     token,
     fetchImpl: o.fetchImpl,
     sleep: o.sleep,
-    log: o.stderr
+    log: o.stderr,
+    env: o.env
   });
 }
 function needStore(id) {
@@ -36930,18 +38640,21 @@ async function runPrStep(o) {
     plan.argv,
     plan.files.map((f) => f.path)
   );
-  for (const w of plan.warnings) o.stderr.write(`warning: ${w}
+  const u = (v) => untrusted(v, o.env);
+  for (const w of plan.warnings) o.stderr.write(`warning: ${u(w)}
 `);
-  const line = commandLine(store.list.tool, plan.argv);
+  const line = u(commandLine(store.list.tool, plan.argv));
   if (o.dryRun) {
     o.stdout.write(
       `Would open: ${line}
-  ${plan.title} (${plan.repo}, branch ${plan.branch})
+  ${u(plan.title)} (${u(plan.repo)}, branch ${u(plan.branch)})
 `
     );
     for (const f of plan.files)
-      o.stdout.write(`  ${f.path} (${Buffer.byteLength(f.content)} bytes)
-`);
+      o.stdout.write(
+        `  ${u(f.path)} (${Buffer.byteLength(f.content)} bytes)
+`
+      );
     if (o.outDir) {
       for (const f of plan.files) {
         const target = path22.resolve(o.cwd, o.outDir, f.path);
@@ -36974,7 +38687,7 @@ async function runPrStep(o) {
   const existing = await existingPull(github, plan, headOwner);
   if (existing) {
     o.stdout.write(
-      `A pull request for ${key} is already ${existing.merged ? "merged" : "open"}: ${existing.url}
+      `A pull request for ${u(key)} is already ${existing.merged ? "merged" : "open"}: ${u(existing.url)}
 `
     );
     if (rep) {
@@ -37009,7 +38722,7 @@ async function runPrStep(o) {
       }
     if (same) {
       o.stdout.write(
-        `${plan.repo} already carries ${plan.version} on ${baseBranch}: nothing to open.
+        `${u(plan.repo)} already carries ${u(plan.version)} on ${u(baseBranch)}: nothing to open.
 `
       );
       return { outcome: "unchanged", plan, pr: null, verdict: null };
@@ -37080,7 +38793,7 @@ Created with Polaris Key (pkey storefront ${store.store} pr).`;
       }),
       `Reporting the ${store.store} step pull-request`
     );
-  o.stdout.write(`Opened ${pr.url}
+  o.stdout.write(`Opened ${u(pr.url)}
 `);
   return { outcome: "opened", plan, pr, verdict: prVerdict(store, pr) };
 }
@@ -37108,8 +38821,9 @@ async function runPrStatus(o) {
   const pr = candidates.find((p) => p.state === "open") ?? candidates.find((p) => p.merged) ?? candidates[0] ?? null;
   if (!pr) throw new Error(`No pull request for ${key} on ${repo}.`);
   const verdict = prVerdict(store, pr);
+  const u = (v) => untrusted(v, o.env);
   o.stdout.write(
-    `${pr.url}: ${verdict}${pr.labels.length ? ` (${pr.labels.join(", ")})` : ""}
+    `${u(pr.url)}: ${u(verdict)}${pr.labels.length ? ` (${pr.labels.map(u).join(", ")})` : ""}
 `
   );
   const rep = await reporter(o);
@@ -37151,13 +38865,14 @@ async function writeFlathubInit(o) {
     o.outlet
   );
   const { files, warnings } = generateFlathubSkeleton(inputs, o.generator);
-  for (const w of warnings) o.stderr.write(`warning: ${w}
+  const u = (v) => untrusted(v, o.env);
+  for (const w of warnings) o.stderr.write(`warning: ${u(w)}
 `);
   for (const f of files) {
     const target = path22.resolve(o.cwd, o.outDir, f.path);
     await mkdir9(path22.dirname(target), { recursive: true });
     await writeFile15(target, f.content, "utf8");
-    o.stdout.write(`Wrote ${path22.join(o.outDir, f.path)}
+    o.stdout.write(`Wrote ${u(path22.join(o.outDir, f.path))}
 `);
   }
   o.stdout.write(
@@ -37318,7 +39033,8 @@ async function writeSnapMetadata(o) {
     token,
     fetchImpl: o.fetchImpl,
     sleep: o.sleep,
-    log: o.stderr
+    log: o.stderr,
+    env: o.env
   });
   const body = await client.getJson(
     "distribution/listing/snap",
@@ -37330,7 +39046,7 @@ async function writeSnapMetadata(o) {
   if (o.dryRun) {
     o.stdout.write(
       `Would write into ${o.yamlPath}:
-  summary: ${fields.summary}
+  summary: ${untrusted(fields.summary, o.env)}
   description: ${fields.description.length} characters
 `
     );
@@ -37338,7 +39054,7 @@ async function writeSnapMetadata(o) {
   }
   if (next !== current) await writeFile16(o.yamlPath, next, "utf8");
   o.stdout.write(
-    `${next === current ? "Unchanged" : "Wrote"} the Snap listing's summary and description in ${o.yamlPath} (${body.listing.defaultLocale}).
+    `${next === current ? "Unchanged" : "Wrote"} the Snap listing's summary and description in ${o.yamlPath} (${untrusted(body.listing.defaultLocale, o.env)}).
 `
   );
   return fields;
@@ -37965,16 +39681,16 @@ async function staleOutFiles(dir, cwd) {
     }
     const pattern2 = OUT_DIRS[name];
     if (pattern2 && st.isDirectory()) {
-      let clean = true;
+      let clean2 = true;
       for (const inner of (await readdir10(full)).sort()) {
         const f = path24.join(full, inner);
         if (pattern2.test(inner) && (await lstat3(f)).isFile()) files.push(f);
         else {
           foreign.push(path24.join(name, inner));
-          clean = false;
+          clean2 = false;
         }
       }
-      if (clean) dirs.push(full);
+      if (clean2) dirs.push(full);
       continue;
     }
     foreign.push(name);
@@ -37985,7 +39701,7 @@ async function staleOutFiles(dir, cwd) {
     );
   return { files, dirs };
 }
-async function currentIndex(inputs, fetchImpl, log) {
+async function currentIndex(inputs, fetchImpl, log, env) {
   const reg = inputs.files.find((f) => f.path === "index-v2.json");
   if (!reg) return null;
   try {
@@ -37996,7 +39712,7 @@ async function currentIndex(inputs, fetchImpl, log) {
     return JSON.parse(bytes.toString("utf8"));
   } catch (e) {
     log.write(
-      `warning: could not read the current index (${e.message}); no diff is written.
+      `warning: could not read the current index (${untrusted(e.message, env)}); no diff is written.
 `
     );
     return null;
@@ -38025,20 +39741,23 @@ ${FEEDS_USAGE}`);
     token,
     fetchImpl: opts.fetchImpl,
     sleep: opts.sleep,
-    log: opts.stderr
+    log: opts.stderr,
+    env: opts.env
   });
   const route = `distribution/feeds/fdroid/${encodeURIComponent(opts.channel.trim())}`;
   const inputs = await client.getJson(route, {
     what: "Reading the F-Droid feed inputs"
   });
+  const u = (v) => untrusted(v, opts.env);
   out.write(
-    `F-Droid ${inputs.channel}: ${inputs.versions.length} APK${inputs.versions.length === 1 ? "" : "s"} for ${inputs.packageName ?? "(no package)"}
+    `F-Droid ${u(inputs.channel)}: ${inputs.versions.length} APK${inputs.versions.length === 1 ? "" : "s"} for ${u(inputs.packageName ?? "(no package)")}
 `
   );
   const previous = await currentIndex(
     inputs,
     opts.fetchImpl ?? fetch,
-    opts.stderr
+    opts.stderr,
+    opts.env
   );
   const now = (opts.now ?? Date.now)();
   const prevTs = previous?.repo?.timestamp ?? 0;
@@ -38143,7 +39862,8 @@ ${FEEDS_USAGE}`);
       sha256: f.sha256,
       fetchImpl: opts.fetchImpl,
       sleep: opts.sleep,
-      log: opts.stderr
+      log: opts.stderr,
+      env: opts.env
     });
     result.uploaded.push(f.path);
   }
@@ -38156,12 +39876,12 @@ ${FEEDS_USAGE}`);
   });
   result.registered = true;
   out.write(
-    `Registered ${all.length} files for ${inputs.channel} (${result.uploaded.length} uploaded): ${inputs.repo.address}
+    `Registered ${all.length} files for ${u(inputs.channel)} (${result.uploaded.length} uploaded): ${u(inputs.repo.address)}
 `
   );
   if (inputs.repo.fingerprints.length)
     out.write(
-      `Add with: ${inputs.repo.address}?fingerprint=${inputs.repo.fingerprints[0]}
+      `Add with: ${u(inputs.repo.address)}?fingerprint=${u(inputs.repo.fingerprints[0])}
 `
     );
   else
@@ -38231,8 +39951,9 @@ ${FEEDS_SETUP_USAGE}`);
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var MAX_ROUNDS = 50;
 var FEEDS_PRUNE_USAGE = "Usage: pkey feeds prune --product <slug> [--deliverable id] [--apply] [--json] [--base-url url]";
-function formatBytes(n) {
-  if (n < 1e3) return `${n} B`;
+function formatBytes(bytes) {
+  const n = Number(bytes);
+  if (!(n >= 1e3)) return `${n} B`;
   const units = ["kB", "MB", "GB", "TB"];
   let v = n;
   let u = -1;
@@ -38242,30 +39963,32 @@ function formatBytes(n) {
   }
   return `${v.toFixed(1)} ${units[u]}`;
 }
-function renderPruneReport(r) {
+function renderPruneReport(r, env = {}) {
+  const u = (v) => untrusted(v, env);
   const lines3 = [];
   const verb = r.dryRun ? "Would prune" : "Pruned";
   lines3.push(
-    `${r.dryRun ? "Dry run: nothing was deleted." : "Applied."} Product ${r.product} (automatic retention ${r.prunePrereleases ? "on" : "off"}).`
+    `${r.dryRun ? "Dry run: nothing was deleted." : "Applied."} Product ${u(r.product)} (automatic retention ${r.prunePrereleases ? "on" : "off"}).`
   );
   for (const p of r.packages) {
     lines3.push(
-      `${p.ecosystem} ${p.name}: newest stable ${p.stable}; ${verb.toLowerCase()} ${p.prune.length} build${p.prune.length === 1 ? "" : "s"} of main, ${formatBytes(p.bytes)} (${formatBytes(p.freedBytes)} freed)`
+      `${u(p.ecosystem)} ${u(p.name)}: newest stable ${u(p.stable)}; ${verb.toLowerCase()} ${p.prune.length} build${p.prune.length === 1 ? "" : "s"} of main, ${formatBytes(p.bytes)} (${formatBytes(p.freedBytes)} freed)`
     );
     for (const v of p.prune)
       lines3.push(
-        `  - ${v.version}  ${v.files} file${v.files === 1 ? "" : "s"}, ${formatBytes(v.bytes)} (${formatBytes(v.freedBytes)} freed)`
+        `  - ${u(v.version)}  ${u(v.files)} file${v.files === 1 ? "" : "s"}, ${formatBytes(v.bytes)} (${formatBytes(v.freedBytes)} freed)`
       );
-    for (const k of p.kept) lines3.push(`  = ${k.version}  kept (${k.reason})`);
+    for (const k of p.kept)
+      lines3.push(`  = ${u(k.version)}  kept (${u(k.reason)})`);
     for (const s of p.skipped ?? [])
       lines3.push(
-        `  ~ ${s.version}  skipped (${s.reason} since the plan; kept)`
+        `  ~ ${u(s.version)}  skipped (${u(s.reason)} since the plan; kept)`
       );
     for (const f of p.failed ?? [])
-      lines3.push(`  ! ${f.version}  failed: ${f.error}`);
+      lines3.push(`  ! ${u(f.version)}  failed: ${u(f.error)}`);
   }
   for (const s of r.skipped)
-    lines3.push(`${s.deliverableId}: skipped (no stable release yet)`);
+    lines3.push(`${u(s.deliverableId)}: skipped (no stable release yet)`);
   const skipped = r.totals.skipped ?? 0;
   lines3.push(
     `Total: ${verb.toLowerCase()} ${r.totals.versions} version${r.totals.versions === 1 ? "" : "s"}, ${formatBytes(r.totals.bytes)}, of which ${formatBytes(r.totals.freedBytes)} is referenced by nothing else.${skipped ? ` ${skipped} skipped: held since the plan, kept.` : ""}${r.totals.failed ? ` ${r.totals.failed} failed: run it again.` : ""}`
@@ -38294,7 +40017,8 @@ ${FEEDS_PRUNE_USAGE}`);
     token,
     fetchImpl: opts.fetchImpl,
     sleep: opts.sleep,
-    log: opts.stderr
+    log: opts.stderr,
+    env: opts.env
   });
   const ask = () => client.postJson("release/packages/prune", {
     what: opts.apply ? "Pruning builds of main" : "Planning the prune",
@@ -38321,8 +40045,8 @@ ${FEEDS_PRUNE_USAGE}`);
     };
   }
   opts.stdout.write(
-    opts.json ? `${JSON.stringify(report, null, 2)}
-` : renderPruneReport(report)
+    opts.json ? `${untrustedJson(report, 2)}
+` : renderPruneReport(report, opts.env)
   );
   return report;
 }
@@ -38796,7 +40520,7 @@ Re-run to review and apply it.`
         );
       }
       throw new Error(
-        `Importing at ${url} failed (409): ${String(payload2.message ?? payload2.reason ?? "conflict")}`
+        `Importing at ${url} failed (409): ${untrusted(payload2.message ?? payload2.reason ?? "conflict", {})}`
       );
     }
     if (!res.ok) throw await httpError(res, `Importing at ${url}`, listingHint);
@@ -38815,14 +40539,15 @@ Re-run to review and apply it.`
   });
   return result;
 }
-function show2(v) {
+function show2(v, env) {
   const s = JSON.stringify(v) ?? "null";
-  return s.length > 72 ? `${s.slice(0, 71)}…` : s;
+  return untrusted(s.length > 72 ? `${s.slice(0, 71)}…` : s, env);
 }
-function formatImport(r) {
+function formatImport(r, env = {}) {
+  const u = (v) => untrusted(v, env);
   const lines3 = [];
   if (r.presets.length) lines3.push(`Presets read: ${r.presets.join(", ")}`);
-  for (const w of r.warnings) lines3.push(`warning: ${w}`);
+  for (const w of r.warnings) lines3.push(`warning: ${u(w)}`);
   const imp = r.import;
   if (!imp) {
     lines3.push(JSON.stringify(r.upload, null, 2));
@@ -38830,28 +40555,33 @@ function formatImport(r) {
   }
   if (imp.createsListing)
     lines3.push(
-      `The product has no listing yet: this creates it (default locale ${imp.defaultLocale}).`
+      `The product has no listing yet: this creates it (default locale ${u(imp.defaultLocale)}).`
     );
   if (!imp.changes.length)
     lines3.push("No changes: the listing already holds what the project has.");
-  const width = Math.max(0, ...imp.changes.map((c) => c.field.length));
+  const width = Math.max(0, ...imp.changes.map((c) => u(c.field).length));
   for (const c of imp.changes) {
-    const value = c.action === "replace" ? `${show2(c.current)} -> ${show2(c.proposed)}` : c.action === "keep" ? `${show2(c.current)} (kept: ${c.reason ?? "kept"}; godot has ${show2(c.proposed)})` : show2(c.proposed);
-    lines3.push(`  ${c.action.padEnd(7)}  ${c.field.padEnd(width)}  ${value}`);
+    const value = c.action === "replace" ? `${show2(c.current, env)} -> ${show2(c.proposed, env)}` : c.action === "keep" ? `${show2(c.current, env)} (kept: ${u(c.reason ?? "kept")}; godot has ${show2(c.proposed, env)})` : show2(c.proposed, env);
+    lines3.push(
+      `  ${u(c.action).padEnd(7)}  ${u(c.field).padEnd(width)}  ${value}`
+    );
   }
-  for (const x of imp.refused) lines3.push(`refused  ${x.field}: ${x.message}`);
+  for (const x of imp.refused)
+    lines3.push(`refused  ${u(x.field)}: ${u(x.message)}`);
   for (const i of imp.identifiers) {
-    const where2 = i.outlets.length ? i.outlets.map((o) => `${o.outlet} ${o.matches ? "matches" : `has ${o.value}`}`).join(", ") : "no outlet declares one";
-    lines3.push(`${i.kind} (${i.platform}) ${i.value}: ${where2}`);
+    const where2 = i.outlets.length ? i.outlets.map(
+      (o) => `${u(o.outlet)} ${o.matches ? "matches" : `has ${u(o.value)}`}`
+    ).join(", ") : "no outlet declares one";
+    lines3.push(`${u(i.kind)} (${u(i.platform)}) ${u(i.value)}: ${where2}`);
   }
   for (const a of imp.assets)
     lines3.push(
-      `icon ${a.slot}: ${a.ref}${a.width && a.height ? ` (${a.width}x${a.height})` : ""}; upload it with pkey listing assets`
+      `icon ${u(a.slot)}: ${u(a.ref)}${a.width && a.height ? ` (${u(a.width)}x${u(a.height)})` : ""}; upload it with pkey listing assets`
     );
   const applicable = imp.changes.filter((c) => c.action !== "keep").length;
   if (imp.applied)
     lines3.push(
-      imp.written.length ? `Applied ${imp.written.length} change${imp.written.length === 1 ? "" : "s"}: ${imp.written.join(", ")}` : "Nothing to apply."
+      imp.written.length ? `Applied ${imp.written.length} change${imp.written.length === 1 ? "" : "s"}: ${imp.written.map(u).join(", ")}` : "Nothing to apply."
     );
   else if (applicable)
     lines3.push(
@@ -40169,6 +41899,7 @@ ${LISTING_ASSETS_USAGE}`);
   const dir = path26.resolve(opts.cwd, opts.out);
   if (existsSync2(dir) && !(await stat9(dir)).isDirectory())
     throw new Error(`--out ${opts.out} is not a directory.`);
+  opts.progress?.stage("Reading the masters");
   const masterList = (await Promise.all([
     loadMaster(opts.cwd, "icon-master", opts.icon),
     loadMaster(opts.cwd, "key-art", opts.keyArt),
@@ -40188,6 +41919,7 @@ ${LISTING_ASSETS_USAGE}`);
     );
   const background = opts.background ? parseColor(opts.background) : defaultBackground(icon2);
   const shots = await loadScreenshots(opts.cwd, opts.screenshots);
+  opts.progress?.stage("Deriving, composing and fitting");
   const slots = deriveAll(masters, { focal, focalPortrait, background });
   const fitted = fitScreenshots(shots, accepted, background);
   if (fitted.unused.length)
@@ -40212,6 +41944,11 @@ ${LISTING_ASSETS_USAGE}`);
     packEntries.set(store, list2);
   };
   const reportSlots = [];
+  const encodeTotal = slots.filter((s) => s.raster).length + fitted.outputs.filter((s) => s.raster).length;
+  let encoded = 0;
+  opts.progress?.stage(
+    `Encoding ${encodeTotal} image${encodeTotal === 1 ? "" : "s"}`
+  );
   for (const s of slots) {
     const entry = {
       slot: s.spec.slot,
@@ -40224,6 +41961,7 @@ ${LISTING_ASSETS_USAGE}`);
     if (s.raster) {
       const n = s.spec.alpha ? 4 : 3;
       const bytes = await encodeImage(s.raster, s.spec.format, s.spec.alpha);
+      opts.progress?.advance(encoded += 1, encodeTotal);
       const ext = s.spec.format === "jpeg" ? "jpg" : "png";
       const rel2 = `${s.spec.store}/${s.spec.name}.${ext}`;
       await writeRel(rel2, bytes);
@@ -40274,6 +42012,7 @@ ${LISTING_ASSETS_USAGE}`);
     };
     if (s.raster) {
       const bytes = await encodeImage(s.raster, "png", false);
+      opts.progress?.advance(encoded += 1, encodeTotal);
       const rel2 = s.status === "pending" ? `proposals/${s.store}/${s.cls}/${s.name}.png` : `screenshots/${s.store}/${s.cls}/${String(s.index).padStart(2, "0")}-${s.name}.png`;
       await writeRel(rel2, bytes);
       Object.assign(entry, {
@@ -40308,6 +42047,7 @@ ${LISTING_ASSETS_USAGE}`);
     }
     reportShots.push(entry);
   }
+  opts.progress?.stage("Writing the store packs and the report");
   const packs = [];
   for (const store of PACK_STORES) {
     const entries = packEntries.get(store);
@@ -40370,6 +42110,7 @@ ${LISTING_ASSETS_USAGE}`);
     `${JSON.stringify(report, null, 2)}
 `
   );
+  opts.progress?.stage("");
   const relDir = path26.relative(opts.cwd, dir);
   const rel = relDir === "" ? "." : relDir.startsWith("..") ? dir : relDir;
   const count = (st) => reportSlots.filter((s) => s.status === st).length;
@@ -40505,7 +42246,8 @@ ${LISTING_ASSETS_USAGE}`);
     token,
     fetchImpl: opts.fetchImpl,
     sleep: opts.sleep,
-    log: opts.stderr
+    log: opts.stderr,
+    env: opts.env
   });
   const unique = new Map(rows.map((r) => [r.sha256, r]));
   const ticket = await client.postJson("release/publish/uploads", {
@@ -40522,6 +42264,9 @@ ${LISTING_ASSETS_USAGE}`);
   mask(opts.env, out, ticket.ticket);
   mask(opts.env, out, ticket.credentials.secretAccessKey);
   mask(opts.env, out, ticket.credentials.sessionToken);
+  opts.progress?.stage(
+    `Uploading ${ticket.objects.length} listing asset${ticket.objects.length === 1 ? "" : "s"}`
+  );
   for (const o of ticket.objects) {
     const r = unique.get(o.sha256);
     if (!r)
@@ -40536,17 +42281,20 @@ ${LISTING_ASSETS_USAGE}`);
       sha256: r.sha256,
       fetchImpl: opts.fetchImpl,
       sleep: opts.sleep,
-      log: opts.stderr
+      log: opts.stderr,
+      env: opts.env
     });
     result.uploaded.push(r.slot);
+    opts.progress?.advance(result.uploaded.length, ticket.objects.length);
   }
+  opts.progress?.stage("Registering the listing assets");
   const answer = await client.postJson("distribution/listing/assets", {
     what: "Registering the listing assets",
     body: { ticket: ticket.ticket, assets: body }
   });
   result.registered = { stored: answer.stored ?? [], kept: answer.kept ?? [] };
   out.write(
-    `Registered ${result.registered.stored.length} listing assets for ${opts.product}` + (answer.kept?.length ? `; kept ${answer.kept.length} the operator uploaded (${answer.kept.map((k) => k.slot).join(", ")})` : "") + ". Nothing was pushed to a store: accept each output in the console first.\n"
+    `Registered ${result.registered.stored.length} listing assets for ${opts.product}` + (answer.kept?.length ? `; kept ${answer.kept.length} the operator uploaded (${answer.kept.map((k) => untrusted(k?.slot, opts.env)).join(", ")})` : "") + ". Nothing was pushed to a store: accept each output in the console first.\n"
   );
   writeNotUploaded();
   if (pending.length)
@@ -40658,7 +42406,8 @@ async function pushAssets(opts) {
     token,
     fetchImpl: opts.fetchImpl,
     sleep: opts.sleep,
-    log: opts.stderr
+    log: opts.stderr,
+    env: opts.env
   });
   const unique = new Map(files.map((f) => [f.sha256, f]));
   const ticket = await client.postJson("release/publish/uploads", {
@@ -40689,7 +42438,8 @@ async function pushAssets(opts) {
       sha256: f.sha256,
       fetchImpl: opts.fetchImpl,
       sleep: opts.sleep,
-      log: opts.stderr
+      log: opts.stderr,
+      env: opts.env
     });
   }
   const answer = await client.postJson("assets", {
@@ -40710,18 +42460,20 @@ async function pushAssets(opts) {
     kept: answer.kept ?? [],
     refused: answer.refused ?? []
   };
+  const u = (v) => untrusted(v, opts.env);
+  const at = (slot, locale) => where(u(slot), locale ? u(locale) : void 0);
   for (const s of result.stored)
     out.write(
-      `Hosted ${where(s.slot, s.locale)}: ${s.size} bytes, sha256 ${s.sha256}
+      `Hosted ${at(s.slot, s.locale)}: ${u(s.size)} bytes, sha256 ${u(s.sha256)}
 `
     );
   for (const k of result.kept)
     out.write(
-      `Kept ${where(k.slot, k.locale)}: ${k.reason === "console" ? "the console's upload wins" : "the manifest names this slot"}
+      `Kept ${at(k.slot, k.locale)}: ${k.reason === "console" ? "the console's upload wins" : "the manifest names this slot"}
 `
     );
   for (const r of result.refused)
-    opts.stderr.write(`Refused ${where(r.slot, r.locale)}: ${r.reason}
+    opts.stderr.write(`Refused ${at(r.slot, r.locale)}: ${u(r.reason)}
 `);
   out.write(
     `Pushed to ${opts.product}: ${result.stored.length} hosted, ${result.kept.length} kept, ${result.refused.length} refused.
@@ -40814,33 +42566,70 @@ async function resolveAssetMap(base, lines3) {
 }
 
 // src/index.ts
+function globalFlags(argv2) {
+  const rest = [];
+  const flags = { help: false };
+  for (let i = 0; i < argv2.length; i += 1) {
+    const arg = argv2[i];
+    if (arg === "--") {
+      rest.push(...argv2.slice(i));
+      break;
+    }
+    if (arg === "--help" || arg === "-h" || arg.startsWith("--help="))
+      flags.help = true;
+    else if (arg === "--no-color") flags.color = false;
+    else if (arg === "--color") flags.color = true;
+    else if (arg === "--ascii") flags.ascii = true;
+    else rest.push(arg);
+  }
+  return { argv: rest, flags };
+}
 async function runPkey(argv2, io = {}) {
-  const parsed = parseArgs(argv2);
+  const env = io.env ?? process.env;
+  const stdout = guardOutput(io.stdout ?? process.stdout, env);
+  const stderr = guardOutput(io.stderr ?? process.stderr, env);
+  try {
+    return await runCommand(argv2, {
+      ...io,
+      env,
+      stdout: stdout.stream,
+      stderr: stderr.stream
+    });
+  } finally {
+    stdout.flush();
+    stderr.flush();
+  }
+}
+async function runCommand(argv2, io) {
+  const global = globalFlags(argv2);
+  const parsed = parseArgs(global.argv);
   const cwd = io.cwd ?? process.cwd();
-  const stdout = io.stdout ?? process.stdout;
-  const stderr = io.stderr ?? process.stderr;
+  const { stdout, stderr } = io;
   const ci = {
-    env: io.env ?? process.env,
+    env: io.env,
     fetchImpl: io.fetchImpl,
     sleep: io.sleep
   };
+  const g = { color: global.flags.color, ascii: global.flags.ascii };
+  const term = (out) => termFor(out, ci.env, g);
+  if (global.flags.help || parsed.command === "help") {
+    const words2 = parsed.command === "help" ? parsed.positional : [parsed.command, ...parsed.positional];
+    return cmdHelp(words2, stdout, stderr, term);
+  }
   try {
     switch (parsed.command) {
-      case "help":
-      case "--help":
-      case "-h":
-        stdout.write(helpText());
-        return 0;
       case "init":
         return await cmdInit(parsed, cwd, stdout);
       case "validate":
-        return await cmdValidate(cwd, stdout);
+        return await cmdValidate(parsed, cwd, stdout, term(stdout));
+      case "completion":
+        return cmdCompletion(parsed, stdout, stderr);
       case "distribution":
         return await cmdDistribution(parsed, cwd, stdout, stderr, ci);
       case "doctor":
-        return await cmdDoctor(parsed, cwd, stdout);
+        return await cmdDoctor(parsed, cwd, stdout, term(stdout), ci.env);
       case "bundle":
-        return await cmdBundle(parsed, cwd, stdout);
+        return await cmdBundle(parsed, cwd, stdout, ci.env);
       case "trust":
         return cmdTrust(parsed, stdout);
       case "sdk":
@@ -40850,13 +42639,13 @@ async function runPkey(argv2, io = {}) {
       case "auth":
         return await cmdAuth(parsed, stdout, stderr, ci);
       case "release":
-        return await cmdRelease(parsed, cwd, stdout, stderr, ci);
+        return await cmdRelease(parsed, cwd, stdout, stderr, ci, g);
       case "manifest":
         return await cmdManifest(parsed, cwd, stdout);
       case "feeds":
         return await cmdFeeds(parsed, cwd, stdout, stderr, ci);
       case "listing":
-        return await cmdListing(parsed, cwd, stdout, stderr, ci);
+        return await cmdListing(parsed, cwd, stdout, stderr, ci, g);
       case "assets":
         return await cmdAssets(parsed, cwd, stdout, stderr, ci);
       case "transport":
@@ -40871,17 +42660,47 @@ async function runPkey(argv2, io = {}) {
           { cwd, stdout, stderr, ...ci }
         );
       default:
-        stderr.write(`Unknown command "${parsed.command}".
+        stderr.write(
+          `Unknown command "${parsed.command}".
 
-${helpText()}`);
+${renderHelp(term(stderr))}`
+        );
         return 2;
     }
   } catch (err) {
-    stderr.write(`${err.message}
+    stderr.write(`${untrustedLines(err.message, ci.env)}
 `);
     return 1;
   }
 }
+function cmdHelp(words2, stdout, stderr, term) {
+  const [name, sub] = words2;
+  if (name === void 0) {
+    stdout.write(renderHelp(term(stdout)));
+    return 0;
+  }
+  const cmd = findCommand(name);
+  if (!cmd) {
+    stderr.write(`Unknown command "${name}".
+
+${renderHelp(term(stderr))}`);
+    return 2;
+  }
+  stdout.write(renderCommandHelp(term(stdout), cmd, sub));
+  return 0;
+}
+var COMPLETION_USAGE = `Usage: pkey completion ${COMPLETION_SHELLS.join("|")}`;
+function cmdCompletion(parsed, stdout, stderr) {
+  const shell = parsed.positional[0];
+  if (parsed.positional.length !== 1 || !COMPLETION_SHELLS.includes(shell)) {
+    stderr.write(`${COMPLETION_USAGE}
+`);
+    return 2;
+  }
+  stdout.write(completionScript(shell));
+  return 0;
+}
+var VALUELESS_FLAGS = /* @__PURE__ */ new Set(["json"]);
 function parseArgs(argv2) {
   const [command = "help", ...rest] = argv2;
   const flags = {};
@@ -40909,7 +42728,7 @@ function parseArgs(argv2) {
       continue;
     }
     const next = rest[i + 1];
-    if (next && !next.startsWith("--")) {
+    if (next && !next.startsWith("--") && !VALUELESS_FLAGS.has(rawKey2)) {
       add5(rawKey2, next);
       i += 1;
     } else {
@@ -40944,41 +42763,140 @@ async function cmdInit(parsed, cwd, stdout) {
   stdout.write("\nNext: pkey validate\n");
   return 0;
 }
-async function cmdValidate(cwd, stdout) {
-  const manifest = await loadManifest(cwd);
+var VALIDATE_USAGE = "Usage: pkey validate [path] [--json]";
+async function cmdValidate(parsed, cwd, stdout, term) {
+  if (parsed.positional.length > 1) throw new Error(VALIDATE_USAGE);
+  const target = parsed.positional[0];
+  const dir = target === void 0 ? cwd : path28.resolve(cwd, target);
+  if (flagBool(parsed, "json")) return validateJson(dir, cwd, stdout);
+  return validateText(dir, cwd, stdout, term);
+}
+async function validateText(dir, cwd, stdout, term) {
+  const manifest = await loadManifest(dir);
   const result = validateLoadedManifest(manifest);
-  stdout.write(`Manifest: ${result.ok ? "valid" : "invalid"}
-`);
-  stdout.write(
-    `Modules: ${result.enabledModules.length ? result.enabledModules.join(", ") : "none"}
-`
-  );
+  const { painter, symbols, caps } = term;
+  const rows = [];
+  const mark = (glyph, role) => painter.style(glyph, [role]);
+  rows.push({
+    mark: result.ok ? mark(symbols.ok, "success") : mark(symbols.fail, "danger"),
+    spans: [
+      {
+        text: `Manifest: ${result.ok ? "valid" : "invalid"}`,
+        style: ["strong"]
+      }
+    ]
+  });
+  rows.push({
+    mark: " ",
+    spans: [
+      { text: "Modules: ", style: ["muted"] },
+      {
+        text: result.enabledModules.length ? result.enabledModules.join(", ") : "none"
+      }
+    ]
+  });
   if (result.requiredSecrets.length)
-    stdout.write(`Required secrets: ${result.requiredSecrets.join(", ")}
-`);
+    rows.push({
+      mark: " ",
+      spans: [
+        { text: "Required secrets: ", style: ["muted"] },
+        { text: result.requiredSecrets.join(", ") }
+      ]
+    });
+  const message = (kind, at, text) => {
+    const role = kind === "warning" ? "warning" : "danger";
+    return {
+      mark: mark(kind === "warning" ? symbols.warn : symbols.fail, role),
+      spans: [
+        { text: `${kind} `, style: [role] },
+        ...at,
+        { text: `: ${text}` }
+      ]
+    };
+  };
   for (const warning of manifest.fileWarnings ?? [])
-    stdout.write(`warning .pkey/: ${warning}
-`);
-  for (const warning of result.warnings) {
-    stdout.write(
-      `warning ${located(manifest, cwd, warning)}: ${warning.message}
-`
+    rows.push(message("warning", [{ text: ".pkey/" }], warning));
+  for (const warning of result.warnings)
+    rows.push(
+      message("warning", pointerSpans(manifest, cwd, warning), warning.message)
     );
-  }
-  for (const error of result.errors) {
-    stdout.write(`error ${located(manifest, cwd, error)}: ${error.message}
-`);
+  for (const error of result.errors)
+    rows.push(
+      message("error", pointerSpans(manifest, cwd, error), error.message)
+    );
+  const gap = " ".repeat(2);
+  for (const row2 of rows) {
+    const lines3 = caps.tty ? wrapSpans(row2.spans, Math.max(20, caps.columns - 3), symbols.ellipsis) : [row2.spans];
+    lines3.forEach(
+      (l, i) => stdout.write(`${i === 0 ? row2.mark : " "}${gap}${painter.line(l)}
+`)
+    );
   }
   return result.ok ? 0 : 1;
 }
-function located(manifest, cwd, msg) {
-  const file = {
+async function validateJson(dir, cwd, stdout) {
+  const envelope = (exit, rest) => `${JSON.stringify({ v: 1, command: "validate", event: "result", ok: exit === 0, exit, ...rest }).replace(/[\u007f-\uffff]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`)}
+`;
+  let manifest;
+  try {
+    manifest = await loadManifest(dir);
+  } catch (e) {
+    stdout.write(
+      envelope(1, {
+        error: "no-manifest",
+        message: e.message
+      })
+    );
+    return 1;
+  }
+  const result = validateLoadedManifest(manifest);
+  const entry = (m) => {
+    const file = fileOf(manifest, m);
+    return {
+      code: m.code,
+      message: m.message,
+      at: `${m.file}${m.path}`,
+      file: file ? path28.relative(cwd, file) : null
+    };
+  };
+  const exitCode = result.ok ? 0 : 1;
+  stdout.write(
+    envelope(exitCode, {
+      valid: result.ok,
+      modules: result.enabledModules,
+      requiredSecrets: result.requiredSecrets,
+      warnings: [
+        // The CLI's own duplicate-file warning has no validator code.
+        ...(manifest.fileWarnings ?? []).map((message) => ({
+          code: null,
+          message,
+          at: ".pkey/",
+          file: null
+        })),
+        ...result.warnings.map(entry)
+      ],
+      errors: result.errors.map(entry)
+    })
+  );
+  return exitCode;
+}
+function fileOf(manifest, msg) {
+  return {
     product: manifest.productPath,
     schema: manifest.schemaPath,
     release: manifest.releasePath,
     distribution: manifest.distributionPath
   }[msg.file];
-  return `${msg.file}${msg.path}${file ? ` (${path28.relative(cwd, file)})` : ""}`;
+}
+function located(manifest, cwd, msg) {
+  return pointerSpans(manifest, cwd, msg).map((s) => s.text).join("");
+}
+function pointerSpans(manifest, cwd, msg) {
+  const file = fileOf(manifest, msg);
+  return [
+    { text: `${msg.file}${msg.path}` },
+    ...file ? [{ text: ` (${path28.relative(cwd, file)})`, style: ["muted"] }] : []
+  ];
 }
 var DISTRIBUTION_USAGE = `Usage: pkey distribution outlet-ids --outlet <id>
 ${DISTRIBUTION_CI_USAGE}`;
@@ -41062,8 +42980,9 @@ async function cmdDistributionCi(parsed, stdout, stderr, ci) {
   });
   return 0;
 }
-async function cmdDoctor(parsed, cwd, stdout) {
-  const localCode = await cmdValidate(cwd, stdout);
+async function cmdDoctor(parsed, cwd, stdout, term, env) {
+  const u = (v) => untrusted(v, env);
+  const localCode = await validateText(cwd, cwd, stdout, term);
   const baseUrl = flagString(parsed, "base-url");
   const product = flagString(parsed, "product");
   if (!baseUrl || !product) {
@@ -41084,18 +43003,18 @@ Remote discovery: failed (${res.status}) ${url}
   stdout.write(`
 Remote discovery: ok ${url}
 `);
-  const enabled = Object.entries(body.services ?? {}).filter(([, service]) => service?.enabled === true).map(([slug]) => slug);
+  const enabled = Object.entries(body.services ?? {}).filter(([, service]) => service?.enabled === true).map(([slug]) => u(slug));
   stdout.write(
     `Services enabled: ${enabled.length ? enabled.join(", ") : "none"}
 `
   );
   stdout.write(
-    `Signing keys exposed: ${JSON.stringify(body.signing ?? body.trust ?? {})}
+    `Signing keys exposed: ${u(JSON.stringify(body.signing ?? body.trust ?? {}))}
 `
   );
   return localCode;
 }
-async function cmdBundle(parsed, cwd, stdout) {
+async function cmdBundle(parsed, cwd, stdout, env) {
   const product = flagString(parsed, "product");
   const device = flagString(parsed, "device");
   const graceRaw = flagString(parsed, "grace-days");
@@ -41105,8 +43024,8 @@ async function cmdBundle(parsed, cwd, stdout) {
     product,
     deviceId: device,
     graceDays: Number(graceRaw),
-    // `--no-config` is a boolean flag, so it is read with flagBool; see the parseArgs note in
-    // helpText() about passing valueless flags last or with `=`.
+    // `--no-config` is a boolean flag, so it is read with flagBool; see the note in
+    // `pkey bundle --help` about passing valueless flags last or with `=`.
     includeConfig: !flagBool(parsed, "no-config"),
     licenseId: flagString(parsed, "license"),
     baseUrl: flagString(parsed, "base-url"),
@@ -41115,7 +43034,7 @@ async function cmdBundle(parsed, cwd, stdout) {
     cookie: process.env[ADMIN_COOKIE_ENV]
   });
   const rel = path28.relative(cwd, result.file);
-  stdout.write(`Minted bundle ${result.bundleId}
+  stdout.write(`Minted bundle ${untrusted(result.bundleId, env)}
 `);
   stdout.write(`- File: ${rel}
 `);
@@ -41246,13 +43165,163 @@ async function cmdAuth(parsed, stdout, stderr, ci) {
     fetchImpl: ci.fetchImpl,
     sleep: ci.sleep
   });
+  const scopes = issued.scopes.map((s) => untrusted(s, ci.env));
   stdout.write(
-    `Exchanged the job's OIDC token for a CI token (${issued.scopes.join(", ") || "no scopes"}); ${CI_TOKEN_ENV} is set for the job's later steps.
+    `Exchanged the job's OIDC token for a CI token (${scopes.join(", ") || "no scopes"}); ${CI_TOKEN_ENV} is set for the job's later steps.
 `
   );
   return 0;
 }
-async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
+async function releasePublish(parsed, cwd, product, common, progress) {
+  const dir = flagString(parsed, "dir");
+  if (!product || !dir) throw new Error(PUBLISH_USAGE);
+  const deliverable = flagString(parsed, "deliverable");
+  const releaseKeyPem = flagString(parsed, "release-key-file") ? await readFile23(
+    path28.resolve(cwd, flagString(parsed, "release-key-file")),
+    "utf8"
+  ) : void 0;
+  const minSupportedSeq = flagString(parsed, "min-supported-seq") !== void 0 ? Number(flagString(parsed, "min-supported-seq")) : void 0;
+  if (parsed.bare.has("pin"))
+    throw new Error("--pin needs a value: --pin <packId>@<version>.");
+  const contentKeyPem = flagString(parsed, "content-key-file") ? await readFile23(
+    path28.resolve(cwd, flagString(parsed, "content-key-file")),
+    "utf8"
+  ) : void 0;
+  const delegation = flagString(parsed, "delegation");
+  if (deliverable && deliverable !== "app" && await isPackageDeliverable(cwd, deliverable)) {
+    refuseFlags(
+      parsed,
+      [
+        "tag",
+        "source",
+        "meta",
+        "release-key-file",
+        "min-supported-seq",
+        "content-stamp",
+        "embedded",
+        "pin",
+        "content-interface",
+        "provides",
+        "removes",
+        "out",
+        "bases",
+        "content-key-file",
+        "delegation",
+        "script-extensions",
+        "script-types"
+      ],
+      `--deliverable ${deliverable} is a package: its files are extracted from --dir, its release id is <deliverable>@<version>, and it is never signed`
+    );
+    if (flagBool(parsed, "no-record"))
+      throw new Error(
+        "--no-record does not apply to a package: a package release never carries a record."
+      );
+    progress.stage(`Publishing ${deliverable}`);
+    await publishPackage({
+      ...common,
+      cwd,
+      product,
+      dir,
+      deliverable,
+      version: flagString(parsed, "version"),
+      channel: flagString(parsed, "channel"),
+      dryRun: flagBool(parsed, "dry-run")
+    });
+    return 0;
+  }
+  if (deliverable && deliverable !== "app") {
+    refuseFlags(
+      parsed,
+      ["content-stamp", "embedded", "pin"],
+      `--deliverable ${deliverable} is a pack; these stamp an app release's packs`
+    );
+    refuseFlags(
+      parsed,
+      ["content-interface", "strict"],
+      `--deliverable ${deliverable} is a pack; the content-interface fingerprint is the app's (its pack lists content ids with --provides)`
+    );
+    if (parsed.bare.has("removes") || parsed.bare.has("provides"))
+      throw new Error(
+        "--provides needs a file and --removes a content id: --provides <file>, --removes <id>[,<id>...]."
+      );
+    if (parsed.bare.has("script-extensions") || parsed.bare.has("script-types"))
+      throw new Error(
+        "--script-extensions and --script-types need values: --script-extensions lua[,wren...], --script-types LuaScript[,...]."
+      );
+    const scriptExtensions = parseRemoves(
+      parsed.multi["script-extensions"] ?? []
+    );
+    const scriptTypes = parseRemoves(parsed.multi["script-types"] ?? []);
+    await publishPack({
+      ...common,
+      progress,
+      cwd,
+      product,
+      dir,
+      deliverable,
+      version: flagString(parsed, "version"),
+      tag: flagString(parsed, "tag"),
+      channel: flagString(parsed, "channel"),
+      out: flagString(parsed, "out"),
+      bases: flagString(parsed, "bases"),
+      dryRun: flagBool(parsed, "dry-run"),
+      ...releaseKeyPem !== void 0 ? { releaseKeyPem } : {},
+      ...contentKeyPem !== void 0 ? { contentKeyPem } : {},
+      ...delegation !== void 0 ? { delegation } : {},
+      ...minSupportedSeq !== void 0 ? { minSupportedSeq } : {},
+      ...flagString(parsed, "provides") !== void 0 ? { providesFile: flagString(parsed, "provides") } : {},
+      removes: parseRemoves(parsed.multi["removes"] ?? []),
+      // P4-28: another script language's extensions and types, for the PCK lint.
+      ...scriptExtensions.length ? { scriptExtensions } : {},
+      ...scriptTypes.length ? { scriptTypes } : {}
+    });
+    return 0;
+  }
+  refuseFlags(
+    parsed,
+    ["provides", "removes"],
+    "they list a pack release's content ids; the app's code interface is --content-interface"
+  );
+  refuseFlags(
+    parsed,
+    ["script-extensions", "script-types"],
+    "they configure a godot.pck pack's lint"
+  );
+  refuseFlags(
+    parsed,
+    ["out", "bases"],
+    "they keep and read a pack's earlier releases; the app takes neither"
+  );
+  refuseFlags(
+    parsed,
+    ["content-key-file", "delegation"],
+    "a content key signs only data-only pack releases, never an app record"
+  );
+  await publishRelease({
+    ...common,
+    progress,
+    cwd,
+    product,
+    dir,
+    deliverable,
+    version: flagString(parsed, "version"),
+    tag: flagString(parsed, "tag"),
+    channel: flagString(parsed, "channel"),
+    source: flagString(parsed, "source"),
+    meta: flagString(parsed, "meta"),
+    dryRun: flagBool(parsed, "dry-run"),
+    ...releaseKeyPem !== void 0 ? { releaseKeyPem } : {},
+    ...minSupportedSeq !== void 0 ? { minSupportedSeq } : {},
+    noRecord: flagBool(parsed, "no-record"),
+    contentStamp: flagString(parsed, "content-stamp"),
+    embedded: flagString(parsed, "embedded"),
+    pins: parsed.multi["pin"] ?? [],
+    ...flagString(parsed, "content-interface") !== void 0 ? { contentInterface: flagString(parsed, "content-interface") } : {},
+    strict: flagBool(parsed, "strict")
+  });
+  return 0;
+}
+async function cmdRelease(parsed, cwd, stdout, stderr, ci, g) {
   const [sub, releaseId] = parsed.positional;
   const product = flagString(parsed, "product");
   const common = {
@@ -41265,150 +43334,22 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
   };
   switch (sub) {
     case "publish": {
-      const dir = flagString(parsed, "dir");
-      if (!product || !dir) throw new Error(PUBLISH_USAGE);
-      const deliverable = flagString(parsed, "deliverable");
-      const releaseKeyPem = flagString(parsed, "release-key-file") ? await readFile23(
-        path28.resolve(cwd, flagString(parsed, "release-key-file")),
-        "utf8"
-      ) : void 0;
-      const minSupportedSeq = flagString(parsed, "min-supported-seq") !== void 0 ? Number(flagString(parsed, "min-supported-seq")) : void 0;
-      if (parsed.bare.has("pin"))
-        throw new Error("--pin needs a value: --pin <packId>@<version>.");
-      const contentKeyPem = flagString(parsed, "content-key-file") ? await readFile23(
-        path28.resolve(cwd, flagString(parsed, "content-key-file")),
-        "utf8"
-      ) : void 0;
-      const delegation = flagString(parsed, "delegation");
-      if (deliverable && deliverable !== "app" && await isPackageDeliverable(cwd, deliverable)) {
-        refuseFlags(
+      const spinner = new Spinner(stderr, ci.env, g);
+      try {
+        return await releasePublish(
           parsed,
-          [
-            "tag",
-            "source",
-            "meta",
-            "release-key-file",
-            "min-supported-seq",
-            "content-stamp",
-            "embedded",
-            "pin",
-            "content-interface",
-            "provides",
-            "removes",
-            "out",
-            "bases",
-            "content-key-file",
-            "delegation",
-            "script-extensions",
-            "script-types"
-          ],
-          `--deliverable ${deliverable} is a package: its files are extracted from --dir, its release id is <deliverable>@<version>, and it is never signed`
-        );
-        if (flagBool(parsed, "no-record"))
-          throw new Error(
-            "--no-record does not apply to a package: a package release never carries a record."
-          );
-        await publishPackage({
-          ...common,
           cwd,
           product,
-          dir,
-          deliverable,
-          version: flagString(parsed, "version"),
-          channel: flagString(parsed, "channel"),
-          dryRun: flagBool(parsed, "dry-run")
-        });
-        return 0;
+          {
+            ...common,
+            stdout: spinner.wrap(stdout),
+            stderr: spinner.wrap(stderr)
+          },
+          spinner
+        );
+      } finally {
+        spinner.stop();
       }
-      if (deliverable && deliverable !== "app") {
-        refuseFlags(
-          parsed,
-          ["content-stamp", "embedded", "pin"],
-          `--deliverable ${deliverable} is a pack; these stamp an app release's packs`
-        );
-        refuseFlags(
-          parsed,
-          ["content-interface", "strict"],
-          `--deliverable ${deliverable} is a pack; the content-interface fingerprint is the app's (its pack lists content ids with --provides)`
-        );
-        if (parsed.bare.has("removes") || parsed.bare.has("provides"))
-          throw new Error(
-            "--provides needs a file and --removes a content id: --provides <file>, --removes <id>[,<id>...]."
-          );
-        if (parsed.bare.has("script-extensions") || parsed.bare.has("script-types"))
-          throw new Error(
-            "--script-extensions and --script-types need values: --script-extensions lua[,wren...], --script-types LuaScript[,...]."
-          );
-        const scriptExtensions = parseRemoves(
-          parsed.multi["script-extensions"] ?? []
-        );
-        const scriptTypes = parseRemoves(parsed.multi["script-types"] ?? []);
-        await publishPack({
-          ...common,
-          cwd,
-          product,
-          dir,
-          deliverable,
-          version: flagString(parsed, "version"),
-          tag: flagString(parsed, "tag"),
-          channel: flagString(parsed, "channel"),
-          out: flagString(parsed, "out"),
-          bases: flagString(parsed, "bases"),
-          dryRun: flagBool(parsed, "dry-run"),
-          ...releaseKeyPem !== void 0 ? { releaseKeyPem } : {},
-          ...contentKeyPem !== void 0 ? { contentKeyPem } : {},
-          ...delegation !== void 0 ? { delegation } : {},
-          ...minSupportedSeq !== void 0 ? { minSupportedSeq } : {},
-          ...flagString(parsed, "provides") !== void 0 ? { providesFile: flagString(parsed, "provides") } : {},
-          removes: parseRemoves(parsed.multi["removes"] ?? []),
-          // P4-28: another script language's extensions and types, for the PCK lint.
-          ...scriptExtensions.length ? { scriptExtensions } : {},
-          ...scriptTypes.length ? { scriptTypes } : {}
-        });
-        return 0;
-      }
-      refuseFlags(
-        parsed,
-        ["provides", "removes"],
-        "they list a pack release's content ids; the app's code interface is --content-interface"
-      );
-      refuseFlags(
-        parsed,
-        ["script-extensions", "script-types"],
-        "they configure a godot.pck pack's lint"
-      );
-      refuseFlags(
-        parsed,
-        ["out", "bases"],
-        "they keep and read a pack's earlier releases; the app takes neither"
-      );
-      refuseFlags(
-        parsed,
-        ["content-key-file", "delegation"],
-        "a content key signs only data-only pack releases, never an app record"
-      );
-      await publishRelease({
-        ...common,
-        cwd,
-        product,
-        dir,
-        deliverable,
-        version: flagString(parsed, "version"),
-        tag: flagString(parsed, "tag"),
-        channel: flagString(parsed, "channel"),
-        source: flagString(parsed, "source"),
-        meta: flagString(parsed, "meta"),
-        dryRun: flagBool(parsed, "dry-run"),
-        ...releaseKeyPem !== void 0 ? { releaseKeyPem } : {},
-        ...minSupportedSeq !== void 0 ? { minSupportedSeq } : {},
-        noRecord: flagBool(parsed, "no-record"),
-        contentStamp: flagString(parsed, "content-stamp"),
-        embedded: flagString(parsed, "embedded"),
-        pins: parsed.multi["pin"] ?? [],
-        ...flagString(parsed, "content-interface") !== void 0 ? { contentInterface: flagString(parsed, "content-interface") } : {},
-        strict: flagBool(parsed, "strict")
-      });
-      return 0;
     }
     case "content-stamp": {
       if (parsed.bare.has("pin"))
@@ -41611,18 +43552,31 @@ ${FEEDS_PRUNE_USAGE}`
   });
   return 0;
 }
-async function cmdListing(parsed, cwd, stdout, stderr, ci) {
+async function cmdListing(parsed, cwd, stdout, stderr, ci, g) {
   switch (parsed.positional[0]) {
     case "import":
       return cmdListingImport(parsed, cwd, stdout, ci);
-    case "assets":
-      return cmdListingAssets(parsed, cwd, stdout, stderr, ci);
+    case "assets": {
+      const spinner = new Spinner(stderr, ci.env, g);
+      try {
+        return await cmdListingAssets(
+          parsed,
+          cwd,
+          spinner.wrap(stdout),
+          spinner.wrap(stderr),
+          ci,
+          spinner
+        );
+      } finally {
+        spinner.stop();
+      }
+    }
     default:
       throw new Error(`${LISTING_USAGE}
 ${LISTING_ASSETS_USAGE}`);
   }
 }
-async function cmdListingAssets(parsed, cwd, stdout, stderr, ci) {
+async function cmdListingAssets(parsed, cwd, stdout, stderr, ci, progress) {
   const out = flagString(parsed, "out");
   if (parsed.positional[0] !== "assets" || !out)
     throw new Error(LISTING_ASSETS_USAGE);
@@ -41648,7 +43602,8 @@ async function cmdListingAssets(parsed, cwd, stdout, stderr, ci) {
     stdout,
     stderr,
     fetchImpl: ci.fetchImpl,
-    sleep: ci.sleep
+    sleep: ci.sleep,
+    progress
   });
   return 0;
 }
@@ -41818,257 +43773,11 @@ async function cmdListingImport(parsed, cwd, stdout, ci) {
     ...ci.fetchImpl ? { fetchImpl: ci.fetchImpl } : {}
   });
   stdout.write(
-    flagBool(parsed, "json") || flagBool(parsed, "dry-run") ? `${JSON.stringify(flagBool(parsed, "dry-run") ? result.upload : result, null, 2)}
-` : `${formatImport(result)}
+    flagBool(parsed, "json") || flagBool(parsed, "dry-run") ? `${untrustedJson(flagBool(parsed, "dry-run") ? result.upload : result, 2)}
+` : `${formatImport(result, ci.env)}
 `
   );
   return 0;
-}
-function helpText() {
-  return `pkey - Polaris Key platform CLI
-
-Commands:
-  pkey init [--product slug] [--name name] [--modules ${SERVICE_SLUGS.join(",")}]
-  pkey validate
-  pkey distribution outlet-ids --outlet id
-  pkey doctor [--base-url url --product slug]
-  pkey trust --kid kid --public-key key
-  pkey sdk --product slug [--base-url url] [--kid kid --public-key key]
-  pkey sdk --lang node|react|python|swift|kotlin|godot [--product slug] [--base-url url]
-              [--write [--out path] [--force]] [--kid kid --public-key key]
-              [--release-key kid=key ...] [--package kotlin.package]
-  pkey mirror --lang ts,python,swift,gdscript,kotlin [--out-dir dir] [--catalog file |
-              --product slug [--base-url url]] [--package kotlin.package] [--check]
-  pkey bundle --product slug --device id --grace-days n [--no-config] [--license id]
-              [--base-url url] [--out file] [--force]
-  pkey manifest schemas --out dir
-  pkey listing import --godot project --product slug [--preset name ...] [--locale code]
-              [--overwrite] [--apply [--fields a,b]] [--json] [--base-url url]
-  pkey listing import --godot project --dry-run [--preset name ...]
-
-CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
-  pkey auth github-oidc --product slug [--base-url url]
-  pkey release publish --product slug --version v --dir path [--deliverable app]
-              [--tag vX.Y.Z] [--channel c] [--source r2|github] [--meta builds.json]
-              [--base-url url] [--release-key-file pem] [--min-supported-seq n]
-              [--no-record] [--content-stamp file | --embedded dir --pin pack@v ...]
-              [--content-interface registry.json [--strict]] [--dry-run]
-  pkey release publish --product slug --version v --dir path --deliverable packId
-              [--out dir] [--bases dir] [--release-key-file pem] [--base-url url] [--dry-run]
-              [--content-key-file pem --delegation sha256]
-              [--provides ids.json] [--removes id[,id...] ...]
-              [--script-extensions ext[,ext...]] [--script-types Type[,Type...]]
-  pkey release content-stamp --product slug --out pkey-content.json [--embedded dir]
-              [--pin packId@version ...] [--hold packId@version[=reason] ...] [--base-url url]
-  pkey release revoke packId@version --reason text --product slug [--replacement version]
-              [--release-key-file pem] [--base-url url] [--dry-run]
-  pkey release revoke --delegation sha256|file --reason text --product slug
-              [--release-key-file pem] [--base-url url] [--dry-run]
-  pkey release keys generate --kid kid --out file [--force]
-  pkey release keys generate --content --out file
-  pkey release delegate --product slug --prefix packId --types type,... --public-key key
-              [--expires-in days] [--notes text] [--release-key-file pem] [--base-url url]
-              [--dry-run]
-  pkey release promote|pin releaseId --channel c --product slug [--deliverable id]
-  pkey release unpin --channel c --product slug [--deliverable id]
-  pkey release yank releaseId --reason text --product slug
-  pkey distribution report availability|submission --product slug --outlet id
-              (--release id | --version v [--deliverable id]) --state s [--build id]
-              [--since epoch] [--platform-ref json] [--detail json]
-  pkey distribution report key --product slug --purpose p --sha256 hex [--outlet id]
-  pkey distribution rollout --product slug --outlet id --channel c --release id --bp n
-              [--deliverable id]
-  pkey distribution pause|resume|halt|complete --product slug --outlet id --channel c
-              [--release id] [--deliverable id]
-  pkey feeds fdroid --product slug --channel c --out dir [--keystore path --alias a]
-              [--ks-pass-env NAME] [--apksigner path] [--icon png] [--base-url url] [--dry-run]
-  pkey feeds setup --ecosystem npm|pypi|swift|maven|oci|godot --owner slug
-              [--namespace key=value ...] [--package name [--version v]] [--origin url]
-              [--token-env NAME] [--json]
-  pkey feeds prune --product slug [--deliverable id] [--apply] [--json] [--base-url url]
-  pkey listing assets --out dir [--icon png] [--key-art png] [--key-art-portrait png]
-              [--wordmark png] [--screenshots dir] [--focal x,y] [--focal-portrait x,y]
-              [--background #rrggbb] [--accept store/class/name ...] [--pad store/class/name ...]
-              [--locale code] [--upload --product slug [--base-url url] [--dry-run]]
-  pkey assets push file --slot slot [--locale code] --product slug [--base-url url] [--dry-run]
-  pkey transport apple-ba package --deliverable packId --release v --from dir [--content-api n]
-              [--variant key] [--out dir] [--platforms iOS[,macOS]] [--no-archive] [--no-report]
-  pkey transport apple-ba upload --deliverable packId --release v [--dir dir] [--from dir] [--content-api n]
-              [--expect-resource id] [--lock file] [--wait minutes] [--no-report]
-  pkey transport play-pad modules --deliverable packId --release v --from dir --project dir
-              [--delivery fast-follow|on-demand] [--default-texture fmt] [--variant key] [--no-report]
-  pkey transport steam-depot vdf --deliverable packId --release v --from dir --depot id
-              (--branch b | --channel c) [--setlive] [--app id] [--out dir] [--no-report]
-  pkey storefront itch push --platform windows|linux|mac|android --dir dir --version v
-              [--channel c] [--outlet id] [--dry-run] [--no-report]
-  pkey storefront snap metadata --yaml snapcraft.yaml [--dry-run]
-  pkey storefront snap upload --snap file.snap --channel c[,c...] [--outlet id] [--dry-run] [--no-report]
-  pkey storefront snap upload-metadata --snap file.snap [--dry-run] [--no-report]
-  pkey storefront exec store command --op operation [--outlet id] [--tool-path path] -- argv...
-  pkey storefront allow-list [--store s] [--json]
-  pkey storefront winget|homebrew|scoop|flathub pr [--channel c] [--outlet id] [--dry-run [--out dir]]
-              [--portable path] [--command name] [--license l] [--app name] [--project-license spdx] [--no-report]
-  pkey storefront winget|homebrew|scoop|flathub status [--channel c] [--version v] [--outlet id] [--no-report]
-  pkey storefront flathub init [--out dir] [--channel c] [--outlet id] [--command path] [--runtime-version v]
-
-pkey release publish matches the files under --dir against .pkey/release's
-deliverables.app.artifacts map (<file>.sig and <file>.sha256 ride along as sidecars), hashes
-them, uploads what Polaris Key does not already hold, and submits the release descriptor.
---dry-run prints the descriptor and the server's verdict and uploads and writes nothing.
-With a release key (PKEY_RELEASE_KEY, or --release-key-file) it also signs the release record
-(pkey-release+jws) under the .pkey/release releaseKeys entry whose public key matches, checks it,
-and submits it with the descriptor; a dry run prints the record unsigned. pkey release keys
-generate writes a new private release key to --out and prints its releaseKeys entry.
-When .pkey/release declares packs, an app publish states its pins: --content-stamp is the
-pkey-content.json pkey release content-stamp wrote before the export (from the pkey-marker/1
-markers under --embedded, verified, and --pin packId@version resolved through Polaris Key), and
-each build's embeds come from the artifact map; both go into the descriptor, which the record
-is moved from. --deliverable <packId> publishes a pack: per declared variant, the payload at
-<dir>/<variant key or "default">/ (one .pck file, or the tree), checked, stripped of
-project.binary and the class cache, linted, indexed (pkey-files/1), with a full object, file
-blobs, a gaps object and deltas against the releases --bases keeps (zstd >= 1.5.5 on PATH), and
-for a PCK variant of 4 MiB or more a pkey-chunks/1 chunk index with chunk bundles shared along
-the --bases chain (patch.strategies chunk, discovery release.chunks); it signs the pack record,
-uploads in stage rounds, submits it, and writes a marker beside each payload. --out keeps the
-record, payloads and chunk indexes for the next publish's --bases.
-A godot.pck lint (P4-28) refuses a resource that references an app script or a UID outside the
-pack's uid cache unless .pkey/release lists it in deliverables.app.content.attachable (the
-device's PKeyOptions.pack_attachable), and refuses as scripts .gd, .gdc, .cs plus
---script-extensions (bare extensions of a GDExtension script language) and the class names
---script-types gives (the device asks its engine for both).
-Save compatibility (P4-20): a pack release signs the content ids it provides, from --provides or
-the pack's declared provides.from (default .pkey/provides.json; provides.required fails a
-publish without it); Polaris Key refuses a release that stops providing an id its predecessor
-provided at a live contentApi level both support, unless --removes acknowledges it. An app
-publish with --content-interface hashes that registry (canonical JSON, SHA-256), stores it with
-the release and warns when it changed since the channel's current app release while contentApi
-did not (--strict fails instead, before anything is uploaded).
-pkey release content-stamp --hold packId@version[=reason] keeps a compatible pack at one
-release for this app release (written into the stamp's holds; never a pinned pack).
-pkey release revoke signs a kind: revocation release record with the release key and submits it:
-devices stop using that pack release, and --replacement names the release of the same pack they
-take instead. Revocations are permanent; a later revoke of the same release supersedes the
-replacement or reason, never the revoked status.
-pkey release keys generate --content writes a new content key (no kid) and prints its public
-key; pkey release delegate signs a kind: delegation record with the release key that lets that
-key sign data-only pack releases (files.tree, data.json, l10n.table) of compatible or standalone
-packs under --prefix (whole segments) for --expires-in days (default 180, at most 366). A content
-team then publishes with PKEY_CONTENT_KEY (or --content-key-file) and --delegation <sha256>:
-the files must pass the data-only rule, and the record is signed under the kid pkd1-<sha256>.
-pkey release revoke --delegation revokes a delegation and every pack release signed under it.
---meta is a JSON file {"<buildId>": {"buildNumber", "minOS", "requires"}}. An ipa or apk
-payload's facts (bundle id, versions, entitlements; package, version code, ABIs, signer) are
-read into the descriptor for the storefront feeds. The CI commands
-exchange the job's GitHub OIDC token for a short-lived pkeyci_ token themselves; no secret
-is stored in the repository. See /docs/build/ci/.
-
-pkey distribution report tells Polaris Key what a store says until its connector exists:
-availability (pending, processing, in-review, approved, live, rejected, removed) and the
-submission state (prepared, submitted, in-review, approved, rejected,
-pending-developer-release, released, cancelled) of a release on an outlet. report key
-sends the SHA-256 fingerprint the job signed with (colons allowed); one that is not in the
-product's key inventory is flagged for an operator and the command exits 1. rollout, pause,
-resume, halt and complete drive the outlet rollout; --bp is basis points (2500 = 25%), and
-they need a token an operator granted distribution:rollout.
-
-pkey feeds fdroid builds the channel's F-Droid repository (index-v2.json, entry.json, a diff)
-from Polaris Key's releases, signs entry.jar with apksigner and the CI-held repo key (the
-password in $PKEY_FDROID_KS_PASS), uploads it and registers it; the token needs
-distribution:feeds. Without --keystore it writes the unsigned files and stops.
-
-pkey feeds prune deletes each package's builds of main (X-main.N, PyPI X.devN) below its newest
-stable release, the backfill of the Worker's automatic feed retention. It is a dry run unless
---apply: it prints what would go, per package, with counts and bytes. With --apply it also lists
-any version skipped (held since the plan, so kept) and exits non-zero if any version failed. The
-token needs release:yank, which an operator grants.
-
-pkey feeds setup prints the copy-paste setup for one package feed on the registry host (default
-https://pkg.plrs.im), the same snippets the console's Setup tab shows: strict routing only (the
-npm scope, uv explicit = true, Gradle exclusiveContent, SwiftPM --scope, a fully qualified image
-reference, the Godot editor URLs). --namespace sets the feed's namespace (scope=@acme,
-groupPrefixes=gg.acme,gg.acme.tools); --token-env NAME adds the credential lines, reading the
-registry token from that environment variable. Offline: nothing is sent anywhere.
-
-pkey listing assets derives every store's icons from one square icon master (Play 512, the
-Microsoft tile 300, Steam's 184 JPG and 256 icons, Flathub, Snap, winget and F-Droid; Android's
-adaptive layers only when the mark sits inside the central 66 of 108 dp), composes every store's
-art from logo-free key art and the wordmark (Play and F-Droid feature graphics, Steam's capsules
-and library set, the Microsoft super hero, poster and box art, the itch.io cover, the Snap banner;
-cropped around --focal, the wordmark only on slots that allow a title), and fits each screenshot
-under --screenshots (one directory per size class) for the App Store, Play, the Microsoft Store and
-Steam. A screenshot that does not fit gets a crop or pad proposal, used only for the images named
-with --accept or --pad. Everything goes under --out with report.json (the fit report), preview.html
-and one ZIP pack per store. --upload stores the masters, outputs and packs in the listing model
-(the token needs distribution:listing); nothing is pushed to a store. Needs the sharp library.
-
-pkey assets push hosts a file that is not on the web in a slot: presentation.icon, listing.icon,
-listing.header, listing.screenshot:<1-16> or a listing image slot (icon-master,
-play:feature-graphic, ...). Polaris Key hosts a copy and serves it from its image host; PNG, JPEG,
-WebP, GIF or AVIF only (never SVG), up to 10 MiB for icon slots and 20 MiB for the rest. A slot an
-operator uploaded in the console, or one a manifest declares, is kept as it is (console, then
-manifest, then CI). The token needs assets:write, an opt-in scope, and Release must be on (the
-upload ticket comes from its uploads route).
-
-pkey transport packages a published pack release (the --out cache of pkey release publish
---deliverable <packId>, re-hashed against its record and linted again, so a pack with scripts
-never reaches a store) for the transport .pkey/distribution routes it through, writes the
-pkey-marker/1 marker beside the payload, and reports the transport's availability:
-apple-ba package writes Manifest.json for asset pack <pack>-c<contentApi> (dots become hyphens;
-every apple-ba pack is mapped at once and a collision, double hyphen or id over 64 characters is
-refused before anything is written) and runs xcrun ba-package (macOS); apple-ba upload sends it
-to App Store Connect with CI's key (ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY or ASC_KEY_PATH)
-and records the asset pack's resource id in .pkey/asset-packs.json (commit it; a later upload
-into any other resource is refused); play-pad modules writes com.android.asset-pack modules
-(a #tcf_ directory per texture variant) into a Godot Android Gradle build and patches it;
-steam-depot vdf writes a content-only SteamPipe build (SetLive on named branches only).
-
-pkey storefront runs a store's vendor CLI from CI, and only as a command its CI allow-list
-admits (pkey storefront allow-list prints them): itch push is butler push <dir>
-<user/game>:<platform[-channel]> --userversion <v>, the target from the itch outlet's identity
-(BUTLER_API_KEY in the environment); snap upload is snapcraft upload <snap> --release=<snap
-channels>, only the channels the snap outlet's channels map declares, and snap upload-metadata
-sends the summary, description and icon the snap carries, which snap metadata writes into
-snapcraft.yaml from the listing model before the build (SNAPCRAFT_STORE_CREDENTIALS, a scoped
-export-login). exec runs any other allow-listed command (steamcmd +run_app_build, whose script
-may set live only a named branch; msstore publish, refused while the console has a staged
-draft; BuildPatchTool -mode=UploadBinary). Each step is reported back to Polaris Key before and
-after it runs (distribution:report), so the store's ledger shows it beside console steps; a step
-already done in the same run is skipped. --dry-run checks and prints the command lines.
-pkey storefront <store> pr writes winget's manifests (schema 1.12.0), the cask in your own
-Homebrew tap (direct.homebrewTap), the Scoop feed's manifest in your own bucket
-(direct.scoopBucket) or Flathub's updated manifest and MetaInfo for the channel's newest release,
-and opens one pull request per version with the GitHub token in PKEY_PR_TOKEN (a CI secret,
-never argv); a PR already open or merged for the version is recorded and nothing is written.
-status reads the pull request's state and review labels. flathub init writes the first
-submission's files, which a person opens against flathub/flathub's new-pr branch.
-
-pkey manifest schemas writes the .pkey/ JSON Schemas into a directory, for editors in a
-repository with no node_modules.
-
-pkey bundle mints one offline activation bundle and writes it to a file (default
-<product>-<first 8 of device id>.pkeybundle; --base-url defaults to ${DEFAULT_BASE_URL}).
-Copy that file to the air-gapped machine and import it there.
-
-pkey distribution outlet-ids prints the build outlet's store ids from .pkey/distribution as
-one JSON object of strings (steamAppId, itchGameId, flatpakId, snapName, caskToken,
-homebrewFormula, msixFamilyName, bundleId), for CI to pass to a Godot export as PKEY_OUTLET_IDS. With no
-.pkey/distribution it prints {}.
-
-Environment:
-  ${ADMIN_COOKIE_ENV}   Required by \`pkey bundle\`. The console's admin session cookie, as
-                      \`${ADMIN_COOKIE_NAME}=<value>\` (the bare value is accepted too).
-                      The admin API is authenticated by the console's browser session —
-                      there is no API token yet — so copy the cookie from an authenticated
-                      console tab: devtools -> Application -> Cookies -> the console origin.
-                      It is a SHORT-LIVED session credential carrying full admin authority:
-                      do not commit it, and do not export it into a shared shell.
-  ${CI_TOKEN_ENV}       Optional for the CI commands: a static pkeyci_ token an operator
-                      issued, for CI that is not GitHub Actions. Unset in Actions, where
-                      the job's OIDC token is exchanged instead.
-
-Note: --no-config, --force and --dry-run take no value. A valueless flag swallows the next bare word, so
-pass them last or as --no-config=true / --force=true / --dry-run=true.
-`;
 }
 
 // src/action.ts
@@ -42177,10 +43886,21 @@ function ensureZstd(io) {
       `${need2}; apt-get installed ${after ?? "no zstd"}. Use a newer runner image (ubuntu-24.04 or later) or install zstd ≥ ${MIN_ZSTD_VERSION} before this step.`
     );
 }
-function escapeData(s) {
-  return s.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
+async function runAction(given) {
+  const stdout = guardOutput(given.stdout, given.env);
+  const stderr = guardOutput(given.stderr, given.env);
+  try {
+    return await runActionSteps({
+      ...given,
+      stdout: stdout.stream,
+      stderr: stderr.stream
+    });
+  } finally {
+    stdout.flush();
+    stderr.flush();
+  }
 }
-async function runAction(io) {
+async function runActionSteps(io) {
   const input = (name) => actionInput(io.env, name);
   try {
     const product = input("product");
@@ -42361,11 +44081,12 @@ async function runAction(io) {
     await writeOutputs(io, result.releaseId, result.server);
     return 0;
   } catch (e) {
+    const message = untrustedLines(e.message, io.env);
     io.stdout.write(
-      `::error title=pkey release publish::${escapeData(e.message)}
+      `::error title=pkey release publish::${escapeData(message)}
 `
     );
-    io.stderr.write(`${e.message}
+    io.stderr.write(`${message}
 `);
     return 1;
   }
@@ -42619,16 +44340,21 @@ async function runAssetsStep(io, input, product, dir, assets) {
   });
   if (answer && answer.refused.length > 0)
     throw new Error(
-      `${answer.refused.length} file${answer.refused.length === 1 ? " was" : "s were"} refused: ${answer.refused.map((r) => `${r.slot} (${r.reason})`).join(", ")}.`
+      `${answer.refused.length} file${answer.refused.length === 1 ? " was" : "s were"} refused: ${answer.refused.map(
+        (r) => `${untrusted(r.slot, io.env)} (${untrusted(r.reason, io.env)})`
+      ).join(", ")}.`
     );
 }
+var OUTCOME_RE = /^[a-z][a-z_-]{0,63}$/;
+var RELEASE_ID_RE = /^[^\s\p{Cc}\p{Cf}]{1,255}$/u;
 async function writeOutputs(io, releaseId, server) {
   const outputFile = io.env.GITHUB_OUTPUT;
   if (!outputFile) return;
-  const outcome = typeof server?.outcome === "string" ? server.outcome : "";
+  const id = RELEASE_ID_RE.test(releaseId) ? releaseId : "";
+  const outcome = typeof server?.outcome === "string" && OUTCOME_RE.test(server.outcome) ? server.outcome : "";
   await appendFile2(
     outputFile,
-    `release-id=${releaseId}
+    `release-id=${id}
 outcome=${outcome}
 `,
     "utf8"

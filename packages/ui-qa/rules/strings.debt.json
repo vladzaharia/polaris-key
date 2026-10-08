@@ -59,11 +59,6 @@
     {
       "board": "android",
       "state": "settings",
-      "text": "Account"
-    },
-    {
-      "board": "android",
-      "state": "settings",
       "text": "Cloud Sync Synced 2 min ago"
     },
     {
@@ -135,11 +130,6 @@
       "board": "android",
       "state": "states",
       "text": "Your license has ended"
-    },
-    {
-      "board": "android",
-      "state": "tablet",
-      "text": "Account"
     },
     {
       "board": "android",
@@ -285,11 +275,6 @@
       "board": "desktop",
       "state": "macos15",
       "text": "Your key is in the purchase email from Harbor Audio."
-    },
-    {
-      "board": "desktop",
-      "state": "settings",
-      "text": "Account"
     },
     {
       "board": "desktop",
@@ -469,11 +454,6 @@
     {
       "board": "godot",
       "state": "settings",
-      "text": "Account"
-    },
-    {
-      "board": "godot",
-      "state": "settings",
       "text": "Audio"
     },
     {
@@ -495,11 +475,6 @@
       "board": "godot",
       "state": "settings",
       "text": "Download content automatically"
-    },
-    {
-      "board": "godot",
-      "state": "settings",
-      "text": "License"
     },
     {
       "board": "godot",
@@ -739,22 +714,12 @@
     {
       "board": "ios",
       "state": "settings",
-      "text": "Account"
-    },
-    {
-      "board": "ios",
-      "state": "settings",
       "text": "Download automatically"
     },
     {
       "board": "ios",
       "state": "settings",
       "text": "Share crash reports Set by Fennick Studio"
-    },
-    {
-      "board": "ios",
-      "state": "settings",
-      "text": "Version"
     },
     {
       "board": "ios",
@@ -929,22 +894,17 @@
     {
       "board": "terminal",
       "state": "activate",
-      "text": "◆ License key (from your purchase email)"
+      "text": "◆ License key You'll find it in your purchase email."
+    },
+    {
+      "board": "terminal",
+      "state": "activate",
+      "text": "✓ Key for Tidewater Studio"
     },
     {
       "board": "terminal",
       "state": "activate",
       "text": "$ tidewater activate"
-    },
-    {
-      "board": "terminal",
-      "state": "activate",
-      "text": "enter activate · ctrl-v paste · esc cancel"
-    },
-    {
-      "board": "terminal",
-      "state": "activate",
-      "text": "The key is read from the prompt or stdin, never from an argument."
     },
     {
       "board": "terminal",
@@ -954,17 +914,12 @@
     {
       "board": "terminal",
       "state": "device-limit",
-      "text": "◇ License key · pkey_tidewater_…3WPLDA"
+      "text": "◇ License key · pkey_tidewater_••••••"
     },
     {
       "board": "terminal",
       "state": "device-limit",
       "text": "$ tidewater activate"
-    },
-    {
-      "board": "terminal",
-      "state": "device-limit",
-      "text": "Enter Open in browser · Esc Cancel"
     },
     {
       "board": "terminal",
@@ -989,27 +944,57 @@
     {
       "board": "terminal",
       "state": "fallbacks",
-      "text": "- activate"
+      "text": "` Enter open in browser - Esc cancel"
     },
     {
       "board": "terminal",
       "state": "fallbacks",
-      "text": "· activate"
+      "text": "+ Tidewater Studio - activate"
     },
     {
       "board": "terminal",
       "state": "fallbacks",
-      "text": "Enter"
+      "text": "| key.plrs.im/portal/tidewater/devices"
     },
     {
       "board": "terminal",
       "state": "fallbacks",
-      "text": "Esc"
+      "text": "| Replace a device in your browser. Tidewater Studio continues when"
+    },
+    {
+      "board": "terminal",
+      "state": "fallbacks",
+      "text": "| you're done."
+    },
+    {
+      "board": "terminal",
+      "state": "fallbacks",
+      "text": "◇ License key · pkey_tidewater_••••••"
     },
     {
       "board": "terminal",
       "state": "fallbacks",
       "text": "key.plrs.im/portal/tidewater/devices"
+    },
+    {
+      "board": "terminal",
+      "state": "fallbacks",
+      "text": "o License key - pkey_tidewater_******"
+    },
+    {
+      "board": "terminal",
+      "state": "fallbacks",
+      "text": "Replace a device in your browser. Tidewater Studio continues when"
+    },
+    {
+      "board": "terminal",
+      "state": "fallbacks",
+      "text": "Tidewater Studio · activate"
+    },
+    {
+      "board": "terminal",
+      "state": "fallbacks",
+      "text": "you're done."
     },
     {
       "board": "terminal",
@@ -1019,7 +1004,7 @@
     {
       "board": "terminal",
       "state": "help",
-      "text": "--json Machine-readable output, on every command"
+      "text": "--json JSON output for scripts, on every command"
     },
     {
       "board": "terminal",
@@ -1034,27 +1019,32 @@
     {
       "board": "terminal",
       "state": "help",
-      "text": "activate Add a license key (prompts; never an argument)"
+      "text": "activate [key] Add a license key (prompts; never an argument)"
     },
     {
       "board": "terminal",
       "state": "help",
-      "text": "channel <name> Switch between stable and beta"
+      "text": "deactivate Stop using your license on this device and free"
     },
     {
       "board": "terminal",
       "state": "help",
-      "text": "License"
+      "text": "enroll Get the free license, when Tidewater Studio"
     },
     {
       "board": "terminal",
       "state": "help",
-      "text": "login Sign in with your Harbor Audio account"
+      "text": "its seat"
     },
     {
       "board": "terminal",
       "state": "help",
-      "text": "Options"
+      "text": "login Sign in with your account in the browser"
+    },
+    {
+      "board": "terminal",
+      "state": "help",
+      "text": "offers one"
     },
     {
       "board": "terminal",
@@ -1064,22 +1054,12 @@
     {
       "board": "terminal",
       "state": "help",
-      "text": "tidewater · Tidewater Studio license and updates"
-    },
-    {
-      "board": "terminal",
-      "state": "help",
-      "text": "update Download and install the latest version"
-    },
-    {
-      "board": "terminal",
-      "state": "help",
       "text": "Usage tidewater <command> [options]"
     },
     {
       "board": "terminal",
       "state": "narrow",
-      "text": "◇ License key · pkey_tidewater_…3WPLDA"
+      "text": "◇ License key · pkey_tidewater_••••••"
     },
     {
       "board": "terminal",
@@ -1089,17 +1069,7 @@
     {
       "board": "terminal",
       "state": "narrow",
-      "text": "back later."
-    },
-    {
-      "board": "terminal",
-      "state": "narrow",
       "text": "continues when you're done."
-    },
-    {
-      "board": "terminal",
-      "state": "narrow",
-      "text": "Enter Open in browser · Esc Cancel"
     },
     {
       "board": "terminal",
@@ -1118,38 +1088,18 @@
     },
     {
       "board": "terminal",
-      "state": "narrow",
-      "text": "To use it on this computer, replace one. You can add it"
-    },
-    {
-      "board": "terminal",
       "state": "sign-in",
       "text": "◇ No browser on this computer. Use a code instead:"
     },
     {
       "board": "terminal",
       "state": "sign-in",
-      "text": "◇ Opening Polaris Key in your browser…"
-    },
-    {
-      "board": "terminal",
-      "state": "sign-in",
-      "text": "⠹ Waiting for your browser…"
+      "text": "⠋ Waiting for you to sign in…"
     },
     {
       "board": "terminal",
       "state": "sign-in",
       "text": "$ tidewater login"
-    },
-    {
-      "board": "terminal",
-      "state": "sign-in",
-      "text": "build-01 $ tidewater login"
-    },
-    {
-      "board": "terminal",
-      "state": "sign-in",
-      "text": "c Copy code · Esc Cancel"
     },
     {
       "board": "terminal",
@@ -1263,11 +1213,6 @@
     },
     {
       "board": "terminal",
-      "state": "status-error",
-      "text": "To keep using Tidewater Studio:"
-    },
-    {
-      "board": "terminal",
       "state": "textual",
       "text": "· account"
     },
@@ -1275,11 +1220,6 @@
       "board": "terminal",
       "state": "textual",
       "text": "About"
-    },
-    {
-      "board": "terminal",
-      "state": "textual",
-      "text": "Account"
     },
     {
       "board": "terminal",
@@ -1365,11 +1305,6 @@
       "board": "terminal",
       "state": "update",
       "text": "Tidewater Studio Pro · Lifetime · mara@fennick.studio"
-    },
-    {
-      "board": "terminal",
-      "state": "update",
-      "text": "Works offline until Oct 8 (3 days) · go online to renew"
     },
     {
       "board": "web",

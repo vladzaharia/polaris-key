@@ -11,8 +11,9 @@ import KitPending from "../../../../components/ui/KitPending.astro";
 
 :::note[Status]
 This section documents the UI-kit specification (`docs/design/UI-KITS.md`) the kits are being
-rebuilt to. No kit ships the shared theme API, copy catalog or sign-in form yet;
-[The kits](/docs/build/ui/#the-kits) says where each kit's current docs are.
+rebuilt to. The [Node terminal kit](/docs/build/ui/frameworks/terminal-node/) is the first to ship
+the shared theme API; [The kits](/docs/build/ui/#the-kits) says where each other kit's current docs
+are.
 :::
 
 Every kit will expose **one theme value** with the same field names, cased for the language
@@ -108,11 +109,17 @@ point and links to the kit's current docs.
     `native` preset.
 
   </TabItem>
-  <TabItem label="Terminal">
-    <KitPending
-      kits={["terminal-node", "terminal-python"]}
-      what="this theme API"
-    />
+  <TabItem label="Terminal (Node)">
+    `theme` in the options of the commander or yargs adapter (`registerPolarisCommands`,
+    `registerYargsCommands`), or in `createKitContext` for a program's own commands.
+    `PKEY_THEME=dark` or `light` pins the scheme and `NO_COLOR` drops colour. Beyond the theme: the `symbols` restyle
+    hook (`"unicode"` or `"ascii"`), per-role truecolor `colors`, and the styled parts and the
+    `@polaris-key/node/terminal` primitives. What each field does in a terminal is on the
+    [framework page](/docs/build/ui/frameworks/terminal-node/#theming).
+
+  </TabItem>
+  <TabItem label="Terminal (Python)">
+    <KitPending kits={["terminal-python"]} what="this theme API" />
 
     **Planned:** `PolarisKeyTheme` in the CLI adapter's options, `PKEY_THEME=dark` or `light`, and
     `NO_COLOR`. Beyond the theme: a unicode or ascii symbol set.

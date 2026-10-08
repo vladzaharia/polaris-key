@@ -40,6 +40,10 @@ const SEED: Record<string, string> = {
   "terminal-python-escape": 'print("\\x1b[31mred\\x1b[0m")',
   "terminal-python-colour-literal": 'ACCENT = "#ff6a3d"',
   "terminal-python-stock-spinner": 'with console.status("Working"):',
+  "terminal-raw-escape": "out.write(`\\x1b[36m${name}\\x1b[39m`);",
+  "terminal-stock-prompt": "const rl = createInterface({ input, output });",
+  "terminal-console": 'console.log("Activated");',
+  "terminal-uppercase": "const title = heading.toUpperCase();",
 };
 const EXT: Record<string, string> = {
   swiftui: ".swift",
@@ -47,6 +51,7 @@ const EXT: Record<string, string> = {
   godot: ".gd",
   qt: ".py",
   "terminal-python": ".py",
+  "terminal-node": ".ts",
 };
 
 function seededRoot(): string {

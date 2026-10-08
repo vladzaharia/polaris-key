@@ -71,6 +71,7 @@ import {
 } from "./ci.js";
 import { loadManifest, validateLoadedManifest } from "./manifest.js";
 import { resolveCiToken, type CiEnv } from "./oidc.js";
+import { untrusted } from "./untrusted.js";
 import { packContext } from "./packManifest.js";
 import { provenanceFrom } from "./publish.js";
 import {
@@ -405,10 +406,13 @@ export async function delegateContentKey(
       fetchImpl: opts.fetchImpl,
       sleep: opts.sleep,
       log: opts.stderr,
+      env: opts.env,
     });
   } catch (e) {
     if (!opts.dryRun || e instanceof CiRequestError) throw e;
-    out.write(`Server checks: skipped (${(e as Error).message})\n`);
+    out.write(
+      `Server checks: skipped (${untrusted((e as Error).message, opts.env)})\n`,
+    );
   }
 
   let seq = 1;
@@ -420,7 +424,7 @@ export async function delegateContentKey(
     );
     if (reused)
       throw new Error(
-        `The key ${fingerprint.slice(0, 12)}… is already named by delegation ${reused.sha256.slice(0, 12)}… (${reused.deliverable}, seq ${reused.seq}${reused.revoked ? ", revoked" : ""}): one content key, one delegation. Generate a new key to rotate.`,
+        `The key ${fingerprint.slice(0, 12)}… is already named by delegation ${untrusted(String(reused.sha256).slice(0, 12), opts.env)}… (${untrusted(reused.deliverable, opts.env)}, seq ${untrusted(reused.seq, opts.env)}${reused.revoked ? ", revoked" : ""}): one content key, one delegation. Generate a new key to rotate.`,
       );
     if (listed.nextSeq === undefined)
       throw new Error(
@@ -507,7 +511,7 @@ export async function delegateContentKey(
     );
   }
   out.write(
-    `Delegated ${opts.prefix} to ${kid} (${String(server.outcome ?? "submitted")})\n`,
+    `Delegated ${opts.prefix} to ${kid} (${untrusted(server.outcome ?? "submitted", opts.env)})\n`,
   );
   return { record, jws, sha256, kid, server };
 }

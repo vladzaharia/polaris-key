@@ -7,6 +7,10 @@
  * hyphens: `INPUT_BASE-URL`, `INPUT_DRY-RUN`). They map one-to-one onto `pkey release publish`'s
  * flags. Outputs (`release-id`, `outcome`) go to `$GITHUB_OUTPUT`; a failure is an `::error::`
  * annotation and a non-zero exit, so a refused publish fails the job.
+ *
+ * Server text never becomes a workflow command (`untrusted.ts`): stdout and stderr run behind the
+ * output guard, the failure is cleaned before it is escaped into the annotation, and an output
+ * is written only when its value has the shape the Worker gives it (`writeOutputs`).
  */
 
 import { execFileSync } from "node:child_process";
@@ -23,6 +27,12 @@ import { padModules, type PadDelivery } from "./transportPlayPad.js";
 import { steamVdf } from "./transportSteam.js";
 import { cmdStorefront } from "./storefronts/command.js";
 import { parseAssetMap, pushAssets, resolveAssetMap } from "./assets.js";
+import {
+  escapeData,
+  guardOutput,
+  untrusted,
+  untrustedLines,
+} from "./untrusted.js";
 import path from "node:path";
 
 /** The Action's inputs, in `action.yml` order. */
@@ -172,12 +182,22 @@ export function ensureZstd(
     );
 }
 
-/** Workflow-command escaping for an annotation's message (`%`, CR and LF). */
-function escapeData(s: string): string {
-  return s.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
+export async function runAction(given: ActionIo): Promise<number> {
+  const stdout = guardOutput(given.stdout, given.env);
+  const stderr = guardOutput(given.stderr, given.env);
+  try {
+    return await runActionSteps({
+      ...given,
+      stdout: stdout.stream,
+      stderr: stderr.stream,
+    });
+  } finally {
+    stdout.flush();
+    stderr.flush();
+  }
 }
 
-export async function runAction(io: ActionIo): Promise<number> {
+async function runActionSteps(io: ActionIo): Promise<number> {
   const input = (name: (typeof ACTION_INPUTS)[number]) =>
     actionInput(io.env, name);
   try {
@@ -375,10 +395,13 @@ export async function runAction(io: ActionIo): Promise<number> {
     await writeOutputs(io, result.releaseId, result.server);
     return 0;
   } catch (e) {
+    // The message may carry the server's words: cleaned per line first, so no control character
+    // reaches the annotation and no line of it reads as a command, then escaped into one line.
+    const message = untrustedLines((e as Error).message, io.env);
     io.stdout.write(
-      `::error title=pkey release publish::${escapeData((e as Error).message)}\n`,
+      `::error title=pkey release publish::${escapeData(message)}\n`,
     );
-    io.stderr.write(`${(e as Error).message}\n`);
+    io.stderr.write(`${message}\n`);
     return 1;
   }
 }
@@ -676,22 +699,44 @@ async function runAssetsStep(
   if (answer && answer.refused.length > 0)
     throw new Error(
       `${answer.refused.length} file${answer.refused.length === 1 ? " was" : "s were"} refused: ${answer.refused
-        .map((r) => `${r.slot} (${r.reason})`)
+        .map(
+          (r) =>
+            `${untrusted(r.slot, io.env)} (${untrusted(r.reason, io.env)})`,
+        )
         .join(", ")}.`,
     );
 }
 
-async function writeOutputs(
-  io: ActionIo,
+/** An outcome as the Worker answers one (`created`, `enriched`, `unchanged`, …). */
+export const OUTCOME_RE = /^[a-z][a-z_-]{0,63}$/;
+
+/**
+ * A release id as it is minted (`descriptorReleaseId`: the tag, else `<deliverable>@<version>`):
+ * the descriptor's tag shape, 1–255 characters with no whitespace and no control or format
+ * character, so it can never end the `name=value` line or start another.
+ */
+export const RELEASE_ID_RE = /^[^\s\p{Cc}\p{Cf}]{1,255}$/u;
+
+/**
+ * `release-id` and `outcome` into `$GITHUB_OUTPUT`, each only when it has the shape the Worker
+ * gives it, else empty: `outcome` is the server's word, and a value with a line break in it
+ * would write an output (or an environment file line) of its own.
+ */
+export async function writeOutputs(
+  io: Pick<ActionIo, "env">,
   releaseId: string,
   server: Record<string, unknown> | undefined,
 ): Promise<void> {
   const outputFile = io.env.GITHUB_OUTPUT;
   if (!outputFile) return;
-  const outcome = typeof server?.outcome === "string" ? server.outcome : "";
+  const id = RELEASE_ID_RE.test(releaseId) ? releaseId : "";
+  const outcome =
+    typeof server?.outcome === "string" && OUTCOME_RE.test(server.outcome)
+      ? server.outcome
+      : "";
   await appendFile(
     outputFile,
-    `release-id=${releaseId}\noutcome=${outcome}\n`,
+    `release-id=${id}\noutcome=${outcome}\n`,
     "utf8",
   );
 }

@@ -22,6 +22,7 @@
 
 import { appendFile } from "node:fs/promises";
 import { ciClient, type Out, type Sleep } from "./ci.js";
+import { escapeData } from "./untrusted.js";
 
 export const CI_TOKEN_ENV = "PKEY_CI_TOKEN";
 const CI_TOKEN_SHAPE = /^pkeyci_[A-Za-z0-9_-]{43,}$/;
@@ -53,10 +54,13 @@ export function inGithubActions(env: CiEnv): boolean {
 
 /**
  * Hide `value` from the rest of the job's log. A workflow command, so it goes to stdout; written
- * only inside Actions (elsewhere it would just print the secret it was meant to hide).
+ * only inside Actions (elsewhere it would just print the secret it was meant to hide). The value
+ * is the command's data, escaped as the runner unescapes it: a ticket or credential the server
+ * sent with a line break in it stays one `::add-mask::` line and never starts another command.
  */
 export function mask(env: CiEnv, out: Out, value: string): void {
-  if (inGithubActions(env) && value) out.write(`::add-mask::${value}\n`);
+  if (inGithubActions(env) && typeof value === "string" && value)
+    out.write(`::add-mask::${escapeData(value)}\n`);
 }
 
 /** Step 1: the job's OIDC token for `audience`. */
@@ -118,6 +122,7 @@ export async function exchangeGithubOidc(
     fetchImpl: opts.fetchImpl,
     sleep: opts.sleep,
     log: opts.log,
+    env: opts.env,
   });
   const audience = publishAudience(client.baseUrl, client.product);
   const body = await client.postJson<Record<string, unknown>>(

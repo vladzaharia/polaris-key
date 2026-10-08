@@ -290,6 +290,9 @@ importers:
       '@polaris-key/manifest':
         specifier: workspace:*
         version: link:../shared-manifest
+      '@polaris-key/node':
+        specifier: workspace:*
+        version: link:../sdk-node
       '@polaris-key/protocol':
         specifier: workspace:*
         version: link:../shared-protocol

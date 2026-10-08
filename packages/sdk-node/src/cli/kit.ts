@@ -1,19 +1,20 @@
-// The full CLI kit (SDK parity pass SP-N14): every verb a licensed command-line app needs, as
-// framework-agnostic functions over a `PolarisKeyClient` that return a `CommandResult`, plus
-// `CLI_VERBS`, the one table both adapters (commander, yargs) build their commands from. The
-// table is why the two front ends cannot drift: neither declares a verb of its own.
+// The CLI verbs (SDK parity pass SP-N14; restyled by the terminal kit, UK-14): every verb a
+// licensed command-line app needs, as framework-agnostic functions over a `PolarisKeyClient` that
+// return a `CommandResult` (`run`, the plain layer), each with its terminal kit flow (`flow`,
+// flows.ts: the rail, prompts, spinners, `--json`), plus `CLI_VERBS`, the one table both adapters
+// (commander, yargs) build from. The table is why the two front ends cannot drift: neither
+// declares a verb of its own.
 //
-//   license   activate · enroll · deactivate · status · offline-request
-//   identity  sign-in (terminal QR) · sign-out
+//   license   activate [key] · status · enroll · deactivate
+//   identity  login (alias sign-in) · logout (alias sign-out)
 //   devices   register · devices list|rename|deauthorize
 //   config    config get|list|set|reset · secret · mint
 //   update    update check|apply · changelog
-//   packs     packs status|ensure (progress bar)
-//   core      import-bundle · doctor
+//   packs     packs status|ensure
+//   core      offline-request · import-bundle · doctor · completion
 //
-// Long-running verbs report through `CliIO.progress` (the adapters draw it on stderr) and stop
-// on `CliIO.signal`. Messages come from the copy catalog where a refusal has a code, and never
-// print a raw response body.
+// `activate` takes its key from the masked prompt or stdin; a key given as an argument still
+// works for old scripts and warns that it lands in the shell history.
 
 import type { JSONValue } from "@polaris-key/protocol/core";
 import type { UpdateDecision } from "@polaris-key/protocol/update";
@@ -23,6 +24,38 @@ import { qr } from "../qr/index.js";
 import { SDK_NAME, SDK_VERSION } from "../version.js";
 import type { InstallOutcome } from "../update/drivers/types.js";
 import { Feature } from "../constants.generated.js";
+import { createKitContext, type KitContext } from "./context.js";
+import {
+  activateFlow,
+  changelogFlow,
+  configGetFlow,
+  configListFlow,
+  configWriteFlow,
+  deactivateFlow,
+  devicesListFlow,
+  devicesRemoveFlow,
+  devicesRenameFlow,
+  doctorFlow,
+  enrollFlow,
+  importBundleFlow,
+  loginFlow,
+  logoutFlow,
+  mintFlow,
+  offlineRequestFlow,
+  packsEnsureFlow,
+  packsStatusFlow,
+  registerFlow,
+  secretFlow,
+  statusFlow,
+  updateApplyFlow,
+  updateCheckFlow,
+} from "./flows.js";
+import {
+  COMPLETION_SHELLS,
+  completionScript,
+  type CompletionShell,
+} from "./help.js";
+import { EXIT, type FlowResult } from "./json.js";
 import {
   activate,
   deactivate,
@@ -44,6 +77,8 @@ export interface CliIO {
   signal?: AbortSignal;
   /** Read a file named on the command line. */
   readFile?(path: string): Promise<string>;
+  /** Read a licence key from stdin (when `activate` is given none). */
+  readKey?(): Promise<string>;
 }
 
 function errorResult(verb: string, e: unknown): CommandResult {
@@ -510,19 +545,39 @@ export type CliGroup =
   | "packs"
   | "core";
 
+/** The per-verb flags the terminal kit reads (`--yes`, `--device-code`). */
+export interface VerbFlags {
+  yes?: boolean;
+  deviceCode?: boolean;
+}
+
 /** One verb, as both adapters declare it. */
 export interface CliVerb {
   group: CliGroup;
   /** The command words: `["devices", "rename"]` is `devices rename`. */
   path: string[];
+  /** Other names for a one-word verb (`sign-in` for `login`), kept so old scripts still run. */
+  aliases?: string[];
   /** Positional arguments in commander/yargs syntax: `<required>`, `[optional]`, `[many...]`. */
   args: string[];
+  /** A plain English description (the `run` API's); help shows `describeKey` instead. */
   describe: string;
+  /** The catalog key of the description help shows (`cli.verb.*`). */
+  describeKey: string;
+  /** The verb needs no client (`completion`). */
+  clientless?: boolean;
   run(
     client: PolarisKeyClient,
     args: unknown[],
     io: CliIO,
   ): Promise<CommandResult> | CommandResult;
+  /** The terminal kit's flow for this verb: drawn on the rail, or the `--json` envelope. */
+  flow(
+    ctx: KitContext,
+    client: PolarisKeyClient | null,
+    args: unknown[],
+    flags: VerbFlags,
+  ): Promise<FlowResult> | FlowResult;
 }
 
 const one = (a: unknown): string =>
@@ -535,175 +590,290 @@ async function readArg(io: CliIO, file: string): Promise<string> {
   return (await io.readFile(file)).trim();
 }
 
+/** A client the verb needs; the adapters always pass one except to a clientless verb. */
+const need = (c: PolarisKeyClient | null): PolarisKeyClient => {
+  if (!c) throw new Error("this verb needs a client");
+  return c;
+};
+
+/** `completion <shell>` outside the kit: the script in English, plain. */
+async function completionResult(
+  slug: string,
+  shell: unknown,
+): Promise<CommandResult> {
+  const sh = one(shell) as CompletionShell;
+  if (!COMPLETION_SHELLS.includes(sh))
+    return { ok: false, message: `Shells: ${COMPLETION_SHELLS.join(", ")}` };
+  const ctx = await createKitContext({
+    slug,
+    io: { stdout: { write: () => true }, env: {} },
+    queryScheme: false,
+  });
+  return { ok: true, message: completionScript(ctx, sh, CLI_VERBS) };
+}
+
 /** Every verb, in help order. */
 export const CLI_VERBS: readonly CliVerb[] = [
   {
     group: "license",
     path: ["activate"],
-    args: ["<key>"],
-    describe: "Activate this device with a licence key",
-    run: (c, a) => activate(c, one(a[0])),
-  },
-  {
-    group: "license",
-    path: ["enroll"],
-    args: [],
-    describe: "Obtain a licence with no key, when the product offers one",
-    run: (c) => enroll(c),
-  },
-  {
-    group: "license",
-    path: ["deactivate"],
-    args: [],
-    describe: "Deauthorize this device and wipe local credentials",
-    run: (c) => deactivate(c),
+    args: ["[key]"],
+    describe:
+      "Activate this device with a licence key (prompted, or piped on stdin)",
+    describeKey: "cli.verb.activate",
+    run: async (c, a, io) => {
+      const key = one(a[0]) || (io.readKey ? await io.readKey() : "");
+      return key
+        ? activate(c, key)
+        : { ok: false, message: "Activation failed: no licence key given." };
+    },
+    flow: (ctx, c, a) =>
+      activateFlow(ctx, need(c), { key: one(a[0]) || undefined }),
   },
   {
     group: "license",
     path: ["status"],
     args: [],
     describe: "Show the current licence gate status",
+    describeKey: "cli.verb.status",
     run: async (c) => status(c, await c.storeStatus()),
+    flow: (ctx, c) => statusFlow(ctx, need(c)),
   },
   {
     group: "license",
-    path: ["offline-request"],
+    path: ["enroll"],
     args: [],
-    describe: "Print the request code for an offline activation bundle",
-    run: (c, _a, io) => offlineRequest(c, io),
+    describe: "Obtain a licence with no key, when the product offers one",
+    describeKey: "cli.verb.enroll",
+    run: (c) => enroll(c),
+    flow: (ctx, c) => enrollFlow(ctx, need(c)),
+  },
+  {
+    group: "license",
+    path: ["deactivate"],
+    args: [],
+    describe: "Deauthorize this device and wipe local credentials",
+    describeKey: "cli.verb.deactivate",
+    run: (c) => deactivate(c),
+    flow: (ctx, c, _a, f) => deactivateFlow(ctx, need(c), f),
   },
   {
     group: "identity",
-    path: ["sign-in"],
+    path: ["login"],
+    aliases: ["sign-in"],
     args: [],
-    describe: "Sign in with your account (code and QR in the terminal)",
-    run: (c, _a, io) => signIn(c, io),
+    describe: "Sign in with your account (browser, or a code when headless)",
+    describeKey: "cli.verb.login",
+    // No QR for sign-in on any desktop surface, terminals included (SIGN-IN.md D-67).
+    run: (c, _a, io) => signIn(c, io, { qr: false }),
+    flow: (ctx, c, _a, f) => loginFlow(ctx, need(c), f),
   },
   {
     group: "identity",
-    path: ["sign-out"],
+    path: ["logout"],
+    aliases: ["sign-out"],
     args: [],
     describe: "Sign out and wipe local credentials",
+    describeKey: "cli.verb.logout",
     run: (c) => signOut(c),
+    flow: (ctx, c, _a, f) => logoutFlow(ctx, need(c), f),
   },
   {
     group: "devices",
     path: ["register"],
     args: [],
     describe: "Register this device keylessly and pull its documents",
+    describeKey: "cli.verb.register",
     run: (c) => register(c),
+    flow: (ctx, c) => registerFlow(ctx, need(c)),
   },
   {
     group: "devices",
     path: ["devices", "list"],
     args: [],
     describe: "List the devices on this licence",
+    describeKey: "cli.verb.devicesList",
     run: (c) => devicesList(c),
+    flow: (ctx, c) => devicesListFlow(ctx, need(c)),
   },
   {
     group: "devices",
     path: ["devices", "rename"],
     args: ["<deviceId>", "[label...]"],
     describe: "Name a device (no label clears it)",
+    describeKey: "cli.verb.devicesRename",
     run: (c, a) => devicesRename(c, one(a[0]), many(a[1]).join(" ") || null),
+    flow: (ctx, c, a) =>
+      devicesRenameFlow(ctx, need(c), one(a[0]), many(a[1]).join(" ") || null),
   },
   {
     group: "devices",
     path: ["devices", "deauthorize"],
     args: ["<deviceId>"],
     describe: "Free a device's seat",
+    describeKey: "cli.verb.devicesRemove",
     run: (c, a) => devicesDeauthorize(c, one(a[0])),
+    flow: (ctx, c, a) => devicesRemoveFlow(ctx, need(c), one(a[0])),
   },
   {
     group: "config",
     path: ["config", "get"],
     args: ["<key>"],
     describe: "Resolve the effective value of a config key",
+    describeKey: "cli.verb.configGet",
     run: (c, a) => getConfig(c, one(a[0])),
+    flow: (ctx, c, a) => configGetFlow(ctx, need(c), one(a[0])),
   },
   {
     group: "config",
     path: ["config", "list"],
     args: [],
     describe: "List the settings a user may see",
+    describeKey: "cli.verb.configList",
     run: (c) => configList(c),
+    flow: (ctx, c) => configListFlow(ctx, need(c)),
   },
   {
     group: "config",
     path: ["config", "set"],
     args: ["<key>", "<value>"],
     describe: "Set a local override (JSON or text)",
+    describeKey: "cli.verb.configSet",
     run: (c, a) => configSet(c, one(a[0]), one(a[1])),
+    flow: (ctx, c, a) =>
+      configWriteFlow(ctx, need(c), one(a[0]), parseCliValue(one(a[1]))),
   },
   {
     group: "config",
     path: ["config", "reset"],
     args: ["<key>"],
     describe: "Remove a local override",
+    describeKey: "cli.verb.configReset",
     run: (c, a) => configReset(c, one(a[0])),
+    flow: (ctx, c, a) => configWriteFlow(ctx, need(c), one(a[0]), undefined),
   },
   {
     group: "config",
     path: ["secret"],
     args: ["<key>"],
     describe: "Print a client-scoped secret",
+    describeKey: "cli.verb.secret",
     run: (c, a) => secret(c, one(a[0])),
+    flow: (ctx, c, a) => secretFlow(ctx, need(c), one(a[0])),
   },
   {
     group: "config",
     path: ["mint"],
     args: ["<recipeId>"],
     describe: "Mint a short-lived token from an edge-mint recipe",
+    describeKey: "cli.verb.mint",
     run: (c, a) => mint(c, one(a[0])),
+    flow: (ctx, c, a) => mintFlow(ctx, need(c), one(a[0])),
   },
   {
     group: "update",
     path: ["update", "check"],
     args: [],
     describe: "Check for an update",
+    describeKey: "cli.verb.updateCheck",
     run: (c) => updateCheck(c),
+    flow: (ctx, c) => updateCheckFlow(ctx, need(c)),
   },
   {
     group: "update",
     path: ["update", "apply"],
     args: [],
     describe: "Download and install the update the signed decision offers",
+    describeKey: "cli.verb.updateApply",
     run: (c, _a, io) => updateApply(c, io),
+    flow: (ctx, c) => updateApplyFlow(ctx, need(c)),
   },
   {
     group: "update",
     path: ["changelog"],
     args: [],
     describe: "Show the published releases",
+    describeKey: "cli.verb.changelog",
     run: (c) => changelog(c),
+    flow: (ctx, c) => changelogFlow(ctx, need(c)),
   },
   {
     group: "packs",
     path: ["packs", "status"],
     args: [],
     describe: "Show installed and downloading packs",
+    describeKey: "cli.verb.packsStatus",
     run: (c) => packsStatus(c),
+    flow: (ctx, c) => packsStatusFlow(ctx, need(c)),
   },
   {
     group: "packs",
     path: ["packs", "ensure"],
     args: ["<packIds...>"],
     describe: "Install or update packs, with progress",
+    describeKey: "cli.verb.packsEnsure",
     run: (c, a, io) => packsEnsure(c, many(a[0]), io),
+    flow: (ctx, c, a) => packsEnsureFlow(ctx, need(c), many(a[0])),
+  },
+  {
+    group: "core",
+    path: ["offline-request"],
+    args: [],
+    describe: "Print the request code for an offline activation bundle",
+    describeKey: "cli.verb.offlineRequest",
+    run: (c, _a, io) => offlineRequest(c, io),
+    flow: (ctx, c) => offlineRequestFlow(ctx, need(c)),
   },
   {
     group: "core",
     path: ["import-bundle"],
     args: ["<file>"],
     describe: "Import an offline activation bundle",
+    describeKey: "cli.verb.importBundle",
     run: async (c, a, io) => importBundle(c, await readArg(io, one(a[0]))),
+    flow: async (ctx, c, a) => {
+      const file = one(a[0]);
+      const { readFile } = await import("node:fs/promises");
+      let jws: string;
+      try {
+        jws = (await readFile(file, "utf8")).trim();
+      } catch {
+        return importBundleFlow(ctx, need(c), "");
+      }
+      return importBundleFlow(ctx, need(c), jws);
+    },
   },
   {
     group: "core",
     path: ["doctor"],
     args: [],
     describe: "Diagnose the store, discovery and what is unsupported here",
+    describeKey: "cli.verb.doctor",
     run: (c) => doctor(c),
+    flow: (ctx, c) => doctorFlow(ctx, need(c)),
+  },
+  {
+    group: "core",
+    path: ["completion"],
+    args: ["<shell>"],
+    describe: "Print the shell completion script (bash, zsh or fish)",
+    describeKey: "cli.verb.completion",
+    clientless: true,
+    run: (c, a) => completionResult(c.product, a[0]),
+    flow: (ctx, _c, a) => {
+      const sh = one(a[0]) as CompletionShell;
+      if (!COMPLETION_SHELLS.includes(sh)) {
+        const message = `${ctx.bin} completion ${COMPLETION_SHELLS.join("|")}`;
+        if (!ctx.caps.json) ctx.stderr.write(`${message}\n`);
+        return {
+          exitCode: EXIT.usage,
+          error: { code: null, title: message, message },
+        };
+      }
+      const script = completionScript(ctx, sh, CLI_VERBS);
+      if (!ctx.caps.json) ctx.stdout.write(script);
+      return { exitCode: EXIT.ok, result: { shell: sh, script } };
+    },
   },
 ];
 

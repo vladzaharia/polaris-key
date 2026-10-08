@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "Preserve",
+    "moduleResolution": "Bundler",
+    "typeRoots": ["../../../packages/sdk-node/node_modules/@types"],
+    "paths": {
+      "@polaris-key/node": ["../../../packages/sdk-node/dist/index"],
+      "@polaris-key/node/cli": ["../../../packages/sdk-node/dist/cli/index"],
+      "commander": ["../../../packages/sdk-node/node_modules/commander"]
+    }
+  }
+}

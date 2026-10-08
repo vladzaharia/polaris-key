@@ -31,4 +31,16 @@ The changelog for one version or many, read from the release service. Notes rend
     **Headless.** `release_notes_view(entries)` → `ReleaseNotesView` in `polaris_key.ui.core.models`.
 
   </TabItem>
+  <TabItem label="Terminal (Node)">
+    **Drop-in.** `changelog` (`changelogFlow`): the published releases, newest first, dated in the
+    active locale (`list`, `empty`, `error`).
+
+    **Styled part.** `stepRow` and `textRow`.
+
+    **Headless.** None of its own: the data is `client.release.changelog()`.
+
+    [Terminal (Node)](/docs/build/ui/frameworks/terminal-node/) has the adapter's options, the
+    `--json` contract and the fallbacks.
+
+  </TabItem>
 </Tabs>

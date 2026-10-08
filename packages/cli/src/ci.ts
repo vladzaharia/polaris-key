@@ -20,9 +20,25 @@
 
 import { PRODUCT_SLUG_RE } from "@polaris-key/manifest";
 import { DEFAULT_BASE_URL } from "./bundle.js";
+import { untrusted, type UntrustedEnv } from "./untrusted.js";
 
 export type Out = Pick<NodeJS.WriteStream, "write">;
 export type Sleep = (ms: number) => Promise<void>;
+
+/**
+ * Where a long command reports its stages (`pkey release publish`, `pkey listing assets`). The
+ * CLI passes a spinner that draws on stderr only on an interactive terminal (`terminal.ts`);
+ * off a terminal, under CI, or from a library caller it is absent and nothing extra is printed.
+ */
+export interface StageProgress {
+  /**
+   * A new stage starts and replaces the previous one ("Hashing 4 files"); an empty label means
+   * nothing long is running (the summary that follows prints without a spinner beside it).
+   */
+  stage(label: string): void;
+  /** How far a counted stage is. */
+  advance(done: number, total: number): void;
+}
 
 export const defaultSleep: Sleep = (ms) =>
   new Promise((resolve) => setTimeout(resolve, ms));
@@ -80,6 +96,11 @@ export interface CiClientOptions {
   maxAttempts?: number;
   /** Where a retry is announced (stderr). */
   log?: Out;
+  /**
+   * The job's environment: inside GitHub Actions a refusal's fields are also kept from reading
+   * as workflow commands (`untrusted()`). Without it they are still stripped of every control.
+   */
+  env?: UntrustedEnv;
 }
 
 export interface PostOptions {
@@ -121,6 +142,7 @@ export function ciClient(opts: CiClientOptions): CiClient {
   const f = opts.fetchImpl ?? fetch;
   const sleep = opts.sleep ?? defaultSleep;
   const maxAttempts = opts.maxAttempts ?? MAX_ATTEMPTS;
+  const env = opts.env ?? {};
   const url = (path: string) =>
     `${baseUrl}/${encodeURIComponent(product)}/${path.replace(/^\/+/, "")}`;
 
@@ -158,7 +180,7 @@ export function ciClient(opts: CiClientOptions): CiClient {
           res.status === 429 &&
           parsed.reason === "rate_limited");
       const err = new CiRequestError(
-        renderRefusal(p.what, target, res.status, parsed),
+        renderRefusal(p.what, target, res.status, parsed, env),
         res.status,
         parsed,
         retryable,
@@ -166,7 +188,7 @@ export function ciClient(opts: CiClientOptions): CiClient {
       if (!retryable || attempt >= maxAttempts) throw err;
       const wait = backoff(attempt, res.headers.get("retry-after"));
       opts.log?.write(
-        `${p.what}: ${res.status} ${err.reason ?? ""} is retryable; attempt ${attempt + 1} of ${maxAttempts} in ${Math.round(wait / 1000)}s\n`,
+        `${p.what}: ${res.status} ${untrusted(err.reason ?? "", env)} is retryable; attempt ${attempt + 1} of ${maxAttempts} in ${Math.round(wait / 1000)}s\n`,
       );
       await sleep(wait);
     }
@@ -193,7 +215,7 @@ export function ciClient(opts: CiClientOptions): CiClient {
     const parsed = await readBody(res);
     if (res.ok) return parsed as T;
     throw new CiRequestError(
-      renderRefusal(p.what, target, res.status, parsed),
+      renderRefusal(p.what, target, res.status, parsed, env),
       res.status,
       parsed,
       false,
@@ -228,28 +250,41 @@ async function readBody(res: Response): Promise<Record<string, unknown>> {
  * One refusal as the job log shows it: what failed, the status and `reason`, the server's
  * message, and the details a reason carries (`claim` for `policy_mismatch`, the validator's
  * findings for `invalid_descriptor`, the staged `key` for an upload problem), then a hint.
+ *
+ * Every field is the server's, so each goes through `untrusted()` on its own: no control
+ * character, no line break of its own, and (with `env` inside Actions) no workflow command. The
+ * line breaks are pkey's, one per detail.
  */
 export function renderRefusal(
   what: string,
   target: string,
   status: number,
   body: Record<string, unknown>,
+  env: UntrustedEnv = {},
 ): string {
+  const u = (v: unknown) => untrusted(v, env);
   const reason = typeof body.reason === "string" ? body.reason : undefined;
   const code = typeof body.error === "string" ? body.error : undefined;
-  const label = [String(status), reason ?? code].filter(Boolean).join(" ");
+  const label = [String(status), reason ?? code]
+    .filter(Boolean)
+    .map(u)
+    .join(" ");
   const lines = [`${what} failed (${label}) at ${target}`];
-  if (typeof body.message === "string") lines.push(`  ${body.message}`);
+  if (typeof body.message === "string") lines.push(`  ${u(body.message)}`);
   if (typeof body.claim === "string")
-    lines.push(`  failing claim: ${body.claim}`);
-  if (typeof body.key === "string") lines.push(`  object: ${body.key}`);
+    lines.push(`  failing claim: ${u(body.claim)}`);
+  if (typeof body.key === "string") lines.push(`  object: ${u(body.key)}`);
   if (Array.isArray(body.fields) && body.fields.length)
-    lines.push(`  fields: ${body.fields.join(", ")}`);
+    lines.push(`  fields: ${body.fields.map(u).join(", ")}`);
   if (Array.isArray(body.errors)) {
     for (const e of body.errors.slice(0, 50)) {
-      const rec = e as { path?: unknown; code?: unknown; message?: unknown };
+      const rec = (e ?? {}) as {
+        path?: unknown;
+        code?: unknown;
+        message?: unknown;
+      };
       lines.push(
-        `  ${String(rec.path ?? "")} ${String(rec.code ?? "")}: ${String(rec.message ?? "")}`,
+        `  ${u(rec.path ?? "")} ${u(rec.code ?? "")}: ${u(rec.message ?? "")}`,
       );
     }
   }

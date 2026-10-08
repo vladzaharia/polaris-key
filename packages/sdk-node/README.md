@@ -638,44 +638,57 @@ const dir = await client.update.packs.path("diceroll.l10n"); // the running tree
    transport at all: config resolution, the gate and bundle import work, and every
    network-requiring call throws `PolarisError` code `local-only`.
 
-## CLI hooks
+## CLI hooks: the terminal kit
 
-`@polaris-key/node/cli` exposes a framework-agnostic command core plus thin **commander** and
-**yargs** adapters built from one verb table (`CLI_VERBS`), so the two front ends never diverge.
-Verbs are grouped by owning service:
+`@polaris-key/node/cli` is the Node terminal kit. One call adds every Polaris Key verb to a
+**commander** or **yargs** program and draws it on the kit's rail: the product chip in its accent,
+masked key entry, sign-in in the browser or with a code (never a QR), the device limit's portal
+hand-off, spinners and progress bars, grouped help and shell completion, and `--json` on every
+verb. Both adapters build from one verb table (`CLI_VERBS`), so they never diverge.
 
-| Group    | Verbs                                                                                                                |
-| -------- | -------------------------------------------------------------------------------------------------------------------- |
-| license  | `activate <key>`, `enroll`, `deactivate`, `status`, `offline-request`                                                |
-| identity | `sign-in` (code and terminal QR), `sign-out`                                                                         |
-| devices  | `register`, `devices list`, `devices rename <id> [label]`, `devices deauthorize <id>`                                |
-| config   | `config get <key>`, `config list`, `config set <key> <value>`, `config reset <key>`, `secret <key>`, `mint <recipe>` |
-| update   | `update check`, `update apply` (progress bar), `changelog`                                                           |
-| packs    | `packs status`, `packs ensure <ids...>` (progress bar)                                                               |
-| core     | `import-bundle <file>`, `doctor` (store, discovery, unsupported features)                                            |
+```sh
+npm install @polaris-key/node commander   # or yargs
+```
 
 ```ts
 import { Command } from "commander";
 import { PolarisKeyClient } from "@polaris-key/node";
 import { registerPolarisCommands } from "@polaris-key/node/cli";
 
-const program = new Command();
-registerPolarisCommands(program, (opts) => PolarisKeyClient.create(opts), {
-  pinnedKeys: { "pkey-djdl-prod-2026-06": "…" },
-  productSlug: "djdl",
-  version: "1.4.2",
-});
-program.parseAsync(process.argv);
+const program = new Command("djdl");
+registerPolarisCommands(
+  program,
+  (o) =>
+    PolarisKeyClient.create({
+      productSlug: o.productSlug,
+      trust: { pinnedKeys: o.pinnedKeys },
+    }),
+  { productSlug: "djdl", pinnedKeys: { "pkey-djdl-prod-2026-06": "…" } },
+);
+await program.parseAsync();
 ```
 
-Each verb is also a plain function (`signIn(client, io)`, `devicesList(client)`, …) returning
-`{ ok, message, data }`; refusals are described through the copy catalog with their code.
+The verbs, the styled parts and the `@polaris-key/node/terminal` primitives, the headless views,
+theming, localisation, the `--json` contract and the fallbacks (`NO_COLOR`, `TERM=dumb`,
+`--ascii`, CI, 60 columns) are on [Terminal (Node)](/docs/build/ui/frameworks/terminal-node/).
+`kit: false` keeps the plain output, and each verb is also a plain function (`status(client)`,
+`devicesList(client)`, …) returning `{ ok, message, data }`.
+
+**Changed in the terminal kit (UK-14).** The adapters' human output is new: the rail, catalog
+copy in the active locale (nine languages), colour on a terminal, and new verb names `login` and
+`logout` (`sign-in` and `sign-out` still work). Human output is for people and may change between
+releases; a script reads `--json`, whose envelope is versioned (`"v": 1`). The exit codes a script
+saw before are unchanged: 0 success and 1 failure, with 2 for a usage error and 130 for Ctrl-C.
+A key given as an argument to `activate` still works and now warns that it lands in the shell's
+history; the prompt or a pipe is the way to pass it. A host that relied on the old plain messages
+passes `kit: false`.
 
 ## Samples and recipes
 
 Runnable samples live in the repository's `examples/` directory:
 `node-express` (verify a client's licence on a backend), `node-cli` (a commander CLI with the full
-kit and sign-in) and `node-electron` (main, preload and the React kit over the bridge).
+kit and sign-in), `node-electron` (main, preload and the React kit over the bridge) and
+`ui/terminal-node` (`tidewater`, the terminal kit's sample, on fixtures or `--live`).
 
 - **Device limit reached.** `activateWithKey` answers `device-limit` with `limit` and
   `deviceCount`. The new device holds no credential, so a seat is freed from the account portal

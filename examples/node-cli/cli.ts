@@ -1,5 +1,5 @@
 // A licensed command-line tool in one file (SDK parity pass SP-N18): every Polaris Key verb
-// (activate, sign-in with a terminal QR, devices, config, update, packs, doctor, …) is attached
+// (activate, login in the browser or with a code, devices, config, update, packs, doctor, …) is attached
 // to the tool's own commander program, and the tool's real work is gated on the licence.
 
 import { Command } from "commander";

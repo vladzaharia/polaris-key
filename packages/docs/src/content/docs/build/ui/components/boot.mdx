@@ -31,4 +31,18 @@ The first-paint screen while the boot stages run: the product hero, a neutral in
     **Headless.** `boot_view(outcome)` → `BootView`; `BOOT_STAGE_COPY` maps each stage to its line in `polaris_key.ui.core.models`.
 
   </TabItem>
+  <TabItem label="Terminal (Node)">
+    **Drop-in.** `checkFlow`, through `runKitVerb` (the bare `tidewater` in the sample): a spinner
+    while the client syncs (`progress`), then the gate's answer.
+
+    **Styled part.** The spinner row: the `LiveRegion`, `animate` and `spinnerFrames` primitives,
+    drawn only where the terminal animates.
+
+    **Headless.** None of its own: after `client.sync()`, `statusExit(client.status().status)` says
+    whether to go on and `statusView` what to show.
+
+    [Terminal (Node)](/docs/build/ui/frameworks/terminal-node/) has the adapter's options, the
+    `--json` contract and the fallbacks.
+
+  </TabItem>
 </Tabs>

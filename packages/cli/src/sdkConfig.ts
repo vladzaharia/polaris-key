@@ -23,6 +23,7 @@
 import { createHash } from "node:crypto";
 import { PROTOCOL_VERSION } from "@polaris-key/protocol/core";
 import { SERVICE_SLUGS, type ServiceSlug } from "@polaris-key/manifest";
+import { untrusted } from "./untrusted.js";
 
 export const SDK_LANGS = [
   "node",
@@ -69,6 +70,8 @@ export interface DeclaredReleaseKey {
   publicKey: string;
 }
 
+/** A discovery value quoted in a refusal: the server's, so cleaned (`untrusted.ts`). */
+const shown = (v: unknown): string => untrusted(v, {});
 const PRODUCT_RE = /^[a-z0-9][a-z0-9_-]*$/;
 // Narrow on purpose: every value is emitted inside a string literal in six languages (Kotlin
 // interpolates `$`, Swift `\(`), so anything outside these alphabets is refused, not escaped.
@@ -165,11 +168,11 @@ export async function resolveSdkFacts(opts: {
   if (!isRecord(doc)) throw new Error(`${discoveryUrl} is not an object.`);
   if (doc.product !== opts.product)
     throw new Error(
-      `Discovery names product ${JSON.stringify(doc.product)}, not ${opts.product}.`,
+      `Discovery names product ${shown(JSON.stringify(doc.product))}, not ${opts.product}.`,
     );
   if (doc.protocolVersion !== PROTOCOL_VERSION)
     throw new Error(
-      `Discovery speaks protocol ${String(doc.protocolVersion)}; this pkey speaks ${PROTOCOL_VERSION}. Update pkey or the server.`,
+      `Discovery speaks protocol ${shown(doc.protocolVersion)}; this pkey speaks ${PROTOCOL_VERSION}. Update pkey or the server.`,
     );
 
   // Trust pins.
@@ -180,7 +183,7 @@ export async function resolveSdkFacts(opts: {
     const key = pins[kid];
     if (!KID_RE.test(kid) || typeof key !== "string" || !KEY_RE.test(key))
       throw new Error(
-        `Discovery's trust.pinnedKeys has a malformed entry (${kid}).`,
+        `Discovery's trust.pinnedKeys has a malformed entry (${shown(kid)}).`,
       );
     pinnedKeys[kid] = key;
   }
@@ -244,7 +247,7 @@ export async function resolveSdkFacts(opts: {
   if (undeclared.length > 0)
     throw new Error(
       `Discovery advertises ${undeclared.length} release key${undeclared.length === 1 ? "" : "s"} you did not declare ` +
-        `(fingerprint ${undeclared.join(", ")}). Run pkey sdk in the product repo (it reads .pkey/release), ` +
+        `(fingerprint ${undeclared.map(shown).join(", ")}). Run pkey sdk in the product repo (it reads .pkey/release), ` +
         `or pass each key with --release-key <kid>=<key>.`,
     );
 

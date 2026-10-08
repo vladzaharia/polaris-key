@@ -161,6 +161,14 @@
         height: 1px;
         top: 8.4px;
       }
+      /* ▌ (the masked field's cursor): the left half of the cell, full height, as a terminal
+         draws block elements. */
+      .bx.hl::before {
+        inset-inline-start: 0;
+        width: 4.2px;
+        top: 0;
+        bottom: 0;
+      }
       .cols80 {
         width: calc(80 * 8.4px + 33.6px);
       }
@@ -183,9 +191,13 @@
         color: var(--mute);
         padding: 10px 16.8px 0;
       }
+      /* NO_COLOR drops every escape (packages/sdk-node/src/cli/term/caps.ts): no colour, no bold,
+         no underline, no reverse video. */
       .nocolor * {
         color: var(--t-fg) !important;
         background: none !important;
+        font-weight: 400 !important;
+        text-decoration: none !important;
       }
       .nocolor .s,
       .nocolor .chip {
@@ -241,8 +253,7 @@
     <main class="board">
       <figure>
         <figcaption>
-          terminal · sign-in (the browser, or a code when headless; no QR in a
-          terminal, SIGN-IN.md D-67, D-68)
+          terminal · sign-in (device code, no QR, 80 × 24)
         </figcaption>
         <div class="shot cols80" data-shot="sign-in">
           <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
@@ -250,7 +261,10 @@
         </div>
       </figure>
       <figure>
-        <figcaption>terminal · activate (masked key entry)</figcaption>
+        <figcaption>
+          terminal · activate (masked key entry: the public prefix, then
+          bullets)
+        </figcaption>
         <div class="shot cols80" data-shot="activate">
           <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
           <pre id="activate"></pre>
@@ -258,8 +272,8 @@
       </figure>
       <figure>
         <figcaption>
-          terminal · device limit (browser mode: Replace a device opens the
-          portal, then Try again; UI-KITS §4.3)
+          terminal · device limit on the key path (replace a device in the
+          browser)
         </figcaption>
         <div class="shot cols80" data-shot="device-limit">
           <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
@@ -293,7 +307,10 @@
         </div>
       </figure>
       <figure>
-        <figcaption>terminal · grouped help</figcaption>
+        <figcaption>
+          terminal · grouped help (cut to 24 rows: Devices, Settings, Updates,
+          Content and Support left out)
+        </figcaption>
         <div class="shot cols80" data-shot="help">
           <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
           <pre id="help"></pre>
@@ -322,8 +339,8 @@
               <div class="lbl">NO_COLOR=1</div>
               <pre class="fb"></pre>
             </div>
-            <div>
-              <div class="lbl">ascii symbols (--ascii)</div>
+            <div class="ansi16">
+              <div class="lbl">ascii symbols (--ascii, ANSI-16)</div>
               <pre class="fb ascii"></pre>
             </div>
           </div>
@@ -331,8 +348,8 @@
       </figure>
       <figure>
         <figcaption>
-          terminal · 60 columns (QR hidden below 70, text wraps, keys cut in the
-          middle)
+          terminal · 60 columns (the device limit's browser hand-off; the text
+          wraps at the column)
         </figcaption>
         <div class="shot cols60" data-shot="narrow">
           <div class="tbar"><i></i><i></i><i></i>tidewater — 60 × 24</div>
@@ -365,7 +382,7 @@
     <script>
       // Every character occupies exactly one cell, as in a terminal: glyphs outside the font's
       // subset are pinned to the cell width, and box-drawing rails are drawn edge to edge.
-      const BOX = { "│": "v", "┌": "tl", "└": "bl" };
+      const BOX = { "│": "v", "┌": "tl", "└": "bl", "▌": "hl" };
       const esc = (t) =>
         [...t]
           .map((ch) => {
@@ -376,14 +393,12 @@
               : e;
           })
           .join("");
-      // A line is a list of [class, text] segments; `len` is its visible width in cells.
+      // A line is a list of [class, text] segments.
       const L = (...segs) => ({
         html: segs
           .map(([c, t]) => (c ? `<span class="${c}">${esc(t)}</span>` : esc(t)))
           .join(""),
-        len: segs.reduce((n, [, t]) => n + [...t].length, 0),
       });
-      const pad = (l, col) => l.html + " ".repeat(Math.max(0, col - l.len));
       const R = (...segs) => L(["m", "│"], ["", "  "], ...segs);
       const put = (id, lines) =>
         (document.getElementById(id).innerHTML = lines
@@ -396,144 +411,151 @@
           ["m", " " + a],
         ]);
 
-      // 1. Sign in (SIGN-IN.md §4.15 frame 32): the browser on a desktop, the code when headless.
-      put("signin", [
-        L(["m", "$ "], ["", "tidewater login"]),
-        L(["m", "┌  "], ["chip", " Tidewater Studio "], ["m", " · login"]),
-        L(["m", "│"]),
-        L(["ok", "◇"], ["", "  Opening Polaris Key in your browser…"]),
-        R(
-          ["", "If it didn't open, go to "],
-          ["u", "key.plrs.im/device?user_code=WDJB-MJHT"],
-        ),
-        L(["m", "│"]),
-        L(["m", "⠹"], ["", "  Waiting for your browser…"]),
-        L(
-          ["m", "└  "],
-          ...keys(
-            ["Enter", "open again"],
-            ["c", "use a code"],
-            ["Esc", "cancel"],
-          ),
-        ),
-        "",
-        L(["m", "build-01 $ "], ["", "tidewater login"]),
-        L(["m", "┌  "], ["chip", " Tidewater Studio "], ["m", " · login"]),
-        L(["m", "│"]),
-        L(
-          ["ok", "◇"],
-          ["", "  No browser on this computer. Use a code instead:"],
-        ),
-        R(
-          ["", "On any phone or computer, go to "],
-          ["u", "key.plrs.im/device"],
-          ["", " and enter this code."],
-        ),
-        L(["m", "│"]),
-        R(["", "   "], ["rev", " WDJB-MJHT "]),
-        L(["m", "│"]),
-        R(["", "Check the code there matches this one."]),
-        R(["m", "Code expires in 4:12"]),
-        L(["m", "│"]),
-        L(["m", "⠹"], ["", "  Waiting for your browser…"]),
-        L(["m", "└  "], ...keys(["c", "Copy code"], ["Esc", "Cancel"])),
-      ]);
+      // ASCII symbols (--ascii): the same lines with every Unicode mark swapped for its ASCII
+      // stand-in, as the kit's symbol table does.
+      const ASCII = {
+        "┌": "+",
+        "│": "|",
+        "└": "`",
+        "◇": "o",
+        "◆": "*",
+        "▲": "!",
+        "✓": "+",
+        "●": "#",
+        "○": "-",
+        "•": "*",
+        "·": "-",
+        "…": "...",
+        "▌": "_",
+      };
+      const asciify = (segs) =>
+        segs.map(([c, t]) => [c, [...t].map((ch) => ASCII[ch] ?? ch).join("")]);
+      const draw = (lines, ascii) =>
+        lines.map((s) => L(...(ascii ? asciify(s) : s)));
+      const rail = (...segs) => [["m", "│"], ["", "  "], ...segs];
+      const head = (verb) => [
+        ["m", "┌  "],
+        ["chip", " Tidewater Studio "],
+        ["m", " · " + verb],
+      ];
 
-      // 2. Activate
-      put("activate", [
-        L(["m", "$ "], ["", "tidewater activate"]),
-        L(["m", "┌  "], ["chip", " Tidewater Studio "], ["m", " · activate"]),
-        L(["m", "│"]),
-        L(
-          ["a", "◆"],
+      // The drawn shots follow the Node kit's goldens (packages/sdk-node/test/cli/golden/ansi/),
+      // with the shell prompt that ran the verb above them.
+
+      // 1. Sign in: the headless code view (golden sign-in-handoff-code). No QR on any terminal
+      // (SIGN-IN.md D-67, D-68, §4.15 frame 32); the code in reverse video, the countdown, then
+      // the braille spinner in mute. The frame stays open while it waits.
+      put(
+        "signin",
+        draw([
+          [
+            ["m", "$ "],
+            ["", "tidewater login"],
+          ],
+          head("login"),
+          [["m", "│"]],
+          [
+            ["m", "◇"],
+            ["", "  No browser on this computer. Use a code instead:"],
+          ],
+          rail(
+            ["", "On any phone or computer, go to "],
+            ["u", "key.plrs.im/device"],
+            ["", " and enter this code."],
+          ),
+          [["m", "│"]],
+          rail(["", "   "], ["rev", " WDJB-MJHT "]),
+          [["m", "│"]],
+          rail(["", "Check the code there matches this one."]),
+          rail(["m", "Code expires in 4:12"]),
+          [["m", "│"]],
+          [
+            ["m", "⠋"],
+            ["", "  Waiting for you to sign in…"],
+          ],
+          rail(...keys(["c", "copy the code"], ["Esc", "cancel"])),
+        ]),
+      );
+
+      // 2. Activate (golden activate-parsed): the key is never echoed. The public product prefix
+      // shows, then one bullet per character, and the verdict names only the product.
+      put(
+        "activate",
+        draw([
+          [
+            ["m", "$ "],
+            ["", "tidewater activate"],
+          ],
+          head("activate"),
+          [["m", "│"]],
+          [
+            ["cy", "◆"],
+            ["", "  "],
+            ["s", "License key"],
+            ["m", "  You'll find it in your purchase email."],
+          ],
+          rail(["m", "pkey_tidewater_"], ["", "•".repeat(22)], ["cy", "▌"]),
+          [
+            ["ok", "✓"],
+            ["", "  Key for Tidewater Studio"],
+          ],
+          [["m", "└  "], ...keys(["Enter", "activate"], ["Esc", "cancel"])],
+        ]),
+      );
+
+      // 3. Device limit on the key path (golden device-limit-browser-mode, 80 and 60 columns).
+      // The terminal cannot list the license's devices before activation, so it hands Replace a
+      // device to the portal (SIGN-IN.md §4.15, "Kit DeviceLimit (key path)": URL to manageUrl).
+      const deviceLimit = ({ cols = 80, prompt = true } = {}) => [
+        ...(prompt
+          ? [
+              [
+                ["m", "$ "],
+                ["", "tidewater activate"],
+              ],
+            ]
+          : []),
+        head("activate"),
+        [["m", "│"]],
+        [
+          ["m", "◇"],
           ["", "  "],
           ["s", "License key"],
-          ["m", "  (from your purchase email)"],
-        ),
-        R(
-          ["", "pkey_tidewater_"],
-          ["m", "•••••••••••••••••"],
-          ["", "WPLDA"],
-          ["rev", " "],
-        ),
-        R(
-          ["ok", "✓"],
-          ["", " Tidewater Studio Pro"],
-          ["m", " · Lifetime · 3 devices"],
-        ),
-        L(["m", "│"]),
-        L(
-          ["m", "└  "],
-          ...keys(
-            ["enter", "activate"],
-            ["ctrl-v", "paste"],
-            ["esc", "cancel"],
-          ),
-        ),
-        "",
-        L([
-          "m",
-          "  The key is read from the prompt or stdin, never from an argument.",
-        ]),
-      ]);
-
-      // 3. Device limit: browser mode on the key path (UI-KITS §4.3 "Naming and data source").
-      const dl = (cols, narrow) => [
-        L(["m", "$ "], ["", "tidewater activate"]),
-        L(["m", "┌  "], ["chip", " Tidewater Studio "], ["m", " · activate"]),
-        L(["m", "│"]),
-        L(
-          ["ok", "◇"],
-          ["", "  License key "],
-          ["m", "· pkey_tidewater_…3WPLDA"],
-        ),
-        L(["m", "│"]),
-        L(
+          ["", " "],
+          ["m", "· pkey_tidewater_"],
+          ["", "••••••"],
+        ],
+        [
           ["warn", "▲"],
           ["", "  "],
           ["s", "Your license is on 3 of 3 devices"],
-        ),
-        R(["m", "●●● 3 of 3 in use"]),
-        ...(narrow
+        ],
+        rail(["s", "●●●"], ["m", " 3 of 3 in use"]),
+        ...(cols < 80
           ? [
-              R([
-                "",
-                "To use it on this computer, replace one. You can add it",
-              ]),
-              R(["", "back later."]),
+              rail(["", "Replace a device in your browser. Tidewater Studio"]),
+              rail(["", "continues when you're done."]),
             ]
           : [
-              R([
-                "",
-                "To use it on this computer, replace one. You can add it back later.",
-              ]),
-            ]),
-        L(["m", "│"]),
-        L(["a", "◆"], ["", "  "], ["s", "Replace a device"]),
-        ...(narrow
-          ? [
-              R(["", "Replace a device in your browser. Tidewater Studio"]),
-              R(["", "continues when you're done."]),
-            ]
-          : [
-              R([
+              rail([
                 "",
                 "Replace a device in your browser. Tidewater Studio continues when",
               ]),
-              R(["", "you're done."]),
+              rail(["", "you're done."]),
             ]),
-        R(["m u", "key.plrs.im/portal/tidewater/devices"]),
-        L(
+        rail(["u", "key.plrs.im/portal/tidewater/devices"]),
+        [
           ["m", "└  "],
-          ...keys(["Enter", "Open in browser"], ["Esc", "Cancel"]),
-        ),
+          ...keys(["Enter", "open in browser"], ["Esc", "cancel"]),
+        ],
       ];
-      put("dl", dl(80));
-      put("narrow", dl(60, true));
+      put("dl", draw(deviceLimit()));
+      put("narrow", draw(deviceLimit({ cols: 60 })));
 
-      // 4. Status and update
+      // 4. Status and update. Truecolor is for the product chip only (§1.4): the step glyph and
+      // the progress fill use ANSI cyan.
       const bar = (p, w) =>
-        `<span class="a">${esc("━".repeat(Math.round(p * w)))}</span><span class="m">${esc("━".repeat(w - Math.round(p * w)))}</span>`;
+        `<span class="cy">${esc("━".repeat(Math.round(p * w)))}</span><span class="m">${esc("━".repeat(w - Math.round(p * w)))}</span>`;
       put("update", [
         L(["m", "$ "], ["", "tidewater status"]),
         L(
@@ -557,7 +579,7 @@
         L(["m", "┌  "], ["chip", " Tidewater Studio "], ["m", " · update"]),
         L(["m", "│"]),
         L(
-          ["a", "◆"],
+          ["cy", "◆"],
           ["", "  "],
           ["s", "Tidewater Studio 2.5"],
           ["m", " · 61 MB"],
@@ -595,7 +617,7 @@
       // 5b. Boot, healthy status, offline error
       put("states", [
         L(["m", "$ "], ["", "tidewater"]),
-        L(["a", "⠹"], ["", "  Checking your license"], ["m", " …"]),
+        L(["m", "⠹"], ["", "  Checking your license"], ["m", " …"]),
         L(
           ["ok", "✓"],
           ["", "  "],
@@ -646,81 +668,58 @@
         ),
       ]);
 
-      // 6. Help
-      const cmd = (c, d) => L(["", "  "], ["s", c.padEnd(17)], ["", d]);
+      // 6. Help (golden help, 80 columns): the kit's groups in its order, cut to 24 rows. The
+      // description column starts at cell 28; a long description wraps under itself.
+      const cmd = (c, d, ...more) => [
+        L(["", "  "], ["s", c], ["", " ".repeat(26 - c.length) + d]),
+        ...more.map((t) => L(["", " ".repeat(28) + t])),
+      ];
       put("help", [
         L(["s", "tidewater"], ["m", " · Tidewater Studio license and updates"]),
         "",
-        L(["m", "Usage  "], ["", "tidewater <command> [options]"]),
+        L(["m", "Usage"], ["", "  tidewater <command> [options]"]),
         "",
         L(["s", "License"]),
-        cmd("login", "Sign in with your Harbor Audio account"),
-        cmd("activate", "Add a license key (prompts; never an argument)"),
-        cmd("status", "License, devices and offline time"),
-        cmd("devices", "List, rename and remove devices"),
-        cmd("logout", "Sign out on this device"),
+        ...cmd(
+          "activate [key]",
+          "Add a license key (prompts; never an argument)",
+        ),
+        ...cmd("status", "License, devices and offline time"),
+        ...cmd(
+          "enroll",
+          "Get the free license, when Tidewater Studio",
+          "offers one",
+        ),
+        ...cmd(
+          "deactivate",
+          "Stop using your license on this device and free",
+          "its seat",
+        ),
         "",
-        L(["s", "Updates"]),
-        cmd("update", "Download and install the latest version"),
-        cmd("channel <name>", "Switch between stable and beta"),
+        L(["s", "Account"]),
+        ...cmd("login", "Sign in with your account in the browser"),
+        ...cmd("logout", "Sign out on this device"),
         "",
         L(["s", "Options"]),
-        cmd("--json", "Machine-readable output, on every command"),
-        cmd("--no-color", "Plain text (also NO_COLOR=1)"),
-        cmd("--ascii", "ASCII symbols only"),
-        cmd("-h, --help", "Help for a command"),
+        ...cmd("--json", "JSON output for scripts, on every command"),
+        ...cmd("--no-color", "Plain text (also NO_COLOR=1)"),
+        ...cmd("--ascii", "ASCII symbols only"),
+        ...cmd("-h, --help", "Help for a command"),
+        "",
+        L(["m", "Run tidewater <command> --help for one command's options."]),
       ]);
 
-      // 7. Fallbacks
-      const fb = (ascii) =>
-        [
-          ascii
-            ? L(
-                ["m", "+  "],
-                ["chip", " Tidewater Studio "],
-                ["m", " - activate"],
-              )
-            : L(
-                ["m", "┌  "],
-                ["chip", " Tidewater Studio "],
-                ["m", " · activate"],
-              ),
-          L(["m", ascii ? "|" : "│"]),
-          L(
-            ["warn", ascii ? "!" : "▲"],
-            ["", "  "],
-            ["s", "Your license is on 3 of 3 devices"],
-          ),
-          L(
-            ["m", ascii ? "|" : "│"],
-            ["", "  "],
-            ["m", ascii ? "### 3 of 3 in use" : "●●● 3 of 3 in use"],
-          ),
-          L(["m", ascii ? "|" : "│"]),
-          L(["a", ascii ? "*" : "◆"], ["", "  "], ["s", "Replace a device"]),
-          L(
-            ["m", ascii ? "|" : "│"],
-            ["", "  "],
-            ["m u", "key.plrs.im/portal/tidewater/devices"],
-          ),
-          L(
-            ["m", ascii ? "`" : "└"],
-            ["", "  "],
-            ...(ascii
-              ? [
-                  ["s", "Enter"],
-                  ["m", " Open in browser - "],
-                  ["s", "Esc"],
-                  ["m", " Cancel"],
-                ]
-              : keys(["Enter", "Open in browser"], ["Esc", "Cancel"])),
-          ),
-        ]
-          .map((l) => l.html)
-          .join("\n");
-      document
-        .querySelectorAll(".fb")
-        .forEach((p) => (p.innerHTML = fb(p.classList.contains("ascii"))));
+      // 7. Fallbacks: the device limit (golden device-limit-browser-mode) in truecolor-80-dark,
+      // ansi16-80, no-color-80 and ascii-80. The quadrant's class sets the colour level.
+      document.querySelectorAll(".fb").forEach(
+        (p) =>
+          (p.innerHTML = draw(
+            deviceLimit({ prompt: false }),
+            p.classList.contains("ascii"),
+          )
+            .map((l) => l.html)
+            .join("\n")),
+      );
 
       // 8. Textual main pane
       document.getElementById("txmain").innerHTML = [

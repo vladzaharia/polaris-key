@@ -1,5 +1,6 @@
-// SDK parity pass SP-N18: the samples in `examples/node-*` install the SDK from the feed, so CI
-// does not build them; this test keeps them honest instead. Every value a sample imports from
+// SDK parity pass SP-N18: the samples in `examples/node-*` (and the terminal kit's sample,
+// `examples/ui/terminal-node`) install the SDK from the feed, so CI does not build them; this
+// test keeps them honest instead. Every value a sample imports from
 // `@polaris-key/node` (or a subpath) must be exported by that subpath, resolved through this
 // package's `exports` map exactly as a consumer would see it.
 
@@ -45,10 +46,10 @@ function valueImports(src: string): { spec: string; names: string[] }[] {
 }
 
 const samples = files(examples).filter((f) =>
-  relative(examples, f).startsWith("node-"),
+  /^(node-|ui\/terminal-node\/)/.test(relative(examples, f)),
 );
 
-describe("examples/node-* import only what the SDK exports", () => {
+describe("examples/node-* and examples/ui/terminal-node import only what the SDK exports", () => {
   it("has samples to check", () => {
     expect(samples.length).toBeGreaterThanOrEqual(4);
   });

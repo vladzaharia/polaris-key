@@ -16,6 +16,7 @@
 
 import { ciClient, type Out, type Sleep } from "./ci.js";
 import { resolveCiToken, type CiEnv } from "./oidc.js";
+import { untrusted, untrustedJson, type UntrustedEnv } from "./untrusted.js";
 
 /** Requests one `--apply` makes at most (200 versions each). */
 const MAX_ROUNDS = 50;
@@ -79,8 +80,10 @@ export interface FeedsPruneOptions {
 }
 
 /** `1234567` as `1.2 MB` (decimal units, as the feeds' size ceilings are shown). */
-export function formatBytes(n: number): string {
-  if (n < 1000) return `${n} B`;
+export function formatBytes(bytes: number): string {
+  // The server's number: anything else reads as NaN, never as text of its own.
+  const n = Number(bytes);
+  if (!(n >= 1000)) return `${n} B`;
   const units = ["kB", "MB", "GB", "TB"];
   let v = n;
   let u = -1;
@@ -91,31 +94,40 @@ export function formatBytes(n: number): string {
   return `${v.toFixed(1)} ${units[u]}`;
 }
 
-/** The human report of a prune (dry run or applied). */
-export function renderPruneReport(r: PruneReport): string {
+/**
+ * The human report of a prune (dry run or applied). Every name, version and reason is the
+ * server's, so each is cleaned (`untrusted.ts`); pass the job's `env` so inside GitHub Actions
+ * none reads as a workflow command either.
+ */
+export function renderPruneReport(
+  r: PruneReport,
+  env: UntrustedEnv = {},
+): string {
+  const u = (v: unknown) => untrusted(v, env);
   const lines: string[] = [];
   const verb = r.dryRun ? "Would prune" : "Pruned";
   lines.push(
-    `${r.dryRun ? "Dry run: nothing was deleted." : "Applied."} Product ${r.product} (automatic retention ${r.prunePrereleases ? "on" : "off"}).`,
+    `${r.dryRun ? "Dry run: nothing was deleted." : "Applied."} Product ${u(r.product)} (automatic retention ${r.prunePrereleases ? "on" : "off"}).`,
   );
   for (const p of r.packages) {
     lines.push(
-      `${p.ecosystem} ${p.name}: newest stable ${p.stable}; ${verb.toLowerCase()} ${p.prune.length} build${p.prune.length === 1 ? "" : "s"} of main, ${formatBytes(p.bytes)} (${formatBytes(p.freedBytes)} freed)`,
+      `${u(p.ecosystem)} ${u(p.name)}: newest stable ${u(p.stable)}; ${verb.toLowerCase()} ${p.prune.length} build${p.prune.length === 1 ? "" : "s"} of main, ${formatBytes(p.bytes)} (${formatBytes(p.freedBytes)} freed)`,
     );
     for (const v of p.prune)
       lines.push(
-        `  - ${v.version}  ${v.files} file${v.files === 1 ? "" : "s"}, ${formatBytes(v.bytes)} (${formatBytes(v.freedBytes)} freed)`,
+        `  - ${u(v.version)}  ${u(v.files)} file${v.files === 1 ? "" : "s"}, ${formatBytes(v.bytes)} (${formatBytes(v.freedBytes)} freed)`,
       );
-    for (const k of p.kept) lines.push(`  = ${k.version}  kept (${k.reason})`);
+    for (const k of p.kept)
+      lines.push(`  = ${u(k.version)}  kept (${u(k.reason)})`);
     for (const s of p.skipped ?? [])
       lines.push(
-        `  ~ ${s.version}  skipped (${s.reason} since the plan; kept)`,
+        `  ~ ${u(s.version)}  skipped (${u(s.reason)} since the plan; kept)`,
       );
     for (const f of p.failed ?? [])
-      lines.push(`  ! ${f.version}  failed: ${f.error}`);
+      lines.push(`  ! ${u(f.version)}  failed: ${u(f.error)}`);
   }
   for (const s of r.skipped)
-    lines.push(`${s.deliverableId}: skipped (no stable release yet)`);
+    lines.push(`${u(s.deliverableId)}: skipped (no stable release yet)`);
   const skipped = r.totals.skipped ?? 0;
   lines.push(
     `Total: ${verb.toLowerCase()} ${r.totals.versions} version${r.totals.versions === 1 ? "" : "s"}, ${formatBytes(r.totals.bytes)}, of which ${formatBytes(r.totals.freedBytes)} is referenced by nothing else.${skipped ? ` ${skipped} skipped: held since the plan, kept.` : ""}${r.totals.failed ? ` ${r.totals.failed} failed: run it again.` : ""}`,
@@ -146,6 +158,7 @@ export async function feedsPrune(
     fetchImpl: opts.fetchImpl,
     sleep: opts.sleep,
     log: opts.stderr,
+    env: opts.env,
   });
   const ask = () =>
     client.postJson<PruneReport>("release/packages/prune", {
@@ -184,8 +197,8 @@ export async function feedsPrune(
   }
   opts.stdout.write(
     opts.json
-      ? `${JSON.stringify(report, null, 2)}\n`
-      : renderPruneReport(report),
+      ? `${untrustedJson(report, 2)}\n`
+      : renderPruneReport(report, opts.env),
   );
   return report;
 }

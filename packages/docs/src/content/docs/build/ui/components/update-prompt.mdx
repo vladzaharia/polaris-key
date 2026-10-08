@@ -31,4 +31,17 @@ An available, downloading, ready, mandatory, blocked or store update, with its r
     **Headless.** `update_view(decision, current=…)` → `UpdateView` in `polaris_key.ui.core.models`.
 
   </TabItem>
+  <TabItem label="Terminal (Node)">
+    **Drop-in.** `update check` (`updateCheckFlow`): `up-to-date`, `available` with the command that
+    installs it, `mandatory`, `store`, `platform`, `ready` or `blocked`.
+
+    **Styled part.** `stepRow`, `problemRows`, and `linkSpan` for a store page.
+
+    **Headless.** `updateView(decision)` over `client.update.decide()`; `installView(outcome)` after
+    an install.
+
+    [Terminal (Node)](/docs/build/ui/frameworks/terminal-node/) has the adapter's options, the
+    `--json` contract and the fallbacks.
+
+  </TabItem>
 </Tabs>

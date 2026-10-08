@@ -31,4 +31,18 @@ Activation without a network: the request code as text and a QR code, then a res
     **Headless.** `OfflineView` in `polaris_key.ui.core.models`.
 
   </TabItem>
+  <TabItem label="Terminal (Node)">
+    **Drop-in.** `offline-request` (`offlineRequestFlow`) prints the request code, with a QR code on
+    a terminal of at least 70 columns by 20 rows (`default`); `import-bundle <file>`
+    (`importBundleFlow`) activates from the operator's file (`done`, `rejected-signature`).
+
+    **Styled part.** `codeRows`, and the `qrLines` primitive.
+
+    **Headless.** None of its own: the request code is `client.core.deviceId` and the import
+    `client.importBundle(jws)`.
+
+    [Terminal (Node)](/docs/build/ui/frameworks/terminal-node/) has the adapter's options, the
+    `--json` contract and the fallbacks.
+
+  </TabItem>
 </Tabs>

@@ -34,6 +34,7 @@ import { ciClient, type CiClient, type Out, type Sleep } from "./ci.js";
 import { parsePinFlag, resolvePins } from "./contentStamp.js";
 import { loadManifest, validateLoadedManifest } from "./manifest.js";
 import { resolveCiToken, type CiEnv } from "./oidc.js";
+import { untrusted } from "./untrusted.js";
 import { packContext } from "./packManifest.js";
 import { sha256Hex } from "./packArtifacts.js";
 import { RELEASE_KEY_ENV, recordSigner } from "./releaseKeys.js";
@@ -231,6 +232,7 @@ export async function revokePackRelease(
     fetchImpl: opts.fetchImpl,
     sleep: opts.sleep,
     log: opts.stderr,
+    env: opts.env,
   });
   await requireRevocationsDiscovery(client, opts.fetchImpl);
 
@@ -268,7 +270,7 @@ export async function revokePackRelease(
     { what: "Submitting the revocation record", body: { record: jws } },
   );
   out.write(
-    `Revoked ${pack}@${version} (${String(server.outcome ?? "submitted")})\n`,
+    `Revoked ${pack}@${version} (${untrusted(server.outcome ?? "submitted", opts.env)})\n`,
   );
   return { record, jws, sha256, server };
 }
@@ -358,6 +360,7 @@ export async function revokeDelegation(
     fetchImpl: opts.fetchImpl,
     sleep: opts.sleep,
     log: opts.stderr,
+    env: opts.env,
   });
   await requireRevocationsDiscovery(client, opts.fetchImpl);
   await requireDelegationsDiscovery(client, opts.fetchImpl);
@@ -411,7 +414,7 @@ export async function revokeDelegation(
     },
   );
   out.write(
-    `Revoked delegation ${hash.slice(0, 12)}… (${String(server.outcome ?? "submitted")}); every pack release signed under it is refused from now on.\n`,
+    `Revoked delegation ${hash.slice(0, 12)}… (${untrusted(server.outcome ?? "submitted", opts.env)}); every pack release signed under it is refused from now on.\n`,
   );
   return { record, jws: signed, sha256, server, supplied };
 }

@@ -128,23 +128,49 @@ export interface SignInWithBrowserOptions extends WaitForSignInOptions {
   deviceName?: string;
   /** Shown before the browser opens: render the code and the QR (`qr.terminal`) beside it. */
   onPrompt?: (prompt: SignInPrompt) => void;
-  /** Open a URL; default the OS opener (`open`, `xdg-open`, `start`). Return false when it could
-   *  not, and the host's prompt is the fallback. */
+  /** Open a URL; default the OS opener (`open`, `xdg-open`, `rundll32 url.dll`). Return false
+   *  when it could not, and the host's prompt is the fallback. */
   openUrl?: (url: string) => Promise<boolean> | boolean;
 }
 
-/** Open `url` with the OS's default handler. Best-effort: false when no opener ran. */
-export function openInBrowser(url: string): Promise<boolean> {
-  if (!/^https?:\/\//.test(url)) return Promise.resolve(false);
-  const [cmd, args] =
-    process.platform === "darwin"
-      ? ["open", [url]]
-      : process.platform === "win32"
-        ? ["cmd", ["/c", "start", "", url]]
-        : ["xdg-open", [url]];
+/** The process spawner `openInBrowser` uses (a test passes a fake). */
+export type SpawnLike = (
+  cmd: string,
+  args: string[],
+  opts: { detached: boolean; stdio: "ignore" },
+) => {
+  once(event: "error" | "spawn", fn: () => void): unknown;
+  unref(): void;
+};
+
+/** The OS command and arguments that open `url` with the default handler, per platform. */
+export function browserCommand(
+  url: string,
+  platform: NodeJS.Platform = process.platform,
+): [string, string[]] {
+  // Windows: rundll32 hands the URL to the protocol handler as one argument. `cmd /c start`
+  // would run it through cmd.exe's parser, where `&`, `|` and `^` in a URL split the command.
+  if (platform === "win32")
+    return ["rundll32", ["url.dll,FileProtocolHandler", url]];
+  if (platform === "darwin") return ["open", [url]];
+  return ["xdg-open", [url]];
+}
+
+/**
+ * Open `url` with the OS's default handler. Best-effort: false when no opener ran. Only an
+ * absolute http(s) URL with no whitespace or control character is opened.
+ */
+export function openInBrowser(
+  url: string,
+  platform: NodeJS.Platform = process.platform,
+  spawnImpl: SpawnLike = spawn as unknown as SpawnLike,
+): Promise<boolean> {
+  if (!/^https?:\/\//.test(url) || /[\s\u0000-\u001f\u007f-\u009f]/.test(url))
+    return Promise.resolve(false);
+  const [cmd, args] = browserCommand(url, platform);
   return new Promise((resolve) => {
     try {
-      const child = spawn(cmd, args as string[], {
+      const child = spawnImpl(cmd, args, {
         detached: true,
         stdio: "ignore",
       });

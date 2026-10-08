@@ -114,10 +114,12 @@ export const KEY_NAMESPACES = [
   "common",
   "a11y",
   "signin",
+  // The terminal kits' own strings: help, key hints, status rows (UK-14, UK-13).
+  "cli",
 ] as const;
 
 /** Namespaces whose keys need not be listed by a component state (parts and shared groups). */
-const SHARED_NAMESPACES = new Set(["part", "common", "a11y", "signin"]);
+const SHARED_NAMESPACES = new Set(["part", "common", "a11y", "signin", "cli"]);
 
 /** The §4.1 component names, exactly. */
 export const COMPONENTS = [
@@ -744,7 +746,7 @@ export function validateKitCopy(src: KitCopySources): string[] {
       errors.push(`${where}: core.* is reserved for core copy`);
     else if (!(KEY_NAMESPACES as readonly string[]).includes(ns))
       errors.push(
-        `${where}: "${ns}" is not a component, part, common, a11y or signin`,
+        `${where}: "${ns}" is not a component, part, common, a11y, signin or cli`,
       );
     if (!msg.note.trim()) errors.push(`${where}: note is empty`);
     const texts: [string, string][] = [[where, msg.value]];

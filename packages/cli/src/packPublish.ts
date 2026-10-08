@@ -81,10 +81,12 @@ import {
   type CiClient,
   type Out,
   type Sleep,
+  type StageProgress,
 } from "./ci.js";
 import { loadManifest, validateLoadedManifest } from "./manifest.js";
 import { mask, resolveCiToken, type CiEnv } from "./oidc.js";
 import { putFile } from "./s3.js";
+import { untrusted } from "./untrusted.js";
 import {
   checkSignedRecord,
   recordSigner,
@@ -197,6 +199,8 @@ export interface PackPublishOptions {
   scriptExtensions?: string[];
   /** P4-28 `--script-types`: that language's script class names (markers and reference types). */
   scriptTypes?: string[];
+  /** The stages as they start (checking, building, uploading, submitting): the CLI's spinner. */
+  progress?: StageProgress;
 }
 
 /** The lint settings beyond the pack's own declaration (P4-28). */
@@ -634,6 +638,8 @@ export async function publishPack(
   opts: PackPublishOptions,
 ): Promise<PackPublishResult> {
   const out = opts.stdout;
+  // The server's words (a gate, an outcome, a warning) are cleaned before they are shown.
+  const u = (v: unknown) => untrusted(v, opts.env);
   const warnings: string[] = [];
   const warn = (w: string) => {
     warnings.push(w);
@@ -701,7 +707,11 @@ export async function publishPack(
   // 2. Payloads: check, strip, lint.
   const root = path.resolve(opts.cwd, opts.dir);
   const variants: LoadedVariant[] = [];
-  for (const v of declaredVariants(pack))
+  const declared = declaredVariants(pack);
+  opts.progress?.stage(
+    `Checking ${declared.length} variant${declared.length === 1 ? "" : "s"} of ${packId}`,
+  );
+  for (const v of declared)
     variants.push(
       await loadVariant(pack, v, root, {
         ...(ctx.app?.content?.attachable
@@ -776,10 +786,14 @@ export async function publishPack(
 
     // 3. Objects, proven.
     const built = new Map<string, BuiltPayload>();
+    opts.progress?.stage(
+      `Building and hashing ${variants.length} payload${variants.length === 1 ? "" : "s"}`,
+    );
     for (const v of variants) {
       const b = await buildPayload(z, v.payload);
       await selfCheckPayload(z, b);
       built.set(v.key, b);
+      opts.progress?.advance(built.size, variants.length);
     }
     out.write(
       `Self-check: every files index parses and rebuilds its payload byte for byte (zstd ${z.version})\n`,
@@ -812,6 +826,7 @@ export async function publishPack(
         );
     }
     let client: CiClient | null = null;
+    opts.progress?.stage("Asking Polaris Key about earlier releases");
     try {
       const token = await resolveCiToken({
         baseUrl: opts.baseUrl,
@@ -829,10 +844,13 @@ export async function publishPack(
         fetchImpl: opts.fetchImpl,
         sleep: opts.sleep,
         log: opts.stderr,
+        env: opts.env,
       });
     } catch (e) {
       if (!opts.dryRun || e instanceof CiRequestError) throw e;
-      out.write(`Server checks: skipped (${(e as Error).message})\n`);
+      out.write(
+        `Server checks: skipped (${untrusted((e as Error).message, opts.env)})\n`,
+      );
     }
     if (client) {
       const discovery = await requirePacksDiscovery(client, opts.fetchImpl);
@@ -862,7 +880,7 @@ export async function publishPack(
         });
         sign = opts.signRecord ?? content.sign;
         out.write(
-          `Delegation ${opts.delegation!.slice(0, 12)}…: ${content.delegation.deliverable} for ${content.delegation.types.join(", ")}; signing as ${content.kid.slice(0, 17)}…\n`,
+          `Delegation ${opts.delegation!.slice(0, 12)}…: ${u(content.delegation.deliverable)} for ${content.delegation.types.map(u).join(", ")}; signing as ${u(content.kid.slice(0, 17))}…\n`,
         );
       } else
         out.write(
@@ -921,7 +939,7 @@ export async function publishPack(
       seq = mine.seq;
       gate = mine.entitlement;
       out.write(
-        `Release ${releaseId}: seq ${seq}; delivery gate: ${gate ?? "none (ungated)"}\n`,
+        `Release ${releaseId}: seq ${seq}; delivery gate: ${gate == null ? "none (ungated)" : u(gate)}\n`,
       );
       if (pack.entitlement !== null && pack.entitlement !== gate)
         throw new Error(
@@ -1003,6 +1021,7 @@ export async function publishPack(
     }
 
     // 5. Deltas, per variant, newest base first.
+    opts.progress?.stage("Building the objects and deltas");
     const objects = new Map<string, StagedObject>();
     const addObject = (bytes: Uint8Array, label: string) => {
       const sha256 = sha256Hex(bytes);
@@ -1239,6 +1258,7 @@ export async function publishPack(
     const list = [...objects.values()];
     if (opts.dryRun) {
       if (client) {
+        opts.progress?.stage("Asking which objects are stored");
         let present = 0;
         for (let i = 0; i < list.length; i += STAGE_ROUND_OBJECTS) {
           const ticket = await requestTicket(
@@ -1261,6 +1281,7 @@ export async function publishPack(
       return result;
     }
 
+    opts.progress?.stage("Signing the pack record");
     const jws = await sign!(record as unknown as ReleaseRecordDoc);
     if (jws.length > MAX_RECORD_JWS_BYTES)
       throw new Error(
@@ -1292,18 +1313,30 @@ export async function publishPack(
 
     const objDir = path.join(work, "objects");
     await mkdir(objDir, { recursive: true });
+    opts.progress?.stage(
+      `Uploading ${list.length} object${list.length === 1 ? "" : "s"}`,
+    );
     for (let i = 0; i < list.length; i += STAGE_ROUND_OBJECTS) {
       const round = list.slice(i, i + STAGE_ROUND_OBJECTS);
       let attempt = 0;
       for (;;) {
         try {
-          await stageRound(client!, round, gated, packId, objDir, opts, result);
+          await stageRound(
+            client!,
+            round,
+            gated,
+            packId,
+            objDir,
+            opts,
+            result,
+            list.length,
+          );
           break;
         } catch (e) {
           attempt += 1;
           if (attempt > 1 || !(e instanceof CiRequestError)) throw e;
           opts.stderr.write(
-            `Stage round failed (${e.message.split("\n")[0]}); retrying with a new ticket\n`,
+            `Stage round failed (${u(e.message.split("\n")[0])}); retrying with a new ticket\n`,
           );
         }
       }
@@ -1311,17 +1344,18 @@ export async function publishPack(
     out.write(
       `Uploaded ${result.uploaded.length} object${result.uploaded.length === 1 ? "" : "s"}; ${result.skipped.length} already stored\n`,
     );
+    opts.progress?.stage("Submitting the pack record");
     const server = await client!.postJson("release/publish/submit", {
       what: "Submitting the pack record",
       body: { record: jws },
     });
     result.server = server;
     out.write(
-      `Published ${String(server.releaseId ?? releaseId)} (${String(server.outcome)})\n`,
+      `Published ${u(server.releaseId ?? releaseId)} (${u(server.outcome)})\n`,
     );
     // P4-20: the server's warnings (save compatibility), never a failure.
     if (Array.isArray(server.warnings))
-      for (const w of server.warnings) if (typeof w === "string") warn(w);
+      for (const w of server.warnings) if (typeof w === "string") warn(u(w));
 
     // 8. Markers beside the payloads, then the cache for the next publish's --bases.
     const marker = markerJson(packId, version, jws);
@@ -1440,6 +1474,8 @@ async function stageRound(
   objDir: string,
   opts: PackPublishOptions,
   result: PackPublishResult,
+  /** Every object of the publish, for the progress count. */
+  objectTotal: number,
 ): Promise<void> {
   const ticket = await requestTicket(client, round, gated, opts);
   const bySha = new Map(round.map((o) => [o.sha256, o]));
@@ -1479,8 +1515,13 @@ async function stageRound(
       fetchImpl: opts.fetchImpl,
       sleep: opts.sleep,
       log: opts.stderr,
+      env: opts.env,
     });
     uploaded.push(o.target);
+    opts.progress?.advance(
+      result.uploaded.length + result.skipped.length + uploaded.length,
+      objectTotal,
+    );
   }
   if (uploaded.length > 0)
     await client.postJson("release/publish/stage", {

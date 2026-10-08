@@ -31,4 +31,18 @@ The blocking states, each with its primary fix: revoked, expired, version too ol
     **Headless.** `gate_view(status, …)` → `GateView(component="StatusScreen")` in `polaris_key.ui.core.models`.
 
   </TabItem>
+  <TabItem label="Terminal (Node)">
+    **Drop-in.** `status` (`statusFlow`) when the license is blocked (`revoked`, `expired`,
+    `version-too-old`, `version-too-new`, `channel-not-entitled`): the reason and the commands
+    that fix it, with exit code 1. The gate check, `checkFlow`, falls through to it.
+
+    **Styled part.** `problemRows` and `fixRows`.
+
+    **Headless.** `statusView(input)`: the StatusScreen state and its `fixes`, each a verb (or null
+    for a fix outside the command line) with its copy key; `statusExit(status)` for the exit code.
+
+    [Terminal (Node)](/docs/build/ui/frameworks/terminal-node/) has the adapter's options, the
+    `--json` contract and the fallbacks.
+
+  </TabItem>
 </Tabs>

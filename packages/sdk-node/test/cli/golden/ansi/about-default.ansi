@@ -1,0 +1,134 @@
+#### truecolor-80-dark
+[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · doctor[39m
+[90m│[39m
+[90m│[39m  SDK           @polaris-key/node 0.0.0
+[90m│[39m  Product       tidewater 2.4.1 · stable
+[90m│[39m  Server        ]8;;https://key.plrs.im\key.plrs.im]8;;\
+[90m│[39m  Device        dev_9fK2Lw7QmZ
+[32m✓[39m  Token store   keyring
+[32m✓[39m  Discovery     Reachable
+[90m│[39m  Services      license, config, release, distribution, update, identity
+[90m│[39m  License       License active
+[90m└[39m
+
+#### truecolor-80-light
+[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · doctor[39m
+[90m│[39m
+[90m│[39m  SDK           @polaris-key/node 0.0.0
+[90m│[39m  Product       tidewater 2.4.1 · stable
+[90m│[39m  Server        ]8;;https://key.plrs.im\key.plrs.im]8;;\
+[90m│[39m  Device        dev_9fK2Lw7QmZ
+[32m✓[39m  Token store   keyring
+[32m✓[39m  Discovery     Reachable
+[90m│[39m  Services      license, config, release, distribution, update, identity
+[90m│[39m  License       License active
+[90m└[39m
+
+#### ansi16-80
+[90m┌[39m  [36m[7m Tidewater Studio [27m[39m[90m · doctor[39m
+[90m│[39m
+[90m│[39m  SDK           @polaris-key/node 0.0.0
+[90m│[39m  Product       tidewater 2.4.1 · stable
+[90m│[39m  Server        ]8;;https://key.plrs.im\key.plrs.im]8;;\
+[90m│[39m  Device        dev_9fK2Lw7QmZ
+[32m✓[39m  Token store   keyring
+[32m✓[39m  Discovery     Reachable
+[90m│[39m  Services      license, config, release, distribution, update, identity
+[90m│[39m  License       License active
+[90m└[39m
+
+#### no-color-80
+┌   Tidewater Studio  · doctor
+│
+│  SDK           @polaris-key/node 0.0.0
+│  Product       tidewater 2.4.1 · stable
+│  Server        ]8;;https://key.plrs.im\key.plrs.im]8;;\
+│  Device        dev_9fK2Lw7QmZ
+✓  Token store   keyring
+✓  Discovery     Reachable
+│  Services      license, config, release, distribution, update, identity
+│  License       License active
+└
+
+#### ascii-80
+[90m+[39m  [36m[7m Tidewater Studio [27m[39m[90m - doctor[39m
+[90m|[39m
+[90m|[39m  SDK           @polaris-key/node 0.0.0
+[90m|[39m  Product       tidewater 2.4.1 - stable
+[90m|[39m  Server        ]8;;https://key.plrs.im\key.plrs.im]8;;\
+[90m|[39m  Device        dev_9fK2Lw7QmZ
+[32m+[39m  Token store   keyring
+[32m+[39m  Discovery     Reachable
+[90m|[39m  Services      license, config, release, distribution, update, identity
+[90m|[39m  License       License active
+[90m`[39m
+
+#### truecolor-60-dark
+[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · doctor[39m
+[90m│[39m
+[90m│[39m  SDK           @polaris-key/node 0.0.0
+[90m│[39m  Product       tidewater 2.4.1 · stable
+[90m│[39m  Server        ]8;;https://key.plrs.im\key.plrs.im]8;;\
+[90m│[39m  Device        dev_9fK2Lw7QmZ
+[32m✓[39m  Token store   keyring
+[32m✓[39m  Discovery     Reachable
+[90m│[39m  Services      license, config, release, distribution,
+[90m│[39m  update, identity
+[90m│[39m  License       License active
+[90m└[39m
+
+#### truecolor-60-light
+[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · doctor[39m
+[90m│[39m
+[90m│[39m  SDK           @polaris-key/node 0.0.0
+[90m│[39m  Product       tidewater 2.4.1 · stable
+[90m│[39m  Server        ]8;;https://key.plrs.im\key.plrs.im]8;;\
+[90m│[39m  Device        dev_9fK2Lw7QmZ
+[32m✓[39m  Token store   keyring
+[32m✓[39m  Discovery     Reachable
+[90m│[39m  Services      license, config, release, distribution,
+[90m│[39m  update, identity
+[90m│[39m  License       License active
+[90m└[39m
+
+#### ansi16-60
+[90m┌[39m  [36m[7m Tidewater Studio [27m[39m[90m · doctor[39m
+[90m│[39m
+[90m│[39m  SDK           @polaris-key/node 0.0.0
+[90m│[39m  Product       tidewater 2.4.1 · stable
+[90m│[39m  Server        ]8;;https://key.plrs.im\key.plrs.im]8;;\
+[90m│[39m  Device        dev_9fK2Lw7QmZ
+[32m✓[39m  Token store   keyring
+[32m✓[39m  Discovery     Reachable
+[90m│[39m  Services      license, config, release, distribution,
+[90m│[39m  update, identity
+[90m│[39m  License       License active
+[90m└[39m
+
+#### no-color-60
+┌   Tidewater Studio  · doctor
+│
+│  SDK           @polaris-key/node 0.0.0
+│  Product       tidewater 2.4.1 · stable
+│  Server        ]8;;https://key.plrs.im\key.plrs.im]8;;\
+│  Device        dev_9fK2Lw7QmZ
+✓  Token store   keyring
+✓  Discovery     Reachable
+│  Services      license, config, release, distribution,
+│  update, identity
+│  License       License active
+└
+
+#### ascii-60
+[90m+[39m  [36m[7m Tidewater Studio [27m[39m[90m - doctor[39m
+[90m|[39m
+[90m|[39m  SDK           @polaris-key/node 0.0.0
+[90m|[39m  Product       tidewater 2.4.1 - stable
+[90m|[39m  Server        ]8;;https://key.plrs.im\key.plrs.im]8;;\
+[90m|[39m  Device        dev_9fK2Lw7QmZ
+[32m+[39m  Token store   keyring
+[32m+[39m  Discovery     Reachable
+[90m|[39m  Services      license, config, release, distribution,
+[90m|[39m  update, identity
+[90m|[39m  License       License active
+[90m`[39m

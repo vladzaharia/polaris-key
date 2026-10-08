@@ -35,8 +35,22 @@ export const DIRS: Readonly<Record<string, string>> = {
   "terminal-python": "sdks/python/tests/cli/golden",
 };
 
-/** The glob keys are relative to this file; this prefix reaches the repository root. */
-const ROOT = "../../../../";
+/** This file's directory, relative to the repository root (the globs above start from it). */
+const HERE = "packages/docs/src/lib";
+
+/**
+ * A glob key as a repository-relative path. Vite normalises each key to the shortest relative
+ * path, so a kit under packages/ comes back as `../../../sdk-node/…`, not `../../../../packages/…`:
+ * resolve the key instead of comparing it with the pattern's prefix.
+ */
+function repoPath(key: string): string {
+  const parts = HERE.split("/");
+  for (const seg of key.split("/")) {
+    if (seg === "..") parts.pop();
+    else if (seg !== "." && seg !== "") parts.push(seg);
+  }
+  return parts.join("/");
+}
 
 const GLOBS: Readonly<Record<string, Record<string, ImageMetadata>>> = {
   react: import.meta.glob<ImageMetadata>(
@@ -109,12 +123,13 @@ export interface BaselinePair {
 function collect(): Baseline[] {
   const out: Baseline[] = [];
   for (const [kit, files] of Object.entries(GLOBS)) {
-    const dir = `${ROOT}${DIRS[kit]}/`;
+    const dir = `${DIRS[kit]}/`;
     for (const [key, image] of Object.entries(files)) {
-      if (!key.startsWith(dir)) continue;
-      const shot = classify(key.slice(dir.length));
+      const file = repoPath(key);
+      if (!file.startsWith(dir)) continue;
+      const shot = classify(file.slice(dir.length));
       if (shot === null) continue;
-      out.push({ ...shot, kit, file: key.slice(ROOT.length), image });
+      out.push({ ...shot, kit, file, image });
     }
   }
   return out.sort((a, b) => a.file.localeCompare(b.file));

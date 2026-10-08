@@ -246,6 +246,29 @@ One identity, rendered in each platform's current idiom. These stay identical ev
 | **Terminal** (Node, Python)                     | 2026 CLI (gh, uv, clack)            | **Colour:** ANSI-16 for status roles by default, so output follows the user's terminal theme; truecolor only for the product chip, and only with `COLORTERM=truecolor`; light background detected via OSC 11, then `COLORFGBG`. **Layout:** 80 columns, degrading to 60, with keys truncated in the middle; a continuous rail on every line. **Feedback:** a braille spinner in `mute`; a half-block QR, hidden below 70 columns or 20 rows, and never for sign-in (SIGN-IN.md D-67, D-68: browser and loopback, or a device code without a QR when headless). **Interaction:** OSC 8 links, OSC 52 copy, masked key entry, `--json` on every verb. **Fallbacks:** `NO_COLOR` and ascii symbols                                                                                                                                                                                                             |
 | **Qt** (Python)                                 | Platform variants above             | **Qt:** Qt Quick (QML with `MultiEffect` blur and `Behavior` springs) is the drop-in, rendering the macOS, Windows or Linux variant. QWidget is layer (b) only, with its limits stated: QSS has no blur, transitions or transforms. There is no Tk kit (owner, 2026-10-05)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 
+**Terminal output for scripts** (both terminal kits, the Python kit of UK-13 and the Node kit of
+UK-14; the Python kit's is the reference). The human output is localised catalog copy and may
+change between releases, so a script never parses it: it uses `--json`. Under `--json` a kit never
+prompts and never writes an escape, and writes ASCII only (every other character, server text
+included, as a `\u` escape). Each line on stdout is one JSON object (NDJSON) with `"v": 1` and
+`"command"`:
+
+- **Progress lines** carry an `"event"`: `"pending"` (sign-in: `verificationUri`,
+  `verificationUriComplete`, `userCode`, `expiresAt`), `"stage"` or `"progress"` (`done`,
+  `total`).
+- **The last line of every run** is `"event": "result"` with `"ok"`, `"exit"` and the verb's
+  fields flattened beside them (for example `status`, `usable`, `state`, `version` for
+  `status`; `kind`, `code`, `deviceCount`, `limit`, `manageUrl` for `activate`). That holds when
+  something fails too.
+- **`"error"`** appears on a failure that has a code: a registry code (`device_limit`,
+  `network`), `"usage"` for an argument error, `"internal"` for an unexpected exception and
+  `"interrupted"` for Ctrl-C. **`"message"`** appears only with a usage error and an
+  import-bundle failure.
+- **Exit codes:** 0 success; 1 a refusal, an unusable license, a cancelled or declined step or any
+  other failure; 2 a usage error; 130 Ctrl-C.
+- **Never on a `--json` line:** a license key, a device token, a sign-in poll credential, a
+  secret's value or a minted token.
+
 **Desktop model** (revised 2026-10-05, SIGN-IN.md §3.17). Sign-in and activation are steps of
 the **one sign-in form**: inline in the Welcome window's pane by default, or, with `presentation:
 "sheet"`, in one sheet on macOS, one `ContentDialog` on Windows or one `AdwDialog` on Linux that
@@ -1421,9 +1444,12 @@ the game's menu.
 #### Terminal (Node and Python CLIs, Textual)
 
 The terminal board is drawn in a real cell grid at line-height 1.2, 80 columns. It covers
-device-code sign-in with a half-block QR, masked key entry, the device-limit picker, status and
-update progress, a blocked status with its fix as a command, grouped help, the four colour and
-symbol fallbacks, a 60-column render and a Textual app. Textual buttons share one shape (a one-row block with one cell of padding): the
+device-code sign-in without a QR (SIGN-IN.md D-67, D-68), masked key entry that never echoes the
+key, the device limit's browser hand-off (SIGN-IN.md §4.15: the terminal opens `manageUrl` to
+replace a device), status and update progress, a blocked status with its fix as a command, grouped
+help, the four colour and symbol fallbacks, a 60-column render and a Textual app. The sign-in,
+activate, device-limit, help, fallback and 60-column shots follow the Node kit's goldens
+(`packages/sdk-node/test/cli/golden/`). Textual buttons share one shape (a one-row block with one cell of padding): the
 primary in the accent, the secondary as a tonal block, never bracketed `[ text ]` buttons beside
 blocks.
 

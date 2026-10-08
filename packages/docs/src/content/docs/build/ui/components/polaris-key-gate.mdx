@@ -31,4 +31,19 @@ The drop-in root: it boots, gates and runs every flow the product needs, renders
     **Headless.** `gate_view(status, now=…)` → `GateView` (component, state, grace, allowed range, holder) in `polaris_key.ui.core.models`.
 
   </TabItem>
+  <TabItem label="Terminal (Node)">
+    **Drop-in.** `status` (`statusFlow`) before there is a license (`needs-activation`): the
+    commands that get one (`activate`, `login`, `enroll` for a free tier) and exit code 1.
+    `checkFlow`, the check a product runs before its own work, prints the `licensed` line or falls
+    through to `status`.
+
+    **Styled part.** `problemRows` and `fixRows`.
+
+    **Headless.** `statusView(input)`: PolarisKeyGate `needs-activation` with its `fixes`, or
+    `licensed`; `statusExit(status)` says whether the product may go on.
+
+    [Terminal (Node)](/docs/build/ui/frameworks/terminal-node/) has the adapter's options, the
+    `--json` contract and the fallbacks.
+
+  </TabItem>
 </Tabs>
