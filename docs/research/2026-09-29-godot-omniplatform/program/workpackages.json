@@ -5747,7 +5747,7 @@
         "design/PORTAL §11.3 PX-13"
       ],
       "brief": "wp/PX-13-account-v2.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "PX-14",
@@ -6731,7 +6731,7 @@
         "notes/S-19 §10.3 decision 7"
       ],
       "brief": "wp/LX-07-grace-clamp.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "LX-17",
@@ -7948,7 +7948,7 @@
       "optional": false,
       "refs": ["notes/S-20 §6.10", "notes/S-20 owner decision 9"],
       "brief": "wp/HA-10-hosting-settings.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "HA-11",
@@ -9389,7 +9389,7 @@
       "optional": false,
       "refs": ["notes/S-21 §6.5", "design/PORTAL §4.16", "notes/S-21 §9 PS-05"],
       "brief": "wp/PS-05-storefront-portal-ui.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "PS-05b",
@@ -9430,7 +9430,7 @@
       "optional": false,
       "refs": ["notes/S-21 §6.6", "notes/S-21 §9 PS-06"],
       "brief": "wp/PS-06-console-polaris-key-storefront.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "PS-07",
@@ -10084,7 +10084,7 @@
         "docs/design/licenses/ frames 76–77"
       ],
       "brief": "wp/LX-30-console-holder-surfaces.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "LX-31",
@@ -10255,7 +10255,7 @@
         "wp/MO-07-portal-library-motion.md, Corrections found while building (2026-10-06)"
       ],
       "brief": "wp/PX-24-library-added-just-now.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "PX-25",
