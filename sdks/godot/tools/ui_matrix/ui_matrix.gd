@@ -74,14 +74,21 @@ func _run() -> void:
 
 
 ## Wait for the next drawn frame; force one when the window is not drawing (an occluded window
-## on macOS draws nothing).
+## on macOS draws nothing), and from then on force every frame instead of waiting.
+var _forcing := false
+
+
 func _drawn() -> void:
+	if _forcing:
+		RenderingServer.force_draw(false)
+		return
 	var done := [false]
 	RenderingServer.frame_post_draw.connect(func() -> void: done[0] = true, CONNECT_ONE_SHOT)
 	var started := Time.get_ticks_msec()
 	while not done[0] and Time.get_ticks_msec() - started < 2000:
 		await process_frame
 	if not done[0]:
+		_forcing = true
 		RenderingServer.force_draw(false)
 
 

@@ -310,6 +310,7 @@ static func current() -> Theme:
 		else:
 			_cache = load(LIGHT_PATH if scheme == "light" else DARK_PATH) as Theme
 		kit_icons(_cache, 1.0)
+		cjk_fallback(_cache)
 	else:
 		_cache = neutral()
 	return _cache
@@ -817,6 +818,32 @@ static func _scaled_box(b: StyleBox, k: float) -> StyleBox:
 		l.grow_begin *= k
 		l.grow_end *= k
 	return s
+
+
+## The platform's Japanese, Chinese and Korean faces, the fallback the brand theme's Rubik takes
+## for the scripts it lacks (the engine's own system fallback misses glyphs).
+const CJK_FONTS := ["Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Yu Gothic", "Meiryo", "Noto Sans CJK JP", "Noto Sans JP", "Source Han Sans JP", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans CJK KR", "sans-serif"]
+static var _cjk: SystemFont = null
+
+
+## Give every font of the brand theme `t` the platform's CJK faces as its fallback (at run time;
+## the bundled font files are unchanged).
+static func cjk_fallback(t: Theme) -> void:
+	if t == null or t.has_meta(&"pkey_cjk"):
+		return
+	if _cjk == null:
+		_cjk = SystemFont.new()
+		_cjk.font_names = PackedStringArray(CJK_FONTS)
+	var fonts: Array = [t.default_font]
+	for type in t.get_font_type_list():
+		for n in t.get_font_list(type):
+			fonts.append(t.get_font(n, type))
+	for f in fonts:
+		if f is FontFile and (f as FontFile).fallbacks.is_empty():
+			(f as FontFile).fallbacks = [_cjk]
+		elif f is FontVariation and (f as FontVariation).base_font is FontFile and ((f as FontVariation).base_font as FontFile).fallbacks.is_empty():
+			((f as FontVariation).base_font as FontFile).fallbacks = [_cjk]
+	t.set_meta(&"pkey_cjk", true)
 
 
 ## The kit's own switch, check box, radio and drop-down chevron (PKeyKitIcons, the generated

@@ -171,6 +171,7 @@ func _build() -> void:
 	# Without a logo of the game's own, the product's identity leads (never a Polaris Key mark).
 	_product = product_header(_lead, "Product", true)
 	_product.centered = true
+	_product.splash = true
 	_side = vbox(_shell, "Side", "PKeySections")
 	_side.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var box := _side
@@ -230,10 +231,11 @@ func _build() -> void:
 
 
 func _arrange(m: Dictionary) -> void:
-	# Side by side when the column would not fit a landscape screen's height.
+	# Side by side when the column would fill most of a landscape screen's height (it would sit
+	# cramped against the edges).
 	var stacked := _lead.get_combined_minimum_size().y + _side.get_combined_minimum_size().y + role("section_gap")
 	var lead_shown := _logo.visible or _product.visible
-	set_columns(_shell, m["landscape"] and lead_shown and _card.visible and stacked > available_height())
+	set_columns(_shell, m["landscape"] and lead_shown and _card.visible and stacked > 0.85 * available_height())
 	super(m)
 	fit_scrolls(available_height(), outer_view() == self)
 

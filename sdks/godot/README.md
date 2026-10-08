@@ -279,25 +279,26 @@ gamepad or a TV remote.
 
 - **Layout: responsive.** Every scene lays itself out for the area it is given (its own rect, not
   the OS), and follows a window resize live without losing the focused control:
-  - *Orientation.* Wider than tall is landscape: the device code stands beside its QR code, the
+  - _Orientation._ Wider than tall is landscape: the device code stands beside its QR code, the
     product and what the gate says beside the activation form, the offline request beside its
     import. Narrow or tall stacks them in one column.
-  - *Scale.* With the Polaris Key look every size (text, padding, radii, the QR code, card
+  - _Scale._ With the Polaris Key look every size (text, padding, radii, the QR code, card
     widths) follows the screen: 1 on 1280×720 (600×1080 in portrait), down to 0.75 on a 640×360
     window, up to 2 on 2560×1440. The neutral look and your own theme keep your sizes and only
     shrink on a screen too small for them. It holds under the `disabled`, `canvas_items` and
     `viewport` stretch modes and `content_scale_factor`.
-  - *Density.* `options.ui_density` (`spacious`, the default, `comfortable` or `compact`) steps down
+  - _Density._ `options.ui_density` (`spacious`, the default, `comfortable` or `compact`) steps down
     on its own when the screen is short or narrow.
-  - *Margins and width.* Content keeps at least `page_margin` (32 px at scale 1) from the screen's
+  - _Margins and width._ Content keeps at least `page_margin` (32 px at scale 1) from the screen's
     edges and is capped in width and centred, so it never hugs an edge or floats adrift on 4K. On
     a phone or tablet the device's safe area (`DisplayServer.get_display_safe_area()`) is kept
     clear too. A QR code is never under 160 physical pixels.
-  - *Last resort.* A card scrolls (following the focus) only when a theme's type is too large for
+  - _Last resort._ A card scrolls (following the focus) only when a theme's type is too large for
     the screen; the Polaris Key look never needs to.
 
   A scene nested in another fills the space its parent gives it; set `max_content_width = 0` to
   make a standalone one fill its rect instead (a sidebar, say).
+
 - **Spacing and type.** One spacing scale on a 4 px base and the roles every scene uses
   (`page_margin` 32, `card_padding` 40, `section_gap` 32, `stack_gap` 16, `tight_gap` 8,
   `inline_gap` 12, `column_gap` 48, `control_height` 56 at scale 1, spacious) live in every stock
@@ -578,7 +579,7 @@ func _ready() -> void:
   16 px, a QR code under 160 physical pixels, a landscape screen laid out in portrait, or a Polaris
   Key card that needs its scroll fallback. Headless runs have no renderer; `tools/ui_matrix/ui_matrix.gd`
   renders the matrix to PNGs (`godot --path sdks/godot --script tools/ui_matrix/ui_matrix.gd --
-  --out DIR --sheets`) and `tools/ui_screenshots.gd` every pinned state.
+--out DIR --sheets`) and `tools/ui_screenshots.gd` every pinned state.
 - Timings (M-series Mac, 4.7.2): `stage_matrix` 15 ms in the editor and 13 ms on the release
   template (56 rows, 6,594 probe transitions); `boot` about 6.3 s on both (five deliberate 1 s
   request deadlines); `ui` about 12 s on both (67 states, three passes each).

@@ -16,6 +16,11 @@ var hero := false:
 	set(value):
 		hero = value
 		_size()
+## Lead a splash (the boot screen): twice the hero icon, the name in the title type.
+var splash := false:
+	set(value):
+		splash = value
+		_size()
 ## Stack the icon over the name, centred (else the icon beside the name, leading).
 var centered := false:
 	set(value):
@@ -98,10 +103,10 @@ func product_name() -> String:
 func _size() -> void:
 	if _name == null:
 		return
-	var side := float(_constant("hero_icon_size" if hero else "icon_size"))
+	var side := float(_constant("hero_icon_size" if hero or splash else "icon_size")) * (2.0 if splash else 1.0)
 	_icon.custom_minimum_size = Vector2(side, side)
 	_tile.custom_minimum_size = Vector2(side, side)
-	_name.theme_type_variation = "PKeySection" if hero else "PKeyStrong"
+	_name.theme_type_variation = "PKeyTitle" if splash else ("PKeySection" if hero else "PKeyStrong")
 	var ink := get_theme_color("font_color", "PKeyTitle") if has_theme_color("font_color", "PKeyTitle") else get_theme_color("font_color", "Label")
 	var tile := StyleBoxFlat.new()
 	tile.bg_color = Color(ink, 0.12)
