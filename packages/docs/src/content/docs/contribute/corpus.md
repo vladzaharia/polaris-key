@@ -110,8 +110,8 @@ The Swift tests read `conformance/corpus/v2/` (and `conformance/transcripts/`) i
 root from its own `#filePath`, which is fixed at compile time, so `swift test` finds the files
 from any working directory as long as the package sits in a monorepo checkout; nothing is copied
 into the test bundle. The former generator-owned mirror under
-`sdks/swift/Tests/PolarisKeyTests/Resources/` was retired by P0-44, and the drift checks fail if
-that directory reappears (an older branch can merge a file back into it).
+`sdks/swift/Tests/PolarisKeyTests/Resources/v2` and `…/Resources/transcripts` were retired by P0-44, and the drift checks fail if
+either directory reappears (an older branch can merge a file back into it).
 
 ## The Godot resource mirror
 

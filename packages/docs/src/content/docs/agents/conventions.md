@@ -64,7 +64,7 @@ deliberately lightweight. A green hook is not a green gate.
 
 ## The hard rules, in one line each
 
-1. **Never hand-edit the corpus.** `conformance/corpus/v2/` and its Swift and Godot mirrors are
+1. **Never hand-edit the corpus.** `conformance/corpus/v2/` and its Godot mirror are
    output.
 2. **A wire change bumps `PROTOCOL_VERSION` and regenerates the corpus.** It is currently 4; the
    signed set is license / config / trust / bundle / feed / release, and a release record is
