@@ -21,6 +21,10 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Depends on: removed UK-44.
 - UX rows that name this package: UX-47 (built by PX-17 (UK-42 in the kits)).
 
+## Owner direction (2026-10-08)
+
+- **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
+
 ## Goal
 
 After a key activates, the kit's form shows a Done step that gently recommends keeping the product

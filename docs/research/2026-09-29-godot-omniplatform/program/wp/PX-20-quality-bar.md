@@ -29,6 +29,11 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 
 - Status: stamped `done` (was `in-review`).
 
+## Owner direction (2026-10-08)
+
+- **Content max widths.** Wide windows use the width with side-by-side panels and cap the line length; content never stretches edge to edge.
+- **Wide and zoomed checks.** The e2e and visual checks add 1920 px and 200% zoom to 1440 and 390 px, in both themes.
+
 ## Goal
 
 CI runs Playwright over every §4 state in both themes at 1440 and 390 px with axe on every state, a CSP browser test, a visual baseline and the horizontal-scroll assertion; the suite grows with each PX front-end package and is complete when the last one lands.

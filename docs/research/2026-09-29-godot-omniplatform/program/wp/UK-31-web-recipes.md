@@ -23,6 +23,10 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Estimate: 1–1.5 engineer-weeks (was 0.5–1).
 - Absorbs UK-22 (split; this package takes its share): Tailwind v4 preset to UK-04, the CSS-variable 'bring your own design system' recipe to UK-31; the shadcn registry route and the MUI, Mantine and Chakra theme objects are parked.
 
+## Owner direction (2026-10-08)
+
+- **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
+
 ## Goal
 
 Docs recipes show the elements in SolidJS, Preact, Qwik, htmx and plain pages, each verified by a tiny runnable example.

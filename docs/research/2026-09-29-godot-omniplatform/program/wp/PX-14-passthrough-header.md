@@ -97,6 +97,10 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Depends on: added P0-38.
 - UX rows absorbed (`uxRows` in `backlog-changes.json`): UX-41.
 
+## Owner direction (2026-10-08)
+
+- **Device pages.** The Worker-rendered device pages (`/activate`, `/device`, `/tv` and the card steps they open) follow the kits' responsive and spacing rules: landscape layouts in a landscape window (the code and QR side by side), stacked in portrait, one spacing rhythm, and the kits' resolution matrix.
+
 ## Goal
 
 App sign-ins show "<App> wants you to sign in" in the card header (app and device variants) through every step, the `AppConsent` confirm step on first sign-in and whenever what the app gets changes, and a return screen, across the broker, native redirect, web redirect and device code; products with Identity off get the `identity_disabled` error card.

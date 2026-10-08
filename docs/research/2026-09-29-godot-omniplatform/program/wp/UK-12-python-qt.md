@@ -47,6 +47,10 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Depends on: added UK-13.
 - Estimate: 3–4 engineer-weeks (was 4–5).
 
+## Owner direction (2026-10-08)
+
+- **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
+
 ## Goal
 
 A PySide6 or PyQt6 app gates itself with `run_gate(client, window)`, and the Qt Quick screens render the macOS, Windows or Linux variant in the Polaris look.

@@ -51,6 +51,15 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Service-off rows come from one dependency map; Paywall and EntitlementGate depend on `license`, and CM-29 appends the `commerce` pairs (D5, Q4).
 - No runner is added; every SDK suite keeps its verdicts (§5).
 
+## Owner direction (2026-10-08)
+
+- **Responsive.** Every kit screen adapts to its window, with landscape layouts where the window is landscape.
+- **Resolution matrix.** Tested at the committed matrix: phone portrait and landscape, small landscape 640 × 360, tablet, desktop 1440 and 1920, and TV where relevant, each also at 200% text or zoom.
+- **Spacing and theming.** One spacing rhythm, and themable with `preset: "polaris-key" | "native"`, where `native` matches the platform.
+- **Quality bar.** Meets the bar in `.claude/agents/pkey-ux-reviewer.md` ("a GOOD UI", good use of visual space), not just no overflow.
+- **Review.** Several UX reviews (`pkey-ux-reviewer`), not one.
+- **For this package.** The rows stay size-independent; each kit renders them at the matrix sizes.
+
 ## Goal
 
 The presentation state machines are specified once as fixtures that every core can run, and the parity registry tracks the UI kit features in every SDK.
