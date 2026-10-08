@@ -47,7 +47,8 @@ conformance/         corpus/v2 ONLY (one signer's golden vectors) + the Node and
                      + parity/ (features.json registry, errors.json + enums.json; each SDK
                        keeps its own parity.json)
                      + transcripts/ (HTTP conversations recorded through the Worker router)
-tools/               sign-corpus.ts · gen-mirrors.ts (front end over cli/src/mirrors.ts) · parity-check.ts · gen-transcripts.mjs ·
+tools/               sign-corpus.ts (the corpus driver) over corpus/<family>.ts + corpus/reference/ ·
+                     gen-mirrors.ts (front end over cli/src/mirrors.ts) · parity-check.ts · gen-transcripts.mjs ·
                      gen-services.ts + services.json · gen-sdk-constants.ts
 actions/publish/     the polaris-key/publish GitHub Action (committed dist/ bundle of the CLI)
 products/            per-product data (catalog.json + product.json) + gen-seed
@@ -137,6 +138,11 @@ pnpm --filter @polaris-key/worker test:workerd
 # `pnpm --filter @polaris-key/conformance-browser exec playwright install chromium`.
 pnpm test:browser                # add `-- --browser=firefox` or `-- --browser=webkit`
 
+# The React drop-in kit at every size in Chromium (CI job react-kit): no sideways scroll, the main
+# action in the first viewport, 24 px targets, text that scales with the root font. Set
+# PKEY_KIT_SHOTS=<dir> to also write each render to <dir>/react.<screen>/<size>-<scheme>.png.
+pnpm --filter @polaris-key/react test:browser
+
 ( cd sdks/python && .venv/bin/python -m pytest -q )   # Python (CPython 3.9 + 3.14 on ubuntu, macOS in CI)
 ( cd sdks/swift && swift build && swift test )        # Swift
 sdks/godot/tools/run_tests.sh    # Godot (GODOT_BIN, optional GODOT_TEMPLATE; CI runs both)
@@ -162,20 +168,22 @@ The committed `.husky/pre-commit` hook runs a lightweight subset (`pnpm gen:corp
 gate-matrix.json,fingerprint.json,stage-matrix.json,headers.json,config-matrix.json,
 update-matrix.json,outlet-matrix.json,plan-matrix.json,feed-url-matrix.json,
 sync-scenarios.json,device-label.json,presentation-matrix.json}`, `conformance/corpus/v2/content/cases.json`
-and the generator-owned mirrors at
-`sdks/swift/Tests/PolarisKeyTests/Resources/v2/` and `sdks/godot/tests/corpus/v2/` are output
-(`content/` is not mirrored: every runner reads it from the checkout).
+and the one generator-owned mirror at `sdks/godot/tests/corpus/v2/` are output (an exported Godot
+pack reads only `res://`; `content/` is not mirrored). Every other runner, Swift included, reads
+`conformance/` in place: the Swift tests find it through `CorpusLocator` (`#filePath`), so there is
+no Swift copy (P0-44 retired `sdks/swift/Tests/PolarisKeyTests/Resources/`). The generator is
+`tools/sign-corpus.ts`, a driver over one module per family in `tools/corpus/` and the
+independent reference implementations in `tools/corpus/reference/`.
 Regenerate with `pnpm gen:corpus` and commit the result in the same change.
-`pnpm gen:corpus -- --check` regenerates in memory and fails on any difference, mirrors included,
-and on a stray JSON file in any of them. `conformance/corpus/v2/content/blobs/` is the opposite:
+`pnpm gen:corpus -- --check` regenerates in memory and fails on any difference, the mirror included,
+on a stray JSON file in either directory, and on the retired Swift mirror's directory. `conformance/corpus/v2/content/blobs/` is the opposite:
 generator **inputs** (the zstd blobs, the `pkey-chunks/1` indexes and bundles, and `refs.json`),
 hash-checked against `content/cases.json`'s `blobs` table and never rewritten by a normal or
 `--check` run; only the explicit `--rebuild-content-blobs` mode, pinned to zstd 1.5.7, writes them,
 and it may only **add** blobs and `refs.json` entries: it throws, writing nothing, if an existing
 one would change (plans/P4-10.md decision 15). Changing an existing blob is a PR of its own. Never weaken a runner to make a change "pass". The same
-holds for the HTTP transcripts: `conformance/transcripts/*.json` and their mirrors at
-`sdks/swift/Tests/PolarisKeyTests/Resources/transcripts/` and `sdks/godot/tests/transcripts/` are
-recorded by the Worker's scenario tests (`packages/worker/test/transcripts/`) through
+holds for the HTTP transcripts: `conformance/transcripts/*.json` and their Godot mirror at
+`sdks/godot/tests/transcripts/` are recorded by the Worker's scenario tests (`packages/worker/test/transcripts/`) through
 `pnpm gen:transcripts`; a Worker change that alters a recorded response regenerates them in the
 same change, and the SDK replayers then show which SDKs must follow.
 

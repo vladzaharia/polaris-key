@@ -198,6 +198,9 @@ export interface PageContext {
   consoleOrigin: string | null;
   /** The bytes host's origin, or `null`. */
   bytesOrigin: string | null;
+  /** The channel to model; the page itself is always `PAGE_CHANNEL`. The customer portal's
+   *  `customerDownloads` asks for the channel it shows (its install sources, P0-48). */
+  channel?: string;
 }
 
 // ── Memoised readers ─────────────────────────────────────────────────────────────────────────
@@ -375,8 +378,40 @@ export const STORE_KINDS = [
   "flathub",
   "snap",
   "winget",
-] as const;
+] as const satisfies readonly ActionKind[];
 export type StoreKind = (typeof STORE_KINDS)[number];
+
+/**
+ * The actions that are neither a store page nor a file download: package managers and
+ * sideloading sources, each served from this product's feeds or its own tap. The customer
+ * portal offers them to an owner beside the store links (`customer.ts`, P0-48), so an owner sees
+ * every channel a stranger sees here.
+ */
+export const INSTALL_SOURCE_KINDS = [
+  "homebrew",
+  "scoop",
+  "altstore",
+  "sidestore",
+  "altstore-pal",
+  "obtainium",
+  "fdroid",
+] as const satisfies readonly ActionKind[];
+export type InstallSourceKind = (typeof INSTALL_SOURCE_KINDS)[number];
+
+/** Every action kind is a store, an install source or the download, and no kind is both a store
+ *  and an install source (compile-time checks: the portal shows the two lists apart). */
+const EVERY_ACTION_KIND_SORTED: [
+  Exclude<ActionKind, StoreKind | InstallSourceKind | "download">,
+] extends [never]
+  ? true
+  : false = true;
+const STORES_AND_SOURCES_DISJOINT: [
+  Extract<StoreKind, InstallSourceKind>,
+] extends [never]
+  ? true
+  : false = true;
+void EVERY_ACTION_KIND_SORTED;
+void STORES_AND_SOURCES_DISJOINT;
 
 /** The order actions are offered in, per platform: the first present is the primary. */
 const PRIORITY: Readonly<Record<PagePlatform, readonly ActionKind[]>> = {
@@ -692,7 +727,7 @@ export async function buildDownloadModel(
   const { catalog, delivery, notesPublic } = readers;
   const history = await catalog.channelReleases(
     APP_DELIVERABLE_ID,
-    PAGE_CHANNEL,
+    ctx.channel ?? PAGE_CHANNEL,
   );
   if (!history) return null;
   const slug = ctx.product.slug;

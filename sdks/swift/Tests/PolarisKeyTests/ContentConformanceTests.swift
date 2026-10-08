@@ -20,22 +20,18 @@
 // (`parseChunkIndexBytes`), a fetcher that answers each single-range request with
 // `objects[sha256]` sliced to the range and clipped at the object's end, and an in-memory output.
 //
-// `content/` is not mirrored into the test bundle (plans/P4-01.md §4.1, §8.4): this runner reads
-// it from the checkout through `#filePath`, never `Bundle.module`. Verdicts are compared as JSON
-// values with integral floats normalised, exactly as the Node runner compares them.
+// `content/` is read from the checkout through `CorpusLocator` (plans/P4-01.md §4.1, §8.4), like
+// the rest of the corpus. Verdicts are compared as JSON values with integral floats normalised,
+// exactly as the Node runner compares them.
 
 import Foundation
 import PolarisKeyCore
 import PolarisKeyPacks
 import XCTest
 
-/// The checkout's `conformance/corpus/v2/content/`, found from this source file.
+/// The checkout's `conformance/corpus/v2/content/`.
 enum ContentCorpus {
-    static var dir: URL {
-        var u = URL(fileURLWithPath: #filePath)
-        for _ in 0..<5 { u.deleteLastPathComponent() }
-        return u.appendingPathComponent("conformance/corpus/v2/content", isDirectory: true)
-    }
+    static var dir: URL { CorpusLocator.contentDir }
 
     static func load() throws -> [String: JSONValue] {
         let data = try Data(contentsOf: dir.appendingPathComponent("cases.json"))

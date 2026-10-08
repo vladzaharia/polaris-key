@@ -1,16 +1,27 @@
 # ST-18 Promote to repo (patch), settings export and import, `pkey settings diff` and `export`, `pkey validate --against`, CI scope `settings:read`
 
-| Field       | Value                                                                |
-| ----------- | -------------------------------------------------------------------- |
-| Phase       | ST: Settings architecture (S-18) (phase 4: manifest round trip)      |
-| Size        | 1–1.4 engineer-weeks                                                 |
-| Depends on  | [ST-17](ST-17-resync-dry-run.md), [ST-19](ST-19-manifest-cleanup.md) |
-| Unblocks    | [ST-23](ST-23-env-promote.md)                                        |
-| Role        | `pkey-implementer`                                                   |
-| Plan mode   | no                                                                   |
-| Gates       | rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; CLI bundle        |
-| Human input | none                                                                 |
-| Repo        | `vladzaharia/polaris-key`                                            |
+| Field       | Value                                                                         |
+| ----------- | ----------------------------------------------------------------------------- |
+| Phase       | ST: Settings, access control and console shell (phase 4: manifest round trip) |
+| Size        | 1–1.4 engineer-weeks                                                          |
+| Depends on  | [ST-17](ST-17-resync-dry-run.md), [ST-19](ST-19-manifest-cleanup.md)          |
+| Unblocks    | [ST-23](ST-23-env-promote.md)                                                 |
+| Role        | `pkey-implementer`                                                            |
+| Plan mode   | no                                                                            |
+| Gates       | rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; CLI bundle                 |
+| Human input | none                                                                          |
+| Repo        | `vladzaharia/polaris-key`                                                     |
+
+## Consolidation 2026-10-07
+
+> **Parked 2026-10-07 (DX consolidation).** Optional and `deferred`, so `--ready` and `--critical`
+> skip it. Revive with a third-party adopter, on P0-45's command registry and personal tokens. Re-read this brief against the code before reviving it.
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **parked** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Promote-to-repo, export/import and settings diff have little value on a two-product deployment (C-46). Revive with a third-party adopter, on P0-45's command registry and personal tokens.
+
+- Optional now (was required).
 
 ## Goal
 

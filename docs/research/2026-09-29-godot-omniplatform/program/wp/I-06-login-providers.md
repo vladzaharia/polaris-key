@@ -5,7 +5,7 @@
 | Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, phase-1a)                                                                                                   |
 | Size        | 1–1.4 engineer-weeks                                                                                                                                                                     |
 | Depends on  | [I-04](I-04-account-contract-plan.md), [I-05](I-05-accounts-core.md)                                                                                                                     |
-| Unblocks    | [PX-W16](PX-W16-profile-avatars.md), [PX-12](PX-12-login-card-v2.md), [PS-07](PS-07-store-owned-path.md)                                                                                 |
+| Unblocks    | [PX-W16](PX-W16-profile-avatars.md), [PX-12](PX-12-login-card-v2.md)                                                                                                                     |
 | Role        | `pkey-implementer`                                                                                                                                                                       |
 | Plan mode   | no: follows the approved [`plans/I-04.md`](../plans/I-04.md) where it names this package                                                                                                 |
 | Gates       | THREAT-MODEL; `wrangler.toml`; provider fixtures; per-provider audience tests                                                                                                            |

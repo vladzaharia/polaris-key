@@ -384,7 +384,8 @@ the stationary star scattered" is reworded in this change to "plain sparks" (BRA
 One rule (D3): **instant swaps**. The tokens collapse, `viewTransition()` does not start a
 transition, the shimmer and the burst are hidden, countdown rings stay full, smooth scrolling
 becomes instant. Delays that are not motion (the skeleton's 150 ms grace, the new-row tint's
-1.6 s) remain. The spinner keeps turning (BRAND: a loading indicator, not decoration). The
+1.6 s) remain. The spinner stands still too, a still ring (amended 2026-10-08: it had kept
+turning as "a loading indicator, not decoration", the one loop left under reduced motion). The
 in-app preference (MO-12) writes `html[data-motion="reduce"]` from the account menu (console)
 and Account → Appearance (portal), stored like the theme. It is applied from the entry modules,
 not the hashed pre-paint script, so `adminCsp.ts` does not change.

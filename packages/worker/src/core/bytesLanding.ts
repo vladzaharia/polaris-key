@@ -51,6 +51,8 @@ import { BRAND, FONT, SERVICE_ACCENTS, THEME_TOKENS } from "@polaris-key/brand";
 import { lockupMetrics, markParts } from "@polaris-key/brand/svg";
 import type { Env } from "../env.js";
 import { bytesHostname, normalizeHostname } from "./bytesHostname.js";
+import { escapeHtml } from "../platform/html.js";
+import { sha256Base64 } from "../platform/hash.js";
 
 /** The landing page's Cache-Control: the page changes only with a deploy. */
 export const LANDING_CACHE = "public, max-age=3600";
@@ -61,15 +63,6 @@ const DEFAULT_CONSOLE_ORIGIN = "https://key.plrs.im";
 /** Is `pathname` the landing page's path? Exactly `/`, nothing else. */
 export function isLandingPath(pathname: string): boolean {
   return pathname === "/";
-}
-
-export function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#x27;");
 }
 
 // ── Artwork ──────────────────────────────────────────────────────────────────────────────────
@@ -179,16 +172,11 @@ let cspPromise: Promise<string> | null = null;
 /** The page's Content-Security-Policy: the inert-document policy `bytesHost.ts` checks. */
 export function landingCsp(): Promise<string> {
   cspPromise ??= (async () => {
-    const digest = await crypto.subtle.digest(
-      "SHA-256",
-      new TextEncoder().encode(LANDING_CSS),
-    );
-    let bin = "";
-    for (const b of new Uint8Array(digest)) bin += String.fromCharCode(b);
+    const styleHash = await sha256Base64(LANDING_CSS);
     return [
       "sandbox",
       "default-src 'none'",
-      `style-src 'sha256-${btoa(bin)}'`,
+      `style-src 'sha256-${styleHash}'`,
       "img-src data:",
       "frame-ancestors 'none'",
       "base-uri 'none'",

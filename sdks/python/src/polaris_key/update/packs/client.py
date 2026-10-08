@@ -31,6 +31,7 @@ from urllib.parse import quote, urljoin, urlsplit
 
 from ...constants_generated import MAX_RECORD_JWS_BYTES, ErrorCode, Feature
 from ...core.dirs import exclude_from_backup
+from ...core.events import listener_failed
 from ...discovery import service_endpoint
 from .boot import boot_pack_options, run_boot_fetch
 from .engine import (
@@ -475,7 +476,7 @@ class PacksClient:
             try:
                 listener(e)
             except Exception:
-                pass  # A listener never fails an install.
+                listener_failed("packs progress listener")  # never fails an install
 
     def _stamp_bytes(self) -> bytes:
         src = self._opts.content_stamp
@@ -564,7 +565,12 @@ class PacksClient:
                 "GET", url, headers=self._ctx.headers(headers), timeout=self._ctx.timeout
             ) as res:
                 if not res.is_success:
-                    return {"ok": False, "code": ErrorCode.NETWORK_ERROR}
+                    return {
+                        "ok": False,
+                        "code": ErrorCode.SERVER_ERROR
+                        if res.status_code >= 500
+                        else ErrorCode.NETWORK_ERROR,
+                    }
                 # A record over the bound is refused at step `hash` without hashing; never
                 # buffer more than one byte past it.
                 limit = MAX_RECORD_JWS_BYTES + 1

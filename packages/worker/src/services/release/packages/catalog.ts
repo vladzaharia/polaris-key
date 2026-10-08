@@ -10,7 +10,11 @@ import type {
   CatalogPackageVersion,
   ReleaseCatalog,
 } from "../../../core/hooks.js";
-import type { Db } from "../../../core/platform.js";
+import {
+  parseJsonArray,
+  parseJsonObject,
+  type Db,
+} from "../../../core/platform.js";
 import { parseManualChannels } from "../channels.js";
 import { getReleaseConfig } from "../config.js";
 import {
@@ -24,26 +28,6 @@ type PackageCatalog = Pick<
   ReleaseCatalog,
   "packageDeliverables" | "packageVersions" | "packageChannelHeads"
 >;
-
-function parseArray(json: string): unknown[] {
-  try {
-    const v: unknown = JSON.parse(json);
-    return Array.isArray(v) ? v : [];
-  } catch {
-    return [];
-  }
-}
-
-function parseObject(json: string): Record<string, unknown> {
-  try {
-    const v: unknown = JSON.parse(json);
-    return v && typeof v === "object" && !Array.isArray(v)
-      ? (v as Record<string, unknown>)
-      : {};
-  } catch {
-    return {};
-  }
-}
 
 /** A `files_json` entry, read defensively (a hand-edited row drops the entry, never throws). */
 function fileRecord(v: unknown): CatalogPackageFile | null {
@@ -136,10 +120,10 @@ export function packageCatalog({
         channel: r.channel,
         state: r.state,
         stateMessage: r.state_message,
-        files: parseArray(r.files_json)
+        files: (parseJsonArray(r.files_json) ?? [])
           .map(fileRecord)
           .filter((f): f is CatalogPackageFile => f !== null),
-        metadata: parseObject(r.metadata_json),
+        metadata: parseJsonObject(r.metadata_json) ?? {},
         publishedAt: r.published_at,
       }));
     },

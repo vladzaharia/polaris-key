@@ -18,7 +18,6 @@ import type {
   SignInSettings,
   UpdatePortalSettingsBody,
 } from "../src/api.js";
-import { resetCache } from "../src/context.js";
 import { KitProviders } from "../src/kit/KitProviders.js";
 import { AppToaster } from "../src/ui/toast.js";
 
@@ -181,7 +180,6 @@ async function axeViolations(container: HTMLElement): Promise<string[]> {
 }
 
 beforeEach(() => {
-  resetCache();
   portalSettings.mockReset();
   updatePortalSettings.mockReset();
   product.mockReset();
@@ -321,7 +319,6 @@ describe("Identity → Portal", () => {
     renderPortal();
     expect(await screen.findByText(/^Edited/)).toBeTruthy();
     cleanup();
-    resetCache();
     portalSettings.mockResolvedValue({
       settings: { ...PORTAL, modifiedAt: 0 },
     });
@@ -519,7 +516,6 @@ describe("Identity → Portal", () => {
       ),
     ).toBeTruthy();
     cleanup();
-    resetCache();
     portalSettings.mockResolvedValue({
       settings: { ...PORTAL, branding: { accent: "#7c3aed" } },
     });
@@ -611,12 +607,26 @@ describe("Identity → Sign-in", () => {
     renderSignIn();
     expect(await screen.findByText(/is refused \(not entitled\)/)).toBeTruthy();
     cleanup();
-    resetCache();
     edgeMintRecipes.mockResolvedValue(mintResponse(CUSTOM, true));
     renderSignIn();
     expect(
       await screen.findByText(/gets the auto-issue default tier/),
     ).toBeTruthy();
+  });
+
+  it("names where auto-issue is set, never a dead link to Enrollment (P0-47)", async () => {
+    renderSignIn();
+    const line = (await screen.findByText(/is refused \(not entitled\)/))
+      .parentElement as HTMLElement;
+    expect(line.textContent).toContain(
+      "Auto-issue is set by the autoIssue block (opens a new tab) in .pkey/product.",
+    );
+    expect(screen.queryByRole("link", { name: /Enrollment/ })).toBeNull();
+    // The phrase itself is the link, to the policy page's Auto-issue section.
+    const docs = within(line).getByRole("link", { name: /^autoIssue block/ });
+    expect(docs.getAttribute("href")).toMatch(
+      /\/docs\/services\/license\/policy\/#auto-issue$/,
+    );
   });
 
   it("flags a group map that does not parse", async () => {

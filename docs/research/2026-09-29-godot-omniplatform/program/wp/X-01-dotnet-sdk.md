@@ -16,6 +16,15 @@ This is a **kickoff brief**. It fixes scope, layout, dependencies and the order 
 milestone is one PR (or a short series) whose detailed steps the porter writes into the PR
 description, driven by the manifest's `planned` entries.
 
+## Consolidation 2026-10-07
+
+> **Parked 2026-10-07 (DX consolidation).** Optional and `deferred`, so `--ready` and `--critical`
+> skip it. Revive only with a committed adopter; then F-32 and an SP-33b golden column ship in the same package. Re-read this brief against the code before reviving it.
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **parked** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> C# SDK (10-14 weeks). Revive only with a committed adopter; then F-32 and an SP-33b golden column ship in the same package.
+
 ## Goal
 
 A C#/.NET SDK lives in `sdks/dotnet`. One core package serves .NET desktop, MAUI, Unity and Godot C#.

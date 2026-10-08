@@ -41,7 +41,13 @@ import {
   subjectDataSize,
 } from "../../../core/subjectHooks.js";
 import { getLicense, getProduct, type LicenseRow } from "../../../core/data.js";
-import { randomId, type Db } from "../../../core/platform.js";
+import {
+  b64urlDecodeBinary,
+  b64urlEncodeBinary,
+  normalizeEmail,
+  randomId,
+  type Db,
+} from "../../../core/platform.js";
 import { sendNotice, sendSecurityNotice } from "../portal/email.js";
 import {
   licenseAssignedToYouNotice,
@@ -54,11 +60,7 @@ import {
 } from "../portal/notices.js";
 import { detachLicense, reassignLicense } from "./claim.js";
 import type { AccountContext } from "./links.js";
-import {
-  getAccountRow,
-  normalizeEmail,
-  verifiedAccountEmails,
-} from "./repo.js";
+import { getAccountRow, verifiedAccountEmails } from "./repo.js";
 import { PRODUCT_SIGNIN_ACTION, signInKindOf } from "./signIn.js";
 
 /** How long a relink can be undone (S-16 §5.4 item 9: 72 hours). */
@@ -140,19 +142,13 @@ export interface ProductUsersPage {
 }
 
 function encodeCursor(createdAt: number, subject: string): string {
-  return btoa(JSON.stringify([createdAt, subject]))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
+  return b64urlEncodeBinary(JSON.stringify([createdAt, subject]));
 }
 
 function decodeCursor(raw: string | null): [number, string] | null {
   if (!raw || raw.length > 256) return null;
   try {
-    const b64 = raw.replace(/-/g, "+").replace(/_/g, "/");
-    const v = JSON.parse(
-      atob(b64 + "=".repeat((4 - (b64.length % 4)) % 4)),
-    ) as unknown;
+    const v = JSON.parse(b64urlDecodeBinary(raw)) as unknown;
     if (
       Array.isArray(v) &&
       typeof v[0] === "number" &&

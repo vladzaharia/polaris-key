@@ -17,6 +17,8 @@ kotlin {
 
 dependencies {
     testImplementation(project(":sdk"))
+    // The pack corpus decodes zstd: the opt-in decoder (SP-50), as an app that uses packs adds it.
+    testImplementation(project(":zstd"))
     testImplementation(libs.junit)
     testImplementation(libs.tink)
     testImplementation(libs.kotlinx.coroutines.test)

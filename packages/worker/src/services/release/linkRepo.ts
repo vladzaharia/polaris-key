@@ -29,6 +29,7 @@ import {
   generateEd25519,
   seal,
   secret,
+  sha256Hex,
   type Db,
   type DbStatement,
   type Env,
@@ -305,13 +306,7 @@ export async function digestManifestFiles(
       .sort()
       .map((name) => [name, files[name]]),
   );
-  const bytes = new Uint8Array(
-    await crypto.subtle.digest(
-      "SHA-256",
-      new TextEncoder().encode(canonical) as BufferSource,
-    ),
-  );
-  return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+  return sha256Hex(canonical);
 }
 
 /** One thing that blocks a create, placed on its `.pkey/` document and JSON path when it has one. */

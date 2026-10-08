@@ -47,7 +47,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlin.coroutines.resume
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 
 /** Play In-App Updates as :update's install driver. */
 public class PlayInstallDriver(
@@ -114,7 +116,7 @@ public class PlayInstallDriver(
         if (done.isFailure) {
             return InstallResult.Failed(ErrorCode.platformError, "Play could not complete the downloaded update (${done.exceptionOrNull()?.message})")
         }
-        flexibleRelease?.let { events()?.record(UpdateEvent.updateApplied, it, fromRelease = runningVersion) }
+        flexibleRelease?.let { withContext(Dispatchers.IO) { events()?.record(UpdateEvent.updateApplied, it, fromRelease = runningVersion) } }
         stopListening()
         return InstallResult.Started
     }
@@ -168,9 +170,10 @@ public class PlayInstallDriver(
             policy.immediatePriority?.let { status.priority >= it } == true ||
             policy.immediateAfterDays?.let { days -> status.stalenessDays?.let { it >= days } } == true
         if (status.readyToComplete || status.installStatus == InstallStatus.DOWNLOADED) {
-            events()?.recordOnce(UpdateEvent.updateDownloaded, release, fromRelease = runningVersion)
+            // SP-50: the journal is a file; written on Dispatchers.IO.
+            withContext(Dispatchers.IO) { events()?.recordOnce(UpdateEvent.updateDownloaded, release, fromRelease = runningVersion) }
             val done = suspendCancellableCoroutine { cont -> updates.complete { cont.resume(it) } }
-            if (done.isSuccess) events()?.record(UpdateEvent.updateApplied, release, fromRelease = runningVersion)
+            if (done.isSuccess) withContext(Dispatchers.IO) { events()?.record(UpdateEvent.updateApplied, release, fromRelease = runningVersion) }
             return if (done.isSuccess) InstallResult.Started else InstallResult.Failed(ErrorCode.platformError, "Play could not complete the downloaded update (${done.exceptionOrNull()?.message})$offer")
         }
         if (status.availability == UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS &&

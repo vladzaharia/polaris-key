@@ -641,7 +641,9 @@ describe("Operations", () => {
       }),
     });
     page = await operationsPage();
-    await within(page).findByText("D1 database");
+    // The second mount reads the failing probe (its own cache): D1 is named in the attention list
+    // and in the bindings table.
+    await within(page).findAllByText("D1 database");
     expect(within(page).getAllByText("Failed").length).toBeGreaterThan(0);
   });
 

@@ -1,16 +1,16 @@
-# UK-03 `@polaris-key/ui-core`: framework-neutral view models for every §4 component over `client-core`, error → copy keys, theme and `ProductIdentity` resolution with the presentation seam, the fixture runner
+# UK-03 ui-core: the one JS headless layer (absorbs UK-14's models)
 
-| Field       | Value                                                                                                                                                                                                                                                               |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                                                                                                                                                        |
-| Size        | 2–3 engineer-weeks                                                                                                                                                                                                                                                  |
-| Depends on  | [UK-01](UK-01-brand-kit-tokens.md), [UK-02a](UK-02a-kit-copy-catalog.md), [UK-02b](UK-02b-ui-fixtures-parity.md)                                                                                                                                                    |
-| Unblocks    | [UK-04](UK-04-web-components.md), [UK-05](UK-05-react-kit.md), [UK-06](UK-06-electron-kit.md), [UK-17](UK-17-vue-kit.md), [UK-18](UK-18-svelte-kit.md), [UK-19](UK-19-angular-kit.md), [UK-20](UK-20-react-native-kit.md), [UK-42](UK-42-activation-holders-web.md) |
-| Role        | `pkey-sdk-porter`                                                                                                                                                                                                                                                   |
-| Plan mode   | no                                                                                                                                                                                                                                                                  |
-| Gates       | the UI fixture runner in `pnpm test`; `pnpm typecheck`                                                                                                                                                                                                              |
-| Human input | none                                                                                                                                                                                                                                                                |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                           |
+| Field       | Value                                                                                                                                                                                                                                                                                                                                         |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                                                                                                                                                                                                                                  |
+| Size        | 2–3 engineer-weeks                                                                                                                                                                                                                                                                                                                            |
+| Depends on  | [UK-01](UK-01-brand-kit-tokens.md), [UK-02a](UK-02a-kit-copy-catalog.md), [UK-02b](UK-02b-ui-fixtures-parity.md), [UK-14](UK-14-node-terminal.md)                                                                                                                                                                                             |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [LX-19](LX-19-sdks-licensing.md), [UK-04](UK-04-web-components.md), [UK-05](UK-05-react-kit.md), [UK-06](UK-06-electron-kit.md), [UK-17](UK-17-vue-kit.md), [UK-18](UK-18-svelte-kit.md), [UK-19](UK-19-angular-kit.md), [UK-20](UK-20-react-native-kit.md), [UK-42](UK-42-activation-holders-web.md) |
+| Role        | `pkey-sdk-porter`                                                                                                                                                                                                                                                                                                                             |
+| Plan mode   | no                                                                                                                                                                                                                                                                                                                                            |
+| Gates       | the UI fixture runner in `pnpm test`; `pnpm typecheck`                                                                                                                                                                                                                                                                                        |
+| Human input | none                                                                                                                                                                                                                                                                                                                                          |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                                                     |
 
 ## Owner decision (2026-10-05): licence choice at sign-in
 
@@ -44,6 +44,36 @@ the owner's license vocabulary (SIGN-IN.md O-17: the tier pill and "{used} of {l
 every row, no "Account-wide"). For this package:
 
 - Add one `SignInModel`: the state machine of the form (methods → handoff | code → finishing → choose ↔ replace | key → done, plus error, expired, cancelled), driven by the SDK primitives and the grant, with `presentation` and `replace` as inputs and the step models (`LicenseChoiceModel`, `ReplaceDeviceModel`, `ActivateModel`) inside it.
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track J, SDK and UI-kit consolidation](../../../2026-10-07-dx-consolidation/tracks.md#j-sdk-and-ui-kit-consolidation)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> ui-core is the only JS headless layer: absorbs UK-14's cli/models.ts and @polaris-key/react/core state; takes boot and activation view logic from client-core; a SignInModel hook point I-10a fills.
+
+- Title: was "`@polaris-key/ui-core`: framework-neutral view models for every §4 component over `client-core`, error → copy keys, theme and `ProductIdentity` resolution with the presentation seam, the fixture runner".
+- Depends on: added UK-14.
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/UK-02b.md`](../plans/UK-02b.md) §8: adds the JS runner of §5 and `packages/ui-core/test` to the React and Node manifests' `testRoots`; runs the `signIn` family through `SignInModel`; moves UK-14's `models.ts` onto ui-core with byte-identical goldens; the `test/cli/scenarios.ts` stand-ins the matrix covers retire.
+
+## SDK usability review (2026-10-08)
+
+Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.1. Where they differ from the text below, they win.
+
+- Also serves a Node main process with a plain renderer (snapshot, subscribe, `{key, args}` views).
+
+## Owner direction (2026-10-08)
+
+- **Responsive.** Every kit screen adapts to its window, with landscape layouts where the window is landscape.
+- **Resolution matrix.** Tested at every size in [UI-KITS.md](../../../../design/UI-KITS.md) §7.1, including 200% text or zoom.
+- **Spacing and theming.** One spacing rhythm, and themable with `preset: "polaris-key" | "native"`, where `native` matches the platform.
+- **Quality bar.** Meets the bar in `.claude/agents/pkey-ux-reviewer.md` ("a GOOD UI", good use of visual space), not just no overflow.
+- **Review.** Several UX reviews (`pkey-ux-reviewer`), not one.
+- **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
 
 ## Goal
 

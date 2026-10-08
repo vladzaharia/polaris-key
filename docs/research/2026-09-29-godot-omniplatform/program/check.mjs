@@ -29,13 +29,14 @@ const INDEX = join(HERE, "INDEX.md");
 // UI kits (phase UK, docs/design/UI-KITS.md §10) also use a two-letter prefix; UK-02a/b execute
 // plans/UK-02.md.
 // The motion system (phase MO, notes/S-23) also uses a two-letter prefix.
+// Documentation (phase DOC, docs/research/2026-10-08-docs/ §6.1) uses the plan's own DOC-<nn>[a-z] ids.
 // Polaris Key commerce (phase CM, notes/S-22) also uses a two-letter prefix; every CM package is
 // optional and carries `deferred` until the owner's go.
 // The customer portal (phase PX, docs/design/PORTAL.md §11) keeps the spec's own ids: PX-01…PX-22
 // for the front end and PX-W1…PX-W17 for the Worker additions; a follow-up split off a PX-W package
 // takes a letter suffix like every other phase's (PX-W9b, the SDK half of PX-W9; PX-W13b).
 const ID_RE =
-  /^(?:(?:P0|P1|P1b|P2|P2b|P3|P4|P5|P6|X|S|D|F|A|I|U|ST|LX|SP|HA|UK|MO|PS|CM)-\d{2}[a-z]?|PX-(?:\d{2}|W\d{1,2}[a-z]?))$/;
+  /^(?:(?:P0|P1|P1b|P2|P2b|P3|P4|P5|P6|X|S|D|F|A|I|U|ST|LX|SP|HA|UK|MO|PS|CM|DOC)-\d{2}[a-z]?|PX-(?:\d{2}|W\d{1,2}[a-z]?))$/;
 const DONE = new Set(["done", "dropped"]);
 
 const raw = readFileSync(GRAPH, "utf8");
@@ -213,7 +214,7 @@ const fmtEst = ([a, b]) => (a === b ? `${a}` : `${a}–${b}`);
 
 // The header rows every brief carries that are derived from the graph (kept in sync by --sync-briefs).
 const ID_IN_TEXT =
-  /\b(?:(?:P0|P1b|P1|P2b|P2|P3|P4|P5|P6|X|S|D|F|A|I|U|ST|LX|SP|HA|UK|MO|PS|CM)-\d{2}[a-z]?|PX-(?:\d{2}|W\d{1,2}[a-z]?))\b/g;
+  /\b(?:(?:P0|P1b|P1|P2b|P2|P3|P4|P5|P6|X|S|D|F|A|I|U|ST|LX|SP|HA|UK|MO|PS|CM|DOC)-\d{2}[a-z]?|PX-(?:\d{2}|W\d{1,2}[a-z]?))\b/g;
 function dependantsOf() {
   const m = new Map(wps.map((w) => [w.id, []]));
   for (const w of wps) for (const d of w.deps) m.get(d)?.push(w.id);

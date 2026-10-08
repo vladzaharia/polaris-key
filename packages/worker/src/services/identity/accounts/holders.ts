@@ -22,17 +22,13 @@ import {
   registerLicenseHolderHooks,
   type LicenseHolderContext,
 } from "../../../core/licenseHolders.js";
-import type { Db } from "../../../core/platform.js";
+import { normalizeEmail, type Db } from "../../../core/platform.js";
 import {
   attachWaitingLicensesByEmail,
   autoLinkEnabled,
 } from "../portal/repo.js";
 import { attachLicense } from "./claim.js";
-import {
-  accountsVerifyingEmail,
-  normalizeEmail,
-  verifiedAccountEmails,
-} from "./repo.js";
+import { accountsVerifyingEmail, verifiedAccountEmails } from "./repo.js";
 
 /**
  * The account-email hook's body: attach every licence waiting on `email`, provided the account

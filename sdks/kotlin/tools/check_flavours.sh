@@ -21,7 +21,8 @@
 #           answers Unsupported "outlet" there); :android's DirectInstallDriver present
 #   both    no native libraries in the platform, Godot or :android AAR (pure Kotlin, notes/E4
 #           §2.1); the PlatformIntegrity surface is present (P6-09); the APK's only native library
-#           is zstd-jni's (which :android links), 16 KB page aligned (tools/check_16k_alignment.py)
+#           is zstd-jni's (which the opt-in polaris-key-zstd links, SP-50; :boundary adds it so its
+#           Android variant is checked), 16 KB page aligned (tools/check_16k_alignment.py)
 #
 # Exits non-zero on the first violated rule, printing every violation of that build first.
 # Needs the Android SDK (ANDROID_HOME, default ~/Library/Android/sdk) with build-tools.
@@ -97,7 +98,7 @@ for flavor in play direct; do
   if [ -n "$libs" ]; then
     if python3 "$ROOT/tools/check_16k_alignment.py" "$apk" >/dev/null; then ok "zstd-jni's natives are 16 KB page aligned"; else fail "a native library is not 16 KB page aligned"; fi
   else
-    fail "the APK carries no zstd-jni natives (:android links the AAR)"
+    fail "the APK carries no zstd-jni natives (:boundary adds polaris-key-zstd, whose Android variant is the AAR)"
   fi
 
   perms="$("$AAPT2" dump permissions "$apk")"

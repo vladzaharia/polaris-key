@@ -1,8 +1,8 @@
-# CM-14 Device checkout hand-off (wire): `POST /<p>/distribution/commerce/checkout`, `offers[]` on the binding response, `store_billing_required`, grant source `polaris-key` in the enums
+# CM-14 Device checkout hand-off: W1 and W3 (deferred)
 
 | Field       | Value                                                                                                      |
 | ----------- | ---------------------------------------------------------------------------------------------------------- |
-| Phase       | CM: Polaris Key commerce (S-22): deferred until the owner's go                                             |
+| Phase       | CM: Commerce: store commerce (required) and Polaris Key checkout (deferred)                                |
 | Size        | 0.6–0.9 engineer-weeks                                                                                     |
 | Depends on  | [CM-01](CM-01-commerce-plan.md), [CM-05](CM-05-checkout-fulfilment.md), [LX-20](LX-20-commerce-clients.md) |
 | Unblocks    | [CM-15](CM-15-sdk-purchase-handoff.md)                                                                     |
@@ -16,6 +16,20 @@
 > `workpackages.json`: the owner asked for the commerce plan on 2026-10-05 but not for its
 > execution. `check.mjs --ready` does not list it. It becomes dispatchable only when the owner says
 > go and the lead removes the `deferred` field.
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track K, Corpus lane (wire trains, serial)](../../../2026-10-07-dx-consolidation/tracks.md#k-corpus-lane-wire-trains-serial)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Keeps W1 and W3 only: W2 (offers[]) and W4 (the polaris-key enum) moved into LX-18. Still deferred (owner decision 5).
+
+- Title: was "Device checkout hand-off (wire): `POST /<p>/distribution/commerce/checkout`, `offers[]` on the binding response, `store_billing_required`, grant source `polaris-key` in the enums".
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/CM-29.md`](../plans/CM-29.md) §10: W1 becomes `POST /<p>/commerce/checkout`.
 
 ## Goal
 

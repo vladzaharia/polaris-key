@@ -87,13 +87,12 @@ function cases(): Case[] {
   const enc = encodeURIComponent;
   for (const section of SECTIONS) {
     for (const p of section.items) {
-      if (!p.ready) continue;
       const path = p.path ? `/${p.path}` : "";
       list.push({ name: `djdl:${p.page}`, hash: `#/p/djdl${path}` });
       if (p.inNav)
         list.push({ name: `empty:${p.page}`, hash: `#/p/empty${path}` });
       const rec = p.record && RECORD_IDS[p.page];
-      if (p.record?.ready && rec) {
+      if (p.record && rec) {
         const tabs = p.record.tabs ?? [undefined];
         for (const tab of tabs)
           list.push({
@@ -112,10 +111,9 @@ function cases(): Case[] {
   list.push({ name: `long:overview`, hash: `#/p/${LONG_SLUG}` });
   list.push({ name: `long:settings`, hash: `#/p/${LONG_SLUG}/settings` });
   for (const p of GLOBAL_PAGES) {
-    if (!p.ready) continue;
     list.push({ name: `global:${p.page}`, hash: `#/${p.path}` });
     const rec = p.record && RECORD_IDS[p.page];
-    if (p.record?.ready && rec) {
+    if (p.record && rec) {
       for (const tab of p.record.tabs ?? [undefined])
         list.push({
           name: `global:${p.page}/record${tab ? `/${tab}` : ""}`,

@@ -1,0 +1,2327 @@
+{
+  "date": "2026-10-08",
+  "report": "README.md",
+  "question": "Are the SDKs good? Are they easily usable?",
+  "answer": "Good underneath, not yet easily usable. Average 5.3/10. Sixteen new packages (about 15-22 engineer-weeks) can start now and should bring each SDK to about 7.",
+  "averageScore": 5.25,
+  "scores": [
+    {
+      "sdk": "node",
+      "name": "Node: @polaris-key/node 0.8.33 (library, terminal kit, Electron bridge) and the pkey CLI",
+      "score": 6,
+      "verdict": "Best engine and best kit; a newcomer still cannot start unaided, and the kit does not drop into a real CLI.",
+      "dropIn": {
+        "score": 6.5,
+        "verdict": "The most polished terminal flow in the suite; registers every verb, collides with host commands, visible bugs."
+      },
+      "ownUi": {
+        "score": 7,
+        "scoreOwnGui": 5.5,
+        "verdict": "7 for servers and CLIs, 5.5 for your own GUI: everything is reachable, nothing is shaped for a GUI (no snapshot, untyped bridge, mixed units)."
+      },
+      "expectedAfter08xPackages": 7.5,
+      "trials": [
+        {
+          "path": "drop-in kit",
+          "persona": "Senior engineer shipping a Node CLI with the terminal kit",
+          "score": 7,
+          "minutesToFirstActivation": 10
+        },
+        {
+          "path": "own UI",
+          "persona": "Senior engineer, Electron main on the library, own React design system over own IPC",
+          "score": 6.5,
+          "minutesToFirstActivation": 7
+        },
+        {
+          "path": "newcomer",
+          "persona": "Junior developer following the public docs literally",
+          "score": 6,
+          "minutesToFirstActivation": 10
+        }
+      ]
+    },
+    {
+      "sdk": "react",
+      "name": "React: @polaris-key/react 0.8.33 over @polaris-key/client-core",
+      "score": 4.5,
+      "verdict": "A sound core under a default path that fails three times in week 0: install, trust pins, sign-in.",
+      "dropIn": {
+        "score": 3,
+        "verdict": "Key activation works once pins are passed; sign-in cannot finish, refusals and revoked dead-end, the 2019 look."
+      },
+      "ownUi": {
+        "score": 6,
+        "verdict": "The stronger path, but undocumented; no sync outcome, a StrictMode bug, +77 KB gzip."
+      },
+      "expectedAfter08xPackages": 7,
+      "trials": [
+        {
+          "path": "drop-in kit",
+          "persona": "Frontend engineer, drop-in screens in a Vite app with own branding",
+          "score": 4,
+          "minutesToFirstActivation": 12
+        },
+        {
+          "path": "own UI",
+          "persona": "Senior frontend engineer, shadcn/Tailwind design system on hooks and client-core",
+          "score": 6,
+          "minutesToFirstActivation": 16
+        },
+        {
+          "path": "newcomer",
+          "persona": "Developer new to Polaris Key following the docs literally",
+          "score": 4.5,
+          "minutesToFirstActivation": 12.2
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "Python: polaris-key 0.8.33 (library, terminal kit, ui.core)",
+      "score": 6,
+      "verdict": "A good engine; the kit does not mount, and three fail-open or leak defects need a patch release.",
+      "dropIn": {
+        "score": 5,
+        "verdict": "Polished and in nine locales; every mounted verb demands --product, offline tracebacks, the slug as product name."
+      },
+      "ownUi": {
+        "score": 7,
+        "verdict": "About 120 lines under PySide6; two copy systems, an untyped async client whose is_licensed() is a truthy coroutine."
+      },
+      "expectedAfter08xPackages": 7.5,
+      "trials": [
+        {
+          "path": "drop-in kit",
+          "persona": "Senior Python engineer shipping a commercial CLI with the terminal kit",
+          "score": 6,
+          "minutesToFirstActivation": 5
+        },
+        {
+          "path": "own UI",
+          "persona": "Python developer, PySide6 desktop app with own dialogs",
+          "score": 7,
+          "minutesToFirstActivation": 11
+        },
+        {
+          "path": "newcomer",
+          "persona": "Data scientist shipping a small paid CLI, following the docs literally",
+          "score": 5,
+          "minutesToFirstActivation": 11
+        }
+      ]
+    },
+    {
+      "sdk": "swift",
+      "name": "Swift: PolarisKey, PolarisKeyUI, PolarisKeyUpdate 0.8.33",
+      "score": 5.5,
+      "verdict": "An excellent core; the one-line drop-in exists but is undocumented and leaves an expired user stuck.",
+      "dropIn": {
+        "score": 4.5,
+        "verdict": ".polarisKey(client) works; terminal states offer only Retry, English only, no account, device, update or settings screens."
+      },
+      "ownUi": {
+        "score": 6,
+        "verdict": "About 250 lines of glue; no headless model outside SwiftUI, no sync reason, kit copy unreachable."
+      },
+      "expectedAfter08xPackages": 7,
+      "trials": [
+        {
+          "path": "drop-in kit",
+          "persona": "Indie iOS developer wanting branded drop-in SwiftUI screens",
+          "score": 5,
+          "minutesToFirstActivation": 32
+        },
+        {
+          "path": "own UI",
+          "persona": "Senior macOS engineer with a custom AppKit/SwiftUI design system",
+          "score": 6,
+          "minutesToFirstActivation": 31
+        },
+        {
+          "path": "newcomer",
+          "persona": "Newcomer following the docs literally, SwiftUI macOS app",
+          "score": 6,
+          "minutesToFirstActivation": 11
+        }
+      ]
+    },
+    {
+      "sdk": "kotlin",
+      "name": "Kotlin: Android (sdk, android-play/-direct, ui, billing) and JVM desktop, 0.8.33",
+      "score": 4,
+      "verdict": "A well-designed engine; on Android the documented path cannot activate a licence.",
+      "dropIn": {
+        "score": 3,
+        "verdict": "The right shape (PolarisKeyApp); inherits the Android blockers and shows a revoked licence as valid."
+      },
+      "ownUi": {
+        "score": 4.5,
+        "scoreJvm": 6.5,
+        "verdict": "4.5 on Android (not main-safe, live state silent), 6.5 on the JVM once the docs are corrected."
+      },
+      "expectedAfter08xPackages": 7,
+      "trials": [
+        {
+          "path": "drop-in kit",
+          "persona": "Android developer using the Compose kit",
+          "score": 3.5,
+          "minutesToFirstActivation": 28
+        },
+        {
+          "path": "own UI",
+          "persona": "Senior Android engineer with a Material 3 design system and Play purchase flow",
+          "score": 4.5,
+          "minutesToFirstActivation": 14,
+          "note": "JVM; 36 minutes and four workarounds to a licensed screen on Android"
+        },
+        {
+          "path": "newcomer",
+          "persona": "Compose Desktop developer following the docs literally",
+          "score": 6,
+          "minutesToFirstActivation": 12
+        }
+      ]
+    },
+    {
+      "sdk": "godot",
+      "name": "Godot: addons/polaris_key 0.8.33 (GDScript) and its UI",
+      "score": 5.5,
+      "verdict": "A solid pure-GDScript core with a real headless layer; the drop-in has blockers and the docs name wrong classes.",
+      "dropIn": {
+        "score": 5,
+        "verdict": "Six lines to a gate; Retry strands the player, offline activation impossible, no gamepad focus, the Polaris mark on the gate."
+      },
+      "ownUi": {
+        "score": 6,
+        "verdict": "About 110 lines over static controllers; undocumented, and sync() reports success while offline."
+      },
+      "expectedAfter08xPackages": 7,
+      "trials": [
+        {
+          "path": "drop-in kit",
+          "persona": "Indie game developer using the ready-made screens",
+          "score": 5,
+          "minutesToFirstActivation": 13.5
+        },
+        {
+          "path": "own UI",
+          "persona": "Game developer with a custom menu style on the core API and controllers",
+          "score": 6.5,
+          "minutesToFirstActivation": 10
+        },
+        {
+          "path": "newcomer",
+          "persona": "Godot developer shipping on Steam and itch.io, following the docs literally",
+          "score": 6,
+          "minutesToFirstActivation": 10.5
+        }
+      ]
+    }
+  ],
+  "topProblems": [
+    {
+      "rank": 1,
+      "problem": "Nobody can try Polaris Key without the hosted service.",
+      "evidence": "All 18 trials and both cross reviews built a backend from Worker test internals or hand-wrote 200-360-line stubs; two stubs invented a license_expired answer the Worker never sends; no integrator page covers a local run.",
+      "fix": ["SP-41", "SP-42"]
+    },
+    {
+      "rank": 2,
+      "problem": "The first documented step or snippet fails in every SDK.",
+      "evidence": "9 npm versions pin unpublished siblings (verified 2026-10-08); Python install resolves public PyPI; Kotlin quickstart 6 compile errors and 0.1.0 404; 5 Swift README snippets do not compile; React quickstart renders the error screen; Node kit factory points at production and the Electron snippet hangs; Godot boot snippet strands the player after Retry.",
+      "fix": ["P0-52", "P0-48", "UK-50", "SP-45a", "SP-45b"]
+    },
+    {
+      "rank": 3,
+      "problem": "On Android, the documented Kotlin path cannot activate a licence.",
+      "evidence": "API 36 Ed25519 via AndroidKeyStore rejects RFC 8032 vectors; NetworkOnMainThreadException on split responses; unstarted client sends an empty device id; the artifact set fails AAR metadata; R8 fails.",
+      "fix": ["SP-50"]
+    },
+    {
+      "rank": 4,
+      "problem": "Fail-open and credential-leak defaults.",
+      "evidence": "Device token printed by print/repr/console.log (Node, Python, Swift); a typo in Python expected_services licenses an unactivated device; Python async is_licensed() truthy coroutine; Kotlin keeps revoked devices licensed and entitlementValue ungated; Node kit prints secrets and minted tokens; login silently swaps a paid key licence (Node kit, Swift).",
+      "fix": [
+        "SP-46",
+        "SP-48",
+        "SP-51",
+        "UK-45",
+        "UK-46",
+        "UK-49",
+        "SP-35",
+        "I-10a",
+        "I-10b"
+      ]
+    },
+    {
+      "rank": 5,
+      "problem": "The drop-in kits dead-end on states customers will hit.",
+      "evidence": "React sign-in shows no code, refusals lose the form; Swift expired/revoked only Retry; Godot Retry blank, offline activation without code; Kotlin keeps revoked licensed and hits 429; Node update apply dead end and login before discovery; Python verbs exit 2 and print tracebacks offline.",
+      "fix": ["UK-45", "UK-46", "UK-47", "UK-48", "UK-49", "UK-50"]
+    },
+    {
+      "rank": 6,
+      "problem": "Expired, disabled and replaced devices read as a wrong key or 'Signed out', in all six.",
+      "evidence": "Worker answers 401 unauthorized for every unusable licence (authz.ts:381-382, activate-refusals.json:123); SDKs map sync 401 to revoked.",
+      "fix": ["LX-18", "LX-19"]
+    },
+    {
+      "rank": 7,
+      "problem": "Building your own UI means re-deriving the state model.",
+      "evidence": "110-410 lines of glue per own-UI trial; sync failure looks like success; licence events differ by SDK and entry point; copy unreachable outside the kits.",
+      "fix": [
+        "UK-03",
+        "UK-07",
+        "UK-09",
+        "UK-12",
+        "SP-43",
+        "SP-35",
+        "SP-39",
+        "SP-45a",
+        "SP-45b"
+      ]
+    },
+    {
+      "rank": 8,
+      "problem": "The docs and the console do not present the choice, and the docs describe a spec.",
+      "evidence": "Console snippet library-only with no docs link (Kotlin's crashes on Android); build/ui/index.mdx names five drop-ins that do not ship; no React, SwiftUI or Godot framework page; no own-UI page; /docs needs a platform-admin session.",
+      "fix": [
+        "P0-47",
+        "SP-45a",
+        "SP-45b",
+        "SP-33a",
+        "ST-41",
+        "SP-33b",
+        "SP-37",
+        "ST-29"
+      ]
+    },
+    {
+      "rank": 9,
+      "problem": "The product is not the hero.",
+      "evidence": "No SDK client reads core.presentation; kits show the slug, 'Welcome to this app' or the Polaris mark; the hosted device-code page shows the Polaris logo and 'Product: tidewater'.",
+      "fix": ["HA-13", "HA-14", "I-08", "UK-48", "UK-49"]
+    },
+    {
+      "rank": 10,
+      "problem": "One concept, several behaviours.",
+      "evidence": "lastVerifiedAt in ms in five SDKs while documented as seconds; identity.current() returns the licence holder; network vs network-error and 5xx mapped to not_found; boot() enrols in Node only; Swift expiresAt is the document's expiry.",
+      "fix": ["SP-35", "UK-45", "UK-47", "SP-46", "SP-48"]
+    }
+  ],
+  "consolePresentation": [
+    {
+      "sdk": "node",
+      "host": "cli",
+      "dropIn": "registerPolarisCommands(program, { config: polarisConfig, verbs }) + await polarisGate(program)",
+      "customiseLink": "/docs/build/ui/frameworks/terminal-node/#piecemeal",
+      "directLink": "/docs/build/sdks/node/your-own-ui/#cli",
+      "showDropInAfter": ["UK-46", "UK-45", "P0-48"]
+    },
+    {
+      "sdk": "node",
+      "host": "electron",
+      "dropIn": "exposePolarisBridge(client, { ipcMain, allowSender }) in main; <PolarisKeyProvider><LicenseGate> in the renderer",
+      "customiseLink": "/docs/build/ui/frameworks/react/",
+      "directLink": "/docs/build/sdks/node/your-own-ui/#electron",
+      "showDropInAfter": ["UK-47", "SP-31"]
+    },
+    {
+      "sdk": "node",
+      "host": "server",
+      "dropIn": "library start (no kit)",
+      "customiseLink": null,
+      "directLink": "/docs/build/sdks/node/",
+      "showDropInAfter": ["P0-52"]
+    },
+    {
+      "sdk": "react",
+      "host": "web",
+      "dropIn": "config with pins and version; <PolarisKeyProvider><LicenseGate>; per card UpdatePrompt, DeviceManager, ConfigPanel, sign-in",
+      "customiseLink": "/docs/build/ui/frameworks/react/#piecemeal",
+      "directLink": "/docs/build/sdks/react/your-own-ui/",
+      "showDropInAfter": ["P0-47", "UK-47"]
+    },
+    {
+      "sdk": "python",
+      "host": "cli",
+      "dropIn": "register_argparse(sub, client=..., verbs=END_USER) + require_license(client)",
+      "customiseLink": "/docs/build/ui/frameworks/terminal-python/#piecemeal",
+      "directLink": "/docs/build/sdks/python/your-own-ui/",
+      "showDropInAfter": ["UK-48", "SP-48"]
+    },
+    {
+      "sdk": "python",
+      "host": "qt-or-none",
+      "dropIn": "library create() + boot(); Qt drop-in after UK-12",
+      "customiseLink": null,
+      "directLink": "/docs/build/sdks/python/your-own-ui/#qt",
+      "showDropInAfter": ["UK-12"]
+    },
+    {
+      "sdk": "swift",
+      "host": "ios-macos",
+      "dropIn": "WindowGroup { Root().polarisKey(client, theme:) } (.polarisKeyGate in 0.9)",
+      "customiseLink": "/docs/build/ui/frameworks/swiftui/#piecemeal",
+      "directLink": "/docs/build/sdks/swift/your-own-ui/",
+      "extraLink": "UIKit or AppKit app (recipe)",
+      "showDropInAfter": ["UK-49"]
+    },
+    {
+      "sdk": "kotlin",
+      "host": "android",
+      "dropIn": "PolarisKeyAndroid.client(context, ...) + PolarisKeyApp(client) { App() }",
+      "customiseLink": "/docs/build/ui/frameworks/compose/#piecemeal",
+      "directLink": "/docs/build/sdks/kotlin/your-own-ui/",
+      "showDropInAfter": ["SP-50", "SP-51"]
+    },
+    {
+      "sdk": "kotlin",
+      "host": "desktop-jvm",
+      "dropIn": "library PolarisKeyDesktop.create(...) (no kit until UK-10)",
+      "customiseLink": null,
+      "directLink": "/docs/build/sdks/kotlin/your-own-ui/#compose-desktop",
+      "showDropInAfter": ["SP-50"]
+    },
+    {
+      "sdk": "godot",
+      "host": "game",
+      "dropIn": "generated config (dock import after SP-33b) + await PolarisKey.boot()",
+      "customiseLink": "/docs/build/ui/frameworks/godot/#scenes",
+      "directLink": "/docs/build/sdks/godot/your-own-ui/",
+      "showDropInAfter": ["UK-50"]
+    }
+  ],
+  "acceptedChanges": {
+    "node": [
+      {
+        "change": "Repair the npm feed; publish lockstep legs in dependency order and only when every dependency succeeded; read back after each publish; document pnpm minimumReleaseAge.",
+        "severity": "blocking",
+        "coveredBy": ["P0-52"]
+      },
+      {
+        "change": "pkey dev: a local Polaris Key with a seeded product, test keys per state, a fake IdP, a signed release, control commands.",
+        "severity": "blocking",
+        "coveredBy": ["SP-41"]
+      },
+      {
+        "change": "Present the two paths: sdkFit by host (CLI, Electron, server); console drop-in plus docs links; generated lanes; terminal and Electron rows in the layer table.",
+        "severity": "major",
+        "coveredBy": ["SP-33a", "ST-41", "SP-33b", "SP-45a", "SP-37"],
+        "note": "Preconditions: UK-46, UK-45."
+      },
+      {
+        "change": "The kit's one-line flow uses the generated config: fix the docs snippet now; adapters accept config; one name for pins.",
+        "severity": "major",
+        "coveredBy": ["P0-48", "UK-46", "SP-32a", "SP-35"]
+      },
+      {
+        "change": "Terminal kit drops into an existing CLI: verbs allow-list, mount, collision errors, grouped help with host commands first, polarisGate and withLicense, yargs subpath.",
+        "severity": "major",
+        "coveredBy": ["UK-46"]
+      },
+      {
+        "change": "Terminal kit visible bugs: last seen in 20,713,544 days, 'pro license ·', login without 'Signed in as', update apply dead end, vendor-first strings, licence spelling, contradictory help.",
+        "severity": "major",
+        "coveredBy": ["UK-45"]
+      },
+      {
+        "change": "login on a device holding a key licence confirms before attaching (waitForSignIn confirm).",
+        "severity": "major",
+        "coveredBy": ["UK-45", "I-10a", "UK-43"]
+      },
+      {
+        "change": "Tell expired or disabled apart from a wrong key or sign-out; interim copy; core.gate.revoked not titled 'Signed out' for key-only devices.",
+        "severity": "major",
+        "coveredBy": ["LX-18", "LX-19", "UK-45", "SP-39"]
+      },
+      {
+        "change": "One time unit for public time fields.",
+        "severity": "major",
+        "coveredBy": ["UK-45", "SP-35"]
+      },
+      {
+        "change": "One error taxonomy: wrapped fetches, one network code, 5xx server, 429 rate_limited, real 404 only; keep server message; refuse sign-in locally when identity off.",
+        "severity": "major",
+        "coveredBy": ["SP-46", "SP-35", "SP-43"]
+      },
+      {
+        "change": "Redact the token in ActivationResult now; drop it from the public result in 0.9.",
+        "severity": "major",
+        "coveredBy": ["SP-46", "SP-35"]
+      },
+      {
+        "change": "A GUI-shaped headless layer: snapshot/subscribe, {key,args} views, typed bridge state, own-UI-in-Electron docs, identity event kind.",
+        "severity": "major",
+        "coveredBy": ["UK-03", "SP-31", "UK-06", "I-10a", "SP-45a"]
+      },
+      {
+        "change": "Electron snippet uses app.whenReady().then(...); launch the Electron example in CI.",
+        "severity": "major",
+        "coveredBy": ["P0-48", "SP-36", "UK-06"]
+      },
+      {
+        "change": "Examples installable: stamp real versions over ^0.0.0 now; CI-built tree later.",
+        "severity": "major",
+        "coveredBy": ["P0-48", "SP-36"]
+      },
+      {
+        "change": "CLI onboarding: install line, missing --product message, pkey --version, smol-toml bump, never a bare npx pkey.",
+        "severity": "major",
+        "coveredBy": ["P0-48", "SP-33a"],
+        "note": "Owner re-ask on claiming the npmjs name (README §12)."
+      },
+      {
+        "change": "Read the product's presentation in the client; until then docs say a real client needs theme.product.",
+        "severity": "major",
+        "coveredBy": ["HA-13", "SP-45a", "P0-48"]
+      },
+      {
+        "change": "README points to copy.activation for refusals; one copy source later.",
+        "severity": "minor",
+        "coveredBy": ["SP-45a", "SP-39", "UK-03"]
+      },
+      {
+        "change": "README reference gaps: fetchImpl, deviceName, testing, keychain scope, sync on focus.",
+        "severity": "minor",
+        "coveredBy": ["SP-45a", "SP-37"]
+      },
+      {
+        "change": "install-from-feeds: stale versions, beta wording, pnpm age gate.",
+        "severity": "minor",
+        "coveredBy": ["P0-52", "SP-33a"]
+      },
+      {
+        "change": "Library ergonomics: local key-shape check, appcastUrl fails clearly, boot() skips enrolment when none is offered.",
+        "severity": "minor",
+        "coveredBy": ["I-10a", "SP-32a", "SP-35"]
+      },
+      {
+        "change": "Skip the OSC 11 probe when PKEY_THEME or COLORFGBG decides.",
+        "severity": "minor",
+        "coveredBy": ["UK-45"]
+      },
+      {
+        "change": "Investigate and surface the same-second config drop; strictly increasing issue time.",
+        "severity": "minor",
+        "coveredBy": ["SP-43"]
+      }
+    ],
+    "react": [
+      {
+        "change": "Drop-in sign-in in bearer mode shows the device-code hand-off; rejections shown in the card; sign-in hidden unless configured.",
+        "severity": "blocking",
+        "coveredBy": ["UK-47", "UK-05", "I-10a"]
+      },
+      {
+        "change": "Quickstart, generated config and console snippet carry trust pins, a declared version and LicenseGate; missing pins log for developers, neutral copy for users.",
+        "severity": "blocking",
+        "coveredBy": ["P0-47", "P0-48", "SP-32a", "SP-33b", "UK-47"],
+        "note": "P0-48 takes audit quick win 2, unowned today."
+      },
+      {
+        "change": "Every published @polaris-key set installs; yank incoherent sets; document age gates.",
+        "severity": "blocking",
+        "coveredBy": ["P0-52"]
+      },
+      {
+        "change": "Activation refusals stay on the sign-in screen with the typed key, the slot and Replace a device; refreshes never clear them.",
+        "severity": "major",
+        "coveredBy": ["UK-47", "UK-03", "UK-05"]
+      },
+      {
+        "change": "Revoked gets a way out; 401 backoff; distinct wire reasons.",
+        "severity": "major",
+        "coveredBy": ["UK-47", "LX-18", "LX-19", "UK-05"]
+      },
+      {
+        "change": "StrictMode-safe Provider lifecycle.",
+        "severity": "major",
+        "coveredBy": ["UK-47"]
+      },
+      {
+        "change": "A failed sync is visible: refresh() reports the outcome, hooks expose the last sync.",
+        "severity": "major",
+        "coveredBy": ["SP-43", "SP-35"]
+      },
+      {
+        "change": "Honest, shared update check; release pins as a Provider prop.",
+        "severity": "major",
+        "coveredBy": ["UK-47", "SP-32a", "P2-12", "SP-15"]
+      },
+      {
+        "change": "Product as the hero from verified presentation.",
+        "severity": "major",
+        "coveredBy": ["HA-13", "UK-03", "UK-05"]
+      },
+      {
+        "change": "Localise the kit; stop-gap strings into theme.copy.",
+        "severity": "major",
+        "coveredBy": ["SP-39", "UK-05", "UK-47"]
+      },
+      {
+        "change": "Present the paths: drop-in only in the console with links; Choose your path; own-UI page; React framework page with today's names.",
+        "severity": "major",
+        "coveredBy": [
+          "P0-47",
+          "SP-45a",
+          "SP-33a",
+          "ST-41",
+          "SP-37",
+          "UK-05",
+          "UK-31"
+        ]
+      },
+      {
+        "change": "Own-UI gaps: copy helpers from the root now; gate-aware entitlement value, activation on the licence hook and a sign-in handle in 0.9.",
+        "severity": "major",
+        "coveredBy": ["UK-47", "SP-35", "I-10a", "SP-39"]
+      },
+      {
+        "change": "Local development and testing without production.",
+        "severity": "major",
+        "coveredBy": ["SP-41", "SP-42"]
+      },
+      {
+        "change": "Bundle diet and size budget.",
+        "severity": "major",
+        "coveredBy": ["SP-47"]
+      },
+      {
+        "change": "Types and units: React.JSX.Element, React 18/19 typecheck, lastVerifiedAt seconds, one code spelling.",
+        "severity": "minor",
+        "coveredBy": ["UK-47", "SP-35"]
+      },
+      {
+        "change": "One discovery fetch per load; device reports on load or change.",
+        "severity": "minor",
+        "coveredBy": ["UK-47"]
+      },
+      {
+        "change": "ConfigPanel and DeviceManager polish.",
+        "severity": "minor",
+        "coveredBy": ["UK-05"]
+      },
+      {
+        "change": "pkey sdk friction: missing flag named, src/ default, advertised release keys accepted with fingerprints.",
+        "severity": "minor",
+        "coveredBy": ["SP-33a", "SP-32a", "P0-48"]
+      },
+      {
+        "change": "Signed-in identity apart from the licence holder.",
+        "severity": "minor",
+        "coveredBy": ["I-10a", "SP-35"]
+      },
+      {
+        "change": "Remove cookie-era README claims.",
+        "severity": "minor",
+        "coveredBy": ["SP-45a", "SP-37"]
+      }
+    ],
+    "python": [
+      {
+        "change": "Mount contract: adapters take the client binding and hide integration flags; verbs= with an end-user default; per-verb help; samples fixed.",
+        "severity": "blocking",
+        "coveredBy": ["UK-48", "SP-35"]
+      },
+      {
+        "change": "Strict-index install snippets everywhere; false PyPI claims removed; Poetry constraint from the feed.",
+        "severity": "blocking",
+        "coveredBy": ["P0-48", "SP-33a", "SP-37"]
+      },
+      {
+        "change": "Transport and server errors mapped once; update/release stop collapsing to not_found; verbs never re-raise; offline goldens.",
+        "severity": "major",
+        "coveredBy": ["SP-48", "SP-35"]
+      },
+      {
+        "change": "Validate expected_services: unknown slug raises.",
+        "severity": "major",
+        "coveredBy": ["SP-48", "SP-32a"]
+      },
+      {
+        "change": "Hide credentials from reprs.",
+        "severity": "major",
+        "coveredBy": ["SP-48"]
+      },
+      {
+        "change": "Async client safe: truthiness guard now; sync cache reads and typed facets in 0.9.",
+        "severity": "major",
+        "coveredBy": ["SP-48", "SP-49"],
+        "note": "Guard now is this report's refinement of the lead's 0.9-only plan."
+      },
+      {
+        "change": "Literal discriminators, generic get_config, typed create(), client Protocol, snake_case fields, one time unit.",
+        "severity": "major",
+        "coveredBy": ["SP-49", "SP-35"]
+      },
+      {
+        "change": "Brand the kit from discovery; samples proven on transcripts.",
+        "severity": "major",
+        "coveredBy": ["HA-13", "UK-41", "SP-36"]
+      },
+      {
+        "change": "Expired distinct from a wrong key or a revoke.",
+        "severity": "major",
+        "coveredBy": ["LX-18", "LX-19"]
+      },
+      {
+        "change": "Persist who signed in; signed-in state only from identity.",
+        "severity": "major",
+        "coveredBy": ["I-10a"]
+      },
+      {
+        "change": "Updates for pip/pipx/uv-tool installs.",
+        "severity": "major",
+        "coveredBy": ["SP-44", "P2-12", "UK-48", "SP-32a", "SP-33a"]
+      },
+      {
+        "change": "A local backend.",
+        "severity": "major",
+        "coveredBy": ["SP-41"]
+      },
+      {
+        "change": "Console and docs lead with the drop-in per host and link to the direct paths.",
+        "severity": "major",
+        "coveredBy": ["SP-33a", "ST-41", "SP-37", "SP-33b", "SP-45a", "UK-12"],
+        "note": "Precondition: UK-48."
+      },
+      {
+        "change": "One copy table: polaris_key.copy reads the localised kit tables.",
+        "severity": "major",
+        "coveredBy": ["SP-39"]
+      },
+      {
+        "change": "Complete the headless layer (views with copy keys); mark run_gate and ActivateViewModel planned now.",
+        "severity": "major",
+        "coveredBy": ["UK-02b", "UK-12", "SP-45a"]
+      },
+      {
+        "change": "Run every sample's advertised commands in CI; fix mytool.py now.",
+        "severity": "major",
+        "coveredBy": ["SP-36", "UK-48"]
+      },
+      {
+        "change": "Docs corrections (user_entered_key, --product, key format, happy path, config.set, client_factory, theming, refresh interval, thread contract).",
+        "severity": "major",
+        "coveredBy": ["SP-45a", "SP-37"]
+      },
+      {
+        "change": "Kit copy and output contract fixes.",
+        "severity": "minor",
+        "coveredBy": ["UK-48"]
+      },
+      {
+        "change": "require_license and require_entitlement; Textual Updates pane wired or removed.",
+        "severity": "minor",
+        "coveredBy": ["UK-48"]
+      },
+      {
+        "change": "Log listener exceptions; sync reason; offline signal.",
+        "severity": "minor",
+        "coveredBy": ["SP-48", "SP-43"]
+      },
+      {
+        "change": "Validate config.set against the cached catalog.",
+        "severity": "minor",
+        "coveredBy": ["U-06", "SP-45a"]
+      },
+      {
+        "change": "Server message in device sign-in errors; doctor() explains broken sign-in.",
+        "severity": "minor",
+        "coveredBy": ["SP-48", "SP-32a"]
+      },
+      {
+        "change": "Namespace store by host for non-default base URLs (all SDKs).",
+        "severity": "minor",
+        "coveredBy": ["SP-41", "SP-32a"]
+      },
+      {
+        "change": "polaris_key.testing over a mock control plane.",
+        "severity": "minor",
+        "coveredBy": ["SP-42"]
+      },
+      {
+        "change": "Version from importlib.metadata in from_config().",
+        "severity": "minor",
+        "coveredBy": ["SP-32a"]
+      },
+      {
+        "change": "Lazy sub-package imports.",
+        "severity": "minor",
+        "coveredBy": ["SP-48"]
+      }
+    ],
+    "swift": [
+      {
+        "change": "Every blocking gate state gets a way out; copy matches controls.",
+        "severity": "blocking",
+        "coveredBy": ["UK-49", "UK-07", "UK-02b"]
+      },
+      {
+        "change": "A local sandbox for integrators.",
+        "severity": "blocking",
+        "coveredBy": ["SP-41"]
+      },
+      {
+        "change": "Document the drop-in that ships: SwiftUI framework page led by .polarisKey; README recipe replaced; theming tab.",
+        "severity": "major",
+        "coveredBy": ["SP-45b", "UK-07", "SP-37"]
+      },
+      {
+        "change": "Console: SwiftUI drop-in as the only start snippet for iOS/macOS with links.",
+        "severity": "major",
+        "coveredBy": ["SP-33a", "ST-41", "SP-37", "SP-45b"]
+      },
+      {
+        "change": "One-line drop-in parity with the old gate (Replace a device, GateOptions, offline off on iOS).",
+        "severity": "major",
+        "coveredBy": ["UK-49", "UK-07", "SP-35"]
+      },
+      {
+        "change": "Redact the device token; quickstart switches on the result.",
+        "severity": "major",
+        "coveredBy": ["UK-49", "P0-48", "SP-33a", "SP-33b"]
+      },
+      {
+        "change": "Fix the 5 README snippets; platforms and from:; compile Swift blocks in CI; UpdateDecision accessors.",
+        "severity": "major",
+        "coveredBy": ["UK-49", "SP-45b", "SP-36", "SP-35"]
+      },
+      {
+        "change": "Expired and disabled apart from a wrong key; interim copy.",
+        "severity": "major",
+        "coveredBy": ["LX-18", "LX-19", "UK-49"]
+      },
+      {
+        "change": "Localise the kit; core copy from PolarisKeyCore; docs caveat.",
+        "severity": "major",
+        "coveredBy": ["UK-07", "SP-39", "SP-45b"]
+      },
+      {
+        "change": "Accent override through the contrast resolver.",
+        "severity": "major",
+        "coveredBy": ["UK-49", "UK-07"]
+      },
+      {
+        "change": "Form errors reachable (submit, announcement, focus).",
+        "severity": "major",
+        "coveredBy": ["UK-49", "UK-07"]
+      },
+      {
+        "change": "Product as hero; bundle display name now; default look per owner decision.",
+        "severity": "major",
+        "coveredBy": ["UK-49", "HA-13", "UK-07"]
+      },
+      {
+        "change": "Missing must-tier screens.",
+        "severity": "major",
+        "coveredBy": ["UK-07", "UK-08", "UK-25"]
+      },
+      {
+        "change": "One start call; init(options:) comment now; not public in 0.9; gate owns boot, no flash.",
+        "severity": "major",
+        "coveredBy": ["P0-48", "SP-35", "SP-32b", "UK-07", "UK-49"]
+      },
+      {
+        "change": "Presentation core as a SwiftUI-free product with preview states.",
+        "severity": "major",
+        "coveredBy": ["UK-07"]
+      },
+      {
+        "change": "Sync observable: reasons, identical bytes unchanged, strictly increasing iat, sync status.",
+        "severity": "major",
+        "coveredBy": ["SP-43"]
+      },
+      {
+        "change": "Update check never fails silently; outlet in config and doctor().",
+        "severity": "major",
+        "coveredBy": ["UK-49", "SP-32a", "SP-32b"]
+      },
+      {
+        "change": "StoreError explains itself.",
+        "severity": "major",
+        "coveredBy": ["UK-49", "SP-32b"]
+      },
+      {
+        "change": "Xcode installation documented.",
+        "severity": "major",
+        "coveredBy": ["SP-45b", "SP-33a"]
+      },
+      {
+        "change": "Sign-in shows who signed in; phone-appropriate sign-in later.",
+        "severity": "major",
+        "coveredBy": ["UK-49", "UK-07", "I-15", "I-10b"]
+      },
+      {
+        "change": "Custom update UI on Sparkle: injectable user driver.",
+        "severity": "major",
+        "coveredBy": ["UK-08", "UK-49"]
+      },
+      {
+        "change": "Never silently swap a paid key licence on sign-in.",
+        "severity": "major",
+        "coveredBy": ["I-10b", "UK-43"]
+      },
+      {
+        "change": "Field meanings and units (documentExpiresAt, one unit, identity only for a real sign-in).",
+        "severity": "minor",
+        "coveredBy": ["SP-35", "LX-18", "LX-19", "I-10b"]
+      },
+      {
+        "change": "Typed sign-in failures.",
+        "severity": "minor",
+        "coveredBy": ["I-10b", "SP-35"]
+      },
+      {
+        "change": "ASWebAuthenticationSession isolation violation.",
+        "severity": "minor",
+        "coveredBy": ["UK-49"]
+      },
+      {
+        "change": "CLI and quickstart traps (--product, pkey --version, no-Node path).",
+        "severity": "minor",
+        "coveredBy": ["P0-48", "SP-33a", "SP-45b"]
+      },
+      {
+        "change": "PolarisKeyTesting product; public preview states.",
+        "severity": "minor",
+        "coveredBy": ["SP-42", "UK-07"]
+      },
+      {
+        "change": "Policy stamps apart from entitlement events; syncOnForeground in the headless quickstart.",
+        "severity": "minor",
+        "coveredBy": ["SP-35", "SP-33a"]
+      },
+      {
+        "change": "Retire or fix legacy UpdateClient.check().",
+        "severity": "minor",
+        "coveredBy": ["SP-35"]
+      },
+      {
+        "change": "Update not-configured copy.",
+        "severity": "minor",
+        "coveredBy": ["SP-39", "UK-49"]
+      },
+      {
+        "change": "Package footprint.",
+        "severity": "minor",
+        "coveredBy": ["SP-52"]
+      },
+      {
+        "change": "doctor() reports a credential for another origin.",
+        "severity": "minor",
+        "coveredBy": ["SP-32b", "SP-41"]
+      },
+      {
+        "change": "JSONValue readable description.",
+        "severity": "minor",
+        "coveredBy": ["UK-49"]
+      },
+      {
+        "change": "Slim the README.",
+        "severity": "minor",
+        "coveredBy": ["SP-37"]
+      }
+    ],
+    "kotlin": [
+      {
+        "change": "Ed25519 backend chosen by an RFC 8032 known-answer test; instrumented test on newest API and minSdk.",
+        "severity": "blocking",
+        "coveredBy": ["SP-50"]
+      },
+      {
+        "change": "Every public suspend function main-safe.",
+        "severity": "blocking",
+        "coveredBy": ["SP-50"]
+      },
+      {
+        "change": "PolarisKeyAndroid.client() returns a usable started client; suspend create(); clear Android error without a store.",
+        "severity": "blocking",
+        "coveredBy": ["SP-50", "SP-32b"]
+      },
+      {
+        "change": "Documented artifact set resolves with no excludes; consumer app in CI.",
+        "severity": "blocking",
+        "coveredBy": ["SP-50"]
+      },
+      {
+        "change": "Consumer R8 rules or a JVM-only RAM probe.",
+        "severity": "blocking",
+        "coveredBy": ["SP-50"]
+      },
+      {
+        "change": "Hand-written docs fixed now; console Kotlin snippet; generated and compiled later.",
+        "severity": "blocking",
+        "coveredBy": ["P0-48", "P0-47", "SP-33a", "SP-33b", "SP-37"]
+      },
+      {
+        "change": "licenseChanges and events on every status transition; gate reloads after sync; licence StateFlow.",
+        "severity": "major",
+        "coveredBy": ["SP-51", "SP-35"]
+      },
+      {
+        "change": "Gate entitlementValue now; entitlements.has/value/grants gated in every SDK in 0.9.",
+        "severity": "major",
+        "coveredBy": ["SP-51", "SP-35"]
+      },
+      {
+        "change": "Boot retry with backoff; 401 on /license/token final for the pass.",
+        "severity": "major",
+        "coveredBy": ["SP-51"]
+      },
+      {
+        "change": "Error reporting: update.check keeps codes; one network code; SyncResult offline and reasons; Unchanged; sealed error kind.",
+        "severity": "major",
+        "coveredBy": ["SP-51", "SP-43", "SP-35"]
+      },
+      {
+        "change": "Native sign-in on phones; Ready carries identity; subject and signOut; sign-in inside the gate.",
+        "severity": "major",
+        "coveredBy": ["I-15", "I-10b", "UK-09"]
+      },
+      {
+        "change": "Kit to spec; Compose cells marked planned in docs until then.",
+        "severity": "major",
+        "coveredBy": ["UK-09", "HA-13", "UK-10", "SP-45b"]
+      },
+      {
+        "change": "Headless layer as a Compose-free artifact, UK-09's first deliverable.",
+        "severity": "major",
+        "coveredBy": ["UK-09"]
+      },
+      {
+        "change": "Copy fixes (forActivation, malformed, 5xx, {product}, renew).",
+        "severity": "major",
+        "coveredBy": ["SP-39", "LX-18", "LX-19"]
+      },
+      {
+        "change": "Desktop secure defaults: PolarisKeyDesktop as JVM start; keyring via a desktop artifact; degraded warning; focus helper.",
+        "severity": "major",
+        "coveredBy": ["SP-32b", "SP-50", "P0-48", "UK-10"]
+      },
+      {
+        "change": "Present the paths per host; drop-in in the console only after SP-50 and SP-51; examples in CI.",
+        "severity": "major",
+        "coveredBy": ["SP-33a", "SP-33b", "SP-37", "SP-36", "ST-41", "SP-45b"]
+      },
+      {
+        "change": "Local backend and a Kotlin testing artifact.",
+        "severity": "major",
+        "coveredBy": ["SP-41", "SP-42"]
+      },
+      {
+        "change": "Lifecycle: close(), de-duplicated syncs, listDevices offline, Billing connect timeout.",
+        "severity": "major",
+        "coveredBy": ["SP-51", "LX-20"]
+      },
+      {
+        "change": "pkey sdk names a missing product; release pins from polaris-key.json.",
+        "severity": "minor",
+        "coveredBy": ["SP-33a", "SP-32a", "SP-32b"]
+      },
+      {
+        "change": "API shape: typed config.get, one isUsable, config not both function and sub-client.",
+        "severity": "minor",
+        "coveredBy": ["SP-35"]
+      },
+      {
+        "change": "OkHttpTransport() compiles for consumers.",
+        "severity": "minor",
+        "coveredBy": ["SP-50"]
+      },
+      {
+        "change": "Hosted device-code and sign-in pages show the product's identity.",
+        "severity": "minor",
+        "coveredBy": ["I-08", "HA-13"]
+      }
+    ],
+    "godot": [
+      {
+        "change": "boot() waits through Retry to READY by default; quickstart, README and golden fixed.",
+        "severity": "blocking",
+        "coveredBy": ["UK-50", "SP-33a"]
+      },
+      {
+        "change": "PKeyUiView.sdk re-renders nested views (offline request code, re-gate after sign-out).",
+        "severity": "major",
+        "coveredBy": ["UK-50"]
+      },
+      {
+        "change": "Re-gating after READY; persistent gate; expired banner.",
+        "severity": "major",
+        "coveredBy": ["UK-50", "UK-11"]
+      },
+      {
+        "change": "Starting focus and accessibility names.",
+        "severity": "major",
+        "coveredBy": ["UK-50", "UK-11"]
+      },
+      {
+        "change": "Product as hero; register fix/godot-ui-responsive.",
+        "severity": "major",
+        "coveredBy": ["UK-50", "HA-14", "UK-11"]
+      },
+      {
+        "change": "Strings keyed on catalog ids with runtime translations; docs caveat now.",
+        "severity": "major",
+        "coveredBy": ["UK-11", "SP-39", "SP-45b"]
+      },
+      {
+        "change": "One activation copy path; {product} network copy.",
+        "severity": "major",
+        "coveredBy": ["UK-50", "SP-39"]
+      },
+      {
+        "change": "Expired distinguishable for the key holder; README note.",
+        "severity": "major",
+        "coveredBy": ["LX-18", "LX-19", "SP-45b"]
+      },
+      {
+        "change": "One themed update prompt with an action.",
+        "severity": "major",
+        "coveredBy": ["UK-50"]
+      },
+      {
+        "change": "Explain why no update is offered.",
+        "severity": "major",
+        "coveredBy": ["SP-32b", "SP-33a", "SP-33b", "SP-45b"]
+      },
+      {
+        "change": "Never report 'Activated.' until the gate is usable; doctor on verify failure.",
+        "severity": "major",
+        "coveredBy": ["UK-50", "SP-32a", "SP-32b"]
+      },
+      {
+        "change": "Show who signed in; confirm_identity on boot().",
+        "severity": "major",
+        "coveredBy": ["I-10b", "UK-11", "UK-43", "UK-50"]
+      },
+      {
+        "change": "Branded sign-in fits 1280x720 and 1280x800.",
+        "severity": "major",
+        "coveredBy": ["UK-50", "UK-11"]
+      },
+      {
+        "change": "Correct Godot UI docs; framework page; generated tabs with drift check.",
+        "severity": "major",
+        "coveredBy": ["SP-45b", "UK-11", "SP-37"]
+      },
+      {
+        "change": "In-app drop-in default with links to scenes and controllers.",
+        "severity": "major",
+        "coveredBy": ["SP-33a", "ST-41", "SP-32b", "SP-33b", "SP-37", "SP-45b"]
+      },
+      {
+        "change": "Document the own-UI path (controllers, table, signals, discover()).",
+        "severity": "major",
+        "coveredBy": ["SP-45b", "UK-11", "SP-33a"]
+      },
+      {
+        "change": "Local backend and test seams.",
+        "severity": "major",
+        "coveredBy": ["SP-41", "SP-42"]
+      },
+      {
+        "change": "sync() ok follows classify().",
+        "severity": "major",
+        "coveredBy": ["SP-43", "SP-35", "SP-45b"]
+      },
+      {
+        "change": "identity.subject() null on key-only devices.",
+        "severity": "minor",
+        "coveredBy": ["I-10b", "SP-35"]
+      },
+      {
+        "change": "KIND_KEY_ENTRY_LIMIT.",
+        "severity": "minor",
+        "coveredBy": ["I-10b", "SP-45b"]
+      },
+      {
+        "change": "Small kit fixes (settings schema, effective_capabilities, leaks, device name, invalid-options detail).",
+        "severity": "minor",
+        "coveredBy": ["UK-50"]
+      },
+      {
+        "change": "README fixes.",
+        "severity": "minor",
+        "coveredBy": ["SP-45b", "SP-37"]
+      },
+      {
+        "change": "AssetLib metadata.",
+        "severity": "minor",
+        "coveredBy": ["SP-45b"]
+      },
+      {
+        "change": "Activation form to spec.",
+        "severity": "minor",
+        "coveredBy": ["UK-11"]
+      },
+      {
+        "change": "Generated STATUS_/ACTION_ constants; internal classes drop class_name.",
+        "severity": "minor",
+        "coveredBy": ["SP-35"]
+      }
+    ],
+    "crossSdkApi": [
+      {
+        "change": "Gate Kotlin entitlementValue; corpus case; gating stated for every licence read.",
+        "severity": "high",
+        "coveredBy": ["SP-51", "SP-35"]
+      },
+      {
+        "change": "Licence events emitted from the core state change; transcript case; triggers in api.json.",
+        "severity": "high",
+        "coveredBy": ["SP-48", "UK-49", "SP-51", "SP-35"]
+      },
+      {
+        "change": "One boot() enrolment default, option name and result shape; boot-cold-enroll transcript.",
+        "severity": "high",
+        "coveredBy": ["SP-35", "SP-32a", "SP-32b"]
+      },
+      {
+        "change": "api.json rows record result shapes, units, semantics with corpus ids, error types and codes.",
+        "severity": "high",
+        "coveredBy": ["SP-35"]
+      },
+      {
+        "change": "Epoch seconds (or ...Ms) for every public time field.",
+        "severity": "high",
+        "coveredBy": ["SP-35", "UK-45", "UK-47"]
+      },
+      {
+        "change": "Fix SP-35's alias contradiction; restate C-25; mark audit §5.2 superseded; re-estimate SP-35.",
+        "severity": "medium",
+        "coveredBy": ["SP-35"]
+      },
+      {
+        "change": "eventKind enum with entitlement and payload fields.",
+        "severity": "medium",
+        "coveredBy": ["SP-35"]
+      },
+      {
+        "change": "Swift documentExpiresAt; expiresAt reserved for licence expiry.",
+        "severity": "medium",
+        "coveredBy": ["SP-35", "LX-19"]
+      },
+      {
+        "change": "One error type per language with a registry code.",
+        "severity": "medium",
+        "coveredBy": ["SP-46", "SP-48", "SP-34", "SP-35"]
+      },
+      {
+        "change": "Sign-in feature ids and one current-identity shape.",
+        "severity": "medium",
+        "coveredBy": ["I-10a", "I-10b", "SP-35"]
+      },
+      {
+        "change": "ConfigSetting member set; isLocked and clearAll gaps; parsed fetchSchema.",
+        "severity": "medium",
+        "coveredBy": ["SP-35", "U-06"]
+      },
+      {
+        "change": "Godot get_value/set_value as an accepted exception.",
+        "severity": "medium",
+        "coveredBy": ["SP-35"]
+      },
+      {
+        "change": "Every option in api.json with units; version auto-detected; Godot ui_* to the kit.",
+        "severity": "medium",
+        "coveredBy": ["SP-35", "SP-32a", "SP-32b"]
+      },
+      {
+        "change": "One casing rule for wire-mirroring data.",
+        "severity": "medium",
+        "coveredBy": ["SP-35", "SP-49"]
+      },
+      {
+        "change": "One home per concept plus identical root shortcuts.",
+        "severity": "medium",
+        "coveredBy": ["SP-35"]
+      },
+      {
+        "change": "layer field in api.json; quickstarts in the same lanes.",
+        "severity": "medium",
+        "coveredBy": ["SP-45a", "SP-45b", "SP-33b", "SP-35"]
+      },
+      {
+        "change": "Reserve type names; naming rules applied by the generator.",
+        "severity": "low",
+        "coveredBy": ["SP-35"]
+      },
+      {
+        "change": "Factories return started clients or reads raise not-started.",
+        "severity": "low",
+        "coveredBy": ["SP-50", "SP-32a", "SP-32b", "SP-35"]
+      },
+      {
+        "change": "Registry rows: update.channel, identity.signout, identity.current; configSource and eventKind enums.",
+        "severity": "low",
+        "coveredBy": ["SP-35"]
+      }
+    ],
+    "uiKits": [
+      {
+        "change": "Console and docs present the choice (drop-in, links to customise and integrate directly).",
+        "severity": "high",
+        "coveredBy": ["P0-47", "ST-41", "SP-33a", "SP-45a", "SP-45b", "ST-29"]
+      },
+      {
+        "change": "Product identity in every kit and on the hosted device-code page.",
+        "severity": "high",
+        "coveredBy": ["HA-13", "HA-14", "I-08", "UK-48", "UK-49"]
+      },
+      {
+        "change": "Python one-line flow runs without --product.",
+        "severity": "high",
+        "coveredBy": ["UK-48"]
+      },
+      {
+        "change": "Node kit flows ensure discovery before deciding a capability is off.",
+        "severity": "high",
+        "coveredBy": ["UK-45", "SP-32a"]
+      },
+      {
+        "change": "React drop-in dead ends and misconfiguration diagnostics.",
+        "severity": "high",
+        "coveredBy": ["UK-47", "SP-32a"]
+      },
+      {
+        "change": "React styled parts embed in a host app.",
+        "severity": "medium",
+        "coveredBy": ["UK-05", "UK-47"]
+      },
+      {
+        "change": "Terminal kits share state fixtures; secrets never printed by default.",
+        "severity": "medium",
+        "coveredBy": ["UK-02b", "UK-45", "UK-46", "UK-48"]
+      },
+      {
+        "change": "Holder and account separated in status screens.",
+        "severity": "medium",
+        "coveredBy": ["I-10a", "I-10b", "UK-43", "UK-45", "UK-48"]
+      },
+      {
+        "change": "No raw codes or slugs; ms/s bug; expired as its own outcome.",
+        "severity": "medium",
+        "coveredBy": ["UK-45", "UK-48", "UK-47", "LX-18", "LX-19"]
+      },
+      {
+        "change": "Terminal drop-in: verb selection, one-call gate, preview entry point.",
+        "severity": "medium",
+        "coveredBy": ["UK-46", "SP-42"]
+      },
+      {
+        "change": "Docs status badges and shipped names; UI-KITS §4.2 amended to fromConfig().",
+        "severity": "medium",
+        "coveredBy": ["SP-45a"]
+      },
+      {
+        "change": "React in kit-lint with recorded debt; Playwright baselines of today's kit.",
+        "severity": "low",
+        "coveredBy": ["UK-47"]
+      },
+      {
+        "change": "Run locally to try the kits.",
+        "severity": "low",
+        "coveredBy": ["SP-41"]
+      }
+    ]
+  },
+  "declined": {
+    "node": [
+      {
+        "suggestion": "pkey sdk writes the product's name and accent into config.",
+        "why": "A second, stale copy of the brand; HA-13 reads it from verified discovery."
+      },
+      {
+        "suggestion": "Scope the keychain entry by configDir.",
+        "why": "Keychain items are per user and per app; re-keying orphans every token. Non-default hosts are namespaced by SP-41."
+      },
+      {
+        "suggestion": "Remove dead license-expired/license-disabled kinds.",
+        "why": "LX-18 makes them live; removal then re-adding is two breaking changes."
+      },
+      {
+        "suggestion": "A fake client in @polaris-key/node/testing.",
+        "why": "A second client per SDK; SP-42's doubles drive the real client."
+      },
+      {
+        "suggestion": "The kit runs npm i -g or brew upgrade itself.",
+        "why": "CLI convention prints the command; UK-45 prints it."
+      },
+      {
+        "suggestion": "A push channel for config changes.",
+        "why": "New server infrastructure for what refresh plus sync on focus already meets."
+      },
+      {
+        "suggestion": "A sync event kind (started, finished, offline).",
+        "why": "Sync status is state.",
+        "status": "partly overruled: SP-43 emits one sync event when the status changes"
+      },
+      {
+        "suggestion": "Reasons for unknown, malformed or other-product keys.",
+        "why": "Anti-enumeration 401; only matched keys and authenticated tokens get a reason."
+      },
+      {
+        "suggestion": "The drop-in as the only in-app path for every Node host.",
+        "why": "Servers have no screens; sdkFit routes them to the library."
+      },
+      {
+        "suggestion": "Default the verb set to runtime-discovered services.",
+        "why": "Verbs register before any network call; expectedServices plus an allow-list."
+      },
+      {
+        "suggestion": "A non-hostname default device label.",
+        "why": "The wire contract's default with an opt-out; document it."
+      }
+    ],
+    "react": [
+      {
+        "suggestion": "pkey dev as a transcript replay server, not the real Worker.",
+        "why": "Refusals must match production; replay needs state, becoming a second server; the repo is public MIT; dev routes kept out of production by a build test.",
+        "status": "overruled"
+      },
+      {
+        "suggestion": "Never name Polaris Key on product buttons.",
+        "why": "Only branding='polaris-key' says it, and that is a Polaris Key account; the default uses {product}."
+      },
+      {
+        "suggestion": "Rename Sign out or add a confirmation.",
+        "why": "Freeing the seat is the safe default; platform convention."
+      },
+      {
+        "suggestion": "Stop polling while revoked.",
+        "why": "Revocation is reversible; back off instead."
+      },
+      {
+        "suggestion": "navigator.storage.persist() by default.",
+        "why": "Firefox prompts; document storeStatus()."
+      },
+      {
+        "suggestion": "useConfigChange(key, cb).",
+        "why": "useConfigSetting re-renders; the defect is StrictMode."
+      },
+      {
+        "suggestion": "expectedServices alias.",
+        "why": "Owner: removal, not aliases."
+      },
+      {
+        "suggestion": "Re-point the beta dist-tag.",
+        "why": "Beta includes stable by rule; fix the docs wording."
+      },
+      {
+        "suggestion": "Slow down latest.",
+        "why": "The failure is incoherent sets, not cadence."
+      },
+      {
+        "suggestion": "Refresh on focus by default.",
+        "why": "Polling stays off by default for integrations in production."
+      },
+      {
+        "suggestion": "Split cookie and bearer transports.",
+        "why": "SP-40 removes cookie mode in 0.9."
+      },
+      {
+        "suggestion": "Rename raw state.entitlements.",
+        "why": "0.9 removes it."
+      },
+      {
+        "suggestion": "A headless tab in the console start.",
+        "why": "The owner's shape: one snippet and links."
+      }
+    ],
+    "python": [
+      {
+        "suggestion": "Placeholder polaris-key on public PyPI.",
+        "why": "Owner decision 3; strict-index snippets are the defence.",
+        "status": "re-ask to owner (README §12)"
+      },
+      {
+        "suggestion": "pkey sdk writes name and accent into polaris_config.py.",
+        "why": "A second presentation path; HA-13; SP-32a deletes the file."
+      },
+      {
+        "suggestion": "Refuse Identity without an OIDC block on the Worker.",
+        "why": "Track F retires the per-product OIDC engine."
+      },
+      {
+        "suggestion": "A Python-native config generator.",
+        "why": "One generator; the console download removes the Node step."
+      },
+      {
+        "suggestion": "Fonts and Qt assets in another distribution.",
+        "why": "A second lockstep distribution to save 556 KB."
+      },
+      {
+        "suggestion": "Localise argparse help now.",
+        "why": "Waits for catalog keys."
+      },
+      {
+        "suggestion": "A Paywall screen in the terminal kit.",
+        "why": "Purchases happen in the portal or store."
+      },
+      {
+        "suggestion": "Expand the Textual app.",
+        "why": "Optional, outside the must tier."
+      },
+      {
+        "suggestion": "Default the outlet to direct.",
+        "why": "An undetected store install would self-update; SP-44 detects package managers."
+      },
+      {
+        "suggestion": "boot() starts a refresh thread by default.",
+        "why": "Unsafe for GUI hosts; document the thread contract."
+      },
+      {
+        "suggestion": "A malformed activation kind.",
+        "why": "A six-SDK API change; only an empty key is refused locally."
+      },
+      {
+        "suggestion": "An environment option.",
+        "why": "Host namespacing covers it."
+      },
+      {
+        "suggestion": "Settle supports('ui.kit') now.",
+        "why": "UK-02b redefines ui.* rows once."
+      }
+    ],
+    "swift": [
+      {
+        "suggestion": "Fonts into an optional branding product.",
+        "why": "The Polaris look is the default; SP-52 removes duplicates."
+      },
+      {
+        "suggestion": "Namespace every store key by base URL or move the macOS config dir.",
+        "why": "Would orphan every activation.",
+        "status": "partly overruled: non-default hosts only (SP-41)"
+      },
+      {
+        "suggestion": "pkey sdk --name.",
+        "why": "Per-language modules are replaced by polaris-key.json."
+      },
+      {
+        "suggestion": "Client-side key validation in the SDK.",
+        "why": "The kit guards it; a new kind is a six-SDK change."
+      },
+      {
+        "suggestion": "Restyle the current gate now.",
+        "why": "Kit rule 3; UK-07 replaces the screen."
+      },
+      {
+        "suggestion": "Make internal preview surfaces public.",
+        "why": "API that 0.9 removes; UK-07 and SP-42 cover it."
+      },
+      {
+        "suggestion": "Sub-second issuedAt or a sequence number.",
+        "why": "A signed-shape change; SP-43 fixes it without one."
+      },
+      {
+        "suggestion": "Keep the 401 for expired keys, soften copy only.",
+        "why": "The key already matched; LX-18's reason leaks nothing."
+      },
+      {
+        "suggestion": "A separate package for Swift headless models now.",
+        "why": "Would build state machines twice; UK-07 builds them first."
+      }
+    ],
+    "kotlin": [
+      {
+        "suggestion": "AppAuth for phone sign-in.",
+        "why": "I-15 specifies Custom Tabs over I-08's routes."
+      },
+      {
+        "suggestion": "Interfaces for every client.",
+        "why": "Doubles the api.json surface; transport doubles are the seam."
+      },
+      {
+        "suggestion": "Rename entitlements() to lastVerifiedEntitlements().",
+        "why": "Gate it instead."
+      },
+      {
+        "suggestion": "A default refresh interval.",
+        "why": "Battery and rate-limit cost."
+      },
+      {
+        "suggestion": "Plain HTTP to 10.0.2.2 in pkey sdk.",
+        "why": "Loopback-only HTTP is a security rule; document adb reverse."
+      },
+      {
+        "suggestion": "java-keyring in polaris-key-sdk.",
+        "why": "Pulls JNA into every APK."
+      },
+      {
+        "suggestion": "One casing for error codes.",
+        "why": "Snake_case codes are wire codes."
+      },
+      {
+        "suggestion": "Origin in the default store path.",
+        "why": "Would orphan activations.",
+        "status": "partly overruled: non-default hosts only (SP-41)"
+      },
+      {
+        "suggestion": "Keep PolarisKeyClient.create as the JVM start (audit quick win 5).",
+        "why": "Plaintext token; skips the desktop driver."
+      }
+    ],
+    "godot": [
+      {
+        "suggestion": "Treat editor runs as the direct outlet.",
+        "why": "An unknown outlet is never offered anything."
+      },
+      {
+        "suggestion": "A new outlet-unknown decide reason.",
+        "why": "A corpus change for a debug concern; doctor() explains it."
+      },
+      {
+        "suggestion": "start() runs discovery.",
+        "why": "start() is the documented offline load."
+      },
+      {
+        "suggestion": "Typed result classes beside Dictionaries.",
+        "why": "A parallel surface; generated constants instead."
+      },
+      {
+        "suggestion": "More status signals.",
+        "why": "One event(kind, data) signal (U-21)."
+      },
+      {
+        "suggestion": "UI kit and fonts as a separate addon.",
+        "why": "The kit ships inside the addon; an export filter suffices."
+      },
+      {
+        "suggestion": "The plugin writes .po paths into project settings.",
+        "why": "Intrusive; the kit loads its own translations."
+      },
+      {
+        "suggestion": "A public hosted sandbox with shared keys.",
+        "why": "Shared mutable state on production; pkey dev covers it."
+      },
+      {
+        "suggestion": "A Godot-only device-report opt-out.",
+        "why": "An all-SDK decision; the README lists what is sent."
+      },
+      {
+        "suggestion": "A non-zero default refresh interval.",
+        "why": "A server-cost decision; document sync on focus."
+      }
+    ],
+    "uiKits": [
+      {
+        "suggestion": "A three-tab chooser in the console (drop-in, hosted, build your own).",
+        "why": "The owner's shape: one drop-in snippet and links; hosted sign-in is a drop-in option."
+      },
+      {
+        "suggestion": "Generate theme.product (name, accent) into the console snippet.",
+        "why": "A stale brand copy; HA-13 lands before ST-41 shows kit snippets."
+      },
+      {
+        "suggestion": "Ship the samples' fixture clients as the kits' preview mode.",
+        "why": "Preview runs the real client over SP-42's scripted transport instead of a second client."
+      }
+    ]
+  },
+  "newPackages": [
+    {
+      "id": "P0-52",
+      "title": "Feed coherence: atomic lockstep publishing and a closure check",
+      "phase": "P0",
+      "estimateWeeks": [0.6, 1.0],
+      "deps": [],
+      "planMode": false,
+      "role": "pkey-implementer",
+      "startsNow": true,
+      "mergedFrom": ["Node P0-52", "React 'Feed release integrity'"],
+      "scope": [
+        "publish-sdks.yml publishes npm legs in dependency tiers; a leg publishes only when every leg it depends on succeeded",
+        "after each publish, resolve every exact @polaris-key/* pin of every new version on pkg.plrs.im before moving channel tags; yank a failed set",
+        "scheduled full-feed closure check (npm and PyPI)",
+        "repair the 9 broken versions: publish jws@0.8.28 and protocol@0.8.29 from their tags, or deprecate the dependents (owner step)",
+        "install-from-feeds.md: pnpm, npm and Bun age gates beside Yarn's; correct the beta wording; stale version snippets"
+      ],
+      "acceptance": [
+        "full-feed check finds no unresolvable sibling pin",
+        "after every publish, pnpm add @polaris-key/node (pnpm 11 defaults) and npm install @polaris-key/react react react-dom succeed in an empty dir in CI",
+        "a simulated stuck leg leaves no dependent published at that version"
+      ],
+      "brokenVersionsVerified20261008": [
+        "node@0.8.28",
+        "cli@0.8.28",
+        "client-core@0.8.28",
+        "react@0.8.29",
+        "cli@0.8.29",
+        "client-core@0.8.29",
+        "manifest@0.8.29",
+        "catalog@0.8.29",
+        "jws@0.8.29"
+      ]
+    },
+    {
+      "id": "SP-41",
+      "title": "pkey dev: a local Polaris Key for integrators",
+      "phase": "SP",
+      "estimateWeeks": [1.5, 2.2],
+      "deps": [],
+      "planMode": false,
+      "role": "pkey-implementer",
+      "startsNow": true,
+      "mergedFrom": [
+        "Node SP-41",
+        "React pkey dev (server half)",
+        "Python PK-DEV",
+        "Swift pkey dev",
+        "Kotlin integrator local backend (server half)",
+        "Godot SP-42 (server half)"
+      ],
+      "scope": [
+        "the real Worker router in-process on Node >=22.13 built-in SQLite with in-memory KV and DO mocks; no wrangler, account, secrets or migrations step",
+        "seeded from .pkey/ or the built-in Tidewater product (SP-36 reuses it); throwaway signing and release keys",
+        "test keys: ok, expired, disabled, revoked, device-limit-full, key-entry-limit, floating; fake IdP approval page; signed release on stable and beta; web.origins for localhost",
+        "control commands: expire, disable, revoke, fill seats, set config, publish a release, go offline",
+        "writes polaris-key.json (until SP-32b, pkey sdk --dev writes today's config); prints pins; loopback only",
+        "every SDK namespaces its store by host for a non-default base URL; production names unchanged",
+        "OCI image for developers without Node; 'Run Polaris Key locally' page linked from every quickstart step 1"
+      ],
+      "acceptance": [
+        "starts in under 10 s on a clean machine with no account",
+        "in CI each SDK's quickstart reaches first activation, every refusal kind exactly as the deployed Worker answers, a config change event, device-code sign-in and an update decision",
+        "never contacts key.plrs.im (test)",
+        "dev routes and fake IdP absent from the production Worker bundle (build test)",
+        "a dev run leaves production store entries untouched (Node and Python tests, parity rows for the rest)"
+      ]
+    },
+    {
+      "id": "SP-42",
+      "title": "Test doubles on the real client, in every SDK",
+      "phase": "SP",
+      "estimateWeeks": [1.2, 1.8],
+      "deps": ["SP-41", "SP-35"],
+      "planMode": false,
+      "role": "pkey-sdk-porter",
+      "startsNow": false,
+      "mergedFrom": [
+        "React @polaris-key/react/testing",
+        "Python PY-04",
+        "Kotlin polaris-key-testing",
+        "Swift PolarisKeyTesting (SP-36 amendment)",
+        "Godot PKeyFakeBackend"
+      ],
+      "scope": [
+        "per SDK a testing entry point driving the real client over a scripted transport and a throwaway signer; never a second client",
+        "Node @polaris-key/node/testing; React @polaris-key/react/testing; Python polaris_key.testing; Swift PolarisKeyTesting; Kotlin polaris-key-testing; Godot optional polaris_key_testing over a transport seam",
+        "scenarios match SP-41's keys plus offline; sample fixtures move onto it",
+        "each terminal kit gets a documented preview entry point rendering any scenario"
+      ],
+      "acceptance": [
+        "an activation-screen host test needs 15 lines or fewer and no hand-written claims in each SDK",
+        "samples import only public modules",
+        "api.json lists the surface"
+      ]
+    },
+    {
+      "id": "SP-43",
+      "title": "Sync outcomes: reasons, same-second documents, a sync status",
+      "phase": "SP",
+      "estimateWeeks": [1.5, 2.0],
+      "deps": ["SP-35"],
+      "planMode": true,
+      "role": "pkey-sdk-porter",
+      "startsNow": false,
+      "lane": "corpus",
+      "mergedFrom": [
+        "Swift 'Sync outcomes'",
+        "Node same-second drop",
+        "React sync outcome",
+        "Python sync reason",
+        "Kotlin SyncResult offline/Unchanged",
+        "Godot sync ok"
+      ],
+      "scope": [
+        "each document's sync outcome carries a reason (network, server{status}, rejected{step}, replay) plus an offline flag",
+        "Godot ok follows classify(); React refresh() returns the outcome and hooks expose the last sync",
+        "identical re-served bytes count as unchanged",
+        "the Worker issues one type to one device with strictly increasing iat",
+        "every client exposes a sync status (last attempt, last success, last error code, offline) and emits one sync event when it changes",
+        "no signed-shape change; PROTOCOL_VERSION unchanged; plan names corpus cases and every SDK"
+      ],
+      "acceptance": [
+        "an identical document served twice reports unchanged in all six SDKs",
+        "a same-second config change arrives and emits its event",
+        "offline reports network and offline; a tampered document reports rejected",
+        "names in api.json; THREAT-MODEL notes the anti-replay floor is unchanged for differing payloads"
+      ]
+    },
+    {
+      "id": "SP-44",
+      "title": "Updates for package-manager installs",
+      "phase": "SP",
+      "estimateWeeks": [0.8, 1.2],
+      "deps": ["P2-12", "SP-35"],
+      "planMode": true,
+      "role": "pkey-sdk-porter",
+      "startsNow": false,
+      "lane": "corpus",
+      "mergedFrom": ["Python PY-03"],
+      "scope": [
+        "outlet-matrix subkind for package-manager installs detected positively (pip, pipx, uv tool; npm, pnpm, yarn global; Homebrew formula)",
+        "an instructions-only update method rendered as the exact upgrade command",
+        "unknown outlet still offered nothing (no new decide reason); doctor() and a once-per-run debug line explain",
+        "polaris-key.json can set the outlet for direct-download products"
+      ],
+      "acceptance": [
+        "new rows replay green in six SDKs",
+        "a pipx-installed sample is offered 1.3.0 with 'pipx upgrade' in the Python kit; an npm-global CLI likewise in the Node kit",
+        "doctor() names the cause for an unknown outlet"
+      ]
+    },
+    {
+      "id": "SP-45a",
+      "title": "Developer docs, two lanes per SDK on today's API: Node, React, Python",
+      "phase": "SP",
+      "estimateWeeks": [1.0, 1.4],
+      "deps": [],
+      "planMode": false,
+      "role": "pkey-implementer",
+      "startsNow": true,
+      "gates": ["docs-links"],
+      "mergedFrom": ["React 'Integration paths' (docs half)"],
+      "scope": [
+        "the lane skeleton (eight shared checkpoints) for every SDK",
+        "a doc-snippet extractor for README and docs code blocks with TS and Python compile lanes",
+        "status badges and shipped names on build/ui; Terminal (Node), Terminal (Python) and Electron rows",
+        "UI-KITS §4.2 amended to the polaris-key.json shape (audit quick win 9)",
+        "DOCS_LINKS entries for every console link",
+        "Node: quickstart fork by host and lane; terminal-node fixes; new your-own-ui page (Electron over exposePolarisBridge, CLI screens, state table, testing); README reference gaps",
+        "React: Choose your path; new frameworks/react with today's components; new your-own-ui page; remove cookie-era claims and spec names",
+        "Python: quickstart fork; terminal-python fixes; new your-own-ui page (ui.core, AsyncClient, thread contract); Qt marked planned"
+      ],
+      "acceptance": [
+        "both lanes reach the eight checkpoints for each SDK",
+        "every code block compiles in its lane; a broken block fails CI",
+        "a check fails when a page names a symbol the SDK does not export",
+        "docs-links and the slug manifest pass",
+        "a newcomer dry run per SDK recorded in the PR"
+      ]
+    },
+    {
+      "id": "SP-45b",
+      "title": "Developer docs, two lanes per SDK on today's API: Swift, Kotlin, Godot",
+      "phase": "SP",
+      "estimateWeeks": [1.2, 1.6],
+      "deps": ["SP-45a"],
+      "planMode": false,
+      "role": "pkey-implementer",
+      "startsNow": true,
+      "gates": ["docs-links"],
+      "mergedFrom": [
+        "Swift SW-DOC",
+        "Godot SP-41 (docs)",
+        "Kotlin docs presentation"
+      ],
+      "scope": [
+        "Swift: new frameworks/swiftui led by .polarisKey; own-UI guide; quickstart leads with the drop-in; Package.swift and Xcode tabs; theming tab; English-only caveat; Swift compile lane",
+        "Kotlin: quickstart by host; compose page Android-only with today's names; own-UI page; Compose Desktop recipe; kotlinc and Android compile lane",
+        "Godot: new frameworks/godot with shipped classes; own-UI section (controllers, status-screen-copy table, signals, discover()); quickstart three-way choice; README corrections; class-name drift check; AssetLib metadata; GDScript parse lane"
+      ],
+      "acceptance": [
+        "both lanes reach the eight checkpoints for each SDK",
+        "every Swift, Kotlin and GDScript block compiles or parses in its lane",
+        "no page names a symbol the SDK does not ship (check)",
+        "docs-links and slug manifest pass"
+      ]
+    },
+    {
+      "id": "SP-46",
+      "title": "Node library 0.8.x: one error taxonomy, redaction",
+      "phase": "SP",
+      "estimateWeeks": [0.6, 1.0],
+      "deps": [],
+      "planMode": false,
+      "role": "pkey-sdk-porter",
+      "startsNow": true,
+      "mergedFrom": ["Node SP-42 (error taxonomy)"],
+      "scope": [
+        "every fetch wrapped; one network code; 5xx server/unavailable; 429 rate_limited with retryAfterSeconds; only a real 404 not_found (update, release, identity)",
+        "PolarisError keeps the server's message; beginSignIn refuses locally when identity is off",
+        "InsecureBaseUrlError and DeviceManagementUnsupportedError extend PolarisError",
+        "ActivationResult.ok redacts its token in inspect and toJSON; client-core lastVerifiedAt comment corrected; code list handed to SP-35"
+      ],
+      "acceptance": [
+        "offline matrix asserts one code across activate, sync, update.check, release, identity",
+        "404/429/500/503 matrix covers each call",
+        "no public result's console.log or JSON contains pkeyt_",
+        "instanceof PolarisError catches every SDK error"
+      ]
+    },
+    {
+      "id": "SP-47",
+      "title": "React bundle diet and size budget",
+      "phase": "SP",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": [],
+      "planMode": false,
+      "role": "pkey-implementer",
+      "startsNow": true,
+      "mergedFrom": ["React 'bundle diet'"],
+      "scope": [
+        "packs, zstd-wasm and hash-wasm only through dynamic import",
+        "the Provider path imports no update or packs module statically",
+        "root barrel stops re-exporting packs",
+        "size-limit in CI for Provider+LicenseGate and Provider+useLicense"
+      ],
+      "acceptance": [
+        "a Vite build of Provider+useLicense emits and inlines no wasm",
+        "gzip JS over bare React within the measured budget (today +77 KB)",
+        "CI fails over budget"
+      ]
+    },
+    {
+      "id": "SP-48",
+      "title": "Python 0.8.x patch: fail-open, leak and error-model fixes",
+      "phase": "SP",
+      "estimateWeeks": [0.8, 1.2],
+      "deps": [],
+      "planMode": false,
+      "role": "pkey-sdk-porter",
+      "startsNow": true,
+      "mergedFrom": ["Python PY-01 (code slice)"],
+      "scope": [
+        "CoreContext.request maps transport errors to network-error and 5xx to server-error; update.check and release stop collapsing to not_found",
+        "create() rejects unknown expected_services",
+        "repr=False on every token field",
+        "AsyncClient gate coroutines refuse truthiness",
+        "client.license.deactivate() emits the licence event like the root",
+        "InsecureBaseUrlError and DeviceManagementUnsupportedError subclass PolarisError",
+        "empty key refused locally; sign-in errors carry the server message; listener exceptions logged; lazy imports"
+      ],
+      "acceptance": [
+        "every public network method patched to ConnectError then 503 gives network-error or server-error and leaks no httpx exception",
+        "create(expected_services=['licence']) raises",
+        "no public result repr contains pkeyt_",
+        "'if aclient.is_licensed():' raises",
+        "one licence event per deactivate from either entry point"
+      ]
+    },
+    {
+      "id": "SP-49",
+      "title": "Python typed surface for 0.9",
+      "phase": "SP",
+      "estimateWeeks": [0.8, 1.2],
+      "deps": ["SP-35"],
+      "planMode": true,
+      "role": "pkey-sdk-porter",
+      "startsNow": false,
+      "mergedFrom": ["Python PY-02"],
+      "scope": [
+        "Literal discriminators on every result kind and status",
+        "generic get_config(key, fallback: T) -> T",
+        "typed keywords on create() and from_config()",
+        "typed AsyncClient with cache-only reads synchronous",
+        "a client Protocol for the kit",
+        "snake_case public fields with one time unit, with SP-35's renames (no aliases)"
+      ],
+      "acceptance": [
+        "mypy --strict and pyright pass on the README's patterns",
+        "a misspelt AsyncClient method fails type-checking",
+        "api.json surface test covers both clients",
+        "release notes list every rename"
+      ]
+    },
+    {
+      "id": "SP-50",
+      "title": "Kotlin 0.8.x hotfix: Android runtime, packaging, desktop store",
+      "phase": "SP",
+      "estimateWeeks": [1.5, 2.0],
+      "deps": [],
+      "planMode": false,
+      "role": "pkey-sdk-porter",
+      "startsNow": true,
+      "mergedFrom": ["Kotlin KT-01", "Kotlin KT-02"],
+      "scope": [
+        "Ed25519 backend by RFC 8032 known-answer test, Tink preferred on Android",
+        "every public suspend function main-safe",
+        "PolarisKeyAndroid.client() usable and started; suspend create(); kit starts the client; clear error without a store",
+        "OkHttpTransport() compiles for consumers",
+        "Gradle variants so sdk, ui, billing and android-* resolve zstd-jni's AAR with no excludes; packs optional",
+        "consumer R8 rules or a JVM-only RAM probe",
+        "java-keyring through a desktop artifact with a degraded-store warning",
+        "emulator lane (minSdk, 34, newest) and a consumer app on documented and latest toolchains"
+      ],
+      "acceptance": [
+        "on API 36, client(context) -> activate() -> sync() from Dispatchers.Main against a split-write server gives Ok and an applied licence with no app workaround",
+        "StrictMode penaltyDeath covers every public suspend function",
+        "sdk + android-direct + ui + billing build assembleDebug and minified assembleRelease on compileSdk 36 and 37 with no app rules",
+        "an APK without packs has no libzstd-jni"
+      ]
+    },
+    {
+      "id": "SP-51",
+      "title": "Kotlin live state and lifecycle",
+      "phase": "SP",
+      "estimateWeeks": [0.8, 1.2],
+      "deps": [],
+      "planMode": false,
+      "role": "pkey-sdk-porter",
+      "startsNow": true,
+      "mergedFrom": ["Kotlin KT-03"],
+      "scope": [
+        "licenseChanges and events emit on every status transition with a content-hash fallback",
+        "PolarisGateState reloads after every sync",
+        "entitlementValue() gated",
+        "boot retry with backoff and cap; 401 on /license/token final for the pass",
+        "de-duplicated syncs",
+        "close() cancels the scope and releases OkHttp resources",
+        "update.check() keeps server codes; listDevices() reports offline",
+        "Play Billing connect() timeout and disconnect handling"
+      ],
+      "acceptance": [
+        "deactivate and server revoke + sync() each emit within one tick",
+        "Compose test: licence revoked in the foreground shows the revoked screen",
+        "a revoked-token boot makes at most 5 token requests a minute",
+        "a JVM main exits within 1 s of close()",
+        "purchase() without Play returns BillingFailed(unsupported) within 10 s"
+      ]
+    },
+    {
+      "id": "SP-52",
+      "title": "Swift package footprint",
+      "phase": "SP",
+      "estimateWeeks": [0.5, 0.8],
+      "deps": [],
+      "planMode": false,
+      "role": "pkey-sdk-porter",
+      "startsNow": true,
+      "mergedFrom": ["Swift 'package footprint'"],
+      "scope": [
+        "registry archive without tests and tools",
+        "one Rubik variant; JetBrains Mono only if used",
+        "iOS hosts link decide() without packs and libzstd",
+        "zstd vendored as a C target"
+      ],
+      "acceptance": [
+        "published archive under 6 MB with no Tests directory",
+        "Release arm64 iOS app with the kit and decide() at least 25% smaller than 0.8.33 (CI-measured)",
+        "swift package resolve clones nothing"
+      ]
+    },
+    {
+      "id": "UK-45",
+      "title": "Node terminal kit 0.8.x fixes",
+      "phase": "UK",
+      "estimateWeeks": [0.8, 1.2],
+      "deps": [],
+      "planMode": false,
+      "role": "pkey-implementer",
+      "startsNow": true,
+      "mergedFrom": ["Node UK-45"],
+      "scope": [
+        "devices last seen from the roster in seconds",
+        "status holder name or email; signed-in from identity.current()",
+        "login ends 'Signed in as <name>' and confirms before attaching when a key licence is held (default No)",
+        "every flow ensures discovery before deciding a capability is off",
+        "update apply names the reason and next step (upgrade command or download link); update copy for not-configured",
+        "interim refusal copy covering expiry with the portal link; core.gate.revoked not 'Signed out' for key-only",
+        "product-first strings; one spelling of licence; secret and mint never print without --reveal; catalog labels",
+        "OSC 11 skipped when the theme is decided",
+        "pkey-ux-reviewer pass"
+      ],
+      "acceptance": [
+        "goldens with a real client's status (ms lastVerifiedAt) and an empty-email profile",
+        "key-held login prompts, defaults to No and keeps the key licence",
+        "login works from the documented factory without a manual discover()",
+        "update apply goldens for npm, pnpm, brew, npx, no driver and not-configured each end in an actionable line",
+        "lint finds no kit string naming Polaris Key where the product fits"
+      ]
+    },
+    {
+      "id": "UK-46",
+      "title": "Node terminal kit for existing CLIs",
+      "phase": "UK",
+      "estimateWeeks": [0.8, 1.2],
+      "deps": [],
+      "planMode": false,
+      "role": "pkey-implementer",
+      "startsNow": true,
+      "mergedFrom": ["Node UK-46"],
+      "scope": [
+        "registerPolarisCommands and the yargs adapter take verbs (ids or groups; default services plus core; developer verbs opt-in) and config (today's polarisConfig; polaris-key.json after SP-32a)",
+        "documented commander mount",
+        "collision gives a clear error or skips with a warning on opt-in",
+        "grouped help lists the host's commands first",
+        "polarisGate() and withLicense(handler)",
+        "yargs on its own subpath"
+      ],
+      "acceptance": [
+        "a host CLI with its own config, update and status registers without throwing",
+        "--help lists host commands first",
+        "gating a host command takes 3 lines or fewer",
+        "tsc with skipLibCheck false passes in a commander-only project",
+        "the SP-33a Node CLI golden is 8 lines or fewer and compiles"
+      ]
+    },
+    {
+      "id": "UK-47",
+      "title": "React kit and gate fixes before UK-05",
+      "phase": "UK",
+      "estimateWeeks": [1.2, 1.6],
+      "deps": [],
+      "planMode": false,
+      "role": "pkey-implementer",
+      "startsNow": true,
+      "mergedFrom": ["React 'kit and gate fixes'"],
+      "scope": [
+        "bearer device-code hand-off from the signInWithOidc handle; rejections in the card",
+        "refusals stay on login with key, slot and Replace a device; refreshes never clear them",
+        "revoked gets three actions and 401 backoff",
+        "typed update codes; never 'up to date' after failure; one shared check",
+        "StrictMode-safe Provider",
+        "development-only error for missing pins or an origin missing from web.origins",
+        "React.JSX.Element and a React 18/19 consumer typecheck; lastVerifiedAt in seconds; one discovery fetch per load",
+        "hard-coded strings into theme.copy; copy helpers re-exported from the root; PolarisLogout visible on a light host",
+        "React in kit-lint with recorded debt; Playwright baselines of today's kit; pkey-ux-reviewer pass"
+      ],
+      "acceptance": [
+        "bearer sign-in shows code and URL; Cancel stops polling",
+        "a refused key keeps the screen, key and message across a refresh",
+        "device-limit shows Replace a device with a manageUrl",
+        "revoked has at least two actions and backs off",
+        "a 404 on /update/version never shows 'up to date'",
+        "onConfigChange fires under StrictMode",
+        "corpus and transcripts unchanged"
+      ]
+    },
+    {
+      "id": "UK-48",
+      "title": "Python terminal kit as a mountable drop-in",
+      "phase": "UK",
+      "estimateWeeks": [0.8, 1.2],
+      "deps": [],
+      "planMode": false,
+      "role": "pkey-implementer",
+      "startsNow": true,
+      "mergedFrom": ["Python UK-13b"],
+      "scope": [
+        "adapters take client= or config= with version=; bound flags hidden; verbs= with END_USER default; per-verb help",
+        "require_license() and require_entitlement()",
+        "update available state without signed decisions",
+        "signed-in only from identity; bundle name from package metadata until HA-13; no degraded-store line for end users",
+        "<Product> sign-in copy; kebab-case --json enums; locale dates; platform names; no private attributes",
+        "Textual Updates pane wired or removed; mytool.py and tidewater.py without argv hacks",
+        "pkey-ux-reviewer pass"
+      ],
+      "acceptance": [
+        "python mytool.py sign-in and status work unchanged",
+        "a host --help lists only chosen verbs without integration flags",
+        "every verb has offline and update-unconfigured goldens in both themes",
+        "require_* snippets are tested files",
+        "the SP-33a Python CLI golden compiles"
+      ]
+    },
+    {
+      "id": "UK-49",
+      "title": "SwiftUI kit and Swift SDK 0.8.x correctness pass",
+      "phase": "UK",
+      "estimateWeeks": [1.0, 1.5],
+      "deps": [],
+      "planMode": false,
+      "role": "pkey-sdk-porter",
+      "startsNow": true,
+      "mergedFrom": ["Swift SW-FIX"],
+      "scope": [
+        "terminal gate states get actions with matching copy",
+        ".polarisKey(client, theme:, options: GateOptions) keeps manage and return URLs, key entry, offline activation (off on iOS)",
+        "ActivationResult redacts its token; StoreError is LocalizedError; accent through PolarisAccent.resolve",
+        "Return submits; refusals announced; default name from CFBundleDisplayName; no activation card before first reload",
+        "'Signed in as' with 'Not you?' on ready; WebAuthenticationSignInBrowser isolation fix",
+        "no try? in client.update; update-not-configured copy; LicenseClient.deactivate() emits the licence event; JSONValue descriptions",
+        "the five README snippets, platforms: and from:",
+        "pkey-ux-reviewer pass"
+      ],
+      "acceptance": [
+        "UI tests reach the activation form from expired and revoked via 'Use a different key' and via Sign in without relaunch",
+        "device-limit shows a working Replace a device",
+        "no pkeyt_ in String(describing:), String(reflecting:) or dump",
+        "contrast at least 4.5:1 on #FF6A3D in both schemes",
+        "a licensed cold launch never renders the activation card",
+        "README blocks compile in SP-45b's lane"
+      ]
+    },
+    {
+      "id": "UK-50",
+      "title": "Godot drop-in fixes ahead of UK-11",
+      "phase": "UK",
+      "estimateWeeks": [1.5, 2.0],
+      "deps": [],
+      "planMode": false,
+      "role": "pkey-godot-engineer",
+      "startsNow": true,
+      "mergedFrom": ["Godot UK-45"],
+      "scope": [
+        "boot() resolves at READY through Retry (resolve_on_stop opt-out)",
+        "PKeyUiView.sdk setter re-renders nested views",
+        "re-entrant boot() and persistent gate mode; expired banner state",
+        "starting focus and accessibility names",
+        "one themed update prompt with an action",
+        "activation not reported ok until documents verify; developer push_error",
+        "for_result through message_for; confirm_identity on boot()",
+        "settings schema fetch; effective_capabilities; leaks; friendly device name",
+        "register and finish fix/godot-ui-responsive (product header, landscape sign-in, 1280x720 matrix)",
+        "pkey-ux-reviewer pass"
+      ],
+      "acceptance": [
+        "OFFLINE -> Try again -> READY resolves the awaited boot() and changes the scene",
+        "every dialog opened from a live gate renders its content; re-boot after sign_out() shows key entry and Sign in",
+        "cold boot without pointer focuses the first control; ui_down walks the chain",
+        "branded and neutral sign-in cards fit 1280x720 and 1280x800",
+        "a wrong pin and a +2-day clock never show 'Activated.'",
+        "no product screen shows the Pinned K; no leak warning at exit"
+      ]
+    }
+  ],
+  "newPackagesTotalWeeks": [19.3, 27.9],
+  "newPackagesStartingNowWeeks": [15.0, 21.7],
+  "existingPackageEdits": {
+    "P0-47": "React snippet also shows LicenseGate and declares the version; Kotlin snippet on PolarisKeyAndroid.client; two docs links per SDK in today's quick start through DOCS_LINKS.",
+    "P0-48": "Docs safety fixes: Node kit factory, Electron whenReady, strict-index Python installs, Swift quickstart print(result), Kotlin quickstart and version, React stale bearer note (audit quick win 2), Swift init(options:) comment (quick win 4); pkey CLI install line, missing --product, --version, smol-toml; example version stamping; theme.product note until HA-13.",
+    "SP-32a": "Kit adapters accept the config object; doctor() on verify failure and origin mismatch; outlet and release pins in polaris-key.json; Python version from importlib.metadata.",
+    "SP-32b": "Swift gate owns boot; Kotlin JVM start is PolarisKeyDesktop; PolarisKeyAndroid.client always started; doctor() lines for Swift, Kotlin, Godot.",
+    "SP-33a": "sdkFit host types; console start = drop-in only; headless/direct blocks as docs goldens with link targets; strict-index renderFeedSetup with Xcode tab; Update-without-release-keys warning; pkey sdk add names missing flags.",
+    "SP-33b": "Writes both lanes' snippets into SP-45's page skeleton.",
+    "SP-35": "Rows record result shapes, units, semantics with corpus ids, errors, event triggers, layer; brief's alias contradiction fixed; C-25 restated; entitlement event kind; gated entitlements.*; boot() enrolment; Godot get_value exception; option units; casing rule; root shortcuts; Swift documentExpiresAt; init(options:) not public; registry rows first; re-estimate.",
+    "SP-36": "CI examples run against pkey dev (no separate replay server); samples run their advertised commands; Electron example launches; Compose Android and Desktop examples.",
+    "SP-37": "One start path forks into two lanes; your-own-ui pages survive the reference trim.",
+    "SP-39": "Swift core copy in a PolarisKeyCore bundle; vendor-neutral network copy; update-not-configured key; activation copy by result kind.",
+    "ST-41": "One drop-in per host, two docs links, the preconditions per host.",
+    "ST-29": "Docs access per owner decision: developer sections reachable by integrators.",
+    "HA-13": "Lands before ST-41 shows kit snippets.",
+    "HA-14": "Lands before ST-41 shows the Godot drop-in.",
+    "I-08": "Acceptance covers the device-code approval page: product name, icon, accent; never the slug.",
+    "I-10a": "identity.subject() survives a restart and is null for key-only devices; confirm-and-attach in every kit; identity event kind.",
+    "I-10b": "Same as I-10a for Swift, Kotlin, Godot; Ready carries the identity (Kotlin); typed sign-in errors (Swift); KIND_KEY_ENTRY_LIMIT (Godot).",
+    "LX-18": "Acceptance: activate-refusals step 3 carries the expired reason; sync 401s carry it for authenticated tokens.",
+    "LX-19": "Acceptance: every kit renders renew copy for expired.",
+    "UK-02b": "Terminal-kit state fixtures and the kit-verb contract.",
+    "UK-03": "Also serves a Node main process with a plain renderer.",
+    "UK-07": "Presentation core as a SwiftUI-free product first, with public preview states.",
+    "UK-08": "Injectable Sparkle user driver.",
+    "UK-09": "First deliverable: a Compose-free headless artifact.",
+    "UK-05": "Framework page replaces SP-45a's interim React page in place.",
+    "UK-06": "Electron framework page and own-UI over the bridge.",
+    "UK-10": "Compose Desktop page replaces SP-45b's recipe; focus-sync helper.",
+    "UK-11": "Godot framework page replaces SP-45b's interim page in place.",
+    "UK-12": "Qt framework page; Python own-UI depth for Qt.",
+    "U-06": "config.set validates against the cached catalog (Python).",
+    "P2-12": "Unblocks Python update.check against the real Worker and SP-44."
+  },
+  "disagreementsSettled": [
+    {
+      "question": "What pkey dev runs",
+      "decision": "The real Worker router in-process; SP-36 uses it too.",
+      "overrules": "React and Python leads' transcript-replay position"
+    },
+    {
+      "question": "Test doubles",
+      "decision": "Doubles drive the real client over a scripted transport and a test signer; no second client."
+    },
+    {
+      "question": "Sync as events",
+      "decision": "Sync status is state; one sync event fires when it changes.",
+      "overrules": "part of the Node lead's decline"
+    },
+    {
+      "question": "Namespacing local state",
+      "decision": "Only non-default hosts; production names unchanged.",
+      "overrules": "part of the Swift and Kotlin leads' declines"
+    },
+    {
+      "question": "Unknown update outlet",
+      "decision": "Positive package-manager detection (SP-44); doctor() for unknown; no new decide reason.",
+      "overrules": "the Python lead's new reason"
+    },
+    {
+      "question": "Which entitlement reads are gated",
+      "decision": "0.8.x Kotlin entitlementValue; 0.9 entitlements.has/value/grants everywhere; licenseInfo stays diagnostic."
+    },
+    {
+      "question": "Expired keys",
+      "decision": "A reason only for a matched key or an authenticated token (LX-18)."
+    },
+    {
+      "question": "Brand in generated config or snippets",
+      "decision": "No; HA-13 lands before ST-41 shows kit snippets.",
+      "overrules": "the UI-kit review's suggestion"
+    },
+    {
+      "question": "Console shape",
+      "decision": "The owner's: one drop-in snippet and two docs links.",
+      "overrules": "SP-33a's headless tab and the UI-kit review's three-tab chooser"
+    },
+    {
+      "question": "Python truthy coroutine",
+      "decision": "Guard now (SP-48), reshape in 0.9 (SP-49)."
+    }
+  ],
+  "planRelation": {
+    "confirms": [
+      "SP-32a/b one config and start call",
+      "SP-35 one name per concept",
+      "SP-33a/b one generator with compiled goldens",
+      "SP-36 examples in CI",
+      "SP-37 reference-only READMEs and programme-id lint",
+      "SP-39 one copy pipeline",
+      "HA-13/HA-14",
+      "UK-02b fixtures",
+      "UK-03/05/07/09/11/12 rebuilds",
+      "LX-18/LX-19 expired reasons",
+      "I-10a/b identity v2",
+      "I-15 native redirect",
+      "audit P1 React pins, P7 docs shape, §7 item 9 kit-first"
+    ],
+    "contradicts": [
+      "SP-33a headless tab in the console (owner: links instead)",
+      "audit §7 item 6 'lead every quickstart with boot()' (Godot Retry trap; boot() enrolment differs)",
+      "audit quick win 5 'keep PolarisKeyClient.create for the JVM'",
+      "audit quick win 7 and SP-35 brief's deprecated aliases vs the owner's no-aliases rule",
+      "C-25 'name most SDKs ship' false for config.get, license.activate, entitlements.*, identity.signIn; audit §5.2 events list omits entitlement",
+      "SP-36's separate replay server (pkey dev instead)",
+      "audit §5.1 'Python keeps a required version'",
+      "ST-29 docs gate vs audit §5.8 'any console role'",
+      "audit quick wins 2, 4, 5, 8, 9 unowned by P0-48"
+    ],
+    "beyond": [
+      "P0-52 feed coherence",
+      "SP-41 pkey dev",
+      "SP-42 test doubles",
+      "SP-43 sync outcomes",
+      "SP-44 package-manager outlets",
+      "SP-45a/b docs on today's API",
+      "0.8.x fix packages SP-46..SP-52 and UK-45..UK-50",
+      "Kotlin Android runtime blockers",
+      "main-thread safety",
+      "React bundle budget",
+      "terminal kit inside an existing CLI",
+      "api.json semantics, units, shapes, errors, event triggers",
+      "hosted device-code page branding (I-08)",
+      "time-unit normalisation",
+      "docs access for integrators"
+    ]
+  },
+  "ownerDecisions": [
+    {
+      "id": "docs-access",
+      "question": "Make developer docs reachable by integrators?",
+      "recommendation": "Public developer sections (start/, build/, services/, reference/); operator sections stay gated. The page sources are already public in the MIT repo. Amends docs plan N7 and ST-29; minimum alternative is audit §5.8's 'any console role'."
+    },
+    {
+      "id": "feed-repair",
+      "question": "Approve repairing the 9 broken npm versions (package-registry environment).",
+      "recommendation": "Publish jws@0.8.28 and protocol@0.8.29 from their tags, or deprecate the nine dependents (P0-52)."
+    },
+    {
+      "id": "public-names",
+      "question": "Re-ask: claim pkey on npmjs and polaris-key on PyPI as inert names?",
+      "recommendation": "Yes: names that install nothing and point to the feed; owner decision 3 rules out placeholders today. If yes, add to the owner-steps checklist."
+    }
+  ]
+}

@@ -17,6 +17,7 @@ import { SessionsCard } from "../components/account/SessionsCard.js";
 import { SectionCard } from "../components/product/Card.js";
 import { signOutQuietly, useDeleteAccount, useSessions } from "../data.js";
 import { portalErrorCopy } from "../errors.js";
+import { focusSectionHeading } from "../focus.js";
 import {
   href,
   scrollBehavior,
@@ -74,6 +75,8 @@ export function AccountPage({
       behavior: scrollBehavior(),
       block: "start",
     });
+    // Focus follows the jump, without scrolling (PS-05 review M4).
+    focusSectionHeading(s);
     window.history.replaceState(
       null,
       "",
@@ -89,7 +92,7 @@ export function AccountPage({
           {/* Focus lands here after a navigation (the router, MO-05): no ring on a heading. */}
           <h1
             tabIndex={-1}
-            className="text-[1.875rem] font-bold leading-tight text-fg-strong outline-none desk:text-[2.5rem]"
+            className="text-3xl font-bold leading-tight text-fg-strong outline-none desk:text-display"
           >
             Account
           </h1>
@@ -110,6 +113,8 @@ export function AccountPage({
       </div>
       <nav
         aria-label="Account sections"
+        // Sticky under the header below desk: the page's scroll padding clears it (styles.css).
+        data-section-pills=""
         className="sticky top-14 z-20 -mx-4 overflow-x-auto border-b border-border bg-surface-page px-4 py-2 desk:hidden"
       >
         <ul className="flex gap-2">

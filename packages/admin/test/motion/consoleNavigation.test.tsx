@@ -119,9 +119,9 @@ describe("navigationTransition: typed by the hash path (S-23 §6.3)", () => {
     ).toBe("route");
   });
 
-  it("an old URL counts by the page it redirects to", () => {
-    expect(navigationTransition("#/p/djdl/licenses", list)).toBeNull();
-    expect(navigationTransition("#/p/djdl/licenses", record)).toBe("forward");
+  it("a section root counts by the page it redirects to", () => {
+    expect(navigationTransition("#/p/djdl/license", list)).toBeNull();
+    expect(navigationTransition("#/p/djdl/license", record)).toBe("forward");
   });
 });
 

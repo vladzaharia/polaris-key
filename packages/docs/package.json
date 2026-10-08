@@ -22,8 +22,8 @@
     "@polaris-key/brand": "workspace:*",
     "@tailwindcss/vite": "^4.1.4",
     "astro": "^7.3.5",
-    "tailwindcss": "^4.1.4",
-    "yaml": "^2.9.0"
+    "js-yaml": "^4.3.2",
+    "tailwindcss": "^4.1.4"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",

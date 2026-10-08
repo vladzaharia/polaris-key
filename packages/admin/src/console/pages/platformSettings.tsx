@@ -22,7 +22,7 @@
  */
 
 import * as React from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ExternalLink, Lock, RotateCcw } from "lucide-react";
 import {
   api,
@@ -63,10 +63,9 @@ import { StatusPill } from "../../ui/StatusPill.js";
 import { Switch } from "../../ui/Switch.js";
 import { Timeline, TimelineItem } from "../../ui/Timeline.js";
 import { toast } from "../../ui/toast.js";
-import { PageHeader } from "../components/PageHeader.js";
+import { PageHeader } from "../../ui/PageHeader.js";
 import { mutate } from "../data/mutations.js";
 import { qk } from "../data/queries.js";
-import { queryClient } from "../data/queryClient.js";
 import {
   SettingsRow,
   SettingsSection,
@@ -288,10 +287,10 @@ const WARNING_TITLES: Record<string, string> = {
 };
 
 export function PlatformSettingsPage(): React.ReactElement {
-  const query = useQuery(
-    { queryKey: qk.platformSettings(), queryFn: fetchPlatformSettings },
-    queryClient,
-  );
+  const query = useQuery({
+    queryKey: qk.platformSettings(),
+    queryFn: fetchPlatformSettings,
+  });
   const view = query.data;
   const header = (
     <PageHeader
@@ -500,6 +499,7 @@ function useSettingWrites(
   setting: PlatformSetting,
   propagationSeconds: number,
 ) {
+  const queryClient = useQueryClient();
   const latest = React.useRef(setting);
   latest.current = setting;
   const [pending, setPending] = React.useState<PendingChange | null>(null);
@@ -1039,13 +1039,10 @@ function LicensingSection({
 }: {
   view: PlatformSettingsView;
 }): React.ReactElement {
-  const report = useQuery(
-    {
-      queryKey: qk.platformReservedNames(),
-      queryFn: fetchPlatformReservedNames,
-    },
-    queryClient,
-  );
+  const report = useQuery({
+    queryKey: qk.platformReservedNames(),
+    queryFn: fetchPlatformReservedNames,
+  });
   const settings = view.settings.filter((s) => s.area === "licensing");
   const data = report.data;
   return (
@@ -1589,10 +1586,11 @@ function KeyringSection({
   secrets: Map<string, boolean>;
   warning?: string;
 }): React.ReactElement {
-  const kek = useQuery(
-    { queryKey: qk.platformKek(), queryFn: fetchPlatformKek, retry: false },
-    queryClient,
-  );
+  const kek = useQuery({
+    queryKey: qk.platformKek(),
+    queryFn: fetchPlatformKek,
+    retry: false,
+  });
   const k = kek.data;
   const ring = secrets.get("PLATFORM_KEK_KEYS");
   const single = secrets.get("PLATFORM_KEK");
@@ -1964,13 +1962,10 @@ function HistorySection({
 }: {
   settings: PlatformSetting[];
 }): React.ReactElement {
-  const history = useQuery(
-    {
-      queryKey: qk.platformSettingsHistory(),
-      queryFn: fetchFirstHistoryPage,
-    },
-    queryClient,
-  );
+  const history = useQuery({
+    queryKey: qk.platformSettingsHistory(),
+    queryFn: fetchFirstHistoryPage,
+  });
   const [extra, setExtra] = React.useState<HistoryPage | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<unknown>(null);

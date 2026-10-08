@@ -438,8 +438,10 @@ not_removable` with `reason` `no_active_key` or `key_claim_off`, and nothing is 
   | `unknown`        | nothing else                                                                               | No such key (or it was replaced), or no such product.                                                                          |
 
   Every answer carries `product` (`null` for `unknown`, so a guessed key never reveals whether a
-  product exists; otherwise `slug`, `name`, `branding`; `developerName`, `iconUrl` and
-  `headerUrl` are reserved for the library presentation) and `keyEntries`: the license's
+  product exists; otherwise `slug`, `branding`, and `name`, `developerName`, `tintColor`,
+  `iconUrl` and `headerUrl` from the library's presentation: the listing's display name, else the
+  product's, and the hosted copies at a library tile's size, else the `/media/…` URLs) and
+  `keyEntries`: the license's
   [key entries](/docs/services/license/activation/#key-entries-identity-products)
   `{ used, limit }` for `addable` and `already_yours` on a product with Identity on, else `null`.
   Nothing is written, so previewing never counts. A refusal never names the other account or the
@@ -500,7 +502,14 @@ not_removable` with `reason` `no_active_key` or `key_claim_off`, and nothing is 
   the `recommended` files for that platform, every platform's files in its newest release, the
   platform-free `extras`, and every store outlet (`kind`, `platforms`, `label`, `url`,
   `deepLink`, `command`, `activateUrl`, `live`, `version`; `activateUrl` is Steam's key-activation
-  page, for a held Steam key). A universal build is recommended alone and flagged `universal`; otherwise
+  page, for a held Steam key), and `installSources` in the same shape: the package managers and
+  sideloading sources the public download page offers for the channel (Homebrew, Scoop, AltStore,
+  SideStore, AltStore PAL, F-Droid, Obtainium), taken from the page model, so an owner sees every
+  channel a stranger sees there (empty for a non-public deliverable, which has no feeds). Each
+  also carries `fingerprint` (F-Droid's repository fingerprint, else `null`) and `qr`, a QR code
+  of its deep link as a `data:image/svg+xml` URI for a phone to scan from a computer (`null` for
+  a command). The portal leads with the deep link, never the source URL, which a browser cannot
+  open usefully. A universal build is recommended alone and flagged `universal`; otherwise
   every arch is, Apple silicon first on a Mac and the detected arch first when the browser said.
   Each file carries `canDownload` and, when false, a `reason`: `license_inactive` (no usable
   license), `not_entitled` (the license's channels or update window do not reach the release) or

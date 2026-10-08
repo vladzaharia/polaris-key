@@ -28,11 +28,16 @@ from __future__ import annotations
 import os
 import sys
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, IO, Iterable, List, Mapping, Optional
+from typing import IO, TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Mapping, Optional
 
-from .._version import __version__ as PACKAGE_VERSION
-from ..client import PolarisKeyClient
-from ..core.store import StoreStatus
+from .._services import SERVICE_SLUGS
+
+if TYPE_CHECKING:  # pragma: no cover
+    # Imported where they are used: registering the verbs on a host CLI must not load the
+    # client (httpx, cryptography, every service) for a command that is not ours.
+    from ..client import PolarisKeyClient
+    from ..core.store import StoreStatus
+
 __all__ = [
     "CommandResult",
     "ClientOptions",
@@ -60,14 +65,25 @@ __all__ = [
     "terminal_for",
 ]
 
-# The version reported to the control plane when the host application doesn't say.
+# ``DEFAULT_VERSION``: the version reported to the control plane when the host application doesn't
+# say.
 #
 # This used to be the literal ``"0.0.0-dev"``. The Worker's build gate SHORT-CIRCUITS on a
 # dev version — `isDevBuild` returns before either the version window or the channel
 # entitlement is evaluated — so a vendor-shipped tool's DEFAULT invocation asked for a
 # document that skipped version AND channel enforcement entirely (R4-07). The installed
-# package version is a truthful answer and gates normally.
-DEFAULT_VERSION = PACKAGE_VERSION
+# package version is a truthful answer and gates normally. Read on first use (module
+# ``__getattr__``), so registering the verbs does not import ``importlib.metadata``.
+def _default_version() -> str:
+    from .._version import _installed_version
+
+    return _installed_version()
+
+
+def __getattr__(name: str) -> Any:
+    if name == "DEFAULT_VERSION":
+        return _default_version()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 # The documented, non-argv way to hand a licence key to the CLI.
 KEY_ENV_VAR = "POLARIS_KEY_ACTIVATION_KEY"
@@ -113,7 +129,7 @@ class ClientOptions:
     """The common options every front end collects to build a client."""
 
     product: str
-    version: str = DEFAULT_VERSION
+    version: str = field(default_factory=_default_version)
     trust: Dict[str, str] = field(default_factory=dict)
     base_url: Optional[str] = None
     config_dir: Optional[str] = None
@@ -124,7 +140,7 @@ class ClientOptions:
 # A factory turns the collected options into a ready client. Consumers can supply their
 # own (e.g. with trust keys baked in) when mounting the hooks; the default reads them off
 # the parsed CLI options.
-ClientFactory = Callable[[ClientOptions], PolarisKeyClient]
+ClientFactory = Callable[[ClientOptions], "PolarisKeyClient"]
 
 
 def parse_trust(pairs: Optional[Iterable[str]]) -> Dict[str, str]:
@@ -151,10 +167,16 @@ def parse_services(values: Optional[Iterable[str]]) -> Optional[List[str]]:
     sub-client off, and a CLI has no way to distinguish "I passed no flags" from "I meant
     none", so the safe reading is silence. A host that genuinely wants the empty
     expectation passes ``expected_services=[]`` to the client directly.
+
+    Raises :class:`ValueError` for a slug that names no service (``--service licence``), so
+    each adapter reports it as a usage error instead of the client turning License off.
     """
     if values is None:
         return None
     out = [v for v in values]
+    for v in out:
+        if v not in SERVICE_SLUGS:
+            raise ValueError(f"--service {v!r} names no service; the services are: {', '.join(SERVICE_SLUGS)}")
     return out if out else None
 
 
@@ -227,8 +249,10 @@ def resolve_activation_key(
     )
 
 
-def build_client(opts: ClientOptions) -> PolarisKeyClient:
+def build_client(opts: ClientOptions) -> "PolarisKeyClient":
     """Construct + initialise a client from collected :class:`ClientOptions`."""
+    from ..client import PolarisKeyClient
+
     return PolarisKeyClient.create(
         product_slug=opts.product,
         version=opts.version,
@@ -332,6 +356,7 @@ def status(client: PolarisKeyClient, *, terminal: Any = None) -> CommandResult:
     product with License disabled is 0 on ``not-applicable``, not a failure. A degraded token
     store is named under the summary (and in ``--json`` as ``tokenStore``).
     """
+    from ..core.store import StoreStatus
     from ..ui.terminal import flows
 
     t = terminal_for(client, "status", terminal=terminal)

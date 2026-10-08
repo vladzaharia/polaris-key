@@ -281,7 +281,7 @@ evaluated equals vectors loaded, with a floor). Timing is `INFO`, never a check.
 ## The corpus mirror
 
 `tests/corpus/v2/` is written by `pnpm gen:corpus` (`tools/sign-corpus.ts`, `CORPUS_TARGETS`) and
-guarded by `pnpm gen:corpus -- --check`, exactly like the Swift mirror. **Never edit it**: change
+guarded by `pnpm gen:corpus -- --check`, exactly like the source. **Never edit it**: change
 the generator and regenerate. A JSON file there that the generator does not write fails the gate.
 An exported pack can read only `res://`, which is why the mirror exists.
 

@@ -1,0 +1,253 @@
+name: Repair the npm feed
+
+# A manual backfill (P0-52): publish named @polaris-key npm packages at the version of an existing
+# release tag whose own publish never delivered them. v0.8.28's run never published jws and
+# v0.8.29's never published protocol (both legs stuck in GitHub's `waiting`), while the packages
+# that pin them did, so nine versions on the feed pin a sibling it does not have
+# (tools/feed-closure.mjs lists them). The owner decided on 2026-10-08 to publish the two missing
+# versions from their tags. Dispatch it from main, once per tag (Actions, "Repair the npm feed",
+# Run workflow on main):
+#
+#   tag: v0.8.28   packages: jws
+#   tag: v0.8.29   packages: protocol
+#
+#   plan     from main only; the tag is a release tag on main; each package is a public npm
+#            package; the feed does not list it at that version (a version is unique forever).
+#   pack     checks out the TAG and builds, tests, stamps and packs the named packages exactly as
+#            that tag's publish-sdks.yml npm-pack job did.
+#   verify   every @polaris-key version each packed package pins is already on the feed. Name
+#            packages that depend on each other in separate runs, the dependency first.
+#   publish  each package through publish-package.yml, the one trusted publisher, in the
+#            package-registry environment, with `release-tag` set; skipped on a dry run.
+#   closure  every @polaris-key pin of every package at that version now resolves on the feed.
+#
+# The version goes on its tag's channel (stable for vX.Y.Z). A channel's head is its newest
+# version by SemVer, so npm's `latest` stays where it is, and a stable publish only prunes builds
+# of main at or below it, of which there are none for an old release.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The release tag whose version to publish (v0.8.28).
+        required: true
+        type: string
+      packages:
+        description: The npm packages to publish, by short name, space-separated (jws).
+        required: true
+        type: string
+      dry-run:
+        description: Build, pack and check only; publish nothing.
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-repair
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: Plan the backfill
+    if: github.repository == 'vladzaharia/polaris-key'
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      version: ${{ steps.v.outputs.version }}
+      pep440: ${{ steps.v.outputs.pep440 }}
+      channel: ${{ steps.v.outputs.channel }}
+      packages: ${{ steps.p.outputs.packages }}
+    steps:
+      - name: From main only
+        run: |
+          if [ "$GITHUB_REF" != refs/heads/main ]; then
+            echo "::error::Run the repair from main (got $GITHUB_REF)." >&2
+            exit 1
+          fi
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - id: tag
+        name: The tag is a release tag on main
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta|rc|a|b)\.[0-9]+)?$ ]]; then
+            echo "::error::$TAG is not a release tag (vX.Y.Z or vX.Y.Z-rc.N)." >&2
+            exit 1
+          fi
+          if ! commit="$(git rev-parse -q --verify "refs/tags/$TAG^{commit}")"; then
+            echo "::error::There is no tag $TAG." >&2
+            exit 1
+          fi
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "$commit" origin/main; then
+            echo "::error::$TAG ($commit) is not an ancestor of origin/main." >&2
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+      - id: v
+        name: The tag's version and channel
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: node tools/sdk-version.mjs derive --ref "refs/tags/$TAG" --github-output
+      - id: p
+        name: Public npm packages the feed does not list at that version
+        env:
+          PACKAGES: ${{ inputs.packages }}
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          read -r -a names <<<"$(printf '%s' "$PACKAGES" | tr ',' ' ')"
+          if [ "${#names[@]}" -eq 0 ]; then
+            echo "::error::Name at least one package." >&2
+            exit 1
+          fi
+          public="$(node -e 'import("./tools/sdk-version.mjs").then((m) => console.log(m.publicPackageJsons(".").map((f) => require("./" + f).name.replace("@polaris-key/", "")).join(" ")))')"
+          specs=()
+          for n in "${names[@]}"; do
+            if ! [[ "$n" =~ ^[a-z0-9-]+$ ]] || [[ " $public " != *" $n "* ]]; then
+              echo "::error::$n is not a public npm package ($public)." >&2
+              exit 1
+            fi
+            specs+=("@polaris-key/$n@$VERSION")
+          done
+          node tools/feed-closure.mjs absent "${specs[@]}" --origin https://pkg.plrs.im --owner polaris-key
+          json="$(printf '%s\n' "${names[@]}" | sort -u | node -e 'console.log(JSON.stringify(require("fs").readFileSync(0, "utf8").split("\n").filter(Boolean)))')"
+          echo "packages=$json" >> "$GITHUB_OUTPUT"
+      - name: Summary
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+          VERSION: ${{ steps.v.outputs.version }}
+          CHANNEL: ${{ steps.v.outputs.channel }}
+          PACKAGES: ${{ steps.p.outputs.packages }}
+          DRY_RUN: ${{ inputs.dry-run }}
+        run: echo "Backfilling $PACKAGES at $VERSION ($TAG) on the $CHANNEL channel, dry run $DRY_RUN." >> "$GITHUB_STEP_SUMMARY"
+
+  pack:
+    name: Pack at the tag
+    needs: plan
+    runs-on: ubuntu-latest
+    steps:
+      # The tag's tree, as its own npm-pack job built it (the plan job validated the tag).
+      - uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ needs.plan.outputs.tag }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: The named packages, by directory
+        id: dirs
+        env:
+          PACKAGES: ${{ join(fromJSON(needs.plan.outputs.packages), ' ') }}
+        run: |
+          filters=()
+          for n in $PACKAGES; do
+            f="$(node -e 'import("./tools/sdk-version.mjs").then((m) => { const f = m.publicPackageJsons(".").find((p) => require("./" + p).name === "@polaris-key/" + process.argv[1]); if (!f) process.exit(1); console.log(f.replace("/package.json", "")); })' "$n")" || {
+              echo "::error::@polaris-key/$n is not a public package at this tag." >&2
+              exit 1
+            }
+            filters+=("--filter=./$f")
+          done
+          echo "filters=${filters[*]}" >> "$GITHUB_OUTPUT"
+      - name: Test the named packages
+        env:
+          FILTERS: ${{ steps.dirs.outputs.filters }}
+        run: |
+          read -r -a filters <<<"$FILTERS"
+          pnpm exec turbo run test "${filters[@]}"
+      - name: Stamp the version
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+          PEP440: ${{ needs.plan.outputs.pep440 }}
+        run: node tools/sdk-version.mjs stamp --version "$VERSION" --pep440 "$PEP440"
+      - run: pnpm build
+      # `pnpm pack` rewrites each `workspace:*` range to the stamped version, as at the tag.
+      - name: Pack each named package into dist-pkg/<name>/
+        env:
+          PACKAGES: ${{ join(fromJSON(needs.plan.outputs.packages), ' ') }}
+        run: |
+          for n in $PACKAGES; do
+            pnpm --filter "@polaris-key/$n" pack --pack-destination "$GITHUB_WORKSPACE/dist-pkg/$n"
+          done
+          ls -R dist-pkg
+      - uses: actions/upload-artifact@v7
+        with:
+          name: npm-repair
+          path: dist-pkg/
+          if-no-files-found: error
+
+  verify:
+    name: Every pinned version is on the feed
+    needs: [plan, pack]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          name: npm-repair
+          path: dist-pkg
+      - name: Every @polaris-key version each package pins is on the feed now
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+          PACKAGES: ${{ join(fromJSON(needs.plan.outputs.packages), ' ') }}
+        run: |
+          for n in $PACKAGES; do
+            node tools/feed-closure.mjs requires "dist-pkg/$n" --version "$VERSION" \
+              --origin https://pkg.plrs.im --owner polaris-key --timeout 0
+          done
+
+  publish:
+    name: Publish
+    needs: [plan, pack, verify]
+    if: ${{ !inputs.dry-run }}
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        package: ${{ fromJSON(needs.plan.outputs.packages) }}
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/publish-package.yml
+    with:
+      deliverable: npm.${{ matrix.package }}
+      artifact: npm-repair
+      dir: ${{ matrix.package }}
+      version: ${{ needs.plan.outputs.version }}
+      channel: ${{ needs.plan.outputs.channel }}
+      release-tag: ${{ needs.plan.outputs.tag }}
+
+  closure:
+    name: Every pin at that version resolves
+    needs: [plan, publish]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter @polaris-key/tools --ignore-scripts
+      # Errors for this version's broken pins (waiting out the render queue); warnings for any
+      # other version's, until its own repair runs.
+      - name: Every @polaris-key pin of every package at that version is on the feed
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+        run: >-
+          node tools/feed-closure.mjs --origin https://pkg.plrs.im --owner polaris-key
+          --ecosystem npm --version "$VERSION" --timeout 600 --summary "$GITHUB_STEP_SUMMARY"

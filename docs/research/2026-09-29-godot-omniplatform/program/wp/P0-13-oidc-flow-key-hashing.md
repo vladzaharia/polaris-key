@@ -2,7 +2,7 @@
 
 | Field       | Value                                                                             |
 | ----------- | --------------------------------------------------------------------------------- |
-| Phase       | P0: Hygiene and unblockers                                                        |
+| Phase       | P0: Hygiene, unblockers and code quality                                          |
 | Size        | 0.25–0.5 engineer-weeks                                                           |
 | Depends on  | none                                                                              |
 | Unblocks    | [P1-06](P1-06-rfc8628-page.md)                                                    |

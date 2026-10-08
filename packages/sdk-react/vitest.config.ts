@@ -7,6 +7,8 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     include: ["test/**/*.test.{ts,tsx}", "src/**/*.test.{ts,tsx}"],
+    // The real-browser suite runs under vitest.browser.config.ts (`pnpm test:browser`).
+    exclude: ["test/browser/**", "**/node_modules/**"],
     // Sized for a loaded machine or a slow CI runner (vitest's defaults are 5 s / 10 s).
     testTimeout: 20_000,
     hookTimeout: 60_000,

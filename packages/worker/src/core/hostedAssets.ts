@@ -134,6 +134,7 @@ import {
   VIDEO_TYPES,
 } from "./sniff.js";
 import { listingAssetRule } from "./storefront/listingModel.js";
+import { sha256Hex } from "../platform/hash.js";
 
 /** What a hosted asset's `blob_refs` rows are held as (`ref_id` = `<slot>@<locale>`). */
 export const HOSTED_ASSET_REF = "hosted-asset";
@@ -403,12 +404,6 @@ export function isHostedAssetLocale(locale: unknown): locale is string {
 const SYSTEM_ACTOR: IngestActor = { sub: null, name: "Polaris Key" };
 const PULL_USER_AGENT = "polaris-key-asset-puller/1";
 
-function hexOf(buf: ArrayBuffer): string {
-  let out = "";
-  for (const b of new Uint8Array(buf)) out += b.toString(16).padStart(2, "0");
-  return out;
-}
-
 /** Read a (capped) stream into one buffer. */
 async function readAll(
   stream: ReadableStream<Uint8Array>,
@@ -567,7 +562,7 @@ async function storeBuffered(
   const contentType = sniffContentType(bytes.subarray(0, SNIFF_BYTES));
   const refused = acceptReason(cls, contentType);
   if (refused) return refused;
-  const sha256 = hexOf(await crypto.subtle.digest("SHA-256", bytes));
+  const sha256 = await sha256Hex(bytes);
   if (expected && expected !== sha256) return "sha256-mismatch";
   if (!(await admit(sha256, bytes.byteLength))) return "quota";
   const key = blobKey(sha256);
@@ -799,7 +794,7 @@ async function buildLadder(
       const bytes = await readAll(cappedStream(result.image(), cls.maxBytes));
       if (sniffContentType(bytes.subarray(0, SNIFF_BYTES)) !== VARIANT_FORMAT)
         return [];
-      const sha256 = hexOf(await crypto.subtle.digest("SHA-256", bytes));
+      const sha256 = await sha256Hex(bytes);
       if (!(await storeVariant(ctx, bucket, bytes, sha256))) return [];
       out.push({ w, format: VARIANT_FORMAT, sha256, size: bytes.byteLength });
     }
@@ -929,7 +924,7 @@ async function readOriginal(
       return null;
     }
     const bytes = await readAll(cappedStream(obj.body, maxBytes));
-    const got = hexOf(await crypto.subtle.digest("SHA-256", bytes));
+    const got = await sha256Hex(bytes);
     return got === sha256 ? bytes : null;
   } catch {
     return null;

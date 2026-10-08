@@ -5,7 +5,7 @@
 | Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase B: new API, S-16, S-17)                                                                                                                           |
 | Size        | 0.4–0.8 engineer-weeks                                                                                                                                                                               |
 | Depends on  | [PX-01](PX-01-portal-shell.md)                                                                                                                                                                       |
-| Unblocks    | none                                                                                                                                                                                                 |
+| Unblocks    | [PX-26](PX-26-wide-zoomed-layouts.md)                                                                                                                                                                |
 | Role        | `pkey-implementer`                                                                                                                                                                                   |
 | Plan mode   | no                                                                                                                                                                                                   |
 | Gates       | the PORTAL.md §11 green gate; CSP browser test (zero violations); admin build; `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations; `vitest-axe` on new page components; runs in CI |
@@ -20,6 +20,14 @@ differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US 
 **No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
 
 - E2E covers every LicenseChoice state of SIGN-IN.md §6.2's conformance list (incl. sign-in and mixed) in both themes at 1440 and 390; axe and keyboard checks per §3.14 (no radio on full and blocked rows, Replace reachable by Tab, focus to the h1, one code input).
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **keep** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Merged (d12e46cd2). Treat the e2e suite as a standing gate; its fixtures move into P0-40's shared builders.
+
+- Status: stamped `done` (was `in-review`).
 
 ## Goal
 

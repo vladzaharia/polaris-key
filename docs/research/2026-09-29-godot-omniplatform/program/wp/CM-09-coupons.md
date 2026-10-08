@@ -2,10 +2,10 @@
 
 | Field       | Value                                                                                                                                                                                               |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | CM: Polaris Key commerce (S-22): deferred until the owner's go                                                                                                                                      |
+| Phase       | CM: Commerce: store commerce (required) and Polaris Key checkout (deferred)                                                                                                                         |
 | Size        | 0.4–0.6 engineer-weeks                                                                                                                                                                              |
-| Depends on  | [CM-05](CM-05-checkout-fulfilment.md)                                                                                                                                                               |
-| Unblocks    | [CM-12](CM-12-console-commerce.md)                                                                                                                                                                  |
+| Depends on  | none                                                                                                                                                                                                |
+| Unblocks    | none                                                                                                                                                                                                |
 | Role        | `pkey-implementer`                                                                                                                                                                                  |
 | Plan mode   | no (executes its sections of the approved [`plans/CM-01.md`](../plans/CM-01.md))                                                                                                                    |
 | Gates       | `rule-10`, `threat-model`                                                                                                                                                                           |
@@ -16,6 +16,17 @@
 > `workpackages.json`: the owner asked for the commerce plan on 2026-10-05 but not for its
 > execution. `check.mjs --ready` does not list it. It becomes dispatchable only when the owner says
 > go and the lead removes the `deferred` field.
+
+## Consolidation 2026-10-07
+
+> **Closed 2026-10-07 (DX consolidation): merged into [CM-04](CM-04-offers-catalogue.md).** The id stays in the graph as `dropped` so it
+> is not reused; do not build this package. Its scope moves to [CM-04](CM-04-offers-catalogue.md).
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **merge** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Coupons belong with offers and prices.
+
+- Dependencies cleared on closing (they were CM-05), so nothing in the graph waits on or through a closed package.
 
 ## Goal
 

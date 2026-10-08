@@ -100,24 +100,30 @@ function rootOf(container: HTMLElement): HTMLElement {
   return container.querySelector("[data-polaris-key-root]") as HTMLElement;
 }
 
-/** A `matchMedia` whose light query answers `light`, with a live change event. */
+/** A `matchMedia` for an OS that prefers light (`light`) or dark, with a live change event.
+ *  Any other query answers false. */
 function stubMatchMedia(light: boolean) {
   const listeners = new Set<() => void>();
-  const mql = {
-    matches: light,
-    media: "(prefers-color-scheme: light)",
+  let current = light;
+  const mql = (media: string) => ({
+    get matches() {
+      if (media.includes("prefers-color-scheme: light")) return current;
+      if (media.includes("prefers-color-scheme: dark")) return !current;
+      return false;
+    },
+    media,
     addEventListener: (_: string, fn: () => void) => listeners.add(fn),
     removeEventListener: (_: string, fn: () => void) => listeners.delete(fn),
     addListener: (fn: () => void) => listeners.add(fn),
     removeListener: (fn: () => void) => listeners.delete(fn),
-  };
+  });
   vi.stubGlobal(
     "matchMedia",
-    vi.fn(() => mql),
+    vi.fn((media: string) => mql(media)),
   );
   return {
     set(next: boolean) {
-      mql.matches = next;
+      current = next;
       for (const fn of listeners) fn();
     },
   };
@@ -169,7 +175,7 @@ describe("theme — neutral by default, Polaris Key on one option", () => {
   });
 
   it("the Provider's `branding` prop switches the published variables and the marker", () => {
-    const neutral = renderWith(<span />);
+    const neutral = renderWith(<span />, { colorScheme: "dark" });
     let root = rootOf(neutral.container);
     expect(root.getAttribute("data-branding")).toBe("neutral");
     expect(root.style.getPropertyValue("--pk-accent")).toBe(
@@ -177,7 +183,10 @@ describe("theme — neutral by default, Polaris Key on one option", () => {
     );
     expect(root.style.getPropertyValue("--pk-font-family")).toBe("inherit");
     cleanup();
-    const brand = renderWith(<span />, { branding: "polaris-key" });
+    const brand = renderWith(<span />, {
+      branding: "polaris-key",
+      colorScheme: "dark",
+    });
     root = rootOf(brand.container);
     expect(root.getAttribute("data-branding")).toBe("polaris-key");
     expect(root.style.getPropertyValue("--pk-accent")).toBe(darkTokens.accent);
@@ -281,24 +290,43 @@ describe("theme — neutral by default, Polaris Key on one option", () => {
 });
 
 describe("PolarisKeyProvider — colorScheme (BRAND.md §3)", () => {
-  it("is dark when the OS states no preference (no matchMedia)", () => {
-    const { container } = renderWith(<span />);
-    const root = rootOf(container);
-    expect(root.getAttribute("data-theme")).toBe("dark");
-    expect(root.style.getPropertyValue("--pk-background")).toBe(
-      neutralDarkTokens.background,
-    );
-    expect(root.style.colorScheme).toBe("dark");
+  afterEach(() => {
+    document.body.style.backgroundColor = "";
+    document.querySelector('meta[name="color-scheme"]')?.remove();
   });
 
-  it('"system" follows prefers-color-scheme, live', () => {
-    const media = stubMatchMedia(true);
+  it('"system" on a page that paints nothing and opts in to no dark scheme is light, even when the OS is dark', () => {
+    stubMatchMedia(false);
     const { container } = renderWith(<span />);
     const root = rootOf(container);
     expect(root.getAttribute("data-theme")).toBe("light");
     expect(root.style.getPropertyValue("--pk-background")).toBe(
       neutralLightTokens.background,
     );
+    expect(root.style.colorScheme).toBe("light");
+  });
+
+  it('"system" follows the host page\'s background, whatever the OS says', () => {
+    stubMatchMedia(true);
+    document.body.style.backgroundColor = "rgb(17, 17, 17)";
+    const dark = renderWith(<span />);
+    expect(rootOf(dark.container).getAttribute("data-theme")).toBe("dark");
+    cleanup();
+    stubMatchMedia(false);
+    document.body.style.backgroundColor = "rgb(255, 255, 255)";
+    const light = renderWith(<span />);
+    expect(rootOf(light.container).getAttribute("data-theme")).toBe("light");
+  });
+
+  it('"system" on a page that opts in to dark follows prefers-color-scheme, live', () => {
+    const meta = document.createElement("meta");
+    meta.name = "color-scheme";
+    meta.content = "light dark";
+    document.head.append(meta);
+    const media = stubMatchMedia(true);
+    const { container } = renderWith(<span />);
+    const root = rootOf(container);
+    expect(root.getAttribute("data-theme")).toBe("light");
     act(() => media.set(false));
     expect(root.getAttribute("data-theme")).toBe("dark");
     expect(root.style.getPropertyValue("--pk-text")).toBe(
@@ -306,7 +334,7 @@ describe("PolarisKeyProvider — colorScheme (BRAND.md §3)", () => {
     );
   });
 
-  it('"dark" and "light" pin the scheme whatever the OS says', () => {
+  it('"dark" and "light" pin the scheme whatever the page and the OS say', () => {
     stubMatchMedia(true);
     const dark = renderWith(<span />, { colorScheme: "dark" });
     expect(rootOf(dark.container).getAttribute("data-theme")).toBe("dark");
@@ -320,51 +348,49 @@ describe("PolarisKeyProvider — colorScheme (BRAND.md §3)", () => {
   });
 });
 
-describe("marks on the SDK's screens (BRAND.md §7.1, §6)", () => {
-  it("the neutral theme shows no Polaris Key mark anywhere", async () => {
-    const { container } = renderWith(
-      <LicenseGate>
-        <div />
-      </LicenseGate>,
-      { state: expiredState() },
-    );
-    await waitFor(() =>
-      expect(
-        container.querySelector('[data-polaris-gate="expired"]'),
-      ).toBeTruthy(),
-    );
-    expect(container.querySelector("[data-polaris-mark]")).toBeNull();
-    expect(container.querySelector("svg")).toBeNull();
+describe("the product identity on the SDK's screens (UI-KITS §1.2, §1.6)", () => {
+  it("shows no Polaris Key mark under either branding", async () => {
+    for (const branding of ["neutral", "polaris-key"] as const) {
+      const { container } = renderWith(
+        <LicenseGate>
+          <div />
+        </LicenseGate>,
+        { state: expiredState(), branding },
+      );
+      await waitFor(() =>
+        expect(
+          container.querySelector('[data-polaris-gate="expired"]'),
+        ).toBeTruthy(),
+      );
+      expect(container.querySelector("[data-polaris-mark]")).toBeNull();
+      expect(container.querySelector("[data-polaris-identity]")).toBeNull();
+      cleanup();
+    }
   });
 
-  it("under the Polaris Key branding the gate shows the Pinned K, named, with no terminal bit and no gold", async () => {
+  it("shows the product's monogram once its name is known, once per screen", async () => {
     const { container } = renderWith(
       <LicenseGate>
         <div />
       </LicenseGate>,
-      { state: expiredState(), branding: "polaris-key" },
+      {
+        state: expiredState(),
+        theme: { copy: { productName: "Tidewater" } },
+      },
     );
     const screen = await waitFor(() => {
       const el = container.querySelector('[data-polaris-gate="expired"]');
       expect(el).toBeTruthy();
       return el as HTMLElement;
     });
-    const marks = screen.querySelectorAll('[data-polaris-mark="key"]');
-    // One mark: the embedded sign-in card does not repeat it.
-    expect(marks).toHaveLength(1);
-    const mark = marks[0]!;
-    expect(mark.getAttribute("role")).toBe("img");
-    expect(mark.getAttribute("aria-label")).toBe("Polaris Key");
-    const fills = [...mark.querySelectorAll("path")].map((p) =>
-      (p.getAttribute("fill") ?? "").toLowerCase(),
-    );
-    expect(fills).not.toContain("#ffc24d");
-    expect(fills).not.toContain("#d07a00");
-    // Body (violet) and star (white) only: the bit's path is left out of the markup entirely.
-    expect(new Set(fills)).toEqual(new Set(["#9a5cff", "#ffffff"]));
+    const tiles = screen.querySelectorAll('[data-polaris-identity="monogram"]');
+    // One: the embedded sign-in methods do not repeat it.
+    expect(tiles).toHaveLength(1);
+    expect(tiles[0]!.textContent).toBe("T");
+    expect(tiles[0]!.getAttribute("aria-hidden")).toBe("true");
   });
 
-  it("picks the mark variant for the ground in use (dark means FOR dark)", () => {
+  it("picks the badge variant for the ground in use (dark means FOR dark)", () => {
     expect(groundOf(mergeTheme(polarisKeyTheme, "dark"))).toBe("dark");
     expect(groundOf(mergeTheme(polarisKeyTheme, "light"))).toBe("light");
     expect(
@@ -375,43 +401,22 @@ describe("marks on the SDK's screens (BRAND.md §7.1, §6)", () => {
     ).toBe("light");
   });
 
-  it("an integrator's logo replaces the mark, and `logo: null` removes it", async () => {
+  it("an integrator's logo replaces the monogram, and `logo: null` removes it", async () => {
     const custom = renderWith(<PolarisLogin />, {
-      theme: { logo: <span data-testid="acme-logo">ACME</span> },
-      branding: "polaris-key",
+      theme: {
+        logo: <span data-testid="acme-logo">ACME</span>,
+        copy: { productName: "Tidewater" },
+      },
     });
     expect(within(custom.container).getByTestId("acme-logo")).toBeTruthy();
-    expect(custom.container.querySelector("[data-polaris-mark]")).toBeNull();
+    expect(
+      custom.container.querySelector("[data-polaris-identity]"),
+    ).toBeNull();
     cleanup();
     const none = renderWith(<PolarisLogin />, {
-      theme: { logo: null },
-      branding: "polaris-key",
+      theme: { logo: null, copy: { productName: "Tidewater" } },
     });
-    expect(none.container.querySelector("[data-polaris-mark]")).toBeNull();
-  });
-
-  it("an update dialog carries the Star Cut as Polaris Key Delivery", async () => {
-    const fetcher = vi.fn(async () => ({
-      version: "2.0.0",
-      tag: "v2.0.0",
-      url: "https://example.test/2.0.0",
-      updateAvailable: true,
-    }));
-    const { container } = renderWith(
-      <UpdatePrompt variant="dialog" fetcher={fetcher} />,
-      {
-        state: okBridgeState(),
-        caps: services("license", "config", "update"),
-        branding: "polaris-key",
-      },
-    );
-    const mark = await waitFor(() => {
-      const el = container.querySelector('[data-polaris-mark="delivery"]');
-      expect(el).toBeTruthy();
-      return el as HTMLElement;
-    });
-    expect(mark.getAttribute("aria-label")).toBe("Polaris Key Delivery");
-    expect(container.querySelector('[data-polaris-mark="key"]')).toBeNull();
+    expect(none.container.querySelector("[data-polaris-identity]")).toBeNull();
   });
 });
 
@@ -460,6 +465,8 @@ describe("focus ring (BRAND.md §7.4)", () => {
     vi.spyOn(button, "matches").mockImplementation(
       (sel: string) => sel === ":focus-visible",
     );
+    // Keyboard focus: a key was pressed since the last pointer press.
+    fireEvent.keyDown(document, { key: "Tab" });
     fireEvent.focus(button);
     expect(button.style.outline).toBe("2px solid var(--pk-ring)");
     expect(button.style.outlineOffset).toBe("2px");
@@ -471,6 +478,18 @@ describe("focus ring (BRAND.md §7.4)", () => {
     const { getByRole } = renderWith(<Button>Go</Button>);
     const button = getByRole("button", { name: "Go" });
     vi.spyOn(button, "matches").mockImplementation(() => false);
+    fireEvent.focus(button);
+    expect(button.style.outline).toBe("none");
+  });
+
+  it("does not paint the ring on focus a screen moves before any key press (a cold start)", () => {
+    const { getByRole } = renderWith(<Button>Go</Button>);
+    const button = getByRole("button", { name: "Go" });
+    // :focus-visible matches a programmatic focus on a cold start; the ring still waits for a key.
+    vi.spyOn(button, "matches").mockImplementation(
+      (sel: string) => sel === ":focus-visible",
+    );
+    fireEvent.pointerDown(document);
     fireEvent.focus(button);
     expect(button.style.outline).toBe("none");
   });

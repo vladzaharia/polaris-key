@@ -11,10 +11,6 @@ export interface PortalErrorCopy {
   retry: boolean;
 }
 
-export function isNetworkError(err: unknown): boolean {
-  return err instanceof PortalApiError && err.status === 0;
-}
-
 export function isSignedOut(err: unknown): boolean {
   return (
     err instanceof PortalApiError &&

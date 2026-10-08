@@ -47,7 +47,7 @@ internal object FlavorAndroid {
         records,
         buildUrl,
         { url, dest -> download().download(url, dest) },
-        File(context.filesDir, "pkey/$productSlug/updates/apk"),
+        { File(context.filesDir, "pkey/$productSlug/updates/apk") },
         events = events,
         runningVersion = runningVersion,
     )

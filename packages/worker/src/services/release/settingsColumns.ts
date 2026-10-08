@@ -11,7 +11,11 @@
  * Every statement ANDs the write's guard into its `WHERE` (`ColumnWriteArgs.guard`).
  */
 
-import type { DbStatement } from "../../core/platform.js";
+import {
+  parseJsonObject,
+  tryParseJson,
+  type DbStatement,
+} from "../../core/platform.js";
 import type {
   ColumnWriteArgs,
   SettingColumnAdapter,
@@ -29,18 +33,6 @@ function updateReleaseConfig(
       params: [...sets.map(([, v]) => v), product, ...guard.params],
     },
   ];
-}
-
-function parseObject(raw: unknown): Record<string, unknown> | undefined {
-  if (typeof raw !== "string" || raw === "") return undefined;
-  try {
-    const v = JSON.parse(raw) as unknown;
-    return v && typeof v === "object" && !Array.isArray(v)
-      ? (v as Record<string, unknown>)
-      : undefined;
-  } catch {
-    return undefined;
-  }
 }
 
 /** A `release_config` text column, decoded as the setting's value (NULL or empty: unset). */
@@ -64,12 +56,7 @@ function releaseJson(column: string): SettingColumnAdapter {
     columns: [column],
     decode: (row) => {
       const raw = row?.[column];
-      if (typeof raw !== "string" || raw === "") return undefined;
-      try {
-        return JSON.parse(raw) as unknown;
-      } catch {
-        return undefined;
-      }
+      return typeof raw === "string" ? tryParseJson(raw) : undefined;
     },
   };
 }
@@ -103,7 +90,7 @@ export const RELEASE_COLUMN_ADAPTERS: Readonly<
     table: "release_config",
     keyColumn: "product",
     columns: ["artifact_policy_json"],
-    decode: (row) => parseObject(row?.artifact_policy_json),
+    decode: (row) => parseJsonObject(row?.artifact_policy_json) ?? undefined,
   },
   "release.sparkleEd25519Pub": {
     table: "release_config",
@@ -164,7 +151,7 @@ export const UPDATE_COLUMN_ADAPTERS: Readonly<
     table: "release_config",
     keyColumn: "product",
     columns: ["operator_policy_json"],
-    decode: (row) => parseObject(row?.operator_policy_json),
+    decode: (row) => parseJsonObject(row?.operator_policy_json) ?? undefined,
     set: (args) => {
       const v = args.value as Record<string, unknown> | null;
       return updateReleaseConfig(args, [

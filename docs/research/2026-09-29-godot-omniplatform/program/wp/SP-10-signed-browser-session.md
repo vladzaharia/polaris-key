@@ -12,6 +12,17 @@
 | Human input | none                                                                                       |
 | Repo        | `vladzaharia/polaris-key`                                                                  |
 
+## Consolidation 2026-10-07
+
+> **Parked 2026-10-07 (DX consolidation).** Optional and `deferred`, so `--ready` and `--critical`
+> skip it. Revive only if a first-party app needs cookies; it would run as a fourth wire train after W-LX. Re-read this brief against the code before reviving it.
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **parked** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Owner decision 7: retire cookie mode for bearer mode plus I-08's web redirect, avoiding a signed W10 document. Revive only if a first-party app needs cookies; it would run as a fourth wire train after W-LX.
+
+- Optional now (was required).
+
 ## Goal
 
 The browser-session document that React's cookie mode reads is signed and verified like every other

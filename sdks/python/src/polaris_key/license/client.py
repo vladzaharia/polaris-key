@@ -85,12 +85,16 @@ class LicenseClient:
         on_acquired: LicenseAcquiredListener,
         *,
         fingerprint: bool = True,
+        on_changed: Optional[Callable[[], None]] = None,
     ) -> None:
         self._ctx = ctx
         self._cache = cache
         self._tokens = tokens
         self._devices = devices
         self._on_acquired = on_acquired
+        #: Raised after a change that no sync follows (a deactivation), so the facade emits the
+        #: ``license`` event whichever entry point the host called.
+        self._on_changed = on_changed
         self._fingerprint_enabled = fingerprint
 
     # ── Gate ────────────────────────────────────────────────────────────────────────
@@ -232,7 +236,8 @@ class LicenseClient:
 
         The network call is best-effort and the local wipe is not: a device deactivating
         on a plane must not be left holding a token because the control plane was
-        unreachable.
+        unreachable. Emits one ``license`` event (``client.events``) when the gate changes,
+        exactly as ``client.deactivate()`` does.
         """
         token = self._tokens.current
         if token:
@@ -240,3 +245,5 @@ class LicenseClient:
             deauthorize(self._ctx, token)
         self._tokens.clear()
         self._cache.clear()
+        if self._on_changed is not None:
+            self._on_changed()

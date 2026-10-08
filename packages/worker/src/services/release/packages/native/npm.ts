@@ -32,13 +32,12 @@ import {
   nativeDescriptor,
   nativeSource,
   planNative,
-  sha256Hex,
   stageFile,
   undeclared,
   type NativeFile,
 } from "./publish.js";
 import { publishRoute, refusalResponse } from "./route.js";
-import { randomId } from "../../../../core/platform.js";
+import { randomId, sha256Hex } from "../../../../core/platform.js";
 
 const OWNER = "([a-z0-9][a-z0-9-]{0,63})";
 const ESCAPED = new RegExp(`^/npm/${OWNER}/(@[^/]+%2[fF][^/]+)$`);

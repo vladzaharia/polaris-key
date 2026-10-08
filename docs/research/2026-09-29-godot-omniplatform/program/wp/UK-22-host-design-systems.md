@@ -1,16 +1,27 @@
 # UK-22 Host design systems: Tailwind v4 preset, shadcn/ui registry at `key.plrs.im/r/<name>.json` over the React hooks, MUI/Mantine/Chakra theme objects, "go native" recipes
 
-| Field       | Value                                                                                               |
-| ----------- | --------------------------------------------------------------------------------------------------- |
-| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (should)                      |
-| Size        | 1.5–2 engineer-weeks                                                                                |
-| Depends on  | [UK-01](UK-01-brand-kit-tokens.md), [UK-05](UK-05-react-kit.md), [UK-16](UK-16-ui-docs-scaffold.md) |
-| Unblocks    | none                                                                                                |
-| Role        | `pkey-implementer`                                                                                  |
-| Plan mode   | no                                                                                                  |
-| Gates       | `gen:brand -- --check` for the generated presets; rule 10 for the registry route; docs link check   |
-| Human input | none                                                                                                |
-| Repo        | `vladzaharia/polaris-key`                                                                           |
+| Field       | Value                                                                                             |
+| ----------- | ------------------------------------------------------------------------------------------------- |
+| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (should)                    |
+| Size        | 1.5–2 engineer-weeks                                                                              |
+| Depends on  | none                                                                                              |
+| Unblocks    | none                                                                                              |
+| Role        | `pkey-implementer`                                                                                |
+| Plan mode   | no                                                                                                |
+| Gates       | `gen:brand -- --check` for the generated presets; rule 10 for the registry route; docs link check |
+| Human input | none                                                                                              |
+| Repo        | `vladzaharia/polaris-key`                                                                         |
+
+## Consolidation 2026-10-07
+
+> **Closed 2026-10-07 (DX consolidation): split into [UK-04](UK-04-web-components.md) and [UK-31](UK-31-web-recipes.md).** The id stays in the graph as `dropped` so it
+> is not reused; do not build this package. Its scope moves to [UK-04](UK-04-web-components.md) and [UK-31](UK-31-web-recipes.md).
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **split** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Tailwind v4 preset to UK-04, the CSS-variable 'bring your own design system' recipe to UK-31; the shadcn registry route and the MUI, Mantine and Chakra theme objects are parked.
+
+- Dependencies cleared on closing (they were UK-01, UK-05 and UK-16), so nothing in the graph waits on or through a closed package.
 
 ## Goal
 

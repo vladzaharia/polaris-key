@@ -12,6 +12,15 @@
 | Human input | none                                                                                       |
 | Repo        | `vladzaharia/polaris-key`                                                                  |
 
+## Consolidation 2026-10-07
+
+> **Parked 2026-10-07 (DX consolidation).** Optional and `deferred`, so `--ready` and `--critical`
+> skip it. Revive with the first server-authoritative collection and I-21. Re-read this brief against the code before reviving it.
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **parked** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Developer-backend API for ownerRead/server collections; none at launch. Revive with the first server-authoritative collection and I-21.
+
 ## Goal
 
 A developer's backend can read and write `ownerRead` and `server` collections addressed by pairwise subject, authenticated with layer 2 issuer client credentials carrying a `pkey:sync` scope.

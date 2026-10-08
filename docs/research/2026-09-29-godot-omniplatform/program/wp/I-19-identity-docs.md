@@ -1,11 +1,11 @@
-# I-19 Identity docs: the account and Library, recovery, key-entry limits for developers, tenant-scoped native links, Steam and Game Center guides, privacy-notice inputs
+# I-19 Identity and portal docs (absorbs PX-19)
 
 | Field       | Value                                                                                                                                                                                              |
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, each phase)                                                                                                           |
 | Size        | 0.6–0.85 engineer-weeks                                                                                                                                                                            |
 | Depends on  | [I-10a](I-10a-sdk-identity-node-react-python.md), [I-10b](I-10b-sdk-identity-swift-kotlin-godot.md), [I-11](I-11-portal-library.md), [I-12](I-12-console-users.md), [I-14](I-14-game-verifiers.md) |
-| Unblocks    | none                                                                                                                                                                                               |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                                                                             |
 | Role        | `pkey-implementer`                                                                                                                                                                                 |
 | Plan mode   | no: follows the approved [`plans/I-04.md`](../plans/I-04.md) where it names this package                                                                                                           |
 | Gates       | `check:links`; generated docs pages (`gen-docs` drift); privacy docs                                                                                                                               |
@@ -39,6 +39,21 @@ differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US 
   - the `keyEntries` member and the `key_entry_limit` refusal with `manageUrl`.
 - **Rollout.** Explain the platform switch `identity.keyEntryRefusals`: counting runs while it is off, and
   refusals start only when an operator turns it on. Publish this before the switch is turned on (PX-W9 §7).
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track F, Identity](../../../2026-10-07-dx-consolidation/tracks.md#f-identity)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Absorbs PX-19: one identity and portal docs package. Rewrite the stale services/identity/index.md; pages for connections and domain routing, product connections, pkey login and personal tokens, consent and Connected apps, store sign-in derived from channels; replace every PKEY_ADMIN_COOKIE recipe; snippets from SP-33b.
+
+- Title: was "Identity docs: the account and Library, recovery, key-entry limits for developers, tenant-scoped native links, Steam and Game Center guides, privacy-notice inputs".
+- Absorbs PX-19: One identity and portal docs package; customer help moves into the portal.
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [docs plan](../../../2026-10-08-docs/README.md) §10 amendment 1: customer help lives in the docs site's public Help area (D1); the portal links to it and keeps its in-product copy on the catalog. This package narrows to developer identity docs; the consumer identity articles are DOC-04b's, and each I- package updates its article.
 
 ## Goal
 

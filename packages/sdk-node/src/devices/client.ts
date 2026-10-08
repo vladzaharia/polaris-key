@@ -13,7 +13,15 @@
 import type { HardwareFingerprint } from "@polaris-key/protocol/core";
 import { PolarisError } from "@polaris-key/client-core";
 import type { PackInstallReport } from "@polaris-key/client-core/packs";
+import { ErrorCode } from "../constants.generated.js";
 import type { CoreContext } from "../core/context.js";
+import {
+  classifyResponse,
+  readJson,
+  responseError,
+  transportError,
+} from "../core/http.js";
+import { redactOnPrint } from "../core/redact.js";
 import type { CacheManager } from "../core/cache.js";
 import type { TokenManager } from "../core/token.js";
 import {
@@ -41,21 +49,26 @@ export interface AccountDevice {
 }
 
 export type RegisterResult =
+  /** The token is stored. It stays readable here, but the result prints (`console.log`,
+   *  `util.inspect`, `JSON.stringify`) with it redacted. */
   | { kind: "ok"; token: string; deviceId: string }
   /** The product's policy is `requires-license` or `requires-identity`: activation (or a
    *  sign-in) is the mint path, and the endpoint refuses without telling you which. */
   | { kind: "registration-closed" }
-  | { kind: "rate-limited" }
+  /** A 429; `retryAfterSeconds` from its `Retry-After` header when present. */
+  | { kind: "rate-limited"; retryAfterSeconds?: number }
   | { kind: "not-configured" }
-  | { kind: "error"; message: string };
+  /** The one taxonomy's failures (SP-46): `network-error` (no answer), `server-error` (a 5xx),
+   *  `bad_response` (a 200 without a token), or the server's code for any other refusal. */
+  | { kind: "error"; code: string; status?: number; message: string };
 
-export class DeviceManagementUnsupportedError extends Error {
-  readonly code = "device-management-unsupported";
-
+/** Remote device management needs a credential this client does not hold. A `PolarisError`
+ *  with code `device-management-unsupported`. */
+export class DeviceManagementUnsupportedError extends PolarisError {
   constructor(
     message = "Remote device management is not supported by this backend.",
   ) {
-    super(message);
+    super(ErrorCode.deviceManagementUnsupported, message);
     this.name = "DeviceManagementUnsupportedError";
   }
 }
@@ -159,36 +172,74 @@ export class DevicesClient {
             };
       res = await f(this.ctx.url("devices/register"), init);
     } catch (e) {
-      return { kind: "error", message: (e as Error).message };
+      return {
+        kind: "error",
+        code: ErrorCode.networkError,
+        message: transportError(e, "devices/register").message,
+      };
     }
     if (res.status === 200) {
-      const body = (await res.json()) as { token: string; deviceId: string };
-      return { kind: "ok", token: body.token, deviceId: body.deviceId };
+      let body: { token?: unknown; deviceId?: unknown } | null;
+      try {
+        body = await readJson(res, "devices/register");
+      } catch (e) {
+        const err = e as PolarisError;
+        return { kind: "error", code: err.code, message: err.message };
+      }
+      if (typeof body?.token !== "string" || body.token === "")
+        return {
+          kind: "error",
+          code: ErrorCode.badResponse,
+          status: 200,
+          message: "devices/register answered without a device token.",
+        };
+      return redactOnPrint<RegisterResult & { kind: "ok" }>(
+        { kind: "ok", token: body.token, deviceId: String(body.deviceId) },
+        ["token"],
+      );
     }
     if (res.status === 403) return { kind: "registration-closed" };
-    if (res.status === 429) return { kind: "rate-limited" };
     if (res.status === 404) return { kind: "not-configured" };
-    return { kind: "error", message: await res.text().catch(() => "") };
+    const c = await classifyResponse(res);
+    if (res.status === 429)
+      return {
+        kind: "rate-limited",
+        ...(c.retryAfterSeconds !== undefined
+          ? { retryAfterSeconds: c.retryAfterSeconds }
+          : {}),
+      };
+    return {
+      kind: "error",
+      code: c.code,
+      status: res.status,
+      message:
+        c.message ?? `devices/register failed with status ${res.status}.`,
+    };
   }
 
-  /** `GET /<p>/devices` — the product's roster for this credential. */
+  /** `GET /<p>/devices` — the product's roster for this credential. Throws `PolarisError` in
+   *  the one taxonomy (SP-46) on a failure. */
   async list(): Promise<AccountDevice[]> {
     const token = this.requireToken();
-    const f = this.ctx.fetcher();
-    const res = await f(this.ctx.url("devices"), {
-      headers: this.ctx.headers({ authorization: `Bearer ${token}` }),
-      signal: this.ctx.deadline(),
-    });
-    if (!res.ok) throw new Error(`device list failed: ${res.status}`);
-    const body = (await res.json()) as { devices?: AccountDevice[] };
-    return Array.isArray(body.devices) ? body.devices : [];
+    const what = "device list";
+    const res = await this.ctx.request(
+      this.ctx.url("devices"),
+      { headers: this.ctx.headers({ authorization: `Bearer ${token}` }) },
+      what,
+    );
+    if (!res.ok) throw await responseError(res, what);
+    const body = await readJson<{ devices?: AccountDevice[] } | null>(
+      res,
+      what,
+    );
+    return Array.isArray(body?.devices) ? body.devices : [];
   }
 
   /** `PATCH /<p>/devices/:id` — rename (self-only, server-enforced). */
   async rename(deviceId: string, label: string | null): Promise<void> {
     const token = this.requireToken();
-    const f = this.ctx.fetcher();
-    const res = await f(
+    const what = "device rename";
+    const res = await this.ctx.request(
       this.ctx.url(`devices/${encodeURIComponent(deviceId)}`),
       {
         method: "PATCH",
@@ -197,25 +248,25 @@ export class DevicesClient {
           "content-type": "application/json",
         }),
         body: JSON.stringify({ label }),
-        signal: this.ctx.deadline(),
       },
+      what,
     );
-    if (!res.ok) throw new Error(`device rename failed: ${res.status}`);
+    if (!res.ok) throw await responseError(res, what);
   }
 
   /** `DELETE /<p>/devices/:id` — release another device's seat. */
   async deauthorize(deviceId: string): Promise<void> {
     const token = this.requireToken();
-    const f = this.ctx.fetcher();
-    const res = await f(
+    const what = "device deauthorize";
+    const res = await this.ctx.request(
       this.ctx.url(`devices/${encodeURIComponent(deviceId)}`),
       {
         method: "DELETE",
         headers: this.ctx.headers({ authorization: `Bearer ${token}` }),
-        signal: this.ctx.deadline(),
       },
+      what,
     );
-    if (!res.ok) throw new Error(`device deauthorize failed: ${res.status}`);
+    if (!res.ok) throw await responseError(res, what);
   }
 
   /** `POST /<p>/devices/report` — best-effort telemetry built from re-verified documents. */

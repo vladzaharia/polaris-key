@@ -47,8 +47,8 @@ describe("LicenseGate screen selection", () => {
     expect(container.querySelector('[data-testid="app"]')).toBeNull();
     // The OIDC button is present.
     expect(container.querySelector("[data-polaris-oidc]")).toBeTruthy();
-    // Desktop offers key entry.
-    expect(container.querySelector("[data-polaris-key-input]")).toBeTruthy();
+    // Desktop offers key entry, behind "Use a license key".
+    expect(container.querySelector("[data-polaris-use-key]")).toBeTruthy();
   });
 
   it("renders the revoked screen on a hard 401", async () => {

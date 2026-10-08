@@ -31,11 +31,10 @@
  */
 
 import type { PackageEcosystem } from "@polaris-key/manifest";
-import type { Db } from "../../../../core/platform.js";
+import { parseJsonOr, randomId, type Db } from "../../../../core/platform.js";
 import type { RegistryRouteContext } from "../../../../core/registryHost.js";
 import type { PublishPrincipal } from "../../../../core/registryPublish.js";
 import { appendAudit } from "../../../../core/data.js";
-import { randomId } from "../../../../core/platform.js";
 import {
   answeringFeed,
   commitNative,
@@ -113,14 +112,6 @@ export interface SessionKey {
   readonly version: string;
 }
 
-function parse<T>(raw: string, fallback: T): T {
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
-}
-
 function sessionOf(r: SessionRow): NativeSession {
   return {
     key: {
@@ -133,14 +124,14 @@ function sessionOf(r: SessionRow): NativeSession {
     name: r.name,
     sessionId: r.session_id,
     principalId: r.principal_id,
-    principal: parse<PublishPrincipal>(r.principal_json, {
+    principal: parseJsonOr<PublishPrincipal>(r.principal_json, {
       kind: "registry",
       product: r.product,
       tokenId: r.principal_id,
     }),
     client: r.client as NativeClient,
-    files: parse<StagedFile[]>(r.files_json, []),
-    metadata: parse<Record<string, unknown>>(r.metadata_json, {}),
+    files: parseJsonOr<StagedFile[]>(r.files_json, []),
+    metadata: parseJsonOr<Record<string, unknown>>(r.metadata_json, {}),
     channel: r.channel,
     state: r.state as NativeSession["state"],
     error: r.error,

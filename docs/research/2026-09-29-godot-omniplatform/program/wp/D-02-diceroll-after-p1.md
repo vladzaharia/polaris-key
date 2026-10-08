@@ -1,21 +1,30 @@
-# D-02 Diceroll: adopt the Godot SDK for config, licensing, identity and update checks
+# D-02 Diceroll: onboard through the wizard and Integration page
 
-| Field       | Value                                                                                                                                                                                                                             |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | D: Diceroll adoption (vladzaharia/diceroll); stage "After P1"                                                                                                                                                                     |
-| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                              |
-| Depends on  | [P1-12](P1-12-godot-release.md), [P0-02](P0-02-release-resolution.md), [P0-05](P0-05-cors.md)                                                                                                                                     |
-| Unblocks    | none                                                                                                                                                                                                                              |
-| Role        | `pkey-godot-engineer`                                                                                                                                                                                                             |
-| Plan mode   | no                                                                                                                                                                                                                                |
-| Gates       | `pkey validate` clean in the Diceroll repo; Diceroll's CI; no Polaris Key gate (no change there)                                                                                                                                  |
-| Human input | none in the graph. Needed in practice: a platform admin links the Diceroll repository in the console (registration mints the product key); and, for the web build, its origins added to the CORS allowlist once P0-05 has shipped |
-| Repo        | `vladzaharia/diceroll`                                                                                                                                                                                                            |
+| Field       | Value                                                                                                                                                                                                                                            |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | D: Diceroll adoption (vladzaharia/diceroll); stage "After P1"                                                                                                                                                                                    |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                                             |
+| Depends on  | [P1-12](P1-12-godot-release.md), [P0-02](P0-02-release-resolution.md), [P0-05](P0-05-cors.md), [ST-43](ST-43-new-product-wizard.md), [ST-41](ST-41-integration-page-overview-card.md), [LX-36](LX-36-access-policy-license-access-absorbs-ps.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                                                                                                                           |
+| Role        | `pkey-godot-engineer`                                                                                                                                                                                                                            |
+| Plan mode   | no                                                                                                                                                                                                                                               |
+| Gates       | `pkey validate` clean in the Diceroll repo; Diceroll's CI; no Polaris Key gate (no change there)                                                                                                                                                 |
+| Human input | none in the graph. Needed in practice: a platform admin links the Diceroll repository in the console (registration mints the product key); and, for the web build, its origins added to the CORS allowlist once P0-05 has shipped                |
+| Repo        | `vladzaharia/diceroll`                                                                                                                                                                                                                           |
 
 > **Re-verify first.** Diceroll paths below come from [notes/A4](../../notes/A4-diceroll-mapping.md)
 > (Diceroll `4e78bb6`, 2026-09-29); this brief was written without access to the Diceroll
 > repository. Confirm each path, and find where balance values and optional features live today
 > (notes/A4 does not list them), before changing anything.
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track I, Packages, updates and packs](../../../2026-10-07-dx-consolidation/tracks.md#i-packages-updates-and-packs)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Dogfood the onboarding: create Diceroll with ST-43's wizard and ST-41's Integration page and SP-33a's snippets instead of pkey init plus a platform-admin registration; install the Godot SDK from the feed with the generated snippet; declare the supporter entitlement in Licensing (LX-34) and use license.access (LX-36) instead of autoIssue.mode; built-in channels, no channels flag in its catalog.
+
+- Title: was "Diceroll: adopt the Godot SDK for config, licensing, identity and update checks".
+- Depends on: added ST-43, ST-41 and LX-36.
 
 ## Goal
 

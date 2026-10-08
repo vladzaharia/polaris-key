@@ -4,6 +4,9 @@ This folder turns the research ([`../README.md`](../README.md), [`../CONTENT.md`
 [`../PARITY.md`](../PARITY.md), [`../notes/`](../notes/)) into work that a **team of coding
 agents**, directed by a lead and supervised by a human, can execute.
 
+The [DX consolidation plan](../../2026-10-07-dx-consolidation/README.md) (2026-10-07) re-cut the
+open backlog into tracks A–K and a 1.0 readiness milestone (P0-51); its graph changes are recorded in §8.
+
 It is a plan, not a specification. [`AGENTS.md`](../../../../AGENTS.md) and the code stay
 authoritative. When a brief and the code disagree, the code is the fact and the brief is updated
 in the same pull request.
@@ -26,7 +29,7 @@ in the same pull request.
 cd docs/research/2026-09-29-godot-omniplatform/program
 node check.mjs              # validate the graph and the index (exit 1 on any problem)
 node check.mjs --ready      # what can start now, most-blocking first
-node check.mjs --ready --optional --deferred  # also optional work and packages waiting for the owner's go (CM-*)
+node check.mjs --ready --optional --deferred  # also optional work and deferred packages (the owner's go for CM-*, or parked 2026-10-07)
 node check.mjs --summary    # effort and status per phase
 node check.mjs --critical   # the longest remaining dependency chain
 node check.mjs --show P3-02 # one work package with its dependants
@@ -249,6 +252,18 @@ Packages split from one row of a spike's breakdown keep that row's number plus a
 (phase A: A-17a…g from notes/S-14 §10, A-18a…m from notes/S-15 §11; I-10a and I-10b from notes/S-16 §8;
 U-11a…c, U-15a…c and U-24a…b from notes/S-17 §6); `check.mjs` accepts the suffix.
 
+**DX consolidation (2026-10-07).** One graph-hygiene PR applied the plan's
+[`backlog-changes.json`](../../2026-10-07-dx-consolidation/backlog-changes.json) (Track A, lead
+action 2 in [`tracks.md`](../../2026-10-07-dx-consolidation/tracks.md)). Its 140 new packages take
+free ids in existing phases (crosswalk at the end of `tracks.md`) and carry their track as `stage`;
+the lead added P0-50 (dependency alerts) and P0-51, the 1.0 readiness review that depends on every
+required package in tracks A–K ([README §12](../../2026-10-07-dx-consolidation/README.md#12-versions-09x-now-10-later)).
+A merged, split or dropped package has status `dropped`, no dependencies and no `planRef`, and its
+brief names its targets. A parked package keeps its status and gets `optional: true` and
+`deferred: "parked 2026-10-07: <revive condition>"`, so `--ready` and `--critical` skip it. Every
+touched brief has a `## Consolidation 2026-10-07` section that wins over its older text. LX-11
+executes CM-20's plan (`planRef`).
+
 Phase I (Identity) follows notes/S-16 §8 after its restructure around one Polaris Key account
 (owner decision 2026-10-04). I-01…I-03 keep their meaning; I-04 is the layer 1 account contract
 plan; I-05…I-25 were re-cut from the note's table, so their ids now mean different work than the
@@ -329,6 +344,17 @@ parity rows, executed by UK-02a and UK-02b) come first, then UK-15 (QA harness a
 and UK-16 (docs scaffold), then UK-03 (ui-core) and the kits. Kits read the product presentation
 only through HA-13/HA-14 via a seam, so they do not wait for them; UK-41 verifies it at the end of
 the must tier. UK-30 (Tk) is dropped.
+
+Phase DOC (documentation) follows [`docs/research/2026-10-08-docs/`](../../2026-10-08-docs/README.md)
+§6.1. Its 28 packages keep the plan's own `DOC-<nn>[a-z]` ids, which `check.mjs` accepts; the plan
+suggested registering them under ST, PX and SP, but a package's id must start with its phase.
+DOC-03a lands first and ships the contracts every other DOC package builds on. The docs pages
+each consolidation package writes are acceptance lines on that package (the plan's §10).
+
+The [SDK usability review](../../2026-10-08-sdk-usability/README.md) (§10.2) adds P0-52, SP-41 to
+SP-52 (SP-45 split into SP-45a and SP-45b by toolchain) and UK-45 to UK-50, under the stage "SDK
+usability review (2026-10-08)". Its §10.1 changes to existing packages are a section on each brief.
+SP-41 here is `pkey dev`; the SP-41 that `plans/SP-35.md` §11 mentions was never filed.
 
 Phase MO (motion) follows [`notes/S-23-motion-system.md`](../notes/S-23-motion-system.md) §10, with
 the owner decisions delegated to the lead on 2026-10-05 (D1–D10 in the note). It adds motion to

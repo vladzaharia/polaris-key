@@ -33,7 +33,7 @@ import {
   stmtUnblockAutoAttach,
 } from "../../../core/licenseHolders.js";
 import { getLicense, type LicenseRow } from "../../../core/data.js";
-import type { Db } from "../../../core/platform.js";
+import { normalizeEmail, type Db } from "../../../core/platform.js";
 import {
   clearDeviceSubjects,
   onLicenseOwnershipEnded,
@@ -48,7 +48,7 @@ import {
 } from "../portal/repo.js";
 import { endLicenseLinks, moveLicenseOwnerEndingLinks } from "./legacy.js";
 import type { AccountContext } from "./links.js";
-import { normalizeEmail, verifiedAccountEmails } from "./repo.js";
+import { verifiedAccountEmails } from "./repo.js";
 
 /** How a licence reaches an account. */
 export type AttachVia =

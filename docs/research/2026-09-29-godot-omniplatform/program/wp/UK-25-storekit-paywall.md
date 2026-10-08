@@ -12,6 +12,21 @@
 | Human input | none                                                                                                       |
 | Repo        | `vladzaharia/polaris-key`                                                                                  |
 
+## Consolidation 2026-10-07
+
+> **Parked 2026-10-07 (DX consolidation).** Optional and `deferred`, so `--ready` and `--critical`
+> skip it. Revive into UK-07 when LX-23 lands (a SubscriptionStoreView needs a server side); maps products through offers(). Re-read this brief against the code before reviving it.
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **parked** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> StoreKit 2 Paywall. Revive into UK-07 when LX-23 lands (a SubscriptionStoreView needs a server side); maps products through offers().
+
+- Optional now (was required).
+
+## Owner direction (2026-10-08)
+
+- **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
+
 ## Goal
 
 The StoreKit 2 surface of the Swift kit exists, reuses the SwiftUI views and presentation core with no second implementation, and is baselined in both themes.

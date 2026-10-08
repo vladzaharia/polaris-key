@@ -46,28 +46,42 @@ import kotlinx.coroutines.withContext
 public class AndroidKeystoreStore(
     public val productSlug: String,
     private val keystore: SecureStore,
-    /** `noBackupFilesDir/pkey/<product>`: the cache and the device-id file. */
-    public val directory: File,
+    /**
+     * `noBackupFilesDir/pkey/<product>`: the cache and the device-id file. Resolved on first use, so
+     * building the store (and the client) on the main thread touches no file (SP-50).
+     */
+    directory: () -> File,
     /** Where the raw device identifier comes from when no id is stored yet. */
     private val deviceIdSource: () -> String,
     /** A store an earlier build used; its token and device id move into the Keystore. */
     private val legacy: Store? = null,
 ) : Store {
-    /** The SDK's unsigned state (the update-event journal, local config) lives beside the cache. */
-    override val stateDirectory: File get() = directory
+    public constructor(
+        productSlug: String,
+        keystore: SecureStore,
+        directory: File,
+        deviceIdSource: () -> String,
+        legacy: Store? = null,
+    ) : this(productSlug, keystore, { directory }, deviceIdSource, legacy)
 
     /** The store for [productSlug] in [context]: AndroidKeyStore, `noBackupFilesDir`, [AndroidDevice.deviceIdRaw]. */
     public constructor(context: Context, productSlug: String, legacy: Store? = null) : this(
         productSlug,
         SecureStore(context, productSlug),
-        File(context.noBackupFilesDir, "pkey/${SecureStore.checkName(productSlug)}"),
+        { File(context.noBackupFilesDir, "pkey/${SecureStore.checkName(productSlug)}") },
         { deviceIdRaw(SystemAndroidDevice(context), SecureStore(context, productSlug)) },
         legacy,
     )
 
+    /** `noBackupFilesDir/pkey/<product>` (see the constructor). */
+    public val directory: File by lazy(directory)
+
+    /** The SDK's unsigned state (the update-event journal, local config) lives beside the cache. */
+    override val stateDirectory: File get() = directory
+
     private val lock = Mutex()
-    private val cacheFile = File(directory, "cache.json")
-    private val deviceFile = File(directory, "device-id")
+    private val cacheFile by lazy { File(this.directory, "cache.json") }
+    private val deviceFile by lazy { File(this.directory, "device-id") }
 
     @Volatile private var keystoreError: String? = null
 

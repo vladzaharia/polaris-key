@@ -1184,11 +1184,13 @@ def test_r4_07_cli_no_longer_defaults_to_a_build_gate_bypassing_version() -> Non
 
     import argparse
 
-    from polaris_key.cli.argparse_cli import build_parser
+    from polaris_key.cli.argparse_cli import _options, build_parser
 
     args = build_parser().parse_args(["status", "--product", PRODUCT])
-    assert not is_dev_build(args.version)
     assert isinstance(args, argparse.Namespace)
+    # The flag's default resolves when the verb runs (the installed version, read lazily).
+    assert _options(args).version == cli_core.DEFAULT_VERSION
+    assert not is_dev_build(_options(args).version)
 
 
 def test_r12_13_key_resolution_prefers_non_argv_sources(tmp_path) -> None:

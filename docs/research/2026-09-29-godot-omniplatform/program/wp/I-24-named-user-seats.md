@@ -18,6 +18,12 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 
 - **[`plans/I-24.md`](../plans/I-24.md):** approved on 2026-10-05 with every recommendation accepted. Q8 splits the implementation into **I-24a** (contract, corpus, client-core, Worker, console, portal) and **I-24b** (six SDKs and four UI kits), each depending on I-08 and I-09 through the chain. This package is now the planning package and is done; the scope below is executed by I-24a and I-24b.
 
+## Framework drop-ins (2026-10-08)
+
+The [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §12.2 changes this package. Where it differs from the text below, it wins.
+
+- `profile.user` is emitted for every subject-bound device (SP-54 pulls it forward and amends `plans/I-24.md` §2.1 and §2.4).
+
 ## Goal
 
 Named-user seats: a licence can name N users with M devices each, with a user claim in the licence document's `profile` and seat holders recorded on the device binding.

@@ -1,16 +1,16 @@
 # UK-04 `@polaris-key/elements` on Lit 3: every §4.1 component as `pk-*`, shared `styles.css`, platform variants, CDN module at `key.plrs.im/elements/<major>/pk.js`
 
-| Field       | Value                                                                                                                                                                                                                                                                                           |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                                                                                                                                                                                    |
-| Size        | 3–4 engineer-weeks                                                                                                                                                                                                                                                                              |
-| Depends on  | [UK-01](UK-01-brand-kit-tokens.md), [UK-02a](UK-02a-kit-copy-catalog.md), [UK-03](UK-03-ui-core.md), [UK-15](UK-15-visual-qa-harness.md), [UK-16](UK-16-ui-docs-scaffold.md)                                                                                                                    |
-| Unblocks    | [UK-05](UK-05-react-kit.md), [UK-17](UK-17-vue-kit.md), [UK-18](UK-18-svelte-kit.md), [UK-19](UK-19-angular-kit.md), [UK-21](UK-21-tauri-bridge.md), [UK-31](UK-31-web-recipes.md), [UK-37](UK-37-godot-web-overlay.md), [UK-39](UK-39-python-web-uis.md), [UK-41](UK-41-must-tier-closeout.md) |
-| Role        | `pkey-sdk-porter`                                                                                                                                                                                                                                                                               |
-| Plan mode   | no                                                                                                                                                                                                                                                                                              |
-| Gates       | Playwright visual baselines (Chromium, WebKit); `pnpm ui:lint`; rule 10 (the CDN route's OpenAPI entry); THREAT-MODEL row for serving script                                                                                                                                                    |
-| Human input | none                                                                                                                                                                                                                                                                                            |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                       |
+| Field       | Value                                                                                                                                                                                                                                                                                              |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                                                                                                                                                                                       |
+| Size        | 3–4 engineer-weeks                                                                                                                                                                                                                                                                                 |
+| Depends on  | [UK-01](UK-01-brand-kit-tokens.md), [UK-02a](UK-02a-kit-copy-catalog.md), [UK-03](UK-03-ui-core.md), [UK-15](UK-15-visual-qa-harness.md), [UK-16](UK-16-ui-docs-scaffold.md)                                                                                                                       |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [UK-05](UK-05-react-kit.md), [UK-17](UK-17-vue-kit.md), [UK-18](UK-18-svelte-kit.md), [UK-19](UK-19-angular-kit.md), [UK-21](UK-21-tauri-bridge.md), [UK-31](UK-31-web-recipes.md), [UK-39](UK-39-python-web-uis.md), [UK-41](UK-41-must-tier-closeout.md) |
+| Role        | `pkey-sdk-porter`                                                                                                                                                                                                                                                                                  |
+| Plan mode   | no                                                                                                                                                                                                                                                                                                 |
+| Gates       | Playwright visual baselines (Chromium, WebKit); `pnpm ui:lint`; rule 10 (the CDN route's OpenAPI entry); THREAT-MODEL row for serving script                                                                                                                                                       |
+| Human input | none                                                                                                                                                                                                                                                                                               |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                          |
 
 ## Sign-in alignment (2026-10-05): SIGN-IN.md
 
@@ -36,6 +36,29 @@ the owner's license vocabulary (SIGN-IN.md O-17: the tier pill and "{used} of {l
 every row, no "Account-wide"). For this package:
 
 - **The one sign-in form** (SIGN-IN.md §3.17, UI-KITS §1.3): `<pk-sign-in presentation="inline|sheet|browser" replace="inline|browser">`, the step elements, the web `<dialog>` for `sheet`, and the motion of SIGN-IN.md §3.18 (View Transitions with the Web Animations fallback, CSP-safe). Steps morph in place; nothing stacks on the form except the system confirm for Replace where the platform expects one (D-80).
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track J, SDK and UI-kit consolidation](../../../2026-10-07-dx-consolidation/tracks.md#j-sdk-and-ui-kit-consolidation)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Absorbs UK-22's Tailwind v4 preset; pk-gate takes product + config (polaris-key.json).
+
+- Absorbs UK-22 (split; this package takes its share): Tailwind v4 preset to UK-04, the CSS-variable 'bring your own design system' recipe to UK-31; the shadcn registry route and the MUI, Mantine and Chakra theme objects are parked.
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/UK-02b.md`](../plans/UK-02b.md) §8: runs all ten families of `ui-matrix.json`. `hidden` rows assert that nothing renders. Baselines cover every `components.json` state, not `hidden`.
+
+## Owner direction (2026-10-08)
+
+- **Responsive.** Every kit screen adapts to its window, with landscape layouts where the window is landscape.
+- **Resolution matrix.** Tested at every size in [UI-KITS.md](../../../../design/UI-KITS.md) §7.1, including 200% text or zoom.
+- **Spacing and theming.** One spacing rhythm, and themable with `preset: "polaris-key" | "native"`, where `native` matches the platform.
+- **Quality bar.** Meets the bar in `.claude/agents/pkey-ux-reviewer.md` ("a GOOD UI", good use of visual space), not just no overflow.
+- **Review.** Several UX reviews (`pkey-ux-reviewer`), not one.
+- **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
 
 ## Goal
 
@@ -93,6 +116,7 @@ The universal fallback for every web framework (§5.1), and the base for Vue, Sv
 - [ ] The kit's framework page and its tab on each component page exist in the docs `build/ui/` section (UK-16 scaffold); the kit README is install + one-line flow + link.
 - [ ] A design review against the mockups (`web.html`) is recorded in the PR (§7.4); any disagreement between mockup and spec is fixed first.
 - [ ] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs.
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `<StatesToHandle>` from the fixtures; a kit tab per component; a component page returns when a kit ships it; a recipes page at UK-31.
 - [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify

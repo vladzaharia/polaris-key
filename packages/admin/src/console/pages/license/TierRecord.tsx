@@ -10,7 +10,7 @@ import { mutate } from "../../data/mutations.js";
 import { r } from "../../routes.js";
 import { Link, navigate } from "../../router.js";
 import { Breadcrumbs } from "../../components/Breadcrumbs.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { PageTabs } from "../../components/PageTabs.js";
 import { SettingsSection } from "../../templates/Settings.js";
 import { fromSeconds } from "../../../lib/format.js";

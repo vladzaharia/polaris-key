@@ -1,16 +1,16 @@
-# PX-21 Email gate UI: `EmailGate` with `ProfileImport` in the login card, all §4.29 variants, plain and under the app header, join hand-off
+# PX-21 FinishStep: email gate, profile and terms for every new account
 
-| Field       | Value                                                                                                                                                                                    |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase B: new API, S-16, S-17)                                                                                                               |
-| Size        | 0.4–0.8 engineer-weeks                                                                                                                                                                   |
-| Depends on  | [PX-12](PX-12-login-card-v2.md), [PX-W15](PX-W15-email-gate.md), [PX-W16](PX-W16-profile-avatars.md)                                                                                     |
-| Unblocks    | none                                                                                                                                                                                     |
-| Role        | `pkey-implementer`                                                                                                                                                                       |
-| Plan mode   | no                                                                                                                                                                                       |
-| Gates       | the PORTAL.md §11 green gate; CSP browser test (zero violations); admin build; `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations; `vitest-axe` on new page components |
-| Human input | none                                                                                                                                                                                     |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                |
+| Field       | Value                                                                                                                                                                                                |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase B: new API, S-16, S-17)                                                                                                                           |
+| Size        | 0.4–0.8 engineer-weeks                                                                                                                                                                               |
+| Depends on  | [PX-12](PX-12-login-card-v2.md), [PX-W15](PX-W15-email-gate.md), [PX-W16](PX-W16-profile-avatars.md), [I-33](I-33-profile-v2-screen-name-birth-date.md), [P0-38](P0-38-authcard-in-ui-auth-ux-40.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                                                                               |
+| Role        | `pkey-implementer`                                                                                                                                                                                   |
+| Plan mode   | no                                                                                                                                                                                                   |
+| Gates       | the PORTAL.md §11 green gate; CSP browser test (zero violations); admin build; `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations; `vitest-axe` on new page components             |
+| Human input | none                                                                                                                                                                                                 |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                            |
 
 ## Follow-ups from the 2026-10-06 reviews
 
@@ -28,6 +28,21 @@ Checked against `main` at `148439c4f`. Each item names the package whose review 
   instead of the gate's join step (SIGN-IN.md D-34). PX-W15 left it until the portal can render that
   step, which this package builds. Routing the callback into the gate moves with this package or
   with I-17 (recorded in both); whichever does it says so in its hand-off, and the other drops it.
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track F, Identity](../../../2026-10-07-dx-consolidation/tracks.md#f-identity)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Becomes FinishStep: the email gate and RegisterStep merged for every new account, with screen-name chips, picture, conditional birth date, Polaris Key terms and privacy, and product terms.
+
+- Title: was "Email gate UI: `EmailGate` with `ProfileImport` in the login card, all §4.29 variants, plain and under the app header, join hand-off".
+- Depends on: added I-33 and P0-38.
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/I-27.md`](../plans/I-27.md) §12: the D4 flow and ConsentStep's toggles; FinishStep per §2.4.
 
 ## Goal
 

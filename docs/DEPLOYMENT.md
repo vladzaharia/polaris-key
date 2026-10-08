@@ -226,6 +226,8 @@ publisher (`.pkey/release` `publishing.trustedPublisher`) and runs in the GitHub
 1. **Environments → New environment** `package-registry`. Under **Deployment branches and tags**
    choose **Selected branches and tags** and add the **branch** rule `main` and the **tag** rule
    `v*`, nothing else. Optionally require a reviewer (every push to `main` then waits for one).
+   The manual npm backfill, `npm-repair.yml`, also runs from `main` in this environment;
+   dispatching it needs write access to the repository.
 2. **Environment secrets** on `package-registry`, for the signed Swift registry releases
    (plans/F-01.md §5.3). Until they exist, the Swift job stops with
    `Swift registry releases are signed (owner decision 2026-10-04). Set …`, and never publishes

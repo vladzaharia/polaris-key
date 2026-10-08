@@ -32,6 +32,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
 from .core.decide import boot_decision
 from .core.errors import PolarisError
+from .core.events import listener_failed
 from .core.stages import (
     BOOT_OK_SECONDS,
     BootEmit,
@@ -196,7 +197,7 @@ def run_boot(
             try:
                 on_stage(state, t.emits)
             except Exception:
-                pass
+                listener_failed("on_stage")
 
     send({"type": "start"})
     # shell

@@ -1,11 +1,11 @@
-# LX-22 Licensing close-out: docs, glossary (rule 4), THREAT-MODEL T1–T10 and P1–P3, migration runbook, djdl and system-product verification
+# LX-22 Licensing close-out on the new glossary
 
 | Field       | Value                                                                                                             |
 | ----------- | ----------------------------------------------------------------------------------------------------------------- |
 | Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (close)                                                |
 | Size        | 0.3–0.4 engineer-weeks                                                                                            |
 | Depends on  | [LX-09](LX-09-entitlement-resolver.md), [LX-11](LX-11-commerce-rework.md), [LX-13](LX-13-entitlements-backend.md) |
-| Unblocks    | none                                                                                                              |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                            |
 | Role        | `pkey-implementer`                                                                                                |
 | Plan mode   | no                                                                                                                |
 | Gates       | generated docs pages (`docs gen:check`; regenerate, never hand-edit); THREAT-MODEL; privacy docs                  |
@@ -17,6 +17,20 @@
 The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
 
 - **[`plans/PX-W3.md`](../plans/PX-W3.md):** the THREAT-MODEL vocabulary uses "download ticket".
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track E, Licensing model](../../../2026-10-07-dx-consolidation/tracks.md#e-licensing-model)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Close-out on ST-37's glossary (add-on, limits, duration, keeps the last version, trial, consumable, automatic grant); THREAT-MODEL rows for consumable replay, fallback freeze and the external renewal API; developer pages use generated SDK tabs.
+
+- Title: was "Licensing close-out: docs, glossary (rule 4), THREAT-MODEL T1–T10 and P1–P3, migration runbook, djdl and system-product verification".
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/LX-41.md`](../plans/LX-41.md) §13: the fallback-freeze and upsert THREAT-MODEL rows are LX-41's.
 
 ## Goal
 

@@ -462,6 +462,7 @@ describe("discoverProduct — the failure ladder", () => {
 
     expect(res).toEqual({
       kind: "error",
+      code: "server-error",
       status: 503,
       message: "upstream unavailable",
     });
@@ -494,8 +495,9 @@ describe("discoverProduct — the failure ladder", () => {
     // status 0 is the "never reached the server" sentinel — distinct from any HTTP answer.
     expect(res).toEqual({
       kind: "error",
+      code: "network-error",
       status: 0,
-      message: "getaddrinfo ENOTFOUND key.plrs.im",
+      message: expect.stringContaining("getaddrinfo ENOTFOUND key.plrs.im"),
     });
   });
 

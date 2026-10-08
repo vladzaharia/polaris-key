@@ -1,11 +1,11 @@
-# PX-15 After sign-in: `AddMethodNudge`, `LinkAccounts`, `DeviceApproval` (both sides)
+# PX-15 After sign-in: add a method, link accounts, approve a device
 
 | Field       | Value                                                                                                                                                                                    |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase B: new API, S-16, S-17)                                                                                                               |
 | Size        | 0.4–0.8 engineer-weeks                                                                                                                                                                   |
-| Depends on  | [PX-12](PX-12-login-card-v2.md), [PX-W12](PX-W12-sign-in-methods-api.md), [PX-W14](PX-W14-approve-device.md)                                                                             |
-| Unblocks    | none                                                                                                                                                                                     |
+| Depends on  | [PX-12](PX-12-login-card-v2.md), [PX-W12](PX-W12-sign-in-methods-api.md), [PX-W14](PX-W14-approve-device.md), [P0-38](P0-38-authcard-in-ui-auth-ux-40.md)                                |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                                                                   |
 | Role        | `pkey-implementer`                                                                                                                                                                       |
 | Plan mode   | no                                                                                                                                                                                       |
 | Gates       | the PORTAL.md §11 green gate; CSP browser test (zero violations); admin build; `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations; `vitest-axe` on new page components |
@@ -32,6 +32,15 @@ Checked against `main` at `148439c4f`.
   `products`, `sessions`, `appearance` and `data`). When this package adds `#/account/link`
   (`LinkAccounts`, on PX-W12), add the action and the notice to `RefusalActions` in
   `ActivateDialog.tsx`, next to **Use a different key** and **Sign in to that account**.
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track F, Identity](../../../2026-10-07-dx-consolidation/tracks.md#f-identity)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Add a method, link accounts and approve a device as AuthCard steps.
+
+- Title: was "After sign-in: `AddMethodNudge`, `LinkAccounts`, `DeviceApproval` (both sides)".
+- Depends on: added P0-38.
 
 ## Goal
 

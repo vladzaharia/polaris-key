@@ -1,16 +1,16 @@
-# I-13 Exchange endpoint `POST /<p>/identity/token` for platform kinds (native Apple and Google ID tokens first), tenant-scoped links, `interstitial_required`; `exchange` in all six SDKs
+# I-13 Token exchange for store and product-connection kinds
 
-| Field       | Value                                                                                                                                                                                 |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, phase-1b)                                                                                                |
-| Size        | 1–1.4 engineer-weeks                                                                                                                                                                  |
-| Depends on  | [I-05](I-05-accounts-core.md), [I-10a](I-10a-sdk-identity-node-react-python.md), [I-10b](I-10b-sdk-identity-swift-kotlin-godot.md)                                                    |
-| Unblocks    | [I-14](I-14-game-verifiers.md), [I-22](I-22-bring-your-own-auth.md), [I-25](I-25-backend-assertion.md)                                                                                |
-| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                 |
-| Plan mode   | yes: `pkey-wire-planner` writes `plans/I-13.md` first; it needs human approval before code                                                                                            |
-| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; rule 10 (OpenAPI + `routeCoverage`); all six SDKs (`parity:check`); THREAT-MODEL; `test:workerd` |
-| Human input | none                                                                                                                                                                                  |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                             |
+| Field       | Value                                                                                                                                                                                  |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, phase-1b)                                                                                                 |
+| Size        | 1–1.4 engineer-weeks                                                                                                                                                                   |
+| Depends on  | [I-05](I-05-accounts-core.md), [I-10a](I-10a-sdk-identity-node-react-python.md), [I-10b](I-10b-sdk-identity-swift-kotlin-godot.md), [I-30](I-30-connections-one-oidc-relying-party.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [I-14](I-14-game-verifiers.md), [I-25](I-25-backend-assertion.md), [I-32](I-32-product-connections-absorbs-i-22.md)                            |
+| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                  |
+| Plan mode   | yes: `pkey-wire-planner` writes `plans/I-13.md` first; it needs human approval before code                                                                                             |
+| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; rule 10 (OpenAPI + `routeCoverage`); all six SDKs (`parity:check`); THREAT-MODEL; `test:workerd`  |
+| Human input | none                                                                                                                                                                                   |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                              |
 
 ## Amendments from approved plans (2026-10-05)
 
@@ -57,6 +57,21 @@ every row, no "Account-wide"). For this package:
 - The in-kit device list for **Replace a device** is `choice/devices` (I-04 §G.5), so Replace is inline in every kit's form.
 - **Transcript:** `exchange-choose.json`. `exchange({kind, token, licenseChoice})` in all six SDKs.
 - **Depends on I-08** for the grant routes (already transitive through I-10a and I-10b).
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track F, Identity](../../../2026-10-07-dx-consolidation/tracks.md#f-identity)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Exchange kinds come from the product's distribution channels (A-20) and product connections; no identity.native. Verification reuses I-30's one relying-party client and JWKS cache.
+
+- Title: was "Exchange endpoint `POST /<p>/identity/token` for platform kinds (native Apple and Google ID tokens first), tenant-scoped links, `interstitial_required`; `exchange` in all six SDKs".
+- Depends on: added I-30.
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/I-27.md`](../plans/I-27.md) §12: the token-exchange grant; `interstitial_required` as a flat refusal.
 
 ## Goal
 

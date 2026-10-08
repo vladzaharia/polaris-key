@@ -28,6 +28,22 @@ every row, no "Account-wide"). For this package:
 
 - **The one sign-in form** (SIGN-IN.md §3.17, UI-KITS §1.3): the sidecar holds the grant and calls `choice.*`; the webview's form gets view data only (SIGN-IN.md D-91). Steps morph in place; nothing stacks on the form except the system confirm for Replace where the platform expects one (D-80).
 
+## Consolidation 2026-10-07
+
+> **Parked 2026-10-07 (DX consolidation).** Optional and `deferred`, so `--ready` and `--critical`
+> skip it. Revive when the recipe proves insufficient for an adopter. Re-read this brief against the code before reviving it.
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **parked** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Tauri bridge package (absorbs X-02). Tauri ships as a UK-31 recipe; revive when the recipe proves insufficient for an adopter.
+
+- Optional now (was required).
+- Absorbs X-02: One Tauri path; UK-21 is parked and the Tauri recipe ships in UK-31.
+
+## Owner direction (2026-10-08)
+
+- **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
+
 ## Goal
 
 A Tauri v2 app uses the elements or the React kit unchanged, backed by the same bridge contract as Electron.

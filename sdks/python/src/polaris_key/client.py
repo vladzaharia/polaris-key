@@ -53,7 +53,7 @@ from .core.models import (
 )
 from .core.store import Store, StoreStatus
 from .core.sync import SyncDeps, SyncResult, sync as run_sync
-from .core.events import EventBus
+from .core.events import EventBus, listener_failed
 from .core.local_state import JsonStateFile
 from .core.update_journal import UpdateJournal
 from .core.token import (
@@ -218,6 +218,9 @@ class PolarisKeyClient:
             # reason; the SDK does not decide it for the host.
             lambda _source: self._on_license_acquired(),
             fingerprint=fingerprint,
+            # A deactivation changes the gate with no sync after it: publish from here, so
+            # `client.license.deactivate()` raises the same one event `client.deactivate()` does.
+            on_changed=lambda: self._license_changed(),
         )
         #: ``client.events`` (SDK parity pass §3.11): license, entitlement, config,
         #: updateAvailable, packs and store changes, to any number of subscribers.
@@ -238,14 +241,13 @@ class PolarisKeyClient:
         )
         # Device-code sign-in raises the same acquisition event activation does: a
         # signed-in device holds a licensed token exactly as an activated one does, and
-        # syncs the same way.
+        # syncs the same way. Signing out is `license.deactivate()`, which raises the change.
         self.identity = IdentityClient(
             self.core,
             self._tokens,
             self._on_license_acquired,
             deactivate=lambda: self.license.deactivate(),
             profile=lambda: self.license.get_profile(),
-            on_signed_out=lambda: self._license_changed(),
         )
         self.release = ReleaseClient(self.core, self._tokens, lambda: self._discovery_doc)
         #: The public download model (``distribution/download.json``, SDK parity pass §3.8).
@@ -495,7 +497,10 @@ class PolarisKeyClient:
             or self._cache.etag("config") != before_config
         )
         if self._on_change is not None and result.applied and changed:
-            self._on_change(self.license.status())
+            try:
+                self._on_change(self.license.status())
+            except Exception:
+                listener_failed("on_change")
         self._publish()
         return result
 
@@ -595,7 +600,7 @@ class PolarisKeyClient:
             try:
                 self._on_change(self.license.status())
             except Exception:
-                pass
+                listener_failed("on_change")
 
     def get_sync_state(self) -> SyncState:
         state = self._cache.state
@@ -717,8 +722,9 @@ class PolarisKeyClient:
         self.devices.rename(device_id, label)
 
     def deactivate(self) -> None:
+        """``license.deactivate()``: release the seat (best-effort), wipe the credential and the
+        cached documents, and emit one ``license`` event."""
         self.license.deactivate()
-        self._license_changed()
 
     def _reacquire(
         self, ctx: CoreContext, current: str, source: Optional[TokenSource]

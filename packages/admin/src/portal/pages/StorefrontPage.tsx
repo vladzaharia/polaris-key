@@ -103,7 +103,7 @@ function NotOffered(): React.ReactElement {
   return (
     <section className="mx-auto flex max-w-xl flex-col items-center gap-4 py-16 text-center">
       <StationaryStar />
-      <h1 className="text-[1.875rem] font-bold leading-tight text-fg-strong">
+      <h1 className="text-3xl font-bold leading-tight text-fg-strong">
         There's nothing to add here
       </h1>
       <p className="text-fg-muted">
@@ -332,7 +332,7 @@ function StorefrontHeader({
         <div className="min-w-0 flex-1 space-y-2 desk:pb-1">
           <h1
             tabIndex={-1}
-            className="pk-vt-hero-title w-fit text-[1.75rem] font-bold leading-tight text-fg-strong outline-none desk:text-4xl"
+            className="pk-vt-hero-title w-fit text-headline font-bold leading-tight text-fg-strong outline-none desk:text-4xl"
           >
             {product.name}
           </h1>

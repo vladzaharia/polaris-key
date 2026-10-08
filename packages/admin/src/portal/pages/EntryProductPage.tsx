@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { ExternalLink, Info } from "lucide-react";
 import { Button } from "../../ui/Button.js";
 import { Skeleton } from "../../ui/Skeleton.js";
@@ -7,7 +8,7 @@ import { GetItPanel } from "../components/product/GetItPanel.js";
 import { HelpCard } from "../components/product/HelpCard.js";
 import { ProductHeader } from "../components/product/ProductHeader.js";
 import { RemoveEntryConfirm } from "../components/RemoveEntryConfirm.js";
-import { useProductDownloads } from "../data.js";
+import { portalKeys, useProductDownloads } from "../data.js";
 import { consumeHeadingFocus } from "../focus.js";
 import {
   quickAction,
@@ -26,7 +27,8 @@ import { focusPageHeading, href, navigate } from "../router.js";
  * §6.5): no licence, so no License card, no seat meter, no Devices and no Package access. The
  * header says "Free to use"; **Get it** comes next, then Help; the header menu's **Remove from
  * library** is confirmed inline under the header, and afterwards the page goes back to the
- * Library (its heading takes focus there).
+ * Library (its heading takes focus there), unless a licence meanwhile keeps the product in the
+ * library: then the page stays and becomes the licence's.
  *
  * Get it is the per-product downloads view when the Worker serves one for the entry, else the
  * developer's website ("Get it from <developer>"). With neither, the section is left out.
@@ -44,6 +46,7 @@ export function EntryProductBody({
   );
   const headingRef = React.useRef<HTMLHeadingElement>(null);
   const menuButton = React.useRef<HTMLButtonElement>(null);
+  const qc = useQueryClient();
   // How many times Remove was chosen; 0 = no confirmation (choosing it again refocuses Keep it).
   const [ask, setAsk] = React.useState(0);
 
@@ -77,8 +80,24 @@ export function EntryProductBody({
             setAsk(0);
             menuButton.current?.focus();
           }}
-          // The page goes with the entry: back to the Library, whose heading takes focus.
-          onRemoved={() => navigate(href.library())}
+          // The page goes with the entry: back to the Library, whose heading takes focus. When a
+          // licence keeps the product (PS-05 review m2), the page stays: it becomes the licence's
+          // once the library is read again, and its heading takes focus then.
+          onRemoved={({ inLibrary }) => {
+            if (!inLibrary) {
+              navigate(href.library());
+              return;
+            }
+            // Off the confirmation first, which is about to go; then the licence page's heading.
+            headingRef.current?.focus({ preventScroll: true });
+            setAsk(0);
+            void qc
+              .refetchQueries(
+                { queryKey: portalKeys.library },
+                { cancelRefetch: false },
+              )
+              .then(() => focusPageHeading());
+          }}
         />
       ) : null}
       <div className="flex flex-col gap-6 desk:grid desk:grid-cols-[minmax(0,1fr)_21.25rem] desk:items-start wide:grid-cols-[minmax(0,1fr)_24rem]">

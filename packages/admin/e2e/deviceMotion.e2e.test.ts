@@ -27,7 +27,9 @@ import type { PortalScenario } from "./portalFixtures.js";
  *   - FreeDevicePage's success draws the check, with no sparks;
  *   - under prefers-reduced-motion and under html[data-motion="reduce"] each of these is an
  *     instant swap to the same end state: no View Transition starts, nothing animates with a
- *     duration, and `document.getAnimations()` is empty right after each interaction.
+ *     duration, and `document.getAnimations()` is empty right after each interaction. The busy
+ *     Add button's spinner is a still ring (the claim is held open, so the spinner always shows,
+ *     however fast the run).
  *
  * Zero CSP violations throughout; axe passes on every state at rest. With `PK_SHOTS_DIR` set it
  * also saves frame strips (animations slowed ×0.1) of the expand, the removal and the Done step.
@@ -310,7 +312,19 @@ const KEY = "pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w";
 const KEY2 = "pkey_quill_Lm9xT2qVb8sPzK4wNc7dRf";
 const MOMENT = "pk-moment:first-activation:acct_1";
 
-function activateRoutes(): Record<string, Override> {
+/** A promise the test opens by hand: a route awaits it to keep a request in flight. */
+interface Latch {
+  wait: Promise<void>;
+  open: () => void;
+}
+function latch(): Latch {
+  let open = (): void => undefined;
+  const wait = new Promise<void>((resolve) => (open = resolve));
+  return { wait, open };
+}
+
+/** With `holdClaim`, the first claim stays in flight until the latch opens. */
+function activateRoutes(holdClaim?: Latch): Record<string, Override> {
   const added = new Set<string>();
   const of = (key: string) =>
     key === KEY
@@ -345,7 +359,8 @@ function activateRoutes(): Record<string, Override> {
         },
       };
     },
-    "POST /api/claim/license-key": (req) => {
+    "POST /api/claim/license-key": async (req) => {
+      await holdClaim?.wait;
       const p = of(keyOf(req));
       added.add(p.slug);
       return {
@@ -358,7 +373,31 @@ function activateRoutes(): Record<string, Override> {
   };
 }
 
-async function activate(page: Page, key: string, name: string): Promise<void> {
+/** Each busy control's spinner: its computed animation and how many animations it is running. */
+const spinners = (
+  page: Page,
+): Promise<{ animation: string; running: number }[]> =>
+  page.evaluate(() =>
+    [
+      ...document.querySelectorAll<HTMLElement>(
+        '[aria-busy="true"] .animate-pk-spin',
+      ),
+    ].map((el) => ({
+      animation: getComputedStyle(el).animationName,
+      running: el.getAnimations().length,
+    })),
+  );
+
+/**
+ * Activates `key`. With `held`, the claim (held by activateRoutes) stays in flight until `check`
+ * has run, so the busy Add button and its spinner are on screen however fast the run is.
+ */
+async function activate(
+  page: Page,
+  key: string,
+  name: string,
+  held?: { claim: Latch; check: () => Promise<void> },
+): Promise<void> {
   const dialog = page.getByRole("dialog", { name: "Activate a license" });
   await dialog.waitFor();
   await dialog.getByRole("textbox", { name: "License key" }).fill(key);
@@ -367,6 +406,12 @@ async function activate(page: Page, key: string, name: string): Promise<void> {
     name: `Add ${name} to your account?`,
   });
   await confirm.getByRole("button", { name: `Add ${name}` }).click();
+  if (held)
+    try {
+      await held.check();
+    } finally {
+      held.claim.open();
+    }
   await page
     .getByRole("dialog", { name: `${name} is in your library` })
     .waitFor();
@@ -490,7 +535,8 @@ describe("motion on: devices and activation under the Worker's CSP", () => {
   });
 
   it("the Activate steps morph as dialog transitions; the first add celebrates once, the next shows the check only", async () => {
-    const s = await open("three", "/", { routes: activateRoutes() });
+    const claim = latch();
+    const s = await open("three", "/", { routes: activateRoutes(claim) });
     const { page } = s;
     await page
       .getByRole("heading", { level: 1, name: "Your library" })
@@ -498,7 +544,17 @@ describe("motion on: devices and activation under the Worker's CSP", () => {
     await atRest(page);
     await log(page);
     await page.getByRole("button", { name: "Activate license" }).click();
-    await activate(page, KEY, "Mossgarden");
+    await activate(page, KEY, "Mossgarden", {
+      claim,
+      // While the claim is in flight the busy Add button's spinner turns.
+      check: async () => {
+        await expect.poll(() => spinners(page)).not.toEqual([]);
+        for (const sp of await spinners(page)) {
+          expect(sp.animation).toBe("pk-spin");
+          expect(sp.running).toBeGreaterThan(0);
+        }
+      },
+    });
     await expect
       .poll(() => focused(page))
       .toBe("H2:Mossgarden is in your library");
@@ -660,13 +716,25 @@ describe("reduced motion: every change in scope is an instant swap to the same e
 
   for (const { name, o } of REDUCED)
     it(`${name}: the Activate steps swap, Done shows a still check, and the moment is spent`, async () => {
-      const s = await open("three", "/", { ...o, routes: activateRoutes() });
+      const claim = latch();
+      const s = await open("three", "/", {
+        ...o,
+        routes: activateRoutes(claim),
+      });
       const { page } = s;
       await page
         .getByRole("heading", { level: 1, name: "Your library" })
         .waitFor();
       await page.getByRole("button", { name: "Activate license" }).click();
-      await activate(page, KEY, "Mossgarden");
+      await activate(page, KEY, "Mossgarden", {
+        claim,
+        // The busy Add button's spinner is a still ring (S-23 D3: loading indicators stand still).
+        check: async () => {
+          await expect.poll(() => spinners(page)).not.toEqual([]);
+          for (const sp of await spinners(page))
+            expect(sp).toEqual({ animation: "none", running: 0 });
+        },
+      });
       expect(await running(page), "done").toEqual([]);
       await expect
         .poll(() => focused(page))

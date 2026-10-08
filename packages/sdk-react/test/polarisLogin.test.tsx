@@ -19,6 +19,7 @@ import {
   makeFakeFetch,
   services,
 } from "./fixtures.js";
+import { keyField } from "./keyField.js";
 
 afterEach(cleanup);
 
@@ -83,16 +84,29 @@ describe("PolarisLogin — OIDC button", () => {
 });
 
 describe("PolarisLogin — key card visibility", () => {
-  it("desktop shows the typed-key card", async () => {
+  it("desktop offers the typed key behind Use a license key", async () => {
     const adapter = desktopAdapter({
       bridge: makeFakeBridge(emptyBridgeState()),
       now: () => 2000,
       expectServices: services(),
     });
     const { container } = renderLogin(adapter);
-    await waitFor(() =>
-      expect(container.querySelector("[data-polaris-key-input]")).toBeTruthy(),
-    );
+    const reveal = await waitFor(() => {
+      const el = container.querySelector("[data-polaris-use-key]");
+      expect(el).toBeTruthy();
+      return el as HTMLButtonElement;
+    });
+    expect(reveal.textContent).toBe("Use a license key");
+    expect(container.querySelector("[data-polaris-key-input]")).toBeNull();
+    fireEvent.click(reveal);
+    // It reveals the form in place and focuses the field.
+    const input = await waitFor(() => {
+      const el = container.querySelector("[data-polaris-key-input]");
+      expect(el).toBeTruthy();
+      return el as HTMLInputElement;
+    });
+    await waitFor(() => expect(document.activeElement).toBe(input));
+    expect(container.querySelector("[data-polaris-use-key]")).toBeNull();
     adapter.dispose();
   });
 
@@ -107,37 +121,66 @@ describe("PolarisLogin — key card visibility", () => {
     await waitFor(() =>
       expect(container.querySelector("[data-polaris-oidc]")).toBeTruthy(),
     );
-    expect(container.querySelector("[data-polaris-key-input]")).toBeTruthy();
+    expect(container.querySelector("[data-polaris-use-key]")).toBeTruthy();
     browser.dispose();
   });
 
-  it("stacks OIDC sign-in above key activation, divided, in one centred column", async () => {
+  it("stacks Sign in above Use a license key in one column, with no divider", async () => {
     const adapter = desktopAdapter({
       bridge: makeFakeBridge(emptyBridgeState()),
       now: () => 2000,
       expectServices: services(),
     });
     const { container } = renderLogin(adapter);
-    const oidc = await waitFor(
-      () => container.querySelector("[data-polaris-oidc]") as HTMLElement,
-    );
-    const form = container.querySelector("form") as HTMLFormElement;
-    const column = oidc.parentElement?.parentElement as HTMLElement;
-    expect(column).toBe(form.parentElement);
+    const oidc = await waitFor(() => {
+      const el = container.querySelector("[data-polaris-oidc]");
+      expect(el).toBeTruthy();
+      return el as HTMLElement;
+    });
+    expect(oidc.textContent).toBe("Sign in");
+    const column = oidc.parentElement as HTMLElement;
     expect(column.style.display).toBe("flex");
     expect(column.style.flexDirection).toBe("column");
-    // The sign-in button comes first, then an "or" divider (decorative), then the form.
+    const reveal = container.querySelector("[data-polaris-use-key]")!;
+    expect(reveal.parentElement).toBe(column);
     const children = [...column.children];
-    expect(children.indexOf(oidc.parentElement!)).toBeLessThan(
-      children.indexOf(form),
-    );
-    const divider = children[1] as HTMLElement;
-    expect(divider.getAttribute("aria-hidden")).toBe("true");
-    expect(divider.textContent).toBe("or");
-    // The card is a narrow, centred column.
+    expect(children.indexOf(oidc)).toBeLessThan(children.indexOf(reveal));
+    // No "or" divider (UI-KITS §1.5 rule 6).
+    expect(column.textContent).not.toMatch(/\bor\b/);
+    // In the host's page the card starts at the start edge; only a full-window screen centres.
     const card = container.querySelector("[data-polaris-login]") as HTMLElement;
-    expect(card.style.margin).toBe("auto");
-    expect(card.style.width).toBe("min(440px, 100%)");
+    expect(card.style.margin).toBe("0px");
+    expect(card.style.width).toBe("min(27.5rem, 100%)");
+    adapter.dispose();
+  });
+
+  it("titles the card Welcome to {product} once the product's name is known", async () => {
+    const adapter = desktopAdapter({
+      bridge: makeFakeBridge(emptyBridgeState()),
+      now: () => 2000,
+      expectServices: services(),
+    });
+    const { container } = render(
+      <PolarisKeyProvider
+        productSlug="acme"
+        adapter={adapter}
+        theme={{ copy: { productName: "Tidewater" } }}
+      >
+        <PolarisLogin />
+      </PolarisKeyProvider>,
+    );
+    await waitFor(() =>
+      expect(container.querySelector("h2")?.textContent).toBe(
+        "Welcome to Tidewater",
+      ),
+    );
+    // No lede by default: the buttons say what the card offers.
+    expect(container.querySelector("h2 + p")).toBeNull();
+    // The product's identity: a monogram tile.
+    expect(
+      container.querySelector('[data-polaris-identity="monogram"]')
+        ?.textContent,
+    ).toBe("T");
     adapter.dispose();
   });
 
@@ -166,9 +209,7 @@ describe("PolarisLogin — key submission", () => {
       expectServices: services(),
     });
     const { container } = renderLogin(adapter);
-    const input = (await waitFor(() =>
-      container.querySelector("[data-polaris-key-input]"),
-    )) as HTMLInputElement;
+    const input = await keyField(container);
     fireEvent.change(input, { target: { value: "  PK-12345  " } });
     const form = container.querySelector("form") as HTMLFormElement;
     fireEvent.submit(form);
@@ -203,9 +244,7 @@ describe("PolarisLogin — key submission", () => {
         expectServices: services(),
       });
       const { container } = renderLogin(adapter);
-      const input = (await waitFor(() =>
-        container.querySelector("[data-polaris-key-input]"),
-      )) as HTMLInputElement;
+      const input = await keyField(container);
       fireEvent.change(input, { target: { value: "PK-1" } });
       fireEvent.submit(container.querySelector("form") as HTMLFormElement);
       await waitFor(() => {
@@ -219,22 +258,22 @@ describe("PolarisLogin — key submission", () => {
     },
   );
 
-  it("the submit button is disabled while the key field is empty", async () => {
+  it("Activate license is aria-disabled while the key field is empty, and keeps focus", async () => {
     const adapter = desktopAdapter({
       bridge: makeFakeBridge(emptyBridgeState()),
       now: () => 2000,
       expectServices: services(),
     });
     const { container } = renderLogin(adapter);
-    const input = (await waitFor(() =>
-      container.querySelector("[data-polaris-key-input]"),
-    )) as HTMLInputElement;
+    const input = await keyField(container);
     const submit = within(container).getByRole("button", {
-      name: /activate/i,
+      name: "Activate license",
     }) as HTMLButtonElement;
-    expect(submit.disabled).toBe(true);
-    fireEvent.change(input, { target: { value: "key" } });
+    // Never the native attribute: a disabled button that has focus drops it to <body>.
     expect(submit.disabled).toBe(false);
+    expect(submit.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.change(input, { target: { value: "key" } });
+    expect(submit.getAttribute("aria-disabled")).toBeNull();
     adapter.dispose();
   });
 });

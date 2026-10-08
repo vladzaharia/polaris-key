@@ -42,7 +42,7 @@ jobs:
       - run: pnpm lint
       # Drift gate: the cross-language conformance corpus must be regenerable in place.
       - run: pnpm gen:corpus -- --check
-      # Drift gate: the HTTP transcripts (conformance/transcripts/ + the Swift mirror) must
+      # Drift gate: the HTTP transcripts (conformance/transcripts/ + the Godot mirror) must
       # re-record identically through the Worker router. `pnpm test` runs the same check inside
       # the worker suite; this step names it, so a stale transcript is legible at a glance.
       - run: pnpm gen:transcripts -- --check
@@ -247,6 +247,27 @@ jobs:
             docs/design/ui-kits/shots
           if-no-files-found: ignore
 
+  # The React drop-in kit in real Chromium (packages/sdk-react/test/browser): every screen at 320,
+  # 390, 768, 1024, 1440 and 2560 px, a phone on its side (844x390), 200 % zoom and a 24 px root
+  # font, in dark and light. No sideways scroll, the main action in the first viewport, every
+  # control at least 24 px, no browser serif, and every piece of text scaling with the root font.
+  # In Playwright's image, like the console job, so the Chromium build is pinned.
+  react-kit:
+    name: React kit (Chromium, responsive)
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter=@polaris-key/react...
+      - run: pnpm exec turbo run build --filter=@polaris-key/react^...
+      - run: pnpm --filter @polaris-key/react test:browser
+
   # P1b-05 Part D: the same runner in Firefox 155.0, the build bundled with playwright 1.63.0 (the
   # engine S-04 measured), in Playwright's own image, which already carries that browser. Firefox
   # refuses to run as root under a $HOME another user owns, and Actions sets HOME=/github/home, so
@@ -393,6 +414,13 @@ jobs:
       - uses: actions/checkout@v7
       - name: Xcode 26.6, Swift 6.3 or later
         run: sdks/swift/tools/select-xcode-26.sh
+      - name: Boot the iOS simulator for the hosted tests
+        # Now, so its first boot settles while the libraries build: on this 3-vCPU runner a new
+        # simulator stays busy for minutes, and StoreKit Testing stalled inside that window
+        # (PlatformHostTests/run.sh, which still waits for it to go quiet).
+        run: |
+          udid="$(sdks/swift/PlatformHostTests/run.sh --boot)"
+          echo "SIM_UDID=$udid" >> "$GITHUB_ENV"
       - name: swift build + test (warnings as errors)
         run: |
           swift build --package-path sdks/swift -Xswiftc -warnings-as-errors
@@ -502,11 +530,12 @@ jobs:
         working-directory: sdks/kotlin
         run: >-
           ./gradlew --no-daemon -Ppkey.jvmOnly=true :core:test :license:test :config:test :identity:test
-          :release:test :update:test :packs:test :sdk:test :conformance:test :sample-cli:test checkModuleBoundaries
+          :release:test :update:test :packs:test :sdk:test :desktop:test :conformance:test :sample-cli:test checkModuleBoundaries
           :core:publishCorePublicationToLocalRepository :license:publishLicensePublicationToLocalRepository
           :config:publishConfigPublicationToLocalRepository :identity:publishIdentityPublicationToLocalRepository
           :release:publishReleasePublicationToLocalRepository :update:publishUpdatePublicationToLocalRepository
           :packs:publishPacksPublicationToLocalRepository :sdk:publishSdkPublicationToLocalRepository
+          :zstd:publishZstdPublicationToLocalRepository :desktop:publishDesktopPublicationToLocalRepository
       - name: zstd-jni's Android natives are 16 KB page aligned
         working-directory: sdks/kotlin
         run: python3 tools/check_16k_alignment.py
@@ -554,11 +583,11 @@ jobs:
         working-directory: sdks/kotlin
         run: >-
           dbus-run-session -- bash -c 'printf pkey | gnome-keyring-daemon --unlock --components=secrets >/dev/null;
-          ./gradlew --no-daemon --no-build-cache -Ppkey.jvmOnly=true :core:test :update:test :sdk:test'
+          ./gradlew --no-daemon --no-build-cache -Ppkey.jvmOnly=true :core:test :update:test :sdk:test :desktop:test'
       - name: JVM desktop suites (macOS, login Keychain)
         if: runner.os == 'macOS'
         working-directory: sdks/kotlin
-        run: ./gradlew --no-daemon --no-build-cache -Ppkey.jvmOnly=true :core:test :update:test :sdk:test
+        run: ./gradlew --no-daemon --no-build-cache -Ppkey.jvmOnly=true :core:test :update:test :sdk:test :desktop:test
       - name: JVM desktop suites (Windows, Credential Manager)
         if: runner.os == 'Windows'
         working-directory: sdks/kotlin
@@ -567,7 +596,7 @@ jobs:
           :core:test --tests 'im.plrs.key.core.KeyringStoreTest' --tests 'im.plrs.key.core.CapabilitiesTest'
           :update:test --tests 'im.plrs.key.update.DesktopInstallDriverTest' --tests 'im.plrs.key.update.DirUpdateSlotsTest'
           --tests 'im.plrs.key.update.BootGuardTest'
-          :sdk:test --tests 'im.plrs.key.sdk.PolarisKeyDesktopTest'
+          :desktop:test
       - name: The real-keyring contract ran (or recorded its Linux N/A)
         working-directory: sdks/kotlin
         run: |
@@ -687,6 +716,126 @@ jobs:
             sdks/kotlin/android/build/reports/
             sdks/godot/native/android/build/reports/
             sdks/godot/build/logs/
+
+  # SP-50: the Kotlin SDK as an app consumes it. sdks/kotlin/samples/android-consumer is a separate
+  # build over the PUBLISHED artifacts (build/repo): the documented Android set (polaris-key-sdk,
+  # polaris-key-android-direct, polaris-key-ui, polaris-key-billing) with no exclude and no app R8
+  # rule, debug and minified release, on the documented toolchain (AGP 8.6.1, Kotlin 2.1.21, Gradle
+  # 8.11.1, compileSdk 36) and the latest (AGP 9.4.1, Kotlin 2.4.20, Gradle 9.7.1, compileSdk 37).
+  # Its `lean` flavour must carry no libzstd-jni; its `packs` flavour adds polaris-key-zstd and must
+  # carry zstd-jni's 16 KB-aligned Android natives, never the desktop JAR's (check_apks.sh).
+  kotlin-consumer:
+    name: Kotlin SDK consumer app (${{ matrix.toolchain }} toolchain)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain: [documented, latest]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - name: Gradle wrapper validation
+        uses: gradle/actions/wrapper-validation@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+      - name: Android SDK packages
+        run: |
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          set +o pipefail
+          yes | "$SDKM" --licenses >/dev/null
+          set -o pipefail
+          "$SDKM" "platforms;android-36" "platforms;android-37.0" "build-tools;36.1.0" >/dev/null
+      - name: Publish the SDK locally (build/repo)
+        working-directory: sdks/kotlin
+        run: ./gradlew --no-daemon publishAllPublicationsToLocalRepository
+      - name: Build the consumer app (documented toolchain, this build's wrapper)
+        if: matrix.toolchain == 'documented'
+        working-directory: sdks/kotlin
+        run: ./gradlew --no-daemon -p samples/android-consumer assembleDebug assembleRelease assembleLeanDebugAndroidTest
+      - name: Gradle 9.7.1 for the latest toolchain
+        if: matrix.toolchain == 'latest'
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          gradle-version: "9.7.1"
+      - name: Build the consumer app (latest toolchain)
+        if: matrix.toolchain == 'latest'
+        working-directory: sdks/kotlin/samples/android-consumer
+        run: gradle --no-daemon -Ppkey.toolchain=latest assembleDebug assembleRelease assembleLeanDebugAndroidTest
+      - name: The APKs hold what the artifacts promise
+        run: sdks/kotlin/samples/android-consumer/check_apks.sh
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: kotlin-consumer-${{ matrix.toolchain }}
+          path: sdks/kotlin/samples/android-consumer/app/build/reports/
+
+  # SP-50: the emulator lane. The consumer app's instrumented tests on the minSdk (24), API 34 and the
+  # newest (36) emulators: Ed25519 chosen by RFC 8032's known answers (Tink; Android 16's JCA fails
+  # them), client(context) -> activate() -> sync() from Dispatchers.Main against a server that
+  # splits headers and body under StrictMode penaltyDeath, every public suspend function of the
+  # client and its facets swept on the main thread under the same policy, a client without a store
+  # refused clearly, and the pack decoder present in the `packs` flavour only.
+  kotlin-emulator:
+    name: Kotlin SDK on the Android emulator (API ${{ matrix.api-level }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        api-level: [24, 34, 36]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - name: Gradle wrapper validation
+        uses: gradle/actions/wrapper-validation@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+      - name: KVM for the emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Android SDK packages
+        run: |
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          set +o pipefail
+          yes | "$SDKM" --licenses >/dev/null
+          set -o pipefail
+          "$SDKM" "platforms;android-36" "build-tools;36.1.0" >/dev/null
+      - name: Publish the SDK locally and build the consumer app's test APKs
+        working-directory: sdks/kotlin
+        run: |
+          ./gradlew --no-daemon publishAllPublicationsToLocalRepository
+          ./gradlew --no-daemon -p samples/android-consumer assembleLeanDebug assembleLeanDebugAndroidTest \
+            assemblePacksDebug assemblePacksDebugAndroidTest
+      - name: Instrumented tests (lean and packs)
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: ${{ matrix.api-level }}
+          target: ${{ matrix.api-level == 24 && 'default' || 'google_apis' }}
+          arch: x86_64
+          disable-animations: true
+          emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect
+          working-directory: sdks/kotlin
+          script: ./gradlew --no-daemon -p samples/android-consumer connectedLeanDebugAndroidTest connectedPacksDebugAndroidTest
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: kotlin-emulator-${{ matrix.api-level }}
+          path: |
+            sdks/kotlin/samples/android-consumer/app/build/outputs/androidTest-results/
+            sdks/kotlin/samples/android-consumer/app/build/reports/
 
   # The Godot SDK (sdks/godot): pure-GDScript SHA-512, both Ed25519 verifiers and the corpus
   # `jwsCases`, read from the generator-owned res:// mirror. PARITY requires the runner on the

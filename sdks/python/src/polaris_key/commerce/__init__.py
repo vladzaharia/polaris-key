@@ -172,14 +172,17 @@ class CommerceClient:
         """The licence's purchase binding and the products on sale.
 
         Raises ``service-unavailable`` (no License or Distribution), ``no-token``,
-        ``network-error``, ``bad_response`` (no binding UUID), or the Worker's code for a
-        refusal (``not_entitled`` before the device holds a licence, …)."""
+        ``network-error``, ``server-error``, ``bad_response`` (no binding UUID), or the Worker's
+        code for a refusal (``not_entitled`` before the device holds a licence, …)."""
         token = self._require()
         res = self._send("GET", "distribution/commerce/binding", token)
         body = _json(res)
         if res.status_code != 200:
-            raise PolarisError(_code(body) or "http-error", _message(body) or
-                               f"commerce/binding refused (status {res.status_code}).")
+            raise PolarisError(
+                _code(body) or "http-error",
+                _message(body) or f"commerce/binding refused (status {res.status_code}).",
+                status=res.status_code,
+            )
         bid = body.get("bindingId")
         if not isinstance(bid, str) or not _UUID.match(bid):
             raise PolarisError("bad_response", "commerce/binding answered no binding UUID.")
@@ -210,7 +213,8 @@ class CommerceClient:
         ``"app-store"`` (``{"signedTransaction": jws}``). Does not sync.
 
         Raises ``invalid-options`` for a store or payload the route would refuse unread, and
-        ``service-unavailable``, ``no-token`` or ``network-error`` before an answer."""
+        ``service-unavailable``, ``no-token``, ``network-error`` or ``server-error`` (a 5xx) before
+        an answer."""
         body = _claim_body(store, payload)
         token = self._require()
         res = self._send("POST", "distribution/commerce/claim", token, body)
@@ -228,8 +232,6 @@ class CommerceClient:
                 changed=b.get("changed") is True,
                 raw=b,
             )
-        if res.status_code >= 500 and _code(b) is None:
-            raise PolarisError("server-error", f"commerce/claim failed with status {res.status_code}.")
         code = _code(b) or "http-error"
         reason = b.get("reason") if isinstance(b.get("reason"), str) else None
         message = _message(b)
@@ -292,12 +294,9 @@ class CommerceClient:
         headers = {"authorization": f"Bearer {token}"}
         if body is not None:
             headers["content-type"] = "application/json"
-        self._ctx.http()  # local-only refuses as itself
         kwargs: Dict[str, Any] = {} if body is None else {"json": body}
-        try:
-            return self._ctx.request(method, self._ctx.url(path), headers=self._ctx.headers(headers), **kwargs)
-        except httpx.HTTPError as e:
-            raise PolarisError("network-error", str(e)) from e
+        # Raises local-only, network-error or server-error (CoreContext.request).
+        return self._ctx.request(method, self._ctx.url(path), headers=self._ctx.headers(headers), **kwargs)
 
 
 def _claim_body(store: str, payload: Mapping[str, Any]) -> Dict[str, Any]:

@@ -60,7 +60,7 @@ from ..constants_generated import (
 )
 from ..core.b64url import b64url_decode
 from ..core.check import FetchOutcome, run_update_check
-from ..core.context import CoreContext
+from ..core.context import CoreContext, refusal_error
 from ..core.decide import ResolvedOutlet, feed_target, is_valid_host_outlet, resolve_update_outlet
 from ..core.detection import detect_outlet, detection_stamp
 from ..core.errors import PolarisError
@@ -462,6 +462,11 @@ class UpdateClient:
         ``updateAvailable`` is computed from the CoreContext's ``version``, the HOST
         APPLICATION's version, not the SDK's: the SDK ships inside the thing being
         updated.
+
+        Raises :class:`PolarisError`: ``network-error`` (no answer), ``server-error`` (a 5xx),
+        the channel refusal's code (``channel_not_allowed``, else ``forbidden``) on a 403, and
+        for any other refusal the server's code, else ``not_found`` for a real 404,
+        ``unauthorized``, ``rate_limited`` or ``http-error``.
         """
         self._ctx.require_service("update", Feature.UPDATE_CHECK)
         url = self._ctx.url("update/version")
@@ -482,11 +487,10 @@ class UpdateClient:
             raise PolarisError(
                 error.get("code") or "forbidden",
                 "This build is not entitled to that update channel.",
+                status=403,
             )
         if not res.is_success:
-            raise PolarisError(
-                "not_found", f"update/version failed with status {res.status_code}."
-            )
+            raise refusal_error(res, "update/version")
         body = _json_or_empty(res)
         version = str(body.get("version", ""))
         return VersionCheck(
@@ -991,8 +995,9 @@ class UpdateClient:
         return {"feed": ep.feed or "", "record": ep.record or ""}
 
     def _get_jose(self, url: Optional[str], max_bytes: Optional[int] = None) -> FetchOutcome:
-        """One ``application/jose`` GET. Never raises: a transport failure or a non-2xx answer
-        is the Worker's wire code when its body names one, else ``network-error``. With
+        """One ``application/jose`` GET. Never raises: a non-2xx answer is the Worker's wire
+        code when its body names one, else ``server-error`` for a 5xx and ``network-error`` for
+        anything else, and a transport failure is ``network-error``. With
         ``max_bytes``, at most ``max_bytes + 1`` bytes are read (§2.5 step 11): a longer body
         cannot be a record any feed pins, and the verifier refuses the prefix at step ``hash``
         without hashing it. The device bearer goes only to the control plane's own origin, never
@@ -1011,7 +1016,12 @@ class UpdateClient:
                 if not res.is_success:
                     return FetchOutcome(
                         ok=False,
-                        code=_wire_code_of(res.read()) or ErrorCode.NETWORK_ERROR,
+                        code=_wire_code_of(res.read())
+                        or (
+                            ErrorCode.SERVER_ERROR
+                            if res.status_code >= 500
+                            else ErrorCode.NETWORK_ERROR
+                        ),
                     )
                 if max_bytes is None:
                     data = res.read()

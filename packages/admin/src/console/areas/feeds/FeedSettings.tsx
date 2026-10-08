@@ -6,15 +6,16 @@
  * its own resource and its own section.
  *
  * - **General:** enabled. Turning a feed off is L1.
- * - **Access:** public, token, licensed or entitled (F-21). Leaving public is L1: anonymous
- *   clients get the native 401 within 30 seconds and need a registry token (the Tokens page).
- *   Entitled lists the feed's packages with no delivery gate, which licence tokens are refused.
+ * - **Access:** public, customers or entitled (F-21). Customers is the stored `authenticated` or
+ *   `licensed`, one strictness for a feed, shown as one choice over the value already stored
+ *   (P0-47). Leaving public is L1: anonymous clients get the native 401 within 30 seconds and
+ *   need a registry token (the Tokens page). Entitled lists the feed's packages with no delivery
+ *   gate, which licence tokens are refused.
  * - **Namespace:** the dependency-confusion rule ingest enforces, one row per namespace field
  *   the ecosystem's ingest rules declare (scope, prefixes, groups, publisher). OCI declares
  *   none: its namespace is the owner itself.
  * - **Limits:** the size ceiling, at most the platform's.
  * - **Yank policy:** what a yank does to clients; Maven's "hide yanked versions" where it applies.
- * - **Upstream:** none, the only option.
  * - **The ecosystem panel:** `FEED_PANELS` (F-12): the extension settings the feed's adapter
  *   declares, edited by name from `FEED_EXTENSION_FIELDS` (HTML pages, signing, repository URLs,
  *   retention, the asset listing), saved into `ext_json`.
@@ -29,11 +30,11 @@ import type {
   FeedSettingsWrite,
 } from "../../../api.js";
 import {
-  BadgeCheck,
   Globe,
   KeyRound,
   Package,
   ShieldCheck,
+  UsersRound,
   type LucideIcon,
 } from "lucide-react";
 import { Callout } from "../../../ui/Callout.js";
@@ -44,7 +45,6 @@ import { NumberInput } from "../../../ui/NumberInput.js";
 import { RadioCards } from "../../../ui/RadioCards.js";
 import { SaveBar } from "../../../ui/SaveBar.js";
 import { Select } from "../../../ui/Select.js";
-import { StatusPill } from "../../../ui/StatusPill.js";
 import { CapabilityStrip } from "../../../ui/CapabilityBadge.js";
 import { Switch } from "../../../ui/Switch.js";
 import { Textarea } from "../../../ui/Textarea.js";
@@ -63,6 +63,8 @@ import {
   FEED_ACCESS_LABELS,
   YANK_EFFECTS,
   bytesToMiB,
+  feedAccessChoice,
+  feedAccessMode,
   feedVersionCapabilities,
   mibToBytes,
   tokensHref,
@@ -121,16 +123,6 @@ export function FeedSettingsTab({
       <NamespaceSection eco={eco} detail={detail} save={save} />
       <LimitsSection detail={detail} save={save} />
       <YankSection eco={eco} detail={detail} save={save} />
-      <SettingsSection id="feed-upstream" title="Upstream">
-        <SettingsRow
-          label="Upstream registry"
-          help="The feed never proxies or mirrors another registry: a name it does not hold answers not-found, so a public package can never stand in for one of yours."
-        >
-          <StatusPill tone="neutral" icon={null}>
-            None
-          </StatusPill>
-        </SettingsRow>
-      </SettingsSection>
       {Panel ? (
         <Panel scope={scope} eco={eco} detail={detail} save={save} />
       ) : null}
@@ -220,11 +212,10 @@ function GeneralSection({
   );
 }
 
-/** One icon per access mode (every option carries one). */
+/** One icon per access choice (every option carries one). */
 const FEED_ACCESS_ICONS: Record<string, LucideIcon> = {
   public: Globe,
-  authenticated: KeyRound,
-  licensed: BadgeCheck,
+  customers: UsersRound,
   entitled: ShieldCheck,
 };
 
@@ -240,32 +231,40 @@ function AccessSection({
   save: Save;
 }): React.ReactElement {
   const gate = useConfirmGate<string>();
+  const stored = detail.settings.accessMode;
+  // The form holds the choice (Token and Licensed are one: Customers); a save writes the stored
+  // mode, keeping the one already there (P0-47).
   const form = useAdminForm<{ accessMode: string }>({
-    values: { accessMode: detail.settings.accessMode },
+    values: { accessMode: feedAccessChoice(stored) },
     resetOn: [detail.settings.version],
     mapServerErrors: serverFieldErrors,
     onSubmit: async (v) => {
       if (
-        detail.settings.accessMode === "public" &&
+        stored === "public" &&
         v.accessMode !== "public" &&
         !(await gate.ask(v.accessMode))
       )
         throw new SaveCancelled();
-      await save({ accessMode: v.accessMode });
+      await save({ accessMode: feedAccessMode(v.accessMode, stored) });
       toast.success("Access saved");
     },
   });
-  const options = detail.accessModes
-    .filter((m) => m.available)
-    .map((m) => {
-      const Icon = FEED_ACCESS_ICONS[m.mode] ?? Globe;
-      return {
-        value: m.mode,
-        label: FEED_ACCESS_LABELS[m.mode] ?? m.mode,
-        description: FEED_ACCESS_DESCRIPTIONS[m.mode],
-        icon: <Icon aria-hidden className="size-4" />,
-      };
-    });
+  const choices = [
+    ...new Set(
+      detail.accessModes
+        .filter((m) => m.available)
+        .map((m) => feedAccessChoice(m.mode)),
+    ),
+  ];
+  const options = choices.map((choice) => {
+    const Icon = FEED_ACCESS_ICONS[choice] ?? Globe;
+    return {
+      value: choice,
+      label: FEED_ACCESS_LABELS[choice] ?? choice,
+      description: FEED_ACCESS_DESCRIPTIONS[choice],
+      icon: <Icon aria-hidden className="size-4" />,
+    };
+  });
   const chosen = form.rhf.watch("accessMode");
   const ungated = detail.ungatedPackages ?? [];
   return (
@@ -294,7 +293,7 @@ function AccessSection({
             {(field) => (
               <RadioCards<string>
                 {...field}
-                columns={options.length >= 4 ? 4 : 2}
+                columns={options.length >= 3 ? 3 : 2}
                 options={options}
               />
             )}

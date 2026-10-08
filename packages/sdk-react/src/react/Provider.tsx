@@ -7,7 +7,8 @@
 import {
   useEffect,
   useMemo,
-  useSyncExternalStore,
+  useRef,
+  useState,
   type CSSProperties,
   type ReactNode,
 } from "react";
@@ -27,6 +28,8 @@ import {
   type ServicesMap,
 } from "../core/services.js";
 import {
+  SYSTEM_FONT_STACK,
+  isBrowserDefaultFont,
   mergeTheme,
   themeVars,
   type PartialTheme,
@@ -34,7 +37,9 @@ import {
   type PolarisColorScheme,
   type PolarisResolvedScheme,
 } from "../components/theme.js";
+import { useIsomorphicLayoutEffect } from "../components/primitives/layout.js";
 import { PolarisContext } from "./context.js";
+import { DARK_QUERY, resolveSystemScheme } from "./hostScheme.js";
 
 export interface PolarisKeyProviderProps {
   /** The product slug — path-scopes every request. */
@@ -53,9 +58,12 @@ export interface PolarisKeyProviderProps {
    */
   branding?: PolarisBranding;
   /**
-   * "system" (the default) follows `prefers-color-scheme`, dark when the OS states no
-   * preference (BRAND.md §3: dark first); "dark" and "light" pin it. Persisting a user's
-   * choice is the host's job: pass it back in here.
+   * "system" (the default) matches the page the provider sits on: the first ancestor with a
+   * background decides, by its luminance; on a page that paints none, the kit is dark only when
+   * the page opts in to dark (`color-scheme` or `<meta name="color-scheme">` includes "dark") and
+   * the OS prefers dark, and light otherwise. It re-resolves when the OS preference changes or
+   * the host switches theme on `<html>` or `<body>`. "dark" and "light" pin it. Persisting a
+   * user's choice is the host's job: pass it back in here.
    */
   colorScheme?: PolarisColorScheme;
   /**
@@ -96,17 +104,36 @@ export interface PolarisKeyProviderProps {
   children?: ReactNode;
 }
 
-const LIGHT_QUERY = "(prefers-color-scheme: light)";
-
-function lightQuery(): MediaQueryList | null {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function")
-    return null;
-  return window.matchMedia(LIGHT_QUERY);
+/**
+ * Whether the host page set no font where the provider sits, so a theme whose font token is
+ * `inherit` (the neutral theme, high contrast) would inherit the browser's default serif. Read
+ * once mounted and again once the page has loaded, in case the host's stylesheet arrives late.
+ */
+function useNoHostFont(
+  root: { current: HTMLElement | null },
+  enabled: boolean,
+): boolean {
+  const [none, setNone] = useState(false);
+  useIsomorphicLayoutEffect(() => {
+    const el = root.current;
+    if (!enabled || !el || typeof getComputedStyle !== "function") {
+      setNone(false);
+      return;
+    }
+    const check = (): void =>
+      setNone(isBrowserDefaultFont(getComputedStyle(el).fontFamily));
+    check();
+    if (document.readyState === "complete") return;
+    window.addEventListener("load", check, { once: true });
+    return () => window.removeEventListener("load", check);
+  }, [root, enabled]);
+  return none;
 }
 
 function subscribeScheme(onChange: () => void): () => void {
-  const mql = lightQuery();
-  if (!mql) return () => undefined;
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function")
+    return () => undefined;
+  const mql = window.matchMedia(DARK_QUERY);
   // Safari < 14 has only the deprecated listener API.
   if (typeof mql.addEventListener === "function") {
     mql.addEventListener("change", onChange);
@@ -116,20 +143,48 @@ function subscribeScheme(onChange: () => void): () => void {
   return () => mql.removeListener(onChange);
 }
 
-const prefersLight = (): boolean => lightQuery()?.matches ?? false;
-const serverPrefersLight = (): boolean => false;
+/** The attributes a host flips to switch its own theme. */
+const THEME_ATTRIBUTES = [
+  "class",
+  "data-theme",
+  "data-color-scheme",
+  "data-mode",
+];
 
-/** The scheme `colorScheme` resolves to now, following the OS while it is "system". */
+/**
+ * The scheme `colorScheme` resolves to now. "system" matches the host page (`hostScheme.ts`),
+ * resolved before the first paint and again when the OS preference or the host's theme changes.
+ * Light until it is measured (a server render).
+ */
 function useResolvedScheme(
   requested: PolarisColorScheme,
+  root: { current: HTMLElement | null },
 ): PolarisResolvedScheme {
-  const light = useSyncExternalStore(
-    subscribeScheme,
-    prefersLight,
-    serverPrefersLight,
-  );
-  if (requested === "dark" || requested === "light") return requested;
-  return light ? "light" : "dark";
+  const [system, setSystem] = useState<PolarisResolvedScheme>("light");
+  useIsomorphicLayoutEffect(() => {
+    if (requested !== "system") return;
+    const update = (): void => setSystem(resolveSystemScheme(root.current));
+    update();
+    const unsubscribe = subscribeScheme(update);
+    let observer: MutationObserver | undefined;
+    if (
+      typeof MutationObserver === "function" &&
+      typeof document !== "undefined"
+    ) {
+      observer = new MutationObserver(update);
+      for (const el of [document.documentElement, document.body])
+        if (el)
+          observer.observe(el, {
+            attributes: true,
+            attributeFilter: THEME_ATTRIBUTES,
+          });
+    }
+    return () => {
+      unsubscribe();
+      observer?.disconnect();
+    };
+  }, [requested, root]);
+  return requested === "dark" || requested === "light" ? requested : system;
 }
 
 /** Resolve the concrete mode from the requested mode + bridge availability. */
@@ -166,7 +221,8 @@ export function PolarisKeyProvider(
     children,
   } = props;
 
-  const scheme = useResolvedScheme(colorScheme);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const scheme = useResolvedScheme(colorScheme, rootRef);
   const theme = useMemo(
     () => mergeTheme(branding ? { ...themeProp, branding } : themeProp, scheme),
     [themeProp, scheme, branding],
@@ -260,7 +316,15 @@ export function PolarisKeyProvider(
   }, [adapter, refreshIntervalSeconds]);
 
   const value = useMemo(() => ({ adapter, theme }), [adapter, theme]);
-  const vars = useMemo(() => themeVars(theme), [theme]);
+  // `inherit` takes the host's font; on a page that sets none, that would be Times, so the kit
+  // uses the platform's UI font there instead.
+  const inheritsFont = theme.tokens.fontFamily.trim() === "inherit";
+  const noHostFont = useNoHostFont(rootRef, inheritsFont);
+  const vars = useMemo(() => {
+    const v = themeVars(theme);
+    if (inheritsFont && noHostFont) v["--pk-font-family"] = SYSTEM_FONT_STACK;
+    return v;
+  }, [theme, inheritsFont, noHostFont]);
   const rootStyle = useMemo<CSSProperties>(
     () => ({ ...(vars as CSSProperties), colorScheme: scheme }),
     [vars, scheme],
@@ -288,6 +352,7 @@ export function PolarisKeyProvider(
   return (
     <PolarisContext.Provider value={value}>
       <div
+        ref={rootRef}
         data-polaris-key-root=""
         data-theme={scheme}
         data-branding={theme.branding ?? "neutral"}

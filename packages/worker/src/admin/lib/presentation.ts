@@ -27,9 +27,6 @@ import { HOSTED_ASSET_REF, parseVariants } from "../../core/hostedAssets.js";
 import { IMG_ALIASES, IMG_HOST_TYPES } from "../../core/imgHost.js";
 import { imgOrigin, imgUrl } from "../../core/imgHostname.js";
 
-/** The widths the console asks for: a 24 to 48 px tile at 1x and 2x. */
-export const CONSOLE_ICON_WIDTHS = [64, 128] as const;
-
 /** One product's icon as the console draws it. */
 export interface ProductIconView {
   /** The original, content-addressed (`https://img…/<p>/a/<sha256>`). */

@@ -4,7 +4,8 @@ import { cn } from "../lib/cn.js";
 /**
  * A neutral loading ring (BRAND.md §7.5: loaders are a ring or a bar, never the mark). With a
  * `label` it is a `status` with that name; with `label=""` it is decorative (the control around it
- * already says it is busy, e.g. a button's `aria-busy`).
+ * already says it is busy, e.g. a button's `aria-busy`). Under reduced motion (the OS setting or
+ * html[data-motion="reduce"]) it is a still ring: motion.css stops `animate-pk-spin`.
  */
 export function Spinner({
   className,

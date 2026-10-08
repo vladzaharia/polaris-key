@@ -1,16 +1,39 @@
-# UK-41 UI kits must-tier close-out: presentation accent and icon verified end to end in every must kit, `pnpm ui:report` review, `ui.*` parity rows proven, docs complete
+# UK-41 UI kits must-tier close-out (reduced matrix)
 
 | Field       | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                                                                                                                                                                                                                                                                                                                                                                     |
 | Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | Depends on  | [UK-04](UK-04-web-components.md), [UK-05](UK-05-react-kit.md), [UK-06](UK-06-electron-kit.md), [UK-07](UK-07-swiftui-ios.md), [UK-08](UK-08-swiftui-macos.md), [UK-09](UK-09-compose-android.md), [UK-10](UK-10-compose-desktop.md), [UK-11](UK-11-godot-kit.md), [UK-12](UK-12-python-qt.md), [UK-13](UK-13-python-terminal.md), [UK-14](UK-14-node-terminal.md), [UK-16](UK-16-ui-docs-scaffold.md), [HA-13](HA-13-sdks-presentation.md), [HA-14](HA-14-godot-presentation.md) |
-| Unblocks    | none                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | Role        | `pkey-implementer`                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | Plan mode   | no                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | Gates       | `pnpm ui:report`; `pnpm parity:check -- --check`; docs link check                                                                                                                                                                                                                                                                                                                                                                                                                |
 | Human input | none                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track J, SDK and UI-kit consolidation](../../../2026-10-07-dx-consolidation/tracks.md#j-sdk-and-ui-kit-consolidation)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Close-out on the reduced must matrix (elements, React, Electron, SwiftUI iOS and macOS, Compose Android and Desktop, Godot, Qt Quick, two terminals); verifies SP-33b's goldens render each kit's drop-in and api.json's ui.\* symbols.
+
+- Title: was "UI kits must-tier close-out: presentation accent and icon verified end to end in every must kit, `pnpm ui:report` review, `ui.*` parity rows proven, docs complete".
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/UK-02b.md`](../plans/UK-02b.md) §8: retires `ui.kit`, `ui.kit.manage` and `ui.kit.keyentry` once the ten rows are implemented, on the reduced matrix; checks the two terminal kits against `ui.cli` and the states their verbs reach (D12).
+
+## Owner direction (2026-10-08)
+
+- **Responsive.** Every kit screen adapts to its window, with landscape layouts where the window is landscape.
+- **Resolution matrix.** Tested at every size in [UI-KITS.md](../../../../design/UI-KITS.md) §7.1, including 200% text or zoom.
+- **Spacing and theming.** One spacing rhythm, and themable with `preset: "polaris-key" | "native"`, where `native` matches the platform.
+- **Quality bar.** Meets the bar in `.claude/agents/pkey-ux-reviewer.md` ("a GOOD UI", good use of visual space), not just no overflow.
+- **Review.** Several UX reviews (`pkey-ux-reviewer`), not one.
+- **For this package.** Confirm each must-tier kit meets the five rules above, with its matrix renders in the close-out report.
 
 ## Goal
 
@@ -52,6 +75,7 @@ Kits were built against the presentation seam before HA-13 and HA-14 landed; thi
 
 - [ ] Every must kit has the end-to-end presentation test and it passes.
 - [ ] `pnpm parity:check -- --check` passes with the `ui.*` rows proven for the must kits.
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `<StatesToHandle>` from the fixtures; a kit tab per component; a component page returns when a kit ships it; a recipes page at UK-31.
 - [ ] The green gate passes (AGENTS.md).
 
 ## Verify

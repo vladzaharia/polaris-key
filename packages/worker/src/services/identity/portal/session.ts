@@ -1,4 +1,10 @@
-import type { Env } from "../../../core/platform.js";
+import {
+  importHmacKey,
+  randomToken,
+  signHmacToken,
+  verifyHmacToken,
+  type Env,
+} from "../../../core/platform.js";
 import { ACCOUNT_SESSION_COOKIE } from "../../../core/accountCookies.js";
 
 /**
@@ -36,45 +42,6 @@ export interface PortalSessionIdentity {
   sid?: string;
 }
 
-function base64UrlEncode(bytes: Uint8Array): string {
-  let bin = "";
-  for (const b of bytes) bin += String.fromCharCode(b);
-  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function base64UrlEncodeString(s: string): string {
-  return base64UrlEncode(new TextEncoder().encode(s));
-}
-
-function base64UrlDecodeToString(s: string): string {
-  const b64 = s.replace(/-/g, "+").replace(/_/g, "/");
-  const pad = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
-  const bin = atob(pad);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return new TextDecoder().decode(out);
-}
-
-function toArrayBuffer(b: Uint8Array): ArrayBuffer {
-  return b.buffer.slice(
-    b.byteOffset,
-    b.byteOffset + b.byteLength,
-  ) as ArrayBuffer;
-}
-
-function randomToken(byteLength: number): string {
-  const buf = new Uint8Array(byteLength);
-  crypto.getRandomValues(buf);
-  return base64UrlEncode(buf);
-}
-
-function safeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
-
 /**
  * Domain-separation tag mixed into the signed message (R1-02) — the portal counterpart of
  * `admin/session.ts`'s `ADMIN_SESSION_DOMAIN`. See that file for the full rationale. The
@@ -83,10 +50,6 @@ function safeEqual(a: string, b: string): boolean {
  * administrator" was a coincidence of JSON field names.
  */
 const PORTAL_SESSION_DOMAIN = "pkey.portal.v1|";
-
-function signingInput(body: string): Uint8Array {
-  return new TextEncoder().encode(PORTAL_SESSION_DOMAIN + body);
-}
 
 /**
  * The fallback to `ADMIN_SESSION_SECRET` is kept — `wrangler.toml` documents
@@ -99,13 +62,7 @@ function signingInput(body: string): Uint8Array {
 async function sessionKey(env: Env): Promise<CryptoKey> {
   const material = env.PORTAL_SESSION_SECRET ?? env.ADMIN_SESSION_SECRET;
   if (!material) throw new Error("PORTAL_SESSION_SECRET is required");
-  return crypto.subtle.importKey(
-    "raw",
-    toArrayBuffer(new TextEncoder().encode(material)),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign", "verify"],
-  );
+  return importHmacKey(material);
 }
 
 /**
@@ -135,10 +92,11 @@ export async function issuePortalSession(
     iat,
     ...(identity.sid ? { sid: identity.sid } : {}),
   };
-  const body = base64UrlEncodeString(JSON.stringify(session));
-  const key = await sessionKey(env);
-  const sig = await crypto.subtle.sign("HMAC", key, signingInput(body));
-  const token = `${body}.${base64UrlEncode(new Uint8Array(sig))}`;
+  const token = await signHmacToken(
+    await sessionKey(env),
+    PORTAL_SESSION_DOMAIN,
+    session,
+  );
   return { token, session };
 }
 
@@ -147,26 +105,11 @@ export async function verifyPortalSession(
   token: string | null,
   now: number,
 ): Promise<PortalSession | null> {
-  if (!token) return null;
-  const dot = token.lastIndexOf(".");
-  if (dot <= 0) return null;
-  const body = token.slice(0, dot);
-  const sig = token.slice(dot + 1);
-  const key = await sessionKey(env);
-  let expected: ArrayBuffer;
-  try {
-    expected = await crypto.subtle.sign("HMAC", key, signingInput(body));
-  } catch {
-    return null;
-  }
-  if (!safeEqual(sig, base64UrlEncode(new Uint8Array(expected)))) return null;
-
-  let session: PortalSession;
-  try {
-    session = JSON.parse(base64UrlDecodeToString(body)) as PortalSession;
-  } catch {
-    return null;
-  }
+  const payload = await verifyHmacToken(token, PORTAL_SESSION_DOMAIN, () =>
+    sessionKey(env),
+  );
+  if (payload === undefined) return null;
+  const session = payload as PortalSession;
   if (!session.accountId || typeof session.exp !== "number") return null;
   if (session.exp <= now) return null;
   return session;

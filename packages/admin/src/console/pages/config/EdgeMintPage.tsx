@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   ApiError,
   type EdgeMintIdentity,
@@ -6,7 +7,6 @@ import {
   type EdgeMintRecipeFields,
   type EdgeMintRecipesResponse,
 } from "../../../api.js";
-import { invalidate } from "../../../context.js";
 import { confirmFor } from "../../../lib/actions.js";
 import { errorCopy } from "../../../lib/errorCopy.js";
 import { fromSeconds } from "../../../lib/format.js";
@@ -28,7 +28,7 @@ import { PageSkeleton } from "../../../ui/Skeleton.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
 import { Timestamp } from "../../../ui/Timestamp.js";
 import { toast } from "../../../ui/toast.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { mutate } from "../../data/mutations.js";
 import { qk } from "../../data/queries.js";
 import { codecs, Link, useLocation, useSearchParam } from "../../router.js";
@@ -171,6 +171,7 @@ function IdentityList({
  *   secrets (EMR-5).
  */
 export function EdgeMintPage({ slug }: { slug: string }): React.ReactElement {
+  const queryClient = useQueryClient();
   const mint = useEdgeMint(slug);
   const [state, setState] = useTableUrlState("edge-mint", {
     facets: ["status"],
@@ -463,7 +464,7 @@ export function EdgeMintPage({ slug }: { slug: string }): React.ReactElement {
           try {
             await mutate("revokeEdgeMintRecipe", slug, id);
           } catch (err) {
-            invalidate(qk.mint(slug));
+            void queryClient.invalidateQueries({ queryKey: qk.mint(slug) });
             throw err;
           }
           toast.success(`Revoked the approval of ${id}`, {
@@ -490,6 +491,7 @@ function ApproveDrawer({
   onClose: () => void;
   onRevoke: (id: string) => void;
 }): React.ReactElement {
+  const queryClient = useQueryClient();
   const [ack, setAck] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [stale, setStale] = React.useState(false);
@@ -534,7 +536,7 @@ function ApproveDrawer({
         // open and reload, so they approve only what they have seen (EMR-3).
         setStale(true);
         setAck(false);
-        invalidate(qk.mint(slug));
+        void queryClient.invalidateQueries({ queryKey: qk.mint(slug) });
       } else {
         setError(err);
       }

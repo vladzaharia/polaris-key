@@ -653,8 +653,9 @@ await PolarisKey.identity.sign_out()             # cancel, forget, license.deact
   `license.deactivate()` (best-effort server call, then the mandatory local wipe), so
   `state_changed` fires as for a deactivation. `sign_in_with_browser()` is the interim "Sign in
   with browser": device code with the verification page opened in the system browser. A native
-  redirect sign-in waits on the server's redirect token route (I-15); the deprecated
-  `/identity/auth/poll` route is not used.
+  redirect sign-in waits on the server's redirect token route (I-15). It polls
+  `/identity/auth/device/poll` like any device-code sign-in; the old `/identity/auth/poll` route
+  is retired and the Worker no longer serves it.
 
 - Device-code sign-in (RFC 8628) is the only native way a game finishes an identity sign-in.
   `begin_sign_in` refuses with `service-unavailable` before any request when Identity is off or,

@@ -16,8 +16,14 @@
  */
 
 import { HEADER_DEVICE } from "@polaris-key/protocol/core";
-import type { Env, Db } from "../../core/platform.js";
-import { bearer, hashKey, deleteTokenRecord } from "../../core/platform.js";
+import {
+  bearer,
+  deleteTokenRecord,
+  hashKey,
+  parseJsonStringList,
+  type Db,
+  type Env,
+} from "../../core/platform.js";
 import type { Product } from "../../core/products.js";
 import {
   errorResponse,
@@ -114,22 +120,10 @@ export function shapeLicense(license: LicenseRow) {
     activatedAt: license.activated_at,
     expiresAt: license.expires_at,
     maxOfflineDays: license.max_offline_days,
-    channels: parseJsonArray(license.channels_json),
+    channels: parseJsonStringList(license.channels_json),
     minVersion: license.min_version,
     maxVersion: license.max_version,
   };
-}
-
-function parseJsonArray(raw: string | null): string[] {
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed)
-      ? (parsed.filter((item) => typeof item === "string") as string[])
-      : [];
-  } catch {
-    return [];
-  }
 }
 
 async function activateWithKey(

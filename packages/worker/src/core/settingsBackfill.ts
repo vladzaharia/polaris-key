@@ -64,6 +64,7 @@ import {
   type ClaimKey,
   type ProductSettingRow,
 } from "./settingsClaims.js";
+import { parseJsonColumn } from "../platform/json.js";
 
 // ── The report ──────────────────────────────────────────────────────────────────────────
 
@@ -298,15 +299,6 @@ function sortKeys(value: unknown): unknown {
   return value;
 }
 
-function parseJson(json: string | null | undefined): unknown {
-  if (!json) return null;
-  try {
-    return JSON.parse(json) as unknown;
-  } catch {
-    return null;
-  }
-}
-
 /**
  * The catalog as content: everything but the document header (`apiVersion`), which a parsed
  * `.pkey/schema` keeps and a bootstrap or console publish does not. Equal content is not a
@@ -416,7 +408,7 @@ function tierView(columns: readonly unknown[]): Record<string, unknown> {
   TIER_FIELDS.forEach((f, i) => {
     view[f] =
       f === "channels"
-        ? (parseJson(columns[i] as string | null) ?? [])
+        ? (parseJsonColumn(columns[i] as string | null) ?? [])
         : columns[i];
   });
   return view;
@@ -489,7 +481,7 @@ function holdsSealed(value: unknown): boolean {
 }
 
 function payloadOf(json: string): Record<string, unknown> {
-  const parsed = parseJson(json);
+  const parsed = parseJsonColumn(json);
   return parsed && typeof parsed === "object" && !Array.isArray(parsed)
     ? (parsed as Record<string, unknown>)
     : {};
@@ -742,7 +734,7 @@ export function planBackfill(
   // ── the catalog (one claimable unit, `config.catalog`) ─────────────────────────────────
   {
     const storedCatalog = state.activeSchema
-      ? parseJson(state.activeSchema.catalog_json)
+      ? parseJsonColumn(state.activeSchema.catalog_json)
       : null;
     const claim = claimFor(state.settings, "config.catalog", now, ended);
     const cls: BackfillClass =
@@ -949,7 +941,7 @@ export function planBackfill(
     const row =
       state.settings.find((r) => r.key === def.key && r.value_json !== null) ??
       null;
-    const stored = row ? parseJson(row.value_json) : null;
+    const stored = row ? parseJsonColumn(row.value_json) : null;
     // `sensitivity: "secret"`: compared as values, shown as REDACTED.
     const shown = (v: unknown): unknown =>
       def.secret && v !== null && v !== undefined ? REDACTED : v;
@@ -1316,7 +1308,7 @@ export function stmtInsertReport(
 
 /** Parse a stored row back into its report (`null` for a row that does not parse). */
 export function reportOf(row: BackfillReportRow): BackfillReport | null {
-  const parsed = parseJson(row.report_json);
+  const parsed = parseJsonColumn(row.report_json);
   return parsed && typeof parsed === "object"
     ? (parsed as BackfillReport)
     : null;

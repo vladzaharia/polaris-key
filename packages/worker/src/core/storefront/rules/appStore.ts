@@ -787,14 +787,6 @@ export const APP_STORE_GATE: GateRuleSet<AscAllowRule> = {
 export const APP_STORE_COMPILED_GATE = compileGate(APP_STORE_GATE);
 const GATE = APP_STORE_COMPILED_GATE;
 
-/** The allow rule for one method and request path, or null. */
-export function findAllowRule(
-  method: string,
-  path: string,
-): AscAllowRule | null {
-  return GATE.find(method, path);
-}
-
 /**
  * Admit or refuse one App Store Connect request. Throws `AscWriteDenied`; returns the matched
  * rule for a write (null for an admitted read). Pure: no I/O, no token.

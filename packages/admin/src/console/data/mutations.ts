@@ -17,11 +17,10 @@
  * extra refetch is cheap, a stale security fact is not (§0.2 "the server is the truth").
  */
 
-import type { QueryKey } from "@tanstack/react-query";
+import type { QueryClient, QueryKey } from "@tanstack/react-query";
 import { api, type AdminApi, type FeedScope } from "../../api.js";
 import { SYSTEM_PRODUCT_SLUG } from "../areas/feeds/model.js";
 import { qk } from "./queries.js";
-import { queryClient } from "./queryClient.js";
 
 /** One invalidation target: a key prefix, or one exact key. */
 export interface Target {
@@ -943,10 +942,27 @@ export function invalidationFor(
   return spec ? spec.invalidates(...args) : null;
 }
 
+/**
+ * The query clients a confirmed write invalidates in: each mounted console tree's own
+ * (`ConsoleQueryProvider` binds it on mount and unbinds it on unmount). Nothing here holds a cache.
+ */
+const boundClients = new Set<QueryClient>();
+
+/** Bind `client` to the write path; returns the unbind. */
+export function bindWriteInvalidation(client: QueryClient): () => void {
+  boundClients.add(client);
+  return () => {
+    boundClients.delete(client);
+  };
+}
+
 /** Invalidate a write's declared queries. Active queries refetch; inactive ones go stale. */
 export function invalidateAfter(method: WriteMethod, args: unknown[]): void {
-  for (const t of invalidationFor(method, args) ?? []) {
-    void queryClient.invalidateQueries({ queryKey: t.key, exact: t.exact });
+  const targets = invalidationFor(method, args) ?? [];
+  for (const client of boundClients) {
+    for (const t of targets) {
+      void client.invalidateQueries({ queryKey: t.key, exact: t.exact });
+    }
   }
 }
 

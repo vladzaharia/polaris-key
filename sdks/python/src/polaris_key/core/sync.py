@@ -60,6 +60,9 @@ class DocOutcome:
     blocked: Optional[BlockedState] = None
     limit: Optional[int] = None
     deviceCount: Optional[int] = None
+    #: Why an ``error`` fetch failed: ``network-error`` (no answer), ``server-error`` (a 5xx) or
+    #: the server's own code. ``None`` for a document that arrived but failed verification.
+    code: Optional[str] = None
 
 
 _SKIPPED = DocOutcome(kind="skipped")
@@ -253,7 +256,7 @@ def _sync_document(
         return DocOutcome(kind="applied")
 
     assert isinstance(res, DocumentError)
-    return DocOutcome(kind="error")
+    return DocOutcome(kind="error", code=res.code)
 
 
 def _sync_license(deps: SyncDeps, force: bool) -> DocOutcome:

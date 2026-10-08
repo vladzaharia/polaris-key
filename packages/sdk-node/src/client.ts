@@ -229,6 +229,7 @@ export class PolarisKeyClient {
       this.tokens,
       () => this.onLicenseAcquired(),
       () => this.license.deactivate(),
+      () => this.discoveryDoc,
     );
     this.release = new ReleaseClient(
       this.core,

@@ -55,7 +55,10 @@ public class MemoryStateSlot(initial: String? = null) : StateSlot {
     }
 }
 
-/** A [StateSlot] in one file: temp + rename, so a crash leaves the old text or the new, never half. */
+/**
+ * A [StateSlot] in one file: temp + rename, so a crash leaves the old text or the new, never half.
+ * Blocking: call it off the main thread (the SDK's own callers do, SP-50).
+ */
 public class FileStateSlot(public val file: File) : StateSlot {
     override fun read(): String? = try {
         if (file.isFile) file.readText(Charsets.UTF_8) else null
@@ -67,6 +70,21 @@ public class FileStateSlot(public val file: File) : StateSlot {
         val dir = file.absoluteFile.parentFile
         if (!dir.isDirectory && !dir.mkdirs() && !dir.isDirectory) throw StoreException("could not create $dir")
         val tmp = File(dir, ".${file.name}.${UUID.randomUUID()}.tmp")
+        if (RuntimeFamily.isAndroid) {
+            // java.nio.file arrives on API 26 (the SDK's minSdk is 24); a POSIX rename replaces the
+            // target atomically, which is all ATOMIC_MOVE adds here.
+            try {
+                tmp.writeText(text, Charsets.UTF_8)
+            } catch (e: IOException) {
+                tmp.delete()
+                throw StoreException("could not write $file", e)
+            }
+            if (!tmp.renameTo(file)) {
+                tmp.delete()
+                throw StoreException("could not replace $file")
+            }
+            return
+        }
         try {
             Files.write(tmp.toPath(), text.toByteArray(Charsets.UTF_8))
             try {

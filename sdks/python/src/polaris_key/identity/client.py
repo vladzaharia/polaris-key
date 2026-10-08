@@ -31,7 +31,7 @@ from typing import Any, Callable, Dict, Optional
 import httpx
 
 from ..constants_generated import Feature
-from ..core.context import CoreContext
+from ..core.context import CoreContext, server_message_of
 from ..core.errors import PolarisError
 from ..core.token import TokenManager
 
@@ -186,7 +186,8 @@ class IdentityClient:
         if res.status_code != 200:
             raise PolarisError(
                 _error_code(res, "sign-in-unavailable"),
-                f"device sign-in could not start (status {res.status_code}).",
+                server_message_of(res) or f"device sign-in could not start (status {res.status_code}).",
+                status=res.status_code,
             )
         b = _json(res)
         if not (
@@ -251,12 +252,8 @@ class IdentityClient:
             # on the opt-in: an ordinary poll asks for the identity's credential with no bearer.
             if self._tokens.current:
                 extra["authorization"] = f"Bearer {self._tokens.current}"
+        # A 5xx raises `server-error` and no answer `network-error` (CoreContext.request).
         res = self._post("identity/auth/device/poll", body, extra)
-        if res.status_code >= 500:
-            raise PolarisError(
-                "server-error",
-                f"device sign-in poll failed with status {res.status_code}.",
-            )
         body = _json(res)
         if res.status_code == 429:
             # The Worker's own `slow_down` carries the interval; a rate limiter in front of
@@ -271,7 +268,8 @@ class IdentityClient:
         if res.status_code != 200:
             return SignInPoll(
                 status="error",
-                message=f"device sign-in poll refused (status {res.status_code}).",
+                message=server_message_of(res)
+                or f"device sign-in poll refused (status {res.status_code}).",
             )
         status = body.get("status")
         if status == "pending":
@@ -294,7 +292,7 @@ class IdentityClient:
             self._on_acquired()
             attached = body.get("attached") if body.get("attached") in ("claimed", "migrated") else None
             return SignInPoll(status="ready", identity=shown, attached=attached)
-        return SignInPoll(status="error", message="device sign-in failed.")
+        return SignInPoll(status="error", message=server_message_of(res) or "device sign-in failed.")
 
     def wait_for_sign_in(
         self,
@@ -381,8 +379,10 @@ class IdentityClient:
     ) -> SignInResult:
         """Sign in through the system browser: begin a device-code sign-in, open its
         ``verificationUriComplete`` (``webbrowser.open`` by default), and wait. The interim for
-        native hosts until the redirect-token route lands (I-15); the deprecated
-        ``/identity/auth/poll`` is never used. ``on_prompt`` sees the prompt first (show the
+        native hosts until the redirect-token route lands (I-15). It polls
+        ``/identity/auth/device/poll`` like any device-code sign-in (the old
+        ``/identity/auth/poll`` is retired; the Worker no longer serves it). ``on_prompt`` sees
+        the prompt first (show the
         code and a QR — ``polaris_key.qr.terminal(prompt.verificationUriComplete)`` — for a
         browser on another device)."""
         prompt = self.begin_sign_in(device_name, confirm_identity=confirm_identity)
@@ -447,13 +447,11 @@ class IdentityClient:
     def _post(
         self, path: str, body: Dict[str, Any], extra: Optional[Dict[str, str]] = None
     ) -> httpx.Response:
+        """One POST. Raises ``local-only``, ``network-error`` or ``server-error``
+        (:meth:`CoreContext.request`); every other answer is returned."""
         url = self._ctx.url(path)
         headers = self._ctx.headers({"content-type": "application/json", **(extra or {})})
-        self._ctx.http()  # the local-only refusal propagates as itself, not as a network error
-        try:
-            return self._ctx.request("POST", url, headers=headers, json=body)
-        except httpx.HTTPError as e:
-            raise PolarisError("network-error", str(e)) from e
+        return self._ctx.request("POST", url, headers=headers, json=body)
 
 
 def _json(res: httpx.Response) -> Dict[str, Any]:

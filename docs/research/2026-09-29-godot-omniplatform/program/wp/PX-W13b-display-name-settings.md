@@ -1,16 +1,24 @@
-# PX-W13b Display-name policy settings: `identity.reservedDisplayTerms` (platform) and `identity.displayNameApproved` (product) wired into the reserved-name check and the shared-manifest validator (rule 9)
+# PX-W13b Display-name policy on the presentation name
 
 | Field       | Value                                                                         |
 | ----------- | ----------------------------------------------------------------------------- |
 | Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase W: Worker additions)       |
 | Size        | 0.3–0.6 engineer-weeks                                                        |
 | Depends on  | [PX-W13](PX-W13-passthrough-metadata.md), [ST-04](ST-04-settings-resolver.md) |
-| Unblocks    | none                                                                          |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                        |
 | Role        | `pkey-implementer`                                                            |
 | Plan mode   | no                                                                            |
 | Gates       | rule 9 (validator option, mutation table, JSON schema); THREAT-MODEL          |
 | Human input | none                                                                          |
 | Repo        | `vladzaharia/polaris-key`                                                     |
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track F, Identity](../../../2026-10-07-dx-consolidation/tracks.md#f-identity)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Display-name policy applies to the presentation name (HA-12 resolver), not passthroughName; one reserved-names list with licensing's. Reserved display terms stay here, on the existing Platform settings Sign-in group; there is no I-31 Policies page.
+
+- Title: was "Display-name policy settings: `identity.reservedDisplayTerms` (platform) and `identity.displayNameApproved` (product) wired into the reserved-name check and the shared-manifest validator (rule 9)".
 
 ## Goal
 

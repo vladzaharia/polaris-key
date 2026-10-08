@@ -1,6 +1,6 @@
 // @pkey-feature update.content packs.revoke packs.delta.feed
 // The Swift runner for P4-13's corpus sections (plans/P4-13.md §4; P4-23), read from the
-// generator-owned mirror in `Resources/v2/`, with the same ids as the Node runner
+// checkout through `CorpusLocator`, with the same ids as the Node runner
 // (`conformance/runners/node/suites.ts`) and the Python runner:
 //
 //   feedContentCases  §2.2's content members, every case             → verifyFeed, feedContent
@@ -20,7 +20,7 @@ import XCTest
 
 final class ContentDecisionConformanceTests: XCTestCase {
     private func cases() throws -> [String: JSONValue] {
-        try XCTUnwrap(CorpusBundleLoader.load(JSONValue.self, "cases").objectValue)
+        try XCTUnwrap(CorpusLocator.load(JSONValue.self, "cases").objectValue)
     }
 
     private func trust(_ v: JSONValue?) throws -> TrustSet {
@@ -152,7 +152,7 @@ final class ContentDecisionConformanceTests: XCTestCase {
     // ── contentRows ──────────────────────────────────────────────────────────────────────────
 
     private func contentRows() throws -> [JSONValue] {
-        let m = try XCTUnwrap(CorpusBundleLoader.load(JSONValue.self, "update-matrix").objectValue)
+        let m = try XCTUnwrap(CorpusLocator.load(JSONValue.self, "update-matrix").objectValue)
         return try XCTUnwrap(m["contentRows"]?.arrayValue)
     }
 

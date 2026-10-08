@@ -61,21 +61,35 @@ public class DirectInstallDriver(
     /** A build's download URL (UpdateClient.buildUrl). */
     private val buildUrl: suspend (version: String, buildId: String) -> String?,
     private val download: BuildDownload,
-    /** The app-private directory the APK is downloaded into. */
-    private val dir: File,
+    /** The app-private directory the APK is downloaded into; resolved on first use (SP-50). */
+    directory: () -> File,
     private val options: InstallOptions = InstallOptions(),
     /** Where `update_downloaded` and `update_applied` are journaled (notes/SDK-PARITY-PASS.md §3.13); null: nowhere. */
     private val events: () -> UpdateEventJournal? = { null },
     /** The running version, the events' `fromRelease`. */
     private val runningVersion: String? = null,
 ) : InstallDriver {
+    public constructor(
+        sessions: ApkSessions,
+        records: suspend (String) -> ReleaseRecordDoc,
+        buildUrl: suspend (version: String, buildId: String) -> String?,
+        download: BuildDownload,
+        dir: File,
+        options: InstallOptions = InstallOptions(),
+        events: () -> UpdateEventJournal? = { null },
+        runningVersion: String? = null,
+    ) : this(sessions, records, buildUrl, download, { dir }, options, events, runningVersion)
+
+    private val dir: File by lazy(directory)
+
     /** The last installer outcome (every refusal reason, the session), or null. */
     @Volatile public var lastOutcome: InstallOutcome? = null
         private set
 
-    override suspend fun install(check: UpdateCheck): InstallResult {
+    /** Main-safe: the download, the hash, the journal and the session run on `Dispatchers.IO` (SP-50). */
+    override suspend fun install(check: UpdateCheck): InstallResult = withContext(Dispatchers.IO) {
         val d = check.decision
-        return when {
+        when {
             d is UpdateDecision.Binary && d.method == NATIVE -> installApk(d)
             d is UpdateDecision.Binary -> InstallResult.Declined("binary ${d.method}: offer UpdateClient.buildUrl as a download link")
             d is UpdateDecision.Store -> InstallResult.Declined("a store updates this install${d.listingUrl?.let { ": $it" } ?: ""}")

@@ -73,7 +73,9 @@ import {
   listingScreenshotUrls,
 } from "@polaris-key/manifest";
 import {
+  hexEncode,
   isAllowedStorageHost,
+  sha256,
   type Db,
   type Env,
 } from "../../../core/platform.js";
@@ -189,13 +191,7 @@ export function mediaSourceUrl(raw: unknown): URL | null {
 
 /** The `v` a media URL carries: the first 16 hex digits of the source URL's SHA-256. */
 export async function mediaVersion(source: string): Promise<string> {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(source),
-  );
-  return [...new Uint8Array(digest).slice(0, 8)]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+  return hexEncode((await sha256(source)).subarray(0, 8));
 }
 
 /** The same-origin URL of a product's art (for the library), or `null` when none would serve. */

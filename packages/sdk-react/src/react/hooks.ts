@@ -31,7 +31,7 @@ import {
   type ImportBundleResult,
 } from "../core/index.js";
 import { readEntitled, readEntitledChannels } from "../core/adapter.js";
-import { Feature } from "../constants.generated.js";
+import { ErrorCode, Feature } from "../constants.generated.js";
 import { PolarisContext, type PolarisContextValue } from "./context.js";
 import type { PolarisTheme } from "../components/theme.js";
 
@@ -418,15 +418,34 @@ export interface UseLicenseGate {
   retry: () => Promise<void>;
 }
 
+/**
+ * A refusal of something the person did on the sign-in card: a key they typed (an activation
+ * outcome, the device limit among them) or a sign-in they started. The card shows it under the
+ * control they used, with "Replace a device" when the refusal carries the portal link, and they
+ * act on it there; the error screen's Try again re-reads the state, which fixes neither.
+ */
+export function isSignInRefusal(error: PolarisError): boolean {
+  return (
+    error.activation !== undefined ||
+    error.code === ErrorCode.signInFailed ||
+    error.code === ErrorCode.signInExpired ||
+    error.code === ErrorCode.keyEntryUnsupported
+  );
+}
+
 export function screenFor(state: PolarisState): GateScreen {
   if (state.phase === "loading") return "loading";
   // A product that does not run the license service has no gate to show and must not be held
   // hostage by one (D-08): children render, no chrome. This precedes the error branch —
   // an unreachable licensing service is not an error for a product that has none.
   if (state.status === "not-applicable") return "not-applicable";
+  // A failure to load the state (network, a missing bridge) is the error screen. A refused key
+  // or sign-in is not: the gate stays on the sign-in card, which shows it (`isSignInRefusal`).
   if (
-    (state.error.license ?? state.error.identity) &&
-    state.status === "needs-activation"
+    state.status === "needs-activation" &&
+    [state.error.license, state.error.identity].some(
+      (e) => e && !isSignInRefusal(e),
+    )
   )
     return "error";
   switch (state.status) {

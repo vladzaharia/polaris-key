@@ -32,6 +32,7 @@ dependencies {
     testImplementation(testFixtures(project(":core")))
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.okhttp.mockwebserver)
 }
 
 publishing {

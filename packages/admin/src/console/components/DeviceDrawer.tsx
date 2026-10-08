@@ -21,7 +21,6 @@ import { Timestamp } from "../../ui/Timestamp.js";
 import { toast } from "../../ui/toast.js";
 import { mutate } from "../data/mutations.js";
 import { qk } from "../data/queries.js";
-import { queryClient } from "../data/queryClient.js";
 import { EntityLink } from "./EntityLink.js";
 
 /** Read one device through the product route: it reaches licensed and license-free devices. */
@@ -60,14 +59,11 @@ export function DeviceDrawer({
   now?: number;
 }): React.ReactElement {
   const open = !!deviceId;
-  const query = useQuery(
-    {
-      queryKey: qk.device(slug, deviceId ?? ""),
-      queryFn: () => fetchDevice(slug, deviceId!),
-      enabled: open,
-    },
-    queryClient,
-  );
+  const query = useQuery({
+    queryKey: qk.device(slug, deviceId ?? ""),
+    queryFn: () => fetchDevice(slug, deviceId!),
+    enabled: open,
+  });
   const [confirm, setConfirm] = React.useState<"deauthorize" | "reset" | null>(
     null,
   );

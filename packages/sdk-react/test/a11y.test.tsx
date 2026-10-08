@@ -29,6 +29,7 @@ import {
   okBridgeState,
   services,
 } from "./fixtures.js";
+import { keyField } from "./keyField.js";
 
 afterEach(cleanup);
 
@@ -85,11 +86,14 @@ describe("LicenseGate a11y — dialog roles + accessible names", () => {
         container.querySelector('[data-polaris-gate="revoked"]'),
       ).toBeTruthy(),
     );
-    // Accessible name comes from the title via aria-labelledby → "License revoked".
-    // getByRole's `name` option uses the native accessible-name computation.
-    expect(
-      within(container).getByRole("alertdialog", { name: "License revoked" }),
-    ).toBeTruthy();
+    // Accessible name comes from the title via aria-labelledby → "Signed out" (core
+    // gate.revoked.title). getByRole's `name` option uses the native accessible-name computation.
+    const dialog = within(container).getByRole("alertdialog", {
+      name: "Signed out",
+    });
+    // Not a dead end: the sign-in methods sit under the title, and the first takes focus.
+    const oidc = within(dialog).getByRole("button", { name: /^sign in$/i });
+    await waitFor(() => expect(document.activeElement).toBe(oidc));
   });
 
   it("the version-block screen is an alertdialog with a named retry button", async () => {
@@ -190,7 +194,8 @@ describe("LicenseGate a11y — grace banner is a status region", () => {
     );
     const status = within(container).getByRole("status");
     expect(status.getAttribute("aria-live")).toBe("polite");
-    expect(status.textContent).toContain("Offline grace");
+    expect(status.getAttribute("aria-label")).toBe("Offline grace");
+    expect(status.textContent).toMatch(/^Offline · /);
     // It's a status, not a dialog — the app stays usable underneath.
     expect(within(container).getByTestId("app")).toBeTruthy();
     expect(container.querySelector('[role="alertdialog"]')).toBeNull();
@@ -221,7 +226,8 @@ describe("LicenseGate a11y — loading is a polite status, not a dialog", () => 
         container.querySelector('[data-polaris-gate="loading"]'),
       ).toBeTruthy(),
     );
-    const status = within(container).getByRole("status");
+    // Nothing for the first 300 ms, then the status.
+    const status = await waitFor(() => within(container).getByRole("status"));
     expect(status.textContent).toContain("Checking your license");
     expect(container.querySelector('[role="alertdialog"]')).toBeNull();
     // Let the pending load settle inside act() so the post-loading state update is flushed.
@@ -256,9 +262,7 @@ describe("PolarisLogin a11y — keyboard + labels + alerts", () => {
       expectServices: services(),
     });
     const { container } = renderLogin(adapter);
-    const input = (await waitFor(() =>
-      container.querySelector("[data-polaris-key-input]"),
-    )) as HTMLInputElement;
+    const input = await keyField(container);
     // The input has an associated <label> → accessible by its name.
     const labelled = within(container).getByLabelText(/license key/i);
     expect(labelled).toBe(input);
@@ -280,9 +284,7 @@ describe("PolarisLogin a11y — keyboard + labels + alerts", () => {
       expectServices: services(),
     });
     const { container } = renderLogin(adapter);
-    const input = (await waitFor(() =>
-      container.querySelector("[data-polaris-key-input]"),
-    )) as HTMLInputElement;
+    const input = await keyField(container);
     fireEvent.change(input, { target: { value: "bad" } });
     fireEvent.submit(input.closest("form") as HTMLFormElement);
     const alert = await waitFor(() => within(container).getByRole("alert"));
@@ -309,10 +311,11 @@ describe("PolarisLogin a11y — keyboard + labels + alerts", () => {
     )) as HTMLButtonElement;
     fireEvent.click(oidc);
     await waitFor(() => expect(oidc.getAttribute("aria-busy")).toBe("true"));
-    // It keeps an accessible name even while the busy glyph shows (aria-label is set).
-    expect(
-      within(container).getByRole("button", { name: /continue to sign in/i }),
-    ).toBe(oidc);
+    // It keeps its label and accessible name while the busy ring shows.
+    expect(within(container).getByRole("button", { name: /^sign in$/i })).toBe(
+      oidc,
+    );
+    expect(oidc.textContent).toBe("Sign in");
     adapter.dispose();
   });
 });
@@ -430,7 +433,7 @@ describe("MessageScreen — the promoted a11y contract", () => {
 // ── Per-service busy: the scalar that used to grey out the wrong control ──────────────────
 
 describe("per-service busy scoping", () => {
-  it("PolarisLogout disables on identity busy, not on a config refresh", async () => {
+  it("PolarisLogout is busy on identity busy, not on a config refresh", async () => {
     const bridge = makeFakeBridge(okBridgeState());
     // A refresh that never settles keeps license+config busy indefinitely.
     bridge.refresh = () => new Promise(() => {});
@@ -450,7 +453,7 @@ describe("per-service busy scoping", () => {
     const btn = (await waitFor(() =>
       within(container).getByRole("button", { name: /sign out/i }),
     )) as HTMLButtonElement;
-    expect(btn.disabled).toBe(false);
+    expect(btn.getAttribute("aria-busy")).toBeNull();
 
     // A document refresh is in flight — under the old single `busy` scalar this greyed the
     // sign-out button out, which is a licensing detail reaching into an unrelated control.
@@ -458,14 +461,15 @@ describe("per-service busy scoping", () => {
       void adapter.refresh();
     });
     expect(adapter.snapshot().busy.license).toBe(true);
-    expect(btn.disabled).toBe(false);
+    expect(btn.getAttribute("aria-busy")).toBeNull();
 
-    // Its OWN service being busy does disable it.
+    // Its OWN service being busy makes it busy: announced, still focusable (never the native
+    // disabled attribute, which would drop focus to <body>).
     await act(async () => {
       void adapter.signOut();
     });
-    await waitFor(() => expect(btn.disabled).toBe(true));
-    expect(btn.getAttribute("aria-busy")).toBe("true");
+    await waitFor(() => expect(btn.getAttribute("aria-busy")).toBe("true"));
+    expect(btn.disabled).toBe(false);
     // It keeps its accessible name throughout.
     expect(within(container).getByRole("button", { name: /sign out/i })).toBe(
       btn,

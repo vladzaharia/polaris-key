@@ -122,15 +122,20 @@ public class SecureStoreException(public val reason: String, message: String, ca
  * clear.
  */
 public class SecureStore(
-    private val dir: File,
+    /** The blob directory, resolved on first use: building a store touches no file (SP-50). */
+    directory: () -> File,
     public val product: String,
     private val keys: KeyProvider,
 ) {
+    public constructor(dir: File, product: String, keys: KeyProvider) : this({ dir }, product, keys)
+
     public constructor(context: Context, product: String) : this(
-        File(context.noBackupFilesDir, "pkey/${checkName(product)}/keystore"),
+        { File(context.noBackupFilesDir, "pkey/${checkName(product)}/keystore") },
         product,
         AndroidKeyStoreProvider(context),
     )
+
+    private val dir: File by lazy(directory)
 
     init {
         checkName(product)

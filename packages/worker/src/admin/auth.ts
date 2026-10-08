@@ -28,7 +28,10 @@ import {
 } from "../core/singleUse.js";
 import { adminOidcConfig } from "../platformOidc.js";
 import { brandedHtmlSecurityHeaders } from "../securityHeaders.js";
-import { escapeHtml, renderBrandPage } from "../core/brandHtml.js";
+import { renderBrandPage } from "../core/brandHtml.js";
+import { escapeHtml } from "../platform/html.js";
+import { pkcePair } from "../platform/pkce.js";
+import { randomToken } from "../platform/random.js";
 import { hasAnyAdminGrant } from "./authz.js";
 import {
   STEP_UP_MAX_AGE_SECONDS,
@@ -108,32 +111,6 @@ export interface IdTokenVerifier {
     flow: FlowRecord;
     env: Env;
   }): Promise<SessionIdentity | null>;
-}
-
-// ── base64url / PKCE ──────────────────────────────────────────────────────────
-function b64url(bytes: Uint8Array): string {
-  let s = "";
-  for (const b of bytes) s += String.fromCharCode(b);
-  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-function toAB(b: Uint8Array): ArrayBuffer {
-  return b.buffer.slice(
-    b.byteOffset,
-    b.byteOffset + b.byteLength,
-  ) as ArrayBuffer;
-}
-function randomBytes(n: number): Uint8Array {
-  const a = new Uint8Array(n);
-  crypto.getRandomValues(a);
-  return a;
-}
-async function pkce(): Promise<{ verifier: string; challenge: string }> {
-  const verifier = b64url(randomBytes(32));
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    toAB(new TextEncoder().encode(verifier)),
-  );
-  return { verifier, challenge: b64url(new Uint8Array(digest)) };
 }
 
 function mapClaims(payload: Record<string, unknown>): SessionIdentity {
@@ -250,9 +227,9 @@ export async function handleAdminLogin(
     );
   const cfg = adminOidcConfig(env);
   if (!cfg) return htmlError(500, "Admin sign-in is not configured.");
-  const state = b64url(randomBytes(16));
-  const nonce = b64url(randomBytes(16));
-  const { verifier, challenge } = await pkce();
+  const state = randomToken(16);
+  const nonce = randomToken(16);
+  const { verifier, challenge } = await pkcePair();
   const url = new URL(req.url);
   const redirectUri = `${url.origin}/manage/callback`;
   const returnTo = sanitizeReturnTo(url.searchParams.get("returnTo"));

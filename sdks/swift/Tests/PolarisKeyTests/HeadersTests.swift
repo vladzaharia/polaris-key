@@ -1,6 +1,6 @@
 // @pkey-feature core.headers
 // Client metadata header values (WIRE-CONTRACT-V3 §5.2), driven off `conformance/corpus/v2`'s
-// `headers.json`, mirrored into this bundle's `Resources/v2/` by `pnpm gen:corpus`.
+// `headers.json`, read from the checkout through `CorpusLocator`.
 //
 // Every row goes through `canonicalPlatform` / `canonicalArch`; the generated
 // `PLATFORM_SPELLINGS` / `ARCH_SPELLINGS` must equal the map derived from the non-null rows, with
@@ -25,7 +25,7 @@ final class HeadersTests: XCTestCase {
     }
 
     private func load() throws -> HeadersCorpus {
-        try CorpusBundleLoader.load(HeadersCorpus.self, "headers")
+        try CorpusLocator.load(HeadersCorpus.self, "headers")
     }
 
     /// ASCII-only folding, restated so the runner does not lean on the code it checks.
