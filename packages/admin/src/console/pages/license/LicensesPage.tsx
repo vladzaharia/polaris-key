@@ -254,7 +254,7 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
                 row.original.batchId ? (
                   <Link
                     to={r.licenseBatch(slug, row.original.batchId)}
-                    className="inline-block max-w-[6.5rem] truncate rounded-full border border-border px-2 py-0.5 text-xs text-fg hover:border-border-strong"
+                    className="inline-block max-w-[5rem] truncate rounded-full border border-border px-2 py-0.5 text-xs text-fg hover:border-border-strong"
                     title={batchLabel(row.original.batchId)}
                   >
                     {batchLabel(row.original.batchId)}
