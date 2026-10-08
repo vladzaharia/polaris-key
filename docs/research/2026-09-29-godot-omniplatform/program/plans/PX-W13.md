@@ -2,6 +2,8 @@
 
 ## Owner decisions (2026-10-05)
 
+**Amended by [`plans/I-27.md`](I-27.md) (approved 2026-10-08)** for the packages it names; where they differ, I-27 wins.
+
 **Approved; every recommendation in "Open questions for the owner" accepted as written.** The
 owner approved nine plans together (U-01, PX-W3, LX-01, I-24, I-09, PX-W8, PX-W9, PX-W13 and
 PX-W17). These cross-plan overrides win over any text below that says otherwise:

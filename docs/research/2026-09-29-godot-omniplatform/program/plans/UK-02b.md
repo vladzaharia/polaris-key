@@ -1,6 +1,6 @@
 # UK-02b plan: the UI state matrix and the ten `ui.*` parity rows, for the must-tier kits
 
-> **Awaiting approval.** This is the execution plan for [`plans/UK-02.md`](UK-02.md) §3.5 and §4
+> **Approved (2026-10-08)** by the lead under delegated authority. This is the execution plan for [`plans/UK-02.md`](UK-02.md) §3.5 and §4
 > (approved 2026-10-05), re-checked against `main` @`e4a527fee`. It is amended for four things:
 > owner decision 6 of the DX consolidation (2026-10-07: the must-tier kits ship as packages, the
 > framework kits become recipes and the long tail is parked); the one sign-in form
