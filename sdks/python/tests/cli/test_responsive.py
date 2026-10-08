@@ -165,13 +165,29 @@ def test_a_url_breaks_after_slash_and_before_query_marks_and_keeps_every_charact
     assert break_pieces("key.plrs.im/device?a=1&b=2", "url", 12) == ["key.plrs.im/", "device", "?a=1", "&b=2"]
 
 
-def test_a_url_that_does_not_fit_starts_its_own_line_and_every_piece_keeps_the_link() -> None:
+def test_a_url_that_does_not_fit_starts_its_own_line_with_its_lead_in_and_keeps_the_link() -> None:
     link = Span(shown(LONG["url"]), ("link",), LONG["url"], "data:url", True)
-    rows = wrap([Span("go to "), link, Span(" and enter this code.")], 37)
-    assert "".join(s.text for s in rows[0]) == "go to"
+    rows = wrap([Span("On any phone or computer, go to "), link, Span(" and enter this code.")], 37)
+    assert "".join(s.text for s in rows[0]).rstrip() == "On any phone or computer,"
+    # The short lead-in "go to" moves onto the URL's line.
+    assert "".join(s.text for s in rows[1]).startswith("go to ")
     pieces = [s for r in rows for s in r if s.link]
     assert "".join(s.text for s in pieces) == shown(LONG["url"]) and all(s.link == LONG["url"] for s in pieces)
     assert not any("…" in s.text for r in rows for s in r)
+
+
+def test_a_keep_unit_moves_whole_and_the_separator_before_it_is_dropped() -> None:
+    def t(spans, w):
+        return ["".join(s.text for s in l).rstrip() for l in wrap(spans, w)]
+
+    assert t([Span("License   "), Span("Pro license"), Span(" · ", ("muted",)), Span("mara@fennick.studio", unit=True)], 37) == [
+        "License   Pro license",
+        "mara@fennick.studio",
+    ]
+    assert t([Span("Signed in as "), Span("Mara Fennick", unit=True), Span(" · ", ("muted",)), Span("mara@fennick.studio", unit=True)], 37) == [
+        "Signed in as Mara Fennick",
+        "mara@fennick.studio",
+    ]
 
 
 def test_a_code_wraps_after_its_hyphens_only_where_the_line_is_too_narrow() -> None:

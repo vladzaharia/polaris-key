@@ -68,6 +68,10 @@ class Span:
     src: str = "space"
     #: Never broken across lines (a key, a user code, a URL).
     nobreak: bool = False
+    #: Part of one keep-unit (a name, an email, a date, "3 of 3", "38 MB", a key and its label): a
+    #: maximal run of adjacent ``unit`` spans moves to the next line whole and breaks at its own
+    #: spaces only when wider than the line. A non-``unit`` span (a separator) ends a run.
+    unit: bool = False
 
     def __post_init__(self) -> None:
         if self.text and _CONTROLS.search(self.text):
@@ -210,7 +214,7 @@ def _fragments(spans: Sequence[Span]) -> Iterable[Tuple[str, Span]]:
                 while j < len(text) and text[j] != " " and _char_width(text[j]) != 2:
                     j += 1
                 kind = "word"
-            yield kind, Span(text[i:j], span.roles, span.link, span.src)
+            yield kind, Span(text[i:j], span.roles, span.link, span.src, span.nobreak, span.unit)
             i = j
 
 
@@ -250,10 +254,12 @@ def _is_piece(word: Sequence[Span]) -> bool:
 
 
 def _groups(spans: Sequence[Span]) -> List[Tuple[str, List[List[Span]], int]]:
-    """Prose words, and each URL or code as one group of pieces (with its whole width), in order.
-    The spaces after a URL or a code stay with its last piece."""
+    """Prose words, each URL or code as one ``group`` of pieces, and each run of ``unit`` spans as
+    one ``unit`` group of words, in order. The spaces after a URL or a code stay with its last
+    piece."""
     out: List[Tuple[str, List[List[Span]], int]] = []
     run: List[Span] = []
+    unit: List[Span] = []
 
     def flush() -> None:
         if run:
@@ -264,13 +270,25 @@ def _groups(spans: Sequence[Span]) -> List[Tuple[str, List[List[Span]], int]]:
                     out.append(("word", [w], 0))
             run.clear()
 
+    def flush_unit() -> None:
+        if unit:
+            words = _tokens(unit)
+            out.append(("unit", words, cell_len("".join(s.text for s in unit).rstrip(" "))))
+            unit.clear()
+
     for span in spans:
+        if span.unit and span.src not in BREAKS and span.text:
+            flush()
+            unit.append(span)
+            continue
+        flush_unit()
         if span.src in BREAKS and span.text:
             flush()
             out.append(("group", [[span]], cell_len(span.text.strip(" "))))
         else:
             run.append(span)
     flush()
+    flush_unit()
     return out
 
 
@@ -284,22 +302,72 @@ def wrap(spans: Sequence[Span], width: int, *, ellipsis: str = "…") -> List[Li
     used = 0
 
     def trim(line: List[List[Span]]) -> None:
-        # A separator ("·") divides items on one line: a line never ends with one.
-        while len(line) > 1 and "".join(s.text for s in line[-1]).strip(" ") == "·":
+        # A separator ("·") divides items on one line, and a line never ends with one or with a
+        # trailing space word left where a separator or unit moved away.
+        while len(line) > 1 and "".join(s.text for s in line[-1]).strip(" ") in ("·", ""):
             line.pop()
 
     def new_line() -> None:
         trim(lines[-1])
         lines.append([])
 
+    def only_whitespace(line: List[List[Span]]) -> bool:
+        return all("".join(s.text for s in w).strip(" ") == "" for w in line)
+
+    def pull_lead_in(line: List[List[Span]], first: int) -> List[List[Span]]:
+        # Pull a short lead-in ("go to") off the previous line onto a URL's own line, when it fits.
+        moved: List[List[Span]] = []
+        w = first
+        while line:
+            word = line[-1]
+            text = "".join(s.text for s in word)
+            if any(s.src in BREAKS or s.unit for s in word) or text.strip(" ") == "":
+                break
+            ww = cell_len(text.rstrip(" "))
+            if ww > 6 or len(moved) >= 2 or w + ww + 1 > width:
+                break
+            moved.insert(0, line.pop())
+            w += ww + 1
+        trim(line)
+        return moved
+
     for kind, words, total in _groups(spans):
+        if kind == "unit":
+            # A unit that does not fit the rest of the line moves to the next line whole; wider
+            # than a line, it falls through to break at its own spaces.
+            if total <= width:
+                if lines[-1] and used + total > width:
+                    new_line()
+                    used = 0
+                for w in words:
+                    lines[-1].append(w)
+                    used += _word_len(w)
+                continue
+            kind = "words-run"
+        if kind in ("word", "words-run"):
+            for w in words:
+                n = _word_len(w, trailing=False)
+                if n > width and len(w) == 1 and w[0].nobreak:
+                    s0 = w[0]
+                    w = [Span(middle(s0.text, width, ellipsis=ellipsis), s0.roles, s0.link, s0.src, True)]
+                    n = _word_len(w, trailing=False)
+                if lines[-1] and used + n > width:
+                    new_line()
+                    used = 0
+                lines[-1].append(w)
+                used += _word_len(w)
+            continue
         if kind == "group":
             span = words[0][0]
             tail = words[0][1:]  # the spaces after it
-            if lines[-1] and used + total > width:
+            pieces = break_pieces(span.text, BREAKS[span.src], width)
+            if lines[-1] and used + total > width and not only_whitespace(lines[-1]):
+                lead = pull_lead_in(lines[-1], cell_len(pieces[0]))
                 new_line()
                 used = 0
-            pieces = break_pieces(span.text, BREAKS[span.src], width)
+                for w in lead:
+                    lines[-1].append(w)
+                    used += _word_len(w)
             for i, piece in enumerate(pieces):
                 word: List[Span] = [Span(piece, span.roles, span.link, span.src, True)]
                 if i == len(pieces) - 1:
@@ -311,21 +379,13 @@ def wrap(spans: Sequence[Span], width: int, *, ellipsis: str = "…") -> List[Li
                 lines[-1].append(word)
                 used += _word_len(word)
             continue
-        w = words[0]
-        n = _word_len(w, trailing=False)
-        if n > width and len(w) == 1 and w[0].nobreak:
-            s0 = w[0]
-            w = [Span(middle(s0.text, width, ellipsis=ellipsis), s0.roles, s0.link, s0.src, True)]
-            n = _word_len(w, trailing=False)
-        if lines[-1] and used + n > width:
-            new_line()
-            used = 0
-        lines[-1].append(w)
-        used += _word_len(w)
     # Orphan check: move one word down when the last line holds a single short word (never a piece
     # of a URL or a code: moving one would put a space inside it).
-    if len(lines) >= 2 and len(lines[-1]) == 1 and len(lines[-2]) > 2 and not _is_piece(lines[-1][0]):
-        if not _is_piece(lines[-2][-1]):
+    def _is_unit(word: Sequence[Span]) -> bool:
+        return any(s.unit for s in word)
+
+    if len(lines) >= 2 and len(lines[-1]) == 1 and len(lines[-2]) > 2 and not _is_piece(lines[-1][0]) and not _is_unit(lines[-1][0]):
+        if not _is_piece(lines[-2][-1]) and not _is_unit(lines[-2][-1]):
             moved = lines[-2].pop()
             if sum(_word_len(x) for x in [moved] + lines[-1]) <= width:
                 lines[-1].insert(0, moved)

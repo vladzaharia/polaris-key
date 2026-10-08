@@ -192,7 +192,9 @@ def test_wrap_breaks_cjk_between_characters_and_never_inside_a_code() -> None:
     assert all(cell_len("".join(s.text for s in r)) <= 20 for r in rows) and len(rows) > 1
     code = Span("WDJB-MJHT", (), None, "data:code", True)
     rows = wrap([Span("go to the page and enter "), code], 12)
-    assert any(s.text == "WDJB-MJHT" for r in rows for s in r)
+    # The code is never split; it reads whole across the wrapped lines.
+    assert "WDJB-MJHT" in "".join(s.text for r in rows for s in r)
+    assert all(cell_len("".join(s.text for s in r)) <= 12 for r in rows)
 
 
 KIT_SOURCES = sorted((REPO / "sdks/python/src/polaris_key/ui/terminal").glob("*.py")) + sorted(
