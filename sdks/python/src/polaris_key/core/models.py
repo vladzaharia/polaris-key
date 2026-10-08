@@ -235,7 +235,8 @@ class ManagedEntry:
     """
 
     state: ManagementState
-    value: JSONValue
+    #: Never in the ``repr``: a managed value may be a secret.
+    value: JSONValue = field(repr=False)
     updated_at: int = 0
 
     @staticmethod
@@ -432,7 +433,8 @@ class ConfigDoc:
     graceUntil: int
     schemaVersion: int
     config: Dict[str, ManagedEntry] = field(default_factory=dict)
-    secrets: Dict[str, ManagedEntry] = field(default_factory=dict)
+    #: Managed secrets; never in the ``repr`` (secrets are never enumerated).
+    secrets: Dict[str, ManagedEntry] = field(default_factory=dict, repr=False)
 
     @staticmethod
     def from_dict(d: Dict[str, Any]) -> Optional["ConfigDoc"]:

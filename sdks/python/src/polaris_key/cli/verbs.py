@@ -40,7 +40,6 @@ import sys
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
-from ..core.caps import Unsupported
 from . import core
 from .core import CommandResult, result_of
 
@@ -243,6 +242,8 @@ def doctor(client: Any, ns: Dict[str, Any]) -> CommandResult:
     gate = client.status().status
     rows.append(("Gate", str(gate)))
     rows.append(("Supports:", ""))
+    from ..core.caps import Unsupported
+
     supports: Dict[str, Any] = {}
     for f in FEATURE_VALUES:
         s = client.supports(f)

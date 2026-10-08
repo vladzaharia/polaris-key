@@ -80,7 +80,10 @@ def test_the_capability_map_is_a_copy_not_the_shared_constant() -> None:
 def test_services_from_list_and_copy_cover_every_slug() -> None:
     assert set(services_from_list(["license"])) == set(SERVICE_SLUGS)
     assert set(copy_services({})) == set(SERVICE_SLUGS)
-    assert services_from_list(["nope"])["license"]["enabled"] is False
+    # An unknown slug is refused, never dropped (a dropped "licence" turned License off).
+    with pytest.raises(PolarisError) as exc:
+        services_from_list(["nope"])
+    assert exc.value.code == "invalid-options"
 
 
 # ── discovery, once loaded, wins ────────────────────────────────────────────────────

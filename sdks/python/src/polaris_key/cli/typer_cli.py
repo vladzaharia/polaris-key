@@ -18,6 +18,7 @@ from . import core, verbs
 def _options(product, version, base_url, config_dir, trust, service) -> core.ClientOptions:
     try:
         parsed = core.parse_trust(trust)
+        services = core.parse_services(list(service) if service else None)
     except ValueError as e:
         raise typer.BadParameter(str(e))
     return core.ClientOptions(
@@ -26,7 +27,7 @@ def _options(product, version, base_url, config_dir, trust, service) -> core.Cli
         trust=parsed,
         base_url=base_url,
         config_dir=config_dir,
-        expected_services=core.parse_services(list(service) if service else None),
+        expected_services=services,
     )
 
 

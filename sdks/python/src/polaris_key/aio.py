@@ -25,19 +25,26 @@ Every sub-client attribute of the sync client is mirrored: its methods become co
 the same names and arguments (``await client.license.activate_with_key(key)``), its plain
 attributes are read through. ``client.sync_client`` is the underlying sync client, for code
 that wants both.
+
+A forgotten ``await`` fails loudly. A coroutine object is truthy, so ``if client.is_licensed():``
+used to pass on every device, licensed or not. Each mirrored call returns a coroutine whose
+``bool()`` raises :class:`TypeError` naming the fix; awaiting it, ``asyncio.create_task``,
+``gather`` and ``wait_for`` work as before.
 """
 
 from __future__ import annotations
 
 import asyncio
+import collections.abc
 import functools
-from typing import Any, AsyncIterator, Callable, Iterable, Optional
+import inspect
+from typing import Any, AsyncIterator, Callable, Generator, Iterable, Optional
 
 from .client import PolarisKeyClient
 from .core.errors import PolarisError
 from .identity.client import SignInPrompt, SignInResult, _poll_delay
 
-__all__ = ["AsyncPolarisKeyClient", "AsyncClient"]
+__all__ = ["AsyncPolarisKeyClient", "AsyncClient", "GuardedCoroutine"]
 
 #: Methods that are cheap, pure reads or registrations and stay synchronous.
 _SYNC = frozenset(
@@ -60,12 +67,56 @@ _SYNC = frozenset(
 )
 
 
+#: ``inspect.markcoroutinefunction`` (3.12+), so the mirrored methods still read as coroutine
+#: functions to frameworks that check.
+_mark = getattr(inspect, "markcoroutinefunction", None)
+
+
 async def _to_thread(fn: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
     to_thread = getattr(asyncio, "to_thread", None)
     if to_thread is not None:
         return await to_thread(fn, *args, **kwargs)
     loop = asyncio.get_running_loop()  # pragma: no cover - 3.8
     return await loop.run_in_executor(None, functools.partial(fn, *args, **kwargs))
+
+
+class GuardedCoroutine(collections.abc.Coroutine):
+    """A coroutine that refuses to be used as a condition.
+
+    ``if client.is_licensed():`` without ``await`` tests the coroutine OBJECT, which is always
+    truthy: the gate passed on a device that was never activated. :meth:`__bool__` raises
+    :class:`TypeError` instead (and closes the coroutine, so no "never awaited" warning follows).
+    Everything else delegates to the wrapped coroutine, and :func:`asyncio.iscoroutine` is true
+    for it, so ``await``, ``asyncio.create_task``, ``gather``, ``wait_for`` and ``asyncio.run``
+    accept it unchanged."""
+
+    __slots__ = ("_coro", "_name")
+
+    def __init__(self, coro: Any, name: str) -> None:
+        self._coro = coro
+        self._name = name
+
+    def __await__(self) -> Generator[Any, None, Any]:
+        return self._coro.__await__()
+
+    def send(self, value: Any) -> Any:
+        return self._coro.send(value)
+
+    def throw(self, *args: Any) -> Any:  # type: ignore[override]
+        return self._coro.throw(*args)
+
+    def close(self) -> None:
+        self._coro.close()
+
+    def __bool__(self) -> bool:
+        self._coro.close()
+        raise TypeError(
+            f"{self._name}() is a coroutine on the async client: await it "
+            f"(`if await client.{self._name}():`). A coroutine object is always true."
+        )
+
+    def __repr__(self) -> str:
+        return f"<GuardedCoroutine {self._name}()>"
 
 
 class _AsyncFacet:
@@ -80,9 +131,11 @@ class _AsyncFacet:
             return value
 
         @functools.wraps(value)
-        async def call(*args: Any, **kwargs: Any) -> Any:
-            return await _to_thread(value, *args, **kwargs)
+        def call(*args: Any, **kwargs: Any) -> GuardedCoroutine:
+            return GuardedCoroutine(_to_thread(value, *args, **kwargs), name)
 
+        if _mark is not None:  # 3.12+: inspect.iscoroutinefunction(call) stays true
+            _mark(call)
         return call
 
 
