@@ -413,9 +413,21 @@ export async function handleDeployHook(
   try {
     const healed = await reconcilePackageFileRefs(db);
     if (healed > 0)
-      console.log(`deploy: reconciled ${healed} package-file blob ref(s)`);
-  } catch (e) {
-    console.error("deploy: package-file ref reconcile failed", e);
+      await appendPlatformAudit(db, {
+        id: randomId("paud"),
+        at: now,
+        actor_sub: actor,
+        actor_name: "Deploy",
+        actor_email: null,
+        action: "feed.bootstrap",
+        target_kind: "product",
+        target_id: SYSTEM_PRODUCT_SLUG,
+        summary: `Reconciled ${healed} package-file blob ref(s) left by the previous Worker`,
+        before_json: null,
+        after_json: JSON.stringify({ reconciled: healed }),
+      });
+  } catch {
+    // Never a failed deploy: the next cron tick runs the same pass.
   }
 
   // LX-08 (plans/LX-01.md §6.2 steps 2–4): the deploy-hook job `licensing.migrateProvisioned`
