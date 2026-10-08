@@ -37,7 +37,7 @@ import { SaveBar } from "../../../ui/SaveBar.js";
 import { PageSkeleton } from "../../../ui/Skeleton.js";
 import { toast } from "../../../ui/toast.js";
 import { EntityLink } from "../../components/EntityLink.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { useProduct } from "../../data/hooks.js";
 import { useResyncFlow } from "../../components/ResyncDialog.js";
 import { mutate } from "../../data/mutations.js";

@@ -65,7 +65,7 @@ import {
   useMoment,
   type MomentObservation,
 } from "../../components/Moment.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { useProduct } from "../../data/hooks.js";
 import { qk } from "../../data/queries.js";
 import { queryClient } from "../../data/queryClient.js";

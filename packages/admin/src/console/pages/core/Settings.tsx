@@ -72,7 +72,7 @@ import {
   CLAIM_LABELS,
   RevertClaimDialog,
 } from "../../components/RevertClaimDialog.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { useProduct } from "../../data/hooks.js";
 import { mutate } from "../../data/mutations.js";
 import { qk } from "../../data/queries.js";

@@ -36,12 +36,10 @@ import { prefetchSection, sectionPages } from "../pages/index.js";
 import { Home } from "../pages/global/Home.js";
 import { ProductNew } from "../pages/global/ProductNew.js";
 import { Products } from "../pages/global/Products.js";
-import { LiveRegion, type ProductLike } from "./bits.js";
-import {
-  CommandPalette,
-  navigationSource,
-  productSource,
-} from "./CommandPalette.js";
+import { LiveRegion } from "../../ui/LiveRegion.js";
+import type { ProductLike } from "./bits.js";
+import { CommandPalette } from "./CommandPalette.js";
+import { navigationSource, productSource } from "./palette/navigation.js";
 import { LegacyPage } from "./LegacyPage.js";
 import { PageErrorBoundary } from "./PageErrorBoundary.js";
 import { ShortcutSheet } from "./ShortcutSheet.js";

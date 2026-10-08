@@ -42,7 +42,7 @@ import { Skeleton } from "../../../ui/Skeleton.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
 import { Switch } from "../../../ui/Switch.js";
 import { Textarea } from "../../../ui/Textarea.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { Link } from "../../router.js";
 import { r } from "../../routes.js";
 import { CollectionTemplate } from "../../templates/Collection.js";

@@ -35,7 +35,7 @@ import { toast } from "../../../ui/toast.js";
 import { Textarea } from "../../../ui/Textarea.js";
 import { BREAK_GLASS_REASON_MAX } from "../../components/BreakGlassDialog.js";
 import { Breadcrumbs } from "../../components/Breadcrumbs.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { useProduct } from "../../data/hooks.js";
 import { mutate } from "../../data/mutations.js";
 import { qk } from "../../data/queries.js";

@@ -8,7 +8,9 @@ import { StatusPill } from "../../ui/StatusPill.js";
 import { useProduct, useProducts } from "../data/hooks.js";
 import { pageOfRoute, slugOfRoute } from "../routes.js";
 import { navigate, useLocation } from "../router.js";
-import { Kbd, LiveRegion, ServiceDots, type ProductLike } from "./bits.js";
+import { Kbd } from "../../ui/Kbd.js";
+import { LiveRegion } from "../../ui/LiveRegion.js";
+import { ServiceDots, type ProductLike } from "./bits.js";
 import { rankPalette } from "./palette/rank.js";
 import {
   readRecents,
@@ -22,11 +24,6 @@ import type {
   PaletteItem,
   PanelRender,
 } from "./palette/types.js";
-
-// The sources and the filter live in `palette/`; these names stay importable from here.
-export { navigationSource, productSource } from "./palette/navigation.js";
-export { filterItems } from "./palette/rank.js";
-export type { PaletteItem } from "./palette/types.js";
 
 /**
  * What the palette's sources read: the product on screen (when the session has it), what it runs,

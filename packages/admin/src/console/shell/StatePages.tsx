@@ -19,7 +19,7 @@ import { Spinner } from "../../ui/Spinner.js";
 import type { NavSection } from "../nav.js";
 import { Link } from "../router.js";
 import { r } from "../routes.js";
-import { LiveRegion } from "./bits.js";
+import { LiveRegion } from "../../ui/LiveRegion.js";
 
 /** A page title for a state page: an `<h1>` the route focus can land on. */
 function StateHeading({ children }: { children: React.ReactNode }) {

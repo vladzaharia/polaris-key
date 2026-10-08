@@ -28,7 +28,7 @@ import { queryClient } from "../../data/queryClient.js";
 import { r } from "../../routes.js";
 import { Link } from "../../router.js";
 import { useTableUrlState } from "../../useTableUrlState.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { useResyncFlow } from "../../components/ResyncDialog.js";
 import {
   SettingsRow,

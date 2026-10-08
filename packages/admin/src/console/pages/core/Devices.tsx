@@ -35,7 +35,7 @@ import { toast } from "../../../ui/toast.js";
 import { useLoadingAnnouncement } from "../../../ui/loading.js";
 import { DeviceDrawer } from "../../components/DeviceDrawer.js";
 import { DeviceTable, type DeviceRow } from "../../components/DeviceTable.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { mutate } from "../../data/mutations.js";
 import { qk } from "../../data/queries.js";
 import { queryClient } from "../../data/queryClient.js";

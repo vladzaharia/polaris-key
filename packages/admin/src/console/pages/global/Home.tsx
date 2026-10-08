@@ -11,7 +11,7 @@ import { ErrorState } from "../../../ui/ErrorState.js";
 import { ProductLogo } from "../../../ui/ProductLogo.js";
 import { ServiceGlyph, serviceLabel } from "../../../ui/ServiceBadge.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { useProducts } from "../../data/hooks.js";
 import { Link } from "../../router.js";
 import { r } from "../../routes.js";

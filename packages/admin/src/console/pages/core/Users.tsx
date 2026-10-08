@@ -27,7 +27,7 @@ import {
 import { EmptyState } from "../../../ui/EmptyState.js";
 import { Timestamp } from "../../../ui/Timestamp.js";
 import { useLoadingAnnouncement } from "../../../ui/loading.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { qk } from "../../data/queries.js";
 import { queryClient } from "../../data/queryClient.js";
 import { Link, navigate } from "../../router.js";

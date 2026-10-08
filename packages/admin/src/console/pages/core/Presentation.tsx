@@ -47,7 +47,7 @@ import { StatusPill } from "../../../ui/StatusPill.js";
 import { toast } from "../../../ui/toast.js";
 import { useLoadingAnnouncement } from "../../../ui/loading.js";
 import type { Tone } from "../../../lib/status.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { mutate } from "../../data/mutations.js";
 import { qk } from "../../data/queries.js";
 import { queryClient } from "../../data/queryClient.js";

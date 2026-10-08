@@ -30,7 +30,7 @@ import { StatusPill } from "../../../ui/StatusPill.js";
 import { Timestamp } from "../../../ui/Timestamp.js";
 import { EntityLink } from "../../components/EntityLink.js";
 import { RevertClaimDialog } from "../../components/RevertClaimDialog.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { useProduct } from "../../data/hooks.js";
 import {
   codecs,

@@ -65,7 +65,7 @@ import { StatusPill } from "../../ui/StatusPill.js";
 import { Switch } from "../../ui/Switch.js";
 import { Timestamp } from "../../ui/Timestamp.js";
 import { toast } from "../../ui/toast.js";
-import { PageHeader } from "../components/PageHeader.js";
+import { PageHeader } from "../../ui/PageHeader.js";
 import { useProducts } from "../data/hooks.js";
 import { mutate } from "../data/mutations.js";
 import { qk } from "../data/queries.js";

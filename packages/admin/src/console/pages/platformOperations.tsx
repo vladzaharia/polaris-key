@@ -41,7 +41,7 @@ import { EmptyState } from "../../ui/EmptyState.js";
 import { ErrorState } from "../../ui/ErrorState.js";
 import { StatusPill } from "../../ui/StatusPill.js";
 import { Timestamp } from "../../ui/Timestamp.js";
-import { PageHeader } from "../components/PageHeader.js";
+import { PageHeader } from "../../ui/PageHeader.js";
 import { qk } from "../data/queries.js";
 import { queryClient } from "../data/queryClient.js";
 import {

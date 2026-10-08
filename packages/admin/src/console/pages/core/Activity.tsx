@@ -38,7 +38,7 @@ import { Timestamp } from "../../../ui/Timestamp.js";
 import { useLoadingAnnouncement } from "../../../ui/loading.js";
 import { toast } from "../../../ui/toast.js";
 import { EntityLink } from "../../components/EntityLink.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { queryClient } from "../../data/queryClient.js";
 import { qk } from "../../data/queries.js";
 import { Link } from "../../router.js";

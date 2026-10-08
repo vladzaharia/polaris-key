@@ -22,7 +22,7 @@ import { queryClient } from "../../data/queryClient.js";
 import { r } from "../../routes.js";
 import { navigate } from "../../router.js";
 import { Breadcrumbs } from "../../components/Breadcrumbs.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { PageTabs } from "../../components/PageTabs.js";
 import { LicenseRegistryTokens } from "../../areas/feeds/RegistryTokens.js";
 import { confirmFor } from "../../../lib/actions.js";

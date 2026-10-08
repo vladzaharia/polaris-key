@@ -35,7 +35,7 @@ import { IdChip } from "../../ui/IdChip.js";
 import { StatusPill } from "../../ui/StatusPill.js";
 import { Timeline, TimelineItem } from "../../ui/Timeline.js";
 import { Timestamp } from "../../ui/Timestamp.js";
-import { PageHeader } from "../components/PageHeader.js";
+import { PageHeader } from "../../ui/PageHeader.js";
 import { PlatformSettingsPage } from "./platformSettings.js";
 import { qk } from "../data/queries.js";
 import { StoreConnections } from "./platformStores.js";

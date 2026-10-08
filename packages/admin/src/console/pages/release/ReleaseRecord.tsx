@@ -35,7 +35,7 @@ import { StatusPill } from "../../../ui/StatusPill.js";
 import { Timestamp } from "../../../ui/Timestamp.js";
 import { Breadcrumbs } from "../../components/Breadcrumbs.js";
 import { EntityLink } from "../../components/EntityLink.js";
-import { PageHeader, type PageAction } from "../../components/PageHeader.js";
+import { PageHeader, type PageAction } from "../../../ui/PageHeader.js";
 import { PageTabs } from "../../components/PageTabs.js";
 import {
   canHalt,
