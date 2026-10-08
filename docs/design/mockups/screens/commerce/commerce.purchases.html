@@ -1,111 +1,27 @@
 <style>
-  /* commerce.purchases: store cell, state cell with its effect, and the subscription link. */
-  [data-screen="commerce.purchases"] .store-cell {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    white-space: nowrap;
-    color: var(--pk-text-default);
+  /* commerce.purchases: weights and colours only; every space comes from the kit. */
+  [data-screen="commerce.purchases"] .cell-title.mono {
+    font-weight: 400;
   }
-  [data-screen="commerce.purchases"] .store-cell > .ic {
-    color: var(--pk-text-muted);
-  }
-  [data-screen="commerce.purchases"] .sku {
-    font-family: var(--pk-font-mono);
-    font-size: 12px;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="commerce.purchases"] .lic {
-    font-family: var(--pk-font-mono);
-    font-size: 12px;
-    color: var(--pk-text-strong);
-    white-space: nowrap;
+  [data-screen="commerce.purchases"] :is(.cell-title.mono, .kv-rows dd) > a {
     text-decoration: underline;
     text-decoration-color: var(--pk-border-strong);
     text-underline-offset: 3px;
   }
-  [data-screen="commerce.purchases"] .state {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 3px;
+  [data-screen="commerce.purchases"] .cell-title.muted {
+    font-weight: 400;
+    color: var(--pk-text-muted);
   }
-  [data-screen="commerce.purchases"] .state .cell-sub {
-    max-width: 190px;
-    white-space: normal;
-  }
-  [data-screen="commerce.purchases"] .table th:last-child,
-  [data-screen="commerce.purchases"] .table td:last-child {
-    padding-right: 20px;
-  }
-  [data-screen="commerce.purchases"] .acct .cell-sub {
-    max-width: 210px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  [data-screen="commerce.purchases"] .avatar.sm.none {
+  [data-screen="commerce.purchases"] .avatar.none {
     background: var(--mk-fill);
     color: var(--pk-text-subtle);
   }
-  [data-screen="commerce.purchases"] .table td:first-child {
-    white-space: nowrap;
-    color: var(--pk-text-muted);
-  }
-  /* Phone: each purchase becomes a stacked row (storefront and time, offer, account, state and license). */
-  @container screen (max-width: 639px) {
-    [data-screen="commerce.purchases"] .table,
-    [data-screen="commerce.purchases"] .table tbody {
-      display: block;
-    }
-    [data-screen="commerce.purchases"] .table thead {
-      display: none;
-    }
-    [data-screen="commerce.purchases"] .table tr {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      grid-template-areas:
-        "store when"
-        "offer offer"
-        "acct acct"
-        "state lic";
-      gap: 8px 12px;
-      padding: 14px 16px;
-    }
-    [data-screen="commerce.purchases"] .table tr + tr {
-      border-top: 1px solid var(--mk-line);
-    }
-    [data-screen="commerce.purchases"] .table td {
-      display: block;
-      padding: 0;
-      border: 0;
-      min-width: 0;
-    }
-    [data-screen="commerce.purchases"] .table td:nth-child(1) { grid-area: when; font-size: 13px; }
-    [data-screen="commerce.purchases"] .table td:nth-child(2) { grid-area: store; }
-    [data-screen="commerce.purchases"] .table td:nth-child(3) { grid-area: offer; }
-    [data-screen="commerce.purchases"] .table td:nth-child(4) { grid-area: acct; }
-    [data-screen="commerce.purchases"] .table td:nth-child(5) { grid-area: lic; text-align: right; }
-    [data-screen="commerce.purchases"] .table td:nth-child(6) { grid-area: state; }
-    [data-screen="commerce.purchases"] .table td:nth-child(3) .sku {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    [data-screen="commerce.purchases"] .acct .cell-sub {
-      max-width: none;
-    }
-    [data-screen="commerce.purchases"] .state .cell-sub {
-      white-space: normal;
-      max-width: none;
-    }
-    [data-screen="commerce.purchases"] .table td:last-child {
-      padding-right: 0;
-    }
+  [data-screen="commerce.purchases"] .search-field.typed {
+    color: var(--pk-text-strong);
   }
 </style>
 
-<div class="console" data-service="commerce">
+<div class="console cm2" data-service="commerce">
   <header class="topbar">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
@@ -126,13 +42,13 @@
     <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
     <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
     <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
-    <div class="nav-group closed" data-service="license"><div class="nav-label">Licensing<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="config" style="padding-top: 4px"><div class="nav-label">Managed config<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="release" style="padding-top: 4px"><div class="nav-label">Ship builds<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="identity" style="padding-top: 4px"><div class="nav-label">Sign-in<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="sync" style="padding-top: 4px"><div class="nav-label">Cloud Sync<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="license"><button class="nav-label" aria-expanded="false">Licensing<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group" data-service="commerce">
-      <div class="nav-label">Commerce<i class="ic ic-chevron-down sm"></i></div>
+      <button class="nav-label" aria-expanded="true">Commerce<i class="ic ic-chevron-down sm"></i></button>
       <a class="nav-item" href="#"><i class="ic ic-store"></i><span class="nav-text">Storefronts</span><span class="count danger">2</span></a>
       <a class="nav-item" href="#"><i class="ic ic-tag"></i><span class="nav-text">Offers</span></a>
       <a class="nav-item active" href="#"><i class="ic ic-receipt"></i><span class="nav-text">Purchases</span></a>
@@ -147,115 +63,118 @@
     <div class="page">
       <header class="page-head">
         <div class="page-heading"><h1>Purchases</h1></div>
-        <p class="page-sub">Every storefront’s purchases in one ledger. A full refund or a chargeback removes what it added at once; a partial refund never does.</p>
         <div class="page-actions">
           <button class="btn outline hide-phone"><i class="ic ic-download"></i>Export CSV</button>
         </div>
       </header>
 
-      <nav class="tabs" aria-label="Purchases">
-        <a class="tab active" href="#">All <span class="count">1,071</span></a>
-        <a class="tab" href="#"><span class="hide-phone">Refunds and chargebacks</span><span class="show-phone">Refunds</span> <span class="count">15</span></a>
-        <a class="tab" href="#">Added nothing <span class="count warning">3</span></a>
-      </nav>
-
-      <div class="toolbar">
-        <div class="search-field"><i class="ic ic-search"></i><span>Email, license or order id</span></div>
-        <span class="filter on"><i class="ic ic-check"></i>Last 28 days</span>
-        <span class="filter"><i class="ic ic-plus"></i>Storefront</span>
-        <span class="filter"><i class="ic ic-plus"></i>Offer</span>
-      </div>
-
-      <div class="table-card">
-        <table class="table">
-          <thead>
-            <tr><th>Bought</th><th>Storefront</th><th>Offer</th><th>Account</th><th>License</th><th>State</th></tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Oct 7, 09:12</td>
-              <td><span class="store-cell"><i class="ic ic-app-store"></i>App Store</span></td>
-              <td><div class="cell-title">Dice skins</div><div class="sku">com.example.diceroll.skins</div></td>
-              <td><div class="cell-with-logo acct"><span class="avatar sm">PR</span><div><div class="cell-title">Priya Raman</div><div class="cell-sub">priya.raman@example.com</div></div></div></td>
-              <td><a class="lic" href="#">lic_4F9K…2QXA</a><div class="cell-sub">Standard</div></td>
-              <td><div class="state"><span class="status"><i class="ic ic-circle-check"></i>Active</span></div></td>
-            </tr>
-            <tr>
-              <td>Oct 7, 08:47</td>
-              <td><span class="store-cell"><i class="ic ic-steam"></i>Steam</span></td>
-              <td><div class="cell-title">Full game</div><div class="sku">app · base game</div></td>
-              <td><div class="cell-with-logo acct"><span class="avatar sm violet">TO</span><div><div class="cell-title">Tomás Okafor</div><div class="cell-sub">Steam linked · tomas.okafor@example.com</div></div></div></td>
-              <td><a class="lic" href="#">lic_9QWE…77LM</a><div class="cell-sub nowrap">Standard · new</div></td>
-              <td><div class="state"><span class="status"><i class="ic ic-circle-check"></i>Active</span></div></td>
-            </tr>
-            <tr>
-              <td>Oct 7, 08:31</td>
-              <td><span class="store-cell"><i class="ic ic-app-store"></i>App Store</span></td>
-              <td><div class="cell-title">Diceroll Plus</div><div class="sku">com.example.diceroll.plus.monthly</div></td>
-              <td><div class="cell-with-logo acct"><span class="avatar sm">SW</span><div><div class="cell-title">Sam Whitlock</div><div class="cell-sub">sam.whitlock@example.com</div></div></div></td>
-              <td><a class="lic" href="#">lic_3MZD…H4TB</a><div class="cell-sub">Plus</div></td>
-              <td><div class="state"><span class="status info"><i class="ic ic-repeat"></i>Free trial to Oct 14</span><a class="link small" href="#">Subscription on the license<i class="ic ic-arrow-right"></i></a></div></td>
-            </tr>
-            <tr>
-              <td>Oct 6, 22:41</td>
-              <td><span class="store-cell"><i class="ic ic-google-play"></i>Google Play</span></td>
-              <td><div class="cell-title">Dice skins</div><div class="sku">skins</div></td>
-              <td><div class="cell-with-logo acct"><span class="avatar sm">EB</span><div><div class="cell-title">Ellie Brandt</div><div class="cell-sub">ellie.brandt@example.com</div></div></div></td>
-              <td><a class="lic" href="#">lic_7HJM…Q2KD</a><div class="cell-sub">Standard</div></td>
-              <td><div class="state"><span class="pill danger sm"><i class="ic ic-ban"></i>Refunded Oct 7</span><span class="cell-sub">Dice skins removed at once</span></div></td>
-            </tr>
-            <tr>
-              <td>Oct 6, 22:10</td>
-              <td><span class="store-cell"><i class="ic ic-google-play"></i>Google Play</span></td>
-              <td><div class="cell-title">Diceroll Plus</div><div class="sku">plus · monthly</div></td>
-              <td><div class="cell-with-logo acct"><span class="avatar sm violet">JP</span><div><div class="cell-title">Jun Park</div><div class="cell-sub">jun.park@example.com</div></div></div></td>
-              <td><a class="lic" href="#">lic_8VNC…2WQE</a><div class="cell-sub">Plus</div></td>
-              <td><div class="state"><span class="status"><i class="ic ic-repeat"></i>Renews Nov 6</span><a class="link small" href="#">Subscription on the license<i class="ic ic-arrow-right"></i></a></div></td>
-            </tr>
-            <tr>
-              <td>Oct 6, 21:05</td>
-              <td><span class="store-cell"><i class="ic ic-app-store"></i>App Store</span></td>
-              <td><div class="cell-title">Full game</div><div class="sku">com.example.diceroll.full</div></td>
-              <td><div class="cell-with-logo acct"><span class="avatar sm none"><i class="ic ic-smartphone sm"></i></span><div><div class="cell-title">No account</div><div class="cell-sub">Floating license · iPhone 15</div></div></div></td>
-              <td><a class="lic" href="#">lic_2RTA…K8VN</a><div class="cell-sub nowrap">Standard · new</div></td>
-              <td><div class="state"><span class="status"><i class="ic ic-circle-check"></i>Active</span></div></td>
-            </tr>
-            <tr>
-              <td>Oct 6, 14:02</td>
-              <td><span class="store-cell"><i class="ic ic-google-play"></i>Google Play</span></td>
-              <td><div class="cell-title">Neon dice pack</div><div class="sku">neon_dice</div></td>
-              <td><div class="cell-with-logo acct"><span class="avatar sm">LV</span><div><div class="cell-title">Lena Vogt</div><div class="cell-sub">lena.vogt@example.com</div></div></div></td>
-              <td><a class="lic" href="#">lic_5KXP…9MRF</a><div class="cell-sub">Standard</div></td>
-              <td><div class="state"><span class="pill danger sm"><i class="ic ic-ban"></i>Charged back Oct 7</span><span class="cell-sub">Neon dice removed at once</span></div></td>
-            </tr>
-            <tr>
-              <td>Oct 5, 18:44</td>
-              <td><span class="store-cell"><i class="ic ic-google-play"></i>Google Play</span></td>
-              <td><div class="cell-title subtle">No offer</div><div class="sku">holiday_bundle</div></td>
-              <td><div class="cell-with-logo acct"><span class="avatar sm violet">KM</span><div><div class="cell-title">Kofi Mensah</div><div class="cell-sub">kofi.mensah@example.com</div></div></div></td>
-              <td><a class="lic" href="#">lic_6TGH…3PLA</a><div class="cell-sub">Standard</div></td>
-              <td><div class="state"><span class="pill warning sm"><i class="ic ic-triangle-alert"></i>Added nothing</span><a class="link small" href="#">Add the SKU to an offer<i class="ic ic-arrow-right"></i></a></div></td>
-            </tr>
-            <tr>
-              <td>Oct 5, 11:36</td>
-              <td><span class="store-cell"><i class="ic ic-app-store"></i>App Store</span></td>
-              <td><div class="cell-title">Full game</div><div class="sku">com.example.diceroll.full</div></td>
-              <td><div class="cell-with-logo acct"><span class="avatar sm">NH</span><div><div class="cell-title">Nadia Haddad</div><div class="cell-sub">nadia.haddad@example.com</div></div></div></td>
-              <td><a class="lic" href="#">lic_1BQS…6YUE</a><div class="cell-sub nowrap">Standard · ended</div></td>
-              <td><div class="state"><span class="pill danger sm"><i class="ic ic-ban"></i>Refunded Oct 6</span><span class="cell-sub">License ended at once</span></div></td>
-            </tr>
-            <tr>
-              <td>Oct 4, 16:20</td>
-              <td><span class="store-cell"><i class="ic ic-steam"></i>Steam</span></td>
-              <td><div class="cell-title">Dice skins</div><div class="sku">DLC 2817450</div></td>
-              <td><div class="cell-with-logo acct"><span class="avatar sm">RC</span><div><div class="cell-title">Rafael Costa</div><div class="cell-sub">Steam linked · rafael.costa@example.com</div></div></div></td>
-              <td><a class="lic" href="#">lic_0WDF…5NZC</a><div class="cell-sub">Standard</div></td>
-              <td><div class="state"><span class="pill danger sm"><i class="ic ic-ban"></i>Refunded Oct 5</span><span class="cell-sub">Found by the daily Steam check</span></div></td>
-            </tr>
-          </tbody>
-        </table>
-        <div class="table-foot">1,071 purchases in the last 28 days<span class="ml-auto">1–10</span><button class="btn ghost icon xs" aria-label="Next page"><i class="ic ic-chevron-right"></i></button></div>
-      </div>
+      <!-- One ledger across every storefront. A full refund or a chargeback removes what it added at
+           once; a partial refund never does. The state is a pill and a date; what happened to the
+           license is in the drawer. Tablet: store as an icon, no License column; phone: a 3-line card. -->
+      <section class="section" aria-label="Purchases">
+        <nav class="tabs" aria-label="Purchases">
+          <a class="tab active" href="#">All <span class="count">1,071</span></a>
+          <a class="tab" href="#"><span class="hide-phone">Refunds and chargebacks</span><span class="show-phone">Refunds</span> <span class="count">15</span></a>
+          <a class="tab" href="#">Added nothing <span class="count warning">3</span></a>
+        </nav>
+        <div class="toolbar">
+          <div class="search-field"><i class="ic ic-search"></i><span>Email, license or order id</span></div>
+          <span class="filter on"><i class="ic ic-check"></i>Last 28 days</span>
+          <span class="filter"><i class="ic ic-plus"></i>Storefront</span>
+          <span class="filter"><i class="ic ic-plus"></i>Offer</span>
+        </div>
+        <div class="table-card">
+          <table class="table fixed row-48 ledger-card" aria-label="Purchases in the last 28 days">
+            <colgroup><col style="width: 20%"><col class="hide-tablet" style="width: 12%"><col style="width: 24%"><col class="hide-tablet" style="width: 15%"><col style="width: 17%"><col style="width: 12%"></colgroup>
+            <thead>
+              <tr><th>Offer</th><th class="hide-tablet">Storefront</th><th>Account</th><th class="hide-tablet">License</th><th>State</th><th>Bought</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="c-offer"><div class="offer-line"><i class="ic ic-app-store store-glyph only-md" role="img" aria-label="App Store" title="App Store"></i><div><div class="cell-title">Dice skins</div></div></div></td>
+                <td class="c-store hide-tablet"><span class="icon-text"><i class="ic ic-app-store"></i><span class="store-name hide-md">App Store</span></span></td>
+                <td class="c-acct"><div class="cell-with-logo"><span class="avatar sm">PR</span><div class="grow"><div class="cell-title acct-name">Priya Raman</div><div class="cell-sub truncate">priya.raman@example.com</div></div></div></td>
+                <td class="c-lic hide-tablet"><div><span class="id">lic_4F9K…2QXA<i class="ic ic-copy"></i></span><div class="cell-sub">Standard</div></div></td>
+                <td class="c-state"><span class="status"><i class="ic ic-circle-check"></i>Active</span></td>
+                <td class="c-when"><span class="muted nowrap"><span class="hide-md">Oct 7, 09:12</span><span class="only-md">Oct 7</span></span></td>
+              </tr>
+              <tr>
+                <td class="c-offer"><div class="offer-line"><i class="ic ic-steam store-glyph only-md" role="img" aria-label="Steam" title="Steam"></i><div><div class="cell-title">Full game</div></div></div></td>
+                <td class="c-store hide-tablet"><span class="icon-text"><i class="ic ic-steam"></i><span class="store-name hide-md">Steam</span></span></td>
+                <td class="c-acct"><div class="cell-with-logo"><span class="avatar sm violet">TO</span><div class="grow"><div class="cell-title acct-name">Tomás Okafor <span class="meta linked-tag hide-phone">· Steam linked</span></div><div class="cell-sub truncate">tomas.okafor@example.com</div><div class="cell-sub linked-tag-own show-phone">Steam linked</div></div></div></td>
+                <td class="c-lic hide-tablet"><div><span class="id">lic_9QWE…77LM<i class="ic ic-copy"></i></span><div class="cell-sub">Standard · new</div></div></td>
+                <td class="c-state"><span class="status"><i class="ic ic-circle-check"></i>Active</span></td>
+                <td class="c-when"><span class="muted nowrap"><span class="hide-md">Oct 7, 08:47</span><span class="only-md">Oct 7</span></span></td>
+              </tr>
+              <tr>
+                <td class="c-offer"><div class="offer-line"><i class="ic ic-app-store store-glyph only-md" role="img" aria-label="App Store" title="App Store"></i><div><div class="cell-title">Diceroll Plus</div></div></div></td>
+                <td class="c-store hide-tablet"><span class="icon-text"><i class="ic ic-app-store"></i><span class="store-name hide-md">App Store</span></span></td>
+                <td class="c-acct"><div class="cell-with-logo"><span class="avatar sm">SW</span><div class="grow"><div class="cell-title acct-name">Sam Whitlock</div><div class="cell-sub truncate">sam.whitlock@example.com</div></div></div></td>
+                <td class="c-lic hide-tablet"><div><span class="id">lic_3MZD…H4TB<i class="ic ic-copy"></i></span><div class="cell-sub">Plus</div></div></td>
+                <td class="c-state"><span class="status info"><i class="ic ic-repeat"></i>Free trial to Oct 14</span></td>
+                <td class="c-when"><span class="muted nowrap"><span class="hide-md">Oct 7, 08:31</span><span class="only-md">Oct 7</span></span></td>
+              </tr>
+              <tr>
+                <td class="c-offer"><div class="offer-line"><i class="ic ic-google-play store-glyph only-md" role="img" aria-label="Google Play" title="Google Play"></i><div><div class="cell-title">Dice skins</div></div></div></td>
+                <td class="c-store hide-tablet"><span class="icon-text"><i class="ic ic-google-play"></i><span class="store-name hide-md">Google Play</span></span></td>
+                <td class="c-acct"><div class="cell-with-logo"><span class="avatar sm">EB</span><div class="grow"><div class="cell-title acct-name">Ellie Brandt</div><div class="cell-sub truncate">ellie.brandt@example.com</div></div></div></td>
+                <td class="c-lic hide-tablet"><div><span class="id">lic_7HJM…Q2KD<i class="ic ic-copy"></i></span><div class="cell-sub">Standard</div></div></td>
+                <td class="c-state"><span class="status danger"><i class="ic ic-ban"></i>Refunded Oct 7</span></td>
+                <td class="c-when"><span class="muted nowrap"><span class="hide-md">Oct 6, 22:41</span><span class="only-md">Oct 6</span></span></td>
+              </tr>
+              <tr>
+                <td class="c-offer"><div class="offer-line"><i class="ic ic-google-play store-glyph only-md" role="img" aria-label="Google Play" title="Google Play"></i><div><div class="cell-title">Diceroll Plus</div></div></div></td>
+                <td class="c-store hide-tablet"><span class="icon-text"><i class="ic ic-google-play"></i><span class="store-name hide-md">Google Play</span></span></td>
+                <td class="c-acct"><div class="cell-with-logo"><span class="avatar sm violet">JP</span><div class="grow"><div class="cell-title acct-name">Jun Park</div><div class="cell-sub truncate">jun.park@example.com</div></div></div></td>
+                <td class="c-lic hide-tablet"><div><span class="id">lic_8VNC…2WQE<i class="ic ic-copy"></i></span><div class="cell-sub">Plus</div></div></td>
+                <td class="c-state"><span class="status"><i class="ic ic-repeat"></i>Renews Nov 6</span></td>
+                <td class="c-when"><span class="muted nowrap"><span class="hide-md">Oct 6, 22:10</span><span class="only-md">Oct 6</span></span></td>
+              </tr>
+              <tr>
+                <td class="c-offer"><div class="offer-line"><i class="ic ic-app-store store-glyph only-md" role="img" aria-label="App Store" title="App Store"></i><div><div class="cell-title">Full game</div></div></div></td>
+                <td class="c-store hide-tablet"><span class="icon-text"><i class="ic ic-app-store"></i><span class="store-name hide-md">App Store</span></span></td>
+                <td class="c-acct"><div class="cell-with-logo"><span class="avatar sm none"><i class="ic ic-smartphone"></i></span><div class="grow"><div class="cell-title acct-name">No account</div><div class="cell-sub truncate">Floating license · iPhone 15</div></div></div></td>
+                <td class="c-lic hide-tablet"><div><span class="id">lic_2RTA…K8VN<i class="ic ic-copy"></i></span><div class="cell-sub">Standard · new</div></div></td>
+                <td class="c-state"><span class="status"><i class="ic ic-circle-check"></i>Active</span></td>
+                <td class="c-when"><span class="muted nowrap"><span class="hide-md">Oct 6, 21:05</span><span class="only-md">Oct 6</span></span></td>
+              </tr>
+              <tr>
+                <td class="c-offer"><div class="offer-line"><i class="ic ic-google-play store-glyph only-md" role="img" aria-label="Google Play" title="Google Play"></i><div><div class="cell-title">Neon dice pack</div></div></div></td>
+                <td class="c-store hide-tablet"><span class="icon-text"><i class="ic ic-google-play"></i><span class="store-name hide-md">Google Play</span></span></td>
+                <td class="c-acct"><div class="cell-with-logo"><span class="avatar sm">LV</span><div class="grow"><div class="cell-title acct-name">Lena Vogt</div><div class="cell-sub truncate">lena.vogt@example.com</div></div></div></td>
+                <td class="c-lic hide-tablet"><div><span class="id">lic_5KXP…9MRF<i class="ic ic-copy"></i></span><div class="cell-sub">Standard</div></div></td>
+                <td class="c-state"><span class="status danger"><i class="ic ic-ban"></i>Charged back Oct 7</span></td>
+                <td class="c-when"><span class="muted nowrap"><span class="hide-md">Oct 6, 14:02</span><span class="only-md">Oct 6</span></span></td>
+              </tr>
+              <tr>
+                <td class="c-offer"><div class="offer-line"><i class="ic ic-google-play store-glyph only-md" role="img" aria-label="Google Play" title="Google Play"></i><div><div class="cell-title muted">No offer</div><div class="cell-sub mono truncate">holiday_bundle</div></div></div></td>
+                <td class="c-store hide-tablet"><span class="icon-text"><i class="ic ic-google-play"></i><span class="store-name hide-md">Google Play</span></span></td>
+                <td class="c-acct"><div class="cell-with-logo"><span class="avatar sm violet">KM</span><div class="grow"><div class="cell-title acct-name">Kofi Mensah</div><div class="cell-sub truncate">kofi.mensah@example.com</div></div></div></td>
+                <td class="c-lic hide-tablet"><div><span class="id">lic_6TGH…3PLA<i class="ic ic-copy"></i></span><div class="cell-sub">Standard</div></div></td>
+                <td class="c-state"><span class="status warning"><i class="ic ic-triangle-alert"></i>Added nothing</span></td>
+                <td class="c-when"><span class="muted nowrap"><span class="hide-md">Oct 5, 18:44</span><span class="only-md">Oct 5</span></span></td>
+              </tr>
+              <tr>
+                <td class="c-offer"><div class="offer-line"><i class="ic ic-app-store store-glyph only-md" role="img" aria-label="App Store" title="App Store"></i><div><div class="cell-title">Full game</div></div></div></td>
+                <td class="c-store hide-tablet"><span class="icon-text"><i class="ic ic-app-store"></i><span class="store-name hide-md">App Store</span></span></td>
+                <td class="c-acct"><div class="cell-with-logo"><span class="avatar sm">NH</span><div class="grow"><div class="cell-title acct-name">Nadia Haddad</div><div class="cell-sub truncate">nadia.haddad@example.com</div></div></div></td>
+                <td class="c-lic hide-tablet"><div><span class="id">lic_1BQS…6YUE<i class="ic ic-copy"></i></span><div class="cell-sub">Standard</div></div></td>
+                <td class="c-state"><span class="status danger"><i class="ic ic-ban"></i>Refunded Oct 6</span></td>
+                <td class="c-when"><span class="muted nowrap"><span class="hide-md">Oct 5, 11:36</span><span class="only-md">Oct 5</span></span></td>
+              </tr>
+              <tr>
+                <td class="c-offer"><div class="offer-line"><i class="ic ic-steam store-glyph only-md" role="img" aria-label="Steam" title="Steam"></i><div><div class="cell-title">Dice skins</div></div></div></td>
+                <td class="c-store hide-tablet"><span class="icon-text"><i class="ic ic-steam"></i><span class="store-name hide-md">Steam</span></span></td>
+                <td class="c-acct"><div class="cell-with-logo"><span class="avatar sm">RC</span><div class="grow"><div class="cell-title acct-name">Rafael Costa <span class="meta linked-tag hide-phone">· Steam linked</span></div><div class="cell-sub truncate">rafael.costa@example.com</div><div class="cell-sub linked-tag-own show-phone">Steam linked</div></div></div></td>
+                <td class="c-lic hide-tablet"><div><span class="id">lic_0WDF…5NZC<i class="ic ic-copy"></i></span><div class="cell-sub">Standard</div></div></td>
+                <td class="c-state"><span class="status danger"><i class="ic ic-ban"></i>Refunded Oct 5</span></td>
+                <td class="c-when"><span class="muted nowrap"><span class="hide-md">Oct 4, 16:20</span><span class="only-md">Oct 4</span></span></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="table-foot"><span>1–10</span><span class="ml-auto mk-cluster-1"><button class="btn ghost icon xs" aria-label="Previous page" disabled><i class="ic ic-chevron-left"></i></button><button class="btn ghost icon xs" aria-label="Next page"><i class="ic ic-chevron-right"></i></button></span></div>
+        </div>
+      </section>
     </div>
   </main>
 </div>

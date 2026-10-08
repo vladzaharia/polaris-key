@@ -16,6 +16,21 @@
     "Phone: the empty state centres in its card; the button fills the width."
   ],
   "status": "mockup",
-  "designReview": null,
+  "designReview": {
+    "round": 1,
+    "reviewer": "multi-review",
+    "verdict": "",
+    "findings": [
+      {
+        "severity": "minor",
+        "issue": "Wide empty-state panel.",
+        "resolution": "Card capped at 640px like offers-empty.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux3"
+        ]
+      }
+    ]
+  },
   "order": 21
 }

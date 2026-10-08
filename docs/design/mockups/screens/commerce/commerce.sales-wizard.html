@@ -1,88 +1,4 @@
-<style>
-  /* commerce.sales-wizard: the storefront wizard on a channel's Sales tab, human steps only. */
-  [data-screen="commerce.sales-wizard"] .store-tile {
-    display: inline-flex;
-    flex: none;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-    background: var(--mk-fill);
-    color: var(--pk-text-strong);
-  }
-  [data-screen="commerce.sales-wizard"] .store-tile > .ic {
-    width: 22px;
-    height: 22px;
-  }
-  [data-screen="commerce.sales-wizard"] .body {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 320px;
-    gap: 24px;
-    align-items: start;
-  }
-  [data-screen="commerce.sales-wizard"] .step-no {
-    margin-right: 6px;
-    color: var(--pk-text-subtle);
-    font-weight: 400;
-  }
-  [data-screen="commerce.sales-wizard"] .task.next .task-title::after {
-    content: "Next";
-    margin-left: 8px;
-    padding: 1px 6px;
-    border-radius: 999px;
-    background: var(--mk-fill);
-    color: var(--pk-text-strong);
-    font-size: 11px;
-    font-weight: 700;
-    vertical-align: 1px;
-  }
-  [data-screen="commerce.sales-wizard"] .waits {
-    font-size: 13px;
-    color: var(--pk-text-subtle);
-    white-space: nowrap;
-  }
-  [data-screen="commerce.sales-wizard"] .card-foot {
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-  [data-screen="commerce.sales-wizard"] .can {
-    display: flex;
-    flex-direction: column;
-  }
-  [data-screen="commerce.sales-wizard"] .can > div {
-    display: grid;
-    grid-template-columns: 20px minmax(0, 1fr);
-    gap: 10px;
-    padding: 10px 20px;
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-text-default);
-  }
-  [data-screen="commerce.sales-wizard"] .can > div + div {
-    border-top: 1px solid var(--mk-line);
-  }
-  [data-screen="commerce.sales-wizard"] .can .ic {
-    margin-top: 1px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="commerce.sales-wizard"] .can .no .ic {
-    color: var(--pk-text-subtle);
-  }
-  @container screen (max-width: 1023px) {
-    [data-screen="commerce.sales-wizard"] .body {
-      grid-template-columns: minmax(0, 1fr);
-    }
-  }
-  @container screen (max-width: 639px) {
-    [data-screen="commerce.sales-wizard"] .can > div {
-      padding: 10px 16px;
-    }
-  }
-</style>
-
-<div class="console" data-service="commerce">
+<div class="console cm2" data-service="commerce">
   <header class="topbar">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
@@ -104,13 +20,13 @@
     <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
     <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
     <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
-    <div class="nav-group closed" data-service="license"><div class="nav-label">Licensing<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="config" style="padding-top: 4px"><div class="nav-label">Managed config<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="release" style="padding-top: 4px"><div class="nav-label">Ship builds<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="identity" style="padding-top: 4px"><div class="nav-label">Sign-in<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="sync" style="padding-top: 4px"><div class="nav-label">Cloud Sync<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="license"><button class="nav-label" aria-expanded="false">Licensing<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group" data-service="commerce">
-      <div class="nav-label">Commerce<i class="ic ic-chevron-down sm"></i></div>
+      <button class="nav-label" aria-expanded="true">Commerce<i class="ic ic-chevron-down sm"></i></button>
       <a class="nav-item active" href="#"><i class="ic ic-store"></i><span class="nav-text">Storefronts</span></a>
       <a class="nav-item" href="#"><i class="ic ic-tag"></i><span class="nav-text">Offers</span></a>
       <a class="nav-item" href="#"><i class="ic ic-receipt"></i><span class="nav-text">Purchases</span></a>
@@ -127,64 +43,65 @@
            Releases is set up on its own (O12: each half renders data or its wizard). -->
       <header class="page-head">
         <nav class="crumbs"><a href="#">Storefronts</a><i class="ic ic-chevron-right"></i>Steam</nav>
-        <div class="page-heading"><span class="store-tile"><i class="ic ic-steam"></i></span><h1>Steam</h1></div>
-        <p class="page-sub">DJDL for Windows and macOS · not on Steam yet</p>
+        <div class="page-icon"><span class="icon-tile xl neutral"><i class="ic ic-steam"></i></span></div>
+        <div class="page-heading"><h1>Steam</h1><span class="status muted"><i class="ic ic-circle-dashed"></i>Not set up</span></div>
+        <p class="page-sub">DJDL for Windows and macOS</p>
       </header>
 
       <nav class="tabs" aria-label="Steam">
         <a class="tab" href="#">Status</a>
         <a class="tab" href="#">Releases</a>
         <a class="tab" href="#">Listing</a>
-        <a class="tab active" href="#">Sales</a>
+        <a class="tab active" href="#" aria-current="page">Sales</a>
         <a class="tab" href="#">Setup</a>
       </nav>
 
-      <div class="body">
+      <div class="mk-with-rail">
+        <!-- Human steps only (A-18k): each is one thing to do outside Polaris Key, with one deep
+             link, and ticks itself when Polaris Key sees it done. Nothing asks for an App ID. -->
         <section class="card" aria-labelledby="wiz-title">
           <div class="card-head">
-            <span class="icon-tile" data-service="commerce"><i class="ic ic-store"></i></span>
-            <div class="title"><h2 id="wiz-title">Set up selling on Steam</h2><p>Three steps in Steamworks and Store connections. Each one ticks itself when Polaris Key sees it done; nothing here asks you to type an id.</p></div>
+            <div class="title"><h2 id="wiz-title">Set up selling on Steam</h2></div>
+            <div class="progress-inline"><span>0 of 3 done</span><div class="progress success" style="--v: 0%" role="progressbar" aria-valuenow="0" aria-valuemax="3" aria-label="Steps done"></div></div>
           </div>
-          <div class="tasks padded">
-            <div class="task next">
+          <div class="tasks padded" aria-live="polite">
+            <div class="task">
               <span class="task-mark"></span>
-              <div class="task-title"><span class="step-no">1</span>Create DJDL’s app in Steamworks</div>
-              <div class="task-desc">Steamworks gives DJDL an App ID after Example Audio pays the Steam Direct fee for it. Polaris Key can’t do this step for you.</div>
-              <div class="task-action"><button class="btn outline"><i class="ic ic-external-link"></i>Open Steamworks</button></div>
+              <div class="task-title">Create DJDL’s app in Steamworks</div>
+              <div class="task-desc">Needs the Steam Direct fee.</div>
+              <div class="task-action"><button class="btn primary"><i class="ic ic-external-link"></i>Open Steamworks</button></div>
             </div>
             <div class="task">
               <span class="task-mark"></span>
-              <div class="task-title"><span class="step-no">2</span>Add Example Audio’s publisher key</div>
-              <div class="task-desc">In Steamworks, create a Web API publisher key under Users &amp; Permissions → Manage Groups, then add it in Platform → Store connections. You add it once for every product.</div>
+              <div class="task-title">Add a publisher key</div>
+              <div class="task-desc">Steamworks &gt; Users &amp; Permissions &gt; Manage Groups, then add it in Store connections.</div>
               <div class="task-action"><button class="btn outline">Open Store connections</button></div>
             </div>
             <div class="task">
               <span class="task-mark"></span>
-              <div class="task-title"><span class="step-no">3</span>Assign the app to DJDL</div>
-              <div class="task-desc">With the key in, Store connections lists Example Audio’s Steamworks apps. Pick DJDL’s; Polaris Key reads its App ID and DLC from Steam.</div>
-              <div class="task-action"><span class="waits">Waits for steps 1 and 2</span></div>
+              <div class="task-title">Pick DJDL’s app</div>
+              <div class="task-desc">Waiting for steps 1 and 2</div>
             </div>
           </div>
-          <div class="card-foot">
-            <span class="small muted">Polaris Key checks Steamworks every 10 minutes · last checked 10:38</span>
+          <div class="card-foot start under-tasks">
             <button class="btn ghost sm"><i class="ic ic-refresh-cw"></i>Check now</button>
+            <span class="type-small muted">Checked 10:38 · every 10 minutes</span>
           </div>
         </section>
 
-        <section class="card" aria-labelledby="can-title">
-          <div class="card-head">
-            <div class="title"><h2 id="can-title">What Steam can sell</h2></div>
-          </div>
-          <div class="can">
-            <div><i class="ic ic-check"></i><span>DJDL itself, as a paid app. A purchase makes or extends the buyer’s license.</span></div>
-            <div><i class="ic ic-check"></i><span>Add-ons as DLC, such as Stem separation.</span></div>
-            <div class="no"><i class="ic ic-minus"></i><span class="muted">No subscriptions: DJDL Pro yearly stays on the App Store and your site.</span></div>
-            <div class="no"><i class="ic ic-minus"></i><span class="muted">No price API: you set Steam prices in Steamworks.</span></div>
-          </div>
-          <div class="card-body tight">
-            <p class="small muted">Shipping builds to Steam is set up on its own, on <a class="link" href="#">Releases</a>.</p>
-          </div>
-        </section>
+        <div class="mk-rail">
+          <section class="card" aria-labelledby="can-title">
+            <div class="card-head"><div class="title"><h2 id="can-title">What Steam can sell</h2></div></div>
+            <div class="card-body">
+              <div class="mk-stack-3">
+                <p class="icon-line"><i class="ic ic-check"></i><span>DJDL as a paid app; a purchase makes or extends the buyer’s license</span></p>
+                <p class="icon-line"><i class="ic ic-check"></i><span>Add-ons as DLC, such as Stem separation</span></p>
+                <p class="icon-line muted"><i class="ic ic-minus"></i><span>No subscriptions and no price API: set prices in Steamworks</span></p>
+              </div>
+            </div>
+            <div class="card-foot start"><span class="type-small muted">Builds are set up on <a class="link" href="#">Releases</a>.</span></div>
+          </section>
+        </div>
       </div>
     </div>
   </main>

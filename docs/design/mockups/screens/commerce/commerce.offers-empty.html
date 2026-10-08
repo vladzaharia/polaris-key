@@ -1,11 +1,4 @@
-<style>
-  /* commerce.offers-empty: Offers before the first offer. Only the kit's empty state. */
-  [data-screen="commerce.offers-empty"] .empty p {
-    max-width: 520px;
-  }
-</style>
-
-<div class="console" data-service="commerce">
+<div class="console cm2" data-service="commerce">
   <header class="topbar">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
@@ -24,16 +17,16 @@
     <a class="nav-item" href="#"><i class="ic ic-layout-dashboard"></i><span class="nav-text">Overview</span></a>
     <a class="nav-item" href="#"><i class="ic ic-plug"></i><span class="nav-text">Integration</span></a>
     <a class="nav-item" href="#"><i class="ic ic-shield-check"></i><span class="nav-text">Access</span></a>
-    <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span><span class="count">412</span></a>
     <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
     <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
-    <div class="nav-group closed" data-service="license"><div class="nav-label">Licensing<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="config" style="padding-top: 4px"><div class="nav-label">Managed config<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="release" style="padding-top: 4px"><div class="nav-label">Ship builds<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="identity" style="padding-top: 4px"><div class="nav-label">Sign-in<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="sync" style="padding-top: 4px"><div class="nav-label">Cloud Sync<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="license"><button class="nav-label" aria-expanded="false">Licensing<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group" data-service="commerce">
-      <div class="nav-label">Commerce<i class="ic ic-chevron-down sm"></i></div>
+      <button class="nav-label" aria-expanded="true">Commerce<i class="ic ic-chevron-down sm"></i></button>
       <a class="nav-item" href="#"><i class="ic ic-store"></i><span class="nav-text">Storefronts</span></a>
       <a class="nav-item active" href="#"><i class="ic ic-tag"></i><span class="nav-text">Offers</span></a>
       <a class="nav-item" href="#"><i class="ic ic-receipt"></i><span class="nav-text">Purchases</span></a>
@@ -48,19 +41,18 @@
     <div class="page">
       <header class="page-head">
         <div class="page-heading"><h1>Offers</h1></div>
-        <p class="page-sub">What DJDL sells, defined once. Each storefront has its own SKU for an offer.</p>
       </header>
 
-      <!-- First run (EXPERIENCE.md §9): one sentence and the actions. The page head carries no
-           actions while the empty state does. -->
-      <section class="card">
+      <!-- First run (EXPERIENCE.md §9): one sentence and the actions. The card is capped at 640px,
+           not a wide panel with two lines. Import leads: the store already has products. -->
+      <section class="card capped">
         <div class="empty" data-service="commerce">
           <span class="empty-icon"><i class="ic ic-tag"></i></span>
           <h3>No offers yet</h3>
-          <p>An offer is what DJDL sells, defined once: the Pro tier, or an add-on such as Stem separation. Each storefront gets its own SKU for it. DJDL already has 3 in-app purchases on the App Store that can become offers.</p>
+          <p>An offer is what DJDL sells, such as the Pro tier. Found 4 App Store in-app purchases; 3 match Licensing.</p>
           <div class="btn-row">
-            <button class="btn outline"><i class="ic ic-download"></i>Import from App Store</button>
-            <button class="btn primary"><i class="ic ic-plus"></i>New offer</button>
+            <button class="btn primary"><i class="ic ic-download"></i>Import from App Store</button>
+            <button class="btn outline"><i class="ic ic-plus"></i>New offer</button>
           </div>
         </div>
       </section>

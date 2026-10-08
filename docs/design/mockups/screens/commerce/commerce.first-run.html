@@ -1,105 +1,14 @@
 <style>
-  /* commerce.first-run: the setup card's meter and the storefront rows (as on commerce.storefronts). */
-  [data-screen="commerce.first-run"] .start-head {
-    align-items: center;
-  }
-  /* Home's Platform ready meter: one continuous bar. The empty track is raised so it shows at 0. */
-  [data-screen="commerce.first-run"] .start-meter {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex: none;
-    width: 220px;
-  }
-  [data-screen="commerce.first-run"] .start-meter .progress {
-    flex: 1;
-    background: color-mix(in oklab, var(--pk-border-strong) 55%, transparent);
-  }
-  [data-screen="commerce.first-run"] .task.next .task-title::after {
-    content: "Next";
-    margin-left: 8px;
-    padding: 1px 6px;
-    border-radius: 999px;
-    background: var(--pk-accent-subtle);
-    color: var(--pk-accent-fg);
-    font-size: 11px;
-    font-weight: 700;
-    vertical-align: 1px;
-  }
-  [data-screen="commerce.first-run"] .switch-label {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 13px;
-    color: var(--pk-text-default);
-    white-space: nowrap;
-  }
-  [data-screen="commerce.first-run"] .store-tile {
-    display: inline-flex;
-    flex: none;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-    background: var(--mk-fill);
-    color: var(--pk-text-strong);
-  }
-  [data-screen="commerce.first-run"] .store-tile > .ic {
-    width: 20px;
-    height: 20px;
-  }
-  [data-screen="commerce.first-run"] .sf-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 150px 16px;
-    align-items: center;
-    gap: 16px;
-    padding: 12px 20px;
-    color: var(--pk-text-default);
-  }
-  [data-screen="commerce.first-run"] .sf-row + .sf-row {
-    border-top: 1px solid var(--mk-line);
-  }
-  [data-screen="commerce.first-run"] .sf-name {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    min-width: 0;
-  }
-  [data-screen="commerce.first-run"] .sf-name .cell-sub {
-    display: block;
-    white-space: normal;
-  }
-  [data-screen="commerce.first-run"] .sf-chev {
+  /* commerce.first-run: colours only; every space comes from the kit. */
+  [data-screen="commerce.first-run"] .item-end > .ic {
     color: var(--pk-text-subtle);
   }
-  @container screen (max-width: 639px) {
-    [data-screen="commerce.first-run"] .start-head {
-      flex-wrap: wrap;
-    }
-    [data-screen="commerce.first-run"] .start-meter {
-      width: 100%;
-      padding-left: 48px;
-      order: 3;
-    }
-    [data-screen="commerce.first-run"] .sf-row {
-      grid-template-columns: minmax(0, 1fr) 16px;
-      gap: 6px 12px;
-      padding: 12px 16px;
-    }
-    [data-screen="commerce.first-run"] .sf-row > .sf-state {
-      grid-column: 1;
-      grid-row: 2;
-      padding-left: 48px;
-    }
-    [data-screen="commerce.first-run"] .sf-row > .sf-chev {
-      grid-column: 2;
-      grid-row: 1 / span 2;
-    }
+  [data-screen="commerce.first-run"] .item-title > a {
+    color: inherit;
   }
 </style>
 
-<div class="console" data-service="commerce">
+<div class="console cm2" data-service="commerce">
   <header class="topbar">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
@@ -118,16 +27,16 @@
     <a class="nav-item" href="#"><i class="ic ic-layout-dashboard"></i><span class="nav-text">Overview</span></a>
     <a class="nav-item" href="#"><i class="ic ic-plug"></i><span class="nav-text">Integration</span></a>
     <a class="nav-item" href="#"><i class="ic ic-shield-check"></i><span class="nav-text">Access</span></a>
-    <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span><span class="count">412</span></a>
     <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
     <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
-    <div class="nav-group closed" data-service="license"><div class="nav-label">Licensing<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="config" style="padding-top: 4px"><div class="nav-label">Managed config<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="release" style="padding-top: 4px"><div class="nav-label">Ship builds<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="identity" style="padding-top: 4px"><div class="nav-label">Sign-in<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="sync" style="padding-top: 4px"><div class="nav-label">Cloud Sync<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="license"><button class="nav-label" aria-expanded="false">Licensing<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group" data-service="commerce">
-      <div class="nav-label">Commerce<i class="ic ic-chevron-down sm"></i></div>
+      <button class="nav-label" aria-expanded="true">Commerce<i class="ic ic-chevron-down sm"></i></button>
       <a class="nav-item active" href="#"><i class="ic ic-store"></i><span class="nav-text">Storefronts</span></a>
       <a class="nav-item" href="#"><i class="ic ic-tag"></i><span class="nav-text">Offers</span></a>
       <a class="nav-item" href="#"><i class="ic ic-receipt"></i><span class="nav-text">Purchases</span></a>
@@ -139,87 +48,81 @@
   </nav>
 
   <main class="main">
-    <div class="page narrow">
+    <!-- Wide (≥ 1600): "Start selling" and "Where DJDL sells" side by side, equal weight (the second in
+         the 400px rail); the one-line note about DJDL's own site follows in the main column. -->
+    <div class="page columns">
       <header class="page-head">
         <div class="page-heading"><h1>Storefronts</h1></div>
-        <p class="page-sub">Commerce is on for DJDL. Nothing sells until a storefront is ready.</p>
       </header>
 
-      <!-- First run (CM-29): the commerce service is on and no storefront is Ready or Live. Steps are
-           computed from facts; this card leaves when the first verified purchase arrives. -->
-      <section class="card accent-top" aria-labelledby="start-title">
-        <div class="card-head start-head">
-          <span class="icon-tile"><i class="svc"></i></span>
-          <div class="title"><h2 id="start-title">Start selling DJDL</h2><p>Three steps. Each one ticks itself when Polaris Key sees it done.</p></div>
-          <div class="start-meter"><span class="small muted nowrap tnum">0 of 3 done</span><div class="progress success" style="--v: 0%" role="progressbar" aria-valuenow="0" aria-valuemax="3" aria-label="Setup steps done"></div></div>
+      <!-- First run (CM-29): Commerce is on and no storefront is Ready or Live. Steps are computed
+           from facts; this card leaves when the first verified purchase arrives. -->
+      <section class="card" aria-labelledby="start-title">
+        <div class="card-head">
+          <div class="title"><h2 id="start-title">Start selling DJDL</h2></div>
+          <div class="progress-inline"><span>0 of 3 done</span><div class="progress success" style="--v: 0%" role="progressbar" aria-valuenow="0" aria-valuemax="3" aria-label="Setup steps done"></div></div>
         </div>
         <div class="tasks padded">
-          <div class="task next">
+          <div class="task">
             <span class="task-mark"></span>
             <div class="task-title">Connect a storefront</div>
-            <div class="task-desc">DJDL (<span class="mono">com.example.djdl</span>) is already in the Example Audio team on App Store Connect, so the App Store connects with one confirmation: same key, no settings to type. The other stores are listed below.</div>
+            <div class="task-desc">DJDL is already in the Example Audio team on App Store Connect.</div>
             <div class="task-action"><button class="btn primary"><i class="ic ic-app-store"></i>Connect App Store</button></div>
           </div>
           <div class="task">
             <span class="task-mark"></span>
             <div class="task-title">Create an offer</div>
-            <div class="task-desc">What you sell, defined once: the Pro tier, or an add-on such as Stem separation, one-time or as a subscription. Once the App Store is connected you can import its products instead.</div>
+            <div class="task-desc">Sell a tier or an add-on, or import your App Store products.</div>
             <div class="task-action"><button class="btn outline"><i class="ic ic-plus"></i>New offer</button></div>
           </div>
           <div class="task">
             <span class="task-mark"></span>
             <div class="task-title">Make a test purchase</div>
-            <div class="task-desc">Turn on test purchases, then buy in a sandbox or TestFlight build of DJDL. Turn them off again before you launch.</div>
-            <div class="task-action"><span class="switch-label"><span class="switch" role="switch" aria-checked="false"></span>Accept test purchases</span></div>
+            <div class="task-desc">Buy in a sandbox or TestFlight build. Turn test purchases off before you launch.</div>
+            <div class="task-action"><span class="mk-cluster no-wrap"><span class="switch touch" role="switch" aria-checked="false" aria-labelledby="tp-label"></span><span class="small" id="tp-label">Turn on test purchases</span></span></div>
           </div>
         </div>
       </section>
 
-      <div class="callout info">
-        <i class="ic ic-info"></i>
-        <div class="grow">
-          <div class="callout-title">DJDL’s own site keeps selling as it does today</div>
-          <div class="callout-text">Licenses for the <span class="mono">members</span> group and from your site don’t change. Commerce adds store purchases to the same licenses.</div>
+      <!-- Storefronts that fit DJDL's macOS and Windows builds, canonical order; a row opens its setup.
+           A status shows only for the exception (Ready, Live); the rest say how many steps. -->
+      <section class="card aside" aria-labelledby="sf-title">
+        <div class="card-head">
+          <div class="title"><h2 id="sf-title">Where DJDL sells</h2></div>
         </div>
-      </div>
-
-      <section class="section" aria-labelledby="sf-title">
-        <div class="section-head">
-          <div><h2 id="sf-title">Where DJDL can sell</h2><p>Storefronts that fit DJDL’s macOS and Windows builds. Open one for its setup steps.</p></div>
-        </div>
-        <div class="card">
-          <a class="sf-row" href="#">
-            <span class="sf-name"><span class="store-tile"><i class="ic ic-app-store"></i></span>
-              <span class="grow"><span class="cell-title">App Store</span><span class="cell-sub">Found DJDL in your App Store Connect team. One step.</span></span></span>
-            <span class="sf-state"><span class="status muted"><i class="ic ic-circle-dashed"></i>Not set up</span></span>
-            <i class="ic ic-chevron-right sf-chev"></i>
-          </a>
-          <a class="sf-row" href="#">
-            <span class="sf-name"><span class="store-tile"><i class="ic ic-steam"></i></span>
-              <span class="grow"><span class="cell-title">Steam</span><span class="cell-sub">Needs a Steamworks app for DJDL and your publisher key. 3 steps.</span></span></span>
-            <span class="sf-state"><span class="status muted"><i class="ic ic-circle-dashed"></i>Not set up</span></span>
-            <i class="ic ic-chevron-right sf-chev"></i>
-          </a>
-          <a class="sf-row" href="#">
-            <span class="sf-name"><span class="store-tile"><i class="ic ic-microsoft-store"></i></span>
-              <span class="grow"><span class="cell-title">Microsoft Store</span><span class="cell-sub">Needs DJDL reserved in Partner Center and an Entra app. 4 steps.</span></span></span>
-            <span class="sf-state"><span class="status muted"><i class="ic ic-circle-dashed"></i>Not set up</span></span>
-            <i class="ic ic-chevron-right sf-chev"></i>
-          </a>
-          <a class="sf-row" href="#">
-            <span class="sf-name"><span class="store-tile"><i class="ic ic-itch"></i></span>
-              <span class="grow"><span class="cell-title">itch.io</span><span class="cell-sub">Sells the app itself. Polaris Key can’t check itch.io purchases yet.</span></span></span>
-            <span class="sf-state"><span class="status muted"><i class="ic ic-circle-dashed"></i>Not set up</span></span>
-            <i class="ic ic-chevron-right sf-chev"></i>
-          </a>
-          <a class="sf-row" href="#">
-            <span class="sf-name"><span class="store-tile"><i class="ic ic-polaris"></i></span>
-              <span class="grow"><span class="cell-title">Polaris Key</span><span class="cell-sub">Discover shows DJDL, free, to people the access policy covers. Paid checkout isn’t available yet.</span></span></span>
-            <span class="sf-state"><span class="status"><i class="ic ic-circle-check"></i>Live, free</span></span>
-            <i class="ic ic-chevron-right sf-chev"></i>
-          </a>
+        <div class="card-rows">
+          <div class="item-row keep-end">
+            <span class="icon-tile sm neutral off"><i class="ic ic-app-store"></i></span>
+            <div class="item-text"><div class="item-title"><a href="#">App Store</a></div></div>
+            <div class="item-end"><span class="meta">1 step</span><i class="ic ic-chevron-right hide-narrow" aria-hidden="true"></i></div>
+          </div>
+          <div class="item-row keep-end">
+            <span class="icon-tile sm neutral off"><i class="ic ic-steam"></i></span>
+            <div class="item-text"><div class="item-title"><a href="#">Steam</a></div><div class="item-desc">Steamworks app and publisher key</div></div>
+            <div class="item-end"><span class="meta">3 steps</span><i class="ic ic-chevron-right hide-narrow" aria-hidden="true"></i></div>
+          </div>
+          <div class="item-row keep-end">
+            <span class="icon-tile sm neutral off"><i class="ic ic-microsoft-store"></i></span>
+            <div class="item-text"><div class="item-title"><a href="#">Microsoft Store</a></div><div class="item-desc">Partner Center and an Entra app</div></div>
+            <div class="item-end"><span class="meta">4 steps</span><i class="ic ic-chevron-right hide-narrow" aria-hidden="true"></i></div>
+          </div>
+          <div class="item-row keep-end">
+            <span class="icon-tile sm neutral off"><i class="ic ic-itch"></i></span>
+            <div class="item-text"><div class="item-title"><a href="#">itch.io</a></div><div class="item-desc">Sells the app; purchases aren’t checked yet</div></div>
+            <div class="item-end"><i class="ic ic-chevron-right hide-narrow" aria-hidden="true"></i></div>
+          </div>
+          <div class="item-row keep-end">
+            <span class="icon-tile sm neutral"><i class="ic ic-polaris"></i></span>
+            <div class="item-text"><div class="item-title"><a href="#">Polaris Key</a></div><div class="item-desc">Free on Discover; paid checkout isn’t available yet</div></div>
+            <div class="item-end"><span class="status"><i class="ic ic-circle-check"></i>Live</span><i class="ic ic-chevron-right hide-narrow" aria-hidden="true"></i></div>
+          </div>
         </div>
       </section>
+
+      <div class="callout info span-all">
+        <i class="ic ic-info"></i>
+        <div class="grow"><div class="callout-title">DJDL’s own site keeps selling as before.</div></div>
+      </div>
     </div>
   </main>
 </div>

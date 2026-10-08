@@ -18,6 +18,35 @@
     "Phone: each suggestion stacks (product, a turned arrow, the offer, then its actions) and nothing scrolls sideways."
   ],
   "status": "mockup",
-  "designReview": null,
+  "designReview": {
+    "round": 1,
+    "reviewer": "multi-review",
+    "verdict": "",
+    "findings": [
+      {
+        "severity": "minor",
+        "issue": "The count reads '4 ... Add all 3'; an empty Offers table is a second card of equal weight.",
+        "resolution": "Meta is '4 found: 3 can be added, 1 has no match · Checked Oct 7, 10:51'; the empty table is one muted line; Dismiss and Add offer are a 12px pair; the phone Offer label is gone.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "[wide 1920] Console pages stretch tables and attention rows across the whole width.",
+        "resolution": "Page content is capped at 1280px, left-aligned, from 1600px (.cm2 page cap); attention text is capped at 72ch with its action beside it.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      }
+    ]
+  },
   "order": 10
 }

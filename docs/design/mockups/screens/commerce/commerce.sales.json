@@ -13,18 +13,18 @@
   "uxRows": [
     "UX-57"
   ],
-  "summary": "Diceroll's App Store channel page opened from Storefronts on its Sales tab: the storefront's one-line summary, the App Store SKUs with their offer and App Store Connect state, the 3.1.3(b) warning for an offer with no App Store SKU, recent App Store purchases, and the connection (derived app identity, verification key, store notifications) with restore under Advanced.",
+  "summary": "Diceroll's App Store channel page opened from Storefronts on its Sales tab: Live beside the title, 28 days of purchases and refunds under it, the 3.1.3(b) warning for an offer with no App Store SKU, the App Store SKUs with their offer and App Store Connect state, recent App Store purchases, and in the rail the connection (team key, derived app identity, store notifications, test purchases) with restore under Advanced.",
   "compare": [
-    "It is the one channel page (A-22) with tabs Status, Releases, Listing, Sales and Setup; the Storefronts row lands on Sales. The crumbs say Storefronts › App Store and the Commerce sidebar entry stays active because that is where the person came from.",
+    "It is the one channel page (A-22), drawn like distribution.channel-app-store: the xl store tile, the h1 with its state, tabs Status, Releases, Listing, Sales and Setup; the Storefronts row lands on Sales. The crumbs say Storefronts › App Store and the Commerce sidebar entry stays active because that is where the person came from.",
     "Sales renders only when the storefront side is set up; otherwise the same tab shows the storefront wizard with human steps only (commerce.sales-wizard).",
-    "The summary line reads 'Live  Selling 3 offers  412 purchases in 28 days  5 refunds  Test purchases off' as spaced items with no separator dots, so a wrapped line never starts with one; Live is green status text.",
-    "SKUs list each App Store product id in mono with its offer (name, then what it sells) and its App Store Connect state in Apple's own words (Ready for Sale, Waiting for Review). There is no price column: prices live on the offer. A row has no menu: the whole row opens its offer (chevron), where the App Store Connect deep link lives.",
+    "Each fact once: Live is the status beside the h1; the sub-line says 'Diceroll on iOS · 412 purchases and 5 refunds in 28 days'; the offers on sale are the SKU rows' states; test purchases appear only in Connection.",
+    "SKUs list each App Store product id in mono with its offer (name, then what it sells) and its App Store Connect state in Apple's own words (Ready for Sale, Waiting for Review). There is no price column: the card head says prices and territories are set on each offer. A row has no menu: the whole row opens its offer (chevron), where the App Store Connect deep link lives.",
     "The 3.1.3(b) warning names the offer and why it matters and carries Create on App Store as its one action, which opens the L1 confirm (commerce.create-iap).",
     "Import from App Store reads the store's in-app purchases and suggests offers; it is a button on the SKUs card, not a separate page.",
-    "Connection shows facts, never typed fields: the team key (from Platform → Store connections) and when it was last checked, the app identity read from the assigned app with 'Nothing to type', store notifications set up and verified with the last one received, and test purchases pointing at the one switch on Storefronts.",
-    "Restore policy is the only per-store option. It sits under Advanced, a closed disclosure that reads 'Advanced · Restoring purchases: App Store default'; opening it shows one labelled select (Restoring purchases: Follows the buyer's Apple account, the App Store default / Stays with the license) that saves on change.",
-    "Recent purchases are the Purchases ledger filtered to the App Store; a floating license (no account) shows the device; a refund is a danger pill.",
-    "Phone: the side column drops under the main column; both tables become stacked rows like Purchases, with nothing scrolling sideways: a SKU shows the mono id, then 'Offer · what it sells', then its App Store Connect state with its icon and a chevron; a recent purchase shows time, offer and state on one line and the account under it. The callout's action goes under its text."
+    "Connection (the rail) shows facts, never typed fields: the team key (from Store connections) and when it was last checked, the app identity with its Apple ID read from the assigned app, store notifications verified with the last one received, and test purchases pointing at the one switch on Storefronts. Re-check is the head's icon button; Send a test notification is in the foot.",
+    "Restore policy is the only per-store option. It sits under Advanced, a folded card that reads 'Advanced · Restoring purchases: App Store default'; opening it shows one labelled select (Restoring purchases: Follows the buyer's Apple account, the App Store default / Stays with the license) that saves on change.",
+    "Recent purchases are the Purchases ledger filtered to the App Store, in its columns (Offer, Account, State, Bought); a floating license (no account) shows the device; a refund is danger status text, as in Purchases.",
+    "Wide: the rail is 400px beside the main column. Tablet: the rail's cards sit side by side under it. Phone: one column; both tables stack (.table.stack-phone) with nothing scrolling sideways: a SKU shows the mono id, then its offer and state on labelled lines; a purchase shows the offer, then account, state and time. The callout's action goes under its text."
   ],
   "status": "mockup",
   "designReview": {
@@ -47,6 +47,61 @@
         "severity": "minor",
         "issue": "[visual] The light warning callout fill (--pk-warning-subtle #eae7e6) reads grey-beige rather than amber.",
         "resolution": "declined: the kit copies brand tokens verbatim from packages/brand (tools/mockups/build-kit.mjs regenerates them), so warming the token here would make the mockups disagree with the built console. The change belongs in @polaris-key/brand's tokens; flagged to the lead."
+      },
+      {
+        "severity": "major",
+        "issue": "Two row heights and header weights; banner, test purchases and connection repeat other screens.",
+        "resolution": "Both tables use one row height and header; banner is 'Neon dice pack has no App Store SKU' plus the button; the subtitle is deleted; Recent purchases is 3 rows with See all; Connection is three rows (Key, App, Notifications); test purchases is a 'Test purchases off · Change' link; sentence-case states, a plain tick for Ready for sale, exceptions spelled out.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "[phone, tablet] Labels repeat four times per row; Connection is about 1400px down.",
+        "resolution": "Phone rows are two lines without labels; Connection comes before Recent purchases (the conn-first order; the connection is healthy here so no status pill is drawn); on tablet Connection spans the width in two columns with Advanced under it.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "[wide 1920] Console pages stretch tables and attention rows across the whole width.",
+        "resolution": "Page content is capped at 1280px, left-aligned, from 1600px (.cm2 page cap); attention text is capped at 72ch with its action beside it.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Row sub-lines and legends are small, and chevrons and copy icons have small hit areas.",
+        "resolution": "Sub-lines and legends are at least 12px (13px here) in the muted token that already passes 4.5:1; icon buttons have a 24px target; one table header token and row height are shared.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux4"
+        ]
+      },
+      {
+        "issue": "Remove the Test purchases block and the Recent purchases card entirely.",
+        "resolution": "declined: Recent purchases is a useful per-store view (cut to 3 rows) and test purchases is a plan-owned control (reduced to a link); neither is dropped.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Raise Connection labels to 12-13px and delete 'from the assigned app' and the Storefronts hint.",
+        "resolution": "declined: Already covered by the Connection merge and the 12px floor.",
+        "round": "multi-review"
       }
     ]
   },

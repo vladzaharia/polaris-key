@@ -47,6 +47,38 @@
         "severity": "minor",
         "issue": "[visual / flow] Territories mixes a ghost Edit with a green Open link and Edit's destination is undefined; Quantity 1 shows for a non-consumable; the segmented control is 12px beside 14px inputs.",
         "resolution": "The last column uses one link style: 'Edit territories →' for App Store and Google Play (an in-console territory drawer, named in compare) and 'Open in Steamworks ↗'. Quantity is removed for this non-consumable; the Sells hint names the kind and Billing says a consumable also sets how many. The segmented control is default size. The Steam copy card also lost the shell '$' prompt."
+      },
+      {
+        "severity": "minor",
+        "issue": "SKUs card leaves ~700px blank at 1440; read-only id where an input would be; name appears four times; Save nearly invisible; date line small.",
+        "resolution": "Two columns (form plus a 360px SKU rail) from 1200px; Offer id is meta under Name with the SDK hint; the select is labelled Add-on; Name helper is 'Shown to players'; 'Changed Sep 18 by Ada Lindqvist' is 13px on its own line; disabled Save is an outline; the price table becomes card rows beside the rail.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "[phone] Stop selling is a bordered button at the top.",
+        "resolution": "Stop selling is a danger text link at the page's end; Change price is an icon button beside the price card title.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "[wide 1920] Console pages stretch tables and attention rows across the whole width.",
+        "resolution": "Page content is capped at 1280px, left-aligned, from 1600px (.cm2 page cap); attention text is capped at 72ch with its action beside it.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
       }
     ]
   },

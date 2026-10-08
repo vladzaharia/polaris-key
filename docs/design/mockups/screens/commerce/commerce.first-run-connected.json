@@ -15,12 +15,29 @@
   "compare": [
     "The meter is Home's continuous bar at a third; the done step keeps its row with a tick, muted, and says when and with which key it was done, and that store notifications were verified.",
     "Create an offer is now the Next step; because DJDL already has in-app purchases on the App Store, Import from App Store sits beside New offer (primary).",
-    "The App Store row reads Ready (info status) with 'Connected. Waiting for an offer with an App Store SKU.'; the other storefronts are unchanged.",
-    "The page sub-line follows the state: 'The App Store is ready. Nothing sells until DJDL has an offer with an App Store SKU.'",
+    "The App Store row reads Ready (info status) at its end, with 'Waiting for an offer with an App Store SKU' under its name; the other storefronts are unchanged.",
+    "No page sub-line: the App Store row says what it waits for ('Waiting for an offer with an App Store SKU'), so the state is said once.",
     "No toast: the ticked step is the confirmation (EXPERIENCE.md §7, a toast never duplicates the page). A polite live region announces 'App Store connected'.",
     "Phone: the step's two buttons wrap under its text, the primary first."
   ],
   "status": "mockup",
-  "designReview": null,
+  "designReview": {
+    "round": 1,
+    "reviewer": "multi-review",
+    "verdict": "",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "Same first-run defects; 'Waiting for an offer' said twice.",
+        "resolution": "As first-run; 'Waiting for an offer' appears only in the step and the App Store row sub-line is 'Connected Oct 7'.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3"
+        ]
+      }
+    ]
+  },
   "order": 7
 }

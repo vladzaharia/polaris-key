@@ -17,9 +17,9 @@
   "compare": [
     "The setup card shows while the commerce service is on, until the first verified purchase arrives (test purchases count); a storefront turning Ready doesn't remove it (commerce.first-run-connected). Steps are computed from facts, never stored.",
     "The setup card has Home's Platform ready meter, one continuous bar ('0 of 3 done', empty track visible in both themes), and three rows: Connect a storefront (marked Next, primary action), Create an offer (can be done first; offers don't need a storefront), Make a test purchase (the one test-purchase switch inline).",
-    "Connect App Store is one confirmation (commerce.connect-app-store) because the platform's App Store Connect key already lists com.example.djdl (A-33): the copy says 'same key, no settings to type'. No bundle id or Apple ID field appears anywhere. Its failure stays inline in that dialog (commerce.connect-app-store-error).",
+    "Connect App Store is one confirmation (commerce.connect-app-store) because the platform's App Store Connect key already lists com.example.djdl (A-33): the step says DJDL is already in the Example Audio team. No bundle id or Apple ID field appears anywhere. Its failure stays inline in that dialog (commerce.connect-app-store-error).",
     "The list shows only storefronts that fit DJDL's platforms (App Store, Steam, Microsoft Store, itch.io, Polaris Key); Google Play is absent because DJDL has no Android build.",
-    "Each storefront row says what it needs in plain words and how many human steps ('One step', '3 steps', '4 steps'), is one link to that channel's Sales tab where its wizard lives (commerce.sales-wizard shows Steam's), and has no buttons of its own.",
+    "Each storefront row says what it needs in plain words and how many human steps ('One step', '3 steps', '4 steps'), is one link to that channel's Sales tab where its wizard lives (commerce.sales-wizard shows Steam's), and has no buttons of its own: its state sits at the row's end, beside the chevron.",
     "itch.io says up front that its purchases can't be checked yet; Polaris Key reads 'Live, free' and says paid checkout isn't available yet.",
     "The info callout reassures that DJDL's own site and its members-group licenses are unchanged and that store purchases land on the same licenses.",
     "No stats, attention card or empty tables are drawn in this state.",
@@ -41,6 +41,37 @@
         "severity": "minor",
         "issue": "[visual] The '0 of 3 done' meter is three segments while Home uses one continuous bar, and the empty segments almost vanish in dark.",
         "resolution": "Reuses Home's .progress bar (success, 220px wide, at 0%) with the empty track raised to a border-strong mix so it shows in both themes. Phone puts it under the card title."
+      },
+      {
+        "severity": "major",
+        "issue": "'Not set up' five times, repeated step title in its control, restated callout.",
+        "resolution": "No row says Not set up: only Polaris Key shows Live and the rest a muted 'N steps'; the switch is labelled 'Turn on test purchases'; step 2 is 'Sell a tier or an add-on, or import your App Store products.'; the callout is one sentence; card title is 'Where DJDL sells'; status is inline on the title row on phone.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "[wide] A 65px card in the rail with ~800px empty.",
+        "resolution": "'Where DJDL sells' is the 400px rail beside 'Start selling' with equal weight; the callout moves below both; body text capped at 70 characters; empty progress track has a 1px edge.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux4"
+        ]
+      },
+      {
+        "issue": "Fold the first-run store list into step 1 as a chip row.",
+        "resolution": "declined: Where things live is a flow decision; the list is quieted instead so no structure changes.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Move the test-purchase switch into the page header.",
+        "resolution": "declined: The consolidation plan collapses the test-purchase switches into one; a flow decision.",
+        "round": "multi-review"
       }
     ]
   },

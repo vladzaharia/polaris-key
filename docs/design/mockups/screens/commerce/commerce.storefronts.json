@@ -49,6 +49,96 @@
         "severity": "minor",
         "issue": "[visual/copy] 'Storefronts' repeats as the section heading; the sub-line mixes words; Polaris Key's '57 added' sits in the purchases column; itch.io shows 'Not checked' for purchases but '—' for refunds; the neutral Offers count competes with the red attention badge.",
         "resolution": "Section heading is 'Where Diceroll sells' (matching first-run's 'Where DJDL can sell'); sub-line 'Selling on 3 storefronts · 2 things need attention'; Polaris Key's Selling cell reads 'Free on Discover · 57 added' with Purchases '—'; itch.io's Refunds reads 'Not checked'; the Offers count is gone from the sidebar on every Commerce screen."
+      },
+      {
+        "severity": "major",
+        "issue": "'2 need attention' pill overflows into Selling at tablet and repeats the card and badge.",
+        "resolution": "Google Play shows a plain red Error pill; the state column is fixed at 188px, nowrap; the card and sidebar badge stay.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Selling, Purchases and Refunds crowd the row.",
+        "resolution": "Selling merges into State ('Live · 3 offers'); Purchases and Refunds stay; KPI tiles stay; 'Refunds and chargebacks' is 'Refunds' (chargebacks in the tooltip).",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "'Not checked' reads as a refunds value; uneven rows and chevron edges.",
+        "resolution": "itch.io shows a dash in both number columns, 'Ready, not checked' in State and the reason in the sub-line; numbers right-aligned; 32px chevron column; sub-lines truncate to one line.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Subtitles mix health, marketing and numbers; phone repeats the columns.",
+        "resolution": "One slot: freshness, next step, or blank (Google Play); 'Free on Discover · 57 added' once; phone shows 'N purchases · N refunds' only.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux2",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "A lone test-purchases card in the 1920 rail.",
+        "resolution": "The rail holds Needs attention and Accept test purchases; the table keeps the main column.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "[wide 1920] Console pages stretch tables and attention rows across the whole width.",
+        "resolution": "Page content is capped at 1280px, left-aligned, from 1600px (.cm2 page cap); attention text is capped at 72ch with its action beside it.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Row sub-lines and legends are small, and chevrons and copy icons have small hit areas.",
+        "resolution": "Sub-lines and legends are at least 12px (13px here) in the muted token that already passes 4.5:1; icon buttons have a 24px target; one table header token and row height are shared.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux4"
+        ]
+      },
+      {
+        "issue": "Delete the Purchases and Refunds columns, the KPI tiles, or the Selling column outright.",
+        "resolution": "declined: Per-store numbers and cross-store totals answer different questions and the owner asked to keep the content; only repeated phrasing is cut and Selling merges into State.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Move the Accept test purchases switch into the page header.",
+        "resolution": "declined: The consolidation plan collapses three test-purchase switches into one; where it lives is a flow decision.",
+        "round": "multi-review"
       }
     ]
   },

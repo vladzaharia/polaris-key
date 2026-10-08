@@ -20,6 +20,21 @@
     "Phone: a bottom sheet; the two fields stack; buttons full width with the primary on top."
   ],
   "status": "mockup",
-  "designReview": null,
+  "designReview": {
+    "round": 1,
+    "reviewer": "multi-review",
+    "verdict": "",
+    "findings": [
+      {
+        "severity": "minor",
+        "issue": "The subtitle adds nothing and the name list does not scale.",
+        "resolution": "'Pick what it sells.' cut; names capped at two plus '1 more'.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux3"
+        ]
+      }
+    ]
+  },
   "order": 11
 }

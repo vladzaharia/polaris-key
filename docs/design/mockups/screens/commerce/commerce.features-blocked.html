@@ -1,154 +1,4 @@
-<style>
-  /* commerce.features-blocked: a feature's own switches nested under its row, and its requirement line. */
-  [data-screen="commerce.features-blocked"] .feature + .feature {
-    border-top: 1px solid var(--mk-line);
-  }
-  [data-screen="commerce.features-blocked"] .feature > .setting-row {
-    align-items: start;
-  }
-  [data-screen="commerce.features-blocked"] .feature > .setting-row > .switch {
-    margin-top: 8px;
-  }
-  [data-screen="commerce.features-blocked"] .facts {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px 14px;
-    margin-top: 6px;
-    font-size: 13px;
-  }
-  [data-screen="commerce.features-blocked"] .req {
-    display: inline-flex;
-    align-items: flex-start;
-    gap: 6px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="commerce.features-blocked"] .req > .ic {
-    margin-top: 2px;
-  }
-  [data-screen="commerce.features-blocked"] .toasts {
-    right: 16px;
-    width: 244px;
-  }
-  [data-screen="commerce.features-blocked"] .toast-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 10px;
-  }
-  [data-screen="commerce.features-blocked"] .req > .ic {
-    width: 14px;
-    height: 14px;
-    color: var(--pk-success);
-  }
-  [data-screen="commerce.features-blocked"] .req.by > .ic {
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="commerce.features-blocked"] .sub-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 12px;
-    margin: 0 20px 0 72px;
-    padding: 10px 0;
-    border-top: 1px dashed var(--mk-line);
-  }
-  [data-screen="commerce.features-blocked"] .sub-row:last-child {
-    margin-bottom: 8px;
-  }
-  [data-screen="commerce.features-blocked"] .sub-title {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="commerce.features-blocked"] .sub-desc {
-    font-size: 12px;
-    line-height: 16px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="commerce.features-blocked"] .feature.just-on {
-    background: color-mix(in oklab, var(--pk-accent-subtle) 55%, transparent);
-    box-shadow: inset 3px 0 0 var(--pk-accent);
-  }
-  [data-screen="commerce.features-blocked"] .feature.just-on:last-child {
-    border-radius: 0 0 var(--pk-radius-xl) var(--pk-radius-xl);
-  }
-  @container screen (max-width: 639px) {
-    /* Phone: the page scrolls the switched row above the toast, so the toast sits after the list. */
-    [data-screen="commerce.features-blocked"] .page {
-      padding-bottom: 168px;
-    }
-    [data-screen="commerce.features-blocked"] .toasts {
-      position: absolute;
-      left: 12px;
-      right: 12px;
-      bottom: 16px;
-      width: auto;
-    }
-    [data-screen="commerce.features-blocked"] .sub-row {
-      margin: 0 16px 0 68px;
-    }
-    [data-screen="commerce.features-blocked"] .feature > .setting-row {
-      gap: 12px;
-    }
-  }
-  [data-screen="commerce.features-blocked"] .req.unmet {
-    color: var(--pk-text-default);
-  }
-  [data-screen="commerce.features-blocked"] .req.unmet > .ic {
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="commerce.features-blocked"] .req .met {
-    color: var(--pk-text-muted);
-  }
-  [data-screen="commerce.features-blocked"] .switch-wrap {
-    position: relative;
-    display: inline-flex;
-  }
-  [data-screen="commerce.features-blocked"] .switch-wrap > .tooltip {
-    position: absolute;
-    right: -6px;
-    bottom: calc(100% + 8px);
-    max-width: none;
-  }
-  /* "Turn on …" links read the same in every row, whatever the row's service colour. */
-  [data-screen="commerce.features-blocked"] .facts .link {
-    color: var(--pk-text-strong);
-  }
-  [data-screen="commerce.features-blocked"] .row-error {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    align-items: start;
-    gap: 6px 8px;
-    margin-top: 8px;
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-danger);
-  }
-  [data-screen="commerce.features-blocked"] .row-error > .ic {
-    width: 14px;
-    height: 14px;
-    margin-top: 2px;
-  }
-  [data-screen="commerce.features-blocked"] .row-error > .btn {
-    margin-left: 8px;
-  }
-  @container screen (max-width: 639px) {
-    [data-screen="commerce.features-blocked"] .row-error > .btn {
-      grid-column: 2;
-      justify-self: start;
-      margin-left: 0;
-    }
-  }
-  [data-screen="commerce.features-blocked"] .feature.failed {
-    box-shadow: inset 3px 0 0 var(--pk-danger);
-  }
-  [data-screen="commerce.features-blocked"] .feature.failed:last-child {
-    border-radius: 0 0 var(--pk-radius-xl) var(--pk-radius-xl);
-  }
-</style>
-
-<div class="console" data-service="core">
+<div class="console cm2" data-service="core">
   <header class="topbar">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
@@ -158,7 +8,7 @@
     <span class="avatar violet">AL</span>
   </header>
 
-  <!-- Only the groups of features that are on: no Licensing, Sign-in, Cloud Sync or Commerce. -->
+  <!-- Groups only for the features that are on: no Licensing, Sign-in, Cloud Sync or Commerce. -->
   <nav class="sidebar" aria-label="DJDL">
     <div class="ctx">
       <span class="logo sm" data-product="djdl"></span>
@@ -171,8 +21,8 @@
     <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
     <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
     <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
-    <div class="nav-group closed" data-service="config"><div class="nav-label">Managed config<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="release" style="padding-top: 4px"><div class="nav-label">Ship builds<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="sidebar-foot">
       <a class="nav-item active" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
       <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
@@ -180,116 +30,110 @@
   </nav>
 
   <main class="main">
-    <div class="page narrow">
+    <!-- One column, capped at 1280 from 1600: the page has no rail. -->
+    <div class="page">
       <header class="page-head">
         <div class="page-heading"><h1>Settings</h1></div>
-        <p class="page-sub">DJDL’s presentation, features and advanced options.</p>
       </header>
 
       <nav class="tabs" aria-label="Settings">
         <a class="tab" href="#">General</a>
         <a class="tab" href="#">Presentation</a>
-        <a class="tab active" href="#">Features</a>
+        <a class="tab active" href="#" aria-current="page">Features</a>
         <a class="tab" href="#">Advanced</a>
       </nav>
 
-      <section class="section" aria-labelledby="feat-title">
-        <div class="section-head">
-          <div><h2 id="feat-title">Features</h2><p>Each switch saves on its own. A feature can be on only when what it needs is on; turning one off also turns off what needs it, and asks first.</p></div>
-        </div>
+      <!-- Saves are per switch; what turning a feature off takes with it is in the confirm dialog. -->
+      <div class="callout">
+        <i class="ic ic-info"></i>
+        <div class="grow"><div class="callout-text">Each switch saves on its own.</div></div>
+      </div>
 
-        <div class="card">
-          <!-- Canonical order: Licensing, Managed config, Ship builds, Sign-in, Cloud Sync, Commerce. -->
-          <div class="feature" data-service="license">
-            <div class="setting-row with-icon">
-              <span class="icon-tile"><i class="svc"></i></span>
-              <div>
-                <div class="setting-title">Licensing</div>
-                <div class="setting-desc">Tiers, add-ons, entitlements and who gets a license automatically.</div>
-                <div class="facts"><span class="req by"><i class="ic ic-arrow-right-left"></i>Commerce needs it</span><span class="status muted">Off</span></div>
+      <!-- Canonical order: Licensing, Managed config, Ship builds, Sign-in, Cloud Sync, Commerce.
+           Requirements come from tools/services.json; a feature's own switches nest under it. -->
+      <section class="card" aria-label="Features">
+        <div class="feature-rows">
+          <div class="feature-row off" id="row-license">
+            <span class="icon-tile sm muted" data-service="license"><i class="svc"></i></span>
+            <div class="feature-row-text">
+              <div class="feature-row-name">Licensing</div>
+              <p class="feature-row-desc">Tiers, add-ons, entitlements and who gets a license automatically.</p>
+            </div>
+            <span class="switch touch" role="switch" aria-checked="false" aria-label="Licensing"></span>
+          </div>
+
+          <div class="feature-row">
+            <span class="icon-tile sm" data-service="config"><i class="svc"></i></span>
+            <div class="feature-row-text">
+              <div class="feature-row-name">Managed config</div>
+              <p class="feature-row-desc">Settings, secrets and minted tokens, with a profile per tier.</p>
+            </div>
+            <span class="switch touch on" role="switch" aria-checked="true" aria-label="Managed config"></span>
+            <div class="feature-subs">
+              <div class="setting-row">
+                <div><div class="setting-title">Minted tokens</div><div class="setting-desc">Follows DJDL’s token recipes: 1 approved</div></div>
+                <span class="status"><i class="ic ic-circle-check"></i>On</span>
               </div>
-              <span class="switch" data-service="core" role="switch" aria-checked="false" aria-label="Licensing"></span>
             </div>
           </div>
 
-          <div class="feature" data-service="config">
-            <div class="setting-row with-icon">
-              <span class="icon-tile"><i class="svc"></i></span>
-              <div>
-                <div class="setting-title">Managed config</div>
-                <div class="setting-desc">Settings, secrets and minted tokens, with a profile per tier.</div>
-                <div class="facts"><span class="req by"><i class="ic ic-arrow-right-left"></i>Cloud Sync needs it</span></div>
-              </div>
-              <span class="switch on" data-service="core" role="switch" aria-checked="true" aria-label="Managed config"></span>
+          <div class="feature-row">
+            <span class="icon-tile sm" data-service="release"><i class="svc"></i></span>
+            <div class="feature-row-text">
+              <div class="feature-row-name">Ship builds</div>
+              <p class="feature-row-desc">Releases from CI, DJDL’s channels and the download page.</p>
             </div>
-            <div class="sub-row">
-              <div><div class="sub-title">Minted tokens</div><div class="sub-desc">On while a token recipe is declared and approved. DJDL has 1.</div></div>
-              <span class="status"><i class="ic ic-circle-check"></i>On</span>
+            <span class="switch touch on" role="switch" aria-checked="true" aria-label="Ship builds"></span>
+            <div class="feature-subs">
+              <div class="setting-row">
+                <div><div class="setting-title">In-app updates</div><div class="setting-desc">Sparkle on macOS and WinSparkle on Windows check DJDL’s signed feed.</div></div>
+                <span class="switch touch on" role="switch" aria-checked="true" aria-label="In-app updates"></span>
+              </div>
+              <div class="setting-row">
+                <div><div class="setting-title">Package feeds</div><div class="setting-desc">Packages on pkg.plrs.im for DJDL’s customers.</div></div>
+                <span class="switch touch" role="switch" aria-checked="false" aria-label="Package feeds"></span>
+              </div>
             </div>
           </div>
 
-          <div class="feature" data-service="release">
-            <div class="setting-row with-icon">
-              <span class="icon-tile"><i class="svc"></i></span>
-              <div>
-                <div class="setting-title">Ship builds</div>
-                <div class="setting-desc">Releases from CI, DJDL’s channels and the download page.</div>
-              </div>
-              <span class="switch on" data-service="core" role="switch" aria-checked="true" aria-label="Ship builds"></span>
+          <!-- A feature that is off hides its own switches (Customer portal). -->
+          <div class="feature-row off" id="row-signin">
+            <span class="icon-tile sm muted" data-service="identity"><i class="svc"></i></span>
+            <div class="feature-row-text">
+              <div class="feature-row-name">Sign-in</div>
+              <p class="feature-row-desc">People sign in to DJDL with their Polaris Key account.</p>
             </div>
-            <div class="sub-row">
-              <div><div class="sub-title">In-app updates</div><div class="sub-desc">Sparkle on macOS and WinSparkle on Windows check DJDL’s signed feed.</div></div>
-              <span class="switch on" data-service="core" role="switch" aria-checked="true" aria-label="In-app updates"></span>
-            </div>
-            <div class="sub-row">
-              <div><div class="sub-title">Package feeds</div><div class="sub-desc">Packages on pkg.plrs.im for DJDL’s customers.</div></div>
-              <span class="switch" data-service="core" role="switch" aria-checked="false" aria-label="Package feeds"></span>
-            </div>
+            <span class="switch touch" role="switch" aria-checked="false" aria-label="Sign-in"></span>
           </div>
 
-          <div class="feature" data-service="identity">
-            <div class="setting-row with-icon">
-              <span class="icon-tile"><i class="svc"></i></span>
-              <div>
-                <div class="setting-title">Sign-in</div>
-                <div class="setting-desc">People sign in to DJDL with their Polaris Key account.</div>
-                <div class="facts"><span class="req by"><i class="ic ic-arrow-right-left"></i>Cloud Sync needs it</span></div>
-              </div>
-              <span class="switch" data-service="core" role="switch" aria-checked="false" aria-label="Sign-in"></span>
+          <!-- A dependent of an off requirement: its switch is disabled (aria-disabled, still focusable,
+               the same words as its tooltip), the lock names what is off, and the link goes to that
+               row's switch. The server refuses it too. -->
+          <div class="feature-row off">
+            <span class="icon-tile sm muted" data-service="sync"><i class="svc"></i></span>
+            <div class="feature-row-text">
+              <div class="feature-row-name">Cloud Sync</div>
+              <p class="feature-row-desc">Each person’s settings and crates, the same on every Mac and PC.</p>
+              <div class="reqs"><span>Needs</span><span class="req met" aria-label="Managed config is on">Managed config</span><span class="req unmet" aria-label="Sign-in is off">Sign-in</span></div>
+              <div class="feature-row-note"><a class="link" href="#row-signin">Turn on Sign-in first</a></div>
             </div>
+            <span class="switch touch disabled" role="switch" aria-checked="false" aria-disabled="true" aria-label="Cloud Sync" title="Needs Sign-in. Turn it on first."></span>
           </div>
 
-          <div class="feature" data-service="sync">
-            <div class="setting-row with-icon">
-              <span class="icon-tile"><i class="svc"></i></span>
-              <div>
-                <div class="setting-title">Cloud Sync</div>
-                <div class="setting-desc">Each person’s settings and crates, the same on every Mac and PC.</div>
-                <div class="facts"><span class="req unmet"><i class="ic ic-circle-dashed"></i><span>Needs Managed config <span class="met">(on)</span> and Sign-in <span class="met">(off)</span>.</span></span><a class="link" href="#">Turn on Sign-in<i class="ic ic-arrow-right"></i></a></div>
-              </div>
-              <span class="switch disabled" data-service="core" role="switch" aria-checked="false" aria-disabled="true" aria-label="Cloud Sync" title="Needs Sign-in. Turn it on first."></span>
+          <div class="feature-row off">
+            <span class="icon-tile sm muted" data-service="commerce"><i class="svc"></i></span>
+            <div class="feature-row-text">
+              <div class="feature-row-name">Commerce</div>
+              <p class="feature-row-desc">Sell tiers and add-ons on the App Store, Steam, Microsoft Store and itch.io.</p>
+              <div class="reqs"><span>Needs</span><span class="req unmet" aria-label="Licensing is off">Licensing</span></div>
+              <div class="feature-row-note"><a class="link" href="#row-license">Turn on Licensing first</a></div>
             </div>
-          </div>
-
-          <!-- A dependent of an off requirement: switch disabled (aria-disabled, with a tooltip that says
-               the same), the line says what to turn on, and the server refuses it too
-               (commerce_requires_license). -->
-          <div class="feature" data-service="commerce">
-            <div class="setting-row with-icon">
-              <span class="icon-tile"><i class="svc"></i></span>
-              <div>
-                <div class="setting-title">Commerce</div>
-                <div class="setting-desc">Sell DJDL’s tiers and add-ons on the App Store, Steam, Microsoft Store and itch.io, and see every purchase in one place.</div>
-                <div class="facts">
-                  <span class="req unmet"><i class="ic ic-circle-dashed"></i>Needs Licensing. Turn it on first.</span>
-                  <a class="link" href="#">Turn on Licensing<i class="ic ic-arrow-right"></i></a>
-                </div>
-              </div>
-              <span class="switch-wrap"><span class="switch disabled" data-service="core" role="switch" aria-checked="false" aria-disabled="true" aria-label="Commerce" aria-describedby="commerce-tip"></span><span class="tooltip" id="commerce-tip" role="tooltip">Needs Licensing. Turn it on first.</span></span>
-            </div>
+            <span class="switch touch disabled" role="switch" aria-checked="false" aria-disabled="true" aria-label="Commerce" title="Needs Licensing. Turn it on first."></span>
           </div>
         </div>
-        <p class="hint">Service names and the registration policy are read-only under <a class="link" href="#">Advanced</a>.</p>
+        <div class="card-foot start">
+          <span class="type-small muted">Service names and the registration policy are read-only under <a class="link" href="#">Advanced</a>.</span>
+        </div>
       </section>
     </div>
   </main>

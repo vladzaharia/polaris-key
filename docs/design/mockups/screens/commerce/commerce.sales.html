@@ -1,173 +1,14 @@
 <style>
-  /* commerce.sales: the store tile beside the title and the two-column body. */
-  [data-screen="commerce.sales"] .store-tile {
-    display: inline-flex;
-    flex: none;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-    background: var(--mk-fill);
-    color: var(--pk-text-strong);
+  /* commerce.sales: weights and colours only; every space comes from the kit. */
+  [data-screen="commerce.sales"] .cell-title.mono {
+    font-weight: 400;
   }
-  [data-screen="commerce.sales"] .store-tile > .ic {
-    width: 22px;
-    height: 22px;
-  }
-  [data-screen="commerce.sales"] .summary {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 6px 16px;
-    margin-top: -8px;
-    font-size: 14px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="commerce.sales"] .body {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 340px;
-    gap: 24px;
-    align-items: start;
-  }
-  [data-screen="commerce.sales"] .col {
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-    min-width: 0;
-  }
-  [data-screen="commerce.sales"] .facts {
-    display: flex;
-    flex-direction: column;
-  }
-  [data-screen="commerce.sales"] .fact {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 12px 20px;
-  }
-  [data-screen="commerce.sales"] .fact + .fact {
-    border-top: 1px solid var(--mk-line);
-  }
-  [data-screen="commerce.sales"] .fact-label {
-    font-size: 12px;
-    line-height: 16px;
+  [data-screen="commerce.sales"] .table td.end > .ic {
     color: var(--pk-text-subtle);
-  }
-  [data-screen="commerce.sales"] .fact-value {
-    color: var(--pk-text-strong);
-  }
-  [data-screen="commerce.sales"] .sku {
-    font-family: var(--pk-font-mono);
-    font-size: 13px;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="commerce.sales"] .callout > .btn {
-    flex: none;
-  }
-  [data-screen="commerce.sales"] .table .chev {
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="commerce.sales"] .adv {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    width: 100%;
-    padding: 14px 20px;
-    border: 0;
-    background: none;
-    text-align: left;
-    cursor: pointer;
-  }
-  [data-screen="commerce.sales"] .adv > .ic {
-    margin-top: 2px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="commerce.sales"] .adv-sum {
-    display: block;
-    font-size: 13px;
-    color: var(--pk-text-muted);
-  }
-  @container screen (max-width: 1023px) {
-    [data-screen="commerce.sales"] .body {
-      grid-template-columns: minmax(0, 1fr);
-    }
-  }
-  @container screen (max-width: 639px) {
-    [data-screen="commerce.sales"] .fact {
-      padding: 12px 16px;
-    }
-    [data-screen="commerce.sales"] .summary {
-      gap: 4px 14px;
-    }
-    /* Phone: both tables become stacked rows, as on Purchases; nothing scrolls sideways. */
-    [data-screen="commerce.sales"] .table,
-    [data-screen="commerce.sales"] .table tbody {
-      display: block;
-    }
-    [data-screen="commerce.sales"] .table thead {
-      display: none;
-    }
-    [data-screen="commerce.sales"] .table tr {
-      display: grid;
-      gap: 4px 12px;
-      padding: 12px 16px;
-    }
-    [data-screen="commerce.sales"] .table tr + tr {
-      border-top: 1px solid var(--mk-line);
-    }
-    [data-screen="commerce.sales"] .table td {
-      display: block;
-      padding: 0;
-      border: 0;
-      min-width: 0;
-    }
-    [data-screen="commerce.sales"] .skus tr {
-      grid-template-columns: minmax(0, 1fr) auto;
-      grid-template-areas:
-        "sku chev"
-        "offer chev"
-        "state chev";
-      align-items: center;
-    }
-    [data-screen="commerce.sales"] .skus td:nth-child(1) { grid-area: sku; }
-    [data-screen="commerce.sales"] .skus td:nth-child(2) { grid-area: offer; }
-    [data-screen="commerce.sales"] .skus td:nth-child(3) { grid-area: state; padding-top: 2px; }
-    [data-screen="commerce.sales"] .skus td:nth-child(4) { grid-area: chev; }
-    [data-screen="commerce.sales"] .skus .sku {
-      overflow-wrap: anywhere;
-    }
-    [data-screen="commerce.sales"] .skus td:nth-child(1) .cell-sub {
-      display: none;
-    }
-    [data-screen="commerce.sales"] .skus td:nth-child(2) {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0 6px;
-      font-size: 13px;
-    }
-    [data-screen="commerce.sales"] .skus td:nth-child(2) .cell-title {
-      font-weight: 400;
-    }
-    [data-screen="commerce.sales"] .skus td:nth-child(2) .cell-title::after {
-      content: " ·";
-      color: var(--pk-text-subtle);
-    }
-    [data-screen="commerce.sales"] .buys tr {
-      grid-template-columns: auto minmax(0, 1fr) auto;
-      grid-template-areas:
-        "when offer state"
-        "acct acct acct";
-      align-items: center;
-    }
-    [data-screen="commerce.sales"] .buys td:nth-child(1) { grid-area: when; color: var(--pk-text-muted); }
-    [data-screen="commerce.sales"] .buys td:nth-child(2) { grid-area: offer; color: var(--pk-text-strong); white-space: nowrap; }
-    [data-screen="commerce.sales"] .buys td:nth-child(3) { grid-area: acct; font-size: 13px; color: var(--pk-text-muted); }
-    [data-screen="commerce.sales"] .buys td:nth-child(4) { grid-area: state; }
   }
 </style>
 
-<div class="console" data-service="commerce">
+<div class="console cm2" data-service="commerce">
   <header class="topbar">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
@@ -188,13 +29,13 @@
     <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
     <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
     <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
-    <div class="nav-group closed" data-service="license"><div class="nav-label">Licensing<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="config" style="padding-top: 4px"><div class="nav-label">Managed config<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="release" style="padding-top: 4px"><div class="nav-label">Ship builds<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="identity" style="padding-top: 4px"><div class="nav-label">Sign-in<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="sync" style="padding-top: 4px"><div class="nav-label">Cloud Sync<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="license"><button class="nav-label" aria-expanded="false">Licensing<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group" data-service="commerce">
-      <div class="nav-label">Commerce<i class="ic ic-chevron-down sm"></i></div>
+      <button class="nav-label" aria-expanded="true">Commerce<i class="ic ic-chevron-down sm"></i></button>
       <a class="nav-item active" href="#"><i class="ic ic-store"></i><span class="nav-text">Storefronts</span><span class="count danger">2</span></a>
       <a class="nav-item" href="#"><i class="ic ic-tag"></i><span class="nav-text">Offers</span></a>
       <a class="nav-item" href="#"><i class="ic ic-receipt"></i><span class="nav-text">Purchases</span></a>
@@ -207,11 +48,13 @@
 
   <main class="main">
     <div class="page">
-      <!-- The one channel page (A-22); the Storefronts row opened it on Sales. -->
+      <!-- The one channel page (A-22), as distribution.channel-app-store draws it; the Storefronts
+           row opened it on Sales. -->
       <header class="page-head">
         <nav class="crumbs"><a href="#">Storefronts</a><i class="ic ic-chevron-right"></i>App Store</nav>
-        <div class="page-heading"><span class="store-tile"><i class="ic ic-app-store"></i></span><h1>App Store</h1></div>
-        <p class="page-sub"><span>Diceroll on iOS · <span class="mono small">com.example.diceroll</span> · Apple ID 6478123905</span></p>
+        <div class="page-icon"><span class="icon-tile xl neutral"><i class="ic ic-app-store"></i></span></div>
+        <div class="page-heading"><h1>App Store</h1><span class="status"><i class="ic ic-circle-check"></i>Live</span></div>
+        <p class="page-sub">Diceroll on iOS · 412 purchases and 5 refunds in 28 days</p>
         <div class="page-actions">
           <button class="btn outline"><i class="ic ic-external-link"></i>Open in App Store Connect</button>
         </div>
@@ -221,110 +64,117 @@
         <a class="tab" href="#">Status</a>
         <a class="tab" href="#">Releases</a>
         <a class="tab" href="#">Listing</a>
-        <a class="tab active" href="#">Sales</a>
+        <a class="tab active" href="#" aria-current="page">Sales</a>
         <a class="tab" href="#">Setup</a>
       </nav>
 
-      <p class="summary">
-        <span class="status"><i class="ic ic-circle-check"></i>Live</span>
-        <span>Selling 3 offers</span>
-        <span>412 purchases in 28 days</span>
-        <span>5 refunds</span>
-        <span>Test purchases off</span>
-      </p>
-
-      <div class="body">
-        <div class="col">
+      <!-- Below 1280px the blocks run in one column and the Connection card comes before the recent
+           purchases (a failing connection is not buried at the page's end). -->
+      <div class="mk-with-rail conn-first">
+        <div class="mk-main">
           <!-- 3.1.3(b): sold elsewhere, unlocks on iOS, no App Store SKU. -->
-          <div class="callout warning">
+          <div class="callout warning o0">
             <i class="ic ic-triangle-alert"></i>
-            <div class="grow">
-              <div class="callout-title">Neon dice pack has no App Store SKU</div>
-              <div class="callout-text">It sells on Google Play and Steam and unlocks in the iOS app, so App Review guideline 3.1.3(b) needs it as an in-app purchase too.</div>
-            </div>
+            <div class="grow"><div class="callout-title">Neon dice pack has no App Store SKU</div></div>
             <button class="btn outline sm"><i class="ic ic-plus"></i>Create on App Store</button>
           </div>
 
-          <section class="card" aria-labelledby="skus-title">
+          <!-- A row opens its offer, where prices, territories and the App Store Connect link live.
+               Ready for sale is a plain tick; only the exceptions are spelled out. -->
+          <section class="card o1" aria-labelledby="skus-title">
             <div class="card-head">
-              <div class="title"><h2 id="skus-title">SKUs</h2><p>Diceroll’s offers on the App Store. A row opens its offer, where prices and territories are set.</p></div>
+              <div class="title"><h2 id="skus-title">SKUs</h2></div>
               <button class="btn outline sm"><i class="ic ic-download"></i>Import from App Store</button>
             </div>
-            <div class="table-card" style="border: 0; border-radius: 0 0 var(--pk-radius-xl) var(--pk-radius-xl); box-shadow: none">
-              <table class="table skus">
-                <thead><tr><th>SKU</th><th>Offer</th><th>In App Store Connect</th><th class="end"></th></tr></thead>
-                <tbody>
-                  <tr>
-                    <td><div class="sku">com.example.diceroll.full</div><div class="cell-sub">Non-consumable</div></td>
-                    <td><div class="cell-title">Full game</div><div class="cell-sub">Tier Standard</div></td>
-                    <td><span class="status"><i class="ic ic-circle-check"></i>Ready for Sale</span></td>
-                    <td class="end"><i class="ic ic-chevron-right chev" aria-hidden="true"></i></td>
-                  </tr>
-                  <tr>
-                    <td><div class="sku">com.example.diceroll.skins</div><div class="cell-sub">Non-consumable</div></td>
-                    <td><div class="cell-title">Dice skins</div><div class="cell-sub nowrap">Add-on Dice skins</div></td>
-                    <td><span class="status"><i class="ic ic-circle-check"></i>Ready for Sale</span></td>
-                    <td class="end"><i class="ic ic-chevron-right chev" aria-hidden="true"></i></td>
-                  </tr>
-                  <tr>
-                    <td><div class="sku">com.example.diceroll.plus.monthly</div><div class="cell-sub">Auto-renewable</div></td>
-                    <td><div class="cell-title">Diceroll Plus</div><div class="cell-sub nowrap">Tier Plus · monthly</div></td>
-                    <td><span class="status"><i class="ic ic-circle-check"></i>Ready for Sale</span></td>
-                    <td class="end"><i class="ic ic-chevron-right chev" aria-hidden="true"></i></td>
-                  </tr>
-                  <tr>
-                    <td><div class="sku">com.example.diceroll.rerolls25</div><div class="cell-sub">Consumable</div></td>
-                    <td><div class="cell-title">Reroll tokens</div><div class="cell-sub nowrap">25 per purchase · draft</div></td>
-                    <td><span class="status info"><i class="ic ic-hourglass"></i>Waiting for Review</span></td>
-                    <td class="end"><i class="ic ic-chevron-right chev" aria-hidden="true"></i></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            <table class="table fixed lines-2" aria-labelledby="skus-title">
+              <colgroup><col style="width: 42%"><col style="width: 28%"><col style="width: 24%"><col style="width: 6%"></colgroup>
+              <thead><tr><th>SKU</th><th>Offer</th><th>In App Store Connect</th><th class="end"><span class="sr-only">Open</span></th></tr></thead>
+              <tbody>
+                <tr>
+                  <td><div class="cell-title mono truncate">com.example.diceroll.full</div><div class="cell-sub hide-phone">Non-consumable</div></td>
+                  <td><div><div class="cell-title">Full game</div><div class="cell-sub hide-phone">Tier Standard</div></div></td>
+                  <td><span class="status" title="Ready for sale"><i class="ic ic-circle-check"></i><span class="sr-only">Ready for sale</span></span></td>
+                  <td class="end hide-narrow chev"><i class="ic ic-chevron-right"></i></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-title mono truncate">com.example.diceroll.skins</div><div class="cell-sub hide-phone">Non-consumable</div></td>
+                  <td><div><div class="cell-title">Dice skins</div><div class="cell-sub hide-phone">Add-on</div></div></td>
+                  <td><span class="status" title="Ready for sale"><i class="ic ic-circle-check"></i><span class="sr-only">Ready for sale</span></span></td>
+                  <td class="end hide-narrow chev"><i class="ic ic-chevron-right"></i></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-title mono truncate">com.example.diceroll.plus.monthly</div><div class="cell-sub hide-phone">Auto-renewable</div></td>
+                  <td><div><div class="cell-title">Diceroll Plus</div><div class="cell-sub hide-phone">Tier Plus · monthly</div></div></td>
+                  <td><span class="status" title="Ready for sale"><i class="ic ic-circle-check"></i><span class="sr-only">Ready for sale</span></span></td>
+                  <td class="end hide-narrow chev"><i class="ic ic-chevron-right"></i></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-title mono truncate">com.example.diceroll.rerolls25</div><div class="cell-sub hide-phone">Consumable</div></td>
+                  <td><div><div class="cell-title">Reroll tokens</div><div class="cell-sub hide-phone">25 per purchase · draft</div></div></td>
+                  <td><span class="status info"><i class="ic ic-hourglass"></i>Waiting for review</span></td>
+                  <td class="end hide-narrow chev"><i class="ic ic-chevron-right"></i></td>
+                </tr>
+              </tbody>
+            </table>
           </section>
 
-          <section class="card" aria-labelledby="buys-title">
+          <!-- The Purchases ledger, filtered to the App Store: the latest three. -->
+          <section class="card o4" aria-labelledby="buys-title">
             <div class="card-head">
-              <div class="title"><h2 id="buys-title">Recent purchases</h2><p>On the App Store only. Refunds remove what they added at once.</p></div>
-              <a class="link" href="#">Open in Purchases<i class="ic ic-arrow-right"></i></a>
+              <div class="title"><h2 id="buys-title">Recent purchases</h2></div>
+              <a class="btn link" href="#">See all<i class="ic ic-arrow-right"></i></a>
             </div>
-            <div class="table-card" style="border: 0; border-radius: 0 0 var(--pk-radius-xl) var(--pk-radius-xl); box-shadow: none">
-              <table class="table compact buys">
-                <thead><tr><th>When</th><th>Offer</th><th>Account</th><th class="end">State</th></tr></thead>
-                <tbody>
-                  <tr><td class="nowrap">Oct 7, 09:12</td><td>Dice skins</td><td>priya.raman@example.com</td><td class="end"><span class="status"><i class="ic ic-circle-check"></i>Active</span></td></tr>
-                  <tr><td class="nowrap">Oct 7, 08:31</td><td>Diceroll Plus</td><td>sam.whitlock@example.com</td><td class="end"><span class="status info"><i class="ic ic-repeat"></i>Free trial to Oct 14</span></td></tr>
-                  <tr><td class="nowrap">Oct 6, 21:05</td><td>Full game</td><td>Floating license <span class="subtle">· iPhone 15</span></td><td class="end"><span class="status"><i class="ic ic-circle-check"></i>Active</span></td></tr>
-                  <tr><td class="nowrap">Oct 5, 11:36</td><td>Full game</td><td>nadia.haddad@example.com</td><td class="end"><span class="pill danger sm"><i class="ic ic-ban"></i>Refunded</span></td></tr>
-                </tbody>
-              </table>
-            </div>
+            <table class="table fixed lines-2" aria-labelledby="buys-title">
+              <colgroup><col style="width: 26%"><col style="width: 36%"><col style="width: 22%"><col style="width: 16%"></colgroup>
+              <thead><tr><th>Offer</th><th>Account</th><th>State</th><th>Bought</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td><div class="cell-title">Dice skins</div></td>
+                  <td><span class="truncate">priya.raman@example.com</span></td>
+                  <td><span class="status"><i class="ic ic-circle-check"></i>Active</span></td>
+                  <td><span class="muted nowrap">Oct 7, 09:12</span></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-title">Diceroll Plus</div></td>
+                  <td><span class="truncate">sam.whitlock@example.com</span></td>
+                  <td><span class="status info"><i class="ic ic-repeat"></i>Free trial to Oct 14</span></td>
+                  <td><span class="muted nowrap">Oct 7, 08:31</span></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-title">Full game</div></td>
+                  <td><span class="truncate">Floating license <span class="subtle">· iPhone 15</span></span></td>
+                  <td><span class="status"><i class="ic ic-circle-check"></i>Active</span></td>
+                  <td><span class="muted nowrap">Oct 6, 21:05</span></td>
+                </tr>
+              </tbody>
+            </table>
           </section>
         </div>
 
-        <div class="col">
-          <section class="card" aria-labelledby="conn-title">
+        <div class="mk-rail">
+          <!-- Facts, never typed fields (A-28): the team key, the app read from the assigned app and
+               store notifications. The one test-purchase switch is on Storefronts; here a link. -->
+          <section class="card o2" aria-labelledby="conn-title">
             <div class="card-head">
               <div class="title"><h2 id="conn-title">Connection</h2></div>
-              <button class="btn outline sm"><i class="ic ic-refresh-cw"></i>Re-check</button>
+              <button class="btn ghost icon sm" aria-label="Re-check the connection, checked 2 min ago"><i class="ic ic-refresh-cw"></i></button>
             </div>
-            <div class="facts">
-              <div class="fact"><span class="fact-label">Purchase checks</span><span class="fact-value">Example Games team key</span><span class="meta">From Platform → Store connections · checked 2 min ago</span></div>
-              <div class="fact"><span class="fact-label">App</span><span class="fact-value mono small">com.example.diceroll</span><span class="meta">Read from the app assigned to Diceroll. Nothing to type.</span></div>
-              <div class="fact"><span class="fact-label">Store notifications</span><span class="status"><i class="ic ic-circle-check"></i>Set up and verified Oct 2</span><span class="meta">Last one 6 min ago, a purchase of Dice skins</span></div>
-              <div class="fact"><span class="fact-label">Test purchases</span><span class="fact-value">Off</span><span class="meta">One switch for every store, on <a class="link" href="#">Storefronts</a></span></div>
-            </div>
-            <div class="card-foot start">
+            <dl class="kv-rows stack-narrow cols-2">
+              <div><dt>Key</dt><dd>Example Games team key<span class="source">checked 2 min ago</span></dd></div>
+              <div><dt>App</dt><dd><span class="mono small">com.example.diceroll</span><span class="source">Apple ID 6478123905</span></dd></div>
+              <div><dt>Notifications</dt><dd><span class="status"><i class="ic ic-circle-check"></i>Verified Oct 2</span></dd></div>
+            </dl>
+            <div class="card-foot between">
               <button class="btn ghost sm"><i class="ic ic-send"></i>Send a test notification</button>
+              <span class="inline-reason">Test purchases off · <a class="link" href="#">Change</a></span>
             </div>
           </section>
 
-          <!-- Advanced: closed by default. Open, it shows one labelled select, Restoring purchases. -->
-          <section class="card flat">
-            <button class="adv" aria-expanded="false" aria-controls="adv-body">
-              <i class="ic ic-chevron-right"></i>
-              <span class="grow"><span class="strong">Advanced</span><span class="adv-sum">Restoring purchases: App Store default</span></span>
-            </button>
+          <!-- Restore policy, the only per-store option; open, it is one labelled select that saves on change. -->
+          <section class="card feature-fold o3" aria-labelledby="adv-title">
+            <span class="icon-tile sm muted"><i class="ic ic-sliders-horizontal"></i></span>
+            <div class="title"><h3 id="adv-title">Advanced</h3><span class="meta">Restoring purchases: App Store default</span></div>
+            <button class="btn ghost sm" aria-expanded="false">Show<i class="ic ic-chevron-down"></i></button>
           </section>
         </div>
       </div>

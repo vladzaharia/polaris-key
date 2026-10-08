@@ -14,8 +14,8 @@
   "compare": [
     "The confirmation appears before anything changes; behind it the Licensing switch still shows on and Commerce reads 'Selling on App Store, Google Play and Steam'. Focus starts on Cancel (drawn with the focus ring) and returns to the Licensing switch on close.",
     "The title is a question naming the feature and the product ('Turn off Licensing for Diceroll?').",
-    "The body says first what turning off Licensing does to players ('New players can't activate Diceroll. Players already activated keep playing until their 14 offline days run out.', from the tier's offline days), then 'Commerce needs Licensing, so it turns off too, in the same change:' and one bullet per dependent with its real effect. For Commerce that is: the storefronts keep selling (integration.md §1.4: store links stay shown, and nothing takes products off sale) but new purchases won't reach players' licenses. The store list and offer count are generated from storefronts that are Live and the offers on sale there, so they match the Commerce row behind; itch.io, whose purchases never reach licenses, isn't named. Dependents are listed transitively from tools/services.json.",
-    "What is kept is stated in numbers (18,240 licenses, their add-ons and every past purchase), and the rule that re-enabling a requirement does not re-enable its dependents is said in one sentence.",
+    "The dialog's first line says 'Commerce needs Licensing, so it turns off too, in the same change.' Then a change list (.change-list), one row per feature with its tile and 'On → Off': Licensing ('New players can't activate Diceroll. Players already activated keep playing until their 14 offline days run out.', from the tier's offline days) and Commerce (the storefronts keep selling, integration.md §1.4: store links stay shown and nothing takes products off sale, but new purchases won't reach players' licenses). The store list and offer count are generated from storefronts that are Live and the offers on sale there, so they match the Commerce row behind; itch.io, whose purchases never reach licenses, isn't named. Dependents are listed transitively from tools/services.json. A warning callout says to take the offers off sale first, with Open Offers.",
+    "What is kept is stated in numbers (18,240 licenses, their add-ons and every past purchase), and the rule that re-enabling a requirement does not re-enable its dependents is said in one line; both are quiet lines with a glyph under the callout.",
     "It is an L1 confirm, intent caution (ADMIN.md: disable a service): a warning icon before the title and a primary button that names everything that happens, 'Turn off Licensing and Commerce'. Cancel is neutral. No typed confirmation: nothing is deleted.",
     "Confirming writes one audited batch (license off, commerce off) and the toast says 'Licensing and Commerce are off for Diceroll'; the Commerce group leaves the sidebar.",
     "With no dependents on, turning Licensing off asks a shorter question with only its own effect.",
@@ -52,6 +52,21 @@
         "severity": "minor",
         "issue": "[house rules] EXPERIENCE.md §6 and ADMIN.md make turning a service off L1 (intent caution); the mockup uses the L2 danger button.",
         "resolution": "Uses intent caution as ADMIN.md's L1 row says: a warning icon before the title (new kit class .dialog.caution) and a primary 'Turn off Licensing and Commerce'. ADMIN.md is outside this workflow, so the rule was followed rather than amended."
+      },
+      {
+        "severity": "major",
+        "issue": "The dialog says the same thing three times and its warning is unclear.",
+        "resolution": "Intro sentence deleted; danger button; one-line warning marked advisory; footer facts are one line.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux2",
+          "ux3"
+        ]
+      },
+      {
+        "issue": "Add a typed confirm, disable the primary until offers are off sale, or stop selling for the user.",
+        "resolution": "declined: Changes the flow and the contract; turning Licensing off keeps all licenses and is reversible, so it takes a danger button and clear copy but not a typed confirm.",
+        "round": "multi-review"
       }
     ]
   },

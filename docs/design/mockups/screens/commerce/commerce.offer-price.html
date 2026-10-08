@@ -1,216 +1,27 @@
 <style>
-  /* commerce.offer-price: SKU rows per storefront and the converted-price table. */
-  [data-screen="commerce.offer-price"] .store-tile {
-    display: inline-flex;
-    flex: none;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    background: var(--mk-fill);
-    color: var(--pk-text-strong);
-  }
-  [data-screen="commerce.offer-price"] .store-tile > .ic {
-    width: 18px;
-    height: 18px;
-  }
-  [data-screen="commerce.offer-price"] .sku-row {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 4px 12px;
-    padding: 14px 20px;
-  }
-  [data-screen="commerce.offer-price"] .sku-row + .sku-row {
-    border-top: 1px solid var(--mk-line);
-  }
-  [data-screen="commerce.offer-price"] .sku-row.off .store-tile {
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="commerce.offer-price"] .sku-main {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-  }
-  [data-screen="commerce.offer-price"] .sku-line {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 2px 10px;
-  }
-  [data-screen="commerce.offer-price"] .sku-id {
-    font-family: var(--pk-font-mono);
-    font-size: 13px;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="commerce.offer-price"] .price-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    gap: 12px;
-  }
-  [data-screen="commerce.offer-price"] .price-row {
-    margin-top: 4px;
-    align-items: center;
-  }
-  [data-screen="commerce.offer-price"] .price-now {
-    font-size: 28px;
-    line-height: 36px;
-    font-weight: 700;
-    color: var(--pk-text-strong);
-    letter-spacing: -0.01em;
-  }
-  [data-screen="commerce.offer-price"] .price-now small {
-    font-size: 14px;
-    font-weight: 400;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="commerce.offer-price"] .ro {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    min-height: 36px;
-    font-size: 14px;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="commerce.offer-price"] .ro > .ic {
-    width: 14px;
-    height: 14px;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="commerce.offer-price"] .copy-card {
-    max-width: 220px;
-  }
-  /* A value to paste into Steamworks, not a shell command: no prompt sign. */
-  [data-screen="commerce.offer-price"] .copy-card::before {
-    content: none;
-  }
-  [data-screen="commerce.offer-price"] .eg {
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-  }
-  [data-screen="commerce.offer-price"] .seg-field .segmented {
+  /* commerce.offer-price: alignment and colours only; every space comes from the kit. */
+  [data-screen="commerce.offer-price"] .field > .segmented {
     align-self: flex-start;
   }
-  [data-screen="commerce.offer-price"] .radios {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 20px;
-    padding-top: 6px;
-  }
-  @container screen (max-width: 639px) {
-    [data-screen="commerce.offer-price"] .sku-row {
-      grid-template-columns: auto minmax(0, 1fr);
-      padding: 14px 16px;
-    }
-    [data-screen="commerce.offer-price"] .sku-row > .btn,
-    [data-screen="commerce.offer-price"] .sku-row > .link {
-      grid-column: 2;
-      justify-self: start;
-    }
-    /* Phone: one stacked block per store; nothing scrolls sideways. */
-    [data-screen="commerce.offer-price"] .prices,
-    [data-screen="commerce.offer-price"] .prices tbody {
-      display: block;
-    }
-    [data-screen="commerce.offer-price"] .prices thead {
-      display: none;
-    }
-    [data-screen="commerce.offer-price"] .prices tr {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      grid-template-areas:
-        "store store"
-        "by by"
-        "eg eg"
-        "terr act";
-      gap: 4px 12px;
-      padding: 14px 16px;
-    }
-    [data-screen="commerce.offer-price"] .prices tr + tr {
-      border-top: 1px solid var(--mk-line);
-    }
-    [data-screen="commerce.offer-price"] .prices td {
-      display: block;
-      padding: 0;
-      border: 0;
-      min-width: 0;
-    }
-    [data-screen="commerce.offer-price"] .prices td:nth-child(1) { grid-area: store; font-weight: 700; color: var(--pk-text-strong); }
-    [data-screen="commerce.offer-price"] .prices td:nth-child(2) { grid-area: by; font-size: 13px; color: var(--pk-text-muted); }
-    [data-screen="commerce.offer-price"] .prices td:nth-child(3) { grid-area: eg; white-space: normal; padding-top: 2px; }
-    [data-screen="commerce.offer-price"] .prices td:nth-child(4) { grid-area: terr; font-size: 13px; padding-top: 4px; }
-    [data-screen="commerce.offer-price"] .prices td:nth-child(5) { grid-area: act; align-self: end; }
-    [data-screen="commerce.offer-price"] .prices td:nth-child(4) > div {
-      display: inline;
-    }
-    [data-screen="commerce.offer-price"] .prices td:nth-child(4) .cell-sub::before {
-      content: " · ";
-    }
-    [data-screen="commerce.offer-price"] .copy-card {
-      max-width: none;
-    }
-  }
-  /* The dialog's per-store list: what each store will do (or did). */
-  [data-screen="commerce.offer-price"] .conv {
-    display: flex;
-    flex-direction: column;
-    border: 1px solid var(--mk-line);
-    border-radius: 12px;
-  }
-  [data-screen="commerce.offer-price"] .conv-row {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    gap: 2px 12px;
-    padding: 10px 14px;
-  }
-  [data-screen="commerce.offer-price"] .conv-row + .conv-row {
-    border-top: 1px solid var(--mk-line);
-  }
-  [data-screen="commerce.offer-price"] .conv-row > .ic {
-    margin-top: 2px;
-  }
-  [data-screen="commerce.offer-price"] .conv-title {
-    font-weight: 700;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="commerce.offer-price"] .conv-row.skip .conv-title {
-    font-weight: 400;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="commerce.offer-price"] .conv-text {
-    grid-column: 2 / -1;
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="commerce.offer-price"] .conv-row > .status,
-  [data-screen="commerce.offer-price"] .conv-row > .pill {
-    grid-column: 3;
-    grid-row: 1;
-    justify-self: end;
-  }
-  [data-screen="commerce.offer-price"] .conv-row.failed {
+  [data-screen="commerce.offer-price"] .card-row.failed {
     background: var(--pk-danger-subtle);
   }
-  [data-screen="commerce.offer-price"] .conv-row.failed:last-child,
-  [data-screen="commerce.offer-price"] .conv-row.failed + .conv-row.skip {
-    border-radius: 0;
-  }
-  [data-screen="commerce.offer-price"] .conv-text .link {
-    margin-top: 4px;
-  }
-  [data-screen="commerce.offer-price"] .confirm-label {
-    display: block;
-    line-height: 24px;
+  [data-screen="commerce.offer-price"] .card-row.skip .cell-title {
     font-weight: 400;
-    color: var(--pk-text-default);
+    color: var(--pk-text-muted);
+  }
+  [data-screen="commerce.offer-price"] .item-title:has(> .status) {
+    align-items: center;
+  }
+  [data-screen="commerce.offer-price"] .item-title > .status {
+    font-weight: 400;
+  }
+  [data-screen="commerce.offer-price"] .item-desc .mono {
+    overflow-wrap: anywhere;
   }
 </style>
 
-<div class="console" data-service="commerce">
+<div class="console cm2 modal-open" data-service="commerce">
   <header class="topbar">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
@@ -231,13 +42,13 @@
     <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
     <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
     <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
-    <div class="nav-group closed" data-service="license"><div class="nav-label">Licensing<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="config" style="padding-top: 4px"><div class="nav-label">Managed config<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="release" style="padding-top: 4px"><div class="nav-label">Ship builds<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="identity" style="padding-top: 4px"><div class="nav-label">Sign-in<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="sync" style="padding-top: 4px"><div class="nav-label">Cloud Sync<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="license"><button class="nav-label" aria-expanded="false">Licensing<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group" data-service="commerce">
-      <div class="nav-label">Commerce<i class="ic ic-chevron-down sm"></i></div>
+      <button class="nav-label" aria-expanded="true">Commerce<i class="ic ic-chevron-down sm"></i></button>
       <a class="nav-item" href="#"><i class="ic ic-store"></i><span class="nav-text">Storefronts</span><span class="count danger">2</span></a>
       <a class="nav-item active" href="#"><i class="ic ic-tag"></i><span class="nav-text">Offers</span></a>
       <a class="nav-item" href="#"><i class="ic ic-receipt"></i><span class="nav-text">Purchases</span></a>
@@ -249,46 +60,42 @@
   </nav>
 
   <main class="main">
-    <div class="page narrow">
+    <!-- From 1200px: what it sells and its prices in the main column, its SKU on each storefront in a
+         360px rail. Narrower: one column. -->
+    <div class="page rail-md">
       <header class="page-head">
         <nav class="crumbs"><a href="#">Offers</a><i class="ic ic-chevron-right"></i>Dice skins</nav>
         <div class="page-heading"><h1>Dice skins</h1><span class="status"><i class="ic ic-circle-check"></i>On sale</span></div>
-        <p class="page-sub">Sold on the App Store, Google Play and Steam · 186 purchases in 28 days</p>
+        <p class="page-sub">186 purchases in 28 days</p>
         <div class="page-actions">
-          <button class="btn outline"><i class="ic ic-circle-pause"></i>Stop selling…</button>
+          <button class="btn outline hide-phone"><i class="ic ic-circle-pause"></i>Stop selling…</button>
         </div>
       </header>
 
       <!-- What it sells: defined once, for every storefront. -->
       <section class="card" aria-labelledby="what-title">
         <div class="card-head">
-          <div class="title"><h2 id="what-title">What it sells</h2><p>Defined once. Every storefront’s SKU sells exactly this.</p></div>
+          <div class="title"><h2 id="what-title">What it sells</h2></div>
         </div>
         <div class="card-body">
-          <div class="grid cols-2 gap-6">
+          <div class="form-grid cols-2">
             <div class="field">
               <label class="field-label">Name</label>
               <div class="input"><span class="grow">Dice skins</span></div>
-              <span class="hint">Players see it in the portal and in Diceroll’s store screen.</span>
+              <span class="hint">Shown to players. Offer id <span class="mono">dice-skins</span>, fixed; SDKs buy with <span class="mono">purchase("dice-skins")</span>.</span>
             </div>
             <div class="field">
-              <span class="field-label">Offer id</span>
-              <div class="ro mono"><i class="ic ic-lock"></i>dice-skins</div>
-              <span class="hint">Fixed since its first SKU. SDKs buy with it: <span class="mono">purchase("dice-skins")</span>.</span>
+              <span class="field-label">Billing</span>
+              <div class="fixed-value"><span class="mk-cluster-6"><span class="radio on"><span class="box"></span>One-time</span><span class="radio"><span class="box"></span>Subscription</span></span></div>
             </div>
-            <div class="field seg-field">
+            <div class="field">
               <label class="field-label">Sells</label>
               <div class="segmented"><span>A tier</span><span class="on">An add-on</span></div>
-              <div class="select"><span class="grow">Dice skins</span><i class="ic ic-chevrons-up-down"></i></div>
-              <span class="hint">A non-consumable add-on: bought once, restored on every device. Adds <span class="mono">extras.diceSkins</span> to the buyer’s license. Add-ons are defined in <a class="link" href="#">Licensing</a>.</span>
             </div>
             <div class="field">
-              <label class="field-label">Billing</label>
-              <div class="radios">
-                <span class="radio on"><span class="box"></span>One-time</span>
-                <span class="radio"><span class="box"></span>Subscription</span>
-              </div>
-              <span class="hint">Bought once. A consumable add-on, such as Reroll tokens, also sets how many each purchase gives.</span>
+              <label class="field-label">Add-on</label>
+              <div class="select"><span class="grow">Dice skins</span><i class="ic ic-chevrons-up-down"></i></div>
+              <span class="hint">Adds <span class="mono">extras.diceSkins</span> to the buyer’s license. Defined in <a class="link" href="#">Licensing</a>.</span>
             </div>
           </div>
         </div>
@@ -298,40 +105,40 @@
       </section>
 
       <!-- One SKU per storefront. Identity comes from each store's assigned app, never typed. -->
-      <section class="card" aria-labelledby="skus-title">
+      <section class="card aside span-2" aria-labelledby="skus-title">
         <div class="card-head">
-          <div class="title"><h2 id="skus-title">SKUs</h2><p>This offer’s product on each storefront.</p></div>
+          <div class="title"><h2 id="skus-title">SKUs</h2></div>
         </div>
-        <div class="sku-list">
-          <div class="sku-row">
-            <span class="store-tile"><i class="ic ic-app-store"></i></span>
-            <div class="sku-main">
-              <div class="sku-line"><span class="strong">App Store</span><span class="sku-id">com.example.diceroll.skins</span></div>
-              <div class="sku-line small muted"><span>Non-consumable</span><span class="status"><i class="ic ic-circle-check"></i>Ready for Sale</span></div>
+        <div class="card-rows">
+          <div class="item-row keep-end">
+            <span class="icon-tile sm neutral"><i class="ic ic-app-store"></i></span>
+            <div class="item-text">
+              <div class="item-title">App Store<span class="status"><i class="ic ic-circle-check"></i>Ready for Sale</span></div>
+              <div class="item-desc"><span class="mono">com.example.diceroll.skins</span> · <span class="nowrap">Non-consumable</span></div>
             </div>
-            <button class="btn ghost sm"><i class="ic ic-external-link"></i>App Store Connect</button>
+            <div class="item-end"><a class="btn ghost icon sm" href="#" aria-label="Open in App Store Connect" title="Open in App Store Connect"><i class="ic ic-external-link"></i></a></div>
           </div>
-          <div class="sku-row">
-            <span class="store-tile"><i class="ic ic-google-play"></i></span>
-            <div class="sku-main">
-              <div class="sku-line"><span class="strong">Google Play</span><span class="sku-id">skins</span></div>
-              <div class="sku-line small muted"><span>One-time product</span><span class="status"><i class="ic ic-circle-check"></i>Active</span></div>
+          <div class="item-row keep-end">
+            <span class="icon-tile sm neutral"><i class="ic ic-google-play"></i></span>
+            <div class="item-text">
+              <div class="item-title">Google Play<span class="status"><i class="ic ic-circle-check"></i>Active</span></div>
+              <div class="item-desc"><span class="mono">skins</span> · <span class="nowrap">One-time product</span></div>
             </div>
-            <button class="btn ghost sm"><i class="ic ic-external-link"></i>Play Console</button>
+            <div class="item-end"><a class="btn ghost icon sm" href="#" aria-label="Open in Play Console" title="Open in Play Console"><i class="ic ic-external-link"></i></a></div>
           </div>
-          <div class="sku-row">
-            <span class="store-tile"><i class="ic ic-steam"></i></span>
-            <div class="sku-main">
-              <div class="sku-line"><span class="strong">Steam</span><span class="sku-id">DLC 2817450</span></div>
-              <div class="sku-line small muted"><span>Ownership checked through Steam. Steam has no price API, so its price lives in Steamworks.</span></div>
+          <div class="item-row keep-end">
+            <span class="icon-tile sm neutral"><i class="ic ic-steam"></i></span>
+            <div class="item-text">
+              <div class="item-title">Steam</div>
+              <div class="item-desc"><span class="mono">2817450</span> · DLC</div>
             </div>
-            <button class="btn ghost sm"><i class="ic ic-external-link"></i>Steamworks</button>
+            <div class="item-end"><a class="btn ghost icon sm" href="#" aria-label="Open in Steamworks" title="Open in Steamworks"><i class="ic ic-external-link"></i></a></div>
           </div>
-          <div class="sku-row off">
-            <span class="store-tile"><i class="ic ic-itch"></i></span>
-            <div class="sku-main">
-              <div class="sku-line"><span class="strong">itch.io</span></div>
-              <div class="sku-line small muted"><span>itch.io sells the game only, so add-ons have no SKU there.</span></div>
+          <div class="item-row keep-end">
+            <span class="icon-tile sm neutral off"><i class="ic ic-itch"></i></span>
+            <div class="item-text">
+              <div class="item-title">itch.io</div>
+              <div class="item-desc">Sells the game only</div>
             </div>
           </div>
         </div>
@@ -340,60 +147,51 @@
       <!-- One base price, converted with each store's own tools under a typed confirmation (CM-23). -->
       <section class="card" aria-labelledby="price-title">
         <div class="card-head">
-          <div class="title"><h2 id="price-title">Price and territories</h2><p>One base price. Apple and Google Play convert it with their own tools; Steam keeps its own.</p></div>
+          <div class="title"><h2 id="price-title">Price and territories</h2></div>
+          <button class="btn outline sm hide-phone"><i class="ic ic-arrow-right-left"></i>Change price…</button>
+          <button class="btn outline icon sm show-phone" aria-label="Change price…"><i class="ic ic-arrow-right-left"></i></button>
         </div>
-        <div class="card-body">
-          <!-- Read-only values are plain text, never a box that looks editable. -->
-          <span class="field-label">Base price</span>
-          <div class="price-row">
-            <span class="price-now tnum">$2.99 <small>USD</small></span>
-            <button class="btn outline"><i class="ic ic-arrow-right-left"></i>Change price…</button>
-          </div>
-          <p class="hint mt-2">Last changed Sep 18 by Ada Lindqvist. A change goes to the App Store and Google Play at once and asks you to type Diceroll, the app’s name in App Store Connect.</p>
-        </div>
-        <div class="table-card" style="border-width: 1px 0 0; border-radius: 0 0 var(--pk-radius-xl) var(--pk-radius-xl); box-shadow: none">
-          <table class="table prices">
-            <thead><tr><th>Storefront</th><th>Converted by</th><th>For example</th><th>Territories</th><th class="end"></th></tr></thead>
-            <tbody>
-              <tr>
-                <td class="nowrap"><span class="row gap-2"><i class="ic ic-app-store"></i>App Store</span></td>
-                <td class="nowrap">Apple’s price points</td>
-                <td class="eg">€2.99 · £2.99 · ¥450 · ₹249</td>
-                <td><div class="nowrap">174 of 175</div><div class="cell-sub nowrap">Not China mainland</div></td>
-                <td class="end"><a class="link" href="#">Edit territories<i class="ic ic-arrow-right"></i></a></td>
-              </tr>
-              <tr>
-                <td class="nowrap"><span class="row gap-2"><i class="ic ic-google-play"></i>Google Play</span></td>
-                <td class="nowrap">Google Play’s conversion</td>
-                <td class="eg">€3.19 · £2.79 · ¥480 · ₹230</td>
-                <td><div class="nowrap">All 173 countries</div></td>
-                <td class="end"><a class="link" href="#">Edit territories<i class="ic ic-arrow-right"></i></a></td>
-              </tr>
-              <tr>
-                <td class="nowrap"><span class="row gap-2"><i class="ic ic-steam"></i>Steam</span></td>
-                <td class="nowrap">You, in Steamworks</td>
-                <td><div class="cmd copy-card"><span>2.99 USD</span><button class="btn ghost icon xs" aria-label="Copy 2.99 USD"><i class="ic ic-copy"></i></button></div></td>
-                <td><div class="nowrap">Set in Steamworks</div></td>
-                <td class="end"><a class="link" href="#">Open in Steamworks<i class="ic ic-external-link"></i></a></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <!-- Read-only values are plain text, never a box that looks editable. -->
         <div class="card-body tight">
-          <div class="callout">
-            <i class="ic ic-globe"></i>
-            <div class="grow">
-              <div class="callout-title">Not on sale in China mainland</div>
-              <div class="callout-text">Diceroll has no game license (ISBN) there, so its App Store SKUs leave that territory out.</div>
-            </div>
+          <div class="price-line">
+            <span class="mk-cluster-1 baseline"><span class="type-stat">$2.99</span><span class="muted">USD base price</span></span>
+            <span class="price-changed">Changed Sep 18 by Ada Lindqvist</span>
           </div>
         </div>
+        <table class="table fixed stack-card" aria-labelledby="price-title">
+          <colgroup><col style="width: 17%"><col style="width: 19%"><col style="width: 28%"><col style="width: 18%"><col style="width: 18%"></colgroup>
+          <thead><tr><th>Storefront</th><th>Converted by</th><th>For example</th><th>Territories</th><th class="end"><span class="sr-only">Edit</span></th></tr></thead>
+          <tbody>
+            <tr>
+              <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-app-store"></i></span><span class="cell-title">App Store</span></div></td>
+              <td><span class="cell-label">Converted</span>Apple’s price points</td>
+              <td class="tnum"><span class="cell-label">Example</span>€2.99 · £2.99 · ¥450 · ₹249</td>
+              <td><span class="cell-label">Territories</span><div><div>174 of 175</div><div class="cell-sub">Not China mainland: no ISBN</div></div></td>
+              <td class="end"><a class="link" href="#">Edit territories<i class="ic ic-arrow-right"></i></a></td>
+            </tr>
+            <tr>
+              <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-google-play"></i></span><span class="cell-title">Google Play</span></div></td>
+              <td><span class="cell-label">Converted</span>Google Play’s conversion</td>
+              <td class="tnum"><span class="cell-label">Example</span>€3.19 · £2.79 · ¥480 · ₹230</td>
+              <td><span class="cell-label">Territories</span>All 173</td>
+              <td class="end"><a class="link" href="#">Edit territories<i class="ic ic-arrow-right"></i></a></td>
+            </tr>
+            <tr>
+              <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-steam"></i></span><span class="cell-title">Steam</span></div></td>
+              <td><span class="cell-label">Converted</span>You, in Steamworks</td>
+              <td><span class="cell-label">Example</span><span><span class="id">2.99 USD<i class="ic ic-copy"></i></span></span></td>
+              <td><span class="cell-label">Territories</span><span class="subtle">—</span></td>
+              <td class="end"><a class="link" href="#">Open Steamworks<i class="ic ic-external-link"></i></a></td>
+            </tr>
+          </tbody>
+        </table>
       </section>
+      <div class="page-end show-phone"><a class="btn link danger-text" href="#"><i class="ic ic-circle-pause"></i>Stop selling…</a></div>
     </div>
   </main>
-  <!-- L3 (ADMIN.md: change an existing In-App Purchase price types the app's name as App Store
-       Connect shows it). Nothing is lost, so the button is primary and the word a neutral chip. -->
-  <div class="overlay sheet">
+
+  <!-- Change price (CM-23): one base price, converted by each store's own tools; a typed confirmation. -->
+  <div class="overlay center sheet">
     <div class="dialog lg" role="alertdialog" aria-labelledby="dlg-title">
       <div class="dialog-head">
         <h2 id="dlg-title">Change the price of Dice skins</h2>
@@ -402,29 +200,28 @@
       <div class="dialog-body">
         <div class="field">
           <label class="field-label">New base price <span class="optional">Now $2.99</span></label>
-          <div class="input" style="max-width: 220px"><span class="affix">$</span><span class="grow tnum">3.99</span><span class="affix">USD</span></div>
+          <div class="input medium"><span class="affix">$</span><span class="grow tnum">3.99</span><span class="affix">USD</span></div>
           <span class="hint">One of Apple’s price points, so every store can match it.</span>
+          <span class="hint">Players who already bought Dice skins keep it.</span>
         </div>
-        <p>Polaris Key converts it with each store’s own tools and sends the new prices as soon as you confirm. Players who already bought Dice skins keep it.</p>
-        <div class="conv">
-          <div class="conv-row">
-            <i class="ic ic-app-store"></i>
-            <div class="conv-title">App Store</div>
-            <div class="conv-text">Apple’s $3.99 price point sets all 174 territories, for example €3.99 · £3.99 · ¥600 · ₹349.</div>
-          </div>
-          <div class="conv-row">
-            <i class="ic ic-google-play"></i>
-            <div class="conv-title">Google Play</div>
-            <div class="conv-text">Google Play converts it for all 173 countries, for example €4.19 · £3.69 · ¥620 · ₹300.</div>
-          </div>
-          <div class="conv-row skip">
-            <i class="ic ic-steam"></i>
-            <div class="conv-title">Steam isn’t changed</div>
-            <div class="conv-text">Steam has no price API. Set 3.99 USD on DLC 2817450 in Steamworks yourself.</div>
+        <div class="card flat compact tile tiles-24">
+          <div class="card-rows">
+            <div class="card-row top">
+              <span class="icon-tile sm neutral"><i class="ic ic-app-store"></i></span>
+              <div class="grow"><div class="cell-title">App Store</div><div class="cell-sub">All 174 territories, such as €3.99 · £3.99</div></div>
+            </div>
+            <div class="card-row top">
+              <span class="icon-tile sm neutral"><i class="ic ic-google-play"></i></span>
+              <div class="grow"><div class="cell-title">Google Play</div><div class="cell-sub">All 173 countries, such as €4.19 · £3.69</div></div>
+            </div>
+            <div class="card-row top skip">
+              <span class="icon-tile sm neutral off"><i class="ic ic-steam"></i></span>
+              <div class="grow"><div class="cell-title">Steam isn’t changed</div><div class="cell-sub">Set 3.99 USD on DLC 2817450 in Steamworks.</div></div>
+            </div>
           </div>
         </div>
         <div class="field">
-          <label class="field-label confirm-label">Type <span class="confirm-word neutral">Diceroll</span>, the app’s name in App Store Connect, to confirm</label>
+          <label class="field-label"><span>Type <span class="confirm-word neutral">Diceroll</span> to confirm</span></label>
           <div class="input focus"><span class="grow">Diceroll</span></div>
         </div>
       </div>

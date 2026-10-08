@@ -10,16 +10,38 @@
   "uxRows": [
     "UX-66"
   ],
-  "summary": "DJDL's Settings → Features with Licensing and Sign-in off: Commerce's switch is disabled with 'Needs Licensing. Turn it on first.', a Turn on Licensing link and the same words as its tooltip; Cloud Sync is disabled the same way because Sign-in is off (Managed config, its other requirement, is on); and the sidebar has no Licensing, Sign-in, Cloud Sync or Commerce group.",
+  "summary": "DJDL's Settings → Features with Licensing and Sign-in off: Commerce's switch is disabled, its requirement shows a lock on Licensing and its status says Turn on Licensing first; Cloud Sync is disabled the same way because Sign-in is off (Managed config, its other requirement, keeps its tick); and the sidebar has no Licensing, Sign-in, Cloud Sync or Commerce group.",
   "compare": [
-    "The owner rule, drawn: a service can be turned on only when its requirements are on. Its switch is disabled (aria-disabled, still focusable) and its tooltip and line say the same thing: what to turn on first.",
-    "The requirement line names each unmet requirement and the next step ('Needs Licensing. Turn it on first.'); for two requirements it marks the one that is met ('Needs Managed config (on) and Sign-in. Turn on Sign-in first.'). Requirements come from tools/services.json.",
+    "The owner rule, drawn: a service can be turned on only when its requirements are on. Its switch is disabled (aria-disabled, still focusable) and its tooltip on hover says the same as the row: what to turn on first. The tooltip isn't drawn, so the words appear once.",
+    "The requirements mark each one: a tick for one that is on, a lock (bold) for one that is off ('Needs ✓ Managed config 🔒 Sign-in'); the status column holds the one next step ('Turn on Sign-in first'). Requirements come from tools/services.json.",
     "Turn on Licensing / Turn on Sign-in scroll to and focus that row's switch; they don't turn anything on by themselves. The server refuses the dependent too (commerce_requires_license).",
-    "A feature that is off hides its nested rows (Sign-in's Customer portal); a requirement that is off still says what needs it ('Commerce needs it').",
+    "A feature that is off greys its name and tile and hides its own settings (Sign-in's Customer portal); a requirement that is off still says what needs it ('Needed by Commerce').",
     "The sidebar shows groups only for features that are on.",
-    "Phone: the tooltip shows on long-press; the line and link wrap under the description; switches keep their 24 px hit area."
+    "Phone: the tooltip shows on long-press; the requirements and the link wrap under the description; switches are 44×24."
   ],
   "status": "mockup",
-  "designReview": null,
+  "designReview": {
+    "round": 1,
+    "reviewer": "multi-review",
+    "verdict": "",
+    "findings": [
+      {
+        "severity": "minor",
+        "issue": "Blocked toggles look like ordinary off toggles; stale 'Needed by Commerce'.",
+        "resolution": "Blocked switches are drawn at 50% with a not-allowed cursor; 'Needed by' removed; the unlock link is a meta line under the row.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3"
+        ]
+      },
+      {
+        "issue": "Turn 'Turn on Sign-in first' into a button that turns on the prerequisite.",
+        "resolution": "declined: A behaviour change, not spacing or copy; the link already goes to the prerequisite.",
+        "round": "multi-review"
+      }
+    ]
+  },
   "order": 24
 }

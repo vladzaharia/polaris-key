@@ -15,6 +15,27 @@
     "Phone: the same bottom sheet as commerce.offer-price; the two fix buttons sit under the error."
   ],
   "status": "mockup",
-  "designReview": null,
+  "designReview": {
+    "round": 1,
+    "reviewer": "multi-review",
+    "verdict": "",
+    "findings": [
+      {
+        "severity": "minor",
+        "issue": "Dialog title and close misaligned; two icon tile sizes; reassurance copy far from the price; confirm label on two lines; four sample currencies.",
+        "resolution": "Title and close share a 32px row; one 24px tile; 'Players who already bought Dice skins keep it' sits under the price field; the confirm label is one line with the product name as a mono chip; two sample currencies.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux3"
+        ]
+      },
+      {
+        "issue": "Drop the typed confirmation for price changes.",
+        "resolution": "declined: The consolidation plan (2.7) requires a typed confirmation for store price changes; an owner decision.",
+        "round": "multi-review"
+      }
+    ]
+  },
   "order": 16
 }

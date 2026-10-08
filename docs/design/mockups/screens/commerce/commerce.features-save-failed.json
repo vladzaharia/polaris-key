@@ -10,14 +10,36 @@
   "uxRows": [
     "UX-66"
   ],
-  "summary": "DJDL's Features after turning Commerce on failed to save: the switch is back off, the row carries a danger edge and an inline line saying Commerce didn't turn on, that nothing changed, a reference id and Try again; no toast and no Commerce group in the sidebar.",
+  "summary": "DJDL's Features after turning Commerce on failed to save: the switch is back off, the row carries a danger edge, and its status column says Commerce didn't turn on and nothing changed, with Try again and a reference id; no toast and no Commerce group in the sidebar.",
   "compare": [
     "A switch that fails to save returns to its old position at once; the error stays on that row (role=alert) and never as a toast, and doesn't auto-dismiss (EXPERIENCE.md §7, §9).",
-    "The line says what didn't happen, that nothing changed, and a reference id; Try again repeats the same change. A refusal with a known cause says that cause and its fix instead ('Licensing was turned off at 14:02. Turn it on first.').",
+    "The status column says what didn't happen and that nothing changed in one line ('Commerce didn't turn on; nothing changed.'), then Try again and the reference id; Try again repeats the same change. A refusal with a known cause says that cause and its fix instead ('Licensing was turned off at 14:02. Turn it on first.').",
     "The sidebar is unchanged (no Commerce group), so the page and the chrome agree.",
-    "Phone: the error and Try again wrap under the requirement line."
+    "Phone: the error, Try again and the reference wrap under the requirements."
   ],
   "status": "mockup",
-  "designReview": null,
+  "designReview": {
+    "round": 1,
+    "reviewer": "multi-review",
+    "verdict": "",
+    "findings": [
+      {
+        "severity": "minor",
+        "issue": "The reference cannot be copied.",
+        "resolution": "Red left border kept; the failure is a meta line under the row and the reference is a copy chip.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3"
+        ]
+      },
+      {
+        "issue": "Add a cause clause ('Couldn't reach Polaris Key.') to the failure text.",
+        "resolution": "declined: The cause is not known in the mockup data; it would be invented copy.",
+        "round": "multi-review"
+      }
+    ]
+  },
   "order": 25
 }

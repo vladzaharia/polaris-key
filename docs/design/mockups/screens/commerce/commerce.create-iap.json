@@ -18,6 +18,27 @@
     "Phone: a bottom sheet; the facts stack label over value; buttons full width with the primary on top."
   ],
   "status": "mockup",
-  "designReview": null,
+  "designReview": {
+    "round": 1,
+    "reviewer": "multi-review",
+    "verdict": "",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "[phone] The permanent product id is clipped.",
+        "resolution": "Product id wraps (overflow-wrap anywhere, min-width 0) and stacks label over value under 480px; 'Permanent at Apple' merges with the review bullet.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux3",
+          "ux2"
+        ]
+      },
+      {
+        "issue": "Add a cause clause to the failure text and drop the notification bullet.",
+        "resolution": "declined: The cause is not known in the mockup data, so it would be invented copy.",
+        "round": "multi-review"
+      }
+    ]
+  },
   "order": 12
 }

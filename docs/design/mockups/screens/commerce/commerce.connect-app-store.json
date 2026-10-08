@@ -22,6 +22,23 @@
     "Phone: a bottom sheet (grab handle, rounded top, body scrolls within 90% of the screen), buttons full width and pinned, the primary on top; the facts stack label over value."
   ],
   "status": "mockup",
-  "designReview": null,
+  "designReview": {
+    "round": 1,
+    "reviewer": "multi-review",
+    "verdict": "",
+    "findings": [
+      {
+        "severity": "minor",
+        "issue": "Bullets restate the title and the success state.",
+        "resolution": "Two bullets ('Builds go to TestFlight and purchases add to licenses.' and 'Nothing sells until an offer has an App Store SKU.'); Cancel is ghost; the page behind is the updated first-run.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      }
+    ]
+  },
   "order": 5
 }

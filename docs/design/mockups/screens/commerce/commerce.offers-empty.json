@@ -17,6 +17,33 @@
     "Phone: the empty state centres in its card and the two buttons stack, the primary on top."
   ],
   "status": "mockup",
-  "designReview": null,
+  "designReview": {
+    "round": 1,
+    "reviewer": "multi-review",
+    "verdict": "",
+    "findings": [
+      {
+        "severity": "minor",
+        "issue": "A 1262px panel with two lines floating at its top-left.",
+        "resolution": "Card capped at 640px and offset from the title; Import from App Store is primary, New offer secondary; counts match offers-import (4 found, 3 match).",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux3"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "[wide 1920] Console pages stretch tables and attention rows across the whole width.",
+        "resolution": "Page content is capped at 1280px, left-aligned, from 1600px (.cm2 page cap); attention text is capped at 72ch with its action beside it.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      }
+    ]
+  },
   "order": 9
 }
