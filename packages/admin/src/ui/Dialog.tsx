@@ -521,7 +521,9 @@ export function DialogBody({
       {...region}
       className={cn(
         "pk-scroll min-h-0 flex-1 overflow-y-auto rounded-md px-6 py-2 text-base",
-        "focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-focus focus-visible:ring-0 focus-visible:ring-offset-0",
+        // outline-solid: the base `:focus-visible` rule's outline-hidden leaves the outline style
+        // at none, which outline-2 alone would keep.
+        "focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-4 focus-visible:outline-focus focus-visible:ring-0 focus-visible:ring-offset-0",
         className,
       )}
       {...props}

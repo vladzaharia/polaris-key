@@ -57,11 +57,13 @@ interface OpenOptions {
   dataMotion?: boolean;
   /** Hold the Platform section's lazy chunk this long, so its fallback shows. */
   holdChunkMs?: number;
+  /** The viewport; a phone (390 × 844) by default. */
+  viewport?: { width: number; height: number };
 }
 
 async function open(o: OpenOptions = {}): Promise<Page> {
   const ctx = await browser.newContext({
-    viewport: PHONE,
+    viewport: o.viewport ?? PHONE,
     colorScheme: "dark",
     reducedMotion: o.reducedMotion ?? "no-preference",
   });
@@ -291,4 +293,31 @@ describe("shell motion under reduced motion: instant swaps", () => {
       await page.context().close();
     });
   }
+});
+
+describe("a dialog body that scrolls (ui/Dialog DialogBody)", () => {
+  it("draws its focus ring when focused, on a phone on its side (WCAG 2.4.7)", async () => {
+    const page = await open({
+      viewport: { width: 844, height: 390 },
+      reducedMotion: "reduce",
+    });
+    // "?" with nothing focused (openSheet's click lands outside this short viewport).
+    await page.evaluate(() =>
+      (document.activeElement as HTMLElement | null)?.blur(),
+    );
+    await page.keyboard.press("?");
+    await page.getByRole("dialog", { name: "Keyboard shortcuts" }).waitFor();
+    let ring: { style: string; width: string } | null = null;
+    for (let i = 0; i < 12 && !ring; i++) {
+      await page.keyboard.press("Tab");
+      ring = await page.evaluate(() => {
+        const el = document.activeElement;
+        if (!el?.matches("[role=dialog] [role=region]")) return null;
+        const cs = getComputedStyle(el);
+        return { style: cs.outlineStyle, width: cs.outlineWidth };
+      });
+    }
+    expect(ring).toEqual({ style: "solid", width: "2px" });
+    expect(await violations(page)).toEqual([]);
+  });
 });
