@@ -16911,7 +16911,7 @@ a.card:focus-visible {
   min-height: 20px;
 }
 
-/* Table rows at 48px, blank cells as an em dash. */
+/* Table rows at 48px, blank cells as an em dash (span.dash: div.dash is overview-a's dashboard). */
 @container screen (min-width: 640px) {
   .table.row-48 :is(td, th):not(.grp) {
     padding-block: 0;
@@ -16920,7 +16920,7 @@ a.card:focus-visible {
     height: 48px;
   }
 }
-.dash::before {
+span.dash::before {
   content: "—";
   color: var(--pk-text-subtle);
 }
