@@ -11,7 +11,7 @@
   "summary": "The one step every new account finishes through, here after a first Google sign-in from Diceroll on an iPhone, in its default state: the email (confirmed by Google, so plain text and no code), a screen name with one suggestion chip per source, a picture, Polaris Key's and Diceroll's terms unticked, and the primary disabled until both are ticked. No birth date is asked: Google sent none and Diceroll gates nothing.",
   "compare": [
     "One step for both new-account paths (a first email-code sign-in and a first provider sign-in): the old RegisterStep and EmailGateStep are gone, and one finish API serves both (I-33).",
-    "The strip at the top names the provider and the address it gave ('Signed in with Google · tomas.okafor@example.com') with a success tick; the app header stays Diceroll's.",
+    "No separate 'Signed in with Google' strip: the Email field's 'Confirmed by Google' names the provider once, and the address appears only there; the app header stays Diceroll's.",
     "Email: when the provider vouches for it (any Apple address, a Gmail address, or a Workspace address whose hd matches) it is plain text with a lock, no field chrome, with 'Confirmed by Google' beside its label. Any other address shows the six code cells inline and the primary becomes 'Verify and continue'; Steam starts with an empty field and 'Send code'.",
     "The field is labelled 'Screen name', never 'Your name'. Under it, 'Use a name from' on its own line, then one chip per name a source supplied (Google 'Tomás Okafor', Google 'Tomás', the email's 'tomas.okafor'); the current one is marked. The hint says an app gets it only with consent.",
     "Picture tiles: each source that supplied one (Google, with its badge), Initials ('From your name'), Upload (PNG or JPEG). The tile in use says 'In use'. Apple never appears as a picture source.",
@@ -36,6 +36,23 @@
         "severity": "minor",
         "issue": "In dark the read-only email looked editable; both terms drawn ticked; 'Initials / No picture'; an orphan name chip; fixed Month/Day/Year order.",
         "resolution": "The email is plain text with a lock. Both terms start unticked with the primary disabled and 'Agree to both terms to continue.' The Initials tile reads 'From your name'. The chips wrap under their own label line. The date order follows the locale, stated in the compare (the field isn't drawn here)."
+      },
+      {
+        "severity": "minor",
+        "issue": "Footer off-centre; stacked helper lines; the passkey row competed with the terms; weak disabled label.",
+        "resolution": "Legal links centred; 'One step before Diceroll.' deleted; the passkey row is quieter (.check.quiet); the disabled primary label is the default text colour.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "issue": "Merge the two terms checkboxes into one.",
+        "resolution": "declined: two separate legal agreements (Polaris Key and the app) need separate consent; that is a legal decision, not a design one.",
+        "round": "multi-review"
       }
     ]
   },

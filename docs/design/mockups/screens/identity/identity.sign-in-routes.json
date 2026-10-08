@@ -40,6 +40,33 @@
         "severity": "minor",
         "issue": "Pins 1 and 2 used a heavy two-line heading; two numbering systems (pins 1–4, rule 1–5); a ↗ icon on a same-tab redirect.",
         "resolution": "One-line 'Lakeside University' heading at the other steps' size beside a smaller tile; the rule uses letters A–E in neutral marks; the redirect buttons use a plain → arrow."
+      },
+      {
+        "severity": "major",
+        "issue": "Hole under the rail at wide, ragged card heights, a design note shown as UI copy.",
+        "resolution": "The rule list is first, a compact strip of columns above the cards (clamped to 3 lines per item on phone); cards are 400px on one top edge; page intro cut to 'Only the body changes; the header and footer stay.'; the SIGN-IN.md reference and the rail subtitle removed.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Five identical trust footers cost vertical space.",
+        "resolution": "The footer text and height are unchanged on all five; cards 2 to 5 draw it quieter (.hosted-foot.echo). Not removed: the sheet is a faithful preview.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2"
+        ]
+      },
+      {
+        "issue": "Delete the A to E rules panel or move it to the JSON notes; rewrite card copy.",
+        "resolution": "declined: the panel explains the behaviour and is deliberate; only its position and length change; card copy is canonical from SIGN-IN.md.",
+        "round": "multi-review"
       }
     ]
   },

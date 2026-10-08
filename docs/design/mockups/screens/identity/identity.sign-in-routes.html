@@ -1,540 +1,154 @@
-<style>
-  /* identity.sign-in-routes: the shared card, then only what this screen adds. */
-  /* The hosted sign-in card (SIGN-IN.md §3.1): the lockup, one card, the legal links, on the
-     static star field. Shared by the identity card screens; scoped to this screen. */
-  [data-screen="identity.sign-in-routes"] .auth {
-    --star: color-mix(in oklab, var(--pk-text-subtle) 55%, transparent);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 14px;
-    padding: 56px 24px 56px;
-    background-color: var(--pk-surface-page);
-    background-image:
-      radial-gradient(circle at 18% 22%, var(--star) 0 1px, transparent 1.6px),
-      radial-gradient(circle at 72% 64%, var(--star) 0 1px, transparent 1.6px),
-      radial-gradient(circle at 44% 86%, var(--star) 0 0.8px, transparent 1.4px),
-      radial-gradient(circle at 90% 12%, var(--star) 0 1.2px, transparent 1.8px);
-    background-size: 310px 270px, 430px 390px, 250px 330px, 520px 460px;
-  }
-  [data-screen="identity.sign-in-routes"] .auth-brand {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    height: 32px;
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="identity.sign-in-routes"] .auth-card {
-    width: 456px;
-    max-width: 100%;
-    border: 1px solid var(--mk-line);
-    border-radius: 22px;
-    background: var(--pk-surface-raised);
-    box-shadow: var(--pk-elevation-3);
-    overflow: hidden;
-  }
-  [data-screen="identity.sign-in-routes"] .auth-head {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 20px 24px;
-    border-bottom: 1px solid var(--mk-line);
-    background: color-mix(in oklab, var(--pk-accent-subtle) 55%, var(--pk-surface-raised));
-  }
-  [data-screen="identity.sign-in-routes"] .auth-head .t {
-    font-size: 17px;
-    line-height: 24px;
-    color: var(--pk-text-default);
-  }
-  [data-screen="identity.sign-in-routes"] .auth-head .s {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 2px 6px;
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="identity.sign-in-routes"] .auth-body {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    padding: 24px 28px 28px;
-  }
-  [data-screen="identity.sign-in-routes"] .auth-body h1 {
-    font-size: 24px;
-    line-height: 30px;
-    font-weight: 700;
-    letter-spacing: -0.015em;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="identity.sign-in-routes"] .auth-lede {
-    margin-top: -8px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="identity.sign-in-routes"] .auth-card .input {
-    height: 48px;
-    border-radius: 10px;
-    font-size: 15px;
-  }
-  [data-screen="identity.sign-in-routes"] .auth-card .btn.block {
-    height: 48px;
-    border-radius: 10px;
-    font-size: 15px;
-  }
-  [data-screen="identity.sign-in-routes"] .auth-card .btn.primary.block {
-    font-weight: 700;
-  }
-  [data-screen="identity.sign-in-routes"] .auth-card .field-label {
-    font-size: 13px;
-  }
-  [data-screen="identity.sign-in-routes"] .caret {
-    display: inline-block;
-    width: 1.5px;
-    height: 20px;
-    margin-left: 1px;
-    background: var(--pk-text-strong);
-    vertical-align: -4px;
-  }
-  [data-screen="identity.sign-in-routes"] .auth-or {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    font-size: 12px;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="identity.sign-in-routes"] .auth-or::before,
-  [data-screen="identity.sign-in-routes"] .auth-or::after {
-    content: "";
-    flex: 1;
-    height: 1px;
-    background: var(--mk-line);
-  }
-  /* The provider row (PORTAL §4.1): one row of equal, logo-only buttons. */
-  [data-screen="identity.sign-in-routes"] .prov-row {
-    display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(0, 1fr);
-    gap: 10px;
-  }
-  [data-screen="identity.sign-in-routes"] .prov {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 52px;
-    border: 1px solid var(--mk-line);
-    border-radius: 10px;
-    background: var(--mk-fill);
-    color: var(--pk-text-strong);
-  }
-  [data-screen="identity.sign-in-routes"] .prov .ic {
-    width: 24px;
-    height: 24px;
-  }
-  [data-screen="identity.sign-in-routes"] .gmark {
-    width: 22px;
-    height: 22px;
-    flex: none;
-  }
-  [data-screen="identity.sign-in-routes"] .gmark.sm {
-    width: 14px;
-    height: 14px;
-  }
-  [data-screen="identity.sign-in-routes"] .auth-links {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 8px 24px;
-    padding-top: 16px;
-    border-top: 1px solid var(--mk-line);
-    font-size: 13px;
-  }
-  [data-screen="identity.sign-in-routes"] .auth-links a {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    color: var(--pk-accent-fg);
-  }
-  [data-screen="identity.sign-in-routes"] .auth-foot {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 14px 24px;
-    border-top: 1px solid var(--mk-line);
-    font-size: 12px;
-    line-height: 17px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="identity.sign-in-routes"] .auth-foot .ic {
-    margin-top: 1px;
-  }
-  [data-screen="identity.sign-in-routes"] .auth-legal {
-    display: flex;
-    justify-content: flex-end;
-    gap: 6px;
-    width: 456px;
-    max-width: 100%;
-    font-size: 12px;
-    color: var(--pk-text-muted);
-  }
-  /* The person row (SIGN-IN.md §3.8) and the identity chip (no picture before sign-in). */
-  [data-screen="identity.sign-in-routes"] .person {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 14px 10px 10px;
-    border: 1px solid var(--mk-line);
-    border-radius: 12px;
-    background: var(--pk-surface-sunken);
-  }
-  [data-screen="identity.sign-in-routes"] .person .who {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-  }
-  [data-screen="identity.sign-in-routes"] .person .who strong {
-    font-size: 14px;
-  }
-  [data-screen="identity.sign-in-routes"] .person .who span {
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-text-muted);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  [data-screen="identity.sign-in-routes"] .person > a {
-    font-size: 13px;
-    color: var(--pk-accent-fg);
-    white-space: nowrap;
-  }
-  [data-screen="identity.sign-in-routes"] .idchip {
-    display: inline-flex;
-    align-items: center;
-    align-self: flex-start;
-    gap: 8px;
-    max-width: 100%;
-    height: 32px;
-    padding: 0 6px 0 12px;
-    border: 1px solid var(--mk-line);
-    border-radius: 999px;
-    font-size: 13px;
-    color: var(--pk-text-default);
-  }
-  [data-screen="identity.sign-in-routes"] .idchip > span {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  [data-screen="identity.sign-in-routes"] .idchip > a {
-    flex: none;
-    padding: 2px 8px;
-    border-radius: 999px;
-    color: var(--pk-accent-fg);
-  }
-  /* The six code cells (SIGN-IN.md §3.4). */
-  [data-screen="identity.sign-in-routes"] .cells {
-    display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 8px;
-  }
-  [data-screen="identity.sign-in-routes"] .cells > span {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 52px;
-    border: 1px solid var(--pk-border-strong);
-    border-radius: 10px;
-    background: var(--pk-surface-sunken);
-    font: 700 20px/1 var(--pk-font-mono);
-    color: var(--pk-text-strong);
-  }
-  [data-screen="identity.sign-in-routes"] .cells > span.on {
-    outline: 2px solid var(--pk-focus);
-    outline-offset: 1px;
-  }
-  @container screen (max-width: 639px) {
-    [data-screen="identity.sign-in-routes"] .auth {
-      gap: 0;
-      padding: 0 0 32px;
-      background-image: none;
-    }
-    [data-screen="identity.sign-in-routes"] .auth-brand {
-      height: 56px;
-      font-size: 16px;
-    }
-    [data-screen="identity.sign-in-routes"] .auth-card {
-      border-radius: 0;
-      border-left: 0;
-      border-right: 0;
-      box-shadow: none;
-    }
-    [data-screen="identity.sign-in-routes"] .auth-head {
-      padding: 16px 20px;
-    }
-    [data-screen="identity.sign-in-routes"] .auth-body {
-      padding: 20px 20px 24px;
-    }
-    [data-screen="identity.sign-in-routes"] .auth-foot {
-      padding: 14px 20px;
-    }
-    [data-screen="identity.sign-in-routes"] .auth-legal {
-      justify-content: center;
-      padding-top: 16px;
-    }
-  }
-  /* The board: four outcomes of the first step, two columns, and the rule beside them. */
-  [data-screen="identity.sign-in-routes"] .routes {
-    flex-basis: 100%;
-    display: grid;
-    grid-template-columns: 456px 456px minmax(0, 1fr);
-    align-items: start;
-    gap: 40px 40px;
-  }
-  [data-screen="identity.sign-in-routes"] .routes > .board-item {
-    gap: 10px;
-  }
-  [data-screen="identity.sign-in-routes"] .routes > .board-item > figcaption {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-height: 62px;
-  }
-  [data-screen="identity.sign-in-routes"] .routes figcaption strong {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 14px;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="identity.sign-in-routes"] .rule {
-    grid-column: 3;
-    grid-row: 1 / span 2;
-    position: sticky;
-    top: 24px;
-  }
-  [data-screen="identity.sign-in-routes"] .rule ol {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    counter-reset: r;
-  }
-  [data-screen="identity.sign-in-routes"] .rule li {
-    display: grid;
-    grid-template-columns: 22px minmax(0, 1fr);
-    gap: 10px;
-    font-size: 13px;
-    line-height: 19px;
-    color: var(--pk-text-default);
-  }
-  [data-screen="identity.sign-in-routes"] .rule li::before {
-    counter-increment: r;
-    content: counter(r, upper-alpha);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 22px;
-    height: 22px;
-    border-radius: 6px;
-    background: var(--mk-fill);
-    color: var(--pk-text-muted);
-    font-size: 12px;
-    font-weight: 700;
-  }
-  [data-screen="identity.sign-in-routes"] .org-title {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  [data-screen="identity.sign-in-routes"] .why-note {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 10px 12px;
-    border-radius: 10px;
-    background: var(--pk-info-subtle);
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-text-default);
-  }
-  [data-screen="identity.sign-in-routes"] .why-note .ic {
-    flex: none;
-    margin-top: 1px;
-    color: var(--pk-info);
-  }
-  [data-screen="identity.sign-in-routes"] .auth-body .callout {
-    border-radius: 12px;
-  }
-  [data-screen="identity.sign-in-routes"] .code-links {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 6px 24px;
-    font-size: 13px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="identity.sign-in-routes"] .code-links a {
-    color: var(--pk-accent-fg);
-  }
-  @container screen (max-width: 1023px) {
-    [data-screen="identity.sign-in-routes"] .routes {
-      grid-template-columns: minmax(0, 456px);
-    }
-    [data-screen="identity.sign-in-routes"] .rule {
-      grid-column: 1;
-      grid-row: auto;
-      position: static;
-    }
-    [data-screen="identity.sign-in-routes"] .routes > .board-item > figcaption {
-      min-height: 0;
-    }
-  }
-</style>
-
 <div class="board" data-service="core">
-  <div class="board-title">
-    <h1>After Continue: where the address goes</h1>
-    <p>DJDL’s sign-in card, one step after identity.sign-in, for four addresses and one saved passkey. The header and footer stay put; only the body changes (SIGN-IN.md §4.16). Lakeside University is a platform connection with three domains (identity.connection).</p>
-  </div>
+  <div class="board-page">
+    <header class="board-head">
+      <h1>After Continue: where the address goes</h1>
+      <p>Only the body changes; the header and footer stay.</p>
+    </header>
 
-  <div class="routes">
-    <!-- The rule, in the order the card applies it (I-30). -->
-    <aside class="card rule" aria-labelledby="rule-title">
-      <div class="card-head"><div class="title"><h2 id="rule-title">How the card picks the way in</h2><p>One check on the typed address, server-side.</p></div></div>
-      <div class="card-body">
-        <ol>
-          <li><span>The address’s domain is a <strong>verified domain</strong> of a connection: the card offers that connection’s sign-in first. Platform connections route on every product’s card; a product connection routes only on its own product’s card.</span></li>
-          <li><span>That domain has <strong>SSO required</strong>: the connection is the only way in. No email code, no passkey, and no fallback while the connection is down. A saved passkey picked on the first step is refused for such an address and routed to the connection instead (pin 5).</span></li>
-          <li><span>Any other address gets an <strong>email code</strong>. A saved passkey was already offered on the first step, and a remembered method shows as “You usually sign in with …”.</span></li>
-          <li><span>The answer reveals only that a domain uses single sign-on, never whether an account exists. The check is rate-limited.</span></li>
-          <li><span>Domains are re-checked daily. A domain whose DNS record disappears stops routing at once.</span></li>
-        </ol>
-      </div>
-    </aside>
-
-    <!-- 1. Verified domain, SSO required. -->
-    <figure class="board-item">
-      <figcaption><strong><span class="anno">1</span>SSO required</strong><span>dana@example.edu · example.edu is verified and requires Lakeside University’s sign-in.</span></figcaption>
-      <div class="auth-card">
-        <header class="auth-head">
-          <span class="logo lg" data-product="djdl"></span>
-          <div class="grow">
-            <div class="t"><strong>DJDL</strong> wants you to sign in</div>
-            <div class="s"><span>Example Audio</span><span aria-hidden="true">·</span><span class="row gap-1"><i class="ic ic-monitor sm"></i>on Studio Mac mini</span></div>
-          </div>
-        </header>
-        <div class="auth-body">
-          <span class="idchip"><span>dana@example.edu</span><a href="#">Change</a></span>
-          <div class="org-title"><span class="icon-tile muted"><i class="ic ic-building-2"></i></span><h1>Lakeside University</h1></div>
-          <p class="auth-lede" style="margin-top: 0">Lakeside University requires its own sign-in for example.edu addresses.</p>
-          <button class="btn primary block">Continue to Lakeside University<i class="ic ic-arrow-right"></i></button>
-          <p class="small muted center">You come back here once you’ve signed in.</p>
+    <div class="board-grid">
+      <!-- The rule, in the order the card applies it (I-30). Lettered, so it never reads as the pins. -->
+      <aside class="card rules-strip" aria-labelledby="rule-title">
+        <div class="card-head"><div class="title"><h2 id="rule-title">How the card picks the way in</h2></div></div>
+        <div class="card-body">
+          <ol class="num-list alpha">
+            <li><span>A <strong>verified domain</strong> of a connection: the card offers that connection’s sign-in first. Platform connections route on every product’s card, a product connection only on its own.</span></li>
+            <li><span><strong>SSO required</strong>: the connection is the only way in, with no email code, passkey or fallback while it’s down. A saved passkey for such an address is refused and routed there (pin 5).</span></li>
+            <li><span>Any other address gets an <strong>email code</strong>. A remembered method shows as “You usually sign in with …”.</span></li>
+            <li><span>The answer reveals only that a domain uses single sign-on, never whether an account exists. The check is rate-limited.</span></li>
+            <li><span>Domains are re-checked daily; one whose DNS record disappears stops routing at once.</span></li>
+          </ol>
         </div>
-        <footer class="auth-foot"><i class="ic ic-lock sm"></i><span>Polaris Key signs you in for DJDL. Example Audio never sees your codes or passkeys.</span></footer>
-      </div>
-    </figure>
+      </aside>
 
-    <!-- 2. Verified domain, SSO not required: the connection first, an email code still works. -->
-    <figure class="board-item">
-      <figcaption><strong><span class="anno">2</span>SSO first</strong><span>sam.ito@students.example.edu · verified, SSO not required.</span></figcaption>
-      <div class="auth-card">
-        <header class="auth-head">
-          <span class="logo lg" data-product="djdl"></span>
-          <div class="grow">
-            <div class="t"><strong>DJDL</strong> wants you to sign in</div>
-            <div class="s"><span>Example Audio</span><span aria-hidden="true">·</span><span class="row gap-1"><i class="ic ic-monitor sm"></i>on Studio Mac mini</span></div>
-          </div>
-        </header>
-        <div class="auth-body">
-          <span class="idchip"><span>sam.ito@students.example.edu</span><a href="#">Change</a></span>
-          <div class="org-title"><span class="icon-tile muted"><i class="ic ic-building-2"></i></span><h1>Lakeside University</h1></div>
-          <p class="auth-lede" style="margin-top: 0">students.example.edu signs in through Lakeside University.</p>
-          <button class="btn primary block">Continue to Lakeside University<i class="ic ic-arrow-right"></i></button>
-          <button class="btn block outline"><i class="ic ic-mail"></i>Email me a code instead</button>
-        </div>
-        <footer class="auth-foot"><i class="ic ic-lock sm"></i><span>Polaris Key signs you in for DJDL. Example Audio never sees your codes or passkeys.</span></footer>
-      </div>
-    </figure>
-
-    <!-- 3. No connection for the domain: the email code (CodeStep, unchanged). -->
-    <figure class="board-item">
-      <figcaption><strong><span class="anno">3</span>Email code</strong><span>mara.fennick@example.com · no connection has this domain.</span></figcaption>
-      <div class="auth-card">
-        <header class="auth-head">
-          <span class="logo lg" data-product="djdl"></span>
-          <div class="grow">
-            <div class="t"><strong>DJDL</strong> wants you to sign in</div>
-            <div class="s"><span>Example Audio</span><span aria-hidden="true">·</span><span class="row gap-1"><i class="ic ic-monitor sm"></i>on Studio Mac mini</span></div>
-          </div>
-        </header>
-        <div class="auth-body">
-          <h1>Check your email</h1>
-          <p class="auth-lede">We sent a code and a sign-in link to <strong>mara.fennick@example.com</strong>. Both work for 10 minutes.</p>
-          <div class="field">
-            <span class="field-label">Code</span>
-            <div class="cells" aria-label="6-digit code"><span>4</span><span>8</span><span>1</span><span class="on"></span><span></span><span></span></div>
-            <span class="hint">Or open the link in the email. Keep this tab open.</span>
-          </div>
-          <button class="btn primary block disabled">Continue</button>
-          <div class="code-links"><span>Send a new code in 0:42</span><a href="#">Use a different email</a></div>
-        </div>
-        <footer class="auth-foot"><i class="ic ic-lock sm"></i><span>Polaris Key signs you in for DJDL. Example Audio never sees your codes or passkeys.</span></footer>
-      </div>
-    </figure>
-
-    <!-- 4. SSO required and the connection is down: no fallback, and it says so. -->
-    <figure class="board-item">
-      <figcaption><strong><span class="anno">4</span>Connection down</strong><span>dana@example.edu again, while Lakeside University’s sign-in isn’t answering.</span></figcaption>
-      <div class="auth-card">
-        <header class="auth-head">
-          <span class="logo lg" data-product="djdl"></span>
-          <div class="grow">
-            <div class="t"><strong>DJDL</strong> wants you to sign in</div>
-            <div class="s"><span>Example Audio</span><span aria-hidden="true">·</span><span class="row gap-1"><i class="ic ic-monitor sm"></i>on Studio Mac mini</span></div>
-          </div>
-        </header>
-        <div class="auth-body">
-          <span class="idchip"><span>dana@example.edu</span><a href="#">Change</a></span>
-          <h1>Can’t reach Lakeside University</h1>
-          <div class="callout danger">
-            <i class="ic ic-circle-x"></i>
-            <div class="grow">
-              <div class="callout-title">Its sign-in isn’t answering</div>
-              <div class="callout-text">Lakeside University requires its sign-in for example.edu addresses, so there’s no other way in for now. Try again in a few minutes. If it keeps failing, contact Lakeside University’s IT help desk.</div>
+      <div class="frame-grid fixed-cards">
+        <!-- 1. Verified domain, SSO required. -->
+        <figure class="board-item">
+          <figcaption class="mk-cluster no-wrap"><span class="anno">1</span><span><strong>SSO required</strong>dana@example.edu</span></figcaption>
+          <div class="hosted-card">
+            <header class="hosted-head">
+              <span class="logo lg" data-product="djdl"></span>
+              <div class="grow">
+                <div class="hosted-title"><strong>DJDL</strong> wants you to sign in</div>
+                <div class="hosted-sub"><span>Example Audio</span><span aria-hidden="true">·</span><span><i class="ic ic-monitor sm"></i>on Studio Mac mini</span></div>
+              </div>
+            </header>
+            <div class="hosted-body">
+              <span class="id-chip"><span>dana@example.edu</span><a href="#">Change</a></span>
+              <div class="hosted-org"><span class="icon-tile muted"><i class="ic ic-building-2"></i></span><h1>Lakeside University</h1></div>
+              <p class="hosted-lede">Lakeside University requires its own sign-in for example.edu addresses.</p>
+              <div class="hosted-actions">
+                <button class="btn primary block">Continue to Lakeside University<i class="ic ic-arrow-right"></i></button>
+                <span class="hint">You come back here once you’ve signed in.</span>
+              </div>
             </div>
+            <footer class="hosted-foot"><i class="ic ic-lock sm"></i><span>Polaris Key signs you in for DJDL. Example Audio never sees your codes or passkeys.</span></footer>
           </div>
-          <button class="btn primary block"><i class="ic ic-refresh-cw"></i>Try again</button>
-          <div class="code-links"><a href="#">Use a different email</a></div>
-        </div>
-        <footer class="auth-foot"><i class="ic ic-lock sm"></i><span>Polaris Key signs you in for DJDL. Example Audio never sees your codes or passkeys.</span></footer>
-      </div>
-    </figure>
+        </figure>
 
-    <!-- 5. A saved passkey picked on the first step, for an address whose domain requires SSO. -->
-    <figure class="board-item">
-      <figcaption><strong><span class="anno">5</span>Passkey for an SSO-required address</strong><span>Dana picks her saved passkey from the browser’s suggestion on the first step. The server refuses it, because example.edu requires Lakeside University, and routes her there.</span></figcaption>
-      <div class="auth-card">
-        <header class="auth-head">
-          <span class="logo lg" data-product="djdl"></span>
-          <div class="grow">
-            <div class="t"><strong>DJDL</strong> wants you to sign in</div>
-            <div class="s"><span>Example Audio</span><span aria-hidden="true">·</span><span class="row gap-1"><i class="ic ic-monitor sm"></i>on Studio Mac mini</span></div>
+        <!-- 2. Verified domain, SSO not required: the connection first, an email code still works. -->
+        <figure class="board-item">
+          <figcaption class="mk-cluster no-wrap"><span class="anno">2</span><span><strong>SSO first</strong>sam.ito@students.example.edu</span></figcaption>
+          <div class="hosted-card">
+            <header class="hosted-head">
+              <span class="logo lg" data-product="djdl"></span>
+              <div class="grow">
+                <div class="hosted-title"><strong>DJDL</strong> wants you to sign in</div>
+                <div class="hosted-sub"><span>Example Audio</span><span aria-hidden="true">·</span><span><i class="ic ic-monitor sm"></i>on Studio Mac mini</span></div>
+              </div>
+            </header>
+            <div class="hosted-body">
+              <span class="id-chip"><span>sam.ito@students.example.edu</span><a href="#">Change</a></span>
+              <div class="hosted-org"><span class="icon-tile muted"><i class="ic ic-building-2"></i></span><h1>Lakeside University</h1></div>
+              <p class="hosted-lede">students.example.edu signs in through Lakeside University.</p>
+              <div class="hosted-actions">
+                <button class="btn primary block">Continue to Lakeside University<i class="ic ic-arrow-right"></i></button>
+                <button class="btn outline block"><i class="ic ic-mail"></i>Email me a code instead</button>
+              </div>
+            </div>
+            <footer class="hosted-foot echo"><i class="ic ic-lock sm"></i><span>Polaris Key signs you in for DJDL. Example Audio never sees your codes or passkeys.</span></footer>
           </div>
-        </header>
-        <div class="auth-body">
-          <span class="idchip"><span>dana@example.edu</span><a href="#">Change</a></span>
-          <p class="why-note"><i class="ic ic-info sm"></i><span>Lakeside University requires its own sign-in for example.edu, so your passkey can’t be used here.</span></p>
-          <div class="org-title"><span class="icon-tile muted"><i class="ic ic-building-2"></i></span><h1>Lakeside University</h1></div>
-          <button class="btn primary block">Continue to Lakeside University<i class="ic ic-arrow-right"></i></button>
-          <p class="small muted center">You come back here once you’ve signed in.</p>
-        </div>
-        <footer class="auth-foot"><i class="ic ic-lock sm"></i><span>Polaris Key signs you in for DJDL. Example Audio never sees your codes or passkeys.</span></footer>
+        </figure>
+
+        <!-- 3. No connection for the domain: the email code (CodeStep, unchanged). -->
+        <figure class="board-item">
+          <figcaption class="mk-cluster no-wrap"><span class="anno">3</span><span><strong>Email code</strong>mara.fennick@example.com</span></figcaption>
+          <div class="hosted-card">
+            <header class="hosted-head">
+              <span class="logo lg" data-product="djdl"></span>
+              <div class="grow">
+                <div class="hosted-title"><strong>DJDL</strong> wants you to sign in</div>
+                <div class="hosted-sub"><span>Example Audio</span><span aria-hidden="true">·</span><span><i class="ic ic-monitor sm"></i>on Studio Mac mini</span></div>
+              </div>
+            </header>
+            <div class="hosted-body">
+              <h1>Check your email</h1>
+              <p class="hosted-lede">We sent a code and a sign-in link to <strong>mara.fennick@example.com</strong>. Both work for 10 minutes.</p>
+              <div class="field">
+                <span class="field-label">Code</span>
+                <div class="code-cells" aria-label="6-digit code"><span>4</span><span>8</span><span>1</span><span class="on"></span><span></span><span></span></div>
+                <span class="hint">Or open the link in the email. Keep this tab open.</span>
+              </div>
+              <div class="hosted-actions">
+                <button class="btn primary block disabled">Continue</button>
+                <div class="hosted-links plain"><span>Send a new code in 0:42</span><a href="#">Use a different email</a></div>
+              </div>
+            </div>
+            <footer class="hosted-foot echo"><i class="ic ic-lock sm"></i><span>Polaris Key signs you in for DJDL. Example Audio never sees your codes or passkeys.</span></footer>
+          </div>
+        </figure>
+
+        <!-- 4. SSO required and the connection is down: no fallback, and it says so. -->
+        <figure class="board-item">
+          <figcaption class="mk-cluster no-wrap"><span class="anno">4</span><span><strong>Connection down</strong>dana@example.edu</span></figcaption>
+          <div class="hosted-card">
+            <header class="hosted-head">
+              <span class="logo lg" data-product="djdl"></span>
+              <div class="grow">
+                <div class="hosted-title"><strong>DJDL</strong> wants you to sign in</div>
+                <div class="hosted-sub"><span>Example Audio</span><span aria-hidden="true">·</span><span><i class="ic ic-monitor sm"></i>on Studio Mac mini</span></div>
+              </div>
+            </header>
+            <div class="hosted-body">
+              <span class="id-chip"><span>dana@example.edu</span><a href="#">Change</a></span>
+              <h1>Can’t reach Lakeside University</h1>
+              <div class="callout danger">
+                <i class="ic ic-circle-x"></i>
+                <div class="grow"><div class="callout-text">example.edu addresses sign in only through Lakeside University. Try again in a few minutes, or contact its IT help desk if it keeps failing.</div></div>
+              </div>
+              <div class="hosted-actions">
+                <button class="btn primary block"><i class="ic ic-refresh-cw"></i>Try again</button>
+                <div class="hosted-links plain"><a href="#">Use a different email</a></div>
+              </div>
+            </div>
+            <footer class="hosted-foot echo"><i class="ic ic-lock sm"></i><span>Polaris Key signs you in for DJDL. Example Audio never sees your codes or passkeys.</span></footer>
+          </div>
+        </figure>
+
+        <!-- 5. A saved passkey picked on the first step, for an address whose domain requires SSO. -->
+        <figure class="board-item">
+          <figcaption class="mk-cluster no-wrap"><span class="anno">5</span><span><strong>Saved passkey, SSO required</strong>dana@example.edu</span></figcaption>
+          <div class="hosted-card">
+            <header class="hosted-head">
+              <span class="logo lg" data-product="djdl"></span>
+              <div class="grow">
+                <div class="hosted-title"><strong>DJDL</strong> wants you to sign in</div>
+                <div class="hosted-sub"><span>Example Audio</span><span aria-hidden="true">·</span><span><i class="ic ic-monitor sm"></i>on Studio Mac mini</span></div>
+              </div>
+            </header>
+            <div class="hosted-body">
+              <span class="id-chip"><span>dana@example.edu</span><a href="#">Change</a></span>
+              <p class="hosted-note"><i class="ic ic-info sm"></i><span>Lakeside University requires its own sign-in for example.edu, so your passkey can’t be used here.</span></p>
+              <div class="hosted-org"><span class="icon-tile muted"><i class="ic ic-building-2"></i></span><h1>Lakeside University</h1></div>
+              <div class="hosted-actions">
+                <button class="btn primary block">Continue to Lakeside University<i class="ic ic-arrow-right"></i></button>
+                <span class="hint">You come back here once you’ve signed in.</span>
+              </div>
+            </div>
+            <footer class="hosted-foot echo"><i class="ic ic-lock sm"></i><span>Polaris Key signs you in for DJDL. Example Audio never sees your codes or passkeys.</span></footer>
+          </div>
+        </figure>
       </div>
-    </figure>
+
+    </div>
   </div>
 </div>

@@ -34,6 +34,15 @@
         "severity": "minor",
         "issue": "'…already received, your screen name, and gets nothing new' read as a list; the compare said the header stays visible but it was blurred.",
         "resolution": "'Example Games keeps what it already received (your screen name) and gets nothing new.' The compare now says the whole page dims. The dialog is centred on desktop and a bottom sheet on phone, like the other identity dialogs."
+      },
+      {
+        "severity": "minor",
+        "issue": "Danger action the easiest tap; Cancel looked like a second primary in light.",
+        "resolution": "Phone sheet: Keep first, Disconnect second and outlined; Cancel is outline with no focus fill; bullets one clause; destructive label white in dark.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1"
+        ]
       }
     ]
   },

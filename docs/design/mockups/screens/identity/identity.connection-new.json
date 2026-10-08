@@ -37,6 +37,55 @@
         "severity": "minor",
         "issue": "On phone, unread claims indented their name but not their value; on desktop the two panes ended at different heights.",
         "resolution": "Every claim reserves the dot's width and on phone the value and note are indented by the same 13 px; the two panes stretch to the same height."
+      },
+      {
+        "severity": "blocking",
+        "issue": "Phone claims table: preferred_username printed over its value.",
+        "resolution": "New .claims table: under 640 the name sits on line 1 (mono 12px, anywhere-wrap), the value on line 2 at full width; the dot keeps its place.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Phone: stepper label touched its connector; three controls on three left edges in the footer.",
+        "resolution": "'Step 3 of 5 · Test sign-in' over a 4px progress bar (.step-line); footer is a column: 48px primary, 48px Back, centred ghost Cancel (.foot-stack).",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Wizard pinned left at 1135px with dead space at 1920.",
+        "resolution": "Page head and wizard share one centred 960px column (.wizard-col, .wizard.centered).",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Claims values wrapped with dead row space; panes ended unevenly; orphan words in the Birth date helper.",
+        "resolution": "Claims name column 200px, value 1fr, wrap-anywhere only on the long values; panes stretch to one height; Birth date helper 'Not sent. Apps never receive it.'; Groups helper cut.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1"
+        ]
+      },
+      {
+        "issue": "Add a right rail summarising what you will have at the end, and a waiting/timeout state.",
+        "resolution": "declined: adds content and states; centring the column solves the dead space; the waiting state is a flow question for the program.",
+        "round": "multi-review"
       }
     ]
   },

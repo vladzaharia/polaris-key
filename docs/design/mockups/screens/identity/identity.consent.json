@@ -13,11 +13,11 @@
   "compare": [
     "Still its own step after the license choice (SIGN-IN.md §3.8): person row with Mara's picture (from Google) and 'Not you?', the heading 'Continue to Diceroll as Mara?', 'License for this device' with the chosen license and Change.",
     "'Your picture' shows the picture itself as a 24 px thumbnail beside its source ('From Google'), so the person sees what they'd share.",
-    "The list heading reads 'Diceroll asks for' (it can no longer say 'will also get', because items can be off). Each row has an icon, a name, what exactly is shared, and either 'Required' with a lock or a switch.",
+    "The list heading reads 'Diceroll asks for' (it can no longer say 'will also get', because items can be off). Each row has an icon, a name, what exactly is shared, and either 'Required' with a lock or a switch. The email row shows no address: it is in the person row above, once.",
     "Required and optional come from the product's identity.claims {required, optional}; here the screen name is required and picture, email and Cloud Sync are optional. An item the product doesn't ask for isn't listed.",
     "Cloud Sync is optional unless the product requires it; switching it off leaves sync off for this app only, and says so on the app's Connected apps row.",
     "Optional switches start on the first time; the person's previous choice is kept when consent is asked again. This mockup shows two turned off.",
-    "A line under the list names what is off ('Diceroll won't get your picture or email') and where to change it later (Account → Connected apps); the pairwise-id line stays.",
+    "Under the list, one line says where to change these later (Account → Connected apps); the switches already show what is off. The pairwise-id line stays.",
     "'Continue to Diceroll' posts the granted subset; scope_hash covers the granted subset, so turning an optional item off never re-asks on the next sign-in. A declined item is never delivered (I-34 acceptance).",
     "Cancel abandons the sign-in; nothing (license choice, grant, binding) is written before Continue.",
     "Phone: edge to edge; switches stay at the row's right edge with 44 px rows; descriptions wrap and are never cut off; only raw values (the email address) truncate with an ellipsis; 'device 2 of 3' keeps its number on one line."
@@ -33,6 +33,18 @@
         "severity": "minor",
         "issue": "On phone the Cloud Sync description was cut off; '3' sat alone on a line; the person row showed initials while the picture row offered a picture it didn't show.",
         "resolution": "Item descriptions wrap; only the email value truncates. 'device 2 of 3' uses non-breaking spaces. Mara's Google picture is drawn as a 24 px thumbnail in the picture row and as the 40 px picture in the person row."
+      },
+      {
+        "severity": "minor",
+        "issue": "Footer off-centre; row heights vary; two stacked notes.",
+        "resolution": "Legal links centred; every ask row has a subtitle; the two notes are one note ending 'Change anytime in Account → Connected apps.'; gap above the footer 24px.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
       }
     ]
   },

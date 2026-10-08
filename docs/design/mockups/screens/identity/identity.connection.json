@@ -44,6 +44,67 @@
         "severity": "minor",
         "issue": "'Replace' looked like body text; on phone the TXT value was truncated and its copy button was about 20 px.",
         "resolution": "'Replace secret' is a small outline button with an icon. On phone the TXT Name and Value wrap (break-all) and both Copy buttons are 32 px."
+      },
+      {
+        "severity": "major",
+        "issue": "Spacing scale inconsistent (16, 24 and 32 used at random); card header heights and title sizes vary.",
+        "resolution": "Opt-in .rhythm on the page: 24 between cards in a group, 12 group title to first card, 32 between groups; card header at least 56; card titles 18/600; stat tiles 24. The global tokens are unchanged (existing values); muted and meta text already met 4.5:1 and 12px.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Duplicate statements within one page.",
+        "resolution": "Email domains subtitle trimmed, the DNS sentence dropped (the callout says it); 'Who signs in', 'What it gives people' and 'Client' subtitles removed; Delete card 'Removes sign-in for 88 addresses.'; 'Re-checked today' shown once above the table; 'After verification' dropped.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "2300px single column with an empty right half.",
+        "resolution": "Main column plus a 360px sticky rail (What it gives people, Client, Delete) from 1280 (.mk-with-rail.rail-360).",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Phone: three stat tiles with an orphan, DNS values wrapped mid-token, Check now small.",
+        "resolution": "Stat tiles in one compact row (.stats.row-3); DNS Name and Value scroll sideways with a pinned 36px copy button (.record.scroll); Check now full width; header actions full width.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Claim map rows took four lines each with stacked labels.",
+        "resolution": "Claim map uses the kit's .flow rows: a title line and one line of values, no stacked labels.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2"
+        ]
+      },
+      {
+        "issue": "Fold the Errors stat into Last sign-in, swap the enforce icon, shorten the primary labels to 'Require SSO' and 'Disconnect'.",
+        "resolution": "declined: the three-stat strip is a pattern to keep; the icon and button labels are copy and meaning decisions outside this pass.",
+        "round": "multi-review"
       }
     ]
   },

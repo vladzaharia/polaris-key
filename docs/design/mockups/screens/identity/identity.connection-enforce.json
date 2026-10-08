@@ -31,6 +31,17 @@
         "severity": "minor",
         "issue": "Kit-wide: in dark the Cancel button had no visible fill or outline (same for 'Keep Diceroll' and sign-in-off's Cancel).",
         "resolution": "Fixed in the kit (kit/mockup.css): in dark, a neutral .btn inside a dialog, drawer or popover takes --mk-fill-strong and a --pk-border-strong hairline. The page under the dialog was recomposed from identity.connection, so it carries that page's fixes; the dialog itself is unchanged apart from centring and the phone bottom sheet."
+      },
+      {
+        "severity": "minor",
+        "issue": "Title wrapped on phone; bullets of two clauses.",
+        "resolution": "Title 'Require SSO for this domain?'; bullets one clause each; background rebuilt on the new Connection layout; Cancel without focus fill.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3"
+        ]
       }
     ]
   },

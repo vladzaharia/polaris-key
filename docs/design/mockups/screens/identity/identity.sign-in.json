@@ -35,6 +35,22 @@
         "severity": "minor",
         "issue": "On phone the quiet links were about 20 px tall against the 44 px promise; a laptop icon stood for a Mac mini.",
         "resolution": "The links are 44 px tall at every width and stack as full-width rows on phone. The device line uses the desktop (monitor) icon here, on sign-in-routes and wherever Studio Mac mini appears."
+      },
+      {
+        "severity": "minor",
+        "issue": "Footer links off-centre under the card; small links; orphan word in the subtitle.",
+        "resolution": "Help/Privacy/Terms centred; 'Have a license key?' and 'Sign in with another device' in one centred 14px row with 44px targets; subtitle shortened to 'Use your DJDL purchase email or a work or school email.'; the Apple and Google buttons already carry aria-labels.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux4"
+        ]
+      },
+      {
+        "issue": "Split-panel landscape layout and visible 'Apple'/'Google' text on the provider buttons.",
+        "resolution": "declined: the sign-in card is a 456px drop-in under the kit's system and the icon-only button shape is established; only aria-labels are accepted.",
+        "round": "multi-review"
       }
     ]
   },

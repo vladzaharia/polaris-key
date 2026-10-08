@@ -1,343 +1,4 @@
-<style>
-  /* identity.sign-in-off: App sign-in dimmed behind the requirement confirmation (ST-38). */
-  [data-screen="identity.sign-in-off"] .t4 {
-    display: grid;
-    grid-template-columns: 172px minmax(0, 1fr);
-    gap: 28px;
-    align-items: start;
-  }
-  [data-screen="identity.sign-in-off"] .rail {
-    position: sticky;
-    top: 88px;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  [data-screen="identity.sign-in-off"] .rail .eyebrow {
-    margin: 0 0 6px 10px;
-  }
-  [data-screen="identity.sign-in-off"] .rail a {
-    padding: 6px 10px;
-    border-radius: var(--pk-radius-md);
-    font-size: 13px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="identity.sign-in-off"] .rail a.on {
-    background: var(--mk-fill);
-    color: var(--pk-text-strong);
-    box-shadow: inset 2px 0 0 var(--pk-accent);
-  }
-  [data-screen="identity.sign-in-off"] .cards {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    min-width: 0;
-  }
-  [data-screen="identity.sign-in-off"] .setting-row.with-icon .icon-tile .ic {
-    color: var(--pk-text-strong);
-  }
-  [data-screen="identity.sign-in-off"] .setting-row .ctl {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 13px;
-    color: var(--pk-text-muted);
-    white-space: nowrap;
-  }
-  [data-screen="identity.sign-in-off"] .setting-title .small {
-    font-weight: 400;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="identity.sign-in-off"] .gmark {
-    width: 18px;
-    height: 18px;
-  }
-  [data-screen="identity.sign-in-off"] .sub-eyebrow {
-    margin: 0;
-    padding: 14px 20px 0;
-    border-top: 1px solid var(--mk-line);
-  }
-  [data-screen="identity.sign-in-off"] .sub-eyebrow + .setting-row {
-    border-top: 0;
-  }
-  [data-screen="identity.sign-in-off"] .source {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    color: var(--pk-text-subtle);
-    white-space: nowrap;
-  }
-  [data-screen="identity.sign-in-off"] .source .ic {
-    width: 13px;
-    height: 13px;
-  }
-  [data-screen="identity.sign-in-off"] .pc .dl {
-    font-size: 13px;
-    gap: 10px 24px;
-  }
-  [data-screen="identity.sign-in-off"] .pc .dl dd {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px 10px;
-  }
-  [data-screen="identity.sign-in-off"] .pc .dl dd .mono {
-    font-size: 12px;
-    word-break: break-all;
-  }
-  [data-screen="identity.sign-in-off"] .share {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 12px;
-    color: var(--pk-text-subtle);
-    white-space: nowrap;
-  }
-  [data-screen="identity.sign-in-off"] .setting-desc .share {
-    display: flex;
-    margin-top: 6px;
-  }
-  [data-screen="identity.sign-in-off"] .share .progress {
-    width: 64px;
-  }
-  [data-screen="identity.sign-in-off"] .ctl-group {
-    display: inline-flex;
-    align-items: center;
-    gap: 16px;
-  }
-  [data-screen="identity.sign-in-off"] .pres {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-  }
-  [data-screen="identity.sign-in-off"] .accent-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    height: 32px;
-    padding: 0 12px 0 8px;
-    border: 1px solid var(--mk-line);
-    border-radius: 999px;
-    font-size: 13px;
-    color: var(--pk-text-default);
-  }
-  [data-screen="identity.sign-in-off"] .accent-chip svg {
-    width: 16px;
-    height: 16px;
-  }
-  [data-screen="identity.sign-in-off"] .accent-chip .mono {
-    font-size: 12px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="identity.sign-in-off"] .pc-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 20px 0;
-  }
-  [data-screen="identity.sign-in-off"] .manifest-hint {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    margin: 0;
-    padding: 10px 20px;
-    border-top: 1px solid var(--mk-line);
-    background: color-mix(in oklab, var(--pk-surface-sunken) 45%, var(--pk-surface-raised));
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="identity.sign-in-off"] .manifest-hint .ic {
-    flex: none;
-    margin-top: 1px;
-  }
-  [data-screen="identity.sign-in-off"] .source.taken {
-    color: var(--pk-text-muted);
-  }
-  @container screen (max-width: 1279px) {
-    [data-screen="identity.sign-in-off"] .t4 {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    [data-screen="identity.sign-in-off"] .rail {
-      display: none;
-    }
-  }
-  @container screen (max-width: 639px) {
-    [data-screen="identity.sign-in-off"] .setting-row,
-    [data-screen="identity.sign-in-off"] .setting-row.with-icon {
-      grid-template-columns: auto minmax(0, 1fr);
-      gap: 10px 14px;
-    }
-    [data-screen="identity.sign-in-off"] .setting-row:not(.with-icon) {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    [data-screen="identity.sign-in-off"] .setting-row.with-icon > :last-child {
-      grid-column: 2;
-      justify-self: start;
-    }
-    [data-screen="identity.sign-in-off"] .setting-row.with-icon > .icon-tile {
-      grid-row: 1 / span 2;
-      align-self: start;
-    }
-    [data-screen="identity.sign-in-off"] .ctl-group {
-      flex-wrap: wrap;
-      gap: 8px 14px;
-    }
-    [data-screen="identity.sign-in-off"] .sub-eyebrow {
-      flex-wrap: wrap;
-      padding: 14px 16px 0;
-    }
-    [data-screen="identity.sign-in-off"] .sub-eyebrow .end {
-      flex-basis: 100%;
-      margin-left: 0;
-    }
-    [data-screen="identity.sign-in-off"] .pc .dl {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    [data-screen="identity.sign-in-off"] .pc-row {
-      padding: 14px 16px 0;
-    }
-    [data-screen="identity.sign-in-off"] .manifest-hint {
-      padding: 10px 16px;
-    }
-    /* Segmented controls fill the row, each segment an equal share. */
-    [data-screen="identity.sign-in-off"] .setting-row > .segmented {
-      display: flex;
-      width: 100%;
-    }
-    [data-screen="identity.sign-in-off"] .setting-row > .segmented > span {
-      flex: 1;
-      text-align: center;
-    }
-    [data-screen="identity.sign-in-off"] .card-head .source {
-      flex-basis: 100%;
-      order: 3;
-      white-space: normal;
-    }
-    [data-screen="identity.sign-in-off"] .card-head .source ~ .btn {
-      order: 4;
-      margin-left: -12px;
-    }
-    [data-screen="identity.sign-in-off"] .pres {
-      flex-wrap: wrap;
-    }
-  }
-  /* With a dialog open the page can't scroll, so the render is the first viewport, as the console
-     shows it: the dialog centred on desktop, the bottom sheet on phone (ADMIN.md §Overlays). */
-  [data-screen="identity.sign-in-off"] :is(.console, .portal) {
-    height: 100vh;
-    min-height: 0;
-    overflow: hidden;
-  }
-  [data-screen="identity.sign-in-off"] .overlay {
-    align-items: center;
-    padding: 24px 16px;
-  }
-  [data-screen="identity.sign-in-off"] .dialog {
-    max-height: 100%;
-  }
-  [data-screen="identity.sign-in-off"] .dialog-body {
-    min-height: 0;
-    overflow: auto;
-  }
-  [data-screen="identity.sign-in-off"] .dialog-body .bullets li {
-    line-height: 20px;
-  }
-  @container screen (max-width: 639px) {
-    [data-screen="identity.sign-in-off"] .overlay {
-      padding: 0;
-    }
-  }
-  /* The dialog follows products.turn-off-licensing: what turns off, what is kept, the one change. */
-  [data-screen="identity.sign-in-off"] .casc {
-    display: flex;
-    flex-direction: column;
-    border: 1px solid var(--mk-line);
-    border-radius: 12px;
-    background: var(--pk-surface-raised);
-  }
-  [data-screen="identity.sign-in-off"] .casc-item {
-    display: grid;
-    grid-template-columns: 28px minmax(0, 1fr);
-    gap: 12px;
-    padding: 12px 14px;
-  }
-  [data-screen="identity.sign-in-off"] .casc-item + .casc-item {
-    border-top: 1px solid var(--mk-line);
-  }
-  [data-screen="identity.sign-in-off"] .casc-title {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px 8px;
-    font-weight: 700;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="identity.sign-in-off"] .casc-why {
-    font-size: 12px;
-    line-height: 16px;
-    font-weight: 400;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="identity.sign-in-off"] .casc-to {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    margin-left: auto;
-    font-size: 12px;
-    line-height: 16px;
-    font-weight: 400;
-    color: var(--pk-danger);
-    white-space: nowrap;
-  }
-  [data-screen="identity.sign-in-off"] .casc-to > .ic {
-    width: 12px;
-    height: 12px;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="identity.sign-in-off"] .casc-text {
-    margin-top: 2px;
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="identity.sign-in-off"] .kept {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="identity.sign-in-off"] .kept > .ic {
-    flex: none;
-    margin-top: 1px;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="identity.sign-in-off"] .audit {
-    padding: 12px 14px;
-    border-radius: 12px;
-    background: var(--pk-surface-sunken);
-  }
-  [data-screen="identity.sign-in-off"] .audit-row {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-  }
-  [data-screen="identity.sign-in-off"] .audit-text {
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-text-default);
-  }
-  @container screen (max-width: 639px) {
-    [data-screen="identity.sign-in-off"] .casc-item {
-      padding: 12px;
-    }
-  }
-</style>
-
-<div class="console" data-service="identity">
+<div class="console modal-open" data-service="identity">
   <header class="topbar">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
@@ -360,15 +21,15 @@
     <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
     <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
     <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
-    <div class="nav-group closed" data-service="license"><div class="nav-label">Licensing<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="config" style="padding-top: 4px"><div class="nav-label">Managed config<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="release" style="padding-top: 4px"><div class="nav-label">Ship builds<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group" data-service="identity" style="padding-top: 4px">
-      <div class="nav-label">Sign-in<i class="ic ic-chevron-down sm"></i></div>
+    <div class="nav-group closed" data-service="license"><button class="nav-label" aria-expanded="false">Licensing<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group" data-service="identity">
+      <button class="nav-label" aria-expanded="true">Sign-in<i class="ic ic-chevron-down sm"></i></button>
       <a class="nav-item active" href="#"><i class="ic ic-log-in"></i><span class="nav-text">App sign-in</span><span class="count warning">1</span></a>
     </div>
-    <div class="nav-group closed" data-service="sync" style="padding-top: 4px"><div class="nav-label">Cloud Sync<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="commerce" style="padding-top: 4px"><div class="nav-label">Commerce<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="commerce"><button class="nav-label" aria-expanded="false">Commerce<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
       <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
@@ -379,14 +40,14 @@
     <div class="page">
       <header class="page-head">
         <div class="page-heading"><h1>App sign-in</h1></div>
-        <p class="page-sub">How players sign in to Diceroll, and what it gets from their account. Email codes and passkeys are always on.</p>
         <div class="page-actions">
           <button class="btn ghost hide-phone"><i class="ic ic-history"></i>History</button>
+          <button class="btn ghost icon show-phone" aria-label="History"><i class="ic ic-history"></i></button>
         </div>
       </header>
 
-      <div class="t4">
-        <nav class="rail" aria-label="On this page">
+      <div class="with-toc">
+        <nav class="toc-nav" aria-label="On this page">
           <p class="eyebrow">On this page</p>
           <a class="on" href="#s-status">Status</a>
           <a href="#s-methods">Sign-in methods</a>
@@ -398,165 +59,152 @@
           <a href="#s-pres">Presentation</a>
         </nav>
 
-        <div class="cards">
+        <div class="toc-body">
           <!-- Status: the Sign-in feature switch. Turning it off names Cloud Sync (identity.sign-in-off). -->
           <section class="card" id="s-status" aria-labelledby="h-status">
-            <div class="card-head">
-              <div class="title"><h2 id="h-status">Status</h2><p>The Sign-in feature for Diceroll. Turning it off asks first.</p></div>
-            </div>
+            <div class="card-head"><div class="title"><h2 id="h-status">Status</h2></div></div>
             <div class="setting-row with-icon">
               <span class="icon-tile"><i class="svc"></i></span>
-              <div>
-                <div class="setting-title">Sign-in is on</div>
-                <div class="setting-desc">1,208 players signed in this week on iOS, Android, Steam and itch.io. Cloud Sync needs Sign-in.</div>
-              </div>
+              <div><div class="setting-title">Sign-in</div><div class="setting-desc">1,208 players signed in this week. Cloud Sync needs Sign-in.</div></div>
               <span class="switch on" role="switch" aria-checked="true" aria-label="Sign-in for Diceroll"></span>
             </div>
           </section>
 
           <!-- Methods (I-29): email and passkeys always on; shortcuts derived from channels, overridable. -->
           <section class="card" id="s-methods" aria-labelledby="h-methods">
-            <div class="card-head">
-              <div class="title"><h2 id="h-methods">Sign-in methods</h2><p>What Diceroll’s sign-in card offers. Shortcuts follow Diceroll’s channels unless you change them.</p></div>
-            </div>
+            <div class="card-head"><div class="title"><h2 id="h-methods">Sign-in methods</h2><p>Shortcuts follow Diceroll’s channels unless you change them.</p></div></div>
             <div class="setting-row with-icon">
               <span class="icon-tile muted"><i class="ic ic-mail"></i></span>
-              <div><div class="setting-title">Email code and passkeys</div><div class="setting-desc">Every product, always. Off only for an address whose organization requires its own sign-in.</div></div>
-              <span class="ctl"><i class="ic ic-lock sm"></i>Always on</span>
+              <div><div class="setting-title">Email code and passkeys</div><div class="setting-desc">Off only for addresses whose organization requires its own sign-in.</div></div>
+              <span class="status muted"><i class="ic ic-lock"></i>Always on</span>
             </div>
             <div class="setting-row with-icon">
               <span class="icon-tile muted"><i class="ic ic-apple"></i></span>
-              <div><div class="setting-title">Apple</div><div class="setting-desc">On because Diceroll ships on the App Store.</div></div>
+              <div><div class="setting-title">Apple</div><div class="setting-desc">Diceroll ships on the App Store</div></div>
               <span class="switch on" role="switch" aria-checked="true" aria-label="Apple on Diceroll's card"></span>
             </div>
             <div class="setting-row with-icon">
-              <span class="icon-tile muted"><svg class="gmark" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg></span>
-              <div><div class="setting-title">Google</div><div class="setting-desc">On because Diceroll ships on Google Play.</div></div>
+              <span class="icon-tile muted"><i class="gmark"></i></span>
+              <div><div class="setting-title">Google</div><div class="setting-desc">Diceroll ships on Google Play</div></div>
               <span class="switch on" role="switch" aria-checked="true" aria-label="Google on Diceroll's card"></span>
             </div>
             <div class="setting-row with-icon">
               <span class="icon-tile muted"><i class="ic ic-steam"></i></span>
-              <div><div class="setting-title">Steam</div><div class="setting-desc">On because Diceroll sells on Steam. A web sign-in, so the Steam app isn’t needed.</div></div>
+              <div><div class="setting-title">Steam</div><div class="setting-desc">Diceroll sells on Steam. A web sign-in: the Steam app isn’t needed.</div></div>
               <span class="switch on" role="switch" aria-checked="true" aria-label="Steam on Diceroll's card"></span>
             </div>
             <div class="setting-row with-icon">
               <span class="icon-tile muted"><i class="ic ic-building-2"></i></span>
-              <div><div class="setting-title">Single sign-on</div><div class="setting-desc">Pocket ID and Lakeside University send addresses at their 3 verified domains to their own sign-in, on every product’s card.</div></div>
+              <div><div class="setting-title">Single sign-on</div><div class="setting-desc">Pocket ID and Lakeside University sign in addresses at their 3 verified domains, on every product.</div></div>
               <a class="link" href="#">Connections<i class="ic ic-arrow-right"></i></a>
             </div>
 
-            <p class="eyebrow sub-eyebrow">Inside the game<span class="end">Turn on and off with each store channel</span></p>
+            <div class="card-band"><p class="eyebrow">Inside the game<span class="end">Follows each store channel</span></p></div>
             <div class="setting-row with-icon">
               <span class="icon-tile muted"><i class="ic ic-gamepad-2"></i></span>
-              <div><div class="setting-title">Game Center <span class="small">iOS</span></div><div class="setting-desc">From the App Store channel. 412 sign-ins this week.</div></div>
+              <div><div class="setting-title">Game Center<small>iOS</small></div><div class="setting-desc">412 sign-ins this week</div></div>
               <span class="status"><i class="ic ic-circle-check"></i>Working</span>
             </div>
             <div class="setting-row with-icon">
               <span class="icon-tile muted"><i class="ic ic-google-play"></i></span>
-              <div><div class="setting-title">Play Games <span class="small">Android</span></div><div class="setting-desc">From the Google Play channel. 377 sign-ins this week.</div></div>
+              <div><div class="setting-title">Play Games<small>Android</small></div><div class="setting-desc">377 sign-ins this week</div></div>
               <span class="status"><i class="ic ic-circle-check"></i>Working</span>
             </div>
             <div class="setting-row with-icon">
               <span class="icon-tile muted"><i class="ic ic-steam"></i></span>
-              <div><div class="setting-title">Steam <span class="small">Steam builds</span></div><div class="setting-desc">Diceroll can’t check a player’s Steam sign-in until Steamworks has a publisher key. Players on Steam use the browser sign-in meanwhile.</div></div>
-              <span class="ctl-group"><span class="pill warning sm"><i class="ic ic-triangle-alert"></i>Needs Steamworks</span><a class="link" href="#">Connect Steam<i class="ic ic-arrow-right"></i></a></span>
+              <div><div class="setting-title">Steam<small>Steam builds</small></div><div class="setting-desc">Players on Steam use the browser sign-in until Steamworks has a publisher key.</div></div>
+              <span class="mk-cluster"><span class="pill warning sm"><i class="ic ic-triangle-alert"></i>Needs Steamworks</span><a class="link" href="#">Connect Steam<i class="ic ic-arrow-right"></i></a></span>
             </div>
           </section>
 
           <!-- Product connection (I-32): Diceroll's own account system, token exchange only. Edited in its own dialog. -->
-          <section class="card pc" id="s-pc" aria-labelledby="h-pc">
-            <div class="card-head">
-              <div class="title"><h2 id="h-pc">Product connection</h2><p>Diceroll’s own account system. The game trades a player’s Firebase ID token for a Polaris Key sign-in, so nobody signs in twice.</p></div>
-            </div>
-            <div class="pc-row">
+          <section class="card" id="s-pc" aria-labelledby="h-pc">
+            <div class="card-head"><div class="title"><h2 id="h-pc">Product connection</h2><p>The game trades a player’s Firebase token for a Polaris Key sign-in, so nobody signs in twice.</p></div></div>
+            <div class="setting-row with-icon">
               <span class="logo sm" data-product="diceroll"></span>
-              <div class="grow"><div class="setting-title">Diceroll accounts</div><div class="setting-desc">Firebase · token exchange only</div></div>
+              <div><div class="setting-title">Diceroll accounts</div><div class="setting-desc">Firebase</div></div>
               <button class="btn outline sm">Edit</button>
             </div>
             <div class="card-body">
-              <dl class="dl">
-                <dt>Issuer</dt><dd><span class="mono">https://securetoken.google.com/diceroll-prod</span><span class="meta">Keys from Google’s published set</span></dd>
-                <dt>Token exchange</dt><dd><span class="status"><i class="ic ic-circle-check"></i>On</span><span class="mono">POST /diceroll/identity/token</span></dd>
-                <dt>Sign-in button</dt><dd><span class="muted">None. Firebase has no sign-in page to send players to.</span></dd>
-                <dt>Emails</dt><dd>Never taken as confirmed. A player confirms their email with a code once.</dd>
+              <dl class="dl stack-narrow">
+                <dt>Issuer</dt><dd><div class="mk-stack-1"><span class="mono">https://securetoken.google.com/diceroll-prod</span><span class="meta">Keys from Google’s published set</span></div></dd>
+                <dt>Token exchange</dt><dd><div class="mk-cluster"><span class="status"><i class="ic ic-circle-check"></i>On</span><span class="mono">POST /diceroll/identity/token</span></div></dd>
+                <dt>Sign-in button</dt><dd>None: Firebase has no sign-in page</dd>
+                <dt>Emails</dt><dd>Never taken as confirmed; a player confirms theirs with a code once</dd>
                 <dt>Linked players</dt><dd>1,920 · last exchange 2 min ago</dd>
               </dl>
             </div>
-            <div class="card-foot start"><span class="small muted">Product connections are listed with the others in Platform → Connections.</span><a class="link ml-auto" href="#">Add another<i class="ic ic-plus"></i></a></div>
+            <div class="card-foot between"><a class="link" href="#">All connections<i class="ic ic-arrow-right"></i></a><button class="btn ghost sm"><i class="ic ic-plus"></i>Add another</button></div>
           </section>
 
           <!-- What the app gets (I-34): identity.claims {required, optional}. -->
           <section class="card" id="s-gets" aria-labelledby="h-gets">
             <div class="card-head">
-              <div class="title"><h2 id="h-gets">What Diceroll gets</h2><p>Players see this on the consent step and can change optional items later, in Connected apps. Changing the list asks every player again at their next sign-in.</p></div>
-              <span class="source"><i class="ic ic-file-code-2"></i>From .pkey/product</span>
+              <div class="title"><div class="mk-cluster baseline"><h2 id="h-gets">What Diceroll gets</h2><span class="pill sm"><i class="ic ic-file-code-2"></i>.pkey/product</span></div><p>Shown on the consent step. Changing the list asks every player again at their next sign-in.</p></div>
             </div>
-            <p class="manifest-hint"><i class="ic ic-info sm"></i><span><code>identity.claims</code> in Diceroll’s <code>.pkey/product</code> sets these. Changing one here takes it over from the manifest: the next resync leaves it alone until you revert it.</span></p>
+            <div class="card-body tight"><p class="icon-line type-small muted"><i class="ic ic-info"></i><span>Changing one here takes it over from <code>identity.claims</code>: resyncs leave it alone until you revert it.</span></p></div>
             <div class="setting-row">
-              <div><div class="setting-title">License for this device</div><div class="setting-desc">The license the player picks, or the one the access policy gives.</div></div>
-              <span class="ctl"><i class="ic ic-lock sm"></i>Always</span>
+              <div><div class="setting-title">License for this device</div><div class="setting-desc">The one the player picks, or the one the access policy gives</div></div>
+              <span class="status muted"><i class="ic ic-lock"></i>Always</span>
             </div>
-            <div class="setting-row">
-              <div><div class="setting-title">Screen name</div><div class="setting-desc">Shown on leaderboards and in shared dice rooms.</div></div>
+            <div class="setting-row stack-narrow">
+              <div><div class="setting-title">Screen name</div><div class="setting-desc">Shown on leaderboards and in shared dice rooms</div></div>
               <div class="segmented sm"><span class="on">Required</span><span>Optional</span><span>Not asked</span></div>
             </div>
-            <div class="setting-row">
-              <div><div class="setting-title">Picture</div><div class="setting-desc"><span class="share"><span class="progress" style="--v: 48%"></span>Shared by 48% of players</span></div></div>
+            <div class="setting-row stack-narrow">
+              <div><div class="setting-title">Picture</div><div class="setting-desc"><span class="share-line"><span class="progress" style="--v: 48%"></span>Shared by 48% of players</span></div></div>
               <div class="segmented sm"><span>Required</span><span class="on">Optional</span><span>Not asked</span></div>
             </div>
-            <div class="setting-row">
-              <div><div class="setting-title">Email</div><div class="setting-desc"><span class="share"><span class="progress" style="--v: 61%"></span>Shared by 61% of players</span></div></div>
+            <div class="setting-row stack-narrow">
+              <div><div class="setting-title">Email</div><div class="setting-desc"><span class="share-line"><span class="progress" style="--v: 61%"></span>Shared by 61% of players</span></div></div>
               <div class="segmented sm"><span>Required</span><span class="on">Optional</span><span>Not asked</span></div>
             </div>
-            <div class="setting-row">
-              <div><div class="setting-title">Cloud Sync</div><div class="setting-desc">A player who turns it off keeps saves on that device only. <span class="share"><span class="progress" style="--v: 94%"></span>On for 94%</span></div></div>
+            <div class="setting-row stack-narrow">
+              <div><div class="setting-title">Cloud Sync</div><div class="setting-desc">Off keeps saves on that device only. <span class="share-line"><span class="progress" style="--v: 94%"></span>On for 94%</span></div></div>
               <div class="segmented sm"><span>Required</span><span class="on">Optional</span><span>Not asked</span></div>
             </div>
           </section>
 
           <!-- Terms (I-33): Polaris Key's always; the product's version from the manifest, URLs from the listing. -->
           <section class="card" id="s-terms" aria-labelledby="h-terms">
-            <div class="card-head">
-              <div class="title"><h2 id="h-terms">Terms</h2><p>Accepted on the account step; recorded with their version.</p></div>
+            <div class="card-head"><div class="title"><h2 id="h-terms">Terms</h2><p>Accepted on the account step, with their version.</p></div></div>
+            <div class="setting-row">
+              <div><div class="setting-title">Polaris Key’s Terms and Privacy Policy</div><div class="setting-desc">Once per account</div></div>
+              <span class="status muted"><i class="ic ic-lock"></i>Always</span>
             </div>
             <div class="setting-row">
-              <div><div class="setting-title">Polaris Key’s Terms and Privacy Policy</div><div class="setting-desc">Every new account accepts them once, whatever product it starts in.</div></div>
-              <span class="ctl"><i class="ic ic-lock sm"></i>Always</span>
-            </div>
-            <div class="setting-row">
-              <div><div class="setting-title">Diceroll’s terms <span class="small mono">2026-10</span></div><div class="setting-desc">Terms and Privacy Policy links come from Diceroll’s listing. Players accept again when the version changes.</div></div>
-              <span class="ctl-group"><span class="source"><i class="ic ic-file-code-2"></i>From .pkey/product</span><a class="link" href="#">Edit listing<i class="ic ic-arrow-right"></i></a></span>
+              <div><div class="setting-title">Diceroll’s terms<small>2026-10</small></div><div class="setting-desc">Links from Diceroll’s listing. Players accept again when the version changes.</div></div>
+              <a class="link" href="#">Edit listing<i class="ic ic-arrow-right"></i></a>
             </div>
           </section>
 
-          <!-- Key entry (I-09's setting, I-35's manifest block). -->
+          <!-- Key entry (I-09's setting, I-35's manifest block): taken over from the manifest. -->
           <section class="card" id="s-keys" aria-labelledby="h-keys">
             <div class="card-head">
-              <div class="title"><h2 id="h-keys">License keys</h2><p>For players who type a key instead of signing in.</p></div>
-              <span class="source taken"><i class="ic ic-pencil"></i>Changed here · <code>.pkey/product</code> says 5</span>
+              <div class="title"><div class="mk-cluster baseline"><h2 id="h-keys">License keys</h2><span class="pill sm"><i class="ic ic-pencil"></i>Changed here · <code>.pkey/product</code> says 5</span></div><p>For players who type a key instead of signing in.</p></div>
               <button class="btn ghost sm">Revert to manifest…</button>
             </div>
-            <div class="setting-row">
-              <div><div class="setting-title">Key entries before an account is needed</div><div class="setting-desc">Counted across the portal and the game. Devices already activated keep working.</div></div>
+            <div class="setting-row stack-narrow">
+              <div><div class="setting-title">Key entries before an account is needed</div><div class="setting-desc">Counted across the portal and the game. Activated devices keep working.</div></div>
               <div class="segmented sm"><span>5</span><span class="on">10</span><span>25</span><span>No limit</span></div>
             </div>
             <div class="setting-row">
-              <div><div class="setting-title">A key adds its license to whoever enters it</div><div class="setting-desc">Off: a key adds its license only to the account with the buyer’s email.</div></div>
+              <div><div class="setting-title">A key adds its license to whoever enters it</div><div class="setting-desc">Off: only to the account with the buyer’s email.</div></div>
               <span class="switch" role="switch" aria-checked="false" aria-label="A key adds its license to whoever enters it"></span>
             </div>
           </section>
+        </div>
 
+        <div class="toc-aside">
           <!-- Customer portal: the two portal switches that remain (portal.enabled, keyReissue). -->
           <section class="card" id="s-portal" aria-labelledby="h-portal">
-            <div class="card-head">
-              <div class="title"><h2 id="h-portal">Customer portal</h2><p>Diceroll in each player’s library at key.plrs.im.</p></div>
-            </div>
+            <div class="card-head"><div class="title"><h2 id="h-portal">Customer portal</h2><p>Diceroll in each player’s library at key.plrs.im.</p></div></div>
             <div class="setting-row">
-              <div><div class="setting-title">Show Diceroll in players’ libraries</div><div class="setting-desc">With its licenses and devices.</div></div>
+              <div><div class="setting-title">Show Diceroll in players’ libraries</div><div class="setting-desc">With its licenses and devices</div></div>
               <span class="switch on" role="switch" aria-checked="true" aria-label="Show Diceroll in players’ libraries"></span>
             </div>
             <div class="setting-row">
-              <div><div class="setting-title">Show a lost key again</div><div class="setting-desc">Players can reveal their key again from their library.</div></div>
+              <div><div class="setting-title">Show a lost key again</div></div>
               <span class="switch on" role="switch" aria-checked="true" aria-label="Show a lost key again"></span>
             </div>
           </section>
@@ -567,61 +215,45 @@
               <div class="title"><h2 id="h-pres">Presentation</h2><p>On the sign-in card, the consent step and emails.</p></div>
               <a class="link" href="#">Edit in Settings<i class="ic ic-arrow-right"></i></a>
             </div>
-            <div class="card-body pres">
-              <span class="logo lg" data-product="diceroll"></span>
-              <div class="grow">
-                <div class="strong bold">Diceroll</div>
-                <div class="small muted">Example Games</div>
-              </div>
-              <span class="accent-chip"><svg viewBox="0 0 16 16" aria-hidden="true"><rect width="16" height="16" rx="4" fill="#ec4c55"/></svg>Accent <span class="mono">#EC4C55</span></span>
+            <div class="setting-row with-icon">
+              <span class="logo" data-product="diceroll"></span>
+              <div><div class="setting-title">Diceroll</div><div class="setting-desc">Example Games</div></div>
+              <span class="swatch-chip"><i style="--swatch: #ec4c55"></i>Accent<span class="mono">#EC4C55</span></span>
             </div>
           </section>
         </div>
       </div>
     </div>
   </main>
-
   <!-- The requirement cascade (ST-38's rule), in products.turn-off-licensing's shape: every dependent named. -->
-  <div class="overlay sheet">
-    <div class="dialog lg danger" role="alertdialog" aria-modal="true" aria-labelledby="off-title" aria-describedby="off-lead">
+  <div class="overlay center sheet">
+    <div class="dialog lg danger scroll" role="alertdialog" aria-modal="true" aria-labelledby="off-title">
       <div class="dialog-head">
         <i class="ic ic-triangle-alert lg"></i>
         <h2 id="off-title">Turn off Sign-in for Diceroll?</h2>
         <button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button>
       </div>
       <div class="dialog-body">
-        <p id="off-lead">Cloud Sync needs Sign-in, so it turns off too, in the same change.</p>
-        <div class="casc">
-          <div class="casc-item">
+        <div class="change-list">
+          <div class="change-item">
             <span class="icon-tile sm" data-service="identity"><i class="svc"></i></span>
-            <div class="casc-main">
-              <div class="casc-title">Sign-in<span class="casc-to">On<i class="ic ic-arrow-right"></i>Off</span></div>
-              <div class="casc-text">Nobody can sign in to Diceroll: not on its sign-in card, Game Center, Play Games or Steam. Players signed in now are signed out the next time the game checks in, within an hour. The Diceroll accounts connection stops exchanging Firebase tokens. Activated devices keep playing; new devices activate with a license key.</div>
-            </div>
+            <div class="change-title">Sign-in</div>
+            <span class="change-to">On<i class="ic ic-arrow-right"></i>Off</span>
+            <p class="change-text">Nobody can sign in to Diceroll. Players signed in now are signed out within an hour; activated devices keep playing.</p>
+            <p class="meta">Diceroll accounts stops exchanging Firebase tokens</p>
           </div>
-          <div class="casc-item">
+          <div class="change-item">
             <span class="icon-tile sm" data-service="sync"><i class="svc"></i></span>
-            <div class="casc-main">
-              <div class="casc-title">Cloud Sync<span class="casc-why">Needs Sign-in</span><span class="casc-to">On<i class="ic ic-arrow-right"></i>Off</span></div>
-              <div class="casc-text">3,412 players’ saves and dice sets stop syncing. Each device keeps what it has.</div>
-            </div>
+            <div class="change-title">Cloud Sync</div>
+            <span class="change-to">On<i class="ic ic-arrow-right"></i>Off</span>
+            <p class="change-text">3,412 players’ saves stop syncing; each device keeps what it has.</p>
           </div>
         </div>
-        <p class="kept"><i class="ic ic-archive"></i><span>Accounts, their links to Diceroll accounts, consents and synced saves are kept. Licenses stay in players’ libraries.</span></p>
-        <p class="kept"><i class="ic ic-history"></i><span>Turning Sign-in back on with its switch leaves Cloud Sync off; reverting this change in Activity turns both back on.</span></p>
-        <div class="audit">
-          <p class="eyebrow">In Activity, as one change</p>
-          <div class="audit-row">
-            <span class="avatar sm violet">AL</span>
-            <div class="grow">
-              <div class="audit-text"><strong>Ada Lindqvist</strong> turned off Sign-in and Cloud Sync</div>
-              <div class="meta">Sign-in → App sign-in · one entry for both</div>
-            </div>
-          </div>
-        </div>
+        <p class="icon-line type-small muted"><i class="ic ic-archive"></i><span>Accounts, consents, saves and licenses are kept.</span></p>
+        <p class="meta">Recorded in Activity</p>
       </div>
-      <div class="dialog-foot">
-        <button class="btn outline" autofocus>Cancel</button>
+      <div class="dialog-foot safe-first">
+        <button class="btn outline">Cancel</button>
         <button class="btn danger">Turn off Sign-in and Cloud Sync</button>
       </div>
     </div>

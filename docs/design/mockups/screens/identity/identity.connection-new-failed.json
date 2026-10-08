@@ -3,7 +3,11 @@
   "title": "Add SSO connection: test sign-in refused",
   "area": "identity",
   "surface": "console",
-  "packages": ["I-31", "I-30", "ST-39"],
+  "packages": [
+    "I-31",
+    "I-30",
+    "ST-39"
+  ],
   "uxRows": [],
   "summary": "The Test sign-in step when Kestrel Labs refuses the code exchange because the client secret from step 2 is wrong: a danger callout that says what went wrong and how to fix it, the provider's answer verbatim, and 'Back to Client' and 'Try again'.",
   "compare": [
@@ -15,6 +19,37 @@
     "Phone: the callout's buttons go under its text, the answer's labels stack above their values, and long values wrap rather than scroll."
   ],
   "status": "mockup",
-  "designReview": null,
+  "designReview": {
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "Phone footer on three left edges; stepper label collided with its connector.",
+        "resolution": "Step line plus progress bar; footer column (.foot-stack).",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Wizard left-pinned; error banner text did not fill the banner; banner buttons under the text.",
+        "resolution": "Centred 960px column; banner text fills it and its buttons sit at the right (Try again ghost, Back to Client outline); the disabled reason sits in the left footer slot.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3"
+        ]
+      },
+      {
+        "issue": "Collapse the response card into a closed disclosure.",
+        "resolution": "declined: the response is the evidence a person needs to fix the client; it stays visible.",
+        "round": "multi-review"
+      }
+    ]
+  },
   "order": 4.2
 }

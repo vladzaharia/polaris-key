@@ -1,208 +1,3 @@
-<style>
-  /* identity.connection-new-start: the Test sign-in step before the operator has signed in. */
-  [data-screen="identity.connection-new-start"] .page {
-    max-width: 1180px;
-  }
-  [data-screen="identity.connection-new-start"] .lead {
-    max-width: 720px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="identity.connection-new-start"] .split {
-    display: grid;
-    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-    gap: 20px;
-    align-items: stretch;
-  }
-  [data-screen="identity.connection-new-start"] .claims {
-    border: 1px solid var(--mk-line);
-    border-radius: 14px;
-    overflow: hidden;
-  }
-  [data-screen="identity.connection-new-start"] .claims-head {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 14px;
-    border-bottom: 1px solid var(--mk-line);
-    background: color-mix(in oklab, var(--pk-surface-sunken) 45%, var(--pk-surface-raised));
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="identity.connection-new-start"] .claim {
-    display: grid;
-    grid-template-columns: 150px minmax(0, 1fr);
-    gap: 2px 14px;
-    padding: 10px 14px;
-    font-size: 13px;
-  }
-  [data-screen="identity.connection-new-start"] .claim + .claim {
-    border-top: 1px solid var(--mk-line);
-  }
-  [data-screen="identity.connection-new-start"] .claim .k {
-    font-family: var(--pk-font-mono);
-    font-size: 12px;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="identity.connection-new-start"] .claim .v {
-    min-width: 0;
-    font-family: var(--pk-font-mono);
-    font-size: 12px;
-    color: var(--pk-text-default);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  [data-screen="identity.connection-new-start"] .claim .n {
-    grid-column: 2;
-    font-size: 12px;
-    color: var(--pk-text-muted);
-  }
-  /* Every claim reserves the dot's width, so names and values line up whether it's read or not. */
-  [data-screen="identity.connection-new-start"] .claim .k::before {
-    content: "";
-    display: inline-block;
-    width: 6px;
-    height: 6px;
-    margin: 0 7px 1px 0;
-    border-radius: 50%;
-    background: transparent;
-  }
-  [data-screen="identity.connection-new-start"] .claim.used .k::before {
-    background: var(--pk-accent);
-  }
-  [data-screen="identity.connection-new-start"] .map {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-  }
-  [data-screen="identity.connection-new-start"] .map .field-label {
-    font-size: 13px;
-  }
-  [data-screen="identity.connection-new-start"] .tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    height: 20px;
-    padding: 0 7px;
-    border-radius: 999px;
-    background: var(--pk-accent-subtle);
-    color: var(--pk-accent-fg);
-    font-size: 12px;
-    font-weight: 400;
-  }
-  [data-screen="identity.connection-new-start"] .select.mono {
-    font-family: var(--pk-font-mono);
-    font-size: 13px;
-  }
-  [data-screen="identity.connection-new-start"] .wizard-foot .btn.ghost {
-    margin-right: auto;
-  }
-  [data-screen="identity.connection-new-start"] .wizard-foot .btn.primary {
-    margin-left: 0;
-  }
-  @container screen (max-width: 1023px) {
-    [data-screen="identity.connection-new-start"] .split {
-      grid-template-columns: minmax(0, 1fr);
-    }
-  }
-  @container screen (max-width: 639px) {
-    [data-screen="identity.connection-new-start"] .claim {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    [data-screen="identity.connection-new-start"] .claim .n {
-      grid-column: 1;
-    }
-    [data-screen="identity.connection-new-start"] .claim .v,
-    [data-screen="identity.connection-new-start"] .claim .n {
-      padding-left: 13px;
-    }
-    [data-screen="identity.connection-new-start"] .wizard-foot {
-      flex-wrap: wrap;
-    }
-    [data-screen="identity.connection-new-start"] .wizard-foot .btn.primary {
-      flex: 1 1 100%;
-      order: -1;
-    }
-  }
-  [data-screen="identity.connection-new-start"] .try {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 18px 20px;
-    border: 1px solid var(--mk-line);
-    border-radius: 14px;
-    background: var(--pk-surface-raised);
-  }
-  [data-screen="identity.connection-new-start"] .try-title {
-    font-weight: 700;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="identity.connection-new-start"] .try-text {
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="identity.connection-new-start"] .blocked {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="identity.connection-new-start"] .blocked .ic {
-    margin-top: 1px;
-  }
-  [data-screen="identity.connection-new-start"] .blocked a {
-    color: var(--pk-accent-fg);
-  }
-  [data-screen="identity.connection-new-start"] .foot-hint {
-    font-size: 13px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="identity.connection-new-start"] .err-facts {
-    display: grid;
-    grid-template-columns: 120px minmax(0, 1fr);
-    gap: 6px 16px;
-    font-size: 13px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="identity.connection-new-start"] .err-facts dd {
-    min-width: 0;
-    color: var(--pk-text-default);
-    overflow-wrap: anywhere;
-  }
-  [data-screen="identity.connection-new-start"] .err-facts .mono {
-    font-size: 12px;
-  }
-  [data-screen="identity.connection-new-start"] .callout .btn-row {
-    margin-top: 12px;
-  }
-  @container screen (max-width: 639px) {
-    [data-screen="identity.connection-new-start"] .try {
-      flex-direction: column;
-      align-items: stretch;
-      text-align: left;
-    }
-    [data-screen="identity.connection-new-start"] .try .icon-tile {
-      display: none;
-    }
-    [data-screen="identity.connection-new-start"] .foot-hint {
-      flex-basis: 100%;
-      order: -2;
-      text-align: center;
-    }
-    [data-screen="identity.connection-new-start"] .err-facts {
-      grid-template-columns: minmax(0, 1fr);
-      gap: 2px;
-    }
-    [data-screen="identity.connection-new-start"] .err-facts dd + dt {
-      margin-top: 8px;
-    }
-  }
-</style>
-
 <div class="console" data-service="core">
   <header class="topbar">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
@@ -232,53 +27,57 @@
   </nav>
 
   <main class="main">
-    <div class="page">
+    <div class="page wizard-col">
       <header class="page-head">
         <nav class="crumbs"><a href="#">Connections</a><i class="ic ic-chevron-right"></i>Add SSO connection</nav>
         <div class="page-heading"><h1>Add SSO connection</h1></div>
-        <p class="page-sub">Kestrel Labs’ Keycloak, for every product. Nothing is live until the last step.</p>
       </header>
 
       <!-- The wizard kit (ST-39): discovery, client, test sign-in with the claims preview, domains, audience. -->
-      <section class="wizard" aria-labelledby="wz-title">
+      <section class="wizard centered" aria-labelledby="wz-title">
         <div class="wizard-head">
           <ol class="stepper">
-            <li class="step done"><span class="step-mark"></span><span class="step-label">Provider<small>Keycloak · platform</small></span></li>
+            <li class="step done"><span class="step-mark"></span><span class="step-label">Provider<small>Kestrel Labs · Keycloak</small></span></li>
             <li class="step done"><span class="step-mark"></span><span class="step-label">Client<small>Secret sealed</small></span></li>
             <li class="step current"><span class="step-mark"></span><span class="step-label">Test sign-in<small>What it sends</small></span></li>
             <li class="step"><span class="step-mark"></span><span class="step-label">Domains<small>DNS check</small></span></li>
             <li class="step"><span class="step-mark"></span><span class="step-label">Who signs in</span></li>
           </ol>
+          <div class="step-line"><span>Step 3 of 5 · Test sign-in</span><span class="progress" style="--v: 60%"></span></div>
         </div>
 
         <div class="wizard-body">
-          <div class="stack gap-2">
+          <div class="mk-stack-1">
             <h2 id="wz-title">Test sign-in</h2>
-            <p class="lead">Sign in once with a Kestrel Labs account. Polaris Key shows what the sign-in sent, so you can choose what to read. Nothing is saved to anyone’s account and no license is issued.</p>
+            <p class="muted">Sign in once with a Kestrel Labs account to see what it sends. Nothing goes live until the last step.</p>
           </div>
 
-          <div class="try">
-            <span class="icon-tile lg muted"><i class="ic ic-building-2"></i></span>
-            <div class="grow">
-              <div class="try-title">Sign in with any Kestrel Labs account</div>
-              <div class="try-text">Opens Kestrel Labs’ sign-in in a new window. When you finish there, the window closes and this step fills in.</div>
+          <div class="card">
+            <div class="setting-row with-icon">
+              <span class="icon-tile muted"><i class="ic ic-building-2"></i></span>
+              <div><div class="setting-title">Any Kestrel Labs account</div><div class="setting-desc">Opens in a new window; this step fills in when you finish.</div></div>
+              <div class="mk-cluster-4">
+                <a class="link xs" href="#">Window blocked? Open in this tab</a>
+                <button class="btn primary"><i class="ic ic-log-in"></i>Sign in with Kestrel Labs</button>
+              </div>
             </div>
-            <button class="btn primary"><i class="ic ic-log-in"></i>Sign in with Kestrel Labs</button>
           </div>
-          <p class="blocked"><i class="ic ic-info sm"></i><span>If your browser blocks the window, <a href="#">open the sign-in in this tab</a>. You come back to this step afterwards.</span></p>
 
-          <div class="empty">
-            <span class="empty-icon"><i class="ic ic-id-card"></i></span>
-            <h3>Nothing sent yet</h3>
-            <p>After you sign in, every claim Kestrel Labs sends shows here with its value, and you pick which to read for groups, name, picture and birth date.</p>
+          <div class="card flat">
+            <div class="empty strip">
+              <span class="empty-icon"><i class="ic ic-id-card"></i></span>
+              <div><h3>Nothing sent yet</h3><p>Every claim Kestrel Labs sends will show here.</p></div>
+            </div>
           </div>
         </div>
 
-        <div class="wizard-foot">
+        <div class="wizard-foot foot-stack">
           <button class="btn ghost">Cancel</button>
-          <button class="btn outline"><i class="ic ic-arrow-left"></i>Back</button>
-          <span class="foot-hint">Sign in once to continue</span>
-          <button class="btn primary disabled" disabled aria-disabled="true">Continue to domains<i class="ic ic-arrow-right"></i></button>
+          <span class="foot-reason">Sign in once to continue</span>
+          <div class="btn-row ml-auto">
+            <button class="btn outline"><i class="ic ic-arrow-left"></i>Back</button>
+            <button class="btn primary disabled" disabled aria-disabled="true">Continue to domains<i class="ic ic-arrow-right"></i></button>
+          </div>
         </div>
       </section>
     </div>

@@ -1,224 +1,3 @@
-<style>
-  /* identity.connected-apps: Account with its section nav, Connected apps in view. */
-  [data-screen="identity.connected-apps"] .acct-head {
-    display: flex;
-    align-items: flex-end;
-    gap: 16px;
-    /* Ends where the content column ends (nav 184 + gap 32 + cards 880). */
-    max-width: 1096px;
-  }
-  [data-screen="identity.connected-apps"] .acct-head p {
-    margin-top: 4px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="identity.connected-apps"] .acct {
-    display: grid;
-    grid-template-columns: 184px minmax(0, 880px);
-    gap: 32px;
-    align-items: start;
-  }
-  [data-screen="identity.connected-apps"] .acct-nav {
-    position: sticky;
-    top: 88px;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  [data-screen="identity.connected-apps"] .acct-nav a {
-    padding: 7px 12px;
-    border-radius: var(--pk-radius-md);
-    font-size: 13px;
-    color: var(--pk-text-muted);
-    white-space: nowrap;
-  }
-  [data-screen="identity.connected-apps"] .acct-nav a.on {
-    background: var(--mk-fill);
-    color: var(--pk-text-strong);
-    font-weight: 700;
-  }
-  [data-screen="identity.connected-apps"] .acct-cards {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    min-width: 0;
-  }
-  /* One row per app: who it is, how you sign in to it, what it gets, the two actions. */
-  [data-screen="identity.connected-apps"] .app {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    gap: 6px 16px;
-    padding: 18px 20px;
-  }
-  [data-screen="identity.connected-apps"] .app + .app {
-    border-top: 1px solid var(--mk-line);
-  }
-  [data-screen="identity.connected-apps"] .app-name {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 2px 8px;
-  }
-  [data-screen="identity.connected-apps"] .app-name strong {
-    font-size: 15px;
-  }
-  [data-screen="identity.connected-apps"] .app-name span {
-    font-size: 13px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="identity.connected-apps"] .app-meta {
-    display: flex;
-    align-items: flex-start;
-    gap: 6px;
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="identity.connected-apps"] .app-meta .ic,
-  [data-screen="identity.connected-apps"] .app-meta .gmark {
-    width: 14px;
-    height: 14px;
-    margin-top: 2px;
-  }
-  [data-screen="identity.connected-apps"] .gets {
-    grid-column: 2;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 6px;
-    margin-top: 6px;
-  }
-  [data-screen="identity.connected-apps"] .gets .lbl {
-    margin-right: 4px;
-    font-size: 12px;
-    color: var(--pk-text-subtle);
-  }
-  /* Granted: a filled success chip. Declined: dashed and muted. */
-  [data-screen="identity.connected-apps"] .g {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    height: 26px;
-    padding: 0 10px;
-    border: 1px solid var(--pk-success-border);
-    border-radius: 999px;
-    background: var(--pk-success-subtle);
-    font-size: 12px;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="identity.connected-apps"] .g .ic {
-    width: 13px;
-    height: 13px;
-    color: var(--pk-success);
-  }
-  [data-screen="identity.connected-apps"] .g.no {
-    border-style: dashed;
-    border-color: var(--pk-border-strong);
-    background: transparent;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="identity.connected-apps"] .g.no .ic {
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="identity.connected-apps"] .app-actions {
-    grid-column: 3;
-    grid-row: 1 / span 2;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  [data-screen="identity.connected-apps"] .app .logo {
-    grid-row: 1 / span 3;
-  }
-  [data-screen="identity.connected-apps"] .foot-note {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="identity.connected-apps"] .foot-note .ic {
-    margin-top: 1px;
-  }
-  [data-screen="identity.connected-apps"] .srow {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 2px 14px;
-    padding: 12px 20px;
-  }
-  [data-screen="identity.connected-apps"] .srow + .srow {
-    border-top: 1px solid var(--mk-line);
-  }
-  [data-screen="identity.connected-apps"] .srow .t {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-weight: 700;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="identity.connected-apps"] .srow .d {
-    font-size: 13px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="identity.connected-apps"] .gmark {
-    flex: none;
-  }
-  @container screen (max-width: 1023px) {
-    [data-screen="identity.connected-apps"] .acct {
-      grid-template-columns: minmax(0, 1fr);
-      gap: 16px;
-    }
-    [data-screen="identity.connected-apps"] .acct-nav {
-      position: static;
-      flex-direction: row;
-      gap: 6px;
-      overflow-x: auto;
-      scrollbar-width: none;
-    }
-    [data-screen="identity.connected-apps"] .acct-nav a {
-      border: 1px solid var(--mk-line);
-      border-radius: 999px;
-    }
-    [data-screen="identity.connected-apps"] .acct-nav a.on {
-      border-color: var(--pk-text-strong);
-      background: var(--pk-text-strong);
-      color: var(--pk-surface-page);
-    }
-  }
-  @container screen (max-width: 639px) {
-    [data-screen="identity.connected-apps"] .acct-head {
-      flex-direction: column;
-      align-items: flex-start;
-    }
-    [data-screen="identity.connected-apps"] .app {
-      grid-template-columns: auto minmax(0, 1fr);
-      padding: 16px;
-    }
-    [data-screen="identity.connected-apps"] .app .logo {
-      grid-row: 1 / span 2;
-    }
-    [data-screen="identity.connected-apps"] .gets,
-    [data-screen="identity.connected-apps"] .app-actions {
-      grid-column: 1 / -1;
-    }
-    [data-screen="identity.connected-apps"] .app-actions {
-      grid-row: auto;
-      margin-top: 6px;
-    }
-    [data-screen="identity.connected-apps"] .app-actions {
-      flex-direction: column;
-      align-items: stretch;
-    }
-    [data-screen="identity.connected-apps"] .app-actions .btn {
-      width: 100%;
-    }
-    [data-screen="identity.connected-apps"] .srow {
-      padding: 12px 16px;
-    }
-  }
-</style>
-
 <div class="portal" data-service="core">
   <header class="portal-top">
     <a class="portal-brand" href="#"><i class="pk-mark sm"></i>Polaris Key</a>
@@ -227,22 +6,31 @@
       <a href="#">Discover</a>
     </nav>
     <div class="portal-actions">
-      <button class="btn outline sm"><i class="ic ic-key-round accent"></i>Activate license</button>
-      <span class="account"><span class="avatar sm">MF</span><span>Mara Fennick</span><i class="ic ic-chevron-down"></i></span>
+      <button class="btn outline sm"><i class="ic ic-key-round"></i>Activate license</button>
+      <span class="account"><span class="avatar sm">MF</span>Mara Fennick<i class="ic ic-chevron-down"></i></span>
     </div>
   </header>
 
   <main class="portal-page">
-    <div class="acct-head">
-      <div class="grow">
+    <div class="mk-split cap-880">
+      <div class="mk-stack-2">
         <h1>Account</h1>
-        <p>Mara Fennick · mara.fennick@example.com</p>
+        <p class="muted">mara.fennick@example.com</p>
       </div>
-      <button class="btn outline sm"><i class="ic ic-log-out"></i>Sign out</button>
+      <div><button class="btn outline sm row-act"><i class="ic ic-log-out"></i>Sign out</button></div>
     </div>
 
-    <div class="acct">
-      <nav class="acct-nav" aria-label="Account sections">
+    <div class="with-toc cap-880">
+      <nav class="jump-nav fade-end" aria-label="Account sections">
+        <a href="#">Profile</a>
+        <a href="#">Sign-in methods</a>
+        <a class="on" href="#" aria-current="true">Connected apps</a>
+        <a href="#">Access tokens</a>
+        <a href="#">Where you’re signed in</a>
+        <a href="#">Appearance</a>
+        <a href="#">Your data</a>
+      </nav>
+      <nav class="toc-nav" aria-label="Account sections">
         <a href="#">Profile</a>
         <a href="#">Sign-in methods</a>
         <a class="on" href="#" aria-current="true">Connected apps</a>
@@ -252,65 +40,76 @@
         <a href="#">Your data</a>
       </nav>
 
-      <div class="acct-cards">
-        <!-- Connected apps (I-34): what each app gets, Change (re-runs consent), Disconnect. -->
+      <div class="toc-body">
+        <!-- Connected apps (I-34): how each app signs in, what it gets, Change (re-runs consent), Disconnect. -->
         <section class="card" aria-labelledby="h-apps">
           <div class="card-head">
-            <div class="title"><h2 id="h-apps">Connected apps</h2><p>Apps you sign in to with Polaris Key. Each gets its own id for you, so developers can’t match you across products.</p></div>
+            <div class="title"><h2 id="h-apps">Connected apps</h2><p>Each app gets its own id for you, so developers can’t match you across products.</p></div>
           </div>
-
-          <div class="app">
-            <span class="logo lg" data-product="djdl"></span>
-            <div class="app-name"><strong>DJDL</strong><span>Example Audio</span></div>
-            <div class="app-meta"><i class="ic ic-fingerprint"></i><span>Signs in with your passkey · last used 2 h ago on Studio Mac mini</span></div>
-            <div class="gets" aria-label="What DJDL gets">
-              <span class="lbl">Gets</span>
-              <span class="g"><i class="ic ic-check"></i>Screen name</span>
-              <span class="g"><i class="ic ic-check"></i>Picture</span>
-              <span class="g"><i class="ic ic-check"></i>Email</span>
-              <span class="g"><i class="ic ic-check"></i>Cloud Sync</span>
+          <div class="card-rows">
+            <div class="item-row top">
+              <span class="logo sm" data-product="djdl"></span>
+              <div class="item-text">
+                <div class="item-title">DJDL <small>Example Audio</small></div>
+                <div class="item-desc">Passkey · last used 2 h ago on Studio Mac mini</div>
+              </div>
+              <div class="item-more">
+                <div class="mk-cluster" aria-label="What DJDL gets">
+                  <span class="grant"><i class="ic ic-check"></i>Screen name</span>
+                  <span class="grant"><i class="ic ic-check"></i>Picture</span>
+                  <span class="grant"><i class="ic ic-check"></i>Email</span>
+                  <span class="grant"><i class="ic ic-check"></i>Cloud Sync</span>
+                </div>
+              </div>
+              <div class="item-end fill">
+                <button class="btn outline sm row-act wide">Change what DJDL gets</button>
+                <button class="btn ghost sm row-act danger-text">Disconnect</button>
+              </div>
             </div>
-            <div class="app-actions">
-              <button class="btn outline sm">Change what DJDL gets</button>
-              <button class="btn ghost sm">Disconnect</button>
+            <div class="item-row top">
+              <span class="logo sm" data-product="diceroll"></span>
+              <div class="item-text">
+                <div class="item-title">Diceroll <small>Example Games</small></div>
+                <div class="item-desc">Google · last used yesterday on Mara’s Pixel 8, also on Steam Deck</div>
+              </div>
+              <div class="item-more">
+                <div class="mk-cluster" aria-label="What Diceroll gets">
+                  <span class="grant"><i class="ic ic-check"></i>Screen name</span>
+                  <span class="grant"><i class="ic ic-check"></i>Cloud Sync</span>
+                  <span class="grant no"><i class="ic ic-eye-off"></i>Not your picture</span>
+                  <span class="grant no"><i class="ic ic-eye-off"></i>Not your email</span>
+                </div>
+              </div>
+              <div class="item-end fill">
+                <button class="btn outline sm row-act wide">Change what Diceroll gets</button>
+                <button class="btn ghost sm row-act danger-text">Disconnect</button>
+              </div>
             </div>
-          </div>
-
-          <div class="app">
-            <span class="logo lg" data-product="diceroll"></span>
-            <div class="app-name"><strong>Diceroll</strong><span>Example Games</span></div>
-            <div class="app-meta"><svg class="gmark" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg><span>Signs in with Google · last used yesterday on Mara’s Pixel 8 · also on Steam Deck</span></div>
-            <div class="gets" aria-label="What Diceroll gets">
-              <span class="lbl">Gets</span>
-              <span class="g"><i class="ic ic-check"></i>Screen name</span>
-              <span class="g"><i class="ic ic-check"></i>Cloud Sync</span>
-              <span class="g no"><i class="ic ic-eye-off"></i>Not your picture</span>
-              <span class="g no"><i class="ic ic-eye-off"></i>Not your email</span>
-            </div>
-            <div class="app-actions">
-              <button class="btn outline sm">Change what Diceroll gets</button>
-              <button class="btn ghost sm">Disconnect</button>
-            </div>
-          </div>
-
-          <div class="card-foot start">
-            <p class="foot-note"><i class="ic ic-info sm"></i><span>Disconnecting signs the app out on every device within an hour. Its license stays activated and in your library, and you can sign in again any time.</span></p>
           </div>
         </section>
+      </div>
 
+      <div class="toc-aside">
         <section class="card" aria-labelledby="h-where">
           <div class="card-head">
-            <div class="title"><h2 id="h-where">Where you’re signed in</h2><p>Browsers signed in to this account. Apps are under Connected apps.</p></div>
+            <div class="title"><h2 id="h-where">Where you’re signed in</h2></div>
           </div>
-          <div class="srow">
-            <span class="icon-tile sm muted"><i class="ic ic-monitor"></i></span>
-            <div><div class="t">Safari on macOS <span class="pill sm"><i class="dot"></i>This browser</span></div><div class="d">Signed in with a passkey · now</div></div>
-            <span></span>
-          </div>
-          <div class="srow">
-            <span class="icon-tile sm muted"><i class="ic ic-smartphone"></i></span>
-            <div><div class="t">Chrome on Android</div><div class="d">Signed in with Google · last active yesterday</div></div>
-            <button class="btn ghost sm">Sign out</button>
+          <div class="card-rows">
+            <div class="item-row">
+              <span class="icon-tile sm muted"><i class="ic ic-monitor"></i></span>
+              <div class="item-text">
+                <div class="item-title">Safari on macOS <span class="pill sm"><i class="dot"></i>This browser</span></div>
+                <div class="item-desc">Passkey · now</div>
+              </div>
+            </div>
+            <div class="item-row">
+              <span class="icon-tile sm muted"><i class="ic ic-smartphone"></i></span>
+              <div class="item-text">
+                <div class="item-title">Chrome on Android</div>
+                <div class="item-desc">Google · last active yesterday</div>
+              </div>
+              <div class="item-end"><button class="btn outline sm row-act">Sign out</button></div>
+            </div>
           </div>
         </section>
       </div>
@@ -321,7 +120,8 @@
 
   <nav class="portal-tabbar" aria-label="Portal">
     <a href="#"><i class="ic ic-layout-grid"></i>Library</a>
-    <a class="act" href="#"><i class="ic ic-key-round"></i>Activate</a>
+    <a href="#"><i class="ic ic-key-round"></i>Activate</a>
     <a href="#"><i class="ic ic-sparkles"></i>Discover</a>
+    <a class="active" href="#" aria-current="page"><i class="ic ic-user-round"></i>Account</a>
   </nav>
 </div>

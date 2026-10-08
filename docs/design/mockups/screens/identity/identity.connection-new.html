@@ -1,129 +1,21 @@
 <style>
-  /* identity.connection-new: only what the kit does not already say. */
-  [data-screen="identity.connection-new"] .page {
-    max-width: 1180px;
+  /* identity.connection-new: only what the kit does not already say (no spacing here). */
+  /* A claim Polaris Key won't read keeps the dot's place, so names line up. */
+  [data-screen="identity.connection-new"] tr.unread .dot {
+    visibility: hidden;
   }
-  [data-screen="identity.connection-new"] .lead {
-    max-width: 720px;
+  [data-screen="identity.connection-new"] .wrap-any {
+    overflow-wrap: anywhere;
+  }
+  [data-screen="identity.connection-new"] .dot.accent {
+    color: var(--pk-accent);
+  }
+  [data-screen="identity.connection-new"] tr.unread td {
     color: var(--pk-text-muted);
-  }
-  [data-screen="identity.connection-new"] .split {
-    display: grid;
-    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-    gap: 20px;
-    align-items: stretch;
-  }
-  [data-screen="identity.connection-new"] .claims {
-    border: 1px solid var(--mk-line);
-    border-radius: 14px;
-    overflow: hidden;
-  }
-  [data-screen="identity.connection-new"] .claims-head {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 14px;
-    border-bottom: 1px solid var(--mk-line);
-    background: color-mix(in oklab, var(--pk-surface-sunken) 45%, var(--pk-surface-raised));
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="identity.connection-new"] .claim {
-    display: grid;
-    grid-template-columns: 150px minmax(0, 1fr);
-    gap: 2px 14px;
-    padding: 10px 14px;
-    font-size: 13px;
-  }
-  [data-screen="identity.connection-new"] .claim + .claim {
-    border-top: 1px solid var(--mk-line);
-  }
-  [data-screen="identity.connection-new"] .claim .k {
-    font-family: var(--pk-font-mono);
-    font-size: 12px;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="identity.connection-new"] .claim .v {
-    min-width: 0;
-    font-family: var(--pk-font-mono);
-    font-size: 12px;
-    color: var(--pk-text-default);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  [data-screen="identity.connection-new"] .claim .n {
-    grid-column: 2;
-    font-size: 12px;
-    color: var(--pk-text-muted);
-  }
-  /* Every claim reserves the dot's width, so names and values line up whether it's read or not. */
-  [data-screen="identity.connection-new"] .claim .k::before {
-    content: "";
-    display: inline-block;
-    width: 6px;
-    height: 6px;
-    margin: 0 7px 1px 0;
-    border-radius: 50%;
-    background: transparent;
-  }
-  [data-screen="identity.connection-new"] .claim.used .k::before {
-    background: var(--pk-accent);
-  }
-  [data-screen="identity.connection-new"] .map {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-  }
-  [data-screen="identity.connection-new"] .map .field-label {
-    font-size: 13px;
-  }
-  [data-screen="identity.connection-new"] .tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    height: 20px;
-    padding: 0 7px;
-    border-radius: 999px;
-    background: var(--pk-accent-subtle);
-    color: var(--pk-accent-fg);
-    font-size: 12px;
-    font-weight: 400;
   }
   [data-screen="identity.connection-new"] .select.mono {
     font-family: var(--pk-font-mono);
-    font-size: 13px;
-  }
-  [data-screen="identity.connection-new"] .wizard-foot .btn.ghost {
-    margin-right: auto;
-  }
-  [data-screen="identity.connection-new"] .wizard-foot .btn.primary {
-    margin-left: 0;
-  }
-  @container screen (max-width: 1023px) {
-    [data-screen="identity.connection-new"] .split {
-      grid-template-columns: minmax(0, 1fr);
-    }
-  }
-  @container screen (max-width: 639px) {
-    [data-screen="identity.connection-new"] .claim {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    [data-screen="identity.connection-new"] .claim .n {
-      grid-column: 1;
-    }
-    [data-screen="identity.connection-new"] .claim .v,
-    [data-screen="identity.connection-new"] .claim .n {
-      padding-left: 13px;
-    }
-    [data-screen="identity.connection-new"] .wizard-foot {
-      flex-wrap: wrap;
-    }
-    [data-screen="identity.connection-new"] .wizard-foot .btn.primary {
-      flex: 1 1 100%;
-      order: -1;
-    }
+    font-size: var(--fs-mono);
   }
 </style>
 
@@ -156,90 +48,102 @@
   </nav>
 
   <main class="main">
-    <div class="page">
+    <div class="page wizard-col">
       <header class="page-head">
         <nav class="crumbs"><a href="#">Connections</a><i class="ic ic-chevron-right"></i>Add SSO connection</nav>
         <div class="page-heading"><h1>Add SSO connection</h1></div>
-        <p class="page-sub">Kestrel Labs’ Keycloak, for every product. Nothing is live until the last step.</p>
       </header>
 
       <!-- The wizard kit (ST-39): discovery, client, test sign-in with the claims preview, domains, audience. -->
-      <section class="wizard" aria-labelledby="wz-title">
+      <section class="wizard centered" aria-labelledby="wz-title">
         <div class="wizard-head">
           <ol class="stepper">
-            <li class="step done"><span class="step-mark"></span><span class="step-label">Provider<small>Keycloak · platform</small></span></li>
+            <li class="step done"><span class="step-mark"></span><span class="step-label">Provider<small>Kestrel Labs · Keycloak</small></span></li>
             <li class="step done"><span class="step-mark"></span><span class="step-label">Client<small>Secret sealed</small></span></li>
             <li class="step current"><span class="step-mark"></span><span class="step-label">Test sign-in<small>What it sends</small></span></li>
             <li class="step"><span class="step-mark"></span><span class="step-label">Domains<small>DNS check</small></span></li>
             <li class="step"><span class="step-mark"></span><span class="step-label">Who signs in</span></li>
           </ol>
+          <div class="step-line"><span>Step 3 of 5 · Test sign-in</span><span class="progress" style="--v: 60%"></span></div>
         </div>
 
         <div class="wizard-body">
-          <div class="stack gap-2">
+          <div class="mk-stack-1">
             <h2 id="wz-title">Test sign-in</h2>
-            <p class="lead">Sign in once with a Kestrel Labs account. Polaris Key shows what the sign-in sent, so you can choose what to read. Nothing is saved to anyone’s account and no license is issued.</p>
+            <p class="muted">Sign in once with a Kestrel Labs account to see what it sends. Nothing goes live until the last step.</p>
           </div>
 
           <div class="callout success">
             <i class="ic ic-circle-check"></i>
             <div class="grow">
               <div class="callout-title">Signed in as Ines Kowalski, just now</div>
-              <div class="callout-text">The client, the secret and the redirect URI work. The ID token was signed by Kestrel Labs’ published key.</div>
+              <div class="callout-text">Client, secret and redirect URI work; the ID token is signed by Kestrel Labs’ published key.</div>
             </div>
             <button class="btn outline sm"><i class="ic ic-refresh-cw"></i>Sign in again</button>
           </div>
 
-          <div class="split">
-            <div class="claims" aria-labelledby="claims-title">
-              <div class="claims-head" id="claims-title"><i class="ic ic-id-card sm"></i>What Kestrel Labs sent</div>
-              <div class="claim used"><span class="k">sub</span><span class="v">8c1f3a2e-5b7d-4e0a-9f61-2d3c41d7a9b0</span><span class="n">Links the account. Always read.</span></div>
-              <div class="claim used"><span class="k">email</span><span class="v">ines.kowalski@kestrel.example.com</span><span class="n">email_verified: true. Trusted only inside this connection’s verified domains.</span></div>
-              <div class="claim used"><span class="k">name</span><span class="v">Ines Kowalski</span></div>
-              <div class="claim used"><span class="k">picture</span><span class="v">https://sso.kestrel.example.com/avatars/ikowalski.png</span></div>
-              <div class="claim used"><span class="k">groups</span><span class="v">["djdl-studio", "engineering"]</span></div>
-              <div class="claim"><span class="k">preferred_username</span><span class="v">ikowalski</span></div>
-              <div class="claim"><span class="k">locale</span><span class="v">de-DE</span></div>
-            </div>
+          <div class="mk-grid-2 stretch">
+            <section class="card" aria-labelledby="sent-title">
+              <div class="card-head">
+                <div class="title"><h3 id="sent-title">What Kestrel Labs sent</h3><p><i class="dot accent" aria-hidden="true"></i> marks a claim Polaris Key reads.</p></div>
+              </div>
+              <table class="table fixed claims" aria-labelledby="sent-title">
+                <colgroup><col style="width: 200px"><col></colgroup>
+                <tbody>
+                  <tr><td><span class="mk-cluster no-wrap"><i class="dot accent" aria-label="Read"></i><span class="mono">sub</span></span></td><td><div class="mono wrap-any">8c1f3a2e-5b7d-4e0a-9f61-2d3c41d7a9b0</div><div class="cell-sub">Links the account; always read</div></td></tr>
+                  <tr><td><span class="mk-cluster no-wrap"><i class="dot accent" aria-label="Read"></i><span class="mono">email</span></span></td><td><div class="mono wrap-any">ines.kowalski@kestrel.example.com</div><div class="cell-sub">Trusted only at verified domains</div></td></tr>
+                  <tr><td><span class="mk-cluster no-wrap"><i class="dot accent" aria-label="Read"></i><span class="mono">name</span></span></td><td><div class="mono">Ines Kowalski</div></td></tr>
+                  <tr><td><span class="mk-cluster no-wrap"><i class="dot accent" aria-label="Read"></i><span class="mono">picture</span></span></td><td><div class="mono wrap-any">https://sso.kestrel.example.com/avatars/ikowalski.png</div></td></tr>
+                  <tr><td><span class="mk-cluster no-wrap"><i class="dot accent" aria-label="Read"></i><span class="mono">groups</span></span></td><td><div class="mono">["djdl-studio", "engineering"]</div></td></tr>
+                  <tr class="unread"><td><span class="mk-cluster no-wrap"><i class="dot" aria-hidden="true"></i><span class="mono">preferred_username</span></span></td><td><div class="mono">ikowalski</div></td></tr>
+                  <tr class="unread"><td><span class="mk-cluster no-wrap"><i class="dot" aria-hidden="true"></i><span class="mono">locale</span></span></td><td><div class="mono">de-DE</div></td></tr>
+                </tbody>
+              </table>
+            </section>
 
-            <div class="card flat">
-              <div class="card-head plain"><div class="title"><h3>Read into Polaris Key</h3><p>Only the claims you pick here are ever read.</p></div></div>
-              <div class="card-body map">
-                <div class="field">
-                  <label class="field-label">Groups <span class="tag"><i class="ic ic-sparkles xs"></i>Suggested</span></label>
-                  <div class="select mono"><span class="grow">groups</span><i class="ic ic-chevrons-up-down"></i></div>
-                  <span class="hint">The only claim that holds a list.</span>
-                </div>
-                <div class="field">
-                  <label class="field-label">Name</label>
-                  <div class="select mono"><span class="grow">name</span><i class="ic ic-chevrons-up-down"></i></div>
-                </div>
-                <div class="field">
-                  <label class="field-label">Picture</label>
-                  <div class="select mono"><span class="grow">picture</span><i class="ic ic-chevrons-up-down"></i></div>
-                </div>
-                <div class="field">
-                  <label class="field-label">Birth date</label>
-                  <div class="select"><span class="grow ph">Not mapped</span><i class="ic ic-chevrons-up-down"></i></div>
-                  <span class="hint">Kestrel Labs didn’t send one. If mapped, it fills a new account’s private birth date; apps never receive it.</span>
+            <section class="card" aria-labelledby="map-title">
+              <div class="card-head">
+                <div class="title"><h3 id="map-title">Read into Polaris Key</h3><p>Only the claims picked here are ever read.</p></div>
+              </div>
+              <div class="card-body">
+                <div class="form">
+                  <div class="field">
+                    <label class="field-label">Groups<span class="pill accent sm"><i class="ic ic-sparkles"></i>Suggested</span></label>
+                    <div class="select mono"><span class="grow">groups</span><i class="ic ic-chevrons-up-down"></i></div>
+                  </div>
+                  <div class="field">
+                    <label class="field-label">Name</label>
+                    <div class="select mono"><span class="grow">name</span><i class="ic ic-chevrons-up-down"></i></div>
+                  </div>
+                  <div class="field">
+                    <label class="field-label">Picture</label>
+                    <div class="select mono"><span class="grow">picture</span><i class="ic ic-chevrons-up-down"></i></div>
+                  </div>
+                  <div class="field">
+                    <label class="field-label">Birth date</label>
+                    <div class="select"><span class="grow ph">Not mapped</span><i class="ic ic-chevrons-up-down"></i></div>
+                    <span class="hint">Not sent. Apps never receive it.</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            </section>
           </div>
 
           <div class="callout info">
             <i class="ic ic-info"></i>
             <div class="grow">
               <div class="callout-title">Groups give nothing on their own</div>
-              <div class="callout-text">After you finish, use <span class="mono">djdl-studio</span> in a rule on DJDL’s Access page to issue licenses, or in Members → SSO rules for console roles.</div>
+              <div class="callout-text">After you finish, use <span class="mono">djdl-studio</span> in a rule on DJDL’s Access page for licenses, or in Members → SSO rules for console roles.</div>
             </div>
           </div>
         </div>
 
-        <div class="wizard-foot">
+        <div class="wizard-foot foot-stack">
           <button class="btn ghost">Cancel</button>
-          <button class="btn outline"><i class="ic ic-arrow-left"></i>Back</button>
-          <button class="btn primary">Continue to domains<i class="ic ic-arrow-right"></i></button>
+          <div class="btn-row ml-auto">
+            <button class="btn outline"><i class="ic ic-arrow-left"></i>Back</button>
+            <button class="btn primary">Continue to domains<i class="ic ic-arrow-right"></i></button>
+          </div>
         </div>
       </section>
     </div>

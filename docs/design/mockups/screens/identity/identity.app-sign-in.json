@@ -16,17 +16,17 @@
   "summary": "Diceroll's one App sign-in page, replacing Identity → Portal and Identity → Sign-in: the Sign-in switch, the methods its card offers (email and passkeys always on, shortcuts derived from its channels, in-game store sign-in on with each store channel), its product connection (Diceroll accounts on Firebase, token exchange only), what Diceroll gets (required or optional, from the manifest), terms, license-key entry (taken over from the manifest), the two portal switches and the read-only Presentation.",
   "compare": [
     "Sidebar is Diceroll's product context with the Sign-in group open and one item, App sign-in (active, in the identity accent), carrying a warning count of 1. Identity → Portal and Identity → Sign-in no longer exist.",
-    "T4 layout: an 'On this page' rail at 1280 px and wider, then one card per section in the I-29 order, each card titled exactly as the rail names it: Status, Sign-in methods, Product connection, What Diceroll gets, Terms, License keys, Customer portal, Presentation. No Save button at the bottom of a card. Save model: Status applies on its own (turning it off asks first); the product connection is edited in its own dialog; every other control marks the page dirty and one SaveBar lists the changes by section (identity.app-sign-in-changes).",
+    "T4 layout: an 'On this page' rail at 1280 px and wider, then one card per section in the I-29 order, each card titled exactly as the rail names it: Status, Sign-in methods, Product connection, What Diceroll gets, Terms, License keys, Customer portal, Presentation. At 1600 px and wider Customer portal and Presentation sit in a 400 px aside beside the others. No Save button at the bottom of a card. Save model: Status applies on its own (turning it off asks first); the product connection is edited in its own dialog; every other control marks the page dirty and one SaveBar lists the changes (identity.app-sign-in-changes). No page subtitle: 'always on' is said once, on the Email code and passkeys row.",
     "Status is the Sign-in feature switch with the week's sign-ins and the dependency line 'Cloud Sync needs Sign-in'. Turning it off opens identity.sign-in-off.",
     "Email code and passkeys show 'Always on' with a lock and no switch; the four per-product toggles (oidc_enabled, magic_enabled, license_key_claim_enabled, auto_link_enabled) are gone. Only an organization's SSO-required domain turns them off for its addresses.",
-    "Apple, Google and Steam rows each say why they're on ('On because Diceroll ships on the App Store') with a switch to override; an override reads 'Off by you' with 'Use the default' (identity.app-sign-in-changes). Single sign-on names only the platform connections that sign in customers and counts their verified domains ('Pocket ID and Lakeside University … their 3 verified domains'); connections that sign in only operators (Studio Okta) are never counted or named here. It links to Platform → Connections.",
+    "Apple, Google and Steam rows each say why they're on in one fact ('Diceroll ships on the App Store') with a switch to override; an override reads 'Off by you' with 'Use the default' (identity.app-sign-in-changes). Single sign-on names only the platform connections that sign in customers and counts their verified domains ('Pocket ID and Lakeside University … their 3 verified domains'); connections that sign in only operators (Studio Okta) are never counted or named here. It links to Platform → Connections.",
     "'Inside the game' rows (Game Center, Play Games, Steam) have no switch: they follow the store channels (I-14). A missing store credential shows as a warning pill at the row's right edge with the action ('Connect Steam'), and says what players do meanwhile.",
     "The Product connection card is titled as the rail names it; its row is 'Diceroll accounts' (Firebase · token exchange only) with Edit. It shows the issuer and key source, token exchange as status text ('On') with its route (changed in the Edit dialog, not by a switch on the page), 'Sign-in button: None' with the reason, that its emails are never taken as confirmed, and the linked-player count. 'Add another' sits in the foot.",
     "What Diceroll gets: License for this device is 'Always'; Screen name, Picture, Email and Cloud Sync each have a Required / Optional / Not asked control, with the share of players who granted each optional item. The section carries the 'From .pkey/product' source badge and a hint that says what an edit does: identity.claims sets these, changing one here takes it over from the manifest, and the next resync leaves it alone until it is reverted.",
     "Terms: Polaris Key's are always on; Diceroll's show their version (2026-10, from the manifest) and link to the listing for the URLs. No minimum-age setting exists yet.",
     "License keys: entries before an account is needed as a 5 / 10 / 25 / No limit control; 'A key adds its license to whoever enters it' off by default with its consequence. keyEntry comes from the manifest and this value was taken over, so the header shows 'Changed here · .pkey/product says 5' and 'Revert to manifest…' (a caution confirm naming the value that comes back).",
     "Customer portal keeps only two switches ('Show Diceroll in players' libraries', 'Show a lost key again'). Presentation is read-only from Core with 'Edit in Settings': the icon, name, developer and the accent drawn as a swatch with its value; there's no 'App name' field.",
-    "Phone: the rail hides, rows stack (text first, control under it), source badges go under the card title, and each segmented control fills the row with equal segments."
+    "Phone: the rail hides, rows stack (text first, control under it; a switch stays on the right), source badges wrap under the card title, and each segmented control goes under its text."
   ],
   "status": "mockup",
   "designReview": {
@@ -54,6 +54,58 @@
         "severity": "minor",
         "issue": "Rail and card titles disagreed; phone segments bunched left; Presentation described its accent in words; two switch labels didn't say what they do.",
         "resolution": "Cards are titled Status and Product connection (with Diceroll accounts as its row). Segments fill the row equally on phone. Presentation draws the accent swatch with its value. Relabelled 'Show Diceroll in players' libraries' and 'A key adds its license to whoever enters it'."
+      },
+      {
+        "severity": "major",
+        "issue": "Spacing scale inconsistent (16, 24 and 32 used at random); card header heights and title sizes vary.",
+        "resolution": "Opt-in .rhythm on the page: 24 between cards in a group, 12 group title to first card, 32 between groups; card header at least 56; card titles 18/600; stat tiles 24. The global tokens are unchanged (existing values); muted and meta text already met 4.5:1 and 12px.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "3000px column with uneven rows; a 34px definition list among 56px rows.",
+        "resolution": "Main column plus a 360px sticky rail from 1280 with 'On this page' at its top, Customer portal and Presentation; below 1280 a chip row under the title; Product connection facts in 40px rows with a 120px label column.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Segmented controls of different widths; three grammars for the second line.",
+        "resolution": "One 224px segmented width (36px on phone); permission rows use bar plus 'NN% share'.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Mechanism sentences and an internal key in product UI.",
+        "resolution": "Removed the subtitles of Sign-in methods, Customer portal, Presentation, Terms and 'Follows each store channel'; Product connection 'Trades a Firebase token for a sign-in'; SSO row 'Pocket ID, Lakeside University · 3 domains'; Cloud Sync clause dropped from the status row; 'identity.claims' became 'the manifest'.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "issue": "Collapse Terms, License keys, Customer portal and Presentation into accordions on phone; merge the two Steam rows.",
+        "resolution": "declined: hiding configuration removes content and adds an interaction; the two Steam rows are different facts; the rail and chips shorten the page.",
+        "round": "multi-review"
       }
     ]
   },

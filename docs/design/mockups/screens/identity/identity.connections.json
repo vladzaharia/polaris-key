@@ -55,6 +55,72 @@
         "severity": "minor",
         "issue": "No first-run provider state; on phone the compare promised actions on the right but the render put them under the text; Email and Bot protection placed status differently.",
         "resolution": "Phone: the render keeps the kit's rule (an action goes under its text) and the compare line now says so; Email and Bot protection both put status under the title. First-run: described in the compare (neutral 'Not set up' pill, the products whose cards would show it, 'Set up Steam' outline), not drawn, declined: every provider is in use by DJDL and Diceroll in this story, so drawing one as not set up would contradict identity.app-sign-in and identity.sign-in."
+      },
+      {
+        "severity": "major",
+        "issue": "Spacing scale inconsistent (16, 24 and 32 used at random); card header heights and title sizes vary.",
+        "resolution": "Opt-in .rhythm on the page: 24 between cards in a group, 12 group title to first card, 32 between groups; card header at least 56; card titles 18/600; stat tiles 24. The global tokens are unchanged (existing values); muted and meta text already met 4.5:1 and 12px.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Legend row repeated the pills; 'Single sign-on 5' count disagreed with the rows; subtitles restated their titles; 'Working' repeated beside a green check.",
+        "resolution": "Legend, count chip and the restating subtitles deleted (chip tooltips kept); Organizations subtitle 'Every other address gets email codes and passkeys.'; green check rows show the check and the date only.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Email, Bot protection and Sessions had uneven internals; the third card misaligned at 1024.",
+        "resolution": "One skeleton: title plus chip, one stat block, a fixed 56px action row; pinned to one height; two columns at tablet with the odd card across. Wide keeps the right rail.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Row heights and button heights varied; the two Steam rows read as a contradiction.",
+        "resolution": "One 56px row; one 32px action height (36 on phone); rows renamed 'Steam (web sign-in)' and 'Steamworks (publisher key)'. The Lakeside domain chips still wrap on two lines at 1440 (one line only above about 1500px).",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Phone rows about 160px with repeated labels and tiny actions.",
+        "resolution": "Row actions 36px on phone; check and last sign-in on one line. The 80px label column of the kit's stacked rows was left (existing value).",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "issue": "Merge Email, Bot protection and Sessions into one strip; Organizations beside Product connections at 1920; move the 3-up row above the tables.",
+        "resolution": "declined: this changes structure and priority; the right rail on wide stays and the desktop row gets one skeleton.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Drop the second line under Stores and the 'Not set up' explanation under the pill.",
+        "resolution": "declined: they are the only place that says what stops working; only wrap and height were fixed.",
+        "round": "multi-review"
       }
     ]
   },
