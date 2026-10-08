@@ -2,8 +2,8 @@
  * License → Settings (LX-06; S-19 §7.13, S-18 §4.5 model C) through the whole console: each
  * licensing setting with its value and owner, a save that asks for the registry's confirmation
  * (and a reason for a critical setting) and sends the row version it read, and Revert. The
- * settings whose behaviour has not shipped are read-only and marked "Not in effect yet" (P0-47);
- * only the offline grace clamp is edited here.
+ * settings whose behavior has not shipped are read-only, grouped under "Not in effect yet" after the
+ * clamp, each with what devices do today (P0-47); only the offline grace clamp is edited here.
  */
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -138,32 +138,56 @@ describe("License → Settings", () => {
     expect(results.violations.map((v) => v.id)).toEqual([]);
   });
 
-  it("marks the settings that do nothing yet read-only, Not in effect yet (P0-47)", async () => {
+  it("groups the settings that do nothing yet after the clamp, read-only, each saying what devices do today (P0-47)", async () => {
     boot();
     const c = await card();
     await within(c).findByText("Anchor licence choice");
-    // Five settings are stored but change nothing until their part of the model ships.
-    expect(within(c).getAllByText("Not in effect yet")).toHaveLength(3);
+    // One subheading over the pending rows, not a pill on each.
+    const group = within(c).getByRole("group", { name: "Not in effect yet" });
+    expect(within(c).getAllByText("Not in effect yet")).toHaveLength(1);
+    expect(
+      within(group).getByText(/keep their value but change nothing/),
+    ).toBeTruthy();
     for (const name of [
       "Anchor licence choice",
       "Entitlement holder",
       "Refund grace",
     ]) {
+      expect(within(group).getByText(name)).toBeTruthy();
       expect(within(c).queryByRole("combobox", { name })).toBeNull();
       expect(within(c).queryByRole("spinbutton", { name })).toBeNull();
     }
-    // The value in force, in words, and what devices do meanwhile.
-    expect(within(c).getByText("Highest-ranked tier")).toBeTruthy();
-    expect(within(c).getByText("Signed-in account")).toBeTruthy();
+    // The clamp is in effect: editable, outside the group, and first.
+    const clamp = within(c).getByRole("switch", {
+      name: "Clamp offline grace to expiry",
+    });
+    expect(group.contains(clamp)).toBe(false);
     expect(
-      within(c).getAllByText(/Devices keep today's behaviour/),
-    ).toHaveLength(3);
-    // The clamp is in effect: editable, and not marked.
+      clamp.compareDocumentPosition(group) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    // The value stored, in words and muted, and what devices do today, per key.
+    expect(within(group).getByText("Highest-ranked tier").className).toContain(
+      "text-fg-muted",
+    );
+    expect(within(group).getByText("Signed-in account")).toBeTruthy();
     expect(
-      within(c).getByRole("switch", { name: "Clamp offline grace to expiry" }),
+      within(group).getByText(
+        "Today a device runs on the license it was activated with.",
+      ),
     ).toBeTruthy();
     expect(
-      screen.getByText(/Only clamping offline grace to expiry/),
+      within(group).getByText(
+        "Today each device sees only its own license's entitlements, whoever is signed in.",
+      ),
+    ).toBeTruthy();
+    expect(
+      within(group).getByText("Today a refund revokes the grant at once."),
+    ).toBeTruthy();
+    expect(screen.queryByText(/behaviour/)).toBeNull();
+    expect(
+      screen.getByText(
+        /Only clamping offline grace to expiry is in effect\. Devices pick up a change to it at their next license refresh\./,
+      ),
     ).toBeTruthy();
   });
 
@@ -191,7 +215,7 @@ describe("License → Settings", () => {
     const dialog = await screen.findByRole("alertdialog");
     expect(
       within(dialog).getByText(
-        "A licence that expires can keep running offline until its offline grace ends.",
+        "A license that expires can keep running offline until its offline grace ends.",
       ),
     ).toBeTruthy();
     expect(

@@ -13,8 +13,9 @@
  * is refused rather than overwritten; the card then reloads.
  *
  * A page can mark keys `pending` (P0-47): settings stored and resynced whose behaviour has not
- * shipped. Such a row shows its value read-only, labelled "Not in effect yet", with the page's
- * line on what devices do meanwhile; a console claim can still be reverted.
+ * shipped. They follow the live rows under a "Not in effect yet" subheading, each with its value
+ * read-only and muted and the page's note on what devices do today; a console claim can still be
+ * reverted.
  *
  * ST-07's `SettingsRow` v2 (history drawer, pre-save diff) replaces the per-row chrome here.
  */
@@ -37,7 +38,6 @@ import { NumberInput } from "../../ui/NumberInput.js";
 import { Select } from "../../ui/Select.js";
 import { Skeleton } from "../../ui/Skeleton.js";
 import { SourceBadge, type Source } from "../../ui/SourceBadge.js";
-import { StatusPill } from "../../ui/StatusPill.js";
 import { Switch } from "../../ui/Switch.js";
 import { Textarea } from "../../ui/Textarea.js";
 import { toast } from "../../ui/toast.js";
@@ -114,6 +114,7 @@ export function ProductSettingsSection({
   keys,
   copy = {},
   pending = {},
+  pendingDescription,
 }: {
   slug: string;
   area: string;
@@ -123,8 +124,10 @@ export function ProductSettingsSection({
   /** Only these keys of the area (all of them when absent), in this order. */
   keys?: readonly string[];
   copy?: Record<string, SettingCopy>;
-  /** Keys whose behaviour has not shipped, each with what devices do meanwhile: read-only rows. */
+  /** Keys whose behaviour has not shipped, each with what devices do today: read-only rows. */
   pending?: Record<string, string>;
+  /** Under the "Not in effect yet" subheading. */
+  pendingDescription?: React.ReactNode;
 }): React.ReactElement | null {
   const q = useQuery(
     {
@@ -160,7 +163,7 @@ export function ProductSettingsSection({
           .filter((s): s is ProductSetting => s !== undefined)
       : all;
     if (rows.length === 0) return null;
-    body = rows.map((s) => (
+    const row = (s: ProductSetting) => (
       <ProductSettingRow
         key={s.key}
         slug={slug}
@@ -170,7 +173,31 @@ export function ProductSettingsSection({
         pendingNote={pending[s.key]}
         onConflict={() => void q.refetch()}
       />
-    ));
+    );
+    // The settings in effect first; the pending ones after them, grouped under one subheading.
+    const live = rows.filter((s) => pending[s.key] === undefined);
+    const later = rows.filter((s) => pending[s.key] !== undefined);
+    body = (
+      <>
+        {live.map(row)}
+        {later.length > 0 ? (
+          <div role="group" aria-labelledby={`${id}-pending`}>
+            <div className="space-y-0.5 px-5 pb-1 pt-4">
+              <h3
+                id={`${id}-pending`}
+                className="text-sm font-bold text-fg-strong"
+              >
+                Not in effect yet
+              </h3>
+              {pendingDescription ? (
+                <p className="text-sm text-fg-muted">{pendingDescription}</p>
+              ) : null}
+            </div>
+            <div className="divide-y divide-border">{later.map(row)}</div>
+          </div>
+        ) : null}
+      </>
+    );
   }
   return (
     <SettingsSection id={id} title={title} description={description}>
@@ -235,7 +262,7 @@ function ProductSettingRow({
   const pendingRow = pendingNote !== undefined;
   let control: React.ReactNode;
   if (pendingRow)
-    control = <span className="text-sm text-fg">{fmt(s.value)}</span>;
+    control = <span className="text-sm text-fg-muted">{fmt(s.value)}</span>;
   else if (s.spec.kind === "enum")
     control = (
       <Select
@@ -282,23 +309,24 @@ function ProductSettingRow({
     <>
       <SettingsRow
         label={s.label}
-        help={pendingRow ? `${s.description} ${pendingNote}` : s.description}
+        help={
+          pendingRow ? (
+            <>
+              {s.description} <span className="text-fg">{pendingNote}</span>
+            </>
+          ) : (
+            s.description
+          )
+        }
         htmlFor={pendingRow ? undefined : controlId}
         source={
-          <>
-            {pendingRow ? (
-              <StatusPill tone="neutral" icon={false} size="sm">
-                Not in effect yet
-              </StatusPill>
-            ) : null}
-            <SourceBadge
-              source={BADGE[s.source]}
-              path={manifestFile(s.manifestPath)}
-              onRevert={
-                s.source === "console" ? () => setReverting(true) : undefined
-              }
-            />
-          </>
+          <SourceBadge
+            source={BADGE[s.source]}
+            path={manifestFile(s.manifestPath)}
+            onRevert={
+              s.source === "console" ? () => setReverting(true) : undefined
+            }
+          />
         }
         footer={
           dirty ? (

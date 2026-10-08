@@ -4,9 +4,10 @@
  * `licensing:` block, a console edit claims it, and Revert returns it to the manifest (S-18 §4.5).
  *
  * The offline grace clamp is in effect (LX-07). The behaviour behind the other settings ships in
- * later packages (LX-09, LX-10, LX-12), so those rows are marked pending (P0-47): read-only,
- * labelled "Not in effect yet", their stored value kept for when it ships. The billing-retry grace
- * stays hidden until LX-23 (the registry marks it pending).
+ * later packages (LX-09, LX-10, LX-12), so those rows are pending (P0-47): grouped under "Not in
+ * effect yet" after the clamp, read-only, each saying what devices do today, their stored value
+ * kept for when it ships. The billing-retry grace stays hidden until LX-23 (the registry marks it
+ * pending).
  */
 
 import * as React from "react";
@@ -23,45 +24,45 @@ const SECTION = "license-settings-licensing";
 /** Value labels and confirmation copy per setting (S-19 §7.3–7.6, decision 4's warning). */
 export const LICENSING_COPY: Record<string, SettingCopy> = {
   "licensing.entitlementModel": {
-    values: { legacy: "Legacy (per licence)", combined: "Combined" },
+    values: { legacy: "Legacy (per license)", combined: "Combined" },
     consequences: (to) =>
       to === "combined"
         ? [
-            "A device sees the entitlements of every licence and grant its holder has, combined, not just its own licence's.",
-            "Devices pick up the change at their next licence refresh.",
+            "A device sees the entitlements of every license and grant its holder has, combined, not just its own license's.",
+            "Devices pick up the change at their next license refresh.",
           ]
         : [
-            "Each device sees only its own licence's entitlements again, as before the combined model.",
+            "Each device sees only its own license's entitlements again, as before the combined model.",
           ],
   },
   "licensing.entitlementHolder": {
-    values: { device: "Signed-in account", owner: "Licence owner" },
+    values: { device: "Signed-in account", owner: "License owner" },
     consequences: (to) =>
       to === "owner"
         ? [
-            "Anyone who enters a key the owner holds sees everything the owner holds for this product, not just that licence.",
+            "Anyone who enters a key the owner holds sees everything the owner holds for this product, not just that license.",
             "Keep this for products without sign-in, where a shared key is how a household or studio shares access.",
           ]
         : [
-            "A device sees the entitlements of the account signed in on it, or only its licence's when nobody is signed in.",
+            "A device sees the entitlements of the account signed in on it, or only its license's when nobody is signed in.",
           ],
   },
   "licensing.clampGraceToExpiry": {
     consequences: (to) =>
       to === false
         ? [
-            "A licence that expires can keep running offline until its offline grace ends.",
+            "A license that expires can keep running offline until its offline grace ends.",
           ]
-        : ["Offline grace never outlasts the licence's expiry."],
+        : ["Offline grace never outlasts the license's expiry."],
   },
   "licensing.anchorPolicy": {
     values: {
       "rank-first": "Highest-ranked tier",
       "most-free-seats": "Most free seats",
-      oldest: "Oldest licence",
+      oldest: "Oldest license",
     },
     consequences: () => [
-      "Applies when a device next chooses the licence it runs on.",
+      "Applies when a device next chooses the license it runs on.",
     ],
   },
   "licensing.reanchor": {
@@ -74,20 +75,28 @@ export const LICENSING_COPY: Record<string, SettingCopy> = {
   },
 };
 
-/** What devices do while a setting's behaviour has not shipped. */
-const NOT_YET = "Devices keep today's behaviour whatever it is set to.";
-
 /**
- * The settings stored and resynced today that change nothing yet (P0-47): the entitlement model
- * and holder (LX-09), the anchor choice and re-anchor (LX-10), the refund grace (LX-12). Only the
- * offline grace clamp is in effect.
+ * The settings stored and resynced today that change nothing yet (P0-47), each with what devices
+ * do today whatever it is set to. Only the offline grace clamp is in effect.
+ *
+ * - The model and the holder (LX-09): `entitlementModelFor` (`passthrough/anchor.ts`) answers
+ *   `legacy` for every product, so a device's documents carry only its own license's entitlements.
+ * - The anchor choice and re-anchor (LX-10): no `chooseAnchor` yet. A device runs on the license it
+ *   activated with (its key, or the one chosen at sign-in, `identity/licenseChoice.ts`), and
+ *   nothing moves it to another.
+ * - The refund grace (LX-12): `applyStoreGrant`'s `revoke` (`license/storeGrants.ts`) revokes
+ *   the grant the moment the refund arrives.
  */
 export const LICENSING_PENDING: Record<string, string> = {
-  "licensing.entitlementModel": NOT_YET,
-  "licensing.entitlementHolder": NOT_YET,
-  "licensing.anchorPolicy": NOT_YET,
-  "licensing.reanchor": NOT_YET,
-  "licensing.refundGraceHours": NOT_YET,
+  "licensing.entitlementModel":
+    "Today each device sees only its own license's entitlements.",
+  "licensing.entitlementHolder":
+    "Today each device sees only its own license's entitlements, whoever is signed in.",
+  "licensing.anchorPolicy":
+    "Today a device runs on the license it was activated with.",
+  "licensing.reanchor":
+    "Today a device never moves to another license on its own.",
+  "licensing.refundGraceHours": "Today a refund revokes the grant at once.",
 };
 
 export function LicenseSettingsPage({
@@ -102,7 +111,7 @@ export function LicenseSettingsPage({
           title="Settings"
           description={
             <>
-              How licences, grants and entitlements combine for this product.
+              How licenses, grants and entitlements combine for this product.
               Declared in{" "}
               <code className="font-mono text-xs">.pkey/product</code> under{" "}
               <code className="font-mono text-xs">licensing</code>; a change
@@ -114,10 +123,8 @@ export function LicenseSettingsPage({
       sections={[{ id: SECTION, title: "Licensing model" }]}
     >
       <Callout tone="info">
-        Only clamping offline grace to expiry is in effect, at each
-        device&apos;s next licence refresh. The settings marked Not in effect
-        yet keep their value but change nothing until their part of the
-        licensing model ships.
+        Only clamping offline grace to expiry is in effect. Devices pick up a
+        change to it at their next license refresh.
       </Callout>
       <ProductSettingsSection
         slug={slug}
@@ -126,6 +133,7 @@ export function LicenseSettingsPage({
         title="Licensing model"
         copy={LICENSING_COPY}
         pending={LICENSING_PENDING}
+        pendingDescription="These keep their value but change nothing until their part of the licensing model ships."
       />
     </SettingsTemplate>
   );
