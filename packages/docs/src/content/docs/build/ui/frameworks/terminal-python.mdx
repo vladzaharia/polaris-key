@@ -153,9 +153,9 @@ typer builders; the fields are on [Theming](/docs/build/ui/theming/). In a termi
   terminal's background (OSC 11), then `COLORFGBG`, then dark;
 - `colors` overrides a role per scheme with a hex colour, `{"dark": {"success": "#3fb27f"}}`, the
   same value the Node kit takes; it is drawn only where the terminal draws truecolor, so ANSI-16
-  keeps the user's palette (a value that is not hex is ignored). `symbols` picks Unicode or ASCII;
+  keeps the user's palette (a value that is not hex, an SGR parameter such as `"2"`, is ignored with a `DeprecationWarning` that names the role). `symbols` picks Unicode or ASCII;
 - `preset="native"` keeps the terminal's own palette: no product colour and no `colors`, the chip
-  in plain reverse video; `NO_COLOR` drops every escape in either preset;
+  in plain reverse video; `NO_COLOR` drops every colour in either preset (bold, reverse video and links stay on a terminal);
 - `density="compact"` drops the blank rail rows between blocks;
 - `motion` set to `reduced` or `none` stops the spinners, which never run without a terminal or
   with `CI`;
@@ -171,13 +171,17 @@ same:
   a line of its own and wraps after `/` or before `?` and `&`, each piece still a link. Only a key
   or an id is cut in the middle, and a long product name ends in an ellipsis inside its chip;
 - below 50 columns a command row stacks: the command, then what it does;
-- a short terminal (16 rows or fewer, a "landscape" window) has no blank rows, so the code, the URL
-  and the key hints stay in view; a header that does not fit scrolls away, never the code;
+- a live screen taller than the terminal compacts by fit: the key hints join the waiting line, then
+  the blank rows, the check line and the countdown go, then what is not essential leaves from the
+  top; the code, the URL and the key hints stay in view, and a header that does not fit scrolls
+  away, never the code;
+- below 32 columns the rail goes and the content takes the real width;
 - the offline QR shows only where it fits: as wide as the terminal, and the whole screen with it no
   taller than the terminal;
-- a resize mid-flow (SIGWINCH) lays the live region out again: it erases the rows it really took
-  on the reflowed screen and redraws at the new width, so nothing is left wider than the terminal
-  or drawn twice.
+- a resize mid-flow (SIGWINCH) lays the whole flow out again, wider or narrower, taller or
+  shorter: it erases the rows it really took on the reflowed screen and redraws at the new size,
+  with one header and the URL and code whole, so nothing is left wider than the terminal or drawn
+  twice; Ctrl+C and Esc replace the screen with one result block;
 
 ## Localisation
 
@@ -189,8 +193,9 @@ key to English. Wide CJK characters take two cells, and lines break between them
 
 Golden ANSI text for every state in both terminal themes, in every variant (truecolor, ANSI-16,
 `NO_COLOR`, ASCII symbols; 80 and 60 columns; piped), and an SVG of the default render that the
-component pages show. `tests/cli/test_responsive.py` runs the resolution matrix (40, 60, 80 and
-120 columns at 12 and 24 rows, long values, German and Japanese, a resize mid-flow) in pyte. Record them with
+component pages show. `tests/cli/test_responsive.py` runs the resolution matrix (24, 28, 32, 40, 60, 80
+and 120 columns at 8, 10, 12, 16, 17 and 24 rows, long values, German and Japanese, a resize mid-flow)
+in pyte, and checks the text both kits must draw alike (`docs/design/ui-kits/terminal-parity.json`). Record them with
 `PKEY_GOLDEN=record .venv/bin/python -m pytest -q tests/cli` in `sdks/python`.
 
 <KitCoverage kit="terminal-python" />

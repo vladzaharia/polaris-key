@@ -175,6 +175,12 @@
       .cols60 {
         width: calc(60 * 8.4px + 33.6px);
       }
+      .cols40 {
+        width: calc(40 * 8.4px + 33.6px);
+      }
+      .cols32 {
+        width: calc(32 * 8.4px + 33.6px);
+      }
       .strip {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -253,7 +259,7 @@
     <main class="board">
       <figure>
         <figcaption>
-          terminal · sign-in (device code, no QR, 80 × 24)
+          terminal · sign-in with --device-code (no QR, 80 × 24)
         </figcaption>
         <div class="shot cols80" data-shot="sign-in">
           <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
@@ -357,6 +363,36 @@
         </div>
       </figure>
       <figure>
+        <figcaption>
+          terminal · a short window (40 × 12): blank rows go, the hints join the
+          waiting line's rail, the URL, code and keys stay
+        </figcaption>
+        <div class="shot cols40" data-shot="short">
+          <div class="tbar"><i></i><i></i><i></i>tidewater — 40 × 12</div>
+          <pre id="short"></pre>
+        </div>
+      </figure>
+      <figure>
+        <figcaption>
+          terminal · a narrow window (32 × 24): the same screen, wrapped at the
+          column
+        </figcaption>
+        <div class="shot cols32" data-shot="narrow-32">
+          <div class="tbar"><i></i><i></i><i></i>tidewater — 32 × 24</div>
+          <pre id="narrow32"></pre>
+        </div>
+      </figure>
+      <figure>
+        <figcaption>
+          terminal · an ending is one result block: Esc replaces the code view,
+          nothing is left above it
+        </figcaption>
+        <div class="shot cols80" data-shot="ended">
+          <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
+          <pre id="ended"></pre>
+        </div>
+      </figure>
+      <figure>
         <figcaption>terminal · Textual app (optional, Python)</figcaption>
         <div class="shot cols80" data-shot="textual">
           <div class="tx" id="tx">
@@ -450,13 +486,14 @@
         draw([
           [
             ["m", "$ "],
-            ["", "tidewater login"],
+            ["", "tidewater login --device-code"],
           ],
           head("login"),
           [["m", "│"]],
           [
-            ["m", "◇"],
-            ["", "  No browser on this computer. Use a code instead:"],
+            ["cy", "◆"],
+            ["", "  "],
+            ["s", "Sign in with a code"],
           ],
           rail(
             ["", "On any phone or computer, go to "],
@@ -473,8 +510,92 @@
             ["m", "⠋"],
             ["", "  Waiting for you to sign in…"],
           ],
-          rail(...keys(["c", "copy the code"], ["Esc", "cancel"])),
+          [["m", "└  "], ...keys(["c", "copy the code"], ["Esc", "cancel"])],
         ]),
+      );
+
+      // The narrow and short boards are the Node kit's own output (the resolution matrix in
+      // packages/sdk-node/test/cli/responsive.test.ts), coloured by the glyph that starts a line.
+      const glyphClass = {
+        "┌": "m",
+        "│": "m",
+        "└": "m",
+        "◆": "cy",
+        "◇": "m",
+        "⠋": "m",
+        "✓": "ok",
+        "✗": "err",
+        "▲": "warn",
+      };
+      const plain = (id, text) =>
+        put(
+          id,
+          text.split("\n").map((line) => {
+            const first = [...line][0];
+            const c = glyphClass[first];
+            const rest = line.slice(first ? first.length : 0);
+            if (!c) return L(["", line]);
+            const body = rest
+              .replace(
+                /^(\s*)( Tidewater Studio )(.*)$/,
+                (_, a, chip, tail) => `${a}\u0000${chip}\u0000${tail}`,
+              )
+              .split("\u0000");
+            if (body.length === 3)
+              return L(
+                [c, first],
+                ["", body[0]],
+                ["chip", body[1]],
+                ["m", body[2]],
+              );
+            return L([c, first], ["", rest]);
+          }),
+        );
+      plain(
+        "short",
+        [
+          "┌   Tidewater Studio  · login",
+          "◆  Sign in with a code",
+          "│  On any phone or computer,",
+          "│  go to key.plrs.im/device and enter",
+          "│  this code.",
+          "│",
+          "│      WDJB-MJHT",
+          "│",
+          "│  Code expires in 4:12",
+          "⠋  Waiting for you to sign in…",
+          "└  c copy the code · Esc cancel",
+        ].join("\n"),
+      );
+      plain(
+        "narrow32",
+        [
+          "┌   Tidewater Studio  · login",
+          "│",
+          "◆  Sign in with a code",
+          "│  On any phone or computer, go",
+          "│  to key.plrs.im/device and",
+          "│  enter this code.",
+          "│",
+          "│      WDJB-MJHT",
+          "│",
+          "│  Check the code there matches",
+          "│  this one.",
+          "│  Code expires in 4:12",
+          "│",
+          "⠋  Waiting for you to sign in…",
+          "└  c copy the code · Esc cancel",
+        ].join("\n"),
+      );
+      plain(
+        "ended",
+        [
+          "┌   Tidewater Studio  · login",
+          "│",
+          "✗  Sign-in cancelled",
+          "│",
+          "└  tidewater login   Sign in again",
+        ].join("\n"),
       );
 
       // 2. Activate (golden activate-parsed): the key is never echoed. The public product prefix
@@ -530,7 +651,7 @@
           ["", "  "],
           ["s", "Your license is on 3 of 3 devices"],
         ],
-        rail(["s", "●●●"], ["m", " 3 of 3 in use"]),
+        rail(["s", "●●●"]),
         ...(cols < 80
           ? [
               rail(["", "Replace a device in your browser. Tidewater Studio"]),

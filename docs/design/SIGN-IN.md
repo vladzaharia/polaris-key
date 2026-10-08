@@ -1231,10 +1231,17 @@ SSH session without one.
 - On success it prints "✓ Signed in as Mara Fennick (mara@fennick.studio)", then "Tidewater Studio
   Pro · Lifetime · this Mac is device 3 of 3", then "You can close the browser tab."
 - **Headless** (D-68: `SSH_CONNECTION` or `SSH_TTY`, no `DISPLAY` or `WAYLAND_DISPLAY` on Linux,
-  `CI`, or `--device-code`) skips the browser and prints "No browser on this machine. Use a code
-  instead:". Then "On any phone or computer, go to key.plrs.im/device and enter this code.", the
-  code `WDJB-MJHT` in reverse video, "Check the code there matches this one." and the countdown.
-  The keys are **c** copy the code (OSC 52) and **Esc** cancel. There is no QR.
+  `CI`) skips the browser and prints "No browser on this machine. Use a code instead:"; `--device-code`
+  asks for the code, so it gets the title "Sign in with a code" and no such note. Then "On any phone
+  or computer, go to key.plrs.im/device and enter this code.", the code `WDJB-MJHT` in reverse video,
+  "Check the code there matches this one." and the countdown. The keys are **c** copy the code
+  (OSC 52) and **Esc** cancel. There is no QR. **c** from the browser wait swaps to this code view in
+  place.
+- The code view is one live screen. When the terminal is shorter than it, it compacts by fit (the
+  key hints join the waiting line, then blank rows, the check line and the countdown go) and the URL,
+  the code and the keys stay. Resizing lays the whole flow out again. Esc and Ctrl+C replace it with
+  one result block ("Sign-in cancelled", then `tidewater login  Sign in again`); the code is not
+  left above it.
 - `--json` prints one object per state (`pending` with `verificationUri` and `userCode`, then
   `signedIn` or `cancelled`) and never prompts.
 - The terminal runs the browser presentation: the license is chosen on the card, and a terminal
