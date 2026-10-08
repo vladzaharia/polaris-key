@@ -649,6 +649,14 @@ hook once the new Worker is live and on every cron tick, so the exposure ends at
 healed by the next tick at the latest. The deploy hook writes a `feed.bootstrap` platform audit row when it changed anything; the cron path writes no audit row, only the `packageFileRefs` count in the maintenance report. Refs with no release row are never touched. A `package-file` ref left behind by the old Worker's prune is a storage leak, not an exposure, and is out of scope here. To check: no `blob_refs` row has `ref_kind = 'artifact'` and a
 `release_artifacts.kind = 'package'` row.
 
+### Account erasures (SEC-PRV-1): migration order
+
+Migration `0108_account_erasures` adds the `account_erasures` progress table (expand-only; the
+previous Worker never reads it). `deploy.yml` applies it before the Worker. Nothing needs doing by
+hand: the sweeper (`services/identity/accounts/deletion.ts`, nightly and on every 15-minute tick)
+adopts every `status = 'deleted'` account that has no row. An erasure that has failed 5 times
+fails the nightly `erasures` step, which names its account id and failing step.
+
 ### Lazy deltas: the queues, the consumer Worker and the R2 rules (P4-17)
 
 Lazy hot-pair deltas (notes/S-08 §6; RUNBOOK "Lazy deltas") need Workers Paid with Queues

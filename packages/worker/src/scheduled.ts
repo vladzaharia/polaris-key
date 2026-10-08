@@ -59,6 +59,10 @@ import {
 import { sweepAvatars } from "./services/identity/card/avatars.js";
 import { pruneStorefrontSeen } from "./services/identity/portal/store/analytics.js";
 import { pruneAccountMerges } from "./services/identity/accounts/mergeUndo.js";
+import {
+  stuckErasures,
+  sweepErasures,
+} from "./services/identity/accounts/deletion.js";
 import { overrideMigrationNightly } from "./core/overrideMigration.js";
 import { runLicensingCatchUp } from "./core/licensingCatchUp.js";
 import { pruneEvents as pruneConnectorEvents } from "./services/distribution/connectors/state.js";
@@ -406,6 +410,9 @@ export async function runScheduledMaintenance(
     await catchUpLegacyAccounts(db);
     return 0;
   });
+  // SEC-PRV-1: erasures a store hook failed on are resumed (also on the 15-minute tick, behind
+  // their back-off); one that keeps failing is reported here so the Operations page shows it.
+  if (env) await runErasureSweep(report, env, db, now, true);
   // U-03: the licence-override migration's daily inventory (until the run), its report past 90
   // days and, once the report window has passed, the licences' emptied config and secrets columns
   // (`core/overrideMigration.ts`). The run itself is never started here: it is the owner's.
@@ -504,6 +511,43 @@ export async function runLazyDeltaSweep(
  */
 export const MAINTENANCE_CRON = "17 3 * * *";
 export const CONNECTOR_POLL_CRON = "*/15 * * * *";
+
+/**
+ * The account-erasure retry sweep (SEC-PRV-1, `services/identity/accounts/deletion.ts`): resume
+ * every unfinished erasure whose back-off elapsed. `reportStuck` (the nightly tick only) fails
+ * the `erasures` step while any erasure has failed `ERASURE_STUCK_ATTEMPTS` times, naming the
+ * opaque account ids and the failing step, so the Operations page shows a stuck erasure.
+ */
+export async function runErasureSweep(
+  report: MaintenanceReport,
+  env: Env,
+  db: Db,
+  now: number,
+  reportStuck: boolean,
+): Promise<void> {
+  await step(report, "erasures", async () => {
+    const r = await sweepErasures({
+      db,
+      env,
+      now,
+      origin: env.CONSOLE_ORIGIN ?? "",
+    });
+    if (reportStuck) {
+      const stuck = await stuckErasures(db);
+      if (stuck.length > 0)
+        throw new Error(
+          `${stuck.length} account erasure(s) stuck: ` +
+            stuck
+              .map(
+                (s) =>
+                  `${s.accountId} (${s.attempts} attempts, ${s.failedStep ?? "?"})`,
+              )
+              .join(", "),
+        );
+    }
+    return r.completed;
+  });
+}
 
 /**
  * One connector-poll tick (P5-02): every live product's ENABLED services' `scheduled` hooks
@@ -670,6 +714,13 @@ export async function handleScheduled(
   const report = poll
     ? await runConnectorPolls(env, db, now)
     : await runScheduledMaintenance(db, now, env);
+  // A failed attempt on the poll tick is re-scheduled by the sweep itself; only the nightly tick
+  // reports stuck erasures (the Operations page reads a poll tick's failures as connector ones).
+  if (poll) {
+    const erasure: MaintenanceReport = { counts: {}, failures: {} };
+    await runErasureSweep(erasure, env, db, now, false);
+    report.counts["erasures"] = erasure.counts["erasures"] ?? 0;
+  }
   const registry: MaintenanceReport = { counts: {}, failures: {} };
   await runRegistryRenders(env, db, now, registry);
   // SEC-DST-1: heal package refs the deploy window's old Worker wrote as `artifact`, every tick.

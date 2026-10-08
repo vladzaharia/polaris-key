@@ -65,7 +65,10 @@ import {
   WriteChecks,
 } from "../../../core/adminApi.js";
 import { tierExpiresAt } from "../authz.js";
-import { licenseEmail, subjectFor } from "../../../core/accountSubjects.js";
+import {
+  licenseEmail,
+  subjectForOrNull,
+} from "../../../core/accountSubjects.js";
 import {
   LICENSE_CONFIG_WRITABLE_SQL,
   licenseConfigFrozen,
@@ -265,7 +268,7 @@ async function configOverridesView(
           : "license",
     owned,
     ownerSubject: owned
-      ? await subjectFor(ctx.db, license.account_id!, slug, ctx.now)
+      ? await subjectForOrNull(ctx.db, license.account_id!, slug, ctx.now)
       : null,
     runNotBefore: state.runNotBefore,
     signUpUrl:
@@ -750,7 +753,7 @@ export async function handleLicenses(
     });
     const frozenRefusal = async (): Promise<Response> => {
       const subject = license.account_id
-        ? await subjectFor(db, license.account_id, slug, now)
+        ? await subjectForOrNull(db, license.account_id, slug, now)
         : null;
       const route = subject
         ? `/manage/api/products/${slug}/users/${subject}/overrides`

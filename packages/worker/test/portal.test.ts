@@ -16,6 +16,12 @@ import { authorizeAndMint } from "../src/services/identity/oidc.js";
 import { serializeServices } from "../src/core/services.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import { loadProduct } from "../src/core/products.js";
+import { subjectFor } from "../src/core/accountSubjects.js";
+import {
+  registerSubjectStore,
+  unregisterSubjectStore,
+} from "../src/core/subjectHooks.js";
+import { sweepErasures } from "../src/services/identity/accounts/deletion.js";
 import { hashKey } from "../src/crypto.js";
 import { getTokenRecord } from "../src/kv.js";
 import {
@@ -925,6 +931,60 @@ describe("portal account erasure (DELETE /api/me)", () => {
     expect(sent).toHaveLength(1);
     expect(sent[0]!.to).toBe("ada@example.com");
     expect(sent[0]!.subject).toMatch(/deleted/i);
+  });
+
+  it("SEC-PRV-1: a failing store hook answers erasing:true, closes the session and the sweeper finishes", async () => {
+    const db = makeTestDb();
+    const env = portalEnv();
+    await seedProduct(db, "djdl");
+    const session = await portalSession(env, db);
+    await subjectFor(db, session.accountId, "djdl", NOW);
+    let failing = true;
+    registerSubjectStore("flaky-erasure", {
+      merge: async () => {},
+      delete: async () => {
+        if (failing) throw new Error("DO unavailable");
+      },
+    });
+    try {
+      const res = await handlePortalApi(
+        req("DELETE", "/api/me", {
+          cookie: session.cookie,
+          csrf: session.csrf,
+        }),
+        env,
+        db,
+        "/api/me",
+        NOW,
+      );
+      expect(res.status).toBe(200);
+      expect(await res.json()).toMatchObject({
+        ok: true,
+        deleted: session.accountId,
+        erasing: true,
+      });
+      // The cookie no longer opens anything.
+      const me = await handlePortalApi(
+        req("GET", "/api/me", { cookie: session.cookie }),
+        env,
+        db,
+        "/api/me",
+        NOW + 1,
+      );
+      expect(me.status).toBe(401);
+      failing = false;
+      expect(
+        await sweepErasures({ db, env, now: NOW + 7200, origin: "" }),
+      ).toEqual({ completed: 1, attempted: 1 });
+      expect(
+        await db.first(
+          "SELECT id FROM accounts WHERE id = ?",
+          session.accountId,
+        ),
+      ).toBeNull();
+    } finally {
+      unregisterSubjectStore("flaky-erasure");
+    }
   });
 
   it("requires a session", async () => {

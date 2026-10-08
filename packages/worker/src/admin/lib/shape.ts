@@ -35,7 +35,7 @@ import {
   keyEntryLimit,
   type KeyEntrySettings,
 } from "../../core/keyEntries.js";
-import { subjectFor } from "../../core/accountSubjects.js";
+import { subjectForOrNull } from "../../core/accountSubjects.js";
 import {
   approvalMismatch,
   listEdgeMintRecipesWithApprovals,
@@ -162,7 +162,7 @@ export async function licenseSummary(
   // (S-16 §5.1). Subjects are platform-wide, so this is set for every product whatever its
   // Identity toggle; `null` for a floating licence.
   const ownerSubject = row.account_id
-    ? await subjectFor(
+    ? await subjectForOrNull(
         db,
         row.account_id,
         product,

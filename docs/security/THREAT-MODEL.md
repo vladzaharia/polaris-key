@@ -7498,6 +7498,49 @@ be disabled.
   double delete audits once) naming tier, origin, the account's pairwise subject (never the
   global account id) and the device count.
 
+### Account erasure is a resumable state machine (SEC-WP-04: SEC-PRV-1, SEC-PRV-19)
+
+`DELETE /api/me` used to flip the account to `deleted` and then run the registered stores' hooks
+unguarded: one failing Durable Object or R2 call left the email, links, subjects and licence
+attachments in place, with no record and no retry, while the person had been told it was done.
+
+- **Closed first, in one batch.** The first batch sets `accounts.status = 'deleted'` (every
+  reader refuses anything but `active`, so no session validates and `signIn` refuses with
+  `account_disabled`: a new login cannot resurrect or re-attach to an account being erased),
+  deletes the sessions and writes the progress row in `account_erasures` (opaque account id,
+  attempts, back-off, lease, failing step and a 200-character error; no email, name or product).
+- **Hooks are fault-isolated and retried.** Each store's `delete` runs per subject and failures
+  are collected per store (`runSubjectDeleteIsolated`), then the device bindings, the licence
+  links and ownership hooks and the account pictures. A failure records `failed_step` and
+  schedules the retry (15 min, 1 h, 4 h, 12 h, then daily). Nothing a retry needs (subjects,
+  links, licences) is removed until every hook succeeded, and every hook is idempotent. A
+  10-minute lease keeps the request and the cron from running the same erasure at once.
+- **One atomic final batch.** Only after every hook succeeded: every row naming the person goes
+  together with the progress row, leaving the id-only tombstone and the receipt. The batch
+  deletes ALL of the account's subject rows and their aliases (SEC-PRV-19), and the hook loop
+  re-reads the subjects and runs the stores for one minted while it ran.
+- **Resume and detection.** Both cron ticks run `sweepErasures`, which also adopts any
+  `status = 'deleted'` account without a progress row (left by a Worker before this change). The
+  nightly tick fails the `erasures` step, shown on the Operations page, while an erasure has
+  failed five attempts. The response to the user carries `erasing: true` while the retry is
+  pending.
+- **Credentials stop with the close, not the commit.** The first batch also revokes the
+  account's registry tokens (`account_deleted`); the lookup never reads the account, so without
+  that the account's licence-bound portal registry tokens would authenticate through the whole retry window. This isolate's
+  30-second resolution cache is dropped at once; another isolate can honour a cached token for up
+  to 30 seconds. Checked and safe without a write: portal sessions are deleted; browser sessions,
+  the device login and the card gates re-read `accounts.status` and refuse anything but `active`;
+  passkeys only work through `signIn`, which refuses; OCI pull tokens re-resolve their registry
+  token; CI tokens (`pkeyci_`) and licence tokens belong to a product or licence, not the
+  account. `subjectFor` refuses to mint a subject for an erasing account (developer-API licence
+  reads use `subjectForOrNull`), and a last read-and-hook pass precedes the commit. A new
+  account on the same email exists only after the erasure completes, because until then the
+  email's link still belongs to the erasing account and sign-in is refused.
+- **Residual.** Until the retry completes the person's data still exists server-side, but no API
+  or session reaches it; the time to completion is bounded by the store recovering plus the
+  back-off. SEC-PRV-6 (buyer email left in `audit.summary` and `license_relinks.holder_json`) is
+  separate (SEC-WP-19) and is not closed here: this erasure leaves those rows as before.
+
 ### Account pictures: profile import, re-encoding and uploads (PX-W16)
 
 Account → Profile and the pictures behind it (PORTAL.md §4.30, G32, G33):

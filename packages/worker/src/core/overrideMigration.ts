@@ -60,7 +60,7 @@ import {
   isSealedEnvelope,
   sealManagedValue,
 } from "../admin/lib/managedSecrets.js";
-import { existingSubjectFor, subjectFor } from "./accountSubjects.js";
+import { existingSubjectFor, subjectForOrNull } from "./accountSubjects.js";
 import {
   getAccountOverrides,
   parseAccountOverridePayload,
@@ -1038,7 +1038,10 @@ async function applyProduct(
       const todo = unit.rows.filter((r) => !already.has(r.licenseId));
       if (todo.length === 0) continue;
       const subject =
-        unit.subject ?? (await subjectFor(db, unit.accountId, product, now));
+        unit.subject ??
+        (await subjectForOrNull(db, unit.accountId, product, now));
+      // An account being erased is skipped (SEC-WP-04); it has no override rows to move.
+      if (subject === null) continue;
       // An owner whose subject the plan did not know has no row (rows exist only for subjects).
       const existingJson = unit.subject === null ? null : unit.existingJson;
       const payload = await sealPayload(env, product, catalog, unit.payload);

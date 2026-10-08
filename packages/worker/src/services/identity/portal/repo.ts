@@ -30,7 +30,7 @@ import {
 } from "../../../core/accountSubjects.js";
 import { notAutoAttachBlockedSql } from "../../../core/licenseHolders.js";
 import { catchUpLegacyAccount } from "../accounts/legacy.js";
-import { deleteAccount } from "../accounts/deletion.js";
+import { deleteAccount, type ErasureResult } from "../accounts/deletion.js";
 import { signIn, type SignInResult } from "../accounts/signIn.js";
 import {
   EMAIL_ISSUER,
@@ -1269,8 +1269,8 @@ export async function deletePortalAccount(
   now: number,
   env: Env,
   origin = "",
-): Promise<void> {
-  await deleteAccount({ db, env, now, origin }, accountId);
+): Promise<ErasureResult> {
+  return deleteAccount({ db, env, now, origin }, accountId);
 }
 
 export async function portalAudit(

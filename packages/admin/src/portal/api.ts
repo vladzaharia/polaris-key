@@ -1004,7 +1004,9 @@ export const portalApi = {
     ),
   me: () => call<PortalMe>("/api/me"),
   deleteMe: () =>
-    call<{ ok: true; deleted: string }>("/api/me", { method: "DELETE" }),
+    call<{ ok: true; deleted: string; erasing?: true }>("/api/me", {
+      method: "DELETE",
+    }),
   /** Account → Profile (PX-W16): the profile, its sources and what each method supplied. */
   profile: () => call<{ profile: PortalProfile }>("/api/me/profile"),
   /** An explicit choice (a typed or picked name; Initials, a method's picture or an upload). */
