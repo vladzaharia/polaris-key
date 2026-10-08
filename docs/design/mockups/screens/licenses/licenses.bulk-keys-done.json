@@ -1,0 +1,20 @@
+{
+  "id": "licenses.bulk-keys-done",
+  "title": "Create keys in bulk: after Create",
+  "area": "licenses",
+  "surface": "dialog",
+  "packages": ["LX-29", "LX-27", "LX-30"],
+  "uxRows": [],
+  "summary": "The New license drawer after Create 200 keys: the one-time CSV before and after its download, the confirmation when closing before any download, and a partial result (120 of 200 created) with Retry the other 80.",
+  "order": 13,
+  "compare": [
+    "After Create the drawer stays open and becomes a one-time panel (ADMIN.md OneTimeSecretPanel): the stepper goes, the title says '200 keys created in <batch>', and the only primary is Download CSV with the file name, rows, columns and size.",
+    "After a download the file row reads 'Downloaded at <time>', the button becomes Download again (secondary), an info callout says Download again works until the drawer closes, and Done (primary) closes without asking.",
+    "Closing before any download (Close, Esc, × or the scrim) opens 'Close without the CSV?': the keys can't be shown again and would have to be disabled from the batch page. Download CSV is the primary; 'Close without keys' is the danger outline.",
+    "Partial result: 'Created 120 of 200 keys'; the CSV covers only the 120 that exist; a warning callout says 80 weren't created with 'Retry the other 80', which adds them to the same batch with their own one-time CSV. No key is made twice.",
+    "Open batch is a navigation link in the foot in every state; it goes to the batch page with Disable unused keys.",
+    "Phone: a bottom sheet (the kit's .sheet) with the buttons stacked; the confirmation's buttons stack with the primary on top."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

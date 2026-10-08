@@ -1,0 +1,43 @@
+{
+  "id": "identity.finish",
+  "title": "Create your account (FinishStep)",
+  "area": "identity",
+  "surface": "portal",
+  "packages": [
+    "I-33",
+    "PX-21"
+  ],
+  "uxRows": [],
+  "summary": "The one step every new account finishes through, here after a first Google sign-in from Diceroll on an iPhone, in its default state: the email (confirmed by Google, so plain text and no code), a screen name with one suggestion chip per source, a picture, Polaris Key's and Diceroll's terms unticked, and the primary disabled until both are ticked. No birth date is asked: Google sent none and Diceroll gates nothing.",
+  "compare": [
+    "One step for both new-account paths (a first email-code sign-in and a first provider sign-in): the old RegisterStep and EmailGateStep are gone, and one finish API serves both (I-33).",
+    "The strip at the top names the provider and the address it gave ('Signed in with Google · tomas.okafor@example.com') with a success tick; the app header stays Diceroll's.",
+    "Email: when the provider vouches for it (any Apple address, a Gmail address, or a Workspace address whose hd matches) it is plain text with a lock, no field chrome, with 'Confirmed by Google' beside its label. Any other address shows the six code cells inline and the primary becomes 'Verify and continue'; Steam starts with an empty field and 'Send code'.",
+    "The field is labelled 'Screen name', never 'Your name'. Under it, 'Use a name from' on its own line, then one chip per name a source supplied (Google 'Tomás Okafor', Google 'Tomás', the email's 'tomas.okafor'); the current one is marked. The hint says an app gets it only with consent.",
+    "Picture tiles: each source that supplied one (Google, with its badge), Initials ('From your name'), Upload (PNG or JPEG). The tile in use says 'In use'. Apple never appears as a picture source.",
+    "Birth date is conditional (PX-21, I-33) and absent here: Google sent none and Diceroll gates nothing. It shows only when a connection supplied a birthdate claim (prefilled, labelled with its source, 'From Lakeside University', and editable) or once a product gates content. When shown it is labelled Optional, its selects follow the locale's order, and its hint says why it's there and that it stays private: 'Private to you. Diceroll and other apps never receive it.' No age is asked or checked until a product gates content.",
+    "Terms: two required checks, Polaris Key's Terms and Privacy Policy (recorded as a platform acceptance with the platform terms version) and Diceroll's, whose links come from Diceroll's listing (eulaUrl, privacyUrl) and whose version line reads 'From Example Games · October 2026'. A product with no terms shows only the first.",
+    "'Add a passkey after this' is an unticked opt-in. Both terms start unticked and the primary 'Create account and continue' is disabled, with 'Agree to both terms to continue.' under it, until both are ticked; 'Cancel sign-in' abandons it and issues nothing.",
+    "Phone: edge to edge; 'Confirmed by Google' stays beside the Email label, the name chips wrap under their label, and the picture tiles stay three across."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: the birth date is conditional as PX-21 says, and the render shows the step's real default (terms unticked, primary disabled).",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "Every new account was asked for a birth date, though PX-21 makes it conditional and I-33 waits for a product that gates content.",
+        "resolution": "The field is gone from this render (Google sent no birthdate claim and Diceroll gates nothing). The compare says when it appears (a connection's birthdate claim, prefilled with its source, or a product that gates content) and what it says then. The apps-get-a-yes-or-no wording the critic offered was not used: age booleans are deferred (tracks.md)."
+      },
+      {
+        "severity": "minor",
+        "issue": "In dark the read-only email looked editable; both terms drawn ticked; 'Initials / No picture'; an orphan name chip; fixed Month/Day/Year order.",
+        "resolution": "The email is plain text with a lock. Both terms start unticked with the primary disabled and 'Agree to both terms to continue.' The Initials tile reads 'From your name'. The chips wrap under their own label line. The date order follows the locale, stated in the compare (the field isn't drawn here)."
+      }
+    ]
+  },
+  "order": 9
+}

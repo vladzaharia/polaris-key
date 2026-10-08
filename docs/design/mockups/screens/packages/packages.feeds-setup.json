@@ -1,0 +1,44 @@
+{
+  "id": "packages.feeds-setup",
+  "title": "pkey feeds setup --write",
+  "area": "packages",
+  "surface": "terminal",
+  "order": 18,
+  "packages": [
+    "F-37",
+    "F-33",
+    "ST-34"
+  ],
+  "uxRows": [],
+  "summary": "Three CLI runs: 'pkey feeds setup --write' setting up a person's machine with its own packages-only pkeyp_ token, the CI form ('--print' with a pkeyci_ service token from the repository's secrets), and a rerun a week later with an expired device code, the machine's token replaced and a scope already sent elsewhere kept.",
+  "compare": [
+    "Every run is 80 columns or fewer, in the CLI's look: ✓ for done, ✗ for a failure, ▲ for a warning, ○ for skipped, dim for detail, bold headings, and the sign-in URL and code highlighted.",
+    "Sign-in is the account device-code flow (key.plrs.im/device and an 8-character code), never 'pkey login' and never the admin token; the CLI says it opened the browser and is waiting.",
+    "The token line names the prefix (pkeyp_ with a hint, never the whole token), its label with the machine name, that it is packages-only and can't change anything, and its expiry.",
+    "'You can install from' lists products and feeds the account can read, by ecosystem and namespace, across DJDL and Diceroll. A customer never sees Polaris Key's SDK feeds.",
+    "Every file written is in the home folder, with the heading saying so: ~/.npmrc, ~/.yarnrc.yml, ~/.bunfig.toml, ~/.netrc for uv and pip, Docker through the OS keychain. This list is the reference the console card and the portal copy follow.",
+    "Where a client can't be scoped safely at user level (pip's index), the run does not write it and says why and the command that prints it per project. Ecosystems with nothing to install (Swift, Gradle) are skipped in one dim line.",
+    "The CI terminal shows '--print' with '--token-env': the same renderer's output with an environment variable in place of the token, the product it printed for, the service token named by its pkeyci_ hint and label as coming from the repository's secrets, and that nothing was signed in to and no token was made.",
+    "The rerun shows the failure and recovery paths: an expired code says so and the command to get a new one; a rerun on the same machine replaces only the token it made there and says other tokens are untouched; a scope already sent to another registry in ~/.npmrc is kept with a ▲ and the '--force' flag that replaces it; the run ends 'Done, with 1 warning.'",
+    "Phone: the terminals keep 80 columns and scroll sideways inside themselves; the captions wrap under them."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Pass with polish applied: the CI run names the service token, and a third run covers the expired code, the rerun and a kept scope.",
+    "findings": [
+      {
+        "severity": "minor",
+        "issue": "[Polish/states] The CI terminal never shows the pkeyci_ prefix; the run shows only success (no expired code, no rerun, no scope already mapped elsewhere in ~/.npmrc).",
+        "resolution": "The CI run says 'PKEY_TOKEN holds the service token pkeyci_…R8VQ “Plugin CI” from the repository's secrets'. A third terminal, a week later, shows an expired device code with the command to retry, a rerun that replaces this machine's own token (other tokens untouched), and @djdl already sent to npm.example.com in ~/.npmrc, kept with 'pkey feeds setup --write --force' to replace it. All three runs stay within 80 columns (76 at most)."
+      },
+      {
+        "severity": "major",
+        "issue": "[Copy says something that doesn't happen] The console card, the portal and the CLI each list different package managers for 'pkey feeds setup --write'; the portal promises pip settings the CLI says it does not write.",
+        "resolution": "The CLI run is the reference (npm and pnpm, Yarn, Bun, uv and pip credentials in ~/.netrc, Docker; pip's index not written; Swift and Gradle only when a feed has something to install). The console card now says the command 'sets up every package manager DJDL's feeds use'; the portal says it 'sets up npm, pnpm, Yarn, Bun, uv, pip and Docker in your home folder. pip's index is added per project.', which is what the run writes for Mara's feeds."
+      }
+    ]
+  }
+}

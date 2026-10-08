@@ -1,0 +1,56 @@
+{
+  "id": "commerce.storefronts",
+  "title": "Storefronts",
+  "area": "commerce",
+  "surface": "console",
+  "packages": [
+    "CM-23",
+    "A-21",
+    "A-22",
+    "CM-21",
+    "CM-29"
+  ],
+  "uxRows": [
+    "UX-54",
+    "UX-57"
+  ],
+  "summary": "Diceroll's Commerce overview: every storefront that fits its platforms (App Store, Google Play, Steam, Microsoft Store, itch.io, Polaris Key) in one list with its state, what it sells and 28 days of purchases and refunds, the product's commerce attention above it, and the one test-purchase switch below. Each row opens that channel's page on the Sales tab.",
+  "compare": [
+    "The sidebar is Diceroll's Product context with the Commerce group open (Storefronts active, Offers, Purchases) in the distribution green; the group shows only while the commerce service is on. Integration is absent because Diceroll hid it. Badges mean attention only: Storefronts carries its red 2, Offers has no count.",
+    "The Commerce accent (distribution green) is on chrome only: the active nav marker and group label, the header's section bit, service tiles, the primary button and switches. Links (Add it to an offer, Replace key, Set up) are drawn in the strong text colour with an arrow, so a link never looks like Live, Active or On sale (kit rule for [data-service=commerce]). Status colours do not change with the accent.",
+    "Rows follow the canonical order App Store, Google Play, Steam, Microsoft Store, itch.io, Polaris Key, and only storefronts that fit Diceroll's platforms appear (Google Play because of the Android build; no storefront for a platform Diceroll doesn't ship).",
+    "States use the four-word vocabulary: Live (green status text), Ready (info status), Not set up (muted, dashed ring), and Attention as a danger pill with a count. Healthy states are never pills.",
+    "Every row is one link to that channel's page on Sales (distribution/channels/<id>?tab=sales). A Not set up row says how to start in its Selling cell, 'Set up · 4 steps →' as muted text, and opens the storefront wizard on the same tab (commerce.sales-wizard); step counts match commerce.first-run. No row has buttons of its own.",
+    "itch.io says plainly that Polaris Key can't check its purchases yet, so they don't add to licenses; its Purchases and Refunds columns both say 'Not checked', never 0 or a dash.",
+    "Polaris Key shows 'Live, free'; its Selling cell reads 'Free on Discover · 57 added' and its Purchases column is '—' (adds are not purchases). It says paid checkout isn't available yet (owner decision 5 keeps checkout deferred).",
+    "The page shows no store prices and no revenue: counts only (offers on sale, purchases, refunds and chargebacks, active subscriptions).",
+    "Needs attention lists only broken things for this product's storefronts, from the same server read as Home: the unmapped Google Play product (money taken, nothing added, danger; Add it to an offer opens commerce.add-to-offer) and the expiring Play key that also stops purchase checks (warning).",
+    "One switch, Accept test purchases (commerce.acceptTestPurchases), replaces the three per-store test switches; there are no other commerce settings on this page.",
+    "Phone: the column header hides, each row shows the store tile, name, its one-line fact, then a summary line ('3 offers · 412 purchases · 5 refunds', or 'Set up · 4 steps →') and the state under it; stats go two by two; attention rows stack."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: links no longer share the success green, a Not set up row says how to start, and the headings, columns and sidebar badge are cleaned up.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "[visual, area-wide] The Commerce accent green (light #05773b, dark #39d075) is nearly the success green, so links read as healthy states and Live/Active/On sale read as clickable.",
+        "resolution": "New kit rule: inside [data-service=\"commerce\"], .link and .btn.link use the strong text colour with their arrow and an underline on hover; the accent stays on the nav marker, group label, section bit, service tile, primary button and switches. License ids and the account name in Purchases and the purchase drawer are neutral underlined links. The kit README documents it; distribution uses the same green and can join the selector (flagged to the lead)."
+      },
+      {
+        "severity": "minor",
+        "issue": "[functional] On desktop the Microsoft Store row (Not set up) shows only dashes and a chevron, so nothing says how to start.",
+        "resolution": "Its Selling cell now reads 'Set up · 4 steps →' as muted text (the row stays the one link, so 'rows have no buttons' holds); phone shows the same line. Step counts match commerce.first-run, and the wizard it opens is drawn as commerce.sales-wizard."
+      },
+      {
+        "severity": "minor",
+        "issue": "[visual/copy] 'Storefronts' repeats as the section heading; the sub-line mixes words; Polaris Key's '57 added' sits in the purchases column; itch.io shows 'Not checked' for purchases but '—' for refunds; the neutral Offers count competes with the red attention badge.",
+        "resolution": "Section heading is 'Where Diceroll sells' (matching first-run's 'Where DJDL can sell'); sub-line 'Selling on 3 storefronts · 2 things need attention'; Polaris Key's Selling cell reads 'Free on Discover · 57 added' with Purchases '—'; itch.io's Refunds reads 'Not checked'; the Offers count is gone from the sidebar on every Commerce screen."
+      }
+    ]
+  },
+  "order": 1
+}

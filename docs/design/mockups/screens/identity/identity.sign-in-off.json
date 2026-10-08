@@ -1,0 +1,49 @@
+{
+  "id": "identity.sign-in-off",
+  "title": "Turn off Sign-in",
+  "area": "identity",
+  "surface": "dialog",
+  "packages": [
+    "I-29",
+    "ST-38"
+  ],
+  "uxRows": [],
+  "summary": "The confirmation for the Status switch on Diceroll's App sign-in, in products.turn-off-licensing's shape: Sign-in and Cloud Sync (which needs it) each with their glyph, 'On → Off' and what stops, including what happens to players signed in now; what is kept; how to come back; and the one Activity entry the change records.",
+  "compare": [
+    "Opened by switching Status off on App sign-in (or the Sign-in row on Settings → Features); the switch doesn't move until confirmed. Escape and Cancel leave both features on.",
+    "Same layout as products.turn-off-licensing: a warning icon leads the title 'Turn off Sign-in for Diceroll?', the lead line says why more turns off ('Cloud Sync needs Sign-in, so it turns off too, in the same change.'), then one row per feature that turns off with its service glyph and 'On → Off'; the dependent carries 'Needs Sign-in'. Features already off are not listed.",
+    "The Sign-in row says what players experience: no sign-in on the card, Game Center, Play Games or Steam; players signed in now are signed out the next time the game checks in, within an hour (the app session's refresh interval; use the server's real figure); the Diceroll accounts connection stops exchanging Firebase tokens; activated devices keep playing and new ones activate with a license key. identity.disconnect describes devices the same way.",
+    "The Cloud Sync row gives the reach in real numbers (3,412 players) and says each device keeps what it has.",
+    "What is kept is one line with the archive icon (accounts, their links to Diceroll accounts, consents and synced saves; licenses stay in libraries), then one line on coming back: turning Sign-in back on with its switch leaves Cloud Sync off; reverting this change in Activity turns both back on.",
+    "'In Activity, as one change' previews the single audit entry: 'Ada Lindqvist turned off Sign-in and Cloud Sync', 'Sign-in → App sign-in · one entry for both'.",
+    "The danger button says exactly what happens: 'Turn off Sign-in and Cloud Sync'. It is danger, not caution, by the rule products.turn-off-licensing states: a dependent turns off and it reaches many players. Turning off Sign-in for a product without Cloud Sync is an L1 caution dialog with the Sign-in row only and the button 'Turn off Sign-in'. Cancel is the outline button and has focus when the dialog opens.",
+    "After confirming, the operator stays on the same URL: Sign-in's sidebar group disappears (a feature that's off has none, products.sidebar-contexts), the page becomes the one service-off page with 'Turn on Sign-in', and a toast says 'Sign-in and Cloud Sync are off' with Undo.",
+    "Pressed, the danger button reads 'Turning off…' with a spinner and both buttons are disabled; on an error the dialog stays open with the error inline and both features stay on.",
+    "With the dialog open the page can't scroll: on desktop the dialog is centred in the first viewport; on phone it is the bottom sheet (grab handle, the danger button full width above Cancel, the body scrolling)."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: rebuilt on products.turn-off-licensing's layout, says what happens to players signed in now, and the compare says where the operator lands.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "Not in turn-off-licensing's shape: no warning icon, plain bullets instead of one row per feature with glyph, 'Needs Sign-in' and 'On → Off', no kept line, no Activity preview.",
+        "resolution": "Rebuilt on that layout: warning icon in the title, a row each for Sign-in and Cloud Sync (glyph, 'Needs Sign-in', 'On → Off', what stops), the archive line for what's kept, the history line for coming back, and 'In Activity, as one change' with Ada Lindqvist's entry. Cancel is the outline button with focus; centred on desktop, bottom sheet on phone."
+      },
+      {
+        "severity": "major",
+        "issue": "It didn't say what happens to players signed in now, or where the operator lands after confirming.",
+        "resolution": "The Sign-in row says players signed in now are signed out the next time the game checks in, within an hour (the compare asks for the server's real figure). The compare specifies the landing: same URL, the service-off page with 'Turn on Sign-in', Sign-in's sidebar group gone, and the toast 'Sign-in and Cloud Sync are off' with Undo."
+      },
+      {
+        "severity": "minor",
+        "issue": "'Diceroll accounts stops trading Firebase tokens' read as a grammar slip; danger versus ADMIN.md's L1 caution for 'disable a service'.",
+        "resolution": "Now 'The Diceroll accounts connection stops exchanging Firebase tokens.' The button stays danger, by the rule products.turn-off-licensing already states (danger when a dependent turns off and it reaches many players; caution when nothing depends on it); declined to change ADMIN.md, which is outside the mockups. Lead: ADMIN.md §5.2 lists 'disable a service' under L1 only, so it should gain that exception."
+      }
+    ]
+  },
+  "order": 6
+}

@@ -1,0 +1,44 @@
+{
+  "id": "identity.connection-new",
+  "title": "Add SSO connection: test sign-in",
+  "area": "identity",
+  "surface": "console",
+  "packages": [
+    "I-31",
+    "I-30",
+    "ST-39"
+  ],
+  "uxRows": [],
+  "summary": "The add-connection wizard at its third step: after discovery and the sealed client secret, the operator signs in once with a Kestrel Labs account; the page shows every claim the ID token carried and lets them pick which to read for groups, name, picture and birth date, with groups suggested. Domains and audience come next.",
+  "compare": [
+    "Built on the one wizard kit (ST-39): stepper Provider (Keycloak · platform), Client (Secret sealed), Test sign-in (current), Domains (DNS check), Who signs in. Done steps say what was decided.",
+    "A connection is added end to end in the console with no env edits (I-31 acceptance); scope (platform or one product) was chosen on step 1 and shows in its label.",
+    "The test sign-in mints nothing, binds nothing and records no consent; the lead paragraph says so.",
+    "The success callout names who signed in and when, says what was proven (client, secret, redirect URI, ID token signed by the provider's published key), and offers 'Sign in again'. The step before the sign-in is identity.connection-new-start; a refused sign-in is identity.connection-new-failed.",
+    "'What Kestrel Labs sent' lists every claim with its raw value in mono; claims that will be read carry an accent dot, and every row reserves the dot's width so names and values line up; sub and email explain their fixed roles (email is trusted only inside the connection's verified domains). The two panes are the same height.",
+    "'Read into Polaris Key' has one select per field (Groups, Name, Picture, Birth date). Groups is pre-filled and tagged Suggested with the reason; Birth date shows Not mapped when absent, with the 'apps never receive it' rule.",
+    "An info callout says groups give nothing on their own and names the two places that use them (a product's Access rules, Members → SSO rules), with the real group name.",
+    "Foot: Cancel (ghost, left), Back, and the primary 'Continue to domains', enabled only after a test sign-in has worked.",
+    "Phone: the stepper shows only the current step's label, the two panes stack (claims, then the selects), each claim's value goes under its name, and the primary takes the full first row of the foot."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: the step's first state and its failure are drawn as their own screens (identity.connection-new-start, identity.connection-new-failed); claims line up on phone.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "Only the success state of Test sign-in was drawn: not the button that starts it, the new window, a blocked popup, or the failure.",
+        "resolution": "Two new screens. identity.connection-new-start: the lead, one primary 'Sign in with Kestrel Labs' that 'opens Kestrel Labs' sign-in in a new window', the blocked-window fallback 'open the sign-in in this tab', an empty claims area, and 'Continue to domains' disabled with 'Sign in once to continue'. identity.connection-new-failed: a danger callout that says the provider refused the client secret and where to copy it again, the provider's answer verbatim ('unauthorized_client: Invalid client or Invalid client credentials', HTTP 401, the token endpoint, the time), 'Back to Client' and 'Try again'."
+      },
+      {
+        "severity": "minor",
+        "issue": "On phone, unread claims indented their name but not their value; on desktop the two panes ended at different heights.",
+        "resolution": "Every claim reserves the dot's width and on phone the value and note are indented by the same 13 px; the two panes stretch to the same height."
+      }
+    ]
+  },
+  "order": 4
+}

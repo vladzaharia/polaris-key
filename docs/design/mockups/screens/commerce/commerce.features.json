@@ -1,0 +1,55 @@
+{
+  "id": "commerce.features",
+  "title": "Features: Commerce turned on",
+  "area": "commerce",
+  "surface": "console",
+  "packages": [
+    "CM-29",
+    "ST-38"
+  ],
+  "uxRows": [
+    "UX-66"
+  ],
+  "summary": "DJDL's Settings → Features right after Commerce was switched on: the six features in canonical order, each with its own switches nested under it and its requirement line (Commerce needs Licensing, which is on; Cloud Sync needs Managed config and Sign-in), Commerce's fact as status (No storefront ready yet) with Set up a storefront, the Commerce group now in the sidebar, and a toast that says what changed.",
+  "compare": [
+    "Six feature rows in canonical order: Licensing, Managed config, Ship builds, Sign-in, Cloud Sync, Commerce. Each has its service glyph on an accent tile, one sentence, and one switch that saves on its own. Every switch on the page has one style (the brand accent with the same knob), so track colour and knob position say on or off; service colours stay on the tiles. On phone each switch has a hit area at least 24px tall (the row's label toggles it).",
+    "Commerce reads 'Needs Licensing, which is on' with a green tick, and Licensing reads 'Commerce needs it' with a muted two-way arrow; Cloud Sync's line names both of its requirements. Every requirement comes from tools/services.json, so the copy is generated, never hand-written per page.",
+    "When a requirement is off, the dependent's switch is disabled and its line says what to turn on first ('Needs Licensing. Turn it on first.'); the server refuses it too (commerce_requires_license). Drawn in commerce.features-blocked; a failed save in commerce.features-save-failed.",
+    "A feature's own switches sit under it as nested rows: Minted tokens (read-only status: on while a recipe is approved), In-app updates and Package feeds under Ship builds, Customer portal under Sign-in. No feature has a separate settings page for these.",
+    "Commerce's facts show as status text after its requirement: 'No storefront ready yet' (muted, dashed ring) and the link Set up a storefront to Storefronts' first-run (commerce.first-run). Once a storefront is live the fact reads 'Selling on App Store and Steam'.",
+    "The row just switched on is tinted in its accent for a moment. Turning a service on is L0: the toast says 'Commerce is on for DJDL', names the three new sidebar items and that nothing sells until a storefront is ready, and has Undo first and Open Storefronts beside it, both under the text. It never covers a switch: on desktop it sits in the gutter beside the narrow page; where there is no gutter the page scrolls the switched row above it.",
+    "The sidebar shows the Commerce group (Storefronts, Offers, Purchases) as soon as the switch saves; Settings is the active item in the sidebar foot.",
+    "Raw service names and the registration policy are only under Advanced, linked once below the card.",
+    "Phone: rows keep the tile, text and switch on one line with the requirement and facts wrapping under the description; nested rows indent under the text; the toast spans the width at the bottom, below the row just switched (the page scrolls it into view above the toast)."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: the toast has Undo and never covers a switch, switches share one style, and the requirement-off and failed-save states are drawn.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "[house rules] Turning a service on is L0 (an undo toast) but the toast has no Undo, and its one ghost action squeezes the message to four lines.",
+        "resolution": "Undo is the toast's first action (outline) with Open Storefronts beside it (ghost), both under the text."
+      },
+      {
+        "severity": "major",
+        "issue": "[visual] The toast covers the Sign-in and Customer portal switches on desktop and In-app updates and Package feeds on phone, and in a real viewport would sit over the Commerce row.",
+        "resolution": "Desktop: the toast sits bottom right inside the 272px gutter beside the narrow page (244px wide), clear of every switch; the message runs four lines at that width rather than the suggested two, because a 360px toast can't fit the gutter without covering switches. Phone: drawn after the list, as when the page scrolls the switched row above it. Compare items 6 and 9 updated."
+      },
+      {
+        "severity": "major",
+        "issue": "[plan / missing state] The owner rule (on only when requirements are on) isn't drawn, nor a failed save.",
+        "resolution": "Added commerce.features-blocked (Licensing and Sign-in off: Commerce and Cloud Sync switches disabled with aria-disabled, the line and tooltip 'Needs Licensing. Turn it on first.', Turn on Licensing / Turn on Sign-in links, no Commerce group in the sidebar) and commerce.features-save-failed (switch back off, an inline danger line with a reference id and Try again, no toast)."
+      },
+      {
+        "severity": "minor",
+        "issue": "[visual] Each switch uses its service colour and the knob is black on some on-switches and white on others, so the knob no longer signals state; the kit switch is 36x20 on phone, below the 24px target.",
+        "resolution": "Every switch on the page (and on commerce.turn-off-licensing and the two new feature states) uses the brand accent with one knob style; service colours stay on the tiles. The 24px phone hit area is now a compare requirement (the row's label toggles the switch); the kit keeps drawing the 36x20 switch, since a hit area isn't visible in a picture."
+      }
+    ]
+  },
+  "order": 23
+}

@@ -1,0 +1,23 @@
+{
+  "id": "config.cloud-sync-product-role",
+  "title": "Cloud Sync for a product role",
+  "area": "config",
+  "surface": "console",
+  "packages": [
+    "U-32",
+    "ST-16",
+    "ST-28"
+  ],
+  "uxRows": [],
+  "summary": "Diceroll's Cloud Sync page for a member whose role is on Diceroll only: platform controls (the default storage and the pause switch) are shown but disabled, each saying who can change them.",
+  "compare": [
+    "Everything a product role may change works as on config.cloud-sync (tier values, the product's total storage).",
+    "Change… on the Default row is disabled and the row says \"Only platform admins change it\" with a lock.",
+    "The pause switch is disabled (aria-disabled), stays visible so the member knows it exists, and says \"Only platform admins can pause writes. Ana Lima is one.\"",
+    "No control a member can't use looks active; nothing errors after a click.",
+    "Words: \"player\" for a game (Diceroll), \"person\" or \"account\" for an app (DJDL); storage in MiB and GiB, never MB; numbers and units never break across lines. products.integration's Cloud Sync card must say \"Storage per person: 256 MiB by default (Standard uses the default)\" to match this page."
+  ],
+  "status": "mockup",
+  "designReview": null,
+  "order": 16
+}

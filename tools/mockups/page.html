@@ -191,6 +191,7 @@ details.review summary .muted { font-weight: 400; }
       <div class="filters" id="status-filters" role="group" aria-label="Filter by status"></div>
     </div>
     <div id="areas"></div>
+    <div id="built-only"></div>
   </main>
 </div>
 
@@ -325,7 +326,8 @@ details.review summary .muted { font-weight: 400; }
       seg("Device", "device", [["desktop", "Desktop"], ["phone", "Phone"]], card),
     );
     if (!built) for (const b of card.toolbar.querySelectorAll('[data-k="view"]:not([data-v="mockup"])')) b.disabled = true;
-    const view = built ? card.opts.view : "mockup";
+    if (!card.screen.html) for (const b of card.toolbar.querySelectorAll('[data-k="view"]:not([data-v="built"])')) b.disabled = true;
+    const view = !card.screen.html ? "built" : built ? card.opts.view : "mockup";
     const panes = el("div", { class: "panes" + (view === "both" ? " two" : "") });
     if (view === "mockup" || view === "both") panes.append(mockPane(card, view === "both"));
     if (view === "built" || view === "both") panes.append(builtPane(card, built));
@@ -474,6 +476,28 @@ details.review summary .muted { font-weight: 400; }
 
   renderIndex(); renderCounts(); renderStatusFilters(); renderAll();
 
+  // Screens a package built or changed that have no mockup: they live only in the database.
+  let builtOnlyIds = [];
+  function renderBuiltOnly() {
+    const host = document.getElementById("built-only");
+    for (const id of builtOnlyIds) cards.delete(id);
+    builtOnlyIds = [];
+    host.replaceChildren();
+    const known = new Set(DATA.screens.map((s) => s.id));
+    const extra = Object.entries(live.screens).filter(([id, d]) => !known.has(id) && d && d.built).sort((a, b) => a[0].localeCompare(b[0]));
+    if (!extra.length) return;
+    const area = { key: "built-only", title: "Built without a mockup", accent: "core" };
+    const sec = el("section", { class: "area", id: "a-built-only", "aria-labelledby": "h-built-only" },
+      el("div", { class: "area-head" }, el("span", { class: "bit", style: "--accent:var(--svc-core)" }), el("h2", { id: "h-built-only", text: area.title }),
+        el("p", { text: "Screens that packages changed without a mockup. Each was used in a real browser by a UX designer, whose review is on the card." })));
+    for (const [id, d] of extra) {
+      const screen = { id, title: d.title || id, summary: d.summary || "", packages: d.packages || [], surface: d.surface || "built", status: d.status || "built", compare: d.compare || [], designReview: null, html: null };
+      builtOnlyIds.push(id);
+      sec.append(buildCard(screen, area));
+    }
+    host.append(sec);
+  }
+
   // --- Live data: status, built screenshots, reviews and notes -------------------
   (async () => {
     if (!window.claude || typeof window.claude.use !== "function") return;
@@ -494,6 +518,7 @@ details.review summary .muted { font-weight: 400; }
       const next = {};
       for (const d of snap.docs) next[d.id] = d.data() || {};
       live.screens = next;
+      renderBuiltOnly();
       renderIndex(); renderCounts(); applyFilter();
       for (const c of cards.values()) { paintCard(c); paintCols(c); }
     }, () => {});

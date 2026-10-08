@@ -1,0 +1,21 @@
+{
+  "id": "licenses.access-rule-states",
+  "title": "Add a rule: other states",
+  "area": "licenses",
+  "surface": "dialog",
+  "packages": ["LX-36", "P2-10"],
+  "uxRows": [],
+  "summary": "The Add a rule dialog's states beyond the happy path in licenses.access-rule: a group no sign-in has sent yet (saves, matches no one), a duplicate of an existing rule (inline error with Edit that rule), a blank group after Add rule, the match preview counting, and the preview failing with Retry.",
+  "order": 9,
+  "compare": [
+    "Zero matches: the preview slot is a warning, 'No sign-in from Pocket ID has sent <group> yet', saying the rule saves but matches no one until it does and that the name must match exactly; Add rule stays enabled. On Access the saved rule then shows '0 · can't match' in the warning tone.",
+    "Duplicate (same group from the same connection): an inline error under Group names the existing rule and what it gives, with an 'Edit that rule' link; the preview hides and Add rule is disabled until the group or connection changes.",
+    "Blank group on Add rule: 'Enter the group name exactly as Pocket ID sends it.' under the field, focus on it, nothing saved; the placeholder shows the expected shape.",
+    "Preview counting: a two-row skeleton in the preview slot, with a screen-reader-only status; no spinner; Add rule works while it counts.",
+    "Preview failed: a neutral callout in the preview slot, 'Couldn't count who has <group>', saying the rule still saves, with Retry; never blocks Add rule.",
+    "The same states apply to the domain and claim kinds, with the connection's name in the copy (a claim no sign-in has sent matches the Access page's readiness warning).",
+    "Accent: the dialog is core, like the Access page: focus ring, segments and primary all in core violet."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

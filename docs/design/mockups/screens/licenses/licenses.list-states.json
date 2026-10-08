@@ -1,0 +1,19 @@
+{
+  "id": "licenses.list-states",
+  "title": "Licenses list states",
+  "area": "licenses",
+  "surface": "console",
+  "packages": ["LX-30", "P0-29"],
+  "uxRows": [],
+  "summary": "The Licenses list's other four states, drawn from the round-1 review of licenses.list: first run with no licenses, a search and filters that match nothing, the first load as skeleton rows, and a load that failed, inline with Retry.",
+  "order": 2,
+  "compare": [
+    "First run (no licenses on the product): no holder control, no search, no table head; an empty state with the license glyph, 'No licenses yet', 'They appear when someone signs in under your Access rules, or when you create one.', New license (primary) and Open Access (outline). The header keeps only Create keys in bulk, so there is one primary.",
+    "No match: the holder segment, the search text and every facet chip stay set and visible; the table head stays; the body says 'No licenses match' and names what was searched, with one Clear filters button that resets search, holder and facets together.",
+    "Loading: skeleton rows at the real row height (61 px) under the real column heads, the holder counts as skeletons, no spinner and no 'Loading…' text on screen; a live region announces loading after a 150 ms grace.",
+    "Error: inline in the table body (ADMIN.md T2), not a toast: 'Licenses didn't load', what failed in plain words with the status, that the filters are kept, and Retry, which refetches with the same URL state.",
+    "Phone: each state keeps the list's phone header (New license full width when shown); the empty-state buttons stack full width."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

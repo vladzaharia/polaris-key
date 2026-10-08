@@ -1,0 +1,754 @@
+<style>
+  /* admin.platform-settings: Platform → Settings, sections ordered by how often they change. */
+  [data-screen="admin.platform-settings"] .layout {
+    display: grid;
+    grid-template-columns: 208px minmax(0, 1fr);
+    gap: 32px;
+    align-items: start;
+  }
+  [data-screen="admin.platform-settings"] .rail {
+    position: sticky;
+    top: 88px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  [data-screen="admin.platform-settings"] .rail-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 34px;
+    padding: 0 10px;
+    border-radius: var(--pk-radius-md);
+    color: var(--pk-text-muted);
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  [data-screen="admin.platform-settings"] .rail-item > .ic {
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="admin.platform-settings"] .rail-item .end {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="admin.platform-settings"] .rail-item.active {
+    background: var(--mk-fill);
+    color: var(--pk-text-strong);
+    font-weight: 700;
+    box-shadow: inset 2px 0 0 var(--pk-accent);
+  }
+  [data-screen="admin.platform-settings"] .rail-item.active > .ic {
+    color: var(--pk-accent);
+  }
+  [data-screen="admin.platform-settings"] .rail-sep {
+    height: 1px;
+    margin: 8px 10px;
+    background: var(--mk-line);
+  }
+  [data-screen="admin.platform-settings"] .rail-note {
+    padding: 4px 10px;
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="admin.platform-settings"] .rail-note .link {
+    display: inline;
+    font-size: 12px;
+  }
+  [data-screen="admin.platform-settings"] .content {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    min-width: 0;
+  }
+  [data-screen="admin.platform-settings"] .rail-select {
+    display: none;
+  }
+
+  /* Recently changed */
+  [data-screen="admin.platform-settings"] .change {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 160px;
+    align-items: center;
+    gap: 4px 16px;
+    padding: 12px 20px;
+  }
+  [data-screen="admin.platform-settings"] .change-what a {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    font-weight: 700;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="admin.platform-settings"] .change-what a > .ic {
+    width: 14px;
+    height: 14px;
+    color: var(--pk-accent-fg);
+  }
+  [data-screen="admin.platform-settings"] .change-what .where {
+    display: block;
+    font-size: 12px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="admin.platform-settings"] .delta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--pk-text-default);
+  }
+  [data-screen="admin.platform-settings"] .delta .was {
+    color: var(--pk-text-subtle);
+    text-decoration: line-through;
+  }
+  [data-screen="admin.platform-settings"] .delta .ic {
+    width: 12px;
+    height: 12px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="admin.platform-settings"] .who {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--pk-text-muted);
+    white-space: nowrap;
+  }
+  [data-screen="admin.platform-settings"] .who b {
+    display: block;
+    font-weight: 400;
+    color: var(--pk-text-default);
+  }
+
+  /* Setting rows: the registry renders every key with its control and inheritance. */
+  [data-screen="admin.platform-settings"] .setting-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  [data-screen="admin.platform-settings"] .setting-key {
+    font-family: var(--pk-font-mono);
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="admin.platform-settings"] .inherit {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="admin.platform-settings"] .inherit .logo.xs {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+  }
+  [data-screen="admin.platform-settings"] .control {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+  [data-screen="admin.platform-settings"] .control .input,
+  [data-screen="admin.platform-settings"] .control .select {
+    width: 150px;
+  }
+  [data-screen="admin.platform-settings"] .control .wide {
+    width: 280px;
+  }
+  [data-screen="admin.platform-settings"] .readonly-val {
+    font-size: 13px;
+    color: var(--pk-text-default);
+    text-align: right;
+  }
+  [data-screen="admin.platform-settings"] .readonly-val small {
+    display: block;
+    font-size: 12px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="admin.platform-settings"] .terms {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+    max-width: 400px;
+  }
+  [data-screen="admin.platform-settings"] .vchip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 26px;
+    padding: 0 6px 0 10px;
+    border-radius: 999px;
+    background: var(--mk-fill);
+    font-size: 13px;
+    color: var(--pk-text-strong);
+    white-space: nowrap;
+  }
+  [data-screen="admin.platform-settings"] .vchip > .ic {
+    width: 12px;
+    height: 12px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="admin.platform-settings"] .ready-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 220px;
+  }
+  [data-screen="admin.platform-settings"] .ready-row .progress {
+    flex: 1;
+  }
+  [data-screen="admin.platform-settings"] .ready-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    background: var(--pk-accent-subtle);
+    color: var(--pk-accent-fg);
+  }
+  [data-screen="admin.platform-settings"] .advanced {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 20px;
+  }
+
+  /* Edits: inputs and chips collect in the section's save bar (the licenses.tiers bar); switches
+     apply at once, and a platform-wide off asks first. */
+  [data-screen="admin.platform-settings"] .setting-row.changed {
+    background: color-mix(in oklab, var(--pk-accent-subtle) 40%, transparent);
+    box-shadow: inset 3px 0 0 var(--pk-accent);
+  }
+  [data-screen="admin.platform-settings"] .setting-row.changed .input {
+    border-color: var(--pk-accent);
+  }
+  [data-screen="admin.platform-settings"] .was-line {
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--pk-accent-fg);
+  }
+  [data-screen="admin.platform-settings"] .ctl-field {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+    width: 240px;
+  }
+  [data-screen="admin.platform-settings"] .ctl-field .input {
+    width: 150px;
+  }
+  [data-screen="admin.platform-settings"] .ctl-field .error-text {
+    text-align: left;
+  }
+  [data-screen="admin.platform-settings"] .save-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    padding: 14px 20px;
+    border-top: 1px solid var(--mk-line);
+    background: color-mix(in oklab, var(--pk-accent-subtle) 50%, var(--pk-surface-raised));
+    border-radius: 0 0 var(--pk-radius-xl) var(--pk-radius-xl);
+  }
+  [data-screen="admin.platform-settings"] .save-bar .msg {
+    flex: 1 1 320px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-default);
+  }
+  [data-screen="admin.platform-settings"] .save-bar .msg > .ic {
+    flex: none;
+    margin-top: 1px;
+    color: var(--pk-accent-fg);
+  }
+  [data-screen="admin.platform-settings"] .save-bar.blocked .msg > .ic {
+    color: var(--pk-danger);
+  }
+  [data-screen="admin.platform-settings"] .save-bar.saved {
+    background: color-mix(in oklab, var(--pk-success-subtle) 60%, var(--pk-surface-raised));
+  }
+  [data-screen="admin.platform-settings"] .save-bar.saved .msg > .ic {
+    color: var(--pk-success);
+  }
+  [data-screen="admin.platform-settings"] .save-bar .stepup {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--pk-text-muted);
+  }
+
+  /* Other states, drawn under the screen on the kit's board ground. */
+  [data-screen="admin.platform-settings"] .states {
+    min-height: 0;
+    gap: 32px 40px;
+    padding: 40px 32px 48px;
+    border-top: 1px dashed var(--pk-border-strong);
+  }
+  [data-screen="admin.platform-settings"] .states .board-title h1 {
+    font-size: 18px;
+    line-height: 26px;
+  }
+  [data-screen="admin.platform-settings"] .states .board-item {
+    width: 560px;
+  }
+  [data-screen="admin.platform-settings"] .states .dialog {
+    width: 100%;
+  }
+
+  @container screen (max-width: 1023px) {
+    [data-screen="admin.platform-settings"] .layout {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    [data-screen="admin.platform-settings"] .rail {
+      display: none;
+    }
+    [data-screen="admin.platform-settings"] .rail-select {
+      display: flex;
+    }
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="admin.platform-settings"] .change {
+      grid-template-columns: minmax(0, 1fr);
+      padding: 12px 16px;
+    }
+    [data-screen="admin.platform-settings"] .setting-row {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 10px;
+    }
+    [data-screen="admin.platform-settings"] .control {
+      justify-content: flex-start;
+    }
+    [data-screen="admin.platform-settings"] .control .input,
+    [data-screen="admin.platform-settings"] .control .select,
+    [data-screen="admin.platform-settings"] .control .wide {
+      width: 100%;
+    }
+    [data-screen="admin.platform-settings"] .terms {
+      justify-content: flex-start;
+      max-width: none;
+    }
+    [data-screen="admin.platform-settings"] .readonly-val {
+      text-align: left;
+    }
+    [data-screen="admin.platform-settings"] .ready-head {
+      flex-wrap: wrap;
+    }
+    [data-screen="admin.platform-settings"] .ready-row {
+      width: 100%;
+      order: 3;
+    }
+    [data-screen="admin.platform-settings"] .advanced {
+      padding: 14px 16px;
+      flex-wrap: wrap;
+    }
+    [data-screen="admin.platform-settings"] .setting-row:has(> .switch) {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+    /* The registry key gets its own line under the title, so it never squeezes the title. */
+    [data-screen="admin.platform-settings"] .setting-title {
+      flex-wrap: wrap;
+      gap: 2px 8px;
+    }
+    [data-screen="admin.platform-settings"] .setting-key {
+      flex-basis: 100%;
+    }
+    [data-screen="admin.platform-settings"] .ctl-field {
+      width: 100%;
+      align-items: stretch;
+    }
+    [data-screen="admin.platform-settings"] .ctl-field .input {
+      width: 100%;
+    }
+    [data-screen="admin.platform-settings"] .save-bar {
+      padding: 12px 16px;
+    }
+    [data-screen="admin.platform-settings"] .save-bar .btn {
+      flex: 1 1 auto;
+    }
+    [data-screen="admin.platform-settings"] .states {
+      gap: 28px;
+      padding: 28px 16px 36px;
+    }
+  }
+</style>
+
+<div class="console" data-service="core">
+  <header class="topbar">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <nav class="sidebar" aria-label="Platform">
+    <div class="ctx">
+      <span class="ctx-mark"><i class="ic ic-polaris"></i></span>
+      <span class="ctx-text"><span class="ctx-name">Platform</span><span class="ctx-sub">3 products</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item" href="#"><i class="ic ic-house"></i><span class="nav-text">Home</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-users"></i><span class="nav-text">Members</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-link"></i><span class="nav-text">Connections</span></a>
+    <a class="nav-item active" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-boxes"></i><span class="nav-text">Packages</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-server"></i><span class="nav-text">Status</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-history"></i><span class="nav-text">Activity</span></a>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="page">
+      <header class="page-head">
+        <div class="page-heading"><h1>Settings</h1></div>
+        <p class="page-sub">Settings for the whole platform, the ones people change most at the top. Each product can set its own value where a setting says so.</p>
+        <div class="page-actions">
+          <div class="search-field hide-phone" style="width: 280px"><i class="ic ic-search"></i><span class="muted">Search settings</span><kbd>/</kbd></div>
+          <button class="btn outline icon show-phone" aria-label="Search settings"><i class="ic ic-search"></i></button>
+          <button class="btn ghost"><i class="ic ic-history"></i>History</button>
+        </div>
+      </header>
+
+      <div class="layout">
+        <!-- The rail: every registry area, in this order, always. Each is also #/platform/settings/<area>. -->
+        <nav class="rail" aria-label="Settings sections">
+          <a class="rail-item active" href="#recent"><i class="ic ic-clock"></i>Recently changed</a>
+          <a class="rail-item" href="#ready"><i class="ic ic-rocket"></i>Platform ready<span class="end">8 of 9</span></a>
+          <a class="rail-item" href="#defaults"><i class="ic ic-sliders-horizontal"></i>Product defaults</a>
+          <a class="rail-item" href="#signin"><i class="ic ic-log-in"></i>Sign-in</a>
+          <a class="rail-item" href="#storefront"><i class="ic ic-store"></i>Storefront and hosting</a>
+          <a class="rail-item" href="#email"><i class="ic ic-mail"></i>Email and alerts</a>
+          <a class="rail-item" href="#licensing"><i class="ic ic-key-round"></i>Licensing</a>
+          <a class="rail-item" href="#jobs"><i class="ic ic-timer"></i>Jobs</a>
+          <a class="rail-item" href="#advanced"><i class="ic ic-server-cog"></i>Advanced</a>
+          <div class="rail-sep"></div>
+          <p class="rail-note">Members and SSO rules are under <a class="link" href="#">Members</a>. Sign-in providers, SSO and store keys are under <a class="link" href="#">Connections</a>.</p>
+        </nav>
+
+        <div class="content">
+          <div class="select rail-select"><i class="ic ic-clock"></i><span class="grow">Recently changed</span><i class="ic ic-chevrons-up-down"></i></div>
+
+          <!-- 1. Recently changed: the last five platform setting changes, from the audit. -->
+          <section class="section" id="recent" aria-labelledby="recent-title">
+            <div class="section-head"><div><h2 id="recent-title">Recently changed</h2><p>The last five changes to platform settings. Each opens its setting.</p></div><a class="link small hide-phone" href="#">All history<i class="ic ic-arrow-right"></i></a></div>
+            <div class="card">
+              <div class="card-rows">
+                <div class="change">
+                  <div class="change-what"><a href="#">Default media quota<i class="ic ic-chevron-right"></i></a><span class="where">Product defaults</span></div>
+                  <div class="delta"><span class="was">2 GB</span><i class="ic ic-arrow-right"></i><span>5 GB</span></div>
+                  <div class="who"><span class="avatar sm">PR</span><div><b>Priya Raman</b>Today, 09:41</div></div>
+                </div>
+                <div class="change">
+                  <div class="change-what"><a href="#">Extra reserved display terms<i class="ic ic-chevron-right"></i></a><span class="where">Sign-in</span></div>
+                  <div class="delta">Added <span class="vchip">Polaris Store</span></div>
+                  <div class="who"><span class="avatar sm violet">AL</span><div><b>Ada Lindqvist</b>Oct 6, 16:02</div></div>
+                </div>
+                <div class="change">
+                  <div class="change-what"><a href="#">Daily email limit<i class="ic ic-chevron-right"></i></a><span class="where">Email and alerts</span></div>
+                  <div class="delta"><span class="was">500</span><i class="ic ic-arrow-right"></i><span>2,000 emails</span></div>
+                  <div class="who"><span class="avatar sm">PR</span><div><b>Priya Raman</b>Oct 3, 11:15</div></div>
+                </div>
+                <div class="change">
+                  <div class="change-what"><a href="#">Blob collector grace period<i class="ic ic-chevron-right"></i></a><span class="where">Jobs</span></div>
+                  <div class="delta"><span class="was">14 days</span><i class="ic ic-arrow-right"></i><span>30 days</span></div>
+                  <div class="who"><span class="avatar sm">JW</span><div><b>Jonas Weber</b>Sep 30, 18:22</div></div>
+                </div>
+                <div class="change">
+                  <div class="change-what"><a href="#">Polaris Key storefront<i class="ic ic-chevron-right"></i></a><span class="where">Storefront and hosting</span></div>
+                  <div class="delta"><span class="was">Off</span><i class="ic ic-arrow-right"></i><span>On</span></div>
+                  <div class="who"><span class="avatar sm violet">AL</span><div><b>Ada Lindqvist</b>Sep 29, 10:05</div></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 2. Platform ready (UX-67), until complete; then one line, "All set". -->
+          <section class="card" id="ready" aria-labelledby="ready-title">
+            <div class="card-head ready-head">
+              <span class="ready-icon"><i class="ic ic-rocket"></i></span>
+              <div class="title"><h2 id="ready-title">Platform ready</h2><p>One step left: connect Steam so Diceroll’s Steam channel can upload builds.</p></div>
+              <div class="ready-row"><span class="small muted nowrap tnum">8 of 9 done</span><div class="progress success" style="--v: 88.8%"></div></div>
+            </div>
+            <div class="tasks padded">
+              <div class="task">
+                <span class="task-mark"></span>
+                <div class="task-title">Store connections</div>
+                <div class="task-desc">There’s no Steamworks publisher key yet, so builds can’t go to Steam.</div>
+                <div class="task-action"><button class="btn outline sm"><i class="ic ic-steam"></i>Connect Steam</button></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 3. Product defaults: what each product starts with, and who overrides. -->
+          <section class="section" id="defaults" aria-labelledby="defaults-title">
+            <div class="section-head"><div><h2 id="defaults-title">Product defaults</h2><p>What every product starts with. A product can set its own value in its settings.</p></div></div>
+            <div class="card">
+              <div class="card-rows">
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Default media quota <span class="setting-key">assets.quota.mediaBytes</span></div>
+                    <div class="setting-desc">Storage for icons, screenshots and cover art per product.</div>
+                    <div class="inherit">2 products use this · <span class="logo xs" data-product="djdl"></span>DJDL sets 8 GB</div>
+                  </div>
+                  <div class="control"><div class="input"><span class="grow tnum">5</span><span class="affix">GB</span></div></div>
+                </div>
+                <div class="setting-row changed">
+                  <div>
+                    <div class="setting-title">Default release-file quota <span class="setting-key">assets.quota.releaseBytes</span></div>
+                    <div class="setting-desc">Storage for builds, installers and packs per product.</div>
+                    <div class="inherit">2 products use this · <span class="logo xs" data-product="diceroll"></span>Diceroll sets 40 GB</div>
+                    <div class="was-line">Changed from 20 GB, not saved yet</div>
+                  </div>
+                  <div class="control"><div class="input"><span class="grow tnum">25</span><span class="affix">GB</span></div></div>
+                </div>
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Cloud Sync storage ceiling <span class="setting-key">cloudSync.ceiling.bytes</span></div>
+                    <div class="setting-desc">The most any product can store for one account. Each tier’s storage stays under it.</div>
+                    <div class="inherit">Used by DJDL, the only product with Cloud Sync on</div>
+                  </div>
+                  <div class="control"><div class="input"><span class="grow tnum">200</span><span class="affix">MB</span></div></div>
+                </div>
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Key-entry limit ceiling <span class="setting-key">identity.keyEntry.limit</span></div>
+                    <div class="setting-desc">The most key entries a product may allow for a license that is in no account. Products can set a lower limit, never a higher one.</div>
+                    <div class="inherit">3 products use this</div>
+                  </div>
+                  <div class="control"><div class="input"><span class="grow tnum">10</span><span class="affix">per license</span></div></div>
+                </div>
+              </div>
+              <div class="save-bar">
+                <span class="msg"><i class="ic ic-info"></i><span>1 change: Default release-file quota, 20 GB → 25 GB. DJDL gets 25 GB; Diceroll keeps its own 40 GB.</span></span>
+                <span class="stepup"><i class="ic ic-fingerprint"></i>Asks for your passkey</span>
+                <button class="btn ghost">Discard</button>
+                <button class="btn primary">Save product defaults</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- 4. Sign-in: what stays here after Connections took providers and SSO. -->
+          <section class="section" id="signin" aria-labelledby="signin-title">
+            <div class="section-head"><div><h2 id="signin-title">Sign-in</h2><p>Names and terms for every sign-in. Providers, SSO and verified domains are in <a class="link" href="#">Connections<i class="ic ic-arrow-right"></i></a></p></div></div>
+            <div class="card">
+              <div class="card-rows">
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Reserved display names <span class="setting-key">identity.reservedDisplayNames</span></div>
+                    <div class="setting-desc">What happens when a product or developer name uses a platform or store name, such as Apple or Steam.</div>
+                  </div>
+                  <div class="control"><div class="segmented sm"><span>Warn</span><span class="on">Refuse</span></div></div>
+                </div>
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Extra reserved display terms <span class="setting-key">identity.reservedDisplayTerms</span></div>
+                    <div class="setting-desc">More names nobody may use, on top of the built-in list.</div>
+                  </div>
+                  <div class="control"><div class="terms"><span class="vchip">Polaris Store<i class="ic ic-x"></i></span><span class="vchip">Plrs<i class="ic ic-x"></i></span><button class="btn ghost xs"><i class="ic ic-plus"></i>Add</button></div></div>
+                </div>
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Platform terms version <span class="setting-key">identity.termsVersion</span></div>
+                    <div class="setting-desc">People accept the new version the next time they sign in. Publishing a new version asks everyone again.</div>
+                  </div>
+                  <div class="control"><span class="readonly-val">2026-09<small>Published Sep 15</small></span><button class="btn outline sm">Publish new version</button></div>
+                </div>
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Console session length</div>
+                    <div class="setting-desc">Fixed, so a stolen session can’t make itself longer. Shown for reference.</div>
+                  </div>
+                  <div class="control"><span class="readonly-val">8 hours<small>Set in code, not a setting</small></span></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 5. Storefront and hosting -->
+          <section class="section" id="storefront" aria-labelledby="sf-title">
+            <div class="section-head"><div><h2 id="sf-title">Storefront and hosting</h2><p>What Polaris Key itself shows and hosts for every product.</p></div></div>
+            <div class="card">
+              <div class="card-rows">
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Polaris Key storefront <span class="setting-key">storefront.polarisKey.enabled</span></div>
+                    <div class="setting-desc">Shows Discover at key.plrs.im. Each product still chooses whether it appears there, on its Access page.</div>
+                  </div>
+                  <span class="switch on" role="switch" aria-checked="true"></span>
+                </div>
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Hosted assets <span class="setting-key">assets.hosting.enabled</span></div>
+                    <div class="setting-desc">Serves icons, screenshots and release files from Polaris Key. Off stops new uploads; nothing is deleted.</div>
+                  </div>
+                  <span class="switch on" role="switch" aria-checked="true"></span>
+                </div>
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Package feeds <span class="setting-key">packageFeeds.enabled</span></div>
+                    <div class="setting-desc">Off stops every product’s feeds on pkg.plrs.im at once, and asks first. Feeds set themselves up from each product’s manifest.</div>
+                  </div>
+                  <span class="switch on" role="switch" aria-checked="true"></span>
+                </div>
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Largest package file <span class="setting-key">packageFeeds.maxFileBytes</span></div>
+                    <div class="setting-desc">A publish with a bigger file is refused with this limit in the error.</div>
+                  </div>
+                  <div class="control"><div class="input"><span class="grow tnum">2</span><span class="affix">GB</span></div></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 6. Email and alerts -->
+          <section class="section" id="email" aria-labelledby="email-title">
+            <div class="section-head"><div><h2 id="email-title">Email and alerts</h2><p>Sign-in codes, invites and receipts, and where problems are reported.</p></div></div>
+            <div class="card">
+              <div class="card-rows">
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Sender <span class="setting-key">email.sender</span></div>
+                    <div class="setting-desc">The address every email comes from.</div>
+                  </div>
+                  <div class="control"><span class="readonly-val">no-reply@key.plrs.im<small><span class="status"><i class="ic ic-circle-check"></i>Verified</span></small></span><button class="btn outline sm">Change</button></div>
+                </div>
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Daily email limit <span class="setting-key">email.dailyLimit</span></div>
+                    <div class="setting-desc">Past the limit, sign-in codes still send and everything else waits until midnight UTC. 412 sent today.</div>
+                  </div>
+                  <div class="control"><div class="input"><span class="grow tnum">2,000</span><span class="affix">a day</span></div></div>
+                </div>
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Alerts go to <span class="setting-key">alerts.destinations</span></div>
+                    <div class="setting-desc">Failed jobs, expiring store keys and resync errors, as they happen.</div>
+                  </div>
+                  <div class="control"><div class="terms"><span class="vchip"><i class="ic ic-mail"></i>ops@example.com<i class="ic ic-x"></i></span><span class="vchip"><i class="ic ic-webhook"></i>hooks.example.com/pk<i class="ic ic-x"></i></span><button class="btn ghost xs"><i class="ic ic-plus"></i>Add</button></div></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 7. Licensing -->
+          <section class="section" id="licensing" aria-labelledby="lic-title">
+            <div class="section-head"><div><h2 id="lic-title">Licensing</h2><p>Rules every product’s catalog follows.</p></div></div>
+            <div class="card">
+              <div class="setting-row">
+                <div>
+                  <div class="setting-title">Reserved entitlement names <span class="setting-key">licensing.reservedNames</span></div>
+                  <div class="setting-desc">What happens when a catalog declares a system name, such as <code>channels</code> or <code>pkey.cloudSync.bytes</code>, with the wrong type. No product does today.</div>
+                </div>
+                <div class="control"><div class="segmented sm"><span>Warn</span><span class="on">Refuse</span></div></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 8. Jobs -->
+          <section class="section" id="jobs" aria-labelledby="jobs-title">
+            <div class="section-head"><div><h2 id="jobs-title">Jobs</h2><p>Work that runs on its own. Turning one off stops it for every product, and asks first.</p></div></div>
+            <div class="card">
+              <div class="card-rows">
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Lazy deltas <span class="setting-key">deltas.lazy.mode</span></div>
+                    <div class="setting-desc">Makes small update patches for products that ask for them. Last made one 14 min ago.</div>
+                  </div>
+                  <span class="switch on" role="switch" aria-checked="true"></span>
+                </div>
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Largest file to patch <span class="setting-key">deltas.lazy.maxBytes</span></div>
+                    <div class="setting-desc">Bigger builds download in full. In MiB because the patcher’s ceiling is exactly 32 MiB (33.5 MB); you can only lower it.</div>
+                  </div>
+                  <div class="control"><div class="field invalid ctl-field"><div class="input invalid"><span class="grow tnum">48</span><span class="affix">MiB</span></div><span class="error-text"><i class="ic ic-circle-x"></i>48 MiB is above the 32 MiB ceiling. Enter 32 or less.</span></div></div>
+                </div>
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Blob collector <span class="setting-key">blobs.gc.mode</span></div>
+                    <div class="setting-desc">Deletes stored files nothing has used for the grace period. Ran today at 03:17 and freed 1.2 GB.</div>
+                  </div>
+                  <span class="switch on" role="switch" aria-checked="true"></span>
+                </div>
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Grace period <span class="setting-key">blobs.gc.graceDays</span></div>
+                    <div class="setting-desc">How long a file goes unused before the collector may delete it.</div>
+                  </div>
+                  <div class="control"><div class="input"><span class="grow tnum">30</span><span class="affix">days</span></div></div>
+                </div>
+              </div>
+              <div class="save-bar blocked">
+                <span class="msg"><i class="ic ic-circle-x"></i><span>1 change can’t be saved yet: Largest file to patch is above its ceiling.</span></span>
+                <button class="btn ghost">Discard</button>
+                <button class="btn primary" disabled>Save jobs</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- 9. Advanced: deploy-time and generated values, read-only, folded. -->
+          <section class="card" id="advanced" aria-labelledby="adv-title">
+            <div class="advanced">
+              <span class="icon-tile sm muted"><i class="ic ic-server-cog"></i></span>
+              <div class="grow"><h2 id="adv-title" class="strong" style="font-size: 15px">Advanced</h2><p class="small muted">79 deployment values, limits, the keyring and which secrets are set. Read-only: they change with a deploy.</p></div>
+              <button class="btn ghost sm">Show<i class="ic ic-chevron-down"></i></button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Other states of Platform → Settings. -->
+<section class="board states" aria-label="Other states">
+  <div class="board-title"><h1>Other states</h1><p>For checking the built page. Each is a state of the page above.</p></div>
+
+  <figure class="board-item">
+    <div class="dialog danger">
+      <div class="dialog-head"><i class="ic ic-triangle-alert"></i><h2>Turn off package feeds for every product?</h2><button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button></div>
+      <div class="dialog-body">
+        <p>pkg.plrs.im stops serving every feed at once. Installs and updates through npm, pip, Swift Package Manager and container pulls fail until feeds are on again. Nothing is deleted.</p>
+        <p>These feeds stop:</p>
+        <ul class="bullets">
+          <li><strong>DJDL</strong>: npm <code>@djdl</code>, PyPI <code>djdl-crates</code> and Swift <code>djdl</code></li>
+          <li><strong>Diceroll</strong>: npm <code>diceroll</code> and the container image <code>diceroll/table-server</code></li>
+        </ul>
+      </div>
+      <div class="dialog-foot"><span class="start small muted row gap-1"><i class="ic ic-fingerprint sm"></i>Then your passkey</span><button class="btn outline">Cancel</button><button class="btn danger">Turn off feeds for 2 products</button></div>
+    </div>
+    <figcaption><strong>Turning Package feeds off.</strong>The confirmation names every product whose feeds stop. Turning a job off asks the same way and names what stops running.</figcaption>
+  </figure>
+
+  <figure class="board-item">
+    <div class="card">
+      <div class="setting-row">
+        <div>
+          <div class="setting-title">Default release-file quota <span class="setting-key">assets.quota.releaseBytes</span></div>
+          <div class="setting-desc">Storage for builds, installers and packs per product.</div>
+          <div class="inherit">2 products use this · <span class="logo xs" data-product="diceroll"></span>Diceroll sets 40 GB</div>
+        </div>
+        <div class="control"><div class="input"><span class="grow tnum">25</span><span class="affix">GB</span></div></div>
+      </div>
+      <div class="save-bar saved">
+        <span class="msg"><i class="ic ic-circle-check"></i><span>Saved. Default release-file quota is 25 GB; it’s now first in Recently changed.</span></span>
+        <button class="btn ghost">Undo</button>
+      </div>
+    </div>
+    <figcaption><strong>After Save.</strong>The bar says Saved for a few seconds, with Undo, then goes away.</figcaption>
+  </figure>
+</section>

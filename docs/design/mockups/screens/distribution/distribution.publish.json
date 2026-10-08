@@ -1,0 +1,67 @@
+{
+  "id": "distribution.publish",
+  "title": "Publish dialog",
+  "area": "distribution",
+  "surface": "dialog",
+  "packages": [
+    "A-24",
+    "P2-08",
+    "A-23"
+  ],
+  "uxRows": [
+    "UX-58"
+  ],
+  "order": 4,
+  "summary": "Publish 1.9.0 for Diceroll over the dimmed Channels page: one dialog for every live channel, with the channels this click affects as checked rows with their own rollout controls, the testing lanes and followers that need no click as one summary line, a channel not yet set up as one line, and production store submission as one typed confirmation. The header and footer stay in view; what happens after the click is distribution.publish-result.",
+  "compare": [
+    "One dialog per release, opened from the release record, the Channels header, each channel's header and Releases tab, and the palette; the title is 'Publish 1.9.0' and the meta line names the signing key and what the click does in the release-track words ('Promotes 1.9.0 from beta to stable'), the platforms with their CPU where it matters (iOS, Android, Windows x64, Linux x86_64) and when it arrived from CI.",
+    "The header and footer stay in view and the body scrolls, capped to the viewport (the dialog starts 64 px down and is at most 100vh − 96 px); at 1440×900 the whole dialog, Cancel and Publish included, is above the fold. On phone it is a full-height sheet with the footer pinned to the bottom.",
+    "When you publish lists only live channels this click changes, each with what will happen there in its own words: a staged rollout of stable on Polaris Key (and that Scoop and Obtainium follow it), a submission for review on the App Store with the build number, a promotion from closed testing on Google Play.",
+    "Rollout controls appear only where the channel has one: Polaris Key's staged rollout; the App Store's release choice with three options, 'Phased release, 7 days · release when approved', 'Phased release · hold for my click' and 'All at once · release when approved' (the closed select shows 'Phased, 7 days · when approved'); Play's staged rollout percentage.",
+    "A channel in Attention can still publish and says why it needs attention in its row (Google Play's key expires Oct 16, Replace key).",
+    "No click needed is one summary line ('4 channels already have 1.9.0 or follow by themselves') with Show. Its detail names them: TestFlight · Beta testers and Google Play closed testing already have 1.9.0 (ticks, with when), and itch.io and winget follow when the stable rollout reaches 100% (clocks). These are never checkboxes. itch.io gets stable only, so it never has a release before Publish.",
+    "A channel not yet set up is never a row: one line says 'Steam isn't set up yet (step 2 of 4 for you)' with Continue setup. 'Setting up' never appears.",
+    "Store submissions need one typed confirmation: the version (1.9.0) in mono, the field, and two hint lines: 'Store review can't be undone, so store submissions need the version typed.' and 'Halt everywhere on Rollouts also pauses Apple's phased release and halts Play's staged rollout.' There is no automatic production submission anywhere.",
+    "The primary says exactly what happens and how many: 'Publish to 3 channels'. Cancel is beside it. After the click the dialog stays open as per-channel progress (distribution.publish-result) and closes to a toast only when every channel succeeds.",
+    "Phone: the dialog is a full-height sheet; each row's control drops under its text at full width; No click needed shows its summary line and Show only; the typed confirmation is at the end of the scrolling body; the footer buttons share the row and stay at the bottom."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: the footer is above the fold at 1440×900 and pinned on phone, No click needed is one line, itch.io follows stable, the meta says 'Promotes … from beta to stable', the hint is two lines, App Store release options are named, and the after-click state is drawn as its own screen.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "[layout] At 1440×900 Cancel and Publish fall below the fold; on phone the primary is a screen and a half down.",
+        "resolution": "Header and footer are pinned and the body scrolls, capped to the viewport; the dialog starts 64 px down and is 720 px wide, and No click needed collapses to one line, so at 1440×900 the whole dialog fits (checked with a viewport-only shot, light and dark). On phone it is a full-height sheet with the footer at the bottom (checked at 390×844)."
+      },
+      {
+        "severity": "major",
+        "issue": "[states] Nothing shows what happens after the click; partial success is the realistic outcome.",
+        "resolution": "Drawn as a new screen, distribution.publish-result: each row becomes its channel's progress (Polaris Key done, Google Play sending, the App Store failed with 'Apple didn't accept the submission: build 214 has no export compliance answers. Answer them in App Store Connect, then retry.' and Retry App Store for that channel only). The dialog closes to a toast only when every channel succeeds. Both compare lists say so."
+      },
+      {
+        "severity": "major",
+        "issue": "[versus the plan and other areas] itch.io already had the unpublished 1.9.0, contradicting Release tracks (stable only).",
+        "resolution": "itch.io follows stable: the No click needed line says itch.io and winget follow when the stable rollout reaches 100%, the Channels row says itch.io has 1.8.2 and gets each stable release, and the download page shows the page after the rollout finished."
+      },
+      {
+        "severity": "minor",
+        "issue": "[copy] The meta reads as if 1.9.0 were already on stable and drops the CPUs; the hint packs two ideas into one sentence.",
+        "resolution": "Meta: 'Promotes 1.9.0 from beta to stable · iOS, Android, Windows x64, Linux x86_64 · from CI 22 min ago'. The hint is two lines, one about typing the version, one about Halt everywhere."
+      },
+      {
+        "severity": "minor",
+        "issue": "[flow] The App Store row doesn't say what happens once Apple approves.",
+        "resolution": "The select reads 'Phased, 7 days · when approved' and the compare names its three options: 'Phased release, 7 days · release when approved', 'Phased release · hold for my click', 'All at once · release when approved'."
+      },
+      {
+        "severity": "minor",
+        "issue": "[versus mockup: better than the compare] The render's 'No click needed' beats the compare's 'Already done'.",
+        "resolution": "The compare now says 'No click needed', and the render keeps it."
+      }
+    ]
+  }
+}

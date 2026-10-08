@@ -1,0 +1,22 @@
+{
+  "id": "commerce.offers-empty",
+  "title": "Offers: none yet",
+  "area": "commerce",
+  "surface": "console",
+  "packages": [
+    "CM-23",
+    "CM-29"
+  ],
+  "uxRows": [],
+  "summary": "DJDL's Offers before the first offer, right after the App Store connected: the kit's empty state says what an offer is in one sentence, that DJDL already has 3 in-app purchases on the App Store that can become offers, and offers Import from App Store beside New offer.",
+  "compare": [
+    "First-run empty state (EXPERIENCE.md §9): an icon in the Commerce tint, 'No offers yet', one paragraph and the two actions; no empty table, stats or filters.",
+    "The page head keeps its title and sub-line but no actions while the empty state carries them, so New offer appears once.",
+    "Import from App Store names the store it reads (only connected storefronts with products are offered); with no store connected, only New offer shows and the sentence about existing in-app purchases is absent.",
+    "New offer opens the editor (commerce.offer-new); Import shows the suggestions (commerce.offers-import).",
+    "Phone: the empty state centres in its card and the two buttons stack, the primary on top."
+  ],
+  "status": "mockup",
+  "designReview": null,
+  "order": 9
+}

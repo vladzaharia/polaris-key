@@ -1,0 +1,648 @@
+<style>
+  /* distribution.download-page: the download page's hero, recommended panel, and one card per platform with every way to get it. */
+  [data-screen="distribution.download-page"] .sidebar-foot {
+    position: static;
+  }
+  [data-screen="distribution.download-page"] .nav-sub {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    margin: 0 0 4px 21px;
+    padding-left: 7px;
+    border-left: 1px solid var(--mk-line);
+  }
+  [data-screen="distribution.download-page"] .nav-sub > .nav-item {
+    height: 30px;
+    gap: 8px;
+    padding: 0 8px;
+    font-size: 13px;
+  }
+  [data-screen="distribution.download-page"] .nav-sub > .nav-item > .ic {
+    width: 14px;
+    height: 14px;
+  }
+  [data-screen="distribution.download-page"] .nav-sub .nav-note {
+    margin-left: auto;
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="distribution.download-page"] .nav-sub .nav-warn {
+    flex: none;
+    margin-left: auto;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--pk-warning);
+  }
+  [data-screen="distribution.download-page"] .ch {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: var(--mk-fill);
+    color: var(--pk-text-strong);
+    box-shadow: inset 0 0 0 1px var(--mk-line);
+  }
+  [data-screen="distribution.download-page"] .ch > .ic {
+    width: 20px;
+    height: 20px;
+    vertical-align: 0;
+  }
+  [data-screen="distribution.download-page"] .ch.sm {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+  }
+  [data-screen="distribution.download-page"] .ch.sm > .ic {
+    width: 16px;
+    height: 16px;
+  }
+  [data-screen="distribution.download-page"] .ch.lg {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+  }
+  [data-screen="distribution.download-page"] .ch.lg > .ic {
+    width: 26px;
+    height: 26px;
+  }
+  [data-screen="distribution.download-page"] .ch.pk {
+    background: var(--pk-service-core-subtle);
+    color: var(--pk-service-core-fg);
+    box-shadow: none;
+  }
+  [data-screen="distribution.download-page"] .qr {
+    display: inline-flex;
+    flex: none;
+    padding: 4px;
+    border-radius: 10px;
+    background: var(--pk-brand-page);
+    color: var(--pk-brand-text);
+    box-shadow: inset 0 0 0 1px var(--mk-line);
+  }
+  [data-theme="dark"] [data-screen="distribution.download-page"] .qr {
+    background: var(--pk-brand-text);
+    color: var(--pk-brand-page);
+  }
+  [data-screen="distribution.download-page"] .qr-svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  [data-screen="distribution.download-page"] .dl-page {
+    max-width: 920px;
+    gap: 28px;
+  }
+  [data-screen="distribution.download-page"] .hero {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--mk-line);
+    border-radius: var(--pk-radius-xl);
+    background: var(--pk-surface-raised);
+    box-shadow: var(--mk-card-shadow);
+    overflow: hidden;
+  }
+  [data-screen="distribution.download-page"] .hero > .art {
+    aspect-ratio: auto;
+    height: 168px;
+    border-radius: 0;
+  }
+  [data-screen="distribution.download-page"] .hero-body {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 8px 20px;
+    margin-top: -44px;
+    padding: 0 24px 22px;
+  }
+  [data-screen="distribution.download-page"] .hero-body > .logo {
+    align-self: start;
+  }
+  [data-screen="distribution.download-page"] .hero-name {
+    padding-top: 54px;
+  }
+  [data-screen="distribution.download-page"] .hero-body .logo.xl {
+    box-shadow: 0 0 0 4px var(--pk-surface-raised), var(--pk-elevation-2);
+  }
+  [data-screen="distribution.download-page"] .hero-body h1 {
+    font-size: 32px;
+    line-height: 38px;
+  }
+  [data-screen="distribution.download-page"] .hero-sub {
+    color: var(--pk-text-muted);
+  }
+  [data-screen="distribution.download-page"] .hero-sub a {
+    color: var(--pk-accent-fg);
+  }
+  [data-screen="distribution.download-page"] .pitch {
+    grid-column: 1 / -1;
+    max-width: 640px;
+    margin-top: 8px;
+    color: var(--pk-text-default);
+  }
+  [data-screen="distribution.download-page"] .rec {
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 4px 16px;
+    padding: 18px 20px;
+    border: 1px solid color-mix(in oklab, var(--pk-accent) 45%, transparent);
+    border-radius: 16px;
+    background: var(--pk-accent-subtle);
+  }
+  [data-screen="distribution.download-page"] .rec .icon-tile.lg {
+    background: var(--pk-surface-raised);
+    color: var(--pk-text-strong);
+  }
+  [data-screen="distribution.download-page"] .rec-label {
+    font-size: 13px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="distribution.download-page"] .rec-title {
+    font-size: 17px;
+    line-height: 24px;
+    font-weight: 700;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="distribution.download-page"] .rec-file {
+    font-size: 13px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="distribution.download-page"] .rec-file .mono {
+    font-size: 12px;
+  }
+  [data-screen="distribution.download-page"] .all-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 8px 16px;
+  }
+  [data-screen="distribution.download-page"] .all-head h2 {
+    flex: 1;
+    font-size: 20px;
+    line-height: 28px;
+    font-weight: 700;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="distribution.download-page"] .sums {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="distribution.download-page"] .sums a {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--pk-accent-fg);
+  }
+  [data-screen="distribution.download-page"] .plat {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--mk-line);
+    border-radius: var(--pk-radius-xl);
+    background: var(--pk-surface-raised);
+    box-shadow: var(--mk-card-shadow);
+  }
+  [data-screen="distribution.download-page"] .plat-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--mk-line);
+  }
+  [data-screen="distribution.download-page"] .plat-head h3 {
+    font-size: 16px;
+    line-height: 22px;
+    font-weight: 700;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="distribution.download-page"] .plat-head .ic {
+    width: 18px;
+    height: 18px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="distribution.download-page"] .way {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 6px 16px;
+    padding: 14px 20px;
+  }
+  [data-screen="distribution.download-page"] .way + .way {
+    border-top: 1px solid var(--mk-line);
+  }
+  [data-screen="distribution.download-page"] .way-title {
+    font-weight: 700;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="distribution.download-page"] .way-desc {
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="distribution.download-page"] .file {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 12px;
+    font-size: 13px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="distribution.download-page"] .file .name {
+    font-family: var(--pk-font-mono);
+    font-size: 12px;
+    color: var(--pk-text-default);
+  }
+  [data-screen="distribution.download-page"] .hash {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: var(--pk-radius-sm);
+    background: var(--mk-fill);
+    font-family: var(--pk-font-mono);
+    font-size: 11px;
+    color: var(--pk-text-muted);
+    white-space: nowrap;
+  }
+  [data-screen="distribution.download-page"] .hash > .ic {
+    width: 12px;
+    height: 12px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="distribution.download-page"] .way-act {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  [data-screen="distribution.download-page"] .way-act .qr {
+    width: 84px;
+    height: 84px;
+  }
+  [data-screen="distribution.download-page"] .qr-cap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="distribution.download-page"] .steps {
+    grid-column: 2 / -1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 6px;
+  }
+  [data-screen="distribution.download-page"] .steps ol {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    counter-reset: s;
+  }
+  [data-screen="distribution.download-page"] .steps li {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+    counter-increment: s;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-default);
+  }
+  [data-screen="distribution.download-page"] .steps li::before {
+    content: counter(s);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--mk-fill);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="distribution.download-page"] .steps li > div {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    padding-top: 2px;
+  }
+  [data-screen="distribution.download-page"] .btn.store {
+    min-width: 176px;
+  }
+  [data-screen="distribution.download-page"] .absent {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="distribution.download-page"] .absent > .ic {
+    margin-top: 1px;
+    color: var(--pk-text-subtle);
+  }
+  /* A download link that couldn't be made: what went wrong, the way out, and Try again. */
+  [data-screen="distribution.download-page"] .dl-error {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    margin-top: 2px;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-danger);
+  }
+  [data-screen="distribution.download-page"] .dl-error > .ic {
+    flex: none;
+    margin-top: 1px;
+  }
+  [data-screen="distribution.download-page"] .dl-error .link {
+    font-size: 13px;
+  }
+  [data-screen="distribution.download-page"] .mix {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="distribution.download-page"] .mix > .ic {
+    flex: none;
+    margin-top: 1px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="distribution.download-page"] .fresh {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="distribution.download-page"] .fresh > .ic {
+    margin-top: 1px;
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="distribution.download-page"] .hero > .art {
+      height: 112px;
+    }
+    [data-screen="distribution.download-page"] .hero-body {
+      grid-template-columns: auto minmax(0, 1fr);
+      margin-top: -32px;
+      padding: 0 16px 18px;
+      gap: 6px 14px;
+    }
+    [data-screen="distribution.download-page"] .hero-body .logo.xl {
+      width: 72px;
+      height: 72px;
+      border-radius: 18px;
+    }
+    [data-screen="distribution.download-page"] .hero-name {
+      padding-top: 38px;
+    }
+    [data-screen="distribution.download-page"] .hero-body h1 {
+      font-size: 26px;
+      line-height: 32px;
+    }
+    [data-screen="distribution.download-page"] .hero-body > .hero-plats {
+      display: none;
+    }
+    [data-screen="distribution.download-page"] .rec {
+      grid-template-columns: 40px minmax(0, 1fr);
+      padding: 16px;
+    }
+    [data-screen="distribution.download-page"] .all-head {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    [data-screen="distribution.download-page"] .all-head h2 {
+      flex: none;
+    }
+    [data-screen="distribution.download-page"] .rec .icon-tile.lg {
+      width: 40px;
+      height: 40px;
+    }
+    [data-screen="distribution.download-page"] .rec > .btn {
+      grid-column: 1 / -1;
+      margin-top: 8px;
+    }
+    [data-screen="distribution.download-page"] .plat-head,
+    [data-screen="distribution.download-page"] .way {
+      padding-left: 16px;
+      padding-right: 16px;
+    }
+    [data-screen="distribution.download-page"] .way {
+      grid-template-columns: 36px minmax(0, 1fr);
+    }
+    [data-screen="distribution.download-page"] .way > .way-act {
+      grid-column: 2;
+    }
+    [data-screen="distribution.download-page"] .way-act .qr,
+    [data-screen="distribution.download-page"] .qr-cap {
+      display: none;
+    }
+    [data-screen="distribution.download-page"] .steps {
+      grid-column: 1 / -1;
+    }
+    /* Public page, no tab bar: Sign in stays in the top bar, icon and text. */
+    [data-screen="distribution.download-page"] .portal-actions > .btn.signin {
+      display: inline-flex !important;
+    }
+    /* The visitor's own platform comes first (Android here), then the rest in the fixed order. */
+    [data-screen="distribution.download-page"] .all-head {
+      order: -2;
+    }
+    [data-screen="distribution.download-page"] .plat.mine {
+      order: -1;
+    }
+    /* Commands break only after a slash, with the prompt and Copy on the first line. */
+    [data-screen="distribution.download-page"] .cmd {
+      align-items: flex-start;
+    }
+    [data-screen="distribution.download-page"] .cmd > span {
+      overflow-wrap: normal;
+      word-break: normal;
+    }
+    [data-screen="distribution.download-page"] .cmd > .btn {
+      margin-block: -4px;
+    }
+  }
+</style>
+
+<div class="portal" data-service="core">
+  <header class="portal-top">
+    <a class="portal-brand" href="#"><i class="pk-mark sm"></i>Polaris Key</a>
+    <div class="portal-actions">
+      <span class="small muted hide-phone">Already have Diceroll in your Library?</span>
+      <button class="btn outline sm signin"><i class="ic ic-log-in"></i>Sign in</button>
+    </div>
+  </header>
+
+  <main class="portal-page dl-page">
+    <section class="hero" aria-labelledby="dl-title">
+      <div class="art" data-product="diceroll"></div>
+      <div class="hero-body">
+        <span class="logo xl" data-product="diceroll"></span>
+        <div class="stack gap-1 hero-name">
+          <h1 id="dl-title">Diceroll</h1>
+          <span class="hero-sub">by <a href="#">Twelve Pips Studio</a> · 1.9.0 · released Oct 7, 2026</span>
+        </div>
+        <span class="platforms hero-plats" aria-label="iOS, Android, Windows, Linux"><i class="ic ic-apple"></i><i class="ic ic-android"></i><i class="ic ic-windows"></i><i class="ic ic-linux"></i></span>
+        <p class="pitch">A pocket roguelike where every room is a roll. Build a bag of strange dice, then break the house.</p>
+      </div>
+    </section>
+
+    <!-- Recommended for the detected device: a PC on desktop, an Android phone on phone. -->
+    <section class="rec hide-phone" aria-label="Recommended for your PC">
+      <span class="icon-tile lg"><i class="ic ic-windows"></i></span>
+      <div class="stack gap-1">
+        <span class="rec-label">Recommended for your PC</span>
+        <span class="rec-title">Windows · x64</span>
+        <span class="rec-file"><span class="mono">Diceroll-1.9.0-windows-x64.zip</span> · 148 MB</span>
+      </div>
+      <button class="btn primary lg"><i class="ic ic-download"></i>Download</button>
+    </section>
+    <div class="show-phone">
+    <section class="rec" aria-label="Recommended for this phone">
+      <span class="icon-tile lg"><i class="ic ic-android"></i></span>
+      <div class="stack gap-1">
+        <span class="rec-label">On this Android phone</span>
+        <span class="rec-title">Google Play</span>
+        <span class="rec-file">Free · in-app purchases</span>
+      </div>
+      <button class="btn primary lg"><i class="ic ic-google-play"></i>Get it on Google Play</button>
+    </section>
+    </div>
+
+    <section class="stack gap-4" aria-labelledby="all-title">
+      <div class="all-head">
+        <h2 id="all-title">Every way to get Diceroll</h2>
+        <span class="sums"><i class="ic ic-shield-check sm"></i>Check a download with <a href="#"><span class="mono">SHA256SUMS</span><i class="ic ic-arrow-up-right sm"></i></a></span>
+      </div>
+
+      <article class="plat" aria-labelledby="p-win">
+        <div class="plat-head"><i class="ic ic-windows"></i><h3 id="p-win">Windows</h3><span class="arch-tag mono small muted">x64</span></div>
+        <div class="way">
+          <span class="ch"><i class="ic ic-download"></i></span>
+          <div class="stack gap-1">
+            <span class="way-title">Download</span>
+            <span class="file"><span class="name">Diceroll-1.9.0-windows-x64.zip</span><span>148 MB</span><span class="hash" title="SHA-256">SHA-256 9f2c41…e81a<i class="ic ic-copy"></i></span></span>
+          </div>
+          <div class="way-act"><button class="btn outline"><i class="ic ic-download"></i>Download</button></div>
+        </div>
+        <div class="way">
+          <span class="ch"><i class="ic ic-itch"></i></span>
+          <div class="stack gap-1">
+            <span class="way-title">itch.io</span>
+            <span class="way-desc">The same build, with the itch.io app’s updates.</span>
+          </div>
+          <div class="way-act"><button class="btn outline"><i class="ic ic-external-link"></i>Open itch.io</button></div>
+        </div>
+        <div class="way">
+          <span class="ch"><i class="ic ic-square-terminal"></i></span>
+          <div class="stack gap-1">
+            <span class="way-title">Scoop</span>
+            <span class="way-desc">Install from the command line, then update with the rest of your Scoop apps.</span>
+          </div>
+          <div class="steps">
+            <ol>
+              <li><div><span>No Scoop yet? Install it from <a class="link" href="#">scoop.sh</a>.</span></div></li>
+              <li><div><span>Install Diceroll:</span><div class="cmd"><span>scoop install https://<wbr>key.plrs.im/<wbr>diceroll/<wbr>distribution/<wbr>scoop/<wbr>stable.json</span><button class="btn ghost icon xs" aria-label="Copy the install command"><i class="ic ic-copy"></i></button></div></div></li>
+              <li><div><span>Update later:</span><div class="cmd"><span>scoop update diceroll</span><button class="btn ghost icon xs" aria-label="Copy the update command"><i class="ic ic-copy"></i></button></div></div></li>
+            </ol>
+          </div>
+        </div>
+      </article>
+
+      <article class="plat mine" aria-labelledby="p-and">
+        <div class="plat-head"><i class="ic ic-android"></i><h3 id="p-and">Android</h3></div>
+        <div class="way">
+          <span class="ch"><i class="ic ic-google-play"></i></span>
+          <div class="stack gap-1">
+            <span class="way-title">Google Play</span>
+            <span class="way-desc">Free, with in-app purchases. Updates through Google Play.</span>
+          </div>
+          <div class="way-act">
+            <span class="qr-cap"><span class="qr" aria-label="QR code for Google Play"><svg class="qr-svg" viewBox="0 0 29 29" aria-hidden="true" shape-rendering="crispEdges"><path fill="currentColor" d="M2 2h7v1h-7zM10 2h2v1h-2zM16 2h1v1h-1zM18 2h1v1h-1zM20 2h7v1h-7zM2 3h1v1h-1zM8 3h1v1h-1zM11 3h1v1h-1zM13 3h1v1h-1zM15 3h3v1h-3zM20 3h1v1h-1zM26 3h1v1h-1zM2 4h1v1h-1zM4 4h3v1h-3zM8 4h1v1h-1zM10 4h3v1h-3zM17 4h1v1h-1zM20 4h1v1h-1zM22 4h3v1h-3zM26 4h1v1h-1zM2 5h1v1h-1zM4 5h3v1h-3zM8 5h1v1h-1zM10 5h3v1h-3zM16 5h2v1h-2zM20 5h1v1h-1zM22 5h3v1h-3zM26 5h1v1h-1zM2 6h1v1h-1zM4 6h3v1h-3zM8 6h1v1h-1zM10 6h2v1h-2zM14 6h1v1h-1zM16 6h1v1h-1zM20 6h1v1h-1zM22 6h3v1h-3zM26 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM10 7h2v1h-2zM13 7h1v1h-1zM17 7h2v1h-2zM20 7h1v1h-1zM26 7h1v1h-1zM2 8h7v1h-7zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM20 8h7v1h-7zM10 9h2v1h-2zM13 9h4v1h-4zM18 9h1v1h-1zM2 10h1v1h-1zM4 10h1v1h-1zM6 10h3v1h-3zM10 10h1v1h-1zM12 10h1v1h-1zM18 10h1v1h-1zM20 10h3v1h-3zM25 10h1v1h-1zM3 11h2v1h-2zM7 11h1v1h-1zM14 11h1v1h-1zM16 11h1v1h-1zM18 11h1v1h-1zM22 11h1v1h-1zM24 11h3v1h-3zM2 12h1v1h-1zM8 12h1v1h-1zM10 12h1v1h-1zM12 12h2v1h-2zM15 12h2v1h-2zM18 12h1v1h-1zM2 13h2v1h-2zM10 13h2v1h-2zM13 13h4v1h-4zM18 13h2v1h-2zM23 13h1v1h-1zM26 13h1v1h-1zM2 14h1v1h-1zM4 14h2v1h-2zM7 14h2v1h-2zM10 14h2v1h-2zM14 14h1v1h-1zM17 14h3v1h-3zM24 14h3v1h-3zM7 15h1v1h-1zM10 15h1v1h-1zM14 15h1v1h-1zM18 15h3v1h-3zM22 15h4v1h-4zM2 16h8v1h-8zM12 16h3v1h-3zM16 16h3v1h-3zM20 16h1v1h-1zM23 16h3v1h-3zM2 17h3v1h-3zM6 17h2v1h-2zM10 17h2v1h-2zM14 17h2v1h-2zM19 17h1v1h-1zM23 17h3v1h-3zM3 18h2v1h-2zM8 18h3v1h-3zM14 18h2v1h-2zM18 18h5v1h-5zM25 18h2v1h-2zM10 19h2v1h-2zM14 19h3v1h-3zM18 19h1v1h-1zM22 19h1v1h-1zM26 19h1v1h-1zM2 20h7v1h-7zM11 20h1v1h-1zM13 20h3v1h-3zM17 20h2v1h-2zM20 20h1v1h-1zM22 20h1v1h-1zM26 20h1v1h-1zM2 21h1v1h-1zM8 21h1v1h-1zM10 21h1v1h-1zM14 21h2v1h-2zM18 21h1v1h-1zM22 21h2v1h-2zM2 22h1v1h-1zM4 22h3v1h-3zM8 22h1v1h-1zM10 22h1v1h-1zM13 22h1v1h-1zM16 22h1v1h-1zM18 22h5v1h-5zM24 22h3v1h-3zM2 23h1v1h-1zM4 23h3v1h-3zM8 23h1v1h-1zM14 23h2v1h-2zM17 23h6v1h-6zM24 23h2v1h-2zM2 24h1v1h-1zM4 24h3v1h-3zM8 24h1v1h-1zM11 24h2v1h-2zM14 24h1v1h-1zM17 24h1v1h-1zM20 24h1v1h-1zM22 24h1v1h-1zM24 24h1v1h-1zM2 25h1v1h-1zM8 25h1v1h-1zM10 25h3v1h-3zM18 25h2v1h-2zM26 25h1v1h-1zM2 26h7v1h-7zM12 26h1v1h-1zM15 26h2v1h-2zM19 26h1v1h-1zM22 26h2v1h-2zM25 26h1v1h-1z"/></svg></span>Scan with your phone</span>
+            <button class="btn outline store"><i class="ic ic-google-play"></i>Get it on Google Play</button>
+          </div>
+        </div>
+        <div class="way">
+          <span class="ch"><i class="ic ic-package-open"></i></span>
+          <div class="stack gap-1">
+            <span class="way-title">Obtainium</span>
+            <span class="way-desc">Add Diceroll once and Obtainium installs each release straight from Twelve Pips Studio, outside Google Play.</span>
+          </div>
+          <div class="way-act">
+            <span class="qr-cap"><span class="qr" aria-label="QR code that adds Diceroll to Obtainium"><svg class="qr-svg" viewBox="0 0 29 29" aria-hidden="true" shape-rendering="crispEdges"><path fill="currentColor" d="M2 2h7v1h-7zM10 2h1v1h-1zM13 2h1v1h-1zM15 2h4v1h-4zM20 2h7v1h-7zM2 3h1v1h-1zM8 3h1v1h-1zM11 3h1v1h-1zM15 3h1v1h-1zM20 3h1v1h-1zM26 3h1v1h-1zM2 4h1v1h-1zM4 4h3v1h-3zM8 4h1v1h-1zM11 4h1v1h-1zM15 4h1v1h-1zM17 4h1v1h-1zM20 4h1v1h-1zM22 4h3v1h-3zM26 4h1v1h-1zM2 5h1v1h-1zM4 5h3v1h-3zM8 5h1v1h-1zM10 5h1v1h-1zM12 5h3v1h-3zM16 5h3v1h-3zM20 5h1v1h-1zM22 5h3v1h-3zM26 5h1v1h-1zM2 6h1v1h-1zM4 6h3v1h-3zM8 6h1v1h-1zM14 6h1v1h-1zM20 6h1v1h-1zM22 6h3v1h-3zM26 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM10 7h2v1h-2zM14 7h3v1h-3zM20 7h1v1h-1zM26 7h1v1h-1zM2 8h7v1h-7zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM20 8h7v1h-7zM11 9h1v1h-1zM18 9h1v1h-1zM4 10h3v1h-3zM8 10h1v1h-1zM10 10h1v1h-1zM14 10h5v1h-5zM20 10h1v1h-1zM23 10h4v1h-4zM3 11h2v1h-2zM7 11h1v1h-1zM9 11h1v1h-1zM13 11h3v1h-3zM18 11h1v1h-1zM20 11h1v1h-1zM22 11h5v1h-5zM3 12h2v1h-2zM8 12h1v1h-1zM11 12h2v1h-2zM14 12h1v1h-1zM16 12h3v1h-3zM20 12h3v1h-3zM4 13h4v1h-4zM10 13h1v1h-1zM12 13h1v1h-1zM16 13h1v1h-1zM19 13h3v1h-3zM23 13h1v1h-1zM25 13h2v1h-2zM3 14h1v1h-1zM5 14h5v1h-5zM11 14h2v1h-2zM14 14h1v1h-1zM16 14h2v1h-2zM20 14h1v1h-1zM22 14h1v1h-1zM24 14h1v1h-1zM26 14h1v1h-1zM3 15h1v1h-1zM6 15h1v1h-1zM9 15h1v1h-1zM11 15h1v1h-1zM13 15h4v1h-4zM23 15h1v1h-1zM26 15h1v1h-1zM5 16h7v1h-7zM13 16h4v1h-4zM23 16h2v1h-2zM26 16h1v1h-1zM3 17h3v1h-3zM9 17h4v1h-4zM14 17h6v1h-6zM22 17h1v1h-1zM24 17h3v1h-3zM3 18h1v1h-1zM7 18h3v1h-3zM12 18h1v1h-1zM15 18h2v1h-2zM18 18h5v1h-5zM26 18h1v1h-1zM10 19h6v1h-6zM18 19h1v1h-1zM22 19h1v1h-1zM24 19h1v1h-1zM26 19h1v1h-1zM2 20h7v1h-7zM10 20h1v1h-1zM12 20h1v1h-1zM14 20h2v1h-2zM17 20h2v1h-2zM20 20h1v1h-1zM22 20h1v1h-1zM24 20h2v1h-2zM2 21h1v1h-1zM8 21h1v1h-1zM10 21h4v1h-4zM15 21h1v1h-1zM18 21h1v1h-1zM22 21h3v1h-3zM2 22h1v1h-1zM4 22h3v1h-3zM8 22h1v1h-1zM14 22h1v1h-1zM17 22h6v1h-6zM2 23h1v1h-1zM4 23h3v1h-3zM8 23h1v1h-1zM10 23h1v1h-1zM13 23h1v1h-1zM15 23h1v1h-1zM18 23h1v1h-1zM23 23h2v1h-2zM26 23h1v1h-1zM2 24h1v1h-1zM4 24h3v1h-3zM8 24h1v1h-1zM10 24h1v1h-1zM13 24h1v1h-1zM15 24h1v1h-1zM20 24h2v1h-2zM24 24h2v1h-2zM2 25h1v1h-1zM8 25h1v1h-1zM10 25h6v1h-6zM17 25h4v1h-4zM23 25h3v1h-3zM2 26h7v1h-7zM14 26h1v1h-1zM16 26h2v1h-2zM21 26h1v1h-1zM24 26h1v1h-1zM26 26h1v1h-1z"/></svg></span>Scan with your phone</span>
+            <button class="btn outline store"><i class="ic ic-plus"></i>Add to Obtainium</button>
+          </div>
+        </div>
+        <div class="way">
+          <span class="ch"><i class="ic ic-download"></i></span>
+          <div class="stack gap-1">
+            <span class="way-title">Download the APK</span>
+            <span class="file"><span class="name">Diceroll-1.9.0-android-arm64.apk</span><span>96 MB</span><span class="hash" title="SHA-256">SHA-256 3b7d0e…44c2<i class="ic ic-copy"></i></span></span>
+            <span class="way-desc">For 64-bit Arm phones and tablets, which is almost all of them.</span>
+            <span class="mix"><i class="ic ic-info sm"></i><span>Installed from Google Play? Keep updating there; this APK can’t replace it.</span></span>
+          </div>
+          <div class="way-act"><button class="btn outline"><i class="ic ic-download"></i>Download</button></div>
+        </div>
+      </article>
+
+      <article class="plat" aria-labelledby="p-ios">
+        <div class="plat-head"><i class="ic ic-apple"></i><h3 id="p-ios">iPhone and iPad</h3></div>
+        <div class="way">
+          <span class="ch"><i class="ic ic-app-store"></i></span>
+          <div class="stack gap-1">
+            <span class="way-title">App Store</span>
+            <span class="way-desc">Free, with in-app purchases. Needs iOS 16 or later.</span>
+          </div>
+          <div class="way-act">
+            <span class="qr-cap"><span class="qr" aria-label="QR code for the App Store"><svg class="qr-svg" viewBox="0 0 29 29" aria-hidden="true" shape-rendering="crispEdges"><path fill="currentColor" d="M2 2h7v1h-7zM10 2h4v1h-4zM16 2h1v1h-1zM18 2h1v1h-1zM20 2h7v1h-7zM2 3h1v1h-1zM8 3h1v1h-1zM10 3h1v1h-1zM12 3h3v1h-3zM17 3h2v1h-2zM20 3h1v1h-1zM26 3h1v1h-1zM2 4h1v1h-1zM4 4h3v1h-3zM8 4h1v1h-1zM11 4h2v1h-2zM15 4h3v1h-3zM20 4h1v1h-1zM22 4h3v1h-3zM26 4h1v1h-1zM2 5h1v1h-1zM4 5h3v1h-3zM8 5h1v1h-1zM10 5h2v1h-2zM16 5h2v1h-2zM20 5h1v1h-1zM22 5h3v1h-3zM26 5h1v1h-1zM2 6h1v1h-1zM4 6h3v1h-3zM8 6h1v1h-1zM10 6h2v1h-2zM13 6h2v1h-2zM20 6h1v1h-1zM22 6h3v1h-3zM26 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM10 7h2v1h-2zM14 7h2v1h-2zM17 7h2v1h-2zM20 7h1v1h-1zM26 7h1v1h-1zM2 8h7v1h-7zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM20 8h7v1h-7zM11 9h2v1h-2zM14 9h1v1h-1zM16 9h1v1h-1zM18 9h1v1h-1zM2 10h2v1h-2zM5 10h2v1h-2zM8 10h1v1h-1zM10 10h1v1h-1zM12 10h1v1h-1zM14 10h3v1h-3zM19 10h3v1h-3zM23 10h2v1h-2zM4 11h1v1h-1zM6 11h2v1h-2zM9 11h1v1h-1zM15 11h1v1h-1zM17 11h2v1h-2zM20 11h2v1h-2zM24 11h1v1h-1zM4 12h1v1h-1zM8 12h8v1h-8zM18 12h2v1h-2zM21 12h1v1h-1zM24 12h2v1h-2zM3 13h3v1h-3zM9 13h1v1h-1zM12 13h1v1h-1zM20 13h2v1h-2zM25 13h1v1h-1zM2 14h1v1h-1zM4 14h1v1h-1zM8 14h2v1h-2zM12 14h3v1h-3zM16 14h1v1h-1zM18 14h1v1h-1zM22 14h1v1h-1zM24 14h2v1h-2zM3 15h4v1h-4zM9 15h5v1h-5zM17 15h2v1h-2zM22 15h1v1h-1zM25 15h2v1h-2zM2 16h1v1h-1zM8 16h1v1h-1zM11 16h1v1h-1zM15 16h1v1h-1zM18 16h2v1h-2zM23 16h2v1h-2zM4 17h3v1h-3zM10 17h3v1h-3zM15 17h1v1h-1zM18 17h1v1h-1zM20 17h1v1h-1zM23 17h1v1h-1zM25 17h1v1h-1zM4 18h3v1h-3zM8 18h3v1h-3zM15 18h2v1h-2zM18 18h5v1h-5zM24 18h1v1h-1zM10 19h1v1h-1zM13 19h1v1h-1zM16 19h1v1h-1zM18 19h1v1h-1zM22 19h1v1h-1zM25 19h2v1h-2zM2 20h7v1h-7zM11 20h1v1h-1zM14 20h1v1h-1zM16 20h1v1h-1zM18 20h1v1h-1zM20 20h1v1h-1zM22 20h1v1h-1zM25 20h1v1h-1zM2 21h1v1h-1zM8 21h1v1h-1zM12 21h1v1h-1zM14 21h5v1h-5zM22 21h1v1h-1zM2 22h1v1h-1zM4 22h3v1h-3zM8 22h1v1h-1zM10 22h3v1h-3zM14 22h11v1h-11zM2 23h1v1h-1zM4 23h3v1h-3zM8 23h1v1h-1zM13 23h3v1h-3zM17 23h3v1h-3zM21 23h1v1h-1zM23 23h2v1h-2zM2 24h1v1h-1zM4 24h3v1h-3zM8 24h1v1h-1zM11 24h1v1h-1zM14 24h5v1h-5zM20 24h1v1h-1zM22 24h2v1h-2zM25 24h1v1h-1zM2 25h1v1h-1zM8 25h1v1h-1zM11 25h2v1h-2zM14 25h1v1h-1zM20 25h1v1h-1zM23 25h1v1h-1zM2 26h7v1h-7zM13 26h1v1h-1zM16 26h1v1h-1zM23 26h3v1h-3z"/></svg></span>Scan with your iPhone</span>
+            <button class="btn outline store"><i class="ic ic-app-store"></i>Download on the App Store</button>
+          </div>
+        </div>
+      </article>
+
+      <article class="plat" aria-labelledby="p-linux">
+        <div class="plat-head"><i class="ic ic-linux"></i><h3 id="p-linux">Linux</h3><span class="arch-tag mono small muted">x86_64</span></div>
+        <div class="way">
+          <span class="ch"><i class="ic ic-download"></i></span>
+          <div class="stack gap-1">
+            <span class="way-title">Download</span>
+            <span class="file"><span class="name">Diceroll-1.9.0-linux-x86_64.AppImage</span><span>152 MB</span><span class="hash" title="SHA-256">SHA-256 c05e9a…7f13<i class="ic ic-copy"></i></span></span>
+            <span class="dl-error" role="alert"><i class="ic ic-circle-x sm"></i><span>Couldn’t prepare this download. Try again, or get Diceroll from <a class="link" href="#p-linux-itch">itch.io</a>.</span></span>
+          </div>
+          <div class="way-act"><button class="btn outline"><i class="ic ic-refresh-cw"></i>Try again</button></div>
+        </div>
+        <div class="way" id="p-linux-itch">
+          <span class="ch"><i class="ic ic-itch"></i></span>
+          <div class="stack gap-1">
+            <span class="way-title">itch.io</span>
+            <span class="way-desc">The same build, with the itch.io app’s updates.</span>
+          </div>
+          <div class="way-act"><button class="btn outline"><i class="ic ic-external-link"></i>Open itch.io</button></div>
+        </div>
+      </article>
+
+      <div class="absent"><i class="ic ic-info sm"></i><span>Diceroll isn’t made for macOS or for Windows on Arm.</span></div>
+      <div class="fresh"><i class="ic ic-clock sm"></i><span>Download links are made fresh when you click, so they never go stale.</span></div>
+    </section>
+  </main>
+
+  <footer class="portal-foot">Polaris Key · <a href="#">dl.plrs.im/diceroll</a> · Questions about Diceroll? Contact Twelve Pips Studio at <span class="nowrap">support@example.com</span></footer>
+</div>

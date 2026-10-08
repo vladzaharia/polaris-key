@@ -1,0 +1,866 @@
+<style>
+  /* portal.license-lapsed: the same page after a keeps-the-last-version license lapsed. */
+  [data-screen="portal.license-lapsed"] .back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    align-self: flex-start;
+    font-size: 13px;
+    color: var(--pk-accent-fg);
+  }
+  [data-screen="portal.license-lapsed"] .portal-page {
+    gap: 20px;
+  }
+  /* Header: a centred 3:1 band of the 16:9 cover, the icon half over its lower edge. */
+  [data-screen="portal.license-lapsed"] .banner {
+    aspect-ratio: 3 / 1;
+    max-height: 416px;
+  }
+  [data-screen="portal.license-lapsed"] .hero-row {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    gap: 20px;
+    padding: 0 24px;
+  }
+  [data-screen="portal.license-lapsed"] .hero-logo {
+    width: 112px;
+    height: 112px;
+    margin-top: -56px;
+    border-radius: 26px;
+    box-shadow: 0 0 0 4px var(--pk-surface-page), var(--pk-elevation-2);
+  }
+  [data-screen="portal.license-lapsed"] .hero-title {
+    flex: 1;
+    min-width: 0;
+    padding-bottom: 2px;
+  }
+  [data-screen="portal.license-lapsed"] .hero-title p {
+    margin-top: 4px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="portal.license-lapsed"] .hero-title p a {
+    color: var(--pk-accent-fg);
+    font-weight: 700;
+  }
+  [data-screen="portal.license-lapsed"] .hero-actions {
+    display: flex;
+    gap: 8px;
+    padding-bottom: 4px;
+  }
+
+  /* Three columns: in-page nav, main, the license's column. */
+  [data-screen="portal.license-lapsed"] .prod-layout {
+    display: grid;
+    grid-template-columns: 148px minmax(0, 1fr) 384px;
+    gap: 24px;
+    align-items: start;
+    margin-top: 12px;
+  }
+  [data-screen="portal.license-lapsed"] .col {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-width: 0;
+  }
+  [data-screen="portal.license-lapsed"] .toc {
+    position: sticky;
+    top: 88px;
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid var(--mk-line);
+  }
+  [data-screen="portal.license-lapsed"] .toc a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: -1px;
+    padding: 7px 12px;
+    border-left: 2px solid transparent;
+    font-size: 13px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="portal.license-lapsed"] .toc a.on {
+    border-left-color: var(--pk-accent);
+    color: var(--pk-text-strong);
+    font-weight: 700;
+  }
+  [data-screen="portal.license-lapsed"] .pilltabs {
+    display: none;
+  }
+  [data-screen="portal.license-lapsed"] .small-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 18px;
+    padding: 0 6px;
+    border: 1px solid var(--mk-line);
+    border-radius: 999px;
+    background: var(--pk-surface-sunken);
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--pk-text-muted);
+  }
+
+  /* Shared bits inside cards. */
+  [data-screen="portal.license-lapsed"] .label {
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="portal.license-lapsed"] .label.pb {
+    padding-bottom: 8px;
+  }
+  [data-screen="portal.license-lapsed"] .self-start {
+    align-self: flex-start;
+  }
+  [data-screen="portal.license-lapsed"] .note {
+    display: flex;
+    gap: 8px;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="portal.license-lapsed"] .note > .ic {
+    flex: none;
+    width: 14px;
+    height: 14px;
+    margin-top: 2px;
+  }
+
+  /* Get it */
+  [data-screen="portal.license-lapsed"] .reco {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    border: 1px solid var(--mk-line);
+    border-radius: 14px;
+    background: var(--pk-accent-subtle);
+  }
+  [data-screen="portal.license-lapsed"] .reco-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--pk-surface-raised);
+    color: var(--pk-text-strong);
+  }
+  [data-screen="portal.license-lapsed"] .reco .eyebrow-ish {
+    font-size: 12px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="portal.license-lapsed"] .files {
+    display: flex;
+    flex-direction: column;
+  }
+  [data-screen="portal.license-lapsed"] .file {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-top: 1px solid var(--mk-line);
+  }
+  [data-screen="portal.license-lapsed"] .file .ic-apple,
+  [data-screen="portal.license-lapsed"] .file .ic-windows {
+    color: var(--pk-text-muted);
+  }
+  [data-screen="portal.license-lapsed"] .sha {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--pk-font-mono);
+    font-size: 12px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="portal.license-lapsed"] .track-pick {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* What's new: the release notes drawn from Markdown. */
+  [data-screen="portal.license-lapsed"] .md h3 {
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 700;
+    color: var(--pk-text-strong);
+    margin-bottom: 8px;
+  }
+  [data-screen="portal.license-lapsed"] .md ul {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-left: 18px;
+    list-style: disc;
+  }
+  [data-screen="portal.license-lapsed"] .md li::marker {
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="portal.license-lapsed"] .md a {
+    color: var(--pk-accent-fg);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  [data-screen="portal.license-lapsed"] .md em {
+    font-style: italic;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="portal.license-lapsed"] .versions {
+    display: flex;
+    flex-direction: column;
+  }
+  [data-screen="portal.license-lapsed"] .versions > div {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 0;
+    border-top: 1px solid var(--mk-line);
+    font-size: 13px;
+    color: var(--pk-text-muted);
+  }
+
+  /* License card */
+  [data-screen="portal.license-lapsed"] .lic-head {
+    align-items: flex-start;
+  }
+  [data-screen="portal.license-lapsed"] .pill.tier {
+    color: var(--pk-text-strong);
+  }
+  [data-screen="portal.license-lapsed"] .duration {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px;
+    border: 1px solid var(--mk-line);
+    border-radius: 14px;
+    background: var(--pk-surface-sunken);
+  }
+  /* The kit's track (--mk-fill) is the sunken surface's own colour in light. The control border
+     token gives the track 3:1 against the duration box in both themes. */
+  [data-screen="portal.license-lapsed"] .duration .progress {
+    background: var(--pk-border-strong);
+  }
+  [data-screen="portal.license-lapsed"] .dur-head strong {
+    display: block;
+    font-size: 16px;
+    line-height: 22px;
+  }
+  [data-screen="portal.license-lapsed"] .dur-head span {
+    font-size: 13px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="portal.license-lapsed"] .dur-track {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 22%;
+    gap: 3px;
+    margin-top: 22px;
+  }
+  [data-screen="portal.license-lapsed"] .dur-track .after {
+    height: 6px;
+    border-radius: 999px;
+    background: repeating-linear-gradient(90deg, var(--pk-text-subtle) 0 4px, transparent 4px 7px);
+    opacity: 0.55;
+  }
+  [data-screen="portal.license-lapsed"] .dur-track .today {
+    position: absolute;
+    top: -4px;
+    left: calc((100% - 22% - 3px) * 0.6);
+    width: 2px;
+    height: 14px;
+    border-radius: 2px;
+    background: var(--pk-text-strong);
+  }
+  [data-screen="portal.license-lapsed"] .dur-scale {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 22%;
+    gap: 3px;
+    font-size: 11px;
+    line-height: 14px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="portal.license-lapsed"] .dur-scale > span:first-child {
+    display: flex;
+    justify-content: space-between;
+  }
+  [data-screen="portal.license-lapsed"] .today-label {
+    position: absolute;
+    top: -20px;
+    left: calc((100% - 22% - 3px) * 0.6);
+    transform: translateX(-50%);
+    font-size: 11px;
+    line-height: 14px;
+    font-weight: 700;
+    color: var(--pk-text-strong);
+    white-space: nowrap;
+  }
+  [data-screen="portal.license-lapsed"] .dur-scale .r {
+    text-align: right;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="portal.license-lapsed"] .dur-text {
+    font-size: 13px;
+    line-height: 19px;
+    color: var(--pk-text-default);
+  }
+  [data-screen="portal.license-lapsed"] .dur-now {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--pk-success);
+  }
+  [data-screen="portal.license-lapsed"] .facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 16px;
+  }
+  [data-screen="portal.license-lapsed"] .holder {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr);
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--mk-line);
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="portal.license-lapsed"] .holder .icon-tile {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+  }
+  [data-screen="portal.license-lapsed"] .holder strong {
+    display: block;
+    font-size: 14px;
+    line-height: 20px;
+  }
+  [data-screen="portal.license-lapsed"] .inc {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 6px;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="portal.license-lapsed"] .inc li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  [data-screen="portal.license-lapsed"] .inc .ic {
+    width: 14px;
+    height: 14px;
+    color: var(--pk-success);
+  }
+  [data-screen="portal.license-lapsed"] .addon {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 6px;
+    padding: 10px 12px;
+    border: 1px solid var(--mk-line);
+    border-radius: 10px;
+  }
+
+  /* Devices */
+  [data-screen="portal.license-lapsed"] .dev {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+  }
+  [data-screen="portal.license-lapsed"] .dev .icon-tile {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+  }
+  [data-screen="portal.license-lapsed"] .dev-sub {
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="portal.license-lapsed"] .this {
+    color: var(--pk-accent-fg);
+  }
+
+  /* Cloud Sync */
+  [data-screen="portal.license-lapsed"] .sync-rows > div {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    padding: 9px 0;
+    border-top: 1px solid var(--mk-line);
+    font-size: 13px;
+  }
+
+  /* Actions follow the device (PORTAL.md §5.4): .ua-desk on a computer, .ua-phone on a phone. */
+  [data-screen="portal.license-lapsed"] .ua-phone {
+    display: none !important;
+  }
+  [data-screen="portal.license-lapsed"] .mail-line {
+    align-items: flex-start;
+  }
+  /* Cloud Sync's footer wraps rather than clipping its labels on a narrow phone. */
+  [data-screen="portal.license-lapsed"] .s-sync .card-foot {
+    flex-wrap: wrap;
+  }
+  @container screen (max-width: 1179px) {
+    [data-screen="portal.license-lapsed"] .prod-layout {
+      grid-template-columns: minmax(0, 1fr) 340px;
+    }
+    [data-screen="portal.license-lapsed"] .toc {
+      display: none;
+    }
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="portal.license-lapsed"] .banner {
+      aspect-ratio: 16 / 9;
+      margin: 0 -16px;
+      border-radius: 0;
+    }
+    [data-screen="portal.license-lapsed"] .hero-row {
+      flex-wrap: wrap;
+      gap: 12px 16px;
+      padding: 0;
+    }
+    [data-screen="portal.license-lapsed"] .hero-logo {
+      width: 80px;
+      height: 80px;
+      margin-top: -40px;
+      border-radius: 20px;
+    }
+    [data-screen="portal.license-lapsed"] .hero-actions {
+      width: 100%;
+    }
+    [data-screen="portal.license-lapsed"] .hero-actions .btn.primary {
+      flex: 1;
+    }
+    [data-screen="portal.license-lapsed"] .portal-page h1 {
+      font-size: 28px;
+      line-height: 32px;
+    }
+    [data-screen="portal.license-lapsed"] .prod-layout {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      align-items: stretch;
+      margin-top: 0;
+    }
+    [data-screen="portal.license-lapsed"] .col {
+      display: contents;
+    }
+    [data-screen="portal.license-lapsed"] .pilltabs {
+      position: sticky;
+      top: 64px;
+      z-index: 10;
+      display: flex;
+      gap: 6px;
+      min-width: 0;
+      margin: 0 -16px;
+      padding: 8px 16px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      scroll-snap-type: x proximity;
+      scroll-padding-inline: 16px;
+      -webkit-mask-image: linear-gradient(to right, var(--pk-surface-page) calc(100% - 40px), transparent);
+      mask-image: linear-gradient(to right, var(--pk-surface-page) calc(100% - 40px), transparent);
+      background: var(--pk-surface-page);
+      border-bottom: 1px solid var(--mk-line);
+    }
+    [data-screen="portal.license-lapsed"] .pilltabs a {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex: none;
+      height: 30px;
+      padding: 0 12px;
+      border: 1px solid var(--mk-line);
+      border-radius: 999px;
+      font-size: 13px;
+      color: var(--pk-text-muted);
+      scroll-snap-align: start;
+    }
+    [data-screen="portal.license-lapsed"] .pilltabs a.on {
+      border-color: var(--pk-accent);
+      background: var(--pk-accent-subtle);
+      color: var(--pk-text-strong);
+      font-weight: 700;
+    }
+    [data-screen="portal.license-lapsed"] .s-get {
+      order: 1;
+    }
+    [data-screen="portal.license-lapsed"] .s-license {
+      order: 2;
+    }
+    [data-screen="portal.license-lapsed"] .s-devices {
+      order: 3;
+    }
+    [data-screen="portal.license-lapsed"] .s-sync {
+      order: 4;
+    }
+    [data-screen="portal.license-lapsed"] .s-knows {
+      order: 5;
+    }
+    [data-screen="portal.license-lapsed"] .s-new {
+      order: 6;
+    }
+    [data-screen="portal.license-lapsed"] .s-help {
+      order: 7;
+    }
+    [data-screen="portal.license-lapsed"] .file {
+      grid-template-columns: 20px minmax(0, 1fr) auto;
+    }
+    [data-screen="portal.license-lapsed"] .file .sha {
+      display: none;
+    }
+    [data-screen="portal.license-lapsed"] .reco {
+      grid-template-columns: 44px minmax(0, 1fr);
+    }
+    [data-screen="portal.license-lapsed"] .reco .btn {
+      grid-column: 1 / -1;
+    }
+    [data-screen="portal.license-lapsed"] .track-pick .label {
+      display: none;
+    }
+    [data-screen="portal.license-lapsed"] .ua-desk {
+      display: none !important;
+    }
+    [data-screen="portal.license-lapsed"] .btn.ua-phone {
+      display: inline-flex !important;
+    }
+    [data-screen="portal.license-lapsed"] .callout.ua-phone {
+      display: flex !important;
+    }
+    [data-screen="portal.license-lapsed"] span.ua-phone {
+      display: inline !important;
+    }
+  }
+  @container screen (max-width: 379px) {
+    [data-screen="portal.license-lapsed"] .s-sync .card-foot > .btn {
+      flex: 1 1 100%;
+    }
+  }
+  /* Lapsed: the bar is full, the marker sits in the keeps-the-last-version stretch. */
+  [data-screen="portal.license-lapsed"] .dur-track.lapsed .after {
+    opacity: 1;
+    background: repeating-linear-gradient(90deg, var(--pk-accent) 0 4px, transparent 4px 7px);
+  }
+  [data-screen="portal.license-lapsed"] .dur-track.lapsed .today {
+    left: calc(100% - 9%);
+  }
+  [data-screen="portal.license-lapsed"] .dur-track.lapsed .today-label {
+    left: auto;
+    right: 0;
+    transform: none;
+  }
+  [data-screen="portal.license-lapsed"] .hero-actions {
+    align-items: center;
+  }
+  [data-screen="portal.license-lapsed"] .hero-pill {
+    margin-right: 4px;
+  }
+  /* The builds the license doesn't cover: one quiet row after the downloadable ones. */
+  [data-screen="portal.license-lapsed"] .file.off {
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="portal.license-lapsed"] .file.off .ic {
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="portal.license-lapsed"] .file.off .name {
+    color: var(--pk-text-default);
+  }
+  [data-screen="portal.license-lapsed"] .not-incl {
+    font-size: 13px;
+    color: var(--pk-text-muted);
+    white-space: nowrap;
+  }
+  [data-screen="portal.license-lapsed"] .renew-link {
+    margin-top: 6px;
+  }
+  [data-screen="portal.license-lapsed"] .renew-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  @container screen (max-width: 639px) {
+    /* The pill on its own line, then the action and the overflow menu. */
+    [data-screen="portal.license-lapsed"] .hero-actions {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px 8px;
+    }
+    [data-screen="portal.license-lapsed"] .hero-pill {
+      grid-column: 1 / -1;
+      justify-self: start;
+      margin-right: 0;
+    }
+  }
+</style>
+
+
+<div class="portal" data-service="core">
+  <header class="portal-top">
+    <a class="portal-brand" href="#"><i class="pk-mark sm"></i>Polaris Key</a>
+    <nav class="portal-nav" aria-label="Portal">
+      <a class="active" href="#">Library <span class="count">1</span></a>
+      <a href="#">Discover</a>
+    </nav>
+    <div class="portal-actions">
+      <button class="btn outline sm"><i class="ic ic-key-round accent"></i>Activate license</button>
+      <span class="account"><span class="avatar sm">KS</span><span>Kenji Sato</span><i class="ic ic-chevron-down"></i></span>
+    </div>
+  </header>
+
+  <main class="portal-page">
+    <a class="back" href="#"><i class="ic ic-arrow-left sm"></i>Library</a>
+
+    <div class="hero">
+      <div class="art banner" data-product="djdl"></div>
+      <div class="hero-row">
+        <span class="logo hero-logo" data-product="djdl"></span>
+        <div class="hero-title">
+          <h1>DJDL</h1>
+          <p>by <a href="#">Example Audio</a></p>
+        </div>
+        <div class="hero-actions">
+          <span class="pill warning hero-pill"><i class="ic ic-circle-pause"></i>Updates ended</span>
+          <button class="btn primary lg ua-desk"><i class="ic ic-download"></i>Download 4.1.3</button>
+          <button class="btn primary lg ua-phone"><i class="ic ic-mail"></i>Email me the download</button>
+          <button class="btn outline icon lg" aria-label="More for DJDL"><i class="ic ic-ellipsis"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="prod-layout">
+      <nav class="pilltabs" aria-label="On this page">
+        <a href="#">Get it</a>
+        <a class="on" href="#">License</a>
+        <a href="#">Devices <span class="small-pill">2</span></a>
+        <a href="#">Cloud Sync</a>
+        <a href="#">What's new</a>
+        <a href="#">Help</a>
+      </nav>
+
+      <nav class="toc" aria-label="On this page">
+        <a href="#">Get it</a>
+        <a class="on" href="#">License</a>
+        <a href="#">Devices <span class="small-pill">2</span></a>
+        <a href="#">Cloud Sync</a>
+        <a href="#">What's new</a>
+        <a href="#">Help</a>
+      </nav>
+
+      <div class="col">
+        <!-- Get it: the last covered version leads; newer builds are listed as Not included. -->
+        <section class="card s-get" aria-labelledby="get-h">
+          <div class="card-head">
+            <div class="title"><h2 id="get-h">Get DJDL</h2><p>Latest: 4.2.0, released Oct 6, 2026</p></div>
+          </div>
+          <div class="card-body stack gap-4">
+            <div class="callout info">
+              <i class="ic ic-info"></i>
+              <div class="grow">
+                <div class="callout-title">4.2.0 isn't in your license</div>
+                <div class="callout-text">Your license covers versions released until Sep 30, 2026. 4.1.3 is the newest of those, and it keeps working.</div>
+                <a class="link renew-link" href="#" aria-label="Renew with Example Audio (opens Example Audio's site)">Renew with Example Audio<i class="ic ic-arrow-up-right"></i></a>
+              </div>
+            </div>
+            <div class="reco ua-desk">
+              <span class="reco-mark"><i class="ic ic-apple lg"></i></span>
+              <div class="stack gap-0">
+                <span class="eyebrow-ish">Recommended for your Mac</span>
+                <span class="strong">macOS · Universal · 4.1.3</span>
+                <span class="small muted">Runs on Apple silicon and Intel · .dmg · 82 MB</span>
+              </div>
+              <button class="btn outline"><i class="ic ic-download"></i>Download</button>
+            </div>
+            <!-- On a phone: the header's Email me the download sends the last covered version. -->
+            <div class="callout mail-line ua-phone">
+              <i class="ic ic-mail"></i>
+              <div class="grow">
+                <div class="callout-title">DJDL runs on macOS and Windows</div>
+                <div class="callout-text">We'll email kenji@example.com a link to 4.1.3 that opens on your Mac or PC.</div>
+              </div>
+            </div>
+            <div class="files">
+              <p class="label pb">Your version, 4.1.3</p>
+              <div class="file">
+                <i class="ic ic-apple"></i>
+                <div class="stack gap-0"><span class="strong">macOS · Universal</span><span class="small muted">4.1.3 · .dmg · 82 MB</span></div>
+                <span class="sha" title="SHA-256">e61b07…39fa<i class="ic ic-copy sm"></i></span>
+                <button class="btn outline sm"><i class="ic ic-download"></i>Download</button>
+              </div>
+              <div class="file">
+                <i class="ic ic-windows"></i>
+                <div class="stack gap-0"><span class="strong">Windows · x64</span><span class="small muted">4.1.3 · .exe installer · 70 MB</span></div>
+                <span class="sha" title="SHA-256">5ac9d2…0e81<i class="ic ic-copy sm"></i></span>
+                <button class="btn outline sm"><i class="ic ic-download"></i>Download</button>
+              </div>
+              <div class="file off">
+                <i class="ic ic-ban"></i>
+                <div class="stack gap-0"><span class="name">4.2.0 for macOS and Windows</span><span class="small">Released after your updates ended</span></div>
+                <span class="not-incl">Not included</span>
+              </div>
+            </div>
+            <p class="note"><i class="ic ic-info"></i><span>Download links are made fresh when you click, so they never go stale. <a class="accent" href="#">SHA256SUMS</a></span></p>
+          </div>
+        </section>
+
+        <section class="card s-sync" aria-labelledby="sync-h">
+          <div class="card-head">
+            <div class="title"><h2 id="sync-h">Cloud Sync</h2><p>DJDL keeps your crates and settings the same on every Mac and PC you sign in on.</p></div>
+          </div>
+          <div class="card-body stack gap-3">
+            <div class="row between"><span class="strong tnum">12 MB of 1 GB used</span><span class="small muted">1 GB comes with your license</span></div>
+            <div class="progress" style="--v: 2%"></div>
+            <div class="sync-rows">
+              <div><span>Crates <span class="muted">· 386</span></span><span class="muted tnum">9.6 MB</span></div>
+              <div><span>Cue points <span class="muted">· 7,410 tracks</span></span><span class="muted tnum">2.4 MB</span></div>
+              <div><span>Settings <span class="muted">· 9</span></span><span class="muted tnum">3 KB</span></div>
+            </div>
+          </div>
+          <div class="card-foot start">
+            <button class="btn outline sm"><i class="ic ic-download"></i>Export synced data</button>
+            <button class="btn danger-outline sm"><i class="ic ic-trash-2"></i>Delete synced data</button>
+          </div>
+        </section>
+
+        <section class="card s-new" aria-labelledby="new-h">
+          <div class="card-head">
+            <div class="title"><h2 id="new-h">What's new in 4.2.0</h2><p>Stable · Oct 6, 2026 · not in your license</p></div>
+          </div>
+          <div class="card-body stack gap-4">
+            <div class="md">
+              <h3>Highlights</h3>
+              <ul>
+                <li><strong>Stem separation</strong> runs on the GPU on Apple silicon now, about 3× faster on an M3. It needs the <em>Stem separation</em> add-on or Studio.</li>
+                <li><strong>Mappings for 6 more controllers</strong>, 48 in all. Each one downloads the first time you plug it in.</li>
+                <li>Crates sync between your Mac and PC with <a href="#">Cloud Sync</a>. Sign in on both to start.</li>
+              </ul>
+            </div>
+            <a class="link self-start" href="#">Show full notes<i class="ic ic-chevron-down"></i></a>
+            <div>
+              <p class="label pb">Earlier versions</p>
+              <div class="versions">
+                <div><span class="mono strong">4.1.3</span><span>Sep 22, 2026 · Stable · your version</span><i class="ic ic-chevron-right sm"></i></div>
+                <div><span class="mono strong">4.1.2</span><span>Sep 9, 2026 · Stable</span><i class="ic ic-chevron-right sm"></i></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card s-help" aria-labelledby="help-h">
+          <div class="card-head"><div class="title"><h2 id="help-h">Need help?</h2></div></div>
+          <div class="card-body stack gap-3">
+            <p class="note"><i class="ic ic-circle-help"></i><span>Example Audio handles licenses and downloads for DJDL. Write to <span class="strong nowrap">support@example.com</span>.</span></p>
+            <button class="btn outline sm self-start"><i class="ic ic-mail"></i>Contact Example Audio</button>
+          </div>
+        </section>
+      </div>
+
+      <div class="col">
+        <!-- License: onExpiry keepVersion after lapse (LX-41); the LX-15 line
+             "Updates ended at 4.1.3 · keeps working"; renew copy only because it keeps the last version. -->
+        <section class="card s-license" aria-labelledby="lic-h">
+          <div class="card-head lic-head">
+            <div class="title"><h2 id="lic-h">DJDL license</h2><p>Licensed to kenji@example.com</p></div>
+            <span class="pill tier"><i class="ic ic-key-round"></i>Studio</span>
+          </div>
+          <div class="card-body stack gap-5">
+            <div class="duration" aria-label="Duration">
+              <div class="dur-head">
+                <strong>Updates ended at 4.1.3</strong>
+                <span>Keeps working · the yearly renewal stopped on Sep 30, 2026</span>
+              </div>
+              <div class="dur-track lapsed" aria-hidden="true">
+                <div class="progress" style="--v: 100%"></div>
+                <div class="after"></div>
+                <span class="today"></span>
+                <span class="today-label">Today, Oct 7</span>
+              </div>
+              <div class="dur-scale">
+                <span><span>Renewed Sep 30, 2025</span><span>Sep 30, 2026</span></span>
+                <span class="r">4.1.3</span>
+              </div>
+              <p class="dur-text">Your Studio license renewed every year until <strong>Sep 30, 2026</strong>. DJDL keeps working on <strong>4.1.3</strong>, the last version released before then, for as long as you like. To get 4.2.0 and later, renew with Example Audio.</p>
+              <div class="renew-row">
+                <button class="btn outline sm" aria-label="Renew with Example Audio (opens Example Audio's site)"><i class="ic ic-external-link"></i>Renew with Example Audio</button>
+              </div>
+            </div>
+
+            <dl class="dl cols facts">
+              <div><dt>Activated</dt><dd>Sep 30, 2024</dd></div>
+              <div><dt>License source</dt><dd>From Example Audio</dd></div>
+              <div><dt>Works offline for</dt><dd>30 days</dd></div>
+              <div><dt>Release track</dt><dd>Stable</dd></div>
+            </dl>
+
+            <div class="holder">
+              <span class="icon-tile muted"><i class="ic ic-user-check"></i></span>
+              <span><strong>In your account, no key</strong>On a new Mac or PC, sign in to DJDL with kenji@example.com.</span>
+            </div>
+
+            <div>
+              <p class="label">Included</p>
+              <ul class="inc">
+                <li><i class="ic ic-check"></i>Stem separation</li>
+                <li><i class="ic ic-check"></i>4 decks</li>
+                <li><i class="ic ic-check"></i>Recording</li>
+                <li><i class="ic ic-check"></i>Cloud Sync, 1 GB</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="card s-knows" aria-labelledby="knows-h">
+          <div class="card-head"><div class="title"><h2 id="knows-h">DJDL knows you as</h2></div></div>
+          <div class="card-body stack gap-3">
+            <div class="row gap-3">
+              <span class="avatar">KS</span>
+              <div class="stack gap-0 grow"><span class="strong">Kenji Sato</span><span class="small muted">kenji@example.com · signs in with an email code</span></div>
+            </div>
+            <a class="link self-start" href="#">Manage sign-in methods<i class="ic ic-arrow-right"></i></a>
+          </div>
+        </section>
+
+        <section class="card s-devices" aria-labelledby="dev-h">
+          <div class="card-head">
+            <div class="title"><h2 id="dev-h">Devices</h2><p><span class="strong">2</span> of 10 devices in use</p></div>
+          </div>
+          <div class="card-body stack gap-4">
+            <div class="progress" style="--v: 20%" aria-hidden="true"></div>
+            <div class="dev">
+              <span class="icon-tile muted"><i class="ic ic-monitor"></i></span>
+              <div class="stack gap-0"><span class="strong">Kenji's Mac Studio</span><span class="dev-sub">macOS · 4.1.3 · <span class="this ua-desk">this device</span><span class="ua-phone">last seen today</span></span></div>
+              <button class="btn outline sm">Remove</button>
+            </div>
+            <div class="dev">
+              <span class="icon-tile muted"><i class="ic ic-monitor"></i></span>
+              <div class="stack gap-0"><span class="strong">Club booth PC</span><span class="dev-sub">Windows · 4.1.3 · last seen Oct 3</span></div>
+              <button class="btn outline sm">Remove</button>
+            </div>
+            <p class="note"><i class="ic ic-info"></i><span>Removing a device makes room for another at once and signs it out of DJDL.</span></p>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <footer class="portal-foot">Polaris Key · <a href="#">key.plrs.im</a> · Help · Privacy · Terms</footer>
+
+  <nav class="portal-tabbar" aria-label="Portal">
+    <a class="active" href="#"><i class="ic ic-layout-grid"></i>Library</a>
+    <a class="act" href="#"><i class="ic ic-key-round"></i>Activate</a>
+    <a href="#"><i class="ic ic-sparkles"></i>Discover</a>
+  </nav>
+</div>

@@ -1,0 +1,23 @@
+{
+  "id": "packages.updates-failing",
+  "title": "Updates, a broken updater",
+  "area": "packages",
+  "surface": "console",
+  "order": 11,
+  "packages": [
+    "P2-11",
+    "P2-12"
+  ],
+  "uxRows": [],
+  "summary": "DJDL's Updates page on Oct 9, when 4.2.2 shipped with the wrong SUPublicEDKey: the macOS card in attention with its signature failures, what went wrong in words, how to fix it and what owners of 4.2.2 must do.",
+  "compare": [
+    "Same page as packages.updates two days later; the sidebar's Updates item carries a danger count.",
+    "The macOS head shows a danger pill '12 signature failures' with 'since Oct 9, 10:20' under it; nothing else on the page changes tone.",
+    "Setup: the key and the appcast stay done; a blocked step 'Builds carry the same key' says 4.2.2's SUPublicEDKey is different.",
+    "A danger callout says what went wrong (4.2.2, published Oct 9, was built with kZ8r…Q1c= in Info.plist, not pJ3m…vWc= from .pkey/release; copies on 4.2.2 refuse every update Polaris Key signs, 12 tried 4.3.0-beta.3), how to fix it (put back the key the command prints and publish 4.2.3, with the command and Copy), what owners of 4.2.2 must do (download 4.2.3 from the download page or Library), and 'Email the 37 people on 4.2.2'.",
+    "The foot counts since the failure began with the failures in danger.",
+    "Phone: the callout stays in the setup column above the code; the command block wraps or truncates with Copy, never widening the page."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

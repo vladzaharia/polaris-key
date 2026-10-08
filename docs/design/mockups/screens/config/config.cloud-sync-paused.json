@@ -1,0 +1,24 @@
+{
+  "id": "config.cloud-sync-paused",
+  "title": "Cloud Sync writes paused",
+  "area": "config",
+  "surface": "console",
+  "packages": [
+    "U-05",
+    "ST-16",
+    "U-32"
+  ],
+  "uxRows": [],
+  "summary": "Diceroll's Cloud Sync page while the platform's writes are paused: a banner says since when, by whom and why, with Resume writes; the switch is on and says for how long.",
+  "compare": [
+    "The banner sits under the page header on every product's Cloud Sync page while writes are paused (DJDL's too): a warning callout with a solid rail, \"Cloud Sync writes are paused for every product\", since when and by whom, how long ago, the reason from the dialog, and that devices keep their data and send it on resume.",
+    "Resume writes is the banner's one primary and resumes in one click, no dialog; the switch in Limits does the same. After it, a success toast: \"Writes resumed. Devices are sending what they queued.\" and the banner goes.",
+    "The switch is on with \"Paused 12 min\" in warning text and who turned it on.",
+    "The platform Home shows a Needs attention row while paused: Warning pill, Polaris Key mark, \"Cloud Sync writes are paused for every product, since 14:06 (Ana Lima)\", and Resume writes. (Drawn on products.home, not here.)",
+    "Activity records the pause and the resume with the reason and the person.",
+    "Phone: the banner's button drops under its text."
+  ],
+  "status": "mockup",
+  "designReview": null,
+  "order": 18
+}

@@ -1,0 +1,528 @@
+<style>
+  /* identity.connections: only what the kit does not already say. */
+  [data-screen="identity.connections"] .section-head .count {
+    margin-left: 8px;
+    vertical-align: 1px;
+  }
+  /* One row per built-in provider or store account: mark, what it is, status, action. */
+  [data-screen="identity.connections"] .prow {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 4px 16px;
+    padding: 14px 20px;
+  }
+  [data-screen="identity.connections"] .prow + .prow {
+    border-top: 1px solid var(--mk-line);
+  }
+  [data-screen="identity.connections"] .prow .icon-tile .ic {
+    color: var(--pk-text-strong);
+  }
+  [data-screen="identity.connections"] .pname {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 10px;
+    font-weight: 700;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="identity.connections"] .pname .status {
+    font-weight: 400;
+  }
+  [data-screen="identity.connections"] .pdesc {
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="identity.connections"] .pdesc .mono {
+    font-size: 12px;
+  }
+  [data-screen="identity.connections"] .gmark {
+    width: 18px;
+    height: 18px;
+  }
+  /* Single sign-on: a list with column labels, not a table, so it stacks on phones. */
+  [data-screen="identity.connections"] .conns-head,
+  [data-screen="identity.connections"] .conn {
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) 118px minmax(0, 1.75fr) 128px 92px 178px;
+    align-items: center;
+    gap: 10px 18px;
+    padding: 0 20px;
+  }
+  [data-screen="identity.connections"] .conns-head {
+    height: 36px;
+    border-top: 1px solid var(--mk-line);
+    border-bottom: 1px solid var(--mk-line);
+    background: color-mix(in oklab, var(--pk-surface-sunken) 45%, var(--pk-surface-raised));
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="identity.connections"] .conn {
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+  [data-screen="identity.connections"] .conn + .conn {
+    border-top: 1px solid var(--mk-line);
+  }
+  [data-screen="identity.connections"] .conn-name {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+  }
+  [data-screen="identity.connections"] .conn-name .grow > div:first-child {
+    font-weight: 700;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="identity.connections"] .conn-name .iss {
+    font-family: var(--pk-font-mono);
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--pk-text-subtle);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  [data-screen="identity.connections"] .scope {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--pk-text-default);
+    white-space: nowrap;
+  }
+  [data-screen="identity.connections"] .scope .ic {
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="identity.connections"] .doms {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
+  }
+  /* Three chip shapes: SSO required is filled with an "SSO only" tag, verified is outlined,
+     waiting is warning-tinted. The shape says it before the icon does. */
+  [data-screen="identity.connections"] .dom {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 24px;
+    padding: 0 8px;
+    border: 1px solid var(--pk-border-strong);
+    border-radius: var(--pk-radius-sm);
+    background: transparent;
+    font-family: var(--pk-font-mono);
+    font-size: 12px;
+    color: var(--pk-text-default);
+    white-space: nowrap;
+  }
+  [data-screen="identity.connections"] .dom .ic {
+    width: 13px;
+    height: 13px;
+    color: var(--pk-success);
+  }
+  [data-screen="identity.connections"] .dom.req {
+    padding-right: 3px;
+    border-color: transparent;
+    background: var(--pk-accent-subtle);
+    color: var(--pk-text-strong);
+  }
+  [data-screen="identity.connections"] .dom.req .ic {
+    color: var(--pk-accent-fg);
+  }
+  [data-screen="identity.connections"] .dom .tag {
+    display: inline-flex;
+    align-items: center;
+    height: 18px;
+    margin-left: 3px;
+    padding: 0 6px;
+    border-radius: 4px;
+    background: var(--pk-accent);
+    color: var(--pk-accent-on);
+    font-family: var(--pk-font-sans);
+    font-size: 11px;
+    font-weight: 700;
+  }
+  [data-screen="identity.connections"] .dom.wait {
+    border-color: transparent;
+    background: var(--pk-warning-subtle);
+    color: var(--pk-warning);
+  }
+  [data-screen="identity.connections"] .dom.wait .ic {
+    color: var(--pk-warning);
+  }
+  [data-screen="identity.connections"] .nodom {
+    font-size: 13px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="identity.connections"] .cell {
+    font-size: 13px;
+    color: var(--pk-text-default);
+  }
+  [data-screen="identity.connections"] .cell.muted {
+    color: var(--pk-text-muted);
+  }
+  [data-screen="identity.connections"] .conn-end {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+  [data-screen="identity.connections"] .conn-end > .ic {
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="identity.connections"] .legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 20px;
+    padding: 12px 20px;
+    border-top: 1px solid var(--mk-line);
+    font-size: 12px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="identity.connections"] .legend > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  [data-screen="identity.connections"] .legend .dom {
+    height: 22px;
+  }
+  /* Each group in the Single sign-on card: a label row, then its column labels. */
+  [data-screen="identity.connections"] .conns-sub {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 10px;
+    padding: 14px 20px 10px;
+    font-size: 13px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="identity.connections"] .conns-sub strong {
+    font-size: 14px;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="identity.connections"] .legend + .conns-sub {
+    border-top: 1px solid var(--mk-line);
+  }
+  [data-screen="identity.connections"] .scope .logo {
+    flex: none;
+  }
+  [data-screen="identity.connections"] .conn-meta {
+    font-size: 12px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="identity.connections"] .card-body .dl {
+    font-size: 13px;
+    gap: 8px 20px;
+  }
+  [data-screen="identity.connections"] .sessions {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="identity.connections"] .sessions .ic {
+    margin-top: 1px;
+  }
+  @container screen (max-width: 1279px) {
+    [data-screen="identity.connections"] .conns-head,
+    [data-screen="identity.connections"] .conn {
+      grid-template-columns: minmax(0, 1.2fr) 108px minmax(0, 1.6fr) 150px;
+    }
+    [data-screen="identity.connections"] .c-aud,
+    [data-screen="identity.connections"] .c-last {
+      display: none;
+    }
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="identity.connections"] .conns-head {
+      display: none;
+    }
+    [data-screen="identity.connections"] .conn {
+      grid-template-columns: minmax(0, 1fr) auto;
+      padding: 14px 16px;
+    }
+    [data-screen="identity.connections"] .conn .c-scope {
+      display: none;
+    }
+    [data-screen="identity.connections"] .conn .doms,
+    [data-screen="identity.connections"] .conn .nodom,
+    [data-screen="identity.connections"] .conn .conn-meta {
+      grid-column: 1 / -1;
+    }
+    [data-screen="identity.connections"] .conn-end .pill {
+      display: none;
+    }
+    [data-screen="identity.connections"] .conn > .conn-end {
+      grid-column: 2;
+      grid-row: 1;
+    }
+    [data-screen="identity.connections"] .conns-sub {
+      padding: 14px 16px 4px;
+    }
+    [data-screen="identity.connections"] .legend {
+      padding: 12px 16px;
+    }
+    /* Provider and store rows: mark, then the text; the pill and the action go under it, as the
+       kit puts a callout's action under its text on phones. */
+    [data-screen="identity.connections"] .prow {
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: start;
+      gap: 8px 14px;
+      padding: 14px 16px;
+    }
+    [data-screen="identity.connections"] .prow > .icon-tile {
+      grid-row: 1 / span 3;
+    }
+    [data-screen="identity.connections"] .prow > span:empty {
+      display: none;
+    }
+    [data-screen="identity.connections"] .prow > div,
+    [data-screen="identity.connections"] .prow > .pill,
+    [data-screen="identity.connections"] .prow > .btn {
+      grid-column: 2;
+      justify-self: start;
+    }
+    /* Email and Bot protection: status under the title in both cards. */
+    [data-screen="identity.connections"] .card-head.svc-head {
+      flex-wrap: wrap;
+    }
+    [data-screen="identity.connections"] .card-head.svc-head > .status {
+      flex-basis: 100%;
+      padding-left: 52px;
+    }
+  }
+</style>
+
+<div class="console" data-service="core">
+  <header class="topbar">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <nav class="sidebar" aria-label="Platform">
+    <div class="ctx">
+      <span class="ctx-mark"><i class="ic ic-polaris"></i></span>
+      <span class="ctx-text"><span class="ctx-name">Platform</span><span class="ctx-sub">3 products</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item" href="#"><i class="ic ic-house"></i><span class="nav-text">Home</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-users"></i><span class="nav-text">Members</span></a>
+    <a class="nav-item active" href="#"><i class="ic ic-link"></i><span class="nav-text">Connections</span><span class="count warning">3</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-boxes"></i><span class="nav-text">Packages</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-server"></i><span class="nav-text">Status</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-history"></i><span class="nav-text">Activity</span></a>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="page">
+      <header class="page-head">
+        <div class="page-heading"><h1>Connections</h1></div>
+        <p class="page-sub">Ways to sign in, single sign-on, email and store accounts. Each is set up once, here, and every product uses it.</p>
+        <div class="page-actions">
+          <button class="btn primary"><i class="ic ic-plus"></i>Add SSO connection</button>
+        </div>
+      </header>
+
+      <!-- Built-in providers (I-31): set up in the console, secrets sealed under the platform KEK. -->
+      <section class="section" aria-labelledby="h-providers">
+        <div class="section-head">
+          <div><h2 id="h-providers">Sign-in providers</h2><p>Built in. Each shows on the sign-in card of the products that ship where it applies.</p></div>
+        </div>
+        <div class="card">
+          <div class="prow">
+            <span class="icon-tile muted"><i class="ic ic-apple"></i></span>
+            <div>
+              <div class="pname">Apple<span class="status"><i class="ic ic-circle-check"></i>Working · last sign-in 12 min ago</span></div>
+              <div class="pdesc">On DJDL’s and Diceroll’s cards: they ship on macOS and iOS. Services ID <span class="mono">im.plrs.key.signin</span>, key <span class="mono">8KQ2J7HJM4</span>.</div>
+            </div>
+            <span></span>
+            <button class="btn outline sm">Edit</button>
+          </div>
+          <div class="prow">
+            <span class="icon-tile muted"><svg class="gmark" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg></span>
+            <div>
+              <div class="pname">Google<span class="status"><i class="ic ic-circle-check"></i>Working · last sign-in 4 min ago</span></div>
+              <div class="pdesc">On every product’s card, and the usual choice on Android. OAuth client <span class="mono">…k2rq.apps.googleusercontent.com</span>.</div>
+            </div>
+            <span></span>
+            <button class="btn outline sm">Edit</button>
+          </div>
+          <div class="prow">
+            <span class="icon-tile muted"><i class="ic ic-steam"></i></span>
+            <div>
+              <div class="pname">Steam<span class="status"><i class="ic ic-circle-check"></i>Working · last sign-in 1 h ago</span></div>
+              <div class="pdesc">On Diceroll’s card: it sells on Steam. A web sign-in, so the Steam app isn’t needed. The Web API key comes from <span class="mono">SIGNIN_STEAM_API_KEY</span> in the deployment.</div>
+            </div>
+            <span class="pill sm"><i class="dot"></i>Set by deployment</span>
+            <button class="btn outline sm">Move into Polaris Key</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- SSO connections (I-30): platform or product scope, verified domains, SSO required per domain. -->
+      <section class="section" aria-labelledby="h-sso">
+        <div class="section-head">
+          <div><h2 id="h-sso">Single sign-on<span class="count">5</span></h2><p>An organization’s own sign-in, or a product’s own account system. An address at a verified domain goes straight to its connection.</p></div>
+        </div>
+        <div class="card">
+          <div class="conns-sub"><strong>Organizations</strong><span>Route by email domain, on every product’s card and on Polaris Key.</span></div>
+          <div class="conns-head" aria-hidden="true"><span>Connection</span><span class="c-scope">Scope</span><span>Domains</span><span class="c-aud">Signs in</span><span class="c-last">Last sign-in</span><span></span></div>
+
+          <a class="conn" href="#">
+            <div class="conn-name"><span class="icon-tile sm muted"><i class="ic ic-key-square"></i></span><div class="grow"><div>Pocket ID</div><div class="iss">id.plrs.im</div></div></div>
+            <span class="scope c-scope"><i class="ic ic-polaris sm"></i>Platform</span>
+            <div class="doms"><span class="dom req"><i class="ic ic-shield-check"></i>polaris.example.com<span class="tag">SSO only</span></span></div>
+            <span class="cell c-aud">Customers and operators</span>
+            <span class="cell muted c-last">6 min ago</span>
+            <span class="conn-end"><span class="pill sm"><i class="dot"></i>Set by deployment</span><i class="ic ic-chevron-right"></i></span>
+            <span class="conn-meta show-phone">Platform · customers and operators · 6 min ago</span>
+          </a>
+
+          <a class="conn" href="#">
+            <div class="conn-name"><span class="icon-tile sm muted"><i class="ic ic-building-2"></i></span><div class="grow"><div>Studio Okta</div><div class="iss">studio.okta.example.com</div></div></div>
+            <span class="scope c-scope"><i class="ic ic-polaris sm"></i>Platform</span>
+            <div class="doms"><span class="dom req"><i class="ic ic-shield-check"></i>studio.example.com<span class="tag">SSO only</span></span></div>
+            <span class="cell c-aud">Operators</span>
+            <span class="cell muted c-last">3 h ago</span>
+            <span class="conn-end"><i class="ic ic-chevron-right"></i></span>
+            <span class="conn-meta show-phone">Platform · operators · 3 h ago</span>
+          </a>
+
+          <a class="conn" href="#">
+            <div class="conn-name"><span class="icon-tile sm muted"><i class="ic ic-building-2"></i></span><div class="grow"><div>Lakeside University</div><div class="iss">login.example.edu</div></div></div>
+            <span class="scope c-scope"><i class="ic ic-polaris sm"></i>Platform</span>
+            <div class="doms"><span class="dom req"><i class="ic ic-shield-check"></i>example.edu<span class="tag">SSO only</span></span><span class="dom"><i class="ic ic-check"></i>students.example.edu</span><span class="dom wait"><i class="ic ic-clock"></i>music.example.edu</span></div>
+            <span class="cell c-aud">Customers</span>
+            <span class="cell muted c-last">2 h ago</span>
+            <span class="conn-end"><span class="pill warning sm"><i class="ic ic-triangle-alert"></i>1 domain not verified</span><i class="ic ic-chevron-right"></i></span>
+            <span class="conn-meta show-phone"><span class="text-warning">1 domain not verified</span> · platform · customers · 2 h ago</span>
+          </a>
+
+          <div class="legend">
+            <span><span class="dom req"><i class="ic ic-shield-check"></i><span class="tag">SSO only</span></span>Verified, SSO required</span>
+            <span><span class="dom"><i class="ic ic-check"></i></span>Verified</span>
+            <span><span class="dom wait"><i class="ic ic-clock"></i></span>Waiting for its DNS record</span>
+            <span>Email codes and passkeys work for every other address.</span>
+          </div>
+
+          <div class="conns-sub"><strong>Product connections</strong><span>A product’s own account system, used only by that product.</span></div>
+          <div class="conns-head" aria-hidden="true"><span>Connection</span><span class="c-scope">Product</span><span>What it does</span><span class="c-aud">Signs in</span><span class="c-last">Last sign-in</span><span></span></div>
+
+          <a class="conn" href="#">
+            <div class="conn-name"><span class="icon-tile sm muted"><i class="ic ic-key-square"></i></span><div class="grow"><div>DJDL store</div><div class="iss">accounts.djdl.example.com</div></div></div>
+            <span class="scope c-scope"><span class="logo xs" data-product="djdl"></span>DJDL</span>
+            <span class="nodom">A button on DJDL’s sign-in card</span>
+            <span class="cell c-aud">Customers</span>
+            <span class="cell muted c-last">18 min ago</span>
+            <span class="conn-end"><i class="ic ic-chevron-right"></i></span>
+            <span class="conn-meta show-phone">DJDL only · customers · 18 min ago</span>
+          </a>
+
+          <a class="conn" href="#">
+            <div class="conn-name"><span class="icon-tile sm muted"><i class="ic ic-key-square"></i></span><div class="grow"><div>Diceroll accounts</div><div class="iss">securetoken.google.com/diceroll-prod</div></div></div>
+            <span class="scope c-scope"><span class="logo xs" data-product="diceroll"></span>Diceroll</span>
+            <span class="nodom">Trades the game’s Firebase sign-in</span>
+            <span class="cell c-aud">Customers</span>
+            <span class="cell muted c-last">2 min ago</span>
+            <span class="conn-end"><i class="ic ic-chevron-right"></i></span>
+            <span class="conn-meta show-phone">Diceroll only · customers · 2 min ago</span>
+          </a>
+        </div>
+      </section>
+
+      <!-- Email delivery (I-18) and Turnstile. -->
+      <div class="grid cols-2">
+        <section class="card" aria-labelledby="h-email">
+          <div class="card-head svc-head">
+            <span class="icon-tile muted"><i class="ic ic-mail"></i></span>
+            <div class="title"><h2 id="h-email">Email</h2><p>Sign-in codes, receipts and invites.</p></div>
+            <span class="status"><i class="ic ic-circle-check"></i>Delivering</span>
+          </div>
+          <div class="card-body">
+            <dl class="dl">
+              <dt>Sends from</dt><dd class="mono">no-reply@key.plrs.im</dd>
+              <dt>Last 7 days</dt><dd>1,284 sent · 0.4% bounced</dd>
+            </dl>
+          </div>
+          <div class="card-foot"><button class="btn outline sm"><i class="ic ic-send"></i>Send a test email</button></div>
+        </section>
+        <section class="card" aria-labelledby="h-bot">
+          <div class="card-head svc-head">
+            <span class="icon-tile muted"><i class="ic ic-shield-check"></i></span>
+            <div class="title"><h2 id="h-bot">Bot protection</h2><p>Turnstile checks a person before an email code or a new account.</p></div>
+            <span class="status"><i class="ic ic-circle-check"></i>On</span>
+          </div>
+          <div class="card-body">
+            <dl class="dl">
+              <dt>Checks</dt><dd>Email codes, new accounts</dd>
+              <dt>Today</dt><dd>23 of 1,906 checks failed</dd>
+            </dl>
+          </div>
+          <div class="card-foot"><button class="btn outline sm">Edit</button></div>
+        </section>
+      </div>
+
+      <!-- Store accounts (P0-28's one sealed credential store) replace the old Store connections page. -->
+      <section class="section" aria-labelledby="h-stores">
+        <div class="section-head">
+          <div><h2 id="h-stores">Stores</h2><p>Team keys for each store. Channels, purchases and in-game sign-in read them from here.</p></div>
+        </div>
+        <div class="card">
+          <div class="prow">
+            <span class="icon-tile muted"><i class="ic ic-app-store"></i></span>
+            <div>
+              <div class="pname">App Store Connect · Example Audio<span class="status"><i class="ic ic-circle-check"></i>Working</span></div>
+              <div class="pdesc">Used by DJDL. Team <span class="mono">7KQ2J7HJM4</span>, API key ending <span class="mono">4Q2D</span>.</div>
+            </div>
+            <span></span>
+            <button class="btn outline sm">Edit</button>
+          </div>
+          <div class="prow">
+            <span class="icon-tile muted"><i class="ic ic-app-store"></i></span>
+            <div>
+              <div class="pname">App Store Connect · Example Games<span class="status"><i class="ic ic-circle-check"></i>Working</span></div>
+              <div class="pdesc">Used by Diceroll: uploads, in-app purchases and Game Center sign-in. Team <span class="mono">3MZ8Q2W9KD</span>.</div>
+            </div>
+            <span></span>
+            <button class="btn outline sm">Edit</button>
+          </div>
+          <div class="prow">
+            <span class="icon-tile muted"><i class="ic ic-google-play"></i></span>
+            <div>
+              <div class="pname">Google Play · Example Games</div>
+              <div class="pdesc">Used by Diceroll: uploads, purchases and Play Games sign-in. The service account key expires on Oct 16, 2026; uploads and purchase checks stop then.</div>
+            </div>
+            <span class="pill warning sm"><i class="ic ic-triangle-alert"></i>Expires Oct 16</span>
+            <button class="btn outline sm">Replace key</button>
+          </div>
+          <div class="prow">
+            <span class="icon-tile muted"><i class="ic ic-steam"></i></span>
+            <div>
+              <div class="pname">Steamworks</div>
+              <div class="pdesc">Diceroll sells on Steam. Until a publisher key is here, its Steam builds can’t upload and the game can’t check a player’s Steam sign-in.</div>
+            </div>
+            <span class="pill warning sm"><i class="ic ic-triangle-alert"></i>Not set up</span>
+            <button class="btn outline sm"><i class="ic ic-steam"></i>Connect Steam</button>
+          </div>
+        </div>
+      </section>
+
+      <p class="sessions"><i class="ic ic-clock sm"></i><span>Sessions are set when Polaris Key is deployed: a sign-in on key.plrs.im lasts 30 days, and the console asks again after 8 hours.</span></p>
+    </div>
+  </main>
+</div>

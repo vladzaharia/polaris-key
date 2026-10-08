@@ -1,0 +1,91 @@
+{
+  "id": "portal.license",
+  "title": "License details",
+  "area": "portal",
+  "surface": "portal",
+  "packages": [
+    "ST-36",
+    "LX-41",
+    "LX-15",
+    "P0-36",
+    "LX-38",
+    "P2-13"
+  ],
+  "uxRows": [],
+  "summary": "DJDL's product page opened at its License section for Priya's Education license (the one licenses.detail shows): the tier pill at the top right of the License card, a duration block that explains a one-year license that keeps the last version in plain words, no key because the access policy issued it, three add-ons with source badges, Devices with its count as a nav pill, and What's New drawn from Markdown with its summary first. The phone render shows a phone's state: DJDL has no phone build, so the action is Email me the download.",
+  "compare": [
+    "Route #/p/djdl/license marks License in the desktop nav and in the phone pill tabs. One order everywhere: Get it, License, Devices, Cloud Sync, What's new, Help. Devices carries its count as a small neutral pill after the label (ST-36).",
+    "Landing on a section route: the page opens scrolled so the License card's top sits just under the sticky header (under the pill tabs on phone), its outline flashes once for 1 s (no flash with reduced motion), and the mark holds on License until the person scrolls; after that it follows the reading line (PORTAL.md §4.20, owner polish 2026-10-07). On phone the marked pill is scrolled into view. The render shows the page from the top so the header can be checked.",
+    "Header: a centred 3:1 band of the cover capped at 416 px (16:9 full-bleed on phone), the 112 px icon (80 px on phone) half over its lower edge, the name and 'by Example Audio' below the band, never on the art; Download for macOS (solid, the page's only solid button) and the overflow menu. No status pill while the license is healthy.",
+    "At 1440 px three columns: nav 148 px | main (Get it, Cloud Sync, What's new, Help) | side 384 px (License, DJDL knows you as, Devices). Below 1180 px the nav hides. Phone: one column in the order Get it, License, Devices, Cloud Sync, DJDL knows you as, What's new, Help.",
+    "License card header: 'DJDL license', 'Licensed to priya@example.edu', the tier as a neutral pill ('Education') at the top right, before any issue pill. No 'N of M devices' line in this card.",
+    "Duration block (LX-41 through LX-15): 'Updates until Sep 14, 2027', 'Then keeps the last version', a bar from activation to the end of updates with a 'Today, Oct 7' marker and a dashed 'Last version' stretch after the end date, then the plain sentence: every update until Sep 14, 2027; after that DJDL keeps working on the last version released before that date, for as long as you like; newer versions need a new license. Then 'You're on 4.2.0, the latest version.' The bar's track is visible in both themes (at least 3:1 against the sunken box; the mockup uses --pk-border-strong).",
+    "That wording appears only for keeps-the-last-version. A lifetime license shows 'Lifetime' and no bar; a renewing one 'Renews <date> · <source>'; a stop license at its end 'Renew with Example Audio to keep using it'.",
+    "Facts in two columns: Activated, License source 'Automatic grant' (sentence case, copy catalog, P0-36), Works offline for (the license's own 14 days), Release track 'Stable' (singular for one track, 'Release tracks' only when there are several; the glossary word, not 'channels').",
+    "Holder box 'In your account, no key': an automatic license has no key (LX-38), so no key field or masked key is drawn; the sentence says a new device signs in with the account email.",
+    "Included lists the tier's entitlements by label (4 decks, Recording, Cloud Sync, 1 GB). Add-ons lists each add-on by its own name with its term and a source badge pill: Polaris VPN · Automatic grant; Stem separation · From Example Audio · Ends Dec 31, 2026; Extra devices (2) · From Example Audio (LX-15). 'Apply to a license' is gone.",
+    "Devices: '3 of 4 devices in use · 2 come with Education and 2 with the Extra devices add‑on' (a non-breaking hyphen in add‑on; the word is device, never seat), a four-segment meter, one row per device with platform, version and 'this device' or last seen, Remove per row, and 'Removing a device makes room for another at once and signs it out of DJDL.'",
+    "Remove expands its row into the inline confirm panel (PORTAL.md §4.22; EXPERIENCE §7 L1/L2): 'Remove Gig laptop?', 'It's signed out of DJDL at once and 1 of 4 devices is free again.', on this device also 'You'll be signed out here too.', with Remove Gig laptop and Keep it, focus on the panel heading; then the toast 'Gig laptop removed'.",
+    "What's new: the notes drawn from Markdown (an h3 under the card's h2, bold, italic, a list, a link); the summary is the first list cut to three items, Show full notes opens the rest in place; Earlier versions as rows.",
+    "Get it: the recommended build for this Mac with an outlined Download (the header keeps the one solid button; the real portal's recommended panel follows the same rule), every file with a truncated SHA-256 and copy, the SHA256SUMS link and 'Download links are made fresh when you click, so they never go stale.' No release-track picker, because this license runs Stable only; P2-13's Stable | Beta picker appears in the card header only when a license grants more.",
+    "Cloud Sync: '37 MB of 1 GB used' with a bar and '1 GB comes with your license' (storage is an entitlement), rows 'Crates · 1,240', 'Cue points · 18,920 tracks', 'Settings · 9', then Export synced data and Delete synced data. Below 380 px the two buttons stack full width, Export first.",
+    "Delete synced data opens a ConfirmDialog with step-up and typed confirmation (EXPERIENCE §7 L3): 'Delete DJDL's synced data?', the consequences (37 MB of crates, cue points and settings leave Cloud Sync; files already on your Macs and PCs stay there), Export synced data offered first, 'Type DJDL to delete', and the button 'Delete synced data'.",
+    "Phone renders stand for a phone user agent (PORTAL.md §5.4, decided by the device, not the width): the header action is 'Email me the download' (solid, full width); the recommended card becomes the callout 'DJDL runs on macOS and Windows · We'll email priya@example.edu a link that opens on your Mac or PC.', then All platforms; Devices marks no 'this device' (Priya's MacBook Air reads 'last seen today').",
+    "Phone: sticky pill tabs under the header that scroll sideways (no scrollbar, snap, a faded right edge) so What's new and Help stay reachable, License marked; the SHA column hidden; the footer above the bottom bar, whose Activate is the outlined pill."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Needs fixes, now applied: the light-theme duration track is drawn (3.2:1), the page has one solid button, and the phone state is designed; the scroll-following nav stays (owner polish) with the landing state specified.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "Light theme: the duration bar's track was the box's own colour (rgb 235,238,248 on rgb 235,238,248).",
+        "resolution": "The duration box's track uses --pk-border-strong: sampled rgb(126,134,153) on rgb(235,238,248) in light (3.2:1) and rgb(97,105,123) on rgb(2,4,8) in dark (3.7:1). Same rule on portal.license-lapsed. licenses.detail is another area's screen and is not changed here."
+      },
+      {
+        "severity": "major",
+        "issue": "Phone state not designed: 'Download for macOS', 'Recommended for your Mac' and a Mac marked 'this device' on a phone.",
+        "resolution": "Phone render: header 'Email me the download' (solid, full width); the recommended card becomes the callout 'DJDL runs on macOS and Windows · We'll email priya@example.edu a link that opens on your Mac or PC.', then All platforms; Priya's MacBook Air reads 'last seen today', not 'this device'. Compare line added."
+      },
+      {
+        "severity": "minor",
+        "issue": "Two solid violet Download buttons in the first screen.",
+        "resolution": "The recommended row's Download is outlined; the header's is the page's only solid button. The compare line says the real portal's recommended panel follows the same rule."
+      },
+      {
+        "severity": "minor",
+        "issue": "Route lands at the top of the page; the nav zigzags between columns and a scroll-spy can't mark one of two side-by-side sections.",
+        "resolution": "Partly declined: the nav keeps following the reading line and the side column starts beside Get it, because PORTAL.md §4.20's owner polish (2026-10-07) decides both. Applied: a compare line says a section route lands with the card's top under the sticky header, flashes its outline for 1 s (none with reduced motion) and holds the mark until the person scrolls; the render stays the top of the page so the header can be reviewed."
+      },
+      {
+        "severity": "minor",
+        "issue": "Devices subtitle broke at 'add- / on' and switched from 'devices' to 'seats'.",
+        "resolution": "'3 of 4 devices in use · 2 come with Education and 2 with the Extra devices add‑on' with a non-breaking hyphen; footnote 'Removing a device makes room for another at once and signs it out of DJDL.' No 'seat' is left in the copy or the compare list."
+      },
+      {
+        "severity": "minor",
+        "issue": "At 360 px 'Export synced data' and 'Delete synced data' were clipped.",
+        "resolution": "Cloud Sync's footer wraps, and below 380 px the two buttons stack full width, Export first. Checked at 360 and 390 px: no clipped text and no sideways scroll. Same on portal.license-lapsed."
+      },
+      {
+        "severity": "minor",
+        "issue": "Phone pill tabs used overflow: hidden, so What's new and Help could not be reached.",
+        "resolution": "The strip scrolls sideways (overflow-x auto, no scrollbar, scroll-snap x proximity) with a 40 px faded right edge; the compare list says the marked pill scrolls into view on load. Same on portal.license-lapsed."
+      },
+      {
+        "severity": "minor",
+        "issue": "Remove and Delete synced data had no confirmation or result specified.",
+        "resolution": "Compare lines added in the house patterns: Remove expands the row into the inline confirm panel (PORTAL.md §4.22; EXPERIENCE §7 keeps row-scoped confirms inline in the portal rather than a dialog) naming the device and the freed device, with the extra line on this device and the toast 'Gig laptop removed'; Delete synced data is an L3 ConfirmDialog with step-up and 'Type DJDL to delete', naming 37 MB and offering Export first."
+      },
+      {
+        "severity": "minor",
+        "issue": "'Release tracks: Stable' for one value; 'Crates · 1,240 crates' and 'Settings · 9 settings' repeat the noun.",
+        "resolution": "'Release track: Stable' (plural only for several); 'Crates · 1,240', 'Cue points · 18,920 tracks', 'Settings · 9'."
+      }
+    ]
+  },
+  "order": 2
+}

@@ -1,0 +1,38 @@
+{
+  "id": "identity.connected-apps",
+  "title": "Account → Connected apps",
+  "area": "identity",
+  "surface": "portal",
+  "packages": [
+    "I-34",
+    "I-11"
+  ],
+  "uxRows": [],
+  "summary": "Mara's Account page at Connected apps: one row per app she signs in to with Polaris Key, saying how she signs in to it, where she last used it and exactly what it gets, including what she declined (Diceroll gets neither her picture nor her email), with Change what <App> gets and Disconnect on each.",
+  "compare": [
+    "Account keeps its sticky section nav, now Profile, Sign-in methods, Connected apps, Access tokens, Where you're signed in, Appearance, Your data; the current section is marked. It replaces today's 'Connected products' card.",
+    "The page header's 'Sign out' ends where the content column ends (the section nav plus the cards), not at the page edge.",
+    "Card subtitle states the pairwise id: 'Each gets its own id for you, so developers can't match you across products.'",
+    "Each app row: the product icon, name and developer (from Presentation), the sign-in method it uses with its mark, last use and device(s), then a 'Gets' line of chips.",
+    "Granted items are filled success chips with a tick; declined optional items are dashed, muted, unfilled chips with an eye-off icon worded 'Not your picture', 'Not your email'. Cloud Sync appears only for products that have it; a declined Cloud Sync reads 'Not Cloud Sync'.",
+    "'Change what <App> gets' (outline) re-runs the consent step for that app in the card, showing the current choices (identity.consent). 'Disconnect' (ghost) opens identity.disconnect.",
+    "Only products with Sign-in on appear; the footnote says disconnecting signs the app out on every device within an hour and keeps its license activated and in the library (as identity.disconnect says). With no apps the card shows an empty state: 'No apps yet. Apps you sign in to with Polaris Key appear here.'",
+    "'Where you're signed in' follows, unchanged, and now says apps are under Connected apps, so browsers and apps are never mixed.",
+    "Phone: the section nav becomes a scrolling row of pills, each app row stacks (icon and name, method line, chips, then 'Change what <App> gets' and 'Disconnect' as full-width rows), and the portal tab bar (Library, the outlined Activate, Discover) sits below the content, never over it."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Pass. Granted and declined chips differ by fill, Sign out lines up with the content, and phone buttons are full width.",
+    "findings": [
+      {
+        "severity": "minor",
+        "issue": "Granted chips were outlined, not solid; 'Sign out' sat past the content column; on phone the tab bar covered Diceroll's buttons and they weren't full width; no empty state.",
+        "resolution": "Granted chips have a success-subtle fill and border; declined stay dashed and unfilled. The header is limited to the content column's width. On phone both buttons are full-width rows; the tab bar is drawn below the content (the renderer's phone rule) and Activate is the outlined .act pill. The empty state is specified in the compare, not drawn, declined: this story's Mara has two connected apps."
+      }
+    ]
+  },
+  "order": 11
+}

@@ -1,0 +1,20 @@
+{
+  "id": "identity.connection-new-failed",
+  "title": "Add SSO connection: test sign-in refused",
+  "area": "identity",
+  "surface": "console",
+  "packages": ["I-31", "I-30", "ST-39"],
+  "uxRows": [],
+  "summary": "The Test sign-in step when Kestrel Labs refuses the code exchange because the client secret from step 2 is wrong: a danger callout that says what went wrong and how to fix it, the provider's answer verbatim, and 'Back to Client' and 'Try again'.",
+  "compare": [
+    "The callout names the failing step in plain words (the code-for-token exchange), says which earlier step to revisit (Client) and exactly where the secret lives in the provider's console, then offers 'Back to Client' and 'Try again'.",
+    "The provider's error is shown verbatim in mono ('unauthorized_client: Invalid client or Invalid client credentials'), with the HTTP status, the token endpoint and the time. Nothing in it is a secret.",
+    "Other refusals use the same layout with their own advice: a redirect URI mismatch points to the URI to register (step 2), an ID token signed by an unexpected key or issuer points to step 1 (Provider), and a cancelled sign-in at the provider simply offers 'Try again'.",
+    "Nothing is saved: no account, link, license or consent. 'Continue to domains' stays disabled with the hint 'Fix the client and try again to continue'.",
+    "The stepper's current step reads 'Didn’t work' under Test sign-in; earlier steps keep their done marks.",
+    "Phone: the callout's buttons go under its text, the answer's labels stack above their values, and long values wrap rather than scroll."
+  ],
+  "status": "mockup",
+  "designReview": null,
+  "order": 4.2
+}

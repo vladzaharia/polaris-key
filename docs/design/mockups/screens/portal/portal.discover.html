@@ -1,0 +1,348 @@
+<style>
+  /* portal.discover: one tile just added through the access policy, one still to add. */
+  [data-screen="portal.discover"] .disc-title p {
+    margin-top: 8px;
+    max-width: 640px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="portal.discover"] .disc-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  [data-screen="portal.discover"] .ptile .art {
+    position: relative;
+  }
+  [data-screen="portal.discover"] .ptile-head .logo.lg {
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+  }
+  [data-screen="portal.discover"] .ptile-head {
+    align-items: flex-start;
+  }
+  [data-screen="portal.discover"] .ptile-head > .stack {
+    padding-top: 34px;
+    min-width: 0;
+  }
+  [data-screen="portal.discover"] .ptile-head h3 {
+    font-size: 18px;
+    line-height: 24px;
+    font-weight: 700;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="portal.discover"] .ptile-head .dev {
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="portal.discover"] .ptile-body {
+    gap: 12px;
+    padding-top: 14px;
+  }
+  [data-screen="portal.discover"] .get {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  [data-screen="portal.discover"] .get .platforms {
+    margin-left: auto;
+  }
+  [data-screen="portal.discover"] .pill.tier {
+    color: var(--pk-text-strong);
+  }
+  [data-screen="portal.discover"] .dur {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--pk-text-default);
+  }
+  [data-screen="portal.discover"] .dur .ic {
+    width: 14px;
+    height: 14px;
+    color: var(--pk-text-subtle);
+  }
+  /* Why you can add it: always shown (owner, 2026-10-04). */
+  [data-screen="portal.discover"] .why {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--pk-surface-sunken);
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-default);
+  }
+  [data-screen="portal.discover"] .why > .ic {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    margin-top: 1px;
+    color: var(--pk-accent-fg);
+  }
+  [data-screen="portal.discover"] .why .sub {
+    display: block;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="portal.discover"] .stores {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="portal.discover"] .stores a {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 24px;
+    color: var(--pk-accent-fg);
+    text-decoration: underline;
+    text-decoration-color: color-mix(in oklab, var(--pk-accent-fg) 35%, transparent);
+    text-underline-offset: 3px;
+  }
+  [data-screen="portal.discover"] .stores a:hover {
+    text-decoration-color: currentColor;
+  }
+  [data-screen="portal.discover"] .stores a .ic {
+    width: 12px;
+    height: 12px;
+  }
+  [data-screen="portal.discover"] .stores a .ic-arrow-up-right {
+    color: var(--pk-text-subtle);
+  }
+  /* Actions follow the device (PORTAL.md §5.4): .ua-desk on a computer, .ua-phone on a phone. */
+  [data-screen="portal.discover"] .ua-phone {
+    display: none !important;
+  }
+  [data-screen="portal.discover"] .ptile-foot {
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  [data-screen="portal.discover"] .ptile-foot > .ua-phone.btn {
+    flex: 1 0 auto;
+  }
+  [data-screen="portal.discover"] .toast .btn.link {
+    flex: none;
+    margin-left: auto;
+    align-self: center;
+    font-weight: 700;
+  }
+  [data-screen="portal.discover"] .toast .btn.icon {
+    align-self: flex-start;
+    margin: -4px -6px 0 0;
+  }
+  /* Just added: green edge, "In your library" on the art, the download as the action. */
+  [data-screen="portal.discover"] .ptile.added {
+    border-color: var(--pk-success-border);
+    box-shadow: 0 0 0 1px var(--pk-success-border), var(--mk-card-shadow);
+  }
+  [data-screen="portal.discover"] .on-art {
+    position: absolute;
+    z-index: 1;
+    right: 16px;
+    bottom: 16px;
+    background: var(--pk-surface-raised);
+  }
+  /* The end tile: how Discover decides what shows. */
+  [data-screen="portal.discover"] .how {
+    border-style: dashed;
+    background: transparent;
+    box-shadow: none;
+    padding: 24px;
+    gap: 16px;
+  }
+  [data-screen="portal.discover"] .how h3 {
+    font-size: 16px;
+    line-height: 22px;
+    font-weight: 700;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="portal.discover"] .how ul {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  [data-screen="portal.discover"] .how li {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr);
+    gap: 12px;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="portal.discover"] .how .icon-tile {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+  }
+  [data-screen="portal.discover"] .how strong {
+    display: block;
+    font-size: 14px;
+    line-height: 20px;
+  }
+  @container screen (max-width: 1023px) {
+    [data-screen="portal.discover"] .disc-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="portal.discover"] .disc-grid {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 16px;
+    }
+    [data-screen="portal.discover"] .how {
+      padding: 20px;
+    }
+    [data-screen="portal.discover"] .toasts {
+      right: 16px;
+      bottom: 96px;
+    }
+    [data-screen="portal.discover"] .ua-desk {
+      display: none !important;
+    }
+    [data-screen="portal.discover"] .ua-phone {
+      display: inline-flex !important;
+    }
+    [data-screen="portal.discover"] span.ua-phone {
+      display: inline !important;
+    }
+  }
+</style>
+
+<div class="portal" data-service="core">
+  <header class="portal-top">
+    <a class="portal-brand" href="#"><i class="pk-mark sm"></i>Polaris Key</a>
+    <nav class="portal-nav" aria-label="Portal">
+      <a href="#">Library <span class="count">1</span></a>
+      <a class="active" href="#">Discover <span class="count accent">1</span></a>
+    </nav>
+    <div class="portal-actions">
+      <button class="btn outline sm"><i class="ic ic-key-round accent"></i>Activate license</button>
+      <span class="account"><span class="avatar sm">DW</span><span>Dana Whitfield</span><i class="ic ic-chevron-down"></i></span>
+    </div>
+  </header>
+
+  <main class="portal-page">
+    <div class="disc-title">
+      <h1>Discover</h1>
+      <p>Products their developers make available to your account. Adding one puts it in your library straight away, at no cost.</p>
+    </div>
+
+    <div class="ptiles disc-grid">
+      <!-- DJDL (Discover: People who can get it): the access rule "Verified email domain example.edu
+           gets Education", labelled "Education license" (licenses.access). Add to library ran the same
+           issuance as signing in to DJDL (LX-38): Automatic grant, no key, one license per account. -->
+      <article class="ptile added" aria-labelledby="d-djdl">
+        <div class="art" data-product="djdl">
+          <span class="pill success on-art"><i class="ic ic-circle-check"></i>In your library</span>
+        </div>
+        <div class="ptile-head">
+          <span class="logo lg" data-product="djdl"></span>
+          <div class="stack gap-0">
+            <h3 id="d-djdl"><a href="#">DJDL</a></h3>
+            <span class="dev">Example Audio</span>
+          </div>
+        </div>
+        <div class="ptile-body">
+          <div class="get">
+            <span class="pill sm tier"><i class="ic ic-key-round"></i>Education</span>
+            <span class="pill sm"><i class="ic ic-monitor-smartphone"></i>2 devices</span>
+            <span class="platforms" aria-label="macOS and Windows"><i class="ic ic-apple"></i><i class="ic ic-windows"></i></span>
+          </div>
+          <span class="dur"><i class="ic ic-calendar-clock"></i>1 year of updates, then keeps the last version</span>
+          <div class="why">
+            <i class="ic ic-building-2"></i>
+            <span>Education license<span class="sub">You have a confirmed example.edu email</span></span>
+          </div>
+        </div>
+        <div class="ptile-foot">
+          <!-- DJDL hasn't been seen on this device yet, so its covered build comes before Open (§5.4). -->
+          <button class="btn outline ua-desk"><i class="ic ic-download"></i>Download for macOS</button>
+          <button class="btn outline ua-phone"><i class="ic ic-mail"></i>Email me the download</button>
+          <a class="btn link sm" href="#">Go to DJDL<i class="ic ic-arrow-right"></i></a>
+        </div>
+      </article>
+
+      <!-- Diceroll (Discover: Everyone signed in): everyone gets Free, so Add to library is offered;
+           the paid tiers are sold on the stores (obtain paths shown as links). -->
+      <article class="ptile" aria-labelledby="d-diceroll">
+        <div class="art" data-product="diceroll"></div>
+        <div class="ptile-head">
+          <span class="logo lg" data-product="diceroll"></span>
+          <div class="stack gap-0">
+            <h3 id="d-diceroll"><a href="#">Diceroll</a></h3>
+            <span class="dev">Example Games</span>
+          </div>
+        </div>
+        <div class="ptile-body">
+          <div class="get">
+            <span class="pill sm tier"><i class="ic ic-key-round"></i>Free</span>
+            <span class="pill sm"><i class="ic ic-monitor-smartphone"></i>3 devices</span>
+            <span class="platforms" aria-label="iOS, Android, Windows and Linux"><i class="ic ic-smartphone"></i><i class="ic ic-android"></i><i class="ic ic-windows"></i><i class="ic ic-linux"></i></span>
+          </div>
+          <span class="dur"><i class="ic ic-calendar-clock"></i>Lifetime</span>
+          <div class="why">
+            <i class="ic ic-sparkles"></i>
+            <span>Free for everyone with a Polaris Key account</span>
+          </div>
+          <div class="stores">
+            <span>Buy Standard or packs on</span>
+            <a href="#" aria-label="Buy Standard or packs on Steam (opens Steam)"><i class="ic ic-steam"></i>Steam<i class="ic ic-arrow-up-right"></i></a>
+            <a href="#" aria-label="Buy Standard or packs on the App Store (opens the App Store)"><i class="ic ic-app-store"></i>App Store<i class="ic ic-arrow-up-right"></i></a>
+            <a href="#" aria-label="Buy Standard or packs on Google Play (opens Google Play)"><i class="ic ic-google-play"></i>Google Play<i class="ic ic-arrow-up-right"></i></a>
+            <a href="#" aria-label="Buy Standard or packs on itch.io (opens itch.io)"><i class="ic ic-itch"></i>itch.io<i class="ic ic-arrow-up-right"></i></a>
+          </div>
+        </div>
+        <div class="ptile-foot">
+          <button class="btn outline"><i class="ic ic-plus"></i>Add to library</button>
+        </div>
+      </article>
+
+      <aside class="ptile how" aria-labelledby="how-h">
+        <h3 id="how-h">What shows up here</h3>
+        <ul>
+          <li>
+            <span class="icon-tile muted"><i class="ic ic-sparkles"></i></span>
+            <span><strong>Made available to you</strong>A developer chose to give it to everyone, or to people like you: your team, your email's domain, a group you're in.</span>
+          </li>
+          <li>
+            <span class="icon-tile muted"><i class="ic ic-user-check"></i></span>
+            <span><strong>Free, with no key</strong>Adding one gives you its license at once. Sign in to the app with dana@example.edu and it works.</span>
+          </li>
+          <li>
+            <span class="icon-tile muted"><i class="ic ic-store"></i></span>
+            <span><strong>Some show store links</strong>When a product isn't free for you, its tile links to the stores that sell it.</span>
+          </li>
+          <li>
+            <span class="icon-tile muted"><i class="ic ic-shopping-bag"></i></span>
+            <span><strong>Bought something?</strong>Purchases show up in your library by themselves.</span>
+          </li>
+        </ul>
+      </aside>
+    </div>
+  </main>
+
+  <footer class="portal-foot">Polaris Key · <a href="#">key.plrs.im</a> · Help · Privacy · Terms</footer>
+
+  <!-- role=status; it stays until dismissed while it carries an action. -->
+  <div class="toasts">
+    <div class="toast success" role="status">
+      <i class="ic ic-circle-check"></i>
+      <div class="grow">
+        <div class="toast-title">DJDL is in your library</div>
+        <div class="toast-text"><span class="ua-desk">Download it, then sign in with dana@example.edu. No key needed.</span><span class="ua-phone">Get it on your Mac or PC, then sign in with dana@example.edu. No key needed.</span></div>
+      </div>
+      <button class="btn link sm ua-desk">Download</button>
+      <button class="btn link sm ua-phone">Email me</button>
+      <button class="btn ghost icon xs" aria-label="Dismiss"><i class="ic ic-x"></i></button>
+    </div>
+  </div>
+
+  <nav class="portal-tabbar" aria-label="Portal">
+    <a href="#"><i class="ic ic-layout-grid"></i>Library</a>
+    <a class="act" href="#"><i class="ic ic-key-round"></i>Activate</a>
+    <a class="active" href="#" aria-label="Discover, 1 to add"><i class="ic ic-sparkles"></i>Discover<span class="dot" aria-hidden="true"></span></a>
+  </nav>
+</div>

@@ -1,0 +1,237 @@
+<style>
+  /* licenses.access-confirm: what Save access asks before a risky change, and what it shows after. */
+  [data-screen="licenses.access-confirm"] .board {
+    gap: 40px 48px;
+  }
+  [data-screen="licenses.access-confirm"] .board-item {
+    width: calc((100% - 48px) / 2);
+  }
+  [data-screen="licenses.access-confirm"] .board-item > .dialog {
+    width: 100%;
+    max-width: 560px;
+  }
+  [data-screen="licenses.access-confirm"] .tier-pill > .ic {
+    color: var(--pk-service-license-fg);
+  }
+  [data-screen="licenses.access-confirm"] .change-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--pk-surface-sunken);
+    font-size: 13px;
+    color: var(--pk-text-default);
+  }
+  [data-screen="licenses.access-confirm"] .change-line .old {
+    color: var(--pk-text-muted);
+    text-decoration: line-through;
+  }
+  [data-screen="licenses.access-confirm"] .change-line strong {
+    color: var(--pk-text-strong);
+  }
+  [data-screen="licenses.access-confirm"] .outcomes {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  [data-screen="licenses.access-confirm"] .outcome {
+    display: flex;
+    gap: 10px;
+    font-size: 14px;
+    line-height: 20px;
+  }
+  [data-screen="licenses.access-confirm"] .outcome > .ic {
+    flex: none;
+    margin-top: 2px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="licenses.access-confirm"] .outcome strong {
+    color: var(--pk-text-strong);
+  }
+  /* The saved state: the page without its save bar, and a toast. */
+  [data-screen="licenses.access-confirm"] .frame {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px;
+    border: 1px solid var(--mk-line);
+    border-radius: 16px;
+    background: var(--pk-surface-page);
+    box-shadow: var(--mk-card-shadow);
+  }
+  [data-screen="licenses.access-confirm"] .gate {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 6px 14px;
+    padding: 12px 20px;
+  }
+  [data-screen="licenses.access-confirm"] .gate + .gate {
+    border-top: 1px solid var(--mk-line);
+  }
+  [data-screen="licenses.access-confirm"] .rule-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    background: var(--mk-fill);
+    color: var(--pk-text-muted);
+  }
+  [data-screen="licenses.access-confirm"] .gate-title {
+    font-weight: 700;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="licenses.access-confirm"] .gate-sub {
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="licenses.access-confirm"] .gate-seg {
+    display: grid;
+    grid-template-columns: repeat(4, 104px);
+  }
+  [data-screen="licenses.access-confirm"] .gate-seg > * {
+    justify-content: center;
+    padding: 0 6px;
+  }
+  [data-screen="licenses.access-confirm"] .toast {
+    align-self: flex-end;
+    width: 400px;
+    max-width: 100%;
+  }
+  [data-screen="licenses.access-confirm"] .toast .btn {
+    flex: none;
+  }
+  [data-screen="licenses.access-confirm"] .saved-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  [data-screen="licenses.access-confirm"] .saved-head .grow > div:first-child {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="licenses.access-confirm"] figcaption {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    line-height: 18px;
+  }
+  [data-screen="licenses.access-confirm"] figcaption strong {
+    color: var(--pk-text-strong);
+  }
+  [data-screen="licenses.access-confirm"] .board-item.wide {
+    width: 100%;
+  }
+  @container screen (max-width: 1023px) {
+    [data-screen="licenses.access-confirm"] .board-item {
+      width: 100%;
+    }
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="licenses.access-confirm"] .dialog-foot {
+      flex-direction: column-reverse;
+      align-items: stretch;
+    }
+    [data-screen="licenses.access-confirm"] .frame {
+      padding: 16px;
+    }
+    [data-screen="licenses.access-confirm"] .gate {
+      grid-template-columns: 32px minmax(0, 1fr);
+      padding: 12px 16px;
+    }
+    [data-screen="licenses.access-confirm"] .gate > .gate-seg {
+      grid-column: 1 / -1;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      height: auto;
+    }
+    [data-screen="licenses.access-confirm"] .saved-head .btn {
+      display: none;
+    }
+  }
+</style>
+
+<div class="board" data-service="core">
+  <div class="board-title">
+    <h1>Saving Access</h1>
+    <p>On licenses.access, changes wait in the save bar until Save access. Two changes ask first, because they change who gets DJDL from now on: switching Automatic licenses to Nobody, or to Everyone who signs in. After saving, the bar goes and a toast says what changed.</p>
+  </div>
+
+  <!-- Rules → Nobody. -->
+  <figure class="board-item">
+    <div class="dialog caution" role="dialog" aria-labelledby="ac-nobody">
+      <div class="dialog-head"><i class="ic ic-triangle-alert"></i><h2 id="ac-nobody">Stop automatic licenses for DJDL?</h2><button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button></div>
+      <div class="dialog-body">
+        <div class="change-line">Automatic licenses: <span class="old">Rules</span><i class="ic ic-arrow-right sm"></i><strong>Nobody</strong></div>
+        <div class="outcomes">
+          <div class="outcome"><i class="ic ic-check"></i><span><strong>650 automatic licenses stay.</strong> Nobody who has DJDL today loses it, and their tiers don’t change.</span></div>
+          <div class="outcome"><i class="ic ic-user-round"></i><span><strong>New sign-ins get nothing automatically.</strong> People need a key, or a license you create for them.</span></div>
+          <div class="outcome"><i class="ic ic-sparkles"></i><span><strong>Discover stops offering DJDL</strong> to anyone without a license, because no rule gives them one.</span></div>
+          <div class="outcome"><i class="ic ic-list-filter"></i><span>Your 4 rules are kept. Choosing Rules again turns them back on.</span></div>
+        </div>
+      </div>
+      <div class="dialog-foot">
+        <button class="btn outline">Keep Rules</button>
+        <button class="btn primary">Stop automatic licenses</button>
+      </div>
+    </div>
+    <figcaption><strong>Rules → Nobody</strong>Asked when Save access includes this switch. It names what stays (650 licenses, the rules) and what stops, and the button says exactly that.</figcaption>
+  </figure>
+
+  <!-- Rules → Everyone who signs in. -->
+  <figure class="board-item">
+    <div class="dialog caution" role="dialog" aria-labelledby="ac-everyone">
+      <div class="dialog-head"><i class="ic ic-triangle-alert"></i><h2 id="ac-everyone">Give every signed-in account a DJDL license?</h2><button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button></div>
+      <div class="dialog-body">
+        <div class="change-line">Automatic licenses: <span class="old">Rules</span><i class="ic ic-arrow-right sm"></i><strong>Everyone who signs in</strong> gets <span class="pill sm tier-pill"><i class="ic ic-layers"></i>Trial</span></div>
+        <div class="outcomes">
+          <div class="outcome"><i class="ic ic-users"></i><span><strong>Anyone who signs in to DJDL gets Trial:</strong> 14 days of Standard, then Free. That includes every Polaris Key account, not only your groups and domains.</span></div>
+          <div class="outcome"><i class="ic ic-trending-up"></i><span><strong>Nobody moves down.</strong> The 38 Studio, 412 Standard and 57 Education licenses from your rules stay as they are.</span></div>
+          <div class="outcome"><i class="ic ic-list-filter"></i><span>Your 4 rules are kept but don’t apply while this is on.</span></div>
+        </div>
+        <div class="field">
+          <label class="field-label">Type <span class="confirm-word neutral">djdl</span> to confirm</label>
+          <div class="input mono"><span class="grow">djdl</span></div>
+        </div>
+      </div>
+      <div class="dialog-foot">
+        <button class="btn outline">Keep Rules</button>
+        <button class="btn primary">Give everyone Trial</button>
+      </div>
+    </div>
+    <figcaption><strong>Rules → Everyone who signs in</strong>Widening to every account takes the typed slug, as Discover’s “Everyone signed in” does. The tier is named in the change line and the button.</figcaption>
+  </figure>
+
+  <!-- Saved: the bar goes; a toast names what changed, with History. -->
+  <figure class="board-item wide">
+    <div class="frame">
+      <div class="saved-head">
+        <div class="grow"><div role="heading" aria-level="2">Access</div><div class="small muted">Saved just now by Ada Lovelace</div></div>
+        <button class="btn outline"><i class="ic ic-history"></i>History</button>
+      </div>
+      <section class="card">
+        <div class="gate">
+          <span class="rule-icon"><i class="ic ic-circle-arrow-up"></i></span>
+          <div><div class="gate-title">Update checks</div><div class="gate-sub">Sparkle on macOS, WinSparkle on Windows</div></div>
+          <div class="segmented sm gate-seg"><span>Public</span><span>Signed in</span><span class="on">Customers</span><span>Entitlement…</span></div>
+        </div>
+        <div class="gate">
+          <span class="rule-icon"><i class="ic ic-download"></i></span>
+          <div><div class="gate-title">App downloads</div><div class="gate-sub">DJDL 4.2.0 for macOS and Windows on key.plrs.im/djdl</div></div>
+          <div class="segmented sm gate-seg"><span class="on">Public</span><span>Signed in</span><span>Customers</span><span>Entitlement…</span></div>
+        </div>
+      </section>
+      <div class="toast success" role="status">
+        <i class="ic ic-circle-check"></i>
+        <div class="grow"><div class="toast-title">Saved access</div><div class="toast-text">App downloads are now Public. Anyone can download DJDL 4.2.0 without signing in.</div></div>
+        <button class="btn ghost xs">View in History</button>
+      </div>
+    </div>
+    <figcaption><strong>Saved</strong>The save bar leaves, the outline and “was Customers” go, the header says who saved and when, and a toast repeats the change in words with View in History. A failed save keeps the bar, says what went wrong on it and keeps every change.</figcaption>
+  </figure>
+</div>

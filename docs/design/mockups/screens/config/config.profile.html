@@ -1,0 +1,384 @@
+<style>
+  /* config.profile: DJDL's Studio profile: the values Studio devices get, where locks are set, its place in the chain and who it reaches (U-28, U-29). */
+
+  [data-screen="config.profile"] .prof-layout {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr) 280px;
+    gap: 20px;
+    align-items: start;
+  }
+  [data-screen="config.profile"] .rail {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+  }
+  [data-screen="config.profile"] .plist {
+    padding: 8px;
+  }
+  [data-screen="config.profile"] .plist .eyebrow {
+    margin: 8px 8px 4px;
+  }
+  [data-screen="config.profile"] .pitem {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 8px 10px;
+    border-radius: var(--pk-radius-md);
+  }
+  [data-screen="config.profile"] .pitem .n {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="config.profile"] .pitem .n .ic {
+    width: 14px;
+    height: 14px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="config.profile"] .pitem .d {
+    padding-left: 22px;
+    font-size: 12px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="config.profile"] .pitem.active {
+    background: var(--mk-fill);
+    box-shadow: inset 2px 0 0 var(--pk-text-strong);
+  }
+  [data-screen="config.profile"] .plist .note {
+    margin: 10px 8px 4px;
+    padding-top: 10px;
+    border-top: 1px solid var(--mk-line);
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="config.profile"] .vals td {
+    padding-top: 9px;
+    padding-bottom: 9px;
+    vertical-align: middle;
+  }
+  [data-screen="config.profile"] .vals td.c-act,
+  [data-screen="config.profile"] .vals th.end {
+    padding-right: 16px;
+  }
+  [data-screen="config.profile"] .vals .k {
+    font-family: var(--pk-font-mono);
+    font-size: 12.5px;
+    color: var(--pk-text-strong);
+    white-space: nowrap;
+  }
+  [data-screen="config.profile"] .vals .k small {
+    display: block;
+    font-family: var(--pk-font-sans);
+    font-size: 12px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="config.profile"] .vals .input,
+  [data-screen="config.profile"] .vals .select {
+    height: 32px;
+    font-size: 13px;
+  }
+  [data-screen="config.profile"] .vals .c-val {
+    width: 150px;
+  }
+  [data-screen="config.profile"] .vals .c-vis {
+    width: 150px;
+  }
+  [data-screen="config.profile"] .vals .select .ic:first-child {
+    width: 14px;
+    height: 14px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="config.profile"] .vals .secret {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--pk-text-muted);
+    white-space: nowrap;
+  }
+  [data-screen="config.profile"] .vals .secret .ic {
+    width: 14px;
+    height: 14px;
+  }
+  [data-screen="config.profile"] .vals tr.chg td {
+    background: var(--pk-accent-subtle);
+  }
+  [data-screen="config.profile"] .vals tr.chg td:first-child {
+    box-shadow: inset 2px 0 0 var(--pk-accent);
+  }
+  [data-screen="config.profile"] .vals tr.note-row td {
+    padding-top: 0;
+    border-top: 0;
+  }
+  [data-screen="config.profile"] .vals .row-note {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--pk-text-muted);
+    white-space: normal;
+  }
+  [data-screen="config.profile"] .vals .row-note .ic {
+    width: 13px;
+    height: 13px;
+    flex: none;
+  }
+  [data-screen="config.profile"] .chain-pos {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 4px 16px 14px;
+  }
+  [data-screen="config.profile"] .chain-pos > div {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="config.profile"] .chain-pos .num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 1px solid var(--pk-border-strong);
+    font-size: 11px;
+  }
+  [data-screen="config.profile"] .chain-pos .here {
+    color: var(--pk-text-strong);
+    font-weight: 700;
+  }
+  [data-screen="config.profile"] .chain-pos .here .num {
+    border-color: var(--pk-text-strong);
+    color: var(--pk-text-strong);
+  }
+  [data-screen="config.profile"] .used .card-row {
+    font-size: 13px;
+  }
+  [data-screen="config.profile"] .nlink {
+    color: var(--pk-text-strong);
+    text-decoration: underline;
+    text-decoration-color: var(--pk-border-strong);
+    text-underline-offset: 3px;
+    white-space: nowrap;
+  }
+  [data-screen="config.profile"] .prof-switch {
+    display: none;
+  }
+  @container screen (max-width: 1023px) {
+    [data-screen="config.profile"] .prof-layout {
+      grid-template-columns: 200px minmax(0, 1fr);
+    }
+    [data-screen="config.profile"] .rail {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="config.profile"] .prof-layout {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    [data-screen="config.profile"] .plist {
+      display: none;
+    }
+    [data-screen="config.profile"] .prof-switch {
+      display: flex;
+    }
+    [data-screen="config.profile"] .rail {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    [data-screen="config.profile"] .vals thead {
+      display: none;
+    }
+    [data-screen="config.profile"] .vals,
+    [data-screen="config.profile"] .vals tbody {
+      display: block;
+    }
+    [data-screen="config.profile"] .vals tr {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+      gap: 8px;
+      padding: 12px 16px;
+      border-top: 1px solid var(--mk-line);
+    }
+    [data-screen="config.profile"] .vals tbody tr:first-child {
+      border-top: 0;
+    }
+    [data-screen="config.profile"] .vals td {
+      display: block;
+      padding: 0 !important;
+      border: 0;
+      width: auto !important;
+    }
+    [data-screen="config.profile"] .vals td.c-key {
+      grid-column: 1 / -1;
+    }
+    [data-screen="config.profile"] .vals tr.note-row {
+      padding-top: 0;
+      border-top: 0;
+    }
+    [data-screen="config.profile"] .vals tr.note-row td {
+      grid-column: 1 / -1;
+    }
+    [data-screen="config.profile"] .vals tr.chg {
+      background: var(--pk-accent-subtle);
+      box-shadow: inset 2px 0 0 var(--pk-accent);
+    }
+    [data-screen="config.profile"] .vals tr.chg td,
+    [data-screen="config.profile"] .vals tr.chg td:first-child {
+      background: transparent;
+      box-shadow: none;
+    }
+    [data-screen="config.profile"] .page-head .page-actions .btn.outline {
+      display: none;
+    }
+  }
+</style>
+
+<div class="console" data-service="config">
+  <header class="topbar">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <nav class="sidebar" aria-label="DJDL">
+    <div class="ctx">
+      <span class="logo sm" data-product="djdl"></span>
+      <span class="ctx-text"><span class="ctx-name">DJDL</span><span class="ctx-sub mono">djdl</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item" href="#"><i class="ic ic-layout-dashboard"></i><span class="nav-text">Overview</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-plug"></i><span class="nav-text">Integration</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-shield-check"></i><span class="nav-text">Access</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
+    <div class="nav-group closed" data-service="license"><div class="nav-label">Licensing<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group" data-service="config" style="padding-top: 4px">
+      <div class="nav-label">Managed config<i class="ic ic-chevron-down sm"></i></div>
+      <a class="nav-item" href="#"><i class="ic ic-list-tree"></i><span class="nav-text">Catalog</span><span class="count">23</span></a>
+      <a class="nav-item active" href="#"><i class="ic ic-layers"></i><span class="nav-text">Profiles</span><span class="count">2</span></a>
+    </div>
+    <div class="nav-group closed" data-service="release" style="padding-top: 4px"><div class="nav-label">Ship builds<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="identity" style="padding-top: 4px"><div class="nav-label">Sign-in<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="sync" style="padding-top: 4px"><div class="nav-label">Cloud Sync<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="page">
+      <header class="page-head">
+        <nav class="crumbs"><a href="#">DJDL</a><i class="ic ic-chevron-right"></i><a href="#">Profiles</a><i class="ic ic-chevron-right"></i>Studio</nav>
+        <div class="page-heading"><h1>Studio profile</h1><span class="pill"><i class="dot"></i>1 unsaved change</span></div>
+        <p class="page-sub"><span>Every device on a Studio license: 38 licenses, 104 devices.</span><span>Last saved Oct 2 by Ana Lima</span></p>
+        <div class="page-actions">
+          <button class="btn outline"><i class="ic ic-eye"></i>Preview as…</button>
+          <button class="btn ghost">Discard</button>
+          <button class="btn primary">Save profile</button>
+        </div>
+      </header>
+
+      <div class="prof-layout">
+        <aside class="card plist" aria-label="Profiles">
+          <p class="eyebrow">Profiles<span class="end">2</span></p>
+          <a class="pitem" href="#"><span class="n"><i class="ic ic-layers"></i>Default</span><span class="d">Applies to everyone</span></a>
+          <a class="pitem active" href="#"><span class="n"><i class="ic ic-award"></i>Studio</span><span class="d">Studio tier · 38 licenses</span></a>
+          <p class="note">Standard has no profile of its own, so its devices get the Default profile only. <a class="nlink" href="#">Give Standard a profile</a></p>
+        </aside>
+
+        <div class="select prof-switch"><i class="ic ic-layers"></i><span class="grow">Profile: Studio</span><span class="muted small">2 of 2</span><i class="ic ic-chevrons-up-down"></i></div>
+
+        <section class="card" aria-labelledby="vals-title">
+          <div class="card-head">
+            <span class="icon-tile"><i class="svc"></i></span>
+            <div class="title"><h2 id="vals-title">Values</h2><p>What Studio devices get instead of the catalog default and the Default profile. Read-only and Hidden lock a setting: a license or an account can’t change it.</p></div>
+          </div>
+          <div style="overflow-x: auto">
+            <table class="table vals">
+              <thead><tr><th>Key</th><th>Value</th><th>In the app</th><th class="end"><span class="sr-only">Actions</span></th></tr></thead>
+              <tbody>
+                <tr>
+                  <td class="c-key"><span class="k">quality.floor<small>Minimum quality</small></span></td>
+                  <td class="c-val"><div class="input mono"><span class="grow">mp3-320</span></div></td>
+                  <td class="c-vis"><div class="select"><i class="ic ic-pencil"></i><span class="grow">Editable</span><i class="ic ic-chevrons-up-down"></i></div></td>
+                  <td class="end c-act"><button class="btn ghost icon xs" aria-label="Remove quality.floor from this profile"><i class="ic ic-x"></i></button></td>
+                </tr>
+                <tr class="chg">
+                  <td class="c-key"><span class="k">run.concurrency<small>Parallel downloads</small></span></td>
+                  <td class="c-val"><div class="input mono"><span class="grow">6</span></div></td>
+                  <td class="c-vis"><div class="select"><i class="ic ic-lock-keyhole"></i><span class="grow">Read-only</span><i class="ic ic-chevrons-up-down"></i></div></td>
+                  <td class="end c-act"><button class="btn ghost icon xs" aria-label="Remove run.concurrency from this profile"><i class="ic ic-x"></i></button></td>
+                </tr>
+                <tr class="chg note-row"><td colspan="4"><span class="row-note"><i class="ic ic-info"></i>Changed in this edit: was Editable. Read-only blocks 1 license’s own value (3) until you change it back.</span></td></tr>
+                <tr>
+                  <td class="c-key"><span class="k">run.toleranceSec<small>Duration tolerance (s)</small></span></td>
+                  <td class="c-val"><div class="input mono"><span class="grow">10</span></div></td>
+                  <td class="c-vis"><div class="select"><i class="ic ic-eye-off"></i><span class="grow">Hidden</span><i class="ic ic-chevrons-up-down"></i></div></td>
+                  <td class="end c-act"><button class="btn ghost icon xs" aria-label="Remove run.toleranceSec from this profile"><i class="ic ic-x"></i></button></td>
+                </tr>
+                <tr>
+                  <td class="c-key"><span class="k">proxy.enabled<small>Route through VPN</small></span></td>
+                  <td class="c-val"><div class="input mono"><span class="grow">true</span></div></td>
+                  <td class="c-vis"><div class="select"><i class="ic ic-lock-keyhole"></i><span class="grow">Read-only</span><i class="ic ic-chevrons-up-down"></i></div></td>
+                  <td class="end c-act"><button class="btn ghost icon xs" aria-label="Remove proxy.enabled from this profile"><i class="ic ic-x"></i></button></td>
+                </tr>
+                <tr>
+                  <td class="c-key"><span class="k">proxy.subscriptionUrl<small>VPN subscription URL</small></span></td>
+                  <td class="c-val"><span class="secret"><i class="ic ic-lock"></i>Configured</span></td>
+                  <td class="c-vis"><span class="secret"><i class="ic ic-eye-off"></i>Never listed</span></td>
+                  <td class="end c-act"><button class="btn ghost xs">Replace…</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="card-foot start" style="flex-wrap: wrap">
+            <button class="btn outline sm" style="flex: none"><i class="ic ic-plus"></i>Add a value</button>
+            <span class="muted small">Settings and secrets from DJDL’s catalog v9. Entitlements are on the Studio tier.</span>
+          </div>
+        </section>
+
+        <div class="rail">
+          <section class="card" aria-labelledby="pos-title">
+            <div class="card-head plain">
+              <div class="title"><h3 id="pos-title">Where it sits</h3><p>Step 3 of the five DJDL merges, in order.</p></div>
+            </div>
+            <div class="chain-pos">
+              <div><span class="num">1</span>Catalog defaults</div>
+              <div><span class="num">2</span>Default profile</div>
+              <div class="here"><span class="num">3</span>Studio profile</div>
+              <div><span class="num">4</span>The license</div>
+              <div><span class="num">5</span>The holder’s account</div>
+            </div>
+          </section>
+
+          <section class="card used" aria-labelledby="used-title">
+            <div class="card-head">
+              <div class="title"><h3 id="used-title">Used by</h3><p>From the same read as each license’s Config tab.</p></div>
+            </div>
+            <div class="card-rows">
+              <div class="card-row"><i class="ic ic-key-round"></i><span class="grow">Studio licenses</span><a class="nlink" href="#">38</a></div>
+              <div class="card-row"><i class="ic ic-monitor-smartphone"></i><span class="grow">Devices</span><span class="tnum">104</span></div>
+              <div class="card-row"><i class="ic ic-triangle-alert"></i><span class="grow">Overrides its locks block</span><a class="nlink" href="#">1 license</a></div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>

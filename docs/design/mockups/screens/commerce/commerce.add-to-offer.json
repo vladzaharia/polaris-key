@@ -1,0 +1,25 @@
+{
+  "id": "commerce.add-to-offer",
+  "title": "Add an unmapped SKU to an offer",
+  "area": "commerce",
+  "surface": "console",
+  "packages": [
+    "CM-23",
+    "CM-22",
+    "CM-20"
+  ],
+  "uxRows": [],
+  "summary": "The picker behind Add to an offer for Google Play's holiday_bundle, which sold 3 times with no offer: a new offer from the SKU (name and the add-on it sells) or an existing offer as its second Google Play SKU, and one change that maps the SKU, re-verifies the 3 purchases and updates those players' licenses.",
+  "compare": [
+    "Opened from the danger callout on Offers, the attention row on Storefronts, or 'Add the SKU to an offer' in Purchases; all three open this one dialog.",
+    "Two choices: a new offer from the SKU (selected by default, with Name and the add-on it sells, one-time as the store sells it) or an existing offer as a second SKU for the same store.",
+    "The 'In the same change' box names what else happens: the purchases are re-verified with the store and the add-on lands on those players' licenses, named, with the usual purchase email. There is no separate re-verify step anywhere.",
+    "The button says the outcome and the count: 'Create offer and update 3 licenses' (or 'Add to Dice skins and update 3 licenses' for the second choice).",
+    "On success a toast says '3 players now have Holiday bundle'; the callout, the attention row and the 'Added nothing' tab count all clear.",
+    "An undeclared add-on can't be chosen; Licensing is linked for defining one.",
+    "Phone: a bottom sheet; the two fields stack; buttons full width with the primary on top."
+  ],
+  "status": "mockup",
+  "designReview": null,
+  "order": 11
+}

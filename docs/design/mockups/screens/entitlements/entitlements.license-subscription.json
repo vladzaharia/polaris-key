@@ -1,0 +1,53 @@
+{
+  "id": "entitlements.license-subscription",
+  "title": "License: subscription",
+  "area": "entitlements",
+  "surface": "console",
+  "packages": [
+    "LX-41",
+    "LX-14",
+    "LX-32",
+    "LX-40"
+  ],
+  "uxRows": [
+    "UX-07"
+  ],
+  "summary": "A DJDL Pro license on a manual yearly subscription that has gone past due: the record opens on Status with the health line (what happens at the end of grace and the fix, Renew…), the subscription panel (status, source, period, grace, history), the license's duration and limits with where each value comes from, its devices stale first and recent events.",
+  "compare": [
+    "The record's tabs are Status, Entitlements, Keys, Devices, Activity, and it opens on Status. The title is the license's name with a 'Past due' pill; the holder line reads 'Priya Raman · priya@example.com · In an account'.",
+    "The health line is one warning callout with one fix (Renew…): it says what still works, the date grace ends (license.dunningGraceDays, 7 days) and what happens then for this tier (keeps 4.2.0 on stable). It renders nothing on a healthy license.",
+    "The subscription panel is the one place subscriptions are shown in the console, for every source (Manual, External billing, App Store, Google Play, Polaris Key). Status uses the five words Trialing, Active, Past due, Canceled, Expired as status text (no pill inside the panel).",
+    "Source says how it renews in words ('Renewed here or by API'); store sources replace Renew… with the store's name and are never renewed by hand.",
+    "History, under its own label, lists renewals newest first with who did it and the note entered at renewal; a missed renewal is the top row in the warning color.",
+    "Duration and limits shows each value with its source: 'Pro' (subtle) or 'Set on this license' (accent), resolved license > tier > platform default, plus Runs until and After that in plain dates and versions.",
+    "Devices are inline, stalest first. The stale one is highlighted with a warning bar and says why ('Not seen for 23 days', in warning text with a clock icon), with Deauthorize… on it. The card header has the seat meter and Add seats…, which comps a seat-pack add-on (LX-14, UX-24).",
+    "Preview at a date… stays in the header for checking the lapse before it happens.",
+    "Phone: the cards stack in source order (Subscription, Devices, Duration and limits, Recent); the facts become two columns; the history dates sit above their text; the health line's Renew… drops under its text; the five tabs fit with a 16 px gap and the cut-off Activity tab fades at the right edge, so the bar reads as scrollable.",
+    "The id chip in the holder line uses an id icon, not a key: lic_01JA8…4Q2M is the license's id, not one of its keys."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fix, then pass: the fifth tab now visibly scrolls on phone, the stale device says why it's highlighted, and Add seats… and History are in place.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "On phone the fifth tab (Activity) is pushed off the right edge with no hint that the tab bar scrolls (kit .tabs hides its scrollbar).",
+        "resolution": "Kit fix in kit/mockup.css: .tabs uses a 16 px gap below 640 px and has a sticky end cap (.tabs::after). The cap sits in the free space when the tabs fit, and when they overflow it sticks to the right edge and fades the cut-off tab. It is static CSS, not a scroll-driven animation, because shoot.mjs freezes animations and the screenshot has to show it. Checked at 390 px: Status, Entitlements, Keys and Devices fit, and Activity fades at the edge, so the bar reads as scrollable. Tabs on a card take the card's surface (--mk-tabs-bg)."
+      },
+      {
+        "severity": "minor",
+        "issue": "Light warning-subtle (#eae7e6) reads grey, so warnings look disabled or selected; the stale device row has no word for why; the history has no heading; the id chip uses a key icon.",
+        "resolution": "On the screen: the stale device row gets a 3 px warning bar and 'Not seen for 23 days' in warning text with a clock icon. The renewals have a 'History' label. The id chip uses the id-card icon (the kit has no hash icon). Declined to change the token: --pk-warning-subtle is generated into the kit from packages/brand/css/tokens.css (build-kit.mjs owns that block), so editing it in the kit would be overwritten and would make mockups disagree with the console. Warming the light value is a brand change for the lead."
+      },
+      {
+        "severity": "minor",
+        "issue": "Phone order (Subscription, Duration, Devices) contradicts the compare; the seat meter has no Add seats… (LX-14 absorbs UX-24); 'Renewed here or with the admin API' wraps awkwardly.",
+        "resolution": "Removed the phone reordering, so the cards stack in source order: Subscription, Devices, Duration and limits, Recent, as the compare says. Added Add seats… beside the seat meter. The Source hint is now 'Renewed here or by API'."
+      }
+    ]
+  },
+  "order": 10
+}

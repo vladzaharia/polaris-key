@@ -1,0 +1,60 @@
+{
+  "id": "admin.invite",
+  "title": "Invite people",
+  "area": "admin",
+  "surface": "dialog",
+  "order": 2,
+  "packages": [
+    "ST-31",
+    "ST-28"
+  ],
+  "uxRows": [],
+  "summary": "The Invite people drawer over Members: several emails, one of the four roles, a product or All products, and an optional narrowing to areas, with a sentence that says exactly what the people will and won't see. Sending writes a role binding on each email, asks for a passkey first, emails the invitees and tells every Superadmin.",
+  "compare": [
+    "The drawer opens from the right over Members (dimmed behind); on phone it is a full-screen sheet.",
+    "Emails are chips in one focused field: each chip is the raised surface with a line border, so it reads as a removable chip in both themes. The hint says how to separate them and the head says people join when they first sign in with a passkey or SSO at that address (never an email code alone).",
+    "Role is four radio cards in this order: Console access, Product admin, Platform admin, Superadmin. Product editor and Product viewer do not exist. For anyone who isn't a Superadmin, the Platform admin and Superadmin cards are disabled with 'Only a Superadmin can give this role', and All products is disabled too: a Platform admin invites Console access, plus Product admin of the products they admin themselves (Priya: DJDL only, Other states).",
+    "Products appears only for Product admin: One product (a product select with its logo) or All products, including ones added later.",
+    "Areas appears only for Product admin: 'Every area of <product>' or 'Only these areas' with chips in the area order Core, Licensing, Managed config, Ship builds, Sign-in, Cloud Sync, Commerce, Keys, Settings, Members; only the product's enabled features are offered and a hint names the missing ones (Sign-in and Cloud Sync aren't on for Diceroll).",
+    "The preview sentence updates with every choice, names the addresses (never a name guessed from an address) and says what they will manage and what they won't see (here: Ship builds and Commerce in Diceroll; not licenses, config, keys, settings, members or other products).",
+    "The footer says the send asks for your passkey first (step-up), and the primary button counts only valid addresses: 'Invite 2 people'. An invalid address is an error chip (danger outline and tint, alert icon) with a message under the field that names the address and the fix ('marta@example isn't a full address…') and says it isn't counted. Cancel is the outline button in both themes; idle selects and unselected radios are raised, not tinted.",
+    "After sending with email on, the drawer closes, a success toast says 'Invited 2 people' with the addresses and the role, and offers Undo (which removes both invites); each address is a row in Members, 'Waiting for first sign-in' (Other states).",
+    "An address that is already a member becomes a member chip (initials) with a note naming the person, their current roles and what is added; no invite is sent and the button says so: 'Invite 1 person and update 1'. An address an SSO rule already covers works the same way, and a repeated address merges into one chip.",
+    "When email delivery is off, the button reads 'Create invite links' and the result lists each address with its read-only link and a Copy button, says nothing was emailed, and gives the expiry (Oct 14, 7 days); Done closes it (Other states).",
+    "Nobody can grant more than they hold: a Product admin of Diceroll inviting from Product → Settings → Members sees only Diceroll and only the areas they have."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fix applied: chips read as chips in light, and the error, already-a-member, invite-link, after-send and Platform admin states are drawn.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "In light theme the email chips have no fill or border inside the focused lavender field, so the addresses read as plain text.",
+        "resolution": "Chips are now the raised surface with a strong line border (white in light, raised in dark) inside the sunken, focused field. Checked in both themes."
+      },
+      {
+        "severity": "major",
+        "issue": "No error state: an invalid address, a duplicate, an existing member or an address an SSO rule covers, and how the button count reacts.",
+        "resolution": "The main drawer has a third chip, 'marta@example', in error form (danger outline and tint, alert icon) and an error under the field naming the address and the fix; it isn't counted, so the button still reads 'Invite 2 people'. Other states draws an existing member (Felix, a member chip and a note saying what is added, button 'Invite 1 person and update 1'); the caption covers rule-covered and repeated addresses. Felix stands in for the reviewer's Lucía example because Lucía already holds Ship builds and Commerce in Diceroll, so inviting her would add nothing. The preview also stops guessing names: 'hana@example.com and theo@example.com will manage…'."
+      },
+      {
+        "severity": "major",
+        "issue": "Email delivery off ('Create invite links' with one copyable link per address) and the result after sending aren't drawn.",
+        "resolution": "Other states: the footer with 'Create invite links', then 'Invite links for 2 people' with each address, its role, a read-only link and Copy, the Oct 14 expiry (7 days, per the plan) and Done. After sending with email on: the 'Invited 2 people' toast with Undo and the two rows waiting for first sign-in."
+      },
+      {
+        "severity": "minor",
+        "issue": "The compare implies a Platform admin can give Product admin of any product; the non-Superadmin view isn't drawn.",
+        "resolution": "Compare corrected: a Platform admin invites Console access, plus Product admin of products they admin. Priya's view is drawn: Console access on, Product admin limited to DJDL, Platform admin and Superadmin disabled with 'Only a Superadmin can give this role', All products disabled with the reason."
+      },
+      {
+        "severity": "minor",
+        "issue": "Cancel is a filled grey button in light and borderless in dark; unselected radios and the product select look disabled in light.",
+        "resolution": "Cancel is the outline button in both themes (also in the SSO rule editor). In the drawer, idle selects and unselected radio boxes use the raised surface with their line border."
+      }
+    ]
+  }
+}

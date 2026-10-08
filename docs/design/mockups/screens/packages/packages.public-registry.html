@@ -1,0 +1,402 @@
+<style>
+  /* packages.public-registry: F-35's wizard for djdl-crates at the approval step, on Oct 2. */
+  [data-screen="packages.public-registry"] .eco {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    height: 40px;
+    padding: 0 8px;
+    border-radius: var(--pk-radius-lg);
+    background: var(--pk-accent-subtle);
+    color: var(--pk-accent-fg);
+    font: 700 12px/1 var(--pk-font-mono);
+    letter-spacing: -0.01em;
+  }
+  [data-screen="packages.public-registry"] .feed-url {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 10px;
+    font-size: 13px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="packages.public-registry"] .feed-url .mono {
+    color: var(--pk-text-default);
+  }
+  [data-screen="packages.public-registry"] .feed-access {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    text-align: right;
+  }
+  [data-screen="packages.public-registry"] .feed-access .access {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 700;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="packages.public-registry"] .feed-access .access .ic {
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="packages.public-registry"] .feed-access .link {
+    font-size: 12px;
+  }
+  [data-screen="packages.public-registry"] .track {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--pk-font-mono);
+    font-size: 13px;
+    color: var(--pk-text-default);
+    white-space: nowrap;
+  }
+  [data-screen="packages.public-registry"] .table th.trk {
+    font-family: var(--pk-font-mono);
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  [data-screen="packages.public-registry"] .feed .table-wrap {
+    overflow-x: auto;
+  }
+  [data-screen="packages.public-registry"] .feed .table {
+    table-layout: fixed;
+    min-width: 820px;
+  }
+  [data-screen="packages.public-registry"] .feed .table td,
+  [data-screen="packages.public-registry"] .feed .table th {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  [data-screen="packages.public-registry"] .feed .table .c-pkg {
+    width: 26%;
+  }
+  [data-screen="packages.public-registry"] .feed .table .c-trk {
+    width: 12%;
+  }
+  [data-screen="packages.public-registry"] .feed .table .c-num {
+    width: 8%;
+  }
+  [data-screen="packages.public-registry"] .feed .table .c-inst {
+    width: 12%;
+  }
+  [data-screen="packages.public-registry"] .feed .table td:first-child,
+  [data-screen="packages.public-registry"] .feed .table th:first-child {
+    padding-left: 20px;
+  }
+  [data-screen="packages.public-registry"] .feed .table td:last-child,
+  [data-screen="packages.public-registry"] .feed .table th:last-child {
+    padding-right: 20px;
+  }
+  [data-screen="packages.public-registry"] .also {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 8px;
+    font: 400 12px/16px var(--pk-font-sans);
+    color: var(--pk-text-muted);
+    vertical-align: 1px;
+  }
+  [data-screen="packages.public-registry"] .also .ic {
+    width: 12px;
+    height: 12px;
+  }
+  [data-screen="packages.public-registry"] .pkg-m {
+    margin-top: 6px;
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--pk-text-muted);
+    white-space: normal;
+  }
+  [data-screen="packages.public-registry"] .pkg-m .vers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 12px;
+    font-family: var(--pk-font-mono);
+    color: var(--pk-text-default);
+  }
+  [data-screen="packages.public-registry"] .pkg-m .vers b {
+    font-weight: 400;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="packages.public-registry"] .refused {
+    color: var(--pk-danger);
+  }
+  [data-screen="packages.public-registry"] .publish-fail {
+    border-top: 1px solid var(--mk-line);
+  }
+  [data-screen="packages.public-registry"] .publish-fail .attn-text {
+    white-space: normal;
+  }
+  [data-screen="packages.public-registry"] .feed-foot {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 20px;
+    font-size: 13px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="packages.public-registry"] .feed-foot > span {
+    display: inline-flex;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  [data-screen="packages.public-registry"] .feed-foot .ic {
+    flex: none;
+    margin-top: 2px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="packages.public-registry"] .waiting-card .card-split > div {
+    min-width: 0;
+  }
+  [data-screen="packages.public-registry"] .waiting-card .code pre {
+    font-size: 12.5px;
+  }
+  [data-screen="packages.public-registry"] .side-card .card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  [data-screen="packages.public-registry"] .side-card .card-body > p {
+    font-size: 13px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="packages.public-registry"] .tok {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0 12px;
+    padding: 8px 0;
+    border-top: 1px solid var(--mk-line);
+    font-size: 13px;
+    line-height: 18px;
+  }
+  [data-screen="packages.public-registry"] .tok:last-child {
+    border-bottom: 1px solid var(--mk-line);
+  }
+  [data-screen="packages.public-registry"] .tok-name {
+    font-weight: 700;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="packages.public-registry"] .tok-hint {
+    font-family: var(--pk-font-mono);
+    font-size: 12px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="packages.public-registry"] .tok-used {
+    grid-row: 1 / span 2;
+    grid-column: 2;
+    align-self: center;
+    color: var(--pk-text-muted);
+    white-space: nowrap;
+  }
+  [data-screen="packages.public-registry"] .callout > .btn {
+    flex: none;
+  }
+  [data-screen="packages.public-registry"] .feeds-off-row .setting-desc {
+    max-width: 68ch;
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="packages.public-registry"] .feed > .card-head {
+      flex-wrap: wrap;
+    }
+    [data-screen="packages.public-registry"] .feed > .card-head > .title {
+      flex: 1 1 0%;
+    }
+    [data-screen="packages.public-registry"] .feed-access {
+      order: 3;
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px 10px;
+      width: 100%;
+      padding-left: 52px;
+      text-align: left;
+    }
+    /* Phone: each package is one stacked row (name, the version on each release track, then the numbers). */
+    [data-screen="packages.public-registry"] .feed .table {
+      min-width: 0;
+      table-layout: auto;
+    }
+    [data-screen="packages.public-registry"] .feed .table td:first-child {
+      padding: 12px 16px;
+      white-space: normal;
+    }
+    [data-screen="packages.public-registry"] .feeds-off-row {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 12px;
+      padding: 16px;
+    }
+    [data-screen="packages.public-registry"] .feeds-off-row > .btn {
+      justify-self: start;
+    }
+  }
+  [data-screen="packages.public-registry"] .pub-card .tasks.padded > .task {
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
+  [data-screen="packages.public-registry"] .pub-card .task.current .task-mark {
+    border: 2px solid var(--pk-accent);
+  }
+  [data-screen="packages.public-registry"] .pub-card .task-body {
+    grid-column: 2 / -1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 8px;
+  }
+  [data-screen="packages.public-registry"] .pub-card .dl {
+    font-size: 13px;
+  }
+  [data-screen="packages.public-registry"] .pub-card .code pre {
+    font-size: 12.5px;
+  }
+  [data-screen="packages.public-registry"] .tracks-go {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  [data-screen="packages.public-registry"] .tracks-go .chip {
+    height: 28px;
+    font-family: var(--pk-font-mono);
+    font-size: 12px;
+  }
+  [data-screen="packages.public-registry"] .tracks-go .chip.off {
+    color: var(--pk-text-subtle);
+    border-style: dashed;
+  }
+  [data-screen="packages.public-registry"] .confirm {
+    max-width: 420px;
+  }
+  [data-screen="packages.public-registry"] .pub-foot {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="packages.public-registry"] .pub-foot > .btn {
+      flex: 1 1 100%;
+    }
+    [data-screen="packages.public-registry"] .pub-foot {
+      flex-direction: column-reverse;
+    }
+  }
+</style>
+
+<div class="console" data-service="core">
+  <header class="topbar">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <!-- Product context (ST-45). Ship builds is open; Packages sits under it (A-21). -->
+  <nav class="sidebar" aria-label="DJDL">
+    <div class="ctx">
+      <span class="logo sm" data-product="djdl"></span>
+      <span class="ctx-text"><span class="ctx-name">DJDL</span><span class="ctx-sub mono">djdl</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item" href="#"><i class="ic ic-layout-dashboard"></i><span class="nav-text">Overview</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-plug"></i><span class="nav-text">Integration</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-shield-check"></i><span class="nav-text">Access</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
+    <div class="nav-group closed" data-service="license"><div class="nav-label">Licensing<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="config" style="padding-top: 4px"><div class="nav-label">Managed config<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group" data-service="release" style="padding-top: 4px">
+      <div class="nav-label">Ship builds<i class="ic ic-chevron-down sm"></i></div>
+      <a class="nav-item" href="#"><i class="ic ic-package"></i><span class="nav-text">Releases</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-git-branch"></i><span class="nav-text">Release tracks</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-trending-up"></i><span class="nav-text">Rollouts</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-star-cut"></i><span class="nav-text">Channels</span></a>
+      <a class="nav-item active" href="#" data-service="distribution"><i class="ic ic-boxes"></i><span class="nav-text">Packages</span><span class="count">2</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-circle-arrow-up"></i><span class="nav-text">Updates</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-heart-pulse"></i><span class="nav-text">Health</span></a>
+    </div>
+    <div class="nav-group closed" data-service="identity" style="padding-top: 4px"><div class="nav-label">Sign-in<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="sync" style="padding-top: 4px"><div class="nav-label">Cloud Sync<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+  <main class="main" data-service="distribution">
+    <div class="page">
+      <header class="page-head">
+        <nav class="crumbs"><a href="#">Packages</a><i class="ic ic-chevron-right"></i><a href="#">PyPI</a><i class="ic ic-chevron-right"></i><span class="mono">djdl-crates</span></nav>
+        <div class="page-heading"><h1>Publish djdl-crates to PyPI.org</h1></div>
+        <p class="page-sub"><span>Stable and beta releases also go to PyPI.org from DJDL’s own CI, through PyPI’s trusted publishing. Polaris Key never holds a PyPI password or token.</span></p>
+      </header>
+
+      <!-- F-35: the registry wizard (claim, trusted-publisher deep link, verify) and the per-package L2 approval. -->
+      <section class="card pub-card" aria-labelledby="pub-steps">
+        <div class="card-head">
+          <div class="title"><h2 id="pub-steps">4 steps, 3 done</h2><p>Only a Public package can go: <span class="mono">djdl-crates</span> is Public since Sep 12.</p></div>
+        </div>
+        <div class="tasks padded">
+          <div class="task done">
+            <span class="task-mark"></span>
+            <div class="task-title">Claim the name on PyPI.org</div>
+            <div class="task-desc"><span class="mono">djdl-crates</span> was free. A pending publisher now reserves it for <span class="mono">example-org/djdl</span>.</div>
+          </div>
+          <div class="task done">
+            <span class="task-mark"></span>
+            <div class="task-title">Add the trusted publisher on PyPI.org</div>
+            <div class="task-desc">Added by Ana Lima on Oct 2, 10:14, with owner <span class="mono">example-org</span>, repository <span class="mono">djdl</span>, workflow <span class="mono">release.yml</span>, environment <span class="mono">pypi</span>. <a class="link" href="#">Open on PyPI.org<i class="ic ic-arrow-up-right"></i></a></div>
+          </div>
+          <div class="task done">
+            <span class="task-mark"></span>
+            <div class="task-title">Verify</div>
+            <div class="task-desc">Oct 2, 10:16: PyPI.org trusts <span class="mono">release.yml</span> in <span class="mono">example-org/djdl</span> to publish <span class="mono">djdl-crates</span>, and the workflow has its step.</div>
+            <div class="task-body">
+              <div class="code">
+                <div class="code-head"><span class="code-file">.github/workflows/release.yml</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
+<pre>    <span class="t-p">environment</span><span class="t-o">:</span> pypi
+    <span class="t-p">permissions</span><span class="t-o">:</span>
+      <span class="t-p">id-token</span><span class="t-o">:</span> write <span class="t-c"># PyPI’s trusted publishing</span>
+    <span class="t-p">steps</span><span class="t-o">:</span>
+      <span class="t-p">- run</span><span class="t-o">:</span> pkey feeds publish-public --deliverable <span class="t-s">pypi.crates</span></pre>
+              </div>
+            </div>
+          </div>
+          <div class="task current">
+            <span class="task-mark"></span>
+            <div class="task-title">Approve</div>
+            <div class="task-desc">From the next run of <span class="mono">release.yml</span>, each new stable and beta version of <span class="mono">djdl-crates</span> also goes to PyPI.org.</div>
+            <div class="task-body">
+              <div class="tracks-go">
+                <span class="chip"><i class="ic ic-check"></i>stable</span>
+                <span class="chip"><i class="ic ic-check"></i>beta, as pre-releases</span>
+                <span class="chip off"><i class="ic ic-minus"></i>dev never goes</span>
+              </div>
+              <div class="callout warning">
+                <i class="ic ic-triangle-alert"></i>
+                <div class="grow">
+                  <div class="callout-title">This can’t be undone</div>
+                  <div class="callout-text">PyPI.org keeps every version it receives, and anyone can install them. Cleanup never deletes them. Stopping later only stops new versions.</div>
+                </div>
+              </div>
+              <div class="field confirm">
+                <label class="field-label">Type <span class="confirm-word">djdl-crates</span> to approve</label>
+                <div class="input mono focus"><span class="grow">djdl-crates</span></div>
+              </div>
+              <div class="pub-foot">
+                <button class="btn outline">Cancel</button>
+                <button class="btn primary"><i class="ic ic-arrow-up-right"></i>Approve publishing to PyPI.org</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>

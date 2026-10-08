@@ -1,0 +1,27 @@
+{
+  "id": "commerce.connect-app-store",
+  "title": "Connect App Store (one confirmation)",
+  "area": "commerce",
+  "surface": "console",
+  "packages": [
+    "CM-29",
+    "CM-21",
+    "A-33"
+  ],
+  "uxRows": [
+    "UX-54"
+  ],
+  "summary": "The one confirmation behind first-run's Connect App Store: it names the key Polaris Key already has (Example Audio team key) and the app it found (DJDL for macOS, com.example.djdl), and says what turns on: DJDL's App Store channel and storefront together, store notifications set up and tested, and that nothing sells until an offer has an App Store SKU.",
+  "compare": [
+    "Opened from first-run's Connect App Store (commerce.first-run) or the App Store row; the first-run page stays behind the scrim.",
+    "An L1 confirm with a neutral title (a routine, reversible step, EXPERIENCE.md §7): 'Connect the App Store for DJDL?'. Focus starts on Cancel.",
+    "What it uses is shown as facts, never fields: the key with where it lives and when it was last checked, and the app with its bundle id and Apple ID. Nothing to type (A-33).",
+    "Three consequences: the App Store channel and storefront turn on together (builds to TestFlight, purchases add to licenses); store notifications are set up and checked with a test notification; nothing sells until an offer has an App Store SKU.",
+    "The button repeats the verb: 'Connect App Store' (primary, Commerce green). On success the dialog closes and the setup card ticks its first step (commerce.first-run-connected); no toast, because the card already shows the result.",
+    "An error stays inline in the dialog, says what went wrong and how to fix it, and the button becomes Try again (commerce.connect-app-store-error).",
+    "Phone: a bottom sheet (grab handle, rounded top, body scrolls within 90% of the screen), buttons full width and pinned, the primary on top; the facts stack label over value."
+  ],
+  "status": "mockup",
+  "designReview": null,
+  "order": 5
+}

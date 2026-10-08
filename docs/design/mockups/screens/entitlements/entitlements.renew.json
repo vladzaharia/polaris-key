@@ -1,0 +1,39 @@
+{
+  "id": "entitlements.renew",
+  "title": "Renew a subscription",
+  "area": "entitlements",
+  "surface": "dialog",
+  "packages": [
+    "LX-41"
+  ],
+  "uxRows": [],
+  "summary": "The Renew… dialog over the past-due license: the new period end defaulting to one period after the current one, an optional note for the history, what changes (Past due → Active, the date the license runs until, a day after the period end) and the admin API call that does the same from DJDL's own billing.",
+  "compare": [
+    "Opens from the health line's Renew… with focus in New period end, prefilled one period (a year) after the current period end. Any date after today is allowed, and the hint says so; a date on or before today shows 'Pick a date after today, Oct 7, 2026.' inline under the field, and Renew moves focus there instead of saving.",
+    "The note is optional, opens empty with the placeholder 'Invoice number, how it was paid', and shows in the subscription's history and Activity.",
+    "The summary states the result before saving: Past due → Active, and 'License runs until Oct 8, 2027', with the reason on the line below: 'A day after the period ends, so a renewal recorded on the day doesn’t cut it off.' The one-day margin is fixed, with no setting for it. The hint never says 'term'.",
+    "The footnote names the admin API (rule 10) and links to its docs. The route is a one-line block with Copy ('POST …/subscriptions/sub_4K1…/renew' on screen; Copy takes /manage/api/products/djdl/licenses/…/subscriptions/…/renew), so a developer's billing can renew without the console. The console never shows Renew… for App Store, Google Play or Polaris Key checkout subscriptions.",
+    "The primary button repeats the date: 'Renew to Oct 7, 2027'. After saving, a toast says 'Renewed to Oct 7, 2027' and the health line disappears.",
+    "Phone: the dialog is full width; the summary keeps its two columns; Cancel and Renew share the foot."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fix, then pass: the second date is explained where it appears, the note opens empty, and the API route is one line with Copy and docs.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "The summary says 'License runs until Oct 8, 2027' while the field and button say Oct 7, with no reason; the hint uses 'term', which the glossary keeps for legal terms.",
+        "resolution": "Under the summary: 'A day after the period ends, so a renewal recorded on the day doesn’t cut it off.' The hint now reads 'Change it to renew for a different length. It has to be after today.'"
+      },
+      {
+        "severity": "minor",
+        "issue": "The optional Note opens with dark prefilled text; the API route wraps mid-id with no Copy; the error for a date before today isn't drawn.",
+        "resolution": "Note opens empty with a muted placeholder ('Invoice number, how it was paid'). The route is a one-line code block with no shell prompt, a Copy button and an 'Admin API docs' link: it shows 'POST …/subscriptions/sub_4K1…/renew', and Copy takes the full /manage/api/products/djdl/… route. Declined to draw the date error in this state: the dialog always opens with a valid date (one period after the current end), so the error can't appear next to the default. The compare gives its exact text and place, and the hint now states the rule. The page behind takes the license record's fixes."
+      }
+    ]
+  },
+  "order": 11
+}

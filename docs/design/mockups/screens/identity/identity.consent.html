@@ -1,0 +1,469 @@
+<style>
+  /* identity.consent: the shared card, then only what this screen adds. */
+  /* The hosted sign-in card (SIGN-IN.md §3.1): the lockup, one card, the legal links, on the
+     static star field. Shared by the identity card screens; scoped to this screen. */
+  [data-screen="identity.consent"] .auth {
+    --star: color-mix(in oklab, var(--pk-text-subtle) 55%, transparent);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    padding: 56px 24px 56px;
+    background-color: var(--pk-surface-page);
+    background-image:
+      radial-gradient(circle at 18% 22%, var(--star) 0 1px, transparent 1.6px),
+      radial-gradient(circle at 72% 64%, var(--star) 0 1px, transparent 1.6px),
+      radial-gradient(circle at 44% 86%, var(--star) 0 0.8px, transparent 1.4px),
+      radial-gradient(circle at 90% 12%, var(--star) 0 1.2px, transparent 1.8px);
+    background-size: 310px 270px, 430px 390px, 250px 330px, 520px 460px;
+  }
+  [data-screen="identity.consent"] .auth-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 32px;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="identity.consent"] .auth-card {
+    width: 456px;
+    max-width: 100%;
+    border: 1px solid var(--mk-line);
+    border-radius: 22px;
+    background: var(--pk-surface-raised);
+    box-shadow: var(--pk-elevation-3);
+    overflow: hidden;
+  }
+  [data-screen="identity.consent"] .auth-head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--mk-line);
+    background: color-mix(in oklab, var(--pk-accent-subtle) 55%, var(--pk-surface-raised));
+  }
+  [data-screen="identity.consent"] .auth-head .t {
+    font-size: 17px;
+    line-height: 24px;
+    color: var(--pk-text-default);
+  }
+  [data-screen="identity.consent"] .auth-head .s {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px 6px;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="identity.consent"] .auth-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 24px 28px 28px;
+  }
+  [data-screen="identity.consent"] .auth-body h1 {
+    font-size: 24px;
+    line-height: 30px;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="identity.consent"] .auth-lede {
+    margin-top: -8px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="identity.consent"] .auth-card .input {
+    height: 48px;
+    border-radius: 10px;
+    font-size: 15px;
+  }
+  [data-screen="identity.consent"] .auth-card .btn.block {
+    height: 48px;
+    border-radius: 10px;
+    font-size: 15px;
+  }
+  [data-screen="identity.consent"] .auth-card .btn.primary.block {
+    font-weight: 700;
+  }
+  [data-screen="identity.consent"] .auth-card .field-label {
+    font-size: 13px;
+  }
+  [data-screen="identity.consent"] .caret {
+    display: inline-block;
+    width: 1.5px;
+    height: 20px;
+    margin-left: 1px;
+    background: var(--pk-text-strong);
+    vertical-align: -4px;
+  }
+  [data-screen="identity.consent"] .auth-or {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 12px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="identity.consent"] .auth-or::before,
+  [data-screen="identity.consent"] .auth-or::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--mk-line);
+  }
+  /* The provider row (PORTAL §4.1): one row of equal, logo-only buttons. */
+  [data-screen="identity.consent"] .prov-row {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+  [data-screen="identity.consent"] .prov {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 52px;
+    border: 1px solid var(--mk-line);
+    border-radius: 10px;
+    background: var(--mk-fill);
+    color: var(--pk-text-strong);
+  }
+  [data-screen="identity.consent"] .prov .ic {
+    width: 24px;
+    height: 24px;
+  }
+  [data-screen="identity.consent"] .gmark {
+    width: 22px;
+    height: 22px;
+    flex: none;
+  }
+  [data-screen="identity.consent"] .gmark.sm {
+    width: 14px;
+    height: 14px;
+  }
+  [data-screen="identity.consent"] .auth-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--mk-line);
+    font-size: 13px;
+  }
+  [data-screen="identity.consent"] .auth-links a {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--pk-accent-fg);
+  }
+  [data-screen="identity.consent"] .auth-foot {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 14px 24px;
+    border-top: 1px solid var(--mk-line);
+    font-size: 12px;
+    line-height: 17px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="identity.consent"] .auth-foot .ic {
+    margin-top: 1px;
+  }
+  [data-screen="identity.consent"] .auth-legal {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    width: 456px;
+    max-width: 100%;
+    font-size: 12px;
+    color: var(--pk-text-muted);
+  }
+  /* The person row (SIGN-IN.md §3.8) and the identity chip (no picture before sign-in). */
+  [data-screen="identity.consent"] .person {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px 10px 10px;
+    border: 1px solid var(--mk-line);
+    border-radius: 12px;
+    background: var(--pk-surface-sunken);
+  }
+  [data-screen="identity.consent"] .person .who {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  [data-screen="identity.consent"] .person .who strong {
+    font-size: 14px;
+  }
+  [data-screen="identity.consent"] .person .who span {
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  [data-screen="identity.consent"] .person > a {
+    font-size: 13px;
+    color: var(--pk-accent-fg);
+    white-space: nowrap;
+  }
+  [data-screen="identity.consent"] .idchip {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: 8px;
+    max-width: 100%;
+    height: 32px;
+    padding: 0 6px 0 12px;
+    border: 1px solid var(--mk-line);
+    border-radius: 999px;
+    font-size: 13px;
+    color: var(--pk-text-default);
+  }
+  [data-screen="identity.consent"] .idchip > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  [data-screen="identity.consent"] .idchip > a {
+    flex: none;
+    padding: 2px 8px;
+    border-radius: 999px;
+    color: var(--pk-accent-fg);
+  }
+  /* The six code cells (SIGN-IN.md §3.4). */
+  [data-screen="identity.consent"] .cells {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 8px;
+  }
+  [data-screen="identity.consent"] .cells > span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 52px;
+    border: 1px solid var(--pk-border-strong);
+    border-radius: 10px;
+    background: var(--pk-surface-sunken);
+    font: 700 20px/1 var(--pk-font-mono);
+    color: var(--pk-text-strong);
+  }
+  [data-screen="identity.consent"] .cells > span.on {
+    outline: 2px solid var(--pk-focus);
+    outline-offset: 1px;
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="identity.consent"] .auth {
+      gap: 0;
+      padding: 0 0 32px;
+      background-image: none;
+    }
+    [data-screen="identity.consent"] .auth-brand {
+      height: 56px;
+      font-size: 16px;
+    }
+    [data-screen="identity.consent"] .auth-card {
+      border-radius: 0;
+      border-left: 0;
+      border-right: 0;
+      box-shadow: none;
+    }
+    [data-screen="identity.consent"] .auth-head {
+      padding: 16px 20px;
+    }
+    [data-screen="identity.consent"] .auth-body {
+      padding: 20px 20px 24px;
+    }
+    [data-screen="identity.consent"] .auth-foot {
+      padding: 14px 20px;
+    }
+    [data-screen="identity.consent"] .auth-legal {
+      justify-content: center;
+      padding-top: 16px;
+    }
+  }
+  [data-screen="identity.consent"] .sec-label {
+    margin-bottom: -6px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="identity.consent"] .lic {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--mk-line);
+    border-radius: 12px;
+  }
+  [data-screen="identity.consent"] .lic .grow > div:last-child {
+    font-size: 13px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="identity.consent"] .lic a {
+    color: var(--pk-accent-fg);
+    font-weight: 700;
+  }
+  /* What the app asks for: required items say so; optional items carry a switch (I-34). */
+  [data-screen="identity.consent"] .gets {
+    border: 1px solid var(--mk-line);
+    border-radius: 12px;
+  }
+  [data-screen="identity.consent"] .get {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 2px 12px;
+    padding: 12px 14px;
+  }
+  [data-screen="identity.consent"] .get + .get {
+    border-top: 1px solid var(--mk-line);
+  }
+  [data-screen="identity.consent"] .get > .ic {
+    align-self: start;
+    margin-top: 2px;
+    color: var(--pk-accent-fg);
+  }
+  [data-screen="identity.consent"] .get.off > .ic {
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="identity.consent"] .get .what {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  [data-screen="identity.consent"] .get .what strong {
+    font-size: 14px;
+  }
+  [data-screen="identity.consent"] .get .what span {
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="identity.consent"] .get .what .raw {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  [data-screen="identity.consent"] .get .what .with-pic {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  /* Mara's picture, from Google: a drawn photo, as identity.finish draws Google's. */
+  [data-screen="identity.consent"] .photo {
+    flex: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 50% 36%, color-mix(in oklab, var(--pk-brand-gold) 80%, var(--pk-surface-raised)) 0 22%, transparent 23%),
+      radial-gradient(ellipse at 50% 100%, color-mix(in oklab, var(--pk-service-identity) 70%, var(--pk-surface-raised)) 0 46%, transparent 47%),
+      linear-gradient(160deg, var(--pk-service-update), var(--pk-service-config));
+  }
+  [data-screen="identity.consent"] .person .photo {
+    width: 40px;
+    height: 40px;
+  }
+  [data-screen="identity.consent"] .get.off .what strong {
+    color: var(--pk-text-muted);
+  }
+  [data-screen="identity.consent"] .req {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="identity.consent"] .note {
+    display: flex;
+    gap: 8px;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="identity.consent"] .note .ic {
+    margin-top: 1px;
+  }
+  [data-screen="identity.consent"] .auth-body > .actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+</style>
+
+<div class="auth" data-service="core">
+  <div class="auth-brand"><i class="pk-mark sm"></i>Polaris Key</div>
+
+  <main class="auth-card" aria-labelledby="con-title">
+    <header class="auth-head">
+      <span class="logo lg" data-product="diceroll"></span>
+      <div class="grow">
+        <div class="t"><strong>Diceroll</strong> wants you to sign in</div>
+        <div class="s"><span>Example Games</span><span aria-hidden="true">·</span><span class="row gap-1"><i class="ic ic-smartphone sm"></i>on Mara’s Pixel 8</span></div>
+      </div>
+    </header>
+
+    <!-- ConsentStep with partial consent (I-34): required items are marked, optional items switch. -->
+    <div class="auth-body">
+      <div class="person">
+        <span class="photo" role="img" aria-label="Mara’s picture"></span>
+        <div class="who"><strong>Mara Fennick</strong><span>mara.fennick@example.com</span></div>
+        <a href="#">Not you?</a>
+      </div>
+
+      <h1 id="con-title">Continue to Diceroll as Mara?</h1>
+
+      <p class="sec-label">License for this device</p>
+      <div class="lic">
+        <div class="grow">
+          <div class="strong bold">Diceroll Standard</div>
+          <div>Lifetime · this phone becomes device 2&nbsp;of&nbsp;3</div>
+        </div>
+        <a href="#">Change</a>
+      </div>
+
+      <p class="sec-label">Diceroll asks for</p>
+      <div class="gets">
+        <div class="get">
+          <i class="ic ic-user-round"></i>
+          <div class="what"><strong>Your screen name</strong><span>Mara Fennick</span></div>
+          <span class="req"><i class="ic ic-lock xs"></i>Required</span>
+        </div>
+        <div class="get off">
+          <i class="ic ic-image"></i>
+          <div class="what"><strong>Your picture</strong><span class="with-pic"><span class="photo" aria-hidden="true"></span>From Google</span></div>
+          <span class="switch" role="switch" aria-checked="false" aria-label="Share your picture with Diceroll"></span>
+        </div>
+        <div class="get off">
+          <i class="ic ic-mail"></i>
+          <div class="what"><strong>Your email</strong><span class="raw">mara.fennick@example.com</span></div>
+          <span class="switch" role="switch" aria-checked="false" aria-label="Share your email with Diceroll"></span>
+        </div>
+        <div class="get">
+          <i class="ic ic-cloud"></i>
+          <div class="what"><strong>Cloud Sync</strong><span>Your saves and dice sets on every device</span></div>
+          <span class="switch on" role="switch" aria-checked="true" aria-label="Turn on Cloud Sync for Diceroll"></span>
+        </div>
+      </div>
+
+      <p class="note"><i class="ic ic-info sm"></i><span>Diceroll won’t get your picture or email. You can change this later in Account, under Connected apps.</span></p>
+      <p class="note"><i class="ic ic-shield-check sm"></i><span>It gets its own id for you, and won’t see your other products or how you sign in.</span></p>
+
+      <div class="actions">
+        <button class="btn primary block">Continue to Diceroll</button>
+        <button class="btn ghost block">Cancel</button>
+      </div>
+    </div>
+
+    <footer class="auth-foot"><i class="ic ic-lock sm"></i><span>Polaris Key signs you in for Diceroll. Example Games never sees your codes or passkeys.</span></footer>
+  </main>
+
+  <nav class="auth-legal" aria-label="Legal"><a href="#">Help</a><span>·</span><a href="#">Privacy</a><span>·</span><a href="#">Terms</a></nav>
+</div>

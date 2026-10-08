@@ -1,0 +1,23 @@
+{
+  "id": "packages.packs",
+  "title": "Packs",
+  "area": "packages",
+  "surface": "console",
+  "order": 13,
+  "packages": [
+    "P4-33",
+    "P4-34"
+  ],
+  "uxRows": [],
+  "summary": "Diceroll's Releases page on the Packs tab: the four content packs declared in .pkey/release with type, delivery, latest version, gate and size; the supporter pack's manifest gate waiting for one approval on Access; and how packs reach players on each channel, picked automatically, with the CDN fallback said where a store transport can't be used yet.",
+  "compare": [
+    "Packs are releases, so they sit under Releases (App and Packs tabs) in Diceroll's Product context, Release accent; no separate Packs nav item.",
+    "The pack table uses the manifest's names (diceroll.core3d, diceroll.supporter.skins, diceroll.foes, diceroll.l10n) and says type, delivery in words (Essential and pinned with the baseline in the build; On demand; newest that fits contentApi 3–4; per language), latest version and size.",
+    "P4-34: a pack whose manifest asserts a gate shows it as 'To approve' with the flag name; a warning callout says what the manifest asks, that it is approved once on Access, and what waits until then (CI can't publish 1.4.0), with 'Approve on Access'. The gate is never typed again here. 'Sold as the Dice skins add-on' links the pack to what sells it.",
+    "P4-33: 'How packs reach players' lists each channel with where packs come from, picked automatically: the App Store falls back to Polaris Key's CDN with a warning that says why (the App Store Connect key lacks the App Manager role) and 'Replace the key'; Google Play uses the CDN with the baseline in the build (Play Asset Delivery only when chosen, because it ties packs to builds); itch.io and the download page use the CDN; Steam says depots once Steam is connected, consistent with Home.",
+    "The foot says 'transports.packs: auto' in .pkey/distribution and that a named transport wins, and confirms Updates is on; with Updates off, the attention item 'N packs declared, Updates is off: devices get embedded baselines only' replaces that line.",
+    "Phone: the sidebar folds into the menu button, the callout's button drops under its text, and both tables scroll sideways inside their cards."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

@@ -1,0 +1,61 @@
+{
+  "id": "identity.app-sign-in",
+  "title": "App sign-in",
+  "area": "identity",
+  "surface": "console",
+  "packages": [
+    "I-29",
+    "I-32",
+    "I-34",
+    "I-35",
+    "I-14",
+    "I-33",
+    "ST-45"
+  ],
+  "uxRows": [],
+  "summary": "Diceroll's one App sign-in page, replacing Identity → Portal and Identity → Sign-in: the Sign-in switch, the methods its card offers (email and passkeys always on, shortcuts derived from its channels, in-game store sign-in on with each store channel), its product connection (Diceroll accounts on Firebase, token exchange only), what Diceroll gets (required or optional, from the manifest), terms, license-key entry (taken over from the manifest), the two portal switches and the read-only Presentation.",
+  "compare": [
+    "Sidebar is Diceroll's product context with the Sign-in group open and one item, App sign-in (active, in the identity accent), carrying a warning count of 1. Identity → Portal and Identity → Sign-in no longer exist.",
+    "T4 layout: an 'On this page' rail at 1280 px and wider, then one card per section in the I-29 order, each card titled exactly as the rail names it: Status, Sign-in methods, Product connection, What Diceroll gets, Terms, License keys, Customer portal, Presentation. No Save button at the bottom of a card. Save model: Status applies on its own (turning it off asks first); the product connection is edited in its own dialog; every other control marks the page dirty and one SaveBar lists the changes by section (identity.app-sign-in-changes).",
+    "Status is the Sign-in feature switch with the week's sign-ins and the dependency line 'Cloud Sync needs Sign-in'. Turning it off opens identity.sign-in-off.",
+    "Email code and passkeys show 'Always on' with a lock and no switch; the four per-product toggles (oidc_enabled, magic_enabled, license_key_claim_enabled, auto_link_enabled) are gone. Only an organization's SSO-required domain turns them off for its addresses.",
+    "Apple, Google and Steam rows each say why they're on ('On because Diceroll ships on the App Store') with a switch to override; an override reads 'Off by you' with 'Use the default' (identity.app-sign-in-changes). Single sign-on names only the platform connections that sign in customers and counts their verified domains ('Pocket ID and Lakeside University … their 3 verified domains'); connections that sign in only operators (Studio Okta) are never counted or named here. It links to Platform → Connections.",
+    "'Inside the game' rows (Game Center, Play Games, Steam) have no switch: they follow the store channels (I-14). A missing store credential shows as a warning pill at the row's right edge with the action ('Connect Steam'), and says what players do meanwhile.",
+    "The Product connection card is titled as the rail names it; its row is 'Diceroll accounts' (Firebase · token exchange only) with Edit. It shows the issuer and key source, token exchange as status text ('On') with its route (changed in the Edit dialog, not by a switch on the page), 'Sign-in button: None' with the reason, that its emails are never taken as confirmed, and the linked-player count. 'Add another' sits in the foot.",
+    "What Diceroll gets: License for this device is 'Always'; Screen name, Picture, Email and Cloud Sync each have a Required / Optional / Not asked control, with the share of players who granted each optional item. The section carries the 'From .pkey/product' source badge and a hint that says what an edit does: identity.claims sets these, changing one here takes it over from the manifest, and the next resync leaves it alone until it is reverted.",
+    "Terms: Polaris Key's are always on; Diceroll's show their version (2026-10, from the manifest) and link to the listing for the URLs. No minimum-age setting exists yet.",
+    "License keys: entries before an account is needed as a 5 / 10 / 25 / No limit control; 'A key adds its license to whoever enters it' off by default with its consequence. keyEntry comes from the manifest and this value was taken over, so the header shows 'Changed here · .pkey/product says 5' and 'Revert to manifest…' (a caution confirm naming the value that comes back).",
+    "Customer portal keeps only two switches ('Show Diceroll in players' libraries', 'Show a lost key again'). Presentation is read-only from Core with 'Edit in Settings': the icon, name, developer and the accent drawn as a swatch with its value; there's no 'App name' field.",
+    "Phone: the rail hides, rows stack (text first, control under it), source badges go under the card title, and each segmented control fills the row with equal segments."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: the SSO row is correct, the save model is stated and drawn (new screen identity.app-sign-in-changes), manifest-owned values say what an edit does, and the cards match the rail.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "The Single sign-on row named Studio Okta (operators only) and counted 5 verified domains; only 3 route customers.",
+        "resolution": "'Pocket ID and Lakeside University send addresses at their 3 verified domains to their own sign-in, on every product's card.' The compare says operator-only connections are never counted or named here. sign-in-off's page is recomposed from this one, so it agrees."
+      },
+      {
+        "severity": "major",
+        "issue": "No SaveBar or dirty state; no 'off by you' row; no warning when Apple goes off for an iOS product; no visible commit point for 'asks every player again'.",
+        "resolution": "New screen identity.app-sign-in-changes: Apple off by the operator ('Off by you. Diceroll ships on the App Store, so Apple would be on.' with 'Use the default'), a caution under it citing App Store Review Guideline 4.8, Email moved to Required, changed rows marked and the rail dotted, and the SaveBar '2 changes … Players are asked what to share again at their next sign-in' with Discard and 'Save 2 changes'. The compare states which controls batch and which apply on their own; the token-exchange switch became status text because the connection is edited in its dialog."
+      },
+      {
+        "severity": "major",
+        "issue": "'From .pkey/product' tags on editable controls without saying what an edit or a resync does (ADMIN.md's manifest-aware rule).",
+        "resolution": "What Diceroll gets has a hint under its header: identity.claims sets these; changing one takes it over from the manifest and the next resync leaves it alone until reverted. License keys shows the taken-over state: 'Changed here · .pkey/product says 5' with 'Revert to manifest…' in the header."
+      },
+      {
+        "severity": "minor",
+        "issue": "Rail and card titles disagreed; phone segments bunched left; Presentation described its accent in words; two switch labels didn't say what they do.",
+        "resolution": "Cards are titled Status and Product connection (with Diceroll accounts as its row). Segments fill the row equally on phone. Presentation draws the accent swatch with its value. Relabelled 'Show Diceroll in players' libraries' and 'A key adds its license to whoever enters it'."
+      }
+    ]
+  },
+  "order": 5
+}

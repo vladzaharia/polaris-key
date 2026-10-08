@@ -45,7 +45,23 @@
     background: var(--pk-accent-subtle);
     color: var(--pk-accent-fg);
   }
+  /* Cards/Table sits on the section's heading line. */
+  [data-screen="products.home"] .products-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  [data-screen="products.home"] .products-head > .segmented {
+    margin-left: auto;
+  }
+  /* Action links keep a 24 px hit height. */
+  [data-screen="products.home"] .attn-row > .link {
+    min-height: 24px;
+  }
   @container screen (max-width: 639px) {
+    [data-screen="products.home"] .attn-row > .link {
+      justify-self: start;
+    }
     [data-screen="products.home"] .ready-meter {
       width: 100%;
       order: 3;
@@ -121,7 +137,7 @@
           <div class="attn-row">
             <span class="pill warning"><i class="ic ic-triangle-alert"></i>Warning</span>
             <span class="attn-subject"><span class="logo xs" data-product="djdl"></span>DJDL</span>
-            <span class="attn-text">The required secret <code>OIDC_CLIENT_SECRET</code> has no value in the Default profile.</span>
+            <span class="attn-text">The required secret <code>identity.acoustidKey</code> has no value in the Default profile.</span>
             <a class="link" href="#">Set secret<i class="ic ic-arrow-right"></i></a>
           </div>
           <div class="attn-row">
@@ -142,52 +158,45 @@
             <p>Set these up once for every product. This section leaves Home when all nine are done.</p>
           </div>
           <div class="ready-meter">
-            <span class="small muted nowrap tnum">7 of 9 done</span>
-            <div class="progress success" style="--v: 77.7%"></div>
+            <span class="small muted nowrap tnum">8 of 9 done</span>
+            <div class="progress success" style="--v: 88.9%"></div>
           </div>
         </div>
         <div class="tasks padded">
           <div class="task todo">
             <span class="task-mark"></span>
             <div class="task-title">Store connections</div>
-            <div class="task-desc">Diceroll ships on Google Play and Steam. Steam has no Steamworks publisher key yet, so Diceroll’s Steam channel can’t upload builds.</div>
+            <div class="task-desc">Steam has no Steamworks publisher key yet, so Diceroll’s Steam channel can’t upload builds.</div>
             <div class="task-action"><button class="btn outline sm"><i class="ic ic-steam"></i>Connect Steam</button></div>
-          </div>
-          <div class="task todo">
-            <span class="task-mark"></span>
-            <div class="task-title">Team access</div>
-            <div class="task-desc">You’re the only member. Invite your team, or map an identity provider group to a role.</div>
-            <div class="task-action"><button class="btn outline sm"><i class="ic ic-user-plus"></i>Invite people</button></div>
           </div>
         </div>
         <div class="done-list">
           <span class="lead">Done</span>
-          <span class="show-phone done-summary">7 rows · Show</span>
+          <span class="show-phone done-summary">8 steps · Show</span>
           <span><i class="ic ic-check"></i>Keyring configured</span>
           <span><i class="ic ic-check"></i>Portal sessions isolated</span>
           <span><i class="ic ic-check"></i>Console sign-in separate</span>
           <span><i class="ic ic-check"></i>Background jobs ticking</span>
           <span><i class="ic ic-check"></i>Email sender verified</span>
-          <span><i class="ic ic-check"></i>Platform package feeds</span>
+          <span><i class="ic ic-check"></i>Platform packages</span>
           <span><i class="ic ic-check"></i>Reserved names reviewed</span>
+          <span><i class="ic ic-check"></i>Team access: 6 members</span>
         </div>
       </section>
 
-      <!-- Products: cards (default) or table, with facets. The card is ST-36's, unchanged. -->
+      <!-- Products: cards (default) or table, with facets. ST-36's card, one glyph per feature (not per service). -->
       <section class="section" aria-labelledby="products-title">
-        <div class="section-head">
+        <div class="products-head">
           <div class="row"><h2 id="products-title">Products</h2><span class="count">3</span></div>
+          <div class="segmented sm" role="tablist" aria-label="View">
+            <span class="on" role="tab" aria-selected="true"><i class="ic ic-layout-grid sm"></i>Cards</span>
+            <span role="tab" aria-selected="false"><i class="ic ic-table sm"></i>Table</span>
+          </div>
         </div>
         <div class="toolbar products-toolbar">
-          <div class="search-field hide-phone"><i class="ic ic-search"></i><span>Filter products</span></div>
-          <span class="filter"><i class="ic ic-plus"></i>Integration</span>
+          <div class="search-field"><i class="ic ic-search"></i><span>Filter products</span></div>
+          <span class="filter"><i class="ic ic-plus"></i>Integration verified</span>
           <span class="filter"><i class="ic ic-plus"></i>Needs attention</span>
-          <div class="end">
-            <div class="segmented sm" role="tablist" aria-label="View">
-              <span class="on"><i class="ic ic-layout-grid sm"></i>Cards</span>
-              <span><i class="ic ic-table sm"></i>Table</span>
-            </div>
-          </div>
         </div>
 
         <div class="product-cards">
@@ -196,21 +205,19 @@
               <span class="logo" data-product="djdl"></span>
               <div class="grow">
                 <h3><a href="#">DJDL</a></h3>
-                <div class="row gap-1"><span class="slug">djdl</span><span class="pips">
-                <i class="pip" data-service="license"></i><i class="pip" data-service="config"></i><i class="pip" data-service="release"></i><i class="pip" data-service="distribution"></i><i class="pip" data-service="update"></i><i class="pip" data-service="identity"></i><i class="pip" data-service="sync"></i>
+                <div class="row gap-1"><span class="slug">djdl</span><span class="pips" role="img" aria-label="Licensing, Managed config, Ship builds, Sign-in, Cloud Sync">
+                <i class="pip" data-service="license"></i><i class="pip" data-service="config"></i><i class="pip" data-service="release"></i><i class="pip" data-service="identity"></i><i class="pip" data-service="sync"></i>
               </span></div>
               </div>
               <span class="pill warning sm"><i class="ic ic-triangle-alert"></i>1 needs attention</span>
             </div>
             <div class="product-card-svcs">
               <div class="svcs">
-                <a href="#" title="Licensing"><i class="svc" data-service="license"></i></a>
-                <a href="#" class="issue" title="Managed config: 1 needs attention"><i class="svc" data-service="config"></i></a>
-                <a href="#" title="Release"><i class="svc" data-service="release"></i></a>
-                <a href="#" title="Distribution"><i class="svc" data-service="distribution"></i></a>
-                <a href="#" title="Updates"><i class="svc" data-service="update"></i></a>
-                <a href="#" title="Sign-in"><i class="svc" data-service="identity"></i></a>
-                <a href="#" title="Cloud Sync"><i class="svc" data-service="sync"></i></a>
+                <a href="#" title="Licensing" aria-label="Licensing"><i class="svc" data-service="license"></i></a>
+                <a href="#" class="issue" title="Managed config: 1 needs attention" aria-label="Managed config: 1 needs attention"><i class="svc" data-service="config"></i></a>
+                <a href="#" title="Ship builds" aria-label="Ship builds"><i class="svc" data-service="release"></i></a>
+                <a href="#" title="Sign-in" aria-label="Sign-in"><i class="svc" data-service="identity"></i></a>
+                <a href="#" title="Cloud Sync" aria-label="Cloud Sync"><i class="svc" data-service="sync"></i></a>
               </div>
             </div>
           </article>
@@ -220,21 +227,18 @@
               <span class="logo" data-product="diceroll"></span>
               <div class="grow">
                 <h3><a href="#">Diceroll</a></h3>
-                <div class="row gap-1"><span class="slug">diceroll</span><span class="pips">
-                <i class="pip" data-service="license"></i><i class="pip" data-service="config"></i><i class="pip" data-service="release"></i><i class="pip" data-service="distribution"></i><i class="pip" data-service="update"></i><i class="pip" data-service="sync"></i><i class="pip" data-service="commerce"></i>
+                <div class="row gap-1"><span class="slug">diceroll</span><span class="pips" role="img" aria-label="Licensing, Managed config, Ship builds, Commerce">
+                <i class="pip" data-service="license"></i><i class="pip" data-service="config"></i><i class="pip" data-service="release"></i><i class="pip" data-service="commerce"></i>
               </span></div>
               </div>
               <span class="pill danger sm"><i class="ic ic-circle-x"></i>2 need attention</span>
             </div>
             <div class="product-card-svcs">
               <div class="svcs">
-                <a href="#" title="Licensing"><i class="svc" data-service="license"></i></a>
-                <a href="#" title="Managed config"><i class="svc" data-service="config"></i></a>
-                <a href="#" class="issue danger" title="Release: resync failed"><i class="svc" data-service="release"></i></a>
-                <a href="#" class="issue" title="Distribution: 1 needs attention"><i class="svc" data-service="distribution"></i></a>
-                <a href="#" title="Updates"><i class="svc" data-service="update"></i></a>
-                <a href="#" title="Cloud Sync"><i class="svc" data-service="sync"></i></a>
-                <a href="#" title="Commerce"><i class="svc" data-service="commerce"></i></a>
+                <a href="#" title="Licensing" aria-label="Licensing"><i class="svc" data-service="license"></i></a>
+                <a href="#" title="Managed config" aria-label="Managed config"><i class="svc" data-service="config"></i></a>
+                <a href="#" class="issue danger" title="Ship builds: 2 need attention (resync failed, Google Play key expires Oct 16)" aria-label="Ship builds: 2 need attention"><i class="svc" data-service="release"></i></a>
+                <a href="#" title="Commerce" aria-label="Commerce"><i class="svc" data-service="commerce"></i></a>
               </div>
             </div>
           </article>
@@ -244,18 +248,16 @@
               <span class="logo" data-product="polaris-key"></span>
               <div class="grow">
                 <h3><a href="#">Polaris Key</a></h3>
-                <div class="row gap-1"><span class="slug">polaris-key</span><span class="pips">
-                <i class="pip" data-service="release"></i><i class="pip" data-service="distribution"></i><i class="pip" data-service="update"></i><i class="pip" data-service="identity"></i>
+                <div class="row gap-1"><span class="slug">polaris-key</span><span class="pips" role="img" aria-label="Ship builds, Sign-in">
+                <i class="pip" data-service="release"></i><i class="pip" data-service="identity"></i>
               </span></div>
               </div>
               <span class="pill sm"><i class="dot"></i>System</span>
             </div>
             <div class="product-card-svcs">
               <div class="svcs">
-                <a href="#" title="Release"><i class="svc" data-service="release"></i></a>
-                <a href="#" title="Distribution"><i class="svc" data-service="distribution"></i></a>
-                <a href="#" title="Updates"><i class="svc" data-service="update"></i></a>
-                <a href="#" title="Sign-in"><i class="svc" data-service="identity"></i></a>
+                <a href="#" title="Ship builds" aria-label="Ship builds"><i class="svc" data-service="release"></i></a>
+                <a href="#" title="Sign-in" aria-label="Sign-in"><i class="svc" data-service="identity"></i></a>
               </div>
             </div>
           </article>

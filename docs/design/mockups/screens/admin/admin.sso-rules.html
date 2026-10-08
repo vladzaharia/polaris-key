@@ -1,0 +1,759 @@
+<style>
+  /* admin.sso-rules: the rule list and editor of licenses.access (one RuleEditor), giving roles. */
+  [data-screen="admin.sso-rules"] .role {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 24px;
+    padding: 0 9px 0 4px;
+    border: 1px solid var(--mk-line);
+    border-radius: 999px;
+    background: var(--pk-surface-sunken);
+    color: var(--pk-text-default);
+    font-size: 12px;
+    line-height: 16px;
+    white-space: nowrap;
+  }
+  [data-screen="admin.sso-rules"] .role > .logo.xs {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+  }
+  [data-screen="admin.sso-rules"] .role > .ic {
+    width: 14px;
+    height: 14px;
+    margin-left: 2px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="admin.sso-rules"] .role.super > .ic {
+    color: var(--pk-accent);
+  }
+  /* A role narrowed to areas reads as one tag: the role, a divider, then the areas. On phone the
+     areas drop under the tag, outside it, so the tag never wraps into a box. */
+  [data-screen="admin.sso-rules"] .role-set {
+    display: inline-flex;
+    align-items: center;
+    height: 24px;
+    border: 1px solid var(--mk-line);
+    border-radius: 999px;
+    background: var(--pk-surface-sunken);
+    font-size: 12px;
+    line-height: 16px;
+    white-space: nowrap;
+    vertical-align: 1px;
+  }
+  [data-screen="admin.sso-rules"] .role-set > .role {
+    height: 22px;
+    border: 0;
+    background: none;
+  }
+  [data-screen="admin.sso-rules"] .role-set > .areas {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 9px 0 8px;
+    border-left: 1px solid var(--mk-line);
+    color: var(--pk-text-muted);
+  }
+
+  /* Rules: when → gets, and who matches today. Same grid and words as licenses.access. */
+  [data-screen="admin.sso-rules"] .rules-head,
+  [data-screen="admin.sso-rules"] .rule {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1.25fr) minmax(0, 1fr) 132px 32px;
+    align-items: center;
+    gap: 6px 14px;
+    padding: 10px 20px;
+  }
+  [data-screen="admin.sso-rules"] .rules-head {
+    padding-top: 8px;
+    padding-bottom: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--pk-text-subtle);
+    background: color-mix(in oklab, var(--pk-surface-sunken) 45%, var(--pk-surface-raised));
+    border-bottom: 1px solid var(--mk-line);
+  }
+  [data-screen="admin.sso-rules"] .rules-head > :first-child {
+    grid-column: 2;
+  }
+  [data-screen="admin.sso-rules"] .rule + .rule {
+    border-top: 1px solid var(--mk-line);
+  }
+  [data-screen="admin.sso-rules"] .rule-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    background: var(--mk-fill);
+    color: var(--pk-text-muted);
+  }
+  [data-screen="admin.sso-rules"] .rule-when {
+    min-width: 0;
+  }
+  [data-screen="admin.sso-rules"] .rule-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px 6px;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="admin.sso-rules"] .rule-sub {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px 8px;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="admin.sso-rules"] .rule-gets {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    min-width: 0;
+  }
+  [data-screen="admin.sso-rules"] .rule-count {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    font-variant-numeric: tabular-nums;
+    color: var(--pk-text-default);
+    white-space: nowrap;
+  }
+  [data-screen="admin.sso-rules"] .faces {
+    display: inline-flex;
+  }
+  [data-screen="admin.sso-rules"] .faces > .avatar {
+    box-shadow: 0 0 0 2px var(--pk-surface-raised);
+  }
+  [data-screen="admin.sso-rules"] .faces > .avatar + .avatar {
+    margin-left: -3px;
+  }
+  [data-screen="admin.sso-rules"] .verified-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    color: var(--pk-success);
+    white-space: nowrap;
+  }
+  [data-screen="admin.sso-rules"] .verified-tag > .ic {
+    width: 13px;
+    height: 13px;
+  }
+  [data-screen="admin.sso-rules"] .locked {
+    display: inline-flex;
+    justify-content: center;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="admin.sso-rules"] .root .card-head .icon-tile {
+    background: var(--mk-fill);
+    color: var(--pk-text-muted);
+  }
+  [data-screen="admin.sso-rules"] .rules-card {
+    overflow: hidden;
+  }
+  [data-screen="admin.sso-rules"] .rules-note {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--pk-text-muted);
+  }
+
+  /* The editor for a new rule: When and Gets, then who it matches. */
+  [data-screen="admin.sso-rules"] .editor {
+    display: flex;
+    flex-direction: column;
+    border-top: 1px solid var(--mk-line);
+    background: color-mix(in oklab, var(--pk-accent-subtle) 35%, var(--pk-surface-raised));
+  }
+  [data-screen="admin.sso-rules"] .editor-head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 20px 4px;
+  }
+  [data-screen="admin.sso-rules"] .editor-head h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="admin.sso-rules"] .editor-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 20px 28px;
+    padding: 12px 20px 18px 66px;
+  }
+  [data-screen="admin.sso-rules"] .clause {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+  }
+  [data-screen="admin.sso-rules"] .clause-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--pk-text-subtle);
+  }
+  /* Each clause reads as a sentence: a label column, then the controls on one left edge. */
+  [data-screen="admin.sso-rules"] .frow {
+    display: grid;
+    grid-template-columns: 104px minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+  }
+  [data-screen="admin.sso-rules"] .frow.top {
+    align-items: start;
+  }
+  [data-screen="admin.sso-rules"] .frow.top > .flabel {
+    padding-top: 2px;
+  }
+  [data-screen="admin.sso-rules"] .flabel {
+    font-size: 13px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="admin.sso-rules"] .frow > .segmented {
+    justify-self: start;
+  }
+  [data-screen="admin.sso-rules"] .frow-hint {
+    padding-left: 116px;
+  }
+  [data-screen="admin.sso-rules"] .area-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding-left: 26px;
+  }
+  [data-screen="admin.sso-rules"] .area-chips .chip {
+    height: 30px;
+  }
+  [data-screen="admin.sso-rules"] .editor .select,
+  [data-screen="admin.sso-rules"] .editor .radio:not(.on) > .box {
+    background: var(--pk-surface-raised);
+  }
+  [data-screen="admin.sso-rules"] .inline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  [data-screen="admin.sso-rules"] .inline > .select,
+  [data-screen="admin.sso-rules"] .inline > .input {
+    flex: 1 1 0;
+  }
+  [data-screen="admin.sso-rules"] .inline > .word {
+    flex: none;
+    font-size: 13px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="admin.sso-rules"] .preview {
+    display: flex;
+    flex-direction: column;
+    margin: 0 20px 18px 66px;
+    border: 1px solid var(--mk-line);
+    border-radius: 14px;
+    background: var(--pk-surface-raised);
+  }
+  [data-screen="admin.sso-rules"] .preview-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--mk-line);
+    font-size: 13px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="admin.sso-rules"] .preview-head strong {
+    color: var(--pk-text-strong);
+  }
+  [data-screen="admin.sso-rules"] .preview-row {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr) minmax(0, 1.2fr);
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+  [data-screen="admin.sso-rules"] .preview-row + .preview-row {
+    border-top: 1px solid var(--mk-line);
+  }
+  [data-screen="admin.sso-rules"] .preview-row .who {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  [data-screen="admin.sso-rules"] .preview-row .who b {
+    color: var(--pk-text-strong);
+  }
+  [data-screen="admin.sso-rules"] .preview-row .who span {
+    color: var(--pk-text-muted);
+    font-size: 12px;
+  }
+  /* The change is one run of text, so a narrow line breaks inside it, never after the verb. */
+  [data-screen="admin.sso-rules"] .change {
+    color: var(--pk-text-muted);
+  }
+  [data-screen="admin.sso-rules"] .change .text-success {
+    font-weight: 700;
+  }
+  [data-screen="admin.sso-rules"] .editor-foot {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border-top: 1px solid var(--mk-line);
+  }
+  [data-screen="admin.sso-rules"] .editor-foot .stepup {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-right: auto;
+    font-size: 13px;
+    color: var(--pk-text-muted);
+  }
+
+  @container screen (max-width: 1023px) {
+    [data-screen="admin.sso-rules"] .editor-grid {
+      padding-left: 20px;
+    }
+    [data-screen="admin.sso-rules"] .preview {
+      margin-left: 20px;
+    }
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="admin.sso-rules"] .rules-head {
+      display: none;
+    }
+    [data-screen="admin.sso-rules"] .rule {
+      grid-template-columns: 32px minmax(0, 1fr) auto;
+      grid-template-areas:
+        "icon when menu"
+        ". gets gets"
+        ". count count";
+      padding: 12px 16px;
+    }
+    [data-screen="admin.sso-rules"] .rule > .rule-icon {
+      grid-area: icon;
+    }
+    [data-screen="admin.sso-rules"] .rule > .rule-when {
+      grid-area: when;
+    }
+    [data-screen="admin.sso-rules"] .rule > .rule-gets {
+      grid-area: gets;
+    }
+    [data-screen="admin.sso-rules"] .rule > .rule-count {
+      grid-area: count;
+      justify-content: flex-start;
+      font-size: 13px;
+      color: var(--pk-text-muted);
+    }
+    [data-screen="admin.sso-rules"] .rule > .btn,
+    [data-screen="admin.sso-rules"] .rule > .locked {
+      grid-area: menu;
+    }
+    [data-screen="admin.sso-rules"] .role-set {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
+      height: auto;
+      border: 0;
+      border-radius: 0;
+      background: none;
+    }
+    [data-screen="admin.sso-rules"] .role-set > .role {
+      height: 24px;
+      border: 1px solid var(--mk-line);
+      background: var(--pk-surface-sunken);
+    }
+    [data-screen="admin.sso-rules"] .role-set > .areas {
+      flex-wrap: wrap;
+      padding: 0 0 0 6px;
+      border-left: 0;
+      white-space: normal;
+    }
+    [data-screen="admin.sso-rules"] .editor-head {
+      padding: 14px 16px 4px;
+    }
+    [data-screen="admin.sso-rules"] .editor-grid {
+      grid-template-columns: minmax(0, 1fr);
+      padding: 12px 16px 16px;
+    }
+    [data-screen="admin.sso-rules"] .preview {
+      margin: 0 16px 16px;
+    }
+    [data-screen="admin.sso-rules"] .preview-row {
+      grid-template-columns: 24px minmax(0, 1fr);
+    }
+    [data-screen="admin.sso-rules"] .preview-row .change {
+      grid-column: 2;
+    }
+    [data-screen="admin.sso-rules"] .frow {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 6px;
+    }
+    [data-screen="admin.sso-rules"] .frow-hint {
+      padding-left: 0;
+    }
+    [data-screen="admin.sso-rules"] .frow > .segmented {
+      justify-self: stretch;
+    }
+    [data-screen="admin.sso-rules"] .frow > .segmented > span {
+      flex: 1;
+      justify-content: center;
+      padding: 0 6px;
+    }
+    [data-screen="admin.sso-rules"] .frow > .segmented .ic {
+      display: none;
+    }
+    [data-screen="admin.sso-rules"] .area-chips {
+      padding-left: 0;
+    }
+    [data-screen="admin.sso-rules"] .inline {
+      flex-wrap: wrap;
+    }
+    [data-screen="admin.sso-rules"] .inline > .select,
+    [data-screen="admin.sso-rules"] .inline > .input {
+      flex: 1 1 100%;
+    }
+    [data-screen="admin.sso-rules"] .editor-foot {
+      flex-wrap: wrap;
+      padding: 12px 16px;
+    }
+    [data-screen="admin.sso-rules"] .editor-foot .stepup {
+      flex-basis: 100%;
+    }
+    [data-screen="admin.sso-rules"] .editor-foot .btn {
+      flex: 1 1 auto;
+    }
+    [data-screen="admin.sso-rules"] .card-foot {
+      flex-wrap: wrap;
+    }
+    [data-screen="admin.sso-rules"] .rules-note {
+      align-items: flex-start;
+    }
+  }
+  /* Other states, drawn under the screen on the kit's board ground. */
+  [data-screen="admin.sso-rules"] .states {
+    min-height: 0;
+    gap: 32px 40px;
+    padding: 40px 32px 48px;
+    border-top: 1px dashed var(--pk-border-strong);
+  }
+  [data-screen="admin.sso-rules"] .states .board-title h1 {
+    font-size: 18px;
+    line-height: 26px;
+  }
+  [data-screen="admin.sso-rules"] .states .board-item {
+    width: 560px;
+  }
+  [data-screen="admin.sso-rules"] .states .preview {
+    margin: 0;
+  }
+  [data-screen="admin.sso-rules"] .states .dialog {
+    width: 100%;
+  }
+  [data-screen="admin.sso-rules"] .gets-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--mk-line);
+    font-size: 13px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="admin.sso-rules"] .preview .callout {
+    margin: 12px 16px 4px;
+  }
+  [data-screen="admin.sso-rules"] .preview-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 16px;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="admin.sso-rules"] .preview-empty b {
+    color: var(--pk-text-strong);
+  }
+  [data-screen="admin.sso-rules"] .ro-rule {
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="admin.sso-rules"] .states {
+      gap: 28px;
+      padding: 28px 16px 36px;
+    }
+    [data-screen="admin.sso-rules"] .ro-rule {
+      grid-template-areas:
+        "icon when when"
+        ". gets gets";
+    }
+  }
+</style>
+
+<div class="console" data-service="core">
+  <header class="topbar">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <nav class="sidebar" aria-label="Platform">
+    <div class="ctx">
+      <span class="ctx-mark"><i class="ic ic-polaris"></i></span>
+      <span class="ctx-text"><span class="ctx-name">Platform</span><span class="ctx-sub">3 products</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item" href="#"><i class="ic ic-house"></i><span class="nav-text">Home</span></a>
+    <a class="nav-item active" href="#"><i class="ic ic-users"></i><span class="nav-text">Members</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-link"></i><span class="nav-text">Connections</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-boxes"></i><span class="nav-text">Packages</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-server"></i><span class="nav-text">Status</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-history"></i><span class="nav-text">Activity</span></a>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="page">
+      <header class="page-head">
+        <div class="page-heading"><h1>Members</h1></div>
+        <p class="page-sub">SSO rules give people a role from what their sign-in says about them: a group, a verified email domain or a claim. Every rule a person matches adds its role, checked each time they sign in.</p>
+        <div class="page-actions">
+          <button class="btn outline" disabled title="Finish or cancel the new rule first"><i class="ic ic-plus"></i>Add rule</button>
+        </div>
+      </header>
+
+      <nav class="tabs" aria-label="Members">
+        <a class="tab" href="#">Members <span class="count">10</span></a>
+        <a class="tab active" href="#">SSO rules <span class="count">3</span></a>
+        <a class="tab" href="#">Roles</a>
+      </nav>
+
+      <!-- The root rule: computed from PLATFORM_ADMIN_GROUP, read-only, first, never shadowed. -->
+      <section class="card root rules-card" aria-labelledby="root-title">
+        <div class="card-head">
+          <span class="icon-tile"><i class="ic ic-lock-keyhole"></i></span>
+          <div class="title">
+            <h2 id="root-title">Root rule</h2>
+            <p>Set at deploy time by <code>PLATFORM_ADMIN_GROUP</code>. It can’t be changed or removed here, so a deploy can always recover the console.</p>
+          </div>
+        </div>
+        <div class="rule" role="row">
+          <span class="rule-icon"><i class="ic ic-users"></i></span>
+          <div class="rule-when"><div class="rule-title">Group <code>polaris-admins</code></div><div class="rule-sub">From Pocket ID, the console’s own sign-in</div></div>
+          <div class="rule-gets"><span class="role super"><i class="ic ic-crown"></i>Superadmin</span></div>
+          <span class="rule-count"><span class="faces"><span class="avatar sm violet">AL</span><span class="avatar sm">JW</span></span>2 people</span>
+          <span class="locked" aria-label="Locked"><i class="ic ic-lock"></i></span>
+        </div>
+      </section>
+
+      <!-- ST-32: one conversion offer per product whose manifest named an admin group. -->
+      <div class="callout accent">
+        <i class="ic ic-git-merge"></i>
+        <div class="grow">
+          <div class="callout-title">DJDL’s manifest named <code>djdl-admins</code> as its admin group</div>
+          <div class="callout-text">A manifest can’t give anyone console access, so 0.9 refuses <code>product.adminGroup</code>. To let that group manage DJDL, make it a rule here.</div>
+        </div>
+        <button class="btn outline sm"><i class="ic ic-plus"></i>Map djdl-admins to DJDL admin</button>
+      </div>
+
+      <section class="card rules-card" aria-labelledby="rules-title">
+        <div class="card-head">
+          <span class="icon-tile"><i class="ic ic-waypoints"></i></span>
+          <div class="title">
+            <h2 id="rules-title">Rules</h2>
+            <p>Only Superadmins add or change rules, and a rule can use only connections on the deploy’s issuer allowlist.</p>
+          </div>
+        </div>
+        <div class="rules" role="table" aria-label="Rules">
+          <div class="rules-head" role="row"><span>When</span><span>Gets</span><span class="right">People</span><span></span></div>
+          <div class="rule" role="row">
+            <span class="rule-icon"><i class="ic ic-users"></i></span>
+            <div class="rule-when"><div class="rule-title">Group <code>release-managers</code></div><div class="rule-sub">From Pocket ID</div></div>
+            <div class="rule-gets"><span class="role-set"><span class="role"><i class="ic ic-layers"></i>All products admin</span><span class="areas"><i class="svc sm" data-service="release"></i>Ship builds</span></span></div>
+            <span class="rule-count"><span class="faces"><span class="avatar sm">SO</span></span>1 person</span>
+            <button class="btn ghost icon sm" aria-label="Edit rule"><i class="ic ic-ellipsis"></i></button>
+          </div>
+          <div class="rule" role="row">
+            <span class="rule-icon"><i class="ic ic-users"></i></span>
+            <div class="rule-when"><div class="rule-title">Group <code>diceroll-store</code></div><div class="rule-sub">From Pocket ID</div></div>
+            <div class="rule-gets"><span class="role-set"><span class="role"><span class="logo xs" data-product="diceroll"></span>Diceroll admin</span><span class="areas"><i class="svc sm" data-service="release"></i>Ship builds, <i class="svc sm" data-service="commerce"></i>Commerce</span></span></div>
+            <span class="rule-count"><span class="faces"><span class="avatar sm">LO</span></span>1 person</span>
+            <button class="btn ghost icon sm" aria-label="Edit rule"><i class="ic ic-ellipsis"></i></button>
+          </div>
+          <div class="rule" role="row">
+            <span class="rule-icon"><i class="ic ic-at-sign"></i></span>
+            <div class="rule-when"><div class="rule-title">Verified email domain <code>studio.example.com</code></div><div class="rule-sub">From Studio Okta<span class="verified-tag"><i class="ic ic-badge-check"></i>Domain verified and enforced</span></div></div>
+            <div class="rule-gets"><span class="role"><i class="ic ic-log-in"></i>Console access</span></div>
+            <span class="rule-count"><span class="faces"><span class="avatar sm">NH</span><span class="avatar sm">FB</span></span>2 people</span>
+            <button class="btn ghost icon sm" aria-label="Edit rule"><i class="ic ic-ellipsis"></i></button>
+          </div>
+        </div>
+
+        <!-- Add rule, open: the RuleEditor licenses.access uses, with the match preview. -->
+        <div class="editor" aria-labelledby="new-rule">
+          <div class="editor-head">
+            <span class="rule-icon"><i class="ic ic-id-card"></i></span>
+            <h3 id="new-rule">New rule</h3>
+          </div>
+          <div class="editor-grid">
+            <div class="clause">
+              <span class="clause-label">When someone</span>
+              <div class="frow"><span class="flabel">Signs in with</span><div class="select"><i class="ic ic-link"></i><span class="grow">Studio Okta</span><i class="ic ic-chevrons-up-down"></i></div></div>
+              <div class="frow"><span class="flabel">And has</span><div class="segmented sm" role="tablist" aria-label="Match on"><span><i class="ic ic-users"></i>A group</span><span><i class="ic ic-at-sign"></i>A verified email domain</span><span class="on"><i class="ic ic-id-card"></i>A claim</span></div></div>
+              <div class="frow"><span class="flabel">Claim</span><div class="inline"><div class="select"><span class="grow mono">department</span><i class="ic ic-chevrons-up-down"></i></div><span class="word">is</span><div class="input mono focus"><span class="grow">djdl-qa</span></div></div></div>
+              <span class="hint frow-hint">Claims come from each person’s last sign-in with Studio Okta. A domain rule offers only the domains Studio Okta has verified and enforces.</span>
+            </div>
+            <div class="clause">
+              <span class="clause-label">They get</span>
+              <div class="frow"><span class="flabel">Role</span><div class="select"><i class="ic ic-boxes"></i><span class="grow">Product admin</span><i class="ic ic-chevrons-up-down"></i></div></div>
+              <div class="frow"><span class="flabel">Product</span><div class="select"><span class="logo xs" data-product="djdl"></span><span class="grow">DJDL</span><i class="ic ic-chevrons-up-down"></i></div></div>
+              <div class="frow top"><span class="flabel">Areas</span>
+                <div class="stack gap-2">
+                  <span class="radio"><span class="box"></span>Every area of DJDL</span>
+                  <span class="radio on"><span class="box"></span>Only these areas</span>
+                  <div class="area-chips">
+                    <span class="chip"><i class="ic ic-layout-dashboard sm"></i>Core</span>
+                    <span class="chip"><i class="svc sm" data-service="license"></i>Licensing</span>
+                    <span class="chip on"><i class="svc sm" data-service="config"></i>Managed config</span>
+                    <span class="chip on"><i class="svc sm" data-service="release"></i>Ship builds</span>
+                    <span class="chip"><i class="svc sm" data-service="identity"></i>Sign-in</span>
+                    <span class="chip"><i class="svc sm" data-service="sync"></i>Cloud Sync</span>
+                    <span class="chip"><i class="ic ic-key-square sm"></i>Keys</span>
+                    <span class="chip"><i class="ic ic-settings sm"></i>Settings</span>
+                    <span class="chip"><i class="ic ic-users sm"></i>Members</span>
+                  </div>
+                </div>
+              </div>
+              <span class="hint frow-hint">Only DJDL’s features are listed: Commerce isn’t on for DJDL. A rule that gives Superadmin or Platform admin asks you to type the role’s name to confirm.</span>
+            </div>
+          </div>
+          <div class="preview">
+            <div class="preview-head"><i class="ic ic-eye"></i><span><strong>Matches 3 people</strong> who have signed in with Studio Okta</span></div>
+            <div class="preview-row">
+              <span class="avatar sm">FB</span>
+              <div class="who"><b>Felix Brandt</b><span>felix@studio.example.com · DJDL admin · Managed config</span></div>
+              <div class="change"><span class="text-success">Adds</span> Ship builds in DJDL</div>
+            </div>
+            <div class="preview-row">
+              <span class="avatar sm">NH</span>
+              <div class="who"><b>Noor Haddad</b><span>noor@studio.example.com · Console access</span></div>
+              <div class="change"><span class="text-success">Adds</span> DJDL admin · Managed config, Ship builds</div>
+            </div>
+            <div class="preview-row">
+              <span class="avatar sm">RS</span>
+              <div class="who"><b>Ravi Shah</b><span>ravi@studio.example.com · Not a member</span></div>
+              <div class="change"><span class="text-success">Joins</span> as DJDL admin the next time Ravi signs in</div>
+            </div>
+          </div>
+          <div class="editor-foot">
+            <span class="stepup"><i class="ic ic-fingerprint"></i>Asks for your passkey first, then emails every Superadmin</span>
+            <button class="btn outline">Cancel</button>
+            <button class="btn primary">Save rule</button>
+          </div>
+        </div>
+
+        <div class="card-foot start">
+          <span class="rules-note"><i class="ic ic-info sm"></i>Every rule a person matches adds its role. There are no deny rules, so the order doesn’t matter.</span>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<!-- Other states of the SSO rules tab. -->
+<section class="board states" aria-label="Other states">
+  <div class="board-title"><h1>Other states</h1><p>For checking the built tab. Each is a state of the editor or the page above.</p></div>
+
+  <figure class="board-item">
+    <div class="preview">
+      <div class="gets-line"><span>Signs in with Pocket ID, has group <code>ops-oncall</code></span><i class="ic ic-arrow-right sm"></i><span class="role super"><i class="ic ic-crown"></i>Superadmin</span></div>
+      <div class="callout warning"><i class="ic ic-triangle-alert"></i><div class="grow"><div class="callout-title">This rule makes 3 people Superadmins</div><div class="callout-text">Superadmins can do everything, including change every role and SSO rule. Saving asks you to type Superadmin.</div></div></div>
+      <div class="preview-head"><i class="ic ic-eye"></i><span><strong>Matches 3 people</strong> who have signed in with Pocket ID</span></div>
+      <div class="preview-row">
+        <span class="avatar sm">PR</span>
+        <div class="who"><b>Priya Raman</b><span>priya@example.com · Platform admin, DJDL admin</span></div>
+        <div class="change"><span class="text-success">Adds</span> Superadmin</div>
+      </div>
+      <div class="preview-row">
+        <span class="avatar sm">SO</span>
+        <div class="who"><b>Sam Okoye</b><span>sam@example.com · All products admin, DJDL admin</span></div>
+        <div class="change"><span class="text-success">Adds</span> Superadmin</div>
+      </div>
+      <div class="preview-row">
+        <span class="avatar sm">KM</span>
+        <div class="who"><b>Kenji Mori</b><span>kenji@example.com · Diceroll admin</span></div>
+        <div class="change"><span class="text-success">Adds</span> Superadmin</div>
+      </div>
+    </div>
+    <figcaption><strong>A rule that gives Superadmin.</strong>The preview warns before saving. A Platform admin rule warns the same way with its own count.</figcaption>
+  </figure>
+
+  <figure class="board-item">
+    <div class="dialog danger">
+      <div class="dialog-head"><i class="ic ic-triangle-alert"></i><h2>Make 3 people Superadmins?</h2><button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button></div>
+      <div class="dialog-body">
+        <p>Everyone in <code>ops-oncall</code> at Pocket ID becomes a Superadmin at their next sign-in, including people added to the group later. Today that is:</p>
+        <ul class="bullets"><li><strong>Priya Raman</strong>, priya@example.com</li><li><strong>Sam Okoye</strong>, sam@example.com</li><li><strong>Kenji Mori</strong>, kenji@example.com</li></ul>
+        <p class="small muted">We’ll email them and every Superadmin.</p>
+        <div class="field">
+          <label class="field-label">Type <span class="confirm-word">Superadmin</span> to confirm</label>
+          <div class="input mono focus"><span class="grow">Superad</span></div>
+        </div>
+      </div>
+      <div class="dialog-foot"><span class="start small muted row gap-1"><i class="ic ic-fingerprint sm"></i>Then your passkey</span><button class="btn outline">Cancel</button><button class="btn danger" disabled>Make 3 people Superadmins</button></div>
+    </div>
+    <figcaption><strong>Saving it.</strong>The typed confirmation names the role; the button stays off until the word matches, then asks for a passkey.</figcaption>
+  </figure>
+
+  <figure class="board-item">
+    <div class="preview">
+      <div class="gets-line"><span>Signs in with Studio Okta, has claim <code>department</code> is <code>djdl-qa</code></span><i class="ic ic-arrow-right sm"></i><span class="role-set"><span class="role"><span class="logo xs" data-product="djdl"></span>DJDL admin</span><span class="areas"><i class="svc sm" data-service="config"></i>Managed config, <i class="svc sm" data-service="release"></i>Ship builds</span></span></div>
+      <div class="preview-empty">
+        <b>Matches nobody who has signed in with Studio Okta yet</b>
+        <span>The rule still saves. Anyone whose next sign-in with Studio Okta has <span class="mono">department</span> set to <span class="mono">djdl-qa</span> gets DJDL admin then.</span>
+      </div>
+    </div>
+    <figcaption><strong>A rule that matches nobody yet.</strong>The preview says so in place of the list; nothing else changes.</figcaption>
+  </figure>
+
+  <figure class="board-item">
+    <section class="card rules-card" aria-label="Rules, read-only">
+      <div class="card-head">
+        <span class="icon-tile"><i class="ic ic-waypoints"></i></span>
+        <div class="title"><h2>Rules</h2><p>Only Superadmins add or change rules: Ada Lindqvist and Jonas Weber.</p></div>
+      </div>
+      <div class="rule ro-rule">
+        <span class="rule-icon"><i class="ic ic-users"></i></span>
+        <div class="rule-when"><div class="rule-title">Group <code>release-managers</code></div><div class="rule-sub">From Pocket ID</div></div>
+        <div class="rule-gets"><span class="role-set"><span class="role"><i class="ic ic-layers"></i>All products admin</span><span class="areas"><i class="svc sm" data-service="release"></i>Ship builds</span></span></div>
+      </div>
+      <div class="rule ro-rule">
+        <span class="rule-icon"><i class="ic ic-users"></i></span>
+        <div class="rule-when"><div class="rule-title">Group <code>diceroll-store</code></div><div class="rule-sub">From Pocket ID</div></div>
+        <div class="rule-gets"><span class="role-set"><span class="role"><span class="logo xs" data-product="diceroll"></span>Diceroll admin</span><span class="areas"><i class="svc sm" data-service="release"></i>Ship builds, <i class="svc sm" data-service="commerce"></i>Commerce</span></span></div>
+      </div>
+      <div class="rule ro-rule">
+        <span class="rule-icon"><i class="ic ic-at-sign"></i></span>
+        <div class="rule-when"><div class="rule-title">Verified email domain <code>studio.example.com</code></div><div class="rule-sub">From Studio Okta</div></div>
+        <div class="rule-gets"><span class="role"><i class="ic ic-log-in"></i>Console access</span></div>
+      </div>
+    </section>
+    <figcaption><strong>Priya Raman, a Platform admin, opens SSO rules.</strong>The same rules, read-only: no Add rule in the header, no row menus and no editor.</figcaption>
+  </figure>
+</section>

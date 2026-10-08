@@ -1,0 +1,62 @@
+{
+  "id": "packages.updates",
+  "title": "Updates",
+  "area": "packages",
+  "surface": "console",
+  "order": 10,
+  "packages": [
+    "P2-11",
+    "A-20",
+    "P2-08",
+    "P2-10",
+    "P2-12"
+  ],
+  "uxRows": [],
+  "summary": "DJDL's Updates page under Ship builds, later on Oct 7 than the Integration mockup: updater setup only for the platforms DJDL ships (Sparkle on macOS, Verified from its first update check; WinSparkle on Windows, not seen yet), generated code that authorizes each check with the device's license token, and the page's update rules with access read-only.",
+  "compare": [
+    "The page is named Updates, sits under Ship builds and takes the Update accent (tangerine). The subtitle teaches the one word: 'Each updater shows Verified after its first real update check' (glossary §2).",
+    "The scope line names DJDL's builds (macOS Apple silicon and Intel; Windows x64 .msi); only those get a card, and a quiet 'Not shown' line names zsync and Play in-app updates (DJDL doesn't ship there) and the Godot updater (DJDL isn't a Godot game).",
+    "Each card has a head (platform, updater, what it serves), Setup steps on the left, In your app on the right, and status at the right of the head: macOS 'Verified' with 'first update check Oct 7, 16:48' under it; Windows 'Not seen yet' (the kit's dashed ring) with 'no Windows build has checked in', the same state Integration shows.",
+    "macOS steps match the facts: the Sparkle key made with 'pkey release keys init --sparkle' (public half in .pkey/release, private half a CI secret), the signed appcast per release track, and the first update check from DJDL 4.2.1, the first build with the key ('Nothing newer to offer yet'). The foot counts from there: 64 checks, 41 copies on 4.2.1, 0 signature failures.",
+    "The macOS code leads with the Swift PolarisKeyUpdate tab (PolarisSparkle, which sends the device's license token with every check); Info.plist is the second tab, 'also required'. The WinSparkle snippet sets the appcast URL, the EdDSA key and win_sparkle_set_http_header with the device's license token. Both feet say each check carries the license token, so only Customers get updates, matching 'Who can check for updates: Customers'.",
+    "Windows' updater is a saved choice: 'Updater WinSparkle · chosen by Ana Lima on Oct 7 · Change', with Velopack and App Installer (needs MSIX; DJDL makes an .msi) explained in the hint, not shown as tabs.",
+    "Waiting steps use the kit's neutral clock, never the tangerine accent; inline commands don't break mid-command.",
+    "Update rules: the compatibility window with Change, 'Who can check for updates' read-only with Open Access, and the release-track summary linking to Release tracks.",
+    "A broken updater looks like packages.updates-failing.",
+    "Phone: the sidebar folds into the menu button, each card's status drops under its title, the updater choice wraps above its hint, setup stacks above the code, and the code scrolls sideways inside its block."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: one word (Verified) for the updater check, snippets that authorize the check the rules require, a designed error state, and a first check that teaches the right key model.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "[Visual/state] The kit's waiting dot and waiting task mark take the page accent (--pk-accent), so 'Waiting for…' is green on Packages (reads healthy), tangerine on Updates (reads as a warning) and cyan on Integration; the spinner arc reads as 'loading now' while it really waits on an outside event.",
+        "resolution": "Fixed in the kit (kit/mockup.css, kit/README.md): .waiting-dot and .task.waiting now draw a static clock in --pk-text-muted (the task mark inside a neutral --pk-border-strong ring), never --pk-accent and never a spinner, so the state looks the same on Packages, Updates and Integration. Accents stay on links, the active nav item and the track tags."
+      },
+      {
+        "severity": "major",
+        "issue": "[Copy/glossary] Updates says 'Wired' for the fact Integration's Ship builds row calls 'Verified' (glossary §2: Verified includes an updater check); Windows is 'Not seen yet' on Integration and 'Waiting for the first update check' on Updates.",
+        "resolution": "Wired is gone from both Updates pages: the head says 'Verified' with the event as detail ('first update check Oct 7, 16:48'), the subtitle says 'Each updater shows Verified after its first real update check', and the Godot card says 'Verified on 1 of 2'. Windows on DJDL's Updates now says 'Not seen yet' ('no Windows build has checked in'), as on products.integration; 'Waiting for the first update check' is kept only for a platform that is seen but hasn't checked (Linux on the Godot page), which is the kit's waiting-versus-unseen rule."
+      },
+      {
+        "severity": "major",
+        "issue": "[Flow] The snippets can't work under the page's own rule: Customers only, but the Info.plist tab and the WinSparkle call send no license or device credential.",
+        "resolution": "The Swift PolarisKeyUpdate tab is first (PolarisSparkle sends the device's license token with every check); Info.plist is the second tab, 'also required'. The WinSparkle snippet adds win_sparkle_set_http_header with the device's license token. Both code feet say how the check is authorized: 'Each check carries the device's license token, so only Customers get updates.'"
+      },
+      {
+        "severity": "major",
+        "issue": "[Missing state] No designed error: signature failures, a failed appcast fetch or a mismatched SUPublicEDKey.",
+        "resolution": "Added packages.updates-failing (Oct 9): the macOS card in attention with a '12 signature failures' danger pill, a blocked step 'Builds carry the same key', and a danger callout with what went wrong (4.2.2 was built with a different SUPublicEDKey than .pkey/release, so copies on 4.2.2 refuse every signed update), how to fix it (the command that prints the key; publish 4.2.3), what owners of 4.2.2 must do, and 'Email the 37 people on 4.2.2'. The foot counts the failures in danger, and Updates gets a danger count in the sidebar."
+      },
+      {
+        "severity": "minor",
+        "issue": "[Data/copy] The first check came from 4.2.0, which predates the key; 'Godot isn't a platform'; the Windows picker looks like tabs; on phone the inline command breaks after '--'.",
+        "resolution": "First check: 'Oct 7, 16:48, from DJDL 4.2.1 on macOS 15.4 (Apple silicon), the first build with the key. Nothing newer to offer yet.', and the counts start there. 'Not shown: … and the Godot updater, because DJDL isn't a Godot game.' The picker is a saved choice ('Updater WinSparkle · chosen by Ana Lima on Oct 7 · Change'). Inline command code in steps is white-space: nowrap."
+      }
+    ]
+  }
+}

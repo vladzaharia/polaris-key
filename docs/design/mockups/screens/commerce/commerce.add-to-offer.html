@@ -1,0 +1,422 @@
+<style>
+  /* commerce.add-to-offer: SKU chips in the offer × storefront table, and a sticky offer column. */
+  [data-screen="commerce.add-to-offer"] .table th .ic.store {
+    width: 14px;
+    height: 14px;
+    margin: 0 6px 0 0;
+    vertical-align: -2px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="commerce.add-to-offer"] .table td {
+    vertical-align: middle;
+  }
+  [data-screen="commerce.add-to-offer"] .table th:first-child,
+  [data-screen="commerce.add-to-offer"] .table td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--pk-surface-raised);
+  }
+  [data-screen="commerce.add-to-offer"] .table th:first-child {
+    background: color-mix(in oklab, var(--pk-surface-sunken) 45%, var(--pk-surface-raised));
+  }
+  [data-screen="commerce.add-to-offer"] .offer-cell {
+    min-width: 200px;
+  }
+  [data-screen="commerce.add-to-offer"] .offer-cell .cell-title a {
+    color: inherit;
+  }
+  [data-screen="commerce.add-to-offer"] .sku-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 176px;
+    height: 26px;
+    padding: 0 8px;
+    border: 1px solid var(--mk-line);
+    border-radius: var(--pk-radius-sm);
+    background: var(--pk-surface-sunken);
+    color: var(--pk-text-default);
+    font-family: var(--pk-font-mono);
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  [data-screen="commerce.add-to-offer"] .sku-chip > .ic {
+    width: 12px;
+    height: 12px;
+    color: var(--pk-success);
+  }
+  [data-screen="commerce.add-to-offer"] .sku-chip > .t {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  [data-screen="commerce.add-to-offer"] .sku-chip > .t.tail {
+    direction: rtl;
+    text-align: left;
+  }
+  [data-screen="commerce.add-to-offer"] .sku-chip.review > .ic {
+    color: var(--pk-info);
+  }
+  [data-screen="commerce.add-to-offer"] .sku-chip.unchecked > .ic {
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="commerce.add-to-offer"] .sku-chip.create {
+    border: 1px solid var(--pk-warning-border);
+    background: var(--pk-warning-subtle);
+    color: var(--pk-warning);
+    font-family: var(--pk-font-sans);
+  }
+  [data-screen="commerce.add-to-offer"] .sku-chip.create > .ic {
+    color: var(--pk-warning);
+  }
+  [data-screen="commerce.add-to-offer"] .sku-chip.add {
+    border-style: dashed;
+    border-color: var(--pk-border-strong);
+    background: transparent;
+    color: var(--pk-text-muted);
+    font-family: var(--pk-font-sans);
+  }
+  [data-screen="commerce.add-to-offer"] .sku-chip.add > .ic {
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="commerce.add-to-offer"] .na {
+    font-size: 12px;
+    color: var(--pk-text-subtle);
+    white-space: nowrap;
+  }
+  [data-screen="commerce.add-to-offer"] .legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 16px;
+  }
+  [data-screen="commerce.add-to-offer"] .legend .ic {
+    width: 12px;
+    height: 12px;
+  }
+  [data-screen="commerce.add-to-offer"] .th-sub {
+    display: block;
+    margin: 2px 0 0 20px;
+    font-family: var(--pk-font-mono);
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="commerce.add-to-offer"] .pm,
+  [data-screen="commerce.add-to-offer"] .na-short {
+    display: none;
+  }
+  /* Phone: each offer is a stacked row: name and state, what it sells, then one line of store
+     marks, each with its SKU's glyph. Nothing scrolls sideways; a row opens the editor. */
+  @container screen (max-width: 639px) {
+    [data-screen="commerce.add-to-offer"] .table,
+    [data-screen="commerce.add-to-offer"] .table tbody {
+      display: block;
+    }
+    [data-screen="commerce.add-to-offer"] .table thead {
+      display: none;
+    }
+    [data-screen="commerce.add-to-offer"] .table tr {
+      display: grid;
+      grid-template-columns: repeat(4, max-content) minmax(0, 1fr);
+      grid-template-areas:
+        "offer offer offer offer state"
+        "s1 s2 s3 s4 .";
+      align-items: center;
+      gap: 10px 16px;
+      padding: 14px 16px;
+    }
+    [data-screen="commerce.add-to-offer"] .table tr + tr {
+      border-top: 1px solid var(--mk-line);
+    }
+    [data-screen="commerce.add-to-offer"] .table td {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 0;
+      border: 0;
+      min-width: 0;
+      position: static;
+      background: none;
+    }
+    [data-screen="commerce.add-to-offer"] .table td:nth-child(1) { grid-area: offer; display: block; }
+    [data-screen="commerce.add-to-offer"] .table td:nth-child(2) { grid-area: s1; }
+    [data-screen="commerce.add-to-offer"] .table td:nth-child(3) { grid-area: s2; }
+    [data-screen="commerce.add-to-offer"] .table td:nth-child(4) { grid-area: s3; }
+    [data-screen="commerce.add-to-offer"] .table td:nth-child(5) { grid-area: s4; }
+    [data-screen="commerce.add-to-offer"] .table td:nth-child(6) { grid-area: state; justify-self: end; align-self: start; }
+    [data-screen="commerce.add-to-offer"] .offer-cell {
+      min-width: 0;
+    }
+    [data-screen="commerce.add-to-offer"] .pm {
+      display: inline-block;
+      width: 15px;
+      height: 15px;
+      color: var(--pk-text-muted);
+    }
+    [data-screen="commerce.add-to-offer"] .sku-chip {
+      height: 22px;
+      padding: 0 5px;
+      gap: 4px;
+      border: 0;
+      background: none;
+    }
+    [data-screen="commerce.add-to-offer"] .sku-chip > .t {
+      display: none;
+    }
+    [data-screen="commerce.add-to-offer"] .sku-chip > .ic {
+      width: 15px;
+      height: 15px;
+    }
+    [data-screen="commerce.add-to-offer"] .sku-chip.create {
+      border: 1px solid var(--pk-warning-border);
+      background: var(--pk-warning-subtle);
+    }
+    [data-screen="commerce.add-to-offer"] .na-long {
+      display: none;
+    }
+    [data-screen="commerce.add-to-offer"] .na-short {
+      display: inline;
+      padding: 0 4px;
+    }
+    [data-screen="commerce.add-to-offer"] .table td:has(.na) .pm {
+      color: var(--pk-text-subtle);
+      opacity: 0.6;
+    }
+  }
+  /* Facts inside the dialog, label then value. */
+  [data-screen="commerce.add-to-offer"] .uses {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 8px 16px;
+    padding: 12px 14px;
+    border: 1px solid var(--mk-line);
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 18px;
+  }
+  [data-screen="commerce.add-to-offer"] .uses dt {
+    color: var(--pk-text-muted);
+  }
+  [data-screen="commerce.add-to-offer"] .uses dd {
+    min-width: 0;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="commerce.add-to-offer"] .uses .meta {
+    display: block;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="commerce.add-to-offer"] .dialog .choices {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  [data-screen="commerce.add-to-offer"] .choice-title {
+    padding-right: 28px;
+  }
+  [data-screen="commerce.add-to-offer"] .choice .field {
+    margin-top: 10px;
+  }
+  [data-screen="commerce.add-to-offer"] .choice .form {
+    gap: 12px;
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="commerce.add-to-offer"] .uses {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 2px;
+    }
+    [data-screen="commerce.add-to-offer"] .uses dd + dt {
+      margin-top: 8px;
+    }
+  }
+</style>
+
+<div class="console" data-service="commerce">
+  <header class="topbar">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <nav class="sidebar" aria-label="Diceroll">
+    <div class="ctx">
+      <span class="logo sm" data-product="diceroll"></span>
+      <span class="ctx-text"><span class="ctx-name">Diceroll</span><span class="ctx-sub mono">diceroll</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item" href="#"><i class="ic ic-layout-dashboard"></i><span class="nav-text">Overview</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-shield-check"></i><span class="nav-text">Access</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
+    <div class="nav-group closed" data-service="license"><div class="nav-label">Licensing<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="config" style="padding-top: 4px"><div class="nav-label">Managed config<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="release" style="padding-top: 4px"><div class="nav-label">Ship builds<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="identity" style="padding-top: 4px"><div class="nav-label">Sign-in<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="sync" style="padding-top: 4px"><div class="nav-label">Cloud Sync<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group" data-service="commerce">
+      <div class="nav-label">Commerce<i class="ic ic-chevron-down sm"></i></div>
+      <a class="nav-item" href="#"><i class="ic ic-store"></i><span class="nav-text">Storefronts</span><span class="count danger">2</span></a>
+      <a class="nav-item active" href="#"><i class="ic ic-tag"></i><span class="nav-text">Offers</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-receipt"></i><span class="nav-text">Purchases</span></a>
+    </div>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="page">
+      <header class="page-head">
+        <div class="page-heading"><h1>Offers</h1><span class="count">5</span></div>
+        <p class="page-sub">What Diceroll sells, defined once. Each storefront has its own SKU for an offer.</p>
+        <div class="page-actions">
+          <button class="btn outline"><i class="ic ic-download"></i>Import from stores</button>
+          <button class="btn primary"><i class="ic ic-plus"></i>New offer</button>
+        </div>
+      </header>
+
+      <!-- Import and suggest found a store product with no offer: money taken, nothing added. -->
+      <div class="callout danger">
+        <i class="ic ic-circle-x"></i>
+        <div class="grow">
+          <div class="callout-title">No offer has <code>holiday_bundle</code>, and Google Play sold it 3 times</div>
+          <div class="callout-text">3 players paid since Oct 5 and got nothing. Add it to an offer and those 3 players get it at once.</div>
+        </div>
+        <button class="btn outline sm">Add to an offer</button>
+      </div>
+
+      <div class="callout warning">
+        <i class="ic ic-triangle-alert"></i>
+        <div class="grow">
+          <div class="callout-title">Neon dice pack needs an App Store SKU</div>
+          <div class="callout-text">It sells on Google Play and Steam and unlocks in the iOS app, so App Review guideline 3.1.3(b) needs it as an in-app purchase too.</div>
+        </div>
+        <button class="btn outline sm"><i class="ic ic-plus"></i>Create on App Store</button>
+      </div>
+
+      <div class="toolbar">
+        <div class="search-field"><i class="ic ic-search"></i><span>Search offers or SKUs</span></div>
+        <span class="filter"><i class="ic ic-plus"></i>State</span>
+        <span class="filter"><i class="ic ic-plus"></i>Billing</span>
+        <span class="filter"><i class="ic ic-plus"></i>Storefront</span>
+      </div>
+
+      <!-- Offer rows × storefront SKU chips: the parity view. Only storefronts that are set up get a
+           column; Microsoft Store isn't, so it has none. -->
+      <div class="table-card">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Offer</th>
+              <th><i class="ic ic-app-store store"></i>App Store<span class="th-sub" title="Every App Store SKU starts with Diceroll’s bundle id">com.example.diceroll.*</span></th>
+              <th><i class="ic ic-google-play store"></i>Google Play</th>
+              <th><i class="ic ic-steam store"></i>Steam</th>
+              <th><i class="ic ic-itch store"></i>itch.io</th>
+              <th>State</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><div class="offer-cell"><div class="cell-title"><a href="#">Full game</a></div><div class="cell-sub">Tier Standard · one-time</div></div></td>
+              <td><i class="ic ic-app-store pm" aria-hidden="true"></i><span class="sku-chip" title="com.example.diceroll.full"><i class="ic ic-check"></i><span class="t">.full</span></span></td>
+              <td><i class="ic ic-google-play pm" aria-hidden="true"></i><span class="sku-chip"><i class="ic ic-check"></i><span class="t">full_game</span></span></td>
+              <td><i class="ic ic-steam pm" aria-hidden="true"></i><span class="sku-chip"><i class="ic ic-check"></i><span class="t">app · base game</span></span></td>
+              <td><i class="ic ic-itch pm" aria-hidden="true"></i><span class="sku-chip unchecked"><i class="ic ic-circle-dashed"></i><span class="t">app</span></span></td>
+              <td><span class="status"><i class="ic ic-circle-check"></i>On sale</span></td>
+            </tr>
+            <tr>
+              <td><div class="offer-cell"><div class="cell-title"><a href="#">Dice skins</a></div><div class="cell-sub">Add-on Dice skins · one-time</div></div></td>
+              <td><i class="ic ic-app-store pm" aria-hidden="true"></i><span class="sku-chip" title="com.example.diceroll.skins"><i class="ic ic-check"></i><span class="t">.skins</span></span></td>
+              <td><i class="ic ic-google-play pm" aria-hidden="true"></i><span class="sku-chip"><i class="ic ic-check"></i><span class="t">skins</span></span></td>
+              <td><i class="ic ic-steam pm" aria-hidden="true"></i><span class="sku-chip"><i class="ic ic-check"></i><span class="t">DLC 2817450</span></span></td>
+              <td><i class="ic ic-itch pm" aria-hidden="true"></i><span class="na"><span class="na-long">Game only</span><span class="na-short">n/a</span></span></td>
+              <td><span class="status"><i class="ic ic-circle-check"></i>On sale</span></td>
+            </tr>
+            <tr>
+              <td><div class="offer-cell"><div class="cell-title"><a href="#">Neon dice pack</a></div><div class="cell-sub">Add-on Neon dice · one-time</div></div></td>
+              <td><i class="ic ic-app-store pm" aria-hidden="true"></i><span class="sku-chip create"><i class="ic ic-triangle-alert"></i>Create</span></td>
+              <td><i class="ic ic-google-play pm" aria-hidden="true"></i><span class="sku-chip"><i class="ic ic-check"></i><span class="t">neon_dice</span></span></td>
+              <td><i class="ic ic-steam pm" aria-hidden="true"></i><span class="sku-chip"><i class="ic ic-check"></i><span class="t">DLC 2817460</span></span></td>
+              <td><i class="ic ic-itch pm" aria-hidden="true"></i><span class="na"><span class="na-long">Game only</span><span class="na-short">n/a</span></span></td>
+              <td><span class="status"><i class="ic ic-circle-check"></i>On sale</span></td>
+            </tr>
+            <tr>
+              <td><div class="offer-cell"><div class="cell-title"><a href="#">Diceroll Plus</a></div><div class="cell-sub">Tier Plus · monthly · 7-day free trial</div></div></td>
+              <td><i class="ic ic-app-store pm" aria-hidden="true"></i><span class="sku-chip" title="com.example.diceroll.plus.monthly"><i class="ic ic-check"></i><span class="t">.plus.monthly</span></span></td>
+              <td><i class="ic ic-google-play pm" aria-hidden="true"></i><span class="sku-chip"><i class="ic ic-check"></i><span class="t">plus · monthly</span></span></td>
+              <td><i class="ic ic-steam pm" aria-hidden="true"></i><span class="na"><span class="na-long">No subscriptions</span><span class="na-short">n/a</span></span></td>
+              <td><i class="ic ic-itch pm" aria-hidden="true"></i><span class="na"><span class="na-long">No subscriptions</span><span class="na-short">n/a</span></span></td>
+              <td><span class="status"><i class="ic ic-circle-check"></i>On sale</span></td>
+            </tr>
+            <tr>
+              <td><div class="offer-cell"><div class="cell-title"><a href="#">Reroll tokens</a></div><div class="cell-sub">Add-on Reroll tokens · 25 per purchase</div></div></td>
+              <td><i class="ic ic-app-store pm" aria-hidden="true"></i><span class="sku-chip review" title="com.example.diceroll.rerolls25"><i class="ic ic-hourglass"></i><span class="t">.rerolls25</span></span></td>
+              <td><i class="ic ic-google-play pm" aria-hidden="true"></i><span class="sku-chip"><i class="ic ic-check"></i><span class="t">rerolls_25</span></span></td>
+              <td><i class="ic ic-steam pm" aria-hidden="true"></i><span class="na"><span class="na-long">No consumables</span><span class="na-short">n/a</span></span></td>
+              <td><i class="ic ic-itch pm" aria-hidden="true"></i><span class="na"><span class="na-long">No consumables</span><span class="na-short">n/a</span></span></td>
+              <td><span class="status muted"><i class="ic ic-pencil"></i>Draft</span></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="table-foot">
+          <span class="legend">
+            <span><i class="ic ic-check text-success"></i> On the store</span>
+            <span><i class="ic ic-hourglass" style="color: var(--pk-info)"></i> In review</span>
+            <span><i class="ic ic-circle-dashed"></i> Purchases not checked</span>
+          </span>
+          <span class="ml-auto hide-phone">Microsoft Store isn’t set up. <a class="link" href="#">Set it up</a></span>
+        </div>
+      </div>
+    </div>
+  </main>
+  <!-- Add to an offer (CM-23): one change maps the SKU and re-verifies the purchases it sold, so
+       the players who paid get it at once. -->
+  <div class="overlay sheet">
+    <div class="dialog lg" role="dialog" aria-labelledby="dlg-title">
+      <div class="dialog-head">
+        <h2 id="dlg-title">Add <span class="mono">holiday_bundle</span> to an offer</h2>
+        <button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button>
+      </div>
+      <div class="dialog-body">
+        <p>Google Play sold it 3 times since Oct 5. Pick the offer it sells; those 3 players get it as soon as you add it.</p>
+        <div class="choices">
+          <div class="choice on">
+            <div class="choice-title">A new offer from <span class="mono">holiday_bundle</span></div>
+            <div class="choice-desc">For a product no offer sells yet.</div>
+            <div class="form">
+              <div class="grid cols-2 gap-4">
+                <div class="field">
+                  <label class="field-label">Name</label>
+                  <div class="input focus"><span class="grow">Holiday bundle</span></div>
+                </div>
+                <div class="field">
+                  <label class="field-label">Sells the add-on</label>
+                  <div class="select"><span class="grow">Holiday dice set</span><i class="ic ic-chevrons-up-down"></i></div>
+                </div>
+              </div>
+              <span class="hint">One-time, as Google Play sells it. Adds <span class="mono">extras.holidayDice</span>; add-ons are defined in <a class="link" href="#">Licensing</a>.</span>
+            </div>
+          </div>
+          <div class="choice">
+            <div class="choice-title">An existing offer, as its second Google Play SKU</div>
+            <div class="choice-desc">For a SKU that sells the same thing as an offer under another id, such as a seasonal listing of Dice skins.</div>
+          </div>
+        </div>
+        <div class="callout">
+          <i class="ic ic-refresh-cw"></i>
+          <div class="grow">
+            <div class="callout-title">In the same change</div>
+            <div class="callout-text">Polaris Key re-verifies the 3 purchases with Google Play and adds Holiday dice set to the licenses of Kofi Mensah, Aiko Tanaka and Marta Silva. Each gets the usual purchase email.</div>
+          </div>
+        </div>
+      </div>
+      <div class="dialog-foot">
+        <button class="btn">Cancel</button>
+        <button class="btn primary">Create offer and update 3 licenses</button>
+      </div>
+    </div>
+  </div>
+</div>

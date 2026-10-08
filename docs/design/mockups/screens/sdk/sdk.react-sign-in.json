@@ -1,0 +1,68 @@
+{
+  "id": "sdk.react-sign-in",
+  "title": "React kit: sign-in",
+  "area": "sdk",
+  "surface": "kit",
+  "order": 6,
+  "packages": [
+    "UK-03",
+    "UK-04",
+    "UK-05",
+    "UK-06",
+    "I-10a"
+  ],
+  "uxRows": [],
+  "summary": "The React kit's one sign-in form in an Electron window on Windows, labelled as a fixture of DJDL, Polaris look by default with DJDL as the hero: Sign in, offline, Finish in your browser, sign-in that didn't finish, the code view, Choose a license (rows led by their origin), no license on this account, and the toast once signed in, plus what the Electron build writes.",
+  "compare": [
+    "The product is the hero on every step: DJDL's icon and name lead, the accent comes from the icon (coral), and no Polaris Key mark or Powered-by appears; the only Polaris Key words are the footnote's.",
+    "With an empty theme the kit draws the Polaris look: Rubik at 400/500/600, filled fields and buttons with no outlines, hairlines only, 10px control radius; theme is the one prop that restyles it.",
+    "One form: the window header and art persist, and the icon and title sit at the same offset on every step; only the body below them morphs. No sheet, dialog or popup stacks on it.",
+    "Step 1 copy: 'Sign in to DJDL', 'Use the email you bought DJDL with.', primary 'Continue in browser' with an outbound glyph, 'Have a license key?', and the footnote 'Polaris Key signs you in for DJDL. Halcyon Sound never sees your codes or passkeys.' No passkey or device-code row on desktop; no logo row when the product has no provider connections.",
+    "Step 2: 'Finish in your browser', the body copy from signin.handoff.browserBody, and a 'Waiting for your browser…' status row as the focus: accent-tinted, with a breathing dot, a polite live region, reading 'Finishing sign-in…' while redeeming. 'Open browser again' is a tonal secondary, first on Windows, then 'Cancel' and the quiet 'Use a code instead'.",
+    "Step 3 row anatomy: the title says what tells the rows apart (the origin here, 'Automatic grant' and 'Key ending Q2KD7H', since both are DJDL Standard), then the tier pill with '{used} of {limit} devices', the term, and the seat meter. The Automatic grant row is preselected with a tint and one radio indicator (no accent border). The full key row has no radio, the 'No free devices' tag and 'Replace a device', and hides its counter and meter because the account holds a sign-in license (D-54).",
+    "Step 3 actions: 'Use a license key instead' as a quiet link, then 'Use this license and continue' and 'Cancel', primary first as on Windows.",
+    "After choosing an existing license there is no Done step: the form closes and the toast reads 'Signed in as Mara Fennick · Standard license'.",
+    "A visible 'Kit preview · fixture product' callout says DJDL really ships Swift and Kotlin and is drawn as an Electron build only to show the React kit inside the Electron kit (UK-06). The kit is product-agnostic.",
+    "Phone render: each window is the same desktop window scaled down, not a reflowed layout.",
+    "Failure states use the catalog's words in the same body: 'Can't reach Polaris Key' with Try again; 'This sign-in took too long' with Sign in again; 'Sign in with a code' with WDJB-MJHT, Copy, the countdown and no QR on desktop; and 'No DJDL license in this account', with the key field, Use another account and Get DJDL."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: the fixture is labelled where it is seen, rows lead with what tells them apart, button order is consistent, the header holds still, and the offline, expired, code and no-license states are drawn; the counter on the full key row stays hidden per D-54.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "DJDL is drawn as an Electron app, though Integration and the CLI screens say it is Swift on macOS and Kotlin on Windows, and the fixture was acknowledged only in the JSON.",
+        "resolution": "Kept the Electron window and added a visible 'Kit preview · fixture product' callout to the intro. It says DJDL really ships Swift and Kotlin, and that it is drawn as an Electron build only to show the React kit inside the Electron kit (UK-06), with DJDL's own facts. The website alternative was declined because UK-06 is one of this screen's packages, and the Electron shell is where the loopback browser hand-off, the code view and the device choice all happen; a page on DJDL's site has none of them. The code panel's caption now says 'What the Electron build writes'."
+      },
+      {
+        "severity": "major",
+        "issue": "In Choose a license, both rows are titled 'DJDL' with the same Standard pill, so the choices look identical until the third line.",
+        "resolution": "Each row now leads with what tells them apart, the origin: 'Automatic grant' (the access policy, the glossary's word) and 'Key ending Q2KD7H'. The meta line keeps only the term (Lifetime). Note for the lead: this refines SIGN-IN.md §3.6's row anatomy (title = license name, else product name) for rows that would share a title. sdk.swiftui-sign-in keeps license names because its tiers differ."
+      },
+      {
+        "severity": "major",
+        "issue": "The button order flips: step 2 puts the primary first (Windows), but step 3 puts Cancel first.",
+        "resolution": "Step 3 now reads 'Use this license and continue' then 'Cancel', matching the Windows order in step 2, step 3b and the activation form."
+      },
+      {
+        "severity": "major",
+        "issue": "Failure states the flow implies are never drawn: no license on this account, sign-in cancelled or expired, offline, and the body of 'Use a code instead'.",
+        "resolution": "Added four frames, worded from SIGN-IN.md and the kit catalog. 1b Offline: 'Can't reach Polaris Key' with Try again. 2b Sign-in didn't finish: drawn as 'This sign-in took too long' with Sign in again, and the caption gives the cancelled and browser-didn't-open wordings. 2c Use a code instead: 'Sign in with a code', key.plrs.im/device, WDJB-MJHT with Copy, the countdown, Open browser, Cancel and Use browser sign-in, with no QR on desktop. 3b 'No DJDL license in this account': 'Bought it with another email?', the key field with 'Add and use on this device', Use another account, Get DJDL ↗ and Cancel."
+      },
+      {
+        "severity": "minor",
+        "issue": "Step 2 makes 'Open browser again', a recovery action, the filled primary; and the row origin 'From signing in' is the word the glossary replaces with 'Automatic grant'.",
+        "resolution": "The waiting row is now the focus of step 2, tinted in DJDL's accent with strong text. Open browser again is a tonal secondary and Cancel a ghost button. SIGN-IN.md D-78 still calls Open browser again the primary, so the lead should update the spec. The picker uses 'Automatic grant', per integration.md §2 and the plan's recorded decision. The kit catalog's signin.choice.origin.signIn still reads 'From signing in', and packages/admin/src/portal/model/library.ts notes an owner polish that keeps it in the picker, so the lead should record which wins and update the catalog, both kits and the portal together."
+      },
+      {
+        "severity": "minor",
+        "issue": "The header moves between steps because each body is vertically centred, and the full key row hides its device counter, so 'No free devices' has no evidence.",
+        "resolution": "Applied: every body starts at a fixed 44px offset in a 640px window, so the icon and title sit at the same height on every step. Declined showing '5 of 5 devices' on the full key row: D-54 (SIGN-IN.md §3.6, carried in EXPERIENCE.md) hides a key license's counter and meter when the account also holds a sign-in license, and the 'No free devices' tag carries the fact. The SwiftUI Family row shows 5 of 5 because that account's other license is a Steam license, not a sign-in one. The step 3 caption says why."
+      }
+    ]
+  }
+}

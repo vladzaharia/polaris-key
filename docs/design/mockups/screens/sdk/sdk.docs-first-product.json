@@ -1,0 +1,56 @@
+{
+  "id": "sdk.docs-first-product",
+  "title": "Docs: Your first product",
+  "area": "sdk",
+  "surface": "code",
+  "order": 5,
+  "packages": [
+    "SP-37",
+    "SP-33b",
+    "SP-36"
+  ],
+  "uxRows": [],
+  "summary": "The docs site's one start path, Your first product: five steps that mirror the console (create, add the SDK, start it, use each feature, check Verified) with generated code in synced SDK tabs, a short troubleshooting list and the reshaped sidebar (Start here, Build, Features, Reference).",
+  "compare": [
+    "There is one start path: the sidebar's Start here holds Concepts, Your first product and How Polaris Key works; the old Quickstart by goal, Integrate in 5 minutes and the DJDL onboarding page are gone.",
+    "The five steps mirror the console in order: New product (name and slug, what it's for, platforms), the pkey sdk add command Integration shows, fromConfig() then boot(), each feature's code on Integration, and Verified.",
+    "The example product is Tidewater Studio (tidewater), the docs' one example product (SP-36, SP-37), not DJDL or Diceroll; every snippet uses it.",
+    "Code blocks in steps 2 and 3 are generated and share one SDK tab choice (Swift picked in one switches the other), and all six SDKs are tabs. Step 3's block has Copy. Step 2's command shows the fingerprint as a placeholder, has no Copy, and says to copy the full command from Integration.",
+    "No programme ids anywhere on the page or in the sidebar (no SP-, UK-, P0- or similar), per the developer-page lint.",
+    "Build lists the six generated quick starts, SDK reference (reference only), UI kits (must tier and recipes), the manifest, releases from CI and the per-version Developer changelog.",
+    "Features use the six feature names with their service glyphs, Commerce last, each card a link with a trailing → and a hover state. Requirements are stated once, in step 1: Cloud Sync needs Managed config and Sign-in, and Commerce needs Licensing.",
+    "Step 5's pkey doctor excerpt uses the same symbols and words as Integration (✓ Verified, ○ Not seen yet), and its chip is green at '0 to do'. Step 1 says Tidewater starts with Licensing and Managed config, so the two agree.",
+    "The words follow the glossary: Verified, Not seen yet, Waiting, feature, license (US), and never 'outlet', 'grant', 'capability' or 'Setup complete'.",
+    "Phone: the sidebar folds into the menu button, search becomes an icon, On this page becomes a bar under the header, and steps keep their numbers. The code tabs show the picked SDK with '5 more', the definition list stacks, and step 5's terminal re-wraps to one block per platform.",
+    "On this page starts on Overview; the header and the sidebar both say 'Developer changelog'."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: step 1 is a choice that agrees with step 5, the step 2 command no longer offers a Copy that fails, the step 5 terminal fits a phone, and the navigation and link affordances are consistent.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "Step 1's 'What it's for' lists all six features, which reads as Tidewater turning everything on, while step 5's doctor shows only Licensing and Managed config.",
+        "resolution": "Step 1 now reads 'Pick the features you need from Licensing, Managed config, Ship builds, Sign-in, Cloud Sync and Commerce. Tidewater starts with Licensing and Managed config; add the rest later.' It also says a feature turns on only after the ones it needs: Cloud Sync needs Managed config and Sign-in, Commerce needs Licensing, and turning Licensing off later turns Commerce off with it. Step 5 is unchanged and now agrees."
+      },
+      {
+        "severity": "major",
+        "issue": "Step 2's code block has Copy on a command whose fingerprint is elided, so the pasted command fails, and the reader is tempted to drop --expect.",
+        "resolution": "Copy is removed from step 2's block. The fingerprint is a dim placeholder, '--expect <fingerprint from Integration>', and the block's foot says 'Copy the full command from your product's Integration page; it has your fingerprint.'"
+      },
+      {
+        "severity": "minor",
+        "issue": "On phone, the step 5 terminal is cut at the Windows column.",
+        "resolution": "On phone, step 5 shows the 44-column layout from sdk.pkey-doctor: 'Integration on macOS', then 'Integration on Windows', one block each, at 11px. It fits without scrolling."
+      },
+      {
+        "severity": "minor",
+        "issue": "On this page highlights step 2 at the top of the page, the header's 'Changelog' and the sidebar's 'Developer changelog' read as two changelogs, the feature cards have no link affordance, and the active code tab is violet here but cyan on the other SDK screens.",
+        "resolution": "Overview is the active TOC item, and the header link is 'Developer changelog'. Each feature card has a trailing → and a hover state; Managed config is drawn hovered. The code blocks on sdk.start-call, sdk.client-doctor and the kit screens now take the core accent, so the active tab and highlighted lines are violet across the area, as here and on Integration. Terminals keep their ANSI cyan."
+      }
+    ]
+  }
+}

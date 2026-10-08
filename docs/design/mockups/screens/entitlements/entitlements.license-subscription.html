@@ -1,0 +1,349 @@
+<style>
+  /* entitlements.license-subscription: only what the kit does not already say. */
+  [data-screen="entitlements.license-subscription"] .rec-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+    gap: 20px;
+    align-items: start;
+  }
+  [data-screen="entitlements.license-subscription"] .col {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-width: 0;
+  }
+  [data-screen="entitlements.license-subscription"] .facts {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px 20px;
+  }
+  [data-screen="entitlements.license-subscription"] .facts dt {
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="entitlements.license-subscription"] .facts dd {
+    margin-top: 2px;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="entitlements.license-subscription"] .facts dd .sub {
+    display: block;
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="entitlements.license-subscription"] .hist {
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr);
+    gap: 2px 14px;
+    padding: 12px 20px;
+  }
+  [data-screen="entitlements.license-subscription"] .hist + .hist {
+    border-top: 1px solid var(--mk-line);
+  }
+  [data-screen="entitlements.license-subscription"] .hist-when {
+    grid-row: span 2;
+    font-size: 13px;
+    color: var(--pk-text-muted);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  [data-screen="entitlements.license-subscription"] .hist-what {
+    color: var(--pk-text-strong);
+  }
+  [data-screen="entitlements.license-subscription"] .hist-what.warn {
+    color: var(--pk-warning);
+  }
+  [data-screen="entitlements.license-subscription"] .hist-desc {
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="entitlements.license-subscription"] .limits {
+    display: flex;
+    flex-direction: column;
+  }
+  [data-screen="entitlements.license-subscription"] .lim {
+    display: grid;
+    grid-template-columns: 120px minmax(0, 1fr);
+    gap: 12px;
+    padding: 10px 20px;
+    font-size: 14px;
+  }
+  [data-screen="entitlements.license-subscription"] .lim + .lim {
+    border-top: 1px solid var(--mk-line);
+  }
+  [data-screen="entitlements.license-subscription"] .lim dt {
+    color: var(--pk-text-muted);
+  }
+  [data-screen="entitlements.license-subscription"] .lim dd {
+    color: var(--pk-text-strong);
+  }
+  [data-screen="entitlements.license-subscription"] .src {
+    margin-left: 6px;
+    font-size: 12px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="entitlements.license-subscription"] .src.own {
+    color: var(--pk-accent-fg);
+  }
+  [data-screen="entitlements.license-subscription"] .seat-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 300px;
+  }
+  [data-screen="entitlements.license-subscription"] .seat-head .progress {
+    flex: 1;
+  }
+  [data-screen="entitlements.license-subscription"] .dev {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 20px;
+  }
+  [data-screen="entitlements.license-subscription"] .dev + .dev {
+    border-top: 1px solid var(--mk-line);
+  }
+  [data-screen="entitlements.license-subscription"] .dev.stale {
+    background: var(--pk-warning-subtle);
+    box-shadow: inset 3px 0 0 var(--pk-warning);
+  }
+  [data-screen="entitlements.license-subscription"] .stale-note {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--pk-warning);
+  }
+  [data-screen="entitlements.license-subscription"] .dev .stale-note .ic {
+    width: 13px;
+    height: 13px;
+    color: var(--pk-warning);
+  }
+  [data-screen="entitlements.license-subscription"] .hist-label {
+    padding: 12px 20px 0;
+    margin: 0;
+  }
+  [data-screen="entitlements.license-subscription"] .dev .ic {
+    color: var(--pk-text-muted);
+  }
+  @container screen (max-width: 1023px) {
+    [data-screen="entitlements.license-subscription"] .rec-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    /* One column, in source order: subscription, devices, then duration and limits, then recent. */
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="entitlements.license-subscription"] .facts {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    [data-screen="entitlements.license-subscription"] .hist,
+    [data-screen="entitlements.license-subscription"] .lim,
+    [data-screen="entitlements.license-subscription"] .dev {
+      padding-left: 16px;
+      padding-right: 16px;
+    }
+    [data-screen="entitlements.license-subscription"] .hist {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    [data-screen="entitlements.license-subscription"] .hist-when {
+      grid-row: auto;
+    }
+    [data-screen="entitlements.license-subscription"] .lim {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 2px;
+    }
+    [data-screen="entitlements.license-subscription"] .seat-head {
+      width: 100%;
+    }
+    [data-screen="entitlements.license-subscription"] .hist-label {
+      padding: 12px 16px 0;
+    }
+    [data-screen="entitlements.license-subscription"] .dev {
+      flex-wrap: wrap;
+    }
+    [data-screen="entitlements.license-subscription"] .dev > .grow {
+      flex: 1 1 220px;
+    }
+    [data-screen="entitlements.license-subscription"] .dev > .btn {
+      margin-left: 28px;
+    }
+    [data-screen="entitlements.license-subscription"] .page-actions > .btn.outline {
+      flex: 1 1 160px;
+    }
+  }
+</style>
+
+<div class="console" data-service="license">
+  <header class="topbar">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <nav class="sidebar" aria-label="DJDL">
+    <div class="ctx">
+      <span class="logo sm" data-product="djdl"></span>
+      <span class="ctx-text"><span class="ctx-name">DJDL</span><span class="ctx-sub mono">djdl</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item" href="#"><i class="ic ic-layout-dashboard"></i><span class="nav-text">Overview</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-plug"></i><span class="nav-text">Integration</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-shield-check"></i><span class="nav-text">Access</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
+    <div class="nav-group" data-service="license">
+      <div class="nav-label">Licensing<i class="ic ic-chevron-down sm"></i></div>
+      <a class="nav-item active" href="#"><i class="ic ic-key-round"></i><span class="nav-text">Licenses</span><span class="count">240</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-layers"></i><span class="nav-text">Tiers</span><span class="count">4</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-puzzle"></i><span class="nav-text">Add-ons</span><span class="count">2</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-list-checks"></i><span class="nav-text">Entitlements</span></a>
+    </div>
+    <div class="nav-group closed" data-service="config" style="padding-top: 4px"><div class="nav-label">Managed config<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="release" style="padding-top: 4px"><div class="nav-label">Ship builds<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="identity" style="padding-top: 4px"><div class="nav-label">Sign-in<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="sync" style="padding-top: 4px"><div class="nav-label">Cloud Sync<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="page">
+      <header class="page-head">
+        <nav class="crumbs"><a href="#">Licenses</a><i class="ic ic-chevron-right"></i>Northside DJ School</nav>
+        <div class="page-heading"><h1>Northside DJ School</h1><span class="pill warning"><i class="ic ic-clock"></i>Past due</span></div>
+        <p class="page-sub"><span>Priya Raman · priya@example.com · In an account</span><span class="id hide-phone"><i class="ic ic-id-card"></i>lic_01JA8…4Q2M<i class="ic ic-copy"></i></span></p>
+        <div class="page-actions">
+          <button class="btn outline"><i class="ic ic-calendar-clock"></i>Preview at a date…</button>
+          <button class="btn ghost icon" aria-label="More"><i class="ic ic-ellipsis"></i></button>
+        </div>
+      </header>
+
+      <nav class="tabs"><a class="tab active" href="#">Status</a><a class="tab" href="#">Entitlements</a><a class="tab" href="#">Keys <span class="count">1</span></a><a class="tab" href="#">Devices <span class="count">7</span></a><a class="tab" href="#">Activity</a></nav>
+
+      <!-- The health line (UX-07): one callout, one fix; nothing when healthy. -->
+      <div class="callout warning">
+        <i class="ic ic-clock"></i>
+        <div class="grow">
+          <div class="callout-title">The yearly renewal due Oct 7 hasn’t been recorded</div>
+          <div class="callout-text">The license works normally until its grace ends on Oct 14, 2026. After that it keeps DJDL 4.2.0 on the stable track, because Pro keeps the last version. Renew it once Northside’s invoice is paid.</div>
+        </div>
+        <button class="btn outline sm"><i class="ic ic-repeat"></i>Renew…</button>
+      </div>
+
+      <div class="rec-grid">
+        <div class="col">
+          <!-- Core subscriptions (LX-41): the one subscriptions view, for every source. -->
+          <section class="card" aria-labelledby="sub-title">
+            <div class="card-head">
+              <span class="icon-tile"><i class="ic ic-repeat"></i></span>
+              <div class="title">
+                <h2 id="sub-title">Subscription</h2>
+                <p>Keeps this license running while it renews.</p>
+              </div>
+              <div class="popover-anchor">
+                <button class="btn ghost icon sm" aria-label="Subscription actions"><i class="ic ic-ellipsis"></i></button>
+              </div>
+            </div>
+            <div class="card-body">
+              <dl class="facts">
+                <div><dt>Status</dt><dd><span class="status warning"><i class="ic ic-clock"></i>Past due</span></dd></div>
+                <div><dt>Source</dt><dd>Manual<span class="sub">Renewed here or by API</span></dd></div>
+                <div><dt>Period</dt><dd>Yearly</dd></div>
+                <div><dt>Current period</dt><dd class="tnum">Oct 7, 2025 – Oct 7, 2026</dd></div>
+                <div><dt>Grace</dt><dd class="tnum">Until Oct 14, 2026<span class="sub">7 days, set in Settings</span></dd></div>
+                <div><dt>Started</dt><dd class="tnum">Oct 7, 2024</dd></div>
+              </dl>
+            </div>
+            <div class="card-rows" style="border-top: 1px solid var(--mk-line)">
+              <p class="eyebrow hist-label">History</p>
+              <div class="hist">
+                <span class="hist-when">Oct 7, 2026</span>
+                <span class="hist-what warn">Renewal due, not recorded</span>
+                <span class="hist-desc">Past due since 00:00 PDT. Grace runs to Oct 14.</span>
+              </div>
+              <div class="hist">
+                <span class="hist-when">Oct 2, 2025</span>
+                <span class="hist-what">Renewed to Oct 7, 2026 by Alex Lindqvist</span>
+                <span class="hist-desc">Invoice INV-2025-0388, paid by bank transfer.</span>
+              </div>
+              <div class="hist">
+                <span class="hist-when">Oct 7, 2024</span>
+                <span class="hist-what">Started by Alex Lindqvist</span>
+                <span class="hist-desc">Manual, yearly, on Pro.</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="card" aria-labelledby="dev-title">
+            <div class="card-head">
+              <div class="title"><h2 id="dev-title">Devices</h2></div>
+              <div class="seat-head"><div class="progress" style="--v: 70%"></div><span class="small muted nowrap tnum">7 of 10</span><button class="btn outline sm">Add seats…</button></div>
+            </div>
+            <div class="dev stale">
+              <i class="ic ic-monitor"></i>
+              <div class="grow"><div class="strong">Studio iMac 3</div><div class="small muted"><span class="stale-note"><i class="ic ic-clock"></i>Not seen for 23 days</span> · macOS 15 · DJDL 4.2.0</div></div>
+              <button class="btn outline sm">Deauthorize…</button>
+            </div>
+            <div class="dev">
+              <i class="ic ic-monitor"></i>
+              <div class="grow"><div class="strong">Booth PC 2</div><div class="small muted">Windows 11 · DJDL 4.2.0 · seen 2 h ago</div></div>
+            </div>
+            <div class="dev">
+              <i class="ic ic-laptop"></i>
+              <div class="grow"><div class="strong">Priya’s MacBook Pro</div><div class="small muted">macOS 15 · DJDL 4.2.0 · seen 10 min ago</div></div>
+            </div>
+            <div class="card-foot start"><a class="link" href="#">Show all 7 devices<i class="ic ic-arrow-right"></i></a></div>
+          </section>
+        </div>
+
+        <div class="col">
+          <section class="card" aria-labelledby="dur-title">
+            <div class="card-head">
+              <span class="icon-tile"><i class="ic ic-calendar-clock"></i></span>
+              <div class="title">
+                <h2 id="dur-title">Duration and limits</h2>
+                <p>From the tier <a class="accent" href="#">Pro</a> unless set on this license.</p>
+              </div>
+              <button class="btn outline sm">Edit</button>
+            </div>
+            <dl class="limits">
+              <div class="lim"><dt>Duration</dt><dd>Renewing yearly, keeps the last version<span class="src">Pro</span></dd></div>
+              <div class="lim"><dt>Runs until</dt><dd class="tnum">Oct 14, 2026, end of grace</dd></div>
+              <div class="lim"><dt>After that</dt><dd>Keeps 4.2.0, stable track only</dd></div>
+              <div class="lim"><dt>Device limit</dt><dd>10<span class="src own">Set on this license</span></dd></div>
+              <div class="lim"><dt>Offline days</dt><dd>30<span class="src">Pro</span></dd></div>
+              <div class="lim"><dt>Release tracks</dt><dd>stable, beta<span class="src">Pro</span></dd></div>
+              <div class="lim"><dt>Versions</dt><dd>Any<span class="src">Pro</span></dd></div>
+            </dl>
+          </section>
+
+          <section class="card" aria-labelledby="recent-title">
+            <div class="card-head"><div class="title"><h2 id="recent-title">Recent</h2></div><a class="link small" href="#">Activity<i class="ic ic-arrow-right"></i></a></div>
+            <div class="hist">
+              <span class="hist-when">Oct 7</span>
+              <span class="hist-what">Subscription went past due</span>
+              <span class="hist-desc">Polaris Key, at the end of the period.</span>
+            </div>
+            <div class="hist">
+              <span class="hist-when">Oct 2</span>
+              <span class="hist-what">Booth PC 2 activated</span>
+              <span class="hist-desc">Signed in as priya@example.com.</span>
+            </div>
+            <div class="hist">
+              <span class="hist-when">Sep 18</span>
+              <span class="hist-what">Device limit set to 10</span>
+              <span class="hist-desc">By Alex Lindqvist, was 5 from Pro.</span>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>

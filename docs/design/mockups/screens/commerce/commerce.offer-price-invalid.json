@@ -1,0 +1,20 @@
+{
+  "id": "commerce.offer-price-invalid",
+  "title": "Change price: not a price point",
+  "area": "commerce",
+  "surface": "console",
+  "packages": [
+    "CM-23"
+  ],
+  "uxRows": [],
+  "summary": "The Change price dialog with $3.95 typed: the field is invalid and says Apple has no $3.95 price point, offering the nearest two ($3.99 and $3.49) as one-click fixes; the per-store rows wait for a valid price, and Change price on 2 stores stays disabled while the field is invalid and the app name isn't typed.",
+  "compare": [
+    "Validation is inline and immediate: the field turns invalid, the hint is replaced by the error (what's wrong and the fix), and the nearest price points are buttons that fill the field. Zero, empty and non-numbers get the same treatment ('Enter a price, such as $3.99').",
+    "The per-store rows show what they will show once the price is valid, muted; no conversions are computed from an invalid price.",
+    "The typed confirmation is empty, with the app name as placeholder; the confirm button is disabled (aria-disabled) until both the price is valid and the typed word matches Diceroll exactly.",
+    "Phone: the same bottom sheet as commerce.offer-price; the two fix buttons sit under the error."
+  ],
+  "status": "mockup",
+  "designReview": null,
+  "order": 16
+}

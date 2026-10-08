@@ -1,0 +1,21 @@
+{
+  "id": "identity.connection-audience",
+  "title": "Change who signs in with a connection",
+  "area": "identity",
+  "surface": "dialog",
+  "packages": ["I-30", "I-31"],
+  "uxRows": [],
+  "summary": "The caution confirmation an operator gets on Lakeside University's page after picking 'Operators' under 'Who signs in with it': the 88 customer accounts go back to email codes and passkeys, product cards stop routing its domains, DJDL's Access rule narrows, and nobody gains console access.",
+  "compare": [
+    "Opened by picking a different 'Who signs in with it' card on identity.connection; the selection stays on Customers (the picked card shows focus only) until the dialog is confirmed. Escape and Cancel change nothing.",
+    "An L1 caution confirm (ADMIN.md §5.2): the warning icon leads the title, the title asks the question with the connection's name, and the primary button says exactly what happens: 'Sign in only operators'.",
+    "Bullets with a bold lead, each a concrete effect with real counts from the server at open time: the customer accounts at its domains (88), the domains that stop routing on product cards and what SSO required then applies to, the product rules that use its domains (DJDL's Access rule, with the licenses it already gave staying), and the console (no role without an SSO rule in Members).",
+    "Picking 'Customers and operators' from Customers needs no dialog: it only adds operators. Picking 'Customers' from 'Customers and operators' names the operators who stop signing in through it instead.",
+    "The footnote says how to undo it and that the change is recorded in Activity.",
+    "With the dialog open the page can't scroll: the dialog is centred in the first viewport on desktop, and on phone it is the bottom sheet (grab handle, primary full width above Cancel). Cancel has focus when it opens.",
+    "Pressed, the primary reads 'Saving…' and both buttons are disabled; on an error the dialog stays open with the error inline and the audience is unchanged."
+  ],
+  "status": "mockup",
+  "designReview": null,
+  "order": 2.5
+}

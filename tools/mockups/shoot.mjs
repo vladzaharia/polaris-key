@@ -6,11 +6,13 @@
 //   mise exec node@22 -- node tools/mockups/shoot.mjs --area products --out /Users/vlad/Repos/pk-wt/_mockups/shots/products
 //   mise exec node@22 -- node tools/mockups/shoot.mjs --all --out /Users/vlad/Repos/pk-wt/_mockups/shots
 //   mise exec node@22 -- node tools/mockups/shoot.mjs --screen products.home --out /tmp/shots
+//   mise exec node@22 -- node tools/mockups/shoot.mjs --gallery --out /Users/vlad/Repos/pk-wt/_mockups/shots/kit
 //
 // Options
 //   --area <key>        one area (repeatable, or comma-separated)
 //   --all               every area in docs/design/mockups/areas.json; files go to <out>/<area>/
 //   --screen <id>       only these screen ids (repeatable, or comma-separated)
+//   --gallery           the kit's component gallery (docs/design/mockups/kit/gallery.html), as kit.gallery
 //   --out <dir>         output directory (default /Users/vlad/Repos/pk-wt/_mockups/shots[/<area>])
 //   --sizes desktop,phone   --themes dark,light   --scale 1 (device pixel ratio)
 //   --html <dir>        also write each composed page (<id>.<theme>.html) for opening in a browser
@@ -20,7 +22,8 @@
 // <id>.phone-dark.png. Deterministic: the fonts are embedded and awaited, animations and
 // transitions are off, the caret is hidden, and every network request is refused (a mockup
 // makes none). It exits non-zero on a contract error, a console error, a failed font, a blocked
-// request, or a page wider than its viewport (sideways scroll).
+// request, or a page wider than its viewport (sideways scroll). Phone shots draw the portal's
+// fixed bottom bar and toasts at the end of the page, so they cover nothing mid-page.
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
@@ -65,13 +68,14 @@ const flag = (k) => argv.includes(`--${k}`);
 const areasJson = JSON.parse(readFileSync(join(ROOT, "areas.json"), "utf8"));
 const AREA_KEYS = areasJson.map((a) => a.key);
 const all = flag("all");
+const gallery = flag("gallery");
 let areas = all ? AREA_KEYS : many("area");
 const onlyScreens = many("screen");
 if (!areas.length && onlyScreens.length) {
   areas = [...new Set(onlyScreens.map((id) => id.split(".")[0]))];
 }
-if (!areas.length) {
-  console.error("Pass --area <key>, --screen <id> or --all. Areas: " + AREA_KEYS.join(", "));
+if (!areas.length && !gallery) {
+  console.error("Pass --area <key>, --screen <id>, --all or --gallery. Areas: " + AREA_KEYS.join(", "));
   process.exit(2);
 }
 for (const a of areas) {
@@ -135,6 +139,15 @@ function loadScreens(area) {
 }
 
 const screens = areas.flatMap((a) => loadScreens(a).map((s) => ({ ...s, out: outFor(a) })));
+if (gallery) {
+  screens.push({
+    id: "kit.gallery",
+    area: "kit",
+    html: readFileSync(join(ROOT, "kit/gallery.html"), "utf8"),
+    meta: { title: "Mockup kit gallery" },
+    out: outArg && areas.length === 0 ? outArg : join(outArg || DEFAULT_OUT, "kit"),
+  });
+}
 if (!screens.length) {
   console.error(`No screens found for ${areas.join(", ")}${onlyScreens.length ? ` matching ${onlyScreens.join(", ")}` : ""}.`);
   process.exit(problems.length ? 1 : 2);
@@ -151,6 +164,8 @@ if (checkOnly || problems.length) {
 const kitCss = readFileSync(KIT, "utf8");
 /** Mockups never move: no animation, no transition, no caret. */
 const FREEZE = `*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}`;
+/** Phone shots: the portal's fixed bottom bar and toasts sit at the page's end, not mid-page. */
+const PHONE_FULL_PAGE = `.portal>.portal-tabbar,.portal>.toasts{position:absolute!important}`;
 
 const page = (s, theme) =>
   `<!doctype html><html lang="en" data-theme="${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${s.meta?.title ?? s.id}</title><style>${kitCss}</style><style>${FREEZE}</style></head><body data-screen="${s.id}">${s.html}</body></html>`;
@@ -191,6 +206,10 @@ for (const s of screens) {
       p.on("console", (m) => m.type() === "error" && errors.push(`console: ${m.text()}`));
       p.on("pageerror", (e) => errors.push(`page error: ${e.message}`));
       await p.setContent(doc, { waitUntil: "load" });
+      // A full-page shot paints fixed elements at the viewport's bottom line, in the middle of a
+      // long phone page, over the content under them. Draw the portal's bottom bar and its toasts
+      // at the end of the page instead (.portal is their positioned box), as when scrolled down.
+      if (size === "phone") await p.addStyleTag({ content: PHONE_FULL_PAGE });
       const fonts = await p.evaluate(async () => {
         await Promise.all([
           document.fonts.load('400 16px "Rubik"'),

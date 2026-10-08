@@ -1,0 +1,43 @@
+{
+  "id": "admin.no-access",
+  "title": "No access",
+  "area": "admin",
+  "surface": "console",
+  "order": 6,
+  "packages": [
+    "ST-29",
+    "ST-31",
+    "ST-45"
+  ],
+  "uxRows": [],
+  "summary": "NoAccessPage for a forbidden deep link: Lucía, a Diceroll admin narrowed to Ship builds and Commerce, opens a link to Diceroll's licenses. The page names the area she lacks and her current role, lists the people who can give her access with copyable emails, and offers the places she can open.",
+  "compare": [
+    "The sidebar is filtered by permission: Diceroll's context shows only the Ship builds and Commerce groups (open), with no Overview, Licensing, Managed config, Cloud Sync or Settings items. Nothing hidden is drawn disabled.",
+    "The crumbs still show where the link pointed (Diceroll › Licensing › Licenses); the title names the product and the area: 'You don't have access to Diceroll → Licensing', with 'Diceroll → Licensing' kept on one line so a wrap happens after 'to'.",
+    "The lead names the signed-in email and the current role as the same role tag Members uses (Diceroll admin · Ship builds, Commerce), and says what it doesn't include.",
+    "'Who can give you access' lists up to three people who can grant that area in that scope, narrowest first (the product's admins, then Superadmins), each with name, role and a copyable email. Its line ('They'll find you in Diceroll's members') holds because a rule-given role has 'Add areas…' there. There is no Request access button and no request workflow (ST-33 is not built).",
+    "'You can open' offers the person's real destinations as buttons (Diceroll releases, Diceroll storefronts), then 'Open your library' and 'Use another account' as links, so the page is never a dead end.",
+    "The footnote shows the link that was opened and says nothing on it was loaded; no data from the forbidden page appears, not even counts.",
+    "The same component answers a disabled control's reason elsewhere: a write button the member can't use names the same people in its disabledReason.",
+    "Phone: the menu button replaces the sidebar; the helpers stack (avatar and name, then the email chip under the name) and the two destination buttons take the full width."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Pass: the ask copy holds now that Product members has Add areas…; the title keeps 'Diceroll → Licensing' together on phone.",
+    "findings": [
+      {
+        "severity": "minor",
+        "issue": "'Ask one of them to add Licensing… They'll find you in Diceroll's members' promises an action Product members didn't offer for a rule-given role.",
+        "resolution": "Kept the copy: Diceroll → Settings → Members now gives Kenji 'Add areas…' on Lucía's rule-given row, and the list names only people who can do it (Kenji, then the two Superadmins)."
+      },
+      {
+        "severity": "minor",
+        "issue": "On phone the title breaks as '…to Diceroll' / '→ Licensing'.",
+        "resolution": "'Diceroll → Licensing' is wrapped in a no-wrap span, so the line breaks after 'to'. The footnote URL now wraps inside the column on phone, and the role tag uses the shared role-set markup (areas under the tag on phone)."
+      }
+    ]
+  }
+}

@@ -1,0 +1,368 @@
+<style>
+  /* products.new-product: the wizard beside its running summary; the rest is the kit. */
+  [data-screen="products.new-product"] .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    align-items: start;
+    gap: 24px;
+    max-width: 1160px;
+  }
+  [data-screen="products.new-product"] .lede {
+    margin-top: -12px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="products.new-product"] .feature-choices {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  [data-screen="products.new-product"] .choice {
+    padding-right: 40px;
+  }
+  [data-screen="products.new-product"] .choice-title .icon-tile {
+    margin-right: 2px;
+  }
+  [data-screen="products.new-product"] .turns {
+    margin-top: auto;
+    padding-top: 8px;
+    border-top: 1px solid var(--mk-line);
+    font-size: 12px;
+    line-height: 17px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="products.new-product"] .turns > b {
+    display: block;
+    font-weight: 700;
+    color: var(--pk-text-subtle);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-size: 11px;
+    line-height: 16px;
+  }
+  [data-screen="products.new-product"] .req {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--pk-text-muted);
+  }
+  /* Requirement lines sit below the check, so they may use the card's full width. */
+  [data-screen="products.new-product"] .choice > .req {
+    margin-right: -24px;
+  }
+  [data-screen="products.new-product"] .req > .ic {
+    width: 13px;
+    height: 13px;
+  }
+  [data-screen="products.new-product"] .req.met > .ic {
+    color: var(--pk-success);
+  }
+  [data-screen="products.new-product"] .req.unmet {
+    color: var(--pk-text-default);
+    font-weight: 700;
+  }
+  [data-screen="products.new-product"] .choice.disabled {
+    opacity: 1;
+    border-style: dashed;
+    background: transparent;
+  }
+  /* Multi-select: rounded-square checks, not radio rings. A locked card shows a lock instead. */
+  [data-screen="products.new-product"] .feature-choices .choice::after {
+    border-radius: 5px;
+  }
+  [data-screen="products.new-product"] .feature-choices .choice.on::before {
+    top: 17px;
+    right: 17px;
+  }
+  [data-screen="products.new-product"] .feature-choices .choice.disabled::after {
+    top: 15px;
+    right: 15px;
+    width: 16px;
+    height: 16px;
+    border: 0;
+    border-radius: 0;
+    background: var(--pk-text-subtle);
+    -webkit-mask: var(--ic-lock) center / contain no-repeat;
+    mask: var(--ic-lock) center / contain no-repeat;
+  }
+  [data-screen="products.new-product"] .choice.disabled .choice-title,
+  [data-screen="products.new-product"] .choice.disabled .choice-desc,
+  [data-screen="products.new-product"] .choice.disabled .turns {
+    opacity: 0.6;
+  }
+  [data-screen="products.new-product"] .block-head {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 10px;
+  }
+  [data-screen="products.new-product"] .block-head h3 {
+    font-size: 15px;
+    line-height: 20px;
+    font-weight: 700;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="products.new-product"] .block-head p {
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="products.new-product"] .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  [data-screen="products.new-product"] .free {
+    border: 1px solid var(--mk-line);
+    border-radius: 14px;
+  }
+  [data-screen="products.new-product"] .free.setting-row {
+    padding: 14px 16px;
+  }
+  [data-screen="products.new-product"] .divider {
+    height: 1px;
+    background: var(--mk-line);
+  }
+  [data-screen="products.new-product"] .foot-note {
+    font-size: 13px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="products.new-product"] .aside {
+    position: sticky;
+    top: 88px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  [data-screen="products.new-product"] .aside .product-card {
+    box-shadow: none;
+  }
+  [data-screen="products.new-product"] .sofar {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px;
+  }
+  [data-screen="products.new-product"] .sofar-row {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr);
+    gap: 10px;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-default);
+  }
+  [data-screen="products.new-product"] .sofar-row > .ic {
+    margin-top: 1px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="products.new-product"] .sofar-row .muted {
+    display: block;
+    font-size: 12px;
+    line-height: 16px;
+  }
+  @container screen (max-width: 1023px) {
+    [data-screen="products.new-product"] .layout {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    [data-screen="products.new-product"] .aside {
+      position: static;
+    }
+    [data-screen="products.new-product"] .feature-choices {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="products.new-product"] .feature-choices {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    [data-screen="products.new-product"] .lede {
+      margin-top: -8px;
+    }
+    /* Cancel sits on the heading line, its text on the page edge's right. */
+    [data-screen="products.new-product"] .page-actions {
+      grid-area: tools;
+      padding-top: 0;
+    }
+    [data-screen="products.new-product"] .page-actions > .btn.ghost {
+      margin-right: -8px;
+    }
+    /* Switches keep a 24 px target on phone. */
+    [data-screen="products.new-product"] .switch {
+      width: 44px;
+      height: 24px;
+    }
+    [data-screen="products.new-product"] .switch::after {
+      width: 18px;
+      height: 18px;
+    }
+    [data-screen="products.new-product"] .switch.on::after {
+      left: 22px;
+    }
+  }
+</style>
+
+<div class="console" data-service="core">
+  <header class="topbar">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <nav class="sidebar" aria-label="Platform">
+    <div class="ctx">
+      <span class="ctx-mark"><i class="ic ic-polaris"></i></span>
+      <span class="ctx-text"><span class="ctx-name">Platform</span><span class="ctx-sub">3 products</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item active" href="#"><i class="ic ic-house"></i><span class="nav-text">Home</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-users"></i><span class="nav-text">Members</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-link"></i><span class="nav-text">Connections</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-boxes"></i><span class="nav-text">Packages</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-server"></i><span class="nav-text">Status</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-history"></i><span class="nav-text">Activity</span></a>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="page">
+      <header class="page-head">
+        <nav class="crumbs"><a href="#">Home</a><i class="ic ic-chevron-right"></i>New product</nav>
+        <div class="page-heading"><h1>New product</h1></div>
+        <p class="page-sub">Three steps. Nothing is created until you press Create.</p>
+        <div class="page-actions">
+          <button class="btn ghost"><i class="ic ic-x"></i>Cancel</button>
+        </div>
+      </header>
+
+      <div class="layout">
+        <!-- ST-43 on ST-39's wizard kit: Repository or name → What it's for → Create. -->
+        <div class="wizard">
+          <div class="wizard-head">
+            <ol class="stepper">
+              <li class="step done"><span class="step-mark"></span><span class="step-label">Repository or name<small>Diceroll, no repository</small></span></li>
+              <li class="step current"><span class="step-mark"></span><span class="step-label">What it’s for<small>Features, platforms, Free tier</small></span></li>
+              <li class="step"><span class="step-mark"></span><span class="step-label">Create<small>Review, then create</small></span></li>
+            </ol>
+          </div>
+
+          <div class="wizard-body">
+            <h2>What is Diceroll for?</h2>
+            <p class="lede">Choose the features Diceroll uses. Each one says what it turns on. You can change them later in Settings → Features.</p>
+
+            <div class="choices feature-choices" role="group" aria-label="Features">
+              <div class="choice on" role="checkbox" aria-checked="true">
+                <div class="choice-title"><span class="icon-tile sm" data-service="license"><i class="svc"></i></span>Licensing</div>
+                <div class="choice-desc">Gate Diceroll on a license and sell it as tiers and add-ons.</div>
+                <div class="turns"><b>Turns on</b>Tiers, licenses and device limits, starting with the Free tier below.</div>
+              </div>
+              <div class="choice on" role="checkbox" aria-checked="true">
+                <div class="choice-title"><span class="icon-tile sm" data-service="config"><i class="svc"></i></span>Managed config</div>
+                <div class="choice-desc">Change settings and secrets without shipping a build.</div>
+                <div class="turns"><b>Turns on</b>The Default profile, catalog v1 and secrets.</div>
+              </div>
+              <div class="choice on" role="checkbox" aria-checked="true">
+                <div class="choice-title"><span class="icon-tile sm" data-service="release"><i class="svc"></i></span>Ship builds</div>
+                <div class="choice-desc">Publish releases from CI and deliver them to every store and the download page.</div>
+                <div class="turns"><b>Turns on</b>Releases, channels and in-app updates.</div>
+              </div>
+              <div class="choice" role="checkbox" aria-checked="false">
+                <div class="choice-title"><span class="icon-tile sm" data-service="identity"><i class="svc"></i></span>Sign-in</div>
+                <div class="choice-desc">Let players sign in with a Polaris Key account.</div>
+                <div class="turns"><b>Turns on</b>Accounts in the game and the customer portal.</div>
+              </div>
+              <div class="choice disabled" role="checkbox" aria-checked="false" aria-disabled="true">
+                <div class="choice-title"><span class="icon-tile sm muted" data-service="sync"><i class="svc"></i></span>Cloud Sync</div>
+                <div class="choice-desc">Keep each player’s saves and settings the same on every device.</div>
+                <span class="req met"><i class="ic ic-circle-check"></i>Managed config is chosen</span>
+                <span class="req unmet"><i class="ic ic-lock"></i>Needs Sign-in: choose it first</span>
+              </div>
+              <div class="choice on" role="checkbox" aria-checked="true">
+                <div class="choice-title"><span class="icon-tile sm" data-service="commerce"><i class="svc"></i></span>Commerce</div>
+                <div class="choice-desc">Sell packs and tiers on App Store, Google Play, Steam and itch.io.</div>
+                <span class="req met"><i class="ic ic-circle-check"></i>Needs Licensing, which is chosen</span>
+                <div class="turns"><b>Turns on</b>Offers, a SKU on each store and one list of purchases.</div>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div>
+              <div class="block-head">
+                <h3>Where will Diceroll run?</h3>
+                <p>Channels, storefronts and SDK code show only for these. Builds you publish add their platforms on their own.</p>
+              </div>
+              <div class="chips" role="group" aria-label="Planned platforms">
+                <span class="chip on"><i class="ic ic-apple"></i>iOS</span>
+                <span class="chip on"><i class="ic ic-android"></i>Android</span>
+                <span class="chip on"><i class="ic ic-windows"></i>Windows</span>
+                <span class="chip on"><i class="ic ic-linux"></i>Linux</span>
+                <span class="chip"><i class="ic ic-apple"></i>macOS</span>
+                <span class="chip"><i class="ic ic-globe"></i>Web</span>
+              </div>
+            </div>
+
+            <div class="setting-row with-icon free">
+              <span class="icon-tile" data-service="license"><i class="ic ic-tag"></i></span>
+              <div>
+                <div class="setting-title">Start with a Free tier</div>
+                <div class="setting-desc">Every license has a tier. Free is lifetime, for 2 devices; change it under Licensing → Tiers.</div>
+              </div>
+              <span class="switch on" role="switch" aria-checked="true" aria-label="Start with a Free tier"></span>
+            </div>
+          </div>
+
+          <div class="wizard-foot">
+            <button class="btn ghost"><i class="ic ic-chevron-left"></i>Back</button>
+            <span class="foot-note hide-phone">Next: review, then Create</span>
+            <button class="btn primary">Continue<i class="ic ic-arrow-right"></i></button>
+          </div>
+        </div>
+
+        <!-- A running summary: what Create will make, and the card Home will show. -->
+        <aside class="aside" aria-label="Diceroll so far">
+          <section class="card">
+            <div class="card-head">
+              <div class="title"><h3>Diceroll so far</h3><p>Create makes all of this in one change.</p></div>
+            </div>
+            <div class="sofar">
+              <div class="sofar-row"><i class="ic ic-key-round"></i><span>A signing key<span class="muted">Kept in Polaris Key; your app pins it</span></span></div>
+              <div class="sofar-row"><i class="ic ic-layers"></i><span>4 features<span class="muted">Licensing, Managed config, Ship builds, Commerce</span></span></div>
+              <div class="sofar-row"><i class="ic ic-file-json"></i><span>Default profile and catalog v1</span></div>
+              <div class="sofar-row"><i class="ic ic-tag"></i><span>The Free tier</span></div>
+              <div class="sofar-row"><i class="ic ic-monitor-smartphone"></i><span>4 planned platforms<span class="muted">iOS, Android, Windows, Linux</span></span></div>
+            </div>
+            <div class="card-foot start"><span class="small muted"><i class="ic ic-plug sm"></i> Then Diceroll’s Integration page opens.</span></div>
+          </section>
+
+          <div>
+            <p class="eyebrow">On Home</p>
+            <article class="product-card">
+              <div class="product-card-head">
+                <span class="logo" data-product="diceroll"></span>
+                <div class="grow">
+                  <h3><a href="#">Diceroll</a></h3>
+                  <div class="row gap-1"><span class="slug">diceroll</span><span class="pips" role="img" aria-label="Licensing, Managed config, Ship builds, Commerce">
+                    <i class="pip" data-service="license"></i><i class="pip" data-service="config"></i><i class="pip" data-service="release"></i><i class="pip" data-service="commerce"></i>
+                  </span></div>
+                </div>
+              </div>
+              <div class="product-card-svcs">
+                <div class="svcs">
+                  <span title="Licensing" role="img" aria-label="Licensing"><i class="svc" data-service="license"></i></span>
+                  <span title="Managed config" role="img" aria-label="Managed config"><i class="svc" data-service="config"></i></span>
+                  <span title="Ship builds" role="img" aria-label="Ship builds"><i class="svc" data-service="release"></i></span>
+                  <span title="Commerce" role="img" aria-label="Commerce"><i class="svc" data-service="commerce"></i></span>
+                </div>
+              </div>
+            </article>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>

@@ -1,0 +1,70 @@
+{
+  "id": "distribution.download-page",
+  "title": "Download page",
+  "area": "distribution",
+  "surface": "portal",
+  "packages": [
+    "A-26",
+    "A-30",
+    "PX-09",
+    "A-20",
+    "P2-13",
+    "HA-09"
+  ],
+  "uxRows": [],
+  "order": 6,
+  "summary": "Diceroll's public download page at dl.plrs.im/diceroll as it reads on Oct 10, after 1.9.0's Oct 7 Publish and its 3-day stable rollout: a recommendation for the visitor's device, then every way to get Diceroll per platform, the visitor's own platform first, from one customer-action model: downloads with their SHA-256 (one shown failing to prepare, with Try again), store links with QR codes, Obtainium as an install source, Scoop as package-manager steps, and the SHA256SUMS link.",
+  "compare": [
+    "One model (A-26) drives this page, the portal's Get it panel (PX-09) and the React SDK's download surface: the same rows in the same order for the same platform.",
+    "The recommendation matches the visitor's device and names the architecture: 'Windows · x64' with the file name and size on a PC; 'On this Android phone' with Google Play on a phone.",
+    "The visitor's own platform is listed first (Android on an Android phone, iPhone and iPad on iOS, Windows on a PC), then the rest in the fixed order Windows, Android, iPhone and iPad, Linux.",
+    "Every live channel appears under each platform it serves, with what the customer does there: Download (file name, size, a copyable middle-truncated SHA-256), a store link (Google Play, App Store, itch.io), an install source (Obtainium: Add to Obtainium plus a QR code), and package-manager steps (Scoop: numbered steps, each command with a copy button, and how to update).",
+    "Architecture is said in plain words where it matters; 'For 64-bit Arm phones and tablets, which is almost all of them' is the pattern. The APK also warns 'Installed from Google Play? Keep updating there; this APK can't replace it.'",
+    "Channels that are not live (Steam, winget, the Microsoft Store) do not appear; a platform or CPU that isn't built (macOS, Windows on Arm) never shows a download, only one honest line at the foot.",
+    "SHA256SUMS is linked once above the platforms ('Check a download with SHA256SUMS'); every file shows its own SHA-256; MD5 appears nowhere.",
+    "Download links are made fresh on click, and the page says so. When one can't be made, that row says 'Couldn't prepare this download. Try again, or get Diceroll from itch.io.' (itch.io links to the same platform's itch.io row) and its button becomes Try again; the Linux row shows this state. A file withdrawn by a demote is never offered: the row shows the current file instead.",
+    "Store buttons use the store's own words ('Get it on Google Play', 'Download on the App Store'); QR codes say what to scan them with.",
+    "The page uses the portal's frame (Polaris Key brand, Sign in for customers who own it) and Diceroll's cover art and icon; no store prices are shown. Sign in stays in the top bar at phone width too, as icon and text, because this public page has no tab bar.",
+    "The hero says '1.9.0 · released Oct 7, 2026' (the Publish date). The footer gives the developer's contact: 'Questions about Diceroll? Contact Twelve Pips Studio at support@example.com'.",
+    "Phone: the recommendation becomes the phone's own (Google Play), Android's section comes first, QR codes hide (the visitor is already on the phone), each way's action drops under its text, and commands wrap only after a slash with the $ prompt and Copy on the first line."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: Sign in kept on phone, the visitor's platform first, a drawn failed-download row with Try again, the APK and Google Play warning, slash-only command wrapping, and a date and footer that fit the story.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "[phone] Sign in disappears at phone width (the kit hides portal actions for the signed-in tab bar).",
+        "resolution": "A screen-scoped override keeps the icon-and-text Sign in button in the top bar at phone width (the button carries .signin). The kit rule is unchanged; the lead may want it to hide actions only when .portal-tabbar is present."
+      },
+      {
+        "severity": "major",
+        "issue": "[flow] On an Android phone the sections keep the PC order, so the visitor scrolls past Windows and Scoop.",
+        "resolution": "The visitor's platform comes first: on phone Android's section moves to the top of 'Every way to get Diceroll' (CSS order on the .mine section); the compare names the rule for iOS and PC."
+      },
+      {
+        "severity": "major",
+        "issue": "[states] No state for a download link that can't be made or a withdrawn file.",
+        "resolution": "Drawn on the Linux download: 'Couldn't prepare this download. Try again, or get Diceroll from itch.io.' with Try again in place of Download. The withdrawn-file rule (show the current file, never a dead link) is in the compare."
+      },
+      {
+        "severity": "minor",
+        "issue": "[copy] Google Play and the direct APK don't mix, with no warning.",
+        "resolution": "Under the APK: 'Installed from Google Play? Keep updating there; this APK can't replace it.'"
+      },
+      {
+        "severity": "minor",
+        "issue": "[phone] The Scoop command breaks mid-word and the $ prompt is centred.",
+        "resolution": "Break points are only after each '/', and on phone the command keeps normal word breaking; the prompt and Copy align to the first line."
+      },
+      {
+        "severity": "minor",
+        "issue": "[data and copy] The hero's Oct 8 date contradicts the console's Oct 7; the footer says Twelve Pips Studio handles downloads and gives no contact.",
+        "resolution": "The hero says 'released Oct 7, 2026', and the summary says the page is shown on Oct 10, after the Publish's 3-day rollout (which is also when itch.io gets 1.9.0, so 'The same build' holds). Footer: 'Questions about Diceroll? Contact Twelve Pips Studio at support@example.com'."
+      }
+    ]
+  }
+}

@@ -1,0 +1,248 @@
+<style>
+  /* licenses.bulk-keys-done: the New license drawer after Create 200 keys: the one-time CSV, closing early, and a partial result. */
+  [data-screen="licenses.bulk-keys-done"] .board {
+    gap: 40px 48px;
+  }
+  [data-screen="licenses.bulk-keys-done"] .board-item {
+    width: calc((100% - 48px) / 2);
+  }
+  [data-screen="licenses.bulk-keys-done"] .drawer {
+    width: 100%;
+    min-height: 0;
+    border: 1px solid var(--mk-line);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  [data-screen="licenses.bulk-keys-done"] .drawer-body {
+    gap: 16px;
+  }
+  [data-screen="licenses.bulk-keys-done"] .drawer-head .icon-tile {
+    flex: none;
+  }
+  [data-screen="licenses.bulk-keys-done"] .done-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: var(--pk-success-subtle);
+    color: var(--pk-success);
+  }
+  [data-screen="licenses.bulk-keys-done"] .done-mark.warn {
+    background: var(--pk-warning-subtle);
+    color: var(--pk-warning);
+  }
+  [data-screen="licenses.bulk-keys-done"] .bk-title {
+    font-size: 18px;
+    line-height: 26px;
+    font-weight: 700;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="licenses.bulk-keys-done"] .secret {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    border: 1px solid var(--pk-accent);
+    border-radius: 14px;
+    background: color-mix(in oklab, var(--pk-accent-subtle) 40%, var(--pk-surface-raised));
+  }
+  [data-screen="licenses.bulk-keys-done"] .secret.done {
+    border-color: var(--mk-line);
+    background: var(--pk-surface-raised);
+  }
+  [data-screen="licenses.bulk-keys-done"] .file {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="licenses.bulk-keys-done"] .file .ic {
+    flex: none;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="licenses.bulk-keys-done"] .file strong {
+    display: block;
+    font-family: var(--pk-font-mono);
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="licenses.bulk-keys-done"] .secret .btn-row .btn.primary {
+    flex: 1 1 auto;
+  }
+  [data-screen="licenses.bulk-keys-done"] .facts {
+    display: grid;
+    grid-template-columns: 112px minmax(0, 1fr);
+    gap: 8px 14px;
+    font-size: 13px;
+  }
+  [data-screen="licenses.bulk-keys-done"] .facts dt {
+    color: var(--pk-text-muted);
+  }
+  [data-screen="licenses.bulk-keys-done"] .facts dd {
+    color: var(--pk-text-default);
+  }
+  [data-screen="licenses.bulk-keys-done"] .tier-pill > .ic {
+    color: var(--pk-accent-fg);
+  }
+  [data-screen="licenses.bulk-keys-done"] .drawer-foot .start {
+    margin-right: auto;
+  }
+  /* The close confirmation sits over the dimmed drawer. */
+  [data-screen="licenses.bulk-keys-done"] .stage {
+    position: relative;
+  }
+  [data-screen="licenses.bulk-keys-done"] .stage > .drawer {
+    filter: saturate(0.6);
+  }
+  [data-screen="licenses.bulk-keys-done"] .stage-scrim {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    border-radius: 16px;
+    background: var(--mk-scrim);
+  }
+  [data-screen="licenses.bulk-keys-done"] .stage-scrim > .dialog {
+    width: 440px;
+    max-width: 100%;
+  }
+  [data-screen="licenses.bulk-keys-done"] figcaption {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    line-height: 18px;
+  }
+  [data-screen="licenses.bulk-keys-done"] figcaption strong {
+    color: var(--pk-text-strong);
+  }
+  @container screen (max-width: 1023px) {
+    [data-screen="licenses.bulk-keys-done"] .board-item {
+      width: 100%;
+      max-width: 560px;
+    }
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="licenses.bulk-keys-done"] .drawer-foot {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    [data-screen="licenses.bulk-keys-done"] .drawer-foot .start {
+      margin-right: 0;
+      order: 2;
+    }
+    [data-screen="licenses.bulk-keys-done"] .facts {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 2px;
+    }
+    [data-screen="licenses.bulk-keys-done"] .facts dd {
+      margin-bottom: 8px;
+    }
+    [data-screen="licenses.bulk-keys-done"] .dialog-foot {
+      flex-direction: column-reverse;
+      align-items: stretch;
+    }
+  }
+</style>
+
+<div class="board" data-service="license">
+  <div class="board-title">
+    <h1>Create keys in bulk: after Create</h1>
+    <p>What the New license drawer (licenses.bulk-keys) shows once Create 200 keys has run. The keys exist only in a CSV shown here, once: Polaris Key keeps a hash of each key, never the key.</p>
+  </div>
+
+  <!-- Done, before the download. -->
+  <figure class="board-item">
+    <aside class="drawer" aria-labelledby="bd-1">
+      <div class="drawer-head"><span class="icon-tile sm"><i class="ic ic-key-square"></i></span><h2 id="bd-1">New license</h2><button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button></div>
+      <div class="drawer-body">
+        <span class="done-mark"><i class="ic ic-circle-check lg"></i></span>
+        <div><h3 class="bk-title">200 keys created in Mixer bundle · Oct 2026</h3><p class="muted small mt-1">Each is a floating Standard license. Download the keys now: this is the only time they can be shown.</p></div>
+        <div class="secret">
+          <div class="file"><i class="ic ic-file-lock lg"></i><div><strong>djdl-mixer-bundle-oct-2026.csv</strong>200 rows: key, license id, batch · 18 KB</div></div>
+          <div class="btn-row"><button class="btn primary"><i class="ic ic-download"></i>Download CSV</button></div>
+        </div>
+        <dl class="facts">
+          <dt>Tier</dt><dd><span class="pill sm tier-pill"><i class="ic ic-layers"></i>Standard</span> Lifetime · 5 devices</dd>
+          <dt>Batch</dt><dd>Mixer bundle · Oct 2026 · 200 keys, none used</dd>
+        </dl>
+      </div>
+      <div class="drawer-foot"><a class="btn ghost start" href="#">Open batch<i class="ic ic-arrow-right"></i></a><button class="btn outline">Close</button></div>
+    </aside>
+    <figcaption><strong>Done</strong>The stepper is gone; the drawer is now a one-time panel. Download CSV is the only primary. Close is still there, but closing before a download asks first.</figcaption>
+  </figure>
+
+  <!-- Done, after the download. -->
+  <figure class="board-item">
+    <aside class="drawer" aria-labelledby="bd-2">
+      <div class="drawer-head"><span class="icon-tile sm"><i class="ic ic-key-square"></i></span><h2 id="bd-2">New license</h2><button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button></div>
+      <div class="drawer-body">
+        <span class="done-mark"><i class="ic ic-circle-check lg"></i></span>
+        <div><h3 class="bk-title">200 keys created in Mixer bundle · Oct 2026</h3><p class="muted small mt-1">Each is a floating Standard license.</p></div>
+        <div class="secret done">
+          <div class="file"><i class="ic ic-file-lock lg"></i><div><strong>djdl-mixer-bundle-oct-2026.csv</strong><span class="status"><i class="ic ic-circle-check"></i>Downloaded at 10:42</span></div></div>
+          <div class="btn-row"><button class="btn outline"><i class="ic ic-download"></i>Download again</button></div>
+        </div>
+        <div class="callout info">
+          <i class="ic ic-info"></i>
+          <div class="grow"><div class="callout-text">Download again works until you close this drawer. After that the keys can’t be shown; you’d disable unused keys on the batch page and make a new batch.</div></div>
+        </div>
+      </div>
+      <div class="drawer-foot"><a class="btn ghost start" href="#">Open batch<i class="ic ic-arrow-right"></i></a><button class="btn primary">Done</button></div>
+    </aside>
+    <figcaption><strong>Downloaded</strong>The file row says when it was downloaded, Download again becomes the secondary, and Done closes without asking.</figcaption>
+  </figure>
+
+  <!-- Closing before any download. -->
+  <figure class="board-item">
+    <div class="stage">
+      <aside class="drawer" aria-hidden="true">
+        <div class="drawer-head"><span class="icon-tile sm"><i class="ic ic-key-square"></i></span><h2>New license</h2><button class="btn ghost icon sm" aria-label="Close" tabindex="-1"><i class="ic ic-x"></i></button></div>
+        <div class="drawer-body">
+          <span class="done-mark"><i class="ic ic-circle-check lg"></i></span>
+          <div><h3 class="bk-title">200 keys created in Mixer bundle · Oct 2026</h3><p class="muted small mt-1">Download the keys now: this is the only time they can be shown.</p></div>
+          <div class="secret">
+            <div class="file"><i class="ic ic-file-lock lg"></i><div><strong>djdl-mixer-bundle-oct-2026.csv</strong>200 rows · 18 KB</div></div>
+            <div class="btn-row"><button class="btn primary" tabindex="-1"><i class="ic ic-download"></i>Download CSV</button></div>
+          </div>
+        </div>
+        <div class="drawer-foot"><button class="btn outline" tabindex="-1">Close</button></div>
+      </aside>
+      <div class="stage-scrim">
+        <div class="dialog caution" role="alertdialog" aria-labelledby="bd-close">
+          <div class="dialog-head"><i class="ic ic-triangle-alert"></i><h2 id="bd-close">Close without the CSV?</h2></div>
+          <div class="dialog-body"><p>These 200 keys can’t be shown again. Without the CSV nobody can use them, and you’d disable them from the batch page.</p></div>
+          <div class="dialog-foot"><button class="btn danger-outline">Close without keys</button><button class="btn primary"><i class="ic ic-download"></i>Download CSV</button></div>
+        </div>
+      </div>
+    </div>
+    <figcaption><strong>Closing early</strong>Close, Esc or the × before any download asks first. The safe action, Download CSV, is the primary; closing anyway is the danger outline and says what it costs.</figcaption>
+  </figure>
+
+  <!-- Partial result. -->
+  <figure class="board-item">
+    <aside class="drawer" aria-labelledby="bd-4">
+      <div class="drawer-head"><span class="icon-tile sm"><i class="ic ic-key-square"></i></span><h2 id="bd-4">New license</h2><button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button></div>
+      <div class="drawer-body">
+        <span class="done-mark warn"><i class="ic ic-triangle-alert lg"></i></span>
+        <div><h3 class="bk-title">Created 120 of 200 keys</h3><p class="muted small mt-1">Polaris Key stopped answering partway. The 120 keys are in Mixer bundle · Oct 2026 and in this CSV.</p></div>
+        <div class="secret">
+          <div class="file"><i class="ic ic-file-lock lg"></i><div><strong>djdl-mixer-bundle-oct-2026.csv</strong>120 rows: key, license id, batch · 11 KB</div></div>
+          <div class="btn-row"><button class="btn primary"><i class="ic ic-download"></i>Download CSV</button></div>
+        </div>
+        <div class="callout warning">
+          <i class="ic ic-triangle-alert"></i>
+          <div class="grow"><div class="callout-title">80 keys weren’t created</div><div class="callout-text">Retry makes the other 80 in the same batch, with their own CSV. No key is made twice.</div>
+            <div class="btn-row mt-2"><button class="btn outline sm"><i class="ic ic-refresh-cw"></i>Retry the other 80</button></div></div>
+        </div>
+      </div>
+      <div class="drawer-foot"><a class="btn ghost start" href="#">Open batch<i class="ic ic-arrow-right"></i></a><button class="btn outline">Close</button></div>
+    </aside>
+    <figcaption><strong>Partial result</strong>The title says how many of how many. The CSV covers only the keys that exist, and Retry makes the rest in the same batch with a second one-time CSV.</figcaption>
+  </figure>
+</div>

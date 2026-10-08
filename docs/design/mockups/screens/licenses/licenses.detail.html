@@ -1,0 +1,573 @@
+<style>
+  /* licenses.detail: only what the kit does not already say. */
+  [data-screen="licenses.detail"] .nav-group.closed {
+    padding-top: 4px;
+  }
+  [data-screen="licenses.detail"] .tier-pill > .ic {
+    color: var(--pk-accent-fg);
+  }
+  /* The tier is a real control: it opens Change tier (licenses.change-tier). */
+  [data-screen="licenses.detail"] .tier-btn {
+    gap: 6px;
+    padding: 0 10px 0 12px;
+  }
+  [data-screen="licenses.detail"] .tier-btn > .ic-layers {
+    color: var(--pk-accent-fg);
+  }
+  [data-screen="licenses.detail"] .tier-btn > .ic-chevron-down {
+    width: 14px;
+    height: 14px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="licenses.detail"] .tier-btn .lbl {
+    color: var(--pk-text-muted);
+  }
+  [data-screen="licenses.detail"] .tier-btn strong {
+    color: var(--pk-text-strong);
+  }
+  /* Standalone links get a 24px hit height. */
+  [data-screen="licenses.detail"] .card-foot .link,
+  [data-screen="licenses.detail"] .limit-row > .link,
+  [data-screen="licenses.detail"] .crumbs a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+  }
+  [data-screen="licenses.detail"] .holder-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+  }
+  [data-screen="licenses.detail"] .detail-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 24px;
+    align-items: start;
+  }
+  [data-screen="licenses.detail"] .detail-grid > .stack {
+    min-width: 0;
+  }
+  /* Limits: one row per field, its resolved value and where it came from. */
+  [data-screen="licenses.detail"] .limit-row {
+    display: grid;
+    grid-template-columns: 168px 92px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px 16px;
+    padding: 12px 20px;
+  }
+  [data-screen="licenses.detail"] .limit-row + .limit-row {
+    border-top: 1px solid var(--mk-line);
+  }
+  [data-screen="licenses.detail"] .limit-row.overridden {
+    background: color-mix(in oklab, var(--pk-accent-subtle) 60%, transparent);
+    box-shadow: inset 2px 0 0 var(--pk-accent);
+  }
+  [data-screen="licenses.detail"] .limit-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="licenses.detail"] .limit-name > .ic {
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="licenses.detail"] .limit-value {
+    font-weight: 700;
+    color: var(--pk-text-strong);
+    white-space: nowrap;
+  }
+  [data-screen="licenses.detail"] .limit-src {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    font-size: 13px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="licenses.detail"] .src-license {
+    border-color: var(--pk-accent);
+    color: var(--pk-accent-fg);
+    background: var(--pk-accent-subtle);
+  }
+  [data-screen="licenses.detail"] .limits-foot {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px 12px;
+    border-top: 1px solid var(--mk-line);
+    font-size: 13px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="licenses.detail"] .addon-row,
+  [data-screen="licenses.detail"] .device-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 4px 14px;
+    padding: 12px 20px;
+  }
+  [data-screen="licenses.detail"] .addon-row + .addon-row,
+  [data-screen="licenses.detail"] .device-row + .device-row {
+    border-top: 1px solid var(--mk-line);
+  }
+  [data-screen="licenses.detail"] .addon-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  [data-screen="licenses.detail"] .row-sub {
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="licenses.detail"] .row-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+    font-weight: 700;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="licenses.detail"] .row-title code {
+    font-weight: 400;
+  }
+  [data-screen="licenses.detail"] .dev-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    background: var(--mk-fill);
+    color: var(--pk-text-muted);
+  }
+  [data-screen="licenses.detail"] .seats-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 160px;
+  }
+  [data-screen="licenses.detail"] .seats-head .progress {
+    flex: 1;
+  }
+  /* Duration: start to end, then what happens at the end. */
+  [data-screen="licenses.detail"] .span-line {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="licenses.detail"] .span-line .progress {
+    height: 4px;
+  }
+  /* Today's position on the start-to-end line. */
+  [data-screen="licenses.detail"] .span-track {
+    position: relative;
+  }
+  [data-screen="licenses.detail"] .today-dot {
+    position: absolute;
+    top: 50%;
+    left: var(--v);
+    width: 10px;
+    height: 10px;
+    margin: -5px 0 0 -5px;
+    border-radius: 50%;
+    background: var(--pk-accent);
+    box-shadow: 0 0 0 3px var(--pk-surface-raised);
+  }
+  [data-screen="licenses.detail"] .today-label {
+    position: absolute;
+    top: 12px;
+    left: var(--v);
+    margin-left: -5px;
+    font-size: 12px;
+    line-height: 16px;
+    white-space: nowrap;
+    color: var(--pk-text-default);
+  }
+  [data-screen="licenses.detail"] .span-line {
+    padding-bottom: 18px;
+  }
+  [data-screen="licenses.detail"] .end-box {
+    display: flex;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: var(--pk-surface-sunken);
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-default);
+  }
+  [data-screen="licenses.detail"] .end-box > .ic {
+    flex: none;
+    margin-top: 1px;
+    color: var(--pk-accent-fg);
+  }
+  [data-screen="licenses.detail"] .end-box strong {
+    display: block;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="licenses.detail"] .origin-rule {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px;
+    border: 1px solid var(--mk-line);
+    border-radius: 12px;
+    font-size: 13px;
+    color: var(--pk-text-default);
+  }
+  [data-screen="licenses.detail"] .rule-when,
+  [data-screen="licenses.detail"] .rule-gets {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+  [data-screen="licenses.detail"] .rule-gets {
+    padding-left: 20px;
+  }
+  [data-screen="licenses.detail"] .rule-when > .ic {
+    width: 14px;
+    height: 14px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="licenses.detail"] .side-facts {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="licenses.detail"] .side-facts > div {
+    display: flex;
+    gap: 8px;
+  }
+  [data-screen="licenses.detail"] .side-facts .ic {
+    flex: none;
+    width: 14px;
+    height: 14px;
+    margin-top: 2px;
+    color: var(--pk-text-subtle);
+  }
+  @container screen (max-width: 1023px) {
+    [data-screen="licenses.detail"] .detail-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    [data-screen="licenses.detail"] .detail-grid > aside {
+      order: -1;
+    }
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="licenses.detail"] .limit-row {
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-areas:
+        "name value"
+        "src action";
+      padding: 12px 16px;
+    }
+    [data-screen="licenses.detail"] .limit-name {
+      grid-area: name;
+    }
+    [data-screen="licenses.detail"] .limit-value {
+      grid-area: value;
+      text-align: right;
+    }
+    [data-screen="licenses.detail"] .limit-src {
+      grid-area: src;
+    }
+    [data-screen="licenses.detail"] .limit-row > .btn,
+    [data-screen="licenses.detail"] .limit-row > .link {
+      grid-area: action;
+    }
+    [data-screen="licenses.detail"] .limits-foot {
+      padding: 10px 16px 12px;
+    }
+    [data-screen="licenses.detail"] .addon-row,
+    [data-screen="licenses.detail"] .device-row {
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      padding: 12px 16px;
+    }
+    [data-screen="licenses.detail"] .addon-row > .addon-meta,
+    [data-screen="licenses.detail"] .device-row > .addon-meta {
+      grid-column: 2 / -1;
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 0 10px;
+      align-items: baseline;
+    }
+    [data-screen="licenses.detail"] .addon-row > .btn,
+    [data-screen="licenses.detail"] .device-row > .btn {
+      grid-row: 1;
+      grid-column: 3;
+    }
+    [data-screen="licenses.detail"] .seats-head {
+      width: 120px;
+    }
+    /* Phone: the tab counts hide so all five tabs fit without scrolling. */
+    [data-screen="licenses.detail"] .tabs {
+      gap: 0;
+      justify-content: space-between;
+    }
+    [data-screen="licenses.detail"] .tab .count {
+      display: none;
+    }
+    [data-screen="licenses.detail"] .tier-btn {
+      flex: 1 1 auto;
+    }
+  }
+</style>
+
+<div class="console" data-service="license">
+  <header class="topbar" data-service="core">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <nav class="sidebar" aria-label="DJDL">
+    <div class="ctx">
+      <span class="logo sm" data-product="djdl"></span>
+      <span class="ctx-text"><span class="ctx-name">DJDL</span><span class="ctx-sub mono">djdl</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item" href="#"><i class="ic ic-layout-dashboard"></i><span class="nav-text">Overview</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-plug"></i><span class="nav-text">Integration</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-shield-check"></i><span class="nav-text">Access</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
+    <div class="nav-group" data-service="license">
+      <div class="nav-label">Licensing<i class="ic ic-chevron-down sm"></i></div>
+      <a class="nav-item active" href="#"><i class="ic ic-key-round"></i><span class="nav-text">Licenses</span><span class="count">1,284</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-layers"></i><span class="nav-text">Tiers</span><span class="count">5</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-puzzle"></i><span class="nav-text">Add-ons</span><span class="count">3</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-list-checks"></i><span class="nav-text">Entitlements</span></a>
+    </div>
+    <div class="nav-group closed" data-service="config"><div class="nav-label">Managed config<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="release"><div class="nav-label">Ship builds<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="identity"><div class="nav-label">Sign-in<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="sync"><div class="nav-label">Cloud Sync<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="page">
+      <header class="page-head">
+        <nav class="crumbs"><a href="#">Licenses</a><i class="ic ic-chevron-right"></i>Priya Raman</nav>
+        <div class="page-heading"><h1>Priya Raman</h1><span class="status"><i class="ic ic-circle-check"></i>Active</span></div>
+        <div class="page-sub holder-line">
+          <span class="pill sm"><i class="ic ic-user-round"></i>In an account</span>
+          <span>priya@example.edu</span>
+          <span class="id"><i class="ic ic-id-card"></i>lic_01J9W4…7HJM<i class="ic ic-copy"></i></span>
+          <span class="hide-phone">Since Sep 14, 2026</span>
+        </div>
+        <!-- The tier sits top-right as a control: it opens Change tier (licenses.change-tier). The ⋯ menu has Change tier… too. -->
+        <div class="page-actions">
+          <button class="btn outline tier-btn" aria-haspopup="dialog" aria-label="Tier: Education. Change tier"><i class="ic ic-layers"></i><span class="lbl">Tier</span><strong>Education</strong><i class="ic ic-chevron-down"></i></button>
+          <button class="btn outline hide-phone"><i class="ic ic-key-round"></i>Add key</button>
+          <button class="btn outline icon" aria-label="More"><i class="ic ic-ellipsis"></i></button>
+        </div>
+      </header>
+
+      <!-- LX-14: one record, five tabs; Entitlements replaces Config overrides and Grants. -->
+      <nav class="tabs">
+        <a class="tab active" href="#">Status</a>
+        <a class="tab" href="#">Entitlements <span class="count">6</span></a>
+        <a class="tab" href="#">Keys <span class="count">0</span></a>
+        <a class="tab" href="#">Devices <span class="count">3</span></a>
+        <a class="tab" href="#">Activity</a>
+      </nav>
+
+      <div class="detail-grid">
+        <div class="stack gap-6">
+          <!-- Limits (LX-32, LX-33): one resolver, license > tier > platform default, each value with its source. -->
+          <section class="card" aria-labelledby="limits-title">
+            <div class="card-head">
+              <div class="title">
+                <h2 id="limits-title">Limits</h2>
+                <p>What Priya’s devices get. Each value comes from this license, else Education, else the platform default.</p>
+              </div>
+              <button class="btn outline sm hide-phone"><i class="ic ic-calendar-clock"></i>Preview at a date…</button>
+            </div>
+            <div class="limit-rows">
+              <div class="limit-row">
+                <div class="limit-name"><i class="ic ic-monitor-smartphone"></i>Devices</div>
+                <div class="limit-value tnum">4</div>
+                <div class="limit-src">
+                  <span class="pill sm"><i class="ic ic-layers"></i>2 from Education</span>
+                  <span>+</span>
+                  <span class="pill sm"><i class="ic ic-puzzle"></i>2 from seat pack</span>
+                </div>
+                <button class="btn outline xs">Override</button>
+              </div>
+              <div class="limit-row overridden">
+                <div class="limit-name"><i class="ic ic-wifi-off"></i>Offline days</div>
+                <div class="limit-value tnum">14 days</div>
+                <div class="limit-src">
+                  <span class="pill sm src-license"><i class="ic ic-key-round"></i>Set on this license</span>
+                  <span>Education gives 7</span>
+                </div>
+                <button class="btn outline xs">Use Education’s</button>
+              </div>
+              <div class="limit-row">
+                <div class="limit-name"><i class="ic ic-git-branch"></i>Release tracks</div>
+                <div class="limit-value">stable</div>
+                <div class="limit-src">
+                  <span class="pill sm"><i class="ic ic-polaris"></i>Platform default</span>
+                </div>
+                <button class="btn outline xs">Override</button>
+              </div>
+              <div class="limit-row">
+                <div class="limit-name"><i class="ic ic-tag"></i>Versions</div>
+                <div class="limit-value">Any</div>
+                <div class="limit-src">
+                  <span class="pill sm"><i class="ic ic-polaris"></i>Platform default</span>
+                  <span>After Sep 14, 2027: the kept version</span>
+                </div>
+                <button class="btn outline xs">Override</button>
+              </div>
+              <div class="limit-row">
+                <div class="limit-name"><i class="ic ic-fingerprint"></i>Fingerprint mode</div>
+                <div class="limit-value">Normal</div>
+                <div class="limit-src">
+                  <span class="pill sm"><i class="ic ic-layers"></i>From Education</span>
+                  <span>Set on the tier only</span>
+                </div>
+                <a class="link" href="#">Open tier<i class="ic ic-arrow-right"></i></a>
+              </div>
+            </div>
+            <div class="limits-foot"><i class="ic ic-info sm"></i><span>Devices receive these values in their signed license. Add-ons can only add devices and release tracks.</span></div>
+          </section>
+
+          <!-- Add-ons held (LX-35): every grant references an add-on; source, duration and actions per row. -->
+          <section class="card" aria-labelledby="addons-title">
+            <div class="card-head">
+              <div class="title"><h2 id="addons-title">Add-ons</h2><p>Held by this license, on top of what Education includes.</p></div>
+              <button class="btn outline sm"><i class="ic ic-gift"></i>Comp an add-on…</button>
+            </div>
+            <div class="addon-rows">
+              <div class="addon-row">
+                <span class="icon-tile sm"><i class="ic ic-shield"></i></span>
+                <div class="grow">
+                  <div class="row-title">Polaris VPN <code>polarisVpn</code></div>
+                  <div class="row-sub">Automatic grant · claim <span class="mono">vpnAccess</span> is true</div>
+                </div>
+                <div class="addon-meta"><span>Lifetime</span><span class="muted">Since Sep 14, 2026</span></div>
+                <button class="btn ghost icon sm" aria-label="More"><i class="ic ic-ellipsis"></i></button>
+              </div>
+              <div class="addon-row">
+                <span class="icon-tile sm"><i class="ic ic-audio-waveform"></i></span>
+                <div class="grow">
+                  <div class="row-title">Stem separation <code>stems</code></div>
+                  <div class="row-sub">Comp by Ada Lovelace · “October campus workshop”</div>
+                </div>
+                <div class="addon-meta"><span>Ends Dec 31, 2026</span><span class="muted">Since Oct 2, 2026</span></div>
+                <button class="btn ghost icon sm" aria-label="More"><i class="ic ic-ellipsis"></i></button>
+              </div>
+              <div class="addon-row">
+                <span class="icon-tile sm"><i class="ic ic-monitor-smartphone"></i></span>
+                <div class="grow">
+                  <div class="row-title">Extra devices (2) <span class="pill sm"><i class="dot"></i>Seat pack</span></div>
+                  <div class="row-sub">Comp by Ada Lovelace · for the B12 studio iMac</div>
+                </div>
+                <div class="addon-meta"><span>Lifetime</span><span class="muted">Since Sep 20, 2026</span></div>
+                <button class="btn ghost icon sm" aria-label="More"><i class="ic ic-ellipsis"></i></button>
+              </div>
+            </div>
+          </section>
+
+          <!-- Devices: the summary here; the Devices tab has the shared DeviceTable. -->
+          <section class="card" aria-labelledby="devices-title">
+            <div class="card-head">
+              <div class="title"><h2 id="devices-title">Devices</h2></div>
+              <div class="seats-head"><span class="small tnum nowrap">3 of 4</span><div class="progress" style="--v: 75%"></div></div>
+            </div>
+            <div class="device-rows">
+              <div class="device-row">
+                <span class="dev-icon"><i class="ic ic-laptop"></i></span>
+                <div class="grow">
+                  <div class="row-title">Priya’s MacBook Air</div>
+                  <div class="row-sub"><i class="ic ic-apple xs"></i> macOS 15.6 · DJDL 4.2.0 · signed in</div>
+                </div>
+                <div class="addon-meta"><span>6 min ago</span><span class="muted">Since Sep 14</span></div>
+                <button class="btn ghost icon sm" aria-label="More"><i class="ic ic-ellipsis"></i></button>
+              </div>
+              <div class="device-row">
+                <span class="dev-icon"><i class="ic ic-monitor"></i></span>
+                <div class="grow">
+                  <div class="row-title">B12 studio iMac</div>
+                  <div class="row-sub"><i class="ic ic-apple xs"></i> macOS 15.5 · DJDL 4.2.0 · signed in</div>
+                </div>
+                <div class="addon-meta"><span>2 days ago</span><span class="muted">Since Sep 20</span></div>
+                <button class="btn ghost icon sm" aria-label="More"><i class="ic ic-ellipsis"></i></button>
+              </div>
+              <div class="device-row">
+                <span class="dev-icon"><i class="ic ic-laptop"></i></span>
+                <div class="grow">
+                  <div class="row-title">Gig laptop</div>
+                  <div class="row-sub"><i class="ic ic-windows xs"></i> Windows 11 · DJDL 4.1.3 · signed in</div>
+                </div>
+                <div class="addon-meta"><span>Sep 30</span><span class="muted">Since Sep 16</span></div>
+                <button class="btn ghost icon sm" aria-label="More"><i class="ic ic-ellipsis"></i></button>
+              </div>
+            </div>
+            <div class="card-foot start"><a class="link" href="#">Open Devices<i class="ic ic-arrow-right"></i></a></div>
+          </section>
+        </div>
+
+        <aside class="stack gap-6">
+          <!-- Duration (LX-41): fixed, one year from the tier, then keeps the last version. -->
+          <section class="card" aria-labelledby="duration-title">
+            <div class="card-head">
+              <div class="title"><h2 id="duration-title">Duration</h2><p>Fixed, 1 year, from Education</p></div>
+              <button class="btn outline xs">Change</button>
+            </div>
+            <div class="card-body stack gap-4">
+              <div class="span-line">
+                <span class="tnum">Sep 14, 2026</span>
+                <div class="span-track" style="--v: 6%"><div class="progress" style="--v: 6%"></div><span class="today-dot"></span><span class="today-label">Today · Oct 7</span></div>
+                <span class="tnum strong">Sep 14, 2027</span>
+              </div>
+              <div class="end-box">
+                <i class="ic ic-archive"></i>
+                <div><strong>Then keeps the last version</strong>Priya keeps running the last DJDL version released by Sep 14, 2027. Today that is 4.2.0.</div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Origin (LX-38): the access policy issued it; account-keyed, no key minted. -->
+          <section class="card" aria-labelledby="origin-title">
+            <div class="card-head">
+              <span class="icon-tile sm"><i class="ic ic-sparkles"></i></span>
+              <div class="title"><h2 id="origin-title">Automatic grant</h2><p>Issued by DJDL’s access policy</p></div>
+            </div>
+            <div class="card-body stack gap-4">
+              <p class="small">Priya signed in with a verified <span class="mono">example.edu</span> email on Sep 14, 2026, and this rule matched:</p>
+              <div class="origin-rule"><div class="rule-when"><i class="ic ic-at-sign"></i>Verified email domain <span class="mono strong">example.edu</span></div><div class="rule-gets"><span class="muted">gets</span><span class="pill sm tier-pill"><i class="ic ic-layers"></i>Education</span></div></div>
+              <div class="side-facts">
+                <div><i class="ic ic-trending-up"></i><span>If a rule gives her a higher tier, her next sign-in moves this license up. Nothing moves it down.</span></div>
+                <div><i class="ic ic-key-round"></i><span>No key: automatic licenses don’t make one. New devices sign in as priya@example.edu. Add key makes one for an offline machine.</span></div>
+              </div>
+            </div>
+            <div class="card-foot start"><a class="link" href="#">Open Access<i class="ic ic-arrow-right"></i></a></div>
+          </section>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>

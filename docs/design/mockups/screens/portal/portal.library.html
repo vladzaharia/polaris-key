@@ -1,0 +1,290 @@
+<style>
+  /* portal.library: only what the kit does not already say. */
+  [data-screen="portal.library"] .lib-title p {
+    margin-top: 8px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="portal.library"] .lib-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  [data-screen="portal.library"] .ptile-head .logo.lg {
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+  }
+  [data-screen="portal.library"] .ptile-head h3 {
+    font-size: 18px;
+    line-height: 24px;
+    font-weight: 700;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="portal.library"] .ptile-body {
+    gap: 12px;
+    padding-top: 14px;
+  }
+  /* Tier, devices and platforms on one line. */
+  [data-screen="portal.library"] .lic-pills {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  [data-screen="portal.library"] .lic-pills .platforms {
+    margin-left: auto;
+  }
+  [data-screen="portal.library"] .pill.tier {
+    color: var(--pk-text-strong);
+  }
+  /* The license facts: duration, holder and source, add-ons. */
+  [data-screen="portal.library"] .lic-lines {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  [data-screen="portal.library"] .lic-lines li {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    color: var(--pk-text-default);
+  }
+  [data-screen="portal.library"] .lic-lines .ic {
+    flex: none;
+    width: 14px;
+    height: 14px;
+    margin-top: 3px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="portal.library"] .lic-lines .muted {
+    color: var(--pk-text-muted);
+  }
+  /* The whole tile opens the product page: the name's link is stretched over it (its accessible
+     name stays the product name); the buttons sit above the stretched link. */
+  [data-screen="portal.library"] .ptile {
+    position: relative;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  [data-screen="portal.library"] .ptile-head {
+    position: static;
+  }
+  [data-screen="portal.library"] .ptile-head .logo {
+    position: relative;
+    z-index: 1;
+  }
+  [data-screen="portal.library"] .ptile-head h3 a::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    border-radius: inherit;
+  }
+  [data-screen="portal.library"] .ptile-foot {
+    position: relative;
+    z-index: 3;
+  }
+  [data-screen="portal.library"] .ptile:has(h3 a:hover) {
+    transform: translateY(-2px);
+    box-shadow: var(--pk-elevation-2);
+  }
+  /* Quick actions follow the device (PORTAL.md §5.4): .ua-desk on a computer, .ua-phone on a phone. */
+  [data-screen="portal.library"] .ua-phone {
+    display: none !important;
+  }
+  [data-screen="portal.library"] .foot-meta {
+    flex-basis: 100%;
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--pk-text-muted);
+  }
+  /* The third slot: how a license gets into the account. */
+  [data-screen="portal.library"] .add-tile {
+    border-style: dashed;
+    background: transparent;
+    box-shadow: none;
+    padding: 24px;
+    gap: 16px;
+  }
+  [data-screen="portal.library"] .add-tile h3 {
+    font-size: 16px;
+    line-height: 22px;
+    font-weight: 700;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="portal.library"] .add-tile > p {
+    font-size: 13px;
+    color: var(--pk-text-muted);
+    margin-top: -10px;
+  }
+  [data-screen="portal.library"] .ways {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  [data-screen="portal.library"] .ways li {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="portal.library"] .ways .icon-tile {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+  }
+  [data-screen="portal.library"] .ways strong {
+    display: block;
+    font-size: 14px;
+    line-height: 20px;
+  }
+  [data-screen="portal.library"] .add-tile .btn-row {
+    margin-top: auto;
+  }
+  [data-screen="portal.library"] .closing {
+    font-size: 13px;
+    color: var(--pk-text-muted);
+  }
+  @container screen (max-width: 1023px) {
+    [data-screen="portal.library"] .lib-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="portal.library"] .lib-grid {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 16px;
+    }
+    [data-screen="portal.library"] .add-tile {
+      padding: 20px;
+    }
+    [data-screen="portal.library"] .ua-desk {
+      display: none !important;
+    }
+    [data-screen="portal.library"] .ua-phone {
+      display: inline-flex !important;
+    }
+    [data-screen="portal.library"] p.ua-phone {
+      display: block !important;
+    }
+    [data-screen="portal.library"] .ptile-foot {
+      flex-wrap: wrap;
+    }
+    [data-screen="portal.library"] .ptile-foot > .ua-phone.btn {
+      flex: 1;
+    }
+  }
+</style>
+
+<div class="portal" data-service="core">
+  <header class="portal-top">
+    <a class="portal-brand" href="#"><i class="pk-mark sm"></i>Polaris Key</a>
+    <nav class="portal-nav" aria-label="Portal">
+      <a class="active" href="#">Library <span class="count">2</span></a>
+      <a href="#">Discover</a>
+    </nav>
+    <div class="portal-actions">
+      <button class="btn outline sm"><i class="ic ic-key-round accent"></i>Activate license</button>
+      <span class="account"><span class="avatar sm">PR</span><span>Priya Raman</span><i class="ic ic-chevron-down"></i></span>
+    </div>
+  </header>
+
+  <main class="portal-page">
+    <div class="lib-title">
+      <h1>Your library</h1>
+      <p>2 products · signed in as <strong>priya@example.edu</strong></p>
+    </div>
+
+    <div class="ptiles lib-grid">
+      <!-- DJDL: Education from DJDL's access policy (verified email domain example.edu), no key,
+           a fixed year that keeps the last version (LX-41), three add-ons (licenses.detail). -->
+      <article class="ptile" aria-labelledby="tile-djdl">
+        <div class="art" data-product="djdl"></div>
+        <div class="ptile-head">
+          <span class="logo lg" data-product="djdl"></span>
+          <h3 id="tile-djdl"><a href="#">DJDL</a></h3>
+        </div>
+        <div class="ptile-body">
+          <div class="lic-pills">
+            <span class="pill sm tier"><i class="ic ic-key-round"></i>Education</span>
+            <span class="pill sm"><i class="ic ic-monitor-smartphone"></i>3 of 4 devices</span>
+            <span class="platforms" aria-label="macOS and Windows"><i class="ic ic-apple"></i><i class="ic ic-windows"></i></span>
+          </div>
+          <ul class="lic-lines">
+            <li><i class="ic ic-calendar-clock"></i><span>Updates until Sep 14, 2027 <span class="muted">· then keeps the last version</span></span></li>
+            <li><i class="ic ic-user-check"></i><span>In your account <span class="muted">· Automatic grant</span></span></li>
+            <li><i class="ic ic-puzzle"></i><span>Add-ons: Polaris VPN, Stem separation, <span class="nowrap">Extra devices (2)</span></span></li>
+          </ul>
+        </div>
+        <div class="ptile-foot">
+          <!-- A computer gets its build; a phone, where DJDL doesn't run, gets the link by email. -->
+          <button class="btn outline ua-desk"><i class="ic ic-download"></i>Download for macOS</button>
+          <button class="btn outline ua-phone"><i class="ic ic-mail"></i>Email me the download</button>
+          <button class="btn outline icon" aria-label="More for DJDL"><i class="ic ic-ellipsis"></i></button>
+          <p class="foot-meta ua-phone">macOS and Windows only</p>
+        </div>
+      </article>
+
+      <!-- Diceroll: Standard (the Full game SKU) bought on the App Store, lifetime, every device in use,
+           the Dice skins add-on bought today (commerce.sales). -->
+      <article class="ptile" aria-labelledby="tile-diceroll">
+        <div class="art" data-product="diceroll"></div>
+        <div class="ptile-head">
+          <span class="logo lg" data-product="diceroll"></span>
+          <h3 id="tile-diceroll"><a href="#">Diceroll</a></h3>
+        </div>
+        <div class="ptile-body">
+          <div class="lic-pills">
+            <span class="pill sm tier"><i class="ic ic-key-round"></i>Standard</span>
+            <span class="pill sm warning"><i class="ic ic-triangle-alert"></i>3 of 3 devices · full</span>
+            <span class="platforms" aria-label="iOS, Android, Windows and Linux"><i class="ic ic-smartphone"></i><i class="ic ic-android"></i><i class="ic ic-windows"></i><i class="ic ic-linux"></i></span>
+          </div>
+          <ul class="lic-lines">
+            <li><i class="ic ic-calendar-clock"></i><span>Lifetime</span></li>
+            <li><i class="ic ic-user-check"></i><span>In your account <span class="muted">· Bought on the App Store</span></span></li>
+            <li><i class="ic ic-puzzle"></i><span>Add-on: Dice skins</span></li>
+          </ul>
+        </div>
+        <div class="ptile-foot">
+          <button class="btn outline"><i class="ic ic-monitor-smartphone"></i>Free a device</button>
+          <button class="btn outline icon" aria-label="More for Diceroll"><i class="ic ic-ellipsis"></i></button>
+        </div>
+      </article>
+
+      <!-- How a license joins the account: a floating key, a waiting license, a store purchase
+           (Steam through a sign-in method; App Store and Google Play through the game's sign-in). -->
+      <aside class="ptile add-tile" aria-labelledby="add-title">
+        <h3 id="add-title">Missing a license?</h3>
+        <p>A license shows up here once it's in your account.</p>
+        <ul class="ways">
+          <li>
+            <span class="icon-tile muted"><i class="ic ic-key-round"></i></span>
+            <span><strong>You have a license key</strong>Activate it once and it moves into your account.</span>
+          </li>
+          <li>
+            <span class="icon-tile muted"><i class="ic ic-mail"></i></span>
+            <span><strong>It was sent to another email</strong>Add that email under Sign-in methods. It arrives as soon as you confirm the email.</span>
+          </li>
+          <li>
+            <span class="icon-tile muted"><i class="ic ic-store"></i></span>
+            <span><strong>You bought it in a store</strong>Steam: add Steam as a sign-in method. App Store and Google Play: open the game, sign in with this account once, and your purchases follow.</span>
+          </li>
+        </ul>
+        <div class="btn-row">
+          <button class="btn outline sm"><i class="ic ic-key-round"></i>Activate license</button>
+          <a class="btn link sm" href="#">Sign-in methods<i class="ic ic-arrow-right"></i></a>
+        </div>
+      </aside>
+    </div>
+
+    <p class="closing">That's everything in the account for priya@example.edu and priya.raman@example.com.</p>
+  </main>
+
+  <footer class="portal-foot">Polaris Key · <a href="#">key.plrs.im</a> · Help · Privacy · Terms</footer>
+
+  <nav class="portal-tabbar" aria-label="Portal">
+    <a class="active" href="#"><i class="ic ic-layout-grid"></i>Library</a>
+    <a class="act" href="#"><i class="ic ic-key-round"></i>Activate</a>
+    <a href="#"><i class="ic ic-sparkles"></i>Discover</a>
+  </nav>
+</div>

@@ -1,0 +1,59 @@
+{
+  "id": "commerce.turn-off-licensing",
+  "title": "Turn off Licensing (names Commerce)",
+  "area": "commerce",
+  "surface": "console",
+  "packages": [
+    "ST-38",
+    "CM-29"
+  ],
+  "uxRows": [
+    "UX-66"
+  ],
+  "summary": "Diceroll's Features page, dimmed, with the confirmation that appears when Licensing's switch is turned off while Commerce is on: it says what turning Licensing off does, names Commerce as the dependent that turns off in the same change and what that stops, says what is kept, and that turning Licensing back on doesn't turn Commerce back on.",
+  "compare": [
+    "The confirmation appears before anything changes; behind it the Licensing switch still shows on and Commerce reads 'Selling on App Store, Google Play and Steam'. Focus starts on Cancel (drawn with the focus ring) and returns to the Licensing switch on close.",
+    "The title is a question naming the feature and the product ('Turn off Licensing for Diceroll?').",
+    "The body says first what turning off Licensing does to players ('New players can't activate Diceroll. Players already activated keep playing until their 14 offline days run out.', from the tier's offline days), then 'Commerce needs Licensing, so it turns off too, in the same change:' and one bullet per dependent with its real effect. For Commerce that is: the storefronts keep selling (integration.md §1.4: store links stay shown, and nothing takes products off sale) but new purchases won't reach players' licenses. The store list and offer count are generated from storefronts that are Live and the offers on sale there, so they match the Commerce row behind; itch.io, whose purchases never reach licenses, isn't named. Dependents are listed transitively from tools/services.json.",
+    "What is kept is stated in numbers (18,240 licenses, their add-ons and every past purchase), and the rule that re-enabling a requirement does not re-enable its dependents is said in one sentence.",
+    "It is an L1 confirm, intent caution (ADMIN.md: disable a service): a warning icon before the title and a primary button that names everything that happens, 'Turn off Licensing and Commerce'. Cancel is neutral. No typed confirmation: nothing is deleted.",
+    "Confirming writes one audited batch (license off, commerce off) and the toast says 'Licensing and Commerce are off for Diceroll'; the Commerce group leaves the sidebar.",
+    "With no dependents on, turning Licensing off asks a shorter question with only its own effect.",
+    "Phone: a bottom sheet (grab handle, rounded top, body scrolling within 90% of the screen), buttons pinned full width with the primary on top."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: the dialog now says the stores keep selling while purchases stop reaching licenses, matches the row behind it, follows the L1 caution rule, starts focus on Cancel and is a bottom sheet on phone.",
+    "findings": [
+      {
+        "severity": "blocking",
+        "issue": "[plan / wrong thing] The dialog says Diceroll's 4 offers stop selling on the App Store, Google Play, Steam and itch.io; the plan keeps store links shown with Commerce off, nothing removes products from sale, Steam and itch.io have no API for it, and the row behind names 3 stores.",
+        "resolution": "Rewritten from integration.md §1.4: 'Commerce: the App Store, Google Play and Steam keep selling Diceroll's 4 offers, but new purchases won't reach players' licenses.' A warning callout in the dialog says to take the offers off sale first (Stop selling on an offer reaches the App Store and Google Play; Steam is changed by hand in Steamworks) with Open Offers. The store list and count come from Live storefronts and their offers, so they match the row behind; itch.io is left out because its purchases never reached licenses."
+      },
+      {
+        "severity": "major",
+        "issue": "[functional / a11y] The focus ring is drawn on the Licensing switch behind the scrim, while EXPERIENCE.md §7 says focus starts on Cancel.",
+        "resolution": "The focus ring is on Cancel; compare item 1 says focus starts on Cancel and returns to the Licensing switch on close."
+      },
+      {
+        "severity": "major",
+        "issue": "[copy] The first sentence describes the system, not the 18,240 players, so it's unclear whether owners lose access today, at their next check, or never.",
+        "resolution": "The first line is the player effect: 'New players can't activate Diceroll. Players already activated keep playing until their 14 offline days run out.' (the tier's offline days, generated). The numbers line for what is kept stays."
+      },
+      {
+        "severity": "major",
+        "issue": "[consistency with house rules] On phone the dialog is anchored to the top with 12px margins, not a bottom sheet (ADMIN.md §Overlays).",
+        "resolution": "Uses the kit's new .overlay.sheet: a bottom sheet with a grab handle, the body scrolling within 90% of the screen and the buttons pinned full width, primary on top. Compare item 8 updated."
+      },
+      {
+        "severity": "minor",
+        "issue": "[house rules] EXPERIENCE.md §6 and ADMIN.md make turning a service off L1 (intent caution); the mockup uses the L2 danger button.",
+        "resolution": "Uses intent caution as ADMIN.md's L1 row says: a warning icon before the title (new kit class .dialog.caution) and a primary 'Turn off Licensing and Commerce'. ADMIN.md is outside this workflow, so the rule was followed rather than amended."
+      }
+    ]
+  },
+  "order": 26
+}

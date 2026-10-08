@@ -1,0 +1,53 @@
+{
+  "id": "admin.members",
+  "title": "Members",
+  "area": "admin",
+  "surface": "console",
+  "order": 1,
+  "packages": [
+    "ST-31",
+    "ST-29",
+    "ST-30",
+    "ST-32",
+    "ST-45"
+  ],
+  "uxRows": [],
+  "summary": "Platform → Members: one table of everyone with a role binding, their summed roles (Superadmin, Platform admin, Product admin for one product or all, narrowed to areas, Console access), where each role came from, and invites as bindings on an email. The root rule is shown above the table and its members cannot be removed here.",
+  "compare": [
+    "The sidebar is the Platform context with Members active; the page has three tabs: Members (10), SSO rules (3) and Roles.",
+    "The root-rule callout sits above the table: it names the group (polaris-admins) and the connection (Pocket ID), says it comes from PLATFORM_ADMIN_GROUP at deploy time, and links to SSO rules. There is no edit or remove control on it.",
+    "Each row shows the person's roles as tags that add up: Superadmin (crown), Platform admin (shield), '<Product> admin' with the product logo, 'All products admin' (layers glyph), and Console access only when the person has nothing else. Every other role implies Console access, so it never appears beside them.",
+    "An area-narrowed Product admin shows the areas after a divider with each area's service glyph (Diceroll admin · Ship builds, Commerce). No Product editor or Product viewer role exists.",
+    "'Access from' lists every source of a binding on its own line: Root rule, SSO rule (rule name or matched domain in mono), Added by <person> with a date, Created <product> (the creator becomes that product's admin), Invite.",
+    "Invites are rows in the same table: the email as the title, a dashed mail avatar, who invited and when, the role they will get, and 'Waiting for first sign-in'. They are not a separate list or tab, and the table foot counts the same rows as the tab: '10 people: 8 members, 2 invites waiting'.",
+    "The row menu on a root-rule member offers Edit roles, Sign out everywhere and Show activity; 'Remove from console' is unavailable and the menu says why and what to do instead (take the person out of polaris-admins at Pocket ID).",
+    "The row menu on a member whose only role comes from an SSO rule (Lucía, Other states) offers 'Add a role…' (a direct binding on top of the rule's role), 'Edit rule <name>' for Superadmins only, Sign out everywhere and Show activity; 'Remove from console' is locked and says removing isn't possible while the rule matches. Diceroll → Settings → Members offers the same as 'Add areas…'.",
+    "Last console sign-in shows the time and the method (Passkey, Pocket ID, Studio Okta); no row ever shows an email-code sign-in, because an email code alone never opens the console.",
+    "Only Superadmins and Platform admins see this page; the list is the same for both, but a Platform admin's Edit roles cannot grant Superadmin or Platform admin.",
+    "Phone: the table becomes stacked rows (avatar, name and email with the menu at the right, then the role tags and the access sources indented under the name); each role tag takes its own line, and a narrowed role shows its areas (glyph and name) on the line under the tag, outside it, so the tag never wraps into a box. The last-sign-in column is dropped and the open row menu over the table is not drawn."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Pass with minor polish; all three minor findings applied.",
+    "findings": [
+      {
+        "severity": "minor",
+        "issue": "The tab reads 'Members 10' but the table footer reads '8 members • 2 invites waiting'.",
+        "resolution": "The footer now reads '10 people: 8 members, 2 invites waiting', counting the same rows as the tab (invites are rows in the same table)."
+      },
+      {
+        "severity": "minor",
+        "issue": "On phone a role tag narrowed to areas wraps into a two-line rounded box and loses its divider.",
+        "resolution": "Narrowed roles use a role-set: on desktop the tag, a divider and the areas still read as one tag; on phone the tag stands alone and the areas (service glyph and name) sit on the next line outside it, one role per line. The same markup is used on Invite, SSO rules, Product members and No access, so the tag looks the same everywhere."
+      },
+      {
+        "severity": "minor",
+        "issue": "Members whose only role comes from a rule get a ⋯ menu here but 'Set by a rule' on the product Members page, and nothing shows what Edit roles does to such a role.",
+        "resolution": "Added an Other states board with Lucía's row menu: 'Add a role…' (a direct binding on top of the rule), 'Edit rule diceroll-store' (Superadmins only), Sign out everywhere, Show activity, and a locked 'Remove from console' saying removing isn't possible while the rule matches. Product members mirrors it with 'Add areas…'. Jonas's root-rule note no longer uses pronouns."
+      }
+    ]
+  }
+}

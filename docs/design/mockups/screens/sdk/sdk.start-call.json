@@ -1,0 +1,51 @@
+{
+  "id": "sdk.start-call",
+  "title": "polaris-key.json and the start call",
+  "area": "sdk",
+  "surface": "code",
+  "order": 1,
+  "packages": [
+    "SP-32a",
+    "SP-32b",
+    "SP-35",
+    "SP-33b"
+  ],
+  "uxRows": [],
+  "summary": "DJDL's polaris-key.json with the flat names SDKs already ship, where each SDK reads it, how it gets into a project, and the start call fromConfig() then boot() as one tab per SDK (Swift active) with the other five goldens beside it.",
+  "compare": [
+    "The file has exactly $schema, configVersion, productSlug, baseUrl, pinnedKeys, pinnedReleaseKeys and expectedServices (C-24's flat names); no nested product/pins/services shape, no secret, no version field.",
+    "DJDL's real signing kid and key (djdl-2026, P0nMyA9Q…_6E) appear; the release kid is djdl-rk-2026; expectedServices lists DJDL's enabled service slugs and not commerce, which is off.",
+    "Every tab starts with fromConfig() (Python from_config) then boot(); React's provider takes config={polarisKey} and runs both; Godot's autoload reads res://polaris-key.json with boot() alone; Kotlin names the Android entry point in a comment.",
+    "No tab passes a product slug, base URL, key or service list by hand, and no tab calls discover(); create(options) is mentioned once, as the low-level call.",
+    "The reading table matches the SDKs: Node beside package.json, React a bundled JSON import, Python a path or package data with version= required, Swift the bundle, Kotlin assets/ or the classpath, Godot res:// kept by the export filter; nothing is fetched from the network.",
+    "The three sources are pkey sdk add swift --dir macos/ with --expect (no trust on first use), on one unbroken line that scrolls in its row, with the note that outside the repository it takes --product djdl as Integration's copied command does; Download on Integration (active and staged keys); and the Godot dock's Import file…, which needs no Node.",
+    "Canonical names come from api.json: isLicensed / is_licensed, boot, fromConfig; no deprecated alias spelling (getConfig, expectServices, pinned_trust_keys) appears anywhere.",
+    "Phone: the two columns stack (file, sources, then the start call and table). The start call's tabs show Swift with '5 more', like the other pages. The reading table becomes one block per SDK with 'Reads from' and 'App version' lines. The five goldens become one column, and each code block scrolls sideways inside itself.",
+    "Section headings use one treatment, uppercase eyebrows: The file, The start call, How it gets into the project, The other five SDKs.",
+    "Code blocks take the core accent for the active tab and highlighted lines, as on the docs page and Integration. Every golden names the client pk."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: the tabs and the reading table re-flow on phone, the section headings use one treatment, and the command no longer breaks; Integration's differing snippet names are flagged for the lead.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "At 390px the code tab bar clips Kotlin and hides Godot instead of collapsing to 'Swift · 5 more', and the reading table clips its App version column.",
+        "resolution": "The inactive tabs are hide-phone and a '5 more' tab shows on phone, the same markup as sdk.client-doctor and sdk.docs-first-product. On phone the reading table becomes one block per SDK: the SDK name, then labelled 'Reads from' and 'App version' lines."
+      },
+      {
+        "severity": "minor",
+        "issue": "'How it gets into the project' shows pkey sdk add without --product while products.integration shows --product djdl; the Swift start uses pk and showSignIn() where Integration uses client and showActivation(); on phone the command breaks inside the kid.",
+        "resolution": "The command is now 'pkey sdk add swift --dir macos/ --expect djdl-2026@sha256:3f9a0c…e41b' on one unbroken line that scrolls in its row, with a fade. A dim note under it says the product comes from .pkey/product in DJDL's repository, and anywhere else the command takes --product djdl, as Integration's copied command does. Every golden in this area keeps pk and showSignIn(), the plan's canonical start (audits/sdk-uikits-dx.md §5.1); DJDL has Sign-in on. products.integration's 'let client', showActivation() and isEntitled are outside this area, so they are flagged for the lead to align that screen."
+      },
+      {
+        "severity": "minor",
+        "issue": "The 'The other five tabs' heading names cards that are not tabs, and the page mixes uppercase eyebrows with a sentence-case h2.",
+        "resolution": "Renamed it to 'The other five SDKs' and made it an eyebrow like The file, The start call and How it gets into the project, with its line of explanation under it."
+      }
+    ]
+  }
+}

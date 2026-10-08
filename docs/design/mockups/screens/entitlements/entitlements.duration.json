@@ -1,0 +1,58 @@
+{
+  "id": "entitlements.duration",
+  "title": "Tier duration: renewing, keeps the last version",
+  "area": "entitlements",
+  "surface": "console",
+  "packages": [
+    "LX-41",
+    "LX-43",
+    "LX-44",
+    "LX-33"
+  ],
+  "uxRows": [],
+  "summary": "DJDL's Pro tier record: the six ways to sell it as presets with Renewing, keeps the last version chosen, its settings (yearly period, what happens at lapse, versions, the product's grace days) beside a worked timeline, then Limits, Includes and Profile, all edited in place. One unsaved change (offline days 30 → 60) shows the tier's sticky save bar.",
+  "compare": [
+    "The tier record is one page with four groups in this order: Duration, Limits, Includes, Profile (Profile only while Managed config is on), all edited in place: no group has an Edit button. The tabs are Tier and Licenses (a filtered list), nothing else. The header says the tier's place in list order (Pro is 1st of 4: Pro, Pro trial, Pro 4, Standard; top is best).",
+    "Duration offers six presets in one radio group: Lifetime, Fixed, Trial, Version-scoped, Renewing, and Renewing, keeps the last version, each with a one-line plain description; exactly one is selected, drawn once (tint plus check).",
+    "Choosing a preset only fills the fields below it; the fields stay editable (Renews every, When it lapses with Stops working / Keeps the last version / Moves to another tier, Versions with Any / One major line / A range), so a fixed year that keeps its last version is reachable too.",
+    "Keeps the last version explains itself under the radio: the newest stable release published while active, stable track only, entitlements kept.",
+    "Grace after a missed renewal is read-only here (license.dunningGraceDays, the one licensing setting), shown only because the tier renews, with a link to Settings.",
+    "The timeline uses DJDL's real names and versions (4.2.0 is the newest stable today) and the portal's exact words, 'Updates ended at 4.2.0 · keeps working'.",
+    "An unsaved change shows one save bar for the tier, sticky at the bottom of the window while anything is unsaved, never inside a card. It names the group and says what Save does to how many licenses ('1 change, in Limits. Pro’s 71 licenses can stay offline for 60 days between checks instead of 30…'), with Discard and 'Save Pro'. The changed field has an accent outline and 'was 30'. Leaving with unsaved changes asks first.",
+    "Preview at a date… is in the header; it opens the tier's effective limits and entitlements at a chosen date (LX-41).",
+    "The words are Duration and Limits, never 'terms' or 'policy'; 'Release tracks', not 'channels'. The timeline's last event is 'Renewing brings updates back'.",
+    "Phone: presets stack in one column with only the selected one's description; settings sit above the timeline; the save bar is one row at the bottom of the screen ('1 change, in Limits', Discard, Save Pro) and stays there while scrolling, so it is always next to whatever changed.",
+    "Limits shows where the values it doesn't own come from: 'Versions from Duration' (read-only here, set by the Duration group) and 'Fingerprint mode platform default' until the tier sets its own.",
+    "Includes lists each entitlement with its key in muted mono under the label and its control on the right (a switch for on/off, a number with its unit for a quantity), then Add an entitlement. Profile is a select with '3 values: …' and a link to the profile."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fix, then pass: the tier record now has one editing pattern and one sticky save bar that stays in view on phone, Pro keeps the last version consistently across screens, and the limits name their sources.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "On phone the save bar sits at the bottom of the Duration card, about 1,000 px below the changed field, so a change can be left unsaved.",
+        "resolution": "The save bar is now one page-level bar for the tier, sticky at the bottom of the window (16 px up, 12 px on phone) whenever anything is unsaved, on every width. On phone it is a single row ('1 change, in Limits', Discard, Save Pro), so at rest it covers no preset. The compare adds the unsaved-changes guard when leaving."
+      },
+      {
+        "severity": "minor",
+        "issue": "Limits shows 'Versions: Any' with no source, and Fingerprint mode lacks the SourceBadge LX-44 asks for.",
+        "resolution": "Limits labels Versions 'from Duration' (Any here and on Pro trial, 4.x on Pro 4) and Fingerprint mode 'platform default'."
+      },
+      {
+        "severity": "minor",
+        "issue": "Includes runs each key into its value ('On lossless'), Profile reads '3: …', the timeline says 'Renewing lifts the cap', and Duration edits inline while Limits and Includes use Edit buttons.",
+        "resolution": "Includes rows show the key in muted mono under the label, with a switch or a number field on the right. Profile reads '3 values: …'. The event is now 'Renewing brings updates back'. There is one editing pattern: all four groups edit in place (Limits, Includes and Profile are now fields, switches and a select, with no Edit buttons), and one save bar for the tier names the group that changed (ADMIN.md T4). Applied to Pro trial and Pro 4 as well."
+      },
+      {
+        "severity": "minor",
+        "issue": "The story contradicts itself: Pro is being changed from Stops working to Keeps the last version, yet Licenses already shows Kofi on Pro as 'Updates ended at 4.1.3 · keeps working'.",
+        "resolution": "Pro already keeps the last version, so Kofi, Ines ('then keeps the last version') and Northside's health line all stay true. The unsaved change is now Offline days 30 → 60 in Limits, and the bar says: '1 change, in Limits. Pro’s 71 licenses can stay offline for 60 days between checks instead of 30, from their next refresh. None of them sets its own.'"
+      }
+    ]
+  },
+  "order": 4
+}

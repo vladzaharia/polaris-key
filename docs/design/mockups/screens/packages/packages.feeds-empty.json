@@ -1,0 +1,23 @@
+{
+  "id": "packages.feeds-empty",
+  "title": "Packages, nothing declared",
+  "area": "packages",
+  "surface": "console",
+  "order": 3,
+  "packages": [
+    "F-34"
+  ],
+  "uxRows": [
+    "UX-33"
+  ],
+  "summary": "DJDL's Packages page on Sep 29, the day before its first package was declared: one empty card that says DJDL declares no packages yet, shows the .pkey/release declaration for a package and the CI publish command, and makes clear there is nothing to turn on.",
+  "compare": [
+    "Same frame as packages.feeds: DJDL's Product context, Ship builds open, Packages active with no count, Distribution accent; the header keeps Service tokens and no switch or New feed button.",
+    "The empty card's title says what is true in DJDL's words ('DJDL declares no packages yet'); the text says a declared library or image gets its feed on the next resync, open to Customers, and that there's nothing to turn on.",
+    "The snippet is a real package deliverable for .pkey/release (kind: package, ecosystem npm with the six ecosystems in a comment, the scoped name, the tarball artifact match), and its foot gives the publish command with --deliverable and --dir.",
+    "One link to the docs for package deliverables; no cleanup callout, no machine or CI cards until a feed exists.",
+    "Phone: the card fills the width and the snippet scrolls sideways inside its block."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

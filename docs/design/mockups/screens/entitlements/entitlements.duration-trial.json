@@ -1,0 +1,38 @@
+{
+  "id": "entitlements.duration-trial",
+  "title": "Tier duration: trial",
+  "area": "entitlements",
+  "surface": "console",
+  "packages": [
+    "LX-41",
+    "LX-43",
+    "LX-44"
+  ],
+  "uxRows": [],
+  "summary": "DJDL's Pro trial tier with Trial chosen: 14 days that start as Pro and move the license to Standard at the end with no operator step, the reminder email, and a timeline of the trial's life. It also says where a billing provider's own free trial shows instead (the subscription's Trialing state).",
+  "compare": [
+    "The same tier record and preset group as entitlements.duration, with Trial selected and no unsaved change (no save bar).",
+    "Trial's settings are Length (days, counted from issue), Then moves to (a tier select, defaulting to the product's first tier) and Versions; the hint says the license and its devices stay and the target tier's limits and entitlements apply from then on.",
+    "The reminder email is a fact (3 days before the end, through the platform's notifications), not a setting.",
+    "A neutral note separates this from a subscription's Trialing state: a free trial run by DJDL's billing or a store before a paid period is shown on the license's subscription and doesn't use a trial tier.",
+    "The timeline's dates add up: issued Oct 7, reminder Oct 18, moves to Standard Oct 21 (14 days). It names exactly what turns off (lossless audio, stem separation, crates past Standard's 25) and that devices stay activated. The reminder is a neutral event with a grey dot; warning colour is kept for states where something is wrong.",
+    "Changing the license's tier to Pro before the end ends the trial; the record doesn't offer any other conversion knob.",
+    "Limits shows the trial's own values in place (5 devices, 7 offline days, stable only), Versions 'Any · from Duration' and Fingerprint mode 'Normal · platform default'; Includes says it matches Pro. No group has an Edit button, and the tier's save bar appears only after a change.",
+    "Phone: presets stack with only the selected description; Length and Then moves to are full width; the timeline sits under the settings."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Pass: the reminder is now a neutral event, and the record follows the tier's single in-place editing pattern.",
+    "findings": [
+      {
+        "severity": "minor",
+        "issue": "The Reminder email event has an amber (warning) dot, the colour Pro uses for Past due.",
+        "resolution": "The reminder's dot is now neutral grey (text-subtle). Warning stays for things that went wrong, such as Past due. Also applied from the Pro review: Limits, Includes and Profile edit in place, Versions reads 'from Duration', Fingerprint mode 'platform default', Profile '3 values: …', and the tier is 2nd of 4 in list order."
+      }
+    ]
+  },
+  "order": 5
+}

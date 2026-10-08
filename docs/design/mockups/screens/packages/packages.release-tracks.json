@@ -1,0 +1,72 @@
+{
+  "id": "packages.release-tracks",
+  "title": "Release tracks",
+  "area": "packages",
+  "surface": "console",
+  "order": 7,
+  "packages": [
+    "P2-08",
+    "P2-09",
+    "A-24",
+    "F-36",
+    "LX-33"
+  ],
+  "uxRows": [],
+  "summary": "Diceroll's Release tracks page on Oct 7 right after 1.8.0 was demoted from stable at 11:30 and one channel didn't switch back: one lane each for stable, beta, dev and the custom playtest track (now, how it got there, who gets it), the map from each track to Polaris Key and each store's lanes with what goes live by itself, Steam shown as not connected, and the partial-success toast with Retry.",
+  "compare": [
+    "The page is named Release tracks under Ship builds, in the Release accent (cyan); 'channel' here only means a distribution channel. The header has 'Add a track' (outline), which opens a sheet with the .pkey/release tracks snippet and says the track appears on the next resync; tracks are never created in the console.",
+    "stable, beta and dev say Built in; lane lines read 'every license gets it', 'beta licenses also get stable', 'dev licenses also get beta'. playtest has a dashed tag and says where it was declared. No sentence starts with a lower-case track name.",
+    "Each lane: the version now in large mono, one sentence on how it got there, a short log (published neutral dot, promoted accent up arrow, demoted warning down arrow), and 'Who gets it' counted in licenses (18,240; 312; 4; 25), with devices as secondary text on stable.",
+    "Timeline: 1.8.1 published Oct 7, 09:40; 1.8.0 demoted Oct 7, 11:30 by Ana Lima with the reason, still on beta and dev; stable back on 1.7.3, 'Published Sep 26'; dev's '11 dev builds cleaned up' on Sep 30, 16:40, when 1.7.3 reached stable.",
+    "The demote partly failed: stable's lane has a warning callout 'itch.io still serves 1.8.0' (butler timed out at 11:31 on windows-x64; the other channels went back) with 'Retry itch.io', and the toast says 'Demoted 1.8.0, except on itch.io' with Retry. Home gets an attention item for the same failure (products area).",
+    "'Promote 1.8.1 to stable' is the page's one filled primary, in beta's lane; it opens packages.promote.",
+    "The map has a Polaris Key column (download page and update checks for every track) and Diceroll's store channels only. Stable cells that go live by themselves carry 'Goes live with stable' (Polaris Key, Google Play with the staged rollout set when promoting, itch.io); the App Store says 'You submit: one typed click'. The subtitle says the same in words.",
+    "Steam matches Home and Channels: every Steam cell keeps its default lane but says 'Not sent: Steam isn't connected', and an attention row under the table explains it (no Steamworks publisher key) with Connect Steam. itch.io's channels are windows-x64 and linux-x86_64.",
+    "The toast is raised in dark (stronger fill and border) and sits over empty space, not over lane content.",
+    "Phone: the sidebar folds into the menu button, the lanes stack, Promote takes a full row, the map scrolls sideways inside its card with the Steam row under it, and the toast is pinned to the bottom safe area."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: tracks come from the manifest, the map says what goes live by itself, Steam matches Home, Promote and a partial failure are designed, and the timeline holds together.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "[Flow/plan] 'New track' contradicts how custom tracks exist (declared in .pkey/release, P2-08).",
+        "resolution": "Replaced with an outline 'Add a track' that opens a sheet with the .pkey/release tracks snippet and says the track appears on the next resync (described in compare); the map's footnote also says 'Add a track in .pkey/release'."
+      },
+      {
+        "severity": "major",
+        "issue": "[Flow/self-contradiction] The subtitle says production stays one typed click, while stable on Steam, itch.io and Google Play goes live automatically.",
+        "resolution": "Stable cells that go live by themselves carry a 'Goes live with stable' tag (Polaris Key, Google Play's staged rollout, itch.io); the App Store cell says 'You submit: one typed click'. The subtitle now reads '…When a release reaches stable, Polaris Key and itch.io serve it at once and Google Play starts the staged rollout you set; Steam's default branch will too, once Steam is connected. The App Store stays one typed click: Submit for review.' A Polaris Key column shows where every track goes."
+      },
+      {
+        "severity": "major",
+        "issue": "[Cross-area consistency] products.home says Diceroll's Steam channel can't upload builds (no Steamworks publisher key), yet Release tracks, Demote and Updates (Godot) show Steam working normally; Home also omits the App Store and itch.io.",
+        "resolution": "Kept Home's story (and distribution.channels', where Steam is 'Not set up, step 2 of 4'). Every Steam cell on Release tracks says 'Not sent: Steam isn't connected', with an attention row and Connect Steam under the map; Demote and Promote list Steam as 'Skipped' with Connect Steam; Updates (Godot) marks Steam 'Not connected'. Also aligned with distribution.channels: itch.io's channels are windows-x64 and linux-x86_64 and Diceroll has no macOS build, so the Godot updater covers Windows and Linux. Home omitting the App Store and itch.io belongs to the products area."
+      },
+      {
+        "severity": "major",
+        "issue": "[Missing state] 'Promote 1.8.1 to stable' has no confirmation, and a failed or partly failed promote is not designed.",
+        "resolution": "Added packages.promote: 'What changes' per channel with an outcome (Polaris Key at once; Google Play rollout prefilled to 20%; itch.io goes live and replaces the 1.8.0 build left by the failed demote; App Store 'Submit 1.8.1 for App Store review'; Steam skipped) and a typed '1.8.1'. A partial failure uses the form this page now shows for the demote: a warning toast naming the channel that didn't change, with Retry, and a callout in the lane."
+      },
+      {
+        "severity": "minor",
+        "issue": "[Data/timeline] The toast implies a demote that just happened, but it is logged on Oct 6 before later publishes; 'Released Sep 26' conflicts with 'promoted Sep 30'; 'Who gets it' mixes devices and licenses.",
+        "resolution": "The demote is now Oct 7, 11:30, after 1.8.1 (09:40) and dev.14 (11:02), in both logs, the toast, the demote dialog's page and Updates (Godot). Stable says 'Published Sep 26'; the dev cleanup is Sep 30, 16:40, when 1.7.3 reached stable. Who gets it counts licenses in every lane (18,240; 312; 4; 25), devices as secondary text on stable."
+      },
+      {
+        "severity": "minor",
+        "issue": "[Copy: sentence case] Sentences start with lower-case track names ('beta, dev and your own tracks…', 'stable is back on 1.7.3', 'stable goes back to 1.7.3'); 'beta · also gets stable' is ambiguous.",
+        "resolution": "No sentence starts with a lower-case track name any more: 'Every license gets the stable track. Beta, dev and your own tracks…', 'Stable is back on 1.7.3…', 'Stable, beta and dev use the default lanes', 'Stable goes back to 1.7.3'. Lane lines read 'Built in · beta licenses also get stable' and 'Built in · dev licenses also get beta'. Track tags stay lower-case mono because they are identifiers."
+      },
+      {
+        "severity": "minor",
+        "issue": "[Visual] No single primary; in dark the toast is barely raised and sits over the playtest log; on phone it covers beta's version.",
+        "resolution": "'Promote 1.8.1 to stable' is the filled primary (Release cyan); Add a track is outline. The toast is raised in dark (--mk-fill-strong fill, --pk-border-strong border), sits over beta's empty space in the mockup, and is pinned to the bottom safe area on phone, where it covers an older log line, not a current version."
+      }
+    ]
+  }
+}

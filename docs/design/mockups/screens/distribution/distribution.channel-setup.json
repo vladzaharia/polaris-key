@@ -1,0 +1,76 @@
+{
+  "id": "distribution.channel-setup",
+  "title": "Channel setup wizard",
+  "area": "distribution",
+  "surface": "console",
+  "packages": [
+    "A-23",
+    "A-33",
+    "A-28",
+    "ST-39",
+    "A-18k"
+  ],
+  "uxRows": [
+    "UX-55",
+    "UX-68"
+  ],
+  "order": 3,
+  "summary": "Steam's setup for Diceroll, page-hosted, on step 2 of 4 for you: the stepper numbers only the person's steps (Connect Steamworks, In Steamworks, Merge, Go live) after an unnumbered Polaris Key marker that spins until its work is done; the setup runner lists everything automated since one Set up consent, live, including one action that failed with its fix, Retry and the human way; the current step is a checklist of deep links with copy cards and a verifier that ticks itself and moves the wizard on.",
+  "compare": [
+    "The stepper has only human steps, numbered 1 to 4, after one unnumbered marker for Polaris Key's work that reads 'Polaris Key · 5 of 8 done' with a spinner until the runner finishes; the current step reads 'Step 2 of 4 for you'. No automated action is ever a step or counted.",
+    "Polaris Key does this names who consented and when ('Since Ana Lima chose Set up Steam · Oct 7, 10:14'), counts '5 of 8 done · 1 failed', and lists each automated action with its state (done, failed, running, then) and its source on the right (Steamworks Web API, GitHub App, From your builds, Default, Release workflow, Hosted assets). Each row's detail is a second line that wraps; nothing is truncated, and a link never is.",
+    "A failed action has a danger mark, one sentence on what went wrong and how to fix it, Retry, and the human step it replaces: 'Steam's library hero needs 3840 × 1240, and Diceroll's key art in Presentation is 1920 × 620. Upload a larger key art in Presentation, then retry.' with 'Upload the hero in Steamworks yourself'. The same pattern covers the other likely failures, in these words: 'The publisher key can't see Twelve Pips Studio's apps. Give it the Edit App Metadata permission in Steamworks, then retry.'; 'The GitHub App can't write secrets on example-org/diceroll. Allow Secrets: write for the app, then retry.'; and, after 30 minutes, 'Polaris Key hasn't found an app named Diceroll in Twelve Pips Studio's apps. Check the name, then retry.' Each falls back to the human step with the same copy cards.",
+    "Derived facts are rows, not fields: depots per built platform (no macOS depot, with the reason), the lane map 'beta → Steam's beta branch, dev → dev' with Change that opens the lane map inline, the app id to be pinned from Steamworks ('never typed'). The builder login goes to GitHub and is never kept. A row says what happens ('Each release uploads to Steam from your release workflow'), with the command only as detail in mono a size below the row text.",
+    "The step has one title ('In Steamworks') and one sentence of why. Items carry status circles (done: filled tick; current: accent ring; to do: empty), never numbers, so only the stepper counts. The done item has who and when and Undo; the current item has Open Steamworks (the step's only primary), four copy cards (App name, Type, Developer, Publisher) and a live verifier row. Valve's store page and review belong to Go live, not this step.",
+    "The footer: Do this later (left), the waiting line 'Moves on by itself when Polaris Key finds the app', and Back. There is no Continue: when the verifier finds the app the wizard opens step 3 with one notice ('Moved on: Polaris Key found Diceroll in Steamworks'). Nothing asks the person to confirm what Polaris Key can check.",
+    "The aside says why this needs a person, what comes next (Merge: pull request #57 adds the Steam upload; Go live: a Coming soon page at least two weeks before release and Valve's review of the page and a build, usually 3 to 5 business days), that the runner re-runs when facts change (a new platform adds a depot, a replaced key is checked), what uses this setup, and one docs link.",
+    "The reassurance line says what Polaris Key never does in Steamworks (prices, discounts, users).",
+    "Store rows run only after A-18k's live verification of Steam; before that, each automated row renders as the human step it replaces with the same copy cards.",
+    "The header family reads 'Store · Steamworks API and CI · Windows x64 and Linux x86_64', and the breadcrumb 'Diceroll › Ship builds › Channels › Steam'. The sidebar shows Steam active with '2 of 4'.",
+    "Phone: the stepper becomes 'Prepared by Polaris Key · 5 of 8 done' over 'Step 2 of 4 for you · In Steamworks' and a four-segment bar, with nothing clipped; the runner list collapses to 'Polaris Key did 5 things' with the failed, running and pending rows still visible; copy cards stack; the aside follows the wizard; the footer keeps the waiting line and Back; Do this later and Not using Diceroll on Steam live in the header's overflow."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: a phone stepper that fits, status circles instead of repeated numbers, wrapping runner details, a drawn failed runner row with Retry and the human way, Valve's review moved to Go live, and one auto-advance behaviour with no disabled Continue.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "[phone] The stepper is clipped at 390 (step 3's circle cut off).",
+        "resolution": "On phone the circles give way to 'Step 2 of 4 for you · In Steamworks' over a four-segment bar, with 'Prepared by Polaris Key · 5 of 8 done' and a spinner above it."
+      },
+      {
+        "severity": "major",
+        "issue": "[flow] 'Store page and Valve's review' sits in step 2 although it gates Go live, and a disabled Continue shows beside 'Continues when Polaris Key finds the app'.",
+        "resolution": "The item moved to Go live (the aside lists it under Then). The wizard auto-advances: Continue is gone, the footer says 'Moves on by itself when Polaris Key finds the app', and the compare names the notice on arrival at step 3."
+      },
+      {
+        "severity": "major",
+        "issue": "[visual] Item numerals repeat the stepper's numbers.",
+        "resolution": "Items carry status circles (filled tick, accent ring, empty), never numbers; only the stepper counts."
+      },
+      {
+        "severity": "major",
+        "issue": "[visual] Runner rows truncate the derived facts and the Change link.",
+        "resolution": "Every row's detail is a second line under the title that wraps; nothing truncates."
+      },
+      {
+        "severity": "major",
+        "issue": "[states] The runner has no failed row.",
+        "resolution": "Drawn: 'Couldn't size the store-page art' with a danger mark, one sentence on what went wrong and how to fix it, Retry, and 'Upload the hero in Steamworks yourself' (the human step it replaces); the head counts '1 failed'. I drew a failure that doesn't stop step 2 so the waiting state stays visible; the critic's example (the publisher key's permission) and the GitHub-secret and app-not-found failures are in the compare with their exact copy and the same fallback rule."
+      },
+      {
+        "severity": "minor",
+        "issue": "[dark] The disabled Continue reads as an enabled secondary in dark.",
+        "resolution": "Moot: the step auto-advances, so the footer has no disabled button to draw."
+      },
+      {
+        "severity": "minor",
+        "issue": "[copy] The Prepared marker looks complete at 5 of 8; 'Steam added to pkey storefronts sync' names a command; its mono renders large; 'Change it on Setup' links to this page.",
+        "resolution": "The marker reads 'Polaris Key · 5 of 8 done' with a spinner. The row says 'Each release uploads to Steam from your release workflow', with the command as detail. Mono in runner details is 12 px inside 13 px text rather than the suggested 13 px, because JetBrains Mono at 13 px still reads larger than Rubik at 13 px. 'Change' opens the lane map inline."
+      }
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "commerce.offer-price-failed",
+  "title": "Change price: one store refused",
+  "area": "commerce",
+  "surface": "console",
+  "packages": [
+    "CM-23"
+  ],
+  "uxRows": [],
+  "summary": "The Change price dialog after confirming, when the App Store took $3.99 but Google Play refused: the title says 1 of 2 stores, each store's row shows its result (Changed; Not changed with why and the fix in Play Console), Steam is unchanged, and Try Google Play again retries only that store.",
+  "compare": [
+    "The dialog stays open after a partial result; its title states the count ('Price changed on 1 of 2 stores') and the first line says what each store now charges.",
+    "Each store row shows its own result: App Store 'Changed' as success status with the time; Google Play as a danger row with a Not changed pill, the cause in Play Console's words (the service account lacks Manage store presence), the exact account to fix, and Open Play Console.",
+    "Try Google Play again (primary, focused) retries only the failed store with the same idempotency key; the typed confirmation isn't asked again. Close leaves the offer in a mismatch the editor shows: 'Base price $3.99 · Google Play still at $2.99' as a warning on the Price card, with the same retry.",
+    "Nothing is rolled back on the store that succeeded; the base price is recorded as $3.99 with Google Play's mismatch listed, and Activity records both outcomes.",
+    "While sending, the confirm button shows its busy state ('Changing price on 2 stores…') and the dialog can't be dismissed; each row shows a spinner until its store answers.",
+    "Phone: the same bottom sheet; the failed row's text wraps and its link stays under it."
+  ],
+  "status": "mockup",
+  "designReview": null,
+  "order": 17
+}

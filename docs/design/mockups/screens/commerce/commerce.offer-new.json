@@ -1,0 +1,25 @@
+{
+  "id": "commerce.offer-new",
+  "title": "New offer",
+  "area": "commerce",
+  "surface": "console",
+  "packages": [
+    "CM-23",
+    "CM-20",
+    "LX-11"
+  ],
+  "uxRows": [],
+  "summary": "Diceroll's New offer editor before anything exists on a store: What it sells (Table themes, an add-on, one-time), the base price empty with 'Set a base price', and SKU rows that create the App Store and Google Play products from the offer once it is saved and priced, with Steam as a copy card plus a DLC picker and itch.io explained.",
+  "compare": [
+    "Order: What it sells, Price and territories, SKUs, then the save row; the status reads 'Draft, not saved' as muted status text with a pencil.",
+    "Offer id is an editable mono field made from the name, with the rule that it is fixed once the first SKU exists; Sells uses the kit's default-size segmented control and names the add-on's kind (non-consumable: bought once, restored everywhere). Quantity appears only for a consumable add-on.",
+    "Base price is empty with the placeholder 'Set a base price' and a hint naming real Apple price points; territories default to Diceroll's (174 of 175, not China mainland) with the reason.",
+    "App Store and Google Play rows preview the product id and type Polaris Key will create and carry 'Create on App Store' / 'Create on Google Play', disabled until the offer is saved and priced (the foot says so). Create opens the L1 confirm (commerce.create-iap).",
+    "Steam has no create API: a copy card with the name to paste in Steamworks and a picker of Diceroll's DLC read from Steam; never a typed DLC id. itch.io says it sells the game only.",
+    "Save draft (primary) and Cancel sit in the save row; nothing sells until a SKU is on sale.",
+    "Phone: the two-column fields stack; SKU actions go under their text; the Steam copy card and picker stack full width."
+  ],
+  "status": "mockup",
+  "designReview": null,
+  "order": 14
+}

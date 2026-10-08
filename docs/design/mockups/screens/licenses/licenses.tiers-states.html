@@ -1,0 +1,360 @@
+<style>
+  /* licenses.tiers-states: the Tiers editor's other states. */
+  [data-screen="licenses.tiers-states"] .board {
+    gap: 40px 48px;
+  }
+  [data-screen="licenses.tiers-states"] .board-item {
+    width: calc((100% - 48px) / 2);
+  }
+  [data-screen="licenses.tiers-states"] .board-item > .card,
+  [data-screen="licenses.tiers-states"] .board-item > .dialog {
+    width: 100%;
+  }
+  [data-screen="licenses.tiers-states"] .ed-sec {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px 24px;
+  }
+  [data-screen="licenses.tiers-states"] .ed-sec + .ed-sec {
+    border-top: 1px solid var(--mk-line);
+  }
+  [data-screen="licenses.tiers-states"] .ed-sec h3 {
+    font-size: 15px;
+    line-height: 22px;
+    font-weight: 700;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="licenses.tiers-states"] .inline-fields {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+  }
+  [data-screen="licenses.tiers-states"] .input.num {
+    width: 120px;
+  }
+  [data-screen="licenses.tiers-states"] .input.ver {
+    width: 140px;
+  }
+  [data-screen="licenses.tiers-states"] .ed-sec > .segmented {
+    align-self: flex-start;
+  }
+  [data-screen="licenses.tiers-states"] .end-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  [data-screen="licenses.tiers-states"] .end-opt {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  [data-screen="licenses.tiers-states"] .end-opt .radio {
+    color: var(--pk-text-strong);
+  }
+  [data-screen="licenses.tiers-states"] .end-opt-desc {
+    padding-left: 26px;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="licenses.tiers-states"] .then {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 4px 0 0 26px;
+    font-size: 14px;
+    color: var(--pk-text-default);
+  }
+  [data-screen="licenses.tiers-states"] .then .select {
+    width: 180px;
+  }
+  [data-screen="licenses.tiers-states"] .select > .ic-layers,
+  [data-screen="licenses.tiers-states"] .tier-pill > .ic {
+    color: var(--pk-accent-fg);
+  }
+  [data-screen="licenses.tiers-states"] .example {
+    display: flex;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--pk-surface-sunken);
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-default);
+  }
+  [data-screen="licenses.tiers-states"] .example .ic {
+    flex: none;
+    margin-top: 1px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="licenses.tiers-states"] .save-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    margin: 0 12px 12px;
+    padding: 12px 16px;
+    border: 1px solid var(--pk-danger-border);
+    border-radius: 14px;
+    background: color-mix(in oklab, var(--pk-danger-subtle) 40%, var(--pk-surface-overlay));
+    box-shadow: var(--mk-pop-shadow);
+  }
+  [data-screen="licenses.tiers-states"] .save-bar .msg {
+    flex: 1 1 220px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--pk-text-default);
+  }
+  [data-screen="licenses.tiers-states"] .save-bar .msg .ic {
+    color: var(--pk-danger);
+  }
+  [data-screen="licenses.tiers-states"] .save-bar .msg a {
+    color: var(--pk-text-strong);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  /* The order list with a row's menu open. */
+  [data-screen="licenses.tiers-states"] .tier-item {
+    display: grid;
+    grid-template-columns: 16px 22px minmax(0, 1fr) auto 28px;
+    align-items: center;
+    gap: 2px 10px;
+    padding: 12px 16px 12px 10px;
+    position: relative;
+  }
+  [data-screen="licenses.tiers-states"] .tier-item + .tier-item {
+    border-top: 1px solid var(--mk-line);
+  }
+  [data-screen="licenses.tiers-states"] .tier-item.selected {
+    background: var(--pk-accent-subtle);
+    box-shadow: inset 2px 0 0 var(--pk-accent);
+  }
+  [data-screen="licenses.tiers-states"] .grip {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="licenses.tiers-states"] .rank {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--mk-fill);
+    font-size: 12px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="licenses.tiers-states"] .tier-item.selected .rank {
+    background: var(--pk-accent);
+    color: var(--pk-accent-on);
+  }
+  [data-screen="licenses.tiers-states"] .tier-name {
+    font-weight: 700;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="licenses.tiers-states"] .used {
+    font-size: 12px;
+    color: var(--pk-text-subtle);
+    white-space: nowrap;
+  }
+  [data-screen="licenses.tiers-states"] .tier-item .popover {
+    top: calc(100% - 4px);
+    right: 8px;
+    z-index: 5;
+    text-align: left;
+  }
+  [data-screen="licenses.tiers-states"] .menu-item.disabled {
+    opacity: 0.5;
+  }
+  [data-screen="licenses.tiers-states"] .menu-why {
+    padding: 0 10px 8px 36px;
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--pk-text-muted);
+    white-space: normal;
+  }
+  [data-screen="licenses.tiers-states"] .menu {
+    width: 260px;
+  }
+  [data-screen="licenses.tiers-states"] .order-card {
+    padding-bottom: 196px;
+  }
+  /* stable is locked: a lock, a dashed edge and a tooltip. */
+  [data-screen="licenses.tiers-states"] .chip.locked::before {
+    -webkit-mask-image: var(--ic-lock);
+    mask-image: var(--ic-lock);
+    background: var(--pk-text-muted);
+  }
+  [data-screen="licenses.tiers-states"] .chip.locked {
+    border-style: dashed;
+    color: var(--pk-text-default);
+  }
+  [data-screen="licenses.tiers-states"] .lock-tip {
+    position: relative;
+    display: inline-flex;
+  }
+  [data-screen="licenses.tiers-states"] .lock-tip .tooltip {
+    position: absolute;
+    left: 0;
+    bottom: calc(100% + 6px);
+    max-width: none;
+  }
+  [data-screen="licenses.tiers-states"] .tracks {
+    margin-top: 22px;
+  }
+  [data-screen="licenses.tiers-states"] figcaption {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    line-height: 18px;
+  }
+  [data-screen="licenses.tiers-states"] figcaption strong {
+    color: var(--pk-text-strong);
+  }
+  @container screen (max-width: 1023px) {
+    [data-screen="licenses.tiers-states"] .board-item {
+      width: 100%;
+      max-width: 640px;
+    }
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="licenses.tiers-states"] .ed-sec {
+      padding: 16px;
+    }
+    [data-screen="licenses.tiers-states"] .then {
+      flex-wrap: wrap;
+    }
+    [data-screen="licenses.tiers-states"] .save-bar .btn {
+      flex: 1 1 auto;
+    }
+    [data-screen="licenses.tiers-states"] .dialog-foot {
+      flex-direction: column-reverse;
+      align-items: stretch;
+    }
+    [data-screen="licenses.tiers-states"] .input.ver {
+      flex: 1 1 0;
+      width: auto;
+      min-width: 0;
+    }
+    [data-screen="licenses.tiers-states"] .inline-fields.nowrap {
+      flex-wrap: nowrap;
+    }
+  }
+</style>
+
+<div class="board" data-service="license">
+  <div class="board-title">
+    <h1>Tiers: other states</h1>
+    <p>The Tiers editor (licenses.tiers) with a trial that becomes another tier, fields that need fixing, leaving with an unsaved change, a row’s menu with Delete disabled, and the locked stable track.</p>
+  </div>
+
+  <!-- Trial: When it ends = Moves to another tier. -->
+  <figure class="board-item">
+    <section class="card" aria-label="Trial duration">
+      <div class="ed-sec">
+        <h3>Duration · Trial</h3>
+        <div class="segmented" role="radiogroup" aria-label="Length"><span>Lifetime</span><span class="on">Fixed length</span><span>Renewing</span></div>
+        <div class="field">
+          <label class="field-label">Runs for</label>
+          <div class="inline-fields"><div class="input num"><span class="grow tnum">14</span><span class="affix">days</span></div><span class="hint">from the day the license starts</span></div>
+        </div>
+        <div class="field">
+          <label class="field-label">When it ends</label>
+          <div class="end-options" role="radiogroup">
+            <div class="end-opt"><span class="radio"><span class="box"></span>Keeps the last version</span></div>
+            <div class="end-opt"><span class="radio"><span class="box"></span>Stops working</span></div>
+            <div class="end-opt"><span class="radio on"><span class="box"></span>Moves to another tier</span><span class="end-opt-desc">The license carries on as that tier, with no step from you.</span>
+              <div class="then"><span>Then</span><div class="select"><i class="ic ic-layers"></i><span class="grow">Free</span><i class="ic ic-chevrons-up-down"></i></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="example"><i class="ic ic-calendar"></i><span>A license starting today ends its trial on Oct 21, 2026, then becomes Free: 1 device, 2 decks, no recording. Nobody has to do anything.</span></div>
+      </div>
+    </section>
+    <figcaption><strong>Moves to another tier</strong>Choosing it reveals “Then” with a select of the other tiers (never this one), and the example names the end date and the tier’s limits after it.</figcaption>
+  </figure>
+
+  <!-- Validation: inline under each field; the save bar says how many need fixing. -->
+  <figure class="board-item">
+    <section class="card" aria-label="Education with errors">
+      <div class="ed-sec">
+        <h3>Duration · Education</h3>
+        <div class="field invalid">
+          <label class="field-label">Runs for</label>
+          <div class="inline-fields"><div class="input num"><span class="grow tnum">0</span><span class="affix">days</span></div></div>
+          <span class="error-text"><i class="ic ic-circle-x"></i>Enter at least 1 day.</span>
+        </div>
+      </div>
+      <div class="ed-sec">
+        <h3>Limits · Education</h3>
+        <div class="field invalid">
+          <label class="field-label">Versions</label>
+          <div class="inline-fields nowrap"><div class="input ver mono"><span class="grow">5.0</span></div><span class="muted">to</span><div class="input ver mono"><span class="grow">4.9</span></div></div>
+          <span class="error-text"><i class="ic ic-circle-x"></i>“From” must be lower than “to”. Swap them, or clear one for no limit.</span>
+        </div>
+      </div>
+      <div class="save-bar" role="region" aria-label="Unsaved changes">
+        <span class="msg"><i class="ic ic-circle-x"></i><span>3 changes. <a href="#">Fix 2 fields</a> to save.</span></span>
+        <button class="btn ghost">Discard</button>
+        <button class="btn primary" disabled>Save Education</button>
+      </div>
+    </section>
+    <figcaption><strong>Fields that need fixing</strong>Each error sits under its field and says how to fix it. The save bar turns to the danger tone, its link jumps to the first invalid field, and Save is disabled until they’re fixed.</figcaption>
+  </figure>
+
+  <!-- Leaving with unsaved changes: picking another tier, or another page. -->
+  <figure class="board-item">
+    <div class="dialog sm" role="dialog" aria-labelledby="ts-discard">
+      <div class="dialog-head"><h2 id="ts-discard">Discard 1 change to Education?</h2><button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button></div>
+      <div class="dialog-body"><p>Offline days goes back to 7, and Studio opens. Nothing on Education is saved.</p></div>
+      <div class="dialog-foot"><button class="btn outline">Keep editing</button><button class="btn danger">Discard</button></div>
+    </div>
+    <figcaption><strong>Leaving with a change</strong>Asked when another tier is picked in Order, or on leaving the page, while the form is dirty. It names the change and what opens next. Esc on the save bar asks the same.</figcaption>
+  </figure>
+
+  <!-- Order: a row's menu, with keyboard reordering and Delete disabled while used. -->
+  <figure class="board-item">
+    <section class="card order-card" aria-labelledby="ts-order">
+      <div class="card-head"><div class="title"><h2 id="ts-order">Order</h2><p>Best first. Drag a row, or use its menu.</p></div></div>
+      <div class="tier-list">
+        <div class="tier-item"><i class="ic ic-grip-vertical grip"></i><span class="rank">1</span><span class="tier-name">Studio</span><span class="used">38 licenses</span><button class="btn ghost icon xs" aria-label="Tier menu"><i class="ic ic-ellipsis"></i></button></div>
+        <div class="tier-item"><i class="ic ic-grip-vertical grip"></i><span class="rank">2</span><span class="tier-name">Standard</span><span class="used">612 licenses</span><button class="btn ghost icon xs" aria-label="Tier menu"><i class="ic ic-ellipsis"></i></button></div>
+        <div class="tier-item selected"><i class="ic ic-grip-vertical grip focus"></i><span class="rank">3</span><span class="tier-name">Education</span><span class="used">57 licenses</span><button class="btn ghost icon xs" aria-label="Tier menu" aria-expanded="true"><i class="ic ic-ellipsis"></i></button>
+          <div class="popover right" role="menu"><div class="menu">
+            <span class="menu-label">Education · 3 of 5</span>
+            <a class="menu-item" href="#" role="menuitem"><i class="ic ic-arrow-up"></i>Move up<span class="end">above Standard <kbd>↑</kbd></span></a>
+            <a class="menu-item" href="#" role="menuitem"><i class="ic ic-arrow-down"></i>Move down<span class="end">below Trial <kbd>↓</kbd></span></a>
+            <a class="menu-item" href="#" role="menuitem"><i class="ic ic-copy"></i>Duplicate</a>
+            <div class="menu-sep"></div>
+            <a class="menu-item danger disabled" href="#" role="menuitem" aria-disabled="true"><i class="ic ic-trash-2"></i>Delete</a>
+            <div class="menu-why">Used by 57 licenses. Move them to another tier first.</div>
+          </div></div>
+        </div>
+        <div class="tier-item"><i class="ic ic-grip-vertical grip"></i><span class="rank">4</span><span class="tier-name">Trial</span><span class="used">143 licenses</span><button class="btn ghost icon xs" aria-label="Tier menu"><i class="ic ic-ellipsis"></i></button></div>
+      </div>
+    </section>
+    <figcaption><strong>Reordering without a mouse</strong>Each row’s menu has Move up and Move down, naming the neighbour. With the handle focused, ↑ and ↓ move the row and the new rank is announced. Delete stays in the menu, disabled with the reason, while licenses use the tier.</figcaption>
+  </figure>
+
+  <!-- stable is always included. -->
+  <figure class="board-item">
+    <section class="card" aria-label="Release tracks">
+      <div class="ed-sec">
+        <h3>Limits · Release tracks</h3>
+        <div class="row wrap gap-2 tracks">
+          <span class="lock-tip"><span class="tooltip" role="tooltip">Always included</span><span class="chip on locked" aria-disabled="true">stable</span></span>
+          <span class="chip on">beta</span>
+          <span class="chip">dev</span>
+        </div>
+        <span class="hint">stable is always included. Choosing dev also includes beta. Add-ons can add tracks.</span>
+      </div>
+    </section>
+    <figcaption><strong>Locked stable</strong>stable has a lock instead of a tick and a dashed edge, so it doesn’t read as a choice; hover or focus shows “Always included”. beta is chosen here; dev would add beta too.</figcaption>
+  </figure>
+</div>

@@ -1,0 +1,48 @@
+{
+  "id": "admin.no-access-home",
+  "title": "No access yet (Home)",
+  "area": "admin",
+  "surface": "console",
+  "order": 7,
+  "packages": [
+    "ST-29",
+    "ST-31",
+    "ST-30",
+    "ST-35"
+  ],
+  "uxRows": [],
+  "summary": "Home for a member whose only role is Console access: Noor joined through the email-domain rule for studio.example.com. The page says she's in but has nothing yet, names the people who can give her a role with copyable emails, and points to her library and the docs.",
+  "compare": [
+    "The Platform context shows Home only, with 'No products shared yet' under the context name and no switcher chevrons; Members, Connections, Settings, Packages, Status and Activity are absent, not disabled.",
+    "The title is exactly 'You're in. Ask an administrator for access.' and the lead says nothing has been shared yet and that a new role appears the next time she opens the console.",
+    "The facts line shows her email, the Console access role tag and where it came from (the rule for addresses at studio.example.com).",
+    "'Who can give you access' lists up to three Superadmins (who can give any role) with role and a copyable email. Platform admins are left out: they can't give a product role to someone else, and naming the products they admin would reveal product names. No product names or product admins are shown to a member without a product role, and there is no Request access button.",
+    "Two tiles offer real next steps, and each whole tile is the link (arrow beside the title, hover border and shadow, focus ring): Your library (the same account's licenses, downloads and devices) and Docs (any console member can read them, operator pages excepted).",
+    "'Signed in with the wrong account?' is plain text followed by the link 'Use another account'.",
+    "Phone: the menu button replaces the sidebar, the helpers stack with the email under the name, and the two tiles stack."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fix applied: no sideways scroll at 360, only people who can give a product role are listed, and the tiles are whole links.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "At 360 px the page scrolls sideways (373px): the whole 'Signed in with the wrong account? Use another account →' line is one no-wrap kit link.",
+        "resolution": "'Signed in with the wrong account?' is plain text and only 'Use another account' is the link. Measured: 360px page at a 360px viewport."
+      },
+      {
+        "severity": "major",
+        "issue": "'Who can give you access' lists Priya Raman (Platform admin), who can't give a product role.",
+        "resolution": "The card lists the two Superadmins only and says 'Superadmins can give you any role.' Priya is dropped rather than labelled: what she can give is DJDL admin, and naming it would reveal a product to Noor."
+      },
+      {
+        "severity": "minor",
+        "issue": "The two tiles' actions are small text links at the bottom of large cards.",
+        "resolution": "Each tile is one link (a.card) with the arrow beside its title, a hover border and shadow, and a focus-visible ring."
+      }
+    ]
+  }
+}

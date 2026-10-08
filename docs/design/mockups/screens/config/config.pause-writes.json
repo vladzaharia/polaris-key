@@ -1,0 +1,47 @@
+{
+  "id": "config.pause-writes",
+  "title": "Pause Cloud Sync writes",
+  "area": "config",
+  "surface": "dialog",
+  "packages": [
+    "U-05",
+    "ST-16",
+    "U-32"
+  ],
+  "uxRows": [],
+  "summary": "The confirmation for the platform's one Cloud Sync kill switch (cloudSync.writesPaused), opened from Diceroll's Cloud Sync page: it names every product the pause stops, what their people see, that nothing is deleted, takes a required reason and confirms with a passkey.",
+  "compare": [
+    "The dialog opens over the Cloud Sync page with the page dimmed behind; it is the only way to turn the switch on. The paused state that follows is config.cloud-sync-paused.",
+    "The title asks with its scope: \"Pause Cloud Sync writes everywhere?\", because writesPaused is a platform setting even when opened from one product.",
+    "Every product with Cloud Sync on is listed by logo and name with what stops, what its people see and how many have data, in one tense: DJDL \"Settings changes wait on each Mac and PC; the app shows Waiting to sync. No one has synced yet.\"; Diceroll \"Saves and settings wait on each device; the load screen shows Saved on this device. 4,812 players have data.\" Products with Cloud Sync off aren't listed.",
+    "The body says what keeps working (reading), that nothing is deleted, and what happens on resume (devices send what they queued).",
+    "Reason is required and says where it shows (the banner and Activity); the passkey step-up is announced before the button.",
+    "The confirm button says exactly what happens and to how many: \"Pause writes for 2 products\", in the danger tone; Cancel is neutral.",
+    "The screen is one viewport behind the dialog. Phone: the dialog fills the width under the top bar, product rows keep logo and text side by side, and the buttons fill the width."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: the paused state and the way back are designed, the title fits, and every row says what people see.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "After the dialog the platform kill switch was on but the paused state, its banner, Home and Resume were designed nowhere.",
+        "resolution": "Added config.cloud-sync-paused: a warning banner with who, when and the reason, Resume writes as its primary, and the switch on with \"Paused 12 min\". Its compare list specifies the resume toast (\"Writes resumed. Devices are sending what they queued.\"), the same banner on every product's Cloud Sync page, and the platform Home's Needs attention row; that Home row belongs to products.home, another designer's screen, so it goes to the lead to route."
+      },
+      {
+        "severity": "minor",
+        "issue": "At 480px the title left \"product?\" alone on a line.",
+        "resolution": "\"Pause Cloud Sync writes everywhere?\""
+      },
+      {
+        "severity": "minor",
+        "issue": "Rows didn't say what players see, the tense differed, and Reason was optional.",
+        "resolution": "DJDL: \"Settings changes wait on each Mac and PC; the app shows Waiting to sync. No one has synced yet.\" Diceroll: \"Saves and settings wait on each device; the load screen shows Saved on this device. 4,812 players have data.\" Reason is required and says it appears in the banner and Activity. The page behind is the fixed config.cloud-sync, clipped to one viewport."
+      }
+    ]
+  },
+  "order": 17
+}

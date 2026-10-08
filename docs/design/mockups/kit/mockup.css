@@ -1110,6 +1110,35 @@
   --ic-hammer: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m15 12-8.373 8.373a1 1 0 1 1-3-3L12 9'/%3E%3Cpath d='m18 15 4-4'/%3E%3Cpath d='m21.5 11.5-1.914-1.914A2 2 0 0 1 19 8.172V7l-2.26-2.26a6 6 0 0 0-4.202-1.756L9 2.96l.92.82A6.18 6.18 0 0 1 12 8.4V10l2 2h1.172a2 2 0 0 1 1.414.586L18.5 14.5'/%3E%3C/svg%3E");
   --ic-wrench: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z'/%3E%3C/svg%3E");
   --ic-scroll-text: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 12h-5'/%3E%3Cpath d='M15 8h-5'/%3E%3Cpath d='M19 17V5a2 2 0 0 0-2-2H4'/%3E%3Cpath d='M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3'/%3E%3C/svg%3E");
+  --ic-layout-dashboard: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='7' height='9' x='3' y='3' rx='1'/%3E%3Crect width='7' height='5' x='14' y='3' rx='1'/%3E%3Crect width='7' height='9' x='14' y='12' rx='1'/%3E%3Crect width='7' height='5' x='3' y='16' rx='1'/%3E%3C/svg%3E");
+  --ic-blocks: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='7' height='7' x='14' y='3' rx='1'/%3E%3Cpath d='M10 21V8a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5a1 1 0 0 0-1-1H3'/%3E%3C/svg%3E");
+  --ic-monitor-smartphone: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 8V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8'/%3E%3Cpath d='M10 19v-3.96 3.15'/%3E%3Cpath d='M7 19h5'/%3E%3Crect width='6' height='10' x='16' y='12' rx='2'/%3E%3C/svg%3E");
+  --ic-users-round: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 21a8 8 0 0 0-16 0'/%3E%3Ccircle cx='10' cy='8' r='5'/%3E%3Cpath d='M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3'/%3E%3C/svg%3E");
+  --ic-lock-keyhole: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='16' r='1'/%3E%3Crect x='3' y='10' width='18' height='12' rx='2'/%3E%3Cpath d='M7 10V7a5 5 0 0 1 10 0v3'/%3E%3C/svg%3E");
+  --ic-list-tree: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 12h-8'/%3E%3Cpath d='M21 6H8'/%3E%3Cpath d='M21 18h-8'/%3E%3Cpath d='M3 6v4c0 1.1.9 2 2 2h3'/%3E%3Cpath d='M3 10v6c0 1.1.9 2 2 2h3'/%3E%3C/svg%3E");
+  --ic-file-pen: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12.5 22H18a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v9.5'/%3E%3Cpath d='M14 2v4a2 2 0 0 0 2 2h4'/%3E%3Cpath d='M13.378 15.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z'/%3E%3C/svg%3E");
+  --ic-file-stack: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 7h-3a2 2 0 0 1-2-2V2'/%3E%3Cpath d='M21 6v6.5c0 .8-.7 1.5-1.5 1.5h-7c-.8 0-1.5-.7-1.5-1.5v-9c0-.8.7-1.5 1.5-1.5H17Z'/%3E%3Cpath d='M7 8v8.8c0 .3.2.6.4.8.2.2.5.4.8.4H15'/%3E%3Cpath d='M3 12v8.8c0 .3.2.6.4.8.2.2.5.4.8.4H11'/%3E%3C/svg%3E");
+  --ic-stamp: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 22h14'/%3E%3Cpath d='M19.27 13.73A2.5 2.5 0 0 0 17.5 13h-11A2.5 2.5 0 0 0 4 15.5V17a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-1.5c0-.66-.26-1.3-.73-1.77Z'/%3E%3Cpath d='M14 13V8.5C14 7 15 7 15 5a3 3 0 0 0-3-3c-1.66 0-3 1-3 3s1 2 1 3.5V13'/%3E%3C/svg%3E");
+  --ic-waypoints: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='4.5' r='2.5'/%3E%3Cpath d='m10.2 6.3-3.9 3.9'/%3E%3Ccircle cx='4.5' cy='12' r='2.5'/%3E%3Cpath d='M7 12h10'/%3E%3Ccircle cx='19.5' cy='12' r='2.5'/%3E%3Cpath d='m13.8 17.7 3.9-3.9'/%3E%3Ccircle cx='12' cy='19.5' r='2.5'/%3E%3C/svg%3E");
+  --ic-grid-3x3: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='18' x='3' y='3' rx='2'/%3E%3Cpath d='M3 9h18'/%3E%3Cpath d='M3 15h18'/%3E%3Cpath d='M9 3v18'/%3E%3Cpath d='M15 3v18'/%3E%3C/svg%3E");
+  --ic-flask-conical: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2'/%3E%3Cpath d='M6.453 15h11.094'/%3E%3Cpath d='M8.5 2h7'/%3E%3C/svg%3E");
+  --ic-trending-up: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='22 7 13.5 15.5 8.5 10.5 2 17'/%3E%3Cpolyline points='16 7 22 7 22 13'/%3E%3C/svg%3E");
+  --ic-square-pen: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7'/%3E%3Cpath d='M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z'/%3E%3C/svg%3E");
+  --ic-heart-pulse: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z'/%3E%3Cpath d='M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27'/%3E%3C/svg%3E");
+  --ic-rss: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 11a9 9 0 0 1 9 9'/%3E%3Cpath d='M4 4a16 16 0 0 1 16 16'/%3E%3Ccircle cx='5' cy='19' r='1'/%3E%3C/svg%3E");
+  --ic-log-in: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4'/%3E%3Cpolyline points='10 17 15 12 10 7'/%3E%3Cline x1='15' x2='3' y1='12' y2='12'/%3E%3C/svg%3E");
+  --ic-server-cog: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3Cpath d='M4.5 10H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-.5'/%3E%3Cpath d='M4.5 14H4a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2h-.5'/%3E%3Cpath d='M6 6h.01'/%3E%3Cpath d='M6 18h.01'/%3E%3Cpath d='m15.7 13.4-.9-.3'/%3E%3Cpath d='m9.2 10.9-.9-.3'/%3E%3Cpath d='m10.6 15.7.3-.9'/%3E%3Cpath d='m13.6 15.7-.4-1'/%3E%3Cpath d='m10.8 9.3-.4-1'/%3E%3Cpath d='m8.3 13.6 1-.4'/%3E%3Cpath d='m14.7 10.8 1-.4'/%3E%3Cpath d='m13.4 8.3-.3.9'/%3E%3C/svg%3E");
+  --ic-gauge: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12 14 4-4'/%3E%3Cpath d='M3.34 19a10 10 0 1 1 17.32 0'/%3E%3C/svg%3E");
+  --ic-plug-zap: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6.3 20.3a2.4 2.4 0 0 0 3.4 0L12 18l-6-6-2.3 2.3a2.4 2.4 0 0 0 0 3.4Z'/%3E%3Cpath d='m2 22 3-3'/%3E%3Cpath d='M7.5 13.5 10 11'/%3E%3Cpath d='M10.5 16.5 13 14'/%3E%3Cpath d='m18 3-4 4h6l-4 4'/%3E%3C/svg%3E");
+  --ic-arrow-right-left: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m16 3 4 4-4 4'/%3E%3Cpath d='M20 7H4'/%3E%3Cpath d='m8 21-4-4 4-4'/%3E%3Cpath d='M4 17h16'/%3E%3C/svg%3E");
+  --ic-circle-dashed: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.1 2.182a10 10 0 0 1 3.8 0'/%3E%3Cpath d='M13.9 21.818a10 10 0 0 1-3.8 0'/%3E%3Cpath d='M17.609 3.721a10 10 0 0 1 2.69 2.7'/%3E%3Cpath d='M2.182 13.9a10 10 0 0 1 0-3.8'/%3E%3Cpath d='M20.279 17.609a10 10 0 0 1-2.7 2.69'/%3E%3Cpath d='M21.818 10.1a10 10 0 0 1 0 3.8'/%3E%3Cpath d='M3.721 6.391a10 10 0 0 1 2.7-2.69'/%3E%3Cpath d='M6.391 20.279a10 10 0 0 1-2.69-2.7'/%3E%3C/svg%3E");
+  --ic-git-merge: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='18' cy='18' r='3'/%3E%3Ccircle cx='6' cy='6' r='3'/%3E%3Cpath d='M6 21V9a9 9 0 0 0 9 9'/%3E%3C/svg%3E");
+  --ic-user-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='9' cy='7' r='4'/%3E%3Cpolyline points='16 11 18 13 22 9'/%3E%3C/svg%3E");
+  --ic-clipboard-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='8' height='4' x='8' y='2' rx='1' ry='1'/%3E%3Cpath d='M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2'/%3E%3Cpath d='m9 14 2 2 4-4'/%3E%3C/svg%3E");
+  --ic-square: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='18' x='3' y='3' rx='2'/%3E%3C/svg%3E");
+  --ic-wifi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 20h.01'/%3E%3Cpath d='M2 8.82a15 15 0 0 1 20 0'/%3E%3Cpath d='M5 12.859a10 10 0 0 1 14 0'/%3E%3Cpath d='M8.5 16.429a5 5 0 0 1 7 0'/%3E%3C/svg%3E");
+  --ic-signal: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 20h.01'/%3E%3Cpath d='M7 20v-4'/%3E%3Cpath d='M12 20v-8'/%3E%3Cpath d='M17 20V8'/%3E%3Cpath d='M22 4v16'/%3E%3C/svg%3E");
+  --ic-battery-full: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='16' height='10' x='2' y='7' rx='2' ry='2'/%3E%3Cline x1='22' x2='22' y1='11' y2='13'/%3E%3Cline x1='6' x2='6' y1='11' y2='13'/%3E%3Cline x1='10' x2='10' y1='11' y2='13'/%3E%3Cline x1='14' x2='14' y1='11' y2='13'/%3E%3C/svg%3E");
   --ic-apple: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='black'%3E%3Cpath d='M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701'/%3E%3C/svg%3E");
   --ic-windows: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='black'%3E%3Cpath d='M3 5.1 10.4 4v7.3H3zM11.4 3.9 21 2.5v8.8h-9.6zM3 12.6h7.4V20L3 18.9zM11.4 12.6H21v8.9l-9.6-1.4z'/%3E%3C/svg%3E");
   --ic-linux: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='black'%3E%3Cpath fill-rule='evenodd' d='M12 2c2.3 0 3.6 1.9 3.6 4.4 0 1.3.5 2.3 1.4 3.6 1.2 1.7 2.4 3.6 2.4 6 0 1.3-.4 2.4-1.1 3.2.6.3 1 .8 1 1.4 0 .9-1.2 1.4-3 1.4-1.2 0-2-.3-2.4-.8a8.4 8.4 0 0 1-3.8 0c-.4.5-1.2.8-2.4.8-1.8 0-3-.5-3-1.4 0-.6.4-1.1 1-1.4A4.8 4.8 0 0 1 4.6 16c0-2.4 1.2-4.3 2.4-6 .9-1.3 1.4-2.3 1.4-3.6C8.4 3.9 9.7 2 12 2zm0 7.3c-1.9 0-3.4 2.6-3.4 5.8 0 2.6 1.5 4.2 3.4 4.2s3.4-1.6 3.4-4.2c0-3.2-1.5-5.8-3.4-5.8zM10.6 5a.8.8 0 1 0 0 1.6.8.8 0 0 0 0-1.6zm2.8 0a.8.8 0 1 0 0 1.6.8.8 0 0 0 0-1.6z'/%3E%3C/svg%3E");
@@ -1283,6 +1312,35 @@
 .ic-hammer { --i: var(--ic-hammer); }
 .ic-wrench { --i: var(--ic-wrench); }
 .ic-scroll-text { --i: var(--ic-scroll-text); }
+.ic-layout-dashboard { --i: var(--ic-layout-dashboard); }
+.ic-blocks { --i: var(--ic-blocks); }
+.ic-monitor-smartphone { --i: var(--ic-monitor-smartphone); }
+.ic-users-round { --i: var(--ic-users-round); }
+.ic-lock-keyhole { --i: var(--ic-lock-keyhole); }
+.ic-list-tree { --i: var(--ic-list-tree); }
+.ic-file-pen { --i: var(--ic-file-pen); }
+.ic-file-stack { --i: var(--ic-file-stack); }
+.ic-stamp { --i: var(--ic-stamp); }
+.ic-waypoints { --i: var(--ic-waypoints); }
+.ic-grid-3x3 { --i: var(--ic-grid-3x3); }
+.ic-flask-conical { --i: var(--ic-flask-conical); }
+.ic-trending-up { --i: var(--ic-trending-up); }
+.ic-square-pen { --i: var(--ic-square-pen); }
+.ic-heart-pulse { --i: var(--ic-heart-pulse); }
+.ic-rss { --i: var(--ic-rss); }
+.ic-log-in { --i: var(--ic-log-in); }
+.ic-server-cog { --i: var(--ic-server-cog); }
+.ic-gauge { --i: var(--ic-gauge); }
+.ic-plug-zap { --i: var(--ic-plug-zap); }
+.ic-arrow-right-left { --i: var(--ic-arrow-right-left); }
+.ic-circle-dashed { --i: var(--ic-circle-dashed); }
+.ic-git-merge { --i: var(--ic-git-merge); }
+.ic-user-check { --i: var(--ic-user-check); }
+.ic-clipboard-check { --i: var(--ic-clipboard-check); }
+.ic-square { --i: var(--ic-square); }
+.ic-wifi { --i: var(--ic-wifi); }
+.ic-signal { --i: var(--ic-signal); }
+.ic-battery-full { --i: var(--ic-battery-full); }
 .ic-apple { --i: var(--ic-apple); }
 .ic-windows { --i: var(--ic-windows); }
 .ic-linux { --i: var(--ic-linux); }
@@ -1295,7 +1353,7 @@
 .ic-microsoft-store { --i: var(--ic-microsoft-store); }
 .ic-star-cut { --i: var(--ic-star-cut); }
 .ic-polaris { --i: var(--ic-polaris); }
-/* 158 lucide icons, 10 platform and store marks, the Star Cut and the Pinned K. */
+/* 187 lucide icons, 10 platform and store marks, the Star Cut and the Pinned K. */
 /* @generated icons:end */
 
 /* ── Kit tokens ──────────────────────────────────────────────────────────────────────── */
@@ -1689,17 +1747,20 @@ kbd,
   height: 32px;
 }
 
-/* <i class="svc" data-service="license"></i>: a service's glyph in its accent. */
+/*
+ * <i class="svc" data-service="license"></i>: a service's glyph in its accent. The glyph and the
+ * accent both come from the nearest data-service, on the .svc itself or on any ancestor, so
+ * <section data-service="sync"> … <i class="svc"></i> draws the Cloud Sync cloud.
+ */
 .svc {
-  --i: var(--ic-box);
   display: inline-block;
   flex: none;
   width: 16px;
   height: 16px;
   vertical-align: -3px;
   background-color: var(--pk-accent);
-  -webkit-mask: var(--i) center / contain no-repeat;
-  mask: var(--i) center / contain no-repeat;
+  -webkit-mask: var(--svc-glyph, var(--ic-box)) center / contain no-repeat;
+  mask: var(--svc-glyph, var(--ic-box)) center / contain no-repeat;
 }
 .svc.sm {
   width: 14px;
@@ -1713,29 +1774,29 @@ kbd,
   width: 24px;
   height: 24px;
 }
-.svc[data-service="license"] {
-  --i: var(--ic-key-round);
+[data-service="license"] {
+  --svc-glyph: var(--ic-key-round);
 }
-.svc[data-service="config"] {
-  --i: var(--ic-sliders-horizontal);
+[data-service="config"] {
+  --svc-glyph: var(--ic-sliders-horizontal);
 }
-.svc[data-service="release"] {
-  --i: var(--ic-package);
+[data-service="release"] {
+  --svc-glyph: var(--ic-package);
 }
-.svc[data-service="distribution"] {
-  --i: var(--ic-star-cut);
+[data-service="distribution"] {
+  --svc-glyph: var(--ic-star-cut);
 }
-.svc[data-service="update"] {
-  --i: var(--ic-circle-arrow-up);
+[data-service="update"] {
+  --svc-glyph: var(--ic-circle-arrow-up);
 }
-.svc[data-service="identity"] {
-  --i: var(--ic-user-round);
+[data-service="identity"] {
+  --svc-glyph: var(--ic-user-round);
 }
-.svc[data-service="sync"] {
-  --i: var(--ic-cloud);
+[data-service="sync"] {
+  --svc-glyph: var(--ic-cloud);
 }
-.svc[data-service="commerce"] {
-  --i: var(--ic-store);
+[data-service="commerce"] {
+  --svc-glyph: var(--ic-store);
 }
 
 /* A row of service glyphs (a product card) and its phone form, one dot per service. */
@@ -2029,9 +2090,13 @@ kbd,
   border-right: 1px solid var(--mk-line);
   background: var(--pk-surface-page);
 }
+/* The foot (Settings, Collapse) stays at the bottom of the first viewport, as in the console. */
 .sidebar-foot {
-  margin-top: auto;
-  padding-top: 12px;
+  position: sticky;
+  bottom: 0;
+  margin: auto -12px -12px;
+  padding: 12px;
+  background: var(--pk-surface-page);
 }
 
 /* The sidebar's context header (ST-45): Platform, or a product with its switcher. */
@@ -2573,6 +2638,14 @@ kbd,
   border-color: var(--pk-danger-border);
   background: transparent;
   color: var(--pk-danger);
+}
+/* In dark the neutral fill is the overlay surface itself, so on a dialog, drawer or popover the
+   neutral (secondary) button takes the stronger fill and a hairline: both themes draw the same
+   hierarchy (Cancel visible beside the primary). */
+:root:not([data-theme="light"]) :is(.dialog, .drawer, .popover)
+  .btn:not(.primary, .outline, .ghost, .danger, .danger-outline, .link, .action) {
+  border-color: var(--pk-border-strong);
+  background: var(--mk-fill-strong);
 }
 .btn.link {
   height: auto;
@@ -3371,6 +3444,32 @@ kbd,
   min-width: 18px;
   font-weight: 400;
 }
+/* An end cap that shows only when the tabs don't fit (a five-tab record at phone width): it
+   sits in the free space after the last tab when everything fits, and sticks to the right edge
+   when the bar scrolls, fading the cut-off tab so the bar reads as scrollable. Static CSS, so a
+   screenshot shows it. Tabs on a card take the card's surface. */
+.tabs::after {
+  content: "";
+  position: sticky;
+  right: 0;
+  flex: none;
+  align-self: stretch;
+  width: 36px;
+  margin-left: -12px;
+  pointer-events: none;
+  background: linear-gradient(to right, transparent, var(--mk-tabs-bg, var(--pk-surface-page)) 75%);
+}
+.card .tabs {
+  --mk-tabs-bg: var(--pk-surface-raised);
+}
+@container screen (max-width: 639px) {
+  .tabs {
+    gap: 16px;
+  }
+  .tabs::after {
+    margin-left: -8px;
+  }
+}
 
 /* ── Wizard ──────────────────────────────────────────────────────────────────────────── */
 
@@ -3550,9 +3649,18 @@ kbd,
   -webkit-mask: var(--ic-check) center / contain no-repeat;
   mask: var(--ic-check) center / contain no-repeat;
 }
+/* Waiting on an outside event (a CI run, a shipped build): a static clock in a neutral ring,
+ * never the page accent and never a spinner, so it reads the same on every page. */
 .task.waiting .task-mark {
-  border: 2px solid var(--pk-accent-subtle);
-  border-top-color: var(--pk-accent);
+  border: 1.5px solid var(--pk-border-strong);
+}
+.task.waiting .task-mark::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  background: var(--pk-text-muted);
+  -webkit-mask: var(--ic-clock) center / contain no-repeat;
+  mask: var(--ic-clock) center / contain no-repeat;
 }
 .task.blocked .task-mark {
   border: 0;
@@ -3623,14 +3731,16 @@ kbd,
 .waiting-dot {
   color: var(--pk-text-muted);
 }
+/* Pending, not healthy and not a warning: the same neutral clock on every page, whatever the
+ * accent (the waiting task mark draws the same glyph). */
 .waiting-dot::before {
   content: "";
-  width: 8px;
-  height: 8px;
-  margin: 4px;
-  border-radius: 50%;
-  background: var(--pk-accent);
-  box-shadow: 0 0 0 4px var(--pk-accent-subtle);
+  flex: none;
+  width: 16px;
+  height: 16px;
+  background: var(--pk-text-muted);
+  -webkit-mask: var(--ic-clock) center / contain no-repeat;
+  mask: var(--ic-clock) center / contain no-repeat;
 }
 
 /* Progress and seat meters: <div class="progress" style="--v: 60%"></div> */
@@ -3884,6 +3994,9 @@ kbd,
 }
 .tooltip {
   display: inline-block;
+  align-self: flex-start;
+  width: max-content;
+  max-width: 100%;
   padding: 6px 8px;
   border-radius: var(--pk-radius-md);
   background: var(--pk-text-strong);
@@ -4133,6 +4246,19 @@ kbd,
   border-bottom-color: var(--pk-accent);
   color: var(--pk-text-strong);
   font-weight: 700;
+}
+/* A tab's qualifier, e.g. the platform an SDK fits: <span>Swift<small>macOS</small></span>. */
+.code-tabs small {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--pk-text-subtle);
+}
+.code-tabs > .more {
+  color: var(--pk-text-subtle);
+}
+.code-tabs > .more > .ic {
+  width: 12px;
+  height: 12px;
 }
 .code-file {
   padding: 0 8px;
@@ -4791,6 +4917,180 @@ pre.code-plain {
   z-index: 70;
 }
 
+/* ── Features and Integration ────────────────────────────────────────────────────────── */
+
+/*
+ * An icon on a tinted tile, in the subtree's accent: a card head's mark, a feature row's
+ * glyph, an empty state. <span class="icon-tile"><i class="svc"></i></span> or with an .ic.
+ */
+.icon-tile {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--pk-accent-subtle);
+  color: var(--pk-accent-fg);
+}
+.icon-tile.sm {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+}
+.icon-tile.lg {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+}
+.icon-tile > .ic,
+.icon-tile > .svc {
+  width: 20px;
+  height: 20px;
+  vertical-align: 0;
+}
+.icon-tile.sm > .ic,
+.icon-tile.sm > .svc {
+  width: 16px;
+  height: 16px;
+}
+.icon-tile.lg > .ic,
+.icon-tile.lg > .svc {
+  width: 24px;
+  height: 24px;
+}
+.icon-tile.muted {
+  background: var(--mk-fill);
+  color: var(--pk-text-subtle);
+}
+.icon-tile.muted > .svc {
+  background-color: var(--pk-text-subtle);
+}
+
+/* A small label over a block inside a card: <p class="eyebrow">In the console</p>. */
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--pk-text-subtle);
+}
+.eyebrow > .end {
+  margin-left: auto;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/*
+ * A card body in two panes (console steps beside code, a form beside its preview):
+ * <div class="card-split"><div>…</div><div>…</div></div>. .wide-end gives the second pane
+ * more room. Stacks at phone width.
+ */
+.card-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  min-width: 0;
+}
+.card-split.wide-end {
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+}
+.card-split > * {
+  min-width: 0;
+  padding: 16px 20px 20px;
+}
+.card-split > * + * {
+  border-left: 1px solid var(--mk-line);
+}
+
+/*
+ * Verified per platform (ST-41): one cell per planned platform, at the foot of a card.
+ * <div class="platform-checks">
+ *   <div class="platform-check"><span class="platform-name"><i class="ic ic-apple"></i>macOS</span>
+ *     <span class="verified">Verified</span><span class="meta">Oct 7, 10:42 · Swift 2.1.0</span></div>
+ * </div>
+ */
+.platform-checks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 32px;
+  min-width: 0;
+  padding: 12px 20px;
+  border-top: 1px solid var(--mk-line);
+  background: color-mix(in oklab, var(--pk-surface-sunken) 40%, var(--pk-surface-raised));
+  border-radius: 0 0 var(--pk-radius-xl) var(--pk-radius-xl);
+}
+.platform-checks > .eyebrow {
+  margin: 0;
+}
+.platform-check {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  min-width: 0;
+}
+.platform-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  color: var(--pk-text-strong);
+  white-space: nowrap;
+}
+.platform-name > .ic {
+  width: 14px;
+  height: 14px;
+  color: var(--pk-text-muted);
+}
+.meta {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--pk-text-subtle);
+}
+
+/* A feature folded to one row (done, or off): <div class="card feature-fold">…</div>. */
+.feature-fold {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  padding: 12px 16px 12px 20px;
+}
+.feature-fold > .title {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  flex: 1;
+  min-width: 0;
+}
+.feature-fold h2,
+.feature-fold h3 {
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 700;
+  color: var(--pk-text-strong);
+}
+.feature-fold.add {
+  border-style: dashed;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* A settings row led by an icon tile: <div class="setting-row with-icon">. */
+.setting-row.with-icon {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
 /* ── Responsive: tablet (sidebar folds) and phone ────────────────────────────────────── */
 
 @container screen (max-width: 1023px) {
@@ -5019,12 +5319,14 @@ pre.code-plain {
     transform: translateX(-50%);
   }
   .portal-tabbar > a {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 2px;
     min-width: 76px;
     padding: 6px 12px;
+    border: 1px solid transparent;
     border-radius: 999px;
     font-size: 11px;
     color: var(--pk-text-muted);
@@ -5034,8 +5336,216 @@ pre.code-plain {
     color: var(--pk-text-strong);
     font-weight: 700;
   }
+  /* Activate is the outlined pill in the middle of the bar, not a tab (PORTAL.md §3.2). */
+  .portal-tabbar > a.act {
+    border-color: var(--pk-accent);
+    color: var(--pk-accent-fg);
+  }
+  /* Discover's dot while there is something to add: <span class="dot" aria-hidden="true"></span>. */
+  .portal-tabbar > a > .dot {
+    position: absolute;
+    top: 6px;
+    left: calc(50% + 7px);
+    width: 7px;
+    height: 7px;
+    background: var(--pk-accent);
+    box-shadow: 0 0 0 2px var(--pk-surface-overlay);
+  }
+  /* The footer sits above the bottom bar when the page is scrolled to its end. */
+  .portal:has(> .portal-tabbar) > .portal-foot {
+    padding-bottom: 96px;
+  }
   .board {
     padding: 24px 16px;
     gap: 32px;
   }
+  .card-split,
+  .card-split.wide-end {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .card-split > * {
+    padding: 14px 16px 16px;
+  }
+  .card-split > * + * {
+    border-left: 0;
+    border-top: 1px solid var(--mk-line);
+  }
+  .platform-checks {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 16px;
+  }
+  .feature-fold {
+    padding: 12px 16px;
+  }
+  .feature-fold > .title {
+    flex-basis: 180px;
+  }
+  .feature-fold > .title ~ .link {
+    margin-left: 42px;
+  }
+  /* A card head's action drops under the title when they do not fit side by side. */
+  .card-head {
+    flex-wrap: wrap;
+  }
+  .card-head > .title {
+    flex-basis: 200px;
+  }
+  .card-head > .icon-tile ~ .title ~ :is(.btn, .btn-row, .link, .segmented) {
+    margin-left: 48px;
+  }
+  /* A callout's action goes under its text, lined up with it. */
+  .callout {
+    flex-wrap: wrap;
+  }
+  .callout > .grow {
+    flex: 1 1 calc(100% - 40px);
+  }
+  .callout > .grow ~ * {
+    margin-left: 28px;
+  }
+  /* Copy buttons in code heads keep only their icon; one-line commands wrap. */
+  .code-head > .btn.xs {
+    width: 28px;
+    padding: 0;
+    gap: 0;
+    font-size: 0;
+  }
+  .cmd {
+    height: auto;
+    min-height: 40px;
+    padding-block: 8px;
+  }
+  .cmd > span {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .setting-row.with-icon {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .setting-row.with-icon > :last-child {
+    grid-column: 2;
+  }
+  /* A switch stays on the right; other controls go under the text. */
+  .setting-row.with-icon:has(> .switch:last-child) {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+  .setting-row.with-icon > .switch:last-child {
+    grid-column: 3;
+  }
+}
+
+/* ── Accent links where the accent is a status colour ────────────────────────────────── */
+
+/*
+ * Commerce's accent (the distribution green) is close to the success green, so inside
+ * [data-service="commerce"] an accent link would read as a healthy state ("Live", "Active")
+ * and a state would read as clickable. There the accent stays on chrome only (the nav marker
+ * and label, the section bit, the service tile, the primary button, switches); links use the
+ * strong text colour, the arrow says "link", and an underline shows on hover. A link without
+ * an arrow (an id, a name in a sentence) adds its own underline. Add a service to these
+ * selectors when its accent collides with a tone.
+ */
+[data-service="commerce"] :is(.link, .btn.link) {
+  color: var(--pk-text-strong);
+}
+[data-service="commerce"] :is(.link, .btn.link):hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* A typed confirmation for an action that loses nothing (a price change): a neutral chip. */
+.confirm-word.neutral {
+  background: var(--mk-fill);
+  color: var(--pk-text-strong);
+}
+
+/* ── Phone sheets ────────────────────────────────────────────────────────────────────── */
+
+/*
+ * ADMIN.md §Overlays: a Dialog is a bottom sheet below 640 px, and the Drawer is the phone
+ * bottom sheet (PORTAL.md). Opt in with .sheet on the overlay:
+ *   <div class="overlay sheet"><div class="dialog">…</div></div>
+ *   <div class="overlay end sheet"><aside class="drawer">…</aside></div>
+ * On phone the panel sits at the bottom of the first viewport with a grab handle and rounded
+ * top corners, at most 90% of the screen tall; its body scrolls and its buttons stay pinned at
+ * the bottom, full width, the primary on top. Desktop is unchanged.
+ */
+@container screen (max-width: 639px) {
+  .overlay.sheet {
+    padding: 0;
+    /* A filter would make the overlay the fixed panel's containing block, so the blur moves to
+       a layer beside the panel. */
+    backdrop-filter: none;
+  }
+  .overlay.sheet::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    backdrop-filter: blur(var(--pk-kit-scrim-blur, 0));
+  }
+  .overlay.sheet > :is(.dialog, .drawer) {
+    position: fixed;
+    z-index: 51;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    max-width: none;
+    min-height: 0;
+    max-height: 90vh;
+    border: 1px solid var(--mk-line);
+    border-bottom: 0;
+    border-radius: 20px 20px 0 0;
+    overflow: hidden;
+  }
+  .overlay.sheet > :is(.dialog, .drawer)::before {
+    content: "";
+    flex: none;
+    align-self: center;
+    width: 36px;
+    height: 4px;
+    margin-top: 8px;
+    border-radius: 999px;
+    background: var(--pk-border-strong);
+  }
+  .overlay.sheet .dialog-head {
+    padding: 10px 12px 4px 20px;
+  }
+  .overlay.sheet :is(.dialog-body, .drawer-body) {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  .overlay.sheet .dialog-body {
+    padding: 8px 20px 16px;
+  }
+  .overlay.sheet .drawer-body {
+    padding: 16px;
+  }
+  .overlay.sheet .drawer-head {
+    padding: 10px 12px 12px 16px;
+  }
+  .overlay.sheet :is(.dialog-foot, .drawer-foot) {
+    flex: none;
+    flex-direction: column-reverse;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 8px;
+    padding: 12px 16px 20px;
+  }
+  /* A drawer lists its main action first, so it keeps its order. */
+  .overlay.sheet .drawer-foot {
+    flex-direction: column;
+  }
+  .overlay.sheet :is(.dialog-foot, .drawer-foot) > .btn {
+    flex: none;
+    width: 100%;
+  }
+}
+
+/* L1 confirmations lead with a warning icon (ConfirmDialog intent="caution"). */
+.dialog.caution .dialog-head > .ic {
+  color: var(--pk-warning);
 }

@@ -1,0 +1,23 @@
+{
+  "id": "commerce.create-iap",
+  "title": "Create on App Store (L1 confirm)",
+  "area": "commerce",
+  "surface": "console",
+  "packages": [
+    "CM-23",
+    "A-17g"
+  ],
+  "uxRows": [],
+  "summary": "The confirmation behind Create on App Store for Neon dice pack, which the 3.1.3(b) rule needs on iOS: what Polaris Key creates in App Store Connect from the offer (product id, type, price point, territories), that the product id is permanent at Apple, and what happens until App Review approves it.",
+  "compare": [
+    "Opened from the 3.1.3(b) callout or the warning 'Create' chip on Offers, or the callout on the App Store Sales tab.",
+    "An L1 confirm (ADMIN.md: create an In-App Purchase) with intent caution: a warning icon before the title, a question naming the offer and the store. Focus starts on Cancel.",
+    "What it creates is listed as facts, all derived from the offer: product id (bundle id plus the offer id, in mono, with Apple's never-reused rule), type from the add-on, the base price as Apple's price point, territories as the offer's. Nothing is typed.",
+    "Two consequences: it reads Waiting for Review until Apple approves it with Diceroll's next version (other stores keep selling), and Apple needs a review screenshot added in App Store Connect.",
+    "The button repeats the action: 'Create on App Store'. On success the chip turns into the hourglass 'In review' chip and the callout leaves; an App Store Connect error stays inline in the dialog.",
+    "Phone: a bottom sheet; the facts stack label over value; buttons full width with the primary on top."
+  ],
+  "status": "mockup",
+  "designReview": null,
+  "order": 12
+}

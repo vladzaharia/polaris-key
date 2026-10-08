@@ -1,0 +1,54 @@
+{
+  "id": "admin.cli-login",
+  "title": "pkey login",
+  "area": "admin",
+  "surface": "terminal",
+  "order": 9,
+  "packages": [
+    "ST-34",
+    "F-33",
+    "F-37",
+    "ST-30",
+    "I-19"
+  ],
+  "uxRows": [],
+  "summary": "pkey login end to end: the terminal opens the browser and shows a code, the console's sign-in card asks Priya to approve the CLI with her passkey, and the terminal then holds a 30-day admin-scope personal token in the keychain that can do only what her roles allow. A Diceroll command is refused by name, PKEY_ADMIN_COOKIE is refused with the fix, and package managers get a separate packages-only token.",
+  "compare": [
+    "pkey login prints the console context (Polaris Key console · key.plrs.im), opens the browser, prints the fallback link, and shows the code in reverse video with the keys Enter (open again), c (copy the code) and Esc (cancel); the spinner is the braille one on stderr.",
+    "The browser page is the shared sign-in card (AuthCard) in console context: 'Let pkey sign in as you?' with the machine line under it (priyas-macbook-pro, macOS, just now), the code panel 'Check this matches your terminal', the roles the token will be bounded by as role tags, the 30-day end date and that it can't install packages.",
+    "Approval needs a fresh strong sign-in: the button is 'Approve with your passkey' even when the console is already open (step-up to mint). A session signed in with an email code only gets 'Sign in with your passkey to approve' and no Approve button until then (Other states).",
+    "After approval the terminal prints '✓ Signed in as <name> (<email>)', then Roles, Token (pkeyp_…, admin, end date) and where it is saved (macOS Keychain; Windows Credential Manager or the Secret Service on Linux), then that the token follows the roles and how to end it.",
+    "A command outside the roles fails with '✗ You don't have access to <product> → <area>.', the current roles and the people to ask, one per line with email and role (Kenji Mori, then the Superadmins), the same list as the console's no-access page.",
+    "Setting PKEY_ADMIN_COOKIE fails with what changed and the fix (run pkey login once); there is no deprecation warning or fallback in 0.9.",
+    "pkey feeds setup --write makes its own packages:read token and writes package-manager files; the admin token is never written to a file, and a token is never both admin and packages.",
+    "pkey whoami shows the person, the roles and the token's end date; pkey logout ends the token on the server and removes it from the keychain.",
+    "The other endings are drawn under Other states: Approved (the browser says 'Signed in. Go back to your terminal.'), Cancelled (the browser says nothing was approved; the terminal prints '✗ Sign-in was cancelled in the browser.' and to run pkey login again), Expired (the terminal names the code and says to run pkey login for a new one).",
+    "Over SSH or with no browser, the terminal skips the browser and says to enter the code at key.plrs.im/manage/device on another device; --json prints one object per state and never prompts; CI uses a service token instead.",
+    "Every line fits 80 columns; colours are the ANSI roles (pkey has no product accent, so emphasis is bold, not cyan text) and ✓ ✗ fall back to ASCII under TERM=dumb.",
+    "Phone and tablet: one column in the order things happen (waiting, approve, signed in, the rest, notes), then the other states in one column; the terminals scroll sideways inside their frames."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fix applied: the approved, cancelled, expired and passkey-needed states are drawn, the title and code label are reworded, and the refusal lists the same people as the no-access page.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "Only the pending approval is drawn: no approved, cancelled, expired or email-code-only state.",
+        "resolution": "Other states: Approved (browser 'Signed in. Go back to your terminal.' with the token's end date); Cancelled (browser card plus the terminal's '✗ Sign-in was cancelled in the browser. Run pkey login to try again.'); Expired (the terminal names the code and the command to rerun, without inventing a time limit); Needs a passkey (the card asks for the passkey with 'Continue with your passkey' and shows no Approve until then)."
+      },
+      {
+        "severity": "minor",
+        "issue": "'Sign in the CLI?' reads like a typo, and 'Matches?' asks a question with no control to answer it.",
+        "resolution": "The title is 'Let pkey sign in as you?' with 'From priyas-macbook-pro, macOS · just now' under it. The code panel says 'Check this matches your terminal', and 'Matches?' is gone."
+      },
+      {
+        "severity": "minor",
+        "issue": "The refusal names only Kenji Mori, while the no-access page shows up to three people.",
+        "resolution": "The terminal now lists Kenji Mori, Ada Lindqvist and Jonas Weber, one per line with email and role, inside 80 columns."
+      }
+    ]
+  }
+}

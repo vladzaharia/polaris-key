@@ -1,0 +1,57 @@
+{
+  "id": "commerce.offers",
+  "title": "Offers",
+  "area": "commerce",
+  "surface": "console",
+  "packages": [
+    "CM-23",
+    "CM-20",
+    "LX-11",
+    "CM-25",
+    "CM-28"
+  ],
+  "uxRows": [],
+  "summary": "Diceroll's five offers as one parity table: each row is an offer defined once (what it sells, one-time or subscription, a quantity) and each set-up storefront is a column holding that offer's SKU as a chip, including the paid app itself on Steam and itch.io. Import and suggest surfaces an unmapped Google Play product, and the 3.1.3(b) warning asks for an App Store SKU.",
+  "compare": [
+    "One row per offer, each defined once: name (the row's link to the editor), then what it sells (Tier Standard, Add-on Dice skins) and its billing (one-time, monthly with a 7-day free trial) or quantity (25 per purchase).",
+    "One column per storefront that is set up (App Store, Google Play, Steam, itch.io), in the canonical order with the store mark in the header; Microsoft Store, not set up, has no column and is named once in the table foot with Set it up.",
+    "A SKU is a mono chip: a green tick when the product exists on the store, an hourglass in info while it is in review, a dashed ring where Polaris Key can't check purchases (itch.io). App Store chips show only the part after the shared bundle prefix ('.full', '.plus.monthly'); the prefix 'com.example.diceroll.*' is named once under the App Store header, and the full id is the chip's tooltip and what Copy copies.",
+    "The paid app itself is a SKU: Steam's 'app · base game' and itch.io's 'app' sell the Full game offer, beside the App Store and Google Play in-app purchases that sell the same Standard tier.",
+    "Where a store can't sell an offer's kind, the cell says why in plain words (No subscriptions, No consumables, Game only), never a blank or n/a.",
+    "A missing SKU the rules need is a warning chip 'Create' on the App Store column for Neon dice pack, matching the 3.1.3(b) warning callout above the table with Create on App Store.",
+    "Import and suggest: a store product sold with no offer is a danger callout naming the SKU and what happened to the buyers, with one action, Add to an offer, which maps the SKU and re-verifies those purchases in the same change ('Add it to an offer and those 3 players get it at once'; commerce.add-to-offer). No separate mapping page or re-verify step exists.",
+    "State is status text: On sale (green) or Draft (muted with a pencil). No prices appear in the table.",
+    "Page actions are Import from stores (results: commerce.offers-import) and New offer (primary, commerce green; commerce.offer-new). With no offers the page is the empty state (commerce.offers-empty).",
+    "Phone: each offer is a stacked row, never a sideways table: name and state on the first line, what it sells under it, then one line of store marks, each with its SKU's glyph (tick, hourglass, warning 'Create', dashed ring, or a muted 'n/a' where the store can't sell that kind). Tapping a row opens the editor; the callouts' actions go under their text and the foot keeps only the legend."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: phone rows are stacked with store marks, App Store chips show the part that differs, the holiday_bundle fix is one action, and New offer, Import, Add to an offer, Create on App Store and the empty page are drawn.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "[phone] The parity table shows the Offer column and part of App Store only; Google Play, Steam, itch.io and State are off-screen and the chips are cut twice.",
+        "resolution": "Below 640px each offer is a stacked row: name and state, what it sells, then one line of store marks each with its glyph (tick, hourglass, warning Create, dashed ring, muted n/a). No sideways scroll. Compare item 10 updated."
+      },
+      {
+        "severity": "major",
+        "issue": "[visual / scannability] Truncating from the start cuts each App Store id at a different character, so the column looks broken and the differing part stays buried.",
+        "resolution": "Chips show only the tail after the bundle id ('.full', '.skins', '.plus.monthly', '.rerolls25'); 'com.example.diceroll.*' is named once under the App Store header with a tooltip; the full id is each chip's tooltip and what Copy copies."
+      },
+      {
+        "severity": "major",
+        "issue": "[flow] The danger callout asks for two manual steps (add the SKU, then re-verify), and no offer exists for holiday_bundle.",
+        "resolution": "The callout now reads 'Add it to an offer and those 3 players get it at once.' Add to an offer opens one picker, drawn as commerce.add-to-offer: a new offer from holiday_bundle (default) or an existing offer as a second Google Play SKU; one change maps the SKU, re-verifies the 3 purchases and updates those licenses, and the toast says '3 players now have Holiday bundle'."
+      },
+      {
+        "severity": "major",
+        "issue": "[flow / missing states] New offer, Import from stores, Create on App Store and the empty Offers page are not drawn.",
+        "resolution": "Added commerce.offer-new (What it sells, an empty 'Set a base price', Create on App Store / Google Play rows, a Steam copy card with a DLC picker, itch.io explained), commerce.offers-import (suggestions with Dismiss and Add offer, one unmatched product pointing at Licensing, Add all 3), commerce.create-iap (L1 caution confirm: product id, type, price point, territories, Apple's never-reused rule) and commerce.offers-empty."
+      }
+    ]
+  },
+  "order": 8
+}

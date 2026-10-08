@@ -1,0 +1,56 @@
+{
+  "id": "sdk.react-activate",
+  "title": "React kit: activate with a key",
+  "area": "sdk",
+  "surface": "kit",
+  "order": 7,
+  "packages": [
+    "UK-03",
+    "UK-05",
+    "UK-06",
+    "UK-42"
+  ],
+  "uxRows": [],
+  "summary": "Activation with a license key in the React kit's one form, in an Electron window labelled as a DJDL fixture: the key field, the not-a-key error, Activating…, key not found and every other answer in the same place, Replace a device with the catalog heading and the inline confirm, and DJDL is ready with the once-only Keep DJDL in your account recommendation.",
+  "compare": [
+    "The key field is a step of the same form: the DJDL header and art persist, and Back returns to Sign in.",
+    "Copy comes from the kit catalog: 'Enter your license key', 'You'll find it in your purchase email.', 'License key', 'Paste', 'Activate license', 'Activating…'. The format error 'That doesn't look like a license key. Keys start with pkey_.' shows under the field with an icon and tints the field, without sending anything. Server answers (not found, another product, another account, revoked, refunded) take the same place; offline is a row with Try again.",
+    "The field is filled (no box outline); focus is one 2px outline in DJDL's accent, with no glow.",
+    "Replace a device: heading 'Your license is on 5 of 5 devices' and lede 'To use it on this computer, replace one. You can add it back later.' The license's devices are listed with OS and last use, with 'Last used' once above the list, the least recently used preselected, and a device used today in amber. The confirm 'Replace Mara's MacBook Air?' / 'Mara's MacBook Air stops using this license now. You can add it back when a device is free.' sits inline under the list, with a destructive 'Replace and continue' and 'Back'. The web kit never opens a dialog on the form.",
+    "DJDL is ready shows the success check and 'Standard · Lifetime · this computer is device 5 of 5.' Below is a quiet Keep DJDL in your account card, with Recommended above its title and only the reasons DJDL has (Cloud Sync, Get your license back, Move it to a new device), and 'Add your name and email' as its secondary.",
+    "'Start using DJDL' stays the primary, with 'Or continue without an account. Your license works the same.' under it. The recommendation shows once, and the license stays floating until the person adds an account.",
+    "Accent, type and radii match sdk.react-sign-in: Polaris look by default, DJDL's coral accent, no Polaris Key mark.",
+    "Phone render: each window is the desktop window scaled down.",
+    "While a request runs, the primary says what is happening ('Activating…', 'Replacing…') and the form locks until Polaris Key answers.",
+    "A visible 'Kit preview · fixture product' callout, as on sdk.react-sign-in."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: the 'without an account' line is true, Replace says why it appeared, every server answer and the busy and offline states are drawn, and the confirm talks about devices, not seats.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "'Or continue without an account. DJDL works the same.' isn't true: the card above lists Cloud Sync, which needs an account.",
+        "resolution": "The line now reads 'Or continue without an account. Your license works the same.', the same in sdk.swiftui-activate, and the caption says it promises only what is true."
+      },
+      {
+        "severity": "major",
+        "issue": "Replace a device never says why it appeared (5 of 5 is only in the caption), and the lede says 'this computer' while the ready step says 'this PC'.",
+        "resolution": "The step uses the catalog's deviceLimit.heading, 'Your license is on 5 of 5 devices', and deviceLimit.lede, 'To use it on this computer, replace one. You can add it back later.' 'This computer', the catalog's formFactor word, is used throughout, including 'this computer is device 5 of 5.'"
+      },
+      {
+        "severity": "major",
+        "issue": "Only the client-side format error is drawn. Key not found, revoked or refunded, a key for another product, offline, and the busy states have nowhere to show.",
+        "resolution": "Added 1c Activating: 'Activating…' (activate.busy), with the field, Paste and Back locked. Added 1d Key not found, in PORTAL §4.19's words, under the field. Added 1e, the other answers drawn in the same place: 'That key is for Diceroll, not DJDL.', a license in another account (SIGN-IN.md license_owned, with Sign in to that account and Use a different key), revoked, refunded, and offline ('Can't reach Polaris Key' with Try again, the key kept in the field). Step 2's caption gives Replace's busy label 'Replacing…' with the list locked. Full-length keys (22 characters after pkey_djdl_) wrap in the field, so the mistyped character in 1d stays visible."
+      },
+      {
+        "severity": "minor",
+        "issue": "The confirm says 'can sign in again later if a seat is free' (a device doesn't sign in, and 'seat' appears nowhere else), only the first row says 'last used', and picking a device used today gives no warning.",
+        "resolution": "The confirm now reads 'Mara's MacBook Air stops using this license now. You can add it back when a device is free.' The catalog's deviceLimit.consequence still says 'seat', so it is flagged for the lead. 'Last used' appears once, as a column hint above the list, so every row is one line. The device used today shows 'today' in amber, and the caption gives the line the confirm adds when it is picked: 'Mara's MacBook Pro was used today.'"
+      }
+    ]
+  }
+}

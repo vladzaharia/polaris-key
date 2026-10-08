@@ -1,0 +1,21 @@
+{
+  "id": "entitlements.extend-major",
+  "title": "Extend Pro 4 to 5.x",
+  "area": "entitlements",
+  "surface": "dialog",
+  "packages": ["LX-43", "LX-41"],
+  "uxRows": [],
+  "summary": "The dialog behind the new-major notice's Extend Pro 4 to 5.x…: Pro 4's line widens from 4.x to 4.x and 5.x, so its 64 licenses get DJDL 5 at no charge, starting with 5.0.0-beta.1 on the beta track. It names the licenses, the build and the stored range, and says what narrowing it later would do.",
+  "compare": [
+    "Opens over the Licenses page from the notice's Extend Pro 4 to 5.x… (and the same button in Pro 4's record); focus starts on Cancel, because the change gives every holder a free major.",
+    "The first sentence names who gets what and when: Pro 4's 64 licenses, 5.0.0-beta.1 at the next update check (Pro 4 includes the beta track), 5.0.0 when it reaches stable, at no charge.",
+    "The summary shows the change as before → after (Versions: 4.x → 4.x and 5.x) and the license count; the note gives the stored range in mono (4.0.0 to 5.999999.999999) and says that narrowing it back later stops updates for devices already on 5.x.",
+    "A line points to Start a 5.x tier… for charging for DJDL 5 instead.",
+    "The primary says exactly what happens: 'Give 64 licenses 5.x'. After it, Pro 4's Versions read '4.x and 5.x · from Duration', a toast says 'Pro 4 now covers 5.x', and the notice is gone from Licenses and from Pro 4's record.",
+    "The page behind keeps New license as its one primary; the notice's actions are outline buttons and a ghost Dismiss.",
+    "Phone: the dialog takes the full width; the summary keeps two columns; Cancel and Give 64 licenses 5.x share the foot."
+  ],
+  "status": "mockup",
+  "designReview": null,
+  "order": 9
+}

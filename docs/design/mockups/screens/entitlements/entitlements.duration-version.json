@@ -1,0 +1,43 @@
+{
+  "id": "entitlements.duration-version",
+  "title": "Tier duration: version-scoped, the major-line helper",
+  "area": "entitlements",
+  "surface": "console",
+  "packages": [
+    "LX-41",
+    "LX-43",
+    "LX-44",
+    "LX-33"
+  ],
+  "uxRows": [],
+  "summary": "DJDL's Pro 4 tier with Version-scoped chosen: the major-line helper ('4.x', with 3.x/4.x/5.x chips) and the exact stored range, runs forever within the line, and the new-major notice at the top because 5.0.0-beta.1 has just been published above the line.",
+  "compare": [
+    "Version-scoped's first field is the major line, typed as '4.x' or picked from chips around the current major; the hint states the covered range in words and the stored values in mono (4.0.0 to 4.999999.999999), and 'Set a range instead' switches to explicit min and max.",
+    "Within the line offers Runs forever (default) or Runs a set number of days; nothing else.",
+    "Limits shows Versions as '4.x', labelled 'from Duration', so the window is set in one place; Fingerprint mode is labelled 'platform default'. All groups edit in place, with no Edit buttons.",
+    "The new-major notice sits above the tabs as an info callout. Its title, text and actions match Licenses exactly: '5.0.0-beta.1 is DJDL’s first 5.x build', Start a 5.x tier… and Extend Pro 4 to 5.x… (outline), and Dismiss (ghost). It appears at the first 5.x build on any release track and shows here and on Licenses until someone dismisses it.",
+    "The timeline explains a refused out-of-line install in the customer's words ('Your license covers DJDL 4.x') and that update checks never offer 5.x to Pro 4 licenses.",
+    "Phone: the major-line input and chips wrap onto two lines; the callout's three buttons wrap under its text.",
+    "The timeline keeps one 'today': 'Today · Runs 4.2.0, the newest 4.x', then 'Published today · 5.0.0-beta.1 is out of reach'."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Pass: the new-major notice now has the same title and actions as on Licenses, in outline buttons, and the timeline no longer shows today twice.",
+    "findings": [
+      {
+        "severity": "minor",
+        "issue": "The notice's title, copy and actions differ from Licenses ('… is outside 4.x', an 'extend' with no button, no Dismiss), and its filled primary clashes with the info tint.",
+        "resolution": "Same notice as on Licenses: '5.0.0-beta.1 is DJDL’s first 5.x build', the same text, and Start a 5.x tier… and Extend Pro 4 to 5.x… as outline buttons, with Dismiss as a ghost button. No filled button sits in the callout (rule added to kit/README.md under Callouts)."
+      },
+      {
+        "severity": "minor",
+        "issue": "The timeline shows 'Today: Runs 4.2.0' and then 'Oct 7, 2026: 5.0.0-beta.1 is out of reach' as if they were two days, and the Settings sentence reads awkwardly.",
+        "resolution": "The 4.2.0 event stays 'Today' ('Runs 4.2.0, the newest 4.x'), and the beta event is dated 'Published today'. The sentence now reads 'The first time a 5.x build is published, on any track, the Licenses page and this record show a notice with Start a 5.x tier… until someone dismisses it.' Also applied from the Pro review: the groups edit in place, Fingerprint mode reads 'platform default', and the tier is 3rd of 4 in list order."
+      }
+    ]
+  },
+  "order": 6
+}

@@ -1,0 +1,66 @@
+{
+  "id": "config.effective",
+  "title": "Effective config on a license",
+  "area": "config",
+  "surface": "console",
+  "packages": [
+    "U-29",
+    "U-28",
+    "U-27",
+    "ST-45"
+  ],
+  "uxRows": [],
+  "summary": "Mara Fennick's Studio license for DJDL, Config tab: every value her devices get with the step it came from along the five-step chain, an override the Studio profile's lock keeps from applying, a required secret no step sets, and what each device does with the list.",
+  "compare": [
+    "Every value, state and source on this tab comes from the one effective-config read (GET …/config/effective?license=…); the console never re-merges, and the lock case matches the server: run.concurrency shows 6 (Read-only, from the Studio profile), not the license's 3.",
+    "The chain card shows the five steps in merge order (Catalog defaults with the catalog version, Default profile, the tier's profile, This license, the holder's account) with how many values each sets (16, 5, 5, 2, 2); the current page's step is highlighted, and selecting a step filters the table.",
+    "Counts agree: 22 values (16 settings and 6 secrets) in the search, the All filter and the foot; the minted token isn't listed and the foot says why.",
+    "Each row: key with its label, the value devices get, In the app (Editable, Read-only, Hidden; secrets say Never listed) and From: five 10px pips with 3px gaps (filled where a step sets it, accent where the value comes from, dashed amber where set but not applied) plus the step's name and a lock where it locks.",
+    "A required secret no step sets (identity.acoustidKey) shows \"Not set\" in warning with \"Required secret\" and Set secret, matching products.home's Needs attention row; other secrets show only Configured or Not set, never a value.",
+    "A blocked override is called out at the top with what devices get instead and the fix; its row opens a trail of all five steps with the skipped one struck through, Remove override, and Open Studio profile (config.profile).",
+    "Rows set on this license carry an accent edge and an edit button; other rows offer Override on hover; the actions column keeps 16px inside the card and the table never scrolls sideways at 1440.",
+    "Then, on each device lists the client order without numbers (dots joined by arrows), so it can't be read as part of the server chain: a lock wins, then the person's own choice (synced with Cloud Sync), then the computer's environment, then this list (outlined), then the app's fallback, with one worked example.",
+    "Last picked up names Mara's three devices with when each last fetched config.",
+    "Tablet: the rail drops under the table in two columns and the chain wraps. Phone: the … menu sits on the title row, the license key is its own meta line, the chain is a compact list (one line per step with its count), Add override is a full-width button under the filters, and each table row becomes a two-line block."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: Add override works on phone, the counts add up, acoustidKey agrees with Home, and the device order no longer looks like the chain.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "Add override was hidden on phone, so an override could be edited but not added below 640px.",
+        "resolution": "On phone Add override is a full-width outline button under the filter chips."
+      },
+      {
+        "severity": "minor",
+        "issue": "Search, the All filter and the foot said 23 values (17 settings) but the table lists 22 (16 and 6).",
+        "resolution": "Search 22 values, All 22, and \"16 settings and 6 secrets\", matching the 23-entry catalog minus the minted token."
+      },
+      {
+        "severity": "minor",
+        "issue": "identity.acoustidKey showed Configured from the Default profile while products.home says it has no value there.",
+        "resolution": "Drawn as the missing-secret state: \"Not set\" in warning, \"Required secret\", No step sets it, and Set secret; Step 2 (Default profile) now sets 5 values, not 6."
+      },
+      {
+        "severity": "minor",
+        "issue": "8px pips made the dashed \"Set, not applied\" pip illegible, and Override and the pencil were clipped at the card's edge.",
+        "resolution": "Pips are 10px with 3px gaps and a heavier dashed border; the actions column has 16px right padding. The table had been scrolling sideways at 1440; the From label now wraps and the secret's action is the short Set secret, so it fits."
+      },
+      {
+        "severity": "minor",
+        "issue": "Two numbered 1–5 sequences sat side by side with the same green step 4.",
+        "resolution": "The device order has no numbers: dots joined by down arrows, titled \"Then, on each device\", and \"Then this list\" is outlined rather than a filled number."
+      },
+      {
+        "severity": "minor",
+        "issue": "On phone the … menu was orphaned, the key chip hidden, and the chain took about 550px before any value.",
+        "resolution": "The menu sits at the right of the title row, the key is its own meta line, and the chain is a compact list, one line per step with its count."
+      }
+    ]
+  },
+  "order": 13
+}

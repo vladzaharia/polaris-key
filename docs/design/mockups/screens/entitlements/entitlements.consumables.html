@@ -1,0 +1,495 @@
+<style>
+  /* entitlements.consumables: only what the kit does not already say. */
+  [data-screen="entitlements.consumables"] .ent-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: 20px;
+    align-items: stretch;
+  }
+  [data-screen="entitlements.consumables"] .ent-grid > .card {
+    display: flex;
+    flex-direction: column;
+  }
+  /* The add-ons card fills the row; its foot sits at the bottom. */
+  [data-screen="entitlements.consumables"] .held-foot {
+    margin-top: auto;
+    border-top: 1px solid var(--mk-line);
+  }
+  [data-screen="entitlements.consumables"] .rev-note {
+    color: var(--pk-warning);
+  }
+  [data-screen="entitlements.consumables"] .rev-note .ic {
+    width: 12px;
+    height: 12px;
+    margin-right: 3px;
+    vertical-align: -2px;
+  }
+  [data-screen="entitlements.consumables"] .table td {
+    vertical-align: middle;
+  }
+  [data-screen="entitlements.consumables"] .val-on {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--pk-text-strong);
+    white-space: nowrap;
+  }
+  [data-screen="entitlements.consumables"] .val-on > .ic {
+    width: 14px;
+    height: 14px;
+    color: var(--pk-accent-fg);
+  }
+  [data-screen="entitlements.consumables"] .from {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  [data-screen="entitlements.consumables"] .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 22px;
+    padding: 0 7px;
+    border-radius: var(--pk-radius-sm);
+    background: var(--mk-fill);
+    font-size: 12px;
+    color: var(--pk-text-default);
+    white-space: nowrap;
+  }
+  [data-screen="entitlements.consumables"] .tag > .ic {
+    width: 12px;
+    height: 12px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="entitlements.consumables"] .held {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 2px 12px;
+    padding: 12px 20px;
+  }
+  [data-screen="entitlements.consumables"] .held + .held {
+    border-top: 1px solid var(--mk-line);
+  }
+  [data-screen="entitlements.consumables"] .held .icon-tile {
+    grid-row: span 2;
+  }
+  [data-screen="entitlements.consumables"] .held .btn {
+    grid-row: span 2;
+  }
+  [data-screen="entitlements.consumables"] .held-sub {
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="entitlements.consumables"] .bal {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-size: 28px;
+    line-height: 34px;
+    font-weight: 700;
+    color: var(--pk-text-strong);
+    font-variant-numeric: tabular-nums;
+  }
+  [data-screen="entitlements.consumables"] .bal small {
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="entitlements.consumables"] .gem-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border-bottom: 1px solid var(--mk-line);
+  }
+  [data-screen="entitlements.consumables"] .gem-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 14px 20px;
+  }
+  [data-screen="entitlements.consumables"] .gem-stat + .gem-stat {
+    border-left: 1px solid var(--mk-line);
+  }
+  [data-screen="entitlements.consumables"] .gem-stat .stat-value {
+    font-size: 20px;
+    line-height: 28px;
+  }
+  [data-screen="entitlements.consumables"] .ledger-tools {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--mk-line);
+  }
+  [data-screen="entitlements.consumables"] .ledger {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+  [data-screen="entitlements.consumables"] .ledger th {
+    height: 36px;
+    padding: 0 16px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--pk-text-muted);
+    white-space: nowrap;
+    border-bottom: 1px solid var(--mk-line);
+  }
+  [data-screen="entitlements.consumables"] .ledger td {
+    padding: 10px 16px;
+    border-top: 1px solid var(--mk-line);
+    vertical-align: top;
+    color: var(--pk-text-default);
+  }
+  [data-screen="entitlements.consumables"] .ledger tbody tr:first-child td {
+    border-top: 0;
+  }
+  [data-screen="entitlements.consumables"] .ledger th:first-child,
+  [data-screen="entitlements.consumables"] .ledger td:first-child {
+    padding-left: 20px;
+  }
+  [data-screen="entitlements.consumables"] .ledger th:last-child,
+  [data-screen="entitlements.consumables"] .ledger td:last-child {
+    padding-right: 20px;
+  }
+  [data-screen="entitlements.consumables"] .ledger .num {
+    text-align: right;
+    white-space: nowrap;
+  }
+  [data-screen="entitlements.consumables"] .when {
+    white-space: nowrap;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="entitlements.consumables"] .ev {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 700;
+    color: var(--pk-text-strong);
+    white-space: nowrap;
+  }
+  [data-screen="entitlements.consumables"] .ev > .ic {
+    width: 14px;
+    height: 14px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="entitlements.consumables"] .ev.bought > .ic {
+    color: var(--pk-success);
+  }
+  [data-screen="entitlements.consumables"] .ev.refund,
+  [data-screen="entitlements.consumables"] .ev.refund > .ic {
+    color: var(--pk-danger);
+  }
+  [data-screen="entitlements.consumables"] .plus {
+    color: var(--pk-success);
+  }
+  [data-screen="entitlements.consumables"] .minus {
+    color: var(--pk-text-strong);
+  }
+  [data-screen="entitlements.consumables"] .det {
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="entitlements.consumables"] .det .mono {
+    font-size: 12px;
+  }
+  [data-screen="entitlements.consumables"] .det .status {
+    margin-top: 4px;
+    white-space: normal;
+  }
+  [data-screen="entitlements.consumables"] tr.reversed td {
+    background: var(--pk-warning-subtle);
+  }
+  [data-screen="entitlements.consumables"] .struck {
+    text-decoration: line-through;
+    text-decoration-color: var(--pk-text-subtle);
+  }
+  [data-screen="entitlements.consumables"] .phone-facts {
+    margin-top: 2px;
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="entitlements.consumables"] .ledger-scroll {
+    overflow-x: auto;
+  }
+  @container screen (max-width: 1023px) {
+    [data-screen="entitlements.consumables"] .ent-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="entitlements.consumables"] .gem-stats {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    [data-screen="entitlements.consumables"] .gem-stat {
+      padding: 12px 16px;
+    }
+    [data-screen="entitlements.consumables"] .gem-stat:nth-child(3) {
+      border-left: 0;
+    }
+    [data-screen="entitlements.consumables"] .gem-stat:nth-child(n + 3) {
+      border-top: 1px solid var(--mk-line);
+    }
+    [data-screen="entitlements.consumables"] .held,
+    [data-screen="entitlements.consumables"] .ledger-tools {
+      padding-left: 16px;
+      padding-right: 16px;
+    }
+    [data-screen="entitlements.consumables"] .ledger th:first-child,
+    [data-screen="entitlements.consumables"] .ledger td:first-child {
+      padding-left: 16px;
+    }
+    [data-screen="entitlements.consumables"] .ledger th:last-child,
+    [data-screen="entitlements.consumables"] .ledger td:last-child {
+      padding-right: 16px;
+    }
+    [data-screen="entitlements.consumables"] .ledger td,
+    [data-screen="entitlements.consumables"] .ledger th {
+      padding-left: 10px;
+      padding-right: 10px;
+    }
+    [data-screen="entitlements.consumables"] .table td,
+    [data-screen="entitlements.consumables"] .table th {
+      padding-left: 14px;
+      padding-right: 10px;
+    }
+    [data-screen="entitlements.consumables"] .ledger-tools .segmented {
+      width: 100%;
+    }
+    [data-screen="entitlements.consumables"] .ledger-tools .segmented > span {
+      flex: 1;
+      justify-content: center;
+    }
+  }
+</style>
+
+<div class="console" data-service="license">
+  <header class="topbar">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <nav class="sidebar" aria-label="Diceroll">
+    <div class="ctx">
+      <span class="logo sm" data-product="diceroll"></span>
+      <span class="ctx-text"><span class="ctx-name">Diceroll</span><span class="ctx-sub mono">diceroll</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item" href="#"><i class="ic ic-layout-dashboard"></i><span class="nav-text">Overview</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-shield-check"></i><span class="nav-text">Access</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
+    <div class="nav-group" data-service="license">
+      <div class="nav-label">Licensing<i class="ic ic-chevron-down sm"></i></div>
+      <a class="nav-item active" href="#"><i class="ic ic-key-round"></i><span class="nav-text">Licenses</span><span class="count">18,406</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-layers"></i><span class="nav-text">Tiers</span><span class="count">2</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-puzzle"></i><span class="nav-text">Add-ons</span><span class="count">8</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-list-checks"></i><span class="nav-text">Entitlements</span></a>
+    </div>
+    <div class="nav-group closed" data-service="config" style="padding-top: 4px"><div class="nav-label">Managed config<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="release" style="padding-top: 4px"><div class="nav-label">Ship builds<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="identity" style="padding-top: 4px"><div class="nav-label">Sign-in<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="sync" style="padding-top: 4px"><div class="nav-label">Cloud Sync<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="commerce" style="padding-top: 4px"><div class="nav-label">Commerce<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="page">
+      <header class="page-head">
+        <nav class="crumbs"><a href="#">Licenses</a><i class="ic ic-chevron-right"></i>Elif Yıldız</nav>
+        <div class="page-heading"><h1>Elif Yıldız</h1></div>
+        <p class="page-sub"><span>elif@example.com · In an account · Premium</span><span class="id hide-phone"><i class="ic ic-id-card"></i>lic_01J9X…7FQA<i class="ic ic-copy"></i></span></p>
+        <div class="page-actions">
+          <button class="btn outline"><i class="ic ic-gift"></i>Comp an add-on…</button>
+          <button class="btn ghost icon" aria-label="More"><i class="ic ic-ellipsis"></i></button>
+        </div>
+      </header>
+
+      <nav class="tabs"><a class="tab" href="#">Status</a><a class="tab active" href="#">Entitlements</a><a class="tab" href="#">Keys</a><a class="tab" href="#">Devices <span class="count">3</span></a><a class="tab" href="#">Activity</a></nav>
+
+      <div class="ent-grid">
+        <!-- LX-14 on LX-09's resolver: the effective set, each value with its source. -->
+        <section class="card" aria-labelledby="eff-title">
+          <div class="card-head">
+            <div class="title">
+              <h2 id="eff-title">What Elif’s devices get</h2>
+              <p>From this license: Premium, then overrides (none), then its add-ons.</p>
+            </div>
+            <button class="btn outline sm"><i class="ic ic-pencil"></i>Override…</button>
+          </div>
+          <table class="table compact">
+            <thead><tr><th>Entitlement</th><th>Value</th><th class="hide-phone">From</th></tr></thead>
+            <tbody>
+              <tr><td><div class="cell-title">No ads</div><div class="cell-sub mono">ads.off</div><div class="phone-facts show-phone">Premium</div></td><td><span class="val-on"><i class="ic ic-check"></i>On</span></td>
+                <td class="hide-phone"><div class="from"><span class="tag"><i class="ic ic-layers"></i>Premium</span></div></td></tr>
+              <tr><td><div class="cell-title">Obsidian dice</div><div class="cell-sub mono">pack.obsidian</div><div class="phone-facts show-phone">Premium</div></td><td><span class="val-on"><i class="ic ic-check"></i>On</span></td>
+                <td class="hide-phone"><div class="from"><span class="tag"><i class="ic ic-layers"></i>Premium</span></div></td></tr>
+              <tr><td><div class="cell-title">Neon dice</div><div class="cell-sub mono">pack.neon</div><div class="phone-facts show-phone">Neon dice pack</div></td><td><span class="val-on"><i class="ic ic-check"></i>On</span></td>
+                <td class="hide-phone"><div class="from"><span class="tag"><i class="ic ic-puzzle"></i>Neon dice pack</span></div></td></tr>
+              <tr><td><div class="cell-title">Season pass</div><div class="cell-sub mono">pass.season</div><div class="phone-facts show-phone">Season pass, renews Nov 4</div></td><td><span class="val-on"><i class="ic ic-check"></i>On</span></td>
+                <td class="hide-phone"><div class="from"><span class="tag"><i class="ic ic-puzzle"></i>Season pass · renews Nov 4</span></div></td></tr>
+              <tr><td><div class="cell-title">Loadout slots</div><div class="cell-sub mono">loadouts</div><div class="phone-facts show-phone">Premium 6 + Loadout pack 2 + Neon dice pack 1</div></td><td class="tnum strong">9</td>
+                <td class="hide-phone"><div class="from"><span class="tag"><i class="ic ic-layers"></i>Premium 6</span><span class="tag"><i class="ic ic-puzzle"></i>Loadout pack +2</span><span class="tag"><i class="ic ic-puzzle"></i>Neon dice pack +1</span></div></td></tr>
+              <tr><td><div class="cell-title">Gems</div><div class="cell-sub mono">gems</div><div class="phone-facts show-phone">3 purchases, ledger below</div></td><td class="tnum strong nowrap">1,350 left</td>
+                <td class="hide-phone"><div class="from"><span class="tag"><i class="ic ic-puzzle"></i>3 gem purchases</span></div></td></tr>
+              <tr><td><div class="cell-title">Release tracks</div><div class="cell-sub mono">channels</div><div class="phone-facts show-phone">Premium</div></td><td class="strong">stable</td>
+                <td class="hide-phone"><div class="from"><span class="tag"><i class="ic ic-layers"></i>Premium</span></div></td></tr>
+              <tr><td><div class="cell-title">Device limit</div><div class="cell-sub mono">deviceLimit</div><div class="phone-facts show-phone">Premium</div></td><td class="tnum strong">5</td>
+                <td class="hide-phone"><div class="from"><span class="tag"><i class="ic ic-layers"></i>Premium</span></div></td></tr>
+              <tr><td><div class="cell-title">Cloud Sync storage</div><div class="cell-sub mono">pkey.cloudSync.bytes</div><div class="phone-facts show-phone">Premium</div></td><td class="tnum strong nowrap">50 MB</td>
+                <td class="hide-phone"><div class="from"><span class="tag"><i class="ic ic-layers"></i>Premium</span></div></td></tr>
+            </tbody>
+          </table>
+          <div class="table-foot">Not given: Supporter skins</div>
+        </section>
+
+        <!-- Add-ons held by this license (LX-35), each with its source and actions. -->
+        <section class="card" aria-labelledby="held-title">
+          <div class="card-head">
+            <div class="title"><h2 id="held-title">Add-ons</h2><p>Held by this license, so they follow Elif to every device.</p></div>
+            <span class="count">6</span>
+          </div>
+          <div class="held">
+            <span class="icon-tile sm"><i class="ic ic-dice-5"></i></span>
+            <span class="strong">Neon dice pack</span>
+            <button class="btn ghost icon xs" aria-label="Actions for Neon dice pack"><i class="ic ic-ellipsis"></i></button>
+            <span class="held-sub">App Store · Oct 2, 2026</span>
+          </div>
+          <div class="held">
+            <span class="icon-tile sm"><i class="ic ic-crown"></i></span>
+            <span class="strong">Season pass</span>
+            <button class="btn ghost icon xs" aria-label="Actions for Season pass"><i class="ic ic-ellipsis"></i></button>
+            <span class="held-sub">Google Play subscription · active, renews Nov 4</span>
+          </div>
+          <div class="held">
+            <span class="icon-tile sm"><i class="ic ic-layers"></i></span>
+            <span class="strong">Loadout pack</span>
+            <button class="btn ghost icon xs" aria-label="Actions for Loadout pack"><i class="ic ic-ellipsis"></i></button>
+            <span class="held-sub">Steam · Sep 14, 2026</span>
+          </div>
+          <div class="held">
+            <span class="icon-tile sm"><i class="ic ic-coins"></i></span>
+            <span class="strong">1,200 gems</span>
+            <button class="btn ghost icon xs" aria-label="Actions for 1,200 gems"><i class="ic ic-ellipsis"></i></button>
+            <span class="held-sub">App Store · Oct 5 · 450 of 1,200 redeemed</span>
+          </div>
+          <div class="held">
+            <span class="icon-tile sm muted"><i class="ic ic-coins"></i></span>
+            <span class="strong">500 gems</span>
+            <button class="btn ghost icon xs" aria-label="Actions for 500 gems, refunded"><i class="ic ic-ellipsis"></i></button>
+            <span class="held-sub"><span class="text-danger">Refunded Oct 3</span> · Google Play · 350 redeemed, reversed</span>
+          </div>
+          <div class="held">
+            <span class="icon-tile sm"><i class="ic ic-coins"></i></span>
+            <span class="strong">500 gems ×2</span>
+            <button class="btn ghost icon xs" aria-label="Actions for 500 gems ×2"><i class="ic ic-ellipsis"></i></button>
+            <span class="held-sub">Google Play · Sep 28 · 400 of 1,000 redeemed</span>
+          </div>
+          <div class="card-foot start held-foot"><span class="small muted">6 purchases · 1 refunded</span><a class="link small ml-auto" href="#">Purchases in Activity<i class="ic ic-arrow-right"></i></a></div>
+        </section>
+      </div>
+
+      <!-- LX-42: a consumable's balance and its redemption ledger. -->
+      <section class="card" aria-labelledby="gems-title">
+        <div class="card-head">
+          <span class="icon-tile"><i class="ic ic-coins"></i></span>
+          <div class="title">
+            <h2 id="gems-title">Gems</h2>
+            <p>Consumable <span class="mono">gems</span>. Diceroll redeems them with <span class="mono">consume()</span>; each request counts once.</p>
+          </div>
+          <button class="btn outline sm"><i class="ic ic-gift"></i>Comp gems…</button>
+        </div>
+        <div class="gem-stats">
+          <div class="gem-stat"><span class="stat-label">Balance</span><span class="bal">1,350<small>gems</small></span></div>
+          <div class="gem-stat"><span class="stat-label">Bought</span><span class="stat-value">2,700</span><span class="stat-foot">3 purchases</span></div>
+          <div class="gem-stat"><span class="stat-label">Redeemed</span><span class="stat-value">1,200</span><span class="stat-foot">4 times · 350 reversed</span></div>
+          <div class="gem-stat"><span class="stat-label">Refunded</span><span class="stat-value">1</span><span class="stat-foot">purchase · 150 gems removed</span></div>
+        </div>
+        <div class="ledger-tools">
+          <span class="segmented sm" role="tablist" aria-label="Show"><span class="on">All</span><span>Bought</span><span>Redeemed</span><span>Refunds</span></span>
+          <span class="small muted ml-auto hide-phone">Newest first · times in PDT</span>
+        </div>
+        <div class="ledger-scroll">
+          <table class="ledger">
+            <thead><tr><th>When</th><th>Event</th><th class="num">Gems</th><th class="num hide-phone">Balance</th><th class="hide-phone">Details</th></tr></thead>
+            <tbody>
+              <tr>
+                <td class="when">Oct 7, 09:41</td>
+                <td><span class="ev"><i class="ic ic-arrow-up-right"></i>Redeemed</span><div class="phone-facts show-phone">Elif’s iPad · balance 1,350</div></td>
+                <td class="num minus">−300</td>
+                <td class="num hide-phone">1,350</td>
+                <td class="det hide-phone">From 1,200 gems · Elif’s iPad, Diceroll 2.3.1 · request <span class="mono">rq_7c1e…a04f</span></td>
+              </tr>
+              <tr>
+                <td class="when">Oct 6, 21:03</td>
+                <td><span class="ev"><i class="ic ic-arrow-up-right"></i>Redeemed</span><div class="phone-facts show-phone">Steam Deck · balance 1,650</div></td>
+                <td class="num minus">−150</td>
+                <td class="num hide-phone">1,650</td>
+                <td class="det hide-phone">From 1,200 gems · Steam Deck, Diceroll 2.3.1 · request <span class="mono">rq_51d9…7b2e</span></td>
+              </tr>
+              <tr>
+                <td class="when">Oct 5, 18:22</td>
+                <td><span class="ev bought"><i class="ic ic-circle-plus"></i>Bought</span><div class="phone-facts show-phone">1,200 gems · App Store · balance 1,800</div></td>
+                <td class="num plus">+1,200</td>
+                <td class="num hide-phone">1,800</td>
+                <td class="det hide-phone">1,200 gems · App Store order <span class="mono">2000000741203</span> · claimed on Elif’s iPad</td>
+              </tr>
+              <tr>
+                <td class="when">Oct 3, 08:15</td>
+                <td><span class="ev refund"><i class="ic ic-circle-minus"></i>Refunded</span><div class="phone-facts show-phone">500 gems from Oct 1 · balance 600</div></td>
+                <td class="num minus">−150</td>
+                <td class="num hide-phone">600</td>
+                <td class="det hide-phone">500 gems from Oct 1 · Google Play refund. The 150 not yet redeemed are removed; the 350 redeemed on Oct 2 are reversed.</td>
+              </tr>
+              <tr class="reversed">
+                <td class="when">Oct 2, 19:02</td>
+                <td><span class="ev"><i class="ic ic-arrow-up-right"></i>Redeemed</span><div class="phone-facts show-phone"><span class="rev-note"><i class="ic ic-triangle-alert"></i>Reversed Oct 3 by the refund</span> · balance 750</div></td>
+                <td class="num minus">−350</td>
+                <td class="num hide-phone">750</td>
+                <td class="det hide-phone">From 500 gems (Oct 1) · Elif’s Pixel 8, Diceroll 2.3.0
+                  <div class="status warning"><i class="ic ic-triangle-alert"></i>Reversed Oct 3 by the refund. Diceroll acknowledged it and took back the Ember table bought with them.</div></td>
+              </tr>
+              <tr>
+                <td class="when">Oct 1, 12:40</td>
+                <td><span class="ev bought"><i class="ic ic-circle-plus"></i>Bought</span><div class="phone-facts show-phone">500 gems · Google Play · balance 1,100</div></td>
+                <td class="num plus">+500</td>
+                <td class="num hide-phone">1,100</td>
+                <td class="det hide-phone">500 gems · Google Play order <span class="mono">GPA.3391-2201-7745-11208</span> · claimed on Elif’s Pixel 8</td>
+              </tr>
+              <tr>
+                <td class="when">Sep 30, 20:11</td>
+                <td><span class="ev"><i class="ic ic-arrow-up-right"></i>Redeemed</span><div class="phone-facts show-phone">Steam Deck · balance 600</div></td>
+                <td class="num minus">−400</td>
+                <td class="num hide-phone">600</td>
+                <td class="det hide-phone">From 500 gems ×2 · Steam Deck, Diceroll 2.3.0 · request <span class="mono">rq_0e8a…c31d</span></td>
+              </tr>
+              <tr>
+                <td class="when">Sep 28, 16:05</td>
+                <td><span class="ev bought"><i class="ic ic-circle-plus"></i>Bought</span><div class="phone-facts show-phone">500 gems ×2 · Google Play · balance 1,000</div></td>
+                <td class="num plus">+1,000</td>
+                <td class="num hide-phone">1,000</td>
+                <td class="det hide-phone">500 gems ×2 · Google Play order <span class="mono">GPA.3317-4402-9921-07215</span> · claimed on Elif’s Pixel 8</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card-foot start"><span class="small muted">A repeated request with the same id redeems nothing. A refund never takes the balance below zero.</span></div>
+      </section>
+    </div>
+  </main>
+</div>

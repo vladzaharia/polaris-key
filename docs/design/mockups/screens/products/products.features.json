@@ -1,0 +1,65 @@
+{
+  "id": "products.features",
+  "title": "Features",
+  "area": "products",
+  "surface": "console",
+  "order": 5,
+  "packages": [
+    "ST-38",
+    "CM-29",
+    "ST-08",
+    "PS-12",
+    "ST-14"
+  ],
+  "uxRows": [
+    "UX-22",
+    "UX-66"
+  ],
+  "summary": "Diceroll's Settings → Features: the six features as one table in canonical order, each row with its own switches and its facts as status. Sign-in is off, so Cloud Sync can't be turned on and says why; Commerce is on because Licensing is; raw service slugs and the derived registration are folded, read-only, under Advanced.",
+  "compare": [
+    "Features is the first tab of the product Settings hub (Features, Presentation, Keys & secrets, Members); Settings is active in the sidebar foot and the crumbs read Diceroll › Settings.",
+    "Exactly six rows in canonical order: Licensing, Managed config, Ship builds, Sign-in, Cloud Sync, Commerce. Each has its service glyph tile, a one-line description, a Status column and one switch. No raw slugs (license, distribution, update) appear outside Advanced.",
+    "The requirement rule is stated once above the table: a feature turns on only when what it needs is on; turning one off turns off what needs it, in one confirmed change; each change is recorded in Activity.",
+    "Requirements read both ways on the rows: Licensing says 'Commerce needs Licensing', Managed config and Sign-in say 'Cloud Sync needs …'. On the dependents each requirement has its own mark, never colour alone: Commerce 'Needs ✓ Licensing is on'; Cloud Sync 'Needs ✓ Managed config is on, 🔒 Sign-in is off'.",
+    "Cloud Sync's switch is disabled (not merely off) while Sign-in is off, and its status 'Turn on Sign-in first' is a link that moves focus to Sign-in's switch. Turning on Sign-in enables Cloud Sync but never turns it on by itself.",
+    "Feature switches sit inside their feature's row: Managed config → Minted tokens (names the declared token, multiplayer.roomToken); Ship builds → In-app updates (its description ends 'On by default when Ship builds turns on'), Packages (off; glossary: Packages, not Package feeds) and Polaris Key storefront (Unlisted / Eligible / Everyone, one setting, explained as 'Who can find Diceroll in Discover on key.plrs.im. Eligible: only people who own it in a store or qualify under the access policy.'); Sign-in → Customer portal.",
+    "An off feature's own switches stay visible but disabled with 'Turns on with Sign-in'; an off feature's tile is muted and its status says Off.",
+    "Status column shows facts as status text, never pills: 'Verified on 4 platforms · 3 tiers · 18,406 licenses', 'Catalog v6 published', '1.8.2 on stable' with its channels, '3 storefronts ready' with 'itch.io's storefront isn't set up yet'.",
+    "Turning on Ship builds writes release, distribution and update in one audited change; the page never shows them as three switches.",
+    "Every turn-off confirms before anything changes (ADMIN.md §5.2: disabling a service is L1): a caution dialog listing what stops when nothing else turns off; a danger dialog naming each dependent when they turn off too, as products.turn-off-licensing does for Licensing.",
+    "Advanced is one folded row: service slugs and how devices register, read-only, with Show.",
+    "Phone: the column header hides, each row puts the switch top-right beside the name, status drops under the description, nested switches span the full width, the Discover segmented control sits under its text, every switch is 44×24, and the tab strip fades at its right edge where it scrolls.",
+    "Every switch is the console accent: one track colour and one knob colour in both themes. The service colour stays on each row's glyph tile.",
+    "A switch that turns something on applies at once: it shows a spinner while saving; a failed save puts the switch back and shows an inline error on the row saying what went wrong and how to retry.",
+    "The Diceroll sidebar shows one count, on Devices (26,315, ST-36's device pill)."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: every switch is the console's colour with one knob colour, requirements carry their own marks, and the missing save and confirm states are specified.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "Every switch took its feature's service accent (lime, gold, cyan, green), and in light the knob flipped between near-black and white from row to row.",
+        "resolution": "data-service moved from each row to its icon tile, so every switch inherits the console accent and its knob colour in both themes."
+      },
+      {
+        "severity": "minor",
+        "issue": "'Package feeds' against glossary §2's 'Packages'; Ship builds lists itch.io as a channel while Commerce said 'itch.io needs its channel first'; the storefront help was hard to parse; 'On by default' beside an on switch read as a state.",
+        "resolution": "Switch renamed 'Packages' (glossary §2 already says so; lead: ST-38's scope text still says 'Package feeds' and should follow). Commerce reads 'itch.io's storefront isn't set up yet.' Storefront help rewritten as suggested. 'On by default when Ship builds turns on.' moved into In-app updates' description."
+      },
+      {
+        "severity": "minor",
+        "issue": "Cloud Sync showed a met requirement only by colour under one lock; Commerce's met state was a barely different open lock.",
+        "resolution": "Each requirement has its own mark: '✓ Managed config is on', '🔒 Sign-in is off', '✓ Licensing is on'. 'Turn on Sign-in first' is a link to Sign-in's row."
+      },
+      {
+        "severity": "minor",
+        "issue": "No pending or failed look for an immediate-apply switch; the compare only promised a confirmation with dependents; on phone the tabs cut 'Membe…' with no cue and switches were 36×20.",
+        "resolution": "Compare now says every turn-off confirms (caution without dependents, danger with them), a switch shows a spinner while saving, and a failed save reverts it with an inline row error. On phone the tab strip fades at the right edge and switches are 44×24."
+      }
+    ]
+  }
+}

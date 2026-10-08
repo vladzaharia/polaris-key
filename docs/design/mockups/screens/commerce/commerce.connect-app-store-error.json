@@ -1,0 +1,25 @@
+{
+  "id": "commerce.connect-app-store-error",
+  "title": "Connect App Store: it didn't connect",
+  "area": "commerce",
+  "surface": "console",
+  "packages": [
+    "CM-29",
+    "CM-21",
+    "A-33"
+  ],
+  "uxRows": [
+    "UX-54"
+  ],
+  "summary": "The same confirmation after App Store Connect refused the key: an inline danger callout says nothing changed, why (the Example Audio team key has the Developer role, which can't read in-app purchases or set up store notifications) and the fix (give it the App Manager role in Users and Access → Integrations), with Open App Store Connect and Try again.",
+  "compare": [
+    "The dialog stays open with the same facts and consequences; the error appears inline above the consequences as a danger callout with role=alert, never as a toast.",
+    "The callout title says the outcome first ('The App Store didn't connect. Nothing changed.'); the text names the cause in App Store Connect's own words (Developer role, App Manager role, Users and Access → Integrations) and the one fix.",
+    "Open App Store Connect is a deep link; Try again (primary, with a refresh icon) repeats the same request with the same idempotency key and takes focus.",
+    "The other failures use the same slot and shape: App Store Connect didn't answer ('Nothing changed. Try again in a few minutes.'); the key can't see com.example.djdl because DJDL is in another team ('Add that team's key in Platform → Store connections'); Apple hasn't verified the key yet (A-18k), where the row offers the human steps instead of this dialog.",
+    "Phone: the same bottom sheet; the callout's link stays under its text."
+  ],
+  "status": "mockup",
+  "designReview": null,
+  "order": 6
+}

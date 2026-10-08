@@ -1,0 +1,61 @@
+{
+  "id": "products.new-product",
+  "title": "New product: what it's for",
+  "area": "products",
+  "surface": "console",
+  "order": 2,
+  "packages": [
+    "ST-43",
+    "ST-42",
+    "ST-39"
+  ],
+  "uxRows": [
+    "UX-73",
+    "UX-74",
+    "UX-76"
+  ],
+  "summary": "Step 2 of 3 of the New product wizard for Diceroll (named in step 1, no repository): the six features as choices that each say what they turn on, the requirement rule live (Cloud Sync locked until Sign-in is chosen, Commerce allowed because Licensing is), planned platforms as chips, and the Free tier switch, beside a running summary of what Create will make and the card Home will show.",
+  "compare": [
+    "The wizard is page-hosted in the console (Platform context, Home active, crumbs Home › New product) on ST-39's kit: a stepper with Repository or name (done, 'Diceroll, no repository'), What it's for (current), Create (review, then create).",
+    "The page says nothing is created until Create; there are no license defaults, compatibility window, accent picker or hero facts anywhere in the flow.",
+    "Six feature choices in canonical order, three across on desktop: Licensing, Managed config, Ship builds, Sign-in, Cloud Sync, Commerce. Each has its service glyph, one sentence on what it's for, and 'Turns on' naming what Create sets up for it.",
+    "Licensing and Ship builds start chosen. A chosen card has the accent tint and one rounded-square check (the group is a multi-select, role=checkbox, so no radio rings); the service colour stays on the glyph tile only, and the Free tier switch is the console accent like every switch.",
+    "Cloud Sync is locked (dashed, a lock where the check would be, aria-disabled) while Sign-in isn't chosen, and says which requirement is met ('Managed config is chosen', with a tick) and which isn't ('Needs Sign-in: choose it first', with a lock). Choosing Sign-in unlocks it without choosing it.",
+    "Commerce shows 'Needs Licensing, which is chosen'; unchoosing Licensing also unchooses Commerce and says so on the card.",
+    "Planned platforms are chips (iOS, Android, Windows, Linux on; macOS and Web off) with the line that channels, storefronts and SDK code show only for them and that published builds add platforms on their own.",
+    "'Start with a Free tier' is on by default, says the tier's defaults in one line and where to change them, and disappears if Licensing is unchosen.",
+    "The summary on the right lists what Create makes in one change (signing key, the chosen features, Default profile and catalog v1, the Free tier, planned platforms), says Integration opens next, and previews the Home card with one glyph per chosen feature: exactly four here (Licensing, Managed config, Ship builds, Commerce), each with a tooltip and an accessible name, never one per service.",
+    "From a repository instead of a name, the features and platforms arrive filled from .pkey/ and the step says so; the layout is the same.",
+    "Foot: Back on the left, 'Next: review, then Create', Continue as the one primary.",
+    "Phone: Cancel (✕ plus label) sits on the heading line at the right, only the current step's label shows in the stepper, the choices stack one per row, the Free tier switch is 44×24, the summary moves below the wizard, and the Home preview shows four pips beside the name."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: the Home preview shows exactly the four chosen features, the Free tier switch is the console colour, and the locked card no longer reads as clickable.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "The On Home preview showed 6 icons for the 4 chosen features, because Ship builds expanded to three services.",
+        "resolution": "The preview card and its phone pips show one glyph per chosen feature (Licensing, Managed config, Ship builds, Commerce), each with a tooltip and an aria-label; the same rule as products.home."
+      },
+      {
+        "severity": "minor",
+        "issue": "The 'Start with a Free tier' switch took the Licensing accent (lime, olive in light) and was 36×20 on phone.",
+        "resolution": "data-service moved from the row to the icon tile, so the switch is the console accent. On phone the switch is 44×24."
+      },
+      {
+        "severity": "minor",
+        "issue": "The locked Cloud Sync card kept the same empty round selector as unchosen cards; all six cards used radio-like round selectors for a multi-select; 'first.' was orphaned.",
+        "resolution": "The locked card shows a lock where the check would be (it stays aria-disabled). Every card's selector is a rounded square. The line reads 'Needs Sign-in: choose it first' and requirement lines may run under the check, so it fits on one line on desktop and phone."
+      },
+      {
+        "severity": "minor",
+        "issue": "Phone: Cancel sat alone on its own line under the subtitle, indented by its ghost padding.",
+        "resolution": "On phone Cancel (✕ plus label) moves onto the heading line at the right, with the ghost padding pulled to the page edge."
+      }
+    ]
+  }
+}

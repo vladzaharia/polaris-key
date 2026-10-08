@@ -1,0 +1,340 @@
+<style>
+  /* sdk.start-call: the board's two-column layout and the small reading table. */
+  [data-screen="sdk.start-call"] .lay {
+    flex-basis: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 6fr) minmax(0, 7fr);
+    gap: 32px;
+    align-items: start;
+    min-width: 0;
+  }
+  [data-screen="sdk.start-call"] .col {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+  }
+  [data-screen="sdk.start-call"] .five {
+    flex-basis: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+    align-items: start;
+    min-width: 0;
+  }
+  [data-screen="sdk.start-call"] .sec {
+    flex-basis: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-bottom: -32px;
+  }
+  [data-screen="sdk.start-call"] .sec .eyebrow {
+    margin-bottom: 4px;
+  }
+  [data-screen="sdk.start-call"] .sec p:not(.eyebrow) {
+    font-size: 13px;
+    line-height: 19px;
+    color: var(--pk-text-muted);
+    max-width: 760px;
+  }
+  [data-screen="sdk.start-call"] .five .code pre {
+    font-size: 12px;
+    line-height: 19px;
+  }
+  [data-screen="sdk.start-call"] .sources {
+    display: flex;
+    flex-direction: column;
+  }
+  [data-screen="sdk.start-call"] .source {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr);
+    gap: 2px 12px;
+    padding: 12px 16px;
+    align-items: start;
+  }
+  [data-screen="sdk.start-call"] .source + .source {
+    border-top: 1px solid var(--mk-line);
+  }
+  [data-screen="sdk.start-call"] .source .icon-tile {
+    grid-row: span 3;
+  }
+  [data-screen="sdk.start-call"] .source-title {
+    font-weight: 700;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="sdk.start-call"] .source-text {
+    font-size: 13px;
+    line-height: 19px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="sdk.start-call"] .cmdline {
+    display: block;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    white-space: nowrap;
+  }
+  [data-screen="sdk.start-call"] .source-note {
+    grid-column: 2;
+    margin-top: 4px;
+    font-size: 12px;
+    line-height: 17px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="sdk.start-call"] .source-note code {
+    white-space: nowrap;
+  }
+  [data-screen="sdk.start-call"] .when {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 18px;
+  }
+  [data-screen="sdk.start-call"] .when h3 {
+    font-size: 15px;
+    line-height: 22px;
+    font-weight: 700;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="sdk.start-call"] .when p {
+    font-size: 13px;
+    line-height: 19px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="sdk.start-call"] .reads td:first-child {
+    white-space: nowrap;
+    font-weight: 700;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="sdk.start-call"] .reads td {
+    vertical-align: top;
+    font-size: 13px;
+    line-height: 19px;
+  }
+  [data-screen="sdk.start-call"] .reads td code {
+    white-space: normal;
+  }
+  @container screen (max-width: 1023px) {
+    [data-screen="sdk.start-call"] .lay {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    [data-screen="sdk.start-call"] .five {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="sdk.start-call"] .five {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    [data-screen="sdk.start-call"] .sec {
+      margin-bottom: -20px;
+    }
+    [data-screen="sdk.start-call"] .code-tabs > .more.show-phone {
+      display: inline-flex !important;
+    }
+    /* The reading table becomes one block per SDK: its name, then two labelled lines. */
+    [data-screen="sdk.start-call"] .reads thead {
+      display: none;
+    }
+    [data-screen="sdk.start-call"] .reads,
+    [data-screen="sdk.start-call"] .reads tbody,
+    [data-screen="sdk.start-call"] .reads tr,
+    [data-screen="sdk.start-call"] .reads td {
+      display: block;
+    }
+    [data-screen="sdk.start-call"] .reads tr {
+      padding: 10px 16px 12px;
+      border-bottom: 1px solid var(--mk-line);
+    }
+    [data-screen="sdk.start-call"] .reads td {
+      padding: 0;
+      border: 0;
+    }
+    [data-screen="sdk.start-call"] .reads td:first-child {
+      margin-bottom: 2px;
+    }
+    [data-screen="sdk.start-call"] .reads td[data-label] {
+      display: grid;
+      grid-template-columns: 96px minmax(0, 1fr);
+      gap: 8px;
+    }
+    [data-screen="sdk.start-call"] .reads td[data-label]::before {
+      content: attr(data-label);
+      color: var(--pk-text-subtle);
+    }
+    /* The command scrolls inside its row; the fade says there is more. */
+    [data-screen="sdk.start-call"] .cmdline {
+      -webkit-mask-image: linear-gradient(to right, black 82%, transparent);
+      mask-image: linear-gradient(to right, black 82%, transparent);
+    }
+  }
+</style>
+
+<div class="board" data-service="release">
+  <div class="board-title">
+    <h1>polaris-key.json and the start call</h1>
+    <p>One file holds DJDL’s product facts. Every SDK reads it from the app’s own files, never the network, then starts with <code>fromConfig()</code> and <code>boot()</code>. The same file and the same two calls in all six SDKs.</p>
+  </div>
+
+  <div class="lay">
+    <!-- The file: flat names the SDKs already ship (C-24), plus $schema and configVersion. -->
+    <div class="col">
+      <p class="eyebrow" style="margin-bottom: -8px">The file</p>
+      <div class="code" data-service="core">
+        <div class="code-head"><span class="code-file">polaris-key.json</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
+<pre><span class="t-o">{</span>
+  <span class="t-p">"$schema"</span><span class="t-o">:</span> <span class="t-s">"https://key.plrs.im/schemas/v1/sdk-config.schema.json"</span><span class="t-o">,</span>
+  <span class="t-p">"configVersion"</span><span class="t-o">:</span> <span class="t-n">1</span><span class="t-o">,</span>
+  <span class="t-p">"productSlug"</span><span class="t-o">:</span> <span class="t-s">"djdl"</span><span class="t-o">,</span>
+  <span class="t-p">"baseUrl"</span><span class="t-o">:</span> <span class="t-s">"https://key.plrs.im"</span><span class="t-o">,</span>
+  <span class="t-p">"pinnedKeys"</span><span class="t-o">: {</span>
+    <span class="t-p">"djdl-2026"</span><span class="t-o">:</span> <span class="t-s">"P0nMyA9QpvpspaIXBjtb6PfXZu4jIiGPlNzkRm28_6E"</span>
+  <span class="t-o">},</span>
+  <span class="t-p">"pinnedReleaseKeys"</span><span class="t-o">: {</span>
+    <span class="t-p">"djdl-rk-2026"</span><span class="t-o">:</span> <span class="t-s">"u4Xw9QeLr2Tn7VbK0cJm5HsZ1yAfD8gPq3oWi6NtE_k"</span>
+  <span class="t-o">},</span>
+  <span class="t-p">"expectedServices"</span><span class="t-o">: [</span><span class="t-s">"license"</span><span class="t-o">,</span> <span class="t-s">"config"</span><span class="t-o">,</span> <span class="t-s">"release"</span><span class="t-o">,</span>
+    <span class="t-s">"distribution"</span><span class="t-o">,</span> <span class="t-s">"update"</span><span class="t-o">,</span> <span class="t-s">"identity"</span><span class="t-o">,</span> <span class="t-s">"sync"</span><span class="t-o">]</span>
+<span class="t-o">}</span></pre>
+        <div class="code-foot"><i class="ic ic-info sm"></i><span>Public keys only. Nothing in it is secret, so it is checked in with the app.</span></div>
+      </div>
+
+      <p class="eyebrow" style="margin: 8px 0 -8px">How it gets into the project</p>
+      <div class="card flat">
+        <div class="sources">
+          <div class="source">
+            <span class="icon-tile sm"><i class="ic ic-square-terminal"></i></span>
+            <span class="source-title"><code class="cmdline">pkey sdk add swift --dir macos/ --expect djdl-2026@sha256:3f9a0c…e41b</code></span>
+            <span class="source-text">Adds the SDK from pkg.plrs.im and writes the file. It pins a key only when it matches the fingerprint Integration shows.</span>
+            <span class="source-note">Run in DJDL’s repository, so the product comes from <code>.pkey/product</code>. Anywhere else, add <code>--product djdl</code>, as the command Integration copies does.</span>
+          </div>
+          <div class="source">
+            <span class="icon-tile sm"><i class="ic ic-download"></i></span>
+            <span class="source-title">Download on Integration</span>
+            <span class="source-text">The same file, with the active and the staged signing keys, for adding the SDK by hand.</span>
+          </div>
+          <div class="source">
+            <span class="icon-tile sm"><i class="ic ic-godot"></i></span>
+            <span class="source-title">Import file… in the Godot dock</span>
+            <span class="source-text">Writes <code>res://polaris-key.json</code> and adds it to the export filter. No Node needed.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- The start call, as the docs and Integration show it: one tab per SDK. -->
+    <div class="col">
+      <p class="eyebrow" style="margin-bottom: -8px">The start call</p>
+      <div class="code" data-service="core">
+        <div class="code-head">
+          <div class="code-tabs"><span class="hide-phone">Node</span><span class="hide-phone">React</span><span class="hide-phone">Python</span><span class="active">Swift<small>macOS</small></span><span class="hide-phone">Kotlin<small>Windows</small></span><span class="hide-phone">Godot</span><span class="more show-phone">5 more<i class="ic ic-chevron-down"></i></span></div>
+          <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
+        </div>
+<pre><span class="t-k">import</span> <span class="t-t">PolarisKey</span>
+
+<span class="t-c">// Reads polaris-key.json from the app bundle. The version is</span>
+<span class="t-c">// CFBundleShortVersionString, so there is nothing else to pass.</span>
+<span class="hl"><span class="t-k">let</span> pk = <span class="t-k">try await</span> <span class="t-t">PolarisKeyClient</span>.<span class="t-f">fromConfig</span>()</span>
+<span class="hl"><span class="t-k">await</span> pk.<span class="t-f">boot</span>()</span>
+
+<span class="t-k">if await</span> pk.<span class="t-f">isLicensed</span>() {
+  <span class="t-f">openLibrary</span>()
+} <span class="t-k">else</span> {
+  <span class="t-f">showSignIn</span>()   <span class="t-c">// or .polarisKeyGate(pk) from PolarisKeyUI</span>
+}</pre>
+        <div class="code-foot"><i class="ic ic-info sm"></i><span><code>boot()</code> checks the license, syncs managed config and registers this Mac, in one call. <code>create(options)</code> stays for apps that build their options by hand.</span></div>
+      </div>
+
+      <div class="table-card">
+        <table class="table compact reads">
+          <thead><tr><th>SDK</th><th>Reads polaris-key.json from</th><th>App version from</th></tr></thead>
+          <tbody>
+            <tr><td>Node</td><td data-label="Reads from"><span>Beside <code>package.json</code>, or a path you pass</span></td><td data-label="App version"><span><code>package.json</code>, or Electron’s app version</span></td></tr>
+            <tr><td>React</td><td data-label="Reads from"><span>A JSON import, bundled at build time</span></td><td data-label="App version"><span>The <code>version</code> prop, if the app has one</span></td></tr>
+            <tr><td>Python</td><td data-label="Reads from"><span>A path, or package data</span></td><td data-label="App version"><span>You pass <code>version=</code></span></td></tr>
+            <tr><td>Swift</td><td data-label="Reads from"><span>The app bundle</span></td><td data-label="App version"><span><code>CFBundleShortVersionString</code></span></td></tr>
+            <tr><td>Kotlin</td><td data-label="Reads from"><span>Android <code>assets/</code>, or the JVM classpath</span></td><td data-label="App version"><span><code>versionName</code>; you pass it on a plain JVM</span></td></tr>
+            <tr><td>Godot</td><td data-label="Reads from"><span><code>res://polaris-key.json</code>, kept by the export filter</span></td><td data-label="App version"><span><code>application/config/version</code></span></td></tr>
+          </tbody>
+        </table>
+        <div class="table-foot"><i class="ic ic-wifi-off sm"></i><span>Never fetched from the network. A bad pin or an unknown service fails at start, with <code>doctor()</code> saying which.</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <p class="eyebrow">The other five SDKs</p>
+    <p>Each SDK’s golden start, compiled in that SDK’s CI. Names follow api.json: one spelling per concept, cased for the language.</p>
+  </div>
+
+  <div class="five">
+    <div class="code" data-service="core">
+      <div class="code-head"><span class="code-file">Node · main.ts</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
+<pre><span class="t-k">import</span> { <span class="t-t">PolarisKeyClient</span> } <span class="t-k">from</span> <span class="t-s">"@polaris-key/node"</span>;
+
+<span class="t-c">// polaris-key.json beside package.json.</span>
+<span class="t-k">const</span> pk = <span class="t-k">await</span> <span class="t-t">PolarisKeyClient</span>.<span class="t-f">fromConfig</span>();
+<span class="t-k">await</span> pk.<span class="t-f">boot</span>();
+
+<span class="t-k">if</span> (!(<span class="t-k">await</span> pk.<span class="t-f">isLicensed</span>())) {
+  <span class="t-k">await</span> <span class="t-f">showSignIn</span>(pk);
+}</pre>
+    </div>
+
+    <div class="code" data-service="core">
+      <div class="code-head"><span class="code-file">React · main.tsx</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
+<pre><span class="t-k">import</span> polarisKey <span class="t-k">from</span> <span class="t-s">"../polaris-key.json"</span>;
+<span class="t-k">import</span> { <span class="t-t">PolarisKeyProvider</span>, <span class="t-t">PolarisKeyGate</span> }
+  <span class="t-k">from</span> <span class="t-s">"@polaris-key/react"</span>;
+
+<span class="t-c">// The provider runs fromConfig() and boot().</span>
+<span class="t-f">createRoot</span>(root).<span class="t-f">render</span>(
+  &lt;<span class="t-t">PolarisKeyProvider</span> <span class="t-p">config</span>={polarisKey}&gt;
+    &lt;<span class="t-t">PolarisKeyGate</span>&gt;&lt;<span class="t-t">App</span> /&gt;&lt;/<span class="t-t">PolarisKeyGate</span>&gt;
+  &lt;/<span class="t-t">PolarisKeyProvider</span>&gt;,
+);</pre>
+    </div>
+
+    <div class="code" data-service="core">
+      <div class="code-head"><span class="code-file">Python · app.py</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
+<pre><span class="t-k">from</span> polaris_key <span class="t-k">import</span> <span class="t-t">PolarisKeyClient</span>
+
+<span class="t-c"># Python has no app version to read.</span>
+pk = <span class="t-t">PolarisKeyClient</span>.<span class="t-f">from_config</span>(
+    <span class="t-s">"polaris-key.json"</span>, <span class="t-p">version</span>=<span class="t-s">"4.2.1"</span>
+)
+pk.<span class="t-f">boot</span>()
+
+<span class="t-k">if not</span> pk.<span class="t-f">is_licensed</span>():
+    <span class="t-f">show_sign_in</span>(pk)</pre>
+    </div>
+
+    <div class="code" data-service="core">
+      <div class="code-head"><span class="code-file">Kotlin · Main.kt (Windows)</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
+<pre><span class="t-c">// Reads polaris-key.json from the classpath.</span>
+<span class="t-c">// Android: PolarisKeyAndroid.client(context),</span>
+<span class="t-c">// which reads assets/polaris-key.json.</span>
+<span class="t-k">val</span> pk = <span class="t-t">PolarisKeyClient</span>.<span class="t-f">fromConfig</span>()
+pk.<span class="t-f">boot</span>()
+
+<span class="t-k">if</span> (!pk.<span class="t-f">isLicensed</span>()) <span class="t-f">showSignIn</span>(pk)</pre>
+    </div>
+
+    <div class="code" data-service="core">
+      <div class="code-head"><span class="code-file">Godot · main.gd</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
+<pre><span class="t-c"># The PolarisKey autoload reads</span>
+<span class="t-c"># res://polaris-key.json itself.</span>
+<span class="t-k">func</span> <span class="t-f">_ready</span>() <span class="t-o">-></span> <span class="t-t">void</span>:
+  <span class="t-k">await</span> PolarisKey.<span class="t-f">boot</span>()
+  <span class="t-k">if not</span> PolarisKey.<span class="t-f">is_licensed</span>():
+    $SignIn.<span class="t-f">show</span>()</pre>
+    </div>
+    <section class="card when">
+      <span class="icon-tile"><i class="ic ic-heart-pulse"></i></span>
+      <h3>When start fails, doctor() says why</h3>
+      <p>A debug build prints the report once, on the first refusal: which pin, feature or clock is wrong, and the console page that fixes it. <code>pk.doctor()</code> returns the same checks, typed.</p>
+      <a class="link" href="#">See doctor()<i class="ic ic-arrow-right"></i></a>
+    </section>
+  </div>
+</div>

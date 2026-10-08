@@ -1,0 +1,78 @@
+{
+  "id": "packages.feeds",
+  "title": "Packages",
+  "area": "packages",
+  "surface": "console",
+  "order": 1,
+  "packages": [
+    "F-34",
+    "F-36",
+    "F-33",
+    "F-37",
+    "F-35",
+    "P2-10",
+    "A-21"
+  ],
+  "uxRows": [
+    "UX-33"
+  ],
+  "summary": "DJDL's Packages page under Ship builds on Oct 7: one card per package feed on pkg.plrs.im, each created from a package declared in .pkey/release, access shown read-only as Customers or Public, the one-time cleanup notice before cleanup turns on, a refused CI publish on the npm feed, a freshly declared Swift feed waiting for its first package, and the quiet foot row that turns package feeds off.",
+  "compare": [
+    "The sidebar is DJDL's Product context with Ship builds open (Releases, Release tracks, Rollouts, Channels, Packages, Updates, Health); Packages is active and the page takes the Distribution accent (green).",
+    "The header holds only Service tokens with its count; the count beside the H1 reads '3 feeds'. There is no per-feed Enabled switch, namespace field or New feed button: a feed exists because a package is declared.",
+    "packageFeeds is only an off switch, and it is not in the header: a quiet foot card says 'Package feeds are on for DJDL', what turning them off stops, 'Nothing is deleted', and an outline 'Turn off package feeds' that opens packages.feeds-turn-off.",
+    "Each feed card shows the ecosystem, its URL on pkg.plrs.im, the namespace derived from the declared names, its access as text at the right (Customers with a lock, Public with a globe, 'Change on Access') and a ⋯ menu (Settings; on a Public feed also 'Publish to PyPI.org…'). Only two access values exist.",
+    "Each package row shows the version on each release track (stable, beta, dev in mono), versions, installs over 30 days and the last publish with its source. djdl-crates says 'Also on PyPI.org'; the PyPI foot says who approved it and that cleanup never touches PyPI.org.",
+    "A refused CI publish is an attention row on its feed: a danger pill 'Publish refused', the package, what went wrong in words (2.4.0-beta.3 already exists; a published version can't be replaced), the fix (bump the version in package.json and push) and 'Open the CI run'; the row's Last publish cell says 'Refused at 10:02'.",
+    "The cleanup callout appears once, before the first run: the date (Oct 14), that versions 'are deleted', when (when the next stable release ships after Oct 14), the dry run's count and size, and 'See the dry run'. Each feed's foot repeats its own count.",
+    "The Swift feed is declared but never published: three steps (declared with the commit, 'Feed created · Oct 7, 09:12 · open to Customers', waiting for the first package with the neutral clock), and release.yml as a diff: the three existing publish steps as context and the two lines that add swift.sourcekit, because each package publishes in its own --deliverable step.",
+    "The waiting state is the kit's neutral clock, never the accent: 'Waiting for the first package' must not read green or healthy.",
+    "The two cards at the foot point to the right credential: 'pkey feeds setup --write' for a person's machine ('sets up every package manager DJDL's feeds use'), and DJDL's service tokens as rows (label, pkeyci_ hint, last use) with 'pkey feeds setup --print --token-env PKEY_TOKEN' for CI.",
+    "Copy uses 'license', 'release track', 'Customers' and 'Public'; never outlet, grant, capability, Entitled or Licensed.",
+    "Phone: the sidebar folds into the menu button, each card's access line drops under its title with ⋯ kept beside the title, each package row stacks (name, the version on each release track in mono, then versions, installs and the last publish or refusal) with no sideways scroll, the waiting card's steps stack above the diff, and the foot row's button drops under its text."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: the off switch is out of the header, the missing states exist (empty, refused publish, turn-off, off), F-35 has a screen, and the console's setup copy matches the CLI.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "[Visual/state] The kit's waiting dot and waiting task mark take the page accent (--pk-accent), so 'Waiting for…' is green on Packages (reads healthy), tangerine on Updates (reads as a warning) and cyan on Integration; the spinner arc reads as 'loading now' while it really waits on an outside event.",
+        "resolution": "Fixed in the kit (kit/mockup.css, kit/README.md): .waiting-dot and .task.waiting now draw a static clock in --pk-text-muted (the task mark inside a neutral --pk-border-strong ring), never --pk-accent and never a spinner, so the state looks the same on Packages, Updates and Integration. Accents stay on links, the active nav item and the track tags."
+      },
+      {
+        "severity": "major",
+        "issue": "[Copy says something that doesn't happen] The console card, the portal and the CLI each list different package managers for 'pkey feeds setup --write'; the portal promises pip settings the CLI says it does not write.",
+        "resolution": "The CLI run is the reference (npm and pnpm, Yarn, Bun, uv and pip credentials in ~/.netrc, Docker; pip's index not written; Swift and Gradle only when a feed has something to install). The console card now says the command 'sets up every package manager DJDL's feeds use'; the portal says it 'sets up npm, pnpm, Yarn, Bun, uv, pip and Docker in your home folder. pip's index is added per project.', which is what the run writes for Mara's feeds."
+      },
+      {
+        "severity": "major",
+        "issue": "[Flow/safety] The header's 'Package feeds' switch is a kill switch for every install and CI publish, yet it is the most saturated control in the header with no consequence line; its confirmation and the off state are not designed.",
+        "resolution": "Moved out of the header to a quiet foot card ('Package feeds are on for DJDL', 'Turning them off stops every install and every CI publish on DJDL's 3 feeds. Nothing is deleted.', outline 'Turn off package feeds'). Added packages.feeds-turn-off (a danger confirmation naming 3 packages and 3,132 installs in 30 days, the CI publishes and the service tokens that stop, typed 'djdl') and packages.feeds-off (one card: 'Package feeds are off for DJDL. Declared packages aren't served…', who turned them off and when, Turn on, the three feeds listed as refusing)."
+      },
+      {
+        "severity": "major",
+        "issue": "[Missing states] No empty state, no failed-publish state and no feeds-off state.",
+        "resolution": "Added packages.feeds-empty (DJDL on Sep 29: 'DJDL declares no packages yet' with the .pkey/release package snippet and the publish command), a refused-publish attention row on the npm feed with what went wrong and the fix ('…2.4.0-beta.3 again at 10:02, and that version already exists. A published version can't be replaced: bump the version in package.json and push.', Open the CI run), and the off state above."
+      },
+      {
+        "severity": "major",
+        "issue": "[Plan fidelity] F-35 (public registries) has no mockup and no 'Also on npmjs' mark; no per-feed ⋯ or Settings entry; the area promises packs but has no packs screen.",
+        "resolution": "Added packages.public-registry: claim the name, the trusted-publisher deep link, Verify with the CI step, then the per-package approval with a typed confirmation, marked irreversible and limited to stable and beta (dev never). It uses djdl-crates and PyPI.org rather than npmjs.com because F-35 requires a Public package and DJDL's only Public feed is PyPI; the feed row and the portal row say 'Also on PyPI.org'. Each feed card has a ⋯ menu (Settings, and Publish to PyPI.org on a Public feed). Added packages.packs for P4-33 (transports auto, the CDN fallback note) with P4-34's gate as an attention item, so the area blurb holds."
+      },
+      {
+        "severity": "minor",
+        "issue": "[Copy] 'There was nothing to turn on.' is odd; the CI snippet adds a step while the foot says the workflow already publishes; the cleanup callout says versions 'leave DJDL's feeds'.",
+        "resolution": "'Feed created · Oct 7, 09:12 · open to Customers'. The snippet is a diff of release.yml (three existing steps as context, two added lines for swift.sourcekit) with 'Each package publishes in its own step…'; 'nothing to add' would have been wrong because every package needs its own --deliverable step (build/manifest/authoring.md). The callout says versions 'are deleted from DJDL's feeds' and that they go when the next stable release ships after Oct 14."
+      },
+      {
+        "severity": "minor",
+        "issue": "[Visual/scannability] Two service tokens squeezed into one sentence with no CI command; the bare count '3' is ambiguous; on phone the package tables show only two columns with no scroll hint.",
+        "resolution": "The CI card lists the tokens as rows (label, pkeyci_ hint, last use) and adds 'pkey feeds setup --print --token-env PKEY_TOKEN'. The count reads '3 feeds'. Under 640px each package row stacks: name, the version on each release track in mono, then versions, installs and the last publish, with no sideways scroll."
+      }
+    ]
+  }
+}

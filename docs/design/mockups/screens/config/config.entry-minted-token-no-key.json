@@ -1,0 +1,22 @@
+{
+  "id": "config.entry-minted-token-no-key",
+  "title": "Catalog entry: minted token without a key",
+  "area": "config",
+  "surface": "console",
+  "packages": [
+    "U-31"
+  ],
+  "uxRows": [],
+  "summary": "applemusic.token when its recipe arrived from .pkey/schema and was approved but no signing key exists yet: the Signing key row is an empty state with Add the .p8 key…, and minting hasn't started.",
+  "compare": [
+    "The pill reads Needs a signing key; the callout says why a repository never holds the key and what fails until it's added (DJDL's mintToken(\"applemusic\") calls), with Add the .p8 key… as the one primary.",
+    "Signing key is an empty state: dashed, no key yet, where to download it (the .p8 for Key ID 3HWR8C2N6T from the Apple Developer account), that it's sealed as it's added and can't be read back, and Add the .p8 key….",
+    "The Approval card: Last approved Oct 7, 10:20 by Ana Lima; Minting Not started: no signing key; Signing key Not added (warning); its button is Add the .p8 key….",
+    "Adding the key creates the product secret with usage edge-mint itself; the operator never names or sees a secret.",
+    "The preview reads \"a token minted once the key is added\".",
+    "Config's gold accent is never the only cue: a selected Type card is a strong neutral border plus the tick, the open entry is a neutral fill with a neutral edge, and every warning callout has a solid warning rail and a triangle, so selected, changed and needs-approval read differently in both themes."
+  ],
+  "status": "mockup",
+  "designReview": null,
+  "order": 11
+}

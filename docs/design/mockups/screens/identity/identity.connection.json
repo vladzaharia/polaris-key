@@ -1,0 +1,51 @@
+{
+  "id": "identity.connection",
+  "title": "SSO connection",
+  "area": "identity",
+  "surface": "console",
+  "packages": [
+    "I-30",
+    "I-31"
+  ],
+  "uxRows": [],
+  "summary": "One platform SSO connection, Lakeside University: three email domains (one verified with SSO required, one verified, one waiting for its TXT record, shown with the record to add), who signs in with it, what uses its groups and domains, the claim map with the last values seen, the client with its sealed secret and redirect URI, and the danger zone.",
+  "compare": [
+    "Crumbs 'Connections › Lakeside University'; the subtitle names the kind, the scope and the issuer host with the provider discovery found (Keycloak). Actions: Test sign-in and a More menu; no Save button (each change is its own confirmed write).",
+    "Four facts as stats: last sign-in (who, into which product), accounts that signed in through it out of the accounts at its domains ('83 of 88'), domains verified ('2 of 3'), errors in 7 days. The numbers agree with the domain rows (57 + 31 = 88) and with identity.connection-enforce (26 of students.example.edu's 31 have signed in through it).",
+    "Email domains has one row per domain: name in mono, verification as status text (Verified, re-checked time) or a warning pill (Not verified yet), an 'SSO required' switch with its word, 'Accounts at this domain' (addresses there, whether or not they've used the connection), and a row menu. A connection holds several domains.",
+    "The SSO required switch is disabled with 'After verification' until the domain is verified. Turning it on opens identity.connection-enforce; turning it off applies at once with a toast.",
+    "A pending domain expands to its TXT record (Type, Name _polaris-key.<domain>, Value polaris-key-verify=…) with Copy on each, the check cadence ('every 10 minutes for 7 days'), the last check result in words, and Check now. It says unverified addresses get an email code meanwhile (an unverified domain never routes).",
+    "The domains card foot states the daily re-check and that a vanished record stops routing and vouching at once (fail closed).",
+    "Who signs in with it: three single-choice cards (Customers, Operators, Customers and operators); Operators says a console role still comes from an SSO rule in Members. Picking a card that removes an audience opens a caution confirmation naming the effect (identity.connection-audience); the selection moves only when it's confirmed. Adding an audience applies at once with a toast.",
+    "What it gives people lists the rules elsewhere that use this connection's groups or domains, each with a link: DJDL Access's example.edu rule (matches licenses.access) and the Members SSO rules (none here). Nothing about licenses or roles is edited on this page.",
+    "The claim map shows Field, Claim and the last value seen, for groups, name, picture and birth date; birth date says it isn't sent and that apps never receive one anyway. Only configured claims are read.",
+    "Client: issuer with discovery freshness, client ID, the secret as 'Sealed · set Sep 28, 2026' with a small outline 'Replace secret' button (the secret is never shown), and the redirect URI to register with Copy.",
+    "Danger zone is last, with its consequences in one sentence and 'Delete connection…' opening a typed confirmation.",
+    "Phone: the domain rows stack (name and menu, status, switch, 'Accounts at this domain: n'), the TXT record's fields stack and the Value wraps (never truncated) with a 32 px Copy button beside each value, claim rows put the value under the field, and the two side-by-side cards stack."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: changing who signs in now has a caution confirmation (new screen identity.connection-audience), and the counts agree across screens.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "'Who signs in with it' had no commit point: picking Operators would stop SSO for 88 customer accounts with no confirm or save.",
+        "resolution": "Picking a card that removes an audience opens identity.connection-audience, an L1 caution confirm: 'Sign in only operators through Lakeside University?' with the 88 customer accounts, the domains that stop routing, DJDL's Access rule and the console. Button 'Sign in only operators'. The card's hint says it asks first; the compare says so."
+      },
+      {
+        "severity": "minor",
+        "issue": "The stat said 88 had signed in through it, the domain rows added to 88, and connection-enforce said only 26 of 31 had.",
+        "resolution": "The stat reads '83 of 88 accounts at its domains have signed in through it' (57 + 26); the column is 'Accounts at this domain'; the danger zone uses both numbers. connection-enforce's 31/26/5 is unchanged and now agrees."
+      },
+      {
+        "severity": "minor",
+        "issue": "'Replace' looked like body text; on phone the TXT value was truncated and its copy button was about 20 px.",
+        "resolution": "'Replace secret' is a small outline button with an icon. On phone the TXT Name and Value wrap (break-all) and both Copy buttons are 32 px."
+      }
+    ]
+  },
+  "order": 2
+}

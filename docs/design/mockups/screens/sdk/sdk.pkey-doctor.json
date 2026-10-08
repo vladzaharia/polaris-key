@@ -1,0 +1,60 @@
+{
+  "id": "sdk.pkey-doctor",
+  "title": "pkey doctor",
+  "area": "sdk",
+  "surface": "terminal",
+  "order": 3,
+  "packages": [
+    "P0-45",
+    "ST-40",
+    "SP-33a"
+  ],
+  "uxRows": [],
+  "summary": "pkey doctor run in DJDL's repository: the product from .pkey/product, then Manifest, Keys, Integration (Verified per feature on macOS and Windows, CI under Ship builds) and Left to do, each problem with the command or console page that fixes it; it re-wraps to 44 columns on a narrow terminal.",
+  "compare": [
+    "No --product or --base-url typed: the header says the product came from .pkey/product and shows the base URL (PKEY_BASE_URL or key.plrs.im).",
+    "The Integration block matches products.integration exactly: Licensing and Managed config Verified on macOS, Ship builds Waiting for the update check with CI Verified (first release 4.2.0, Oct 6), Sign-in Waiting, Cloud Sync Not seen yet, Windows Not seen yet everywhere, Commerce off and needing Licensing.",
+    "Left to do lists the same open console steps as the Integration cards (Sparkle signing key; Storage per account), each followed by its fix: a command, or a console deep link on /manage built from the base URL.",
+    "Symbols and words match Integration's three Verified looks: ✓ Verified (green), ● Waiting (accent), ○ Not seen yet (dim); ✗ for to do and ! for a warning with a date.",
+    "The staged signing key djdl-2026b is a warning with its date and one fix line per app folder (swift for macos/, kotlin for windows/), not a problem. Keys also lists the release key djdl-rk-2026 as pinned.",
+    "Signed in uses pkey login (a personal token), never PKEY_ADMIN_COOKIE.",
+    "The summary chip counts to-do items and warnings and says it reads the same facts as Integration. It is red while anything is to do, amber for warnings alone and green when clear. The exit code is 1 while anything is left to do, and the prompt turns red.",
+    "Layout is UK-14's terminal kit: 80 columns, bold section headings, two-column terms, dim details, and Integration columns at 2, 29 and 56. At 44 columns the same facts re-wrap: one block per platform, then CI and Off, with every detail and fix line kept and long links wrapped.",
+    "No 'outlet', 'grant', 'capability' or programme id appears in the output.",
+    "Commerce, off and needing Licensing, carries a dim link to Features, as Integration offers 'Open Features'."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: one fix command per app folder, links on /manage, the 44-column run carries every fact of the 80-column one, the columns align, and the summary chip and prompt show the exit state.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "The staged-key fix reads 'pkey sdk add swift --dir macos/ … again for windows/', which sends the person to the Swift SDK for the Kotlin app.",
+        "resolution": "It now prints one fix line per folder: '→ pkey sdk add swift --dir macos/' and '→ pkey sdk add kotlin --dir windows/', then the dim note 'pins djdl-2026b beside djdl-2026 in each folder'. 'How it behaves' says a staged key gets one fix line per app folder."
+      },
+      {
+        "severity": "major",
+        "issue": "Left to do links to key.plrs.im/console/#/p/djdl/integration, but the console lives at /manage.",
+        "resolution": "The links are now key.plrs.im/manage/#/p/djdl/… in both runs. 'How it behaves' adds that console links are built from the base URL, so a deployment set by PKEY_BASE_URL gets links to its own console."
+      },
+      {
+        "severity": "major",
+        "issue": "The 44-column run is a different report. It drops the Commerce row, 'product from .pkey/product', 'then push', the Windows fix and 'Waiting: update check', and loses the blank-line rhythm.",
+        "resolution": "The 44-column run is now a re-wrap of the same report. 'product from .pkey/product' is a dim second header line. Every Manifest and Keys check keeps its detail, indented. Both fix lines and the pins note are there, and so is 'then push'. The macOS block keeps 'Waiting: update check' and 'Waiting: sign-in', and the Windows block lists all five features. CI and Off (Commerce, needs Licensing, with the Features link) are their own blocks, with a blank line between every block."
+      },
+      {
+        "severity": "minor",
+        "issue": "In the Integration columns, Cloud Sync's Windows cell sits one column right, and 'Waiting: update check' has too little gutter before the Windows column.",
+        "resolution": "The columns are recomputed: names at column 2, macOS at 29, Windows at 56, each checked in the rendered text. Every cell lines up, and the gutter is at least four spaces."
+      },
+      {
+        "severity": "minor",
+        "issue": "The summary chip looks the same at '2 to do' and '0 to do', exit 1 isn't visible, Keys has no release key row, and the Commerce row offers no way forward.",
+        "resolution": "The chip is red while anything is to do. The legend explains amber for warnings alone, green when clear, and the same words under --no-color; the docs' step 5 chip is green at 0. The prompt after the run is red, with a dim 'exit 1' at the right. Keys adds '✓ Release key djdl-rk-2026, pinned'. The Commerce row has a dim '→ key.plrs.im/manage/#/p/djdl/features' line."
+      }
+    ]
+  }
+}

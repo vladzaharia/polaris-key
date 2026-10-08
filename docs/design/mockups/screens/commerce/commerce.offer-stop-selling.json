@@ -1,0 +1,24 @@
+{
+  "id": "commerce.offer-stop-selling",
+  "title": "Stop selling (typed confirmation)",
+  "area": "commerce",
+  "surface": "console",
+  "packages": [
+    "CM-23",
+    "A-17g"
+  ],
+  "uxRows": [],
+  "summary": "The Stop selling confirmation for Dice skins: what happens on each store (App Store removed from sale now, Google Play deactivated now, Steam stays on sale because it has no API, with the place to change it), that owners keep it, and the typed app name before 'Stop selling on 2 stores', shown mid-typing with the button still disabled.",
+  "compare": [
+    "Opened from the offer editor's one page action, Stop selling…; the editor stays behind the scrim.",
+    "ADMIN.md L3: changing an In-App Purchase's availability types the app's name as App Store Connect shows it (Diceroll), drawn as a neutral confirm word because nothing is lost. Intent caution: a warning icon before the title.",
+    "One line per store with its mark: what happens there and when. A store with no API is listed muted as 'stays on sale' with the exact item (DLC 2817450) and a deep link; it is never counted in the button.",
+    "The first line says what doesn't change: owners keep Dice skins, restores still work, and it can go back on sale later.",
+    "The confirm button names the outcome and the count of stores the API reaches ('Stop selling on 2 stores') and stays disabled (aria-disabled) until the typed word matches; the picture shows 'Dicer' typed.",
+    "On success the header status turns to 'Not on sale' (muted) and the page action becomes Start selling…; a store error stays inline in its row, as in commerce.offer-price-failed.",
+    "Phone: a bottom sheet with the body scrolling and the buttons pinned, primary on top."
+  ],
+  "status": "mockup",
+  "designReview": null,
+  "order": 18
+}

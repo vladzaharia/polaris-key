@@ -1,0 +1,304 @@
+<style>
+  /* entitlements.addons: only what the kit does not already say. */
+  [data-screen="entitlements.addons"] .gives {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+  }
+  [data-screen="entitlements.addons"] .gives .mono {
+    font-size: 12px;
+    padding: 1px 6px;
+    border-radius: var(--pk-radius-sm);
+    background: var(--mk-fill);
+    color: var(--pk-text-default);
+    white-space: nowrap;
+  }
+  [data-screen="entitlements.addons"] .units {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--pk-text-strong);
+    white-space: nowrap;
+  }
+  [data-screen="entitlements.addons"] .units .ic {
+    width: 14px;
+    height: 14px;
+    color: var(--pk-accent-fg);
+  }
+  [data-screen="entitlements.addons"] .srcs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+  }
+  [data-screen="entitlements.addons"] .src {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 13px;
+    color: var(--pk-text-default);
+    white-space: nowrap;
+  }
+  [data-screen="entitlements.addons"] .src .ic {
+    width: 14px;
+    height: 14px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="entitlements.addons"] .table td {
+    vertical-align: middle;
+  }
+  [data-screen="entitlements.addons"] .name-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+  }
+  [data-screen="entitlements.addons"] .phone-facts {
+    margin-top: 4px;
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="entitlements.addons"] .kind-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 20px;
+    font-size: 13px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="entitlements.addons"] .kind-legend b {
+    color: var(--pk-text-strong);
+  }
+  /* The sorted column: its header is a control, in strong text with the sort arrow. */
+  [data-screen="entitlements.addons"] .table th.sorted {
+    color: var(--pk-text-strong);
+  }
+  [data-screen="entitlements.addons"] .table th.sorted .ic {
+    color: var(--pk-text-strong);
+  }
+  [data-screen="entitlements.addons"] .table th:not(.sorted).sortable {
+    cursor: pointer;
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="entitlements.addons"] .table td,
+    [data-screen="entitlements.addons"] .table th {
+      padding-left: 14px;
+      padding-right: 10px;
+    }
+    [data-screen="entitlements.addons"] .table .cell-title {
+      white-space: normal;
+    }
+    [data-screen="entitlements.addons"] .name-cell {
+      align-items: flex-start;
+    }
+    /* Dismiss stays in the corner instead of dropping under the title. */
+    [data-screen="entitlements.addons"] .card-head:has(.dismiss) {
+      position: relative;
+      padding-right: 52px;
+    }
+    [data-screen="entitlements.addons"] .card-head .dismiss {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+    }
+  }
+</style>
+
+<div class="console" data-service="license">
+  <header class="topbar">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <nav class="sidebar" aria-label="Diceroll">
+    <div class="ctx">
+      <span class="logo sm" data-product="diceroll"></span>
+      <span class="ctx-text"><span class="ctx-name">Diceroll</span><span class="ctx-sub mono">diceroll</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item" href="#"><i class="ic ic-layout-dashboard"></i><span class="nav-text">Overview</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-shield-check"></i><span class="nav-text">Access</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
+    <div class="nav-group" data-service="license">
+      <div class="nav-label">Licensing<i class="ic ic-chevron-down sm"></i></div>
+      <a class="nav-item" href="#"><i class="ic ic-key-round"></i><span class="nav-text">Licenses</span><span class="count">18,406</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-layers"></i><span class="nav-text">Tiers</span><span class="count">2</span></a>
+      <a class="nav-item active" href="#"><i class="ic ic-puzzle"></i><span class="nav-text">Add-ons</span><span class="count">8</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-list-checks"></i><span class="nav-text">Entitlements</span></a>
+    </div>
+    <div class="nav-group closed" data-service="config" style="padding-top: 4px"><div class="nav-label">Managed config<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="release" style="padding-top: 4px"><div class="nav-label">Ship builds<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="identity" style="padding-top: 4px"><div class="nav-label">Sign-in<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="sync" style="padding-top: 4px"><div class="nav-label">Cloud Sync<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="commerce" style="padding-top: 4px"><div class="nav-label">Commerce<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="page">
+      <header class="page-head">
+        <div class="page-heading"><h1>Add-ons</h1><span class="count">8</span></div>
+        <p class="page-sub">What a license can hold on top of its tier: packs, extras, consumables and passes. Every purchase, code, access rule and comp gives one of these.</p>
+        <div class="page-actions">
+          <button class="btn primary"><i class="ic ic-plus"></i>New add-on</button>
+        </div>
+      </header>
+
+      <div class="toolbar">
+        <div class="search-field"><i class="ic ic-search"></i><span>Filter add-ons</span></div>
+        <span class="filter"><i class="ic ic-plus"></i>Gives</span>
+        <span class="filter"><i class="ic ic-plus"></i>Comes from</span>
+      </div>
+
+      <div class="table-card">
+        <table class="table">
+          <thead>
+            <tr>
+              <th class="sortable">Add-on</th>
+              <th class="hide-phone">Gives</th>
+              <th class="hide-phone">Comes from</th>
+              <th class="num sorted" aria-sort="descending">Holders<i class="ic ic-arrow-down"></i></th>
+              <th class="end"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <div class="name-cell">
+                  <span class="icon-tile sm"><i class="ic ic-coins"></i></span>
+                  <div><div class="cell-title"><a href="#">500 gems</a></div><div class="cell-sub mono">gems-500</div>
+                    <div class="phone-facts show-phone">500 gems · App Store, Google Play</div></div>
+                </div>
+              </td>
+              <td class="hide-phone"><div class="gives"><span class="units"><i class="ic ic-coins"></i>500</span><span class="mono">gems</span></div></td>
+              <td class="hide-phone"><div class="srcs"><span class="src"><i class="ic ic-app-store"></i>App Store</span><span class="src"><i class="ic ic-google-play"></i>Google Play</span></div></td>
+              <td class="num">2,417</td>
+              <td class="end"><button class="btn ghost icon xs" aria-label="More for 500 gems"><i class="ic ic-ellipsis"></i></button></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="name-cell">
+                  <span class="icon-tile sm"><i class="ic ic-dice-5"></i></span>
+                  <div><div class="cell-title"><a href="#">Obsidian dice pack</a></div><div class="cell-sub mono">obsidian-pack</div>
+                    <div class="phone-facts show-phone">pack.obsidian · App Store, Google Play, Steam</div></div>
+                </div>
+              </td>
+              <td class="hide-phone"><div class="gives"><span class="mono">pack.obsidian</span></div></td>
+              <td class="hide-phone"><div class="srcs"><span class="src"><i class="ic ic-app-store"></i>App Store</span><span class="src"><i class="ic ic-google-play"></i>Google Play</span><span class="src"><i class="ic ic-steam"></i>Steam</span></div></td>
+              <td class="num">2,031</td>
+              <td class="end"><button class="btn ghost icon xs" aria-label="More for Obsidian dice pack"><i class="ic ic-ellipsis"></i></button></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="name-cell">
+                  <span class="icon-tile sm"><i class="ic ic-coins"></i></span>
+                  <div><div class="cell-title"><a href="#">1,200 gems</a></div><div class="cell-sub mono">gems-1200</div>
+                    <div class="phone-facts show-phone">1,200 gems · App Store, Google Play</div></div>
+                </div>
+              </td>
+              <td class="hide-phone"><div class="gives"><span class="units"><i class="ic ic-coins"></i>1,200</span><span class="mono">gems</span></div></td>
+              <td class="hide-phone"><div class="srcs"><span class="src"><i class="ic ic-app-store"></i>App Store</span><span class="src"><i class="ic ic-google-play"></i>Google Play</span></div></td>
+              <td class="num">1,422</td>
+              <td class="end"><button class="btn ghost icon xs" aria-label="More for 1,200 gems"><i class="ic ic-ellipsis"></i></button></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="name-cell">
+                  <span class="icon-tile sm"><i class="ic ic-dice-5"></i></span>
+                  <div><div class="cell-title"><a href="#">Neon dice pack</a></div><div class="cell-sub mono">neon-pack</div>
+                    <div class="phone-facts show-phone">pack.neon, loadouts +1 · App Store, Google Play, Steam, Codes, Access rule, Comps</div></div>
+                </div>
+              </td>
+              <td class="hide-phone"><div class="gives"><span class="mono">pack.neon</span><span class="mono">loadouts +1</span></div></td>
+              <td class="hide-phone"><div class="srcs"><span class="src"><i class="ic ic-app-store"></i>App Store</span><span class="src"><i class="ic ic-google-play"></i>Google Play</span><span class="src"><i class="ic ic-steam"></i>Steam</span><span class="src"><i class="ic ic-ticket"></i>Codes</span><span class="src"><i class="ic ic-shield-check"></i>Access rule</span><span class="src"><i class="ic ic-gift"></i>Comps</span></div></td>
+              <td class="num">1,284</td>
+              <td class="end"><button class="btn ghost icon xs" aria-label="More for Neon dice pack"><i class="ic ic-ellipsis"></i></button></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="name-cell">
+                  <span class="icon-tile sm"><i class="ic ic-layers"></i></span>
+                  <div><div class="cell-title"><a href="#">Loadout pack</a></div><div class="cell-sub mono">loadout-pack</div>
+                    <div class="phone-facts show-phone">loadouts +2 · App Store, Google Play, Steam</div></div>
+                </div>
+              </td>
+              <td class="hide-phone"><div class="gives"><span class="mono">loadouts +2</span></div></td>
+              <td class="hide-phone"><div class="srcs"><span class="src"><i class="ic ic-app-store"></i>App Store</span><span class="src"><i class="ic ic-google-play"></i>Google Play</span><span class="src"><i class="ic ic-steam"></i>Steam</span></div></td>
+              <td class="num">873</td>
+              <td class="end"><button class="btn ghost icon xs" aria-label="More for Loadout pack"><i class="ic ic-ellipsis"></i></button></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="name-cell">
+                  <span class="icon-tile sm"><i class="ic ic-crown"></i></span>
+                  <div><div class="cell-title"><a href="#">Season pass</a></div><div class="cell-sub mono">season-pass</div>
+                    <div class="phone-facts show-phone">pass.season · renews monthly · App Store, Google Play</div></div>
+                </div>
+              </td>
+              <td class="hide-phone"><div class="gives"><span class="mono">pass.season</span><span class="small muted nowrap"><i class="ic ic-repeat xs"></i> Renews monthly</span></div></td>
+              <td class="hide-phone"><div class="srcs"><span class="src"><i class="ic ic-app-store"></i>App Store</span><span class="src"><i class="ic ic-google-play"></i>Google Play</span></div></td>
+              <td class="num">688</td>
+              <td class="end"><button class="btn ghost icon xs" aria-label="More for Season pass"><i class="ic ic-ellipsis"></i></button></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="name-cell">
+                  <span class="icon-tile sm"><i class="ic ic-palette"></i></span>
+                  <div><div class="cell-title"><a href="#">Supporter skins</a></div><div class="cell-sub mono">supporter-skins</div>
+                    <div class="phone-facts show-phone">extras.diceSkins · App Store, Google Play, Steam, Checkout</div></div>
+                </div>
+              </td>
+              <td class="hide-phone"><div class="gives"><span class="mono">extras.diceSkins</span></div></td>
+              <td class="hide-phone"><div class="srcs"><span class="src"><i class="ic ic-app-store"></i>App Store</span><span class="src"><i class="ic ic-google-play"></i>Google Play</span><span class="src"><i class="ic ic-steam"></i>Steam</span><span class="src" title="Polaris Key checkout, linked from the itch.io build"><i class="ic ic-credit-card"></i>Checkout</span></div></td>
+              <td class="num">516</td>
+              <td class="end"><button class="btn ghost icon xs" aria-label="More for Supporter skins"><i class="ic ic-ellipsis"></i></button></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="name-cell">
+                  <span class="icon-tile sm"><i class="ic ic-flask-conical"></i></span>
+                  <div><div class="cell-title"><a href="#">Playtester access</a></div><div class="cell-sub mono">playtester</div>
+                    <div class="phone-facts show-phone">Release track beta · Access rule, Comps</div></div>
+                </div>
+              </td>
+              <td class="hide-phone"><div class="gives"><span class="small">Release track</span><span class="mono">beta</span></div></td>
+              <td class="hide-phone"><div class="srcs"><span class="src"><i class="ic ic-shield-check"></i>Access rule</span><span class="src"><i class="ic ic-gift"></i>Comps</span></div></td>
+              <td class="num">41</td>
+              <td class="end"><button class="btn ghost icon xs" aria-label="More for Playtester access"><i class="ic ic-ellipsis"></i></button></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="table-foot">8 add-ons · 7 on sale through Commerce<a class="link ml-auto" href="#">Open Offers<i class="ic ic-arrow-right"></i></a></div>
+      </div>
+
+      <section class="card" aria-labelledby="where-title">
+        <div class="card-head">
+          <span class="icon-tile"><i class="ic ic-puzzle"></i></span>
+          <div class="title">
+            <h2 id="where-title">Where add-ons come from</h2>
+            <p>Each source points at an add-on, so what a pack gives is written once. Shown until you dismiss it, and on the empty page.</p>
+          </div>
+          <button class="btn ghost icon sm dismiss" aria-label="Dismiss"><i class="ic ic-x"></i></button>
+        </div>
+        <div class="card-body tight">
+          <div class="kind-legend">
+            <span><i class="ic ic-store sm"></i> <b>Store purchase</b> through an offer’s SKU</span>
+            <span><i class="ic ic-credit-card sm"></i> <b>Checkout</b> on Polaris Key, as in the itch.io build</span>
+            <span><i class="ic ic-ticket sm"></i> <b>Code</b> from a batch</span>
+            <span><i class="ic ic-shield-check sm"></i> <b>Access rule</b> on Access</span>
+            <span><i class="ic ic-gift sm"></i> <b>Comp</b> from support</span>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>

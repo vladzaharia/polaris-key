@@ -1,0 +1,25 @@
+{
+  "id": "config.storage-default",
+  "title": "Change the platform's default storage",
+  "area": "config",
+  "surface": "dialog",
+  "packages": [
+    "ST-16",
+    "U-05",
+    "U-01b"
+  ],
+  "uxRows": [],
+  "summary": "Change… on the Default row of Storage per player: the value is a live platform default, so the dialog names every product with Cloud Sync on and who in each uses the default, then confirms with a passkey.",
+  "compare": [
+    "Opened only from the Default row, which carries the Platform pill; the title says the scope (\"for every product?\").",
+    "The field shows the new value with its unit and the current one (\"Now 256 MiB\").",
+    "Every product with Cloud Sync on is listed by logo and name with who uses the default there and how many have data (DJDL: Standard and Studio, no one has synced yet; Diceroll: Standard, 1,402 players, 3 over 80% today) and who keeps their own; products with Cloud Sync off aren't listed.",
+    "It says when it applies (each person's next sync) and the per-product alternative (give the tiers their own value).",
+    "The passkey step-up is announced before the button; the button says what happens and to how many: \"Change the default for 2 products\".",
+    "Only platform admins reach this dialog; a product role sees Change… disabled (config.cloud-sync-product-role).",
+    "The screen is one viewport behind the dialog. Phone: the dialog fills the width under the top bar and the buttons fill it too."
+  ],
+  "status": "mockup",
+  "designReview": null,
+  "order": 15
+}

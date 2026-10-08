@@ -1,0 +1,59 @@
+{
+  "id": "licenses.tiers",
+  "title": "Tiers",
+  "area": "licenses",
+  "surface": "console",
+  "packages": [
+    "LX-44",
+    "LX-33",
+    "LX-34",
+    "LX-41",
+    "LX-43"
+  ],
+  "uxRows": [],
+  "summary": "DJDL's Tiers: the ordered list (drag, or each row's menu, to reorder; the higher tier wins) beside the Education tier template open in its four groups, Duration (fixed 365 days, then keeps the last version), Limits (devices, offline days, release tracks, versions, fingerprint mode), Includes (entitlements and Cloud Sync storage) and Profile, with one unsaved change in a save bar pinned to the bottom of the window that says how many licenses it reaches.",
+  "order": 10,
+  "compare": [
+    "The list is ordered by rank with a drag handle, a rank number and a ⋯ menu on each row (Move up, Move down, Duplicate, Delete), the selected tier tinted with an accent edge; each row shows its name, how many licenses use it and a one-line summary (duration and devices). The Order head's caption reads 'Best first. Drag a row, or use its menu.' A focused handle moves with ↑ and ↓. The note under the list says the higher tier wins when someone holds several licenses or several rules match.",
+    "Header: New tier is the page's primary (ADMIN.md §5.1, 'Create in a collection'), full width under the title on phone.",
+    "The editor's head shows the tier name, its id in mono, 'Used by 57 licenses' as a link to the filtered Licenses list, Preview at a date… and an overflow menu (Duplicate, Delete, disabled with 'Used by 57 licenses' while used).",
+    "Exactly four groups, in order: Duration, Limits, Includes, Profile (LX-44). No Basics or Policy tab, no profile stack, no product defaults.",
+    "Duration: Lifetime, Fixed length or Renewing; a fixed length in days; When it ends: Keeps the last version, Stops working, or Moves to another tier (which reveals 'Then' and a tier select, the trial case); an example line with a real end date.",
+    "Limits: Devices, Offline days, Release tracks, Versions and Fingerprint mode, blanks meaning the platform default. stable is locked on: a lock instead of a tick, a dashed edge and the tooltip 'Always included'. Choosing dev also includes beta (stored at write time). Versions has the major-line helper 'Only 4.x' as a small outline button on the same line as the two fields.",
+    "Fingerprint mode is visible and editable (Off, Lenient, Normal, Strict) with a source pill 'From .pkey/product' and the hint that editing takes it over from the manifest.",
+    "A changed field is outlined in the accent with 'was 7' in its label. While the form is dirty the save bar is pinned to the bottom of the window inside the editor column (at 1440×900 it sits at y=818–884, just under the edited Offline days field) and names the reach: '1 change. Applies to 54 of 57 Education licenses; 3 set their own offline days and keep them', with Discard and 'Save Education'.",
+    "Picking another tier or leaving the page with changes asks 'Discard 1 change to Education?' (Keep editing / Discard); invalid fields show inline errors and the save bar reads 'Fix 2 fields' (licenses.tiers-states).",
+    "Includes lists Licensing's entitlement catalog with each key in mono and its kind (Feature as a switch, Quantity as a number), and the platform entitlement Cloud Sync storage (shown only while Cloud Sync is on) in MB. Switches have a white knob in both states in light; the track says on or off. Open Entitlements links to the catalog.",
+    "Profile is one select (Managed config on) naming what the profile sets; it carries config and secrets only, never entitlements.",
+    "Tablet and phone: the list stacks above the editor; on phone only the selected tier keeps its summary line, each group's label sits above its fields, the save bar stays pinned with its buttons filling the width."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: the save bar is pinned to the window while dirty, with the discard, validation, trial and Delete-disabled states drawn in licenses.tiers-states, and the stable lock, Only 4.x, Best first, row menus and switch knobs are clearer. Declined: New tier stays the header primary per ADMIN.md §5.1.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "The save bar sits at the end of the editor card, about 900px below the field being edited; leaving with unsaved changes is undefined.",
+        "resolution": "The save bar is now position: sticky at the bottom of the window inside the editor column whenever the form is dirty (measured at 1440×900: y=818–884, under the edited Offline days field at y=741–777; on phone y=702–832), with its reach sentence unchanged. licenses.tiers-states draws 'Discard 1 change to Education?' (Keep editing / Discard) for picking another tier or leaving. Compare rows added."
+      },
+      {
+        "severity": "minor",
+        "issue": "Two filled primaries compete: New tier in the header and Save Education in the save bar.",
+        "resolution": "declined: ADMIN.md §5.1 makes 'Create in a collection' the page header primary and names 'New tier' as its example, full width under the title on phones. The save bar is the form's own floating bar, so New tier stays primary."
+      },
+      {
+        "severity": "minor",
+        "issue": "Locked stable looks selected, Only 4.x looks like text and is orphaned on phone, Best first looks like a sort, reorder is drag only, and light switches have a dark knob in both states.",
+        "resolution": "stable has a lock instead of the tick, a dashed edge and 'Always included' (drawn as a tooltip in licenses.tiers-states); Only 4.x is an outline xs button and stays on the Versions line on phone; 'Best first. Drag a row, or use its menu.' is the Order caption; every row has a ⋯ menu with Move up and Move down (drawn open in licenses.tiers-states) and ↑/↓ on a focused handle; switch knobs are white in both states in light. The knob fix is scoped to this screen; the kit-wide switch is left to the kit owner."
+      },
+      {
+        "severity": "minor",
+        "issue": "Missing editor states: Moves to another tier, validation errors, Delete disabled.",
+        "resolution": "licenses.tiers-states draws Trial with Moves to another tier, 'Then Free' and 'ends its trial on Oct 21, 2026, then becomes Free: 1 device, 2 decks, no recording'; inline errors ('Enter at least 1 day.', '“From” must be lower than “to”…') with the save bar in the danger tone reading 'Fix 2 fields'; and the row menu with Delete disabled, 'Used by 57 licenses. Move them to another tier first.'"
+      }
+    ]
+  }
+}

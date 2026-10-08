@@ -1,0 +1,23 @@
+{
+  "id": "commerce.offers-import",
+  "title": "Offers: what Import found",
+  "area": "commerce",
+  "surface": "console",
+  "packages": [
+    "CM-23",
+    "CM-20"
+  ],
+  "uxRows": [],
+  "summary": "DJDL's Offers after Import from stores: a card lists the 4 App Store in-app purchases with no offer, each matched to a suggested offer (DJDL Pro, DJDL Pro yearly, Stem separation) with Dismiss and Add offer, one it can't match because Licensing has no Cloud crates add-on, and Add all 3; the offers table is still empty.",
+  "compare": [
+    "Import results land on the Offers page itself, in a card above the table, never on a separate mapping page; the card leaves when every suggestion is added or dismissed.",
+    "The card head says how many products have no offer and when the store was read; Add all 3 adds only the matched suggestions.",
+    "Each row reads left to right: store mark and the store's product type, the product id in mono, an arrow, then the suggested offer (name, what it sells, billing) and its two actions, Dismiss (ghost) and Add offer.",
+    "A product with no matching tier or add-on says why in plain words and links to Licensing ('Define it in Licensing') instead of offering Add.",
+    "Added suggestions appear in the table as drafts until their SKU is on sale; the empty table says so. No toast: the card is the result.",
+    "Phone: each suggestion stacks (product, a turned arrow, the offer, then its actions) and nothing scrolls sideways."
+  ],
+  "status": "mockup",
+  "designReview": null,
+  "order": 10
+}

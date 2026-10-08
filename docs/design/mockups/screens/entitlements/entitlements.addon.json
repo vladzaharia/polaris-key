@@ -1,0 +1,50 @@
+{
+  "id": "entitlements.addon",
+  "title": "Add-on record",
+  "area": "entitlements",
+  "surface": "console",
+  "packages": [
+    "LX-35",
+    "LX-44",
+    "LX-25",
+    "LX-36",
+    "CM-23"
+  ],
+  "uxRows": [],
+  "summary": "The Neon dice pack add-on with two unsaved edits: the template it holds (an on/off entitlement and a quantity, shown as 'Gives entitlements' with a guarded Change to units…), what players see, every source that gives it (store SKUs through one offer, a code batch, an access rule, comps, and checkout not used) with holder counts that add up, the latest holders, and one sticky save bar for the record.",
+  "compare": [
+    "The header carries the add-on's name, its id in mono with Copy, the holder count and 'Declared in .pkey/product' (on phone too); the actions are Create codes… and Comp to… (verbs with ellipses because each opens a step), with the rest in More. The license record's matching verb is 'Comp an add-on…'.",
+    "What it gives shows the add-on's type as a fact, 'Gives entitlements', with 'Change to units…'. That opens a confirmation naming the 1,284 holders and what each loses (Neon dice and 1 loadout slot), with the button 'Change to units and remove 2 entitlements'. The Entitlements | Units segmented control appears only in New add-on. Each entitlement row has its label, its key in mono and its kind ('On/off' or 'Quantity'); an on/off entitlement reads On, a quantity takes a number to add ('+1'), and each row has Remove. Add an entitlement lists the catalog's keys.",
+    "Platform entitlements on an add-on are only the ones that can add: a release track, devices (a seat pack) or Cloud Sync storage; versions and the tier never appear here.",
+    "The card head says changes reach every holder at their next refresh and that removing an entitlement asks first with the count. One save bar serves the whole record: it appears only when something changed, sticks to the bottom of the window, names the cards that changed and the effect in numbers, says that saving stops .pkey/product from changing this add-on, and its button names the add-on ('Save Neon dice pack'). There is no disabled Save and no Save inside a card. Leaving with unsaved changes asks first.",
+    "Where it comes from lists the five sources in the model's words: Store purchase (the offer's name and its SKU per storefront in mono, in the Commerce accent), Codes (the batch and redemptions), Access rule (the rule in words, linking to Access), Comps (who gave the latest), Checkout (muted when unused). Counts add up to the holder count (1,226 + 37 + 9 + 12 = 1,284).",
+    "With Commerce off the Store purchase and Checkout rows are absent, not disabled; with Sign-in off the Access rule row is absent.",
+    "Recent holders shows name, tier and source with a date and links to all holders (the Licenses list filtered to this add-on).",
+    "Phone: the two columns stack (template first, then sources), the header actions share a row, an entitlement's key wraps under its label, SKUs wrap, and the save bar sits at the bottom of the screen with Discard and Save side by side."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fix, then pass: one sticky save bar now says what it saves and what happens to the file, and the add-on's type is a guarded fact instead of a view switch.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "It is unclear what Save covers: the only Save is in What it gives, and Shown to players has editable fields with no Save of its own.",
+        "resolution": "One save bar for the whole record (ADMIN.md T4: one form per separately saved resource, and an add-on's template, name and description are one record), sticky at the bottom of the window while anything is unsaved. It names both cards and the effect: '2 changes, in What it gives and Shown to players. All 1,284 holders get 2 loadout slots from this pack instead of 1 at their next refresh. Once you save, edits to .pkey/product no longer change this add-on.' The button is 'Save Neon dice pack'. Changed fields show 'was +1' and 'Changed'. The card's own Save is gone, and its hint moved into the card head."
+      },
+      {
+        "severity": "major",
+        "issue": "The Entitlements | Units segmented control looks like a view choice but changes what 1,284 holders get, with no confirmation drawn.",
+        "resolution": "Replaced with the fact 'Gives entitlements' and a 'Change to units…' link. The compare specifies its confirmation: it names the 1,284 holders and what each loses (Neon dice and 1 loadout slot), with the button 'Change to units and remove 2 entitlements'. The segmented control stays only in New add-on, before anyone holds it."
+      },
+      {
+        "severity": "minor",
+        "issue": "In dark, the disabled Save (50% opacity on lime) reads as an enabled olive button; phone drops 'Declared in .pkey/product'.",
+        "resolution": "The page no longer draws a disabled Save: the save bar appears only when something changed. 'Declared in .pkey/product' now stays on phone, on the meta line. Declined to change the kit's disabled style: it copies the console's Button (packages/admin/src/ui/Button.tsx, disabled:opacity-50), so a mockup has to draw what the console draws. A neutral disabled primary would be a console change for the lead."
+      }
+    ]
+  },
+  "order": 3
+}

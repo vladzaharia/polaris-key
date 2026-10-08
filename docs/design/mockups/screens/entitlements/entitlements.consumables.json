@@ -1,0 +1,49 @@
+{
+  "id": "entitlements.consumables",
+  "title": "License: entitlements and consumables",
+  "area": "entitlements",
+  "surface": "console",
+  "packages": [
+    "LX-42",
+    "LX-14",
+    "LX-09",
+    "LX-35",
+    "CM-28"
+  ],
+  "uxRows": [
+    "UX-07"
+  ],
+  "summary": "A Diceroll player's license on its Entitlements tab: what her devices get with the source of every value (tier, add-ons, overrides), the add-ons the license holds with their store and redemption status, and the Gems consumable with its balance and redemption ledger, including a Google Play refund after part of the purchase was redeemed.",
+  "compare": [
+    "The Entitlements tab is the second tab of the license record (Status, Entitlements, Keys, Devices, Activity) and holds three things: the effective set, the add-ons held, and each consumable's ledger. There are no separate Grants or Config overrides tabs.",
+    "Every effective value shows where it comes from as a tag: the tier (Premium), an add-on, or an override; a quantity shows its parts (Premium 6 + Loadout pack +2 + Neon dice pack +1 = 9). Override… opens the license's entitlement override editor.",
+    "Add-ons held list each purchase with its store and date, a subscription's state and renewal date (Season pass, Google Play, active, renews Nov 4), and a consumable purchase's redemption status ('450 of 1,200 redeemed'). A refunded purchase says Refunded with its date in the danger color; no pills on healthy rows.",
+    "The Gems card shows the balance first, then Bought, Redeemed (with how many were reversed) and Refunded; the numbers add up (2,700 − 1,200 − 150 = 1,350).",
+    "The ledger is newest first with the time zone named, a running balance, the device and app version for each redemption, the store order id for each purchase, and the request id; a filter switches between All, Bought, Redeemed and Refunds.",
+    "A refund after redemption removes only the units not yet redeemed (never below zero) and marks the earlier redemption Reversed in the warning color, with the game's acknowledgement.",
+    "The foot states the two guarantees in words: a repeated request id redeems nothing; a refund never takes the balance below zero.",
+    "Comp gems… comps a gems add-on; there is no free-form balance edit. The header's 'Comp an add-on…' is the license-side verb; the add-on record's 'Comp to…' is its pair (the object chosen in the step is the other one).",
+    "Phone: the effective set and add-ons stack; From folds under each entitlement; the four figures become two by two; the ledger keeps When, Event and Gems with the device and running balance in a line under the event, and the Reversed row keeps its warning icon and colour with its balance; the tabs fit with a 16 px gap and the cut-off Activity fades at the edge; nothing scrolls the page sideways.",
+    "On desktop the effective set and the Add-ons card share a row at equal height; the Add-ons card ends with its count ('6 purchases · 1 refunded') and a link to purchases in Activity."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fix, then pass: the tab bar scrolls visibly, the reversed redemption keeps its warning and balance on phone, and the add-ons card fills its row.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "The tab bar cuts Activity off mid-word ('Act') on phone; the same kit problem as on the license record.",
+        "resolution": "Kit fix in kit/mockup.css: .tabs uses a 16 px gap below 640 px and has a sticky end cap (.tabs::after). The cap sits in the free space when the tabs fit, and when they overflow it sticks to the right edge and fades the cut-off tab. It is static CSS, not a scroll-driven animation, because shoot.mjs freezes animations and the screenshot has to show it. Checked at 390 px: Status, Entitlements, Keys and Devices fit, and Activity fades at the edge, so the bar reads as scrollable. Tabs on a card take the card's surface (--mk-tabs-bg)."
+      },
+      {
+        "severity": "minor",
+        "issue": "Phone's Reversed row loses its warning icon, colour and running balance; on desktop the Add-ons card leaves an empty hole in the right column; 'Comp an add-on…' here vs 'Comp to…' on the add-on record.",
+        "resolution": "On phone the Reversed row keeps the warning icon and colour ('Reversed Oct 3 by the refund') and adds 'balance 750'. On desktop the Add-ons card stretches to the row's height, with its count in a foot ('6 purchases · 1 refunded', Purchases in Activity). The verbs stay a pair: 'Comp an add-on…' on a license (the add-on is chosen in the step) and 'Comp to…' on an add-on (the license is chosen), and the compare records the pair. Adding it to the copy rules (EXPERIENCE.md) is for the lead, outside the mockups directory. Also: the id chip uses the id-card icon."
+      }
+    ]
+  },
+  "order": 12
+}

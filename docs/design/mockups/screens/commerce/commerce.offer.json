@@ -1,0 +1,54 @@
+{
+  "id": "commerce.offer",
+  "title": "Offer editor",
+  "area": "commerce",
+  "surface": "console",
+  "packages": [
+    "CM-23",
+    "CM-20",
+    "LX-11"
+  ],
+  "uxRows": [],
+  "summary": "One offer, Dice skins: what it sells defined once (an add-on, one-time, a quantity of 1), its SKU on each storefront with the store's own state and a deep link, and one base price shown as each store converts it, with territories per SKU and Steam as a copy card because Steam has no price API.",
+  "compare": [
+    "Three cards in this order: What it sells, SKUs, Price and territories. The header shows the offer name with On sale as status text, where it sells and its 28-day purchases, and Stop selling… as the one page action (commerce.offer-stop-selling).",
+    "What it sells: Name, Offer id (plain mono text with a lock glyph and the SDK call that uses it, never a box), Sells (the kit's default-size segmented control A tier / An add-on, then the add-on picked from Licensing, with its kind named: non-consumable, bought once), Billing (One-time or Subscription). Quantity appears only for a consumable add-on. Save stays disabled until something changes.",
+    "An offer has no entitlements of its own: the hint links to Licensing, where the Dice skins add-on is defined; an undeclared key can't be chosen.",
+    "SKUs: one row per set-up storefront with the store mark, the product id in mono, its type and the store's own state in the store's words (Ready for Sale, Active), and a deep link to App Store Connect, Play Console or Steamworks. No bundle id, package name or app id field exists: identity comes from the assigned app.",
+    "itch.io's row explains why it has no SKU (it sells the game only) rather than offering an action that can't work.",
+    "Price and territories: the base price is read-only text, a large tabular '$2.99 USD', with Change price… beside it opening the typed confirmation (commerce.offer-price). The hint names who changed it last and when, and that a change types Diceroll, the app's name in App Store Connect.",
+    "The table shows how each store converts it with real examples (Apple's price points, Google Play's conversion) and territories per SKU (174 of 175, Not China mainland). The last column has one action style: 'Edit territories →' for App Store and Google Play (an in-console territory drawer whose save is the L3 availability change) and 'Open in Steamworks ↗' for Steam. Steam is a copy card with the value, never an editable price.",
+    "The territory exclusion is explained in one neutral callout with its reason (no game license in China mainland).",
+    "Phone: the two-column form stacks, each SKU's deep link drops under its text, and the price table becomes one stacked block per store (name, converted by, examples, then territories with its link); Steam's copy card spans the width. Nothing scrolls sideways."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: read-only values are plain text, the phone price table is stacked blocks, Stop selling has its confirmation, and the territory actions and Quantity are cleaned up.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "[visual / affordance] In light, the read-only Offer id and Base price render as white boxed fields that look more editable than the real inputs.",
+        "resolution": "Offer id is plain mono text with a lock glyph; the base price is a large tabular '$2.99 USD' beside Change price…. No read-only box remains on this screen. The kit's .input.readonly is unchanged because other areas use it; flagged to the lead as a kit follow-up."
+      },
+      {
+        "severity": "major",
+        "issue": "[phone] The Price and territories table scrolls sideways; examples, territories, Edit and the Steam copy card are off-screen.",
+        "resolution": "Below 640px each store is a stacked block: name, converted by, the example prices, then territories with its link; Steam's copy card spans the width. Compare item 9 updated."
+      },
+      {
+        "severity": "major",
+        "issue": "[flow / missing state] Stop selling has no confirmation and doesn't say what it does per store; Steam DLC can't be stopped through an API.",
+        "resolution": "Added commerce.offer-stop-selling: L3 per ADMIN.md (an In-App Purchase's availability) typing Diceroll as a neutral word, intent caution; one line per store (App Store removed from sale now, Google Play deactivated now, Steam stays on sale with DLC 2817450 and Open in Steamworks); 'Players who own Dice skins keep it'; the button says 'Stop selling on 2 stores'. The page action reads 'Stop selling…'."
+      },
+      {
+        "severity": "minor",
+        "issue": "[visual / flow] Territories mixes a ghost Edit with a green Open link and Edit's destination is undefined; Quantity 1 shows for a non-consumable; the segmented control is 12px beside 14px inputs.",
+        "resolution": "The last column uses one link style: 'Edit territories →' for App Store and Google Play (an in-console territory drawer, named in compare) and 'Open in Steamworks ↗'. Quantity is removed for this non-consumable; the Sells hint names the kind and Billing says a consumable also sets how many. The segmented control is default size. The Steam copy card also lost the shell '$' prompt."
+      }
+    ]
+  },
+  "order": 13
+}

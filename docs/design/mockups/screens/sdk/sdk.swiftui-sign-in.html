@@ -1,0 +1,816 @@
+<style>
+  /* sdk.swiftui-sign-in: the SwiftUI kit's one sign-in form on iPhone (iOS 26, Liquid Glass), Diceroll as the hero. */
+  /* Diceroll's accent, from its icon's red die (toward rose, so it never reads as an error). */
+  [data-screen="sdk.swiftui-sign-in"] {
+    --pd: color-mix(in oklab, var(--pk-danger) 68%, var(--pk-brand-rose));
+    --pd-on: var(--pk-text-on-accent);
+    --pd-subtle: color-mix(in oklab, var(--pd) 14%, var(--pk-surface-raised));
+    --pd-fg: var(--pd);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .frames {
+    flex-basis: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 40px 48px;
+    align-items: flex-start;
+    min-width: 0;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .board-item > figcaption {
+    max-width: 414px;
+    line-height: 19px;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .board-item > figcaption strong {
+    color: var(--pk-text-strong);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .device-screen {
+    font-family: var(--pk-font-sans);
+    color: var(--pk-text-default);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .device-status {
+    position: relative;
+    z-index: 2;
+  }
+  /* Product art behind the glass: blurred, faded into the page, never clipped bright. */
+  [data-screen="sdk.swiftui-sign-in"] .ios-art {
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 420px;
+    overflow: hidden;
+    opacity: 0.45;
+    -webkit-mask-image: linear-gradient(to bottom, black 30%, transparent);
+    mask-image: linear-gradient(to bottom, black 30%, transparent);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .ios-art > .art {
+    position: absolute;
+    inset: -40px;
+    aspect-ratio: auto;
+    border-radius: 0;
+    filter: blur(36px) saturate(1.5);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .ib {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 6px 20px 34px;
+    font-size: 17px;
+    line-height: 22px;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .ihero {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    text-align: center;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .ihero .logo.xl {
+    margin-bottom: 20px;
+    box-shadow: 0 10px 30px rgb(0 0 0 / 0.18), inset 0 0 0 1px rgb(255 255 255 / 0.1);
+  }
+  [data-screen="sdk.swiftui-sign-in"] h2.ititle {
+    font-size: 28px;
+    line-height: 34px;
+    font-weight: 600;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .ilede {
+    margin-top: 6px;
+    font-size: 17px;
+    line-height: 22px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .ihead {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    margin: 6px 0 14px;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .ihead .logo.lg {
+    border-radius: 13px;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .ihead b {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .istack {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .ibtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: var(--pk-kit-control-height);
+    padding: 0 22px;
+    border: 0;
+    border-radius: var(--pk-kit-radius-control);
+    font: 500 17px/22px var(--pk-font-sans);
+    color: var(--pk-text-strong);
+    white-space: nowrap;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .ibtn .ic {
+    width: 19px;
+    height: 19px;
+  }
+  /* .glassProminent: the accent through the glass. */
+  [data-screen="sdk.swiftui-sign-in"] .ibtn.primary {
+    background: var(--pd);
+    color: var(--pd-on);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.28), 0 6px 18px color-mix(in oklab, var(--pd) 28%, transparent);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .ibtn.glass {
+    background: color-mix(in oklab, var(--pk-surface-raised) 64%, transparent);
+    -webkit-backdrop-filter: blur(24px) saturate(1.6);
+    backdrop-filter: blur(24px) saturate(1.6);
+    box-shadow: inset 0 1px 0 var(--pk-kit-highlight), inset 0 0 0 1px color-mix(in oklab, var(--pk-text-strong) 13%, transparent), 0 1px 2px color-mix(in oklab, var(--pk-text-strong) 8%, transparent);
+  }
+  /* Sign in with Apple, logo only: black in light, white in dark (Apple's rules). */
+  [data-screen="sdk.swiftui-sign-in"] .ibtn.apple {
+    background: var(--pk-text-strong);
+    color: var(--pk-surface-page);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .ibtn.sm {
+    height: 38px;
+    padding: 0 16px;
+    font-size: 15px;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .ibtn.block {
+    width: 100%;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .iprov {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .iprov .ic {
+    width: 22px;
+    height: 22px;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .iquiet {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--pd-fg);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .iquiet .ic {
+    width: 16px;
+    height: 16px;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .ilinks {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin-top: 6px;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .ifoot {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 14px;
+    font-size: 13px;
+    line-height: 18px;
+    text-align: center;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .ifoot .ic {
+    flex: none;
+    width: 13px;
+    height: 13px;
+    margin-top: 2px;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .iperson {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 10px;
+    font-size: 15px;
+    line-height: 20px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .ispacer {
+    flex: 1;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .ilrows {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 16px;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .ilrow {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr) auto;
+    gap: 3px 12px;
+    padding: 14px 16px;
+    border-radius: var(--pk-kit-radius-group, 16px);
+    background: color-mix(in oklab, var(--pk-surface-raised) 80%, transparent);
+    box-shadow: inset 0 0 0 1px var(--mk-line);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .ilrow.on {
+    background: var(--pd-subtle);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .ilrow > :not(.lmark):not(.ltag) {
+    grid-column: 2 / -1;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .lmark {
+    grid-row: 1;
+    margin-top: 1px;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .radio-k {
+    display: block;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 1.5px var(--pk-border-strong);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .on .radio-k {
+    box-shadow: inset 0 0 0 1.5px var(--pd), inset 0 0 0 6px var(--pk-surface-raised), inset 0 0 0 11px var(--pd);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .lmark > .ic {
+    width: 21px;
+    height: 21px;
+    color: var(--pk-warning);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .ltitle {
+    grid-column: 2 !important;
+    grid-row: 1;
+    font-weight: 600;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .ltag {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .kpill {
+    display: inline-flex;
+    align-items: center;
+    height: 22px;
+    padding: 0 9px;
+    border-radius: var(--pk-radius-full);
+    box-shadow: inset 0 0 0 1px var(--pk-border-strong);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .kpill.warn {
+    box-shadow: none;
+    background: var(--pk-warning-subtle);
+    color: var(--pk-warning);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .kpill.new {
+    box-shadow: none;
+    background: var(--pd-subtle);
+    color: var(--pd-fg);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .lline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    line-height: 20px;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .lmeta {
+    font-size: 15px;
+    line-height: 20px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .seats {
+    display: flex;
+    gap: 4px;
+    margin-top: 8px;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .seats > i {
+    flex: 1;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--mk-line);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .seats > i.u {
+    background: var(--pk-text-muted);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .seats.full > i {
+    background: var(--pk-warning);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .ilrow .ibtn.sm {
+    justify-self: start;
+    margin-top: 10px;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .ifield {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 22px;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .ifield label {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .iinput {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 52px;
+    padding: 0 8px 0 16px;
+    border-radius: 14px;
+    background: var(--mk-fill);
+    font: 400 16px/22px var(--pk-font-mono);
+    color: var(--pk-text-strong);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .iinput.bad {
+    background: var(--pk-danger-subtle);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .iinput > span {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .iinput .caret {
+    flex: none;
+    width: 2px;
+    height: 22px;
+    margin-left: -6px;
+    background: var(--pd);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .ierr {
+    display: flex;
+    gap: 6px;
+    font-size: 15px;
+    line-height: 20px;
+    color: var(--pk-danger);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .ierr .ic {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    margin-top: 2px;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .done-check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    margin-bottom: 14px;
+    border-radius: 50%;
+    background: var(--pk-success-subtle);
+    color: var(--pk-success);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .done-check .ic {
+    width: 26px;
+    height: 26px;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .keep {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 20px;
+    padding: 16px;
+    border-radius: 22px;
+    background: color-mix(in oklab, var(--pk-surface-raised) 80%, transparent);
+    box-shadow: inset 0 0 0 1px var(--mk-line);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .keep-head {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-weight: 600;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .reason {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr);
+    gap: 10px;
+    font-size: 15px;
+    line-height: 20px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .reason .ic {
+    width: 18px;
+    height: 18px;
+    margin-top: 1px;
+    color: var(--pd-fg);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .reason strong {
+    font-weight: 600;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .orfoot {
+    margin-top: 12px;
+    font-size: 13px;
+    line-height: 18px;
+    text-align: center;
+    color: var(--pk-text-subtle);
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="sdk.swiftui-sign-in"] .frames {
+      gap: 28px;
+    }
+    [data-screen="sdk.swiftui-sign-in"] .device {
+      zoom: 0.86;
+    }
+    [data-screen="sdk.swiftui-sign-in"] .board-item {
+      width: 100%;
+    }
+  }
+
+  /* The system confirmationDialog for a destructive Replace (iO[data-screen="sdk.swiftui-sign-in"] draws it; the kit supplies the words). */
+  [data-screen="sdk.swiftui-sign-in"] .scrim {
+    position: absolute;
+    inset: -54px 0 0 0;
+    z-index: 5;
+    background: var(--mk-scrim);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .isheet {
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    bottom: 28px;
+    z-index: 6;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .isheet-card,
+  [data-screen="sdk.swiftui-sign-in"] .isheet-cancel {
+    border-radius: 30px;
+    background: color-mix(in oklab, var(--pk-surface-overlay) 97%, transparent);
+    -webkit-backdrop-filter: blur(30px) saturate(1.6);
+    backdrop-filter: blur(30px) saturate(1.6);
+    box-shadow: inset 0 1px 0 var(--pk-kit-highlight), var(--mk-pop-shadow);
+    text-align: center;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .isheet-msg {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 16px 22px 14px;
+    border-bottom: 1px solid var(--mk-line);
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .isheet-msg b {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .isheet-act {
+    padding: 16px;
+    font-size: 17px;
+    font-weight: 500;
+    color: var(--pk-danger);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .isheet-cancel {
+    padding: 16px;
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .idevs {
+    display: flex;
+    flex-direction: column;
+    margin-top: 16px;
+    border-radius: 16px;
+    overflow: hidden;
+    background: color-mix(in oklab, var(--pk-surface-raised) 80%, transparent);
+    box-shadow: inset 0 0 0 1px var(--mk-line);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .idev {
+    display: grid;
+    grid-template-columns: 22px 20px minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+    padding: 11px 16px;
+    font-size: 15px;
+    line-height: 20px;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .idevs-hint {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 16px;
+    padding: 0 16px;
+    font-size: 13px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .idevs-hint + .idevs {
+    margin-top: 6px;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .idev .today {
+    color: var(--pk-warning);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .sheet-up .ibtn.primary {
+    visibility: hidden;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .fixture {
+    max-width: 760px;
+    margin-top: 12px;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .idev + .idev {
+    border-top: 1px solid var(--mk-line);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .idev.on {
+    background: var(--pd-subtle);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .idev > .ic {
+    width: 18px;
+    height: 18px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .idev b {
+    display: block;
+    font-weight: 600;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .idev small {
+    display: block;
+    font-size: 13px;
+    line-height: 17px;
+    color: var(--pk-text-muted);
+  }
+  /* Diceroll's own title screen (the game, not the kit). */
+  [data-screen="sdk.swiftui-sign-in"] .game .device-body {
+    position: static;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .game-bg {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .game-bg > .art {
+    position: absolute;
+    inset: 0;
+    aspect-ratio: auto;
+    border-radius: 0;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .game-bg::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, var(--mk-scrim), transparent 22%, transparent 70%, var(--mk-scrim));
+  }
+  [data-screen="sdk.swiftui-sign-in"] .game-ui {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+    padding: 70px 24px 44px;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .wordmark {
+    margin-top: 72px;
+    font-size: 52px;
+    line-height: 56px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--pd);
+    text-shadow: 0 3px 0 color-mix(in oklab, var(--pd) 35%, transparent);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .tagline {
+    margin-top: 6px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--pd);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .game-btns {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .gbtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    height: 60px;
+    border-radius: 20px;
+    font-size: 20px;
+    font-weight: 700;
+    background: var(--pd);
+    color: var(--pd-on);
+    box-shadow: 0 5px 0 color-mix(in oklab, var(--pd) 60%, var(--pk-text-strong));
+  }
+  [data-screen="sdk.swiftui-sign-in"] .gbtn.alt {
+    height: 50px;
+    font-size: 17px;
+    background: color-mix(in oklab, var(--pk-surface-raised) 70%, transparent);
+    color: var(--pk-text-strong);
+    box-shadow: inset 0 0 0 1px var(--mk-line);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .gbtn .ic {
+    width: 22px;
+    height: 22px;
+  }
+  /* The kit's toast, as a glass capsule under the status bar. */
+  [data-screen="sdk.swiftui-sign-in"] .itoast {
+    position: absolute;
+    top: 58px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: max-content;
+    max-width: calc(100% - 32px);
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: 24px;
+    background: color-mix(in oklab, var(--pk-surface-overlay) 86%, transparent);
+    -webkit-backdrop-filter: blur(24px) saturate(1.6);
+    backdrop-filter: blur(24px) saturate(1.6);
+    box-shadow: inset 0 1px 0 var(--pk-kit-highlight), var(--mk-pop-shadow);
+    font-size: 15px;
+    line-height: 20px;
+    font-weight: 500;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .itoast small {
+    display: block;
+    font-size: 13px;
+    line-height: 18px;
+    font-weight: 400;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .itoast .ic {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    color: var(--pk-success);
+  }
+  [data-screen="sdk.swiftui-sign-in"] .codeframe {
+    width: 414px;
+    max-width: 100%;
+  }
+  [data-screen="sdk.swiftui-sign-in"] .codeframe pre {
+    font-size: 12px;
+    line-height: 19px;
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="sdk.swiftui-sign-in"] .codeframe {
+      width: auto;
+    }
+  }
+</style>
+
+<div class="board" data-service="release">
+  <div class="board-title">
+    <h1>Diceroll signs in with the SwiftUI kit</h1>
+    <p><code>.polarisKeyGate(pk)</code> on iPhone: the gate’s full-screen inline form, Polaris look by default with the product as the hero. Native controls stay native: Sign in with Apple runs ASAuthorization, the browser steps run in ASWebAuthenticationSession, and a destructive Replace is the system confirmation.</p>
+    <div class="callout info fixture"><i class="ic ic-info"></i><div class="grow"><div class="callout-title">Kit preview · fixture product</div><div class="callout-text">Diceroll really ships with the Godot kit, and its Sign-in is off (Home). It is drawn here as an iPhone app with Sign-in, Apple and Steam on only to show the SwiftUI kit with a product that sells through stores; DJDL’s macOS app is the real SwiftUI product.</div></div></div>
+  </div>
+  <div class="frames">
+    <figure class="board-item">
+      <div class="device"><div class="device-screen " data-pk-platform="ios">
+          <div class="ios-art"><div class="art" data-product="diceroll"></div></div>
+          <div class="device-status"><span>9:41</span><span class="row gap-1"><i class="ic ic-signal"></i><i class="ic ic-wifi"></i><i class="ic ic-battery-full"></i></span></div>
+          <div class="device-body">
+            <div class="ib">
+              <div class="ihero">
+                <span class="logo xl" data-product="diceroll"></span>
+                <h2 class="ititle">Sign in to Diceroll</h2>
+                <p class="ilede">Use the account you bought Diceroll with.</p>
+              </div>
+              <div class="istack">
+                <div class="iprov" role="group" aria-label="Or continue with">
+                  <button class="ibtn apple" aria-label="Continue with Apple"><i class="ic ic-apple"></i></button>
+                  <button class="ibtn glass" aria-label="Continue with Steam"><i class="ic ic-steam"></i></button>
+                </div>
+                <button class="ibtn glass"><i class="ic ic-fingerprint"></i>Sign in with a passkey</button>
+                <button class="ibtn glass"><i class="ic ic-mail"></i>Continue with email</button>
+                <div class="ilinks">
+                  <a class="iquiet" href="#"><i class="ic ic-key-round"></i>Have a license key?</a>
+                  <a class="iquiet" href="#"><i class="ic ic-qr-code"></i>Sign in with another device</a>
+                </div>
+                <p class="ifoot"><i class="ic ic-lock"></i><span>Polaris Key signs you in for Diceroll. Pipwork Games never sees your codes or passkeys.</span></p>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      <figcaption><strong>1 · Sign in.</strong> Diceroll’s icon, name and accent lead; its art sits blurred behind the glass. The logo-only row has Apple (native) and Steam (the card). Passkey and email open the Polaris Key card in the system browser sheet. The lede asks for the account, not the email, because Diceroll sells through stores; on a phone the code link says <em>another device</em>.</figcaption>
+    </figure>
+    <figure class="board-item">
+      <div class="device"><div class="device-screen " data-pk-platform="ios">
+          <div class="ios-art"><div class="art" data-product="diceroll"></div></div>
+          <div class="device-status"><span>9:41</span><span class="row gap-1"><i class="ic ic-signal"></i><i class="ic ic-wifi"></i><i class="ic ic-battery-full"></i></span></div>
+          <div class="device-body">
+            <div class="ib">
+              <div class="ihead"><span class="logo lg" data-product="diceroll"></span><b>Diceroll</b></div>
+              <div class="iperson">Signed in with Apple as Mara Fennick ·<a class="iquiet" href="#">Not you?</a></div>
+              <h2 class="ititle">Choose a license for this device</h2>
+              <p class="ilede">Diceroll will use it on Mara’s iPhone.</p>
+              <div class="ilrows" role="radiogroup" aria-label="Licenses for Diceroll">
+                <div class="ilrow on">
+                  <span class="lmark"><span class="radio-k"></span></span>
+                  <span class="ltitle">Diceroll</span>
+                  <span class="lline"><span class="kpill">Standard</span>1 of 3 devices</span>
+                  <span class="lmeta">From Steam · Lifetime</span>
+                  <span class="seats"><i class="u"></i><i></i><i></i></span>
+                </div>
+                <div class="ilrow">
+                  <span class="lmark"><i class="ic ic-ban"></i></span>
+                  <span class="ltitle">Diceroll Family</span>
+                  <span class="ltag"><span class="kpill warn">No free devices</span></span>
+                  <span class="lline"><span class="kpill">Family</span>5 of 5 devices</span>
+                  <span class="lmeta">Gift · Until Oct 31, 2027</span>
+                  <span class="seats full"><i></i><i></i><i></i><i></i><i></i></span>
+                  <button class="ibtn glass sm">Replace a device</button>
+                </div>
+              </div>
+              <div class="ilinks" style="flex-direction: row; justify-content: center; gap: 6px; margin-top: 16px"><a class="iquiet" href="#">Use a license key instead</a><span class="subtle">·</span><a class="iquiet" href="#">Cancel</a></div>
+              <span class="ispacer"></span>
+              <button class="ibtn primary block">Use this license and continue</button>
+              <p class="ifoot"><i class="ic ic-lock"></i><span>Polaris Key signs you in for Diceroll. Pipwork Games never sees your codes or passkeys.</span></p>
+            </div>
+          </div>
+        </div></div>
+      <figcaption><strong>2 · Choose a license.</strong> After Sign in with Apple the body morphs into the choice. The Steam license has a free seat and is preselected; the gifted Family license is full, so it has no radio and offers Replace a device.</figcaption>
+    </figure>
+    <figure class="board-item">
+      <div class="device"><div class="device-screen " data-pk-platform="ios">
+          <div class="ios-art"><div class="art" data-product="diceroll"></div></div>
+          <div class="device-status"><span>9:41</span><span class="row gap-1"><i class="ic ic-signal"></i><i class="ic ic-wifi"></i><i class="ic ic-battery-full"></i></span></div>
+          <div class="device-body">
+            <div class="ib sheet-up">
+              <div class="ihead"><span class="logo lg" data-product="diceroll"></span><b>Diceroll</b></div>
+              <h2 class="ititle">Your license is on 5 of 5 devices</h2>
+              <p class="ilede">To use it on this iPhone, replace one. You can add it back later.</p>
+              <div class="idevs-hint"><span>Device</span><span>Last used</span></div>
+              <div class="idevs" role="radiogroup" aria-label="Devices on Diceroll Family">
+                <div class="idev on"><span class="radio-k"></span><i class="ic ic-smartphone"></i><span><b>Leo’s iPad</b><small>iPadOS · Aug 30</small></span></div>
+                <div class="idev"><span class="radio-k"></span><i class="ic ic-smartphone"></i><span><b>Dana’s Pixel 8</b><small>Android · Oct 3</small></span></div>
+                <div class="idev"><span class="radio-k"></span><i class="ic ic-monitor"></i><span><b>Family PC</b><small>Windows · Steam · Oct 5</small></span></div>
+                <div class="idev"><span class="radio-k"></span><i class="ic ic-smartphone"></i><span><b>Leo’s iPhone</b><small>iOS · Oct 6</small></span></div>
+                <div class="idev"><span class="radio-k"></span><i class="ic ic-gamepad-2"></i><span><b>Dana’s Steam Deck</b><small>SteamOS · <span class="today">today</span></small></span></div>
+              </div>
+              <span class="ispacer"></span>
+              <button class="ibtn primary block">Replace…</button>
+              <div class="scrim"></div>
+              <div class="isheet" role="alertdialog" aria-label="Replace Leo’s iPad?">
+                <div class="isheet-card">
+                  <div class="isheet-msg"><b>Replace Leo’s iPad?</b><span>Leo’s iPad stops using Diceroll Family now. You can add it back when a device is free.</span></div>
+                  <div class="isheet-act">Replace and continue</div>
+                </div>
+                <div class="isheet-cancel">Cancel</div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      <figcaption><strong>2b · Replace a device.</strong> The list morphs into the Family license’s devices with the least recently used preselected; the platform is the OS, with the store after it when there is one. Replace… opens the system confirmation, the one thing allowed over the form, and the capsule under it is hidden so the sheet’s Cancel stands alone.</figcaption>
+    </figure>
+    <figure class="board-item">
+      <div class="device"><div class="device-screen game" data-pk-platform="ios">
+          
+          <div class="device-status"><span>9:41</span><span class="row gap-1"><i class="ic ic-signal"></i><i class="ic ic-wifi"></i><i class="ic ic-battery-full"></i></span></div>
+          <div class="device-body">
+            <div class="game-bg"><div class="art" data-product="diceroll"></div></div>
+            <div class="itoast" role="status"><i class="ic ic-circle-check"></i><span>Signed in as Mara Fennick<small>Standard license</small></span></div>
+            <div class="game-ui">
+              <div class="wordmark">Diceroll</div>
+              <div class="game-btns">
+                <div class="gbtn"><i class="ic ic-dice-5"></i>Play</div>
+                <div class="gbtn alt"><i class="ic ic-package-open"></i>Packs</div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      <figcaption><strong>3 · Signed in.</strong> Mara kept a license she already had, so the gate opens Diceroll at once and the kit’s toast says who and which license, on two lines: at 15pt the pair doesn’t fit one line inside the safe area, so the toast hugs its content instead of orphaning a word.</figcaption>
+    </figure>
+    <figure class="board-item">
+      <div class="code codeframe" data-service="core">
+        <div class="code-head"><span class="code-file">An iOS app · ContentView.swift</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
+<pre><span class="t-k">import</span> <span class="t-t">SwiftUI</span>
+<span class="t-k">import</span> <span class="t-t">PolarisKeyUI</span>
+
+<span class="t-k">struct</span> <span class="t-t">ContentView</span>: <span class="t-t">View</span> {
+  <span class="t-k">let</span> pk: <span class="t-t">PolarisKeyClient</span>  <span class="t-c">// from fromConfig()</span>
+
+  <span class="t-k">var</span> body: <span class="t-k">some</span> <span class="t-t">View</span> {
+    <span class="t-t">HomeView</span>()
+      .<span class="t-f">polarisKeyGate</span>(pk)
+  }
+}</pre>
+        <div class="code-foot"><i class="ic ic-info sm"></i><span>No theme set, so the Polaris look in the app’s accent. The native preset switches to the system look.</span></div>
+      </div>
+      <figcaption><strong>What a SwiftUI app writes.</strong> One modifier. The gate runs boot(), the sign-in form, activation and device limits. Diceroll itself writes the Godot kit’s autoload (sdk.client-doctor).</figcaption>
+    </figure>
+  </div>
+</div>

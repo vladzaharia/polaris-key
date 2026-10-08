@@ -1,0 +1,447 @@
+<style>
+  /* entitlements.duration: only what the kit does not already say. */
+  [data-screen="entitlements.duration-trial"] .dur-choices {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+  [data-screen="entitlements.duration-trial"] .dur-choices .choice {
+    padding: 12px 40px 12px 14px;
+    gap: 4px;
+  }
+  [data-screen="entitlements.duration-trial"] .dur-choices .choice-title .ic {
+    width: 16px;
+    height: 16px;
+    color: var(--pk-accent-fg);
+  }
+  [data-screen="entitlements.duration-trial"] .dur-split {
+    border-top: 1px solid var(--mk-line);
+  }
+  [data-screen="entitlements.duration-trial"] .dur-split .form {
+    gap: 18px;
+  }
+  [data-screen="entitlements.duration-trial"] .radios {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  [data-screen="entitlements.duration-trial"] .radio-desc {
+    margin: -4px 0 2px 26px;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="entitlements.duration-trial"] .fact {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+    font-size: 14px;
+    color: var(--pk-text-default);
+  }
+  [data-screen="entitlements.duration-trial"] .tl {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 4px 0 0;
+  }
+  [data-screen="entitlements.duration-trial"] .tl::before {
+    content: "";
+    position: absolute;
+    left: 5px;
+    top: 10px;
+    bottom: 10px;
+    width: 2px;
+    border-radius: 1px;
+    background: var(--mk-line);
+  }
+  [data-screen="entitlements.duration-trial"] .tl-item {
+    position: relative;
+    display: grid;
+    grid-template-columns: 12px minmax(0, 1fr);
+    column-gap: 14px;
+  }
+  [data-screen="entitlements.duration-trial"] .tl-dot {
+    grid-row: span 3;
+    width: 12px;
+    height: 12px;
+    margin-top: 4px;
+    border-radius: 50%;
+    background: var(--pk-accent);
+    box-shadow: 0 0 0 3px var(--pk-surface-raised);
+  }
+  [data-screen="entitlements.duration-trial"] .tl-item.warn .tl-dot {
+    background: var(--pk-warning);
+  }
+  /* A neutral event (a reminder): grey, so warning stays for things that went wrong. */
+  [data-screen="entitlements.duration-trial"] .tl-item.note .tl-dot {
+    background: var(--pk-text-subtle);
+  }
+  [data-screen="entitlements.duration-trial"] .tl-item.lapse .tl-dot {
+    background: var(--pk-surface-raised);
+    border: 2px solid var(--pk-text-muted);
+  }
+  [data-screen="entitlements.duration-trial"] .tl-item.later .tl-dot {
+    background: var(--pk-surface-raised);
+    border: 2px dashed var(--pk-border-strong);
+  }
+  [data-screen="entitlements.duration-trial"] .tl-when {
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--pk-text-subtle);
+    font-variant-numeric: tabular-nums;
+  }
+  [data-screen="entitlements.duration-trial"] .tl-what {
+    font-weight: 700;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="entitlements.duration-trial"] .tl-desc {
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="entitlements.duration-trial"] .val-on {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="entitlements.duration-trial"] .val-on .ic {
+    width: 14px;
+    height: 14px;
+    color: var(--pk-accent-fg);
+  }
+  [data-screen="entitlements.duration-trial"] .len {
+    width: 160px;
+  }
+  [data-screen="entitlements.duration-trial"] .fact .ic {
+    color: var(--pk-text-muted);
+  }
+  [data-screen="entitlements.duration-trial"] .fact-line {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--pk-text-default);
+  }
+  [data-screen="entitlements.duration-trial"] .fact-line > .ic {
+    margin-top: 3px;
+    color: var(--pk-text-muted);
+  }
+  @container screen (max-width: 1023px) {
+    [data-screen="entitlements.duration-trial"] .dur-choices {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="entitlements.duration-trial"] .dur-choices {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 8px;
+    }
+    [data-screen="entitlements.duration-trial"] .dur-choices .choice:not(.on) .choice-desc {
+      display: none;
+    }
+        }
+  /* Every group on the tier record edits in place (ADMIN.md T4); one save bar names what changed. */
+  [data-screen="entitlements.duration-trial"] .lim-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px 20px;
+  }
+  [data-screen="entitlements.duration-trial"] .lim-grid .field {
+    min-width: 0;
+  }
+  [data-screen="entitlements.duration-trial"] .src-tag {
+    margin-left: 6px;
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="entitlements.duration-trial"] .field.changed .input {
+    border-color: var(--pk-accent);
+    box-shadow: 0 0 0 1px var(--pk-accent);
+  }
+  [data-screen="entitlements.duration-trial"] .was {
+    margin-left: 6px;
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--pk-accent-fg);
+  }
+  [data-screen="entitlements.duration-trial"] .read-val {
+    display: flex;
+    align-items: center;
+    min-height: 36px;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="entitlements.duration-trial"] .tracks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-height: 36px;
+    align-items: center;
+  }
+  [data-screen="entitlements.duration-trial"] .incl-card .setting-row {
+    padding: 12px 20px;
+  }
+  [data-screen="entitlements.duration-trial"] .incl-card .setting-desc.mono {
+    font-size: 12px;
+  }
+  [data-screen="entitlements.duration-trial"] .incl-card .input {
+    width: 120px;
+  }
+  [data-screen="entitlements.duration-trial"] .save-bar {
+    position: sticky;
+    bottom: 16px;
+    z-index: 10;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    padding: 12px 16px;
+    border: 1px solid var(--pk-accent);
+    border-radius: 14px;
+    background: color-mix(in oklab, var(--pk-accent-subtle) 35%, var(--pk-surface-overlay));
+    box-shadow: var(--mk-pop-shadow);
+  }
+  [data-screen="entitlements.duration-trial"] .save-bar .msg {
+    flex: 1 1 360px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-default);
+  }
+  [data-screen="entitlements.duration-trial"] .save-bar .msg .ic {
+    flex: none;
+    margin-top: 1px;
+    color: var(--pk-accent-fg);
+  }
+  @container screen (max-width: 1023px) {
+    [data-screen="entitlements.duration-trial"] .lim-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="entitlements.duration-trial"] .lim-grid {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 16px;
+    }
+    [data-screen="entitlements.duration-trial"] .incl-card .setting-row {
+      padding: 12px 16px;
+    }
+    [data-screen="entitlements.duration-trial"] .incl-card .input {
+      width: 100px;
+    }
+    [data-screen="entitlements.duration-trial"] .save-bar {
+      bottom: 12px;
+      padding: 12px 14px;
+    }
+    [data-screen="entitlements.duration-trial"] .save-bar .btn {
+      flex: 1 1 auto;
+    }
+  }
+</style>
+
+<div class="console" data-service="license">
+  <header class="topbar">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <nav class="sidebar" aria-label="DJDL">
+    <div class="ctx">
+      <span class="logo sm" data-product="djdl"></span>
+      <span class="ctx-text"><span class="ctx-name">DJDL</span><span class="ctx-sub mono">djdl</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item" href="#"><i class="ic ic-layout-dashboard"></i><span class="nav-text">Overview</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-plug"></i><span class="nav-text">Integration</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-shield-check"></i><span class="nav-text">Access</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
+    <div class="nav-group" data-service="license">
+      <div class="nav-label">Licensing<i class="ic ic-chevron-down sm"></i></div>
+      <a class="nav-item" href="#"><i class="ic ic-key-round"></i><span class="nav-text">Licenses</span><span class="count">240</span></a>
+      <a class="nav-item active" href="#"><i class="ic ic-layers"></i><span class="nav-text">Tiers</span><span class="count">4</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-puzzle"></i><span class="nav-text">Add-ons</span><span class="count">2</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-list-checks"></i><span class="nav-text">Entitlements</span></a>
+    </div>
+    <div class="nav-group closed" data-service="config" style="padding-top: 4px"><div class="nav-label">Managed config<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="release" style="padding-top: 4px"><div class="nav-label">Ship builds<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="identity" style="padding-top: 4px"><div class="nav-label">Sign-in<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="sync" style="padding-top: 4px"><div class="nav-label">Cloud Sync<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="page">
+      <header class="page-head">
+        <nav class="crumbs"><a href="#">Tiers</a><i class="ic ic-chevron-right"></i>Pro trial</nav>
+        <div class="page-heading"><h1>Pro trial</h1></div>
+        <p class="page-sub"><span class="id"><i class="ic ic-layers"></i>pro-trial<i class="ic ic-copy"></i></span><span>9 licenses</span><span class="hide-phone">2nd of 4 in list order</span></p>
+        <div class="page-actions">
+          <button class="btn outline"><i class="ic ic-calendar-clock"></i>Preview at a date…</button>
+          <button class="btn ghost icon" aria-label="More"><i class="ic ic-ellipsis"></i></button>
+        </div>
+      </header>
+
+      <nav class="tabs"><a class="tab active" href="#">Tier</a><a class="tab" href="#">Licenses <span class="count">9</span></a></nav>
+
+      <!-- Duration (LX-41, LX-43, LX-44): one model; the presets set its fields. -->
+      <section class="card" aria-labelledby="dur-title">
+        <div class="card-head">
+          <span class="icon-tile"><i class="ic ic-calendar-clock"></i></span>
+          <div class="title">
+            <h2 id="dur-title">Duration</h2>
+            <p>How long a Pro trial license runs and what happens when it ends.</p>
+          </div>
+        </div>
+        <div class="card-body">
+          <p class="eyebrow">Choose how you sell it</p>
+          <div class="choices dur-choices" role="radiogroup" aria-label="Duration">
+            <div class="choice"><div class="choice-title"><i class="ic ic-badge-check"></i>Lifetime</div><div class="choice-desc">Runs forever, with every update.</div></div>
+            <div class="choice"><div class="choice-title"><i class="ic ic-calendar"></i>Fixed</div><div class="choice-desc">Runs a set number of days, then ends.</div></div>
+            <div class="choice on" aria-checked="true"><div class="choice-title"><i class="ic ic-hourglass"></i>Trial</div><div class="choice-desc">Runs a set number of days, then moves to another tier.</div></div>
+            <div class="choice"><div class="choice-title"><i class="ic ic-git-branch"></i>Version-scoped</div><div class="choice-desc">Runs forever on one major line, such as 4.x.</div></div>
+            <div class="choice"><div class="choice-title"><i class="ic ic-repeat"></i>Renewing</div><div class="choice-desc">Runs while its subscription renews, then ends.</div></div>
+            <div class="choice"><div class="choice-title"><i class="ic ic-history"></i>Renewing, keeps the last version</div><div class="choice-desc">Runs while its subscription renews. After that, it keeps the last version released while it was active.</div></div>
+          </div>
+        </div>
+
+        <div class="card-split dur-split">
+          <div>
+            <p class="eyebrow">Settings</p>
+            <div class="form">
+              <div class="field">
+                <label class="field-label">Length</label>
+                <div class="input len"><span class="grow tnum">14</span><span class="affix">days</span></div>
+                <span class="hint">Counted from when the license is issued.</span>
+              </div>
+              <div class="field">
+                <label class="field-label">Then moves to</label>
+                <div class="select"><span class="grow">Standard</span><i class="ic ic-chevrons-up-down"></i></div>
+                <span class="hint">The license and its devices stay; from then on Standard’s limits and entitlements apply. Pick another tier, or switch to Fixed to end it instead.</span>
+              </div>
+              <div class="field">
+                <label class="field-label">Versions</label>
+                <div class="radios">
+                  <span class="radio on"><span class="box"></span>Any version</span>
+                  <span class="radio"><span class="box"></span>One major line</span>
+                  <span class="radio"><span class="box"></span>A range</span>
+                </div>
+              </div>
+              <div class="field">
+                <label class="field-label">Before it ends</label>
+                <div class="fact-line"><i class="ic ic-mail sm muted"></i><span>The holder gets an email 3 days before the trial ends.</span></div>
+              </div>
+              <div class="callout">
+                <i class="ic ic-info"></i>
+                <div class="grow"><div class="callout-text">A free trial that DJDL’s billing runs before a Pro subscription shows on the license’s subscription as Trialing instead. It doesn’t need this tier.</div></div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <p class="eyebrow">What a Pro trial license does<span class="end">Issued Oct 7, 2026</span></p>
+            <div class="tl">
+              <div class="tl-item">
+                <span class="tl-dot"></span>
+                <span class="tl-when">Oct 7, 2026</span>
+                <span class="tl-what">Starts as Pro</span>
+                <span class="tl-desc">Everything Pro includes: lossless audio, stem separation and 500 synced crates, on the stable track.</span>
+              </div>
+              <div class="tl-item note">
+                <span class="tl-dot"></span>
+                <span class="tl-when">Oct 18, 2026</span>
+                <span class="tl-what">Reminder email</span>
+                <span class="tl-desc">“Your DJDL Pro trial ends on Oct 21.”</span>
+              </div>
+              <div class="tl-item lapse">
+                <span class="tl-dot"></span>
+                <span class="tl-when">Oct 21, 2026</span>
+                <span class="tl-what">Moves to Standard</span>
+                <span class="tl-desc">No one has to do anything. Lossless audio and stem separation turn off at each device’s next refresh; the devices stay activated and crates past 25 stop syncing.</span>
+              </div>
+              <div class="tl-item later">
+                <span class="tl-dot"></span>
+                <span class="tl-when">Any time before</span>
+                <span class="tl-what">Moving it to Pro ends the trial</span>
+                <span class="tl-desc">Change the license’s tier to Pro, by hand or through the admin API when the holder subscribes, and it runs as Pro from then on.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- The tier's other three groups (LX-44), edited in place like Duration. -->
+      <section class="card" aria-labelledby="limits-title">
+        <div class="card-head">
+          <span class="icon-tile"><i class="ic ic-gauge"></i></span>
+          <div class="title"><h2 id="limits-title">Limits</h2><p>A license can override any of these; anything it doesn’t set comes from here.</p></div>
+        </div>
+        <div class="card-body">
+          <div class="lim-grid">
+            <div class="field">
+              <label class="field-label">Device limit</label>
+              <div class="input"><span class="grow tnum">5</span><span class="affix">devices</span></div>
+            </div>
+            <div class="field">
+              <label class="field-label">Offline days</label>
+              <div class="input"><span class="grow tnum">7</span><span class="affix">days</span></div>
+            </div>
+            <div class="field">
+              <label class="field-label">Release tracks</label>
+              <div class="tracks"><span class="chip on">stable</span><span class="chip">beta</span><span class="chip">dev</span></div>
+            </div>
+            <div class="field">
+              <label class="field-label">Versions<span class="src-tag">from Duration</span></label>
+              <div class="read-val">Any</div>
+            </div>
+            <div class="field">
+              <label class="field-label">Fingerprint mode<span class="src-tag">platform default</span></label>
+              <div class="select"><span class="grow">Normal</span><i class="ic ic-chevrons-up-down"></i></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="grid cols-2">
+        <section class="card incl-card" aria-labelledby="inc-title">
+          <div class="card-head">
+            <span class="icon-tile"><i class="ic ic-list-checks"></i></span>
+            <div class="title"><h2 id="inc-title">Includes</h2><p>Entitlements every Pro trial license gets, the same as Pro.</p></div>
+          </div>
+          <div class="setting-row"><div><div class="setting-title">Lossless audio</div><div class="setting-desc mono">lossless</div></div><span class="switch on" aria-label="On"></span></div>
+          <div class="setting-row"><div><div class="setting-title">Stem separation</div><div class="setting-desc mono">stems</div></div><span class="switch on" aria-label="On"></span></div>
+          <div class="setting-row"><div><div class="setting-title">Synced crates</div><div class="setting-desc mono">crates</div></div><div class="input sm"><span class="grow tnum">500</span><span class="affix">crates</span></div></div>
+          <div class="setting-row"><div><div class="setting-title">Cloud Sync storage</div><div class="setting-desc mono">pkey.cloudSync.bytes</div></div><div class="input sm"><span class="grow tnum">200</span><span class="affix">MB</span></div></div>
+          <div class="card-row" style="border-top: 1px solid var(--mk-line)"><button class="btn ghost sm"><i class="ic ic-plus"></i>Add an entitlement</button></div>
+        </section>
+        <section class="card" data-service="config" aria-labelledby="prof-title">
+          <div class="card-head">
+            <span class="icon-tile"><i class="svc"></i></span>
+            <div class="title"><h2 id="prof-title">Profile</h2><p>Managed config values for Pro trial devices.</p></div>
+          </div>
+          <div class="card-body">
+            <div class="field">
+              <label class="field-label">Profile</label>
+              <div class="select"><span class="grow">pro</span><i class="ic ic-chevrons-up-down"></i></div>
+              <span class="hint">3 values: <span class="mono">quality.floor</span>, <span class="mono">run.concurrency</span>, <span class="mono">quality.upgrade.enabled</span>. <a class="link small" href="#">Open profile<i class="ic ic-arrow-right"></i></a></span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>

@@ -1,0 +1,23 @@
+{
+  "id": "commerce.features-save-failed",
+  "title": "Features: a switch didn't save",
+  "area": "commerce",
+  "surface": "console",
+  "packages": [
+    "CM-29",
+    "ST-38"
+  ],
+  "uxRows": [
+    "UX-66"
+  ],
+  "summary": "DJDL's Features after turning Commerce on failed to save: the switch is back off, the row carries a danger edge and an inline line saying Commerce didn't turn on, that nothing changed, a reference id and Try again; no toast and no Commerce group in the sidebar.",
+  "compare": [
+    "A switch that fails to save returns to its old position at once; the error stays on that row (role=alert) and never as a toast, and doesn't auto-dismiss (EXPERIENCE.md §7, §9).",
+    "The line says what didn't happen, that nothing changed, and a reference id; Try again repeats the same change. A refusal with a known cause says that cause and its fix instead ('Licensing was turned off at 14:02. Turn it on first.').",
+    "The sidebar is unchanged (no Commerce group), so the page and the chrome agree.",
+    "Phone: the error and Try again wrap under the requirement line."
+  ],
+  "status": "mockup",
+  "designReview": null,
+  "order": 25
+}

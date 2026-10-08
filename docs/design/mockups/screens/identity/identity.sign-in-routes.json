@@ -1,0 +1,47 @@
+{
+  "id": "identity.sign-in-routes",
+  "title": "Sign in: where the address goes",
+  "area": "identity",
+  "surface": "dialog",
+  "packages": [
+    "I-30",
+    "I-29",
+    "I-31"
+  ],
+  "uxRows": [],
+  "summary": "A board of the card's next step for four addresses typed into DJDL's sign-in and one saved passkey: a verified domain that requires SSO, a verified domain that doesn't, an address with no connection (the email code), an SSO-required domain whose connection is down, and a saved passkey picked for an SSO-required address. Beside them, the routing rule in the order the card applies it.",
+  "compare": [
+    "Routing happens in POST /api/signin/email/start (identifier first): a verified domain of a connection goes to that connection; nothing else on the card names SSO before the address is typed.",
+    "Pin 1 (SSO required): the identity chip with Change, the organization's name as a one-line heading at the size of the other steps' headings ('Lakeside University', beside a building tile), one primary 'Continue to Lakeside University' with a plain arrow (a same-tab redirect: 'You come back here'), and no email-code or passkey option at all.",
+    "Pin 2 (verified, SSO not required): the same heading and primary, plus 'Email me a code instead' as a secondary. The connection comes first; the code still works.",
+    "Pin 3 (no connection for the domain): CodeStep exactly as built today (six cells, 'Both work for 10 minutes', 'Send a new code in 0:42', 'Use a different email'). Passkeys were offered on the first step by the browser.",
+    "Pin 4 (SSO required, connection down): a danger callout that says why there's no other way in and what to do, 'Try again' as the primary, 'Use a different email'. A domain without SSO required instead falls back to the email code with no error.",
+    "Pin 5 (a saved passkey for an SSO-required address): the person picks a passkey from the browser's suggestion on the first step; the server refuses the assertion because the account's address is at a domain with SSO required, and routes to the connection instead: pin 1's body with one note above the heading, 'Lakeside University requires its own sign-in for example.edu, so your passkey can't be used here.' The passkey isn't deleted.",
+    "The DJDL header and the footer are identical on every step; only the body changes, with no page navigation and no modal.",
+    "The answer never reveals whether an account exists for the address: an unknown address at a verified domain gets exactly pin 1 or 2, an unknown address elsewhere gets pin 3.",
+    "Product connections route only on their own product's card; platform connections (Lakeside University here) route on every product's card and on key.plrs.im itself.",
+    "An unverified domain (music.example.edu while its TXT record is missing) never routes: it gets pin 3.",
+    "Phone: each card is edge to edge in the real flow; on this board the five cards and the rule stack in one column, rule first.",
+    "The rule list uses letters (A–E) in neutral marks, so it never reads as the gold pins 1–5."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: the saved-passkey route for an SSO-required address is drawn as pin 5, and the board's headings, arrows and numbering are cleaner.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "Missing state: what dana@example.edu sees when she picks her saved passkey on the first step, since an SSO-required domain gets no passkey.",
+        "resolution": "Pin 5 'Passkey for an SSO-required address': pin 1's body with the note 'Lakeside University requires its own sign-in for example.edu, so your passkey can't be used here.' above the heading. Rule B says such an assertion is refused and routed, and the compare adds the server behavior."
+      },
+      {
+        "severity": "minor",
+        "issue": "Pins 1 and 2 used a heavy two-line heading; two numbering systems (pins 1–4, rule 1–5); a ↗ icon on a same-tab redirect.",
+        "resolution": "One-line 'Lakeside University' heading at the other steps' size beside a smaller tile; the rule uses letters A–E in neutral marks; the redirect buttons use a plain → arrow."
+      }
+    ]
+  },
+  "order": 8
+}

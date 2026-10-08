@@ -1,0 +1,49 @@
+{
+  "id": "sdk.swiftui-activate",
+  "title": "SwiftUI kit: activate with a key on iPhone",
+  "area": "sdk",
+  "surface": "kit",
+  "order": 9,
+  "packages": [
+    "UK-07",
+    "UK-43",
+    "UK-02b"
+  ],
+  "uxRows": [],
+  "summary": "Activation with a license key in the SwiftUI kit's gate on iPhone, shown on Diceroll as a labelled fixture: the key field with Paste and the full key, the not-a-key error with the keyboard up, Activating…, key not found, and Diceroll is ready with the once-only Keep Diceroll in your account recommendation (two reasons, since Diceroll has no Cloud Sync).",
+  "compare": [
+    "The key field is a step of the same form: Diceroll's icon and name stay at the top, the art stays behind the glass, and Back returns to Sign in.",
+    "Copy from the kit catalog: 'Enter your license key', 'You'll find it in your purchase email.', 'License key', 'Paste', 'Activate license', 'Activating…'. The error 'That doesn't look like a license key. Keys start with pkey_.' sits under the field with an icon and tints the field. Server answers take the same place.",
+    "The field is filled with no outline (iOS draws no focus ring). The key is in the mono face and wraps to a second line rather than truncating. Paste is a capsule inside the field.",
+    "The primary is a bottom-anchored 52pt accent capsule; nothing else competes with it. With the keyboard up it rides just above the keyboard, and the error stays visible between the field and the capsule.",
+    "Diceroll is ready: the success check and 'Standard · Lifetime · this iPhone is device 1 of 3.' with non-breaking spaces. The Keep Diceroll in your account card has Recommended above its title, only Get your license back and Move it to a new device (no Cloud Sync line, because Cloud Sync is off for Diceroll), and 'Add your name and email' as a glass secondary.",
+    "'Start using Diceroll' stays the primary, with 'Or continue without an account. Your license works the same.' under it; the license stays floating.",
+    "Accent, type, radii and glass match sdk.swiftui-sign-in.",
+    "A visible 'Kit preview · fixture product' callout, as on sdk.swiftui-sign-in. With Sign-in off, as Diceroll really is, the card would read 'Keep your license safe in Polaris Key' and open the portal instead.",
+    "Phone render: the iPhone frames scale down to fit; nothing reflows."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: the fixture is labelled, the keyboard-up, Activating… and server-error states are drawn, the full key is readable, and Recommended sits where it does in the React kit.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "Diceroll is a Godot game drawn as a SwiftUI app with Sign-in on, while Home shows it off.",
+        "resolution": "Resolved with sdk.swiftui-sign-in: a visible 'Kit preview · fixture product' callout in the intro. It says Diceroll really ships with the Godot kit and has Sign-in off, and that with Sign-in off the card would read 'Keep your license safe in Polaris Key' and open the portal."
+      },
+      {
+        "severity": "major",
+        "issue": "On iPhone the frames never show the software keyboard, and the server errors (not found, wrong product, revoked, offline) and the busy state are missing.",
+        "resolution": "Added 1b, not a key with the keyboard up: the capsule rides just above the keyboard, the error sits between the field and the capsule, and the keyboard's go key is the same action. Added 1c Activating: the keyboard drops, the capsule reads 'Activating…' with the platform's progress, and the field and Back lock. Added 1d Key not found, in PORTAL §4.19's words, under the field. Its caption gives the other answers ('That key is for DJDL, not Diceroll.', another account, revoked, refunded, offline with Try again) in the words drawn on sdk.react-activate 1e."
+      },
+      {
+        "severity": "minor",
+        "issue": "The pasted key is cut with an ellipsis, 'device 1 of 3.' breaks across lines, and the Recommended pill drops onto its own line here but sits inline in the React kit.",
+        "resolution": "The key field grows to two lines and shows the full key (22 characters after pkey_diceroll_). '1 of 3' uses non-breaking spaces. Recommended now sits above the card's title in both kits, so it never wraps under the title. The line under the primary reads 'Your license works the same.'"
+      }
+    ]
+  }
+}

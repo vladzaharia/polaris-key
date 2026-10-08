@@ -1,0 +1,61 @@
+{
+  "id": "licenses.list",
+  "title": "Licenses",
+  "area": "licenses",
+  "surface": "console",
+  "packages": [
+    "LX-30",
+    "LX-13",
+    "LX-15",
+    "LX-38",
+    "LX-41",
+    "LX-29",
+    "P0-29"
+  ],
+  "uxRows": [],
+  "summary": "DJDL's Licenses list in the Product context: holder state (In an account, Waiting, Floating) as the first filter and as a pill in the Holder column, a tier pill on every license, the duration line, devices against the resolved limit, and the origin, with Automatic grant for licenses the Access rules issued. Bulk floating keys start from the header; the empty, no-match, loading and error states are in licenses.list-states.",
+  "order": 1,
+  "compare": [
+    "Sidebar is DJDL's Product context: Overview, Integration, Access, Devices, Users, Activity, then the Licensing group open with Licenses (active, 1,284), Tiers, Add-ons and Entitlements; Enrollment, Settings and the old Batches nav item are gone.",
+    "Header: h1 'Licenses' with no count chip (the sidebar and the table foot carry 1,284). The subtitle's automatic count, 650, equals the Accounts on Access's tier rules (38 + 412 + 57 + 143). Actions are Batches (ghost), Create keys in bulk (outline) and New license (primary, the license accent). Create keys in bulk opens the New license drawer on 'Anyone with the key' (licenses.bulk-keys).",
+    "The holder segmented control reads All, In an account, Waiting, Floating, each with a server count, and sits above search; 'All' is never 'Anyone', so it can't be read as the floating keys' 'Anyone with the key'. The facets are Tier, Duration, Origin and Batch, each a dashed chip until set.",
+    "The first column is 'License' (the person's name and email, or the masked key) and the second is 'Holder', holding exactly one holder pill: 'In an account' (user icon), 'Waiting' (info tone, mail icon) or 'Floating' (key icon). A floating row shows the key's masked form in mono and 'Anyone with the key', never a person.",
+    "Avatars are tinted initials on every row; the accent (violet) avatar is only the signed-in member's in the top bar.",
+    "Every row has a tier pill (layers icon in the license accent). No row says 'No tier' or a dash: every license has a tier (LX-33).",
+    "The Duration column uses the portal's duration words (LX-15): Lifetime, 'Ends Sep 14, 2027 · Then keeps the last version', 'Trial ends Oct 12 · Then Free', 'Updates ended at 4.1 · Keeps working on 4.1', and a danger pill only for Past due. Waiting rows say when the invitation went out.",
+    "Devices shows 'n of limit' with the limit from the one resolver (license, then tier, then platform default, plus seat-pack add-ons); a full license turns the number and bar warning, nothing more.",
+    "Origin reads 'Automatic grant' (sparkles icon) with the rule that issued it, its group or domain as a mono code chip as on Access (Group `members`, Domain `example.edu`, or Everyone who signs in); 'By hand' with who; or 'Key batch' with the batch label. The column hides below 1024px.",
+    "No row selection or bulk actions (UX-36 is parked); Export and Columns sit at the toolbar end; the foot pages by cursor (P0-29).",
+    "Other states: first run, no match, loading and error are drawn in licenses.list-states; the error is inline in the table body with Retry and keeps the filters.",
+    "Phone: New license is full width on its own row first, then Create keys in bulk with a ⋯ button holding Batches; the holder control becomes a neutral dashed chip 'Holder: All' that turns solid only once a holder is picked; the table becomes stacked rows (name and devices, then the holder and tier pills, then the duration line); origin and the row menu hide."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: All / License / Holder wording, the phone header and holder chip, mono group chips, neutral avatars and the 650 count; first run, no match, loading and error now drawn in licenses.list-states.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "The holder segment 'Anyone 1,284' collides with the Floating rows' 'Anyone with the key', and the column heads 'Holder' and 'Held by' are near-synonyms.",
+        "resolution": "Segment renamed 'All 1,284' (phone chip 'Holder: All'); columns renamed 'License' (name and email, or masked key) and 'Holder' (the holder pill). The same change is made on the list behind licenses.bulk-keys. Compare rows 3 and 4 rewritten."
+      },
+      {
+        "severity": "major",
+        "issue": "Only the full, healthy list is drawn: no first-run empty, no 'no licenses match', no loading and no error state.",
+        "resolution": "Added licenses.list-states with all four (first run with New license and Open Access; no match keeping the search, holder and facets with Clear filters; skeleton rows at the 61px row height; error with Retry, filters kept) and a compare row pointing to it. The error is drawn inline in the table body rather than as a callout above the table, because ADMIN.md T2 says 'Error renders inline in the table body with Retry'."
+      },
+      {
+        "severity": "minor",
+        "issue": "Phone header: Batches disappears, New license is half width beside Create keys in bulk, and the unfiltered 'Holder: Anyone' chip uses the set-filter accent.",
+        "resolution": "Phone now puts New license full width first, then Create keys in bulk with a ⋯ button that holds Batches; the holder chip is a neutral dashed 'Holder: All' until a holder is picked."
+      },
+      {
+        "severity": "minor",
+        "issue": "Group and domain names in Origin are plain text; Jonas Weber's avatar is the accent violet; '412 came from the access policy' is only the members rule; 1,284 appears four times.",
+        "resolution": "Origin names are mono code chips as on Access; every avatar is tinted initials (Iris Moreau in licenses.access-rule too); the subtitle says '650 are Automatic grants from your Access rules', the sum of Access's tier rules; the count chip beside the h1 is gone."
+      }
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "id": "licenses.detail-holders",
+  "title": "License record by holder",
+  "area": "licenses",
+  "surface": "console",
+  "packages": ["LX-30", "LX-14", "LX-29", "LX-38"],
+  "uxRows": [],
+  "summary": "The license record's header, holder card and origin card for the two holder states licenses.detail doesn't draw: Waiting (Tomás Okafor, made by hand, invitation sent) and Floating (a key from the Controller bundle batch), covering the By hand and Key batch origins.",
+  "order": 4,
+  "compare": [
+    "Waiting: h1 is the person's name with 'Waiting for sign-in' as info-tone status text; the holder line is the Waiting pill, the email, the license id chip (ID icon, copy) and 'Invitation sent <date>'. Resend invitation is the primary; Change email… is on the holder card and in the ⋯ menu; Devices is empty and says why.",
+    "Floating: h1 is the masked key in mono; the holder line is the Floating pill, 'Anyone with the key' and the id chip; there is no email anywhere. Assign to a person is the primary. The holder card says only a hash of the key is kept, so the key can't be shown or copied (copy is on the license id), and that adding the key to a library moves the license into that account.",
+    "By hand origin card: 'Created by hand by <member>, <date>' with the reason, the note that Access rules never change a license made by hand, and Open Activity.",
+    "Key batch origin card: the batch label, how many keys, the tier, who made it and when, how many are used, the Disable unused keys hint, and Open batch.",
+    "Every holder state keeps the tier control (Tier <name> ▾) top-right and the same five tabs as licenses.detail.",
+    "Phone: the state's primary goes full width first, then the tier control and ⋯; the tab counts hide so the five tabs fit."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

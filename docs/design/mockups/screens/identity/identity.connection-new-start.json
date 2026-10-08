@@ -1,0 +1,20 @@
+{
+  "id": "identity.connection-new-start",
+  "title": "Add SSO connection: before the test sign-in",
+  "area": "identity",
+  "surface": "console",
+  "packages": ["I-31", "I-30", "ST-39"],
+  "uxRows": [],
+  "summary": "The Test sign-in step as the operator first meets it: one primary 'Sign in with Kestrel Labs' that opens the provider in a new window, the fallback when a browser blocks the window, an empty claims area that says what will appear, and 'Continue to domains' disabled until one sign-in has worked.",
+  "compare": [
+    "Same wizard as identity.connection-new (ST-39 kit, Test sign-in current); the lead paragraph is identical and says nothing is saved and no license is issued.",
+    "One primary in the body, 'Sign in with Kestrel Labs', with the sentence that it opens Kestrel Labs’ sign-in in a new window and that this step fills in when the window closes. While the window is open the button reads 'Waiting for Kestrel Labs…' with a spinner, and focus returns to the step when it closes.",
+    "If the browser blocks the window, the step says so in place of the info line and offers 'Open the sign-in in this tab', a same-tab redirect that comes back to this step (state kept server-side).",
+    "The claims area is an empty state that names what appears there (every claim with its value, then the four fields to map). No select is shown before there is anything to pick from.",
+    "Foot: Cancel (ghost, left), Back, the hint 'Sign in once to continue' and 'Continue to domains' disabled. Success is identity.connection-new; a refusal is identity.connection-new-failed.",
+    "Phone: the sign-in panel stacks (text, then the button full width), the hint sits above the foot buttons, and the primary keeps its own row."
+  ],
+  "status": "mockup",
+  "designReview": null,
+  "order": 3.8
+}

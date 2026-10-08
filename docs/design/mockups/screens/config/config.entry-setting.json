@@ -1,0 +1,80 @@
+{
+  "id": "config.entry-setting",
+  "title": "Catalog entry: a setting",
+  "area": "config",
+  "surface": "console",
+  "packages": [
+    "U-30",
+    "U-29",
+    "U-01b",
+    "ST-45"
+  ],
+  "uxRows": [],
+  "summary": "DJDL's catalog editor with the setting quality.floor open in draft v10: Type (Setting, Secret, Minted token) and In the app (Editable, Read-only, Hidden) as two plain choices, who uses each allowed value, the Cloud Sync tuning an Editable setting gets, and where the key is set across DJDL.",
+  "compare": [
+    "The sidebar is DJDL's Product context in canonical order (Overview, Integration, Access, Devices, Users, Activity, then Licensing, Managed config, Ship builds, Sign-in, Cloud Sync), Settings last. Managed config is open on Catalog (23) and Profiles (2); there is no Edge mint item and no entitlement (flag) in the catalog list.",
+    "Counts agree everywhere: 23 entries in the nav, the search placeholder, the list (4 + 5 + 2 + 3 + 4 + 4 + 1) and the phone switcher (1 of 23).",
+    "The entry list groups every entry by category with one glyph per type (sliders for a setting, a lock for a secret, a stamp for a minted token) and a key to the glyphs; the open entry is a neutral fill with a neutral edge, and an entry changed in the draft carries the gold draft dot.",
+    "Key is plain mono text with a lock and \"Can't change after publish\", never an input that looks more editable than Label.",
+    "Type is one control with exactly Setting, Secret and Minted token; a help button beside it opens the five valid type and visibility cells (Setting x Editable, Read-only, Hidden; Secret: never listed, write-only here; Minted token: code only). The stored JSON stays kind config or secret (plus delivery edgeMint), so served documents are unchanged.",
+    "In the app has exactly Editable, Read-only and Hidden (stored default, enforced, hidden) and appears only for a Setting; the hint says a profile, license or account can still lock it.",
+    "Config's gold accent is never the only cue: a selected Type card is a strong neutral border plus the tick, the open entry is a neutral fill with a neutral edge, and every warning callout has a solid warning rail and a triangle, so selected, changed and needs-approval read differently in both themes.",
+    "Allowed values: each chip says who uses it (flac 10 set it, aiff New, mp3-320 Studio profile and 5 more, any Default); the hint reads \"Type: text, one of these values.\" Removing a value that is in use is config.entry-setting-remove-value. If the Default's own value is removed, Default empties and Review stays disabled until a Default from the list is picked.",
+    "Description is a two-line text area.",
+    "Cloud Sync box (only for an Editable setting, and only when Cloud Sync is on for the product; with Cloud Sync off there is no sync UI anywhere, integration.md §1.4): the switch is on by default, Where it syncs offers every device they use, the same platform, this device only (user, platform, local).",
+    "When two devices disagree offers only what the value type allows, from U-08's one vocabulary: a number gets latest change / higher / lower (lastWrite, max, min); a list gets latest change / combine (lastWrite, merge); text, text from a list and true or false get the latest change only, shown as fixed text as here. union and revision are records-only and never appear for a setting.",
+    "Where it's set comes from the U-29 effective read, never a console re-merge: catalog default, Default profile, each tier profile, counts of licenses and accounts with their own value as neutral underlined links, and \"Use Preview as… to see what one license, tier or person gets.\"",
+    "Header: Draft v10 as a neutral pill, the repo note, Form or JSON, Discard draft and Review 1 change; nothing reaches devices until Publish. No secret: true, serverOnly, device scope or User grant control anywhere.",
+    "Tablet: the rail drops under the editor. Phone: the list becomes one entry switcher, choices stack, Form/JSON moves into the header's … menu, and the foot line stays under Remove from catalog."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: chips say who uses each value and removing one in use is drawn as its own state; neutral links, a plain-text key, 23 entries, a type-aware conflict rule and the matrix moved to a help button.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "Removing an allowed value that a profile, licenses or accounts use had no consequence shown, no place for the error, and nothing stopped an invalid value reaching devices.",
+        "resolution": "Each chip now names who uses it (flac 10 set it, mp3-320 Studio profile and 5 more, any Default). The removal is drawn as the new screen config.entry-setting-remove-value: an inline warning under the chips names the Studio profile (38 licenses), 1 license and 4 accounts, a Move them to picker with its error, and Review 2 changes disabled until they have a value. The compare lists cover the Default case (Review disabled while Default isn't allowed) and the Review step listing everyone affected."
+      },
+      {
+        "severity": "minor",
+        "issue": "The config gold on links (3 set their own, 12 set their own, Edit as JSON schema) and on the draft marker read as warning amber.",
+        "resolution": "Those links are a neutral underlined link in strong text; gold is left for the selection tick and the draft dot."
+      },
+      {
+        "severity": "minor",
+        "issue": "The read-only Key field looked more editable than the editable fields (light) or identical (dark).",
+        "resolution": "Key is plain mono text with a lock and \"Can't change after publish\", no field chrome; the same for Key, Recipe id and Algorithm on the minted-token screens. The kit's .input.readonly is unchanged because every area uses it."
+      },
+      {
+        "severity": "minor",
+        "issue": "Counts said 24 but the list holds 23 entries.",
+        "resolution": "23 everywhere (nav, search, phone switcher 1 of 23) here, on entry-minted-token and on approve-recipe; config.effective follows with 22 values (16 settings and 6 secrets), since the minted token isn't stored."
+      },
+      {
+        "severity": "minor",
+        "issue": "When two devices disagree offered higher and lower for a text value, outside U-08's vocabulary, and there was no state for Cloud Sync off.",
+        "resolution": "quality.floor now shows \"The latest change wins\" as fixed text with a hint of what numbers and lists get; the compare list names the full type-to-rule mapping (lastWrite, max, min, merge) and that the Cloud Sync box is absent when Cloud Sync is off for the product."
+      },
+      {
+        "severity": "minor",
+        "issue": "The Types and in-app visibility card was a cramped matrix repeating the choices on every entry.",
+        "resolution": "The card is gone from the rail; a help button beside Type opens the five-cell table, described in the compare list. Same on the minted-token screens."
+      },
+      {
+        "severity": "minor",
+        "issue": "Cryptic \"Text, one of a list.\", a hint that read as truncated, a cut-off one-line Description, and the Form/JSON switch and foot line lost on phone.",
+        "resolution": "\"Type: text, one of these values.\"; \"Use Preview as… to see what one license, tier or person gets.\"; Description is a two-line text area; on phone the foot line stays under Remove from catalog and Form/JSON moves into a … button in the header."
+      },
+      {
+        "severity": "major",
+        "issue": "Area: the Profiles editor, the empty catalog with templates, the minted-token wizard and the Cloud Sync Usage tab had no screen.",
+        "resolution": "Added config.profile, config.catalog-empty, config.mint-wizard and config.cloud-sync-usage, so every flow these screens point to has a designed destination."
+      }
+    ]
+  },
+  "order": 2
+}

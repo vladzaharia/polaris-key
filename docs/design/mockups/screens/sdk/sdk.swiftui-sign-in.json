@@ -1,0 +1,62 @@
+{
+  "id": "sdk.swiftui-sign-in",
+  "title": "SwiftUI kit: sign-in on iPhone",
+  "area": "sdk",
+  "surface": "kit",
+  "order": 8,
+  "packages": [
+    "UK-07",
+    "UK-02b",
+    "I-10b",
+    "HA-13"
+  ],
+  "uxRows": [],
+  "summary": "The SwiftUI kit's gate on iPhone (iOS 26, Liquid Glass), shown on Diceroll as a labelled fixture product: the sign-in chooser, Choose a license after Sign in with Apple, Replace a device with the system confirmation, and the game opening with the kit's toast, plus the one modifier an iOS app writes.",
+  "compare": [
+    "The product is the hero: Diceroll's icon (88pt), name and an accent from its icon lead every step; its art is blurred behind the glass and never clipped bright under a panel; no Polaris Key mark appears.",
+    "iOS measures from the kit's ios preset: 52pt capsule controls, 28pt titles at weight 600, 17pt body, 20pt side margins; primary is a .glassProminent capsule in the accent, secondaries are glass.",
+    "The chooser: a logo-only provider row (Sign in with Apple drawn to Apple's logo-only rules, white in dark and black in light; Steam), 'Sign in with a passkey', 'Continue with email', 'Have a license key?', 'Sign in with another device', and the footnote with Pipwork Games as the developer. The lede is 'Use the account you bought Diceroll with.' because the product sells through stores.",
+    "One form: the header (icon and name) persists and only the body morphs; the only thing over the form is the system confirmation for a destructive Replace.",
+    "Choose a license: 'Signed in with Apple as Mara Fennick · Not you?', 'Choose a license for this device', 'Diceroll will use it on Mara's iPhone.', the Steam license preselected with a tint and one radio (no accent border), the full Family license with no radio, 'No free devices', its 5-of-5 meter in warning and 'Replace a device'; 'Use a license key instead · Cancel'; primary 'Use this license and continue' at the bottom.",
+    "Replace a device: heading 'Your license is on 5 of 5 devices' and lede 'To use it on this iPhone, replace one. You can add it back later.' The devices show OS (and store) and last use, with 'Last used' once above the list and the least recent preselected. The primary is 'Replace…', and the confirmationDialog 'Replace Leo's iPad?' reads 'Leo's iPad stops using Diceroll Family now. You can add it back when a device is free.', with a destructive 'Replace and continue' and 'Cancel'. The capsule under the sheet is hidden.",
+    "After keeping an existing license there is no Done step: the gate opens the game (no free-tier line) and the toast reads 'Signed in as Mara Fennick' over 'Standard license', hugging its content.",
+    "Dates and units are US style ('Until Oct 31, 2027', '1 of 3 devices').",
+    "A visible 'Kit preview · fixture product' callout says Diceroll is drawn as an iPhone SwiftUI app with Sign-in on only to show the kit (it ships the Godot kit, Sign-in off). The code panel is a generic iOS app's ContentView, not Diceroll's.",
+    "Phone render: the iPhone frames scale down to fit; nothing reflows.",
+    "Glass secondaries keep a visible hairline edge on the light page."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: the fixture is labelled where it is seen and the Swift code no longer claims to be Diceroll's, the chooser's copy fits a store-sold game on a phone, and the sheet, glass edges, device list, toast and title screen are corrected.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "Diceroll is a Godot game but is drawn as a SwiftUI app, with a RootView.swift a Godot game can't contain, and with Sign-in on though Home shows it off; the fixture note was only in the JSON.",
+        "resolution": "Kept the iPhone and Diceroll as a visible 'Kit preview · fixture product' callout in the intro. It says Diceroll really ships with the Godot kit and has Sign-in off, and that DJDL's macOS app is the real SwiftUI product. The code panel is now 'An iOS app · ContentView.swift' with HomeView().polarisKeyGate(pk), and the caption points to the Godot autoload Diceroll really writes. A DJDL macOS frame was declined for this screen: DJDL has no provider connections and no phone app, so it would hide the provider row, passkey, device-code link, system confirmation and keyboard states this screen exists to show."
+      },
+      {
+        "severity": "major",
+        "issue": "'Use the email you bought Diceroll with.' sits above Apple and Steam buttons, where store buyers have no purchase email.",
+        "resolution": "It now reads 'Use the account you bought Diceroll with.' The catalog has only signin.methods.ledeApp ('Use the email you bought {product} with.'), so a store-or-provider variant, chosen from the product's sign-in surfaces, is flagged for the lead. sdk.react-sign-in keeps the email line for DJDL, which sells on its own site."
+      },
+      {
+        "severity": "major",
+        "issue": "'Sign in on your phone or computer' is offered on an iPhone.",
+        "resolution": "It now reads 'Sign in with another device', the catalog's existing signin.link.anotherDevice. signin.link.deviceCode stays for desktop hosts."
+      },
+      {
+        "severity": "minor",
+        "issue": "In the Replace confirmation, the bottom capsule shows a coral edge above the sheet's Cancel.",
+        "resolution": "The Replace… capsule is hidden while the system sheet shows, so the sheet's Cancel stands alone."
+      },
+      {
+        "severity": "minor",
+        "issue": "In light mode the glass secondaries have no visible edge. The Replace list mixes OS and store as the platform, the dialog says 'if a seat is free', the toast orphans 'license', and the licensed title screen still shows '20 free rolls a day'.",
+        "resolution": "Glass capsules have a 13% hairline plus a soft shadow in both themes. The platforms read 'Windows · Steam' and 'SteamOS'. The dialog reads 'Leo's iPad stops using Diceroll Family now. You can add it back when a device is free.' The toast hugs its content up to the safe area. The pair can't fit on one line at 15pt, so the toast has two deliberate lines, who and then which license, and orphans no word. The free-tier tagline is removed. The Replace step also takes the catalog heading 'Your license is on 5 of 5 devices' and shows 'Last used' once above the list, as in the React kit."
+      }
+    ]
+  }
+}

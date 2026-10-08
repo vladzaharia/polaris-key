@@ -1,0 +1,262 @@
+<style>
+  /* licenses.detail-holders: the license record's header and aside for the Waiting and Floating holders. */
+  [data-screen="licenses.detail-holders"] .board {
+    gap: 40px;
+  }
+  [data-screen="licenses.detail-holders"] .board-item {
+    width: 100%;
+  }
+  [data-screen="licenses.detail-holders"] .frame {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 24px 28px 28px;
+    border: 1px solid var(--mk-line);
+    border-radius: 16px;
+    background: var(--pk-surface-page);
+    box-shadow: var(--mk-card-shadow);
+  }
+  [data-screen="licenses.detail-holders"] .f-title {
+    font-size: 24px;
+    line-height: 32px;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="licenses.detail-holders"] .f-title.mono {
+    font-size: 21px;
+    letter-spacing: 0;
+  }
+  [data-screen="licenses.detail-holders"] .holder-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+  }
+  [data-screen="licenses.detail-holders"] .tier-btn {
+    gap: 6px;
+    padding: 0 10px 0 12px;
+  }
+  [data-screen="licenses.detail-holders"] .tier-btn > .ic-layers {
+    color: var(--pk-accent-fg);
+  }
+  [data-screen="licenses.detail-holders"] .tier-btn > .ic-chevron-down {
+    width: 14px;
+    height: 14px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="licenses.detail-holders"] .tier-btn .lbl {
+    color: var(--pk-text-muted);
+  }
+  [data-screen="licenses.detail-holders"] .tier-btn strong {
+    color: var(--pk-text-strong);
+  }
+  [data-screen="licenses.detail-holders"] .tier-pill > .ic {
+    color: var(--pk-accent-fg);
+  }
+  [data-screen="licenses.detail-holders"] .f-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 24px;
+    align-items: start;
+  }
+  [data-screen="licenses.detail-holders"] .facts {
+    display: grid;
+    grid-template-columns: 148px minmax(0, 1fr);
+    gap: 10px 16px;
+    font-size: 14px;
+  }
+  [data-screen="licenses.detail-holders"] .facts dt {
+    color: var(--pk-text-muted);
+  }
+  [data-screen="licenses.detail-holders"] .facts dd {
+    color: var(--pk-text-default);
+  }
+  [data-screen="licenses.detail-holders"] .side-facts {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="licenses.detail-holders"] .side-facts > div {
+    display: flex;
+    gap: 8px;
+  }
+  [data-screen="licenses.detail-holders"] .side-facts .ic {
+    flex: none;
+    width: 14px;
+    height: 14px;
+    margin-top: 2px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="licenses.detail-holders"] .origin-box {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 12px;
+    border: 1px solid var(--mk-line);
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-default);
+  }
+  [data-screen="licenses.detail-holders"] .origin-box strong {
+    color: var(--pk-text-strong);
+  }
+  [data-screen="licenses.detail-holders"] .card-foot .link {
+    min-height: 24px;
+  }
+  [data-screen="licenses.detail-holders"] figcaption {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    line-height: 18px;
+  }
+  [data-screen="licenses.detail-holders"] figcaption strong {
+    color: var(--pk-text-strong);
+  }
+  @container screen (max-width: 1023px) {
+    [data-screen="licenses.detail-holders"] .f-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="licenses.detail-holders"] .frame {
+      padding: 16px;
+    }
+    [data-screen="licenses.detail-holders"] .page-actions > .btn.primary {
+      flex: 1 1 100%;
+      order: -1;
+    }
+    [data-screen="licenses.detail-holders"] .tier-btn {
+      flex: 1 1 auto;
+    }
+    [data-screen="licenses.detail-holders"] .tabs {
+      gap: 0;
+      justify-content: space-between;
+    }
+    [data-screen="licenses.detail-holders"] .tab .count {
+      display: none;
+    }
+    [data-screen="licenses.detail-holders"] .facts {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 2px;
+    }
+    [data-screen="licenses.detail-holders"] .facts dd {
+      margin-bottom: 8px;
+    }
+  }
+</style>
+
+<div class="board" data-service="license">
+  <div class="board-title">
+    <h1>License record by holder</h1>
+    <p>licenses.detail draws a license in an account with an Automatic grant. These are the header and origin for the other two holders, and the By hand and Key batch origins. The tabs and the Limits, Add-ons, Devices and Duration cards stay as on licenses.detail.</p>
+  </div>
+
+  <!-- Waiting: assigned to an email that hasn't signed in yet (LX-30). Made by hand. -->
+  <figure class="board-item">
+    <div class="frame">
+      <header class="page-head">
+        <nav class="crumbs"><a href="#">Licenses</a><i class="ic ic-chevron-right"></i>Tomás Okafor</nav>
+        <div class="page-heading"><div class="f-title" role="heading" aria-level="2">Tomás Okafor</div><span class="status info"><i class="ic ic-mail"></i>Waiting for sign-in</span></div>
+        <div class="page-sub holder-line">
+          <span class="pill sm info"><i class="ic ic-mail"></i>Waiting</span>
+          <span>tomas@example.com</span>
+          <span class="id"><i class="ic ic-id-card"></i>lic_01J9R2…KD4M<i class="ic ic-copy"></i></span>
+          <span class="hide-phone">Invitation sent Oct 2</span>
+        </div>
+        <div class="page-actions">
+          <button class="btn outline tier-btn" aria-label="Tier: Standard. Change tier"><i class="ic ic-layers"></i><span class="lbl">Tier</span><strong>Standard</strong><i class="ic ic-chevron-down"></i></button>
+          <button class="btn primary"><i class="ic ic-send"></i>Resend invitation</button>
+          <button class="btn outline icon" aria-label="More: Change email, Change tier, Revoke"><i class="ic ic-ellipsis"></i></button>
+        </div>
+      </header>
+      <nav class="tabs"><a class="tab active" href="#">Status</a><a class="tab" href="#">Entitlements <span class="count">4</span></a><a class="tab" href="#">Keys <span class="count">0</span></a><a class="tab" href="#">Devices <span class="count">0</span></a><a class="tab" href="#">Activity</a></nav>
+      <div class="f-grid">
+        <section class="card">
+          <div class="card-head">
+            <span class="icon-tile sm"><i class="ic ic-mail"></i></span>
+            <div class="title"><h2>Waiting for tomas@example.com</h2><p>The license moves into Tomás’s account the first time he signs in with this email verified.</p></div>
+            <button class="btn outline sm"><i class="ic ic-pencil"></i>Change email…</button>
+          </div>
+          <div class="card-body">
+            <dl class="facts">
+              <dt>Invitation</dt><dd>Sent Oct 2, 2026 by Ada Lovelace · not opened yet</dd>
+              <dt>Devices</dt><dd>None yet. He can’t activate a device until he signs in.</dd>
+              <dt>If the address is wrong</dt><dd>Change email sends a new invitation and the old link stops working.</dd>
+            </dl>
+          </div>
+        </section>
+        <section class="card">
+          <div class="card-head">
+            <span class="icon-tile sm"><i class="ic ic-pencil"></i></span>
+            <div class="title"><h2>By hand</h2><p>Created in the console</p></div>
+          </div>
+          <div class="card-body stack gap-4">
+            <div class="origin-box"><strong>Created by hand by Ada Lovelace, Oct 2, 2026</strong><span class="muted">Reason: “Beta tester, Berlin meetup”</span></div>
+            <div class="side-facts">
+              <div><i class="ic ic-trending-up"></i><span>Access rules never change a license made by hand.</span></div>
+            </div>
+          </div>
+          <div class="card-foot start"><a class="link" href="#">Open Activity<i class="ic ic-arrow-right"></i></a></div>
+        </section>
+      </div>
+    </div>
+    <figcaption><strong>Waiting</strong>Status text “Waiting for sign-in” in the info tone, the Waiting pill, the email and when the invitation went out. Resend invitation is this state’s primary; Change email sits on the holder card and in the ⋯ menu. Origin: By hand, with who, when and the reason.</figcaption>
+  </figure>
+
+  <!-- Floating: no holder; its key activates devices (LX-30). From a key batch (LX-29). -->
+  <figure class="board-item">
+    <div class="frame">
+      <header class="page-head">
+        <nav class="crumbs"><a href="#">Licenses</a><i class="ic ic-chevron-right"></i>pkey_djdl_7HJM…Q2KD</nav>
+        <div class="page-heading"><div class="f-title mono" role="heading" aria-level="2">pkey_djdl_7HJM…Q2KD</div><span class="status"><i class="ic ic-circle-check"></i>Active</span></div>
+        <div class="page-sub holder-line">
+          <span class="pill sm"><i class="ic ic-key-round"></i>Floating</span>
+          <span>Anyone with the key</span>
+          <span class="id"><i class="ic ic-id-card"></i>lic_01J9VX…2P8A<i class="ic ic-copy"></i></span>
+          <span class="hide-phone">Since Oct 6, 2026</span>
+        </div>
+        <div class="page-actions">
+          <button class="btn outline tier-btn" aria-label="Tier: Standard. Change tier"><i class="ic ic-layers"></i><span class="lbl">Tier</span><strong>Standard</strong><i class="ic ic-chevron-down"></i></button>
+          <button class="btn primary"><i class="ic ic-user-plus"></i>Assign to a person</button>
+          <button class="btn outline icon" aria-label="More: Change tier, Disable key, Revoke"><i class="ic ic-ellipsis"></i></button>
+        </div>
+      </header>
+      <nav class="tabs"><a class="tab active" href="#">Status</a><a class="tab" href="#">Entitlements <span class="count">4</span></a><a class="tab" href="#">Keys <span class="count">1</span></a><a class="tab" href="#">Devices <span class="count">1</span></a><a class="tab" href="#">Activity</a></nav>
+      <div class="f-grid">
+        <section class="card">
+          <div class="card-head">
+            <span class="icon-tile sm"><i class="ic ic-key-round"></i></span>
+            <div class="title"><h2>Anyone with the key</h2><p>Whoever enters the key gets this license on that device. No email, no account.</p></div>
+          </div>
+          <div class="card-body">
+            <dl class="facts">
+              <dt>Key</dt><dd><span class="mono">pkey_djdl_7HJM…Q2KD</span> <span class="muted">· only a hash is kept, so the full key can’t be shown or copied</span></dd>
+              <dt>First used</dt><dd>Oct 6, 2026 on Studio-PC · Windows 11 · DJDL 4.2.0</dd>
+              <dt>Devices</dt><dd>1 of 5</dd>
+              <dt>Library</dt><dd>If someone adds the key to their Polaris Key library, this license moves into their account and stops being floating.</dd>
+            </dl>
+          </div>
+        </section>
+        <section class="card">
+          <div class="card-head">
+            <span class="icon-tile sm"><i class="ic ic-archive"></i></span>
+            <div class="title"><h2>Key batch</h2><p>One of 200 keys made together</p></div>
+          </div>
+          <div class="card-body stack gap-4">
+            <div class="origin-box"><strong>Controller bundle · Oct 2026</strong><span class="muted">200 keys on Standard, created by Ada Lovelace on Oct 6, 2026 · 41 used</span></div>
+            <div class="side-facts">
+              <div><i class="ic ic-ban"></i><span>Disable unused keys on the batch page turns off the 159 keys nobody has entered yet.</span></div>
+            </div>
+          </div>
+          <div class="card-foot start"><a class="link" href="#">Open batch<i class="ic ic-arrow-right"></i></a></div>
+        </section>
+      </div>
+    </div>
+    <figcaption><strong>Floating</strong>The title is the masked key in mono (the key icon is reserved for keys and Floating; the id chip uses the ID icon). No email anywhere. Assign to a person is this state’s primary. Copy is on the license id; the key itself is a hash. Origin: Key batch with its label, size, who and when, and Open batch.</figcaption>
+  </figure>
+</div>

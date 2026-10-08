@@ -1,0 +1,59 @@
+{
+  "id": "sdk.client-doctor",
+  "title": "doctor() in the app",
+  "area": "sdk",
+  "surface": "code",
+  "order": 2,
+  "packages": [
+    "SP-32a",
+    "SP-32b",
+    "SP-35"
+  ],
+  "uxRows": [],
+  "summary": "client.doctor(): the call in a tab per SDK (Godot active), the checks it runs, and the report a Diceroll debug run prints once in the Godot editor's Output dock after packs.ensure is refused, with each problem's fix and console link.",
+  "compare": [
+    "The report prints once per run, in debug builds only, right after the first refusal, and names that refusal first (packs.ensure(\"neon\") was refused).",
+    "The header line names product, app version, OS and arch, SDK and version, and debug run. Each check is one row with ✓, ✗, ! or – (not compared, when the server can't be reached) and a short plain-words detail.",
+    "Every problem has a Fix line that says what to do (Import file… in the dock, pkey sdk add godot, download polaris-key.json again, or turn on Sign-in, then Cloud Sync) and a console deep link on /manage (key.plrs.im/manage/#/p/diceroll/…).",
+    "The checks are the plan's set plus Server: the server answers, polaris-key.json, version, signing key (staged included), release key, features expected against advertised, store, clock, and web origin for React and the elements.",
+    "Diceroll facts hold: Cloud Sync is off for Diceroll (as on Home), the build isn't under Steam, the signing kid is diceroll-2026.",
+    "pk.doctor() returns the same checks typed (id, ok, severity todo or warning, title, detail, fix, console link), with ids identical across SDKs. The report never contains a license key, device token or secret.",
+    "The summary line counts the same way pkey doctor does: '2 to do · 1 warning'. A debug run with no refusal prints nothing.",
+    "Phone: the output comes first and re-wraps to 44 columns, with details, Fix lines and links indented under each check. The editor's menu and dock tabs drop to their first items, and the call and table follow.",
+    "The offline run: '✗ Server couldn't reach key.plrs.im (timed out after 10 s)' with its Fix, and the checks that need the server marked '–' with what they compared instead; never a pass or fail on a guess."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: console links point at /manage, the Features fix is one a person can carry out, the phone output re-wraps with every Fix line, and the run without key.plrs.im is drawn.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "The console deep links use key.plrs.im/console/#/…, but the console is served at /manage (packages/worker/src/router.ts), so the links 404.",
+        "resolution": "The links are now key.plrs.im/manage/#/p/diceroll/integration and key.plrs.im/manage/#/p/diceroll/features, in the wide and narrow runs. sdk.pkey-doctor has the same fix."
+      },
+      {
+        "severity": "major",
+        "issue": "The Features fix says to turn Cloud Sync on, but Cloud Sync requires Managed config and Sign-in, and Sign-in is off for Diceroll, so the console would refuse.",
+        "resolution": "The fix now reads 'Fix: download polaris-key.json again (it still expects Cloud Sync), or turn on Sign-in, then Cloud Sync, in Features.' The Features link stays."
+      },
+      {
+        "severity": "major",
+        "issue": "On phone the editor output is cut at about 44 characters, so every Fix line and both console links are lost.",
+        "resolution": "Added a 44-column re-wrap of the same report for phone. Each detail, Fix line and link is indented under its check name, and links wrap. Once the columns stack (1023px and below), the output column comes first, above the call and the checks table."
+      },
+      {
+        "severity": "major",
+        "issue": "The screen never shows what doctor() prints when key.plrs.im can't be reached, and it doesn't say what a clean run prints.",
+        "resolution": "Added a Server check: a row in the checks table and a ✓ line in the main run. Added a second output, 'When key.plrs.im can't be reached', for a first run with no network. It shows '✗ Server couldn't reach key.plrs.im (timed out after 10 s)' with 'Fix: check the network or a firewall, or baseUrl in polaris-key.json.' Signing key, Features and Clock are marked '– not compared with key.plrs.im', and a note explains the – mark. The footnote now says a debug run with no refusal prints nothing, while pk.doctor() still returns every check, all ok."
+      },
+      {
+        "severity": "minor",
+        "issue": "doctor() ends with '2 problems · 1 warning' while pkey doctor ends with '2 to do · 1 warning'.",
+        "resolution": "Both summaries now read '2 to do · 1 warning'. The typed severity is documented as todo or warning, printed as 'to do' and 'warning'."
+      }
+    ]
+  }
+}

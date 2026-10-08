@@ -1,0 +1,536 @@
+<style>
+  /* config.pause-writes: the platform writes-paused confirmation over Diceroll's Cloud Sync page (U-05, ST-16). */
+  [data-screen="config.pause-writes"] .two {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    gap: 20px;
+    align-items: stretch;
+  }
+  [data-screen="config.pause-writes"] .quota .who .cell-title .pill {
+    margin-left: 2px;
+  }
+  [data-screen="config.pause-writes"] .quota .act-link {
+    font-size: 13px;
+    color: var(--pk-text-strong);
+    text-decoration: underline;
+    text-decoration-color: var(--pk-border-strong);
+    text-underline-offset: 3px;
+    white-space: nowrap;
+  }
+  [data-screen="config.pause-writes"] .nlink {
+    color: var(--pk-text-strong);
+    text-decoration: underline;
+    text-decoration-color: var(--pk-border-strong);
+    text-underline-offset: 3px;
+  }
+  [data-screen="config.pause-writes"] .dl dd .note {
+    display: block;
+    font-size: 12px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="config.pause-writes"] .quota td {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  [data-screen="config.pause-writes"] .quota .who {
+    display: flex;
+    flex-direction: column;
+  }
+  [data-screen="config.pause-writes"] .quota .who .cell-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  [data-screen="config.pause-writes"] .quota .who .cell-title .ic {
+    width: 14px;
+    height: 14px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="config.pause-writes"] .quota .amount {
+    font-weight: 700;
+    color: var(--pk-text-strong);
+    white-space: nowrap;
+  }
+  [data-screen="config.pause-writes"] .quota .amount.inherit {
+    font-weight: 400;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="config.pause-writes"] .quota tr.base td {
+    background: color-mix(in oklab, var(--pk-surface-sunken) 55%, var(--pk-surface-raised));
+  }
+  [data-screen="config.pause-writes"] .near {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    font-size: 13px;
+  }
+  [data-screen="config.pause-writes"] .near .ic {
+    width: 14px;
+    height: 14px;
+  }
+  [data-screen="config.pause-writes"] .ent {
+    font-family: var(--pk-font-mono);
+    font-size: 12px;
+  }
+
+  [data-screen="config.pause-writes"] .keys {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  [data-screen="config.pause-writes"] .keys code {
+    font-size: 12px;
+  }
+  [data-screen="config.pause-writes"] .sub-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--mk-line);
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="config.pause-writes"] .sub-row > .ic {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    margin-top: 1px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="config.pause-writes"] .sub-row strong {
+    color: var(--pk-text-strong);
+  }
+  [data-screen="config.pause-writes"] .saves-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  [data-screen="config.pause-writes"] .saves-head .eyebrow {
+    margin: 0;
+  }
+  [data-screen="config.pause-writes"] .slot {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 14px;
+    padding: 10px 12px;
+    border: 1px solid var(--mk-line);
+    border-radius: 12px;
+    background: var(--pk-surface-sunken);
+  }
+  [data-screen="config.pause-writes"] .thumb {
+    flex: none;
+    width: 64px;
+    height: 40px;
+    border-radius: 6px;
+    background:
+      radial-gradient(circle at 70% 40%, color-mix(in oklab, var(--pk-danger) 70%, transparent) 0 22%, transparent 23%),
+      linear-gradient(160deg, var(--pk-warning-subtle), color-mix(in oklab, var(--pk-warning) 55%, var(--pk-surface-raised)));
+  }
+  [data-screen="config.pause-writes"] .slot .meta {
+    display: block;
+  }
+  [data-screen="config.pause-writes"] .limit-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px 20px;
+  }
+  [data-screen="config.pause-writes"] .limit-row + .limit-row {
+    border-top: 1px solid var(--mk-line);
+  }
+  [data-screen="config.pause-writes"] .limit-top {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+  [data-screen="config.pause-writes"] .limit-top .tnum {
+    margin-left: auto;
+    font-size: 13px;
+    color: var(--pk-text-muted);
+    white-space: nowrap;
+  }
+  [data-screen="config.pause-writes"] .limit-row .setting-row {
+    padding: 0;
+  }
+
+  @container screen (max-width: 1023px) {
+    [data-screen="config.pause-writes"] .two {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="config.pause-writes"] .quota thead {
+      display: none;
+    }
+    [data-screen="config.pause-writes"] .quota,
+    [data-screen="config.pause-writes"] .quota tbody {
+      display: block;
+    }
+    [data-screen="config.pause-writes"] .quota tr {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 4px 12px;
+      padding: 12px 16px;
+      border-top: 1px solid var(--mk-line);
+    }
+    [data-screen="config.pause-writes"] .quota tbody tr:first-child {
+      border-top: 0;
+    }
+    [data-screen="config.pause-writes"] .quota tr.base {
+      background: color-mix(in oklab, var(--pk-surface-sunken) 55%, var(--pk-surface-raised));
+    }
+    [data-screen="config.pause-writes"] .quota td {
+      display: block;
+      padding: 0;
+      border: 0;
+      background: transparent !important;
+    }
+    [data-screen="config.pause-writes"] .quota td.c-amt {
+      grid-column: 2;
+      grid-row: 1;
+      text-align: right;
+    }
+    [data-screen="config.pause-writes"] .quota td.c-from {
+      grid-column: 1;
+      font-size: 13px;
+      color: var(--pk-text-muted);
+    }
+    [data-screen="config.pause-writes"] .quota td.c-near {
+      grid-column: 1;
+    }
+    [data-screen="config.pause-writes"] .quota td.c-act {
+      grid-column: 2;
+      grid-row: 2 / span 2;
+      align-self: center;
+    }
+    [data-screen="config.pause-writes"] .limit-row {
+      padding: 14px 16px;
+    }
+    [data-screen="config.pause-writes"] .limit-top {
+      flex-wrap: wrap;
+    }
+    /* The Platform pill gets its own line under the switch's title. */
+    [data-screen="config.pause-writes"] .limit-row .setting-title {
+      display: block;
+    }
+    [data-screen="config.pause-writes"] .limit-row .setting-title .pill {
+      display: flex;
+      width: fit-content;
+      margin-top: 6px;
+    }
+    /* Code tabs scroll sideways, and the edge fades to say so. */
+    [data-screen="config.pause-writes"] .code-tabs {
+      -webkit-mask-image: linear-gradient(90deg, currentColor 78%, transparent);
+      mask-image: linear-gradient(90deg, currentColor 78%, transparent);
+    }
+    [data-screen="config.pause-writes"] .code-tabs > span {
+      flex: none;
+    }
+  }
+
+  /* A dialog is open, so the page behind it doesn't scroll: the screen is the first viewport. */
+  [data-screen="config.pause-writes"] .console {
+    height: 100vh;
+    overflow: hidden;
+  }
+  [data-screen="config.pause-writes"] .affected {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--mk-line);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  [data-screen="config.pause-writes"] .affected > div {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 12px;
+  }
+  [data-screen="config.pause-writes"] .affected > div + div {
+    border-top: 1px solid var(--mk-line);
+  }
+  [data-screen="config.pause-writes"] .affected .logo {
+    margin-top: 2px;
+  }
+  [data-screen="config.pause-writes"] .affected .what {
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="config.pause-writes"] .dialog-head > .icon-tile {
+    margin-top: 0;
+  }
+  [data-screen="config.pause-writes"] .dialog .textarea {
+    min-height: 64px;
+    white-space: normal;
+  }
+  [data-screen="config.pause-writes"] .passkey {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="config.pause-writes"] .passkey .ic {
+    width: 16px;
+    height: 16px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="config.pause-writes"] .field-label .req {
+    font-weight: 400;
+    font-size: 12px;
+    color: var(--pk-text-subtle);
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="config.pause-writes"] .overlay {
+      padding-top: 72px;
+    }
+    [data-screen="config.pause-writes"] .dialog-foot {
+      flex-wrap: wrap;
+    }
+    [data-screen="config.pause-writes"] .dialog-foot .btn {
+      flex: 1 1 auto;
+    }
+  }
+</style>
+
+<div class="console" data-service="sync">
+  <header class="topbar">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <nav class="sidebar" aria-label="Diceroll">
+    <div class="ctx">
+      <span class="logo sm" data-product="diceroll"></span>
+      <span class="ctx-text"><span class="ctx-name">Diceroll</span><span class="ctx-sub mono">diceroll</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item" href="#"><i class="ic ic-layout-dashboard"></i><span class="nav-text">Overview</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-plug"></i><span class="nav-text">Integration</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-shield-check"></i><span class="nav-text">Access</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
+    <div class="nav-group closed" data-service="license"><div class="nav-label">Licensing<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="config" style="padding-top: 4px"><div class="nav-label">Managed config<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="release" style="padding-top: 4px"><div class="nav-label">Ship builds<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="identity" style="padding-top: 4px"><div class="nav-label">Sign-in<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group" data-service="sync" style="padding-top: 4px">
+      <div class="nav-label">Cloud Sync<i class="ic ic-chevron-down sm"></i></div>
+      <a class="nav-item active" href="#"><i class="ic ic-cloud"></i><span class="nav-text">Cloud Sync</span></a>
+    </div>
+    <div class="nav-group closed" data-service="commerce" style="padding-top: 4px"><div class="nav-label">Commerce<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="page">
+      <header class="page-head">
+        <nav class="crumbs"><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i>Cloud Sync</nav>
+        <div class="page-heading"><h1>Cloud Sync</h1></div>
+        <p class="page-sub"><span>Players’ settings and saves follow them to every device they sign in on.</span><span class="status"><i class="ic ic-circle-check"></i>Verified on iOS, Android and Steam</span><span class="status muted"><i class="ic ic-circle-dashed"></i>itch.io not seen yet</span></p>
+        <div class="page-actions">
+          <span class="freshness hide-phone">Updated 2&nbsp;min ago</span>
+          <button class="btn ghost"><i class="ic ic-book-open"></i>Guide</button>
+        </div>
+      </header>
+
+      <nav class="tabs" aria-label="Cloud Sync">
+        <a class="tab active" href="#">Setup</a>
+        <a class="tab" href="#">Usage</a>
+      </nav>
+
+      <!-- The quota is one entitlement: a default, and each tier may set its own (U-01b). -->
+      <section class="card" aria-labelledby="quota-title">
+        <div class="card-head">
+          <span class="icon-tile"><i class="svc"></i></span>
+          <div class="title">
+            <h2 id="quota-title">Storage per player</h2>
+            <p>A player’s settings and saves together. It’s the entitlement <span class="ent">pkey.cloudSync.bytes</span>, so each tier can set its own.</p>
+          </div>
+          <a class="link hide-phone" href="#">Open Tiers<i class="ic ic-arrow-right"></i></a>
+        </div>
+        <div style="overflow-x: auto">
+          <table class="table quota">
+            <thead><tr><th>Who</th><th>Storage</th><th>Set by</th><th>Near the limit</th><th class="end"><span class="sr-only">Actions</span></th></tr></thead>
+            <tbody>
+              <tr class="base">
+                <td><div class="who"><span class="cell-title">Default <span class="pill sm"><i class="ic ic-polaris"></i>Platform</span></span><span class="cell-sub">Every product, for people whose tier doesn’t set it</span></div></td>
+                <td class="c-amt"><span class="amount">256&nbsp;MiB</span></td>
+                <td class="c-from">Platform default</td>
+                <td class="c-near"></td>
+                <td class="end c-act"><button class="btn ghost xs">Change…</button></td>
+              </tr>
+              <tr>
+                <td><div class="who"><span class="cell-title"><i class="ic ic-award"></i>Free</span><span class="cell-sub">3,120 players with data</span></div></td>
+                <td class="c-amt"><span class="amount">64&nbsp;MiB</span></td>
+                <td class="c-from">Free tier</td>
+                <td class="c-near"><span class="near text-warning"><i class="ic ic-triangle-alert"></i>41 players over 80%</span></td>
+                <td class="end c-act"><button class="btn ghost xs" aria-label="Change Free">Change</button></td>
+              </tr>
+              <tr>
+                <td><div class="who"><span class="cell-title"><i class="ic ic-award"></i>Standard</span><span class="cell-sub">1,402 players with data</span></div></td>
+                <td class="c-amt"><span class="amount inherit">256&nbsp;MiB</span></td>
+                <td class="c-from">Uses the default</td>
+                <td class="c-near"><span class="near muted">3 players over 80%</span></td>
+                <td class="end c-act"><button class="btn ghost xs" aria-label="Set Standard">Set</button></td>
+              </tr>
+              <tr>
+                <td><div class="who"><span class="cell-title"><i class="ic ic-award"></i>Deluxe</span><span class="cell-sub">290 players with data</span></div></td>
+                <td class="c-amt"><span class="amount">1&nbsp;GiB</span></td>
+                <td class="c-from">Deluxe tier</td>
+                <td class="c-near"><span class="near muted">None</span></td>
+                <td class="end c-act"><button class="btn ghost xs" aria-label="Change Deluxe">Change</button></td>
+              </tr>
+              <tr>
+                <td><div class="who"><span class="cell-title"><i class="ic ic-user-round"></i>Without a license</span><span class="cell-sub">Signed in, no Diceroll license yet</span></div></td>
+                <td class="c-amt"><span class="amount inherit">64&nbsp;MiB</span></td>
+                <td class="c-from">Same as Free, the tier for players without a license</td>
+                <td class="c-near"><span class="near muted">None</span></td>
+                <td class="end c-act"><a class="act-link" href="#">Change in Access</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card-foot start">
+          <span class="muted small">A change reaches each player on their next sync. Nothing is deleted when you lower it: a player over the limit keeps their saves, and new ones wait until there’s room. <a class="nlink" href="#">What players see then</a></span>
+        </div>
+      </section>
+
+      <!-- What syncs, read from the catalog: synced settings and the saves template. -->
+      <section class="card" aria-labelledby="what-title">
+        <div class="card-head">
+          <span class="icon-tile muted"><i class="ic ic-list-tree"></i></span>
+          <div class="title"><h2 id="what-title">What syncs</h2><p>Read from Diceroll’s catalog v6. Change it there.</p></div>
+          <a class="link" href="#">Open Catalog<i class="ic ic-arrow-right"></i></a>
+        </div>
+        <div class="card-split">
+          <div>
+            <p class="eyebrow">Settings<span class="end">13 sync</span></p>
+            <p>Every Editable setting syncs on its own, so a player’s volume, controls and language match on every device.</p>
+            <div class="keys">
+              <code>audio.music</code><code>audio.sfx</code><code>audio.voice</code><code>controls.invertY</code><code>controls.haptics</code><code>language</code><code>ui.textSize</code><span class="muted small">and 6 more</span>
+            </div>
+            <div class="sub-row"><i class="ic ic-monitor-smartphone"></i><span><strong>2 stay on each device:</strong> <code>graphics.quality</code> and <code>graphics.resolution</code>, because a phone and a Steam Deck need different ones.</span></div>
+            <div class="sub-row"><i class="ic ic-plus"></i><span><strong>Settings the game adds itself sync too,</strong> without a catalog entry: up to 256 keys and 64&nbsp;KiB per player.</span></div>
+          </div>
+          <div>
+            <div class="saves-head"><p class="eyebrow">Saves</p><span class="pill sm"><i class="ic ic-file-stack"></i>Saves template</span></div>
+            <dl class="dl">
+              <dt>Slots</dt><dd>Up to 16 per player</dd>
+              <dt>Each save</dt><dd>Up to 32&nbsp;MiB, with a thumbnail</dd>
+              <dt>Keeps</dt><dd>The last 5 versions of each slot<span class="note">Older versions count toward the player’s storage.</span></dd>
+              <dt>When two devices disagree</dt><dd>Ask the player</dd>
+              <dt>The load screen shows</dt><dd>Playtime, progress and chapter</dd>
+              <dt>Who can save</dt><dd>Every signed-in player</dd>
+            </dl>
+            <div class="slot">
+              <span class="thumb" aria-hidden="true"></span>
+              <div class="grow">
+                <div class="strong">Slot 1 · Harbor</div>
+                <span class="meta">1 h 30&nbsp;min played · 42% · saved on Steam Deck, Oct 7, 08:51</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="two">
+        <!-- Operator limits: one ceiling per product, one platform switch (ST-16). -->
+        <section class="card" aria-labelledby="limits-title">
+          <div class="card-head">
+            <span class="icon-tile muted"><i class="ic ic-gauge"></i></span>
+            <div class="title"><h2 id="limits-title">Limits</h2><p>For you, not for players.</p></div>
+          </div>
+          <div class="limit-row">
+            <div class="limit-top"><span class="strong">Diceroll’s total storage</span><span class="tnum">18.4&nbsp;GiB of 50&nbsp;GiB</span></div>
+            <div class="progress" style="--v: 37%"></div>
+            <div class="row between wrap gap-2">
+              <span class="muted small">All of Diceroll’s players together. 50&nbsp;GiB is the platform default.</span>
+              <button class="btn outline sm">Change…</button>
+            </div>
+          </div>
+          <div class="limit-row">
+            <div class="setting-row">
+              <div>
+                <div class="setting-title">Pause all Cloud Sync writes <span class="pill sm"><i class="ic ic-polaris"></i>Platform</span></div>
+                <div class="setting-desc">For incidents. Every product stops taking new settings and saves; apps and games keep reading and send what they queued when you resume. Last used Sep 22, for 14 minutes.</div>
+              </div>
+              <span class="switch" role="switch" aria-checked="false" aria-label="Pause all Cloud Sync writes"></span>
+            </div>
+          </div>
+        </section>
+
+        <section class="card" aria-labelledby="code-title">
+          <div class="card-head">
+            <span class="icon-tile muted"><i class="ic ic-code-xml"></i></span>
+            <div class="title"><h2 id="code-title">In your game</h2><p>Settings sync with no extra code. Saves take one call.</p></div>
+          </div>
+          <div class="card-body tight">
+            <div class="code">
+              <div class="code-head">
+                <div class="code-tabs"><span class="active">GDScript<small>Godot</small></span><span>Swift<small>iOS</small></span><span>Kotlin<small>Android</small></span></div>
+                <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
+              </div>
+<pre><span class="t-c"># Settings sync on their own.</span>
+PolarisKey.config.<span class="t-f">set_value</span>(<span class="t-s">"audio.music"</span>, <span class="t-n">0.6</span>)
+
+<span class="t-c"># Save slot 1, with what the load screen shows.</span>
+<span class="t-k">var</span> saves := PolarisKey.cloud_sync.saves
+<span class="t-k">await</span> saves.<span class="t-f">write</span>(<span class="t-s">"slot-1"</span>, state.<span class="t-f">to_bytes</span>(), {
+  <span class="t-s">"playtime"</span>: <span class="t-n">5400</span>, <span class="t-s">"progress"</span>: <span class="t-n">0.42</span>,
+  <span class="t-s">"chapter"</span>: <span class="t-s">"Harbor"</span>,
+})
+
+<span class="t-c"># Two devices disagree: let the player pick.</span>
+saves.conflict.<span class="t-f">connect</span>(_on_save_conflict)</pre>
+              <div class="code-foot"><i class="ic ic-info sm"></i><span>Written for Diceroll’s saves template and its setting <span class="mono">audio.music</span>.</span></div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <!-- A platform switch: the confirmation names every product it stops, in one change. -->
+  <div class="overlay">
+    <div class="dialog" role="dialog" aria-labelledby="pause-title">
+      <div class="dialog-head">
+        <span class="icon-tile sm" data-service="sync"><i class="ic ic-circle-pause"></i></span>
+        <h2 id="pause-title">Pause Cloud Sync writes everywhere?</h2>
+        <button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button>
+      </div>
+      <div class="dialog-body">
+        <p>This is a platform switch, so both products that use Cloud Sync stop taking new data, in the same change:</p>
+        <div class="affected">
+          <div><span class="logo xs" data-product="djdl"></span><div><div class="strong bold">DJDL</div><div class="what">Settings changes wait on each Mac and PC; the app shows Waiting to sync. No one has synced yet.</div></div></div>
+          <div><span class="logo xs" data-product="diceroll"></span><div><div class="strong bold">Diceroll</div><div class="what">Saves and settings wait on each device; the load screen shows Saved on this device. 4,812 players have data.</div></div></div>
+        </div>
+        <p class="muted small">Reading keeps working and nothing is deleted. Each device sends what it queued when you turn writes back on.</p>
+        <div class="field">
+          <label class="field-label">Reason <span class="req">Required · shown in the banner and in Activity</span></label>
+          <div class="textarea">Storage errors in eu-west since 14:02 UTC. Pausing until the provider confirms the fix.</div>
+        </div>
+        <p class="passkey"><i class="ic ic-fingerprint"></i>After this, you confirm with your passkey.</p>
+      </div>
+      <div class="dialog-foot">
+        <button class="btn">Cancel</button>
+        <button class="btn danger"><i class="ic ic-circle-pause"></i>Pause writes for 2 products</button>
+      </div>
+    </div>
+  </div>
+</div>

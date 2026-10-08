@@ -1,0 +1,41 @@
+{
+  "id": "commerce.purchase",
+  "title": "Purchase drawer: a refund",
+  "area": "commerce",
+  "surface": "console",
+  "packages": [
+    "CM-22",
+    "CM-23"
+  ],
+  "uxRows": [],
+  "summary": "Ellie Brandt's Dice skins purchase on Google Play opened from the ledger: a full refund removed the add-on at once, the facts (account, license, offer, SKU, store order, device) and a timeline from purchase to verification, the store's refund, the removal, the email and the developer webhook, with Re-verify and a deep link to Play Console.",
+  "compare": [
+    "The drawer opens from the right over the ledger with the clicked row selected behind the scrim; the head is the store mark, 'Dice skins on Google Play' and a danger Refunded pill.",
+    "The danger callout says what happened and what it did in one line ('Refunded in full, so Dice skins was removed at once'), that the rest of the license is untouched, and that a partial refund never removes anything.",
+    "Facts: Account (the name links to the person drawer; email beside it on desktop, under it on phone), License (mono link and tier; links are neutral with an underline), Offer (name, add-on, one-time), SKU (mono), Order (the store's order id as a copyable id), Device (model and app version).",
+    "The timeline is in time order with one line per event: bought, verified and added to the license (green), the store's refund report, the removal (danger, bold), the customer email with its subject, and the purchase.refunded webhook with its response. Removal and report carry the same minute: 'at once' is visible.",
+    "Actions: Re-verify with Google Play (asks the store again; the hint under the buttons says it adds Dice skins back only if the refund was reversed) and Open in Play Console (deep link); the console never offers to refund a store purchase itself. A re-verify's result joins the timeline as its own event (drawn: 'Ada Lindqvist re-verified with Google Play: still refunded. Nothing changed.').",
+    "There is one revocation path: the same timeline shape appears for an App Store refund, a Play chargeback and a Steam ownership loss found by the daily check.",
+    "Phone: the drawer is a bottom sheet (grab handle, rounded top, at most 90% of the screen tall with the body scrolling and the scrim above), the actions pinned full width at the bottom with Re-verify first; the account's name and email stack."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: the phone drawer is a bottom sheet, Re-verify says what it does and its result is a timeline event, and the account links to the person.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "[consistency with house rules] On phone the drawer is a sheet dropping from the top with the scrim below, putting close and the actions out of thumb reach (ADMIN.md §Overlays, PORTAL.md's Drawer).",
+        "resolution": "Uses the kit's new .overlay.end.sheet: a bottom sheet with a grab handle and rounded top, at most 90% tall with the body scrolling, the actions pinned full width at the bottom. The screen's own top-sheet rules are gone. Compare item 7 updated."
+      },
+      {
+        "severity": "minor",
+        "issue": "[flow / copy] What Re-verify does on a refunded purchase is unclear and its result isn't drawn; the account name is plain text while the license id is a link; on phone 'Ellie Brandt •' leaves an orphan bullet.",
+        "resolution": "A hint under the actions says Re-verify asks Google Play again and adds Dice skins back only if the refund was reversed; its result is drawn as the last timeline event. Ellie Brandt links to the person drawer (neutral underlined, like the license id). On phone the name and email stack with no bullet."
+      }
+    ]
+  },
+  "order": 22
+}

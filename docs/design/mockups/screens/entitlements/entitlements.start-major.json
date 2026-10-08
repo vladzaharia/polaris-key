@@ -1,0 +1,36 @@
+{
+  "id": "entitlements.start-major",
+  "title": "Start a 5.x tier",
+  "area": "entitlements",
+  "surface": "dialog",
+  "packages": [
+    "LX-43",
+    "LX-44"
+  ],
+  "uxRows": [],
+  "summary": "The dialog behind the new-major notice's Start a 5.x tier…: Pro 5 is created as a copy of Pro 4 covering 5.x, with what it copies (limits, includes, profile) listed in words, and a plain statement that no license moves on its own.",
+  "compare": [
+    "The dialog opens over the Licenses page, dimmed, with focus in Name. Its title is 'Start a 5.x tier' and the button says exactly what happens: 'Create Pro 5'. It is drawn after Create Pro 5 was pressed with a taken id: the error sits inline under Id ('pro-5 belongs to an archived tier, Pro 5 preview. Ids are never reused: try pro-5-2026.') and focus moves to that field.",
+    "Name and id are prefilled from the old tier (Pro 4 → Pro 5, pro-4 → pro-5); the id says it can't change later.",
+    "The major line is prefilled with the new major (5.x). The hint gives the range in the tier record's words ('Covers 5.0.0 up to, but not including, 6.0.0') and keeps Pro 4's duration (no end date).",
+    "Copy from Pro 4 lists Limits, Includes and Profile with their actual values, each ticked by default; a line under them says an unticked group starts empty (platform default limits, no entitlements, no profile).",
+    "The note says no license moves on its own and how a holder upgrades (Change tier, or the admin API from DJDL's billing), and what list order does: 'Pro 5 goes just above Pro 4 in list order, so a holder of both runs as Pro 5.' With Commerce on, an optional upgrade offer field appears here instead of the billing sentence.",
+    "Phone: the dialog takes the full width, Name and Id stack, and Cancel and Create Pro 5 share the foot.",
+    "Create Pro 5 opens Pro 5's record (Tier tab) with the toast 'Created Pro 5'; the new-major notice is gone from Licenses and from Pro 4's record, because a 5.x tier now exists."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Pass: the range and list order now say what they mean, unticked groups are explained, and the Id error is drawn in place.",
+    "findings": [
+      {
+        "severity": "minor",
+        "issue": "'5.0.0 up to 6.0.0' doesn't say whether 6.0.0 is included; 'above Pro 4 in list order' doesn't say what list order affects; unticked groups are unexplained; where Create Pro 5 lands isn't shown; the Id error isn't drawn.",
+        "resolution": "The hint reads 'Covers 5.0.0 up to, but not including, 6.0.0 …'. The note says 'Pro 5 goes just above Pro 4 in list order, so a holder of both runs as Pro 5.' Under the ticks: 'Untick a group to start it empty: platform default limits, no entitlements, no profile.' The compare says Create Pro 5 opens Pro 5's record with the toast 'Created Pro 5', and the notice then disappears for Pro 4. The Id field is drawn in its error state, with focus on it: 'pro-5 belongs to an archived tier, Pro 5 preview. Ids are never reused: try pro-5-2026.' The page behind takes the Licenses fixes (outline notice actions, list order, units, paging)."
+      }
+    ]
+  },
+  "order": 8
+}

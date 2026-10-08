@@ -1,0 +1,28 @@
+{
+  "id": "commerce.sales-wizard",
+  "title": "Channel page, Sales tab: storefront not set up",
+  "area": "commerce",
+  "surface": "console",
+  "packages": [
+    "CM-23",
+    "A-22",
+    "CM-21",
+    "A-18k"
+  ],
+  "uxRows": [
+    "UX-57"
+  ],
+  "summary": "DJDL's Steam channel page opened from a Not set up row on Storefronts: the Sales tab shows the storefront wizard with only the human steps (create the app in Steamworks, add the publisher key in Store connections, assign the app to DJDL), each ticking itself when Polaris Key sees it, and a side card saying what Steam can and can't sell.",
+  "compare": [
+    "It is the same channel page as commerce.sales (A-22), tabs Status, Releases, Listing, Sales, Setup; a Not set up row on Storefronts lands here. Crumbs say Storefronts › Steam and the Commerce sidebar entry stays active.",
+    "Sales shows the wizard because the storefront side isn't set up; Releases renders on its own (O12). The side card says shipping builds is set up on Releases.",
+    "Only human steps appear (A-18k): each is one thing to do outside Polaris Key, in Steam's own words, with one deep link, and ticks itself when Polaris Key sees it done. Nothing asks for an App ID: step 3 picks the app in Store connections and the id is read from Steam.",
+    "The step count matches Storefronts and first-run ('3 steps'). A step that depends on others says what it waits for instead of offering a button that can't work.",
+    "The foot says how often Polaris Key checks and when it last did, with Check now; a polite live region announces each tick.",
+    "What Steam can sell is stated once, in plain words: the paid app and DLC; no subscriptions, no price API.",
+    "Phone: the side card drops under the steps; each step's action goes under its text."
+  ],
+  "status": "mockup",
+  "designReview": null,
+  "order": 3
+}

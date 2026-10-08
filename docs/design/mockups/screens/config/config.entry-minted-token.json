@@ -1,0 +1,66 @@
+{
+  "id": "config.entry-minted-token",
+  "title": "Catalog entry: a minted token",
+  "area": "config",
+  "surface": "console",
+  "packages": [
+    "U-31",
+    "U-30",
+    "ST-45"
+  ],
+  "uxRows": [],
+  "summary": "DJDL's catalog editor with the minted token applemusic.token open: the recipe and its sealed signing key live on the entry, and a lifetime change pushed from the repo waits for approval, with Review and approve… as the one primary and minting stopped until then.",
+  "compare": [
+    "There is no Edge mint page or nav item: the recipe, the signing key and the approval are all on the catalog entry, and the Catalog nav item carries a warning count while a recipe needs approval.",
+    "With no draft and an approval pending, the header has Form or JSON and Close editor only; the one primary on the page is Review and approve… (passkey glyph) in the callout, repeated as an outline button at the foot of the Approval card.",
+    "Config's gold accent is never the only cue: a selected Type card is a strong neutral border plus the tick, the open entry is a neutral fill with a neutral edge, and every warning callout has a solid warning rail and a triangle, so selected, changed and needs-approval read differently in both themes.",
+    "Type shows Minted token selected; In the app is one fixed line (code only, mintToken(\"applemusic\"), not stored, not listed, doesn't sync); a help button beside Type opens the five-cell table.",
+    "Key, Recipe id and Algorithm are fixed text with a lock (Can't change after publish; What the app asks for; Set by the template). Template has its own row; Team ID (iss), Key ID (kid) and Lifetime are editable. Recipe ids never reach customers or discovery.",
+    "The approval state is a pill at the card head with exactly one of Needs approval or Changed since approval (Approved is status text, see config.approve-recipe-approved). The callout names what changed, who, where (.pkey/schema, commit) and what it means now, and offers the alternative: set Lifetime back to 1 hour here and commit the same change, or the next resync brings 12 hours back.",
+    "The changed field is marked where it is (Lifetime: \"1 hour when approved on Sep 14\"). The Approval card holds state and history only: Last approved, Minting (stopped since Oct 6, 21:14), Signing key (sealed Oct 2), the action and Approval history; it doesn't repeat the change.",
+    "Signing key is one row: what it is (MusicKit private key, .p8), sealed date and who, used only for this token, Replace key…; no key material, fingerprint or secret name.",
+    "What DJDL receives is labelled \"Preview: a token minted after you approve, decoded\" and decodes a mint at a real time (header alg, kid, typ; iss, iat, exp), with the new exp highlighted and \"12 hours (was 1)\".",
+    "In your app shows mintToken for each SDK DJDL uses (Swift on macOS, Kotlin on Windows) and says not to keep the token.",
+    "Phone: the list becomes the entry switcher, the callout's button drops under its text, field pairs stack, each section's hint stays under its heading, the foot note stays under Remove from catalog, and the rail (Approval) follows the form."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: approving is the one filled action, the Approval card carries it, and selection, change and warning no longer share one look.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "The one job, approving, was an outline button while a disabled filled Review changes was the heaviest element, and the Approval card had no action.",
+        "resolution": "With no draft and an approval pending, Review changes is gone from the header; Review and approve… is the filled primary with the passkey glyph in the callout and is repeated as an outline button at the foot of the Approval card."
+      },
+      {
+        "severity": "major",
+        "issue": "The config accent and warning are the same hue, so needs approval, changed and selected looked alike.",
+        "resolution": "Partly declined: the kit's --pk-warning-* tokens are generated from packages/brand/css by build-kit.mjs, so changing them in the kit would make every area's mockups differ from the built console; that is a brand-token change for the brand owner, and the lead can route it. Done on the config screens instead: warning callouts carry a solid 4px warning rail, the selected Type card is a strong neutral border with the tick (no gold fill), and the open entry is a neutral fill with a neutral edge. Rechecked on entry-setting and approve-recipe."
+      },
+      {
+        "severity": "minor",
+        "issue": "The change was stated five times and the Approval card's values wrapped awkwardly.",
+        "resolution": "Pill, callout and the Lifetime hint stay. The Approval card is state and history only (Last approved Sep 14 by Ana Lima; Minting stopped since Oct 6, 21:14; Signing key sealed Oct 2), with labels above values so nothing wraps mid-value, plus the action and Approval history. The Recipe and What changed rows are gone."
+      },
+      {
+        "severity": "minor",
+        "issue": "\"Decoded, for a token minted now\" showed a 12-hour exp while minting is stopped.",
+        "resolution": "Labelled \"Preview: a token minted after you approve, decoded.\"; the claims comment reads \"if minted Oct 7, 2026 17:00 UTC\" and the exp line says \"12 hours (was 1)\"."
+      },
+      {
+        "severity": "minor",
+        "issue": "Template was truncated, the Recipe hint floated right, the receives heading wrapped on phone, and the foot note was dropped on phone.",
+        "resolution": "Template has a full row with Recipe id and Algorithm below it; each section's hint sits under its heading at every width; the foot note shows on phone under Remove from catalog."
+      },
+      {
+        "severity": "minor",
+        "issue": "No state for a recipe without a signing key, no wizard, and no word on setting Lifetime back instead of approving.",
+        "resolution": "Added config.entry-minted-token-no-key and config.mint-wizard; the callout now says: \"Or set Lifetime back to 1 hour below and commit the same change to .pkey/schema; otherwise the next resync brings 12 hours back.\""
+      }
+    ]
+  },
+  "order": 5
+}

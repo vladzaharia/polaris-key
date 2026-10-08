@@ -1,0 +1,43 @@
+{
+  "id": "entitlements.addons",
+  "title": "Add-ons",
+  "area": "entitlements",
+  "surface": "console",
+  "packages": [
+    "LX-35",
+    "LX-44",
+    "CM-23"
+  ],
+  "uxRows": [],
+  "summary": "Diceroll's License → Add-ons collection: every sub-license a license can hold (dice packs, supporter skins, a loadout pack, gem packs, a monthly season pass, playtester access), what each gives (entitlements, units of a consumable, or a release track), where it comes from and how many licenses hold it.",
+  "compare": [
+    "Add-ons is its own page in the Licensing group, between Tiers and Entitlements, in the License accent.",
+    "Each row names the add-on (the one link to its record) with its id in mono, what it gives (an entitlement key; a quantity inside its key's chip, 'loadouts +2'; '500 gems' for a consumable; 'Release track beta' for a channel add-on; 'Renews monthly' when a subscription keeps it), its sources and its holder count, right-aligned. No row is drawn hovered or selected.",
+    "Sources use the five words of the model, each with one icon: App Store, Google Play and Steam (store purchases through an offer's SKU), Checkout (Polaris Key checkout; Supporter skins sells there for the itch.io build, which has no in-app purchases), Codes, Access rule, Comps. No add-on repeats an entitlement list per store.",
+    "The table foot says how many add-ons Commerce sells and links to Commerce → Offers; with Commerce off the store sources and that link are absent and add-ons still come from codes, access rules and comps.",
+    "No pills on healthy rows. The word 'grant' never appears; 'sub-license' only in docs.",
+    "Phone: Gives and Comes from fold into one summary line under the name, with the same source names as desktop; Holders stays as the right column with its sort arrow; the filters wrap, the legend's Dismiss stays in its corner, and nothing scrolls sideways.",
+    "Holders is the default sort, shown as the column header in strong text with a down arrow (aria-sort descending); clicking Add-on sorts by name. There is no separate 'Sorted by' text.",
+    "The 'Where add-ons come from' card shows until dismissed (per operator) and always on the empty page, where it explains the five sources before the first add-on exists."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fix, then pass: quantities now sit inside their key's chip, no row is drawn hovered, Holders is a real sort control and all five sources appear.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "'+1' sits outside the chips ('pack.neon  loadouts  +1'), so it reads as 'and 1 more'; the Neon dice pack row is drawn in its hover state.",
+        "resolution": "The quantity is inside the key's chip: 'loadouts +1' and 'loadouts +2'. Removed class 'hover' from the Neon dice pack row."
+      },
+      {
+        "severity": "minor",
+        "issue": "'Sorted by holders' is static text, the legend card is permanent, phone source names are lower case, and no add-on shows Checkout or itch.io.",
+        "resolution": "Holders is now the sorted column header (strong text, down arrow, aria-sort) and the static text is gone; Add-on is sortable too. The legend card has a Dismiss button (pinned to its corner on phone) and says it also appears on the empty page. Phone summaries use the desktop names (App Store, Google Play, Steam, Codes, Access rule, Comps). Supporter skins gains Checkout, the Polaris Key checkout that Diceroll's itch.io build links to, and the legend says so."
+      }
+    ]
+  },
+  "order": 2
+}

@@ -1,0 +1,20 @@
+{
+  "id": "licenses.tiers-states",
+  "title": "Tiers: other states",
+  "area": "licenses",
+  "surface": "console",
+  "packages": ["LX-44", "LX-41", "LX-33", "LX-43"],
+  "uxRows": [],
+  "summary": "The Tiers editor's other states from the round-1 review of licenses.tiers: Trial's 'Moves to another tier' with Then Free and its example, inline validation with the save bar's 'Fix 2 fields', the discard confirmation when leaving a dirty tier, a row's menu with Move up, Move down and Delete disabled while used, and the locked stable track with its tooltip.",
+  "order": 11,
+  "compare": [
+    "Moves to another tier: choosing it reveals 'Then' with a select of the other tiers (never the tier itself); the example names the real end date and the next tier's limits ('ends its trial on Oct 21, 2026, then becomes Free: 1 device, 2 decks, no recording').",
+    "Validation: errors sit under each field and say how to fix it ('Enter at least 1 day.', '\"From\" must be lower than \"to\". Swap them, or clear one for no limit.'); the save bar turns to the danger tone, reads '<n> changes. Fix <m> fields to save.' with the link jumping to the first invalid field, and Save is disabled.",
+    "Leaving dirty: picking another tier in Order, or leaving the page, asks 'Discard 1 change to Education?' naming what reverts and what opens next, with Keep editing and Discard. Esc on the save bar asks the same.",
+    "Row menu: every tier row has a ⋯ menu with Move up and Move down (each naming the neighbour), Duplicate and Delete; Delete is disabled with 'Used by 57 licenses. Move them to another tier first.' while licenses use the tier. With a drag handle focused, ↑ and ↓ move the row and the new rank is announced.",
+    "Locked stable: a lock instead of a tick and a dashed edge; hover or focus shows the tooltip 'Always included'; it can't be turned off.",
+    "Phone: each frame stacks; the Versions fields and Only 4.x stay on one line; the save bar's buttons fill the width."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

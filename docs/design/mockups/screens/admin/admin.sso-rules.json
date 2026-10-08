@@ -1,0 +1,65 @@
+{
+  "id": "admin.sso-rules",
+  "title": "SSO rules",
+  "area": "admin",
+  "surface": "console",
+  "order": 3,
+  "packages": [
+    "ST-32",
+    "ST-28",
+    "LX-36"
+  ],
+  "uxRows": [],
+  "summary": "Members → SSO rules: the read-only root rule first, the one-click conversion offer for DJDL's old manifest admin group, then the rules (group, verified email domain or claim → a role, scope and areas) with a new rule open in the same RuleEditor the product Access page uses for license.access, including the preview of who it matches and what changes for each.",
+  "compare": [
+    "SSO rules is a tab of Platform → Members, not a separate nav item or a Settings section; the count on the tab is the number of editable rules (3), the root rule not included.",
+    "The root rule card comes first: lock tile, 'Set at deploy time by PLATFORM_ADMIN_GROUP', the rule in the same row format as the others (Group · Pocket ID · polaris-admins → Superadmin), who matches, and a lock instead of a menu.",
+    "The rules are a When / Gets / People table: the When cell is the kind and matcher ('Group release-managers', 'Verified email domain studio.example.com') with 'From <connection>' as its second line; Gets is the role tag with its scope and areas; People is the faces and a count; then the row menu.",
+    "An email-domain rule shows that its domain is 'Verified and enforced' on the connection; the editor never offers a domain that is unverified or not enforced.",
+    "The adminGroup conversion offer is an accent callout naming the product and the group, says manifests can't give console access (0.9 refuses product.adminGroup) and has one button that pre-fills a rule mapping the group to that product's admin.",
+    "The editor is the shared RuleEditor (same component and words as license.access): 'When someone' reads as a sentence in the order the choices depend on each other: Signs in with [connection], And has [A group | A verified email domain | A claim], then the matcher ('Claim [department] is [djdl-qa]'). 'They get' is Role, Product (or All products) and Areas. A label column puts every control on one left edge. Areas use the Invite drawer's control: 'Every area of DJDL' or 'Only these areas' with service-glyph chips, offering only the product's enabled features.",
+    "The preview lists every person who matches from stored sign-ins, each with their current roles and the exact change as one run of text ('Adds …', 'Joins as DJDL admin the next time Ravi signs in'), never a pronoun. A rule matching nobody says 'Matches nobody who has signed in with Studio Okta yet' and that it still saves; a rule that gives Superadmin or Platform admin shows a warning such as 'This rule makes 3 people Superadmins' (Other states).",
+    "Saving asks for a passkey first and emails every Superadmin; a Superadmin or Platform admin rule first opens a confirmation naming the people, with 'Type Superadmin to confirm' (confirm-word) and a danger button 'Make 3 people Superadmins' that stays off until the word matches. The tab's header action is Add rule (primary, Superadmins only); while the editor is open it is disabled and outlined, so Save rule is the only filled button. Others (Priya, a Platform admin) see the rules read-only: no Add rule, no row menus, no editor.",
+    "Preview and sign-in evaluate the same rule the same way (one evaluator), and the page never offers a deny rule or a rule order: matches only add.",
+    "Phone and tablet: each rule stacks (kind tile and When with the menu, then the role tag with its areas on the line under it, then the matches); the editor's clauses stack, labels sit above their controls, the selects and the segmented control take the full width, and the area chips wrap."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fix applied: one filled button, the When clause reads connection first on one left edge, and the high-risk, empty and read-only states are drawn.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "Two filled primary buttons (Invite people and Save rule), and the tab's own Add rule is a small outlined button at the bottom of the card.",
+        "resolution": "On this tab the header action is Add rule (Superadmins only, primary when no editor is open); with the editor open it is disabled and outlined, so Save rule is the only filled button. The bottom Add rule is gone. Invite people stays on the Members tab."
+      },
+      {
+        "severity": "major",
+        "issue": "The editor asks for the claim before the connection it comes from, and the selects don't share a left edge.",
+        "resolution": "When someone now reads: Signs in with [Studio Okta], And has [A group | A verified email domain | A claim], Claim [department] is [djdl-qa]. A 104px label column puts every control on one left edge (x=455 px in the When clause and x=993 px in They get, at 1440), and They get uses the same rows. Segment words match license.access. licenses.access-rule (another area) still puts the group before From; the shared RuleEditor should take the connection-first order there too, which is for that area's designer or the lead."
+      },
+      {
+        "severity": "major",
+        "issue": "Only the happy path: no Superadmin or Platform admin warning and typed confirmation, no rule matching nobody, no read-only view.",
+        "resolution": "Other states: a Superadmin rule's preview with the warning 'This rule makes 3 people Superadmins'; its confirmation dialog naming the three people with confirm-word 'Superadmin' and 'Make 3 people Superadmins' off until it matches, then the passkey; the empty preview 'Matches nobody who has signed in with Studio Okta yet' that still saves; Priya's read-only rules card with no Add rule, no menus and no editor."
+      },
+      {
+        "severity": "minor",
+        "issue": "Areas are one select here but radios and chips in the Invite drawer, and the select cuts off on phone.",
+        "resolution": "Areas use the Invite drawer's control: 'Every area of DJDL' / 'Only these areas' and service-glyph chips that wrap on phone; only DJDL's features are offered and the hint says Commerce isn't on for DJDL."
+      },
+      {
+        "severity": "minor",
+        "issue": "'Joins as DJDL admin at his next sign-in' assumes a pronoun; on phone the verb sits alone above its object.",
+        "resolution": "Now 'Joins as DJDL admin the next time Ravi signs in'. The change is one run of inline text (no flex wrap), so a narrow line breaks inside the object, never after the verb."
+      },
+      {
+        "severity": "minor",
+        "issue": "The rules are a When / Gets / People table, not the sentence row the compare describes; the table scans better.",
+        "resolution": "Kept the table and updated the compare to describe it, with 'From <connection>' as the When cell's second line."
+      }
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "commerce.purchases-no-results",
+  "title": "Purchases: no match",
+  "area": "commerce",
+  "surface": "console",
+  "packages": [
+    "CM-23",
+    "CM-22"
+  ],
+  "uxRows": [],
+  "summary": "Diceroll's Purchases searched for a license id that has no purchase in the last 28 days: the table head stays, and the kit's filtered empty state names what matched nothing, says what search accepts, and offers Search all time and Clear search.",
+  "compare": [
+    "Filtered to nothing (EXPERIENCE.md §9): the tabs, toolbar and table head stay; the body is one empty state, never a blank table.",
+    "The title quotes what was searched (in mono for an id) and the active date filter ('in the last 28 days'); the sentence says what search takes (email, license id, store order id) and why there may be none.",
+    "Two ways out: Search all time (drops the date filter, keeps the search) and Clear search; the search field also has its own clear button.",
+    "Loading uses skeleton rows shaped like the ledger's columns (no 'Loading…' text); an error replaces the body with what happened, Try again and a reference id.",
+    "Phone: the table head hides and the empty state centres in the card; the buttons stack."
+  ],
+  "status": "mockup",
+  "designReview": null,
+  "order": 20
+}

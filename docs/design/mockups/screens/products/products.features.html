@@ -1,0 +1,423 @@
+<style>
+  /* products.features: the feature table's grid; everything else is the kit. */
+  [data-screen="products.features"] .sidebar .nav-group + .nav-group {
+    padding-top: 4px;
+  }
+  [data-screen="products.features"] .ftable {
+    overflow: hidden;
+  }
+  [data-screen="products.features"] .fhead,
+  [data-screen="products.features"] .frow {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr) 248px 40px;
+    column-gap: 16px;
+    padding: 16px 20px;
+  }
+  [data-screen="products.features"] .fhead {
+    padding-top: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--mk-line);
+    background: color-mix(in oklab, var(--pk-surface-sunken) 40%, var(--pk-surface-raised));
+    border-radius: var(--pk-radius-xl) var(--pk-radius-xl) 0 0;
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="products.features"] .fhead > :first-child {
+    grid-column: 1 / 3;
+  }
+  [data-screen="products.features"] .fhead > :last-child {
+    text-align: right;
+  }
+  [data-screen="products.features"] .frow + .frow {
+    border-top: 1px solid var(--mk-line);
+  }
+  [data-screen="products.features"] .frow > .icon-tile {
+    grid-row: 1 / span 2;
+  }
+  [data-screen="products.features"] .fname {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    line-height: 20px;
+    font-weight: 700;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="products.features"] .fdesc {
+    margin-top: 2px;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="products.features"] .needs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 6px;
+    margin-top: 6px;
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="products.features"] .needs > .ic {
+    width: 13px;
+    height: 13px;
+  }
+  /* Each requirement carries its own mark: a tick when it's on, a lock when it's off. */
+  [data-screen="products.features"] .req {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="products.features"] .req > .ic {
+    width: 13px;
+    height: 13px;
+  }
+  [data-screen="products.features"] .req.met > .ic {
+    color: var(--pk-success);
+  }
+  [data-screen="products.features"] .req.unmet {
+    color: var(--pk-text-default);
+    font-weight: 700;
+  }
+  [data-screen="products.features"] .ffacts {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-top: 1px;
+    min-width: 0;
+  }
+  [data-screen="products.features"] .ffacts .meta {
+    font-size: 12px;
+  }
+  [data-screen="products.features"] .fswitch {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 1px;
+  }
+  /* A feature's own switches, nested under its text. */
+  [data-screen="products.features"] .subs {
+    grid-column: 2 / -1;
+    display: flex;
+    flex-direction: column;
+    margin-top: 12px;
+    border: 1px solid var(--mk-line);
+    border-radius: 12px;
+    background: color-mix(in oklab, var(--pk-surface-sunken) 35%, var(--pk-surface-raised));
+  }
+  [data-screen="products.features"] .sub {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 4px 16px;
+    padding: 10px 14px;
+  }
+  [data-screen="products.features"] .sub + .sub {
+    border-top: 1px solid var(--mk-line);
+  }
+  [data-screen="products.features"] .sub-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    line-height: 18px;
+    font-weight: 700;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="products.features"] .sub-desc {
+    font-size: 12px;
+    line-height: 17px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="products.features"] .sub.off .sub-title,
+  [data-screen="products.features"] .sub.off .sub-desc {
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="products.features"] .tag {
+    font-size: 11px;
+    line-height: 16px;
+    font-weight: 400;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="products.features"] .frow.is-off .fname {
+    color: var(--pk-text-default);
+  }
+  [data-screen="products.features"] .rule {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 16px;
+    border: 1px solid var(--mk-line);
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="products.features"] .rule > .ic {
+    margin-top: 1px;
+    color: var(--pk-accent-fg);
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="products.features"] .fhead {
+      display: none;
+    }
+    [data-screen="products.features"] .frow {
+      grid-template-columns: 36px minmax(0, 1fr) auto;
+      column-gap: 12px;
+      row-gap: 8px;
+      padding: 14px 16px;
+    }
+    [data-screen="products.features"] .frow > .icon-tile {
+      grid-row: auto;
+    }
+    [data-screen="products.features"] .ffacts {
+      grid-column: 2 / -1;
+      grid-row: 2;
+    }
+    [data-screen="products.features"] .fswitch {
+      grid-column: 3;
+      grid-row: 1;
+    }
+    [data-screen="products.features"] .subs {
+      grid-column: 1 / -1;
+      margin-top: 4px;
+    }
+    [data-screen="products.features"] .sub {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    [data-screen="products.features"] .sub > .switch,
+    [data-screen="products.features"] .sub > .segmented {
+      grid-row: 1;
+      grid-column: 1;
+      justify-self: end;
+    }
+    [data-screen="products.features"] .sub > .segmented {
+      grid-row: auto;
+      justify-self: start;
+    }
+    [data-screen="products.features"] .sub > div:first-child {
+      grid-row: 1;
+      grid-column: 1;
+      padding-right: 56px;
+    }
+    /* The tab strip scrolls; its fade says there is more. */
+    [data-screen="products.features"] .tabs {
+      -webkit-mask-image: linear-gradient(to right, black calc(100% - 40px), transparent);
+      mask-image: linear-gradient(to right, black calc(100% - 40px), transparent);
+    }
+    /* Switches keep a 24 px target on phone. */
+    [data-screen="products.features"] .switch {
+      width: 44px;
+      height: 24px;
+    }
+    [data-screen="products.features"] .switch::after {
+      width: 18px;
+      height: 18px;
+    }
+    [data-screen="products.features"] .switch.on::after {
+      left: 22px;
+    }
+  }
+</style>
+
+<div class="console" data-service="core">
+  <header class="topbar">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <!-- Product context (ST-45): Diceroll runs Licensing, Managed config, Ship builds and Commerce. -->
+  <nav class="sidebar" aria-label="Diceroll">
+    <div class="ctx">
+      <span class="logo sm" data-product="diceroll"></span>
+      <span class="ctx-text"><span class="ctx-name">Diceroll</span><span class="ctx-sub mono">diceroll</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item" href="#"><i class="ic ic-layout-dashboard"></i><span class="nav-text">Overview</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-plug"></i><span class="nav-text">Integration</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-shield-check"></i><span class="nav-text">Access</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span><span class="count">26,315</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
+    <div class="nav-group closed" data-service="license"><div class="nav-label">Licensing<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="config"><div class="nav-label">Managed config<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="release"><div class="nav-label">Ship builds<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="commerce"><div class="nav-label">Commerce<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="sidebar-foot">
+      <a class="nav-item active" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="page narrow">
+      <header class="page-head">
+        <nav class="crumbs"><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i>Settings</nav>
+        <div class="page-heading"><h1>Settings</h1></div>
+        <p class="page-sub">What Diceroll uses, how it looks, its keys and who works on it.</p>
+        <div class="page-actions">
+          <button class="btn ghost hide-phone"><i class="ic ic-history"></i>History</button>
+        </div>
+      </header>
+
+      <nav class="tabs">
+        <a class="tab active" href="#">Features</a>
+        <a class="tab" href="#">Presentation</a>
+        <a class="tab" href="#">Keys &amp; secrets</a>
+        <a class="tab" href="#">Members <span class="count">4</span></a>
+      </nav>
+
+      <div class="rule">
+        <i class="ic ic-info"></i>
+        <span>A feature turns on only when the features it needs are on. Turning a feature off also turns off every feature that needs it, in one change you confirm. Each change is recorded in Activity.</span>
+      </div>
+
+      <!-- ST-38: six features, each row with its own switches and its facts as status. -->
+      <section class="card ftable" aria-label="Features">
+        <div class="fhead"><span>Feature</span><span>Status</span><span>On</span></div>
+
+        <div class="frow">
+          <span class="icon-tile" data-service="license"><i class="svc"></i></span>
+          <div>
+            <div class="fname">Licensing</div>
+            <div class="fdesc">Tiers, add-ons, entitlements and who gets a license automatically.</div>
+            <div class="needs"><i class="ic ic-link"></i>Commerce needs Licensing</div>
+          </div>
+          <div class="ffacts">
+            <span class="status"><i class="ic ic-circle-check"></i>Verified on 4 platforms</span>
+            <span class="meta tnum">3 tiers · 18,406 licenses</span>
+          </div>
+          <div class="fswitch"><span class="switch on" role="switch" aria-checked="true" aria-label="Licensing"></span></div>
+        </div>
+
+        <div class="frow">
+          <span class="icon-tile" data-service="config"><i class="svc"></i></span>
+          <div>
+            <div class="fname">Managed config</div>
+            <div class="fdesc">Settings, secrets and profiles you change without shipping a build.</div>
+            <div class="needs"><i class="ic ic-link"></i>Cloud Sync needs Managed config</div>
+          </div>
+          <div class="ffacts">
+            <span class="status"><i class="ic ic-circle-check"></i>Catalog v6 published</span>
+            <span class="meta">Default and 3 tier profiles</span>
+          </div>
+          <div class="fswitch"><span class="switch on" role="switch" aria-checked="true" aria-label="Managed config"></span></div>
+          <div class="subs">
+            <div class="sub">
+              <div>
+                <div class="sub-title">Minted tokens</div>
+                <div class="sub-desc">Short-lived tokens the catalog declares, minted for each device. Diceroll declares one: <span class="mono">multiplayer.roomToken</span>.</div>
+              </div>
+              <span class="switch on" role="switch" aria-checked="true" aria-label="Minted tokens"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="frow">
+          <span class="icon-tile" data-service="release"><i class="svc"></i></span>
+          <div>
+            <div class="fname">Ship builds</div>
+            <div class="fdesc">Releases from CI, delivered to every channel, with in-app updates.</div>
+          </div>
+          <div class="ffacts">
+            <span class="status"><i class="ic ic-circle-check"></i>1.8.2 on stable</span>
+            <span class="meta">App Store, Google Play, Steam, itch.io</span>
+          </div>
+          <div class="fswitch"><span class="switch on" role="switch" aria-checked="true" aria-label="Ship builds"></span></div>
+          <div class="subs">
+            <div class="sub">
+              <div>
+                <div class="sub-title">In-app updates</div>
+                <div class="sub-desc">The Godot updater checks Diceroll’s signed feed in the itch.io builds. Store builds update through their store. On by default when Ship builds turns on.</div>
+              </div>
+              <span class="switch on" role="switch" aria-checked="true" aria-label="In-app updates"></span>
+            </div>
+            <div class="sub">
+              <div>
+                <div class="sub-title">Packages</div>
+                <div class="sub-desc">Publish packages for Diceroll on <span class="mono">pkg.plrs.im</span>, such as a mod kit.</div>
+              </div>
+              <span class="switch" role="switch" aria-checked="false" aria-label="Packages"></span>
+            </div>
+            <div class="sub">
+              <div>
+                <div class="sub-title">Polaris Key storefront</div>
+                <div class="sub-desc">Who can find Diceroll in Discover on <span class="mono">key.plrs.im</span>. Eligible: only people who own it in a store or qualify under the access policy.</div>
+              </div>
+              <div class="segmented sm" role="radiogroup" aria-label="Discover visibility"><span>Unlisted</span><span>Eligible</span><span class="on">Everyone</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="frow is-off" id="row-signin">
+          <span class="icon-tile muted" data-service="identity"><i class="svc"></i></span>
+          <div>
+            <div class="fname">Sign-in</div>
+            <div class="fdesc">Players sign in with a Polaris Key account, in the game and on the customer portal.</div>
+            <div class="needs"><i class="ic ic-link"></i>Cloud Sync needs Sign-in</div>
+          </div>
+          <div class="ffacts">
+            <span class="status muted">Off</span>
+          </div>
+          <div class="fswitch"><span class="switch" role="switch" aria-checked="false" aria-label="Sign-in"></span></div>
+          <div class="subs">
+            <div class="sub off">
+              <div>
+                <div class="sub-title">Customer portal</div>
+                <div class="sub-desc">Players see Diceroll in their library and manage its devices. Turns on with Sign-in.</div>
+              </div>
+              <span class="switch disabled" role="switch" aria-checked="false" aria-disabled="true" aria-label="Customer portal"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="frow is-off">
+          <span class="icon-tile muted" data-service="sync"><i class="svc"></i></span>
+          <div>
+            <div class="fname">Cloud Sync</div>
+            <div class="fdesc">Each player’s saves and settings, the same on every device.</div>
+            <div class="needs"><span>Needs</span><span class="req met"><i class="ic ic-circle-check"></i>Managed config is on</span><span class="req unmet"><i class="ic ic-lock"></i>Sign-in is off</span></div>
+          </div>
+          <div class="ffacts">
+            <span class="status muted">Off</span>
+            <a class="link small" href="#row-signin">Turn on Sign-in first</a>
+          </div>
+          <div class="fswitch"><span class="switch disabled" role="switch" aria-checked="false" aria-disabled="true" aria-label="Cloud Sync, needs Sign-in"></span></div>
+        </div>
+
+        <div class="frow">
+          <span class="icon-tile" data-service="commerce"><i class="svc"></i></span>
+          <div>
+            <div class="fname">Commerce</div>
+            <div class="fdesc">Sell tiers and add-ons as offers, with a SKU on each store.</div>
+            <div class="needs"><span>Needs</span><span class="req met"><i class="ic ic-circle-check"></i>Licensing is on</span></div>
+          </div>
+          <div class="ffacts">
+            <span class="status"><i class="ic ic-circle-check"></i>3 storefronts ready</span>
+            <span class="meta">App Store, Google Play, Steam. itch.io’s storefront isn’t set up yet.</span>
+          </div>
+          <div class="fswitch"><span class="switch on" role="switch" aria-checked="true" aria-label="Commerce"></span></div>
+        </div>
+      </section>
+
+      <!-- Raw slugs and the derived registration policy: read-only, folded. -->
+      <section class="card feature-fold" aria-labelledby="adv-title">
+        <span class="icon-tile sm muted"><i class="ic ic-sliders-horizontal"></i></span>
+        <div class="title">
+          <h3 id="adv-title">Advanced</h3>
+          <span class="meta">Service slugs and how devices register, read-only</span>
+        </div>
+        <button class="btn ghost sm">Show<i class="ic ic-chevron-down"></i></button>
+      </section>
+    </div>
+  </main>
+</div>

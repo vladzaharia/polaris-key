@@ -1,0 +1,216 @@
+<style>
+  /* licenses.access-rule-states: the Add a rule dialog when the group matches no one, already has a rule, is blank, or the preview is loading or failed. */
+  [data-screen="licenses.access-rule-states"] .board {
+    gap: 40px 48px;
+  }
+  [data-screen="licenses.access-rule-states"] .board-item {
+    width: calc((100% - 48px) / 2);
+  }
+  [data-screen="licenses.access-rule-states"] .board-item > .dialog {
+    width: 100%;
+  }
+  [data-screen="licenses.access-rule-states"] .tier-pill > .ic,
+  [data-screen="licenses.access-rule-states"] .select > .ic-layers {
+    color: var(--pk-service-license-fg);
+  }
+  [data-screen="licenses.access-rule-states"] .rd-pair {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+  }
+  [data-screen="licenses.access-rule-states"] .rd-gets {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 12px;
+    align-items: center;
+  }
+  [data-screen="licenses.access-rule-states"] .rd-preview {
+    border: 1px solid var(--mk-line);
+    border-radius: 14px;
+    background: var(--pk-surface-sunken);
+  }
+  [data-screen="licenses.access-rule-states"] .rd-preview-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--mk-line);
+    font-size: 14px;
+    color: var(--pk-text-default);
+  }
+  [data-screen="licenses.access-rule-states"] .rd-preview-head .ic {
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="licenses.access-rule-states"] .rd-person {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+  }
+  [data-screen="licenses.access-rule-states"] .rd-person + .rd-person {
+    border-top: 1px solid var(--mk-line);
+  }
+  [data-screen="licenses.access-rule-states"] .sk-dot {
+    flex: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--mk-fill);
+  }
+  [data-screen="licenses.access-rule-states"] .sk-lines {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+  }
+  [data-screen="licenses.access-rule-states"] .rd-preview > .callout {
+    margin: 0;
+    border: 0;
+    border-radius: 14px;
+  }
+  [data-screen="licenses.access-rule-states"] .error-text a {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  [data-screen="licenses.access-rule-states"] figcaption {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    line-height: 18px;
+  }
+  [data-screen="licenses.access-rule-states"] figcaption strong {
+    color: var(--pk-text-strong);
+  }
+  @container screen (max-width: 1023px) {
+    [data-screen="licenses.access-rule-states"] .board-item {
+      width: 100%;
+      max-width: 640px;
+    }
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="licenses.access-rule-states"] .rd-pair,
+    [data-screen="licenses.access-rule-states"] .rd-gets {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    [data-screen="licenses.access-rule-states"] .rd-gets > .segmented {
+      justify-self: start;
+    }
+    [data-screen="licenses.access-rule-states"] .dialog-foot {
+      flex-direction: column-reverse;
+      align-items: stretch;
+    }
+  }
+</style>
+
+<div class="board" data-service="core">
+  <div class="board-title">
+    <h1>Add a rule: other states</h1>
+    <p>The Add a rule dialog from licenses.access-rule when the group matches nobody yet, already has a rule, is left blank, or the match preview is still counting or can’t count. Only the fields that matter to each state are drawn.</p>
+  </div>
+
+  <!-- Zero matches: it saves, but the preview says why it matches no one. -->
+  <figure class="board-item">
+    <div class="dialog lg" role="dialog" aria-labelledby="rs-zero">
+      <div class="dialog-head"><h2 id="rs-zero">Add a rule</h2><button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button></div>
+      <div class="dialog-body">
+        <div class="rd-pair">
+          <div class="field"><label class="field-label">Group</label><div class="input mono"><span class="grow">djdl-press-eu</span></div></div>
+          <div class="field"><label class="field-label">From</label><div class="select"><i class="ic ic-link"></i><span class="grow">Pocket ID</span><i class="ic ic-chevrons-up-down"></i></div></div>
+        </div>
+        <div class="field"><label class="field-label">They get</label><div class="rd-gets"><div class="segmented"><span class="on">A tier</span><span>An add-on</span></div><div class="select"><i class="ic ic-layers"></i><span class="grow">Studio</span><i class="ic ic-chevrons-up-down"></i></div></div></div>
+        <div class="rd-preview">
+          <div class="callout warning">
+            <i class="ic ic-triangle-alert"></i>
+            <div class="grow">
+              <div class="callout-title">No sign-in from Pocket ID has sent <span class="mono">djdl-press-eu</span> yet</div>
+              <div class="callout-text">The rule saves, but matches no one until it does. Check the group name in Pocket ID; it must match exactly, including case.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="dialog-foot"><button class="btn outline">Cancel</button><button class="btn primary"><i class="ic ic-plus"></i>Add rule</button></div>
+    </div>
+    <figcaption><strong>Matches no one</strong>The preview slot becomes a warning that says why and how to check. Add rule stays enabled: groups can be created in Pocket ID later. On Access the saved rule shows “0 · can’t match”.</figcaption>
+  </figure>
+
+  <!-- Duplicate: the same group from the same connection already has a rule. -->
+  <figure class="board-item">
+    <div class="dialog lg" role="dialog" aria-labelledby="rs-dup">
+      <div class="dialog-head"><h2 id="rs-dup">Add a rule</h2><button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button></div>
+      <div class="dialog-body">
+        <div class="rd-pair">
+          <div class="field invalid"><label class="field-label">Group</label><div class="input mono focus"><span class="grow">studio-pro</span></div>
+            <span class="error-text"><i class="ic ic-circle-x"></i><span>There’s already a rule for <span class="mono">studio-pro</span> from Pocket ID (gives Studio). <a href="#">Edit that rule</a> instead.</span></span></div>
+          <div class="field"><label class="field-label">From</label><div class="select"><i class="ic ic-link"></i><span class="grow">Pocket ID</span><i class="ic ic-chevrons-up-down"></i></div></div>
+        </div>
+        <div class="field"><label class="field-label">They get</label><div class="rd-gets"><div class="segmented"><span class="on">A tier</span><span>An add-on</span></div><div class="select"><i class="ic ic-layers"></i><span class="grow">Standard</span><i class="ic ic-chevrons-up-down"></i></div></div></div>
+      </div>
+      <div class="dialog-foot"><button class="btn outline">Cancel</button><button class="btn primary" disabled><i class="ic ic-plus"></i>Add rule</button></div>
+    </div>
+    <figcaption><strong>Duplicate</strong>Checked as soon as the group and connection are both set. The error names the existing rule and what it gives, and links to edit it; the preview is hidden and Add rule is disabled until the group changes.</figcaption>
+  </figure>
+
+  <!-- Blank group on Add rule. -->
+  <figure class="board-item">
+    <div class="dialog lg" role="dialog" aria-labelledby="rs-empty">
+      <div class="dialog-head"><h2 id="rs-empty">Add a rule</h2><button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button></div>
+      <div class="dialog-body">
+        <div class="rd-pair">
+          <div class="field invalid"><label class="field-label">Group</label><div class="input mono focus"><span class="ph grow">members-plus</span></div>
+            <span class="error-text"><i class="ic ic-circle-x"></i>Enter the group name exactly as Pocket ID sends it.</span></div>
+          <div class="field"><label class="field-label">From</label><div class="select"><i class="ic ic-link"></i><span class="grow">Pocket ID</span><i class="ic ic-chevrons-up-down"></i></div></div>
+        </div>
+        <div class="field"><label class="field-label">They get</label><div class="rd-gets"><div class="segmented"><span class="on">A tier</span><span>An add-on</span></div><div class="select"><i class="ic ic-layers"></i><span class="grow">Studio</span><i class="ic ic-chevrons-up-down"></i></div></div></div>
+      </div>
+      <div class="dialog-foot"><button class="btn outline">Cancel</button><button class="btn primary"><i class="ic ic-plus"></i>Add rule</button></div>
+    </div>
+    <figcaption><strong>Blank group</strong>After Add rule with the group empty: the error sits under the field, focus moves to it, and nothing is saved. The placeholder shows the expected shape.</figcaption>
+  </figure>
+
+  <!-- Preview counting. -->
+  <figure class="board-item">
+    <div class="dialog lg" role="dialog" aria-labelledby="rs-load">
+      <div class="dialog-head"><h2 id="rs-load">Add a rule</h2><button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button></div>
+      <div class="dialog-body">
+        <div class="rd-pair">
+          <div class="field"><label class="field-label">Group</label><div class="input mono"><span class="grow">djdl-press</span></div></div>
+          <div class="field"><label class="field-label">From</label><div class="select"><i class="ic ic-link"></i><span class="grow">Pocket ID</span><i class="ic ic-chevrons-up-down"></i></div></div>
+        </div>
+        <div class="rd-preview" aria-busy="true">
+          <div class="rd-preview-head"><i class="ic ic-user-check"></i><span class="skeleton" style="width: 220px"></span><span class="sr-only" role="status">Counting accounts with djdl-press</span></div>
+          <div class="rd-person"><span class="sk-dot"></span><span class="sk-lines"><span class="skeleton" style="width: 40%"></span><span class="skeleton" style="width: 55%"></span></span><span class="skeleton" style="width: 160px"></span></div>
+          <div class="rd-person"><span class="sk-dot"></span><span class="sk-lines"><span class="skeleton" style="width: 34%"></span><span class="skeleton" style="width: 50%"></span></span><span class="skeleton" style="width: 120px"></span></div>
+        </div>
+      </div>
+      <div class="dialog-foot"><button class="btn outline">Cancel</button><button class="btn primary"><i class="ic ic-plus"></i>Add rule</button></div>
+    </div>
+    <figcaption><strong>Preview counting</strong>A two-row skeleton in the preview slot while Polaris Key counts, announced to screen readers only. Add rule works while it counts.</figcaption>
+  </figure>
+
+  <!-- Preview failed. -->
+  <figure class="board-item">
+    <div class="dialog lg" role="dialog" aria-labelledby="rs-fail">
+      <div class="dialog-head"><h2 id="rs-fail">Add a rule</h2><button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button></div>
+      <div class="dialog-body">
+        <div class="rd-pair">
+          <div class="field"><label class="field-label">Group</label><div class="input mono"><span class="grow">djdl-press</span></div></div>
+          <div class="field"><label class="field-label">From</label><div class="select"><i class="ic ic-link"></i><span class="grow">Pocket ID</span><i class="ic ic-chevrons-up-down"></i></div></div>
+        </div>
+        <div class="rd-preview">
+          <div class="callout">
+            <i class="ic ic-circle-help"></i>
+            <div class="grow">
+              <div class="callout-title">Couldn’t count who has <span class="mono">djdl-press</span></div>
+              <div class="callout-text">Polaris Key didn’t answer in time. The rule still saves; the count shows on Access afterwards.</div>
+            </div>
+            <button class="btn outline sm"><i class="ic ic-refresh-cw"></i>Retry</button>
+          </div>
+        </div>
+      </div>
+      <div class="dialog-foot"><button class="btn outline">Cancel</button><button class="btn primary"><i class="ic ic-plus"></i>Add rule</button></div>
+    </div>
+    <figcaption><strong>Preview failed</strong>A neutral callout in the preview slot says what failed and that the rule still saves, with Retry. It never blocks Add rule.</figcaption>
+  </figure>
+</div>

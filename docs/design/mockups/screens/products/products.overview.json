@@ -1,0 +1,61 @@
+{
+  "id": "products.overview",
+  "title": "Product overview",
+  "area": "products",
+  "surface": "console",
+  "order": 3,
+  "packages": [
+    "ST-41",
+    "ST-40",
+    "ST-44"
+  ],
+  "uxRows": [
+    "UX-21",
+    "UX-61",
+    "UX-63"
+  ],
+  "summary": "DJDL's Overview while integration is under way: Continue integration as the primary action, its one attention item, the Integration card with a Verified mark per feature and platform from SDK sightings, one tile per enabled feature, and recent activity. Welcome, the Trust & SDK panel and the setup checklist are gone.",
+  "compare": [
+    "Header: DJDL's logo, name and slug, one fact line (what it is, licenses, devices), a More menu and 'Continue integration' as the one primary. Once Integration is hidden, the primary becomes the first enabled feature's main action.",
+    "Needs attention shows only DJDL's broken things from the same server read as Home (the missing required secret), each naming its feature, not the product.",
+    "The Integration card replaces Welcome, the Trust & SDK panel and the setup checklist; none of them appears anywhere on the page.",
+    "Integration card head: one sentence naming the verified features and the platform not seen yet, one meter per planned platform counting its verified features (macOS 2 of 5, Windows 0 of 5), and a More menu holding Hide Integration (offered only after the first Verified feature, never automatic). The card has no Continue of its own while the page primary is Continue integration.",
+    "The card's grid has one row per enabled feature in canonical order (Commerce is off, so no row) and one column per planned platform (macOS, Windows), plus 'In the console' with Done, or '1 step left:' with an open ring and the step's name as a link (Sparkle signing key, Storage per account).",
+    "Verified has four states, defined once and drawn the same on Overview and Integration: Verified (green tick, the time and SDK version) once the console steps are done and the SDK's call succeeded; 'Waiting for the first …' (a console-accent dot with a halo) when the console steps are done and the platform has been seen, but not this feature's call yet; 'Finish the console step' (muted, open ring, a link to the step) when the platform has been seen but a console step is still open; 'Not seen yet' (dashed ring) when no SDK has reached Polaris Key from that platform. Healthy states are status text, never pills.",
+    "Ship builds shows its CI fact ('CI verified Oct 6') under its name, because CI sends no SDK request. Its macOS cell reads 'Finish the console step' until the Sparkle signing key exists, then waits for the updater's first check. Cloud Sync's macOS cell also reads 'Finish the console step' (storage per account), although the Swift SDK has reached Polaris Key from macOS.",
+    "The foot names the latest sighting in words ('Swift SDK 2.1.0 reached Polaris Key from macOS arm64, 4 min ago') and links to Integration.",
+    "Feature tiles: one per enabled feature in canonical order, each with its glyph, one number and one line ('Standard · 3 waiting licenses', glossary: waiting licence); a problem shows in warning text (1 required secret has no value). 'Manage features' opens Settings → Features.",
+    "No signing key, JWKS URL or SDK chooser on Overview: the key lives on Keys & secrets, the SDK on Integration.",
+    "Phone: the card head keeps the More menu beside the title, the per-platform meters go full width, Continue integration is the page's one primary, each feature row stacks its console state and one line per platform with the platform's name, and the five tiles sit two across with the odd last tile spanning the row.",
+    "The DJDL sidebar shows one count, on Devices (412, ST-36's device pill), as on every product screen; the service accent stays on each row's glyph tile."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: the Verified states now follow one four-state definition shared with Integration, the duplicate Continue is gone, and progress is counted per platform.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "Verified states contradicted each other: Ship builds had '1 step left' yet macOS said 'Waiting for the first update check'; Cloud Sync had '1 step left' yet macOS said 'Not seen yet' although the Swift SDK had reached Polaris Key from macOS.",
+        "resolution": "Four states defined once (Verified; Waiting for the first …; Finish the console step; Not seen yet) and written into compare. Ship builds macOS and Cloud Sync macOS now read 'Finish the console step' (muted, open ring, a link to the step). Waiting is used only where the console is done (Sign-in on macOS)."
+      },
+      {
+        "severity": "minor",
+        "issue": "The header's Continue integration and the card's outline Continue went to the same place; '2 of 5 verified' didn't say which platform; '1 step left' had no mark.",
+        "resolution": "The card's Continue is removed (only its More menu stays). The meter is one bar per platform: macOS 2 of 5, Windows 0 of 5. '1 step left:' has an open-ring mark and names its step as a link."
+      },
+      {
+        "severity": "minor",
+        "issue": "'3 waiting for an email' instead of the glossary's waiting licenses; on phone Cloud Sync's tile sat alone in a half-empty last row.",
+        "resolution": "Tile reads 'Standard · 3 waiting licenses'. On phone an odd last tile spans both columns."
+      },
+      {
+        "severity": "minor",
+        "issue": "Cross-screen (from sidebar-contexts): this sidebar had no counts while the Sidebar contexts board showed Devices 412 and Licenses 240.",
+        "resolution": "One rule everywhere: Devices carries the device count (ST-36's pill) and nothing else does. Devices 412 added here."
+      }
+    ]
+  }
+}

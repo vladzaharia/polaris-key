@@ -1,0 +1,49 @@
+{
+  "id": "admin.roles",
+  "title": "Roles",
+  "area": "admin",
+  "surface": "console",
+  "order": 4,
+  "packages": [
+    "ST-31",
+    "ST-28",
+    "ST-35"
+  ],
+  "uxRows": [],
+  "summary": "Members → Roles: the four built-in roles as cards (what each covers, who can give it, how many people hold it) and the read-only role × area matrix generated from the route table, product areas first with their stable ids, then the platform pages.",
+  "compare": [
+    "Exactly four role cards in this order: Superadmin, Platform admin, Product admin, Console access. No Product editor, Product viewer or custom role, and no 'Create role' button.",
+    "Each card says what the role covers in one or two sentences, then a footer: who can give it (Superadmin; or that product's admin for Product admin; or a Platform admin for Console access) and, on its own line, how many people hold it now. The footers' dividers line up across the four cards.",
+    "The matrix is read-only and says it is generated from the route table; the built page must be produced by the same generator the docs' roles page uses, with a drift gate.",
+    "Product rows list the ten areas in order with their stable ids in mono (core, license, config, ship, signin, sync, commerce, keys, settings, members) and the service glyph for the six features; Core, Keys, Settings and Members carry a one-line list of what they cover.",
+    "Platform admin sees other products by name and status on Home only; every other product cell for Platform admin is a dash.",
+    "Members (product) for Product admin reads 'Gives Product admin of its product, up to its own areas' (no escalation).",
+    "Platform rows: Members and SSO rules, Connections, Platform settings, Packages and Status, New products (a Platform admin who creates one becomes its admin), Docs (every member; operator pages for Superadmin and Platform admin only).",
+    "Healthy cells use the green status check with a verb (Manage, Create, Everything), partial cells are muted text, and none is a subtle dash; no pills in the matrix.",
+    "Phone: the four cards stack; above the matrix a segmented control picks one role (Superadmin, Platform, Product, Console) and the matrix shows the Area column (60%, names wrap beside their icon) plus that role's column only, with the area ids and the header glyphs hidden. The matrix fits its card at 390 and 360 px."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fix applied: the phone matrix fits at 390 and 360, the card footers line up, and the phone switch uses role names.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "On phone the matrix overflows its card (368px in 356 at 390, 368 in 326 at 360) and the role header is clipped.",
+        "resolution": "In the phone container query the matrix is table-layout: fixed with the Area column at 60%; area names wrap beside their icon (white-space normal, min-width 0) and the header wraps without its role glyph. Measured: the matrix is 326 px in its 328 px card at 360 and 356 px in 358 at 390, with no sideways scroll."
+      },
+      {
+        "severity": "minor",
+        "issue": "The four card footers aren't bottom-aligned, and '• 2 people' breaks across lines.",
+        "resolution": "The cards are subgrid rows of the card grid (title, text, footer), so the footer dividers share one line at every width; the count has its own line ('2 people')."
+      },
+      {
+        "severity": "minor",
+        "issue": "The phone switch reads 'Super', which isn't a role name.",
+        "resolution": "The switch reads Superadmin, Platform, Product, Console, and fits at 360."
+      }
+    ]
+  }
+}

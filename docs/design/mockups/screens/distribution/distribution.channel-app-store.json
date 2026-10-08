@@ -1,0 +1,72 @@
+{
+  "id": "distribution.channel-app-store",
+  "title": "App Store channel",
+  "area": "distribution",
+  "surface": "console",
+  "packages": [
+    "A-22",
+    "A-28",
+    "A-26",
+    "P2-08",
+    "CM-23"
+  ],
+  "uxRows": [
+    "UX-57"
+  ],
+  "order": 2,
+  "summary": "Diceroll's App Store channel page on its Status tab, in the Ship builds accent: one page with Status, Releases, Listing, Sales and Setup; each store lane with the release track that feeds it, what is live and what is next; what customers do (link and QR code); the Sales side's own state and summary; and the store identity derived from the platform pin.",
+  "compare": [
+    "One page per channel with the tabs in this order: Status, Releases, Listing, Sales, Setup. Sales shows here because the storefront side is set up; when it isn't, the Sales tab shows its wizard and the other tabs are unaffected.",
+    "The breadcrumb is 'Diceroll › Ship builds › Channels › App Store', the same path as Channels and every other channel page.",
+    "The header: the App Store mark, the name, Live as status text (not a pill), then one line with the family, how it gets there and the rating ('Store · App Store Connect API · iOS · ★ 4.6 from 1,284 ratings'), then Open in App Store Connect, Publish 1.9.0 (primary, because 1.9.0 is newer than what is live and fits) and an overflow that includes 'Not using Diceroll on the App Store'.",
+    "The page is in the Ship builds accent (release cyan); green means Live, and the Sales card alone is in the Commerce colour.",
+    "Live on the App Store has one row per store lane, with the columns Store lane, From release track, Live and Next. The release track is the shared mono chip in the Ship builds accent, drawn as on Release tracks: App Store from stable, TestFlight · Beta testers (external group, 212 testers) from beta, TestFlight · Diceroll team (internal group, 6 testers) from dev, the same groups as packages.release-tracks. TestFlight is a lane of this channel, never a separate channel, and 'track' alone never names a store lane.",
+    "Next for the App Store says what Polaris Key already prepared ('Ready to submit: build processed, notes and listing pushed') with a Publish link; the foot says 'Testing lanes get every release on their release track. The App Store itself waits for your typed click in Publish.' with 'Lane map on Setup'.",
+    "The read time is shown ('Read from App Store Connect 3 min ago') with a refresh control. Recent lists what happened in words and in order, with who did it: uploaded by the release workflow (22 min ago, when 1.9.0 reached Polaris Key), processed by App Store Connect (15 min ago), prepared for review and sent to TestFlight · Beta testers by Polaris Key (14 min ago), Ana Lima's earlier submission.",
+    "When App Store Connect can't be read, the Live card keeps its last-known rows dimmed under one line saying what went wrong and how to fix it ('Couldn't read App Store Connect at 10:42: the team key was revoked.' with Replace key), the channel shows Attention on Channels with the same sentence, and the read time says when the rows are from. A team key that fails its check says so in the App card with Replace key.",
+    "What customers do shows the store link and a QR code captioned 'Scan with your iPhone' (the download page's words), what the link opens and where customers see it (dl.plrs.im/diceroll and the Library), from the same customer-action model as the download page. The rating is not here.",
+    "The Sales card is the storefront side in the Commerce colour with its own state (Live) and summary ('Free · selling 3 offers as in-app purchases', purchases in 28 days, '1 refund; that purchase was revoked at once', test purchases off) and Open Sales.",
+    "App identity: bundle id and Apple ID marked Derived (from the platform pin, never typed), and the team key with its last check.",
+    "Sidebar: Ship builds open, App Store active under Channels, Steam with '2 of 4'.",
+    "Phone: Open in App Store Connect moves into the overflow; the tabs sit 18 px apart so all five fit at 390 and at 360, and below that the bar scrolls inside itself with a shaded right edge that shows only while there is more to scroll; the side cards follow the main column; each lane row stacks with small From, Live and Next labels; the lane-map link keeps its own line under the note."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: store lanes in the glossary's words and the Release tracks story, the shared release-track chip in the Ship builds accent, 'Store' as the family, the rating and QR caption moved, one breadcrumb path and a coherent timeline.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "[versus the plan and other areas] Store-lane names, tester counts and words ('Track', 'testing tracks', 'Track map') disagree with packages.release-tracks and the glossary.",
+        "resolution": "Columns are 'Store lane' and 'From release track'; the lanes are TestFlight · Beta testers (external, 212) from beta and TestFlight · Diceroll team (internal, 6) from dev, as on Release tracks; the foot says 'Testing lanes get every release on their release track' and 'Lane map on Setup'; the Steam setup says 'Lane map: beta → Steam's beta branch, dev → dev'. itch.io follows stable only on Channels and Publish. No macOS appears on these screens; packages.release-tracks still lists a `mac` itch.io channel, which its owner should drop so the story is one."
+      },
+      {
+        "severity": "major",
+        "issue": "[visual] Release-track chips in the Updates tangerine, a fourth accent.",
+        "resolution": "The chips use packages.release-tracks' .trk shape (mono, 700, accent-subtle fill) in the Ship builds accent, so a release track looks the same on every screen."
+      },
+      {
+        "severity": "minor",
+        "issue": "[copy] 'App store · App Store Connect API · iOS' reads like a duplicate; Steam is an 'App store'.",
+        "resolution": "The family is 'Store' on every channel (App Store, Steam, Flathub, Microsoft Store)."
+      },
+      {
+        "severity": "minor",
+        "issue": "[layout] The rating sits under What customers do; the QR code has no caption.",
+        "resolution": "The rating moved to the header's meta line; the QR code is captioned 'Scan with your iPhone', and the card says what the link opens."
+      },
+      {
+        "severity": "minor",
+        "issue": "[phone] The lane-map link is dropped on phone; the tabs have no scroll cue for 360.",
+        "resolution": "The link keeps its own line under the note on phone. The tabs are 18 px apart on phone, so all five fit at 390 and 360 (checked at 360: 328 of 328 px); at 320 the bar scrolls inside itself and shades its right edge only while there is more (checked). The compare keeps the 360 check."
+      },
+      {
+        "severity": "minor",
+        "issue": "[states and realism] No failed-read or failed-key state; processing came before the CI arrival; 'revoked at once' is unclear; breadcrumbs differ.",
+        "resolution": "Timeline fixed: uploaded 22 min ago, processed 15, prepared and sent 14 (Channels and Publish agree). '1 refund; that purchase was revoked at once'. Breadcrumb 'Diceroll › Ship builds › Channels › App Store' on both channel pages and 'Diceroll › Ship builds › Channels' on Channels. The stale state is a compare item with its exact copy rather than drawn, because the page shows one read; drawing it would hide the healthy rows the page exists to show."
+      }
+    ]
+  }
+}

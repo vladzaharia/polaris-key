@@ -1,0 +1,201 @@
+<style>
+  /* commerce.purchases-no-results: store cell, state cell with its effect, and the subscription link. */
+  [data-screen="commerce.purchases-no-results"] .store-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    color: var(--pk-text-default);
+  }
+  [data-screen="commerce.purchases-no-results"] .store-cell > .ic {
+    color: var(--pk-text-muted);
+  }
+  [data-screen="commerce.purchases-no-results"] .sku {
+    font-family: var(--pk-font-mono);
+    font-size: 12px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="commerce.purchases-no-results"] .lic {
+    font-family: var(--pk-font-mono);
+    font-size: 12px;
+    color: var(--pk-text-strong);
+    white-space: nowrap;
+    text-decoration: underline;
+    text-decoration-color: var(--pk-border-strong);
+    text-underline-offset: 3px;
+  }
+  [data-screen="commerce.purchases-no-results"] .state {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+  }
+  [data-screen="commerce.purchases-no-results"] .state .cell-sub {
+    max-width: 190px;
+    white-space: normal;
+  }
+  [data-screen="commerce.purchases-no-results"] .table th:last-child,
+  [data-screen="commerce.purchases-no-results"] .table td:last-child {
+    padding-right: 20px;
+  }
+  [data-screen="commerce.purchases-no-results"] .acct .cell-sub {
+    max-width: 210px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  [data-screen="commerce.purchases-no-results"] .avatar.sm.none {
+    background: var(--mk-fill);
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="commerce.purchases-no-results"] .table td:first-child {
+    white-space: nowrap;
+    color: var(--pk-text-muted);
+  }
+  /* Phone: each purchase becomes a stacked row (storefront and time, offer, account, state and license). */
+  @container screen (max-width: 639px) {
+    [data-screen="commerce.purchases-no-results"] .table,
+    [data-screen="commerce.purchases-no-results"] .table tbody {
+      display: block;
+    }
+    [data-screen="commerce.purchases-no-results"] .table thead {
+      display: none;
+    }
+    [data-screen="commerce.purchases-no-results"] .table tr {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-areas:
+        "store when"
+        "offer offer"
+        "acct acct"
+        "state lic";
+      gap: 8px 12px;
+      padding: 14px 16px;
+    }
+    [data-screen="commerce.purchases-no-results"] .table tr + tr {
+      border-top: 1px solid var(--mk-line);
+    }
+    [data-screen="commerce.purchases-no-results"] .table td {
+      display: block;
+      padding: 0;
+      border: 0;
+      min-width: 0;
+    }
+    [data-screen="commerce.purchases-no-results"] .table td:nth-child(1) { grid-area: when; font-size: 13px; }
+    [data-screen="commerce.purchases-no-results"] .table td:nth-child(2) { grid-area: store; }
+    [data-screen="commerce.purchases-no-results"] .table td:nth-child(3) { grid-area: offer; }
+    [data-screen="commerce.purchases-no-results"] .table td:nth-child(4) { grid-area: acct; }
+    [data-screen="commerce.purchases-no-results"] .table td:nth-child(5) { grid-area: lic; text-align: right; }
+    [data-screen="commerce.purchases-no-results"] .table td:nth-child(6) { grid-area: state; }
+    [data-screen="commerce.purchases-no-results"] .table td:nth-child(3) .sku {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    [data-screen="commerce.purchases-no-results"] .acct .cell-sub {
+      max-width: none;
+    }
+    [data-screen="commerce.purchases-no-results"] .state .cell-sub {
+      white-space: normal;
+    }
+  }
+  [data-screen="commerce.purchases-no-results"] .search-field.typed {
+    color: var(--pk-text-strong);
+  }
+  [data-screen="commerce.purchases-no-results"] .search-field.typed > .mono {
+    flex: 1;
+  }
+  [data-screen="commerce.purchases-no-results"] .search-field .btn {
+    margin-right: -6px;
+  }
+  [data-screen="commerce.purchases-no-results"] .table-card .table {
+    border-bottom: 0;
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="commerce.purchases-no-results"] .table-card .table {
+      display: none;
+    }
+  }
+</style>
+
+<div class="console" data-service="commerce">
+  <header class="topbar">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <nav class="sidebar" aria-label="Diceroll">
+    <div class="ctx">
+      <span class="logo sm" data-product="diceroll"></span>
+      <span class="ctx-text"><span class="ctx-name">Diceroll</span><span class="ctx-sub mono">diceroll</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item" href="#"><i class="ic ic-layout-dashboard"></i><span class="nav-text">Overview</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-shield-check"></i><span class="nav-text">Access</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
+    <div class="nav-group closed" data-service="license"><div class="nav-label">Licensing<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="config" style="padding-top: 4px"><div class="nav-label">Managed config<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="release" style="padding-top: 4px"><div class="nav-label">Ship builds<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="identity" style="padding-top: 4px"><div class="nav-label">Sign-in<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="sync" style="padding-top: 4px"><div class="nav-label">Cloud Sync<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group" data-service="commerce">
+      <div class="nav-label">Commerce<i class="ic ic-chevron-down sm"></i></div>
+      <a class="nav-item" href="#"><i class="ic ic-store"></i><span class="nav-text">Storefronts</span><span class="count danger">2</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-tag"></i><span class="nav-text">Offers</span></a>
+      <a class="nav-item active" href="#"><i class="ic ic-receipt"></i><span class="nav-text">Purchases</span></a>
+    </div>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="page">
+      <header class="page-head">
+        <div class="page-heading"><h1>Purchases</h1></div>
+        <p class="page-sub">Every storefront’s purchases in one ledger. A full refund or a chargeback removes what it added at once; a partial refund never does.</p>
+        <div class="page-actions">
+          <button class="btn outline hide-phone"><i class="ic ic-download"></i>Export CSV</button>
+        </div>
+      </header>
+
+      <nav class="tabs" aria-label="Purchases">
+        <a class="tab active" href="#">All <span class="count">1,071</span></a>
+        <a class="tab" href="#"><span class="hide-phone">Refunds and chargebacks</span><span class="show-phone">Refunds</span> <span class="count">15</span></a>
+        <a class="tab" href="#">Added nothing <span class="count warning">3</span></a>
+      </nav>
+
+      <div class="toolbar">
+        <div class="search-field typed"><i class="ic ic-search"></i><span class="mono">lic_9ZQX…4TBA</span><button class="btn ghost icon xs" aria-label="Clear search"><i class="ic ic-x"></i></button></div>
+        <span class="filter on"><i class="ic ic-check"></i>Last 28 days</span>
+        <span class="filter"><i class="ic ic-plus"></i>Storefront</span>
+        <span class="filter"><i class="ic ic-plus"></i>Offer</span>
+      </div>
+
+      <!-- Filtered to nothing (EXPERIENCE.md §9): says what matched nothing and offers the way out. -->
+      <div class="table-card">
+        <table class="table">
+          <thead>
+            <tr><th>Bought</th><th>Storefront</th><th>Offer</th><th>Account</th><th>License</th><th>State</th></tr>
+          </thead>
+        </table>
+        <div class="empty">
+          <span class="empty-icon"><i class="ic ic-search"></i></span>
+          <h3>No purchase in the last 28 days has <span class="mono">lic_9ZQX…4TBA</span></h3>
+          <p>Search takes an email, a license id or a store order id. The license may have no store purchases, or bought earlier.</p>
+          <div class="btn-row">
+            <button class="btn outline">Search all time</button>
+            <button class="btn">Clear search</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>

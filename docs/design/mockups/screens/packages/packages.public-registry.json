@@ -1,0 +1,24 @@
+{
+  "id": "packages.public-registry",
+  "title": "Publish to PyPI.org",
+  "area": "packages",
+  "surface": "console",
+  "order": 6,
+  "packages": [
+    "F-35",
+    "F-34"
+  ],
+  "uxRows": [],
+  "summary": "F-35's registry wizard for DJDL's public package djdl-crates on Oct 2, at its last step: the name claimed on PyPI.org, the trusted publisher added through a deep link, the CI step verified, and the per-package approval, irreversible and limited to stable and beta, with a typed confirmation.",
+  "compare": [
+    "Reached from the PyPI feed's ⋯ menu ('Publish to PyPI.org…'); crumbs Packages › PyPI › djdl-crates; Distribution accent; Packages active in the sidebar with the count of feeds on Oct 2 (2).",
+    "The subtitle says what happens and the security property: stable and beta releases go to PyPI.org from DJDL's own CI through trusted publishing; Polaris Key never holds a PyPI password or token.",
+    "The card head says how far along it is ('4 steps, 3 done') and the precondition: only a Public package can go, djdl-crates is Public since Sep 12.",
+    "Steps: Claim the name (a pending publisher reserves djdl-crates for example-org/djdl), Add the trusted publisher on PyPI.org (the exact owner, repository, workflow and environment values, who added it and when, 'Open on PyPI.org'), Verify (what was checked, with the release.yml job: environment pypi, id-token: write, 'pkey feeds publish-public --deliverable pypi.crates').",
+    "Approve: chips for what goes (stable; beta as pre-releases) and what never goes (dev, dashed), a warning that it can't be undone (PyPI.org keeps every version; cleanup never deletes them; stopping only stops new versions), a typed confirmation with the package name, and 'Approve publishing to PyPI.org' with Cancel.",
+    "After approval, Packages shows 'Also on PyPI.org' on the djdl-crates row and the approval in the feed's foot, and the portal row says 'also on PyPI.org'.",
+    "Phone: the steps stack, the code scrolls inside its block, and the two buttons take full rows with the primary on top."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

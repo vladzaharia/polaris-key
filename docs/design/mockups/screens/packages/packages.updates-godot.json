@@ -1,0 +1,61 @@
+{
+  "id": "packages.updates-godot",
+  "title": "Updates for a Godot game",
+  "area": "packages",
+  "surface": "console",
+  "order": 12,
+  "packages": [
+    "P2-11",
+    "A-20",
+    "P2-09",
+    "A-24",
+    "P2-10"
+  ],
+  "uxRows": [],
+  "summary": "Diceroll's Updates page on Oct 7, the same page for a Godot game on iOS, Android, Windows and Linux: Play in-app updates (Verified) with the halted 1.8.0 rollout and the way forward, the Godot updater for Windows and Linux copies with Verified on 1 of 2, the App Store as store-managed and Steam as not connected, and no Sparkle-family updaters.",
+  "compare": [
+    "Same page as packages.updates, scoped differently: the scope line reads 'Godot 4.4 exports for' as plain text before the platform pills (Android, iOS, Windows x64, Linux x86_64, as on distribution.channels; no macOS).",
+    "Google Play: Play in-app updates, 'Verified' with 'first update check Oct 3, 20:12' in the head, the update priority per release, and the GDScript snippet (Kotlin tab beside it); the code foot says only the Play build runs it.",
+    "The halted 1.8.0 Play rollout is a warning callout in the Play card: it reached 20% before the demote on Oct 7, players are offered nothing new until a newer release reaches stable, 1.8.1 has the fix, and 'Promote 1.8.1 on Release tracks'. Consistent with packages.release-tracks and packages.demote.",
+    "The Godot updater covers Windows and Linux copies from itch.io and the download page and says what it serves per release track. The head shows 'Verified on 1 of 2' in neutral text with a two-segment neutral meter; it turns green only when every platform is verified.",
+    "The Verified foot gives every platform the same two lines: Windows 'Verified' then 'Oct 2, 21:40 · first check, 1.7.2 to 1.7.3'; Linux 'Waiting for the first update check' (the kit's neutral clock) then 'Linux copies have started since Oct 4; none has checked yet'.",
+    "Updated by the store: the App Store row is muted 'Store-managed'; the Steam row says Steam will update from each player's branch but no build reaches Steam yet (no Steamworks publisher key), with Connect Steam and a 'Not connected' warning pill, matching Home.",
+    "The 'Not shown' line names Sparkle, WinSparkle, Velopack, App Installer and zsync and why.",
+    "Update rules: 'Who can check for updates' is Public (free players get fixes), read-only with Open Access; Release track names 312 licenses (the Supporter tier and 38 more).",
+    "Phone: the sidebar folds into the menu button, the scope pills wrap, card status drops under the title, the Play callout stays in the setup column, code scrolls inside its block and the platform cells stack, each keeping its two lines."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: Verified and a neutral partial state, Steam matches Home, the halted rollout points to the next step, and platform cells read alike.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "[Visual/state] The kit's waiting dot and waiting task mark take the page accent (--pk-accent), so 'Waiting for…' is green on Packages (reads healthy), tangerine on Updates (reads as a warning) and cyan on Integration; the spinner arc reads as 'loading now' while it really waits on an outside event.",
+        "resolution": "Fixed in the kit (kit/mockup.css, kit/README.md): .waiting-dot and .task.waiting now draw a static clock in --pk-text-muted (the task mark inside a neutral --pk-border-strong ring), never --pk-accent and never a spinner, so the state looks the same on Packages, Updates and Integration. Accents stay on links, the active nav item and the track tags."
+      },
+      {
+        "severity": "major",
+        "issue": "[Copy/glossary] Updates says 'Wired' for the fact Integration's Ship builds row calls 'Verified' (glossary §2: Verified includes an updater check); Windows is 'Not seen yet' on Integration and 'Waiting for the first update check' on Updates.",
+        "resolution": "Wired is gone from both Updates pages: the head says 'Verified' with the event as detail ('first update check Oct 7, 16:48'), the subtitle says 'Each updater shows Verified after its first real update check', and the Godot card says 'Verified on 1 of 2'. Windows on DJDL's Updates now says 'Not seen yet' ('no Windows build has checked in'), as on products.integration; 'Waiting for the first update check' is kept only for a platform that is seen but hasn't checked (Linux on the Godot page), which is the kit's waiting-versus-unseen rule."
+      },
+      {
+        "severity": "major",
+        "issue": "[Cross-area consistency] products.home says Diceroll's Steam channel can't upload builds (no Steamworks publisher key), yet Release tracks, Demote and Updates (Godot) show Steam working normally; Home also omits the App Store and itch.io.",
+        "resolution": "Kept Home's story (and distribution.channels', where Steam is 'Not set up, step 2 of 4'). Every Steam cell on Release tracks says 'Not sent: Steam isn't connected', with an attention row and Connect Steam under the map; Demote and Promote list Steam as 'Skipped' with Connect Steam; Updates (Godot) marks Steam 'Not connected'. Also aligned with distribution.channels: itch.io's channels are windows-x64 and linux-x86_64 and Diceroll has no macOS build, so the Godot updater covers Windows and Linux. Home omitting the App Store and itch.io belongs to the products area."
+      },
+      {
+        "severity": "minor",
+        "issue": "[Visual/state] 'Wired on 2 of 3' is success green while a platform is still waiting; the halted-rollout callout gives no next step; on phone Linux's detail wraps flush left; the scope pills mix the engine with platforms.",
+        "resolution": "'Verified on 1 of 2' is neutral text with a two-segment neutral meter, green only at all verified (macOS is gone to match distribution.channels, so Linux is the waiting platform). The Play callout says 1.8.1 has the fix and links 'Promote 1.8.1 on Release tracks'. Every platform cell has the same two lines (name and status, then the detail). The scope reads 'Godot 4.4 exports for' as plain text before the platform pills."
+      },
+      {
+        "severity": "minor",
+        "issue": "[Visual] The light --pk-warning-subtle fill (#eae7e6) reads as a grey, disabled box (the cleanup dry run's lockfile warning and the Play callout on Updates (Godot)).",
+        "resolution": "declined: --pk-warning-subtle is the brand token the kit carries verbatim from packages/brand/css; warming it in the mockup kit alone would make every mockup disagree with the built console. Flagged for the brand package (the lead's call), where one change fixes mockups and screens together."
+      }
+    ]
+  }
+}

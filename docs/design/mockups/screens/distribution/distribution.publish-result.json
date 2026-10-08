@@ -1,0 +1,22 @@
+{
+  "id": "distribution.publish-result",
+  "title": "Publish dialog, after the click",
+  "area": "distribution",
+  "surface": "dialog",
+  "packages": ["A-24", "P2-08"],
+  "uxRows": ["UX-58"],
+  "order": 5,
+  "summary": "The Publish 1.9.0 dialog right after the click, over the dimmed Channels page: each channel's row turns into its own progress (Polaris Key done, Google Play sending, the App Store failed with what went wrong, how to fix it and a Retry for that channel only), because partial success is the realistic outcome of one click to three stores.",
+  "compare": [
+    "After Publish the dialog stays open and its title says what is happening ('Publishing 1.9.0'); the meta line names the promotion and who started it.",
+    "Each channel from the click is one row with its own state in words: Done (status text with a tick), Sending (spinner, muted text) or Failed (danger mark and status). The eyebrow counts them ('1 done · 1 sending · 1 failed').",
+    "A failed row says in one sentence what went wrong and how to fix it, in the store's terms ('Apple didn't accept the submission: build 214 has no export compliance answers. Answer them in App Store Connect, then retry.'), with Retry for that channel only and a link to the store's own page. Nothing that already succeeded is sent again.",
+    "A done row says what happened and what follows (Polaris Key: 10% now, everyone by Oct 10; Scoop and Obtainium follow it).",
+    "No click needed stays one line with Show, as before the click.",
+    "The footer says closing doesn't stop anything and Close is the only button; there is no primary while a channel is still sending or has failed.",
+    "When every channel succeeds the dialog closes by itself to one success toast in the past tense ('Published 1.9.0 to 3 channels'); when any failed it stays open like this, and closing it leaves the failed channel's row on Channels in Attention with the same sentence and Retry.",
+    "The header and footer stay in view and the body scrolls (capped to the viewport); on phone the dialog is a full-height sheet with the footer at the bottom and each row's state under its text."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

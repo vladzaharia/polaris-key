@@ -1,0 +1,758 @@
+<style>
+  /* sdk.react-activate: activation with a license key in the React kit's one form (DJDL, Electron on Windows). */
+  /* DJDL's accent, derived from its icon (coral between the brand's orange and rose); no product mark is Polaris Key's. */
+  [data-screen="sdk.react-activate"] {
+    --pd: color-mix(in oklab, var(--pk-service-update) 45%, var(--pk-brand-rose));
+    --pd-on: var(--pk-text-on-accent);
+    --pd-subtle: color-mix(in oklab, var(--pd) 13%, var(--pk-surface-raised));
+    --pd-fg: var(--pd);
+  }
+  [data-screen="sdk.react-activate"] .frames {
+    flex-basis: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 40px 48px;
+    align-items: flex-start;
+    min-width: 0;
+  }
+  [data-screen="sdk.react-activate"] .frame {
+    width: 640px;
+    max-width: none;
+  }
+  [data-screen="sdk.react-activate"] .codeframe {
+    width: 640px;
+    max-width: 100%;
+  }
+  [data-screen="sdk.react-activate"] .board-item > figcaption {
+    max-width: 640px;
+    line-height: 19px;
+  }
+  [data-screen="sdk.react-activate"] .board-item > figcaption strong {
+    color: var(--pk-text-strong);
+  }
+  [data-screen="sdk.react-activate"] .window-bar .logo {
+    margin-right: 8px;
+  }
+  [data-screen="sdk.react-activate"] .window.win .window-bar {
+    padding-left: 12px;
+    font-weight: 400;
+    color: var(--pk-text-default);
+  }
+  [data-screen="sdk.react-activate"] .welcome {
+    display: grid;
+    grid-template-columns: 236px minmax(0, 1fr);
+    height: 640px;
+  }
+  [data-screen="sdk.react-activate"] .welcome > .art {
+    aspect-ratio: auto;
+    height: 100%;
+    border-radius: 0;
+  }
+  /* The one sign-in form: app header, then a body that morphs in place. */
+  [data-screen="sdk.react-activate"] .kf {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 0;
+    min-width: 0;
+    padding: 44px 36px 28px;
+    font-size: 14px;
+    line-height: 21px;
+    color: var(--pk-text-default);
+  }
+  [data-screen="sdk.react-activate"] .kf .logo.lg {
+    flex: none;
+    margin-bottom: 16px;
+    border-radius: 14px;
+  }
+  [data-screen="sdk.react-activate"] .kf h2 {
+    font-size: 24px;
+    line-height: 30px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="sdk.react-activate"] .kf .lede {
+    margin-top: 6px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="sdk.react-activate"] .kbtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 40px;
+    padding: 0 18px;
+    border: 0;
+    border-radius: 10px;
+    font: 500 14px/20px var(--pk-font-sans);
+    white-space: nowrap;
+  }
+  [data-screen="sdk.react-activate"] .kbtn.primary {
+    background: var(--pd);
+    color: var(--pd-on);
+  }
+  [data-screen="sdk.react-activate"] .kbtn.secondary {
+    background: var(--mk-fill);
+    color: var(--pk-text-strong);
+  }
+  [data-screen="sdk.react-activate"] .keep .kbtn.secondary,
+  [data-screen="sdk.react-activate"] .confirm .kbtn.secondary {
+    background: var(--pk-surface-page);
+  }
+  [data-screen="sdk.react-activate"] .kbtn.sm {
+    height: 32px;
+    padding: 0 12px;
+    font-size: 13px;
+    border-radius: 8px;
+  }
+  [data-screen="sdk.react-activate"] .kbtn.block {
+    width: 100%;
+  }
+  [data-screen="sdk.react-activate"] .kbtn .ic {
+    width: 15px;
+    height: 15px;
+  }
+  [data-screen="sdk.react-activate"] .quiet {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 500;
+    color: var(--pd-fg);
+  }
+  [data-screen="sdk.react-activate"] .quiet .ic {
+    width: 14px;
+    height: 14px;
+  }
+  [data-screen="sdk.react-activate"] .kfoot {
+    display: flex;
+    gap: 8px;
+    margin-top: 20px;
+    font-size: 12px;
+    line-height: 17px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="sdk.react-activate"] .kfoot .ic {
+    flex: none;
+    width: 13px;
+    height: 13px;
+    margin-top: 2px;
+  }
+  [data-screen="sdk.react-activate"] .krule {
+    height: 1px;
+    margin: 18px 0;
+    background: var(--mk-line);
+  }
+  [data-screen="sdk.react-activate"] .krow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  [data-screen="sdk.react-activate"] .kactions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 18px;
+  }
+  [data-screen="sdk.react-activate"] .kactions .grow {
+    flex: 1;
+  }
+  [data-screen="sdk.react-activate"] .person {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    font-size: 13px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="sdk.react-activate"] .person .avatar {
+    width: 22px;
+    height: 22px;
+    font-size: 10px;
+  }
+  /* Waiting: a breathing dot, never a spinner. */
+  [data-screen="sdk.react-activate"] .waiting {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 18px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: var(--mk-fill);
+    color: var(--pk-text-default);
+  }
+  [data-screen="sdk.react-activate"] .breath {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--pd);
+    box-shadow: 0 0 0 5px color-mix(in oklab, var(--pd) 22%, transparent);
+  }
+  /* License rows: title; tier pill and devices; origin and duration; the seat meter. */
+  [data-screen="sdk.react-activate"] .lrows {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  [data-screen="sdk.react-activate"] .lrow {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+    gap: 2px 12px;
+    padding: 11px 14px 12px;
+    border: 1px solid var(--mk-line);
+    border-radius: 12px;
+    background: var(--pk-surface-raised);
+  }
+  [data-screen="sdk.react-activate"] .lrow.on {
+    background: var(--pd-subtle);
+  }
+  [data-screen="sdk.react-activate"] .lrow > :not(.lmark):not(.ltag) {
+    grid-column: 2 / -1;
+  }
+  [data-screen="sdk.react-activate"] .lmark {
+    grid-row: 1;
+    margin-top: 2px;
+  }
+  [data-screen="sdk.react-activate"] .radio-k {
+    display: block;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 1.5px var(--pk-border-strong);
+  }
+  [data-screen="sdk.react-activate"] .on .radio-k {
+    box-shadow: inset 0 0 0 1.5px var(--pd), inset 0 0 0 5px var(--pk-surface-raised), inset 0 0 0 9px var(--pd);
+  }
+  [data-screen="sdk.react-activate"] .lmark > .ic {
+    width: 18px;
+    height: 18px;
+    color: var(--pk-warning);
+  }
+  [data-screen="sdk.react-activate"] .ltitle {
+    grid-column: 2 !important;
+    grid-row: 1;
+    font-weight: 600;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="sdk.react-activate"] .ltag {
+    grid-column: 3;
+    grid-row: 1;
+    align-self: start;
+  }
+  [data-screen="sdk.react-activate"] .kpill {
+    display: inline-flex;
+    align-items: center;
+    height: 20px;
+    padding: 0 8px;
+    border-radius: var(--pk-radius-full);
+    box-shadow: inset 0 0 0 1px var(--pk-border-strong);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--pk-text-strong);
+  }
+  /* A full key wraps instead of hiding its end, so every character can be checked. */
+  [data-screen="sdk.react-activate"] .kinput.wrap {
+    height: auto;
+    min-height: 40px;
+    padding-block: 7px;
+  }
+  [data-screen="sdk.react-activate"] .kinput.wrap > span {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  [data-screen="sdk.react-activate"] .kinput .ph {
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="sdk.react-activate"] .kpill.warn {
+    box-shadow: none;
+    background: var(--pk-warning-subtle);
+    color: var(--pk-warning);
+  }
+  [data-screen="sdk.react-activate"] .kpill.new {
+    box-shadow: none;
+    background: var(--pd-subtle);
+    color: var(--pd-fg);
+  }
+  [data-screen="sdk.react-activate"] .lline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--pk-text-default);
+  }
+  [data-screen="sdk.react-activate"] .lmeta {
+    font-size: 13px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="sdk.react-activate"] .seats {
+    display: flex;
+    gap: 3px;
+    margin-top: 6px;
+  }
+  [data-screen="sdk.react-activate"] .seats > i {
+    flex: 1;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--mk-line);
+  }
+  [data-screen="sdk.react-activate"] .seats > i.u {
+    background: var(--pk-text-muted);
+  }
+  [data-screen="sdk.react-activate"] .seats.full > i {
+    background: var(--pk-warning);
+  }
+  [data-screen="sdk.react-activate"] .lrow .kbtn.sm {
+    justify-self: start;
+    margin-top: 8px;
+  }
+  /* Fields are filled, never boxed; the label sits above. */
+  [data-screen="sdk.react-activate"] .kfield {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 16px;
+  }
+  [data-screen="sdk.react-activate"] .kfield label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="sdk.react-activate"] .kinput {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    padding: 0 6px 0 12px;
+    border-radius: 10px;
+    background: var(--mk-fill);
+    font: 400 14px/20px var(--pk-font-mono);
+    color: var(--pk-text-strong);
+  }
+  [data-screen="sdk.react-activate"] .kinput.focus {
+    outline: 2px solid var(--pd);
+    outline-offset: 0;
+  }
+  [data-screen="sdk.react-activate"] .kinput.bad {
+    background: var(--pk-danger-subtle);
+  }
+  [data-screen="sdk.react-activate"] .kinput > span {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  [data-screen="sdk.react-activate"] .khint {
+    font-size: 12px;
+    line-height: 17px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="sdk.react-activate"] .kerr {
+    display: flex;
+    gap: 6px;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-danger);
+  }
+  [data-screen="sdk.react-activate"] .kerr .ic {
+    flex: none;
+    width: 14px;
+    height: 14px;
+    margin-top: 2px;
+  }
+  [data-screen="sdk.react-activate"] .done-check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    margin-bottom: 14px;
+    border-radius: 50%;
+    background: var(--pk-success-subtle);
+    color: var(--pk-success);
+  }
+  [data-screen="sdk.react-activate"] .done-check .ic {
+    width: 22px;
+    height: 22px;
+  }
+  [data-screen="sdk.react-activate"] .keep {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 16px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: var(--mk-fill);
+  }
+  [data-screen="sdk.react-activate"] .keep-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="sdk.react-activate"] .reason {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr);
+    gap: 10px;
+    font-size: 13px;
+    line-height: 19px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="sdk.react-activate"] .reason .ic {
+    width: 16px;
+    height: 16px;
+    margin-top: 2px;
+    color: var(--pd-fg);
+  }
+  [data-screen="sdk.react-activate"] .reason strong {
+    font-weight: 600;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="sdk.react-activate"] .code.small pre {
+    font-size: 12px;
+    line-height: 19px;
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="sdk.react-activate"] .answer {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    [data-screen="sdk.react-activate"] .answer .acts {
+      grid-column: 1;
+    }
+    [data-screen="sdk.react-activate"] .frames {
+      gap: 28px;
+    }
+    [data-screen="sdk.react-activate"] .frame {
+      zoom: 0.555;
+    }
+    [data-screen="sdk.react-activate"] .board-item {
+      width: 100%;
+    }
+    [data-screen="sdk.react-activate"] .codeframe {
+      width: auto;
+    }
+  }
+
+  [data-screen="sdk.react-activate"] .devs {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 14px;
+  }
+  [data-screen="sdk.react-activate"] .dev {
+    display: grid;
+    grid-template-columns: 18px 18px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: var(--pk-surface-raised);
+    box-shadow: inset 0 0 0 1px var(--mk-line);
+    font-size: 13px;
+    line-height: 18px;
+  }
+  [data-screen="sdk.react-activate"] .dev.on {
+    background: var(--pd-subtle);
+  }
+  [data-screen="sdk.react-activate"] .dev > .ic {
+    width: 16px;
+    height: 16px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="sdk.react-activate"] .dev b {
+    font-weight: 600;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="sdk.react-activate"] .dev small {
+    margin-left: 8px;
+    font-size: 12px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="sdk.react-activate"] .confirm {
+    margin-top: 12px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: var(--mk-fill);
+  }
+  [data-screen="sdk.react-activate"] .confirm b {
+    display: block;
+    font-weight: 600;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="sdk.react-activate"] .confirm p {
+    margin-top: 2px;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="sdk.react-activate"] .kbtn.danger {
+    background: var(--pk-kit-danger-solid);
+    color: var(--pk-kit-danger-on);
+  }
+  /* Recommended sits above the card's title in both kits, so it never wraps under it. */
+  [data-screen="sdk.react-activate"] .reco {
+    align-self: flex-start;
+  }
+  [data-screen="sdk.react-activate"] .keep-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  [data-screen="sdk.react-activate"] .devs-hint {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 14px;
+    padding: 0 12px;
+    font-size: 12px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="sdk.react-activate"] .devs-hint + .devs {
+    margin-top: 6px;
+  }
+  [data-screen="sdk.react-activate"] .dev .today {
+    color: var(--pk-warning);
+  }
+  [data-screen="sdk.react-activate"] .kbtn.ghost {
+    background: transparent;
+    color: var(--pk-text-strong);
+  }
+  /* Busy: the label says what is happening and the form is locked until it answers. */
+  [data-screen="sdk.react-activate"] .kbtn.busy {
+    gap: 10px;
+    opacity: 0.8;
+    cursor: progress;
+  }
+  [data-screen="sdk.react-activate"] .kbtn.busy::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 0 4px color-mix(in oklab, currentColor 30%, transparent);
+  }
+  [data-screen="sdk.react-activate"] .locked {
+    opacity: 0.55;
+  }
+  [data-screen="sdk.react-activate"] .kstate {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: var(--mk-fill);
+    font-size: 13px;
+    line-height: 19px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="sdk.react-activate"] .kstate .ic {
+    width: 16px;
+    height: 16px;
+    margin-top: 2px;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="sdk.react-activate"] .kstate b {
+    display: block;
+    font-weight: 600;
+    color: var(--pk-text-strong);
+  }
+  /* The other answers, drawn in the form's own patterns. */
+  [data-screen="sdk.react-activate"] .answers {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    width: 640px;
+    max-width: 100%;
+    padding: 6px 20px;
+    border-radius: 14px;
+    background: var(--pk-surface-raised);
+    box-shadow: inset 0 0 0 1px var(--mk-line);
+    font-size: 14px;
+    line-height: 21px;
+  }
+  [data-screen="sdk.react-activate"] .answer {
+    display: grid;
+    grid-template-columns: 150px minmax(0, 1fr);
+    gap: 4px 16px;
+    padding: 14px 0;
+  }
+  [data-screen="sdk.react-activate"] .answer + .answer {
+    border-top: 1px solid var(--mk-line);
+  }
+  [data-screen="sdk.react-activate"] .answer > b {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--pk-text-strong);
+  }
+  [data-screen="sdk.react-activate"] .answer .kerr {
+    margin: 0;
+  }
+  [data-screen="sdk.react-activate"] .answer .acts {
+    grid-column: 2;
+    display: flex;
+    gap: 14px;
+    font-size: 13px;
+  }
+  [data-screen="sdk.react-activate"] .fixture {
+    max-width: 760px;
+    margin-top: 12px;
+  }
+  [data-screen="sdk.react-activate"] .orfoot {
+    margin-top: 10px;
+    font-size: 12px;
+    line-height: 17px;
+    text-align: center;
+    color: var(--pk-text-subtle);
+  }
+</style>
+
+<div class="board" data-service="release">
+  <div class="board-title">
+    <h1>DJDL activates with a key in the React kit</h1>
+    <p><em>Have a license key?</em> morphs the same form into the key field. Every answer from Polaris Key lands in the same place under the field. A key keeps the license floating; when it is already on all its devices the form offers Replace a device inline, and afterwards it recommends keeping DJDL in an account, once, without making it a step.</p>
+    <div class="callout info fixture"><i class="ic ic-info"></i><div class="grow"><div class="callout-title">Kit preview · fixture product</div><div class="callout-text">As on sdk.react-sign-in: DJDL really ships Swift on macOS and Kotlin on Windows. It is drawn as an Electron build only to show the React kit; its facts (Cloud Sync on, Standard on 5 devices) are DJDL’s.</div></div></div>
+  </div>
+  <div class="frames">
+    <figure class="board-item">
+      <div class="window win frame">
+        <div class="window-bar"><span class="logo xs" data-product="djdl"></span>DJDL<span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
+        <div class="window-body welcome">
+          <div class="art" data-product="djdl"></div>
+          <div class="kf">
+            <span class="logo lg" data-product="djdl"></span>
+            <h2>Enter your license key</h2>
+            <p class="lede">You’ll find it in your purchase email.</p>
+            <div class="kfield">
+              <label>License key</label>
+              <div class="kinput wrap focus"><span>pkey_djdl_7HJM2QKD9XRL4WTPB3NC60</span><button class="kbtn secondary sm">Paste</button></div>
+            </div>
+            <div class="kactions"><button class="kbtn primary">Activate license</button><button class="kbtn secondary">Back</button></div>
+          </div>
+        </div>
+      </div>
+      <figcaption><strong>1 · Enter your license key.</strong> A filled field with Paste, focused on keyboard focus only (one 2px outline, no glow). The primary activates; Back returns to Sign in with the header unchanged.</figcaption>
+    </figure>
+    <figure class="board-item">
+      <div class="window win frame">
+        <div class="window-bar"><span class="logo xs" data-product="djdl"></span>DJDL<span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
+        <div class="window-body welcome">
+          <div class="art" data-product="djdl"></div>
+          <div class="kf">
+            <span class="logo lg" data-product="djdl"></span>
+            <h2>Enter your license key</h2>
+            <p class="lede">You’ll find it in your purchase email.</p>
+            <div class="kfield">
+              <label>License key</label>
+              <div class="kinput bad"><span>HSND-7HJM-2QKD-9XRL</span><button class="kbtn secondary sm">Paste</button></div>
+              <span class="kerr" role="alert"><i class="ic ic-circle-x"></i><span>That doesn’t look like a license key. Keys start with pkey_.</span></span>
+            </div>
+            <div class="kactions"><button class="kbtn primary">Activate license</button><button class="kbtn secondary">Back</button></div>
+          </div>
+        </div>
+      </div>
+      <figcaption><strong>1b · Not a key.</strong> A store or reseller code pasted by mistake. The error says what went wrong and what a key looks like, in place under the field; nothing is sent.</figcaption>
+    </figure>
+    <figure class="board-item">
+      <div class="window win frame">
+        <div class="window-bar"><span class="logo xs" data-product="djdl"></span>DJDL<span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
+        <div class="window-body welcome">
+          <div class="art" data-product="djdl"></div>
+          <div class="kf">
+            <span class="logo lg" data-product="djdl"></span>
+            <h2>Enter your license key</h2>
+            <p class="lede">You’ll find it in your purchase email.</p>
+            <div class="kfield locked">
+              <label>License key</label>
+              <div class="kinput wrap"><span>pkey_djdl_7HJM2QKD9XRL4WTPB3NC60</span><button class="kbtn secondary sm" disabled>Paste</button></div>
+            </div>
+            <div class="kactions" aria-busy="true"><button class="kbtn primary busy">Activating…</button><button class="kbtn secondary locked" disabled>Back</button></div>
+          </div>
+        </div>
+      </div>
+      <figcaption><strong>1c · Activating.</strong> The primary says what is happening (<code>activate.busy</code>) and the field, Paste and Back lock until Polaris Key answers. The window can still close; closing cancels.</figcaption>
+    </figure>
+    <figure class="board-item">
+      <div class="window win frame">
+        <div class="window-bar"><span class="logo xs" data-product="djdl"></span>DJDL<span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
+        <div class="window-body welcome">
+          <div class="art" data-product="djdl"></div>
+          <div class="kf">
+            <span class="logo lg" data-product="djdl"></span>
+            <h2>Enter your license key</h2>
+            <p class="lede">You’ll find it in your purchase email.</p>
+            <div class="kfield">
+              <label>License key</label>
+              <div class="kinput wrap bad"><span>pkey_djdl_7HJM2QKD9XRL4WTPB3NC6O</span><button class="kbtn secondary sm">Paste</button></div>
+              <span class="kerr" role="alert"><i class="ic ic-circle-x"></i><span>We couldn’t find that key. Capital letters matter, and l, 1, O and 0 are easy to mix up, so paste the key instead of typing it.</span></span>
+            </div>
+            <div class="kactions"><button class="kbtn primary">Activate license</button><button class="kbtn secondary">Back</button></div>
+          </div>
+        </div>
+      </div>
+      <figcaption><strong>1d · Key not found.</strong> Polaris Key answered: no such key (the last character was typed as O, not 0). Server answers use the same place and pattern as the format error, in the portal’s words (PORTAL §4.19).</figcaption>
+    </figure>
+    <figure class="board-item">
+      <div class="answers">
+        <div class="answer"><b>For another product</b><span class="kerr"><i class="ic ic-circle-x"></i><span>That key is for Diceroll, not DJDL.</span></span></div>
+        <div class="answer"><b>In another account</b><span class="kerr"><i class="ic ic-circle-x"></i><span>This DJDL license is already in another Polaris Key account. A license never moves by its key.</span></span><span class="acts"><a class="quiet" href="#">Sign in to that account</a><a class="quiet" href="#">Use a different key</a></span></div>
+        <div class="answer"><b>Revoked</b><span class="kerr"><i class="ic ic-circle-x"></i><span>That key’s license was revoked, so it no longer activates DJDL. Halcyon Sound can tell you why.</span></span></div>
+        <div class="answer"><b>Refunded</b><span class="kerr"><i class="ic ic-circle-x"></i><span>That key’s purchase was refunded, so its license has ended.</span></span></div>
+        <div class="answer"><b>Offline</b><div class="kstate" role="alert"><i class="ic ic-wifi-off"></i><span><b>Can’t reach Polaris Key</b>Check this computer’s internet connection, then try again. Your key is still in the field.</span><button class="kbtn secondary sm">Try again</button></div></div>
+      </div>
+      <figcaption><strong>1e · The other answers.</strong> Each replaces 1d’s line under the field, with the field tinted; offline is a row above the actions with <em>Try again</em>, and the key stays in the field. None is a toast, and none sends the person elsewhere without saying why.</figcaption>
+    </figure>
+    <figure class="board-item">
+      <div class="window win frame">
+        <div class="window-bar"><span class="logo xs" data-product="djdl"></span>DJDL<span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
+        <div class="window-body welcome">
+          <div class="art" data-product="djdl"></div>
+          <div class="kf">
+            <span class="logo lg" data-product="djdl"></span>
+            <h2>Your license is on 5 of 5 devices</h2>
+            <p class="lede">To use it on this computer, replace one. You can add it back later.</p>
+            <div class="devs-hint"><span>Device</span><span>Last used</span></div>
+            <div class="devs" role="radiogroup" aria-label="Devices on this license">
+              <div class="dev on"><span class="radio-k"></span><i class="ic ic-laptop"></i><span><b>Mara’s MacBook Air</b><small>macOS · Sep 14</small></span></div>
+              <div class="dev"><span class="radio-k"></span><i class="ic ic-monitor"></i><span><b>Studio PC</b><small>Windows · Oct 2</small></span></div>
+              <div class="dev"><span class="radio-k"></span><i class="ic ic-monitor"></i><span><b>Mara’s Mac mini</b><small>macOS · Oct 5</small></span></div>
+              <div class="dev"><span class="radio-k"></span><i class="ic ic-laptop"></i><span><b>Booth laptop</b><small>Windows · Oct 6</small></span></div>
+              <div class="dev"><span class="radio-k"></span><i class="ic ic-laptop"></i><span><b>Mara’s MacBook Pro</b><small>macOS · <span class="today">today</span></small></span></div>
+            </div>
+            <div class="confirm">
+              <b>Replace Mara’s MacBook Air?</b>
+              <p>Mara’s MacBook Air stops using this license now. You can add it back when a device is free.</p>
+              <div class="kactions" style="margin-top: 10px"><button class="kbtn danger">Replace and continue</button><button class="kbtn secondary">Back</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption><strong>2 · Replace a device.</strong> The heading says why the step appeared. The least recently used is preselected and the confirm expands inline under the list (web kit: no dialog on the form); the destructive button says exactly what happens and reads <em>Replacing…</em> with the list locked while it works, as in 1c. A device used today shows it in amber; picking it adds “Mara’s MacBook Pro was used today.” to the confirm.</figcaption>
+    </figure>
+    <figure class="board-item">
+      <div class="window win frame">
+        <div class="window-bar"><span class="logo xs" data-product="djdl"></span>DJDL<span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
+        <div class="window-body welcome">
+          <div class="art" data-product="djdl"></div>
+          <div class="kf">
+            <span class="done-check"><i class="ic ic-check"></i></span>
+            <h2>DJDL is ready</h2>
+            <p class="lede">Standard · Lifetime · this computer is device&nbsp;5&nbsp;of&nbsp;5.</p>
+            <div class="keep">
+              <div class="keep-head"><span class="kpill new reco">Recommended</span>Keep DJDL in your account</div>
+              <div class="reason"><i class="ic ic-cloud"></i><span><strong>Cloud Sync</strong> keeps your crates and settings the same on every computer</span></div>
+              <div class="reason"><i class="ic ic-key-round"></i><span><strong>Get your license back</strong> if you lose the key or this computer</span></div>
+              <div class="reason"><i class="ic ic-monitor-smartphone"></i><span><strong>Move it to a new device</strong> yourself</span></div>
+              <button class="kbtn secondary block" style="margin-top: 4px">Add your name and email</button>
+            </div>
+            <button class="kbtn primary block" style="margin-top: 16px">Start using DJDL</button>
+            <p class="orfoot">Or continue without an account. Your license works the same.</p>
+          </div>
+        </div>
+      </div>
+      <figcaption><strong>3 · DJDL is ready.</strong> The license stays floating. Keep DJDL in your account lists only reasons DJDL has (Cloud Sync is on), shows once, and never blocks: Start using DJDL is the primary, and the line under it promises only what is true without an account.</figcaption>
+    </figure>
+  </div>
+</div>
