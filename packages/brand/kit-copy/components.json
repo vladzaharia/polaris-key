@@ -309,7 +309,9 @@
           "copy": [
             "core.activation.device-limit.title",
             "core.activation.device-limit.message",
-            "deviceLimit.title"
+            "deviceLimit.title",
+            "deviceLimit.noManage",
+            "part.seatMeter.caption"
           ]
         },
         "done": {
@@ -526,6 +528,14 @@
         },
         "browser-mode": {
           "copy": ["devices.browser", "devices.manage", "a11y.externalLink"]
+        },
+        "error": {
+          "copy": [
+            "devices.loadFailed",
+            "devices.renameFailed",
+            "devices.removeFailed",
+            "common.tryAgain"
+          ]
         }
       }
     },
@@ -672,7 +682,8 @@
           "copy": [
             "core.gate.expired.title",
             "core.gate.expired.message",
-            "status.renew"
+            "status.renew",
+            "status.useAnotherLicense"
           ]
         },
         "version-too-old": {
@@ -796,7 +807,7 @@
           "copy": ["settings.setBy", "settings.setByGuardian", "a11y.locked"]
         },
         "error": {
-          "copy": ["settings.error", "common.tryAgain"]
+          "copy": ["settings.loadFailed", "settings.error", "common.tryAgain"]
         }
       }
     },

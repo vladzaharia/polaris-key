@@ -63,10 +63,9 @@ public data class PolarisCopy(
     val graceTitle: String = "Offline grace period",
     val graceBody: String = "We couldn't reach the license server. You can keep working for %1\$s.",
     val graceBodyNoDeadline: String = "We couldn't reach the license server. You can keep working for now.",
-    val expiredTitle: String = "License expired",
-    val expiredBody: String = "Connect to the internet to renew your license.",
-    val revokedTitle: String = "License revoked",
-    val revokedBody: String = "This license is no longer valid on this device. Sign in or activate again to continue.",
+    // Expired and revoked read core.copy's gate entries (Copy.title / Copy.message).
+    /** The expired screen's second action: back to the activation form (a gate-local switch). */
+    val useAnotherLicense: String = "Use another license",
     val versionTooOldTitle: String = "Update required",
     val versionTooOldBody: String = "This version is no longer supported. Update to continue.",
     val versionTooNewTitle: String = "Version not yet allowed",
@@ -91,8 +90,11 @@ public data class PolarisCopy(
     val activate: String = "Activate",
     val activating: String = "Activating…",
     val activationKeyEmpty: String = "Enter a license key first.",
-    val activationDeviceLimit: String = "This license has reached its device limit.",
-    val activationDeviceLimitCount: String = "This license has reached its device limit (%1\$s of %2\$s devices).",
+    // A device-limit refusal reads core.copy's activation entry, with the seat caption under it.
+    /** The seat caption under a device-limit refusal (part.seatMeter.caption). */
+    val seatCaption: String = "%1\$s of %2\$s in use",
+    /** A device-limit refusal with no portal link: the fix, since there is no Replace control. */
+    val deviceLimitNoManage: String = "Sign out of %1\$s on another device, then try again.",
     val activationUnauthorized: String = "That license key wasn't accepted.",
     val activationFingerprintRequired: String = "This license needs a hardware fingerprint, which couldn't be read on this device.",
     val activationHardwareMismatch: String = "This device's hardware changed. The previous authorization was released; activate again to re-bind.",
@@ -105,21 +107,24 @@ public data class PolarisCopy(
     val activationRateLimited: String = "Too many attempts. Wait a moment and try again.",
     val activationRateLimitedFor: String = "Too many attempts. Try again in %1\$s.",
     val activationNetwork: String = "Couldn't reach the license server. Check your connection and try again.",
-    val activationRefused: String = "The license server refused this activation (%1\$s).",
     // PX-W8: the action on a device-limit refusal that carries the portal link.
     val freeDevice: String = "Replace a device",
-    val freeDeviceScan: String = "Scan with your phone to free a device, then try again.",
+    val freeDeviceScan: String = "Scan the code to replace a device on your phone.",
     val freeDeviceQrDescription: String = "QR code that opens your account to free a device",
 
-    // ── Sign-in with QR (RFC 8628) ───────────────────────────────────────────────────────────
-    val signInTitle: String = "Sign in",
+    // ── Sign-in with a code (RFC 8628) ───────────────────────────────────────────────────────
+    val signInTitle: String = "Sign in with a code",
     val signInStarting: String = "Getting a sign-in code…",
-    /** On Android TV, beside the QR code. */
-    val signInInstructions: String = "Scan the code with your phone, or go to %1\$s and enter this code:",
-    /** Everywhere else (no QR code; the address follows with a copy button). */
-    val signInCodeInstructions: String = "On any phone or computer, go to this address and enter the code.",
+    /** On Android TV, beside the QR code; %1$s is the address. */
+    val signInInstructions: String = "Scan the code with your phone, or go to %1\$s and enter this code.",
+    /** Everywhere else; %1$s is the address, set inline. */
+    val signInCodeBody: String = "On any phone or computer, go to %1\$s and enter this code.",
     val signInCopyLink: String = "Copy link",
     val signInLinkCopied: String = "Link copied",
+    /** Shown when no browser could open the sign-in page. */
+    val signInNoBrowser: String = "We couldn't open your browser",
+    /** On Android TV, back to the key field. */
+    val signInUseKey: String = "Use a license key instead",
     val signInQrDescription: String = "QR code that opens the sign-in page",
     val signInCodeDescription: String = "Sign-in code %1\$s",
     val signInOpenBrowser: String = "Open sign-in page",
@@ -127,14 +132,18 @@ public data class PolarisCopy(
     /** PX-W13 (WIRE-CONTRACT-V4 §12.7.1): the device label the sign-in page will show. */
     val signInDeviceLabel: String = "The sign-in page will show “%1\$s”",
     val signInWaiting: String = "Waiting for you to finish signing in…",
-    val signInDone: String = "Signed in.",
-    val signInExpired: String = "The code expired before sign-in finished.",
-    val signInError: String = "Sign-in failed. Check your connection and try again.",
+    val signInDone: String = "Signed in",
+    // Expired and Failed read core.copy's sign-in-expired and sign-in-failed entries.
     val signInNewCode: String = "Get a new code",
 
     // ── Settings ─────────────────────────────────────────────────────────────────────────────
     val settingsTitle: String = "Settings",
     val settingsEmpty: String = "There are no settings to show.",
+    /** The settings could not be read: the error state, with Try again. */
+    val settingsLoadFailed: String = "Settings couldn't be loaded.",
+    /** A boolean setting's value. */
+    val settingsOn: String = "On",
+    val settingsOff: String = "Off",
     val settingsLicense: String = "License",
     val settingsValues: String = "Configuration",
     val settingsLocked: String = "Set by your organization",
@@ -152,10 +161,13 @@ public data class PolarisCopy(
     val licensedTo: String = "Licensed to %1\$s",
 
     // ── Devices ──────────────────────────────────────────────────────────────────────────────
-    val devicesTitle: String = "Devices",
-    val devicesSubtitle: String = "Devices signed in with this license.",
-    val devicesEmpty: String = "No devices yet.",
+    val devicesTitle: String = "Your devices",
+    val devicesSubtitle: String = "Devices using this license.",
+    val devicesEmpty: String = "No devices are using this license yet.",
     val devicesError: String = "Couldn't load your devices.",
+    /** A rename or a removal the SDK refused, named for the device it was on. */
+    val devicesRenameFailed: String = "Couldn't rename %1\$s. Try again.",
+    val devicesRemoveFailed: String = "Couldn't remove %1\$s. Try again.",
     val deviceThis: String = "This device",
     val deviceUnnamed: String = "Unnamed device",
     val deviceLastVerified: String = "Last checked %1\$s",
@@ -163,11 +175,11 @@ public data class PolarisCopy(
     val deviceRenameTitle: String = "Rename device",
     val deviceRenameLabel: String = "Device name",
     val deviceSave: String = "Save",
-    val deviceDeauthorize: String = "Sign out",
-    val deviceDeauthorizeTitle: String = "Sign out this device?",
-    val deviceDeauthorizeBody: String = "%1\$s will need to sign in or activate again.",
+    val deviceDeauthorize: String = "Remove",
+    /** The removal confirm: %1$s is the device, %2$s the product. */
+    val deviceRemoveConfirm: String = "Remove %1\$s? It signs out of %2\$s.",
     val deviceRenameDescription: String = "Rename %1\$s",
-    val deviceDeauthorizeDescription: String = "Sign out %1\$s",
+    val deviceDeauthorizeDescription: String = "Remove %1\$s",
 
     // ── Update ───────────────────────────────────────────────────────────────────────────────
     val updateAvailable: String = "Version %1\$s is available",
@@ -183,6 +195,11 @@ public data class PolarisCopy(
     val updateLater: String = "Later",
     val updateRestart: String = "Restart to update",
     val updateRestartBody: String = "Version %1\$s is ready. Restart to finish updating.",
+    /** The update prompt once the update is ready: %1$s the product, %2$s the version. */
+    val updateReadyTitle: String = "%1\$s %2\$s is ready",
+    /** %1$s is the product. */
+    val updateReadyBody: String = "Restart %1\$s to finish updating.",
+    val updateRestartNow: String = "Restart now",
     val updateFailed: String = "The update couldn't be installed. Try again later.",
 
     // ── Pack progress ────────────────────────────────────────────────────────────────────────

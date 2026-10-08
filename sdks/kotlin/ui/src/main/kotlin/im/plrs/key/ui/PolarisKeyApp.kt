@@ -31,6 +31,7 @@ import im.plrs.key.sdk.bootHost
 import im.plrs.key.sdk.PolarisKeyClient
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonElement
 
 /** The client PolarisKeyApp (or PolarisKeyProvider) provides; null outside one. */
@@ -80,7 +81,8 @@ public fun rememberPolarisSetting(key: String, client: PolarisKeyClient = polari
 /**
  * The whole kit wired to [client]: boot (with the gate, pack progress and the update banner) and
  * then [content]. [onSignIn] starts sign-in from the activation screen (null hides the button);
- * [packs] shows per-pack progress during the boot fetch.
+ * [signIn] runs the device-code sign-in inside the gate instead, whose "Use a license key instead"
+ * and Cancel come back to the key field; [packs] shows per-pack progress during the boot fetch.
  */
 @Composable
 public fun PolarisKeyApp(
@@ -89,6 +91,7 @@ public fun PolarisKeyApp(
     bootOptions: BootOptions = BootOptions(),
     onSignIn: (() -> Unit)? = null,
     packs: Boolean = client.packs.configured,
+    signIn: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -97,6 +100,10 @@ public fun PolarisKeyApp(
     val boot = remember(client, bootOptions) { PolarisBootState(bootOptions) }
     val gate = remember(client) { PolarisGateState(client.gateActions(), scope) }
     val packState = remember(client, packs) { if (packs) PolarisPackProgressState(client.packProgressSource()) else null }
+    // Inline sign-in re-reads the licence when it completes (the SDK has already synced).
+    val signInState = remember(client, signIn) {
+        if (signIn && onSignIn == null) PolarisSignInState(client.signInActions(), scope, onSignedIn = { scope.launch { gate.reload() } }) else null
+    }
     LaunchedEffect(client, bootOptions) {
         gate.start()
         update.follow(updateActions, this)
@@ -110,6 +117,7 @@ public fun PolarisKeyApp(
             packs = packState,
             onSignIn = onSignIn,
             onUpdate = { update.install(updateActions, scope) },
+            signIn = signInState,
         ) {
             val offer by update.offer.collectAsState()
             Column {

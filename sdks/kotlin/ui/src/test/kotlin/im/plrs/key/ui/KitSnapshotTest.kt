@@ -13,7 +13,17 @@ package im.plrs.key.ui
 
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.InputMode
+import androidx.compose.ui.input.InputModeManager
+import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onRoot
@@ -69,17 +79,41 @@ internal val snapshotOptions by lazy {
  * configuration is the one the screen really sees; the compose clock is paused, so an
  * indeterminate progress indicator (an infinite animation) cannot keep the capture from idling.
  */
+/**
+ * The input mode a capture runs in: touch (a phone in hand, no focus ring) unless [keyboard], so
+ * Robolectric's window (which is not in touch mode) does not draw every screen keyboard-focused.
+ */
+internal class FixedInputMode(override val inputMode: InputMode) : InputModeManager {
+    @OptIn(ExperimentalComposeUiApi::class)
+    override fun requestInputMode(inputMode: InputMode): Boolean = false
+}
+
 @OptIn(ExperimentalRoborazziApi::class)
-internal fun ComposeTestRule.capture(name: String, variant: SnapshotVariant, showPoweredBy: Boolean = false, content: @Composable () -> Unit) {
+internal fun ComposeTestRule.capture(
+    name: String,
+    variant: SnapshotVariant,
+    showPoweredBy: Boolean = false,
+    keyboard: Boolean = false,
+    accent: Color? = null,
+    host: ColorScheme? = null,
+    /** Let the screen settle on a running clock after the fades (focus requests land); no infinite animations. */
+    settle: Boolean = false,
+    content: @Composable () -> Unit,
+) {
     RuntimeEnvironment.setQualifiers(variant.qualifiers)
     RuntimeEnvironment.setFontScale(variant.fontScale)
     mainClock.autoAdvance = false
     ActivityScenario.launch(ComponentActivity::class.java).use { scenario ->
         scenario.onActivity { activity ->
             activity.setContent {
-                StockHost(variant.dark) {
-                    PolarisTheme(branding = variant.branding, showPoweredBy = showPoweredBy, copy = sampleCopy, darkTheme = variant.dark) {
-                        content()
+                // A TV is never in touch mode: the D-pad is a keyboard to Compose.
+                val mode = if (keyboard || variant.tv) InputMode.Keyboard else InputMode.Touch
+                CompositionLocalProvider(LocalInputModeManager provides FixedInputMode(mode)) {
+                    val scheme = host ?: if (variant.dark) darkColorScheme() else lightColorScheme()
+                    MaterialTheme(colorScheme = scheme) {
+                        PolarisTheme(branding = variant.branding, showPoweredBy = showPoweredBy, copy = sampleCopy, darkTheme = variant.dark, accent = accent) {
+                            content()
+                        }
                     }
                 }
             }
@@ -87,6 +121,10 @@ internal fun ComposeTestRule.capture(name: String, variant: SnapshotVariant, sho
         // Past the cross-fades, so the picture is the settled screen (and an indeterminate
         // indicator at a frame where its arc is long enough to read).
         mainClock.advanceTimeBy(2_600)
+        if (settle) {
+            mainClock.autoAdvance = true
+            waitForIdle()
+        }
         onRoot().captureRoboImage(filePath = "src/test/snapshots/$name.png", roborazziOptions = snapshotOptions)
     }
 }

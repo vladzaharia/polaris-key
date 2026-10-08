@@ -10,8 +10,9 @@ Android glue.
 ## Neutral by default, branded by one switch
 
 With the defaults, the kit inherits your app's look. Every colour, shape and text style comes from
-your `MaterialTheme`, dynamic colour included. The logo slot is empty, and no Polaris Key colour,
-font, mark or badge appears.
+your `MaterialTheme`, dynamic colour included. Only warning and success, which Material 3 has no
+role for, are the brand's fixed amber and green. No Polaris Key colour, font, mark or badge
+appears.
 
 ```kotlin
 MyAppTheme {                       // your MaterialTheme
@@ -25,7 +26,7 @@ MyAppTheme {                       // your MaterialTheme
 
 One parameter switches to the Polaris Key design system. You get the generated brand palette (dark
 first, light supported), the core violet as primary, the service accents on the small section
-indicators, Rubik and the bit-less Pinned K as the logo:
+indicators, Rubik at 400, 500 and 600, full-round buttons and radius-16 fields:
 
 ```kotlin
 PolarisTheme(branding = PolarisBranding.PolarisKey) { ... }
@@ -39,7 +40,10 @@ PolarisTheme(showPoweredBy = true) { ... }                                      
 PolarisTheme(branding = PolarisBranding.PolarisKey, showPoweredBy = true) { ... } // branded + badge
 ```
 
-`logo = { Image(...) }` puts your own logo at the top of the kit's screens in either mode.
+Your product is the hero, in either mode. `logo = { Image(...) }` is your product's icon: at hero
+size on the welcome, beside your product's name on focused steps and on the update prompt. Without
+one the kit draws a monogram tile of your product's initial. The Pinned K appears only inside the
+optional Powered-by badge.
 `accent = Color(0xFF369186)` applies your product's colour in either mode. It replaces the primary
 roles (the core violet when branded, your scheme's primary when neutral) after the accent resolver
 has adjusted it for contrast in the current scheme. Without it, neutral keeps your scheme exactly,
@@ -122,25 +126,43 @@ you pass to `PolarisGateState`.
 Every screen shares one scaffold, `PolarisScreen`. It applies the safe-drawing insets (bars,
 cutouts, the keyboard) and picks the layout from the space it is given:
 
-- **A phone or a foldable:** one centred column of at most 480 dp. It scrolls rather than clipping
-  when a large font scale leaves too little height.
-- **A tablet or a desktop window** (840 dp wide or more): the same column at 520 dp, with the title
-  a role larger. On a large window (1600 x 900 dp or more) the column is 600 dp, the title larger
-  again, and every text in the screen 1.125x.
-- **A short window** (under 480 dp tall, such as a phone in landscape) **and Android TV:** two panes
-  when the screen has controls. The content sits start-aligned on the start side and the controls
-  on the end side, so the primary action never falls below the fold. Pass your own screen's
+- **A tall window** (a phone, a foldable, a portrait tablet): one column of at most 480 dp (520 on a
+  tablet, 600 on a large window). A focused step, such as the sign-in code, starts under a 48 dp
+  inset and docks its controls at the foot, where they ride above the keyboard. The welcome centres
+  your product's icon, title and lede above them. It scrolls rather than clipping when a large font
+  scale leaves too little height.
+- **Two panes** for a screen with a control group (sign-in, activation): in a short window (under
+  480 dp tall, such as a phone in landscape), on Android TV, and in a landscape window 840 dp wide
+  or more. The content sits on the start side and the controls on the end side, each pane
+  scrolling on its own, so the primary action never falls below the fold. Pass your own screen's
   controls as `PolarisScreen`'s `actions` to get the same behaviour.
+- **Message screens** (an expired licence, a boot stop) never split: a centred column on a phone,
+  and elsewhere one start-aligned block with its actions in a trailing row, on a card on TV and in
+  wide windows.
+
+On a large window (1600 x 900 dp or more) the title steps up again and the screen's type scale is
+1.125x. On TV the screens keep a 48 dp overscan margin, the D-pad starts on the first real
+control, and focused controls show the kit's focus ring and grow slightly; with a keyboard on a
+phone the ring shows too.
 
 Spacing follows one rhythm on the 4 dp grid: 8 dp between a title and its lede, 12 dp between
 stacked controls, 24 dp between two groups of controls, and a section gap between the header, the
 content and the controls (24 dp on a phone, 32 on a tablet, 40 on a large window and 16 in a short
 one).
 
-Sign-in shows the product header (your logo and product name), the user code at hero size in a
-monospace face with no letter spacing, the address with a copy button, and a countdown ring. The
-QR code appears only on Android TV, where the person signs in on another device; pass `showQr` to
-`PolarisSignInScreen` to override that. The licence key field is the Material 3 filled field.
+Sign-in shows the product header (your icon and product name), "Sign in with a code", the address
+set inline in the lede (your `deviceCodeUrl` when you pass one to `PolarisTheme`), the user code at
+hero size in a monospace face with no letter spacing and a copy button for the pre-filled link,
+and a countdown ring. On Android TV it leads with a QR code instead and offers no "Open sign-in
+page", since a TV may have no browser; pass `showQr` to `PolarisSignInScreen` to override that.
+When no browser can open a link, the screen says so and stays put. The licence key field is the
+Material 3 filled field.
+
+Hold `PolarisSignInState` in a ViewModel (with `viewModelScope`), so a rotation or a trip through
+navigation keeps the same code: when `PolarisSignIn` comes back it resumes polling that code
+rather than asking for a new one. `PolarisKeyApp(client, signIn = true)` (or `PolarisGate(state,
+signIn = ...)`) runs sign-in inside the gate instead, and its "Use a license key instead" comes
+back to the key field.
 
 ## Copy and translation
 
@@ -178,7 +200,7 @@ values come from `@polaris-key/brand`: `pnpm gen:brand` writes `PolarisBrandToke
 and copies the kit's Rubik TTFs into `res/font`. `pnpm gen:brand -- --check` fails the green gate
 on any drift. Rubik is under the SIL Open Font License 1.1, and its `OFL.txt` and the kit notice
 ship in the module's assets, so they travel inside every APK that carries the fonts. A neutral kit
-never loads the fonts, so R8's resource shrinking can drop them from an app that never brands.
+reads Rubik only for the monogram tile it draws when you pass no product icon.
 
 ## Tests and snapshots
 
@@ -199,8 +221,15 @@ needed. Every screen is rendered in seven variants, and the committed references
 The responsive suite renders sign-in, the gate's screens, devices, settings and the update prompt
 at six more sizes, each neutral (`native-*`) and branded (`polaris-*`): 360 x 640, a phone in
 landscape at 891 x 411, a small phone in landscape at 640 x 360, a foldable at 673 x 841, a desktop
-window at 1920 x 1080, and a phone at a 150 % font scale. Sign-in and activation also render on
-Android TV at 960 x 540. `ResponsiveLayoutTest` checks at every size that the whole sign-in code,
-Open sign-in page, the key field and Activate are on screen without scrolling.
+window at 1920 x 1080, and a phone at a 150 % font scale. Every message screen also renders at
+891 x 411 and 640 x 360; sign-in and activation at 960 x 540, 1280 x 720 and 2560 x 1440; sign-in,
+its stops, activation, device limit, revoked and expired on Android TV at 960 x 540. `focus/` holds
+the focus ring on TV and with a keyboard, and `accent/` a product accent over a custom host.
+
+`ResponsiveLayoutTest` checks, at all of those sizes and at 800 x 600, 1280 x 800, 1366 x 768, a
+411 x 440 split, 891 x 411 at 150 % and 200 % and 640 x 360 at 150 %, that on sign-in, activation,
+the device-limit screens, every message screen and the update dialog every control is fully on
+screen and at least 48 dp tall, and that the sign-in code is never cut. `FlowTest` covers sign-in
+resuming after the screen leaves composition, no browser, "Use another license" and inline sign-in.
 
 The badge has its own references under `powered-by/`.

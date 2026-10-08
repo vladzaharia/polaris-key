@@ -617,6 +617,11 @@
       "role": "body",
       "note": "DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Browser mode on TV and console."
     },
+    "deviceLimit.noManage": {
+      "value": "Sign out of {product} on another device, then try again.",
+      "role": "body",
+      "note": "DeviceLimit on the key path when the server sent no link to replace a device: the license is on all its devices, so the fix is to free one first. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
     "devices.title": {
       "value": "Your devices",
       "role": "title",
@@ -666,6 +671,21 @@
       "value": "No devices are using this license yet.",
       "role": "body",
       "note": "Devices: the list of devices using the license."
+    },
+    "devices.loadFailed": {
+      "value": "Couldn't load your devices.",
+      "role": "body",
+      "note": "Devices: the list of devices using the license. The list could not be read; a Try again button follows."
+    },
+    "devices.renameFailed": {
+      "value": "Couldn't rename {device}. Try again.",
+      "role": "body",
+      "note": "Devices: the list of devices using the license. A rename was refused. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”."
+    },
+    "devices.removeFailed": {
+      "value": "Couldn't remove {device}. Try again.",
+      "role": "body",
+      "note": "Devices: the list of devices using the license. A removal was refused. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”."
     },
     "devices.browser": {
       "value": "Manage your devices in your browser.",
@@ -941,6 +961,11 @@
       "role": "button",
       "note": "StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Expired license."
     },
+    "status.useAnotherLicense": {
+      "value": "Use another license",
+      "role": "button",
+      "note": "StatusScreen: a blocking state and its fix. Expired license: back to the license key field (and Sign in) to use a different license."
+    },
     "status.update": {
       "value": "Update",
       "role": "button",
@@ -1120,6 +1145,11 @@
       "value": "Settings couldn't be saved. Try again.",
       "role": "body",
       "note": "Settings: settings delivered by the developer."
+    },
+    "settings.loadFailed": {
+      "value": "Settings couldn't be loaded.",
+      "role": "body",
+      "note": "Settings: settings delivered by the developer. The settings could not be read; a Try again button follows."
     },
     "settings.range": {
       "value": "Between {min} and {max}",

@@ -310,6 +310,8 @@
     <string name="deviceLimit_openBrowser__macos">브라우저에서 열기</string>
     <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Browser mode on TV and console. -->
     <string name="deviceLimit_scan">코드를 스캔해 휴대폰에서 기기를 교체하세요.</string>
+    <!-- DeviceLimit on the key path when the server sent no link to replace a device: the license is on all its devices, so the fix is to free one first. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="deviceLimit_noManage">다른 기기에서 %1$s에서 로그아웃한 다음 다시 시도하세요.</string>
     <!-- Devices: the list of devices using the license. -->
     <string name="devices_title">내 기기</string>
     <!-- Devices: the list of devices using the license. -->
@@ -332,6 +334,12 @@
     <string name="devices_removeConfirm">%1$s을(를) 제거할까요? %2$s에서 로그아웃돼요.</string>
     <!-- Devices: the list of devices using the license. -->
     <string name="devices_empty">아직 이 라이선스를 사용하는 기기가 없어요.</string>
+    <!-- Devices: the list of devices using the license. The list could not be read; a Try again button follows. -->
+    <string name="devices_loadFailed">기기를 불러오지 못했어요.</string>
+    <!-- Devices: the list of devices using the license. A rename was refused. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
+    <string name="devices_renameFailed">%1$s의 이름을 바꾸지 못했어요. 다시 시도하세요.</string>
+    <!-- Devices: the list of devices using the license. A removal was refused. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
+    <string name="devices_removeFailed">%1$s을(를) 제거하지 못했어요. 다시 시도하세요.</string>
     <!-- Devices: the list of devices using the license. Browser mode. -->
     <string name="devices_browser">브라우저에서 기기를 관리하세요.</string>
     <!-- Devices: the list of devices using the license. Browser mode; opens the account in the browser. -->
@@ -448,6 +456,9 @@
     <string name="releaseNotes_error">릴리스 노트를 불러오지 못했어요.</string>
     <!-- StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Expired license. -->
     <string name="status_renew">갱신</string>
+    <!-- StatusScreen: a blocking state and its fix. Expired license: back to the license key field (and Sign in) to use a different license. -->
+    <string name="status_useAnotherLicense">다른 라이선스 사용</string>
+    <string name="status_useAnotherLicense__macos">다른 라이선스 사용</string>
     <!-- StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Version too old. -->
     <string name="status_update">업데이트</string>
     <!-- StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Channel not included. -->
@@ -525,6 +536,8 @@
     <string name="settings_unsaved">저장되지 않은 변경 사항</string>
     <!-- Settings: settings delivered by the developer. -->
     <string name="settings_error">설정을 저장하지 못했어요. 다시 시도하세요.</string>
+    <!-- Settings: settings delivered by the developer. The settings could not be read; a Try again button follows. -->
+    <string name="settings_loadFailed">설정을 불러오지 못했어요.</string>
     <!-- Settings: settings delivered by the developer. Allowed range of a number. Arguments: {min} = the lowest allowed value or version; {max} = the highest allowed value or version. Arguments: 1=min, 2=max. -->
     <string name="settings_range">%1$s에서 %2$s 사이</string>
     <!-- Settings: settings delivered by the developer. A switch's value shown as text. -->

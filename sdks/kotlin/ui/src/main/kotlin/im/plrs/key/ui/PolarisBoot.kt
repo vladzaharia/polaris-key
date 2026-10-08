@@ -164,7 +164,9 @@ public class PolarisBootState(options: BootOptions = BootOptions()) {
  *   reports a usable licence the boot retries on its own. Null shows the gate's message with Try
  *   again.
  * @param packs pack progress for the fetch stage; null shows the overall fetch progress.
- * @param onSignIn starts sign-in from the activation screen; null hides the button.
+ * @param onSignIn starts sign-in from the activation screen; null hides the button unless
+ *   [signIn] is given.
+ * @param signIn runs sign-in inside the gate (the one sign-in form), see [PolarisGate].
  * @param onUpdate opens the update (the store, the installer) from an update-required stop.
  */
 @Composable
@@ -175,6 +177,7 @@ public fun PolarisBoot(
     packs: PolarisPackProgressState? = null,
     onSignIn: (() -> Unit)? = null,
     onUpdate: (() -> Unit)? = null,
+    signIn: PolarisSignInState? = null,
     content: @Composable () -> Unit,
 ) {
     val ui by state.ui.collectAsState()
@@ -203,6 +206,7 @@ public fun PolarisBoot(
         onPlayOffline = state::playOffline,
         onConsent = state::answerConsent,
         onUpdate = onUpdate,
+        signIn = signIn,
         content = content,
     )
 }
@@ -239,6 +243,7 @@ public fun PolarisBootScreen(
     onPlayOffline: () -> Unit = {},
     onConsent: (Boolean) -> Unit = {},
     onUpdate: (() -> Unit)? = null,
+    signIn: PolarisSignInState? = null,
     content: @Composable () -> Unit = {},
 ) {
     val copy = PolarisTheme.copy
@@ -258,6 +263,8 @@ public fun PolarisBootScreen(
                     onActivate = onActivate,
                     onSignIn = onSignIn,
                     onRetry = onRetry,
+                    manageAsQr = isTelevision(),
+                    signIn = signIn,
                 )
             }
             BootScreen.Consent -> {

@@ -135,6 +135,7 @@ export type KitCopyKey =
   | "deviceLimit.browser"
   | "deviceLimit.openBrowser"
   | "deviceLimit.scan"
+  | "deviceLimit.noManage"
   | "devices.title"
   | "devices.lede"
   | "devices.meta"
@@ -145,6 +146,9 @@ export type KitCopyKey =
   | "devices.remove"
   | "devices.removeConfirm"
   | "devices.empty"
+  | "devices.loadFailed"
+  | "devices.renameFailed"
+  | "devices.removeFailed"
   | "devices.browser"
   | "devices.manage"
   | "update.title"
@@ -198,6 +202,7 @@ export type KitCopyKey =
   | "releaseNotes.empty"
   | "releaseNotes.error"
   | "status.renew"
+  | "status.useAnotherLicense"
   | "status.update"
   | "status.switchChannel"
   | "status.allowedRange"
@@ -234,6 +239,7 @@ export type KitCopyKey =
   | "settings.saved"
   | "settings.unsaved"
   | "settings.error"
+  | "settings.loadFailed"
   | "settings.range"
   | "settings.on"
   | "settings.off"
@@ -982,6 +988,7 @@ export const KIT_COPY_VARIANTS: Readonly<
   "update.steam": { macos: "Get It on Steam" },
   "update.checkNow": { macos: "Check for Updates…" },
   "updateProgress.resume": { macos: "Download Now" },
+  "status.useAnotherLicense": { macos: "Use Another License" },
   "status.switchChannel": { macos: "Switch Channel" },
   "settings.reset": { macos: "Reset to Default" },
   "settings.advanced": { macos: "Show Advanced Settings" },

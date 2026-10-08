@@ -879,6 +879,11 @@ msgstr "Ouvrir dans le navigateur"
 msgid "deviceLimit.scan"
 msgstr "Scannez le code pour remplacer un appareil depuis votre téléphone."
 
+#. Sign out of {product} on another device, then try again.
+#. DeviceLimit on the key path when the server sent no link to replace a device: the license is on all its devices, so the fix is to free one first. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "deviceLimit.noManage"
+msgstr "Déconnectez-vous de {product} sur un autre appareil, puis réessayez."
+
 #. Your devices
 #. Devices: the list of devices using the license.
 msgid "devices.title"
@@ -932,6 +937,21 @@ msgstr "Retirer {device} ? Il sera déconnecté de {product}."
 #. Devices: the list of devices using the license.
 msgid "devices.empty"
 msgstr "Aucun appareil n’utilise encore cette licence."
+
+#. Couldn't load your devices.
+#. Devices: the list of devices using the license. The list could not be read; a Try again button follows.
+msgid "devices.loadFailed"
+msgstr "Impossible de charger vos appareils."
+
+#. Couldn't rename {device}. Try again.
+#. Devices: the list of devices using the license. A rename was refused. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
+msgid "devices.renameFailed"
+msgstr "Impossible de renommer {device}. Réessayez."
+
+#. Couldn't remove {device}. Try again.
+#. Devices: the list of devices using the license. A removal was refused. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
+msgid "devices.removeFailed"
+msgstr "Impossible de retirer {device}. Réessayez."
 
 #. Manage your devices in your browser.
 #. Devices: the list of devices using the license. Browser mode.
@@ -1248,6 +1268,16 @@ msgstr "Impossible de charger les notes de version."
 msgid "status.renew"
 msgstr "Renouveler"
 
+#. Use another license
+#. StatusScreen: a blocking state and its fix. Expired license: back to the license key field (and Sign in) to use a different license.
+msgid "status.useAnotherLicense"
+msgstr "Utiliser une autre licence"
+
+#. macos: Use Another License
+msgctxt "macos"
+msgid "status.useAnotherLicense"
+msgstr "Utiliser une autre licence"
+
 #. Update
 #. StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Version too old.
 msgid "status.update"
@@ -1446,6 +1476,11 @@ msgstr "Modifications non enregistrées"
 #. Settings: settings delivered by the developer.
 msgid "settings.error"
 msgstr "Impossible d’enregistrer les paramètres. Réessayez."
+
+#. Settings couldn't be loaded.
+#. Settings: settings delivered by the developer. The settings could not be read; a Try again button follows.
+msgid "settings.loadFailed"
+msgstr "Impossible de charger les paramètres."
 
 #. Between {min} and {max}
 #. Settings: settings delivered by the developer. Allowed range of a number. Arguments: {min} = the lowest allowed value or version; {max} = the highest allowed value or version.

@@ -32545,6 +32545,66 @@
         }
       }
     },
+    "deviceLimit.noManage": {
+      "comment": "DeviceLimit on the key path when the server sent no link to replace a device: the license is on all its devices, so the fix is to free one first. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign out of %1$@ on another device, then try again."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Melden Sie sich auf einem anderen Gerät von %1$@ ab und versuchen Sie es dann erneut."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Déconnectez-vous de %1$@ sur un autre appareil, puis réessayez."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cierra sesión en %1$@ en otro dispositivo y vuelve a intentarlo."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saia de %1$@ em outro dispositivo e tente novamente."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esci da %1$@ su un altro dispositivo, poi riprova."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "別のデバイスで%1$@からサインアウトしてから、もう一度お試しください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다른 기기에서 %1$@에서 로그아웃한 다음 다시 시도하세요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请在另一台设备上退出登录%1$@，然后重试。"
+          }
+        }
+      }
+    },
     "deviceLimit.openBrowser": {
       "comment": "DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Browser mode.",
       "extractionState": "manual",
@@ -33313,6 +33373,66 @@
         }
       }
     },
+    "devices.loadFailed": {
+      "comment": "Devices: the list of devices using the license. The list could not be read; a Try again button follows.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't load your devices."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ihre Geräte konnten nicht geladen werden."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de charger vos appareils."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron cargar tus dispositivos."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível carregar seus dispositivos."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile caricare i tuoi dispositivi."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "デバイスを読み込めませんでした。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기기를 불러오지 못했어요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法加载你的设备。"
+          }
+        }
+      }
+    },
     "devices.manage": {
       "comment": "Devices: the list of devices using the license. Browser mode; opens the account in the browser.",
       "extractionState": "manual",
@@ -33565,6 +33685,66 @@
         }
       }
     },
+    "devices.removeFailed": {
+      "comment": "Devices: the list of devices using the license. A removal was refused. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't remove %1$@. Try again."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ konnte nicht entfernt werden. Versuchen Sie es erneut."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de retirer %1$@. Réessayez."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo quitar %1$@. Vuelve a intentarlo."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível remover %1$@. Tente novamente."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile rimuovere %1$@. Riprova."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@を削除できませんでした。もう一度お試しください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@을(를) 제거하지 못했어요. 다시 시도하세요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法移除%1$@。请重试。"
+          }
+        }
+      }
+    },
     "devices.rename": {
       "comment": "Devices: the list of devices using the license.",
       "extractionState": "manual",
@@ -33621,6 +33801,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "重命名"
+          }
+        }
+      }
+    },
+    "devices.renameFailed": {
+      "comment": "Devices: the list of devices using the license. A rename was refused. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't rename %1$@. Try again."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ konnte nicht umbenannt werden. Versuchen Sie es erneut."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de renommer %1$@. Réessayez."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo cambiar el nombre de %1$@. Vuelve a intentarlo."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível renomear %1$@. Tente novamente."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile rinominare %1$@. Riprova."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@の名前を変更できませんでした。もう一度お試しください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@의 이름을 바꾸지 못했어요. 다시 시도하세요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法重命名%1$@。请重试。"
           }
         }
       }
@@ -38337,6 +38577,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "来自%1$@"
+          }
+        }
+      }
+    },
+    "settings.loadFailed": {
+      "comment": "Settings: settings delivered by the developer. The settings could not be read; a Try again button follows.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Settings couldn't be loaded."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Einstellungen konnten nicht geladen werden."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de charger les paramètres."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron cargar los ajustes."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível carregar as configurações."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile caricare le impostazioni."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "設定を読み込めませんでした。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "설정을 불러오지 못했어요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法加载设置。"
           }
         }
       }
@@ -55425,6 +55725,78 @@
           "stringUnit": {
             "state": "translated",
             "value": "更新"
+          }
+        }
+      }
+    },
+    "status.useAnotherLicense": {
+      "comment": "StatusScreen: a blocking state and its fix. Expired license: back to the license key field (and Sign in) to use a different license.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "device": {
+              "mac": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Use Another License"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Use another license"
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Andere Lizenz verwenden"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utiliser une autre licence"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar otra licencia"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar outra licença"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa un'altra licenza"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "別のライセンスを使う"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다른 라이선스 사용"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用其他许可证"
           }
         }
       }

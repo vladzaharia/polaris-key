@@ -873,6 +873,11 @@ msgstr "브라우저에서 열기"
 msgid "deviceLimit.scan"
 msgstr "코드를 스캔해 휴대폰에서 기기를 교체하세요."
 
+#. Sign out of {product} on another device, then try again.
+#. DeviceLimit on the key path when the server sent no link to replace a device: the license is on all its devices, so the fix is to free one first. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "deviceLimit.noManage"
+msgstr "다른 기기에서 {product}에서 로그아웃한 다음 다시 시도하세요."
+
 #. Your devices
 #. Devices: the list of devices using the license.
 msgid "devices.title"
@@ -924,6 +929,21 @@ msgstr "{device}을(를) 제거할까요? {product}에서 로그아웃돼요."
 #. Devices: the list of devices using the license.
 msgid "devices.empty"
 msgstr "아직 이 라이선스를 사용하는 기기가 없어요."
+
+#. Couldn't load your devices.
+#. Devices: the list of devices using the license. The list could not be read; a Try again button follows.
+msgid "devices.loadFailed"
+msgstr "기기를 불러오지 못했어요."
+
+#. Couldn't rename {device}. Try again.
+#. Devices: the list of devices using the license. A rename was refused. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
+msgid "devices.renameFailed"
+msgstr "{device}의 이름을 바꾸지 못했어요. 다시 시도하세요."
+
+#. Couldn't remove {device}. Try again.
+#. Devices: the list of devices using the license. A removal was refused. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
+msgid "devices.removeFailed"
+msgstr "{device}을(를) 제거하지 못했어요. 다시 시도하세요."
 
 #. Manage your devices in your browser.
 #. Devices: the list of devices using the license. Browser mode.
@@ -1240,6 +1260,16 @@ msgstr "릴리스 노트를 불러오지 못했어요."
 msgid "status.renew"
 msgstr "갱신"
 
+#. Use another license
+#. StatusScreen: a blocking state and its fix. Expired license: back to the license key field (and Sign in) to use a different license.
+msgid "status.useAnotherLicense"
+msgstr "다른 라이선스 사용"
+
+#. macos: Use Another License
+msgctxt "macos"
+msgid "status.useAnotherLicense"
+msgstr "다른 라이선스 사용"
+
 #. Update
 #. StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Version too old.
 msgid "status.update"
@@ -1436,6 +1466,11 @@ msgstr "저장되지 않은 변경 사항"
 #. Settings: settings delivered by the developer.
 msgid "settings.error"
 msgstr "설정을 저장하지 못했어요. 다시 시도하세요."
+
+#. Settings couldn't be loaded.
+#. Settings: settings delivered by the developer. The settings could not be read; a Try again button follows.
+msgid "settings.loadFailed"
+msgstr "설정을 불러오지 못했어요."
 
 #. Between {min} and {max}
 #. Settings: settings delivered by the developer. Allowed range of a number. Arguments: {min} = the lowest allowed value or version; {max} = the highest allowed value or version.

@@ -171,6 +171,8 @@ export const KIT_COPY: Readonly<
       "Replace a device in your browser. {product} continues when you're done.",
     "deviceLimit.openBrowser": "Open in browser",
     "deviceLimit.scan": "Scan the code to replace a device on your phone.",
+    "deviceLimit.noManage":
+      "Sign out of {product} on another device, then try again.",
     "devices.title": "Your devices",
     "devices.lede": "Devices using this license.",
     "devices.meta": "{platform} · last seen {when}",
@@ -181,6 +183,9 @@ export const KIT_COPY: Readonly<
     "devices.remove": "Remove",
     "devices.removeConfirm": "Remove {device}? It signs out of {product}.",
     "devices.empty": "No devices are using this license yet.",
+    "devices.loadFailed": "Couldn't load your devices.",
+    "devices.renameFailed": "Couldn't rename {device}. Try again.",
+    "devices.removeFailed": "Couldn't remove {device}. Try again.",
     "devices.browser": "Manage your devices in your browser.",
     "devices.manage": "Manage devices",
     "update.title": "{product} {version}",
@@ -240,6 +245,7 @@ export const KIT_COPY: Readonly<
     "releaseNotes.empty": "No release notes yet.",
     "releaseNotes.error": "Release notes couldn't be loaded.",
     "status.renew": "Renew",
+    "status.useAnotherLicense": "Use another license",
     "status.update": "Update",
     "status.switchChannel": "Switch channel",
     "status.allowedRange": "Allowed versions: {min} to {max}",
@@ -277,6 +283,7 @@ export const KIT_COPY: Readonly<
     "settings.saved": "Saved",
     "settings.unsaved": "Unsaved changes",
     "settings.error": "Settings couldn't be saved. Try again.",
+    "settings.loadFailed": "Settings couldn't be loaded.",
     "settings.range": "Between {min} and {max}",
     "settings.on": "On",
     "settings.off": "Off",
@@ -1336,6 +1343,8 @@ export const KIT_COPY: Readonly<
     "deviceLimit.openBrowser": "Im Browser öffnen",
     "deviceLimit.scan":
       "Scannen Sie den Code, um ein Gerät auf Ihrem Telefon zu ersetzen.",
+    "deviceLimit.noManage":
+      "Melden Sie sich auf einem anderen Gerät von {product} ab und versuchen Sie es dann erneut.",
     "devices.title": "Ihre Geräte",
     "devices.lede": "Geräte, die diese Lizenz verwenden.",
     "devices.meta": "{platform} · zuletzt aktiv {when}",
@@ -1347,6 +1356,11 @@ export const KIT_COPY: Readonly<
     "devices.removeConfirm":
       "{device} entfernen? Es wird von {product} abgemeldet.",
     "devices.empty": "Noch keine Geräte verwenden diese Lizenz.",
+    "devices.loadFailed": "Ihre Geräte konnten nicht geladen werden.",
+    "devices.renameFailed":
+      "{device} konnte nicht umbenannt werden. Versuchen Sie es erneut.",
+    "devices.removeFailed":
+      "{device} konnte nicht entfernt werden. Versuchen Sie es erneut.",
     "devices.browser": "Verwalten Sie Ihre Geräte in Ihrem Browser.",
     "devices.manage": "Geräte verwalten",
     "update.title": "{product} {version}",
@@ -1409,6 +1423,7 @@ export const KIT_COPY: Readonly<
     "releaseNotes.empty": "Noch keine Versionshinweise.",
     "releaseNotes.error": "Die Versionshinweise konnten nicht geladen werden.",
     "status.renew": "Verlängern",
+    "status.useAnotherLicense": "Andere Lizenz verwenden",
     "status.update": "Aktualisieren",
     "status.switchChannel": "Kanal wechseln",
     "status.allowedRange": "Zulässige Versionen: {min} bis {max}",
@@ -1450,6 +1465,7 @@ export const KIT_COPY: Readonly<
     "settings.unsaved": "Ungespeicherte Änderungen",
     "settings.error":
       "Die Einstellungen konnten nicht gespeichert werden. Versuchen Sie es erneut.",
+    "settings.loadFailed": "Die Einstellungen konnten nicht geladen werden.",
     "settings.range": "Zwischen {min} und {max}",
     "settings.on": "Ein",
     "settings.off": "Aus",
@@ -2567,6 +2583,8 @@ export const KIT_COPY: Readonly<
     "deviceLimit.openBrowser": "Ouvrir dans le navigateur",
     "deviceLimit.scan":
       "Scannez le code pour remplacer un appareil depuis votre téléphone.",
+    "deviceLimit.noManage":
+      "Déconnectez-vous de {product} sur un autre appareil, puis réessayez.",
     "devices.title": "Vos appareils",
     "devices.lede": "Appareils utilisant cette licence.",
     "devices.meta": "{platform} · dernière activité {when}",
@@ -2579,6 +2597,9 @@ export const KIT_COPY: Readonly<
     "devices.removeConfirm":
       "Retirer {device} ? Il sera déconnecté de {product}.",
     "devices.empty": "Aucun appareil n’utilise encore cette licence.",
+    "devices.loadFailed": "Impossible de charger vos appareils.",
+    "devices.renameFailed": "Impossible de renommer {device}. Réessayez.",
+    "devices.removeFailed": "Impossible de retirer {device}. Réessayez.",
     "devices.browser": "Gérez vos appareils dans votre navigateur.",
     "devices.manage": "Gérer les appareils",
     "update.title": "{product} {version}",
@@ -2640,6 +2661,7 @@ export const KIT_COPY: Readonly<
     "releaseNotes.empty": "Aucune note de version pour le moment.",
     "releaseNotes.error": "Impossible de charger les notes de version.",
     "status.renew": "Renouveler",
+    "status.useAnotherLicense": "Utiliser une autre licence",
     "status.update": "Mettre à jour",
     "status.switchChannel": "Changer de canal",
     "status.allowedRange": "Versions autorisées : de {min} à {max}",
@@ -2679,6 +2701,7 @@ export const KIT_COPY: Readonly<
     "settings.saved": "Enregistré",
     "settings.unsaved": "Modifications non enregistrées",
     "settings.error": "Impossible d’enregistrer les paramètres. Réessayez.",
+    "settings.loadFailed": "Impossible de charger les paramètres.",
     "settings.range": "Entre {min} et {max}",
     "settings.on": "Activé",
     "settings.off": "Désactivé",
@@ -3766,6 +3789,8 @@ export const KIT_COPY: Readonly<
     "deviceLimit.openBrowser": "Abrir en el navegador",
     "deviceLimit.scan":
       "Escanea el código para reemplazar un dispositivo desde tu teléfono.",
+    "deviceLimit.noManage":
+      "Cierra sesión en {product} en otro dispositivo y vuelve a intentarlo.",
     "devices.title": "Tus dispositivos",
     "devices.lede": "Dispositivos que usan esta licencia.",
     "devices.meta": "{platform} · visto por última vez {when}",
@@ -3778,6 +3803,10 @@ export const KIT_COPY: Readonly<
     "devices.removeConfirm":
       "¿Quitar {device}? Se cerrará su sesión de {product}.",
     "devices.empty": "Todavía ningún dispositivo usa esta licencia.",
+    "devices.loadFailed": "No se pudieron cargar tus dispositivos.",
+    "devices.renameFailed":
+      "No se pudo cambiar el nombre de {device}. Vuelve a intentarlo.",
+    "devices.removeFailed": "No se pudo quitar {device}. Vuelve a intentarlo.",
     "devices.browser": "Administra tus dispositivos en tu navegador.",
     "devices.manage": "Administrar dispositivos",
     "update.title": "{product} {version}",
@@ -3838,6 +3867,7 @@ export const KIT_COPY: Readonly<
     "releaseNotes.empty": "Todavía no hay notas de la versión.",
     "releaseNotes.error": "No se pudieron cargar las notas de la versión.",
     "status.renew": "Renovar",
+    "status.useAnotherLicense": "Usar otra licencia",
     "status.update": "Actualizar",
     "status.switchChannel": "Cambiar de canal",
     "status.allowedRange": "Versiones permitidas: de {min} a {max}",
@@ -3877,6 +3907,7 @@ export const KIT_COPY: Readonly<
     "settings.unsaved": "Cambios sin guardar",
     "settings.error":
       "No se pudieron guardar los ajustes. Vuelve a intentarlo.",
+    "settings.loadFailed": "No se pudieron cargar los ajustes.",
     "settings.range": "Entre {min} y {max}",
     "settings.on": "Activado",
     "settings.off": "Desactivado",
@@ -4982,6 +5013,8 @@ export const KIT_COPY: Readonly<
     "deviceLimit.openBrowser": "Abrir no navegador",
     "deviceLimit.scan":
       "Escaneie o código para substituir um dispositivo pelo celular.",
+    "deviceLimit.noManage":
+      "Saia de {product} em outro dispositivo e tente novamente.",
     "devices.title": "Seus dispositivos",
     "devices.lede": "Dispositivos que usam esta licença.",
     "devices.meta": "{platform} · visto por último {when}",
@@ -4993,6 +5026,11 @@ export const KIT_COPY: Readonly<
     "devices.remove": "Remover",
     "devices.removeConfirm": "Remover {device}? Ele sairá de {product}.",
     "devices.empty": "Nenhum dispositivo está usando esta licença ainda.",
+    "devices.loadFailed": "Não foi possível carregar seus dispositivos.",
+    "devices.renameFailed":
+      "Não foi possível renomear {device}. Tente novamente.",
+    "devices.removeFailed":
+      "Não foi possível remover {device}. Tente novamente.",
     "devices.browser": "Gerencie seus dispositivos no navegador.",
     "devices.manage": "Gerenciar dispositivos",
     "update.title": "{product} {version}",
@@ -5054,6 +5092,7 @@ export const KIT_COPY: Readonly<
     "releaseNotes.empty": "Ainda não há notas da versão.",
     "releaseNotes.error": "Não foi possível carregar as notas da versão.",
     "status.renew": "Renovar",
+    "status.useAnotherLicense": "Usar outra licença",
     "status.update": "Atualizar",
     "status.switchChannel": "Mudar de canal",
     "status.allowedRange": "Versões permitidas: {min} a {max}",
@@ -5092,6 +5131,7 @@ export const KIT_COPY: Readonly<
     "settings.unsaved": "Alterações não salvas",
     "settings.error":
       "Não foi possível salvar as configurações. Tente novamente.",
+    "settings.loadFailed": "Não foi possível carregar as configurações.",
     "settings.range": "Entre {min} e {max}",
     "settings.on": "Ativado",
     "settings.off": "Desativado",
@@ -6176,6 +6216,8 @@ export const KIT_COPY: Readonly<
     "deviceLimit.openBrowser": "Apri nel browser",
     "deviceLimit.scan":
       "Scansiona il codice per sostituire un dispositivo dal telefono.",
+    "deviceLimit.noManage":
+      "Esci da {product} su un altro dispositivo, poi riprova.",
     "devices.title": "I tuoi dispositivi",
     "devices.lede": "Dispositivi che usano questa licenza.",
     "devices.meta": "{platform} · visto l'ultima volta {when}",
@@ -6187,6 +6229,9 @@ export const KIT_COPY: Readonly<
     "devices.remove": "Rimuovi",
     "devices.removeConfirm": "Rimuovere {device}? Uscirà da {product}.",
     "devices.empty": "Nessun dispositivo usa ancora questa licenza.",
+    "devices.loadFailed": "Impossibile caricare i tuoi dispositivi.",
+    "devices.renameFailed": "Impossibile rinominare {device}. Riprova.",
+    "devices.removeFailed": "Impossibile rimuovere {device}. Riprova.",
     "devices.browser": "Gestisci i tuoi dispositivi nel browser.",
     "devices.manage": "Gestisci dispositivi",
     "update.title": "{product} {version}",
@@ -6247,6 +6292,7 @@ export const KIT_COPY: Readonly<
     "releaseNotes.empty": "Ancora nessuna nota di rilascio.",
     "releaseNotes.error": "Impossibile caricare le note di rilascio.",
     "status.renew": "Rinnova",
+    "status.useAnotherLicense": "Usa un'altra licenza",
     "status.update": "Aggiorna",
     "status.switchChannel": "Cambia canale",
     "status.allowedRange": "Versioni consentite: da {min} a {max}",
@@ -6285,6 +6331,7 @@ export const KIT_COPY: Readonly<
     "settings.saved": "Salvato",
     "settings.unsaved": "Modifiche non salvate",
     "settings.error": "Impossibile salvare le impostazioni. Riprova.",
+    "settings.loadFailed": "Impossibile caricare le impostazioni.",
     "settings.range": "Tra {min} e {max}",
     "settings.on": "Attivo",
     "settings.off": "Disattivo",
@@ -7384,6 +7431,8 @@ export const KIT_COPY: Readonly<
     "deviceLimit.openBrowser": "ブラウザで開く",
     "deviceLimit.scan":
       "コードをスキャンして、スマートフォンでデバイスを置き換えてください。",
+    "deviceLimit.noManage":
+      "別のデバイスで{product}からサインアウトしてから、もう一度お試しください。",
     "devices.title": "お使いのデバイス",
     "devices.lede": "このライセンスを使用しているデバイス。",
     "devices.meta": "{platform} · 最終確認：{when}",
@@ -7395,6 +7444,11 @@ export const KIT_COPY: Readonly<
     "devices.removeConfirm":
       "{device}を削除しますか？{product}からサインアウトされます。",
     "devices.empty": "このライセンスを使用しているデバイスはまだありません。",
+    "devices.loadFailed": "デバイスを読み込めませんでした。",
+    "devices.renameFailed":
+      "{device}の名前を変更できませんでした。もう一度お試しください。",
+    "devices.removeFailed":
+      "{device}を削除できませんでした。もう一度お試しください。",
     "devices.browser": "ブラウザでデバイスを管理してください。",
     "devices.manage": "デバイスを管理",
     "update.title": "{product} {version}",
@@ -7459,6 +7513,7 @@ export const KIT_COPY: Readonly<
     "releaseNotes.empty": "リリースノートはまだありません。",
     "releaseNotes.error": "リリースノートを読み込めませんでした。",
     "status.renew": "更新",
+    "status.useAnotherLicense": "別のライセンスを使う",
     "status.update": "アップデート",
     "status.switchChannel": "チャンネルを切り替える",
     "status.allowedRange": "使用可能なバージョン：{min}〜{max}",
@@ -7496,6 +7551,7 @@ export const KIT_COPY: Readonly<
     "settings.saved": "保存しました",
     "settings.unsaved": "未保存の変更",
     "settings.error": "設定を保存できませんでした。もう一度お試しください。",
+    "settings.loadFailed": "設定を読み込めませんでした。",
     "settings.range": "{min}〜{max}の範囲",
     "settings.on": "オン",
     "settings.off": "オフ",
@@ -8596,6 +8652,8 @@ export const KIT_COPY: Readonly<
       "브라우저에서 기기를 교체하세요. 완료하면 {product}에서 계속 진행돼요.",
     "deviceLimit.openBrowser": "브라우저에서 열기",
     "deviceLimit.scan": "코드를 스캔해 휴대폰에서 기기를 교체하세요.",
+    "deviceLimit.noManage":
+      "다른 기기에서 {product}에서 로그아웃한 다음 다시 시도하세요.",
     "devices.title": "내 기기",
     "devices.lede": "이 라이선스를 사용하는 기기예요.",
     "devices.meta": "{platform} · 마지막 접속 {when}",
@@ -8607,6 +8665,11 @@ export const KIT_COPY: Readonly<
     "devices.removeConfirm":
       "{device}을(를) 제거할까요? {product}에서 로그아웃돼요.",
     "devices.empty": "아직 이 라이선스를 사용하는 기기가 없어요.",
+    "devices.loadFailed": "기기를 불러오지 못했어요.",
+    "devices.renameFailed":
+      "{device}의 이름을 바꾸지 못했어요. 다시 시도하세요.",
+    "devices.removeFailed":
+      "{device}을(를) 제거하지 못했어요. 다시 시도하세요.",
     "devices.browser": "브라우저에서 기기를 관리하세요.",
     "devices.manage": "기기 관리",
     "update.title": "{product} {version}",
@@ -8667,6 +8730,7 @@ export const KIT_COPY: Readonly<
     "releaseNotes.empty": "아직 릴리스 노트가 없어요.",
     "releaseNotes.error": "릴리스 노트를 불러오지 못했어요.",
     "status.renew": "갱신",
+    "status.useAnotherLicense": "다른 라이선스 사용",
     "status.update": "업데이트",
     "status.switchChannel": "채널 전환",
     "status.allowedRange": "허용 버전: {min}~{max}",
@@ -8705,6 +8769,7 @@ export const KIT_COPY: Readonly<
     "settings.saved": "저장됨",
     "settings.unsaved": "저장되지 않은 변경 사항",
     "settings.error": "설정을 저장하지 못했어요. 다시 시도하세요.",
+    "settings.loadFailed": "설정을 불러오지 못했어요.",
     "settings.range": "{min}에서 {max} 사이",
     "settings.on": "켬",
     "settings.off": "끔",
@@ -9748,6 +9813,7 @@ export const KIT_COPY: Readonly<
     "deviceLimit.browser": "请在浏览器中替换设备。完成后{product}会继续。",
     "deviceLimit.openBrowser": "在浏览器中打开",
     "deviceLimit.scan": "扫描二维码，在手机上替换设备。",
+    "deviceLimit.noManage": "请在另一台设备上退出登录{product}，然后重试。",
     "devices.title": "你的设备",
     "devices.lede": "正在使用此许可证的设备。",
     "devices.meta": "{platform} · 上次在线：{when}",
@@ -9758,6 +9824,9 @@ export const KIT_COPY: Readonly<
     "devices.remove": "移除",
     "devices.removeConfirm": "移除{device}？它将退出登录{product}。",
     "devices.empty": "还没有设备在使用此许可证。",
+    "devices.loadFailed": "无法加载你的设备。",
+    "devices.renameFailed": "无法重命名{device}。请重试。",
+    "devices.removeFailed": "无法移除{device}。请重试。",
     "devices.browser": "在浏览器中管理你的设备。",
     "devices.manage": "管理设备",
     "update.title": "{product} {version}",
@@ -9813,6 +9882,7 @@ export const KIT_COPY: Readonly<
     "releaseNotes.empty": "暂无版本说明。",
     "releaseNotes.error": "无法加载版本说明。",
     "status.renew": "续订",
+    "status.useAnotherLicense": "使用其他许可证",
     "status.update": "更新",
     "status.switchChannel": "切换渠道",
     "status.allowedRange": "允许的版本：{min}至{max}",
@@ -9849,6 +9919,7 @@ export const KIT_COPY: Readonly<
     "settings.saved": "已保存",
     "settings.unsaved": "有未保存的更改",
     "settings.error": "无法保存设置。请重试。",
+    "settings.loadFailed": "无法加载设置。",
     "settings.range": "介于{min}和{max}之间",
     "settings.on": "开",
     "settings.off": "关",
@@ -10718,6 +10789,7 @@ export const KIT_COPY_VARIANTS: Readonly<
   "update.steam": { macos: "Get It on Steam" },
   "update.checkNow": { macos: "Check for Updates…" },
   "updateProgress.resume": { macos: "Download Now" },
+  "status.useAnotherLicense": { macos: "Use Another License" },
   "status.switchChannel": { macos: "Switch Channel" },
   "settings.reset": { macos: "Reset to Default" },
   "settings.advanced": { macos: "Show Advanced Settings" },

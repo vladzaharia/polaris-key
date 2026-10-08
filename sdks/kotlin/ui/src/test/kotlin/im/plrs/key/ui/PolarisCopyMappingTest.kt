@@ -29,8 +29,24 @@ class PolarisCopyMappingTest {
 
     @Test
     fun terminalStatusesMapToTheirCopy() {
-        assertEquals(PolarisMessageCopy(copy.revokedTitle, copy.revokedBody, PolarisMessageKind.Locked), copy.gateMessage(LicenseStatus.revoked))
-        assertEquals(PolarisMessageCopy(copy.expiredTitle, copy.expiredBody, PolarisMessageKind.Warning), copy.gateMessage(LicenseStatus.expired))
+        // Revoked and expired are core.copy's gate entries (copy.en.json), verbatim.
+        assertEquals(
+            PolarisMessageCopy("Signed out", "This device was signed out. Sign in or activate again to continue.", PolarisMessageKind.Locked),
+            copy.gateMessage(LicenseStatus.revoked),
+        )
+        assertEquals(
+            PolarisMessageCopy("License expired", "Your license has expired. Connect to the internet or renew it to continue.", PolarisMessageKind.Warning),
+            copy.gateMessage(LicenseStatus.expired),
+        )
+        // Sign-in's stops read core.copy too.
+        assertEquals(
+            PolarisMessageCopy("Code expired", "The code expired before sign-in finished. Start again.", PolarisMessageKind.Info),
+            copy.coreMessage(SIGN_IN_EXPIRED, PolarisMessageKind.Info),
+        )
+        assertEquals(
+            PolarisMessageCopy("Sign-in failed", "Sign-in didn't finish. Try again.", PolarisMessageKind.Danger),
+            copy.coreMessage(SIGN_IN_FAILED, PolarisMessageKind.Danger),
+        )
         assertEquals(copy.versionTooOldTitle, copy.gateMessage(LicenseStatus.versionTooOld)!!.title)
         assertEquals(copy.versionTooNewTitle, copy.gateMessage(LicenseStatus.versionTooNew)!!.title)
         val channel = copy.gateMessage(LicenseStatus.channelNotEntitled)!!
@@ -60,11 +76,11 @@ class PolarisCopyMappingTest {
     @Test
     fun activationResults() {
         assertNull(copy.activationMessage(ActivationResult.Ok("pkeyt_x", 1)))
-        assertEquals(copy.activationDeviceLimit, copy.activationMessage(ActivationResult.DeviceLimit(null, null)))
-        assertEquals(
-            "This license has reached its device limit (3 of 3 devices).",
-            copy.activationMessage(ActivationResult.DeviceLimit(limit = 3, deviceCount = 3)),
-        )
+        // core.copy's device-limit entry; the seat count is the screen's caption, not this line.
+        val limit = "This license is already on all its devices. Replace a device to use it here."
+        assertEquals(limit, copy.activationMessage(ActivationResult.DeviceLimit(null, null)))
+        assertEquals(limit, copy.activationMessage(ActivationResult.DeviceLimit(limit = 3, deviceCount = 3)))
+        assertEquals("3 of 3 in use", copy.format(copy.seatCaption, 3, 3))
         assertEquals(copy.activationUnauthorized, copy.activationMessage(ActivationResult.Unauthorized))
         assertEquals(copy.activationFingerprintRequired, copy.activationMessage(ActivationResult.FingerprintRequired))
         assertEquals(copy.activationHardwareMismatch, copy.activationMessage(ActivationResult.HardwareMismatch(2, listOf("disk"))))
@@ -80,7 +96,7 @@ class PolarisCopyMappingTest {
         assertEquals(copy.activationNetwork, copy.activationMessage(ActivationResult.Error("offline", "network")))
         // A known code arriving as a bare refusal reads as its own copy; an unknown one names the code, never the body.
         assertEquals(copy.activationEnrollDisabled, copy.activationMessage(ActivationResult.Refused("registration_closed", 403, "raw body")))
-        assertEquals("The license server refused this activation (no_such_code).", copy.activationMessage(ActivationResult.Refused("no_such_code", 403, "raw body")))
+        assertEquals("Something went wrong (no_such_code). Try again.", copy.activationMessage(ActivationResult.Refused("no_such_code", 403, "raw body")))
     }
 
     @Test

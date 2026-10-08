@@ -72,17 +72,21 @@ public object PolarisAccent {
     /** The scheme's surfaces, in the resolver's order: page, raised, overlay, sunken. */
     public fun surfaces(dark: Boolean): List<String> = if (dark) SURFACES_DARK else SURFACES_LIGHT
 
-    /** Resolve any input colour ("#rgb" or "#rrggbb") for one scheme; null for anything else. */
-    public fun resolve(hex: String, dark: Boolean): Resolved? {
+    /**
+     * Resolve any input colour ("#rgb" or "#rrggbb") for one scheme; null for anything else.
+     * [grounds] are the surfaces it must read on, page first: the brand's by default (the shared
+     * vectors), or a host's own when the kit runs under the native preset.
+     */
+    public fun resolve(hex: String, dark: Boolean, grounds: List<String> = surfaces(dark)): Resolved? {
         val input = normalize(hex) ?: return null
         val label = label(input)
-        val solid = solid(input, dark, label)
-        val fg = fg(input, dark)
+        val solid = solid(input, dark, label, grounds)
+        val fg = fg(input, dark, grounds)
         return Resolved(
             solid = solid,
             on = if (label == Label.WHITE) WHITE else INK,
             fg = fg,
-            subtle = mixOver(solid, if (dark) SUBTLE_ALPHA_DARK else SUBTLE_ALPHA_LIGHT, surfaces(dark)[0]),
+            subtle = mixOver(solid, if (dark) SUBTLE_ALPHA_DARK else SUBTLE_ALPHA_LIGHT, grounds[0]),
             focus = if (dark) fg else solid,
         )
     }
@@ -95,9 +99,8 @@ public object PolarisAccent {
     }
 
     /** `solid` for a colour, a scheme and a label (the danger solid passes [Label.WHITE]). */
-    public fun solid(hex: String, dark: Boolean, label: Label): String {
+    public fun solid(hex: String, dark: Boolean, label: Label, grounds: List<String> = surfaces(dark)): String {
         val base = hexToOklch(hex)
-        val grounds = surfaces(dark)
         val onUi = { h: String -> grounds.all { contrast(h, it) >= UI } }
         if (label == Label.WHITE) {
             val solid = moveUntil(base, -1.0) { contrast(WHITE, it) >= TEXT }
@@ -108,9 +111,8 @@ public object PolarisAccent {
     }
 
     /** `fg` for a colour in a scheme: text that clears 4.5:1 on every surface. */
-    public fun fg(hex: String, dark: Boolean): String {
+    public fun fg(hex: String, dark: Boolean, grounds: List<String> = surfaces(dark)): String {
         val base = hexToOklch(hex)
-        val grounds = surfaces(dark)
         val readable = { h: String -> grounds.all { contrast(h, it) >= TEXT } }
         return if (dark) {
             moveUntil(Oklch(max(base.l, FG_DARK_L), base.c, base.h), 1.0, readable)

@@ -875,6 +875,11 @@ msgstr ""
 msgid "deviceLimit.scan"
 msgstr ""
 
+#. Sign out of {product} on another device, then try again.
+#. DeviceLimit on the key path when the server sent no link to replace a device: the license is on all its devices, so the fix is to free one first. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "deviceLimit.noManage"
+msgstr ""
+
 #. Your devices
 #. Devices: the list of devices using the license.
 msgid "devices.title"
@@ -926,6 +931,21 @@ msgstr ""
 #. No devices are using this license yet.
 #. Devices: the list of devices using the license.
 msgid "devices.empty"
+msgstr ""
+
+#. Couldn't load your devices.
+#. Devices: the list of devices using the license. The list could not be read; a Try again button follows.
+msgid "devices.loadFailed"
+msgstr ""
+
+#. Couldn't rename {device}. Try again.
+#. Devices: the list of devices using the license. A rename was refused. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
+msgid "devices.renameFailed"
+msgstr ""
+
+#. Couldn't remove {device}. Try again.
+#. Devices: the list of devices using the license. A removal was refused. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
+msgid "devices.removeFailed"
 msgstr ""
 
 #. Manage your devices in your browser.
@@ -1243,6 +1263,16 @@ msgstr ""
 msgid "status.renew"
 msgstr ""
 
+#. Use another license
+#. StatusScreen: a blocking state and its fix. Expired license: back to the license key field (and Sign in) to use a different license.
+msgid "status.useAnotherLicense"
+msgstr ""
+
+#. macos: Use Another License
+msgctxt "macos"
+msgid "status.useAnotherLicense"
+msgstr ""
+
 #. Update
 #. StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Version too old.
 msgid "status.update"
@@ -1439,6 +1469,11 @@ msgstr ""
 #. Settings couldn't be saved. Try again.
 #. Settings: settings delivered by the developer.
 msgid "settings.error"
+msgstr ""
+
+#. Settings couldn't be loaded.
+#. Settings: settings delivered by the developer. The settings could not be read; a Try again button follows.
+msgid "settings.loadFailed"
 msgstr ""
 
 #. Between {min} and {max}

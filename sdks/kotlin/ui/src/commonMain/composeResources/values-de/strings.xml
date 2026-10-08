@@ -313,6 +313,8 @@
     <string name="deviceLimit_openBrowser__macos">Im Browser öffnen</string>
     <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Browser mode on TV and console. -->
     <string name="deviceLimit_scan">Scannen Sie den Code, um ein Gerät auf Ihrem Telefon zu ersetzen.</string>
+    <!-- DeviceLimit on the key path when the server sent no link to replace a device: the license is on all its devices, so the fix is to free one first. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="deviceLimit_noManage">Melden Sie sich auf einem anderen Gerät von %1$s ab und versuchen Sie es dann erneut.</string>
     <!-- Devices: the list of devices using the license. -->
     <string name="devices_title">Ihre Geräte</string>
     <!-- Devices: the list of devices using the license. -->
@@ -336,6 +338,12 @@
     <string name="devices_removeConfirm">%1$s entfernen? Es wird von %2$s abgemeldet.</string>
     <!-- Devices: the list of devices using the license. -->
     <string name="devices_empty">Noch keine Geräte verwenden diese Lizenz.</string>
+    <!-- Devices: the list of devices using the license. The list could not be read; a Try again button follows. -->
+    <string name="devices_loadFailed">Ihre Geräte konnten nicht geladen werden.</string>
+    <!-- Devices: the list of devices using the license. A rename was refused. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
+    <string name="devices_renameFailed">%1$s konnte nicht umbenannt werden. Versuchen Sie es erneut.</string>
+    <!-- Devices: the list of devices using the license. A removal was refused. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
+    <string name="devices_removeFailed">%1$s konnte nicht entfernt werden. Versuchen Sie es erneut.</string>
     <!-- Devices: the list of devices using the license. Browser mode. -->
     <string name="devices_browser">Verwalten Sie Ihre Geräte in Ihrem Browser.</string>
     <!-- Devices: the list of devices using the license. Browser mode; opens the account in the browser. -->
@@ -452,6 +460,9 @@
     <string name="releaseNotes_error">Die Versionshinweise konnten nicht geladen werden.</string>
     <!-- StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Expired license. -->
     <string name="status_renew">Verlängern</string>
+    <!-- StatusScreen: a blocking state and its fix. Expired license: back to the license key field (and Sign in) to use a different license. -->
+    <string name="status_useAnotherLicense">Andere Lizenz verwenden</string>
+    <string name="status_useAnotherLicense__macos">Andere Lizenz verwenden</string>
     <!-- StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Version too old. -->
     <string name="status_update">Aktualisieren</string>
     <!-- StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Channel not included. -->
@@ -530,6 +541,8 @@
     <string name="settings_unsaved">Ungespeicherte Änderungen</string>
     <!-- Settings: settings delivered by the developer. -->
     <string name="settings_error">Die Einstellungen konnten nicht gespeichert werden. Versuchen Sie es erneut.</string>
+    <!-- Settings: settings delivered by the developer. The settings could not be read; a Try again button follows. -->
+    <string name="settings_loadFailed">Die Einstellungen konnten nicht geladen werden.</string>
     <!-- Settings: settings delivered by the developer. Allowed range of a number. Arguments: {min} = the lowest allowed value or version; {max} = the highest allowed value or version. Arguments: 1=min, 2=max. -->
     <string name="settings_range">Zwischen %1$s und %2$s</string>
     <!-- Settings: settings delivered by the developer. A switch's value shown as text. -->

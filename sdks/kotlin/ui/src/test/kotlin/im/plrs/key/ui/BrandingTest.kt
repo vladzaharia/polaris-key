@@ -127,7 +127,8 @@ class BrandingTest {
             kitScreens.first { it.first == "gate-activation" }.second()
         }
         assertEquals(PolarisRubik, body)
-        assertEquals("the Pinned K is the branded logo", 1, marks())
+        // UI-KITS.md §1.2, §1.6: the product is the hero; no Polaris Key mark on a kit screen.
+        assertEquals("no Pinned K stands in for the product", 0, marks())
         assertEquals("the badge stays off with branding on", 0, badges())
         val core = PolarisBrandTokens.accent("core", dark = true).solid.toArgb()
         assertTrue("the primary button wears the core violet", core in pixels())
@@ -144,7 +145,7 @@ class BrandingTest {
         rule.runOnIdle { branding = PolarisBranding.PolarisKey }
         rule.waitForIdle()
         assertEquals(1, badges())
-        assertEquals(1, marks())
+        assertEquals("the Pinned K lives only inside the badge", 0, marks())
     }
 
     /** Neutral is the native preset: the host's scheme reaches the kit untouched, dynamic colour included. */
@@ -182,7 +183,13 @@ class BrandingTest {
         assertTrue("branded: the core violet gives way to it", violet !in pixels())
         rule.runOnIdle { branding = PolarisBranding.None }
         rule.waitForIdle()
-        assertTrue("neutral: the accent applies over the host's scheme", solid in pixels())
+        // Neutral resolves against the host's own grounds (UI-KITS.md §3.3 with the host's surfaces).
+        val host = androidx.compose.material3.darkColorScheme()
+        val grounds = listOf(host.background, host.surface, host.surfaceContainerLow, host.surfaceContainerHigh, host.surfaceContainerHighest)
+            .map { "#%06x".format(it.toArgb() and 0xFFFFFF) }
+        val hostSolid = im.plrs.key.ui.brand.PolarisAccent.resolve("#369186", true, grounds)!!.solid
+        val hostSolidArgb = androidx.compose.ui.graphics.Color(("ff" + hostSolid.removePrefix("#")).toLong(16)).toArgb()
+        assertTrue("neutral: the accent applies over the host's scheme", hostSolidArgb in pixels())
     }
 
     @Test

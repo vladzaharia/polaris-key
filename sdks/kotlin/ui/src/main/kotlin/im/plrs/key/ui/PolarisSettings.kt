@@ -38,6 +38,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import im.plrs.key.config.CatalogEntry
 import im.plrs.key.config.ConfigSource
@@ -98,6 +99,8 @@ public data class PolarisSettingsUi(
     val entries: List<PolarisSettingEntry> = emptyList(),
     /** The copy of the last refused change (a value the catalog refuses, an enforced key), or null. */
     val error: String? = null,
+    /** The values could not be read: the screen shows the error state with Try again. */
+    val failed: Boolean = false,
 )
 
 /** The SDK calls the settings screen makes. [PolarisKeyClient.settingsActions] adapts the umbrella client. */
@@ -192,8 +195,8 @@ public class PolarisSettingsState(private val actions: PolarisSettingsActions, p
         scope.launch {
             _ui.value = _ui.value.copy(loading = true)
             val license = guarded { actions.license() }
-            val entries = guarded { actions.entries() } ?: emptyList()
-            _ui.value = PolarisSettingsUi(loading = false, license = license, entries = entries)
+            val entries = guarded { actions.entries() }
+            _ui.value = PolarisSettingsUi(loading = false, license = license, entries = entries ?: emptyList(), failed = entries == null)
         }
     }
 
@@ -238,43 +241,87 @@ public class PolarisSettingsState(private val actions: PolarisSettingsActions, p
 
 // ── Composables ──────────────────────────────────────────────────────────────────────────────
 
+/**
+ * @param entitlementLabel the label an entitlement shows, or null to keep it off the screen: the
+ *   kit never shows a raw entitlement name (UI-KITS.md §1.5 rule 11), so none shows by default.
+ * @param navigationIcon an optional control above the title (a Back for the host's navigation).
+ */
 @Composable
-public fun PolarisSettings(state: PolarisSettingsState, modifier: Modifier = Modifier) {
+public fun PolarisSettings(
+    state: PolarisSettingsState,
+    modifier: Modifier = Modifier,
+    entitlementLabel: (String) -> String? = { null },
+    navigationIcon: (@Composable () -> Unit)? = null,
+) {
     val ui by state.ui.collectAsState()
     androidx.compose.runtime.LaunchedEffect(state) { state.load() }
-    PolarisSettingsScreen(ui, modifier)
+    PolarisSettingsScreen(ui, modifier, entitlementLabel = entitlementLabel, onRetry = state::load, navigationIcon = navigationIcon)
 }
 
-/** The stateless settings screen. */
+/**
+ * The stateless settings screen: a list screen, top-anchored under a start-aligned title. In a
+ * landscape window 600 dp wide or more the licence and the configuration sit side by side.
+ */
 @Composable
-public fun PolarisSettingsScreen(ui: PolarisSettingsUi, modifier: Modifier = Modifier) {
+public fun PolarisSettingsScreen(
+    ui: PolarisSettingsUi,
+    modifier: Modifier = Modifier,
+    entitlementLabel: (String) -> String? = { null },
+    onRetry: () -> Unit = {},
+    navigationIcon: (@Composable () -> Unit)? = null,
+) {
     val copy = PolarisTheme.copy
     if (ui.loading) {
         PolarisProgressScreen(copy.loading, modifier)
         return
     }
-    PolarisScreen(modifier = modifier, showLogo = false) {
-        PolarisTitle(copy.settingsTitle)
-        Spacer(Modifier.height(polarisWindow.section))
-        val license = ui.license
-        if (license != null) {
-            PolarisSection(copy.settingsLicense) {
-                PolarisLicenseRow(license)
+    PolarisSurface(modifier) { window, _ ->
+        val sideBySide = window.width >= 600.dp && window.width > window.height
+        PolarisScaffold(
+            anchor = PolarisAnchor.Top,
+            contentAlign = TextAlign.Start,
+            maxContentWidth = if (sideBySide) 960.dp else Dp.Unspecified,
+            navigationIcon = navigationIcon,
+        ) {
+            PolarisTitle(copy.settingsTitle)
+            Spacer(Modifier.height(polarisWindow.section))
+            val license = ui.license
+            val licenseCard: @Composable (Modifier) -> Unit = { m ->
+                if (license != null) PolarisSection(copy.settingsLicense, m) { PolarisLicenseRow(license, entitlementLabel) }
             }
-            Spacer(Modifier.height(16.dp))
-        }
-        PolarisSection(copy.settingsValues) {
-            if (ui.entries.isEmpty()) {
-                Text(
-                    text = copy.settingsEmpty,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                )
+            val valuesCard: @Composable (Modifier) -> Unit = { m ->
+                PolarisSection(copy.settingsValues, m) {
+                    if (ui.failed) {
+                        Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                            PolarisInlineNotice(copy.settingsLoadFailed)
+                            Spacer(Modifier.height(PolarisSpace.controls))
+                            PolarisSecondaryButton(copy.retry, onRetry)
+                        }
+                    } else if (ui.entries.isEmpty()) {
+                        Text(
+                            text = copy.settingsEmpty,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        )
+                    }
+                    ui.entries.forEachIndexed { i, entry ->
+                        if (i > 0) HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                        PolarisSettingRow(entry)
+                    }
+                }
             }
-            ui.entries.forEachIndexed { i, entry ->
-                if (i > 0) HorizontalDivider(Modifier.padding(start = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
-                PolarisSettingRow(entry)
+            if (sideBySide && license != null) {
+                Row(horizontalArrangement = Arrangement.spacedBy(PolarisSpace.group), verticalAlignment = Alignment.Top) {
+                    licenseCard(Modifier.weight(1f))
+                    valuesCard(Modifier.weight(1.4f))
+                }
+            } else {
+                if (license != null) {
+                    licenseCard(Modifier)
+                    Spacer(Modifier.height(PolarisSpace.controls))
+                }
+                valuesCard(Modifier)
             }
         }
     }
@@ -306,21 +353,25 @@ public fun PolarisEntitlementBadge(status: LicenseStatus, modifier: Modifier = M
     }
 }
 
+/**
+ * The licence card's row: the status chip, the licensee once (the chip already says "Licensed"),
+ * and the entitlements the host labelled ([entitlementLabel]; an unlabelled one never shows).
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun PolarisLicenseRow(license: PolarisLicenseSummary) {
-    val copy = PolarisTheme.copy
+internal fun PolarisLicenseRow(license: PolarisLicenseSummary, entitlementLabel: (String) -> String? = { null }) {
+    val labelled = license.entitlements.mapNotNull(entitlementLabel)
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp).semantics(mergeDescendants = true) {},
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         PolarisEntitlementBadge(license.status)
         if (license.holder != null) {
-            Text(copy.format(copy.licensedTo, license.holder), style = MaterialTheme.typography.bodyLarge)
+            Text(license.holder, style = MaterialTheme.typography.bodyLarge)
         }
-        if (license.entitlements.isNotEmpty()) {
+        if (labelled.isNotEmpty()) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                for (name in license.entitlements) {
+                for (name in labelled) {
                     Surface(
                         shape = MaterialTheme.shapes.small,
                         color = MaterialTheme.colorScheme.surfaceContainerHighest,
@@ -332,6 +383,14 @@ internal fun PolarisLicenseRow(license: PolarisLicenseSummary) {
             }
         }
     }
+}
+
+/** The text a row shows for its value: On and Off for a boolean, the value as text otherwise. */
+public fun PolarisCopy.settingValue(entry: PolarisSettingEntry): String = when {
+    entry.editor is PolarisSettingEditor.Toggle -> if ((entry.editor as PolarisSettingEditor.Toggle).checked) settingsOn else settingsOff
+    entry.value == "true" -> settingsOn
+    entry.value == "false" -> settingsOff
+    else -> entry.value
 }
 
 /** The supporting text for where a value comes from, or null for nothing to say. */
@@ -351,13 +410,17 @@ internal fun PolarisSettingRow(entry: PolarisSettingEntry) {
     // At large font scales the value moves under its name, so neither is squeezed into a sliver.
     val stacked = LocalDensity.current.fontScale >= 1.5f
     val value: @Composable (Modifier) -> Unit = { modifier ->
-        Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier,
+            horizontalArrangement = if (stacked) Arrangement.Start else Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             if (locked) {
                 Icon(Icons.Filled.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
             }
             Text(
-                text = entry.value,
+                text = copy.settingValue(entry),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = if (stacked) Int.MAX_VALUE else 3,
@@ -386,6 +449,7 @@ internal fun PolarisSettingRow(entry: PolarisSettingEntry) {
             source?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
         Spacer(Modifier.width(16.dp))
-        value(Modifier.weight(0.8f, fill = false))
+        // The value fills its share and sits at the row's trailing edge.
+        value(Modifier.weight(0.8f))
     }
 }
