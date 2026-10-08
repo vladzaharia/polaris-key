@@ -15,7 +15,7 @@ import XCTest
 
 final class DelegationConformanceTests: XCTestCase {
     private func cases() throws -> [String: JSONValue] {
-        try XCTUnwrap(CorpusBundleLoader.load(JSONValue.self, "cases").objectValue)
+        try XCTUnwrap(CorpusLocator.load(JSONValue.self, "cases").objectValue)
     }
 
     private func trust(_ v: JSONValue?) throws -> TrustSet {

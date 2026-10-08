@@ -15,13 +15,12 @@
 //
 //   conformance/corpus/v2/  wire contract v4 (docs/security/WIRE-CONTRACT-V4.md; v3's documents
 //                           are unchanged, so the directory and `corpusVersion: 2` stay). Consumed
-//                           by conformance/runners/node/corpusV2.test.ts via
-//                           @polaris-key/client-core and by the Python runner. Two
-//                           generator-owned mirrors keep the path `…/v2/` one-for-one:
-//                           the Swift test bundle's `Resources/v2/` (the Swift suite) and
-//                           `sdks/godot/tests/corpus/v2/` (the Godot runner, which reads it
-//                           from `res://` in the editor and in an exported pack). Every file
-//                           is written into every target in `CORPUS_TARGETS`.
+//                           in place by conformance/runners/node/corpusV2.test.ts via
+//                           @polaris-key/client-core and by the Python, Swift (`CorpusLocator`,
+//                           P0-44) and Kotlin runners. One generator-owned mirror keeps the path
+//                           `…/v2/` one-for-one: `sdks/godot/tests/corpus/v2/` (the Godot runner,
+//                           which reads it from `res://` in the editor and in an exported pack).
+//                           Every file is written into every target in `CORPUS_TARGETS`.
 //
 // Thirteen files and one directory: `cases.json` (signed vectors, the v4 feed, release-record and
 // pack families included), `gate-matrix.json` (§5, with SP-00's `entitlementRows` family),
@@ -83,23 +82,9 @@ import { buildStageMatrix } from "./corpus/stage.js";
 import { buildUpdateMatrixV1 } from "./corpus/update.js";
 import { REF_JSON } from "./corpus/reference/content.js";
 
-/** The Swift test target bundles its fixtures as copied resources (it can't reach up the
- *  monorepo at test time). To keep those copies from drifting from the canonical corpus, the
- *  generator mirrors them here and `--check` guards the mirror exactly like the source. The
- *  `v2/` segment is kept so the mirror path matches `conformance/corpus/v2/` one-for-one. */
-const SWIFT_V2_RESOURCES = join(
-  REPO_ROOT,
-  "sdks",
-  "swift",
-  "Tests",
-  "PolarisKeyTests",
-  "Resources",
-  "v2",
-);
-
 /** The Godot project's generator-owned mirror. An exported Godot pack can read only `res://`
  *  (the project directory), never `../../conformance/`, so the editor and release-template
- *  runs both load the corpus from here. Guarded by `--check` exactly like the Swift mirror. */
+ *  runs both load the corpus from here. Guarded by `--check` exactly like the source. */
 const GODOT_V2_RESOURCES = join(
   REPO_ROOT,
   "sdks",
@@ -123,7 +108,20 @@ const V2_SYNC_SCENARIOS_OUT = join(V2_DIR, "sync-scenarios.json");
 const V2_DEVICE_LABEL_OUT = join(V2_DIR, "device-label.json");
 const V2_PRESENTATION_MATRIX_OUT = join(V2_DIR, "presentation-matrix.json");
 /** Every directory that receives the corpus: the source, then each generator-owned mirror. */
-const CORPUS_TARGETS = [V2_DIR, SWIFT_V2_RESOURCES, GODOT_V2_RESOURCES];
+const CORPUS_TARGETS = [V2_DIR, GODOT_V2_RESOURCES];
+
+/** The Swift test bundle's former mirror, retired by P0-44: the Swift tests read
+ *  `conformance/corpus/v2/` in place through `CorpusLocator`. A branch cut before then can merge
+ *  a file back into it, so the directory is stray in both modes and never deleted automatically. */
+const RETIRED_SWIFT_V2 = join(
+  REPO_ROOT,
+  "sdks",
+  "swift",
+  "Tests",
+  "PolarisKeyTests",
+  "Resources",
+  "v2",
+);
 
 /** Reconcile one generated/source file against its on-disk copy. In `--check` mode a drift
  *  is fatal (returns true so the caller can exit 1); otherwise it's written. */
@@ -260,7 +258,7 @@ async function main(): Promise<void> {
   stale =
     reconcile(join(CONTENT_DIR, CONTENT_CASES_NAME), contentCases, check) ||
     stale;
-  for (const path of contentStrays([SWIFT_V2_RESOURCES, GODOT_V2_RESOURCES])) {
+  for (const path of contentStrays([GODOT_V2_RESOURCES])) {
     console.error(`stray: ${path} is not written by the generator`);
     stale = true;
   }
@@ -277,6 +275,12 @@ async function main(): Promise<void> {
       console.error(`stray: ${path} is not written by the generator`);
       stale = true;
     }
+  }
+  if (existsSync(RETIRED_SWIFT_V2)) {
+    console.error(
+      `stray: ${RETIRED_SWIFT_V2} is the retired Swift mirror (P0-44): delete it`,
+    );
+    stale = true;
   }
 
   if (stale) process.exit(1);

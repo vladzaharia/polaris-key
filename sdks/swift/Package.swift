@@ -191,19 +191,10 @@ let package = Package(
                 "PolarisKeyPacks", "PolarisKeyPlatform",
                 .product(name: "libzstd", package: "zstd"),
             ],
-            // Bundle the SAME cross-language corpus (cases, gate-matrix, fingerprint, stage-matrix,
-            // headers, config-matrix, and wire contract v4's update-matrix and outlet-matrix) the
-            // Node and Python runners drive, so the Swift verifier, gate, bundle importer and boot
-            // stage machine are held to byte-for-byte conformance. `.copy` bundles the directory
-            // whole, so a new corpus file needs no entry here. The `v2` segment is kept so this path
-            // matches `conformance/corpus/v2/` one-for-one — the mirror is findable from the
-            // source without a translation step. Written by `pnpm gen:corpus`, guarded by
-            // `--check`. `Resources/transcripts` is the same arrangement for the HTTP transcripts
-            // (`conformance/transcripts/`), written and guarded by `pnpm gen:transcripts`.
-            resources: [
-                .copy("Resources/v2"),
-                .copy("Resources/transcripts"),
-            ],
+            // No resources: the tests read the SAME cross-language corpus the Node and Python
+            // runners drive (`conformance/corpus/v2/`) and the HTTP transcripts
+            // (`conformance/transcripts/`) in place, through `CorpusLocator` (`#filePath`), so
+            // `swift test` runs from a monorepo checkout and there is no copy to keep in step.
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         // PolarisKeyPlatform against fakes only: StoreKit Testing loads no products under

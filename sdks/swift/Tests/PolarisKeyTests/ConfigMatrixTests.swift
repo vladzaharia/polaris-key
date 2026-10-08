@@ -1,6 +1,6 @@
 // @pkey-feature config.resolve config.list
 // Config resolution conformance (WIRE-CONTRACT-V3 §2.2.1), driven off `conformance/corpus/v2`'s
-// `config-matrix.json`, mirrored into this bundle's `Resources/v2/` by `pnpm gen:corpus`, over
+// `config-matrix.json`, read from the checkout through `CorpusLocator`, over
 // `ConfigResolution` (what `ConfigClient` delegates to). Swift has an environment layer, so
 // every row is checked against `expect`. The Node, React, Python and Godot runners run the same
 // rows.
@@ -70,7 +70,7 @@ final class ConfigMatrixTests: XCTestCase {
     }
 
     private func load() throws -> ConfigMatrix {
-        try CorpusBundleLoader.load(ConfigMatrix.self, "config-matrix")
+        try CorpusLocator.load(ConfigMatrix.self, "config-matrix")
     }
 
     /// Canonical JSON equality: keys unordered, arrays ordered, numbers by value (an integral

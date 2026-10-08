@@ -1,7 +1,7 @@
 // @pkey-feature update.feeds
 //
 // The Swift runner for `conformance/corpus/v2/feed-url-matrix.json` (plans/SP-00.md D5), read
-// from the generator-owned mirror in `Resources/v2/`: every row's endpoint set and input go
+// from the checkout through `CorpusLocator`: every row's endpoint set and input go
 // through `updateFeedURL` (what `client.update.feedUrl` expands), and the answer is the row's URL
 // or its typed N/A (`product`). The kinds table equals `UpdateFeedKind`.
 
@@ -37,7 +37,7 @@ private struct FeedUrlMatrix: Decodable {
 
 final class FeedUrlMatrixTests: XCTestCase {
     private func matrix() throws -> FeedUrlMatrix {
-        try CorpusBundleLoader.load(
+        try CorpusLocator.load(
             FeedUrlMatrix.self, (feedUrlMatrixFile as NSString).deletingPathExtension)
     }
 

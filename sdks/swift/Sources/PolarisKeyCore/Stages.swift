@@ -5,9 +5,8 @@
 // reports its result as an event; the machine decides the next stage and what to emit. It does
 // no I/O, reads no clock and uses no randomness, so the same inputs reach the same stages,
 // emits and outcome in every language. `conformance/corpus/v2/stage-matrix.json` (version 3)
-// pins it, and
-// `StageMatrixTests` replays every row and every probe of its `accepts` table over the mirror in
-// `Tests/PolarisKeyTests/Resources/v2/`.
+// pins it, and `StageMatrixTests` replays every row and every probe of its `accepts` table over
+// that file.
 //
 // The normal path is idle → shell → guard → sync → gate → decide → fetch → mount → ready, and
 // every stage is entered even when it has nothing to do. An event the current stage does not
