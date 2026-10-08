@@ -44,12 +44,13 @@ export function DiscoverTeaser({
           <ArrowRight aria-hidden className="size-4" />
         </a>
       </div>
-      <ul className="grid gap-4 desk:grid-cols-3">
+      {/* Three columns from 1180 px, two on tablets (§8). */}
+      <ul className="grid gap-4 desk:grid-cols-2 wide:grid-cols-3">
         {offers.map((o) => (
           <li key={o.product} className="grid">
             <a
               href={href.storefront(o.product)}
-              className="flex items-center gap-4 rounded-xl border border-border bg-surface-raised p-2.5 pr-4 shadow-elevation-1 hover:bg-hover"
+              className="flex min-w-0 items-center gap-4 rounded-xl border border-border bg-surface-raised p-2.5 pr-4 shadow-elevation-1 hover:bg-hover"
             >
               <ProductArt
                 slug={o.product}
