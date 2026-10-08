@@ -117,14 +117,18 @@ export function resolveInherited(
     for (const layer of layers) {
       const found = readLayer(entry, layer.payload);
       if (!found) continue;
+      // A lower `enforced`/`hidden` entry wins over a higher `default` one whole: its value and
+      // its source, not only its state (the Worker's `mergeMap`, `merge.ts`). Devices get the
+      // locked value, so the console shows it.
       const locked =
         current !== null &&
         current.state !== "default" &&
         found.state === "default";
+      if (locked) continue;
       current = {
         source: layer.source,
         value: found.value,
-        state: locked ? current!.state : found.state,
+        state: found.state,
       };
     }
     if (current) out[entry.key] = current;
