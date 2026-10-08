@@ -1,0 +1,68 @@
+[
+  {
+    "key": "products",
+    "title": "Products and onboarding",
+    "accent": "core",
+    "blurb": "One Home with attention, Platform ready and product cards; the New product wizard; the Integration page with generated snippets and per-platform Verified; the Platform and Product sidebar contexts."
+  },
+  {
+    "key": "licenses",
+    "title": "Licenses",
+    "accent": "license",
+    "blurb": "Licenses in an account, waiting or floating; tiers as templates; add-ons; one access policy for who gets a license automatically; limits resolved license, then tier, then platform default."
+  },
+  {
+    "key": "entitlements",
+    "title": "Entitlements, durations and subscriptions",
+    "accent": "license",
+    "blurb": "Named entitlements a device gets from its license; one duration model (lifetime, fixed, trial, version-scoped, renewing, keeps the last version); subscriptions from any provider attached to a license or add-on."
+  },
+  {
+    "key": "config",
+    "title": "Managed config and Cloud Sync",
+    "accent": "config",
+    "blurb": "Settings, secrets and minted tokens in the catalog; Default and per-tier profiles; Editable, Read-only and Hidden; Cloud Sync for user settings and records, with its quota as an entitlement."
+  },
+  {
+    "key": "distribution",
+    "title": "Release and distribution",
+    "accent": "distribution",
+    "blurb": "Releases from CI; distribution channels with a page each, storefront tab included; channel wizards with human steps only; rollouts across channels."
+  },
+  {
+    "key": "packages",
+    "title": "Packages, release tracks and updates",
+    "accent": "update",
+    "blurb": "Package feeds on pkg.plrs.im; release tracks (stable, beta, dev, custom) and how store testing lanes map from them; updater setup and feeds; packs for games and apps."
+  },
+  {
+    "key": "commerce",
+    "title": "Commerce",
+    "accent": "distribution",
+    "blurb": "A service that requires Licensing: offers sold as tiers or add-ons, a SKU per storefront, prices and territories, one purchase ledger and one revocation path."
+  },
+  {
+    "key": "identity",
+    "title": "Identity",
+    "accent": "identity",
+    "blurb": "One account per person; connections configured once with verified email domains; sign-in surfaces; consent and connected apps; the new-account step with screen name and picture."
+  },
+  {
+    "key": "admin",
+    "title": "Administration and access control",
+    "accent": "core",
+    "blurb": "Members, roles and areas; invites and SSO rules; the no-access page that names who can help; personal and service tokens; Platform settings ordered by how often they change."
+  },
+  {
+    "key": "sdk",
+    "title": "SDKs and UI kits",
+    "accent": "release",
+    "blurb": "polaris-key.json and one start call in six SDKs; doctor() and the CLI flows in the terminal; generated snippets; the must-tier UI kits on their platforms."
+  },
+  {
+    "key": "portal",
+    "title": "Customer portal",
+    "accent": "core",
+    "blurb": "The customer's Library, product pages, license cards, devices, sign-in and activation, Discover and storefront links, connected apps and account settings."
+  }
+]

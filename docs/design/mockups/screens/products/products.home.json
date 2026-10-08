@@ -1,0 +1,21 @@
+{
+  "id": "products.home",
+  "title": "Home",
+  "area": "products",
+  "surface": "console",
+  "packages": ["ST-44", "ST-45"],
+  "uxRows": ["UX-12", "UX-67"],
+  "summary": "The one Home in the Platform sidebar context: attention from one server read, the Platform ready checklist for platform admins while it is incomplete, and the products as ST-36 cards with a Cards/Table toggle and facets. The Products page and the summary tiles are gone.",
+  "compare": [
+    "The sidebar is the Platform context: a context header (Platform, 3 products, switcher chevrons), then Home, Members, Connections, Settings, Packages, Status, Activity, and no product sections.",
+    "Needs attention lists only broken things (failed resync, missing required secret, expiring store credential), each with a tone pill, the product's logo and name, one sentence and one action link. Integration progress never appears here.",
+    "Attention comes from one server read (GET /manage/api/attention); the old summary tiles (Products, Need attention, Linked to a repository) are gone.",
+    "Platform ready shows only to platform admins and only while incomplete: open rows first with their one action, done rows folded into one line, and a 'n of 9 done' meter on the right.",
+    "Product cards are unchanged from ST-36: logo, name as the one link, slug in mono, an attention pill at the right edge only when something needs attention, one row of service glyphs with an issue dot. No facts, no footer, no healthy pill.",
+    "Commerce has its own glyph (store, distribution green) on Diceroll's card, last in the canonical order.",
+    "The Cards/Table segmented control and the Integration and Needs attention facets sit above the grid; 'Setup complete' appears nowhere.",
+    "Phone: the sidebar folds into the menu button, the search becomes an icon, New product takes a full-width row, attention rows stack, and each card shows its service pips beside the name instead of the glyph row."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

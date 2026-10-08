@@ -1,0 +1,266 @@
+<style>
+  /* products.home: only what the kit does not already say. */
+  [data-screen="products.home"] .ready-head {
+    align-items: center;
+  }
+  [data-screen="products.home"] .ready-meter {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 220px;
+  }
+  [data-screen="products.home"] .ready-meter .progress {
+    flex: 1;
+  }
+  [data-screen="products.home"] .done-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    padding: 12px 20px 14px;
+    border-top: 1px solid var(--mk-line);
+    font-size: 13px;
+    color: var(--pk-text-muted);
+  }
+  [data-screen="products.home"] .done-list > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+  [data-screen="products.home"] .done-list .ic {
+    width: 14px;
+    height: 14px;
+    color: var(--pk-success);
+  }
+  [data-screen="products.home"] .done-list > .lead {
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="products.home"] .ready-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    background: var(--pk-accent-subtle);
+    color: var(--pk-accent-fg);
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="products.home"] .ready-meter {
+      width: 100%;
+      order: 3;
+    }
+    [data-screen="products.home"] .ready-head {
+      flex-wrap: wrap;
+    }
+    [data-screen="products.home"] .done-list {
+      padding: 12px 16px 14px;
+    }
+    [data-screen="products.home"] .done-list > span:not(.lead):not(.done-summary) {
+      display: none;
+    }
+    [data-screen="products.home"] .done-summary {
+      color: var(--pk-accent-fg);
+    }
+  }
+</style>
+
+<div class="console" data-service="core">
+  <header class="topbar">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <nav class="sidebar" aria-label="Platform">
+    <div class="ctx">
+      <span class="ctx-mark"><i class="ic ic-polaris"></i></span>
+      <span class="ctx-text"><span class="ctx-name">Platform</span><span class="ctx-sub">3 products</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item active" href="#"><i class="ic ic-house"></i><span class="nav-text">Home</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-users"></i><span class="nav-text">Members</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-link"></i><span class="nav-text">Connections</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-boxes"></i><span class="nav-text">Packages</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-server"></i><span class="nav-text">Status</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-history"></i><span class="nav-text">Activity</span></a>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="page">
+      <header class="page-head">
+        <div class="page-heading"><h1>Home</h1></div>
+        <p class="page-sub">3 products · 3 things need attention</p>
+        <div class="page-actions">
+          <span class="freshness hide-phone">Updated 1 min ago</span>
+          <button class="btn ghost icon" aria-label="Refresh"><i class="ic ic-refresh-cw"></i></button>
+          <button class="btn primary"><i class="ic ic-plus"></i>New product</button>
+        </div>
+      </header>
+
+      <!-- Attention: one server read (GET /manage/api/attention), broken things only. -->
+      <section class="card" aria-labelledby="attn-title">
+        <div class="card-head">
+          <div class="title"><h2 id="attn-title">Needs attention</h2></div>
+          <span class="count danger">3</span>
+        </div>
+        <div class="card-rows">
+          <div class="attn-row">
+            <span class="pill danger"><i class="ic ic-circle-x"></i>Error</span>
+            <span class="attn-subject"><span class="logo xs" data-product="diceroll"></span>Diceroll</span>
+            <span class="attn-text">Resync from repo failed: <code>.pkey/release</code> line 14 names the platform “switch”, which Diceroll doesn’t ship.</span>
+            <a class="link" href="#">Open error<i class="ic ic-arrow-right"></i></a>
+          </div>
+          <div class="attn-row">
+            <span class="pill warning"><i class="ic ic-triangle-alert"></i>Warning</span>
+            <span class="attn-subject"><span class="logo xs" data-product="djdl"></span>DJDL</span>
+            <span class="attn-text">The required secret <code>OIDC_CLIENT_SECRET</code> has no value in the Default profile.</span>
+            <a class="link" href="#">Set secret<i class="ic ic-arrow-right"></i></a>
+          </div>
+          <div class="attn-row">
+            <span class="pill warning"><i class="ic ic-triangle-alert"></i>Warning</span>
+            <span class="attn-subject"><span class="logo xs" data-product="diceroll"></span>Diceroll</span>
+            <span class="attn-text">The Google Play service account key expires on Oct 16, 2026. Uploads to Play stop then.</span>
+            <a class="link" href="#">Replace key<i class="ic ic-arrow-right"></i></a>
+          </div>
+        </div>
+      </section>
+
+      <!-- Platform ready (UX-67): platform admins only, until every row is done. -->
+      <section class="card" aria-labelledby="ready-title">
+        <div class="card-head ready-head">
+          <span class="ready-icon"><i class="ic ic-rocket"></i></span>
+          <div class="title">
+            <h2 id="ready-title">Platform ready</h2>
+            <p>Set these up once for every product. This section leaves Home when all nine are done.</p>
+          </div>
+          <div class="ready-meter">
+            <span class="small muted nowrap tnum">7 of 9 done</span>
+            <div class="progress success" style="--v: 77.7%"></div>
+          </div>
+        </div>
+        <div class="tasks padded">
+          <div class="task todo">
+            <span class="task-mark"></span>
+            <div class="task-title">Store connections</div>
+            <div class="task-desc">Diceroll ships on Google Play and Steam. Steam has no Steamworks publisher key yet, so Diceroll’s Steam channel can’t upload builds.</div>
+            <div class="task-action"><button class="btn outline sm"><i class="ic ic-steam"></i>Connect Steam</button></div>
+          </div>
+          <div class="task todo">
+            <span class="task-mark"></span>
+            <div class="task-title">Team access</div>
+            <div class="task-desc">You’re the only member. Invite your team, or map an identity provider group to a role.</div>
+            <div class="task-action"><button class="btn outline sm"><i class="ic ic-user-plus"></i>Invite people</button></div>
+          </div>
+        </div>
+        <div class="done-list">
+          <span class="lead">Done</span>
+          <span class="show-phone done-summary">7 rows · Show</span>
+          <span><i class="ic ic-check"></i>Keyring configured</span>
+          <span><i class="ic ic-check"></i>Portal sessions isolated</span>
+          <span><i class="ic ic-check"></i>Console sign-in separate</span>
+          <span><i class="ic ic-check"></i>Background jobs ticking</span>
+          <span><i class="ic ic-check"></i>Email sender verified</span>
+          <span><i class="ic ic-check"></i>Platform package feeds</span>
+          <span><i class="ic ic-check"></i>Reserved names reviewed</span>
+        </div>
+      </section>
+
+      <!-- Products: cards (default) or table, with facets. The card is ST-36's, unchanged. -->
+      <section class="section" aria-labelledby="products-title">
+        <div class="section-head">
+          <div class="row"><h2 id="products-title">Products</h2><span class="count">3</span></div>
+        </div>
+        <div class="toolbar products-toolbar">
+          <div class="search-field hide-phone"><i class="ic ic-search"></i><span>Filter products</span></div>
+          <span class="filter"><i class="ic ic-plus"></i>Integration</span>
+          <span class="filter"><i class="ic ic-plus"></i>Needs attention</span>
+          <div class="end">
+            <div class="segmented sm" role="tablist" aria-label="View">
+              <span class="on"><i class="ic ic-layout-grid sm"></i>Cards</span>
+              <span><i class="ic ic-table sm"></i>Table</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="product-cards">
+          <article class="product-card">
+            <div class="product-card-head">
+              <span class="logo" data-product="djdl"></span>
+              <div class="grow">
+                <h3><a href="#">DJDL</a></h3>
+                <div class="row gap-1"><span class="slug">djdl</span><span class="pips">
+                <i class="pip" data-service="license"></i><i class="pip" data-service="config"></i><i class="pip" data-service="release"></i><i class="pip" data-service="distribution"></i><i class="pip" data-service="update"></i><i class="pip" data-service="identity"></i><i class="pip" data-service="sync"></i>
+              </span></div>
+              </div>
+              <span class="pill warning sm"><i class="ic ic-triangle-alert"></i>1 needs attention</span>
+            </div>
+            <div class="product-card-svcs">
+              <div class="svcs">
+                <a href="#" title="Licensing"><i class="svc" data-service="license"></i></a>
+                <a href="#" class="issue" title="Managed config: 1 needs attention"><i class="svc" data-service="config"></i></a>
+                <a href="#" title="Release"><i class="svc" data-service="release"></i></a>
+                <a href="#" title="Distribution"><i class="svc" data-service="distribution"></i></a>
+                <a href="#" title="Updates"><i class="svc" data-service="update"></i></a>
+                <a href="#" title="Sign-in"><i class="svc" data-service="identity"></i></a>
+                <a href="#" title="Cloud Sync"><i class="svc" data-service="sync"></i></a>
+              </div>
+            </div>
+          </article>
+
+          <article class="product-card">
+            <div class="product-card-head">
+              <span class="logo" data-product="diceroll"></span>
+              <div class="grow">
+                <h3><a href="#">Diceroll</a></h3>
+                <div class="row gap-1"><span class="slug">diceroll</span><span class="pips">
+                <i class="pip" data-service="license"></i><i class="pip" data-service="config"></i><i class="pip" data-service="release"></i><i class="pip" data-service="distribution"></i><i class="pip" data-service="update"></i><i class="pip" data-service="sync"></i><i class="pip" data-service="commerce"></i>
+              </span></div>
+              </div>
+              <span class="pill danger sm"><i class="ic ic-circle-x"></i>2 need attention</span>
+            </div>
+            <div class="product-card-svcs">
+              <div class="svcs">
+                <a href="#" title="Licensing"><i class="svc" data-service="license"></i></a>
+                <a href="#" title="Managed config"><i class="svc" data-service="config"></i></a>
+                <a href="#" class="issue danger" title="Release: resync failed"><i class="svc" data-service="release"></i></a>
+                <a href="#" class="issue" title="Distribution: 1 needs attention"><i class="svc" data-service="distribution"></i></a>
+                <a href="#" title="Updates"><i class="svc" data-service="update"></i></a>
+                <a href="#" title="Cloud Sync"><i class="svc" data-service="sync"></i></a>
+                <a href="#" title="Commerce"><i class="svc" data-service="commerce"></i></a>
+              </div>
+            </div>
+          </article>
+
+          <article class="product-card">
+            <div class="product-card-head">
+              <span class="logo" data-product="polaris-key"></span>
+              <div class="grow">
+                <h3><a href="#">Polaris Key</a></h3>
+                <div class="row gap-1"><span class="slug">polaris-key</span><span class="pips">
+                <i class="pip" data-service="release"></i><i class="pip" data-service="distribution"></i><i class="pip" data-service="update"></i><i class="pip" data-service="identity"></i>
+              </span></div>
+              </div>
+              <span class="pill sm"><i class="dot"></i>System</span>
+            </div>
+            <div class="product-card-svcs">
+              <div class="svcs">
+                <a href="#" title="Release"><i class="svc" data-service="release"></i></a>
+                <a href="#" title="Distribution"><i class="svc" data-service="distribution"></i></a>
+                <a href="#" title="Updates"><i class="svc" data-service="update"></i></a>
+                <a href="#" title="Sign-in"><i class="svc" data-service="identity"></i></a>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
