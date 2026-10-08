@@ -40,7 +40,7 @@ import {
   existingSubjectFor,
   isFloatingLicense,
   resolveSyncPrincipal,
-  subjectFor,
+  subjectForOrNull,
   type LicenseHolderFacts,
 } from "./accountSubjects.js";
 
@@ -332,7 +332,9 @@ export async function applyProvisionedAccountSecrets(
   now: number,
 ): Promise<void> {
   if (declared.size === 0) return;
-  const subject = await subjectFor(db, accountId, product, now);
+  // An account being erased has no new subject and nothing to seal (SEC-WP-04).
+  const subject = await subjectForOrNull(db, accountId, product, now);
+  if (subject === null) return;
   const sealed: Record<string, ManagedEntry> = {};
   for (const [key, entry] of Object.entries(provisioned)) {
     if (!declared.has(key)) continue;

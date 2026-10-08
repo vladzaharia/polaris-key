@@ -25,6 +25,7 @@ import {
 } from "../src/core/subjectHooks.js";
 import { signIn } from "../src/services/identity/accounts/signIn.js";
 import { attachLicense } from "../src/services/identity/accounts/claim.js";
+import { applyProvisionedAccountSecrets } from "../src/core/accountOverrides.js";
 import * as deletion from "../src/services/identity/accounts/deletion.js";
 import type { AccountContext } from "../src/services/identity/accounts/links.js";
 import { getAccountRow } from "../src/services/identity/accounts/repo.js";
@@ -329,7 +330,7 @@ describe("SEC-PRV-1: erasure survives a failing store hook", () => {
 });
 
 describe("closing the account closes its credentials", () => {
-  it("an owner registry token stops authenticating at once, while erasing", async () => {
+  it("a portal (licence-bound) registry token stops authenticating at once, while erasing", async () => {
     const w = await world();
     const res = await mintRegistryToken(
       w.env,
@@ -337,7 +338,8 @@ describe("closing the account closes its credentials", () => {
       {
         product: "acme",
         label: "laptop",
-        binding: "owner",
+        binding: "license",
+        licenseId: "lic-1",
         createdBy: `portal:${w.id}`,
         portalAccountId: w.id,
       },
@@ -379,6 +381,38 @@ describe("closing the account closes its credentials", () => {
       /being erased/,
     );
     expect(await subjectForOrNull(w.db, w.id, "other", NOW)).toBeNull();
+  });
+});
+
+describe("no new subject is minted for an erasing account", () => {
+  it("applyProvisionedAccountSecrets (the OIDC sign-in path) skips it instead of throwing", async () => {
+    const w = await world();
+    registerSubjectStore("flaky", {
+      merge: async () => {},
+      delete: async () => {
+        throw new Error("down");
+      },
+    });
+    await seedProduct(w.db, "other");
+    await deletion.deleteAccount(w.ctx(), w.id);
+    await expect(
+      applyProvisionedAccountSecrets(
+        w.env,
+        w.db,
+        "other",
+        w.id,
+        { K: { value: "v" } as never },
+        new Set(["K"]),
+        NOW,
+      ),
+    ).resolves.toBeUndefined();
+    expect(
+      await count(
+        w.db,
+        "SELECT COUNT(*) AS n FROM account_product_subjects WHERE account_id = ? AND product = 'other'",
+        w.id,
+      ),
+    ).toBe(0);
   });
 });
 

@@ -7503,7 +7503,7 @@ attachments in place, with no record and no retry, while the person had been tol
   pending.
 - **Credentials stop with the close, not the commit.** The first batch also revokes the
   account's registry tokens (`account_deleted`); the lookup never reads the account, so without
-  that an owner-bound token would authenticate through the whole retry window. This isolate's
+  that the account's licence-bound portal registry tokens would authenticate through the whole retry window. This isolate's
   30-second resolution cache is dropped at once; another isolate can honour a cached token for up
   to 30 seconds. Checked and safe without a write: portal sessions are deleted; browser sessions,
   the device login and the card gates re-read `accounts.status` and refuse anything but `active`;
