@@ -387,12 +387,9 @@ const SHRINK_FLOOR = 8;
 
 /** Cut the `shrink` span at its end so the spans fit one line of `width` cells, when they can. */
 function shrinkToFit(spans: Line, width: number, ellipsis: string): Line {
-  const total = cellWidth(
-    spans
-      .map((s) => s.text)
-      .join("")
-      .trimEnd(),
-  );
+  // The chip's trailing pad is part of it (reverse video): only other trailing space is free.
+  const joined = spans.map((s) => s.text).join("");
+  const total = cellWidth(spans.at(-1)?.shrink ? joined : joined.trimEnd());
   const i = spans.findIndex((s) => s.shrink);
   if (i < 0 || total <= width) return spans;
   const span = spans[i]!;

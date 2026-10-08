@@ -15,7 +15,7 @@ import {
   TERMINAL_SYMBOLS,
   type TerminalSymbol,
 } from "../tokens.generated.js";
-import type { TerminalCaps } from "./caps.js";
+import { MIN_LAYOUT_COLUMNS, type TerminalCaps } from "./caps.js";
 import type { Painter } from "./paint.js";
 import { cellWidth, wrapSpans, type Line, type Span } from "./width.js";
 
@@ -50,6 +50,11 @@ export interface RailRow {
    * never dropped (the URL line, the code, the key hints).
    */
   drop?: number;
+  /**
+   * Never dropped, and a screen that is still too tall after compaction loses its other rows first
+   * (the header, the lead-in, the waiting line): the URL line, the code and the key hints stay.
+   */
+  keep?: boolean;
   /**
    * `spinner` marks the waiting line that the key hints merge onto first; `hints` marks the hints
    * row that merges; `header` marks the flow's header rows, which a live region leaves out once a
@@ -88,9 +93,14 @@ const MARKS: Record<
 /** Cells between the mark and the content. */
 export const GUTTER = TERMINAL_LAYOUT.gutter;
 
+/** A layout too narrow for the rail: it is dropped and the content takes the whole line. */
+export function isNarrow(columns: number): boolean {
+  return columns < MIN_LAYOUT_COLUMNS;
+}
+
 /** Cells the content may use on a rail line of a `columns`-wide layout. */
 export function contentWidth(columns: number): number {
-  return Math.max(10, columns - 1 - GUTTER);
+  return isNarrow(columns) ? Math.max(5, columns) : columns - 1 - GUTTER;
 }
 
 function markGlyph(
@@ -110,6 +120,25 @@ function markGlyph(
   return { first: glyph, next: mark === "end" ? " " : rail };
 }
 
+/**
+ * End the rail on the last content row: a bare `end` row under a row on the rail is dropped and
+ * that row's last line takes the end mark instead, so no empty `└` row hangs below the content.
+ */
+export function closeRail(rows: readonly RailRow[]): RailRow[] {
+  const out = [...rows];
+  const last = out[out.length - 1];
+  const prev = out[out.length - 2];
+  if (
+    last?.mark === "end" &&
+    last.spans.length === 0 &&
+    prev?.mark === "rail" &&
+    prev.spans.length > 0
+  ) {
+    out.splice(out.length - 2, 2, { ...prev, mark: "end" });
+  }
+  return out;
+}
+
 /** Render rail rows to lines: each row wraps under its content column. */
 export function railLines(
   rows: readonly RailRow[],
@@ -119,17 +148,34 @@ export function railLines(
 ): string[] {
   const out: string[] = [];
   const gap = " ".repeat(GUTTER);
-  for (const row of rows) {
+  const narrow = isNarrow(columns);
+  for (const row of closeRail(rows)) {
     const { first, next } = markGlyph(row.mark, symbols, painter);
-    const noRail = row.mark === "none";
-    const width = noRail ? columns : contentWidth(columns);
+    const noRail = row.mark === "none" || narrow;
+    const width = noRail ? contentWidth(columns) : contentWidth(columns);
     const wrapped = row.spans.length
       ? wrapSpans(row.spans, width, symbols.ellipsis)
       : [[]];
+    const rail = painter.style(symbols.rail, ["muted"]);
     wrapped.forEach((line, i) => {
-      const glyph = i === 0 ? first : next;
+      // The end mark closes the rail on the row's last line only; a closing line that wraps keeps
+      // the rail on every line above it.
+      const glyph =
+        row.mark === "end" && i < wrapped.length - 1
+          ? rail
+          : i === 0
+            ? first
+            : next;
       const body = painter.line(line);
-      if (noRail) out.push(body);
+      if (narrow && row.mark !== "none") {
+        // No rail on a narrow line: a step keeps its mark (✓ ✗ ▲ or the spinner) on its first line.
+        const stepMark =
+          i === 0 &&
+          row.mark !== "rail" &&
+          row.mark !== "start" &&
+          row.mark !== "end";
+        out.push(stepMark && body ? `${first} ${body}` : body);
+      } else if (noRail) out.push(body);
       else out.push(body ? `${glyph}${gap}${body}` : glyph);
     });
   }
@@ -152,8 +198,10 @@ export function keyHints(text: string, symbols: Symbols): Line {
       spans.push({ text: seg, style: ["strong"] });
       return;
     }
-    spans.push({ text: m[1]!, style: ["strong"], keep: true });
-    spans.push({ text: `${m[2]}${m[3]}`, style: ["muted"] });
+    // A key and its label move together ("Esc cancel"), and wrap at the label's spaces only when
+    // the pair is wider than the line.
+    spans.push({ text: m[1]!, style: ["strong"], keep: true, unit: true });
+    spans.push({ text: `${m[2]}${m[3]}`, style: ["muted"], unit: true });
   });
   return spans;
 }

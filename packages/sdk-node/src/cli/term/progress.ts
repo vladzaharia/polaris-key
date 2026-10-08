@@ -35,15 +35,19 @@ export const QR_INDENT = 6;
 
 /**
  * The half-block QR lines for `text`, or null when this terminal should not draw one (ASCII) or
- * the text does not fit a QR. Light themes get the inverted symbol so it scans as dark modules on
- * light. Whether it fits the screen is the caller's to decide with `qrFits`.
+ * the text does not fit a QR. With colour, dark modules are the half blocks and the quiet zone and
+ * light modules are spaces painted on a white background (the `qr` role: black on white in every
+ * palette), so a terminal with line spacing above 1.0 shows no stripes. Without colour a dark
+ * terminal gets the light modules as blocks and a light one the dark modules, so it scans either
+ * way. Whether it fits the screen is the caller's to decide with `qrFits`.
  */
 export function qrLines(
   text: string,
-  caps: Pick<TerminalCaps, "unicode" | "scheme">,
+  caps: Pick<TerminalCaps, "unicode" | "scheme" | "color">,
 ): string[] | null {
   if (!caps.unicode) return null;
-  const t = qr.terminal(text, { invert: caps.scheme === "light" });
+  const invert = caps.color !== "none" || caps.scheme === "light";
+  const t = qr.terminal(text, { invert });
   return t ? t.split("\n") : null;
 }
 

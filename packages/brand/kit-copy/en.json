@@ -2677,9 +2677,9 @@
       "note": "Terminal status: the row label for how long the app works without the internet."
     },
     "cli.status.offlineUntil": {
-      "value": "Works offline until {date}",
+      "value": "until {date}",
       "role": "body",
-      "note": "Terminal status: the license keeps working without the internet until {date} (a short date)."
+      "note": "Terminal status: the license keeps working without the internet until {date} (a short date). It follows the row label 'Offline', so it starts with the preposition."
     },
     "cli.status.version": {
       "value": "Version",
@@ -2860,6 +2860,56 @@
       "value": "Replace a device in your browser, then try again here.",
       "role": "body",
       "note": "Terminal: every device on the license is in use. The terminal does not poll, so it says what to do and asks to try again here."
+    },
+    "cli.status.devices": {
+      "value": "Devices",
+      "role": "label",
+      "note": "Terminal status: the row label for how many devices use the license."
+    },
+    "cli.status.seatsOf": {
+      "value": "{used} of {limit}",
+      "role": "body",
+      "note": "Terminal status: devices in use out of the license's limit, like '2 of 3'."
+    },
+    "cli.update.available": {
+      "value": "{version} is available · {size}",
+      "role": "body",
+      "note": "Terminal update check: a newer version exists. {version} is the version, {size} the download size (like '61 MB'). The chip above already names the product."
+    },
+    "cli.update.availableNoSize": {
+      "value": "{version} is available",
+      "role": "body",
+      "note": "Terminal update check: a newer version exists and its size is not known. {version} is the version."
+    },
+    "cli.update.have": {
+      "value": "You have {version}",
+      "role": "body",
+      "note": "Terminal update check: the version installed now. {version} is that version."
+    },
+    "cli.update.install": {
+      "value": "Install",
+      "role": "label",
+      "note": "Terminal update check: what the 'update apply' command does, beside the command."
+    },
+    "cli.changelog.fix": {
+      "value": "Check your connection and run {command} again.",
+      "role": "body",
+      "note": "Terminal changelog: what to do after the release notes failed to load. {command} is a command line."
+    },
+    "cli.import.fix": {
+      "value": "Ask whoever sent it for a new file.",
+      "role": "body",
+      "note": "Terminal offline activation: what to do after an activation file was refused."
+    },
+    "cli.identityOff.notice": {
+      "value": "{product} doesn't use Polaris Key sign-in.",
+      "role": "body",
+      "note": "Terminal sign-in: the product does not use Polaris Key sign-in. {product} is the product."
+    },
+    "cli.identityOff.fix": {
+      "value": "Run {command} with your license key.",
+      "role": "body",
+      "note": "Terminal sign-in: what to do instead when the product has no sign-in. {command} is a command line such as 'tidewater activate'."
     }
   }
 }

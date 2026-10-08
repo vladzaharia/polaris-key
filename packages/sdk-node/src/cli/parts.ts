@@ -25,13 +25,14 @@ import {
   columnsOf,
   contentWidth,
   DROP,
+  isNarrow,
   keyHints,
   separated,
   type Mark,
   type RailRow,
 } from "./term/layout.js";
 import { displayUrl } from "./term/osc.js";
-import { cellWidth, type Line, type Span } from "./term/width.js";
+import { cellWidth, wrapSpans, type Line, type Span } from "./term/width.js";
 
 /**
  * A blank rail row between blocks (none under `density: "compact"`). On a live screen it carries a
@@ -47,22 +48,22 @@ export function gap(
 }
 
 /**
- * The flow's first row: the product chip, then the command in muted. A name too long for the line
- * ends in an ellipsis inside the chip, at whatever width the row is laid out at.
+ * The flow's first row: the product chip, then the command in muted. A row too wide for the line
+ * drops the " · <verb>" suffix first; the name ends in an ellipsis inside its chip only when the
+ * chip alone is wider than the line.
  */
 export function productHeader(ctx: KitContext, command: string): RailRow[] {
   const sep = ctx.symbols.separator;
+  const chip = ` ${ctx.product.name} `;
+  const suffix = ` ${sep} ${command}`;
+  const fitsWhole =
+    cellWidth(chip) + cellWidth(suffix) <= contentWidth(ctx.caps.columns);
   return [
     {
       mark: "start",
       spans: [
-        {
-          text: ` ${ctx.product.name} `,
-          style: ["chip"],
-          keep: true,
-          shrink: true,
-        },
-        { text: ` ${sep} ${command}`, style: ["muted"] },
+        { text: chip, style: ["chip"], keep: true, shrink: true },
+        ...(fitsWhole ? [{ text: suffix, style: ["muted"] }] : []),
       ],
       role: "header",
     },
@@ -102,7 +103,12 @@ export function hintsRow(
   text: string,
   mark: Mark = "end",
 ): RailRow {
-  return { mark, spans: keyHints(text, ctx.symbols), role: "hints" };
+  return {
+    mark,
+    spans: keyHints(text, ctx.symbols),
+    role: "hints",
+    keep: true,
+  };
 }
 
 /** The flow's last row: muted text after the end mark, or the bare mark. */
@@ -161,9 +167,12 @@ export function codeRows(ctx: KitContext, code: string): RailRow[] {
     {
       mark: "rail",
       spans: [
-        { text: "   " },
+        // The code lines up under the content, indented; on a line too narrow for the rail it
+        // takes the whole width.
+        ...(isNarrow(ctx.caps.columns) ? [] : [{ text: "   " }]),
         { text: ` ${code} `, style: ["code"], break: "code" },
       ],
+      keep: true,
     },
     ...gap(ctx, DROP.blankCode),
   ];
@@ -186,9 +195,17 @@ export function commandRows(
     ctx.caps.columns < STACK_COLUMNS ||
     lines.some((l) => cellWidth(l.map((s) => s.text).join("")) > width);
   if (!stack) return lines.map((spans) => ({ mark: "rail" as const, spans }));
+  // A command wider than the line wraps at its spaces and keeps a four-cell hanging indent, deeper
+  // than the label under it, so the two can be told apart without bold.
   return rows.flatMap((r) => [
-    { mark: "rail" as const, spans: r.label },
-    { mark: "rail" as const, spans: [{ text: "  " }, ...r.value] },
+    ...wrapSpans(r.label, Math.max(1, width - 4)).map((l, i) => ({
+      mark: "rail" as const,
+      spans: i === 0 ? l : [{ text: "    " }, ...l],
+    })),
+    ...wrapSpans(r.value, Math.max(1, width - 2)).map((l) => ({
+      mark: "rail" as const,
+      spans: [{ text: "  " }, ...l],
+    })),
   ]);
 }
 
@@ -210,15 +227,52 @@ export function fixRows(
   );
 }
 
-/** Label and value rows aligned in two columns (status, doctor). */
+/**
+ * Label and value rows (status, doctor). The values align in a column and a long one wraps inside
+ * it, hanging under its own first character; a continuation never lands under the label column.
+ * Below 50 columns, or when the value column would be narrower than 20 cells, each row stacks: the
+ * label, then the value indented two cells.
+ */
 export function tableRows(
+  ctx: KitContext,
   rows: ReadonlyArray<{ mark?: Mark; label: string; value: Line }>,
 ): RailRow[] {
-  const lines = columnsOf(
-    rows.map((r) => ({ label: [{ text: r.label }], value: r.value })),
-    3,
-  );
-  return lines.map((spans, i) => ({ mark: rows[i]!.mark ?? "rail", spans }));
+  const gapWidth = 3;
+  const labelWidth = Math.max(0, ...rows.map((r) => cellWidth(r.label)));
+  const width = contentWidth(ctx.caps.columns);
+  const valueWidth = width - labelWidth - gapWidth;
+  const stack = ctx.caps.columns < STACK_COLUMNS || valueWidth < 20;
+  const out: RailRow[] = [];
+  for (const r of rows) {
+    const mark = r.mark ?? "rail";
+    if (stack) {
+      out.push({ mark, spans: [{ text: r.label }] });
+      for (const l of wrapSpans(r.value, Math.max(1, width - 2)))
+        out.push({ mark: "rail", spans: [{ text: "  " }, ...l] });
+      continue;
+    }
+    wrapSpans(r.value, Math.max(1, valueWidth)).forEach((l, i) =>
+      out.push(
+        i === 0
+          ? {
+              mark,
+              spans: [
+                {
+                  text:
+                    r.label +
+                    " ".repeat(labelWidth - cellWidth(r.label) + gapWidth),
+                },
+                ...l,
+              ],
+            }
+          : {
+              mark: "rail",
+              spans: [{ text: " ".repeat(labelWidth + gapWidth) }, ...l],
+            },
+      ),
+    );
+  }
+  return out;
 }
 
 /** What the masked key field shows: never a character of the secret (UI-KITS §4.3). */

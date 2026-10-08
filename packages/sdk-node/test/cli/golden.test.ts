@@ -129,8 +129,10 @@ describe("the terminal kit's baselines", () => {
         if (v.color === "none")
           expect(
             r.raw,
-            `${s.name} ${id}: an SGR escape under NO_COLOR`,
-          ).not.toMatch(/\x1b\[[0-9;]*m/);
+            `${s.name} ${id}: a colour escape under NO_COLOR (bold and reverse stay)`,
+          ).not.toMatch(
+            /\x1b\[(?:3[0-79]|9[0-7]|4[0-79]|10[0-7]|[34]8)[0-9;]*m/,
+          );
         if (v.ascii)
           for (const ch of stripAnsi(r.text))
             expect(

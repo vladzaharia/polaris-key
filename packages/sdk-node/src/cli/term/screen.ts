@@ -40,7 +40,7 @@ export function inlineHints(
   ];
   if (widthOf(joined) > contentWidth(columns)) return [...rows];
   return rows
-    .map((r, i) => (i === s ? { ...r, spans: joined } : r))
+    .map((r, i) => (i === s ? { ...r, spans: joined, keep: true } : r))
     .filter((_, i) => i !== h);
 }
 
@@ -85,6 +85,15 @@ export function fitScreen(rows: readonly RailRow[], o: FitOptions): Fitted {
     cur = cur.filter((r) => r.drop !== t);
     lines = o.render(cur);
   }
+  // Still too tall: the rows that are not essential leave from the top (the header, the lead-in,
+  // the waiting line), one at a time; the URL line, the code and the key hints stay.
+  while (lines.length > max) {
+    const i = cur.findIndex((r) => !r.keep);
+    if (i < 0) break;
+    cur = cur.filter((_, j) => j !== i);
+    lines = o.render(cur);
+  }
+  // Nothing else can go: the top lines leave the view.
   const cut = Math.max(0, lines.length - max);
   return { lines: cut ? lines.slice(cut) : lines, head: headOf(cur, cut) };
 }

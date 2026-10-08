@@ -8,6 +8,7 @@ export {
   detectTerminal,
   isCi,
   layoutColumns,
+  MIN_COLUMNS,
   MIN_LAYOUT_COLUMNS,
   SHORT_ROWS,
   isHeadless,
@@ -33,6 +34,7 @@ export {
 export {
   columnsOf,
   contentWidth,
+  isNarrow,
   DROP,
   GUTTER,
   keyHints,

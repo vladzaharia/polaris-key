@@ -233,7 +233,9 @@ export function resolveProduct(o: ResolveIdentityOptions): ResolvedProduct {
   const native = o.theme?.preset === "native";
   const chip =
     input && !native
-      ? (({ solid, on }) => ({ solid, on }))(resolveAccent(input, o.scheme))
+      ? (({ solid, on, fg }) => ({ solid, on, fg }))(
+          resolveAccent(input, o.scheme),
+        )
       : null;
   return { ...base, accentSource: source, accentHex: input, chip };
 }

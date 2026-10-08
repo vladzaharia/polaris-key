@@ -538,7 +538,7 @@
     "cli.deviceLimit.again": "Geben Sie ein Gerät frei und führen Sie dann {command} erneut aus.",
     "cli.status.license": "Lizenz",
     "cli.status.offline": "Offline",
-    "cli.status.offlineUntil": "Funktioniert offline bis {date}",
+    "cli.status.offlineUntil": "bis {date}",
     "cli.status.version": "Version",
     "cli.status.fixes": "Um {product} weiter zu verwenden:",
     "cli.fix.signIn": "Die Lizenz Ihres Kontos verwenden",
@@ -574,6 +574,16 @@
     "cli.update.readyNoSize": "{version} ist bereit",
     "cli.update.restart": "Zum Abschließen des Updates neu starten.",
     "cli.update.nothingInstalled": "Es wurde nichts installiert.",
-    "cli.deviceLimit.body": "Ersetzen Sie ein Gerät in Ihrem Browser und versuchen Sie es dann hier erneut."
+    "cli.deviceLimit.body": "Ersetzen Sie ein Gerät in Ihrem Browser und versuchen Sie es dann hier erneut.",
+    "cli.status.devices": "Geräte",
+    "cli.status.seatsOf": "{used} von {limit}",
+    "cli.update.available": "{version} ist verfügbar · {size}",
+    "cli.update.availableNoSize": "{version} ist verfügbar",
+    "cli.update.have": "Sie haben {version}",
+    "cli.update.install": "Installieren",
+    "cli.changelog.fix": "Prüfen Sie Ihre Verbindung und führen Sie {command} erneut aus.",
+    "cli.import.fix": "Bitten Sie den Absender um eine neue Datei.",
+    "cli.identityOff.notice": "{product} verwendet die Polaris Key-Anmeldung nicht.",
+    "cli.identityOff.fix": "Führen Sie {command} mit Ihrem Lizenzschlüssel aus."
   }
 }

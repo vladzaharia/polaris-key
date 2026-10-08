@@ -532,8 +532,7 @@ describe("the resolution matrix (40/60/80/120 × 12/24, long values)", () => {
             .map((r) => r.text)
             .join("\n");
           // Below 50 columns a command row stacks: the command, then its label under it.
-          if (columns < 50)
-            expect(text).toMatch(/│ {2}tidewater activate\n/);
+          if (columns < 50) expect(text).toMatch(/│ {2}tidewater activate\n/);
           // A finished download never reads "Up to date" above "Restart to finish updating".
           expect(text).not.toContain("Up to date");
           // The finished block replaces the bar: ready, the size, then what to do next.
@@ -725,7 +724,7 @@ describe("a flow's end states leave one result block under one header", () => {
       .map((r) => r.text)
       .join("\n");
     expect(text).toContain("Sign-in cancelled");
-    expect(text).toMatch(/tidewater login\n│\s+Sign in again/);
+    expect(text).toMatch(/tidewater login\n└\s+Sign in again/);
     expect(text).not.toContain("WDJB-MJHT");
   });
 });
@@ -752,10 +751,10 @@ describe("a terminal resized in the middle of a live region (80 → 50)", () => 
       url: LONG.url,
       hints: true,
     });
-    // One header, still on one line: the chip's name gives way with an ellipsis at the new width.
-    const headers = screen.all().filter((r) => r.text.includes("· login"));
+    // One header, still on one line: the verb suffix gives way first, then the name's end.
+    const headers = screen.all().filter((r) => r.text.startsWith("┌"));
     expect(headers).toHaveLength(1);
-    expect(headers[0]!.text).toMatch(/^┌ {3}Tidewater Studio .*… {2}· login$/);
+    expect(headers[0]!.text).toMatch(/^┌ {3}Tidewater Studio .*… ?$/);
   });
 
   it("redraws the progress bar in place: one bar, never a stack", async () => {

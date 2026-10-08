@@ -538,7 +538,7 @@
     "cli.deviceLimit.again": "기기 자리를 비운 다음 다시 실행하세요: {command}",
     "cli.status.license": "라이선스",
     "cli.status.offline": "오프라인",
-    "cli.status.offlineUntil": "{date}까지 오프라인으로 사용 가능",
+    "cli.status.offlineUntil": "{date}까지",
     "cli.status.version": "버전",
     "cli.status.fixes": "{product}을(를) 계속 사용하려면:",
     "cli.fix.signIn": "계정의 라이선스 사용",
@@ -574,6 +574,16 @@
     "cli.update.readyNoSize": "{version} 준비 완료",
     "cli.update.restart": "업데이트를 완료하려면 재시작하세요.",
     "cli.update.nothingInstalled": "설치된 항목이 없어요.",
-    "cli.deviceLimit.body": "브라우저에서 기기를 교체한 다음 여기서 다시 시도하세요."
+    "cli.deviceLimit.body": "브라우저에서 기기를 교체한 다음 여기서 다시 시도하세요.",
+    "cli.status.devices": "기기",
+    "cli.status.seatsOf": "{limit}대 중 {used}대",
+    "cli.update.available": "{version} 사용 가능 · {size}",
+    "cli.update.availableNoSize": "{version} 사용 가능",
+    "cli.update.have": "현재 {version}을(를) 사용 중이에요",
+    "cli.update.install": "설치",
+    "cli.changelog.fix": "연결을 확인한 다음 {command}을(를) 다시 실행하세요.",
+    "cli.import.fix": "보낸 사람에게 새 파일을 요청하세요.",
+    "cli.identityOff.notice": "{product}은(는) Polaris Key 로그인을 사용하지 않아요.",
+    "cli.identityOff.fix": "라이선스 키로 {command}을(를) 실행하세요."
   }
 }

@@ -10,11 +10,10 @@
 //              braille), PKEY_ASCII=1 or --ascii.
 //   animation  a spinner or a redrawn progress line only on a terminal, never under CI, TERM=dumb
 //              or reduced motion: anything else prints each line once.
-//   layout     80 columns, degrading to the terminal's width below that, down to 32 (the
-//              narrowest layout: a 19-character code still fits a line, rail and indent included).
-//              Prose wraps; a URL or a code wraps at its own break points and is never cut.
-//   rows       the terminal's height: 16 rows or fewer is a short terminal, where the flows drop
-//              their blank rows and put the key hints inline (UI-KITS §1.5 rule 13).
+//   layout     80 columns, degrading to the terminal's width. Below 32 the rail and its gutter go
+//              and everything lays out at the real width. Prose wraps; a URL or a code wraps at
+//              its own break points and is never cut.
+//   rows       the terminal's height: a live screen taller than it compacts by fit (screen.ts).
 //   scheme     PKEY_THEME=dark|light, else COLORFGBG, else dark (OSC 11, queryBackground, is
 //              asked only when truecolor is on and the flow can wait for an answer).
 //   headless   no local browser (SIGN-IN.md D-68): SSH_CONNECTION or SSH_TTY, CI, or Linux with
@@ -101,16 +100,22 @@ export interface DetectOptions {
   };
 }
 
-/** The narrowest layout, in cells. */
+/** Below this many columns the rail and its gutter are dropped (see `railLines`). */
 export const MIN_LAYOUT_COLUMNS = 32;
 
-/** A terminal this many rows high or fewer gets the short layout. */
+/** The narrowest width anything is laid out at, in cells. */
+export const MIN_COLUMNS = 10;
+
+/** A terminal this many rows high or fewer is short; a live screen compacts by fit, not by this. */
 export const SHORT_ROWS = 16;
 
-/** The layout width for a terminal `columns` cells wide: 80, or the terminal's, never below 32. */
+/**
+ * The layout width for a terminal `columns` cells wide: 80, or the terminal's own width. Below 32
+ * the layout is drawn at the real width, without the rail, rather than for 32 and cropped.
+ */
 export function layoutColumns(columns: number): number {
   return Math.max(
-    MIN_LAYOUT_COLUMNS,
+    MIN_COLUMNS,
     Math.min(TERMINAL_LAYOUT.columns, Math.floor(columns)),
   );
 }
