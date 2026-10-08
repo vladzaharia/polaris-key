@@ -24,6 +24,7 @@ type StyleName = Extract<Parameters<typeof styleText>[0], string>;
 /** SGR parameter → `util.styleText` format name. */
 const STYLE_NAMES: Record<string, StyleName> = {
   "1": "bold",
+  "2": "dim",
   "4": "underline",
   "7": "inverse",
   "31": "red",

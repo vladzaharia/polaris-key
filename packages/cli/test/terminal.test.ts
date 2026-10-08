@@ -436,7 +436,7 @@ describe("colour only on a colour terminal", () => {
   it("a colour terminal gets SGR roles: strong headings, muted descriptions, the verdict's role", async () => {
     const help = await run([], { tty: true, env: {} });
     expect(help.out).toContain(`${ESC}[1mManifest${ESC}[22m`);
-    expect(help.out).toContain(`${ESC}[90m`);
+    expect(help.out).toContain(`${ESC}[2m`);
     // The same words underneath.
     expect(stripAnsi(help.out)).toBe((await run([])).out);
 
@@ -488,7 +488,7 @@ describe("the spinner", () => {
     t.tick();
     expect(stripAnsi(err.text())).toContain("⠙  Hashing 3 files");
     s.advance(2, 3);
-    expect(stripAnsi(err.text())).toMatch(/Hashing 3 files {2}━+ 2\/3$/);
+    expect(stripAnsi(err.text())).toMatch(/Hashing 3 files {2}━+─* 2\/3$/);
     const out = s.wrap(stream(false));
     const before = err.text().length;
     out.write("Matched 1 build\n");
