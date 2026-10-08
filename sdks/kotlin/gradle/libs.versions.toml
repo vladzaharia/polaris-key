@@ -50,6 +50,8 @@ zxing = "3.5.3"
 roborazzi = "1.43.0"
 androidxTestExtJunit = "1.2.1"
 activityCompose = "1.10.1"
+# The version Compose 1.8 already brings in transitively; :ui now names it for the sign-in ViewModel.
+lifecycle = "2.8.7"
 
 [libraries]
 godot = { module = "org.godotengine:godot", version.ref = "godot" }
@@ -80,6 +82,7 @@ zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 roborazzi = { module = "io.github.takahirom.roborazzi:roborazzi", version.ref = "roborazzi" }
 roborazzi-compose = { module = "io.github.takahirom.roborazzi:roborazzi-compose", version.ref = "roborazzi" }
 roborazzi-junit-rule = { module = "io.github.takahirom.roborazzi:roborazzi-junit-rule", version.ref = "roborazzi" }
+androidx-lifecycle-viewmodel = { module = "androidx.lifecycle:lifecycle-viewmodel", version.ref = "lifecycle" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
 androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidxTestExtJunit" }
 # The Ed25519 backend below Android API 33 in :android (P6-12): the same Tink, built for Android.

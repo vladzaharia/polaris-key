@@ -172,7 +172,7 @@ class StateHoldersTest {
         state.start()
         runCurrent()
         assertEquals(PolarisSignInUi.Expired, state.ui.value)
-        // start() is idempotent: an ended flow stays ended until restart() asks for a new code.
+        // start() on a finished flow starts over: a new sign-in asks for a new code.
         state.start()
         runCurrent()
         assertEquals(PolarisSignInUi.Expired, state.ui.value)

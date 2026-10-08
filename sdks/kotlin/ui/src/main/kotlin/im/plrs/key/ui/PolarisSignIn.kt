@@ -45,6 +45,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.lifecycle.viewModelScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -82,9 +83,7 @@ import im.plrs.key.identity.SignInResult
 import im.plrs.key.sdk.PolarisKeyClient
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -164,8 +163,11 @@ public class PolarisSignInState(
     public fun start() {
         if (job?.isActive == true) return
         val shown = prompt
+        val now = _ui.value
+        val ended = !expiredOnScreen && (now == PolarisSignInUi.Done || now == PolarisSignInUi.Expired || now == PolarisSignInUi.Failed)
         when {
-            _ui.value == PolarisSignInUi.Starting -> begin()
+            // A finished flow (done, expired, failed) starts over: a new sign-in asks for a new code.
+            _ui.value == PolarisSignInUi.Starting || ended -> begin()
             shown != null && (_ui.value is PolarisSignInUi.Showing || expiredOnScreen) -> job = scope.launch { follow(shown) }
         }
     }
@@ -251,33 +253,62 @@ public class PolarisSignInState(
 }
 
 /**
- * Sign-in states that outlive the composition, by key (an activity recreation, a rotation, keeps
- * the same code: a new one would kill the code the person is typing on their phone). The state's
- * scope is its own, never the composition's; [PolarisSignInState.cancel] clears the code.
+ * The sign-in state kept by the Activity's ViewModel store, so a rotation keeps the same code (a new
+ * one would kill the code the person is typing on their phone) and finishing the Activity releases
+ * it. One per Activity; it follows the client it was made for and starts over for a different one.
  */
-internal object HeldSignIn {
-    private class Entry(val state: PolarisSignInState, var onSignedIn: () -> Unit)
+internal class PolarisSignInViewModel : androidx.lifecycle.ViewModel() {
+    private var owner: Any? = null
+    var state: PolarisSignInState? = null
+        private set
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private val held = java.util.WeakHashMap<Any, Entry>()
+    /** The composition's "signed in" reaction; null while no screen is attached, so nothing stale runs. */
+    @Volatile
+    var onSignedIn: (() -> Unit)? = null
 
-    /** The state held for [key], created with [actions] on first use; [onSignedIn] is always the latest. */
-    @Synchronized
-    fun get(key: Any, actions: PolarisSignInActions, onSignedIn: () -> Unit): PolarisSignInState {
-        val entry = held.getOrPut(key) {
-            lateinit var e: Entry
-            e = Entry(PolarisSignInState(actions, scope, onSignedIn = { e.onSignedIn() }), onSignedIn)
-            e
-        }
-        entry.onSignedIn = onSignedIn
-        return entry.state
+    /** The state for [client]: the held one, or a fresh one for a new client. */
+    fun stateFor(client: Any, actions: PolarisSignInActions): PolarisSignInState {
+        val held = state
+        if (held != null && owner === client) return held
+        held?.cancel()
+        owner = client
+        return PolarisSignInState(actions, viewModelScope, onSignedIn = { onSignedIn?.invoke() }).also { state = it }
+    }
+
+    override fun onCleared() {
+        state?.cancel()
+        state = null
+        owner = null
+        onSignedIn = null
     }
 }
 
-/** The sign-in state held for [key] (see [HeldSignIn]); survives the activity being recreated. */
+/** The ViewModelStoreOwner behind [this] context (the Activity), or null. */
+private tailrec fun android.content.Context.storeOwner(): androidx.lifecycle.ViewModelStoreOwner? = when (this) {
+    is androidx.lifecycle.ViewModelStoreOwner -> this
+    is android.content.ContextWrapper -> baseContext.storeOwner()
+    else -> null
+}
+
+/**
+ * The sign-in state for [key] (the client), held by the Activity's ViewModel store (see
+ * [PolarisSignInViewModel]); [onSignedIn] runs while this composition is attached.
+ */
 @Composable
-internal fun rememberHeldSignIn(key: Any, actions: PolarisSignInActions, onSignedIn: () -> Unit): PolarisSignInState =
-    HeldSignIn.get(key, actions, onSignedIn)
+internal fun rememberHeldSignIn(key: Any, actions: PolarisSignInActions, onSignedIn: () -> Unit): PolarisSignInState {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val owner = remember(context) { context.storeOwner() }
+    val vm = remember(owner) {
+        owner?.let { androidx.lifecycle.ViewModelProvider(it)["polaris-key-sign-in", PolarisSignInViewModel::class.java] }
+            ?: PolarisSignInViewModel()
+    }
+    val latest by androidx.compose.runtime.rememberUpdatedState(onSignedIn)
+    DisposableEffect(vm) {
+        vm.onSignedIn = { latest() }
+        onDispose { vm.onSignedIn = null }
+    }
+    return remember(vm, key) { vm.stateFor(key, actions) }
+}
 
 // ── Composables ──────────────────────────────────────────────────────────────────────────────
 
@@ -476,10 +507,13 @@ private fun PolarisCodeView(
     )
 }
 
-/** An https link with a host and no userinfo: the only kind the sign-in screen opens, encodes or copies. */
+/** The longest link the screen opens or encodes (a QR code holds more, but nothing legitimate is longer). */
+internal const val MAX_SIGN_IN_LINK: Int = 2048
+
+/** An https link of at most [MAX_SIGN_IN_LINK] characters with a host and no userinfo: the only kind the sign-in screen opens, encodes or copies. */
 internal fun isSafeSignInLink(raw: String): Boolean = try {
     val u = URI(raw)
-    u.scheme.equals("https", ignoreCase = true) && !u.host.isNullOrEmpty() && u.userInfo == null
+    raw.length <= MAX_SIGN_IN_LINK && u.scheme.equals("https", ignoreCase = true) && !u.host.isNullOrEmpty() && u.userInfo == null
 } catch (e: Exception) {
     false
 }
@@ -713,7 +747,8 @@ public fun qrModules(content: String): Array<BooleanArray> {
  */
 @Composable
 public fun PolarisQrCode(content: String, contentDescription: String, modifier: Modifier = Modifier) {
-    val modules = remember(content) { qrModules(content) }
+    // A link the encoder refuses draws no code (the screen still has the code and Copy link).
+    val modules = remember(content) { runCatching { qrModules(content) }.getOrNull() } ?: return
     val status = PolarisTheme.status
     Box(
         modifier = modifier

@@ -206,32 +206,103 @@ class FlowTest {
         assertEquals("the key field has focus", true, field.config.getOrElse(SemanticsProperties.Focused) { false })
     }
 
-    @Test
-    fun heldSignInKeepsTheSameCodeAcrossAnActivityRecreation() {
-        val actions = object : PolarisSignInActions {
-            var begins = 0
-            override suspend fun begin(): SignInPrompt { begins++; return samplePrompt }
-            override suspend fun wait(prompt: SignInPrompt): SignInResult = awaitCancellation()
-        }
-        val key = Any()
-        val scenario = androidx.test.core.app.ActivityScenario.launch(androidx.activity.ComponentActivity::class.java)
-        fun show() = scenario.onActivity { a ->
-            a.setContent {
-                StockHost(false) {
-                    PolarisTheme(copy = sampleCopy, darkTheme = false) {
-                        PolarisSignIn(rememberHeldSignIn(key, actions) {})
-                    }
+    private class Held(val ready: Boolean = false) : PolarisSignInActions {
+        var begins = 0
+        val done = kotlinx.coroutines.CompletableDeferred<SignInResult>()
+        override suspend fun begin(): SignInPrompt { begins++; return samplePrompt }
+        override suspend fun wait(prompt: SignInPrompt): SignInResult = if (ready) SignInResult.Ready else done.await()
+    }
+
+    private fun androidx.test.core.app.ActivityScenario<androidx.activity.ComponentActivity>.show(
+        key: Any, actions: PolarisSignInActions, onSignedIn: () -> Unit = {},
+    ) = onActivity { a ->
+        a.setContent {
+            StockHost(false) {
+                PolarisTheme(copy = sampleCopy, darkTheme = false) {
+                    PolarisSignIn(rememberHeldSignIn(key, actions, onSignedIn))
                 }
             }
         }
-        show()
-        androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().waitForIdleSync()
-        org.robolectric.shadows.ShadowLooper.idleMainLooper()
+    }
+
+    private fun idle() = org.robolectric.shadows.ShadowLooper.idleMainLooper()
+
+    private fun androidx.test.core.app.ActivityScenario<androidx.activity.ComponentActivity>.vm() =
+        androidx.lifecycle.ViewModelProvider(this.let { var o: androidx.activity.ComponentActivity? = null; it.onActivity { a -> o = a }; o!! })[
+            "polaris-key-sign-in", PolarisSignInViewModel::class.java,
+        ]
+
+    @Test
+    fun heldSignInKeepsTheSameCodeAcrossAnActivityRecreation() {
+        val actions = Held()
+        val key = Any()
+        val scenario = androidx.test.core.app.ActivityScenario.launch(androidx.activity.ComponentActivity::class.java)
+        scenario.show(key, actions); idle()
         scenario.recreate()
-        show()
-        org.robolectric.shadows.ShadowLooper.idleMainLooper()
+        scenario.show(key, actions); idle()
         assertEquals("one code across the recreation", 1, actions.begins)
         scenario.close()
+    }
+
+    @Test
+    fun twoClientsShareNoSignInState() {
+        val a = Held()
+        val b = Held()
+        val scenario = androidx.test.core.app.ActivityScenario.launch(androidx.activity.ComponentActivity::class.java)
+        scenario.show("client-a", a); idle()
+        scenario.recreate()
+        scenario.show("client-b", b); idle()
+        assertEquals(1, a.begins)
+        assertEquals(1, b.begins)
+        scenario.close()
+    }
+
+    @Test
+    fun aFinishedSignInStartsOverWithAFreshCode() {
+        val actions = Held(ready = true)
+        val key = Any()
+        val scenario = androidx.test.core.app.ActivityScenario.launch(androidx.activity.ComponentActivity::class.java)
+        scenario.show(key, actions); idle()
+        assertEquals("the first sign-in completed", 1, actions.begins)
+        scenario.recreate()
+        scenario.show(key, actions); idle()
+        assertEquals("the next one asks for a new code", 2, actions.begins)
+        scenario.close()
+    }
+
+    @Test
+    fun theSignedInCallbackFiresOnceAfterALateSuccessAndIsReleasedOnDispose() {
+        val actions = Held()
+        val key = Any()
+        var fired = 0
+        val scenario = androidx.test.core.app.ActivityScenario.launch(androidx.activity.ComponentActivity::class.java)
+        scenario.show(key, actions) { fired++ }; idle()
+        actions.done.complete(SignInResult.Ready); idle()
+        assertEquals(1, fired)
+        // Disposing the composition releases the callback: nothing composition-bound stays held.
+        scenario.recreate(); idle()
+        assertEquals(null, scenario.vm().onSignedIn)
+        scenario.close()
+    }
+
+    @Test
+    fun theSignInLinkCheck() {
+        val cases = mapOf(
+            "https://key.plrs.im/activate?user_code=ABCD-EFGH" to true,
+            "HTTPS://key.plrs.im/x" to true,
+            "http://key.plrs.im/x" to false,
+            "https://user:pw@key.plrs.im/x" to false,
+            "https:///x" to false,
+            "data:text/html,hi" to false,
+            "javascript:alert(1)" to false,
+            "https://key.plrs.im/" + "a".repeat(2100) to false,
+            "https://exa mple.com/" to false,
+            "" to false,
+        )
+        for ((link, ok) in cases) assertEquals(link.take(60), ok, isSafeSignInLink(link))
+        // A link the encoder would refuse draws no code instead of crashing the screen.
+        val huge = "https://key.plrs.im/" + "a".repeat(5000)
+        assertTrue(runCatching { qrModules(huge) }.isFailure)
     }
 
     @Test
