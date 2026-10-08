@@ -4,7 +4,7 @@
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (DX consolidation C: Products, onboarding and Integration)                                                                                    |
 | Size        | 1–1.4 engineer-weeks                                                                                                                                                                         |
-| Depends on  | [SP-32a](SP-32a-polaris-key-json-plan-schema-fromconfig.md)                                                                                                                                  |
+| Depends on  | [SP-32a](SP-32a-polaris-key-json-plan-schema-fromconfig.md), [SP-35b](SP-35b-sdk-api-renames-godot-swift-kotlin.md)                                                                          |
 | Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [SP-33b](SP-33b-integration-content-on-polaris-key-json.md), [SP-36](SP-36-examples-in-one-tree-built-in-ci.md), [SP-39](SP-39-one-copy-pipeline.md) |
 | Role        | `pkey-sdk-porter`                                                                                                                                                                            |
 | Plan mode   | no                                                                                                                                                                                           |

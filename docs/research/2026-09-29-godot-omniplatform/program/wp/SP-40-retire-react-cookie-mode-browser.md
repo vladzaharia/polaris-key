@@ -5,7 +5,7 @@
 | Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (DX consolidation J: SDK and UI-kit consolidation)                                  |
 | Size        | 0.4–0.6 engineer-weeks                                                                                                             |
 | Depends on  | [I-08](I-08-app-passthrough.md), [I-10a](I-10a-sdk-identity-node-react-python.md), [SP-35](SP-35-sdk-api-registry-api-json-0-9.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                             |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [I-32b](I-32b-retire-legacy-identity-engine.md)                                            |
 | Role        | `pkey-sdk-porter`                                                                                                                  |
 | Plan mode   | no                                                                                                                                 |
 | Gates       | none beyond the green gate                                                                                                         |

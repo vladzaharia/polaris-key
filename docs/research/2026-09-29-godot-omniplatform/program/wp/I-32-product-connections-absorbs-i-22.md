@@ -5,7 +5,7 @@
 | Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (DX consolidation F: Identity)                                                                               |
 | Size        | 1.4–2 engineer-weeks                                                                                                                                                            |
 | Depends on  | [I-30](I-30-connections-one-oidc-relying-party.md), [I-08](I-08-app-passthrough.md), [I-13](I-13-exchange-endpoint.md), [I-35](I-35-one-identity-manifest-block-joint-lx-36.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [PS-08](PS-08-product-idp-path.md)                                                                                                      |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [I-32b](I-32b-retire-legacy-identity-engine.md), [PS-08](PS-08-product-idp-path.md)                                                     |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                           |
 | Plan mode   | yes: `pkey-wire-planner` writes `plans/I-32.md` first; no code before a human approves it                                                                                       |
 | Gates       | `plan-mode`, `migration`, `table-owners`, `threat-model`                                                                                                                        |

@@ -1,16 +1,16 @@
 # LX-43 Licensing presets, the 1.x helper, the new-major callout and the Integration Licensing card
 
-| Field       | Value                                                                                                                                                            |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (DX consolidation E: Licensing model)                                                                 |
-| Size        | 0.8–1.1 engineer-weeks                                                                                                                                           |
-| Depends on  | [LX-41](LX-41-durations-subscriptions-core-trials.md), [LX-44](LX-44-license-console-v2-tiers-entitlements.md), [ST-41](ST-41-integration-page-overview-card.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                                           |
-| Role        | `pkey-implementer`                                                                                                                                               |
-| Plan mode   | no                                                                                                                                                               |
-| Gates       | `console-csp-parity`                                                                                                                                             |
-| Human input | none                                                                                                                                                             |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                        |
+| Field       | Value                                                                                                                                                                                                                 |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (DX consolidation E: Licensing model)                                                                                                                      |
+| Size        | 0.8–1.1 engineer-weeks                                                                                                                                                                                                |
+| Depends on  | [LX-41](LX-41-durations-subscriptions-core-trials.md), [LX-44](LX-44-license-console-v2-tiers-entitlements.md), [ST-41](ST-41-integration-page-overview-card.md), [LX-41b](LX-41b-console-durations-subscriptions.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                                                                                                |
+| Role        | `pkey-implementer`                                                                                                                                                                                                    |
+| Plan mode   | no                                                                                                                                                                                                                    |
+| Gates       | `console-csp-parity`                                                                                                                                                                                                  |
+| Human input | none                                                                                                                                                                                                                  |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                             |
 
 ## Consolidation 2026-10-07
 

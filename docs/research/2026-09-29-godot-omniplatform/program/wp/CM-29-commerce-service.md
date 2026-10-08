@@ -1,16 +1,16 @@
 # CM-29 Commerce service: the `commerce` slug, requires License
 
-| Field       | Value                                                                                                                                                                                                                               |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | CM: Commerce (DX consolidation H: Channels, storefronts and commerce)                                                                                                                                                               |
-| Size        | 1.5–2.5 engineer-weeks                                                                                                                                                                                                              |
-| Depends on  | [ST-38](ST-38-service-table-five-features-one-service.md), [CM-20](CM-20-commerce-consolidation-plan-lx-11-plan.md), [P0-17](P0-17-layering-move-lead-codemod-at-batch-6.md), [P0-27](P0-27-one-adapter-store-delivery-commerce.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [LX-18](LX-18-licensing-wire.md)                                                                                                                                                            |
-| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                               |
-| Plan mode   | yes: executes the approved [`plans/CM-29.md`](../plans/CM-29.md) (2026-10-08); CM-29b runs on the same branch                                                                                                                       |
-| Gates       | `plan-mode`, `corpus`, `drift-gate`, `docs-generated`                                                                                                                                                                               |
-| Human input | none                                                                                                                                                                                                                                |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                           |
+| Field       | Value                                                                                                                                                              |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | CM: Commerce (DX consolidation H: Channels, storefronts and commerce)                                                                                              |
+| Size        | 1.5–2.5 engineer-weeks                                                                                                                                             |
+| Depends on  | [ST-38](ST-38-service-table-five-features-one-service.md), [CM-20](CM-20-commerce-consolidation-plan-lx-11-plan.md), [P0-27a](P0-27a-store-clients-core-stores.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [LX-18](LX-18-licensing-wire.md), [CM-29b](CM-29b-commerce-accent.md)                                                      |
+| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                              |
+| Plan mode   | yes: executes the approved [`plans/CM-29.md`](../plans/CM-29.md) (2026-10-08); CM-29b runs on the same branch                                                      |
+| Gates       | `plan-mode`, `corpus`, `drift-gate`, `docs-generated`                                                                                                              |
+| Human input | none                                                                                                                                                               |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                          |
 
 ## Consolidation 2026-10-07
 

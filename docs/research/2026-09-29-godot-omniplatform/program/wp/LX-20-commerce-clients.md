@@ -1,16 +1,16 @@
 # LX-20 Store commerce client parity (one wave with LX-19)
 
-| Field       | Value                                                                                                                |
-| ----------- | -------------------------------------------------------------------------------------------------------------------- |
-| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase C: the wire)                                       |
-| Size        | 1–1.4 engineer-weeks                                                                                                 |
-| Depends on  | [LX-11](LX-11-commerce-rework.md), [LX-18](LX-18-licensing-wire.md), [SP-35](SP-35-sdk-api-registry-api-json-0-9.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [CM-14](CM-14-device-checkout-wire.md)                                       |
-| Role        | `pkey-sdk-porter`                                                                                                    |
-| Plan mode   | no                                                                                                                   |
-| Gates       | all six SDKs (`parity:check`); macOS CI; Android CI                                                                  |
-| Human input | none                                                                                                                 |
-| Repo        | `vladzaharia/polaris-key`                                                                                            |
+| Field       | Value                                                                                                                                                                        |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase C: the wire)                                                                                               |
+| Size        | 1–1.4 engineer-weeks                                                                                                                                                         |
+| Depends on  | [LX-11](LX-11-commerce-rework.md), [LX-18](LX-18-licensing-wire.md), [SP-35](SP-35-sdk-api-registry-api-json-0-9.md), [SP-35b](SP-35b-sdk-api-renames-godot-swift-kotlin.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [CM-14](CM-14-device-checkout-wire.md)                                                                                               |
+| Role        | `pkey-sdk-porter`                                                                                                                                                            |
+| Plan mode   | no                                                                                                                                                                           |
+| Gates       | all six SDKs (`parity:check`); macOS CI; Android CI                                                                                                                          |
+| Human input | none                                                                                                                                                                         |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                    |
 
 ## Amendments from approved plans (2026-10-05)
 

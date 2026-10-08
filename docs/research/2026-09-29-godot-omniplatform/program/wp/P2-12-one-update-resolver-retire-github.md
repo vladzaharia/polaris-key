@@ -5,7 +5,7 @@
 | Phase       | P2: Release truth, publishing and release tracks (DX consolidation K: Corpus lane (wire trains, serial))                                         |
 | Size        | 1–1.5 engineer-weeks                                                                                                                             |
 | Depends on  | [P0-26](P0-26-core-manifest-ingest-pipeline.md), [P0-49](P0-49-data-migration-runner-dry-run-report.md)                                          |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                           |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [P2-12b](P2-12b-retire-github-resolver.md)                                                               |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                            |
 | Plan mode   | yes: executes the approved [`plans/P2-12.md`](../plans/P2-12.md) (2026-10-08), PR 1 and PR 2; P2-12b deletes the old path                        |
 | Gates       | `plan-mode`, `rule-9`                                                                                                                            |

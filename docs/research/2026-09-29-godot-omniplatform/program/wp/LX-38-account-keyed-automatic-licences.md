@@ -5,7 +5,7 @@
 | Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (DX consolidation E: Licensing model)                                                                             |
 | Size        | 0.8–1.2 engineer-weeks                                                                                                                                                       |
 | Depends on  | [LX-36](LX-36-access-policy-license-access-absorbs-ps.md), [P0-20](P0-20-split-identity-oidc-ts-extract-issuance.md), [P0-49](P0-49-data-migration-runner-dry-run-report.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [LX-16](LX-16-licensing-contract.md)                                                                                                 |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [I-32b](I-32b-retire-legacy-identity-engine.md), [LX-16](LX-16-licensing-contract.md)                                                |
 | Role        | `pkey-implementer`                                                                                                                                                           |
 | Plan mode   | no                                                                                                                                                                           |
 | Gates       | `threat-model`                                                                                                                                                               |

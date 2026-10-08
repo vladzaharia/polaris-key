@@ -5,7 +5,7 @@
 | Phase       | ST: Settings, access control and console shell (phase 5: governance and environments)                                                           |
 | Size        | 0.4–0.55 engineer-weeks                                                                                                                         |
 | Depends on  | [ST-11](ST-11-sql-only-settings.md), [ST-14](ST-14-portal-settings.md), [ST-17](ST-17-resync-dry-run.md), [ST-19b](ST-19b-manifest-settings.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                          |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [ST-25b](ST-25b-drop-products-admin-group.md)                                                           |
 | Role        | `pkey-implementer`                                                                                                                              |
 | Plan mode   | no                                                                                                                                              |
 | Gates       | D1 migration (replayable, scratch-SQLite rehearsal); `TABLE_OWNERS`; rule 10 (OpenAPI + `routeCoverage`)                                        |

@@ -1,16 +1,16 @@
 # P0-27 One adapter per store (delivery and commerce facets)
 
-| Field       | Value                                                                                                                                                                                                                       |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P0: Hygiene, unblockers and code quality (DX consolidation H: Distribution channels, storefronts and commerce)                                                                                                              |
-| Size        | 1.2–1.8 engineer-weeks                                                                                                                                                                                                      |
-| Depends on  | [A-19](A-19-one-channel-catalogue-tools-channels.md), [P0-17](P0-17-layering-move-lead-codemod-at-batch-6.md)                                                                                                               |
-| Unblocks    | [P0-28](P0-28-one-sealed-credential-store-resolver.md), [P0-51](P0-51-1-0-readiness-review.md), [A-23](A-23-channel-setup-wizards-setup-runner.md), [CM-02](CM-02-provider-webhooks.md), [CM-29](CM-29-commerce-service.md) |
-| Role        | `pkey-implementer`                                                                                                                                                                                                          |
-| Plan mode   | no                                                                                                                                                                                                                          |
-| Gates       | `rule-10`                                                                                                                                                                                                                   |
-| Human input | none                                                                                                                                                                                                                        |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                   |
+| Field       | Value                                                                                                                                                                                   |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P0: Hygiene, unblockers and code quality (DX consolidation H: Distribution channels, storefronts and commerce)                                                                          |
+| Size        | 0.8–1.3 engineer-weeks                                                                                                                                                                  |
+| Depends on  | [A-19](A-19-one-channel-catalogue-tools-channels.md), [P0-27a](P0-27a-store-clients-core-stores.md)                                                                                     |
+| Unblocks    | [P0-28](P0-28-one-sealed-credential-store-resolver.md), [P0-51](P0-51-1-0-readiness-review.md), [A-23](A-23-channel-setup-wizards-setup-runner.md), [CM-02](CM-02-provider-webhooks.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                      |
+| Plan mode   | no                                                                                                                                                                                      |
+| Gates       | `rule-10`                                                                                                                                                                               |
+| Human input | none                                                                                                                                                                                    |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                               |
 
 ## Consolidation 2026-10-07
 
@@ -35,10 +35,11 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 **In:**
 
-- core/stores/<store>/{client,credentials,events} plus StoreAdapter facets (delivery, commerce) and requirements(); fold DistributionConnector, StorefrontRuntime and the per-store commerce modules for Apple, Play, Microsoft Store, Steam and itch.io; adapters bind to tools/channels.json entries by id under a two-way conformance test. Commerce stays a capability: device routes keep /<p>/distribution/commerce/\* (no commerce service slug, C-17).
+- StoreAdapter facets (delivery, commerce) and requirements() over core/stores/<store>/; fold DistributionConnector, StorefrontRuntime and the per-store commerce modules for Apple, Play, Microsoft Store, Steam and itch.io; adapters bind to tools/channels.json entries by id under a two-way conformance test.
 
 **Out** (and where it belongs instead):
 
+- The move of each store's client, credentials and events to core/stores/<store>/ (→ [P0-27a](P0-27a-store-clients-core-stores.md), split off by [`plans/CM-29.md`](../plans/CM-29.md) Q5); the `commerce` service and its routes (→ CM-29).
 - Work owned by the packages in the Depends on and Unblocks rows, and the rest of Track H (→ the ids in [`tracks.md`](../../../2026-10-07-dx-consolidation/tracks.md)).
 
 ## Design notes

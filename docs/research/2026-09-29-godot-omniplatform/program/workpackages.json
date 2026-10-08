@@ -693,8 +693,8 @@
       "stage": "DX consolidation H: Distribution channels, storefronts and commerce",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1.2, 1.8],
-      "deps": ["A-19", "P0-17"],
+      "estimateWeeks": [0.8, 1.3],
+      "deps": ["A-19", "P0-27a"],
       "planMode": false,
       "gates": ["rule-10"],
       "humanInputs": [],
@@ -708,6 +708,27 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-services.md"
       ],
       "brief": "wp/P0-27-one-adapter-store-delivery-commerce.md",
+      "status": "todo"
+    },
+    {
+      "id": "P0-27a",
+      "title": "Store clients and events to `core/stores/`",
+      "phase": "P0",
+      "stage": "DX consolidation H: Distribution channels, storefronts and commerce",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["P0-17"],
+      "planMode": false,
+      "gates": [],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "plans/CM-29.md Q5 and D3 (approved 2026-10-08)",
+        "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-services.md §5.7"
+      ],
+      "brief": "wp/P0-27a-store-clients-core-stores.md",
       "status": "todo"
     },
     {
@@ -1524,7 +1545,15 @@
         "D-04",
         "D-05",
         "P0-50",
-        "CM-29"
+        "CM-29",
+        "ST-25b",
+        "I-32b",
+        "I-32c",
+        "LX-41b",
+        "SP-35b",
+        "P2-12b",
+        "P0-27a",
+        "CM-29b"
       ],
       "planMode": false,
       "gates": ["docs-links"],
@@ -2218,6 +2247,25 @@
       ],
       "brief": "wp/P2-12-one-update-resolver-retire-github.md",
       "status": "todo"
+    },
+    {
+      "id": "P2-12b",
+      "title": "Retire the GitHub-resolved resolver",
+      "phase": "P2",
+      "stage": "DX consolidation K: Corpus lane (wire trains, serial)",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.3, 0.5],
+      "deps": ["P2-12"],
+      "planMode": true,
+      "gates": ["plan-mode"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["plans/P2-12.md §6.8, §7 and D8 (approved 2026-10-08)"],
+      "brief": "wp/P2-12b-retire-github-resolver.md",
+      "status": "todo",
+      "planRef": "P2-12"
     },
     {
       "id": "P2-13",
@@ -4043,7 +4091,7 @@
       "lane": "sdk",
       "role": "pkey-sdk-porter",
       "estimateWeeks": [1.4, 1.95],
-      "deps": ["I-04", "I-08", "I-09", "SP-35"],
+      "deps": ["I-04", "I-08", "I-09", "SP-35", "SP-35b"],
       "planMode": true,
       "gates": [
         "plan-mode",
@@ -4766,6 +4814,54 @@
       "status": "todo"
     },
     {
+      "id": "I-32b",
+      "title": "Retire the legacy identity engine: `oidc_config` and `licenses.sub` unread, `PLATFORM_OIDC_*` removed (release N)",
+      "phase": "I",
+      "stage": "DX consolidation F: Identity",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.5, 0.7],
+      "deps": ["I-27", "I-32", "SP-40", "LX-38", "U-27"],
+      "planMode": true,
+      "gates": [
+        "plan-mode",
+        "migration",
+        "rule-9",
+        "rule-10",
+        "threat-model",
+        "drift-gate",
+        "cli-bundle"
+      ],
+      "humanInputs": [
+        "the owner-set date for the `legacy-sub-sunset` count of email-less `sub` licences (plans/I-27.md §6; Q3 withdrew only the Pocket ID sunset)",
+        "DJDL's own `.pkey/product` drops `oidc` and `provisioning` before its first push after this release (plans/I-27.md §12)"
+      ],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["plans/I-27.md §6, §7, §8 and §12 (approved 2026-10-08)"],
+      "brief": "wp/I-32b-retire-legacy-identity-engine.md",
+      "status": "todo",
+      "planRef": "I-27"
+    },
+    {
+      "id": "I-32c",
+      "title": "Identity contract drops: `oidc_config` and the `licenses.sub` indexes (release N+1)",
+      "phase": "I",
+      "stage": "DX consolidation F: Identity",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.1, 0.15],
+      "deps": ["I-32b"],
+      "planMode": false,
+      "gates": ["migration", "table-owners", "docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["plans/I-27.md §3 and §6 (approved 2026-10-08)"],
+      "brief": "wp/I-32c-identity-contract-drops.md",
+      "status": "todo"
+    },
+    {
       "id": "I-33",
       "title": "Profile v2: screen name, birth date, platform terms",
       "phase": "I",
@@ -5128,7 +5224,7 @@
       "lane": "sdk",
       "role": "pkey-sdk-porter",
       "estimateWeeks": [1.4, 1.95],
-      "deps": ["U-01", "U-05", "U-18", "I-10b", "SP-35"],
+      "deps": ["U-01", "U-05", "U-18", "I-10b", "SP-35", "SP-35b"],
       "planMode": true,
       "gates": [
         "plan-mode",
@@ -5157,7 +5253,7 @@
       "lane": "godot",
       "role": "pkey-godot-engineer",
       "estimateWeeks": [1, 1.4],
-      "deps": ["U-01", "U-05", "U-18", "I-10b", "SP-35"],
+      "deps": ["U-01", "U-05", "U-18", "I-10b", "SP-35", "SP-35b"],
       "planMode": true,
       "gates": ["plan-mode", "drift-gate", "all-sdks"],
       "humanInputs": [],
@@ -5487,7 +5583,7 @@
       "lane": "sdk",
       "role": "pkey-sdk-porter",
       "estimateWeeks": [1.2, 1.7],
-      "deps": ["U-01", "U-09", "U-08"],
+      "deps": ["U-01", "U-09", "U-08", "SP-35b"],
       "planMode": true,
       "gates": [
         "plan-mode",
@@ -9153,6 +9249,27 @@
       "status": "todo"
     },
     {
+      "id": "ST-25b",
+      "title": "Drop `products.admin_group` (the release after ST-25)",
+      "phase": "ST",
+      "stage": "phase 5: governance and environments",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.1, 0.2],
+      "deps": ["ST-25"],
+      "planMode": false,
+      "gates": ["migration", "table-owners"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "plans/ST-28.md §5.1 and Q4 (approved 2026-10-08)",
+        "docs/research/2026-10-07-dx-consolidation/tracks.md rules 5 and 6"
+      ],
+      "brief": "wp/ST-25b-drop-products-admin-group.md",
+      "status": "todo"
+    },
+    {
       "id": "ST-05a",
       "title": "One settings read and write path",
       "phase": "ST",
@@ -10174,7 +10291,7 @@
       "lane": "sdk",
       "role": "pkey-sdk-porter",
       "estimateWeeks": [1.6, 2.25],
-      "deps": ["LX-18", "LX-17", "SP-35", "UK-03"],
+      "deps": ["LX-18", "LX-17", "SP-35", "UK-03", "SP-35b"],
       "planMode": true,
       "gates": ["plan-mode", "all-sdks", "corpus-runner", "ui-snapshots"],
       "humanInputs": [],
@@ -10199,7 +10316,7 @@
       "lane": "sdk",
       "role": "pkey-sdk-porter",
       "estimateWeeks": [1, 1.4],
-      "deps": ["LX-11", "LX-18", "SP-35"],
+      "deps": ["LX-11", "LX-18", "SP-35", "SP-35b"],
       "planMode": false,
       "gates": ["all-sdks", "ci:macos", "ci:android"],
       "humanInputs": [],
@@ -10941,7 +11058,7 @@
       "lane": "sdk",
       "role": "pkey-sdk-porter",
       "estimateWeeks": [1, 1.4],
-      "deps": ["SP-32a"],
+      "deps": ["SP-32a", "SP-35b"],
       "planMode": false,
       "gates": ["all-sdks"],
       "humanInputs": [],
@@ -10989,7 +11106,7 @@
       "lane": "sdk",
       "role": "pkey-implementer",
       "estimateWeeks": [1, 1.2],
-      "deps": ["SP-33a", "SP-32b", "SP-35"],
+      "deps": ["SP-33a", "SP-32b", "SP-35", "SP-35b"],
       "planMode": false,
       "gates": ["all-sdks"],
       "humanInputs": [],
@@ -11057,6 +11174,35 @@
       ],
       "brief": "wp/SP-35-sdk-api-registry-api-json-0-9.md",
       "status": "todo"
+    },
+    {
+      "id": "SP-35b",
+      "title": "SDK API 0.9 renames in Godot, Swift and Kotlin",
+      "phase": "SP",
+      "stage": "DX consolidation J: SDK and UI-kit consolidation",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1, 1.5],
+      "deps": ["SP-35", "HA-14"],
+      "planMode": true,
+      "gates": [
+        "plan-mode",
+        "all-sdks",
+        "drift-gate",
+        "docs-generated",
+        "ui-snapshots",
+        "ci:macos",
+        "ci:android"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "plans/SP-35.md §7 slice 2 and Appendix A (approved 2026-10-08)"
+      ],
+      "brief": "wp/SP-35b-sdk-api-renames-godot-swift-kotlin.md",
+      "status": "todo",
+      "planRef": "SP-35"
     },
     {
       "id": "SP-36",
@@ -13913,7 +14059,7 @@
       "lane": "corpus",
       "role": "pkey-implementer",
       "estimateWeeks": [1.5, 2.5],
-      "deps": ["ST-38", "CM-20", "P0-17", "P0-27"],
+      "deps": ["ST-38", "CM-20", "P0-27a"],
       "planMode": true,
       "gates": ["plan-mode", "corpus", "drift-gate", "docs-generated"],
       "humanInputs": [],
@@ -13927,6 +14073,29 @@
       ],
       "brief": "wp/CM-29-commerce-service.md",
       "status": "todo"
+    },
+    {
+      "id": "CM-29b",
+      "title": "Commerce's accent: a ninth, red-orange family",
+      "phase": "CM",
+      "stage": "DX consolidation H: Channels, storefronts and commerce",
+      "lane": "ui",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.3, 0.5],
+      "deps": ["CM-29"],
+      "planMode": true,
+      "gates": ["plan-mode", "drift-gate", "golden-images", "ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "plans/CM-29.md §10 (approved 2026-10-08)",
+        "docs/design/BRAND.md §5",
+        "owner decision 2026-10-08: \"Add a red-orange accent\""
+      ],
+      "brief": "wp/CM-29b-commerce-accent.md",
+      "status": "todo",
+      "planRef": "CM-29"
     },
     {
       "id": "LX-26",
@@ -14322,6 +14491,25 @@
       "status": "todo"
     },
     {
+      "id": "LX-41b",
+      "title": "Console durations and subscriptions: When it ends, trials, the subscription panel, Preview at a date",
+      "phase": "LX",
+      "stage": "DX consolidation E: Licensing model",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.5, 0.7],
+      "deps": ["LX-41", "LX-44"],
+      "planMode": true,
+      "gates": ["plan-mode", "console-csp-parity"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["plans/LX-41.md §7 item 2 (approved 2026-10-08)"],
+      "brief": "wp/LX-41b-console-durations-subscriptions.md",
+      "status": "todo",
+      "planRef": "LX-41"
+    },
+    {
       "id": "LX-42",
       "title": "Quantities and consumables (required licensing-train member)",
       "phase": "LX",
@@ -14355,7 +14543,7 @@
       "lane": "console",
       "role": "pkey-implementer",
       "estimateWeeks": [0.8, 1.1],
-      "deps": ["LX-41", "LX-44", "ST-41"],
+      "deps": ["LX-41", "LX-44", "ST-41", "LX-41b"],
       "planMode": false,
       "gates": ["console-csp-parity"],
       "humanInputs": [],
