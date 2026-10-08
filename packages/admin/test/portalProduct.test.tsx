@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   artifact,
@@ -144,17 +144,21 @@ describe("product page on today's data (PX-04)", () => {
       expect(items).not.toContain("Package access");
       expect(items).not.toContain("Help");
     }
-    // Desktop TOC order, then the phone's task order.
-    expect(
-      within(navs[1]!)
-        .getAllByRole("link")
-        .map((a) => a.textContent),
-    ).toEqual(["Get it", "What's new", "License", "Devices 2"]);
-    expect(
-      within(navs[0]!)
-        .getAllByRole("link")
-        .map((a) => a.textContent),
-    ).toEqual(["Get it", "License", "Devices 2", "What's new"]);
+    // One order for both navs, the page's own (owner polish 2026-10-07): the side column's
+    // License and Devices start beside Get it, so they come before What's new.
+    for (const nav of navs)
+      expect(
+        within(nav)
+          .getAllByRole("link")
+          .map((a) => a.textContent),
+      ).toEqual(["Get it", "License", "Devices 2", "What's new"]);
+    // The device count is a small neutral pill, and the link still reads as one name.
+    for (const nav of navs) {
+      const devicesLink = within(nav).getByRole("link", { name: "Devices 2" });
+      const pill = devicesLink.querySelector("[data-status=pill]")!;
+      expect(pill.textContent).toBe("2");
+      expect(pill.getAttribute("data-tone")).toBe("neutral");
+    }
     expect(document.body.textContent).not.toMatch(/Cloud Sync/);
     expect(await axeViolations()).toEqual([]);
   });
@@ -212,11 +216,14 @@ describe("product page on today's data (PX-04)", () => {
     const card = screen.getByRole("region", { name: "Nightfall license" });
     expect(within(card).getByText("Lifetime")).toBeTruthy();
     expect(within(card).queryByText("For life")).toBeNull();
-    // The tier is a neutral pill with the device count beside it.
+    // The tier is a neutral pill at the header's top right (owner polish 2026-10-07), and the
+    // device count is the Devices card's alone.
     const tier = within(card).getByText("Deluxe").closest("[data-status]")!;
     expect(tier.getAttribute("data-status")).toBe("pill");
     expect(tier.getAttribute("data-tone")).toBe("neutral");
-    expect(within(card).getByText("2 devices")).toBeTruthy();
+    const header = card.querySelector("h2")!.parentElement!.parentElement!;
+    expect(header.lastElementChild!.contains(tier)).toBe(true);
+    expect(within(card).queryByText(/^\d+ (of \d+ )?devices?$/)).toBeNull();
     expect(within(card).getByText("Up to 1.x")).toBeTruthy();
     expect(within(card).getByText("30 days")).toBeTruthy();
     expect(
@@ -274,6 +281,41 @@ describe("product page on today's data (PX-04)", () => {
     await within(card).findByText("Updates included");
     expect(within(h1.parentElement!).getByText("Expired")).toBeTruthy();
     expect(within(card).queryByText("Expired")).toBeNull();
+  });
+
+  it("an issue of the licence the card shows sits after the tier, both at the header's top right (owner polish 2026-10-07)", async () => {
+    // The page header names the best licence's status (active); the card shows the expired one.
+    const lapsed = license({
+      product: "nightfall",
+      id: "lic_old",
+      tier: "pro",
+      expiresAt: NOW_S - 3 * DAY,
+      activatedAt: NOW_S - 400 * DAY,
+    });
+    window.history.replaceState(null, "", "/#/p/nightfall?license=lic_old");
+    mockFetch(
+      signedIn([nightfall, lapsed], {
+        "/api/releases": { releases },
+        "/api/licenses/nightfall/lic_nightfall": nightfallDetail,
+        "/api/licenses/nightfall/lic_old": detail(lapsed, { devices: [] }),
+      }),
+    );
+    renderPortal();
+    const card = await screen.findByRole("region", {
+      name: "Nightfall license",
+    });
+    await within(card).findByText("Updates included");
+    const pills = card.querySelector("[data-license-pills]")!;
+    expect(
+      Array.from(pills.querySelectorAll("[data-status=pill]")).map((p) => [
+        p.textContent,
+        p.getAttribute("data-tone"),
+      ]),
+    ).toEqual([
+      ["Pro", "neutral"],
+      ["Expired", "danger"],
+    ]);
+    expect(await axeViolations()).toEqual([]);
   });
 
   it("masks a key with its last 4 when the Worker sends them", async () => {
@@ -632,9 +674,12 @@ describe("product page on today's data (PX-04)", () => {
     renderPortal();
     await screen.findByRole("heading", { level: 1, name: "Quill" });
     const card = await screen.findByRole("region", { name: "Quill license" });
-    await within(card).findByText("1 of 5 devices");
+    await within(card).findByText("Activated");
     expect(within(card).getByText("Standard")).toBeTruthy();
-    expect(licenseSource(card)).toBe("From signing in");
+    // Granted through OIDC at sign-in: "Automatic Grant" (owner polish 2026-10-07).
+    expect(licenseSource(card)).toBe("Automatic Grant");
+    // The count is the Devices card's alone.
+    expect(within(card).queryByText(/of 5 devices/)).toBeNull();
     // Owner decision (2026-10-05): no licence type label; every licence is account-bound.
     expect(screen.queryByText(/Account-wide/)).toBeNull();
     expect(screen.queryByText("Signed-in app")).toBeNull();
@@ -668,7 +713,7 @@ describe("product page on today's data (PX-04)", () => {
     renderPortal();
     const card = await screen.findByRole("region", { name: "Quill license" });
     await within(card).findByText("Activated");
-    expect(licenseSource(card)).toBe("From signing in");
+    expect(licenseSource(card)).toBe("Automatic Grant");
     expect(within(card).queryByText(/of \d+ devices?/)).toBeNull();
     expect(within(card).queryByText(/Account-wide/)).toBeNull();
   });
@@ -741,7 +786,7 @@ describe("product page on today's data (PX-04)", () => {
       mockFetch(both());
       renderPortal();
       const card = await screen.findByRole("region", { name: "Quill license" });
-      await within(card).findByText("1 of 5 devices");
+      await within(card).findByText("Activated");
       const devices = screen.getByRole("region", { name: "Devices" });
       await within(devices).findByText("Living room PC");
       expect(
@@ -1422,5 +1467,229 @@ describe("product identity card (PX-13; §4.20, §3.1)", () => {
       ).toMatch(/of 3 devices/),
     );
     expect(screen.queryByRole("region", { name: /^Sign in to/ })).toBeNull();
+  });
+});
+
+describe("What's new reads its notes as Markdown (owner polish 2026-10-07)", () => {
+  const NOTES = [
+    "## Highlights",
+    "- **Photo Mode** with a free camera",
+    "- Steadier 40 fps on [Steam Deck](https://store.example.com/deck)",
+    "- Rumble no longer cuts out after a reload",
+    "- Fourth fix <img src=x onerror=alert(1)>",
+    "",
+    "[Unsafe](javascript:alert(1)) and `pkey sync`.",
+  ].join("\n");
+  const withNotes = (notes: string) =>
+    routes({
+      "/api/releases": {
+        releases: [{ ...releases[0]!, notes }, ...releases.slice(1)],
+      },
+    });
+
+  it("shows a formatted summary, and the full notes in place on Show full notes", async () => {
+    mockFetch(withNotes(NOTES));
+    renderPortal();
+    await page();
+    const news = screen.getByRole("region", { name: "What's new in 1.4.2" });
+    // Formatted: a heading under the card's h2, bold, a safe link out.
+    expect(
+      within(news).getByRole("heading", { level: 3, name: "Highlights" }),
+    ).toBeTruthy();
+    expect(within(news).getByText("Photo Mode").tagName).toBe("STRONG");
+    const deck = within(news).getByRole("link", { name: "Steam Deck" });
+    expect(deck.getAttribute("href")).toBe("https://store.example.com/deck");
+    expect(deck.getAttribute("target")).toBe("_blank");
+    expect(deck.getAttribute("rel")).toBe("noreferrer");
+    // The summary: the first list, cut to three items; the rest is not in the page yet.
+    const summary = news.querySelector("[data-notes] ul")!;
+    expect(
+      within(summary as HTMLElement).getAllByRole("listitem"),
+    ).toHaveLength(3);
+    expect(within(news).queryByText(/Fourth fix/)).toBeNull();
+    const more = within(news).getByRole("button", { name: "Show full notes" });
+    expect(more.getAttribute("aria-expanded")).toBe("false");
+    const region = document.getElementById(
+      more.getAttribute("aria-controls")!,
+    )!;
+    expect(region).toBeTruthy();
+    expect(news.contains(region)).toBe(true);
+
+    await userEvent.click(more);
+    expect(more.getAttribute("aria-expanded")).toBe("true");
+    expect(more.textContent).toBe("Show less");
+    expect(region.hasAttribute("data-open")).toBe(true);
+    // Raw HTML is its text: no element made from it.
+    expect(within(region).getByText(/Fourth fix <img src=x/)).toBeTruthy();
+    expect(news.querySelector("img, script")).toBeNull();
+    // An unsafe link is its words, never a link.
+    expect(within(region).getByText(/Unsafe/)).toBeTruthy();
+    expect(within(news).queryByRole("link", { name: "Unsafe" })).toBeNull();
+    expect(within(region).getByText("pkey sync").tagName).toBe("CODE");
+    // Focus never leaves the button.
+    expect(document.activeElement).toBe(more);
+    expect(await axeViolations()).toEqual([]);
+
+    await userEvent.click(more);
+    expect(more.getAttribute("aria-expanded")).toBe("false");
+    await waitFor(() =>
+      expect(within(news).queryByText(/Fourth fix/)).toBeNull(),
+    );
+    expect(document.activeElement).toBe(more);
+  });
+
+  it("reaches the same end state under reduced motion", async () => {
+    document.documentElement.dataset.motion = "reduce";
+    try {
+      mockFetch(withNotes(NOTES));
+      renderPortal();
+      await page();
+      const news = screen.getByRole("region", { name: "What's new in 1.4.2" });
+      await userEvent.click(
+        within(news).getByRole("button", { name: "Show full notes" }),
+      );
+      expect(within(news).getByText(/Fourth fix/)).toBeTruthy();
+      expect(
+        within(news).getByRole("button", { name: "Show less" }),
+      ).toBeTruthy();
+    } finally {
+      delete document.documentElement.dataset.motion;
+    }
+  });
+
+  it("short notes show whole, with nothing to open", async () => {
+    mockFetch(withNotes("Faster *preset* browser."));
+    renderPortal();
+    await page();
+    const news = screen.getByRole("region", { name: "What's new in 1.4.2" });
+    expect(within(news).getByText("preset").tagName).toBe("EM");
+    expect(
+      within(news).queryByRole("button", { name: "Show full notes" }),
+    ).toBeNull();
+  });
+});
+
+describe("the section nav follows the page as it scrolls (owner polish 2026-10-07)", () => {
+  /** Section tops in the viewport, as a scroll would leave them. */
+  let tops: Record<string, number> = {};
+  beforeEach(() => {
+    tops = {};
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(
+      function (this: Element) {
+        const s = this.id.startsWith("section-") ? this.id.slice(8) : null;
+        const top = s !== null && s in tops ? tops[s]! : 0;
+        const height = s !== null && s in tops ? 200 : 0;
+        return {
+          top,
+          bottom: top + height,
+          height,
+          left: 0,
+          right: 300,
+          width: 300,
+          x: 0,
+          y: top,
+          toJSON: () => ({}),
+        } as DOMRect;
+      },
+    );
+  });
+
+  const marked = (): string | null =>
+    within(screen.getByRole("navigation", { name: "On this page" }))
+      .getAllByRole("link")
+      .find((a) => a.getAttribute("aria-current") === "location")
+      ?.textContent ?? null;
+
+  const scrollTo = async (next: Record<string, number>): Promise<void> => {
+    tops = next;
+    act(() => {
+      window.dispatchEvent(new Event("scroll"));
+    });
+  };
+
+  it("walks down the nav in the page's order, and a picked section holds until the person scrolls", async () => {
+    mockFetch(routes());
+    renderPortal();
+    await page();
+    // At the top: no card has reached the reading line, so the first section.
+    await scrollTo({ get: 500, license: 500, devices: 800, new: 1100 });
+    await waitFor(() => expect(marked()).toBe("Get it"));
+    // Get it and License (side by side) pass the line together: the later one in the order.
+    await scrollTo({ get: 4, license: 4, devices: 304, new: 604 });
+    await waitFor(() => expect(marked()).toBe("License"));
+    await scrollTo({ get: -300, license: -300, devices: 0, new: 300 });
+    await waitFor(() => expect(marked()).toBe("Devices 2"));
+    await scrollTo({ get: -600, license: -600, devices: -300, new: 0 });
+    await waitFor(() => expect(marked()).toBe("What's new"));
+
+    // Picking Get it holds the mark, though License shares its top once it lands.
+    const toc = screen.getByRole("navigation", { name: "On this page" });
+    await userEvent.click(within(toc).getByRole("link", { name: "Get it" }));
+    await scrollTo({ get: 0, license: 0, devices: 300, new: 600 });
+    await new Promise((r) => setTimeout(r, 50));
+    expect(marked()).toBe("Get it");
+    // Once the person scrolls by themselves, the reading line leads again.
+    act(() => {
+      window.dispatchEvent(new Event("wheel"));
+    });
+    await scrollTo({ get: -600, license: -600, devices: -300, new: 0 });
+    await waitFor(() => expect(marked()).toBe("What's new"));
+  });
+
+  it("with no main-column card, the licence's cards are one column, not a column of air beside one", async () => {
+    window.history.replaceState(null, "", "/#/p/quill");
+    const quill = license({
+      product: "quill",
+      identityProvider: "oidc",
+      keyCount: 0,
+      activeKeyCount: 0,
+    });
+    mockFetch(
+      signedIn([quill], {
+        "/api/licenses/quill/lic_quill": detail(quill, { keys: [] }),
+      }),
+    );
+    renderPortal();
+    const card = await screen.findByRole("region", { name: "Quill license" });
+    expect(card.closest("[data-columns]")!.getAttribute("data-columns")).toBe(
+      "one",
+    );
+    cleanup();
+    window.history.replaceState(null, "", "/#/p/nightfall");
+    mockFetch(routes());
+    renderPortal();
+    await page();
+    expect(
+      screen
+        .getByRole("region", { name: "Nightfall license" })
+        .closest("[data-columns]")!
+        .getAttribute("data-columns"),
+    ).toBe("two");
+  });
+
+  it("Help closes the main column, so the nav ends with it on every width", async () => {
+    mockFetch(
+      routes({
+        "/api/library": libraryFor([nightfall], undefined, {
+          support: { url: "https://help.example.com", email: null },
+        }),
+      }),
+    );
+    renderPortal();
+    await page();
+    const help = await screen.findByRole("region", { name: "Need help?" });
+    const news = screen.getByRole("region", { name: "What's new in 1.4.2" });
+    const license = screen.getByRole("region", { name: "Nightfall license" });
+    // In the main column with What's new, after it; not in the licence's side column.
+    const column = (el: HTMLElement) => el.parentElement!.parentElement!;
+    expect(column(help)).toBe(column(news));
+    expect(column(help)).not.toBe(column(license));
+    for (const nav of ["On this page", "Sections"])
+      expect(
+        within(screen.getByRole("navigation", { name: nav }))
+          .getAllByRole("link")
+          .map((a) => a.textContent)
+          .at(-1),
+      ).toBe("Help");
   });
 });

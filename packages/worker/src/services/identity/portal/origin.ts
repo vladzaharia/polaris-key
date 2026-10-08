@@ -4,7 +4,8 @@
  * decides which, from facts only it has:
  *
  *   signin      issued by signing in (`licenses.origin = 'oidc'`, or a legacy `sub`-only licence)
- *               and no key: "From signing in".
+ *               and no key, by auto-issue or a group grant: "Automatic Grant" (owner polish
+ *               2026-10-07).
  *   store-key   a key, and an active store purchase on the licence: "Steam key ending 3WPLDA".
  *   store       a store purchase and no key: "From Steam".
  *   developer   a licence the developer assigned (it carries an email, S-24 D1: the holder the

@@ -699,6 +699,11 @@ Done step.
   (`return=` present).
 - **Set up another device** card: platform buttons, then "open it and sign in as mara@…", or
   "Email me the link".
+- **Owner polish 2026-10-07** (PORTAL.md §4.20): the device count lives on Devices alone (the
+  License card drops its "N of M devices" line and carries the tier pill at its header's top
+  right); the section nav lists the page's own order with the Devices count as a pill, and
+  follows the page as it scrolls; an OIDC-granted licence's source reads "Automatic Grant"; What's
+  new draws its Markdown notes formatted, a summary first.
 
 #### P5 · Account (PJ A, C, SH 1.6)
 
@@ -1349,7 +1354,7 @@ Services delivery-chain pills and "License required"; Enrollment "License requir
 available", "In review", "Pending" and the legend; Health "Rolling out · 25 %"; Rollouts "Rolling
 out", "Yanked" (text); Channels "Pinned" and provenance chips (→ `SourceBadge`); Platform Keyring and
 Secrets "Set"/"Not set" (→ text, "Not set" in warning text only when required); portal "Active" on
-tiles, hero, header and License card; portal "Primary"; portal tier chips (the License card keeps one neutral tier pill beside its device count, owner 2026-10-05, PORTAL.md §4.20) and "Included" chips; the gold plated "Signed" pill (→ glyph +
+tiles, hero, header and License card; portal "Primary"; portal tier chips (the License card keeps one neutral tier pill, at its header's top right since the owner polish of 2026-10-07, PORTAL.md §4.20) and "Included" chips; the gold plated "Signed" pill (→ glyph +
 text) and any "Just added" pill (→ ring + quiet text). Also: "Seat limit" is not an issue on its own;
 only a license that is refusing devices gets a pill.
 

@@ -1,11 +1,7 @@
 import * as React from "react";
 import { ArrowRight, Github, Plus } from "lucide-react";
-import type {
-  ProductDetail,
-  ProductSummary,
-  ServiceSlug,
-} from "../../../api.js";
-import { formatCount, fromSeconds } from "../../../lib/format.js";
+import type { ProductDetail, ServiceSlug } from "../../../api.js";
+import { formatCount } from "../../../lib/format.js";
 import { releaseSourceOf } from "../../../lib/products.js";
 import { SERVICE_TABLE } from "../../../services.generated.js";
 import { Button } from "../../../ui/Button.js";
@@ -14,11 +10,9 @@ import { EmptyState } from "../../../ui/EmptyState.js";
 import { ErrorState } from "../../../ui/ErrorState.js";
 import { ProductLogo } from "../../../ui/ProductLogo.js";
 import { ServiceGlyph, serviceLabel } from "../../../ui/ServiceBadge.js";
-import { Skeleton } from "../../../ui/Skeleton.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
-import { Timestamp } from "../../../ui/Timestamp.js";
 import { PageHeader } from "../../components/PageHeader.js";
-import { useMe, useProducts, useSummary } from "../../data/hooks.js";
+import { useProducts } from "../../data/hooks.js";
 import { Link } from "../../router.js";
 import { r } from "../../routes.js";
 import {
@@ -36,9 +30,6 @@ import {
 
 /** Home shows the most recently changed products; Products is the whole registry (EXPERIENCE C17). */
 export const HOME_PRODUCT_LIMIT = 6;
-
-/** A card lists at most this many rows: past it, three rows and the rest as glyph links. */
-export const LEDGER_MAX_ROWS = 4;
 
 /** The services a product runs, in the service table's canonical order. */
 export function runningServices(p: ProductDetail): ServiceSlug[] {
@@ -70,28 +61,7 @@ export function recentProducts(
     .slice(0, limit);
 }
 
-/**
- * Which services get a row and which collapse into the last row's glyph links. Up to
- * `LEDGER_MAX_ROWS` services each get a row. Past that, three rows (services with an issue first,
- * then the service table's order) and the rest as links; the rows keep the table's order.
- */
-export function ledgerRows(
-  services: ServiceSlug[],
-  withIssues: ReadonlySet<ServiceSlug>,
-): { rows: ServiceSlug[]; more: ServiceSlug[] } {
-  if (services.length <= LEDGER_MAX_ROWS) return { rows: services, more: [] };
-  const ordered = [
-    ...services.filter((s) => withIssues.has(s)),
-    ...services.filter((s) => !withIssues.has(s)),
-  ];
-  const picked = new Set(ordered.slice(0, LEDGER_MAX_ROWS - 1));
-  return {
-    rows: services.filter((s) => picked.has(s)),
-    more: services.filter((s) => !picked.has(s)),
-  };
-}
-
-/** Each service's landing page (`nav.ts`): where its row and its glyph link go. */
+/** Each service's landing page (`nav.ts`): where its icon on a card goes. */
 const SERVICE_HOME: Record<ServiceSlug, (slug: string) => string> = {
   license: (slug) => r.licenses(slug),
   config: (slug) => r.catalog(slug),
@@ -119,8 +89,9 @@ function worstTone(items: ProductAttention[]): AttentionTone {
  * Home (ADMIN.md §6.1, T1): "what needs me across all products?". The Needs attention list
  * (every open item, each with its one fix), the fleet figures, and the most recently changed
  * products as cards that carry the product's logo and its services (owner request 2026-10-06,
- * docs/design/console-product-card/). The whole registry, with search, sort and facets, is the
- * Products page (EXPERIENCE C17). Healthy is silence: no "Setup complete" tile or pill (C2).
+ * docs/design/console-product-card/; simplified in the owner polish of 2026-10-07). The whole
+ * registry, with search, sort and facets, is the Products page (EXPERIENCE C17). Healthy is
+ * silence: no "Setup complete" tile or pill (C2).
  *
  * Recent activity across products needs A-2b (a platform-wide feed); without it the panel is
  * omitted rather than faked.
@@ -131,8 +102,6 @@ function worstTone(items: ProductAttention[]): AttentionTone {
  */
 export function Home(): React.ReactElement {
   const products = useProducts();
-  const me = useMe();
-  const summary = useSummary();
 
   const list = React.useMemo(() => products.data ?? [], [products.data]);
   const attention = React.useMemo(() => attentionAcross(list), [list]);
@@ -142,11 +111,6 @@ export function Home(): React.ReactElement {
       m.set(a.product.slug, [...(m.get(a.product.slug) ?? []), a]);
     return m;
   }, [attention]);
-  const schemaVersions = React.useMemo(
-    () =>
-      new Map((me.data?.products ?? []).map((p) => [p.slug, p.schemaVersion])),
-    [me.data],
-  );
 
   const loading = products.isPending;
   const failed = products.isError && !products.data;
@@ -163,10 +127,7 @@ export function Home(): React.ReactElement {
         products.dataUpdatedAt
           ? {
               updatedAt: products.dataUpdatedAt,
-              onRefresh: () => {
-                void products.refetch();
-                void summary.refetch();
-              },
+              onRefresh: () => void products.refetch(),
               refreshing: products.isFetching,
             }
           : undefined
@@ -309,7 +270,7 @@ export function Home(): React.ReactElement {
             {[0, 1, 2].map((i) => (
               <li
                 key={i}
-                className="pk-skeleton h-40 rounded-lg border border-border"
+                className="pk-skeleton h-32 rounded-lg border border-border max-sm:h-12"
               />
             ))}
           </ul>
@@ -323,9 +284,6 @@ export function Home(): React.ReactElement {
                 <ProductCard
                   product={p}
                   attention={byProduct.get(p.slug) ?? []}
-                  schemaVersion={schemaVersions.get(p.slug)}
-                  facts={summary.data?.products[p.slug]}
-                  factsLoading={summary.isPending}
                 />
               </li>
             ))}
@@ -336,129 +294,68 @@ export function Home(): React.ReactElement {
   );
 }
 
-/** The services whose fact comes from the summary read (Config's rides `/me`). */
-const SUMMARY_FACTS: ReadonlySet<ServiceSlug> = new Set([
-  "license",
-  "release",
-  "distribution",
-  "identity",
-]);
-
-const plural = (n: number, one: string, many: string) =>
-  `${formatCount(n)} ${n === 1 ? one : many}`;
-
-/** One service's fact on the card, or `null` when it has none to show. */
-function serviceFact(
-  service: ServiceSlug,
-  schemaVersion: number | undefined,
-  facts: ProductSummary | undefined,
-): React.ReactNode {
-  switch (service) {
-    case "config":
-      // Schema vN rides `/me`, which the shell has already loaded (`getActiveSchema`).
-      if (schemaVersion === undefined) return null;
-      return schemaVersion > 0 ? `Schema v${schemaVersion}` : "No catalog";
-    case "license":
-      return facts?.license
-        ? `${formatCount(facts.license.active)} active`
-        : null;
-    case "release":
-      if (!facts || !("release" in facts)) return null;
-      return facts.release ? (
-        <>
-          <span className="font-mono text-xs text-fg">
-            {facts.release.version}
-          </span>{" "}
-          · {facts.release.channel}
-        </>
-      ) : (
-        "No releases"
-      );
-    case "distribution":
-      return facts?.distribution
-        ? plural(facts.distribution.storefronts, "storefront", "storefronts")
-        : null;
-    case "identity":
-      return facts?.identity
-        ? plural(facts.identity.users, "user", "users")
-        : null;
-    default:
-      // Update has no fact; Cloud Sync has none until U-05 stores its usage.
-      return null;
-  }
-}
-
 /** A pill naming the issue, or counting several. */
 function IssuePill({
   items,
   many,
+  className,
 }: {
   items: ProductAttention[];
   many: (n: number) => string;
+  className?: string;
 }): React.ReactElement {
   return (
-    <StatusPill tone={worstTone(items)} size="sm">
+    <StatusPill tone={worstTone(items)} size="sm" className={className}>
       {items.length === 1 ? items[0]!.short : many(items.length)}
     </StatusPill>
   );
 }
 
 /**
- * One product on Home, as a ledger (docs/design/console-product-card/, direction B).
+ * One product on Home (owner polish 2026-10-07: the simpler card that replaced the ledger of
+ * docs/design/console-product-card/, direction B).
  *
- * The header holds the logo, the name and the slug. The name is the card's one link to the
- * product: its hit area stretches over the card (`::after`), so a click anywhere opens Overview.
- * Each service the product runs is a row below: its glyph and label, and either its one fact at
- * the right edge or, when it needs something, a pill naming the problem. A row is a link (to the
- * fix when it carries a pill, to the service's page otherwise) that sits above the stretched name
- * link as a sibling, never nested in it. Past four services, three rows and the rest as glyph
- * links. An issue that belongs to the product itself (a signing key, its setup), or to a service
- * collapsed into the glyph links, is a pill in the header. Healthy draws nothing (ADMIN.md §5.11).
+ * The header holds the logo, the name and the slug, and a pill when the product needs something
+ * (its one issue named, or "N need attention"; the Needs attention list above names each one).
+ * The name is the card's one link to the product: its hit area stretches over the card
+ * (`::after`), so a click anywhere opens Overview, and focus on it rings the whole card. Below it,
+ * one row of icons, one per service the product runs, each named (`aria-label` and `title`) and
+ * linking to that service's page as a sibling above the stretched name link, never nested in it.
+ * Nothing else: no per-service facts, no rows, no footer. Healthy draws nothing (ADMIN.md §5.11).
  *
- * Focus on the name rings the whole card; focus on a service rings only that link.
+ * Below the small breakpoint the card is one line: the name, then one pip per service in that
+ * service's accent (the brand's `data-service` tokens), the pips named together as an image
+ * ("Runs License, Config and Release").
  */
 export function ProductCard({
   product: p,
   attention,
-  schemaVersion,
-  facts,
-  factsLoading = false,
 }: {
   product: ProductDetail;
   attention: ProductAttention[];
-  schemaVersion?: number;
-  /** This product's summary facts (`GET /summary`); absent while loading or when it failed. */
-  facts?: ProductSummary;
-  factsLoading?: boolean;
 }): React.ReactElement {
   const services = runningServices(p);
-  const running = new Set(services);
   const name = p.name || p.slug;
-  const issuesOf = new Map<ServiceSlug, ProductAttention[]>();
-  const productIssues: ProductAttention[] = [];
-  for (const a of attention) {
-    if (a.service && running.has(a.service))
-      issuesOf.set(a.service, [...(issuesOf.get(a.service) ?? []), a]);
-    else productIssues.push(a);
-  }
-  const { rows, more } = ledgerRows(services, new Set(issuesOf.keys()));
-  // Services with issues take the rows first, but past three of them the rest collapse into the
-  // glyph links: their issues move to the header pill, so no issue is ever hidden.
-  for (const s of more) productIssues.push(...(issuesOf.get(s) ?? []));
-  const syncedAt = p.setup?.sync?.lastSyncedAt;
-  const synced =
-    releaseSourceOf(p) === "github" && typeof syncedAt === "number";
+  const runs = runsSentence(services);
 
   return (
     <article
       aria-label={name}
-      className="relative flex w-full min-w-0 flex-col gap-3 rounded-lg border border-border bg-surface-raised p-4 hover:border-border-strong light:shadow-elevation-1 has-[a[data-card-link]:focus-visible]:ring-2 has-[a[data-card-link]:focus-visible]:ring-focus has-[a[data-card-link]:focus-visible]:ring-offset-2 has-[a[data-card-link]:focus-visible]:ring-offset-background"
+      className="relative flex w-full min-w-0 flex-col gap-3 rounded-lg border border-border bg-surface-raised p-4 hover:border-border-strong light:shadow-elevation-1 has-[a[data-card-link]:focus-visible]:ring-2 has-[a[data-card-link]:focus-visible]:ring-focus has-[a[data-card-link]:focus-visible]:ring-offset-2 has-[a[data-card-link]:focus-visible]:ring-offset-background max-sm:flex-row max-sm:items-center max-sm:py-3"
     >
-      <div data-card-header="" className="flex items-start gap-3">
-        <ProductLogo name={name} presentation={p.presentation} size={40} />
+      <div
+        data-card-header=""
+        className="flex min-w-0 items-start gap-3 max-sm:flex-1 max-sm:items-center"
+      >
+        <ProductLogo
+          name={name}
+          presentation={p.presentation}
+          size={40}
+          className="max-sm:hidden"
+        />
         <div className="min-w-0 flex-1">
           <h3
-            className="line-clamp-2 break-words text-base font-semibold text-fg-strong"
+            className="line-clamp-2 break-words text-base font-semibold text-fg-strong max-sm:line-clamp-1"
             title={name}
           >
             <Link
@@ -470,93 +367,65 @@ export function ProductCard({
             </Link>
           </h3>
           <p
-            className="truncate font-mono text-xs text-fg-muted"
+            className="truncate font-mono text-xs text-fg-muted max-sm:hidden"
             title={p.slug}
           >
             {p.slug}
           </p>
         </div>
-        {productIssues.length > 0 ? (
+        {attention.length > 0 ? (
           <IssuePill
-            items={productIssues}
+            items={attention}
             many={(n) => `${n} need attention`}
+            className="max-sm:hidden"
           />
         ) : null}
       </div>
       {services.length === 0 ? (
-        <p className="border-t border-border pt-3 text-sm text-fg-muted">
+        <p className="mt-auto border-t border-border pt-3 text-sm text-fg-muted max-sm:mt-0 max-sm:border-0 max-sm:pt-0">
           No services
         </p>
       ) : (
-        <ul
-          aria-label="Services"
-          aria-busy={factsLoading || undefined}
-          className="flex flex-col border-t border-border pt-2"
-        >
-          {rows.map((s) => {
-            const issues = issuesOf.get(s) ?? [];
-            const fact = serviceFact(s, schemaVersion, facts);
-            const pending = factsLoading && SUMMARY_FACTS.has(s);
-            return (
-              <li key={s} className="-mx-2">
-                <Link
-                  to={
-                    issues.length
-                      ? issues[0]!.action.href
-                      : SERVICE_HOME[s](p.slug)
-                  }
-                  data-service-row={s}
-                  className="relative z-[1] grid h-8 grid-cols-[1rem_minmax(0,1fr)_auto] items-center gap-2 rounded-md px-2 text-sm hover:bg-surface-sunken max-sm:h-11"
-                >
-                  <ServiceGlyph id={s} />
-                  <span className="truncate text-fg">{serviceLabel(s)}</span>
-                  {issues.length > 0 ? (
-                    <IssuePill items={issues} many={(n) => `${n} issues`} />
-                  ) : pending ? (
-                    <Skeleton data-fact-skeleton="" className="h-3 w-16" />
-                  ) : fact ? (
-                    <span className="whitespace-nowrap text-fg-muted tabular-nums">
-                      {fact}
-                    </span>
-                  ) : (
-                    <span />
-                  )}
-                </Link>
-              </li>
-            );
-          })}
-          {more.length > 0 ? (
-            <li className="-mx-1 flex h-8 items-center gap-1 max-sm:h-11">
-              {more.map((s) => (
-                <Link
-                  key={s}
-                  to={SERVICE_HOME[s](p.slug)}
-                  data-service={s}
-                  aria-label={serviceLabel(s)}
-                  title={serviceLabel(s)}
-                  className="relative z-[1] grid size-7 place-items-center rounded-md hover:bg-accent-subtle max-sm:size-11"
-                >
-                  <ServiceGlyph id={s} />
-                </Link>
+        <>
+          <div className="mt-auto border-t border-border pt-2 max-sm:hidden">
+            <ul
+              aria-label="Services"
+              data-service-icons=""
+              className="-mx-1.5 flex flex-wrap items-center gap-0.5"
+            >
+              {services.map((s) => (
+                <li key={s}>
+                  <Link
+                    to={SERVICE_HOME[s](p.slug)}
+                    data-service-link={s}
+                    aria-label={serviceLabel(s)}
+                    title={serviceLabel(s)}
+                    className="relative z-[1] grid size-8 place-items-center rounded-md hover:bg-surface-sunken"
+                  >
+                    <ServiceGlyph id={s} />
+                  </Link>
+                </li>
               ))}
-              <span className="ml-auto pr-1 text-xs text-fg-muted">
-                {more.length} more
-              </span>
-            </li>
-          ) : null}
-        </ul>
+            </ul>
+          </div>
+          <span
+            role="img"
+            aria-label={runs}
+            title={runs}
+            data-service-pips=""
+            className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 sm:hidden"
+          >
+            {services.map((s) => (
+              <span
+                key={s}
+                data-service={s}
+                data-pip={s}
+                className="size-2.5 rounded-full bg-accent"
+              />
+            ))}
+          </span>
+        </>
       )}
-      <p className="mt-auto text-xs text-fg-muted">
-        {synced ? (
-          <>
-            Synced <Timestamp at={fromSeconds(syncedAt)} />
-          </>
-        ) : Number.isFinite(p.modifiedAt) ? (
-          <>
-            Changed <Timestamp at={fromSeconds(p.modifiedAt)} />
-          </>
-        ) : null}
-      </p>
     </article>
   );
 }

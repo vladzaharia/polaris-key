@@ -181,8 +181,6 @@ export function boot(hash: string, opts: BootOptions = {}): FetchLog {
         ),
       ),
     },
-    // Home's product-card facts: none unless a suite scripts them.
-    "/manage/api/summary": { products: {} },
     "/manage/api/products/djdl/devices": { devices: [], nextCursor: null },
     "/manage/api/products/djdl/devices/summary": {
       total: 0,

@@ -16,7 +16,6 @@ import {
   type ProductSection,
 } from "../router.js";
 import {
-  devicesText,
   formatSize,
   isSignInLicense,
   normalisePlatform,
@@ -36,17 +35,13 @@ import {
  * phone pill (P14).
  */
 
-/** Desktop TOC order, then the phone's task order (§4.20). */
-export const DESKTOP_ORDER: readonly ProductSection[] = [
-  "get",
-  "sync",
-  "new",
-  "license",
-  "devices",
-  "package",
-  "help",
-];
-export const PHONE_ORDER: readonly ProductSection[] = [
+/**
+ * The sections in the page's order, the one order both navs list (§4.20; owner polish
+ * 2026-10-07): the phone's task order, which is also the order the desktop page reads in as it
+ * scrolls, since the side column (License, Devices) starts beside Get it and the main column
+ * carries on below with Cloud Sync, What's new, Package access and Help.
+ */
+export const SECTION_ORDER: readonly ProductSection[] = [
   "get",
   "license",
   "devices",
@@ -87,7 +82,7 @@ export function presentSections(
   if (extra.packageAccess) set.add("package");
   const pres = p.presentation;
   if (pres.supportUrl || pres.supportEmail || pres.website) set.add("help");
-  return DESKTOP_ORDER.filter((s) => set.has(s));
+  return SECTION_ORDER.filter((s) => set.has(s));
 }
 
 export interface FileRowModel {
@@ -632,19 +627,6 @@ export function showsDeviceCount(
   return isSignInLicense(l) || !p.licenses.some(isSignInLicense);
 }
 
-/**
- * The words beside the tier pill on the License card: "0 of 5 devices" for every licence (no
- * licence type beside it; owner, 2026-10-05), "1 device" while the limit is unknown, and null
- * when the counter is hidden.
- */
-export function licenseCountLine(
-  inUse: number,
-  limit: number | null,
-  showCount: boolean,
-): string | null {
-  return showCount ? devicesText(inUse, limit) : null;
-}
-
 /** "1.x", "1.0 and later", "Up to 2.0", "All versions" from the license's version bounds. */
 export function coversVersions(
   l:
@@ -656,22 +638,4 @@ export function coversVersions(
   if (max) return `Up to ${max}`;
   if (min) return `${min} and later`;
   return "All versions";
-}
-
-/** The release notes as paragraphs and bullet lists (plain text; never HTML). */
-export function noteBlocks(
-  notes: string,
-): { kind: "p" | "ul"; lines: string[] }[] {
-  const blocks: { kind: "p" | "ul"; lines: string[] }[] = [];
-  for (const raw of notes.split(/\r?\n/)) {
-    const line = raw.trim();
-    if (!line) continue;
-    const bullet = line.match(/^[-*•]\s+(.*)$/);
-    const kind = bullet ? "ul" : "p";
-    const text = (bullet ? bullet[1]! : line).replace(/^#+\s*/, "");
-    const last = blocks[blocks.length - 1];
-    if (last && last.kind === kind && kind === "ul") last.lines.push(text);
-    else blocks.push({ kind, lines: [text] });
-  }
-  return blocks;
 }
