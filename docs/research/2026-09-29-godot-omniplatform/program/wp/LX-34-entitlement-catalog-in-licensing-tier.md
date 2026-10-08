@@ -16,6 +16,8 @@
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **LX-34** in [Track E, Licensing model](../../../2026-10-07-dx-consolidation/tracks.md#e-licensing-model).
 
+- Clears its entries in `packages/admin/test/copy.debt.json` (ST-37's console copy ledger).
+
 ## Goal
 
 Entitlement catalog in Licensing; tier entitlements; platform entitlements (absorbs CFG-06), as scoped below. Done when every acceptance criterion holds and the green gate passes.

@@ -1523,7 +1523,8 @@
         "D-03",
         "D-04",
         "D-05",
-        "P0-50"
+        "P0-50",
+        "CM-29"
       ],
       "planMode": false,
       "gates": ["docs-links"],
@@ -9424,7 +9425,7 @@
     },
     {
       "id": "ST-38",
-      "title": "Service table: five features; one service-off state (absorbs DC-12)",
+      "title": "Service table: six features, the generic requirement rule, one service-off state (absorbs DC-12)",
       "phase": "ST",
       "stage": "DX consolidation C: Products, onboarding and Integration",
       "lane": "console",
@@ -10128,7 +10129,16 @@
       "lane": "corpus",
       "role": "pkey-implementer",
       "estimateWeeks": [0.6, 0.85],
-      "deps": ["LX-01", "LX-09", "LX-12", "LX-41", "LX-35", "CM-20", "P0-44"],
+      "deps": [
+        "LX-01",
+        "LX-09",
+        "LX-12",
+        "LX-41",
+        "LX-35",
+        "CM-20",
+        "P0-44",
+        "CM-29"
+      ],
       "planMode": true,
       "gates": ["plan-mode", "corpus", "drift-gate", "protocol-version"],
       "humanInputs": [],
@@ -13879,6 +13889,29 @@
       ],
       "brief": "wp/CM-28-consumables-quantity-grants-from-store.md",
       "status": "todo"
+    },
+    {
+      "id": "CM-29",
+      "title": "Commerce service: the `commerce` slug, requires License",
+      "phase": "CM",
+      "stage": "DX consolidation H: Channels, storefronts and commerce",
+      "lane": "corpus",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.5, 2.5],
+      "deps": ["ST-38", "CM-20", "P0-17", "P0-27"],
+      "planMode": true,
+      "gates": ["plan-mode", "corpus", "drift-gate", "docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "plans/CM-29.md",
+        "docs/research/2026-10-07-dx-consolidation/integration.md C-17 (reversed by the owner, 2026-10-07)",
+        "docs/research/2026-10-07-dx-consolidation/tracks.md Track H, Track K (W-LX)",
+        "consolidation alias CQW-14"
+      ],
+      "brief": "wp/CM-29-commerce-service.md",
+      "status": "planning"
     },
     {
       "id": "LX-26",

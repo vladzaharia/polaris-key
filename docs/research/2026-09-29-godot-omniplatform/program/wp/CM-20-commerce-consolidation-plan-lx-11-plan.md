@@ -1,20 +1,22 @@
 # CM-20 Commerce consolidation plan (= LX-11's plan)
 
-| Field       | Value                                                                                                                                                                                                                |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | CM: Commerce: store commerce (required) and Polaris Key checkout (deferred) (DX consolidation K: Corpus lane (wire trains, serial))                                                                                  |
-| Size        | 0.6–0.9 engineer-weeks                                                                                                                                                                                               |
-| Depends on  | [LX-08](LX-08-licensing-expand.md)                                                                                                                                                                                   |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [LX-11](LX-11-commerce-rework.md), [LX-18](LX-18-licensing-wire.md), [CM-21](CM-21-storefront-connection-notifications.md), [CM-25](CM-25-app-purchase-as-licence-source.md) |
-| Role        | `pkey-wire-planner` (planning only)                                                                                                                                                                                  |
-| Plan mode   | yes: this package writes `plans/CM-20.md`, which needs human approval                                                                                                                                                |
-| Gates       | `plan-mode`                                                                                                                                                                                                          |
-| Human input | plan approval (`plans/CM-20.md`)                                                                                                                                                                                     |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                            |
+| Field       | Value                                                                                                                                                                                                                                                    |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | CM: Commerce: store commerce (required) and Polaris Key checkout (deferred) (DX consolidation K: Corpus lane (wire trains, serial))                                                                                                                      |
+| Size        | 0.6–0.9 engineer-weeks                                                                                                                                                                                                                                   |
+| Depends on  | [LX-08](LX-08-licensing-expand.md)                                                                                                                                                                                                                       |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [LX-11](LX-11-commerce-rework.md), [LX-18](LX-18-licensing-wire.md), [CM-21](CM-21-storefront-connection-notifications.md), [CM-25](CM-25-app-purchase-as-licence-source.md), [CM-29](CM-29-commerce-service.md) |
+| Role        | `pkey-wire-planner` (planning only)                                                                                                                                                                                                                      |
+| Plan mode   | yes: this package writes `plans/CM-20.md`, which needs human approval                                                                                                                                                                                    |
+| Gates       | `plan-mode`                                                                                                                                                                                                                                              |
+| Human input | plan approval (`plans/CM-20.md`)                                                                                                                                                                                                                         |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                |
 
 ## Consolidation 2026-10-07
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **CM-20** in [Track K, Corpus lane (wire trains, serial)](../../../2026-10-07-dx-consolidation/tracks.md#k-corpus-lane-wire-trains-serial).
+
+- Owner 2026-10-07/08: Commerce is a service (CM-29, `plans/CM-29.md`). Its code lives in `services/commerce/`, device routes move to `/<p>/commerce/*` in CM-29's release with the SDK path strings (no aliases), and the store hook URLs stay as Commerce's canonical routes. Reconcile this package with CM-29's approved plan before building.
 
 ## Goal
 

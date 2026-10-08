@@ -16,6 +16,10 @@
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **CM-23** in [Track H, Distribution channels, storefronts and commerce](../../../2026-10-07-dx-consolidation/tracks.md#h-distribution-channels-storefronts-and-commerce).
 
+- Owner 2026-10-07/08: Commerce is a service (CM-29, `plans/CM-29.md`). Its code lives in `services/commerce/`, device routes move to `/<p>/commerce/*` in CM-29's release with the SDK path strings (no aliases), and the store hook URLs stay as Commerce's canonical routes. Reconcile this package with CM-29's approved plan before building.
+
+- Clears its entries in `packages/admin/test/copy.debt.json` (ST-37's console copy ledger).
+
 ## Goal
 
 Console commerce: Offers, Purchases and the Sales tab, as scoped below. Done when every acceptance criterion holds and the green gate passes.

@@ -18,6 +18,8 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 
 - Owner 2026-10-07: manifest fields are removed, not deprecated. A removed field is a validator error that names its replacement, with no rule-9 warning period; this package migrates the in-repo manifests (the repo-root `.pkey/` and `products/djdl/*`) in the same change, adopters' repos (DJDL's, Diceroll) are owner steps, and `pkey migrate` is used only where this package already plans it.
 
+- Clears its entries in `packages/admin/test/copy.debt.json` (ST-37's console copy ledger).
+
 ## Goal
 
 SSO rules and the adminGroup conversion, as scoped below. Done when every acceptance criterion holds and the green gate passes.

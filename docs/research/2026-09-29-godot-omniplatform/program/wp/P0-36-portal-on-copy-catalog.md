@@ -16,6 +16,8 @@
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **CQF-06** in [Track B, Foundations (code quality the feature tracks build on)](../../../2026-10-07-dx-consolidation/tracks.md#b-foundations-code-quality-the-feature-tracks-build-on).
 
+- Extend ST-37's copy lint (`packages/admin/test/copyLint.test.ts`) to the portal. The portal still shows "Automatic Grant" (`AUTOMATIC_GRANT` in `portal/model/library.ts`); it becomes "Automatic grant".
+
 ## Goal
 
 Portal on the copy catalog, as scoped below. Done when every acceptance criterion holds and the green gate passes.

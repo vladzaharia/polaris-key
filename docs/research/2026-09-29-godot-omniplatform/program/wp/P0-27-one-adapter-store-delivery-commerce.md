@@ -1,16 +1,16 @@
 # P0-27 One adapter per store (delivery and commerce facets)
 
-| Field       | Value                                                                                                                                                                                   |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P0: Hygiene, unblockers and code quality (DX consolidation H: Distribution channels, storefronts and commerce)                                                                          |
-| Size        | 1.2–1.8 engineer-weeks                                                                                                                                                                  |
-| Depends on  | [A-19](A-19-one-channel-catalogue-tools-channels.md), [P0-17](P0-17-layering-move-lead-codemod-at-batch-6.md)                                                                           |
-| Unblocks    | [P0-28](P0-28-one-sealed-credential-store-resolver.md), [P0-51](P0-51-1-0-readiness-review.md), [A-23](A-23-channel-setup-wizards-setup-runner.md), [CM-02](CM-02-provider-webhooks.md) |
-| Role        | `pkey-implementer`                                                                                                                                                                      |
-| Plan mode   | no                                                                                                                                                                                      |
-| Gates       | `rule-10`                                                                                                                                                                               |
-| Human input | none                                                                                                                                                                                    |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                               |
+| Field       | Value                                                                                                                                                                                                                       |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P0: Hygiene, unblockers and code quality (DX consolidation H: Distribution channels, storefronts and commerce)                                                                                                              |
+| Size        | 1.2–1.8 engineer-weeks                                                                                                                                                                                                      |
+| Depends on  | [A-19](A-19-one-channel-catalogue-tools-channels.md), [P0-17](P0-17-layering-move-lead-codemod-at-batch-6.md)                                                                                                               |
+| Unblocks    | [P0-28](P0-28-one-sealed-credential-store-resolver.md), [P0-51](P0-51-1-0-readiness-review.md), [A-23](A-23-channel-setup-wizards-setup-runner.md), [CM-02](CM-02-provider-webhooks.md), [CM-29](CM-29-commerce-service.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                                                          |
+| Plan mode   | no                                                                                                                                                                                                                          |
+| Gates       | `rule-10`                                                                                                                                                                                                                   |
+| Human input | none                                                                                                                                                                                                                        |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                   |
 
 ## Consolidation 2026-10-07
 

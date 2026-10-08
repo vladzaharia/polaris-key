@@ -18,6 +18,8 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 
 - UX rows absorbed (`uxRows` in `backlog-changes.json`): UX-33.
 
+- Clears its entries in `packages/admin/test/copy.debt.json` (ST-37's console copy ledger).
+
 ## Goal
 
 Feeds that provision themselves, Customers by default, as scoped below. Done when every acceptance criterion holds and the green gate passes.

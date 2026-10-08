@@ -18,6 +18,10 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 
 - UX rows absorbed (`uxRows` in `backlog-changes.json`): UX-54.
 
+- Owner 2026-10-07/08: Commerce is a service (CM-29, `plans/CM-29.md`). Its code lives in `services/commerce/`, device routes move to `/<p>/commerce/*` in CM-29's release with the SDK path strings (no aliases), and the store hook URLs stay as Commerce's canonical routes. Reconcile this package with CM-29's approved plan before building.
+
+- Clears its entries in `packages/admin/test/copy.debt.json` (ST-37's console copy ledger).
+
 ## Goal
 
 Console IA: Distribution and Commerce groups, as scoped below. Done when every acceptance criterion holds and the green gate passes.

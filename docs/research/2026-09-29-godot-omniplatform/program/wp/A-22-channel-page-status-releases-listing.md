@@ -19,6 +19,8 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 - UX rows absorbed (`uxRows` in `backlog-changes.json`): UX-57.
 - UX rows that name this package: UX-08b (parked: devices on this version; revive with A-22's Releases tab if operators ask for per-version device counts).
 
+- Clears its entries in `packages/admin/test/copy.debt.json` (ST-37's console copy ledger).
+
 ## Goal
 
 The channel page (Status, Releases, Listing, Sales, Setup), as scoped below. Done when every acceptance criterion holds and the green gate passes.

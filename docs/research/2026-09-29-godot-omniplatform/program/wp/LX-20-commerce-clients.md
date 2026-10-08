@@ -27,6 +27,8 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Title: was "Commerce client parity: Swift (StoreKit 2), Kotlin (Play), Node (Steam and Electron), React through client-core, Python `allowedNa`; restore `transferred` result".
 - Depends on: added LX-18 and SP-35.
 
+- Owner 2026-10-07/08: Commerce is a service (CM-29, `plans/CM-29.md`). Its code lives in `services/commerce/`, device routes move to `/<p>/commerce/*` in CM-29's release with the SDK path strings (no aliases), and the store hook URLs stay as Commerce's canonical routes. Reconcile this package with CM-29's approved plan before building.
+
 ## Goal
 
 Commerce clients reach parity: Swift (StoreKit 2), Kotlin (Play), Node (Steam and Electron) implement bind and claim; React goes through client-core; Python is `allowedNa`; restore returns a `transferred` result.
