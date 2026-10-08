@@ -213,6 +213,7 @@ describe("the sources", () => {
       planMatrixVersion: 2,
       syncScenariosVersion: 1,
       deviceLabelVersion: 1,
+      presentationMatrixVersion: 1,
       contentCorpusVersion: 2,
     });
     expect(SOURCES.protocol.PROTOCOL_VERSION).toBe(4);
@@ -222,6 +223,15 @@ describe("the sources", () => {
     expect(SOURCES.protocol.MAX_WIRE_INTEGER).toBe(Number.MAX_SAFE_INTEGER);
     expect(SOURCES.protocol.MAX_JSON_DEPTH).toBe(64);
     expect(SOURCES.protocol.MAX_RECORD_JWS_BYTES).toBe(88844);
+    // HA-12: the presentation limits (WIRE-CONTRACT-V4 §5.5).
+    expect(SOURCES.protocol.PRESENTATION_TEXT_MAX_BYTES).toBe(1024);
+    expect(SOURCES.protocol.PRESENTATION_ICON_TYPES).toEqual([
+      "image/avif",
+      "image/gif",
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+    ]);
   });
 });
 

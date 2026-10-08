@@ -458,7 +458,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     ownership: "manifest",
     critical: false,
     secret: false,
-    pending: "HA-12",
+    pending: null,
     deprecated: null,
   },
   {

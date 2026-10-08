@@ -1,6 +1,6 @@
 # Polaris Wire Contract v4
 
-**Status:** Normative. Supersedes `WIRE-CONTRACT-V3.md`, the way v3 superseded v2. v3 remains the record; everything v3 said that v4 does not change is restated here, so this document can be read on its own. Amended for packs v1 by `plans/P4-01.md` (§2.5.1, §2.5.2, §2.6, §2.7, §3.7, §11.3, §11.4), inside v4: no new `typ`, no feed field, `PROTOCOL_VERSION` stays 4. Amended for chunk indexes by `plans/P4-10.md` (§2.5.1, §2.6, §3.1, §8, §9, §10, §11.4), also inside v4. Amended for content-key delegation by `plans/P4-19.md` (§1, §2, §2.4.1, §2.5, §2.5.3, §2.5.4, §2.8, §3.4, §3.5, §8, §9, §10), also inside v4: no new `typ`, claim, feed member or selector key. Amended for passthrough request metadata by `plans/PX-W13.md` (§5.4, §8, §12.7), also inside v4: no new `typ`, claim or signed shape, and `corpusVersion` stays 2. Amended for key-entry counting by `plans/PX-W9.md` (§5.3, §12, §12.2), also inside v4: one unsigned refusal code, one unsigned response member and one portal route, no new `typ`, claim, header or signed shape, and the signed corpus is unchanged.
+**Status:** Normative. Supersedes `WIRE-CONTRACT-V3.md`, the way v3 superseded v2. v3 remains the record; everything v3 said that v4 does not change is restated here, so this document can be read on its own. Amended for packs v1 by `plans/P4-01.md` (§2.5.1, §2.5.2, §2.6, §2.7, §3.7, §11.3, §11.4), inside v4: no new `typ`, no feed field, `PROTOCOL_VERSION` stays 4. Amended for chunk indexes by `plans/P4-10.md` (§2.5.1, §2.6, §3.1, §8, §9, §10, §11.4), also inside v4. Amended for content-key delegation by `plans/P4-19.md` (§1, §2, §2.4.1, §2.5, §2.5.3, §2.5.4, §2.8, §3.4, §3.5, §8, §9, §10), also inside v4: no new `typ`, claim, feed member or selector key. Amended for passthrough request metadata by `plans/PX-W13.md` (§5.4, §8, §12.7), also inside v4: no new `typ`, claim or signed shape, and `corpusVersion` stays 2. Amended for key-entry counting by `plans/PX-W9.md` (§5.3, §12, §12.2), also inside v4: one unsigned refusal code, one unsigned response member and one portal route, no new `typ`, claim, header or signed shape, and the signed corpus is unchanged. Amended for product presentation by `plans/HA-11.md` and `plans/HA-12.md` (§5.5, §9, §10), also inside v4: one unsigned discovery member and one unsigned client table. There is no new `typ`, claim, header, route or signed shape, and `PROTOCOL_VERSION` stays 4.
 **PROTOCOL_VERSION:** `4` (`@polaris-key/protocol` `core.PROTOCOL_VERSION`).
 **Scope:** Everything that crosses the wire or the disk boundary between the Polaris Worker, the CI that signs releases, and the client SDKs (Node, React, Python, Swift, Godot, Kotlin): JWS envelope and its strictness, the six signed artifacts, trust distribution, the pinned release keys, device principal, offline bundles, verified cache, the monotonic clock floor and the feed `seq` floor. Server-internal behavior (D1 shapes, admin API) is out of scope except where it produces signed artifacts.
 **Conformance:** `conformance/corpus/v2/` pins every rule marked **[C]** byte-for-byte across all implementations, within the representation limits declared in §10. `pnpm gen:corpus -- --check` is the drift gate. The v4 plan is `docs/research/2026-09-29-godot-omniplatform/program/plans/P3-01.md`; its §2–§4 are the long form of §1–§4 and §11 here.
@@ -823,6 +823,166 @@ portal and the console call the device. No server decision reads it, and no sign
 carries it. Every SDK normalises it before sending and the Worker normalises it again on receipt;
 neither ever rejects one.
 
+### 5.5 Product presentation (`core.presentation`) [C]
+
+Pinned by `presentation-matrix.json` (`presentationMatrixVersion` 1: `parseCases`, `pickCases`
+and `verifyCases`) and `discovery-presentation.json` (transcript). No matrix row holds U+0000
+(Godot reads it as U+FFFD, §10) or a lone surrogate (JSON decoders differ on one); each SDK pins
+the lone-surrogate rule in its own tests.
+
+Discovery's `core` block may carry `presentation`: the product's name, developer, accent colours
+and icon, so a UI kit can show the product with no integrator code. It is unsigned display data.
+No gate, entitlement or trust decision reads it, and no signed document, claim, header, route or
+error code changes.
+
+**The member**, in its normalised form: what the Worker emits, what a client's parse returns, and
+what the matrix and the transcript compare as canonical JSON (keys sorted).
+
+```jsonc
+"core": { "registration": …, "compat": …, "endpoints": …,
+  "presentation": {                                         // absent ⇒ today's behaviour
+    "name": "DJDL",                                         // always present
+    "developerName": "Vlad Zaharia",                        // present only when valid
+    "accent": "#2ed6e6", "accentDark": "#5ee6f0",           // lower-case; each optional
+    "icon": {                                               // present only when valid
+      "sha256": "<64 hex>", "contentType": "image/png",
+      "width": 1024, "height": 1024,                        // present only when known
+      "original": "https://img.plrs.im/djdl/a/<sha256>",
+      "url": "https://img.plrs.im/djdl/a/<sha256>/{w}.webp", // present iff sizes is non-empty
+      "sizes": [{ "w": 64, "sha256": "<64 hex>" }, …]       // always present; [] with no ladder
+    } } }
+```
+
+A client reads an absent `sizes` as `[]`.
+
+The limits are generated into every SDK from `@polaris-key/protocol/core`:
+`PRESENTATION_TEXT_MAX_BYTES` (1024), `PRESENTATION_URL_MAX_BYTES` (2048),
+`PRESENTATION_MAX_ICON_SIZES` (8), `PRESENTATION_MAX_ICON_WIDTH` (4096),
+`PRESENTATION_ICON_MAX_DIMENSION` (16384), `PRESENTATION_ICON_MAX_BYTES` (10485760),
+`PRESENTATION_ICON_FETCH_TIMEOUT_SECONDS` (10), `PRESENTATION_CACHE_MAX_FILES` (4) and
+`PRESENTATION_ICON_TYPES` (`image/avif`, `image/gif`, `image/jpeg`, `image/png`, `image/webp`).
+
+**Emission (the Worker).**
+
+- `name` is the Distribution listing's `name`, else the product's name.
+- `developerName` is the listing's `developerName`.
+- `accent` is `.pkey/product` `presentation.accent`, else the listing's `tintColor`. `accentDark`
+  is `presentation.accentDark`. Both are lower-cased.
+- `icon` is the hosted copy of the `presentation.icon` slot, else of `listing.icon` (locale
+  `''`): exactly the copy the image host serves for its `/icon` alias. `original` is the copy's
+  content-addressed image-host URL, `url` is `<original>/{w}.webp`, and `sizes` lists the copy's
+  WebP width variants, each with its own hash, ascending, at most `PRESENTATION_MAX_ICON_SIZES`.
+- The Worker runs the candidate through the parse rule below, so it never emits a field a client
+  would drop.
+- The member is emitted only when `developerName`, `accent`, `accentDark` or `icon` resolves.
+  Otherwise it is absent.
+
+| Icon slot state                                                                    | `icon` in discovery                         |
+| ---------------------------------------------------------------------------------- | ------------------------------------------- |
+| A hosted copy of `presentation.icon`                                               | that copy                                   |
+| No copy there, but a hosted copy of `listing.icon`                                 | the `listing.icon` copy                     |
+| No hosted copy in either slot (never resynced since hosting, a first pull pending) | omitted                                     |
+| An empty ladder (no image-resizing binding)                                        | the original, with `sizes: []` and no `url` |
+| A failed or stale re-pull                                                          | the last good copy                          |
+| Hosting switched off, or no image host configured                                  | omitted                                     |
+
+The rest of the member stays in every row.
+
+**Never in the member:** the manifest's `presentation.icon` reference (an https URL or a
+repository path), a developer's host, a `/media/…` proxy URL, the image host's `/icon` alias (a
+redirect, which clients refuse to follow), or any device or licence fact.
+
+**Parse (every client).** Unknown members are ignored at every level. A malformed field is
+dropped and never refuses discovery.
+
+1. **Not an object.** The member is treated as absent.
+2. **Text.** `name` and `developerName` must be strings of 1 to `PRESENTATION_TEXT_MAX_BYTES`
+   UTF-8 bytes (bytes, never code points or UTF-16 units) containing no C0 control
+   (U+0000–001F), DEL (U+007F), C1 control (U+0080–009F) or lone surrogate. An invalid field is
+   dropped whole, never repaired. An invalid `developerName` is dropped. An invalid `name` falls
+   back to the document's top-level `name` when that passes the same rule, then to the slug
+   (`product`). Bidi and zero-width characters are kept, so a
+   right-to-left name that uses LRM or RLM survives; a kit renders both fields in a
+   bidi-isolated run (`<bdi>` or `dir="auto"` on the web, FSI…PDI elsewhere).
+3. **Colours.** `accent` and `accentDark` must match `^#[0-9A-Fa-f]{6}$`. They are lower-cased;
+   anything else is dropped. Either may appear without the other.
+4. **Icon.** `icon` is dropped unless `sha256` matches `^[0-9a-f]{64}$`, `contentType` is one of
+   `PRESENTATION_ICON_TYPES`, and `original` is a usable URL (rule 5). Within a kept icon:
+   - `width` and `height` are integers from 1 to `PRESENTATION_ICON_MAX_DIMENSION`, or they are
+     dropped.
+   - `sizes` has at most `PRESENTATION_MAX_ICON_SIZES` entries, each `{w, sha256}`: `w` an integer
+     from 1 to `PRESENTATION_MAX_ICON_WIDTH`, strictly ascending, and `sha256` matching
+     `^[0-9a-f]{64}$`. If any entry is bad, `sizes` reads as `[]`, `url` is dropped, and the
+     original stays.
+   - `url` must be at most `PRESENTATION_URL_MAX_BYTES` bytes with exactly one `{w}`; it must
+     begin, ASCII case-insensitively, with `original`'s origin followed by `/` or `?`, so the
+     `{w}` sits after the authority and no width can change the host or the port; and it must be
+     a usable URL on that origin once its `{w}` is replaced by a width (`1`). Otherwise, or when
+     `sizes` is empty, `url` is dropped and `sizes` reads as `[]`.
+5. **Usable URL.** Deliberately portable, with no URL parser, so every SDK (GDScript included)
+   applies the same test:
+   - 1 to `PRESENTATION_URL_MAX_BYTES` characters, each printable ASCII (U+0021–007E: no space,
+     no control, nothing non-ASCII), and no `#` (no fragment) and no `\`;
+   - it begins `https://`, or `http://` (both ASCII case-insensitive);
+   - its authority, from after `://` to the first `/` or `?` or the end, ASCII-lower-cased, is a
+     host followed by an optional `:port`, where the port is 1 to 5 digits and at most 65535;
+   - the host is `[::1]` (the only bracketed address, and nothing but a `:port` may follow its
+     `]`), `127.0.0.1`, or dot-separated labels of 1 to 63 characters in `[a-z0-9-]` whose last
+     label is neither all digits nor `0x` followed by hex digits (WHATWG's ends-in-a-number
+     test). So there is no userinfo (`@`), no `%`, no empty label and no other IP literal;
+   - with `http`, the host is `localhost`, `127.0.0.1` or `[::1]`.
+
+   The one place a WHATWG URL parser can be stricter: an `xn--` label is not checked as valid
+   Punycode, because that is not portable to GDScript. A WHATWG client may refuse such a host, and
+   then the icon fetch fails. That is safe: origins still map one to one, so no template can
+   reach another host.
+
+   A URL's origin is its scheme and authority, ASCII-lower-cased, and two origins are the same
+   only when they are equal as strings (an explicit default port differs from none). There is no
+   pinned host: production serves images from `img.plrs.im`, and staging and dev from
+   `img-staging` and `img-dev`.
+
+**Size choice** (`pickCases`). The input is `(icon, px, scale, decodable)`, and
+`need = max(1, ceil(px × scale))`.
+
+1. If `sizes` is non-empty and `image/webp` is decodable, take the smallest `w ≥ need`, else the
+   largest `w`. Replacing `url`'s `{w}` with that `w` gives the URL.
+2. Use the original instead when it is decodable, its `width` is known and exceeds the largest
+   `w`, and `need` exceeds the largest `w`.
+3. With no usable size, take the original if it is decodable.
+4. Otherwise, take none.
+
+The result is `{source: "size", w, sha256, url}`, `{source: "original", sha256, url}` or
+`{source: "none"}`.
+
+**Verification** (`verifyCases`). Bytes are shown only if their lower-case hex SHA-256 equals the
+chosen `sha256` exactly (so an upper-case expectation never matches). Bytes that do not match are
+neither shown nor cached.
+
+**Fetch** (unit-tested in each SDK; I/O, so not corpus).
+
+- A plain `GET` with no `Authorization`, no cookies or credentials, and no `X-PKey-*` headers:
+  the image host is public, and a header would only leak a device id.
+- Redirects are not followed, so any `3xx` fails. Only `200` succeeds.
+- The timeout is `PRESENTATION_ICON_FETCH_TIMEOUT_SECONDS`, and the body cap is
+  `PRESENTATION_ICON_MAX_BYTES` (the icon slot's own cap).
+- A failure surfaces no error and is not retried; the next discovery refresh may try again. The
+  client keeps today's output (the kit's monogram) meanwhile.
+- The bytes are stored under the SDK's data directory as `presentation/<sha256>`, and the last
+  parsed member beside them as `presentation.json`, so a cold boot with no network still shows
+  the product. After each successful discovery, files the current member no longer names are
+  removed, keeping at most `PRESENTATION_CACHE_MAX_FILES`.
+- None of it enters the Core cache record (§4.1 keeps signed artifacts only), so
+  `CACHE_VERSION` stays 3.
+
+**Signing.** The member is unsigned on purpose (S-20 owner decision 10). It carries no
+authority, and the icon's integrity comes from the `sha256` in the same TLS response, against
+content-addressed bytes the image host serves immutably. A party that can rewrite discovery can
+already turn services off, so changing a logo adds nothing; a signature would need a new `typ`
+and a key every SDK pins, and buy nothing over discovery's existing trust. `PROTOCOL_VERSION`
+stays 4 and `DISCOVERY_VERSION` stays 2, because every SDK's discovery parser ignores members it
+does not know.
+
 ## 6. Device principal
 
 - **Token:** `pkeyt_` + 43 base64url chars (256-bit). Hash-stored server-side; KV hot record `{product, deviceId, licenseId | null}` — `licenseId` is null for registered-without-license devices. `pkeyt_` tokens are rejected (pre-launch, no migration).
@@ -940,11 +1100,13 @@ The outlet kind `direct` is presented as Polaris Key: the console, the download 
 
 ## 9. Rollout & versioning
 
-v4 is additive on the wire: the four v3 documents keep their shapes and bytes, deployed v3 clients are unaffected (no SDK enforces `protocolVersion`), and v4 SDKs fall back to `update.check()` against a Worker without `update.endpoints.feed`. The stricter verifier (§1.1, §1.2, §3.1) accepts everything the Worker signs once its signer guard and write checks are deployed (P3-12), so no SDK release built on v4 is published before that Worker. Version counters and their owners: `PROTOCOL_VERSION = 4` (this contract), `corpusVersion = 2`, `gateMatrixVersion = 2`, `fingerprintVersion = 1`, `stageMatrixVersion = 3` (client boot behaviour outside this contract, owned by `client-core/src/stages.ts`), `headersVersion = 2` (§5.2; SP-08 turned the `visionOS` and `tvOS` rows from no value into canonical values), `configMatrixVersion = 1` (§2.2.1), `updateMatrixVersion = 1`, `outletMatrixVersion = 1` and `planMatrixVersion = 2` (§11), `contentCorpusVersion = 2` (§2.6, `content/cases.json`), and the per-product catalog `schemaVersion` (orthogonal). `CACHE_VERSION` stays 3. P4-13 changes none of these: it fills reserved slots (§2.4.1, §2.5.3, §2.5.2 holds) with members parsed beside the claims and appends new corpus sections, so `PROTOCOL_VERSION` stays 4, `corpusVersion` 2, `updateMatrixVersion` 1, `contentCorpusVersion` 1 and `PACK_STATE_VERSION` 1. P4-10 fills `variants[].chunks` (three claim checks, two integer paths) inside v4 and appends sections, so `contentCorpusVersion` and `planMatrixVersion` go to 2 (runners must handle or declare planned the new strategy and the optional `chunkIndex`); `PROTOCOL_VERSION`, `corpusVersion` and `CACHE_VERSION` are unchanged. P4-19 fills the reserved kind `delegation` and adds one optional member to a feed `revocations` entry and one to `PackInstall`, appending `delegationCases` and `dataOnlyCases`: every counter above is unchanged (`PROTOCOL_VERSION` 4, `corpusVersion` 2, `contentCorpusVersion` 2, `updateMatrixVersion` 1, `PACK_STATE_VERSION` 1), because a v4 SDK that predates it refuses a delegated record at step 13 and ignores the entry `kind` (§2.5.4). P4-29 fills the reserved feed member `deltas` (§2.4.2) with a member parsed beside the claims, appending `feedContentCases` and the new sections `feedDeltaCases` and `feedDeltaApplyCases`: every counter above is unchanged (`PROTOCOL_VERSION` 4, `corpusVersion` 2, `planMatrixVersion` 2, `contentCorpusVersion` 2, `updateMatrixVersion` 1, `CACHE_VERSION` 3, `PACK_STATE_VERSION` 1), because a v4 SDK that predates it ignores the member. The corpus drift gate remains the only automated cross-language enforcement; this document remains the normative source.
+v4 is additive on the wire: the four v3 documents keep their shapes and bytes, deployed v3 clients are unaffected (no SDK enforces `protocolVersion`), and v4 SDKs fall back to `update.check()` against a Worker without `update.endpoints.feed`. The stricter verifier (§1.1, §1.2, §3.1) accepts everything the Worker signs once its signer guard and write checks are deployed (P3-12), so no SDK release built on v4 is published before that Worker. Version counters and their owners: `PROTOCOL_VERSION = 4` (this contract), `corpusVersion = 2`, `gateMatrixVersion = 2`, `fingerprintVersion = 1`, `stageMatrixVersion = 3` (client boot behaviour outside this contract, owned by `client-core/src/stages.ts`), `headersVersion = 2` (§5.2; SP-08 turned the `visionOS` and `tvOS` rows from no value into canonical values), `configMatrixVersion = 1` (§2.2.1), `updateMatrixVersion = 1`, `outletMatrixVersion = 1` and `planMatrixVersion = 2` (§11), `contentCorpusVersion = 2` (§2.6, `content/cases.json`), and the per-product catalog `schemaVersion` (orthogonal). `CACHE_VERSION` stays 3. P4-13 changes none of these: it fills reserved slots (§2.4.1, §2.5.3, §2.5.2 holds) with members parsed beside the claims and appends new corpus sections, so `PROTOCOL_VERSION` stays 4, `corpusVersion` 2, `updateMatrixVersion` 1, `contentCorpusVersion` 1 and `PACK_STATE_VERSION` 1. P4-10 fills `variants[].chunks` (three claim checks, two integer paths) inside v4 and appends sections, so `contentCorpusVersion` and `planMatrixVersion` go to 2 (runners must handle or declare planned the new strategy and the optional `chunkIndex`); `PROTOCOL_VERSION`, `corpusVersion` and `CACHE_VERSION` are unchanged. P4-19 fills the reserved kind `delegation` and adds one optional member to a feed `revocations` entry and one to `PackInstall`, appending `delegationCases` and `dataOnlyCases`: every counter above is unchanged (`PROTOCOL_VERSION` 4, `corpusVersion` 2, `contentCorpusVersion` 2, `updateMatrixVersion` 1, `PACK_STATE_VERSION` 1), because a v4 SDK that predates it refuses a delegated record at step 13 and ignores the entry `kind` (§2.5.4). P4-29 fills the reserved feed member `deltas` (§2.4.2) with a member parsed beside the claims, appending `feedContentCases` and the new sections `feedDeltaCases` and `feedDeltaApplyCases`: every counter above is unchanged (`PROTOCOL_VERSION` 4, `corpusVersion` 2, `planMatrixVersion` 2, `contentCorpusVersion` 2, `updateMatrixVersion` 1, `CACHE_VERSION` 3, `PACK_STATE_VERSION` 1), because a v4 SDK that predates it ignores the member. HA-12 adds the unsigned discovery member `core.presentation` (§5.5) and the client table `presentation-matrix.json` (`presentationMatrixVersion = 1`). Every counter above is unchanged (`PROTOCOL_VERSION` 4, `DISCOVERY_VERSION` 2, `corpusVersion` 2, `CACHE_VERSION` 3), because an SDK that predates it ignores the member. The corpus drift gate remains the only automated cross-language enforcement; this document remains the normative source.
 
 ## 10. Divergence & hardening ledger
 
 All v2 and v3 divergence classes (alg confusion, oversize, duplicate keys, alphabet strictness, typ separation, freshness profiles, trust substitution, clock floor, per-type anti-replay floors, config-document-without-license issuance, registration-policy token minting, bundle all-or-nothing import, bundle payload cap, gate `not-applicable`/`activation` semantics, channel vocabulary and aliases, fingerprint component derivations, client metadata header values, config resolution and environment values) carry into v4 unchanged. New classes introduced by v4, each with corpus coverage: Ed25519 strictness (§1.1, the `sig-*` and `pubkey-*` `jwsCases`); strict JSON, numbers and depth (§1.2, the `json-*` and `valid-*` `jwsCases`); integer claims decided from the token, with their minimums (§3.1, the v3 claim cases, `feedCases`, `releaseRecordCases` and every `nonWireIntegers` member); members outside the claims (§3.2); whole-string patterns, byte lengths and member presence (§3.3); the feed `seq` floor, its ceiling and the canonical channel that keys it (§4.4); record hash before signature (§3.5); and release keys that are never product keys (§1). Packs v1 (`plans/P4-01.md`) adds four: forward-compatible pack claims, where an unknown vocabulary value makes a thing unusable and never refuses the record (§3.2, the `pack-valid-*` `packRecordCases`); side-object integers, decided by the token rule inside the files index, the patch descriptor, the marker and the stamp (§2.6); marker parsing and its verification order (§3.7, `markerCases`); and decoder window limits, checked from the frame header before any delta is decoded (§2.6). P4-13 adds one: **content members parsed beside the claims** — the feed's `packSets`, `packFloors`, `revocations` and delta menu `deltas` (P4-29, §2.4.2), an app's `holds` and a revocation's body are read by usability functions (`feedContent`, `holdsOf`, `revocationOf`), so a malformed member is unusable and never refuses the feed or record (§2.4.1, `feedContentCases`, `revocationCases`, the holds `stampCases`). P4-19 adds two: **delegated signers** — a content key verifies only through a delegation verified against the pinned release keys, one level deep, inside its scope, types, tree layout and signing window, and never on a release-key surface (§1, §2.5.4, §3.5 steps 13 and 16, `delegationCases`); and the **data-only rule**, an extension allow-list over already-normalised paths with head and tail magic sniffs that fail closed (§2.8, `dataOnlyCases`). Implementations must not add local tolerances beyond this document; any observed divergence gets a corpus case before a fix.
+
+HA-12 adds one class: **display members parsed field by field**. `core.presentation` is read member by member. A malformed field is dropped and never refuses discovery, and icon bytes are shown only when their SHA-256 equals the hash the member names (§5.5; `presentation-matrix.json` `parseCases`, `pickCases` and `verifyCases`).
 
 **Chunk-index arithmetic** (`plans/P4-10.md` §2.3). The index length is compared in exact (64-bit) arithmetic, so a `chunkCount` whose 48× wraps in 32 bits is still refused (`chunks-bad-length-wrap`); a u64 is two u32 reads saturated at 2^53, so a GDScript `int`, a JS double and a 64-bit integer agree (`chunks-size-high-word`, `chunks-bundle-size-saturated`). With `MAX_CHUNK_INDEX_BYTES` the sum of lengths stays below 1.5 × 10^15, so a saturated value never compares equal by accident.
 

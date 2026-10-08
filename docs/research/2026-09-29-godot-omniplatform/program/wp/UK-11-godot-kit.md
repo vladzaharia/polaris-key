@@ -76,6 +76,7 @@ The Godot kit has solid plumbing but dated pixels: about 4/10 for polish (§0, G
 ## Presentation seam ([`plans/HA-11.md`](../plans/HA-11.md), approved 2026-10-06)
 
 - **Do not define a seam.** The kit's `ProductIdentity` resolver takes the Godot `PKeyPresentationSource` (`core/presentation.gd`, HA-14).
+- **Bidi-isolate presentation text** ([`plans/HA-12.md`](../plans/HA-12.md) Q5). The SDK keeps bidi controls in `PresentationSource` `name` and `developerName` (only C0 and C1 are dropped), so the kit renders both in an isolated run: wrapped in FSI…PDI (U+2068…U+2069).
 - **Before that lands.** If the SDK type has not landed when this package starts, declare a
   structurally identical local type, `current()`, `icon(px, scale)` and change notification, and
   replace it with the SDK's type when it lands.

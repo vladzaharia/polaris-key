@@ -16,7 +16,7 @@
 //                           from `res://` in the editor and in an exported pack). Every file
 //                           is written into every target in `CORPUS_TARGETS`.
 //
-// Eleven files and one directory: `cases.json` (signed vectors, the v4 feed, release-record and
+// Thirteen files and one directory: `cases.json` (signed vectors, the v4 feed, release-record and
 // pack families included), `gate-matrix.json` (§5, with SP-00's `entitlementRows` family),
 // `fingerprint.json` (the hardware-hash
 // formulas), `stage-matrix.json` (the boot stage machine of `@polaris-key/client-core/stages`,
@@ -30,7 +30,10 @@
 // feed URLs out of discovery's `update.endpoints`, plans/SP-00.md D5), `sync-scenarios.json` (the
 // Cloud Sync client scenario corpus, literal data from tools/sync-scenarios.ts, plans/U-01.md
 // §4.1, U-18), `device-label.json` (the device label every SDK sends as `deviceName`,
-// WIRE-CONTRACT-V4 §12.7.1, plans/PX-W13.md §4) and `content/` (the content corpus:
+// WIRE-CONTRACT-V4 §12.7.1, plans/PX-W13.md §4), `presentation-matrix.json` (discovery's unsigned
+// `core.presentation`: the parse rule, the icon size choice and the hash check, WIRE-CONTRACT-V4
+// §5.5, plans/HA-12.md §4; rows and a generator-local reference in tools/presentation-matrix.ts)
+// and `content/` (the content corpus:
 // `cases.json` plus `blobs/`, plans/P4-01.md §4.4, P4-04).
 //
 // `corpus/v1` (wire contract v2) is GONE: its fifteen gate-matrix rows were inlined into
@@ -82,6 +85,7 @@ import {
   type RefJson,
 } from "./gen-content-corpus.js";
 import { buildSyncScenarios } from "./sync-scenarios.js";
+import { buildPresentationMatrix } from "./presentation-matrix.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -280,6 +284,7 @@ const V2_PLAN_MATRIX_OUT = join(V2_DIR, "plan-matrix.json");
 const V2_FEED_URL_MATRIX_OUT = join(V2_DIR, "feed-url-matrix.json");
 const V2_SYNC_SCENARIOS_OUT = join(V2_DIR, "sync-scenarios.json");
 const V2_DEVICE_LABEL_OUT = join(V2_DIR, "device-label.json");
+const V2_PRESENTATION_MATRIX_OUT = join(V2_DIR, "presentation-matrix.json");
 /** Every directory that receives the corpus: the source, then each generator-owned mirror. */
 const CORPUS_TARGETS = [V2_DIR, SWIFT_V2_RESOURCES, GODOT_V2_RESOURCES];
 
@@ -20422,6 +20427,12 @@ async function main(): Promise<void> {
   const syncScenarios = await format(JSON.stringify(buildSyncScenarios()), {
     parser: "json",
   });
+  // plans/HA-12.md §4: product presentation, recomputed by the generator-local reference in
+  // tools/presentation-matrix.ts (which imports nothing it checks). ASCII only.
+  const v2PresentationMatrix = await format(
+    asciiJson(buildPresentationMatrix()),
+    { parser: "json" },
+  );
 
   // One map from file name to content, reconciled into the source directory and into every
   // generator-owned mirror, so a file added here reaches each mirror by construction.
@@ -20438,6 +20449,7 @@ async function main(): Promise<void> {
     [basename(V2_FEED_URL_MATRIX_OUT), v2FeedUrlMatrix],
     [basename(V2_SYNC_SCENARIOS_OUT), syncScenarios],
     [basename(V2_DEVICE_LABEL_OUT), v2DeviceLabel],
+    [basename(V2_PRESENTATION_MATRIX_OUT), v2PresentationMatrix],
   ]);
   let stale = false;
   // `content/` is source-only (§4.1): its cases are reconciled in the source tree alone, its

@@ -9,7 +9,11 @@ import {
   telemetryReport,
   telemetryReportUpdates,
 } from "./devices.js";
-import { discoveryCapabilities, discoveryFailure } from "./discovery.js";
+import {
+  discoveryCapabilities,
+  discoveryFailure,
+  discoveryPresentation,
+} from "./discovery.js";
 import { distributionDownloadModel } from "./distribution.js";
 import {
   devicecodeDefault,
@@ -72,4 +76,5 @@ export const SCENARIOS: Scenario[] = [
   keyentryLimit,
   keyentryRefusalsOff,
   keyentryIdentityOff,
+  discoveryPresentation,
 ];

@@ -31,6 +31,10 @@
     "core.discover": {
       "status": "implemented"
     },
+    "core.presentation": {
+      "status": "planned",
+      "wp": "HA-13"
+    },
     "core.sync": {
       "status": "implemented",
       "note": "client.events (license, config, updateAvailable, packs) as one SharedFlow, config.setting(key) StateFlows and config.changes; on Android PolarisKeyLifecycle syncs on foreground (throttled; ETags and backoff apply). A periodic background sync is the host's WorkManager worker (no WorkManager dependency)."

@@ -17,7 +17,11 @@ import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/env.js";
-import { loadProduct, type Product } from "../src/core/products.js";
+import {
+  loadProduct,
+  serializePresentation,
+  type Product,
+} from "../src/core/products.js";
 import { handleDiscovery } from "../src/core/discovery.js";
 import { SERVICES, SETTINGS } from "../src/mount.js";
 import { SERVICE_SLUGS } from "../src/core/services.js";
@@ -163,6 +167,21 @@ const PROBES: Readonly<Record<string, Probe>> = {
       channelsOf((await getReleaseConfig(db, p.slug))?.manual_channels_json),
     resolved: (v) => channelsOf(JSON.stringify(v)),
   },
+  // HA-12: `.pkey/product` `presentation`, manifest-only in `products.presentation_json`. The
+  // probe writes the column as link and resync do (`serializePresentation`); discovery publishes
+  // the accent in `core.presentation`, and the router's product carries it.
+  "core.presentation": {
+    value: { accent: "#123456" },
+    seed: async (db, slug) => {
+      await db.run(
+        "UPDATE products SET presentation_json = ? WHERE slug = ?",
+        serializePresentation({ accent: "#123456" }),
+        slug,
+      );
+    },
+    published: (doc) => ({ accent: doc.core.presentation?.accent }),
+    enforced: (p) => ({ accent: p.presentation?.accent }),
+  },
   "release.sparkleEd25519Pub": {
     value: "SPARKLEPUB",
     seed: (db, slug) => seedRelease(db, slug, { sparkle: "SPARKLEPUB" }),
@@ -280,9 +299,15 @@ describe("discovery and enforcement agree after a write (ST-04)", () => {
       // publishes its own fragment, so `core.services` compares the core and top level only;
       // `core.endpoints.register` is advertised exactly when registration is not
       // `requires-license` (`core/discovery.ts`), a member the value decides, not a new shape.
+      // Likewise `core.presentation` (HA-12) is present exactly when something beyond the name
+      // resolves (WIRE-CONTRACT-V4 §5.5): the value decides it.
       const coreShape = (doc: Record<string, any>) =>
         shape({ ...doc, services: Object.keys(doc.services) })
-          .filter((p) => p !== "core.endpoints.register")
+          .filter(
+            (p) =>
+              p !== "core.endpoints.register" &&
+              !p.startsWith("core.presentation"),
+          )
           .sort();
       expect(coreShape(after)).toEqual(coreShape(before));
     });

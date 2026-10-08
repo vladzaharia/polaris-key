@@ -491,6 +491,7 @@ public object Feature {
     public const val coreCache: String = "core.cache"
     public const val coreBundle: String = "core.bundle"
     public const val coreDiscover: String = "core.discover"
+    public const val corePresentation: String = "core.presentation"
     public const val coreSync: String = "core.sync"
     public const val coreLocal: String = "core.local"
     public const val coreHeaders: String = "core.headers"
@@ -579,6 +580,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "core.cache",
     "core.bundle",
     "core.discover",
+    "core.presentation",
     "core.sync",
     "core.local",
     "core.headers",
@@ -1236,6 +1238,9 @@ public const val SYNC_SCENARIOS_VERSION: Int = 1
 /** `deviceLabelVersion` of conformance/corpus/v2/device-label.json. */
 public const val DEVICE_LABEL_VERSION: Int = 1
 
+/** `presentationMatrixVersion` of conformance/corpus/v2/presentation-matrix.json. */
+public const val PRESENTATION_MATRIX_VERSION: Int = 1
+
 /** `contentCorpusVersion` of conformance/corpus/v2/content/cases.json. */
 public const val CONTENT_CORPUS_VERSION: Int = 2
 
@@ -1329,6 +1334,33 @@ public const val REQUEST_HANDLE_PATTERN: String = "^rq_[A-Za-z0-9_-]{22}\$"
 /** Identity passthrough: `REQUEST_HANDLE_TTL_SECONDS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`). */
 public const val REQUEST_HANDLE_TTL_SECONDS: Int = 600
 
+/** Product presentation: `PRESENTATION_TEXT_MAX_BYTES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`). */
+public const val PRESENTATION_TEXT_MAX_BYTES: Int = 1024
+
+/** Product presentation: `PRESENTATION_URL_MAX_BYTES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`). */
+public const val PRESENTATION_URL_MAX_BYTES: Int = 2048
+
+/** Product presentation: `PRESENTATION_MAX_ICON_SIZES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`). */
+public const val PRESENTATION_MAX_ICON_SIZES: Int = 8
+
+/** Product presentation: `PRESENTATION_MAX_ICON_WIDTH` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`). */
+public const val PRESENTATION_MAX_ICON_WIDTH: Int = 4096
+
+/** Product presentation: `PRESENTATION_ICON_MAX_DIMENSION` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`). */
+public const val PRESENTATION_ICON_MAX_DIMENSION: Int = 16384
+
+/** Product presentation: `PRESENTATION_ICON_MAX_BYTES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`). */
+public const val PRESENTATION_ICON_MAX_BYTES: Int = 10485760
+
+/** Product presentation: `PRESENTATION_ICON_FETCH_TIMEOUT_SECONDS` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`). */
+public const val PRESENTATION_ICON_FETCH_TIMEOUT_SECONDS: Int = 10
+
+/** Product presentation: `PRESENTATION_CACHE_MAX_FILES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`). */
+public const val PRESENTATION_CACHE_MAX_FILES: Int = 4
+
+/** Product presentation: `PRESENTATION_ICON_TYPES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`). */
+public val PRESENTATION_ICON_TYPES: List<String> = listOf("image/avif", "image/gif", "image/jpeg", "image/png", "image/webp")
+
 /** Channel constant `CHANNEL_ALIASES` (`@polaris-key/protocol/core`). */
 public val CHANNEL_ALIASES: Map<String, String> = mapOf(
     "staging" to "beta",
@@ -1409,6 +1441,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "core.cache" to CapabilityRow("implemented", "core", listOf()),
     "core.bundle" to CapabilityRow("implemented", "core", listOf()),
     "core.discover" to CapabilityRow("implemented", "core", listOf()),
+    "core.presentation" to CapabilityRow("planned", "core", listOf()),
     "core.sync" to CapabilityRow("implemented", "core", listOf()),
     "core.local" to CapabilityRow("implemented", "core", listOf()),
     "core.headers" to CapabilityRow("implemented", "core", listOf()),
@@ -1492,4 +1525,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "254d4b114fe4fd02d12dd18a3fd93a6cd1df377b0f3fcf5b4d2225e7cfe413ab"
+public const val CAPABILITY_DIGEST: String = "30a1e43428f178b2bf1be5153343056578f0cf823b6fcfa5559265c0f0874e21"

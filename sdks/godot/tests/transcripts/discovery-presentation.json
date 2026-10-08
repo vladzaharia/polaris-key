@@ -1,0 +1,263 @@
+{
+  "transcriptVersion": 1,
+  "id": "discovery-presentation",
+  "description": "Discovery's unsigned core.presentation member (WIRE-CONTRACT-V4 section 5.5, HA-12). The product declares its accents in upper case and has a hosted icon copy with three WebP widths: the client exposes the normalised member, accents lower-cased, the icon as content-addressed image-host URLs with each width's own hash. Then the product drops its presentation and its copy: the member is gone, and the client must drop what it exposed (presentation null) rather than keep a stale one.",
+  "features": ["core.presentation"],
+  "requires": [],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "version": "1.0.0"
+  },
+  "steps": [
+    {
+      "action": "discover",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/.well-known/polaris.json",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "public, max-age=300",
+                "content-type": "application/json"
+              },
+              "body": {
+                "version": 2,
+                "protocolVersion": 4,
+                "schemaVersion": 1,
+                "product": "djdl",
+                "slug": "djdl",
+                "name": "djdl",
+                "baseUrl": "https://key.plrs.im",
+                "core": {
+                  "registration": "requires-license",
+                  "compat": { "min": "0.0.0", "max": "99.0.0" },
+                  "endpoints": {
+                    "discovery": "https://key.plrs.im/djdl/.well-known/polaris.json",
+                    "jwks": "https://key.plrs.im/djdl/.well-known/jwks.json",
+                    "trustManifest": "https://key.plrs.im/djdl/.well-known/polaris-trust.jws",
+                    "devices": "https://key.plrs.im/djdl/devices",
+                    "report": "https://key.plrs.im/djdl/devices/report"
+                  },
+                  "presentation": {
+                    "name": "djdl",
+                    "accent": "#2ed6e6",
+                    "accentDark": "#5ee6f0",
+                    "icon": {
+                      "sha256": "1e7d444444444444444444444444444444444444444444444444444444444444",
+                      "contentType": "image/png",
+                      "width": 1024,
+                      "height": 1024,
+                      "original": "https://img.plrs.im/djdl/a/1e7d444444444444444444444444444444444444444444444444444444444444",
+                      "url": "https://img.plrs.im/djdl/a/1e7d444444444444444444444444444444444444444444444444444444444444/{w}.webp",
+                      "sizes": [
+                        {
+                          "w": 64,
+                          "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff40"
+                        },
+                        {
+                          "w": 128,
+                          "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff80"
+                        },
+                        {
+                          "w": 256,
+                          "sha256": "fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff100"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "trust": {
+                  "jwksUrl": "https://key.plrs.im/djdl/.well-known/jwks.json",
+                  "trustManifestUrl": "https://key.plrs.im/djdl/.well-known/polaris-trust.jws",
+                  "cacheSeconds": 300,
+                  "pinnedKeys": {
+                    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+                  },
+                  "signingKid": "pkey-test-prod-2026",
+                  "signingPub": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+                  "keys": [
+                    {
+                      "kid": "pkey-test-prod-2026",
+                      "alg": "EdDSA",
+                      "kty": "OKP",
+                      "crv": "Ed25519",
+                      "publicKey": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+                      "status": "active",
+                      "active": true
+                    }
+                  ]
+                },
+                "services": {
+                  "license": {
+                    "enabled": true,
+                    "endpoints": {
+                      "activate": "https://key.plrs.im/djdl/license/activate",
+                      "enroll": "https://key.plrs.im/djdl/license/enroll",
+                      "token": "https://key.plrs.im/djdl/license/token",
+                      "deauthorize": "https://key.plrs.im/djdl/license/deauthorize",
+                      "document": "https://key.plrs.im/djdl/license/document"
+                    }
+                  },
+                  "config": {
+                    "enabled": true,
+                    "schemaVersion": 1,
+                    "endpoints": {
+                      "document": "https://key.plrs.im/djdl/config/document",
+                      "schema": "https://key.plrs.im/djdl/config/schema"
+                    },
+                    "mint": { "available": false }
+                  },
+                  "release": { "enabled": false },
+                  "distribution": { "enabled": false },
+                  "update": { "enabled": false },
+                  "identity": { "enabled": false },
+                  "sync": { "enabled": false }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "presentation": {
+          "name": "djdl",
+          "accent": "#2ed6e6",
+          "accentDark": "#5ee6f0",
+          "icon": {
+            "sha256": "1e7d444444444444444444444444444444444444444444444444444444444444",
+            "contentType": "image/png",
+            "width": 1024,
+            "height": 1024,
+            "original": "https://img.plrs.im/djdl/a/1e7d444444444444444444444444444444444444444444444444444444444444",
+            "url": "https://img.plrs.im/djdl/a/1e7d444444444444444444444444444444444444444444444444444444444444/{w}.webp",
+            "sizes": [
+              {
+                "w": 64,
+                "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff40"
+              },
+              {
+                "w": 128,
+                "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff80"
+              },
+              {
+                "w": 256,
+                "sha256": "fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff100"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "action": "discover",
+      "note": "The product no longer declares a presentation and its icon copy is gone: discovery omits the member, past the 300 s cache window.",
+      "args": {},
+      "now": 1700000301,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/.well-known/polaris.json",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "public, max-age=300",
+                "content-type": "application/json"
+              },
+              "body": {
+                "version": 2,
+                "protocolVersion": 4,
+                "schemaVersion": 1,
+                "product": "djdl",
+                "slug": "djdl",
+                "name": "djdl",
+                "baseUrl": "https://key.plrs.im",
+                "core": {
+                  "registration": "requires-license",
+                  "compat": { "min": "0.0.0", "max": "99.0.0" },
+                  "endpoints": {
+                    "discovery": "https://key.plrs.im/djdl/.well-known/polaris.json",
+                    "jwks": "https://key.plrs.im/djdl/.well-known/jwks.json",
+                    "trustManifest": "https://key.plrs.im/djdl/.well-known/polaris-trust.jws",
+                    "devices": "https://key.plrs.im/djdl/devices",
+                    "report": "https://key.plrs.im/djdl/devices/report"
+                  }
+                },
+                "trust": {
+                  "jwksUrl": "https://key.plrs.im/djdl/.well-known/jwks.json",
+                  "trustManifestUrl": "https://key.plrs.im/djdl/.well-known/polaris-trust.jws",
+                  "cacheSeconds": 300,
+                  "pinnedKeys": {
+                    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+                  },
+                  "signingKid": "pkey-test-prod-2026",
+                  "signingPub": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+                  "keys": [
+                    {
+                      "kid": "pkey-test-prod-2026",
+                      "alg": "EdDSA",
+                      "kty": "OKP",
+                      "crv": "Ed25519",
+                      "publicKey": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+                      "status": "active",
+                      "active": true
+                    }
+                  ]
+                },
+                "services": {
+                  "license": {
+                    "enabled": true,
+                    "endpoints": {
+                      "activate": "https://key.plrs.im/djdl/license/activate",
+                      "enroll": "https://key.plrs.im/djdl/license/enroll",
+                      "token": "https://key.plrs.im/djdl/license/token",
+                      "deauthorize": "https://key.plrs.im/djdl/license/deauthorize",
+                      "document": "https://key.plrs.im/djdl/license/document"
+                    }
+                  },
+                  "config": {
+                    "enabled": true,
+                    "schemaVersion": 1,
+                    "endpoints": {
+                      "document": "https://key.plrs.im/djdl/config/document",
+                      "schema": "https://key.plrs.im/djdl/config/schema"
+                    },
+                    "mint": { "available": false }
+                  },
+                  "release": { "enabled": false },
+                  "distribution": { "enabled": false },
+                  "update": { "enabled": false },
+                  "identity": { "enabled": false },
+                  "sync": { "enabled": false }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "expect": { "result": "ok", "presentation": null }
+    }
+  ]
+}

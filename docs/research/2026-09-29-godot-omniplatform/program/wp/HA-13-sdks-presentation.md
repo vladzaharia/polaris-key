@@ -65,6 +65,22 @@ It completes "zero integrator work" for every non-Godot SDK ([S-20 §6.9](../../
   cold boots; at most 4 cached files.
 - **Parity.** Flip `core.presentation` to `implemented` in each manifest.
 
+**Amended by [`plans/HA-12.md`](../plans/HA-12.md) (approved 2026-10-06).**
+
+- The contract text is `WIRE-CONTRACT-V4.md` **§5.5**, not §5.3.
+- The usable-URL rule pins no host; staging and dev serve images from `img-staging` and `img-dev`
+  (not `media-staging` and `media-dev`).
+- Read every limit from the generated constants (Q6), never a literal: `PRESENTATION_TEXT_MAX_BYTES`,
+  `PRESENTATION_URL_MAX_BYTES`, `PRESENTATION_MAX_ICON_SIZES`, `PRESENTATION_MAX_ICON_WIDTH`,
+  `PRESENTATION_ICON_MAX_DIMENSION`, `PRESENTATION_ICON_MAX_BYTES`,
+  `PRESENTATION_ICON_FETCH_TIMEOUT_SECONDS`, `PRESENTATION_CACHE_MAX_FILES` and
+  `PRESENTATION_ICON_TYPES`.
+- The §5.5 text rule drops a `name` or `developerName` holding a C0 control, DEL, a C1 control
+  or a lone surrogate, and nothing else, so bidi controls survive (Q5). The URL rule is §5.5
+  rule 5 as HA-12 tightened it in review (port, host and `{w}` placement). Every kit renders
+  `name` and `developerName` in a bidi-isolated run (`<bdi>` or `dir="auto"` on the web, FSI…PDI
+  elsewhere).
+
 ## Steps
 
 1. Per the plan, in its SDK order.

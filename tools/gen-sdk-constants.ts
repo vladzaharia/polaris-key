@@ -33,9 +33,11 @@
 //   conformance/corpus/v2/*.json        corpusVersion, gateMatrixVersion, fingerprintVersion,
 //                                       stageMatrixVersion, updateMatrixVersion,
 //                                       outletMatrixVersion, planMatrixVersion,
-//                                       syncScenariosVersion, deviceLabelVersion, and
+//                                       syncScenariosVersion, deviceLabelVersion,
+//                                       presentationMatrixVersion, and
 //                                       content/cases.json's contentCorpusVersion
 //   @polaris-key/protocol/identity      the IDENTITY_EXPORTS (WIRE-CONTRACT-V4 §12.7, PX-W13)
+//   @polaris-key/protocol/core          the PRESENTATION_EXPORTS (WIRE-CONTRACT-V4 §5.5, HA-12)
 //
 // Outputs, each with a GENERATED banner (TypeScript is prettier-formatted, as sign-corpus.ts
 // does): see TARGETS. The GDScript module is written only while `sdks/godot/addons/polaris_key`
@@ -163,6 +165,7 @@ export interface Sources {
     planMatrixVersion: number;
     syncScenariosVersion: number;
     deviceLabelVersion: number;
+    presentationMatrixVersion: number;
     contentCorpusVersion: number;
   };
 }
@@ -638,6 +641,10 @@ export function loadSources(root = ROOT): Sources {
         "syncScenariosVersion",
       ),
       deviceLabelVersion: corpus("device-label.json", "deviceLabelVersion"),
+      presentationMatrixVersion: corpus(
+        "presentation-matrix.json",
+        "presentationMatrixVersion",
+      ),
       contentCorpusVersion: corpus(
         "content/cases.json",
         "contentCorpusVersion",
@@ -873,6 +880,20 @@ export const IDENTITY_EXPORTS = [
   "REQUEST_HANDLE_TTL_SECONDS",
 ] as const;
 
+/** The product-presentation limits every SDK carries (WIRE-CONTRACT-V4 §5.5, plans/HA-12.md
+ *  §2.5 and Q6; `@polaris-key/protocol/core`). */
+export const PRESENTATION_EXPORTS = [
+  "PRESENTATION_TEXT_MAX_BYTES",
+  "PRESENTATION_URL_MAX_BYTES",
+  "PRESENTATION_MAX_ICON_SIZES",
+  "PRESENTATION_MAX_ICON_WIDTH",
+  "PRESENTATION_ICON_MAX_DIMENSION",
+  "PRESENTATION_ICON_MAX_BYTES",
+  "PRESENTATION_ICON_FETCH_TIMEOUT_SECONDS",
+  "PRESENTATION_CACHE_MAX_FILES",
+  "PRESENTATION_ICON_TYPES",
+] as const;
+
 /** The three P4-10 entries of `PACK_LIMIT_EXPORTS`, documented against plans/P4-10.md. */
 const CHUNK_LIMIT_EXPORTS: ReadonlySet<string> = new Set([
   "CHUNKS_FORMAT",
@@ -1024,6 +1045,11 @@ export function buildModel(sources: Sources): Model {
       value: sources.corpus.deviceLabelVersion,
     },
     {
+      name: "PRESENTATION_MATRIX_VERSION",
+      doc: "`presentationMatrixVersion` of conformance/corpus/v2/presentation-matrix.json.",
+      value: sources.corpus.presentationMatrixVersion,
+    },
+    {
       name: "CONTENT_CORPUS_VERSION",
       doc: "`contentCorpusVersion` of conformance/corpus/v2/content/cases.json.",
       value: sources.corpus.contentCorpusVersion,
@@ -1070,6 +1096,11 @@ export function buildModel(sources: Sources): Model {
         value,
       };
     }),
+    ...PRESENTATION_EXPORTS.map((name) => ({
+      name,
+      doc: `Product presentation: \`${name}\` (WIRE-CONTRACT-V4 §5.5, \`@polaris-key/protocol/core\`).`,
+      value: scalarValue(name, protocol[name]),
+    })),
     ...exportNames
       .filter((name) => CHANNEL_EXPORT.test(name))
       .map((name) => ({

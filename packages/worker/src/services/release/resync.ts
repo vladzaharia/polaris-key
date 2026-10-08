@@ -86,6 +86,10 @@ import { parseServices, serializeServices } from "../../core/services.js";
 import type { ManifestIngest } from "../../core/registry.js";
 import { serializeWebOrigins } from "../../core/cors.js";
 import {
+  parseStoredPresentation,
+  serializePresentation,
+} from "../../core/products.js";
+import {
   applyServiceTransitions,
   MANIFEST_RESYNC_ACTOR,
 } from "../../core/servicesTransitions.js";
@@ -474,33 +478,45 @@ async function applyRepoManifest(
   // (`product_settings`, ST-01b) is skipped; `admin_group` is manifest-only and always follows
   // the manifest (owner decision 1). `web_origins_json` (P0-05) keeps `omitClears`: dropping
   // `web.origins` from `.pkey/product` clears it back to NULL (no origin allowed) rather than
-  // freezing the old list — unless the console has claimed it.
+  // freezing the old list — unless the console has claimed it. `presentation_json` (HA-12) is
+  // manifest-only like `admin_group`, and dropping `presentation` clears it to NULL; its row names
+  // its own audit key (the fifth member), so it is audited as `core.presentation`, never as the
+  // `core.adminGroup` fallback the unkeyed rows share.
   const nextOrigins = serializeWebOrigins(manifest.webOrigins);
-  const productFields: [string, ClaimKey | null, unknown, unknown][] = [
-    ["name", "core.name", product.name, manifest.product.name],
+  const nextPresentation = serializePresentation(manifest.presentation);
+  const productFields: [string, ClaimKey | null, unknown, unknown, string?][] =
     [
-      "default_max_offline_days",
-      "license.defaults.maxOfflineDays",
-      product.default_max_offline_days,
-      manifest.product.defaultMaxOfflineDays,
-    ],
-    [
-      "default_device_limit",
-      "license.defaults.deviceLimit",
-      product.default_device_limit,
-      manifest.product.defaultDeviceLimit,
-    ],
-    ["admin_group", null, product.admin_group, manifest.product.adminGroup],
-    [
-      "web_origins_json",
-      "core.web.origins",
-      product.web_origins_json ?? null,
-      nextOrigins,
-    ],
-  ];
+      ["name", "core.name", product.name, manifest.product.name],
+      [
+        "default_max_offline_days",
+        "license.defaults.maxOfflineDays",
+        product.default_max_offline_days,
+        manifest.product.defaultMaxOfflineDays,
+      ],
+      [
+        "default_device_limit",
+        "license.defaults.deviceLimit",
+        product.default_device_limit,
+        manifest.product.defaultDeviceLimit,
+      ],
+      ["admin_group", null, product.admin_group, manifest.product.adminGroup],
+      [
+        "web_origins_json",
+        "core.web.origins",
+        product.web_origins_json ?? null,
+        nextOrigins,
+      ],
+      [
+        "presentation_json",
+        null,
+        product.presentation_json ?? null,
+        nextPresentation,
+        "core.presentation",
+      ],
+    ];
   const sets: string[] = [];
   const setParams: (string | number | null)[] = [];
-  for (const [column, key, before, after] of productFields) {
+  for (const [column, key, before, after, auditKey] of productFields) {
     if (key && claims.has(key)) {
       claimed.push(key);
       continue;
@@ -522,11 +538,17 @@ async function applyRepoManifest(
     }
     if (before !== after)
       auditSetting(
-        key ?? "core.adminGroup",
+        auditKey ?? key ?? "core.adminGroup",
         column === "web_origins_json"
           ? parseWebOrigins(before as string | null)
-          : before,
-        column === "web_origins_json" ? [...manifest.webOrigins] : after,
+          : column === "presentation_json"
+            ? parseStoredPresentation(before)
+            : before,
+        column === "web_origins_json"
+          ? [...manifest.webOrigins]
+          : column === "presentation_json"
+            ? parseStoredPresentation(after)
+            : after,
         key,
       );
   }

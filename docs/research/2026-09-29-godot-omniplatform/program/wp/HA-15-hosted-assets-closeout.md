@@ -45,6 +45,7 @@ It closes the migration with no client break, and documents the feature ([S-20 �
 ## Design notes
 
 - Docs are gated (rule 11). The repo is the agent-readable source.
+- **Presentation is HA-12's.** The THREAT-MODEL subsection "Product presentation in discovery (HA-12)" is written by HA-12 ([`plans/HA-12.md`](../plans/HA-12.md) §6). HA-15 does not duplicate it; its rows cover the rest of S-20 §6.12.
 
 ## Steps
 

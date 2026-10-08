@@ -489,6 +489,7 @@ public enum Feature {
     public static let coreCache = "core.cache"
     public static let coreBundle = "core.bundle"
     public static let coreDiscover = "core.discover"
+    public static let corePresentation = "core.presentation"
     public static let coreSync = "core.sync"
     public static let coreLocal = "core.local"
     public static let coreHeaders = "core.headers"
@@ -577,6 +578,7 @@ public let FEATURE_VALUES: [String] = [
     "core.cache",
     "core.bundle",
     "core.discover",
+    "core.presentation",
     "core.sync",
     "core.local",
     "core.headers",
@@ -1196,6 +1198,9 @@ public let SYNC_SCENARIOS_VERSION = 1
 /// `deviceLabelVersion` of conformance/corpus/v2/device-label.json.
 public let DEVICE_LABEL_VERSION = 1
 
+/// `presentationMatrixVersion` of conformance/corpus/v2/presentation-matrix.json.
+public let PRESENTATION_MATRIX_VERSION = 1
+
 /// `contentCorpusVersion` of conformance/corpus/v2/content/cases.json.
 public let CONTENT_CORPUS_VERSION = 2
 
@@ -1288,6 +1293,33 @@ public let REQUEST_HANDLE_PATTERN = "^rq_[A-Za-z0-9_-]{22}$"
 
 /// Identity passthrough: `REQUEST_HANDLE_TTL_SECONDS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`).
 public let REQUEST_HANDLE_TTL_SECONDS = 600
+
+/// Product presentation: `PRESENTATION_TEXT_MAX_BYTES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`).
+public let PRESENTATION_TEXT_MAX_BYTES = 1024
+
+/// Product presentation: `PRESENTATION_URL_MAX_BYTES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`).
+public let PRESENTATION_URL_MAX_BYTES = 2048
+
+/// Product presentation: `PRESENTATION_MAX_ICON_SIZES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`).
+public let PRESENTATION_MAX_ICON_SIZES = 8
+
+/// Product presentation: `PRESENTATION_MAX_ICON_WIDTH` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`).
+public let PRESENTATION_MAX_ICON_WIDTH = 4096
+
+/// Product presentation: `PRESENTATION_ICON_MAX_DIMENSION` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`).
+public let PRESENTATION_ICON_MAX_DIMENSION = 16384
+
+/// Product presentation: `PRESENTATION_ICON_MAX_BYTES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`).
+public let PRESENTATION_ICON_MAX_BYTES = 10485760
+
+/// Product presentation: `PRESENTATION_ICON_FETCH_TIMEOUT_SECONDS` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`).
+public let PRESENTATION_ICON_FETCH_TIMEOUT_SECONDS = 10
+
+/// Product presentation: `PRESENTATION_CACHE_MAX_FILES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`).
+public let PRESENTATION_CACHE_MAX_FILES = 4
+
+/// Product presentation: `PRESENTATION_ICON_TYPES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`).
+public let PRESENTATION_ICON_TYPES: [String] = ["image/avif", "image/gif", "image/jpeg", "image/png", "image/webp"]
 
 /// Channel constant `CHANNEL_ALIASES` (`@polaris-key/protocol/core`).
 public let CHANNEL_ALIASES: [String: String] = [
@@ -1387,6 +1419,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "core.cache": CapabilityRow(status: "implemented", service: "core", na: []),
     "core.bundle": CapabilityRow(status: "implemented", service: "core", na: []),
     "core.discover": CapabilityRow(status: "implemented", service: "core", na: []),
+    "core.presentation": CapabilityRow(status: "planned", service: "core", na: []),
     "core.sync": CapabilityRow(status: "implemented", service: "core", na: []),
     "core.local": CapabilityRow(status: "implemented", service: "core", na: []),
     "core.headers": CapabilityRow(status: "implemented", service: "core", na: []),
@@ -1470,4 +1503,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "12b64484096460c0df0aa614ac777f1ac76abf3895bdf38f60ec93047c2d9801"
+public let CAPABILITY_DIGEST = "4e74d559fc3ae2b25d91ff41c7847c04af3dba19b422be5ed869f3366e927603"

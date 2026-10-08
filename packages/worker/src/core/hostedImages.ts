@@ -6,8 +6,9 @@
  * Discover (`services/identity/portal/library.ts`), the portal's `/media/<p>/*` 302
  * (`portal/media.ts`), the AltStore and SideStore sources (`services/distribution/feeds/art.ts`),
  * the download page's icon (`services/distribution/page/index.ts`) and the PR plane's screenshot
- * URLs (`services/distribution/prInputs.ts`). HA-12's discovery `core.presentation` reuses the same
- * reads and the same variant choice (`hostedImageUrl`).
+ * URLs (`services/distribution/prInputs.ts`). HA-12's discovery `core.presentation`
+ * (`core/presentation.ts`) reads the same copy, and names its whole ladder with each width's own
+ * hash (`variants`), so an SDK verifies whichever size it fetches.
  *
  * ── WHAT COUNTS AS A COPY ───────────────────────────────────────────────────────────────────
  *
@@ -51,17 +52,32 @@ type HostedEnv = Pick<
   "IMG_ORIGIN" | "BLOB_ORIGIN" | "PKG_ORIGIN" | "ASSET_HOSTING"
 >;
 
+/** One width of a copy's WebP ladder (HA-03), verified by its own hash. */
+export interface HostedImageVariant {
+  w: number;
+  /** Lower-case hex SHA-256 of that width's bytes. */
+  sha256: string;
+}
+
 /** One slot's servable copy. */
 export interface HostedImage {
   slot: string;
   sha256: string;
+  /** The sniffed type (`hosted_assets.content_type`), always one of `IMG_HOST_TYPES`. */
+  contentType: string;
   /** `hosted_assets.origin`: `manifest`, `console` (a claim, HA-06) or `ci`. */
   origin: string;
   /** The manifest ref (canonical JSON, `wantedRefOf`) the copy was pulled for, or `null`. */
   pulledRef: string | null;
   width: number | null;
   height: number | null;
-  /** The ladder widths the copy has, ascending (empty: the original serves alone). */
+  /**
+   * The copy's WebP ladder, one entry per width, ascending: the entries of `variants_json` that
+   * HA-03's one parser accepts (`parseVariants`: WebP, a lower-case hex hash), deduplicated by
+   * width (the first entry wins). Empty: the original serves alone.
+   */
+  variants: readonly HostedImageVariant[];
+  /** The ladder widths, ascending: `variants`' `w`s. */
   widths: readonly number[];
 }
 
@@ -151,19 +167,31 @@ export async function hostedImages(
     if (!row.sha256 || !SHA256_RE.test(row.sha256)) continue;
     if (row.content_type === null || !IMG_HOST_TYPES.has(row.content_type))
       continue;
+    const variants = ladderOf(row.variants_json);
     out.set(row.slot, {
       slot: row.slot,
       sha256: row.sha256,
+      contentType: row.content_type,
       origin: row.origin,
       pulledRef: row.pulled_ref,
       width: row.width,
       height: row.height,
-      widths: [...new Set(parseVariants(row.variants_json).map((v) => v.w))]
-        .filter((w) => Number.isSafeInteger(w) && w > 0)
-        .sort((a, b) => a - b),
+      variants,
+      widths: variants.map((v) => v.w),
     });
   }
   return out;
+}
+
+/** A row's `variants_json` as the ladder: one entry per positive width, ascending. */
+function ladderOf(json: string | null): HostedImageVariant[] {
+  const byWidth = new Map<number, string>();
+  for (const v of parseVariants(json))
+    if (Number.isSafeInteger(v.w) && v.w > 0 && !byWidth.has(v.w))
+      byWidth.set(v.w, v.sha256);
+  return [...byWidth]
+    .sort(([a], [b]) => a - b)
+    .map(([w, sha256]) => ({ w, sha256 }));
 }
 
 /** The first of `slots` that has a copy in `images`, or `null`. */

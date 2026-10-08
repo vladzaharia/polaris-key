@@ -19,6 +19,7 @@ import type { DbStatement } from "../../db/types.js";
 import { parseAutoIssue, parseFingerprintPolicy } from "../fingerprint.js";
 import { parseWebOrigins, serializeWebOrigins } from "../cors.js";
 import { parseTrustPolicy } from "../deviceTrust.js";
+import { parseStoredPresentation } from "../products.js";
 import { parseServices, serializeServices } from "../services.js";
 import {
   resolveListing,
@@ -240,6 +241,16 @@ export const CORE_COLUMN_ADAPTERS: Readonly<
         ["trust_policy_json", null],
         ["trust_policy_source", "default"],
       ]),
+  },
+  // `.pkey/product` `presentation` (HA-12): manifest-only, so decode-only. There is no `set`, so
+  // `writeSetting()` refuses a console write; link, resync and the system product's deploy hook
+  // write the column (`serializePresentation`), as `test/settings-writes.test.ts` sanctions.
+  "core.presentation": {
+    table: "products",
+    keyColumn: "slug",
+    columns: ["presentation_json"],
+    decode: (row) =>
+      parseStoredPresentation(row?.presentation_json) ?? undefined,
   },
   "license.defaults.deviceLimit": productScalar("default_device_limit", int),
   "license.defaults.maxOfflineDays": productScalar(

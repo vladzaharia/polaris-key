@@ -186,6 +186,17 @@
       "allowedNa": []
     },
     {
+      "id": "core.presentation",
+      "family": "core",
+      "service": "core",
+      "title": "Product presentation from discovery: name, developer, accent, verified icon",
+      "proof": [
+        { "kind": "transcript" },
+        { "kind": "corpus", "file": "presentation-matrix.json" }
+      ],
+      "allowedNa": []
+    },
+    {
       "id": "core.sync",
       "family": "core",
       "title": "Sync, ETag/304, backoff, refresh loop, change events",

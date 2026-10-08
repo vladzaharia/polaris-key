@@ -6697,6 +6697,50 @@ image is still blocked). `test/portalHostedArt.test.ts` also pins the per-slot f
 gives exactly the pre-HA-07 presentation and proxy, an icon copy without a header copy gives the
 hosted icon and the proxied header, and the fallback still refuses an off-allowlist source.
 
+### Product presentation in discovery (HA-12)
+
+**What changed.** The discovery document's `core` block carries `presentation`
+(WIRE-CONTRACT-V4 §5.5): the product's name, the listing's developer name, its accent colours, and
+its icon as content-addressed image-host URLs with the original's SHA-256 and each WebP size's own
+SHA-256 (`core/presentation.ts`). Every SDK parses it field by field, fetches one icon size,
+verifies it against its hash and caches it, so a UI kit shows the product with no integrator code.
+
+- **Display data, never authority.** The member is unsigned (S-20 owner decision 10), and nothing
+  gated, entitled or trusted reads it: no gate, entitlement, trust or update decision consults it,
+  in the Worker or in any SDK. Rewriting it needs a TLS-level attacker, who can already turn
+  services off; changing a logo adds nothing to that.
+- **Nothing new is disclosed.** The listing fields are already public on the download page and in
+  the AltStore and SideStore sources, and the icon is already public at the image host's
+  `/<p>/icon` alias. The manifest's `presentation.icon` reference (a developer URL or a repository
+  path) is never emitted, nor is a `/media` proxy URL or the `/icon` alias. A slot with no hosted
+  copy has no icon in discovery at all.
+- **The SDK icon fetch.** It is a public `GET` to content-addressed URLs only, with no
+  credentials, cookies or `X-PKey-*` headers, so no device id or licence fact reaches the image
+  host. Redirects are refused (any `3xx` fails), the fetch is bounded at
+  `PRESENTATION_ICON_FETCH_TIMEOUT_SECONDS` (10 s) and `PRESENTATION_ICON_MAX_BYTES` (10 MiB), and
+  bytes are shown only when their SHA-256 matches the hash discovery named; mismatched bytes are
+  neither shown nor cached. A tampered CDN or image host can blank the icon, never swap it.
+- **Decoder surface.** Network raster images now reach the platform decoders (WebP sizes, or the
+  original in one of `PRESENTATION_ICON_TYPES`; never SVG). This is bounded by the hash pin and by
+  the types the image host sniffs at ingest. The residual risk is a hostile image from the
+  product's own operator, which carries the same trust as the app binary that operator ships.
+- **Text.** A `name` or `developerName` holding a C0 or C1 control character, DEL or a lone
+  surrogate is dropped whole (never repaired), and both are bounded at
+  `PRESENTATION_TEXT_MAX_BYTES` UTF-8 bytes. Bidi controls are kept, so a right-to-left name survives; the
+  kits render both fields bidi-isolated (`<bdi>` or `dir="auto"` on the web, FSI…PDI elsewhere),
+  so the text cannot reorder the UI around it.
+- **The kill switch is not a security gate.** Hosting off (`assetHostingEnabled`) or an unset
+  `IMG_ORIGIN` drops the icon and keeps the rest of the member, exactly as HA-07's surfaces fall
+  back.
+
+Tests: `packages/worker/test/presentation.test.ts` (emission from a listing alone, omission with
+nothing to show, the kill switch, an unset `IMG_ORIGIN`, an empty ladder, the fixed point
+`parsePresentation(emitted)` = emitted, and no manifest ref in the member),
+`packages/client-core/test/presentation.test.ts` (every row of `presentation-matrix.json`),
+`tools/presentation-matrix.test.ts` (the generator's reference limits equal
+`@polaris-key/protocol/core`'s) and `conformance/transcripts/discovery-presentation.json` (the
+member present, then gone).
+
 ### Pull on register and resync (HA-05)
 
 A link or resync now plans pulls for the manifest's asset refs (`presentation.icon`, the

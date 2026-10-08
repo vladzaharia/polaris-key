@@ -34,6 +34,9 @@ It is assembled by Core from the service registry, and it is **unsigned**.
       "report": "https://<host>/<slug>/devices/report",
       "register": "https://<host>/<slug>/devices/register", // conditional
     },
+    "presentation": {
+      /* conditional: name, developer, accent, verified icon (below) */
+    },
   },
 
   "trust": {
@@ -82,6 +85,62 @@ loop against a wall.
 `registration` carries the **effective** policy: the declared value if the product declared one,
 otherwise the derivation from the enablement set. See
 [the device principal](/docs/services/core/device-principal/) for the derivation.
+
+## Presentation
+
+`core.presentation` is how an SDK's UI kit shows the product, its icon and its accent with no
+integrator code (WIRE-CONTRACT-V4 §5.5). It is **display data, never authority**: no gate,
+entitlement or trust decision reads it, in the Worker or in any SDK.
+
+```jsonc
+"presentation": {
+  "name": "DJDL", // always present
+  "developerName": "Vlad Zaharia", // the listing's; present only when valid
+  "accent": "#2ed6e6", // presentation.accent, else the listing's tintColor; lower-case
+  "accentDark": "#5ee6f0", // presentation.accentDark
+  "icon": {
+    "sha256": "<64 hex>", // the original's
+    "contentType": "image/png",
+    "width": 1024, "height": 1024, // present only when known
+    "original": "https://img.plrs.im/djdl/a/<sha256>",
+    "url": "https://img.plrs.im/djdl/a/<sha256>/{w}.webp", // present only with sizes
+    "sizes": [{ "w": 64, "sha256": "<64 hex>" }], // each WebP size's own hash; [] with no ladder
+  },
+}
+```
+
+- `name` is the Distribution listing's name, else the product's. `developerName` is the
+  listing's. The accent is `.pkey/product` `presentation.accent`, else the listing's `tintColor`;
+  `accentDark` is `presentation.accentDark`.
+- The member is emitted only when something beyond the name resolves (a developer name, an
+  accent or an icon). Otherwise it is absent, and every SDK behaves as it did before.
+- The icon is named only by content-addressed image-host URLs and their hashes. An SDK fetches
+  one size with no credentials and no `X-PKey-*` headers, refuses redirects, and shows the bytes
+  only when their SHA-256 matches. The manifest's own icon reference, a developer's host and the
+  portal's `/media` proxy never appear.
+
+Which icon discovery names, slot by slot (the [Presentation](/docs/admin/presentation/) page
+shows the same slots):
+
+| Slot state                                                                    | `icon` in discovery                           |
+| ----------------------------------------------------------------------------- | --------------------------------------------- |
+| A hosted copy of `presentation.icon`                                          | that copy                                     |
+| No copy there, but a hosted copy of `listing.icon`                            | the `listing.icon` copy                       |
+| No hosted copy in either slot (not resynced since hosting, or a pull pending) | omitted; the accent and developer still show  |
+| An empty ladder (no image-resizing binding)                                   | the original, with `sizes: []` and no `url`   |
+| A failed or stale re-pull                                                     | the last good copy                            |
+| Hosting switched off, or no image host configured                             | omitted; the rest of the member stays         |
+| A copy the operator deleted, or a console upload reverted                     | omitted, or the new hash, at the next request |
+
+**Caching.** Discovery keeps `cache-control: public, max-age=300` and carries no ETag. A new icon,
+a new accent or a hosting switch reaches devices within those five minutes plus the SDK's own
+discovery cadence. The icon URLs are immutable: the image host answers each with the hash as its
+ETag and caches it for a year, so an SDK never revalidates one; it caches the bytes by hash.
+
+**Web kits and your CSP.** The browser kits fetch the icon from the image host and hand it to the
+page as a `blob:` URL. An app with a Content Security Policy needs `img-src <image host> blob:` and
+`connect-src <image host>` (for example `https://img.plrs.im`). A blocked fetch falls back to the
+kit's monogram tile; nothing breaks.
 
 ## The services block: honest flags
 

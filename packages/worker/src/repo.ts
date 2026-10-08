@@ -44,6 +44,10 @@ export interface ProductRow {
   // ingest. NULL reads back as the default policy (`core/deviceTrust.ts`).
   trust_policy_json?: string | null;
   trust_policy_source?: string;
+  // `.pkey/product` `presentation` (migrations/0106, HA-12), as `serializePresentation` writes it
+  // (`core/products.ts`). Manifest-only: link, resync and the system product's deploy hook write
+  // it; NULL when undeclared. Read by `core/products.ts` for discovery's `core.presentation`.
+  presentation_json?: string | null;
   created_at: number;
   modified_at: number;
 }
@@ -317,11 +321,28 @@ export async function listAllProductSlugs(db: Db): Promise<string[]> {
   return rows.map((r) => r.slug);
 }
 
+/**
+ * `presentation_json` (migrations/0106, HA-12) is named only when the row carries it: the manifest
+ * writers always do (NULL when undeclared), while a product created without a manifest (the
+ * console, a test seed) leaves it to the column's NULL default. So an insert still works against
+ * a database migrated only up to an older schema.
+ */
+function presentationInsert(row: ProductRow): {
+  column: string;
+  values: (string | null)[];
+} {
+  return row.presentation_json === undefined
+    ? { column: "", values: [] }
+    : { column: ", presentation_json", values: [row.presentation_json] };
+}
+
 export async function insertProduct(db: Db, row: ProductRow): Promise<void> {
+  const presentation = presentationInsert(row);
   await db.run(
     `INSERT INTO products (slug, name, signing_kid, signing_pub, compat_min, compat_max,
-       default_max_offline_days, default_device_limit, admin_group, branding_json, release_source, created_at, modified_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       default_max_offline_days, default_device_limit, admin_group, branding_json, release_source${presentation.column},
+       created_at, modified_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?${presentation.values.map(() => ", ?").join("")}, ?, ?)`,
     row.slug,
     row.name,
     row.signing_kid,
@@ -333,6 +354,7 @@ export async function insertProduct(db: Db, row: ProductRow): Promise<void> {
     row.admin_group,
     row.branding_json,
     row.release_source,
+    ...presentation.values,
     row.created_at,
     row.modified_at,
   );
@@ -837,11 +859,13 @@ export function stmtDeleteOrphanEdgeMintApprovals(
  * say simply omit them.
  */
 export function stmtInsertProduct(row: ProductRow): DbStatement {
+  const presentation = presentationInsert(row);
   return {
     sql: `INSERT INTO products (slug, name, signing_kid, signing_pub, compat_min, compat_max,
             default_max_offline_days, default_device_limit, admin_group, branding_json, release_source,
-            services_json, services_source, compat_source, web_origins_json, created_at, modified_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            services_json, services_source, compat_source, web_origins_json${presentation.column},
+            created_at, modified_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?${presentation.values.map(() => ", ?").join("")}, ?, ?)`,
     params: [
       row.slug,
       row.name,
@@ -858,6 +882,7 @@ export function stmtInsertProduct(row: ProductRow): DbStatement {
       row.services_source ?? null,
       row.compat_source ?? null,
       row.web_origins_json ?? null,
+      ...presentation.values,
       row.created_at,
       row.modified_at,
     ],

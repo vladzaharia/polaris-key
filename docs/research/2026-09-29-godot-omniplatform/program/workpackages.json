@@ -7988,7 +7988,7 @@
       "optional": false,
       "refs": ["notes/S-20 §6.9", "plans/HA-11.md"],
       "brief": "wp/HA-12-presentation-discovery.md",
-      "status": "todo",
+      "status": "in-review",
       "planRef": "HA-11"
     },
     {
