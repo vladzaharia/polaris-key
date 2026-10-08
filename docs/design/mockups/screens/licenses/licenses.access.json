@@ -12,60 +12,91 @@
     "P4-34"
   ],
   "uxRows": [],
-  "summary": "DJDL's one Access page: who gets a license automatically (Nobody, Everyone who signs in, or Rules by identity provider group, verified email domain or claim, each giving a tier or an add-on), the Anonymous devices tier, Discover visibility, and the gates on update checks, app downloads, packs and packages as one matrix in one vocabulary, with a readiness error on a rule that can't match, Check a person, and one unsaved change (App downloads Customers → Public) waiting in the sticky save bar.",
+  "summary": "DJDL's one Access page: who gets a license automatically (Nobody, Everyone who signs in, or Rules by identity provider group, verified email domain or claim, each giving a tier or an add-on), the Anonymous devices tier, Discover visibility, and the gates on update checks, app downloads, packs and packages as one matrix in one vocabulary, with a readiness error on a rule that can't match, Check a person, and one unsaved change (App downloads Customers → Public) in the save bar.",
   "order": 6,
   "compare": [
-    "Access is a product page in the Product context (between Integration and Devices), not an item in the Licensing group. Enrollment, License settings and Distribution -> Access no longer exist; their URLs redirect here.",
-    "Accent: Access is a core page. Every radio card, radio, checkbox, segment, focus ring and the primary are core violet; a card's service colour appears only on its header glyph tile (Licensing on Automatic licenses and Anonymous devices, the distribution green on Discover, release on the gates). Tier and add-on pills keep the license accent on their icon as object identity.",
-    "Save model: nothing on the page saves by itself. A changed control is outlined with 'was <old value>' beside its title, and a sticky save bar at the bottom of the window names each change and its reach ('App downloads: Customers → Public. Anyone can download DJDL 4.2.0 from key.plrs.im/djdl without signing in.') with Discard and 'Save access'. Switching Automatic licenses to Nobody or Everyone who signs in asks first, and the saved state is a toast with View in History (licenses.access-confirm). Leaving with changes asks to discard.",
-    "Automatic licenses offers three radio cards, Nobody, Everyone who signs in and Rules, with Rules selected. The card copy says automatic licenses belong to the account, make no key and only move up.",
-    "Each rule row reads When (Group <name> from Pocket ID, Verified email domain <domain>, Claim <name> is <value>), Gets (a tier pill, or an add-on pill with 'Add-on, on top of the tier'), the label people see on Discover and the portal, and how many accounts match today. Group labels live on the rule row (no separate group-labels setting).",
-    "A rule that can't match shows it twice: its Accounts cell reads '⚠ 0 / can't match' in the warning tone, and a warning callout under the row says why (the claim isn't in Pocket ID's claim map) and how to fix it, with Open Connections.",
-    "'Everyone else who signs in' is the last row, shaded, and gives the Trial tier ('14 days of Standard, then Free').",
-    "The foot has Add rule and the precedence sentence: the highest tier in Tiers' order wins; add-on rules add to it. There is no upgrade-on-sign-in switch. Add rule opens licenses.access-rule, whose Add rule saves the rule at once.",
-    "Anonymous devices is one select (a tier, or Nothing) with the chosen tier's summary; Discover is one three-way control: Hidden, People who can get it, Everyone signed in (the last asks for the typed slug). The two cards align to the top, not stretched to one height.",
-    "The gates card defines the four words once (Public, Signed in, Customers, Holds an entitlement) and reads as a matrix: every row's control has the same four fixed-width options, right-aligned, so each option forms a column. The fourth option reads 'Entitlement…' and opens a picker; once chosen it reads 'Holds <key> ▾' (Holds stems). Rows: Update checks, App downloads, each pack, each package under the 'Packages' heading; a package row shows '—' in the Signed in and Entitlement slots.",
-    "A manifest-asserted pack gate shows 'From .pkey/release · approved <date>' as one line of status text under the pack's title; an unapproved one would show an Approve button instead.",
-    "Check a person takes an email (with Verified), optional groups and optional claims (name=value, one per line) and answers with the tier and rule, any add-on from a claim rule (with a warning when the connection doesn't send that claim yet), the Discover label, and a tick or cross per gate including Packages, naming what would give a refused item. It includes unsaved changes, marked 'unsaved', and saves nothing.",
-    "Words: 'Automatic licenses', 'Rules', 'Release tracks', 'Holds an entitlement' and 'Packages' (never 'Package feeds'); never 'auto-issue', 'group map', 'grant' (outside 'Automatic grant'), 'capability' or 'storefront feed'. The gates card subtitle reads 'The Updates and Packages pages show this read-only and link here.'",
-    "Phone: History is an outline button on the 16px text column; the radio cards stack; rule rows become icon, when and menu over gets and count, label hidden; the legend stacks; each gate's four options sit two by two under its title, in the same places on every row; the save bar stays pinned with its buttons filling the width."
+    "Header: 'Access' and History; no subtitle.",
+    "Wide (.page.columns): Anonymous devices and Discover sit in the 400px aside; below 1600 they are two cards side by side under Automatic licenses; phone one column.",
+    "Automatic licenses: 'Issued at sign-in or from Discover, tied to the account with no key. They only ever move up a tier.'; three choices (Nobody, Everyone who signs in, Rules: chosen).",
+    "Rules table: When · Gets · Label people see · Accounts · ⋯. Group studio-pro (Studio, 38), Group members (Standard, 412), Verified email domain example.edu (Education, 57), Claim vpnAccess is true (Polaris VPN add-on, ⚠ 0) with its readiness error under it ('Pocket ID doesn’t send vpnAccess, so this rule can’t match' / 'Add the claim to Pocket ID’s claim map in Connections.', Open Connections), and the shaded fallback Everyone else who signs in (Trial, 143).",
+    "Foot: Add rule and 'When several match, the higher tier wins; add-ons add to it.'",
+    "Anonymous devices: They get Free, '1 device, 2 decks, no recording. Nothing requires sign-in or a key.'",
+    "Discover: Hidden, People who can get it (chosen), Everyone signed in (typed djdl to confirm), one line each.",
+    "Updates, downloads and packages: a legend band (Public, Signed in, Customers, Holds an entitlement), then rows with the same four-option matrix: Update checks (Customers), App downloads marked with 'was Customers' (Public), Packs (Stem separation models: Holds stems; Controller mappings: Public), Packages (npm @djdl: Public; Signed in and Entitlement don't apply).",
+    "Check a person: email (verified), groups, claims; the result 'Dana gets Education, plus Polaris VPN' and a tick or cross per gate, App downloads 'Public · unsaved'.",
+    "Save bar at the page's end (pinned while dirty in the built screen): '1 change: App downloads goes Public, so anyone can download DJDL 4.2.0 without signing in.' with Discard and Save access.",
+    "Phone: rules flow under their title, each matrix goes two by two, Check a person stacks."
   ],
   "status": "mockup",
   "designReview": {
-    "round": 1,
-    "reviewer": "UX designer (visual critique of rendered screenshots)",
-    "date": "2026-10-07",
-    "verdict": "Fixed: a sticky save bar with reach plus confirmations and a saved state (licenses.access-confirm), core violet on every control, the gates as an aligned matrix with 'Entitlement…', the Packages wording, claims and Packages in Check a person, and the layout polish. One part declined: the pack gate status stays status text, not a pill.",
+    "round": "spacing-and-content",
+    "reviewer": "Spacing and content pass against the products.overview and products.home references, all four sizes in both themes",
+    "date": "2026-10-08",
+    "verdict": "Spacing and content pass: kit table, item rows, segmented matrix, card split and save bar; wide uses the aside; 0 screen spacing.",
     "findings": [
       {
         "severity": "major",
-        "issue": "The page is a form with no save model: nothing says whether changes save, what they reach, or confirms switching to Nobody or widening a gate to Public.",
-        "resolution": "Added the Tiers pattern: a sticky save bar ('1 unsaved change · App downloads: Customers → Public. Anyone can download DJDL 4.2.0 from key.plrs.im/djdl without signing in.' with Discard and Save access), and the changed gate is outlined with 'was Customers'. Added licenses.access-confirm: Rules → Nobody ('650 automatic licenses stay. … New sign-ins get nothing automatically.', button 'Stop automatic licenses') and Rules → Everyone who signs in (typed slug, 'Give everyone Trial'), plus the saved state (toast, 'Saved just now by Ada Lovelace', View in History). Widening a gate doesn't get its own confirmation; the save bar names its reach before Save. Compare rows added."
+        "issue": "40 spacing declarations: a div-grid rules table, custom gate rows and legend, verdict list and a sticky save bar drawn mid-page.",
+        "resolution": "Kit only: .table.stack-phone.flow with tr.note-row and tr.shaded, .choices.cols-3, .item-row with .segmented.matrix and .rows-label, .card-split, .icon-list, .save-bar, .page.columns with an .aside grid."
+      },
+      {
+        "severity": "minor",
+        "issue": "The subtitle narrated the page; card descriptions restated titles; 'can't match' was said in the count and the callout; the verdict note repeated the rule's error.",
+        "resolution": "Cut to one statement each."
       },
       {
         "severity": "major",
-        "issue": "One form uses four selection colours (chartreuse, green, violet, release) because each card is scoped to a service.",
-        "resolution": "data-service removed from every card, so all radio cards, radios, the Verified checkbox, segments, focus rings and the primary are core violet; each card's service colour stays only on its header glyph tile."
+        "issue": "Desktop was a 2,350px single column while wide and tablet reflowed into a rail.",
+        "resolution": "Rail from 1280px (.page.columns.rail-360): Anonymous devices, Discover and Check a person in a 360px sticky column (.rail-cards, align-items start) beside Updates, downloads and packages. The rules table spans the full width above, because at 744px beside a rail its 'Label people see' column wrapped to three lines.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3"
+        ]
       },
       {
         "severity": "major",
-        "issue": "The fourth gate option is truncated to 'Holds…', and segments differ in width so the options never line up.",
-        "resolution": "The fourth option reads 'Entitlement…'; once chosen it reads 'Holds stems ▾'. Every gate control is a fixed four-column grid (104px each) right-aligned, so Public, Signed in, Customers and Entitlement form columns; the npm row shows '—' in the Signed in and Entitlement slots. On phone the options sit two by two in the same positions, because four columns at 390px would clip 'Entitlement…' again."
+        "issue": "Fourth audience segment ellipsized ('Entitlement…') at every size.",
+        "resolution": "Label is 'Entitlement' and the matrix is content-width (.segmented.matrix.fit, 88px minimum, never ellipsized); on phone a 2x2 grid with 44px cells and a filled selected state.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "The unsaved change was stated four times; subtitles restated titles.",
+        "resolution": "Subtitles on Anonymous devices and Discover removed; 'Public · unsaved' is 'Public'; the save bar says '1 change: App downloads goes Public.'; the row bar, 'was Customers' and the save bar stay; the tier-wins footer stays once.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
       },
       {
         "severity": "minor",
-        "issue": "'PACKAGE FEEDS' and 'each package feed' use a replaced glossary word; the npm hint sounds like the operator holds the entitlement.",
-        "resolution": "The subsection is 'Packages', the subtitle 'The Updates and Packages pages show this read-only and link here.', and the row hint 'Packages are Public or Customers. To limit one package to an entitlement, set it on that package.' The compare's wording matches."
+        "issue": "Card heads varied (56 and 72); the save bar was only reachable at the end of a long page.",
+        "resolution": "Heads are .card-head.h56 (72 with a subtitle); the save bar is drawn pinned (.save-bar.pinned: lifted, with the safe-area inset) spanning the page. The warning callout already starts at the row text's x, so it was left. A sticky bar would overlay full-page captures, so the built screen does the pinning.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX3",
+          "UX4"
+        ]
       },
       {
-        "severity": "minor",
-        "issue": "Check a person can't exercise the claim rule and skips the npm package.",
-        "resolution": "Added 'Claims from Pocket ID' (name=value, one per line) filled with vpnAccess=true; the answer now adds Polaris VPN from the claim rule with a warning that Pocket ID doesn't send vpnAccess yet. Added the 'Packages: npm @djdl · Public' row, and the checker shows the unsaved App downloads change as 'Public · unsaved'."
+        "issue": "Delete the four-audience legend or turn it into tooltips; collapse Check a person to a closed disclosure.",
+        "resolution": "declined: The legend explains the segment meanings on first use and tooltips are invisible on touch; collapsing hides a core feature. Check a person moved into the rail instead.",
+        "round": "multi-review"
       },
       {
-        "severity": "minor",
-        "issue": "Phone History is indented; the pack gate status wraps into fragments; the Anonymous devices card stretches; the 0-account rule row has no mark.",
-        "resolution": "History is an outline button, so its edge sits on the 16px column. The gate status is one line of status text under the title ('From .pkey/release · approved Oct 4'); declined drawing it as a pill, because the kit and ADMIN.md §5.11 say a healthy state is .status text, never a pill. The two-card row aligns to the top. The rule's Accounts cell reads '⚠ 0' over 'can't match' in the warning tone."
+        "issue": "Change the Save access button colour to the licence lime, or drop it to 'Entitled' wording everywhere.",
+        "resolution": "declined: Purple is the Access service accent; the kit's colours do not change in a spacing pass.",
+        "round": "multi-review"
       }
     ]
   }

@@ -1,120 +1,14 @@
 <style>
-  /* licenses.change-tier: the Change tier dialog from licenses.detail, moving up and moving down. */
-  [data-screen="licenses.change-tier"] .board {
-    gap: 40px 48px;
-  }
-  [data-screen="licenses.change-tier"] .board-item {
-    width: calc((100% - 48px) / 2);
-  }
-  [data-screen="licenses.change-tier"] .board-item > .dialog {
-    width: 100%;
-  }
-  [data-screen="licenses.change-tier"] .tier-pill > .ic,
-  [data-screen="licenses.change-tier"] .select > .ic-layers {
+  /* licenses.change-tier: colour only; spacing comes from the kit. */
+  [data-screen="licenses.change-tier"] .ic-layers {
     color: var(--pk-accent-fg);
-  }
-  [data-screen="licenses.change-tier"] .diff {
-    border: 1px solid var(--mk-line);
-    border-radius: 14px;
-    overflow: hidden;
-  }
-  [data-screen="licenses.change-tier"] .diff-row {
-    display: grid;
-    grid-template-columns: 128px minmax(0, 1fr) 16px minmax(0, 1fr);
-    align-items: start;
-    gap: 4px 10px;
-    padding: 9px 14px;
-    font-size: 13px;
-    line-height: 18px;
-  }
-  [data-screen="licenses.change-tier"] .diff-row + .diff-row {
-    border-top: 1px solid var(--mk-line);
-  }
-  [data-screen="licenses.change-tier"] .diff-head {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--pk-text-subtle);
-    background: color-mix(in oklab, var(--pk-surface-sunken) 45%, var(--pk-surface-overlay));
-  }
-  [data-screen="licenses.change-tier"] .diff-row .k {
-    color: var(--pk-text-muted);
-  }
-  [data-screen="licenses.change-tier"] .diff-row .was {
-    color: var(--pk-text-muted);
-  }
-  [data-screen="licenses.change-tier"] .diff-row .now {
-    font-weight: 700;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="licenses.change-tier"] .diff-row .now .sub {
-    display: block;
-    font-weight: 400;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="licenses.change-tier"] .diff-row > .ic {
-    width: 14px;
-    height: 14px;
-    margin-top: 2px;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="licenses.change-tier"] .up {
-    color: var(--pk-success);
-  }
-  [data-screen="licenses.change-tier"] .down {
-    color: var(--pk-warning);
-  }
-  [data-screen="licenses.change-tier"] .stays {
-    display: flex;
-    gap: 8px;
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="licenses.change-tier"] .stays .ic {
-    flex: none;
-    width: 14px;
-    height: 14px;
-    margin-top: 2px;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="licenses.change-tier"] figcaption {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    line-height: 18px;
-  }
-  [data-screen="licenses.change-tier"] figcaption strong {
-    color: var(--pk-text-strong);
-  }
-  @container screen (max-width: 1023px) {
-    [data-screen="licenses.change-tier"] .board-item {
-      width: 100%;
-      max-width: 640px;
-    }
-  }
-  @container screen (max-width: 639px) {
-    [data-screen="licenses.change-tier"] .diff-row {
-      grid-template-columns: minmax(0, 1fr) 14px minmax(0, 1fr);
-    }
-    [data-screen="licenses.change-tier"] .diff-row .k {
-      grid-column: 1 / -1;
-      font-weight: 700;
-      color: var(--pk-text-default);
-    }
-    [data-screen="licenses.change-tier"] .diff-head {
-      display: none;
-    }
-    [data-screen="licenses.change-tier"] .dialog-foot {
-      flex-direction: column-reverse;
-      align-items: stretch;
-    }
   }
 </style>
 
-<div class="board" data-service="license">
+<div class="board cols-2 floor" data-service="license">
   <div class="board-title">
     <h1>Change tier</h1>
-    <p>Opened from the tier control on licenses.detail (Tier Education ▾), the Limits card or the ⋯ menu. It names every limit that changes and what stays, and it says when Priya’s next sign-in would undo the move.</p>
+    <p>From the tier control, the Limits card or ⋯ on licenses.detail.</p>
   </div>
 
   <!-- Moving up: the license becomes Studio; it stays an Automatic grant and nothing moves it back. -->
@@ -124,25 +18,27 @@
       <div class="dialog-body">
         <div class="field">
           <label class="field-label">Move to</label>
-          <div class="select"><i class="ic ic-layers"></i><span class="grow">Studio</span><span class="muted small">1 of 5</span><i class="ic ic-chevrons-up-down"></i></div>
-          <span class="hint">Now on Education (3 of 5). Studio: lifetime, 10 devices, stable and beta, stems and recording.</span>
+          <div class="select"><i class="ic ic-layers"></i><span class="grow">Studio</span><span class="type-small muted">1 of 5</span><i class="ic ic-chevrons-up-down"></i></div>
         </div>
-        <div class="diff" role="table" aria-label="What changes">
-          <div class="diff-row diff-head" role="row"><span>What changes</span><span>Now</span><span></span><span>After</span></div>
-          <div class="diff-row" role="row"><span class="k">Devices</span><span class="was">4</span><i class="ic ic-arrow-right"></i><span class="now"><span class="up">12</span><span class="sub">10 from Studio + 2 from seat pack</span></span></div>
-          <div class="diff-row" role="row"><span class="k">Release tracks</span><span class="was">stable</span><i class="ic ic-arrow-right"></i><span class="now">stable, beta</span></div>
-          <div class="diff-row" role="row"><span class="k">Duration</span><span class="was">Fixed, ends Sep 14, 2027</span><i class="ic ic-arrow-right"></i><span class="now">Lifetime</span></div>
-          <div class="diff-row" role="row"><span class="k">Includes</span><span class="was">recording, 4 decks</span><i class="ic ic-arrow-right"></i><span class="now">recording, <span class="up mono">stems</span>, 4 decks</span></div>
-        </div>
-        <div class="stays"><i class="ic ic-check"></i><span>Stays: offline days 14 (set on this license), fingerprint mode Normal, and the add-ons Polaris VPN, Stem separation and Extra devices (2).</span></div>
-        <div class="stays"><i class="ic ic-sparkles"></i><span>It stays an Automatic grant. Sign-ins only move licenses up and Studio is the top tier, so nothing moves it back. Devices get the new limits at their next check.</span></div>
+        <section class="card" aria-labelledby="ct-up-diff">
+          <div class="card-head"><div class="title"><h3 id="ct-up-diff">What changes</h3></div></div>
+          <dl class="kv-rows">
+            <div><dt>Devices</dt><dd><del class="diff-old"><span>4</span></del><ins class="diff-new">12</ins><span class="source">10 from Studio, 2 from a seat pack</span></dd></div>
+            <div><dt>Release tracks</dt><dd><del class="diff-old"><span>stable</span></del><ins class="diff-new">stable, beta</ins></dd></div>
+            <div><dt>Duration</dt><dd><del class="diff-old"><span>Ends Sep 14, 2027</span></del><ins class="diff-new">Lifetime</ins></dd></div>
+            <div><dt>Includes</dt><dd><del class="diff-old"><span>recording, 4 decks</span></del><ins class="diff-new">recording, stems, 4 decks</ins></dd></div>
+          </dl>
+        </section>
+        <ul class="icon-list small">
+          <li><i class="ic ic-check"></i><span>Unchanged: offline days 14 (set on this license), fingerprint Normal and the 3 add-ons. Still an Automatic grant; Studio is the top tier, so no sign-in moves it back. Devices get the new limits at their next check.</span></li>
+        </ul>
       </div>
-      <div class="dialog-foot">
-        <button class="btn outline">Cancel</button>
+      <div class="dialog-foot std">
+        <button class="btn">Cancel</button>
         <button class="btn primary">Move to Studio</button>
       </div>
     </div>
-    <figcaption><strong>Moving up</strong>Each changed limit with now and after, the source of the new value, what stays, and why the move sticks. The button names the tier.</figcaption>
+    <figcaption><strong>Moving up</strong>Each changed limit, now and after; what stays; why the move sticks.</figcaption>
   </figure>
 
   <!-- Moving down: the access rule would move it back up at the next sign-in, so the dialog says so. -->
@@ -152,29 +48,30 @@
       <div class="dialog-body">
         <div class="field">
           <label class="field-label">Move to</label>
-          <div class="select"><i class="ic ic-layers"></i><span class="grow">Free</span><span class="muted small">5 of 5</span><i class="ic ic-chevrons-up-down"></i></div>
-          <span class="hint">Now on Education (3 of 5). Free: lifetime, 1 device, 2 decks, no recording.</span>
+          <div class="select"><i class="ic ic-layers"></i><span class="grow">Free</span><span class="type-small muted">5 of 5</span><i class="ic ic-chevrons-up-down"></i></div>
         </div>
-        <div class="diff" role="table" aria-label="What changes">
-          <div class="diff-row diff-head" role="row"><span>What changes</span><span>Now</span><span></span><span>After</span></div>
-          <div class="diff-row" role="row"><span class="k">Devices</span><span class="was">4</span><i class="ic ic-arrow-right"></i><span class="now"><span class="down">3</span><span class="sub">1 from Free + 2 from seat pack. She has 3, so none is signed out.</span></span></div>
-          <div class="diff-row" role="row"><span class="k">Duration</span><span class="was">Fixed, ends Sep 14, 2027</span><i class="ic ic-arrow-right"></i><span class="now">Lifetime</span></div>
-          <div class="diff-row" role="row"><span class="k">Includes</span><span class="was">recording, 4 decks</span><i class="ic ic-arrow-right"></i><span class="now"><span class="down">2 decks, no recording</span></span></div>
-        </div>
+        <section class="card" aria-labelledby="ct-down-diff">
+          <div class="card-head"><div class="title"><h3 id="ct-down-diff">What changes</h3></div></div>
+          <dl class="kv-rows">
+            <div><dt>Devices</dt><dd><del class="diff-old"><span>4</span></del><ins class="diff-new">3</ins><span class="source">She has 3, so none is signed out</span></dd></div>
+            <div><dt>Duration</dt><dd><del class="diff-old"><span>Ends Sep 14, 2027</span></del><ins class="diff-new">Lifetime</ins></dd></div>
+            <div><dt>Includes</dt><dd><del class="diff-old"><span>recording, 4 decks</span></del><ins class="diff-new">2 decks, no recording</ins></dd></div>
+          </dl>
+        </section>
         <div class="callout warning">
           <i class="ic ic-triangle-alert"></i>
           <div class="grow">
             <div class="callout-title">Her next sign-in moves it back to Education</div>
-            <div class="callout-text">The rule Verified email domain <span class="mono">example.edu</span> gives Education, and automatic licenses move up at sign-in. To keep Priya on Free, change that rule in Access first.</div>
+            <div class="callout-text">Verified email domain <code>example.edu</code> gives Education. To keep her on Free, change that rule first.</div>
           </div>
         </div>
       </div>
-      <div class="dialog-foot">
+      <div class="dialog-foot std">
         <a class="btn ghost start" href="#">Open Access<i class="ic ic-arrow-right"></i></a>
-        <button class="btn outline">Cancel</button>
+        <button class="btn">Cancel</button>
         <button class="btn primary">Move to Free</button>
       </div>
     </div>
-    <figcaption><strong>Moving down</strong>A rule still covers Priya, so the dialog warns that her next sign-in undoes the move and links to Access. Lower values are in the warning tone; nothing is blocked.</figcaption>
+    <figcaption><strong>Moving down</strong>A rule still covers Priya, so the dialog warns that her next sign-in undoes the move. Nothing is blocked.</figcaption>
   </figure>
 </div>

@@ -1,177 +1,30 @@
 <style>
-  /* licenses.list-states: the Licenses list's four other states, each in a frame of the page. */
-  [data-screen="licenses.list-states"] .board {
-    gap: 40px 48px;
-  }
-  [data-screen="licenses.list-states"] .board-item {
-    width: calc((100% - 48px) / 2);
-  }
-  [data-screen="licenses.list-states"] .frame {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    padding: 20px;
-    border: 1px solid var(--mk-line);
-    border-radius: 16px;
-    background: var(--pk-surface-page);
-    box-shadow: var(--mk-card-shadow);
-  }
-  [data-screen="licenses.list-states"] .f-head {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: start;
-    gap: 4px 12px;
-  }
-  [data-screen="licenses.list-states"] .f-title {
-    font-size: 22px;
-    line-height: 30px;
-    font-weight: 700;
-    letter-spacing: -0.015em;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="licenses.list-states"] .f-sub {
-    grid-column: 1;
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="licenses.list-states"] .f-actions {
-    grid-column: 2;
-    grid-row: 1 / span 2;
-    display: flex;
-    gap: 8px;
-  }
-  [data-screen="licenses.list-states"] .toolbar {
-    row-gap: 8px;
-  }
-  [data-screen="licenses.list-states"] .holder-seg .count {
-    height: 18px;
-    margin-left: 2px;
-    background: transparent;
-    padding: 0 2px;
-  }
-  [data-screen="licenses.list-states"] .holder-chip {
-    display: none;
-  }
+  /* licenses.list-states: colour only; spacing comes from the kit. */
   [data-screen="licenses.list-states"] .search-field.typed > span {
     color: var(--pk-text-strong);
   }
-  [data-screen="licenses.list-states"] .table td.state {
-    padding: 0;
-  }
-  [data-screen="licenses.list-states"] .table .empty {
-    padding: 32px 24px;
-  }
-  [data-screen="licenses.list-states"] .empty-icon.neutral {
-    background: var(--mk-fill);
-    color: var(--pk-text-muted);
-  }
-  [data-screen="licenses.list-states"] .empty-icon.danger {
-    background: var(--pk-danger-subtle);
-    color: var(--pk-danger);
-  }
-  [data-screen="licenses.list-states"] .sk-row td {
-    height: 61px;
-  }
-  [data-screen="licenses.list-states"] .table th:first-child {
-    width: 38%;
-  }
-  [data-screen="licenses.list-states"] .sk-who {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  [data-screen="licenses.list-states"] .sk-dot {
-    flex: none;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background: var(--mk-fill);
-  }
-  [data-screen="licenses.list-states"] .sk-lines {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    flex: 1;
-  }
-  [data-screen="licenses.list-states"] .skeleton.pill-sk {
-    height: 20px;
-    border-radius: 999px;
-  }
-  [data-screen="licenses.list-states"] .seg-sk {
-    display: inline-block;
-    width: 28px;
-    height: 10px;
-    margin-left: 4px;
-    vertical-align: middle;
-  }
-  [data-screen="licenses.list-states"] .live {
-    font-size: 12px;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="licenses.list-states"] figcaption {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    line-height: 18px;
-  }
-  [data-screen="licenses.list-states"] figcaption strong {
-    color: var(--pk-text-strong);
-  }
-  @container screen (max-width: 1023px) {
-    [data-screen="licenses.list-states"] .board-item {
-      width: 100%;
-    }
-  }
-  @container screen (max-width: 639px) {
-    [data-screen="licenses.list-states"] .frame {
-      padding: 16px;
-    }
-    [data-screen="licenses.list-states"] .f-head {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    [data-screen="licenses.list-states"] .f-actions {
-      grid-column: 1;
-      grid-row: auto;
-      flex-wrap: wrap;
-    }
-    [data-screen="licenses.list-states"] .f-actions > .btn {
-      flex: 1 1 auto;
-    }
-    /* Phone: the holder control becomes a chip, as on licenses.list. */
-    [data-screen="licenses.list-states"] .toolbar:has(> .holder-seg) {
-      display: none;
-    }
-    [data-screen="licenses.list-states"] .holder-chip {
-      display: inline-flex;
-    }
-    [data-screen="licenses.list-states"] .table .empty .btn-row {
-      flex-direction: column;
-      align-items: stretch;
-      width: 100%;
-    }
-  }
 </style>
 
-<div class="board" data-service="license">
+<div class="board cols-2 start floor" data-service="license">
   <div class="board-title">
     <h1>Licenses list states</h1>
-    <p>The other four states of DJDL’s Licenses list (licenses.list): a product with no licenses yet, a search and filters that match nothing, the first load, and a load that failed. Each keeps the header and, where they apply, the filters.</p>
+    <p>The other four states of licenses.list.</p>
   </div>
 
   <!-- First run (ADMIN.md T2: Empty is first-run, why and create). -->
   <figure class="board-item">
-    <div class="frame">
-      <div class="f-head">
-        <div class="f-title" role="heading" aria-level="2">Licenses</div>
-        <p class="f-sub">Every DJDL license has a tier.</p>
-        <div class="f-actions"><button class="btn outline"><i class="ic ic-key-square"></i>Create keys in bulk</button></div>
-      </div>
+    <div class="board-frame">
+      <header class="page-head">
+        <div class="page-heading"><h2 class="type-page">Licenses</h2></div>
+        <div class="page-actions">
+          <button class="btn outline"><i class="ic ic-key-square"></i>Create keys in bulk</button>
+        </div>
+      </header>
       <div class="table-card">
         <div class="empty">
           <span class="empty-icon"><i class="svc"></i></span>
           <h3>No licenses yet</h3>
-          <p>They appear when someone signs in under your Access rules, or when you create one.</p>
+          <p>Licenses appear when someone signs in under your Access rules, or when you create one.</p>
           <div class="btn-row">
             <button class="btn primary"><i class="ic ic-plus"></i>New license</button>
             <button class="btn outline"><i class="ic ic-shield-check"></i>Open Access</button>
@@ -179,105 +32,117 @@
         </div>
       </div>
     </div>
-    <figcaption><strong>First run</strong>No licenses at all: no holder filter, no search, no table head. New license moves from the header into the empty state, so the frame has one primary.</figcaption>
+    <figcaption><strong>First run</strong>No holder filter, search or table head. New license moves into the empty state, so there is one primary.</figcaption>
   </figure>
 
   <!-- No match (ADMIN.md T2: filtered empty is no-results with Clear filters). -->
   <figure class="board-item">
-    <div class="frame">
-      <div class="f-head">
-        <div class="f-title" role="heading" aria-level="2">Licenses</div>
-        <p class="f-sub">Every DJDL license has a tier.</p>
-        <div class="f-actions"><button class="btn outline hide-phone"><i class="ic ic-key-square"></i>Create keys in bulk</button><button class="btn primary"><i class="ic ic-plus"></i>New license</button></div>
-      </div>
-      <div class="toolbar">
-        <div class="segmented holder-seg" role="tablist" aria-label="Holder">
-          <span>All<span class="count">1,284</span></span>
-          <span class="on"><i class="ic ic-key-round sm"></i>Floating<span class="count">206</span></span>
-          <span><i class="ic ic-user-round sm"></i>In an account<span class="count">1,071</span></span>
+    <div class="board-frame">
+      <header class="page-head">
+        <div class="page-heading"><h2 class="type-page">Licenses</h2></div>
+        <div class="page-actions">
+          <button class="btn outline"><i class="ic ic-key-square"></i>Create keys in bulk</button>
+          <button class="btn primary"><i class="ic ic-plus"></i>New license</button>
+        </div>
+      </header>
+      <div class="mk-stack-4">
+        <div class="toolbar hide-phone">
+          <div class="segmented" role="tablist" aria-label="Holder">
+            <span>All<span class="count">1,284</span></span>
+            <span><i class="ic ic-user-round sm"></i>In an account<span class="count">1,071</span></span>
+            <span class="on"><i class="ic ic-key-round sm"></i>Floating<span class="count">206</span></span>
+          </div>
+        </div>
+        <div class="toolbar">
+          <div class="search-field typed"><i class="ic ic-search"></i><span>Q2KD-88</span></div>
+          <span class="filter on show-phone"><i class="ic ic-check"></i>Holder: Floating</span>
+          <span class="filter on"><i class="ic ic-check"></i>Tier: Studio</span>
+          <span class="filter"><i class="ic ic-plus"></i>Batch</span>
+        </div>
+        <div class="table-card">
+          <table class="table stack-phone">
+            <thead><tr><th>License</th><th>Holder</th><th>Tier</th><th>Devices</th></tr></thead>
+            <tbody><tr><td colspan="4">
+              <div class="empty">
+                <span class="empty-icon muted"><i class="ic ic-search"></i></span>
+                <h3>No licenses match</h3>
+                <p>No floating Studio license has a key or id containing “Q2KD-88”.</p>
+                <div class="btn-row"><button class="btn outline"><i class="ic ic-x"></i>Clear filters</button></div>
+              </div>
+            </td></tr></tbody>
+          </table>
         </div>
       </div>
-      <div class="toolbar">
-        <div class="search-field typed"><i class="ic ic-search"></i><span>Q2KD-88</span></div>
-        <span class="filter on holder-chip"><i class="ic ic-chevron-down"></i>Holder: Floating</span>
-        <span class="filter on"><i class="ic ic-check"></i>Tier: Studio</span>
-        <span class="filter"><i class="ic ic-plus"></i>Batch</span>
-      </div>
-      <div class="table-card">
-        <table class="table">
-          <thead><tr><th>License</th><th>Holder</th><th class="hide-phone">Tier</th><th class="num">Devices</th></tr></thead>
-          <tbody><tr><td class="state" colspan="4">
-            <div class="empty">
-              <span class="empty-icon neutral"><i class="ic ic-search"></i></span>
-              <h3>No licenses match</h3>
-              <p>No floating Studio license has a key or id containing “Q2KD-88”.</p>
-              <div class="btn-row"><button class="btn outline"><i class="ic ic-x"></i>Clear filters</button></div>
-            </div>
-          </td></tr></tbody>
-        </table>
-      </div>
     </div>
-    <figcaption><strong>No match</strong>The search, the Floating holder and Tier: Studio stay set and visible. Clear filters resets all three; the sentence names what was searched.</figcaption>
+    <figcaption><strong>No match</strong>Search, holder and tier stay set. Clear filters resets all three.</figcaption>
   </figure>
 
   <!-- Loading (ADMIN.md T2: skeleton rows that match the columns; no spinner, no “Loading…”). -->
   <figure class="board-item">
-    <div class="frame" aria-busy="true">
-      <div class="f-head">
-        <div class="f-title" role="heading" aria-level="2">Licenses</div>
-        <p class="f-sub">Every DJDL license has a tier.</p>
-        <div class="f-actions"><button class="btn outline hide-phone"><i class="ic ic-key-square"></i>Create keys in bulk</button><button class="btn primary"><i class="ic ic-plus"></i>New license</button></div>
-      </div>
-      <div class="toolbar">
-        <div class="segmented holder-seg" role="tablist" aria-label="Holder">
-          <span class="on">All<span class="skeleton seg-sk"></span></span>
-          <span><i class="ic ic-user-round sm"></i>In an account<span class="skeleton seg-sk"></span></span>
-          <span><i class="ic ic-mail sm"></i>Waiting<span class="skeleton seg-sk"></span></span>
+    <div class="board-frame" aria-busy="true">
+      <header class="page-head">
+        <div class="page-heading"><h2 class="type-page">Licenses</h2></div>
+        <div class="page-actions">
+          <button class="btn outline"><i class="ic ic-key-square"></i>Create keys in bulk</button>
+          <button class="btn primary"><i class="ic ic-plus"></i>New license</button>
+        </div>
+      </header>
+      <div class="mk-stack-4">
+        <div class="toolbar hide-phone">
+          <div class="segmented" role="tablist" aria-label="Holder">
+            <span class="on">All<span class="skeleton inline"></span></span>
+            <span><i class="ic ic-user-round sm"></i>In an account<span class="skeleton inline"></span></span>
+            <span><i class="ic ic-mail sm"></i>Waiting<span class="skeleton inline"></span></span>
+          </div>
+        </div>
+        <div class="table-card">
+          <table class="table stack-phone flow">
+            <thead><tr><th>License</th><th>Holder</th><th>Tier</th><th>Devices</th></tr></thead>
+            <tbody>
+              <tr><td><div class="cell-with-logo"><span class="skeleton media"></span><div class="grow mk-stack-2"><span class="skeleton" style="width: 70%"></span><span class="skeleton" style="width: 90%"></span></div></div></td><td><span class="skeleton capsule" style="width: 96px"></span></td><td><span class="skeleton capsule" style="width: 72px"></span></td><td><span class="skeleton" style="width: 44px"></span></td></tr>
+              <tr><td><div class="cell-with-logo"><span class="skeleton media"></span><div class="grow mk-stack-2"><span class="skeleton" style="width: 55%"></span><span class="skeleton" style="width: 80%"></span></div></div></td><td><span class="skeleton capsule" style="width: 96px"></span></td><td><span class="skeleton capsule" style="width: 84px"></span></td><td><span class="skeleton" style="width: 44px"></span></td></tr>
+              <tr><td><div class="cell-with-logo"><span class="skeleton media"></span><div class="grow mk-stack-2"><span class="skeleton" style="width: 80%"></span><span class="skeleton" style="width: 60%"></span></div></div></td><td><span class="skeleton capsule" style="width: 72px"></span></td><td><span class="skeleton capsule" style="width: 72px"></span></td><td><span class="skeleton" style="width: 44px"></span></td></tr>
+              <tr><td><div class="cell-with-logo"><span class="skeleton media"></span><div class="grow mk-stack-2"><span class="skeleton" style="width: 62%"></span><span class="skeleton" style="width: 84%"></span></div></div></td><td><span class="skeleton capsule" style="width: 96px"></span></td><td><span class="skeleton capsule" style="width: 64px"></span></td><td><span class="skeleton" style="width: 44px"></span></td></tr>
+            </tbody>
+          </table>
+          <span class="sr-only" role="status">Loading licenses</span>
         </div>
       </div>
-      <div class="table-card">
-        <table class="table">
-          <thead><tr><th>License</th><th>Holder</th><th class="hide-phone">Tier</th><th class="num">Devices</th></tr></thead>
-          <tbody>
-            <tr class="sk-row"><td><div class="sk-who"><span class="sk-dot"></span><span class="sk-lines"><span class="skeleton" style="width: 70%"></span><span class="skeleton" style="width: 90%"></span></span></div></td><td><span class="skeleton pill-sk" style="width: 96px"></span></td><td class="hide-phone"><span class="skeleton pill-sk" style="width: 72px"></span></td><td class="num"><span class="skeleton" style="width: 44px; margin-left: auto"></span></td></tr>
-            <tr class="sk-row"><td><div class="sk-who"><span class="sk-dot"></span><span class="sk-lines"><span class="skeleton" style="width: 55%"></span><span class="skeleton" style="width: 80%"></span></span></div></td><td><span class="skeleton pill-sk" style="width: 96px"></span></td><td class="hide-phone"><span class="skeleton pill-sk" style="width: 84px"></span></td><td class="num"><span class="skeleton" style="width: 44px; margin-left: auto"></span></td></tr>
-            <tr class="sk-row"><td><div class="sk-who"><span class="sk-dot"></span><span class="sk-lines"><span class="skeleton" style="width: 80%"></span><span class="skeleton" style="width: 60%"></span></span></div></td><td><span class="skeleton pill-sk" style="width: 72px"></span></td><td class="hide-phone"><span class="skeleton pill-sk" style="width: 72px"></span></td><td class="num"><span class="skeleton" style="width: 44px; margin-left: auto"></span></td></tr>
-            <tr class="sk-row"><td><div class="sk-who"><span class="sk-dot"></span><span class="sk-lines"><span class="skeleton" style="width: 62%"></span><span class="skeleton" style="width: 84%"></span></span></div></td><td><span class="skeleton pill-sk" style="width: 96px"></span></td><td class="hide-phone"><span class="skeleton pill-sk" style="width: 64px"></span></td><td class="num"><span class="skeleton" style="width: 44px; margin-left: auto"></span></td></tr>
-          </tbody>
-        </table>
-        <span class="sr-only" role="status">Loading licenses</span>
-      </div>
     </div>
-    <figcaption><strong>Loading</strong>Skeleton rows at the real row height (61 px) under the real column heads; the holder counts are skeletons too. A live region says “Loading licenses” to screen readers only after 150 ms.</figcaption>
+    <figcaption><strong>Loading</strong>Skeleton rows at the real row height under the real column heads, and skeleton holder counts. Screen readers hear “Loading licenses” after 150 ms.</figcaption>
   </figure>
 
   <!-- Error (ADMIN.md T2: inline in the table body with Retry; filters stay). -->
   <figure class="board-item">
-    <div class="frame">
-      <div class="f-head">
-        <div class="f-title" role="heading" aria-level="2">Licenses</div>
-        <p class="f-sub">Every DJDL license has a tier.</p>
-        <div class="f-actions"><button class="btn outline hide-phone"><i class="ic ic-key-square"></i>Create keys in bulk</button><button class="btn primary"><i class="ic ic-plus"></i>New license</button></div>
-      </div>
-      <div class="toolbar">
-        <div class="search-field"><i class="ic ic-search"></i><span>Search name, email, key or id</span></div>
-        <span class="filter on"><i class="ic ic-check"></i>Tier: Education</span>
-        <span class="filter on"><i class="ic ic-check"></i>Duration: Ends within 30 days</span>
-      </div>
-      <div class="table-card">
-        <table class="table">
-          <thead><tr><th>License</th><th>Holder</th><th class="hide-phone">Tier</th><th class="num">Devices</th></tr></thead>
-          <tbody><tr><td class="state" colspan="4">
-            <div class="empty" role="alert">
-              <span class="empty-icon danger"><i class="ic ic-circle-x"></i></span>
-              <h3>Licenses didn’t load</h3>
-              <p>Polaris Key took too long to answer (504). Your filters are kept, so Retry loads the same list.</p>
-              <div class="btn-row"><button class="btn outline"><i class="ic ic-refresh-cw"></i>Retry</button></div>
-            </div>
-          </td></tr></tbody>
-        </table>
+    <div class="board-frame">
+      <header class="page-head">
+        <div class="page-heading"><h2 class="type-page">Licenses</h2></div>
+        <div class="page-actions">
+          <button class="btn outline"><i class="ic ic-key-square"></i>Create keys in bulk</button>
+          <button class="btn primary"><i class="ic ic-plus"></i>New license</button>
+        </div>
+      </header>
+      <div class="mk-stack-4">
+        <div class="toolbar">
+          <div class="search-field"><i class="ic ic-search"></i><span>Search name, email, key or id</span></div>
+          <span class="filter on"><i class="ic ic-check"></i>Tier: Education</span>
+          <span class="filter on"><i class="ic ic-check"></i>Duration: Ends within 30 days</span>
+        </div>
+        <div class="table-card">
+          <table class="table stack-phone">
+            <thead><tr><th>License</th><th>Holder</th><th>Tier</th><th>Devices</th></tr></thead>
+            <tbody><tr><td colspan="4">
+              <div class="empty" role="alert">
+                <span class="empty-icon danger"><i class="ic ic-circle-x"></i></span>
+                <h3>Licenses didn’t load</h3>
+                <p>Polaris Key took too long to answer (504). Retry loads the same list with your filters.</p>
+                <div class="btn-row"><button class="btn outline"><i class="ic ic-refresh-cw"></i>Retry</button></div>
+              </div>
+            </td></tr></tbody>
+          </table>
+        </div>
       </div>
     </div>
-    <figcaption><strong>Error</strong>The failure shows in the table body, not as a toast, says what failed and keeps Tier and Duration set. Retry refetches with the same URL state.</figcaption>
+    <figcaption><strong>Error</strong>Inline in the table body, not a toast; the filters stay set.</figcaption>
   </figure>
 </div>

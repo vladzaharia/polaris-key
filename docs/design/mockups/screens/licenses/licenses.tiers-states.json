@@ -3,18 +3,60 @@
   "title": "Tiers: other states",
   "area": "licenses",
   "surface": "console",
-  "packages": ["LX-44", "LX-41", "LX-33", "LX-43"],
+  "packages": [
+    "LX-44",
+    "LX-41",
+    "LX-33",
+    "LX-43"
+  ],
   "uxRows": [],
-  "summary": "The Tiers editor's other states from the round-1 review of licenses.tiers: Trial's 'Moves to another tier' with Then Free and its example, inline validation with the save bar's 'Fix 2 fields', the discard confirmation when leaving a dirty tier, a row's menu with Move up, Move down and Delete disabled while used, and the locked stable track with its tooltip.",
+  "summary": "The Tiers editor's other states: Trial's 'Moves to another tier' with Then Free, inline validation with the save bar's 'Fix 2 fields', the discard confirmation when leaving a changed tier, a row's menu with Move up, Move down and Delete disabled while used, and the locked stable track with its tooltip.",
   "order": 11,
   "compare": [
-    "Moves to another tier: choosing it reveals 'Then' with a select of the other tiers (never the tier itself); the example names the real end date and the next tier's limits ('ends its trial on Oct 21, 2026, then becomes Free: 1 device, 2 decks, no recording').",
-    "Validation: errors sit under each field and say how to fix it ('Enter at least 1 day.', '\"From\" must be lower than \"to\". Swap them, or clear one for no limit.'); the save bar turns to the danger tone, reads '<n> changes. Fix <m> fields to save.' with the link jumping to the first invalid field, and Save is disabled.",
-    "Leaving dirty: picking another tier in Order, or leaving the page, asks 'Discard 1 change to Education?' naming what reverts and what opens next, with Keep editing and Discard. Esc on the save bar asks the same.",
-    "Row menu: every tier row has a ⋯ menu with Move up and Move down (each naming the neighbour), Duplicate and Delete; Delete is disabled with 'Used by 57 licenses. Move them to another tier first.' while licenses use the tier. With a drag handle focused, ↑ and ↓ move the row and the new rank is announced.",
-    "Locked stable: a lock instead of a tick and a dashed edge; hover or focus shows the tooltip 'Always included'; it can't be turned off.",
-    "Phone: each frame stacks; the Versions fields and Only 4.x stay on one line; the save bar's buttons fill the width."
+    "A board of page slices (.board.cols-2, .board-frame): two a row from 1280px, one below; each slice is the editor card or the list as on licenses.tiers.",
+    "Moves to another tier: Trial's Duration with Runs for 14 days ('One starting today moves to Free on Oct 21, 2026.'), the third option chosen and 'Then [Free]' with '1 device · 2 decks · no recording' on its line.",
+    "Fields that need fixing: 'Enter at least 1 day.' under Runs for, '“From” must be lower than “to”. Swap them, or clear one for no limit.' under Versions, and the save bar in the danger tone: '3 changes. Fix 2 fields to save.' with Save disabled.",
+    "Reordering without a mouse: the Order list with Education's ⋯ open above it: Move up (above Standard ↑), Move down (below Trial ↓), Duplicate, and Delete disabled with 'Used by 57 licenses. Move them to another tier first.'",
+    "Leaving with a change: 'Discard 1 change to Education?' over the edited Limits ('Offline days goes back to 7 and Studio opens.'), Keep editing and Discard.",
+    "Locked stable: stable with a lock and a dashed edge, focused, its 'Always included' tooltip above it; beta chosen."
   ],
   "status": "mockup",
-  "designReview": null
+  "designReview": {
+    "round": "spacing-and-content",
+    "reviewer": "Spacing and content pass against the products.overview and products.home references, all four sizes in both themes",
+    "date": "2026-10-08",
+    "verdict": "Spacing and content pass: slices of the real editor on the kit board, kit menus, tooltips and save bar; 0 screen spacing; captions one sentence each.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "Each state was a custom fragment (23 spacing declarations, its own tier rows, menu and tooltip offsets, a 196px padding hack for the open menu).",
+        "resolution": "Kit only: .board.cols-2 with .board-frame and .board-stage, .item-row.lead.keep-end, .popover.up.right with .menu-note, .save-bar.danger, .overlay.center."
+      },
+      {
+        "severity": "minor",
+        "issue": "Captions restated the whole state in three sentences.",
+        "resolution": "One sentence each; the board title is 'The other states of licenses.tiers.'"
+      },
+      {
+        "severity": "minor",
+        "issue": "Order menu and the Locked-stable tooltip opened upward over the card heading.",
+        "resolution": "Both anchor 8px below their trigger (.popover.anchor-below); the tile leaves 160px below (.room-below); 24px between a card and its save bar (mk-stack-6).",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "State tiles were as tall as their neighbour; repeated Order summary lines and slugs.",
+        "resolution": "Board is .board.cols-2.start (tiles size to content); Order rows lose the summary line; slugs equal to the name are gone.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX4"
+        ]
+      }
+    ]
+  }
 }

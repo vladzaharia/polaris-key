@@ -1,317 +1,4 @@
-<style>
-  /* licenses.tiers: only what the kit does not already say. */
-  [data-screen="licenses.tiers"] .nav-group.closed {
-    padding-top: 4px;
-  }
-  [data-screen="licenses.tiers"] .tiers-grid {
-    display: grid;
-    grid-template-columns: 320px minmax(0, 1fr);
-    gap: 24px;
-    align-items: start;
-  }
-  /* The ordered list: drag to reorder; top is the best tier. */
-  [data-screen="licenses.tiers"] .tier-item {
-    display: grid;
-    grid-template-columns: 16px 22px minmax(0, 1fr) auto 28px;
-    align-items: center;
-    gap: 2px 10px;
-    padding: 12px 16px 12px 10px;
-    position: relative;
-  }
-  [data-screen="licenses.tiers"] .tier-item + .tier-item {
-    border-top: 1px solid var(--mk-line);
-  }
-  [data-screen="licenses.tiers"] .tier-item.selected {
-    background: var(--pk-accent-subtle);
-    box-shadow: inset 2px 0 0 var(--pk-accent);
-  }
-  [data-screen="licenses.tiers"] .tier-item .grip {
-    width: 16px;
-    height: 16px;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="licenses.tiers"] .rank {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    background: var(--mk-fill);
-    font-size: 12px;
-    font-variant-numeric: tabular-nums;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="licenses.tiers"] .tier-item.selected .rank {
-    background: var(--pk-accent);
-    color: var(--pk-accent-on);
-  }
-  [data-screen="licenses.tiers"] .tier-name {
-    font-weight: 700;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="licenses.tiers"] .tier-sum {
-    grid-column: 3 / -2;
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="licenses.tiers"] .used {
-    font-size: 12px;
-    color: var(--pk-text-subtle);
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-  }
-  [data-screen="licenses.tiers"] .list-note {
-    display: flex;
-    gap: 8px;
-    padding: 12px 16px;
-    border-top: 1px solid var(--mk-line);
-    font-size: 12px;
-    line-height: 17px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="licenses.tiers"] .list-note .ic {
-    flex: none;
-    width: 14px;
-    height: 14px;
-    margin-top: 1px;
-  }
-  /* The editor: four groups, each a label column and its fields. */
-  [data-screen="licenses.tiers"] .ed-head {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 10px 16px;
-    padding: 18px 24px;
-    border-bottom: 1px solid var(--mk-line);
-  }
-  [data-screen="licenses.tiers"] .ed-head h2 {
-    font-size: 20px;
-    line-height: 28px;
-    font-weight: 700;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="licenses.tiers"] .ed-sec {
-    display: grid;
-    grid-template-columns: 180px minmax(0, 1fr);
-    gap: 16px 28px;
-    padding: 22px 24px;
-  }
-  [data-screen="licenses.tiers"] .ed-sec + .ed-sec {
-    border-top: 1px solid var(--mk-line);
-  }
-  [data-screen="licenses.tiers"] .ed-label h3 {
-    font-size: 15px;
-    line-height: 22px;
-    font-weight: 700;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="licenses.tiers"] .ed-label p {
-    margin-top: 4px;
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="licenses.tiers"] .ed-fields {
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-    min-width: 0;
-  }
-  [data-screen="licenses.tiers"] .inline-fields {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    gap: 12px;
-  }
-  [data-screen="licenses.tiers"] .ed-fields > .segmented {
-    align-self: flex-start;
-  }
-  [data-screen="licenses.tiers"] .inline-fields.mid {
-    align-items: center;
-  }
-  [data-screen="licenses.tiers"] .input.num {
-    width: 120px;
-  }
-  [data-screen="licenses.tiers"] .input.ver {
-    width: 140px;
-  }
-  [data-screen="licenses.tiers"] .changed .input {
-    border-color: var(--pk-accent);
-    box-shadow: 0 0 0 1px var(--pk-accent);
-  }
-  [data-screen="licenses.tiers"] .was {
-    font-size: 12px;
-    color: var(--pk-accent-fg);
-  }
-  [data-screen="licenses.tiers"] .end-options {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  [data-screen="licenses.tiers"] .end-opt {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  [data-screen="licenses.tiers"] .end-opt .radio {
-    color: var(--pk-text-strong);
-  }
-  [data-screen="licenses.tiers"] .end-opt-desc {
-    padding-left: 26px;
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="licenses.tiers"] .end-opt .select.sm {
-    margin-left: 26px;
-    margin-top: 4px;
-    width: 180px;
-  }
-  [data-screen="licenses.tiers"] .example {
-    display: flex;
-    gap: 10px;
-    padding: 10px 12px;
-    border-radius: 10px;
-    background: var(--pk-surface-sunken);
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-text-default);
-  }
-  [data-screen="licenses.tiers"] .example .ic {
-    flex: none;
-    margin-top: 1px;
-    color: var(--pk-text-subtle);
-  }
-  /* stable is always on: a lock, not a tick, and no hover. */
-  [data-screen="licenses.tiers"] .chip.locked::before {
-    -webkit-mask-image: var(--ic-lock);
-    mask-image: var(--ic-lock);
-    background: var(--pk-text-muted);
-  }
-  [data-screen="licenses.tiers"] .chip.locked {
-    border-style: dashed;
-    color: var(--pk-text-default);
-  }
-  /* The switch knob is white in both states; the track says on or off. */
-  [data-screen="licenses.tiers"] .switch.on::after {
-    background: var(--pk-surface-raised);
-  }
-  [data-theme="light"] [data-screen="licenses.tiers"] .switch::after {
-    background: var(--pk-surface-raised);
-    box-shadow: 0 0 0 1px var(--pk-border-strong), var(--pk-elevation-1);
-  }
-  [data-screen="licenses.tiers"] .incl {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 2px 16px;
-    padding: 10px 0;
-  }
-  [data-screen="licenses.tiers"] .incl + .incl {
-    border-top: 1px solid var(--mk-line);
-  }
-  [data-screen="licenses.tiers"] .incl:first-child {
-    padding-top: 0;
-  }
-  [data-screen="licenses.tiers"] .incl-name {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px 8px;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="licenses.tiers"] .incl-desc {
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="licenses.tiers"] .kind {
-    font-size: 11px;
-    line-height: 16px;
-    padding: 0 6px;
-    border-radius: 4px;
-    background: var(--mk-fill);
-    color: var(--pk-text-muted);
-  }
-  [data-screen="licenses.tiers"] .incl .input {
-    width: 110px;
-  }
-  /* While the form is dirty the save bar sticks to the bottom of the window, inside the editor column. */
-  [data-screen="licenses.tiers"] .save-bar {
-    position: sticky;
-    bottom: 16px;
-    z-index: 10;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px 12px;
-    margin: 0 12px 12px;
-    padding: 12px 16px;
-    border: 1px solid var(--pk-accent);
-    border-radius: 14px;
-    background: color-mix(in oklab, var(--pk-accent-subtle) 35%, var(--pk-surface-overlay));
-    box-shadow: var(--mk-pop-shadow);
-  }
-  [data-screen="licenses.tiers"] .save-bar .msg {
-    flex: 1 1 320px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13px;
-    color: var(--pk-text-default);
-  }
-  [data-screen="licenses.tiers"] .save-bar .msg .ic {
-    color: var(--pk-accent-fg);
-  }
-  @container screen (max-width: 1023px) {
-    [data-screen="licenses.tiers"] .tiers-grid {
-      grid-template-columns: minmax(0, 1fr);
-    }
-  }
-  @container screen (max-width: 639px) {
-    [data-screen="licenses.tiers"] .ed-head {
-      padding: 16px;
-    }
-    [data-screen="licenses.tiers"] .ed-sec {
-      grid-template-columns: minmax(0, 1fr);
-      gap: 14px;
-      padding: 18px 16px;
-    }
-    [data-screen="licenses.tiers"] .save-bar {
-      bottom: 12px;
-      margin: 0 8px 8px;
-      padding: 12px 14px;
-    }
-    [data-screen="licenses.tiers"] .save-bar .btn {
-      flex: 1 1 auto;
-    }
-    [data-screen="licenses.tiers"] .seg-scroll {
-      max-width: 100%;
-      overflow-x: auto;
-      scrollbar-width: none;
-    }
-    [data-screen="licenses.tiers"] .tier-item:not(.selected) .tier-sum {
-      display: none;
-    }
-    /* Versions: both fields and Only 4.x stay on one line. */
-    [data-screen="licenses.tiers"] .inline-fields.mid {
-      flex-wrap: nowrap;
-      gap: 8px;
-    }
-    [data-screen="licenses.tiers"] .input.ver {
-      flex: 1 1 0;
-      width: auto;
-      min-width: 0;
-    }
-    [data-screen="licenses.tiers"] .inline-fields.mid > .btn {
-      flex: none;
-    }
-  }
-</style>
-
-<div class="console" data-service="license">
+<div class="console floor" data-service="license">
   <header class="topbar" data-service="core">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
@@ -334,16 +21,16 @@
     <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
     <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
     <div class="nav-group" data-service="license">
-      <div class="nav-label">Licensing<i class="ic ic-chevron-down sm"></i></div>
+      <button class="nav-label" aria-expanded="true">Licensing<i class="ic ic-chevron-down sm"></i></button>
       <a class="nav-item" href="#"><i class="ic ic-key-round"></i><span class="nav-text">Licenses</span><span class="count">1,284</span></a>
       <a class="nav-item active" href="#"><i class="ic ic-layers"></i><span class="nav-text">Tiers</span><span class="count">5</span></a>
       <a class="nav-item" href="#"><i class="ic ic-puzzle"></i><span class="nav-text">Add-ons</span><span class="count">3</span></a>
       <a class="nav-item" href="#"><i class="ic ic-list-checks"></i><span class="nav-text">Entitlements</span></a>
     </div>
-    <div class="nav-group closed" data-service="config"><div class="nav-label">Managed config<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="release"><div class="nav-label">Ship builds<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="identity"><div class="nav-label">Sign-in<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="sync"><div class="nav-label">Cloud Sync<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
       <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
@@ -351,177 +38,172 @@
   </nav>
 
   <main class="main">
-    <div class="page">
+    <div class="page cap cap-1180">
       <header class="page-head">
-        <div class="page-heading"><h1>Tiers</h1><span class="count">5</span></div>
-        <p class="page-sub">The templates DJDL licenses start from. A license can override a limit; everything else comes from its tier.</p>
+        <div class="page-heading"><h1>Tiers</h1></div>
         <div class="page-actions">
           <button class="btn primary"><i class="ic ic-plus"></i>New tier</button>
         </div>
       </header>
 
-      <div class="tiers-grid">
-        <!-- List order is the rank (LX-08's column): drag to reorder. -->
-        <section class="card" aria-labelledby="order-title">
-          <div class="card-head">
-            <div class="title"><h2 id="order-title">Order</h2><p>Best first. Drag a row, or use its menu.</p></div>
+      <div class="mk-editor tiers">
+        <div class="select mk-editor-switch"><i class="ic ic-layers"></i><span class="grow">Tier Education</span><span class="type-small muted">3 of 5</span><i class="ic ic-chevrons-up-down"></i></div>
+        <!-- List order is the rank (LX-08's column): drag a row, or use its menu. -->
+        <section class="card mk-editor-list sticky-top" aria-labelledby="order-title">
+          <div class="card-head h56 sub">
+            <div class="title"><h2 id="order-title">Order</h2><p>Best first. When several licenses or rules apply, the higher tier wins.</p></div>
           </div>
-          <div class="tier-list">
-            <div class="tier-item">
-              <i class="ic ic-grip-vertical grip"></i><span class="rank">1</span>
-              <span class="tier-name">Studio</span><span class="used">38 licenses</span><button class="btn ghost icon xs" aria-label="Tier menu: Move up, Move down, Duplicate, Delete"><i class="ic ic-ellipsis"></i></button>
-              <span class="tier-sum">Lifetime · 10 devices · stable, beta</span>
+          <div class="card-rows">
+            <div class="item-row lead keep-end">
+              <i class="ic ic-grip-vertical subtle" aria-hidden="true"></i><span class="rank">1</span>
+              <div class="item-text"><div class="item-title">Studio<small>38 licenses</small></div></div>
+              <div class="item-end"><button class="btn ghost icon xs" aria-label="Studio: Move up, Move down, Duplicate, Delete"><i class="ic ic-ellipsis"></i></button></div>
             </div>
-            <div class="tier-item">
-              <i class="ic ic-grip-vertical grip"></i><span class="rank">2</span>
-              <span class="tier-name">Standard</span><span class="used">612 licenses</span><button class="btn ghost icon xs" aria-label="Tier menu: Move up, Move down, Duplicate, Delete"><i class="ic ic-ellipsis"></i></button>
-              <span class="tier-sum">Lifetime · 5 devices</span>
+            <div class="item-row lead keep-end">
+              <i class="ic ic-grip-vertical subtle" aria-hidden="true"></i><span class="rank">2</span>
+              <div class="item-text"><div class="item-title">Standard<small>612 licenses</small></div></div>
+              <div class="item-end"><button class="btn ghost icon xs" aria-label="Standard: Move up, Move down, Duplicate, Delete"><i class="ic ic-ellipsis"></i></button></div>
             </div>
-            <div class="tier-item selected">
-              <i class="ic ic-grip-vertical grip"></i><span class="rank">3</span>
-              <span class="tier-name">Education</span><span class="used">57 licenses</span><button class="btn ghost icon xs" aria-label="Tier menu: Move up, Move down, Duplicate, Delete"><i class="ic ic-ellipsis"></i></button>
-              <span class="tier-sum">1 year, keeps the last version · 2 devices</span>
+            <div class="item-row lead keep-end marked" aria-current="true">
+              <i class="ic ic-grip-vertical subtle" aria-hidden="true"></i><span class="rank">3</span>
+              <div class="item-text"><div class="item-title">Education<small>57 licenses</small></div></div>
+              <div class="item-end"><button class="btn ghost icon xs" aria-label="Education: Move up, Move down, Duplicate, Delete"><i class="ic ic-ellipsis"></i></button></div>
             </div>
-            <div class="tier-item">
-              <i class="ic ic-grip-vertical grip"></i><span class="rank">4</span>
-              <span class="tier-name">Trial</span><span class="used">143 licenses</span><button class="btn ghost icon xs" aria-label="Tier menu: Move up, Move down, Duplicate, Delete"><i class="ic ic-ellipsis"></i></button>
-              <span class="tier-sum">14 days, then Free · 2 devices</span>
+            <div class="item-row lead keep-end">
+              <i class="ic ic-grip-vertical subtle" aria-hidden="true"></i><span class="rank">4</span>
+              <div class="item-text"><div class="item-title">Trial<small>143 licenses</small></div></div>
+              <div class="item-end"><button class="btn ghost icon xs" aria-label="Trial: Move up, Move down, Duplicate, Delete"><i class="ic ic-ellipsis"></i></button></div>
             </div>
-            <div class="tier-item">
-              <i class="ic ic-grip-vertical grip"></i><span class="rank">5</span>
-              <span class="tier-name">Free</span><span class="used">434 licenses</span><button class="btn ghost icon xs" aria-label="Tier menu: Move up, Move down, Duplicate, Delete"><i class="ic ic-ellipsis"></i></button>
-              <span class="tier-sum">Lifetime · 1 device</span>
+            <div class="item-row lead keep-end">
+              <i class="ic ic-grip-vertical subtle" aria-hidden="true"></i><span class="rank">5</span>
+              <div class="item-text"><div class="item-title">Free<small>434 licenses</small></div></div>
+              <div class="item-end"><button class="btn ghost icon xs" aria-label="Free: Move up, Move down, Duplicate, Delete"><i class="ic ic-ellipsis"></i></button></div>
             </div>
           </div>
-          <div class="list-note"><i class="ic ic-info"></i><span>When someone holds several DJDL licenses, or several access rules match, the higher tier wins.</span></div>
         </section>
 
         <!-- The tier record (LX-44): Duration, Limits, Includes, Profile. -->
-        <section class="card" aria-labelledby="tier-title">
-          <div class="ed-head">
-            <span class="icon-tile"><i class="ic ic-layers"></i></span>
-            <div class="grow">
-              <h2 id="tier-title">Education</h2>
-              <div class="row gap-2 wrap"><span class="slug">education</span><a class="link small" href="#">Used by 57 licenses<i class="ic ic-arrow-right"></i></a></div>
+        <div class="mk-stack-6">
+          <section class="card fld-rhythm" aria-labelledby="tier-title">
+            <div class="card-head h56 sub">
+              <div class="title">
+                <h2 id="tier-title">Education</h2>
+                <p><a class="link" href="#">Used by 57 licenses<i class="ic ic-arrow-right"></i></a></p>
+              </div>
+              <button class="btn ghost sm hide-phone"><i class="ic ic-calendar-clock"></i>Preview at a date…</button>
+              <button class="btn outline icon sm" aria-label="More: Duplicate, Delete"><i class="ic ic-ellipsis"></i></button>
             </div>
-            <button class="btn ghost sm hide-phone"><i class="ic ic-calendar-clock"></i>Preview at a date…</button>
-            <button class="btn outline icon sm" aria-label="More"><i class="ic ic-ellipsis"></i></button>
-          </div>
 
-          <!-- Duration (LX-41): length, then what happens at the end. -->
-          <div class="ed-sec">
-            <div class="ed-label"><h3>Duration</h3><p>How long a license on this tier runs, and what happens when it ends.</p></div>
-            <div class="ed-fields">
-              <div class="segmented" role="radiogroup" aria-label="Length">
-                <span>Lifetime</span><span class="on">Fixed length</span><span>Renewing</span>
-              </div>
-              <div class="field">
-                <label class="field-label">Runs for</label>
-                <div class="inline-fields">
-                  <div class="input num"><span class="grow tnum">365</span><span class="affix">days</span></div>
-                  <span class="hint">from the day the license starts</span>
-                </div>
-              </div>
-              <div class="field">
-                <label class="field-label">When it ends</label>
-                <div class="end-options" role="radiogroup">
-                  <div class="end-opt"><span class="radio on"><span class="box"></span>Keeps the last version</span><span class="end-opt-desc">DJDL keeps working on the last version released before the end. Newer versions need a new license.</span></div>
-                  <div class="end-opt"><span class="radio"><span class="box"></span>Stops working</span><span class="end-opt-desc">Devices are refused at their next check after the end.</span></div>
-                  <div class="end-opt"><span class="radio"><span class="box"></span>Moves to another tier</span><span class="end-opt-desc">For a trial: the license carries on as that tier, with no step from you.</span></div>
-                </div>
-              </div>
-              <div class="example"><i class="ic ic-calendar"></i><span>A license starting today ends on Oct 7, 2027, then keeps running the last DJDL version released by then.</span></div>
-            </div>
-          </div>
-
-          <!-- Limits (LX-33): blank means the platform default; licenses can override each. -->
-          <div class="ed-sec">
-            <div class="ed-label"><h3>Limits</h3><p>Blank fields use the platform default. A license can override any of them.</p></div>
-            <div class="ed-fields">
-              <div class="inline-fields">
+            <!-- Duration (LX-41): length, then what happens at the end. -->
+            <div class="form-section">
+              <div class="form-section-label"><h3>Duration</h3></div>
+              <div class="form">
+                <div class="mk-cluster"><div class="segmented" role="radiogroup" aria-label="Length"><span>Lifetime</span><span class="on">Fixed length</span><span>Renewing</span></div></div>
                 <div class="field">
-                  <label class="field-label">Devices</label>
-                  <div class="input num"><span class="grow tnum">2</span></div>
+                  <label class="field-label">Runs for</label>
+                  <div class="input short"><span class="grow tnum">365</span><span class="affix">days</span></div>
+                  <span class="hint">From the day the license starts. One starting today ends Oct 7, 2027.</span>
                 </div>
-                <div class="field changed">
-                  <label class="field-label">Offline days <span class="was">was 7</span></label>
-                  <div class="input num"><span class="grow tnum">14</span></div>
+                <div class="field">
+                  <label class="field-label">When it ends</label>
+                  <div class="radio-list" role="radiogroup">
+                    <div class="radio-option"><span class="radio on"><span class="box"></span>Keeps the last version</span><span class="radio-desc">Newer versions need a new license.</span></div>
+                    <div class="radio-option"><span class="radio"><span class="box"></span>Stops working</span><span class="radio-desc">Devices are refused at their next check.</span></div>
+                    <div class="radio-option"><span class="radio"><span class="box"></span>Moves to another tier</span><span class="radio-desc">For a trial: the license carries on as that tier.</span></div>
+                  </div>
                 </div>
-              </div>
-              <span class="hint">Seat-pack add-ons add devices on top of this.</span>
-              <div class="field">
-                <label class="field-label">Release tracks</label>
-                <div class="row wrap gap-2">
-                  <span class="chip on locked" aria-disabled="true" title="Always included">stable</span>
-                  <span class="chip">beta</span>
-                  <span class="chip">dev</span>
-                </div>
-                <span class="hint">stable is always included. Choosing dev also includes beta. Add-ons can add tracks.</span>
-              </div>
-              <div class="field">
-                <label class="field-label">Versions</label>
-                <div class="inline-fields mid">
-                  <div class="input ver mono"><span class="ph grow">Any</span></div>
-                  <span class="muted">to</span>
-                  <div class="input ver mono"><span class="ph grow">Any</span></div>
-                  <button class="btn outline xs">Only 4.x</button>
-                </div>
-              </div>
-              <div class="field">
-                <label class="field-label">Fingerprint mode <span class="pill sm"><i class="ic ic-file-code-2"></i>From .pkey/product</span></label>
-                <div class="seg-scroll"><div class="segmented" role="radiogroup" aria-label="Fingerprint mode"><span>Off</span><span>Lenient</span><span class="on">Normal</span><span>Strict</span></div></div>
-                <span class="hint">Normal: a device stays the same device through up to 2 hardware changes, such as a new disk and more memory. Changing it here takes it over from the manifest.</span>
               </div>
             </div>
-          </div>
 
-          <!-- Includes (LX-34): entitlements from Licensing's catalog, plus platform entitlements while their service is on. -->
-          <div class="ed-sec">
-            <div class="ed-label"><h3>Includes</h3><p>The entitlements every license on this tier gets. Add-ons can add more.</p></div>
-            <div class="ed-fields">
-              <div class="incl-list">
-                <div class="incl">
-                  <div><div class="incl-name"><code>recording</code><span class="kind">Feature</span></div><div class="incl-desc">Record mixes to WAV and FLAC.</div></div>
-                  <span class="switch on" role="switch" aria-checked="true"></span>
+            <!-- Limits (LX-33): blank means the platform default; licenses can override each. -->
+            <div class="form-section">
+              <div class="form-section-label"><h3>Limits</h3><p>Blank uses the platform default. A license can override any of these.</p></div>
+              <div class="form">
+                <div class="mk-cluster-6">
+                  <div class="field">
+                    <label class="field-label">Devices</label>
+                    <div class="input short"><span class="grow tnum">2</span></div>
+                  </div>
+                  <div class="field changed">
+                    <label class="field-label">Offline days<span class="was">was 7</span></label>
+                    <div class="input short"><span class="grow tnum">14</span></div>
+                  </div>
                 </div>
-                <div class="incl">
-                  <div><div class="incl-name"><code>stems</code><span class="kind">Feature</span></div><div class="incl-desc">Stem separation. Also sold as the Stem separation add-on.</div></div>
-                  <span class="switch" role="switch" aria-checked="false"></span>
+                <div class="field">
+                  <label class="field-label">Release tracks</label>
+                  <div class="mk-cluster">
+                    <span class="chip on locked" aria-disabled="true" title="Always included">stable</span>
+                    <span class="chip">beta</span>
+                    <span class="chip">dev</span>
+                  </div>
+                  <span class="hint">Choosing dev also includes beta.</span>
                 </div>
-                <div class="incl">
-                  <div><div class="incl-name"><code>decks</code><span class="kind">Quantity</span></div><div class="incl-desc">Decks open at once.</div></div>
-                  <div class="input sm"><span class="grow tnum">4</span></div>
+                <div class="field">
+                  <label class="field-label">Versions</label>
+                  <div class="mk-cluster">
+                    <div class="input short mono"><span class="ph grow">Any</span></div>
+                    <span class="muted">to</span>
+                    <div class="input short mono"><span class="ph grow">Any</span></div>
+                    <button class="btn outline sm match">Only 4.x</button>
+                  </div>
                 </div>
-                <div class="incl">
-                  <div><div class="incl-name"><code>polarisVpn</code><span class="kind">Feature</span></div><div class="incl-desc">Route streaming through Polaris VPN.</div></div>
-                  <span class="switch" role="switch" aria-checked="false"></span>
-                </div>
-                <div class="incl">
-                  <div><div class="incl-name" data-service="sync"><i class="svc sm"></i>Cloud Sync storage<span class="kind">Platform</span></div><div class="incl-desc">Per account, for synced settings and crates.</div></div>
-                  <div class="input sm"><span class="grow tnum">50</span><span class="affix">MB</span></div>
+                <div class="field">
+                  <label class="field-label">Fingerprint mode<span class="pill sm"><i class="ic ic-file-code-2"></i>From .pkey/product</span></label>
+                  <div class="mk-cluster"><div class="segmented" role="radiogroup" aria-label="Fingerprint mode"><span>Off</span><span>Lenient</span><span class="on">Normal</span><span>Strict</span></div></div>
+                  <span class="hint">Normal allows up to 2 hardware changes. Changing it here takes it over from the manifest.</span>
                 </div>
               </div>
-              <a class="link small" href="#">Open Entitlements<i class="ic ic-arrow-right"></i></a>
             </div>
-          </div>
 
-          <!-- Profile (Managed config on): at most one; config and secrets only. -->
-          <div class="ed-sec">
-            <div class="ed-label"><h3>Profile</h3><p>Managed config for devices on this tier, over the Default profile.</p></div>
-            <div class="ed-fields">
-              <div class="field">
-                <div class="select" data-service="config"><i class="svc sm"></i><span class="grow">Classroom</span><i class="ic ic-chevrons-up-down"></i></div>
-                <span class="hint">Sets 3 settings: <span class="mono">analytics.shareUsage</span> off, <span class="mono">recording.watermark</span> off and <span class="mono">ui.lockedLayout</span> on.</span>
+            <!-- Includes (LX-34): entitlements from Licensing's catalog, plus platform entitlements while their service is on. -->
+            <div class="form-section">
+              <div class="form-section-label"><h3>Includes</h3></div>
+              <div class="mk-stack-3">
+                <div class="card-rows flush">
+                  <div class="setting-row">
+                    <div><div class="setting-title"><code>recording</code></div><div class="setting-desc">Record mixes to WAV and FLAC</div></div>
+                    <span class="switch on" role="switch" aria-checked="true" aria-label="recording"></span>
+                  </div>
+                  <div class="setting-row">
+                    <div><div class="setting-title"><code>stems</code></div><div class="setting-desc">Stem separation, also sold as an add-on</div></div>
+                    <span class="switch" role="switch" aria-checked="false" aria-label="stems"></span>
+                  </div>
+                  <div class="setting-row">
+                    <div><div class="setting-title"><code>decks</code></div><div class="setting-desc">Decks open at once</div></div>
+                    <div class="input short sm"><span class="grow tnum">4</span></div>
+                  </div>
+                  <div class="setting-row">
+                    <div><div class="setting-title"><code>polarisVpn</code></div><div class="setting-desc">Route streaming through Polaris VPN</div></div>
+                    <span class="switch" role="switch" aria-checked="false" aria-label="polarisVpn"></span>
+                  </div>
+                  <div class="setting-row" data-service="sync">
+                    <div><div class="setting-title"><i class="svc sm"></i>Cloud Sync storage</div><div class="setting-desc">Per account, for synced settings and crates</div></div>
+                    <div class="input short sm"><span class="grow tnum">50</span><span class="affix">MB</span></div>
+                  </div>
+                </div>
+                <div><a class="link" href="#">Open Entitlements<i class="ic ic-arrow-right"></i></a></div>
               </div>
             </div>
-          </div>
 
-          <div class="save-bar">
-            <span class="msg"><i class="ic ic-info"></i><span>1 change. Applies to 54 of 57 Education licenses; 3 set their own offline days and keep them.</span></span>
+            <!-- Profile (Managed config on): at most one; config and secrets only. -->
+            <div class="form-section">
+              <div class="form-section-label"><h3>Profile</h3><p>Managed config over the Default profile.</p></div>
+              <div class="form">
+                <div class="field">
+                  <div class="select" data-service="config"><i class="svc sm"></i><span class="grow">Classroom</span><i class="ic ic-chevrons-up-down"></i></div>
+                  <span class="hint">Sets <code>analytics.shareUsage</code> off, <code>recording.watermark</code> off and <code>ui.lockedLayout</code> on.</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- One record, one save bar (ADMIN.md T4); the built screen pins it to the window while dirty. -->
+          <div class="save-bar pinned" role="region" aria-label="Unsaved changes">
+            <p class="save-bar-msg"><i class="ic ic-info"></i><span>1 change. Applies to 54 of 57 licenses; 3 keep their own offline days.</span></p>
             <button class="btn ghost">Discard</button>
             <button class="btn primary">Save Education</button>
           </div>
-        </section>
+        </div>
       </div>
     </div>
   </main>

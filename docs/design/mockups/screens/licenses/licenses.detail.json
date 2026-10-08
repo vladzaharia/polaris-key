@@ -15,59 +15,95 @@
   "uxRows": [
     "UX-07"
   ],
-  "summary": "Priya Raman's Education license on its Status tab: the tier as a control top-right that opens Change tier, Limits with each value's source and a per-field Override, a fixed one-year Duration with today marked that keeps the last version, the add-ons it holds, its devices, and the Automatic grant card naming the access rule that issued it. The Waiting and Floating holders are in licenses.detail-holders and Change tier in licenses.change-tier.",
+  "summary": "Priya Raman's Education license on its Status tab: the tier as a control top right that opens Change tier, Limits with each value's source and a per-field Override, a one-year Duration with today marked that keeps the last version, the add-ons it holds, its devices, and the Automatic grant card naming the rule that issued it. The Waiting and Floating holders are in licenses.detail-holders and Change tier in licenses.change-tier.",
   "order": 3,
   "compare": [
-    "Header: crumbs Licenses > Priya Raman; h1 with 'Active' as status text (not a pill); the holder line is the 'In an account' pill, the email, the license id chip (ID icon, not the key icon, with copy) and the start date. Top-right: the tier control 'Tier Education ▾' (outline button, layers icon in the license accent) that opens Change tier (licenses.change-tier), then Add key and the ⋯ menu, which also has Change tier….",
-    "Tabs are exactly Status, Entitlements, Keys, Devices, Activity (LX-14). There is no Config overrides, Grants, Policy or Terms tab.",
-    "Limits lists Devices, Offline days, Release tracks, Versions and Fingerprint mode, in that order, each with its resolved value and a source pill: 'from Education', 'Set on this license', 'Platform default', or an add-on. No row says 'product default' (LX-33 removes the product layer).",
-    "Devices shows the sum: '2 from Education + 2 from seat pack' (a seat pack adds; a deviceLimit entitlement is no longer a source); the seat-pack add-on is named 'Extra devices (2)'.",
-    "An overridden field is tinted with an accent edge, names the tier's value ('Education gives 7') and offers 'Use Education’s'; other fields offer Override. Fingerprint mode has no Override: it is tier-only and links to the tier.",
-    "Action styles: in-place actions (Override, Use Education’s, Duration's Change, Preview at a date…, Comp an add-on…) are outline buttons at least 28px tall; navigation (Open tier, Open Devices, Open Access, the Licenses crumb) is an accent link with an arrow and at least 24px of hit height.",
-    "Release tracks is the UI word for the channels limit; 'channels' does not appear.",
-    "Duration reads 'Fixed, 1 year, from Education', a start-to-end line with a dot labelled 'Today · Oct 7', and 'Then keeps the last version' with the version that would be kept today. Preview at a date… sits in the Limits head (LX-41).",
-    "Add-ons lists each held add-on with its entitlement key in mono, its source (Automatic grant with the claim, or 'Comp by <name>' with the reason), its own end date and a row menu; a seat pack is labelled Seat pack. 'Comp an add-on…' is the card action; the word 'grant' appears only in 'Automatic grant'.",
-    "The Automatic grant card names the rule that matched (Verified email domain example.edu -> Education), when, that later sign-ins only move the license up, and that no key was made (new devices sign in; Add key makes one for offline use). It links to the product Access page.",
-    "Devices shows 3 of 4 with a bar, each device with platform, OS and DJDL version, 'signed in', last seen and first seen; Open Devices goes to the Devices tab.",
-    "Other holders and origins: Waiting (Resend invitation, Change email) and Floating (masked key, Assign to a person, no email), with the By hand and Key batch origin cards, are drawn in licenses.detail-holders.",
-    "Tablet and phone: Duration and Automatic grant come first (what someone gets and until when), then Limits, Add-ons and Devices; Limits rows become name/value over source/action; on phone the tab counts hide so all five tabs fit without scrolling, the tier control fills the row beside ⋯, and Add key hides (it stays in the ⋯ menu)."
+    "Header: Licenses › Priya Raman crumbs; 'Priya Raman' with Active; one line of In an account, priya@example.edu and the license id; actions Tier: Education ▾ (opens Change tier), Add key and ⋯. 'Since' is gone: the Duration card starts on that date.",
+    "Tabs: Status, Entitlements 6, Keys 0, Devices 3, Activity; on phone the bar scrolls with a fade.",
+    "Layout (.mk-with-rail.rail-first): main + 320 rail (400 at wide); below 1280 the rail's two cards come first, side by side; phone one column.",
+    "Limits: a table Limit · Value · From with Override per row: Devices 4 (2 from Education, 2 from a seat pack), Offline days 14 marked 'Set on this license / Education gives 7' with Use Education's, Release tracks stable and Versions Any (Platform default), Fingerprint mode Normal (Education, set on the tier only) with Open tier. Preview at a date… in the head.",
+    "Add-ons: Polaris VPN (polarisVpn), Stem separation (stems), Extra devices (Seat pack of 2), each with where it came from, its term over its start, and ⋯; Comp an add-on… in the head.",
+    "Devices: the head's '3 of 4' meter and three rows (name, OS and DJDL version, last seen over first seen, ⋯).",
+    "Duration (rail): '1 year, from Education' with Change; the start-to-end line with today marked; 'Then keeps the last version, today 4.2.0'.",
+    "Automatic grant (rail): Open Access in the head; the matching rule (Verified email domain example.edu gets Education), that only a higher-tier rule moves it (up, at her next sign-in), and that it has no key (Add key makes one for an offline machine).",
+    "Phone: the Limits rows flow (name, then value and source on one line, the action under them)."
   ],
   "status": "mockup",
   "designReview": {
-    "round": 1,
-    "reviewer": "UX designer (visual critique of rendered screenshots)",
-    "date": "2026-10-07",
-    "verdict": "Fixed: the tier is now a real control with a Change tier flow (licenses.change-tier), all five tabs fit on phone, Waiting and Floating are drawn (licenses.detail-holders), and the action styles, seat-pack wording, today marker and id icon are cleaned up.",
+    "round": "spacing-and-content",
+    "reviewer": "Spacing and content pass against the products.overview and products.home references, all four sizes in both themes",
+    "date": "2026-10-08",
+    "verdict": "Spacing and content pass: kit rail layout, table, item rows and date span; 0 screen spacing; repeated facts cut.",
     "findings": [
       {
         "severity": "major",
-        "issue": "The top-right tier pill looks like a button but is a static span, and there is no visible way to move a license to another tier.",
-        "resolution": "The pill is now a real outline control 'Tier Education ▾' that opens Change tier; Change tier… is also in the ⋯ menu. Added licenses.change-tier: moving up to Studio (each changed limit with now → after and its source, what stays, why the move sticks, primary 'Move to Studio') and moving down to Free (a warning that her next sign-in moves it back to Education because the example.edu rule still covers her, with Open Access). Compare rows added."
+        "issue": "35 spacing declarations: custom limit rows, add-on and device rows, a 360px aside grid and a custom date line.",
+        "resolution": "Kit only: .mk-with-rail.rail-first, .table.stack-phone.flow with tr.marked, .item-row with .item-meta, .progress-inline, .date-span, .icon-line, .icon-list."
+      },
+      {
+        "severity": "minor",
+        "issue": "Facts said twice: 'Since Sep 14, 2026' in the header and as Duration's start; 'signed in' on every device; Versions' 'after Sep 14, 2027: the kept version' beside Duration; mechanism lines under Limits and Add-ons.",
+        "resolution": "Each said once, where it is used."
       },
       {
         "severity": "major",
-        "issue": "On phone the tab strip scrolls inside itself; Activity is off-screen with no cue.",
-        "resolution": "On phone the tab counts hide and the tabs spread across the width: measured at 390px, nav.tabs is 358px wide with scrollWidth 358 and Activity ends at x=374. The compare's phone row says so."
+        "issue": "Right rail ended 475px above the left column at 1920; dead space at wide.",
+        "resolution": "Page capped at 1400px of content; the rail is sticky (.sticky-1280, top 88px) from 1280. Limits, Add-ons and Devices already share the main column's width; the optional Add-ons and Devices side by side at 1600+ was not built, because the cap leaves the main column at about 970px.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Card header heights differed (66px, 78px); Change sat above the title baseline; Add-ons and Devices used two date styles.",
+        "resolution": "Every head is .card-head.h56 (56px) with the action on the title's line; Add-ons and Devices show the date alone in muted text (the 'Since' word is gone, its date is the cell's title attribute). The triage both moved and removed Duration's subtitle; it is removed (the tier control shows it).",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX3"
+        ]
       },
       {
         "severity": "major",
-        "issue": "Only the In an account holder and the Automatic grant origin are designed; Waiting, Floating, By hand and Key batch are missing.",
-        "resolution": "Added licenses.detail-holders: Waiting (info status text, 'Invitation sent Oct 2', Resend invitation as the primary, Change email… on the holder card) with the By hand origin card ('Created by hand by Ada Lovelace, Oct 2, 2026' with the reason); Floating (masked key as the title, no email, Assign to a person as the primary) with the Key batch origin card and Open batch. Copy sits on the license id because only a hash of the key is kept, so the key itself can't be copied."
+        "issue": "Duplicated facts and a noisy Automatic grant card.",
+        "resolution": "Duration subtitle removed; 'today 4.2.0' is '4.2.0'; Automatic grant is the rule line plus Open Access, with the mechanism sentences (moves up only, no key) in an info button's tooltip; the four Override outline buttons are quiet text buttons (.btn.text).",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
       },
       {
-        "severity": "minor",
-        "issue": "Row and card actions use three styles, and standalone links are 20px tall.",
-        "resolution": "In-place actions (Override, Use Education’s, Duration's Change, Preview at a date…) are outline xs/sm buttons, matching Comp an add-on…; accent links with arrows are kept only for navigation. Outline buttons are used instead of hover-only ghost buttons because a hover-only affordance was the reported problem. Standalone links and the crumb get a 24px minimum hit height."
+        "severity": "major",
+        "issue": "Phone: clipped 'Devices 3' tab with no cue; irregular three-line Limits rows; Add key hidden.",
+        "resolution": "Tab strip is .tabs.scroller (scroll-snap, 56px edge fade); Limits rows are two lines (.table.two-line: label and bold value, then source and action, 44px targets); Tier and Add key sit as a 50/50 pair (.action-pair).",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX4"
+        ]
       },
       {
-        "severity": "minor",
-        "issue": "'2 from +2 devices' reads like a typo; the Duration dot has no Today label; the id chip uses the key icon on a license with no key.",
-        "resolution": "The source pill reads '2 from seat pack' and the add-on is named 'Extra devices (2)'; the Duration line has an accent dot labelled 'Today · Oct 7'; the id chip uses the ID icon (the kit has no hash icon), keeping the key icon for keys and Floating."
+        "issue": "Remove the 'In an account' pill from the header, and remove the Devices tab count.",
+        "resolution": "declined: The pill is the holder state, and the tab counts are a kit pattern used on other screens. Removing them here would be inconsistent.",
+        "round": "multi-review"
       },
       {
-        "severity": "minor",
-        "issue": "On phone the aside renders above Limits, unlike the compare.",
-        "resolution": "Kept the rendered order and rewrote the compare's phone row: Duration and Automatic grant first, then Limits, Add-ons and Devices."
+        "issue": "Fold Duration and Automatic grant into one rail card, or move Devices into the rail.",
+        "resolution": "declined: They are different concepts, so merging them is a structure change. The sticky and capped rail resolves the imbalance.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Reveal Override only on hover or focus.",
+        "resolution": "declined: Hidden actions hurt discoverability and touch use. A quiet always-visible text button was accepted instead.",
+        "round": "multi-review"
       }
     ]
   }

@@ -1,319 +1,18 @@
 <style>
-  /* licenses.bulk-keys: the Licenses list, dimmed, under the New license drawer. */
-  [data-screen="licenses.bulk-keys"] .nav-group.closed {
-    padding-top: 4px;
-  }
-  [data-screen="licenses.bulk-keys"] .tier-pill > .ic {
+  /* licenses.bulk-keys: colour and visibility only; spacing comes from the kit. */
+  [data-screen="licenses.bulk-keys"] .origin-auto > .ic {
     color: var(--pk-accent-fg);
   }
-  [data-screen="licenses.bulk-keys"] .holder-toolbar {
-    row-gap: 10px;
-  }
-  [data-screen="licenses.bulk-keys"] .holder-seg .count {
-    height: 18px;
-    margin-left: 2px;
-    background: transparent;
-    padding: 0 2px;
-  }
-  [data-screen="licenses.bulk-keys"] .lic-table td {
-    vertical-align: middle;
-  }
-  [data-screen="licenses.bulk-keys"] .holder-chip {
-    display: none;
-  }
-  [data-screen="licenses.bulk-keys"] .who {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    min-width: 0;
-  }
-  [data-screen="licenses.bulk-keys"] .key-tile {
-    display: inline-flex;
-    flex: none;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    border: 1px dashed var(--pk-border-strong);
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="licenses.bulk-keys"] .key-tile > .ic {
-    width: 13px;
-    height: 13px;
-  }
-  [data-screen="licenses.bulk-keys"] .seats {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 5px;
-    min-width: 76px;
-  }
-  [data-screen="licenses.bulk-keys"] .seats .progress {
-    width: 64px;
-    height: 4px;
-  }
-  [data-screen="licenses.bulk-keys"] .dur {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
-    white-space: nowrap;
-  }
-  [data-screen="licenses.bulk-keys"] .origin {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    white-space: nowrap;
-  }
-  [data-screen="licenses.bulk-keys"] .origin .ic {
-    width: 13px;
-    height: 13px;
-    color: var(--pk-accent-fg);
-  }
-  [data-screen="licenses.bulk-keys"] .origin-title {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    color: var(--pk-text-default);
-  }
-  [data-screen="licenses.bulk-keys"] .table-foot .btn {
-    margin-left: 4px;
-  }
-  @container screen (max-width: 1023px) {
-    [data-screen="licenses.bulk-keys"] .lic-table .c-origin {
+  /* Origin is the first column to go: below 1440px a row keeps License, Holder, Tier, Duration
+     and Devices on one line. */
+  @container screen (max-width: 1439px) {
+    [data-screen="licenses.bulk-keys"] .table :is(th, td).c-origin {
       display: none;
-    }
-  }
-  @container screen (max-width: 639px) {
-    [data-screen="licenses.bulk-keys"] .holder-toolbar {
-      display: none;
-    }
-    [data-screen="licenses.bulk-keys"] .holder-chip {
-      display: inline-flex;
-    }
-    [data-screen="licenses.bulk-keys"] .table-card {
-      overflow: hidden;
-    }
-    [data-screen="licenses.bulk-keys"] .lic-table thead {
-      display: none;
-    }
-    [data-screen="licenses.bulk-keys"] .lic-table,
-    [data-screen="licenses.bulk-keys"] .lic-table tbody {
-      display: block;
-    }
-    [data-screen="licenses.bulk-keys"] .lic-table tr {
-      display: grid;
-      grid-template-columns: auto auto minmax(0, 1fr);
-      grid-template-areas:
-        "name name dev"
-        "state tier tier"
-        "dur dur dur";
-      align-items: center;
-      gap: 8px 8px;
-      padding: 12px 16px;
-      border-top: 1px solid var(--mk-line);
-    }
-    [data-screen="licenses.bulk-keys"] .lic-table tbody tr:first-child {
-      border-top: 0;
-    }
-    [data-screen="licenses.bulk-keys"] .lic-table td {
-      display: block;
-      padding: 0;
-      border: 0;
-    }
-    [data-screen="licenses.bulk-keys"] .lic-table .c-name {
-      grid-area: name;
-      min-width: 0;
-    }
-    [data-screen="licenses.bulk-keys"] .lic-table .c-state {
-      grid-area: state;
-    }
-    [data-screen="licenses.bulk-keys"] .lic-table .c-tier {
-      grid-area: tier;
-    }
-    [data-screen="licenses.bulk-keys"] .lic-table .c-dur {
-      grid-area: dur;
-      padding-left: 36px;
-    }
-    [data-screen="licenses.bulk-keys"] .lic-table .c-dur .dur {
-      white-space: normal;
-    }
-    [data-screen="licenses.bulk-keys"] .lic-table .c-state {
-      padding-left: 36px;
-    }
-    [data-screen="licenses.bulk-keys"] .lic-table .c-dev {
-      grid-area: dev;
-      align-self: start;
-    }
-    [data-screen="licenses.bulk-keys"] .lic-table .c-origin,
-    [data-screen="licenses.bulk-keys"] .lic-table .c-more {
-      display: none;
-    }
-    [data-screen="licenses.bulk-keys"] .cell-title {
-      white-space: normal;
-    }
-    [data-screen="licenses.bulk-keys"] .table-foot {
-      flex-wrap: wrap;
-    }
-  }
-  [data-screen="licenses.bulk-keys"] .origin code {
-    font-size: 12px;
-  }
-  /* A drawer is open, so the page behind it doesn't scroll: the screen is the first viewport. */
-  [data-screen="licenses.bulk-keys"] .console {
-    height: 100vh;
-    overflow: hidden;
-  }
-  /* The drawer: head, stepper and foot stay put; only the body scrolls. */
-  [data-screen="licenses.bulk-keys"] .drawer {
-    width: 560px;
-    height: 100%;
-    min-height: 0;
-  }
-  [data-screen="licenses.bulk-keys"] .drawer-body {
-    min-height: 0;
-    overflow-y: auto;
-  }
-  [data-screen="licenses.bulk-keys"] .drawer-head .icon-tile {
-    flex: none;
-  }
-  [data-screen="licenses.bulk-keys"] .bk-steps {
-    padding: 14px 20px;
-    border-bottom: 1px solid var(--mk-line);
-  }
-  [data-screen="licenses.bulk-keys"] .bk-steps .stepper {
-    gap: 8px;
-  }
-  [data-screen="licenses.bulk-keys"] .bk-steps .step {
-    gap: 6px;
-  }
-  [data-screen="licenses.bulk-keys"] .bk-steps .step + .step::before {
-    width: 14px;
-  }
-  [data-screen="licenses.bulk-keys"] .bk-title {
-    font-size: 18px;
-    line-height: 26px;
-    font-weight: 700;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="licenses.bulk-keys"] .bk-summary {
-    border: 1px solid var(--mk-line);
-    border-radius: 14px;
-    background: var(--pk-surface-raised);
-  }
-  [data-screen="licenses.bulk-keys"] .bk-row {
-    display: grid;
-    grid-template-columns: 112px minmax(0, 1fr) auto;
-    align-items: start;
-    gap: 6px 14px;
-    padding: 12px 16px;
-  }
-  [data-screen="licenses.bulk-keys"] .bk-row + .bk-row {
-    border-top: 1px solid var(--mk-line);
-  }
-  [data-screen="licenses.bulk-keys"] .bk-label {
-    font-size: 13px;
-    line-height: 22px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="licenses.bulk-keys"] .bk-value {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-    min-width: 0;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="licenses.bulk-keys"] .bk-value .pill {
-    vertical-align: -4px;
-  }
-  [data-screen="licenses.bulk-keys"] .bk-row > .btn {
-    margin-top: -3px;
-  }
-  [data-screen="licenses.bulk-keys"] .bk-limits {
-    display: grid;
-    grid-template-columns: max-content max-content minmax(0, 1fr);
-    align-items: center;
-    gap: 6px 12px;
-    font-size: 13px;
-  }
-  [data-screen="licenses.bulk-keys"] .bk-limits dt {
-    color: var(--pk-text-muted);
-  }
-  [data-screen="licenses.bulk-keys"] .bk-limits dd {
-    display: contents;
-  }
-  [data-screen="licenses.bulk-keys"] .bk-limits .v {
-    color: var(--pk-text-strong);
-  }
-  [data-screen="licenses.bulk-keys"] .bk-limits .pill {
-    justify-self: start;
-  }
-  [data-screen="licenses.bulk-keys"] .bk-limits .pill > .ic {
-    color: var(--pk-accent-fg);
-  }
-  [data-screen="licenses.bulk-keys"] .bk-will ol {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-top: 8px;
-    counter-reset: bkstep;
-  }
-  /* Numbered steps, not ticks: nothing has happened yet. */
-  [data-screen="licenses.bulk-keys"] .bk-will li {
-    display: flex;
-    gap: 10px;
-    font-size: 14px;
-    line-height: 20px;
-    color: var(--pk-text-default);
-    counter-increment: bkstep;
-  }
-  [data-screen="licenses.bulk-keys"] .bk-will li::before {
-    content: counter(bkstep);
-    flex: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: var(--mk-fill-strong);
-    font-size: 12px;
-    font-variant-numeric: tabular-nums;
-    color: var(--pk-text-default);
-  }
-  [data-screen="licenses.bulk-keys"] .bk-back {
-    order: -1;
-    margin-right: auto;
-  }
-  [data-screen="licenses.bulk-keys"] .drawer-head,
-  [data-screen="licenses.bulk-keys"] .bk-steps,
-  [data-screen="licenses.bulk-keys"] .drawer-foot {
-    flex: none;
-  }
-  @container screen (max-width: 639px) {
-    [data-screen="licenses.bulk-keys"] .bk-row {
-      grid-template-columns: minmax(0, 1fr) auto;
-      padding: 12px 14px;
-    }
-    [data-screen="licenses.bulk-keys"] .bk-row > .bk-value {
-      grid-column: 1 / -1;
-      grid-row: 2;
-    }
-    [data-screen="licenses.bulk-keys"] .bk-row > .btn {
-      margin-top: -4px;
-    }
-    [data-screen="licenses.bulk-keys"] .bk-steps {
-      padding: 12px 16px;
-    }
-    [data-screen="licenses.bulk-keys"] .drawer-foot .bk-back {
-      order: 0;
     }
   }
 </style>
 
-<div class="console" data-service="license">
+<div class="console modal-open floor" data-service="license">
   <header class="topbar" data-service="core">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
@@ -337,16 +36,16 @@
     <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
     <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
     <div class="nav-group" data-service="license">
-      <div class="nav-label">Licensing<i class="ic ic-chevron-down sm"></i></div>
+      <button class="nav-label" aria-expanded="true">Licensing<i class="ic ic-chevron-down sm"></i></button>
       <a class="nav-item active" href="#"><i class="ic ic-key-round"></i><span class="nav-text">Licenses</span><span class="count">1,284</span></a>
       <a class="nav-item" href="#"><i class="ic ic-layers"></i><span class="nav-text">Tiers</span><span class="count">5</span></a>
       <a class="nav-item" href="#"><i class="ic ic-puzzle"></i><span class="nav-text">Add-ons</span><span class="count">3</span></a>
       <a class="nav-item" href="#"><i class="ic ic-list-checks"></i><span class="nav-text">Entitlements</span></a>
     </div>
-    <div class="nav-group closed" data-service="config"><div class="nav-label">Managed config<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="release"><div class="nav-label">Ship builds<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="identity"><div class="nav-label">Sign-in<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="sync"><div class="nav-label">Cloud Sync<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
       <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
@@ -357,157 +56,160 @@
     <div class="page">
       <header class="page-head">
         <div class="page-heading"><h1>Licenses</h1></div>
-        <p class="page-sub">Every DJDL license has a tier. 650 are Automatic grants from your Access rules, and 7 are waiting for an email address to be verified.</p>
+        <!-- Live state shown nowhere else on the page: the Automatic grants, equal to Access's rule counts (38 + 412 + 57 + 143). -->
+        <p class="page-sub">650 are Automatic grants from your Access rules</p>
         <div class="page-actions">
           <button class="btn ghost hide-phone"><i class="ic ic-archive"></i>Batches</button>
+          <button class="btn outline icon show-phone" aria-label="More: Batches"><i class="ic ic-ellipsis"></i></button>
           <button class="btn outline"><i class="ic ic-key-square"></i>Create keys in bulk</button>
           <button class="btn primary"><i class="ic ic-plus"></i>New license</button>
         </div>
       </header>
 
-      <!-- Holder states are the first filter (S-24 §8.8, LX-30); facets add Tier, Duration (LX-41: Renewing, Past due, Trial, Updates ended), Origin and Batch. -->
-      <div class="toolbar holder-toolbar">
-        <div class="segmented holder-seg" role="tablist" aria-label="Holder">
-          <span class="on">All<span class="count">1,284</span></span>
-          <span><i class="ic ic-user-round sm"></i>In an account<span class="count">1,071</span></span>
-          <span><i class="ic ic-mail sm"></i>Waiting<span class="count">7</span></span>
-          <span><i class="ic ic-key-round sm"></i>Floating<span class="count">206</span></span>
+      <!-- Holder states are the first filter (S-24 §8.8, LX-30); facets add Tier, Duration (LX-41), Origin and Batch. -->
+      <div class="mk-stack-4">
+        <div class="toolbar hide-phone">
+          <div class="segmented" role="tablist" aria-label="Holder">
+            <span class="on">All<span class="count">1,284</span></span>
+            <span><i class="ic ic-user-round sm"></i>In an account<span class="count">1,071</span></span>
+            <span><i class="ic ic-mail sm"></i>Waiting<span class="count">7</span></span>
+            <span><i class="ic ic-key-round sm"></i>Floating<span class="count">206</span></span>
+          </div>
         </div>
-      </div>
-      <div class="toolbar">
-        <div class="search-field"><i class="ic ic-search"></i><span>Search name, email, key or id</span></div>
-        <span class="filter holder-chip"><i class="ic ic-chevron-down"></i>Holder: All</span>
-        <span class="filter"><i class="ic ic-plus"></i>Tier</span>
-        <span class="filter"><i class="ic ic-plus"></i>Duration</span>
-        <span class="filter"><i class="ic ic-plus"></i>Origin</span>
-        <span class="filter"><i class="ic ic-plus"></i>Batch</span>
-        <div class="end">
-          <button class="btn ghost sm hide-phone"><i class="ic ic-columns-3"></i>Columns</button>
-          <button class="btn outline sm"><i class="ic ic-download"></i>Export</button>
+        <div class="toolbar">
+          <div class="search-field"><i class="ic ic-search"></i><span>Search name, email, key or id</span></div>
+          <span class="filter show-phone"><i class="ic ic-chevron-down"></i>Holder: All</span>
+          <span class="filter"><i class="ic ic-plus"></i>Tier</span>
+          <span class="filter"><i class="ic ic-plus"></i>Duration</span>
+          <span class="filter"><i class="ic ic-plus"></i>Origin</span>
+          <span class="filter"><i class="ic ic-plus"></i>Batch</span>
+          <div class="end">
+            <button class="btn ghost sm hide-phone"><i class="ic ic-columns-3"></i>Columns</button>
+            <button class="btn outline sm"><i class="ic ic-download"></i>Export</button>
+          </div>
         </div>
-      </div>
 
-      <div class="table-card">
-        <table class="table lic-table">
-          <thead>
-            <tr>
-              <th>License</th>
-              <th>Holder</th>
-              <th>Tier</th>
-              <th>Duration</th>
-              <th class="num">Devices</th>
-              <th class="c-origin">Origin</th>
-              <th class="end"><span class="sr-only">Actions</span></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td class="c-name"><div class="who"><span class="avatar sm">MF</span><div class="grow"><div class="cell-title">Mara Fennick</div><div class="cell-sub">mara@example.com</div></div></div></td>
-              <td class="c-state"><span class="pill sm"><i class="ic ic-user-round"></i>In an account</span></td>
-              <td class="c-tier"><span class="pill sm tier-pill"><i class="ic ic-layers"></i>Studio</span></td>
-              <td class="c-dur"><div class="dur"><span>Lifetime</span></div></td>
-              <td class="c-dev"><div class="seats"><span class="tnum">3 of 10</span><div class="progress" style="--v: 30%"></div></div></td>
-              <td class="c-origin"><div class="origin"><span class="origin-title"><i class="ic ic-sparkles"></i>Automatic grant</span><span class="cell-sub">Group <code>studio-pro</code></span></div></td>
-              <td class="end c-more"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
-            </tr>
-            <tr>
-              <td class="c-name"><div class="who"><span class="avatar sm">PR</span><div class="grow"><div class="cell-title">Priya Raman</div><div class="cell-sub">priya@example.edu</div></div></div></td>
-              <td class="c-state"><span class="pill sm"><i class="ic ic-user-round"></i>In an account</span></td>
-              <td class="c-tier"><span class="pill sm tier-pill"><i class="ic ic-layers"></i>Education</span></td>
-              <td class="c-dur"><div class="dur"><span>Ends Sep 14, 2027</span><span class="cell-sub">Then keeps the last version</span></div></td>
-              <td class="c-dev"><div class="seats"><span class="tnum">3 of 4</span><div class="progress" style="--v: 75%"></div></div></td>
-              <td class="c-origin"><div class="origin"><span class="origin-title"><i class="ic ic-sparkles"></i>Automatic grant</span><span class="cell-sub">Domain <code>example.edu</code></span></div></td>
-              <td class="end c-more"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
-            </tr>
-            <tr>
-              <td class="c-name"><div class="who"><span class="avatar sm">TO</span><div class="grow"><div class="cell-title">Tomás Okafor</div><div class="cell-sub">tomas@example.com</div></div></div></td>
-              <td class="c-state"><span class="pill sm info"><i class="ic ic-mail"></i>Waiting</span></td>
-              <td class="c-tier"><span class="pill sm tier-pill"><i class="ic ic-layers"></i>Standard</span></td>
-              <td class="c-dur"><div class="dur"><span>Lifetime</span><span class="cell-sub">Invitation sent Oct 2</span></div></td>
-              <td class="c-dev"><div class="seats"><span class="tnum">0 of 5</span><div class="progress" style="--v: 0%"></div></div></td>
-              <td class="c-origin"><div class="origin"><span>By hand</span><span class="cell-sub">Ada Lovelace</span></div></td>
-              <td class="end c-more"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
-            </tr>
-            <tr>
-              <td class="c-name"><div class="who"><span class="key-tile"><i class="ic ic-key-round"></i></span><div class="grow"><div class="cell-title mono">pkey_djdl_7HJM…Q2KD</div><div class="cell-sub">Anyone with the key</div></div></div></td>
-              <td class="c-state"><span class="pill sm"><i class="ic ic-key-round"></i>Floating</span></td>
-              <td class="c-tier"><span class="pill sm tier-pill"><i class="ic ic-layers"></i>Standard</span></td>
-              <td class="c-dur"><div class="dur"><span>Lifetime</span></div></td>
-              <td class="c-dev"><div class="seats"><span class="tnum">1 of 5</span><div class="progress" style="--v: 20%"></div></div></td>
-              <td class="c-origin"><div class="origin"><span>Key batch</span><span class="cell-sub">Controller bundle · Oct 2026</span></div></td>
-              <td class="end c-more"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
-            </tr>
-            <tr>
-              <td class="c-name"><div class="who"><span class="avatar sm">AT</span><div class="grow"><div class="cell-title">Aiko Tanaka</div><div class="cell-sub">aiko@example.com</div></div></div></td>
-              <td class="c-state"><span class="pill sm"><i class="ic ic-user-round"></i>In an account</span></td>
-              <td class="c-tier"><span class="pill sm tier-pill"><i class="ic ic-layers"></i>Studio</span></td>
-              <td class="c-dur"><div class="dur"><span class="pill sm danger"><i class="ic ic-circle-x"></i>Past due since Oct 3</span><span class="cell-sub">Renews yearly · Manual</span></div></td>
-              <td class="c-dev"><div class="seats"><span class="tnum">4 of 10</span><div class="progress" style="--v: 40%"></div></div></td>
-              <td class="c-origin"><div class="origin"><span>By hand</span><span class="cell-sub">Ada Lovelace</span></div></td>
-              <td class="end c-more"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
-            </tr>
-            <tr>
-              <td class="c-name"><div class="who"><span class="avatar sm">JW</span><div class="grow"><div class="cell-title">Jonas Weber</div><div class="cell-sub">jonas@example.com</div></div></div></td>
-              <td class="c-state"><span class="pill sm"><i class="ic ic-user-round"></i>In an account</span></td>
-              <td class="c-tier"><span class="pill sm tier-pill"><i class="ic ic-layers"></i>Trial</span></td>
-              <td class="c-dur"><div class="dur"><span class="pill sm info"><i class="ic ic-hourglass"></i>Trial ends Oct 12</span><span class="cell-sub">Then Free</span></div></td>
-              <td class="c-dev"><div class="seats"><span class="tnum">1 of 2</span><div class="progress" style="--v: 50%"></div></div></td>
-              <td class="c-origin"><div class="origin"><span class="origin-title"><i class="ic ic-sparkles"></i>Automatic grant</span><span class="cell-sub">Everyone who signs in</span></div></td>
-              <td class="end c-more"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
-            </tr>
-            <tr>
-              <td class="c-name"><div class="who"><span class="avatar sm">KS</span><div class="grow"><div class="cell-title">Kenji Sato</div><div class="cell-sub">kenji@example.com</div></div></div></td>
-              <td class="c-state"><span class="pill sm"><i class="ic ic-user-round"></i>In an account</span></td>
-              <td class="c-tier"><span class="pill sm tier-pill"><i class="ic ic-layers"></i>Studio</span></td>
-              <td class="c-dur"><div class="dur"><span class="muted">Updates ended at 4.1</span><span class="cell-sub">Keeps working on 4.1</span></div></td>
-              <td class="c-dev"><div class="seats"><span class="tnum">2 of 10</span><div class="progress" style="--v: 20%"></div></div></td>
-              <td class="c-origin"><div class="origin"><span>By hand</span><span class="cell-sub">Ada Lovelace</span></div></td>
-              <td class="end c-more"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
-            </tr>
-            <tr>
-              <td class="c-name"><div class="who"><span class="avatar sm">LO</span><div class="grow"><div class="cell-title">Lena Ortiz</div><div class="cell-sub">lena@example.com</div></div></div></td>
-              <td class="c-state"><span class="pill sm"><i class="ic ic-user-round"></i>In an account</span></td>
-              <td class="c-tier"><span class="pill sm tier-pill"><i class="ic ic-layers"></i>Standard</span></td>
-              <td class="c-dur"><div class="dur"><span>Lifetime</span></div></td>
-              <td class="c-dev"><div class="seats"><span class="tnum text-warning">5 of 5</span><div class="progress warning" style="--v: 100%"></div></div></td>
-              <td class="c-origin"><div class="origin"><span class="origin-title"><i class="ic ic-sparkles"></i>Automatic grant</span><span class="cell-sub">Group <code>members</code></span></div></td>
-              <td class="end c-more"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
-            </tr>
-            <tr>
-              <td class="c-name"><div class="who"><span class="avatar sm">SR</span><div class="grow"><div class="cell-title">Sam Reyes</div><div class="cell-sub">sam@example.com</div></div></div></td>
-              <td class="c-state"><span class="pill sm info"><i class="ic ic-mail"></i>Waiting</span></td>
-              <td class="c-tier"><span class="pill sm tier-pill"><i class="ic ic-layers"></i>Studio</span></td>
-              <td class="c-dur"><div class="dur"><span>Lifetime</span><span class="cell-sub">Invitation sent Sep 28</span></div></td>
-              <td class="c-dev"><div class="seats"><span class="tnum">0 of 10</span><div class="progress" style="--v: 0%"></div></div></td>
-              <td class="c-origin"><div class="origin"><span>By hand</span><span class="cell-sub">Jun Park</span></div></td>
-              <td class="end c-more"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
-            </tr>
-            <tr>
-              <td class="c-name"><div class="who"><span class="key-tile"><i class="ic ic-key-round"></i></span><div class="grow"><div class="cell-title mono">pkey_djdl_B1cY…4W9P</div><div class="cell-sub">Anyone with the key</div></div></div></td>
-              <td class="c-state"><span class="pill sm"><i class="ic ic-key-round"></i>Floating</span></td>
-              <td class="c-tier"><span class="pill sm tier-pill"><i class="ic ic-layers"></i>Standard</span></td>
-              <td class="c-dur"><div class="dur"><span>Lifetime</span><span class="cell-sub">Never used</span></div></td>
-              <td class="c-dev"><div class="seats"><span class="tnum">0 of 5</span><div class="progress" style="--v: 0%"></div></div></td>
-              <td class="c-origin"><div class="origin"><span>Key batch</span><span class="cell-sub">Controller bundle · Oct 2026</span></div></td>
-              <td class="end c-more"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
-            </tr>
-          </tbody>
-        </table>
-        <div class="table-foot"><span class="tnum">1–10 of 1,284 licenses</span><span class="ml-auto row gap-1"><button class="btn ghost icon xs" aria-label="Previous page" disabled><i class="ic ic-chevron-left"></i></button><button class="btn ghost icon xs" aria-label="Next page"><i class="ic ic-chevron-right"></i></button></span></div>
+        <div class="table-card">
+          <table class="table stack-phone flow">
+            <thead>
+              <tr>
+                <th>License</th>
+                <th>Holder</th>
+                <th>Tier</th>
+                <th>Duration</th>
+                <th>Devices</th>
+                <th class="c-origin">Origin</th>
+                <th class="row-menu"><span class="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><div class="cell-with-logo"><span class="avatar md">MF</span><div><div class="cell-title">Mara Fennick</div><div class="cell-sub">mara@example.com</div></div></div></td>
+                <td><span class="pill sm"><i class="ic ic-user-round"></i>In an account</span></td>
+                <td><span class="pill sm"><i class="ic ic-layers accent"></i>Studio</span></td>
+                <td class="flow-end">Lifetime</td>
+                <td><div class="meter-head"><span class="icon-text tnum"><span class="show-narrow"><i class="ic ic-monitor-smartphone"></i></span>3 of 10<span class="sr-only"> devices</span></span><div class="progress hide-narrow" style="--v: 30%"></div></div></td>
+                <td class="c-origin"><div class="cell-stack"><span class="icon-text origin-auto"><i class="ic ic-sparkles"></i>Automatic grant</span><span class="cell-sub">Group <code>studio-pro</code></span></div></td>
+                <td class="row-menu"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="avatar md">PR</span><div><div class="cell-title">Priya Raman</div><div class="cell-sub">priya@example.edu</div></div></div></td>
+                <td><span class="pill sm"><i class="ic ic-user-round"></i>In an account</span></td>
+                <td><span class="pill sm"><i class="ic ic-layers accent"></i>Education</span></td>
+                <td class="flow-end"><div class="cell-stack"><span>Ends Sep 14, 2027</span><span class="cell-sub">Then keeps the last version</span></div></td>
+                <td><div class="meter-head"><span class="icon-text tnum"><span class="show-narrow"><i class="ic ic-monitor-smartphone"></i></span>3 of 4<span class="sr-only"> devices</span></span><div class="progress hide-narrow" style="--v: 75%"></div></div></td>
+                <td class="c-origin"><div class="cell-stack"><span class="icon-text origin-auto"><i class="ic ic-sparkles"></i>Automatic grant</span><span class="cell-sub">Domain <code>example.edu</code></span></div></td>
+                <td class="row-menu"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="avatar md">TO</span><div><div class="cell-title">Tomás Okafor</div><div class="cell-sub">tomas@example.com</div></div></div></td>
+                <td><div class="cell-stack"><span class="pill sm info"><i class="ic ic-mail"></i>Waiting</span><span class="cell-sub">Invited Oct 2</span></div></td>
+                <td><span class="pill sm"><i class="ic ic-layers accent"></i>Standard</span></td>
+                <td class="flow-end">Lifetime</td>
+                <td><div class="meter-head"><span class="icon-text tnum"><span class="show-narrow"><i class="ic ic-monitor-smartphone"></i></span>0 of 5<span class="sr-only"> devices</span></span><div class="progress hide-narrow" style="--v: 0%"></div></div></td>
+                <td class="c-origin"><div class="cell-stack"><span>By hand</span><span class="cell-sub">Ada Lovelace</span></div></td>
+                <td class="row-menu"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="avatar md pending"><i class="ic ic-key-round"></i></span><div class="cell-title mono">pkey_djdl_7HJM…Q2KD</div></div></td>
+                <td><span class="pill sm"><i class="ic ic-key-round"></i>Floating</span></td>
+                <td><span class="pill sm"><i class="ic ic-layers accent"></i>Standard</span></td>
+                <td class="flow-end">Lifetime</td>
+                <td><div class="meter-head"><span class="icon-text tnum"><span class="show-narrow"><i class="ic ic-monitor-smartphone"></i></span>1 of 5<span class="sr-only"> devices</span></span><div class="progress hide-narrow" style="--v: 20%"></div></div></td>
+                <td class="c-origin"><div class="cell-stack"><span>Key batch</span><span class="cell-sub">Controller bundle · Oct 2026</span></div></td>
+                <td class="row-menu"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="avatar md">AT</span><div><div class="cell-title">Aiko Tanaka</div><div class="cell-sub">aiko@example.com</div></div></div></td>
+                <td><span class="pill sm"><i class="ic ic-user-round"></i>In an account</span></td>
+                <td><span class="pill sm"><i class="ic ic-layers accent"></i>Studio</span></td>
+                <td class="flow-end"><div class="cell-stack"><span class="pill sm danger"><i class="ic ic-circle-x"></i>Past due since Oct 3</span><span class="cell-sub">Renews yearly, by hand</span></div></td>
+                <td><div class="meter-head"><span class="icon-text tnum"><span class="show-narrow"><i class="ic ic-monitor-smartphone"></i></span>4 of 10<span class="sr-only"> devices</span></span><div class="progress hide-narrow" style="--v: 40%"></div></div></td>
+                <td class="c-origin"><div class="cell-stack"><span>By hand</span><span class="cell-sub">Ada Lovelace</span></div></td>
+                <td class="row-menu"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="avatar md">JW</span><div><div class="cell-title">Jonas Weber</div><div class="cell-sub">jonas@example.com</div></div></div></td>
+                <td><span class="pill sm"><i class="ic ic-user-round"></i>In an account</span></td>
+                <td><span class="pill sm"><i class="ic ic-layers accent"></i>Trial</span></td>
+                <td class="flow-end"><div class="cell-stack"><span class="pill sm info"><i class="ic ic-hourglass"></i>Trial ends Oct 12</span><span class="cell-sub">Then Free</span></div></td>
+                <td><div class="meter-head"><span class="icon-text tnum"><span class="show-narrow"><i class="ic ic-monitor-smartphone"></i></span>1 of 2<span class="sr-only"> devices</span></span><div class="progress hide-narrow" style="--v: 50%"></div></div></td>
+                <td class="c-origin"><div class="cell-stack"><span class="icon-text origin-auto"><i class="ic ic-sparkles"></i>Automatic grant</span><span class="cell-sub">Everyone who signs in</span></div></td>
+                <td class="row-menu"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="avatar md">KS</span><div><div class="cell-title">Kenji Sato</div><div class="cell-sub">kenji@example.com</div></div></div></td>
+                <td><span class="pill sm"><i class="ic ic-user-round"></i>In an account</span></td>
+                <td><span class="pill sm"><i class="ic ic-layers accent"></i>Studio</span></td>
+                <td class="flow-end"><div class="cell-stack"><span>Updates ended at 4.1</span><span class="cell-sub">Keeps working</span></div></td>
+                <td><div class="meter-head"><span class="icon-text tnum"><span class="show-narrow"><i class="ic ic-monitor-smartphone"></i></span>2 of 10<span class="sr-only"> devices</span></span><div class="progress hide-narrow" style="--v: 20%"></div></div></td>
+                <td class="c-origin"><div class="cell-stack"><span>By hand</span><span class="cell-sub">Ada Lovelace</span></div></td>
+                <td class="row-menu"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="avatar md">LO</span><div><div class="cell-title">Lena Ortiz</div><div class="cell-sub">lena@example.com</div></div></div></td>
+                <td><span class="pill sm"><i class="ic ic-user-round"></i>In an account</span></td>
+                <td><span class="pill sm"><i class="ic ic-layers accent"></i>Standard</span></td>
+                <td class="flow-end">Lifetime</td>
+                <td><div class="meter-head"><span class="icon-text tnum text-warning"><span class="show-narrow"><i class="ic ic-monitor-smartphone"></i></span>5 of 5<span class="sr-only"> devices</span></span><div class="progress hide-narrow warning" style="--v: 100%"></div></div></td>
+                <td class="c-origin"><div class="cell-stack"><span class="icon-text origin-auto"><i class="ic ic-sparkles"></i>Automatic grant</span><span class="cell-sub">Group <code>members</code></span></div></td>
+                <td class="row-menu"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="avatar md">SR</span><div><div class="cell-title">Sam Reyes</div><div class="cell-sub">sam@example.com</div></div></div></td>
+                <td><div class="cell-stack"><span class="pill sm info"><i class="ic ic-mail"></i>Waiting</span><span class="cell-sub">Invited Sep 28</span></div></td>
+                <td><span class="pill sm"><i class="ic ic-layers accent"></i>Studio</span></td>
+                <td class="flow-end">Lifetime</td>
+                <td><div class="meter-head"><span class="icon-text tnum"><span class="show-narrow"><i class="ic ic-monitor-smartphone"></i></span>0 of 10<span class="sr-only"> devices</span></span><div class="progress hide-narrow" style="--v: 0%"></div></div></td>
+                <td class="c-origin"><div class="cell-stack"><span>By hand</span><span class="cell-sub">Jun Park</span></div></td>
+                <td class="row-menu"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="avatar md pending"><i class="ic ic-key-round"></i></span><div class="cell-title mono">pkey_djdl_B1cY…4W9P</div></div></td>
+                <td><div class="cell-stack"><span class="pill sm"><i class="ic ic-key-round"></i>Floating</span><span class="cell-sub">Never used</span></div></td>
+                <td><span class="pill sm"><i class="ic ic-layers accent"></i>Standard</span></td>
+                <td class="flow-end">Lifetime</td>
+                <td><div class="meter-head"><span class="icon-text tnum"><span class="show-narrow"><i class="ic ic-monitor-smartphone"></i></span>0 of 5<span class="sr-only"> devices</span></span><div class="progress hide-narrow" style="--v: 0%"></div></div></td>
+                <td class="c-origin"><div class="cell-stack"><span>Key batch</span><span class="cell-sub">Controller bundle · Oct 2026</span></div></td>
+                <td class="row-menu"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="table-foot"><span class="tnum">1–10 of 1,284</span><span class="ml-auto mk-cluster-1"><button class="btn ghost icon xs" aria-label="Previous page" disabled><i class="ic ic-chevron-left"></i></button><button class="btn ghost icon xs" aria-label="Next page"><i class="ic ic-chevron-right"></i></button></span></div>
+        </div>
       </div>
     </div>
   </main>
   <!-- New license drawer (LX-29 on ST-39's host), opened by Create keys in bulk on "Anyone with the key"; the Review step. -->
   <!-- On phone the kit's .sheet makes it a bottom sheet (ADMIN.md §Overlays): body scrolls, buttons pinned. -->
   <div class="overlay end sheet">
-    <aside class="drawer" aria-labelledby="drawer-title">
+    <aside class="drawer scroll" aria-labelledby="drawer-title">
       <div class="drawer-head">
-        <span class="icon-tile sm"><i class="ic ic-key-square"></i></span>
         <h2 id="drawer-title">New license</h2>
         <button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button>
       </div>
-      <div class="bk-steps">
-        <ol class="stepper">
+      <div class="drawer-band">
+        <ol class="stepper compact lined">
           <li class="step done"><span class="step-mark"></span><span class="step-label">Tier</span></li>
           <li class="step done"><span class="step-mark"></span><span class="step-label">Who</span></li>
           <li class="step done"><span class="step-mark"></span><span class="step-label">Limits</span></li>
@@ -516,67 +218,36 @@
         </ol>
       </div>
       <div class="drawer-body">
-        <div>
-          <h3 class="bk-title">Create 200 floating keys on Standard</h3>
-          <p class="muted small mt-1">Each key is its own license with no holder. Anyone who enters one can use it.</p>
-        </div>
-
-        <div class="bk-summary">
-          <div class="bk-row">
-            <span class="bk-label">Tier</span>
-            <div class="bk-value"><span class="pill sm tier-pill"><i class="ic ic-layers"></i>Standard</span><span class="muted small">Lifetime · 5 devices</span></div>
-            <button class="btn outline xs">Change</button>
-          </div>
-          <div class="bk-row">
-            <span class="bk-label">Who it’s for</span>
-            <div class="bk-value"><span><span class="pill sm"><i class="ic ic-key-round"></i>Floating</span> Anyone with the key</span><span class="muted small"><span class="strong tnum">200 keys</span> in the batch “Mixer bundle · Oct 2026”</span></div>
-            <button class="btn outline xs">Change</button>
-          </div>
-          <div class="bk-row">
-            <span class="bk-label">Limits</span>
-            <div class="bk-value">
-              <dl class="bk-limits">
-                <dt>Devices</dt><dd><span class="v tnum">5</span><span class="pill sm"><i class="ic ic-layers"></i>From Standard</span></dd>
-                <dt>Offline days</dt><dd><span class="v tnum">30</span><span class="pill sm"><i class="ic ic-layers"></i>From Standard</span></dd>
-                <dt>Release tracks</dt><dd><span class="v">stable</span><span class="pill sm"><i class="ic ic-polaris"></i>Platform default</span></dd>
-                <dt>Versions</dt><dd><span class="v">Any</span><span class="pill sm"><i class="ic ic-polaris"></i>Platform default</span></dd>
-                <dt>Fingerprint mode</dt><dd><span class="v">Normal</span><span class="pill sm"><i class="ic ic-layers"></i>From Standard</span></dd>
+        <section class="card" aria-label="Review">
+          <dl class="kv-rows">
+            <div><dt>Tier</dt><dd><span class="icon-text"><i class="ic ic-layers accent"></i>Standard</span></dd><button class="btn outline xs kv-action">Change</button></div>
+            <div><dt>Who</dt><dd><span><strong class="tnum">200</strong> floating keys: anyone with one can use it</span><span class="source">Batch “Mixer bundle · Oct 2026”</span></dd><button class="btn outline xs kv-action">Change</button></div>
+            <div><dt>Limits</dt><dd>
+              <dl class="dl compact">
+                <dt>Devices</dt><dd class="tnum">5</dd>
+                <dt>Offline days</dt><dd class="tnum">30</dd>
+                <dt>Release tracks</dt><dd>stable<span class="source">Default</span></dd>
+                <dt>Versions</dt><dd>Any<span class="source">Default</span></dd>
+                <dt>Fingerprint</dt><dd>Normal</dd>
               </dl>
-            </div>
-            <button class="btn outline xs">Change</button>
-          </div>
-          <div class="bk-row">
-            <span class="bk-label">Duration</span>
-            <div class="bk-value"><span>Lifetime</span><span class="muted small">from Standard</span></div>
-            <button class="btn outline xs">Change</button>
-          </div>
-          <div class="bk-row">
-            <span class="bk-label">Delivery</span>
-            <div class="bk-value"><span>Download a CSV</span><span class="muted small">200 rows: key, license id, batch</span></div>
-            <button class="btn outline xs">Change</button>
-          </div>
-        </div>
+            </dd><button class="btn outline xs kv-action">Change</button></div>
+            <div><dt>Duration</dt><dd>Lifetime</dd><button class="btn outline xs kv-action">Change</button></div>
+            <div><dt>Delivery</dt><dd>Download a CSV<span class="source">key, license id, batch</span></dd><button class="btn outline xs kv-action">Change</button></div>
+          </dl>
+        </section>
 
-        <div class="bk-will">
-          <p class="eyebrow">What Polaris Key will do</p>
-          <ol>
-            <li>Make 200 Standard licenses, each with one key, in the batch “Mixer bundle · Oct 2026”.</li>
-            <li>Show the keys once, as a CSV. Polaris Key keeps only a hash of each key, so they can’t be shown again later.</li>
-            <li>If someone adds a key to their Polaris Key library, that license moves into their account.</li>
+        <div class="mk-stack-3">
+          <p class="eyebrow">What happens</p>
+          <ol class="num-list">
+            <li><span>Polaris Key makes 200 Standard licenses with no holder, one key each.</span></li>
+            <li><span>The keys show once, as a CSV you can download until you close this. Only a hash of each is kept.</span></li>
+            <li><span>A key added to someone’s Polaris Key library moves its license into their account.</span></li>
           </ol>
         </div>
-
-        <div class="callout info">
-          <i class="ic ic-info"></i>
-          <div class="grow">
-            <div class="callout-title">Next, this drawer gives you the CSV</div>
-            <div class="callout-text">Download again works until you close the drawer. Closing it before a download asks first.</div>
-          </div>
-        </div>
       </div>
-      <div class="drawer-foot">
+      <div class="drawer-foot std">
+        <button class="btn ghost">Back</button>
         <button class="btn primary"><i class="ic ic-key-square"></i>Create 200 keys</button>
-        <button class="btn ghost bk-back">Back</button>
       </div>
     </aside>
   </div>

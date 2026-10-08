@@ -10,40 +10,42 @@
     "LX-33"
   ],
   "uxRows": [],
-  "summary": "The New license drawer over the dimmed, scroll-locked Licenses list, opened by Create keys in bulk, on its Review step: 200 floating Standard keys in the batch 'Mixer bundle · Oct 2026', each limit with its source pill, the duration from the tier, CSV delivery, what Polaris Key will do as numbered steps, and an action-named primary pinned at the foot. What happens after Create is in licenses.bulk-keys-done.",
+  "summary": "The New license drawer over the dimmed, scroll-locked Licenses list, opened by Create keys in bulk, on its Review step: 200 floating Standard keys in the batch 'Mixer bundle · Oct 2026', each limit with its source, the duration from the tier, CSV delivery, and what happens as numbered steps, with an action-named primary at the foot. What happens after Create is in licenses.bulk-keys-done.",
   "order": 12,
   "compare": [
-    "It is the New license drawer (the wizard kit's drawer host), not a separate dialog: the same five steps, Tier, Who, Limits, Delivery, Review, with the first four done.",
-    "The title says the outcome in words: 'Create 200 floating keys on Standard', with one sentence on what a floating key is.",
-    "The summary has one row per step with a Change button (outline, at least 28px tall): Tier (pill and its one-line summary), Who it's for (the Floating pill, 'Anyone with the key', the count and the batch label), Limits (Devices, Offline days, Release tracks, Versions and Fingerprint mode, each value with the detail page's source pill, 'From Standard' or 'Platform default'; no 'product default'), Duration (Lifetime, from Standard) and Delivery (Download a CSV and its columns).",
-    "There are no profile pickers and no 'profiles in order' row (LX-29).",
-    "'What Polaris Key will do' lists the three outcomes as neutral numbered steps, not ticks (nothing has happened yet): make the 200 licenses in the batch; show the keys once, as a CSV, because only hashes are kept; 'If someone adds a key to their Polaris Key library, that license moves into their account.'",
-    "An info callout says what comes next: the drawer gives you the CSV, Download again works until you close it, and closing before a download asks first. The Done state, the close confirmation and a partial result are in licenses.bulk-keys-done.",
-    "The foot has Back on the left and the primary 'Create 200 keys' (never 'Submit' or 'Create'). The drawer's head, stepper and foot stay put and only its body scrolls; at 1440×900 the foot sits at y=835–900.",
-    "Behind it, the Licenses list is dimmed by the scrim and scroll-locked; the drawer is 560px and full height on desktop.",
-    "Phone: the drawer is the kit's bottom sheet (.sheet): at most 90% of the screen, the body scrolls, Create 200 keys full width on top and Back under it, pinned; summary values drop under their label with Change on the right."
+    "Behind: the reworked Licenses list, scroll-locked under the scrim.",
+    "Drawer: 'New license', the stepper band (Tier, Who, Limits, Delivery done; Review current), then the review card with Change on every row: Tier Standard; Who '200 floating keys: anyone with one can use it' in the batch 'Mixer bundle · Oct 2026'; Limits (Devices 5, Offline days 30, Fingerprint Normal from Standard; Release tracks stable, Versions Any by default); Duration Lifetime (Standard); Delivery Download a CSV (key, license id, batch).",
+    "What happens: Polaris Key makes 200 Standard licenses with no holder, one key each; the keys show once, as a CSV you can download until you close this, and only a hash is kept; a key added to a library moves its license into that account.",
+    "Foot: Back and Create 200 keys (primary).",
+    "Phone: a bottom sheet; the stepper shows marks and the current label; the limits keep two columns."
   ],
   "status": "mockup",
   "designReview": {
-    "round": 1,
-    "reviewer": "UX designer (visual critique of rendered screenshots)",
-    "date": "2026-10-07",
-    "verdict": "Fixed: the post-create CSV moment is designed (licenses.bulk-keys-done), the outcomes are numbered steps with clearer copy and source pills, and the drawer foot and Change buttons are always reachable.",
+    "round": "spacing-and-content",
+    "reviewer": "Spacing and content pass against the products.overview and products.home references, all four sizes in both themes",
+    "date": "2026-10-08",
+    "verdict": "Spacing and content pass: the kit's drawer with a band, kv-rows with actions and a compact dl; the page behind is the reworked list; 0 screen spacing.",
     "findings": [
       {
         "severity": "major",
-        "issue": "The riskiest moment, after Create 200 keys, is not designed: no Done state, a recovery that ignores the still-open drawer, and no partial failure.",
-        "resolution": "Added licenses.bulk-keys-done: the one-time panel '200 keys created in Mixer bundle · Oct 2026' with Download CSV as the only primary; after download, 'Downloaded at 10:42', Download again and Done; 'Close without the CSV?' with Download CSV as the primary and 'Close without keys' as the danger outline; and 'Created 120 of 200 keys' with a 120-row CSV and 'Retry the other 80'. The Review callout now reads 'Next, this drawer gives you the CSV. Download again works until you close the drawer. Closing it before a download asks first.' The new batch is renamed Mixer bundle · Oct 2026 so it no longer shares a name with the Controller bundle batch already listed behind the drawer."
+        "issue": "30 spacing declarations, a copy of the old list's custom table, and a custom review grid with source pills on every limit.",
+        "resolution": "Kit only: .console.modal-open, .overlay.end.sheet, .drawer.scroll with .drawer-band and .stepper.compact, .kv-rows with .kv-action, .dl.compact with .source, .num-list."
       },
       {
         "severity": "minor",
-        "issue": "Future actions carry success ticks; the third outcome is hard to parse; limit sources are plain text and Fingerprint mode is missing.",
-        "resolution": "The outcomes are neutral numbered steps; the third reads 'If someone adds a key to their Polaris Key library, that license moves into their account.'; Limits uses the detail page's source pills ('From Standard', 'Platform default') and adds 'Fingerprint mode  Normal  From Standard'."
+        "issue": "The summary title repeated every row (200, floating, Standard); the info callout repeated step 2.",
+        "resolution": "Rows say it once; step 2 carries the download window."
       },
       {
         "severity": "minor",
-        "issue": "The drawer foot is below the fold at both viewports and the Change links are 22px tall.",
-        "resolution": "The page behind is scroll-locked; the drawer's head, stepper and foot stay put and the body scrolls (foot measured at y=835–900 at 1440×900). On phone the drawer is the kit's .sheet bottom sheet with the buttons pinned (y=731–844), Create 200 keys first in the DOM as the kit asks while desktop still shows Back on the left. Change is an outline xs button, 28px tall. Both are in the compare."
+        "issue": "Em-dash step separators; labels truncated on phone; repeated 'Standard' source tags.",
+        "resolution": "Stepper is .stepper.compact.lined (mark over label, hairline between marks) with every label visible on phone; a limit's source tag shows only when it differs from the tier (Default stays). The drawer body already scrolls above its pinned foot, so 'What happens' is never covered at rest.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX4"
+        ]
       }
     ]
   }

@@ -9,42 +9,43 @@
     "LX-38"
   ],
   "uxRows": [],
-  "summary": "The Add a rule dialog over DJDL's dimmed Access page: a group from Pocket ID (bound to that connection) gives the Studio tier with the label 'Press access', and the match preview counts the four accounts the rule covers today and shows three of them, one per outcome: a new license at next sign-in, an automatic Standard license that moves up, and one made by hand that stays. The dialog fits the window with its buttons always visible.",
+  "summary": "The Add a rule dialog over DJDL's dimmed Access page: a group from Pocket ID (bound to that connection) gives the Studio tier with the label 'Press access', and the match preview counts the four accounts the rule covers today and shows three of them, one per outcome: a new license, an automatic Standard license that moves up, and one made by hand that stays. The dialog fits the window with its buttons always visible.",
   "order": 8,
   "compare": [
-    "The dialog sits over the Access page with the page dimmed and scroll-locked behind it. Its accent is core, like the Access page: the focus ring, the segments and the Add rule button are all core violet.",
-    "Height: the dialog is never taller than the window (100vh − 64px). Its head and its foot (Cancel / Add rule) stay put and only the body scrolls; at 1440×900 the foot ends at y=867.",
-    "'When someone has' offers exactly three kinds: A group, A verified email domain, A claim. Choosing one swaps the field below (a group with its connection; a domain, verified emails only; a claim name and value).",
-    "A group rule names the connection it comes from (From: Pocket ID) and the hint says groups from any other sign-in provider never match (issuer-bound groups, LX-36's security rule).",
-    "'They get' is A tier or An add-on, then the choice, with the chosen tier's one-line summary under it.",
-    "The label field is optional and says where it shows: Discover and the portal, beside Automatic grant. There is no separate group-labels setting.",
-    "The match preview counts the accounts the rule covers today, from the groups the connection last sent, and lists at most three people, one per kind of outcome first, then 'and 1 more: …' with Show all. Each outcome is a sentence: 'Gets Studio at next sign-in'; 'Moves up to Studio at next sign-in' with the Standard → Studio pills on a second line; 'Has Studio made by hand · no change'.",
-    "The note under the preview says Add rule saves the rule now, that automatic licenses only move up at each person's next sign-in, and that licenses made by hand or bought never change.",
-    "Buttons: Cancel (the kit's outline button, visible in both themes) and 'Add rule' (primary). No 'Save', no 'Submit'.",
-    "Other states (no match, duplicate, blank group, preview counting, preview failed) are in licenses.access-rule-states.",
-    "Phone: the dialog is the kit's bottom sheet (.sheet, ADMIN.md §Overlays): grab handle, at most 90% of the screen, the body scrolls, Add rule and Cancel pinned full width with Add rule on top; paired fields stack; each preview row puts its outcome under the name; the kind control scrolls inside itself if it can't fit."
+    "Behind: the saved Access page (App downloads on Customers, no save bar), scroll-locked under the scrim.",
+    "Dialog (.dialog.lg.scroll.fade, 64 from the top): When someone has (A group · An email domain · A claim), Group djdl-press and From Pocket ID side by side with 'Only groups from this connection count.', They get (A tier · An add-on) with Studio beside it and Studio's limits on one line, Label people see 'Press access' ('Shown on Discover and in the portal.').",
+    "Match preview: '4 accounts have djdl-press today'; Noor Haddad gets Studio, Iris Moreau Standard → Studio, Theo Lindqvist 'Studio, made by hand: no change'; '1 more: Felix Brandt gets Studio' with Show all 4; 'Changes apply at each person’s next sign-in. Licenses made by hand or bought never change.'",
+    "Foot: Cancel and Add rule; the body scrolls and fades above the foot when the window is short.",
+    "Phone: a bottom sheet; Group and From stack; Add rule on top, full width."
   ],
   "status": "mockup",
   "designReview": {
-    "round": 1,
-    "reviewer": "UX designer (visual critique of rendered screenshots)",
-    "date": "2026-10-07",
-    "verdict": "Fixed: the dialog fits both viewports with its buttons pinned, the missing states are drawn (licenses.access-rule-states), and it uses one accent with clearer preview sentences and a visible Cancel.",
+    "round": "spacing-and-content",
+    "reviewer": "Spacing and content pass against the products.overview and products.home references, all four sizes in both themes",
+    "date": "2026-10-08",
+    "verdict": "Spacing and content pass: the kit's modal frame, scroll dialog and item rows; 0 screen spacing; the page behind is the reworked Access page.",
     "findings": [
       {
         "severity": "major",
-        "issue": "The dialog is 909px tall on desktop and 1185px on phone, so Add rule is below the fold.",
-        "resolution": "The page behind is scroll-locked and the dialog is capped at 100vh − 64px with head and foot pinned and the body scrolling; measured at 1440×900 the dialog runs y=32–868 and the foot y=802–867. On phone it uses the kit's new .sheet bottom sheet (ADMIN.md §Overlays) rather than a custom full-height sheet: at 390×844 the buttons sit at y=731–844, Add rule on top. The preview shows three people and 'and 1 more: Felix Brandt gets Studio at next sign-in' with Show all 4. Compare row added."
-      },
-      {
-        "severity": "major",
-        "issue": "Only the happy path: no zero-match, duplicate, blank-field, loading or failing preview.",
-        "resolution": "Added licenses.access-rule-states with all five and their copy: 'No sign-in from Pocket ID has sent djdl-press-eu yet. The rule saves, but matches no one until it does.'; 'There’s already a rule for studio-pro from Pocket ID (gives Studio). Edit that rule instead.' with Add rule disabled; 'Enter the group name exactly as Pocket ID sends it.'; a two-row skeleton while counting; and a neutral 'Couldn’t count who has djdl-press' callout with Retry that never blocks Add rule."
+        "issue": "55 spacing declarations, most of them a copy of the old Access page's custom layout, plus custom preview rows and a scroll hack.",
+        "resolution": "Kit only: .console.modal-open, .overlay.top.sheet, .dialog.lg.scroll.fade, .mk-grid-2, .card.sunken with .item-row and .avatar.md."
       },
       {
         "severity": "minor",
-        "issue": "Violet focus ring with a chartreuse primary; Iris's row is only pills; 'Keeps Studio, by hand' is ambiguous; Cancel is bare text on dark.",
-        "resolution": "The dialog is core like the Access page, so focus, segments and Add rule are all violet. Iris reads 'Moves up to Studio at next sign-in' with the pills on a second line; Theo reads 'Has Studio made by hand · no change'. Cancel is the kit's outline button, visible in both themes. The kit's default neutral button on dark overlays is left to the kit owner, because changing it changes every area's screens."
+        "issue": "On phone the rule-kind control ran past the sheet; 'at next sign-in' was on every preview row; the note restated Automatic licenses' rule.",
+        "resolution": "Shorter options, timing said once in the preview's foot."
+      },
+      {
+        "severity": "minor",
+        "issue": "The third preview row was clipped; three outcome formats; 12px helpers.",
+        "resolution": "Preview rows share one right-aligned outcome (Gets Studio, Standard to Studio, No change; Theo's 'made by hand' moves to his sub-line); the 'Studio: lifetime, 10 devices…' line is removed, so three rows and the footer fit; helpers are 13px (.floor); dialog foot is 40px buttons, 12px gap (.std).",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
       }
     ]
   }

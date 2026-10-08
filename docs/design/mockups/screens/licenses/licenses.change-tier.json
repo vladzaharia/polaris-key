@@ -3,20 +3,56 @@
   "title": "Change tier",
   "area": "licenses",
   "surface": "dialog",
-  "packages": ["LX-32", "LX-33", "LX-38", "LX-41"],
+  "packages": [
+    "LX-32",
+    "LX-33",
+    "LX-38",
+    "LX-41"
+  ],
   "uxRows": [],
-  "summary": "The Change tier dialog opened from the tier control on licenses.detail: moving Priya Raman's automatic Education license up to Studio (every changed limit with now and after, what stays, and why the move sticks), and down to Free, where a warning says her next sign-in moves it back to Education because an Access rule still covers her.",
+  "summary": "The Change tier dialog opened from the tier control on licenses.detail: moving Priya Raman's automatic Education license up to Studio (every changed limit, old and new, what stays, and why the move sticks), and down to Free, where a warning says her next sign-in moves it back to Education because an Access rule still covers her.",
   "order": 5,
   "compare": [
-    "It opens from three places on the license record: the tier control top-right (Tier Education ▾), Change tier… in the ⋯ menu, and the Limits card. Title: 'Change <holder>'s tier'.",
-    "'Move to' is one select of the product's tiers with each one's rank (1 of 5) and a one-line summary of the chosen tier; the hint names the current tier and its rank.",
-    "'What changes' lists only the fields that change, each with now → after and the source of the new value (Devices: '10 from Studio + 2 from seat pack'); Duration is recomputed from the new tier (Fixed, ends Sep 14, 2027 → Lifetime).",
-    "A 'Stays' line names what the move keeps: values set on the license (offline days 14), unchanged limits and every add-on.",
-    "Moving up an automatic license: it stays an Automatic grant and the dialog says sign-ins only move licenses up, so the move sticks.",
-    "Moving down while an Access rule still covers the holder: a warning callout says the next sign-in moves it back up, names the rule (Verified email domain example.edu gives Education) and offers Open Access; the move is not blocked. Lower values are in the warning tone, and a device count that drops below the devices in use says how many get signed out.",
-    "Buttons: Cancel and 'Move to <tier>' (primary). No 'Save' or 'Confirm'. After it, a toast 'Moved to Studio' and the Limits card shows the new sources.",
-    "Phone: a bottom sheet (the kit's .sheet); each row puts the field name over now → after; the buttons stack, primary on top."
+    "Two dialogs on the board, side by side from 1280px.",
+    "Move to: the tier select with its rank (Studio 1 of 5, Free 5 of 5) and 'Now on Education, 3 of 5.'",
+    "What changes: a card of rows, each the old value struck and the new one added: Devices 4 → 12 (10 from Studio, 2 from a seat pack), Release tracks stable → stable, beta, Duration Ends Sep 14, 2027 → Lifetime, Includes recording, 4 decks → recording, stems, 4 decks.",
+    "Moving up also says what stays (offline days 14 set on this license, fingerprint Normal, the 3 add-ons) and why it sticks (still an Automatic grant; Studio is the top tier). Cancel and Move to Studio.",
+    "Moving down: Devices 4 → 3 ('She has 3, so none is signed out'), Duration → Lifetime, Includes → 2 decks, no recording; a warning 'Her next sign-in moves it back to Education' / 'Verified email domain example.edu gives Education. To keep her on Free, change that rule first.'; Open Access, Cancel and Move to Free.",
+    "Phone: the rows' values wrap under their chips; buttons stack with the primary on top."
   ],
   "status": "mockup",
-  "designReview": null
+  "designReview": {
+    "round": "spacing-and-content",
+    "reviewer": "Spacing and content pass against the products.overview and products.home references, all four sizes in both themes",
+    "date": "2026-10-08",
+    "verdict": "Spacing and content pass: kit dialogs with kv-rows and diff chips; 0 screen spacing.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "A custom diff table (7 spacing declarations) that ran past the dialog on phone.",
+        "resolution": "Kit only: .kv-rows with .diff-old/.diff-new and .source, which wrap on a narrow card; .icon-list for what stays."
+      },
+      {
+        "severity": "minor",
+        "issue": "The hint under Move to repeated the new tier's limits the table then listed; the stays line listed every add-on by name.",
+        "resolution": "The hint says where it is now; what changes is said once."
+      },
+      {
+        "severity": "major",
+        "issue": "Redundant lines, split footer, wrapping delta chips.",
+        "resolution": "'Now on Education, 3 of 5.' removed; Unchanged and Still an Automatic grant are one line; the foot is .dialog-foot.std, so on phone Cancel sits beside the primary with Open Access above the pair. The diff rows keep the kit's old-to-new chips; they wrap inside the value column.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX4"
+        ]
+      },
+      {
+        "issue": "Relabel the primary 'Move to Free anyway' and use a caution button style for the moving-down variant.",
+        "resolution": "declined: It changes a button label and the kit's button style, which is a product decision, not spacing.",
+        "round": "multi-review"
+      }
+    ]
+  }
 }

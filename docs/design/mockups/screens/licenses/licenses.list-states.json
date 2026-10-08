@@ -3,17 +3,58 @@
   "title": "Licenses list states",
   "area": "licenses",
   "surface": "console",
-  "packages": ["LX-30", "P0-29"],
+  "packages": [
+    "LX-30",
+    "P0-29"
+  ],
   "uxRows": [],
   "summary": "The Licenses list's other four states, drawn from the round-1 review of licenses.list: first run with no licenses, a search and filters that match nothing, the first load as skeleton rows, and a load that failed, inline with Retry.",
   "order": 2,
   "compare": [
-    "First run (no licenses on the product): no holder control, no search, no table head; an empty state with the license glyph, 'No licenses yet', 'They appear when someone signs in under your Access rules, or when you create one.', New license (primary) and Open Access (outline). The header keeps only Create keys in bulk, so there is one primary.",
-    "No match: the holder segment, the search text and every facet chip stay set and visible; the table head stays; the body says 'No licenses match' and names what was searched, with one Clear filters button that resets search, holder and facets together.",
-    "Loading: skeleton rows at the real row height (61 px) under the real column heads, the holder counts as skeletons, no spinner and no 'Loading…' text on screen; a live region announces loading after a 150 ms grace.",
-    "Error: inline in the table body (ADMIN.md T2), not a toast: 'Licenses didn't load', what failed in plain words with the status, that the filters are kept, and Retry, which refetches with the same URL state.",
-    "Phone: each state keeps the list's phone header (New license full width when shown); the empty-state buttons stack full width."
+    "A board of four frames, two to a row from 1280px and one below; each frame is a slice of the page (.board-frame) with the page header ('Licenses' and its actions) and, where they apply, the filters. Frames in a row share a height so their captions line up.",
+    "First run (no licenses on the product): no holder control, no search, no table head; an empty state with the license glyph, 'No licenses yet', 'Licenses appear when someone signs in under your Access rules, or when you create one.', New license (primary) and Open Access (outline). The header keeps only Create keys in bulk, so there is one primary.",
+    "No match: the holder segment (Floating), the search text and the Tier: Studio facet stay set and visible; the table head stays; the body says 'No licenses match' and names what was searched, with one Clear filters button that resets search, holder and facets together.",
+    "Loading: skeleton rows at the real row height under the real column heads (a 28px media disc, two lines, the holder and tier as capsules, the device count), the holder counts as skeletons, no spinner and no 'Loading…' on screen; a live region announces loading after a 150 ms grace.",
+    "Error: inline in the table body (ADMIN.md T2), not a toast: 'Licenses didn't load', 'Polaris Key took too long to answer (504). Retry loads the same list with your filters.' and Retry, which refetches with the same URL state.",
+    "Phone: each frame keeps the list's phone header (Create keys in bulk and New license full width), the holder control folds into a 'Holder: …' chip, the empty-state buttons stack, and the loading rows take the list's phone layout."
   ],
   "status": "mockup",
-  "designReview": null
+  "designReview": {
+    "round": "spacing-and-content",
+    "reviewer": "Spacing and content pass against the products.overview and products.home references, all four sizes in both themes",
+    "date": "2026-10-08",
+    "verdict": "Spacing and content pass: the frames are the kit's .board-frame on a .board.cols-2 with the real page header, toolbar and table parts, so a state looks like the page it belongs to; captions and the intro cut to one or two short sentences; no screen spacing left.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "Each frame drew its own 22px title, 20px padding, custom header grid and skeleton shapes, so the states didn't look like licenses.list.",
+        "resolution": "Frames use .page-head (title at the page step), .toolbar, .segmented and .table-card; skeletons are the kit's .skeleton.media, .capsule and .inline."
+      },
+      {
+        "severity": "minor",
+        "issue": "The board intro and captions narrated the layout and repeated the compare list ('Each keeps the header and, where they apply, the filters').",
+        "resolution": "Intro: 'The other four states of licenses.list.' Captions say only what differs in each state."
+      },
+      {
+        "severity": "minor",
+        "issue": "The error text ran to three clauses ('Your filters are kept, so Retry loads the same list').",
+        "resolution": "One sentence of what happened, one of what Retry does."
+      },
+      {
+        "severity": "minor",
+        "issue": "Tiles had 120-250px of empty padding.",
+        "resolution": "Board is .board.cols-2.start: tiles align to the top and size to their content. The loading tile has no filter-bar skeleton to resize, so none was added.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX4"
+        ]
+      },
+      {
+        "issue": "Hide the header New license button in first-run, and move Create keys in bulk into the overflow on phone.",
+        "resolution": "declined: These change structure and the one-primary rule is already handled in the kit. Only the sizing fix was accepted.",
+        "round": "multi-review"
+      }
+    ]
+  }
 }

@@ -3,19 +3,48 @@
   "title": "Saving Access",
   "area": "licenses",
   "surface": "dialog",
-  "packages": ["P2-10", "LX-36", "PS-12"],
+  "packages": [
+    "P2-10",
+    "LX-36",
+    "PS-12"
+  ],
   "uxRows": [],
-  "summary": "What Save access on licenses.access asks before the two changes that alter who gets DJDL from now on (Automatic licenses Rules → Nobody, and Rules → Everyone who signs in, with the typed slug), and the saved state: the save bar gone, 'Saved just now by Ada Lovelace' and a toast that repeats the change with View in History.",
+  "summary": "What Save access on licenses.access asks before the two changes that alter who gets DJDL (Automatic licenses Rules → Nobody, and Rules → Everyone who signs in, with the typed slug), and the saved state: the save bar gone and a toast that names the change with View in History.",
   "order": 7,
   "compare": [
-    "Choosing a radio card, a select or a gate segment on Access never saves by itself: it outlines the control, shows 'was <old value>' and adds the change to the sticky save bar.",
-    "Save access saves everything in the bar at once. If the changes include Automatic licenses → Nobody or → Everyone who signs in, a confirmation opens first; other changes save without one, because the bar already names their reach.",
-    "Rules → Nobody: title 'Stop automatic licenses for DJDL?'; the change line Rules → Nobody; outcomes: the 650 automatic licenses stay with their tiers, new sign-ins get nothing automatically, Discover stops offering DJDL to people without a license, the 4 rules are kept. Buttons: Keep Rules and 'Stop automatic licenses'.",
-    "Rules → Everyone who signs in: the change line names the tier (Trial); outcomes say it reaches every Polaris Key account, nobody moves down, and the rules are kept but don't apply; the slug djdl is typed to confirm (neutral chip, as Discover's Everyone signed in). Buttons: Keep Rules and 'Give everyone Trial'.",
-    "Saved: the save bar leaves, the changed control loses its outline and 'was …', the header reads 'Saved just now by <member>' and a success toast repeats the change in words with View in History. A failed save keeps the bar and every change, and the bar says what went wrong and how to fix it.",
-    "Leaving Access with unsaved changes asks 'Discard 1 change to Access?' (Keep editing / Discard).",
-    "Phone: the confirmations are bottom sheets (the kit's .sheet) with the buttons stacked, primary on top."
+    "Rules → Nobody: 'Stop automatic licenses for DJDL?' (caution); the change as Rules struck, Nobody added; 650 automatic licenses stay on their tiers; new sign-ins get nothing; Discover stops offering DJDL to people without a license; the 4 rules are kept. Keep Rules and Stop automatic licenses.",
+    "Rules → Everyone who signs in: 'Give every signed-in account a DJDL license?'; every account that signs in gets Trial (14 days of Standard, then Free); nobody moves down (38 Studio, 412 Standard, 57 Education); rules kept but off; type djdl to confirm. Keep Rules and Give everyone Trial.",
+    "Saved: a slice of the page with the gates (App downloads now Public, no change marks, no save bar) and a toast 'Saved access' / 'App downloads are now Public.' with View in History, at the slice's bottom right.",
+    "Phone: dialogs full width, buttons stacked with the primary on top."
   ],
   "status": "mockup",
-  "designReview": null
+  "designReview": {
+    "round": "spacing-and-content",
+    "reviewer": "Spacing and content pass against the products.overview and products.home references, all four sizes in both themes",
+    "date": "2026-10-08",
+    "verdict": "Spacing and content pass: kit dialogs, diff chips, icon lists, item rows and toast; 0 screen spacing.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "15 spacing declarations: custom change line, outcome rows, saved header and toast placement.",
+        "resolution": "Kit only: .diff-old/.diff-new, .icon-list, .board-frame with .toast, .item-row with .segmented.matrix, .board.cols-2.wide-3 and .board-item.full."
+      },
+      {
+        "severity": "minor",
+        "issue": "Outcomes ran two sentences each; the saved header and the toast both said it was saved; the toast repeated the save bar's sentence.",
+        "resolution": "One clause per outcome; the toast alone confirms, in one sentence."
+      },
+      {
+        "severity": "minor",
+        "issue": "Dialogs left-clustered, 40% of the board empty; long bodies; toast squeezed on phone.",
+        "resolution": "Dialogs centre in their tile at 520px (.dlg-center), titles on one line; each body is the change line, one assurance line and the rules line; the toast stacks message then a 44px action on phone (.toast.wrap-action).",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX4"
+        ]
+      }
+    ]
+  }
 }
