@@ -2487,11 +2487,11 @@ export function offlineRequestFlow(
       terminalColumns >= 100 &&
       titleAt + qr.length <= ctx.caps.rows - 1
     ) {
-      const rail = ctx.painter.style(ctx.symbols.rail, ["muted"]);
       const total = Math.max(left.length, titleAt + qr.length);
       const lines: string[] = [];
       for (let i = 0; i < total; i++) {
-        const l = left[i] ?? rail;
+        // Below the closing row there is no rail: the QR hangs beside nothing.
+        const l = left[i] ?? "";
         const q = qr[i - titleAt];
         lines.push(
           q === undefined

@@ -751,6 +751,22 @@ describe("a flow's end states leave one result block under one header", () => {
   });
 });
 
+describe("the landscape offline request", () => {
+  it("draws the QR beside the text and leaves no rail below the closing row", async () => {
+    const { screen } = await run({ columns: 120, rows: 24 }, async (h) =>
+      offlineRequestFlow(h.ctx, stubClient()),
+    );
+    const rows = screen.all().map((r) => r.text);
+    const end = rows.findIndex((r) => r.startsWith("└"));
+    expect(end).toBeGreaterThan(0);
+    expect(rows.some((r) => r.includes("█") || r.includes("▀"))).toBe(true);
+    for (const r of rows.slice(end + 1))
+      expect(r.startsWith("│"), `a rail below the closing row: "${r}"`).toBe(
+        false,
+      );
+  });
+});
+
 describe("a terminal resized in the middle of a live region (80 → 50)", () => {
   it("lays the sign-in code out again: one header, nothing wider than the terminal", async () => {
     const gate = deferred<unknown>();

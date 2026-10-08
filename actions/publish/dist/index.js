@@ -13837,12 +13837,12 @@ var RESERVED_ENTITLEMENT_KEYS = [
   {
     key: "app.minVersion",
     type: "string",
-    rule: "The lower of the tier's and the license's minimum version."
+    rule: "The higher of the tier's and the license's minimum version: a license can narrow its tier's version window, never widen it."
   },
   {
     key: "app.maxVersion",
     type: "string",
-    rule: "The higher of the tier's and the license's maximum version."
+    rule: "The lower of the tier's and the license's maximum version: a license can narrow its tier's version window, never widen it."
   },
   {
     key: "license.tier",

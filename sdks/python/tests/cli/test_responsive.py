@@ -615,3 +615,13 @@ def test_a_cancelled_sign_in_leaves_the_same_text_in_both_kits() -> None:
     t = terminal(term, v, verb="login", keys=["esc"], device_code=True)
     t.finish(flows.sign_in(_client(v), t))
     assert _drawn(term) == PARITY["login-cancelled"]
+
+
+def test_the_landscape_offline_request_leaves_no_rail_below_the_closing_row() -> None:
+    term = Term(120, 24)
+    t = terminal(term, _values("short"), verb="offline-request", keys=[])
+    t.finish(flows.offline_request(SimpleNamespace(core=SimpleNamespace(device_id="dev_9fK2Lw7QmZ"), product="tidewater"), t))
+    rows = [r for r, _ in term.all()]
+    end = next(i for i, r in enumerate(rows) if r.startswith("└"))
+    assert any("█" in r or "▀" in r for r in rows), "the QR sits beside the text"
+    assert [r for r in rows[end + 1 :] if r.startswith("│")] == []

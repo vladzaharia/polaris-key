@@ -469,10 +469,9 @@ def offline_activation(k: Kit, v: OfflineView, verb: str = "offline-request") ->
             qr_w = max(cell_len(sp.text) for sp in spans)
             title_at = 2 if k.decor else 0
             if k.env.columns >= 100 and left_w + 2 + qr_w <= k.env.columns and title_at + len(spans) <= k.env.height - 1:
-                rail = k.rail()
                 out: Lines = []
                 for i in range(max(len(plain), title_at + len(spans))):
-                    left = plain[i] if i < len(plain) else rail
+                    left = plain[i] if i < len(plain) else Line([])  # no rail below the closing row
                     j = i - title_at
                     if 0 <= j < len(spans):
                         pad = Span(" " * (left_w - left.width + 2))
