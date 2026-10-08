@@ -8,29 +8,29 @@ import { href } from "../router.js";
 const STAR = markPartPath("star", { kind: "key", size: 48, theme: "mono" });
 
 /**
- * The empty library (§4.12): the signed-in email, Activate a license (the one primary) and the
- * stationary star on the right half (a top strip on phones), and "See N in Discover" once the
- * Worker counts offers (G24). The "Ready to add" rows under it are `DiscoverTeaser` (PX-16).
+ * The empty library (§4.12): "Nothing here yet" (the page's subtitle already names the signed-in
+ * email), Activate a license (the one primary), the stationary star on the right half from 900 px
+ * (a top strip below that, hidden on short screens, where the task takes the whole card), and
+ * "See N in Discover" once the Worker counts offers (G24). The "Ready to add" rows under it are
+ * `DiscoverTeaser` (PX-16).
  */
 export function LibraryEmpty({
-  email,
   discoverCount = null,
 }: {
-  email: string;
   discoverCount?: number | null;
 }): React.ReactElement {
   const activate = useActivate();
   return (
     <section
       aria-labelledby="empty-h"
-      className="grid overflow-hidden rounded-xl border border-border bg-surface-raised shadow-elevation-1 desk:grid-cols-2"
+      className="grid overflow-hidden rounded-xl border border-border bg-surface-raised shadow-elevation-1 mid:grid-cols-2 short:grid-cols-1"
     >
-      <div className="order-2 flex flex-col gap-5 p-6 desk:order-1 desk:p-12">
+      <div className="order-2 flex flex-col gap-5 p-6 mid:order-1 mid:p-12">
         <h2
           id="empty-h"
-          className="text-2xl font-bold text-fg-strong desk:text-3xl [overflow-wrap:anywhere]"
+          className="text-2xl font-bold text-fg-strong desk:text-3xl"
         >
-          Nothing here for {email} yet
+          Nothing here yet
         </h2>
         <p className="text-fg-muted">
           Products bought with this email show up here by themselves. Got a
@@ -67,12 +67,9 @@ export function LibraryEmpty({
       </div>
       <div
         aria-hidden
-        className="order-1 flex h-28 items-center justify-center bg-accent-subtle desk:order-2 desk:h-auto"
+        className="order-1 flex h-28 items-center justify-center bg-accent-subtle mid:order-2 mid:h-auto short:hidden"
       >
-        <svg
-          viewBox={STAR.viewBox}
-          className="size-16 fill-accent desk:size-36"
-        >
+        <svg viewBox={STAR.viewBox} className="size-16 fill-accent mid:size-36">
           <path d={STAR.d} />
         </svg>
       </div>

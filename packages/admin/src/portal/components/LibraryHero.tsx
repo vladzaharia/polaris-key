@@ -15,7 +15,11 @@ import { StorePills } from "./StorePills.js";
  * The one-product hero (§4.13): art (1.45 fr) and a side panel with the icon, name, status and
  * tier, the primary action (solid: the one lead), "Also yours on" (live store links, G2), a short
  * summary with the seat meter (G5) and the product-page link.
- * Phones: the art becomes a 16:9 strip above the panel.
+ *
+ * Side by side from 1180 px. Below that the hero stacks as on phones: the art at 16:9 across the
+ * full width, shown as the developer supplied it (§0.3), the panel underneath. On a short screen
+ * from 761 px the two stay side by side with the art at 16:9, so the art and the primary download
+ * share the first screen.
  */
 export function LibraryHero({
   product,
@@ -32,7 +36,7 @@ export function LibraryHero({
   return (
     <article
       aria-labelledby="hero-name"
-      className="grid overflow-hidden rounded-xl border border-border bg-surface-raised shadow-elevation-1 desk:grid-cols-[1.45fr_1fr]"
+      className="grid overflow-hidden rounded-xl border border-border bg-surface-raised shadow-elevation-1 wide:grid-cols-[1.45fr_1fr] short:desk:grid-cols-[1.45fr_1fr]"
     >
       <ProductArt
         slug={product.slug}
@@ -42,9 +46,9 @@ export function LibraryHero({
         variant="banner"
         // No cover: a bare tint field; the icon beside the name already shows the letter.
         letter={false}
-        className="aspect-video desk:aspect-auto desk:min-h-[26rem]"
+        className="aspect-video wide:aspect-auto wide:min-h-[26rem] short:aspect-video short:min-h-0 short:self-start"
       />
-      <div className="flex flex-col gap-5 p-6 desk:p-9">
+      <div className="flex flex-col gap-5 p-6 wide:p-9 short:p-6">
         <div className="flex items-center gap-4">
           <ProductIcon
             slug={product.slug}
