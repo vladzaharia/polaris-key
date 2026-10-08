@@ -29,7 +29,10 @@ import {
   recordRef,
   stmtDropRefs,
 } from "../src/core/blobs.js";
-import { reconcilePackageFileRefs } from "../src/services/release/packages/refReconcile.js";
+import {
+  reconcilePackageFileRefs,
+  reconcileSql,
+} from "../src/services/release/packages/refReconcile.js";
 import { publicKeyIsPublic } from "../src/services/distribution/blobAccess.js";
 import { releaseCatalog } from "../src/services/release/catalog.js";
 import { loadProductPublic } from "../src/core/products.js";
@@ -240,39 +243,31 @@ describe("the blob route and package files (SEC-DST-1)", () => {
       "SELECT ref_kind, ref_id FROM blob_refs WHERE storage_key = ?",
       blobKey(appSha),
     );
-    // The old Worker publishes a second package version after the migration: `artifact` ref.
+    // The old Worker publishes package versions after the migration: `artifact` refs.
     const v2 = await addPackageRelease(w.db, w.env, SLUG, NOW, "99.9.8");
-    await w.db.run(
-      "UPDATE blob_refs SET ref_kind = 'artifact' WHERE storage_key = ?",
-      blobKey(v2.sha256),
-    );
-    // The old prune of the first version: its rows go, the (re-kinded) ref is not matched.
-    await w.db.run(
-      "UPDATE blob_refs SET ref_kind = 'artifact' WHERE storage_key = ?",
-      blobKey(pkg.sha256),
-    );
-    await w.db.run(
-      "DELETE FROM release_artifacts WHERE product = ? AND release_id = ?",
-      SLUG,
-      pkg.releaseId,
-    );
-    // A stale twin: both kinds exist for one ref id.
+    const v3 = await addPackageRelease(w.db, w.env, SLUG, NOW, "99.9.7");
+    for (const v of [v2, v3])
+      await w.db.run(
+        "UPDATE blob_refs SET ref_kind = 'artifact' WHERE storage_key = ?",
+        blobKey(v.sha256),
+      );
+    // A stale twin on v3: both kinds exist for one ref id.
     await recordRef(
       w.db,
       {
         product: SLUG,
-        storageKey: blobKey(v2.sha256),
+        storageKey: blobKey(v3.sha256),
         refKind: PACKAGE_FILE_REF,
-        refId: `${v2.releaseId}/file:pkgtest-sdk-99.9.8.tgz`,
+        refId: `${v3.releaseId}/file:pkgtest-sdk-99.9.7.tgz`,
       },
       NOW,
     );
     expect((await blob(v2.sha256)).status).toBe(200); // the window's exposure
-    expect((await blob(pkg.sha256)).status).toBe(200);
+    expect((await blob(v3.sha256)).status).toBe(200);
 
-    expect(await reconcilePackageFileRefs(w.db)).toBe(2);
+    expect(await reconcilePackageFileRefs(w.db, "cron")).toBe(2);
     expect((await blob(v2.sha256)).status).toBe(404);
-    expect((await blob(pkg.sha256)).status).toBe(404);
+    expect((await blob(v3.sha256)).status).toBe(404);
     expect(
       await w.db.all(
         "SELECT ref_kind, ref_id FROM blob_refs WHERE storage_key = ?",
@@ -280,7 +275,60 @@ describe("the blob route and package files (SEC-DST-1)", () => {
       ),
     ).toEqual(appBefore);
     expect((await blob(appSha)).status).toBe(200);
-    // Idempotent.
     expect(await reconcilePackageFileRefs(w.db)).toBe(0);
+  });
+
+  it("leaves an `artifact` ref with no release row alone (the pass never deletes what it cannot see)", async () => {
+    await recordRef(
+      w.db,
+      {
+        product: SLUG,
+        storageKey: blobKey(appSha),
+        refKind: "artifact",
+        refId: "gone/1",
+      },
+      NOW,
+    );
+    expect(await reconcilePackageFileRefs(w.db)).toBe(0);
+    expect(
+      await w.db.first("SELECT 1 AS n FROM blob_refs WHERE ref_id = 'gone/1'"),
+    ).not.toBeNull();
+  });
+
+  it("scans linearly: uncorrelated subqueries, and thousands of rows reconcile quickly", async () => {
+    for (const scope of ["cron", "all"] as const)
+      for (const sql of Object.values(reconcileSql(scope))) {
+        const plan = (
+          await w.db.all<{ detail: string }>(
+            `EXPLAIN QUERY PLAN ${sql.replace(/LIMIT \?/, "LIMIT 1")}`,
+          )
+        )
+          .map((r) => r.detail)
+          .join("\n");
+        expect(plan, plan).not.toMatch(/CORRELATED/);
+      }
+    const N = 4000;
+    const arts: string[] = [];
+    for (let i = 0; i < N; i++) {
+      const key = `blobs/sha256/${i.toString(16).padStart(64, "0")}`;
+      arts.push(`('${SLUG}','r${i}','a${i}','n','package',1)`);
+    }
+    await w.db.run("PRAGMA foreign_keys = OFF");
+    await w.db.run(
+      `INSERT INTO release_artifacts (product, release_id, artifact_id, name, kind, created_at) VALUES ${arts.join(",")}`,
+    );
+    await w.db.run(
+      `WITH RECURSIVE n(i) AS (SELECT 0 UNION ALL SELECT i + 1 FROM n WHERE i < ${N - 1})
+       INSERT OR IGNORE INTO blob_objects (storage_key, sha256, size, kind, gated, verified_at, created_at)
+       SELECT 'blobs/sha256/' || printf('%064x', i), printf('%064x', i), 1, 'blob', 0, 1, 1 FROM n`,
+    );
+    await w.db.run(
+      `WITH RECURSIVE n(i) AS (SELECT 0 UNION ALL SELECT i + 1 FROM n WHERE i < ${N - 1})
+       INSERT INTO blob_refs (product, storage_key, ref_kind, ref_id, created_at)
+       SELECT '${SLUG}', 'blobs/sha256/' || printf('%064x', i), 'artifact', 'r' || i || '/a' || i, 1 FROM n`,
+    );
+    const t = Date.now();
+    expect(await reconcilePackageFileRefs(w.db)).toBe(N);
+    expect(Date.now() - t).toBeLessThan(3000);
   });
 });

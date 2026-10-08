@@ -673,7 +673,9 @@ export async function handleScheduled(
   const registry: MaintenanceReport = { counts: {}, failures: {} };
   await runRegistryRenders(env, db, now, registry);
   // SEC-DST-1: heal package refs the deploy window's old Worker wrote as `artifact`, every tick.
-  await step(registry, "packageFileRefs", () => reconcilePackageFileRefs(db));
+  await step(registry, "packageFileRefs", () =>
+    reconcilePackageFileRefs(db, "cron"),
+  );
   Object.assign(report.counts, registry.counts);
   Object.assign((report.timings ??= {}), registry.timings);
   // A render failure stays queued and is retried every tick, so it is not the connector poll's

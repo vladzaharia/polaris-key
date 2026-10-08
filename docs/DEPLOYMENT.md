@@ -646,7 +646,7 @@ the new schema for a short window and may write `artifact` refs for a package pu
 its prune can leave refs with no release row). Nothing needs doing by hand: `reconcilePackageFileRefs`
 (`services/release/packages/refReconcile.ts`) re-kinds or deletes those refs. It runs in the deploy
 hook once the new Worker is live and on every cron tick, so the exposure ends at the deploy and is
-healed by the next tick at the latest. To check: no `blob_refs` row has `ref_kind = 'artifact'` and a
+healed by the next tick at the latest. The deploy hook writes a `feed.bootstrap` platform audit row when it changed anything; the cron path writes no audit row, only the `packageFileRefs` count in the maintenance report. Refs with no release row are never touched. A `package-file` ref left behind by the old Worker's prune is a storage leak, not an exposure, and is out of scope here. To check: no `blob_refs` row has `ref_kind = 'artifact'` and a
 `release_artifacts.kind = 'package'` row.
 
 ### Lazy deltas: the queues, the consumer Worker and the R2 rules (P4-17)

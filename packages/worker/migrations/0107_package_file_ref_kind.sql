@@ -10,13 +10,11 @@
 -- unchanged. Apply BEFORE the code ships: the new code ignores `artifact` refs of packages only
 -- by their kind, and the old kind would keep serving until this runs.
 
+-- Uncorrelated subqueries: one ephemeral index, not a scan of release_artifacts per ref.
 UPDATE blob_refs
    SET ref_kind = 'package-file'
  WHERE ref_kind = 'artifact'
-   AND EXISTS (SELECT 1 FROM release_artifacts a
-                WHERE a.product = blob_refs.product
-                  AND a.kind = 'package'
-                  AND a.release_id || '/' || a.artifact_id = blob_refs.ref_id)
-   AND NOT EXISTS (SELECT 1 FROM blob_refs b2
-                    WHERE b2.product = blob_refs.product AND b2.storage_key = blob_refs.storage_key
-                      AND b2.ref_kind = 'package-file' AND b2.ref_id = blob_refs.ref_id);
+   AND (product, ref_id) IN (SELECT product, release_id || '/' || artifact_id
+                               FROM release_artifacts WHERE kind = 'package')
+   AND (product, storage_key, ref_id) NOT IN (SELECT product, storage_key, ref_id
+                                                FROM blob_refs WHERE ref_kind = 'package-file');
