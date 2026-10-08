@@ -12,6 +12,16 @@
 | Human input | D4: the Polaris Key support and privacy addresses in docs/legal/help.md, before the public switch (owner step; docs plan §0)                               |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                  |
 
+## Owner decision (2026-10-08): public developer docs
+
+The developer sections (`start/`, `build/`, `features/`, `reference/`) are public (owner decision, 2026-10-08; [docs plan](../../../2026-10-08-docs/README.md) D2). Operate → Console stays member-only; Operate → Platform, Contribute and the runbook stay admin-only. Where the text below assumes members-only developer pages, this wins.
+
+- The access page catches only Operate pages.
+- Pagefind bundles: `help` and `developers` are public; `member` and `admin` stay behind their gates.
+- The tier rule: Help and Developers pages link only to public pages; the chrome exception covers only the landing's Operate card, labelled "For console members".
+- Developer pages are indexable and in the sitemap; gated pages keep `noindex`.
+- `llms.txt` for Help and the developer door is now possible (§3.9, P3); it is not in this package.
+
 ## Goal
 
 The pages and parts below ship and meet the docs plan's common definition of done (§6.3) and this package's own checks.

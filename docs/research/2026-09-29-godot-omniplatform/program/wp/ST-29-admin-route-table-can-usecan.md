@@ -24,7 +24,7 @@ These approved plans change this package. Where they differ from the text below,
 
 - [`plans/ST-28.md`](../plans/ST-28.md) §10: `can()` and `resolvePrincipal` live in `W/core/rbac/`, and `can()` is re-exported by `admin/authz.ts`. It uses the 13 areas of §2.1, `rbacArea` in place of `capability` with the security-widening mapping, and the `rbacRouteAreas`/`rbacAreas` drift tests with suffix-named `AREA_MOVES`. It fixes THREAT-MODEL `:5166`.
 - [`plans/CM-29.md`](../plans/CM-29.md) §10: the `commerce` row names PS-06's `storefronts/*` explicitly, as a Core route; `distribution/storefronts/**` stays `ship`. CM-29's admin routes are declared `commerce` and keep that area across the move.
-- [docs plan](../../../2026-10-08-docs/README.md) §10 amendment 2: the docs gate is tiered (§3.1). Help needs no session; the developer tier admits any console member, and anyone else reaches the public access page. DOC-03b's split lands before ST-30 issues non-admin sessions, so Product admins arriving from Integration never meet NoAccessPage.
+- [docs plan](../../../2026-10-08-docs/README.md) §10 amendment 2, as the owner's 2026-10-08 decision (D2) changes it: the docs gate is tiered. Help and the developer sections (`start/`, `build/`, `features/`, `reference/`) are public and need no session; Operate → Console admits any console member; Operate → Platform, Contribute and the runbook stay on `can('platform.docs')`. A reader without the right session reaches the public access page, never a bare console sign-in. This replaces the scope's single `platform.docs` gate on `/docs`.
 
 ## Goal
 
@@ -47,7 +47,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 **In:**
 
-- AdminRoute declarations for every console route with a capability and an area id (ST-28); a deny-by-default dispatcher owning session, rate limit, CSRF, 405, one product load, capability check, step-up and errors; can() in admin/authz.ts replaces the three identical predicates (authz.ts:19-44) and the handler re-checks (trustPolicy.ts:62, outletCredentials.ts:80, ciPublishing.ts:122,153); docs.ts admits through can('platform.docs') (Superadmin and Platform admin), no longer through 'a session exists' (docs.ts:7-11,160); /me.permissions; useCan; nav, palette and attention filtering; NoAccessPage listing who can grant access in that scope (name and a copyable email); every write control's disabledReason names the same people. With only the root rule, behaviour is unchanged. Absorbs ST-21.
+- AdminRoute declarations for every console route with a capability and an area id (ST-28); a deny-by-default dispatcher owning session, rate limit, CSRF, 405, one product load, capability check, step-up and errors; can() in admin/authz.ts replaces the three identical predicates (authz.ts:19-44) and the handler re-checks (trustPolicy.ts:62, outletCredentials.ts:80, ciPublishing.ts:122,153); docs.ts serves Help and the developer sections publicly, Operate → Console to any console session, and Operate → Platform, Contribute and the runbook through can('platform.docs') (Superadmin and Platform admin), no longer through 'a session exists' (docs.ts:7-11,160; owner, 2026-10-08); /me.permissions; useCan; nav, palette and attention filtering; NoAccessPage listing who can grant access in that scope (name and a copyable email); every write control's disabledReason names the same people. With only the root rule, behaviour is unchanged. Absorbs ST-21.
 
 **Out** (and where it belongs instead):
 
@@ -68,7 +68,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 - [ ] A route x principal matrix test covers every admin route
 - [ ] sessionFromRequest() is called only by the deny-by-default dispatcher (grep test)
-- [ ] docs.ts gates on can('platform.docs'), not on a session existing
+- [ ] docs.ts serves Help and the developer sections with no session, gates Operate → Console on a console session, and gates Operate → Platform, Contribute and the runbook on `can('platform.docs')` (owner, 2026-10-08)
 - [ ] THREAT-MODEL §9 trigger reviewed; no behaviour change for platform admins
 - [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `operate/console/members`, `reference/roles`, the runbook's lockout recovery and the rule 11 text.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.

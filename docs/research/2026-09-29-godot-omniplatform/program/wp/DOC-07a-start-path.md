@@ -12,6 +12,12 @@
 | Human input | none                                                                                                                               |
 | Repo        | `vladzaharia/polaris-key`                                                                                                          |
 
+## Owner decision (2026-10-08): public developer docs
+
+The developer sections (`start/`, `build/`, `features/`, `reference/`) are public (owner decision, 2026-10-08; [docs plan](../../../2026-10-08-docs/README.md) D2). Operate → Console stays member-only; Operate → Platform, Contribute and the runbook stay admin-only. Where the text below assumes members-only developer pages, this wins.
+
+- The landing copy labels only the Operate card "For console members"; the start path is public.
+
 ## Goal
 
 The pages and parts below ship and meet the docs plan's common definition of done (§6.3) and this package's own checks.

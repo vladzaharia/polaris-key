@@ -21,7 +21,7 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 These approved plans change this package. Where they differ from the text below, they win.
 
 - [`plans/ST-28.md`](../plans/ST-28.md) §10: it consolidates the AT-2 rows, the rule 11 text and the lockout rehearsal, and records the decisions: S-16 decision 3 and §5.6 (operators are accounts); S-18 D10 (the roles are these four); S-13 §8.2 (`console.access` is the one grant mechanism, strictly below a deploy-time root).
-- [docs plan](../../../2026-10-08-docs/README.md) §10 amendment 2: the docs gate is tiered (§3.1). Help needs no session; the developer tier admits any console member, and anyone else reaches the public access page. DOC-03b's split lands before ST-30 issues non-admin sessions, so Product admins arriving from Integration never meet NoAccessPage. ST-35 keeps the Pagefind split, now three bundles, and the rule 11 text.
+- [docs plan](../../../2026-10-08-docs/README.md) §10 amendment 2, with the owner's 2026-10-08 decision (D2): Help and the developer sections are public; Operate → Console is member-only and Operate → Platform, Contribute and the runbook are admin-only. ST-35 keeps the Pagefind split (`help` and `developers` public, `member` and `admin` gated) and the rule 11 text, which now covers only the gated Operate pages.
 
 ## Goal
 

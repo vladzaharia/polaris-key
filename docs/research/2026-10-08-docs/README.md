@@ -23,7 +23,7 @@ Inputs:
 
 - **Help** is public. It serves people using an app built on Polaris Key, who never chose
   Polaris Key.
-- **Developers** is for console members building apps.
+- **Developers** is for anyone building apps. It is public (D2).
 - **Operate** is for console operators and platform admins. Contributor pages sit inside it.
 
 Each door has its own sidebar and search scope, and one rule decides which door owns a page
@@ -48,16 +48,16 @@ package lands first, so every other package can start at once.
 
 ## 0. Decisions this plan needs, and the answers it assumes
 
-| #   | Decision                                                                                                                                                                                                                                                 | Answer assumed                                                                                                                                                                                                                                                                                                                                                                                                   | Who                                                                                                                 |
-| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| D1  | Consumer help on the same docs site, public. This reverses AGENTS.md rule 11 ("there is no public docs origin") for `/docs/help/`, `/docs/access/` and the landing page. It amends integration.md C-51 and I-19 ("customer help moves into the portal"). | **Yes**: the owner's request of 2026-10-08. Rule 11's text and C-51 are amended in DOC-03b (§10).                                                                                                                                                                                                                                                                                                                | Owner (given)                                                                                                       |
-| D2  | Who reads the developer docs (Start, Build, Features, Reference).                                                                                                                                                                                        | **Any console member** from 0.9. Before ST-30 issues non-admin sessions, that means platform admins, as today. Anyone else who opens a member page gets the public **access page** (§3.1), never a bare console sign-in. Reconsider making them public at the 1.0 review (P0-51). Owner decision 3 already keeps our SDKs unlisted for customers, and public developer docs would also unlock `llms.txt` (§3.9). | Lead, under delegated authority; recorded                                                                           |
-| D3  | The two integration paths: recommend one?                                                                                                                                                                                                                | **No.** They are equal lanes with a comparison table and no "Recommended" badge (owner direction, 2026-10-07). The console offers the kit first, because it renders a snippet; the docs give both equal depth.                                                                                                                                                                                                   | Owner (given)                                                                                                       |
-| D4  | Polaris Key support and privacy addresses (`[[OWNER: support email]]` in `docs/legal/help.md`).                                                                                                                                                          | Owner step, **required before Help goes public** (DOC-03b's switch). A reader locked out of their account, or asking for a copy of their data, has nobody else to ask. Until the address exists, Help stays member-only, as the users pages are today. If the owner wants Help public sooner, the owner accepts that gap and the lead records it.                                                                | Owner step (owner-steps checklist)                                                                                  |
-| D5  | Publish the privacy policy and terms (`docs/legal/privacy.md`, `terms.md`).                                                                                                                                                                              | They publish only after counsel signs off. Until then, Help has a plain "Your data and privacy" page with no legal claims.                                                                                                                                                                                                                                                                                       | Owner step                                                                                                          |
-| D6  | Translate Help?                                                                                                                                                                                                                                          | English in 0.9. Message titles in the translated copy catalogs are indexed as search aliases from the start (§7.5). The top 15 articles go into the kit-copy locales later (P3, §7.6).                                                                                                                                                                                                                           | Lead                                                                                                                |
-| D7  | Where the docs' components come from.                                                                                                                                                                                                                    | **The console's own `ui/`** (`packages/admin/src/ui`). Static components render at build time with no client JavaScript; interactive parts use class constants the console components export and use themselves (§8.2). No new brand stylesheet, and the mockup kit is not extracted.                                                                                                                            | Lead, under delegated authority. DOC-02a records it in components.md §7 and BRAND.md §2, lead-approved in plan mode |
-| D8  | Reserve the product slug `help`.                                                                                                                                                                                                                         | **Yes.** `/help` and `<baseUrl>/help/code/<id>` would otherwise collide with a product slugged `help`. DOC-03b adds it to `RESERVED_PRODUCT_SLUGS` and the schema. The lead confirms no registered product uses it before the alias goes live.                                                                                                                                                                   | Lead                                                                                                                |
+| #   | Decision                                                                                                                                                                                                                                                 | Answer assumed                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Who                                                                                                                 |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| D1  | Consumer help on the same docs site, public. This reverses AGENTS.md rule 11 ("there is no public docs origin") for `/docs/help/`, `/docs/access/` and the landing page. It amends integration.md C-51 and I-19 ("customer help moves into the portal"). | **Yes**: the owner's request of 2026-10-08. Rule 11's text and C-51 are amended in DOC-03b (§10).                                                                                                                                                                                                                                                                                                                                                                                  | Owner (given)                                                                                                       |
+| D2  | Who reads the developer docs (Start, Build, Features, Reference).                                                                                                                                                                                        | **Anyone: the developer sections are public** (owner decision, 2026-10-08, superseding the lead's members-only call). Operate → Console stays member-only; Operate → Platform, Contribute and the runbook stay admin-only. Every page's source is already public in the MIT repo, so the gate hid nothing; it only stopped integrators following the console's links into the docs. Public developer pages are indexable and in the sitemap, and `llms.txt` can cover them (§3.9). | Owner (2026-10-08)                                                                                                  |
+| D3  | The two integration paths: recommend one?                                                                                                                                                                                                                | **No.** They are equal lanes with a comparison table and no "Recommended" badge (owner direction, 2026-10-07). The console offers the kit first, because it renders a snippet; the docs give both equal depth.                                                                                                                                                                                                                                                                     | Owner (given)                                                                                                       |
+| D4  | Polaris Key support and privacy addresses (`[[OWNER: support email]]` in `docs/legal/help.md`).                                                                                                                                                          | Owner step, **required before Help goes public** (DOC-03b's switch). A reader locked out of their account, or asking for a copy of their data, has nobody else to ask. Until the address exists, Help stays member-only, as the users pages are today. If the owner wants Help public sooner, the owner accepts that gap and the lead records it.                                                                                                                                  | Owner step (owner-steps checklist)                                                                                  |
+| D5  | Publish the privacy policy and terms (`docs/legal/privacy.md`, `terms.md`).                                                                                                                                                                              | They publish only after counsel signs off. Until then, Help has a plain "Your data and privacy" page with no legal claims.                                                                                                                                                                                                                                                                                                                                                         | Owner step                                                                                                          |
+| D6  | Translate Help?                                                                                                                                                                                                                                          | English in 0.9. Message titles in the translated copy catalogs are indexed as search aliases from the start (§7.5). The top 15 articles go into the kit-copy locales later (P3, §7.6).                                                                                                                                                                                                                                                                                             | Lead                                                                                                                |
+| D7  | Where the docs' components come from.                                                                                                                                                                                                                    | **The console's own `ui/`** (`packages/admin/src/ui`). Static components render at build time with no client JavaScript; interactive parts use class constants the console components export and use themselves (§8.2). No new brand stylesheet, and the mockup kit is not extracted.                                                                                                                                                                                              | Lead, under delegated authority. DOC-02a records it in components.md §7 and BRAND.md §2, lead-approved in plan mode |
+| D8  | Reserve the product slug `help`.                                                                                                                                                                                                                         | **Yes.** `/help` and `<baseUrl>/help/code/<id>` would otherwise collide with a product slugged `help`. DOC-03b adds it to `RESERVED_PRODUCT_SLUGS` and the schema. The lead confirms no registered product uses it before the alias goes live.                                                                                                                                                                                                                                     | Lead                                                                                                                |
 
 ---
 
@@ -155,14 +155,14 @@ nobody can use is a row in a generated table (§5, UI kits), not a page.
 
 ### 3.1 One site, three doors, three access tiers
 
-| Door                                 | Paths                                                                 | Readers                                              | Access                                                                                       |
-| ------------------------------------ | --------------------------------------------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| Landing                              | `/docs/`                                                              | anyone                                               | **public**                                                                                   |
-| Access page                          | `/docs/access/`                                                       | anyone sent from a gated page                        | **public**                                                                                   |
-| **Help**                             | `/docs/help/…`; short alias `key.plrs.im/help/…`                      | people using an app built on Polaris Key             | **public**: no session, indexable, sitemap                                                   |
-| **Developers**                       | `/docs/start/`, `/docs/build/`, `/docs/features/`, `/docs/reference/` | developers building on Polaris Key (console members) | **member**: any console member (D2). Platform admins only until the split ships before ST-30 |
-| **Operate**: Console                 | `/docs/operate/console/…`                                             | operators using the console                          | **member**                                                                                   |
-| **Operate**: Platform and Contribute | `/docs/operate/platform/…`, `/docs/contribute/…`                      | platform admins; contributors to Polaris Key         | **admin**: `can('platform.docs')` (ST-29)                                                    |
+| Door                                 | Paths                                                                 | Readers                                              | Access                                     |
+| ------------------------------------ | --------------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------ |
+| Landing                              | `/docs/`                                                              | anyone                                               | **public**                                 |
+| Access page                          | `/docs/access/`                                                       | anyone sent from an Operate page                     | **public**                                 |
+| **Help**                             | `/docs/help/…`; short alias `key.plrs.im/help/…`                      | people using an app built on Polaris Key             | **public**: no session, indexable, sitemap |
+| **Developers**                       | `/docs/start/`, `/docs/build/`, `/docs/features/`, `/docs/reference/` | developers building on Polaris Key (console members) | **public** (D2)                            |
+| **Operate**: Console                 | `/docs/operate/console/…`                                             | operators using the console                          | **member**                                 |
+| **Operate**: Platform and Contribute | `/docs/operate/platform/…`, `/docs/contribute/…`                      | platform admins; contributors to Polaris Key         | **admin**: `can('platform.docs')` (ST-29)  |
 
 **Which door owns a page.** Developers and Operate both serve console members, often the same
 person, so the rule follows the subject, not the reader:
@@ -199,14 +199,14 @@ Managed config.
   public page references are `public, immutable`. A file only gated pages reference (an imported
   image, a page's script chunk) takes the strictest tier among them and is served behind that gate
   as `private, immutable`.
-- **Pagefind runs three times**, one bundle per tier: `pagefind/help`, `pagefind/member` and
-  `pagefind/admin`. The member and admin bundles sit behind their tier's gate. The search dialog
-  always loads the Help bundle and calls `mergeIndex` for each gated bundle the reader can fetch.
-  Gated text never reaches a public index.
+- **Pagefind runs once per tier**: `pagefind/help` and `pagefind/developers` (both public),
+  `pagefind/member` and `pagefind/admin`. The member and admin bundles sit behind their tier's
+  gate. The search dialog loads the public bundles and calls `mergeIndex` for each gated bundle the
+  reader can fetch. Gated text never reaches a public index.
 - **The tier rule in `check:links`**: a public page links only to public pages, and a member page
   never links to an admin page. **One exception, in the page chrome only:** the landing's door
-  cards and the Help footer may link to a gated door's overview (`/docs/start/`, `/docs/operate/`),
-  and the link carries the label "For console members". The lint allows exactly those
+  cards may link to the gated door's overview (`/docs/operate/`), and the link carries the label
+  "For console members". The lint allows exactly those
   components; any such link in page content fails. Gated pages carry `noindex`, and the sitemap
   lists public pages only.
 - **`key.plrs.im/help` and `/help/*` redirect** (302) to `/docs/help/*`. This is a new worker path:
@@ -226,7 +226,7 @@ as in the console. Help groups are short and stay open. Items marked _(package)_
 package ships; before then they stay out of the sidebar.
 
 ```text
-HELP  (public)                                    DEVELOPERS  (console members)
+HELP  (public)                                    DEVELOPERS  (public)
 Help home                                         START HERE
 GET STARTED                                         Overview
   What is Polaris Key?                              Your first product
@@ -344,7 +344,7 @@ The header is door-specific, which is how a consumer never meets developer navig
 
 - **Help** pages show the lockup with a **Help** tag, **Search help**, **Your library ↗** (the
   portal) and the theme button. They have **no door tabs**. The only way across is the footer's
-  "Building an app? Developer docs (for console members)".
+  "Building an app? Developer docs".
 - **Developers** and **Operate** pages show the **Docs** tag, the door tabs (**Developers ·
   Operate · Help**), **Search the docs ⌘K**, **Developer changelog**, **Console ↗** and the theme
   button.
@@ -356,7 +356,7 @@ The header is door-specific, which is how a consumer never meets developer navig
 - **Three doors** as equal cards, in plain words:
   - "I use an app that runs on Polaris Key": Help. "Activate, sign in, devices, downloads,
     refunds."
-  - "I'm building an app with Polaris Key": Developers, labelled "For console members". "Your
+  - "I'm building an app with Polaris Key": Developers. "Your
     first product, start to finish." A duration is added only once the fresh-reader run (§6.2)
     has measured it.
   - "I run a Polaris Key console": Operate, labelled "For console members". "Products, licenses,
@@ -514,8 +514,8 @@ Rules:
 
 - `⌘K` opens one dialog. Results are grouped by door (**Help**, **Developers**, **Operate**).
   Each result shows its section path and a feature glyph.
-- On Help pages, results are **Help only** by default, with a "Search all docs" chip shown only to
-  readers who have a gated bundle.
+- On Help pages, results are **Help only** by default, with a "Search all docs" chip (Developers is public; Operate joins for readers with its
+  bundle).
 - Guides rank above reference (Pagefind weights). `?q=` is linkable. Typing an error code or a
   message id jumps to its entry. A message's title in every translated copy catalog is indexed as
   an alias of its entry, so a reader who saw it in German still finds it.
@@ -524,8 +524,8 @@ Rules:
 
 - `.md` for every page, with tabs flattened into labelled sections.
 - A **Copy page** button.
-- `llms.txt` for Help now. For the developer door once D2 makes it public; until then AGENTS.md
-  rule 11 stands for gated pages, and agents read the repo.
+- `llms.txt` for Help and the developer door (both public, D2). AGENTS.md rule 11 stands for the
+  gated Operate pages, and agents read the repo.
 
 ---
 
