@@ -1067,6 +1067,33 @@ nothing to bump and no per-SDK tag:
   dist-tag and the image's tag included), naming each package that is behind. A failed publish
   shows up here too; rerun the failed jobs, then the drift job. npm's `latest` must be a stable
   release: a prerelease there (no stable release yet) fails a `main` or `beta` build's check.
+- **npm order and closure (P0-52):** the npm packages pin each other exactly, so they publish in
+  five tiers (`npm-tier-0` … `npm-tier-4`), each needing the one below, and `publish-package.yml`
+  publishes an npm package only once the feed lists every `@polaris-key` version it pins
+  (`tools/feed-closure.mjs requires`, waiting up to ten minutes for the render queue). The drift
+  job then checks every pin of the build's version, and `npm-install` installs from the feed in
+  empty directories: `pnpm add @polaris-key/node` with pnpm 11's defaults (its one-day age gate
+  picks the newest version a day old), `npm install @polaris-key/react react react-dom`, and the
+  build's exact set.
+- **A leg stuck in `waiting`:** GitHub occasionally never advances one deployment to
+  `package-registry` (no reviewer or timer can release it). Nothing above its tier publishes.
+  Cancel the run, then **Re-run failed jobs**: the stuck leg and every tier above it run again.
+- **Closure red:** `feed-closure.yml` checks every version on the npm and PyPI feeds daily (and on
+  demand) and lists each broken pin as `<package>@<version> -> <dependency>@<version>` in its job
+  summary; the drift job lists them as warnings on every publish. `node tools/feed-closure.mjs`
+  prints the same list locally, and `--assume <name@version>,…` shows what a backfill would leave.
+  Two repairs: publish the missing version from its tag (`npm-repair.yml`, below), or deprecate
+  the dependents (installers then prefer another version; the check reports a deprecated
+  dependent as a warning).
+- **Backfill (`npm-repair.yml`):** Actions → **Repair the npm feed** → **Run workflow** on `main`,
+  with `tag` (the release tag, `v0.8.28`) and `packages` (short names, space-separated, `jws`);
+  `dry-run` stops after the checks. The run refuses a tag that is not a release tag on `main`, a
+  version the feed already lists, and a package whose pins the feed lacks (name dependent packages
+  in separate runs, the dependency first). It builds and tests the packages at the tag, publishes
+  each through `publish-package.yml` in `package-registry` on the tag's channel (`latest` does not
+  move: a channel's head is its newest version), then checks every pin of that version. Owner
+  decision 2026-10-08: two runs, `v0.8.28` with `jws` and `v0.8.29` with `protocol`, which close
+  the nine versions v0.8.28 and v0.8.29 left broken.
 - **Expected red, until the next `v*` deploy:** registration runs only from `deploy.yml` on a
   tag (staging and dev have no deploy hook). So `main` pushes publish nothing that depends on a
   registration no deploy has made yet: before the first deploy that registers the platform

@@ -66,14 +66,30 @@ Then install as usual:
 ```sh
 npm install @polaris-key/node          # or @polaris-key/react, @polaris-key/client-core, …
 pnpm add -D @polaris-key/cli
-npm install @polaris-key/node@beta     # the newest pre-release
+npm install @polaris-key/node@beta     # the beta channel: the newest pre-release or release
 ```
 
 The feed carries `@polaris-key/node`, `react`, `client-core`, `cli`, `manifest`, `jws`,
 `protocol`, `catalog`, `brand` and `zstd-wasm`. Each package's dependencies on the others resolve
-through the same scope line. Recent Yarn releases hold back versions younger than their
-`npmMinimalAgeGate`. A version published a moment ago installs with Yarn once that window has
-passed, or at once with `npmMinimalAgeGate: 0`.
+through the same scope line. Every package of a version is published together and pins the others
+at exactly that version.
+
+### Age gates
+
+Some clients skip a version until it reaches a minimum age, to sit out a compromised release.
+pnpm 11 and recent Yarn releases do this by default, for one day:
+
+| Client      | Setting                                    | Default                    | To take new `@polaris-key` versions at once                                                 |
+| ----------- | ------------------------------------------ | -------------------------- | ------------------------------------------------------------------------------------------- |
+| pnpm 11     | `minimumReleaseAge` (minutes)              | `1440`, one day            | `minimumReleaseAgeExclude: ["@polaris-key/*"]` in `pnpm-workspace.yaml`                     |
+| pnpm 10.16+ | `minimumReleaseAge` (minutes)              | off                        | the same                                                                                    |
+| Yarn 4      | `npmMinimalAgeGate` (minutes)              | one day in recent releases | `npmPreapprovedPackages: ["@polaris-key/*"]` in `.yarnrc.yml`                               |
+| npm         | `min-release-age` (days)                   | off                        | `min-release-age-exclude[]=@polaris-key/*` in `.npmrc`                                      |
+| Bun         | `minimumReleaseAge` (seconds), `[install]` | off                        | `minimumReleaseAgeExcludes` in `bunfig.toml`, each package by name (a pattern matches none) |
+
+Behind a gate, `pnpm add @polaris-key/node` installs the newest version that is at least a day
+old, not the newest version, and the whole set waits together. Exempt the scope only if you want
+each release the moment it ships.
 
 ## Python: pip, uv and Poetry
 
@@ -99,7 +115,7 @@ url = "https://pkg.plrs.im/pypi/polaris-key/simple/"
 priority = "explicit"
 
 [tool.poetry.dependencies]
-polaris-key = { version = "^0.1", source = "polaris-key" }
+polaris-key = { version = "^0.8.33", source = "polaris-key" }
 ```
 
 pip cannot route one project to one index, so install in two steps: the dependencies from your
@@ -128,7 +144,7 @@ Then depend on the package by its registry identity:
 ```swift
 // Package.swift
 dependencies: [
-    .package(id: "polaris-key.PolarisKey", from: "0.1.0"),
+    .package(id: "polaris-key.PolarisKey", from: "0.8.33"),
 ],
 targets: [
     .target(name: "MyApp", dependencies: [
@@ -186,8 +202,8 @@ dependencyResolutionManagement {
 ```kotlin
 // build.gradle.kts
 dependencies {
-    implementation("im.plrs.key:polaris-key-sdk:0.1.0")             // the umbrella client
-    implementation("im.plrs.key:polaris-key-platform-play:0.1.0")   // Android, a Play build
+    implementation("im.plrs.key:polaris-key-sdk:0.8.33")             // the umbrella client
+    implementation("im.plrs.key:polaris-key-platform-play:0.8.33")   // Android, a Play build
     // or im.plrs.key:polaris-key-platform-direct for a sideloaded / direct build
 }
 ```
@@ -238,7 +254,7 @@ For scripted installs, GodotEnv takes the entry the feed's index publishes for e
 {
   "addons": {
     "polaris_key": {
-      "url": "https://pkg.plrs.im/godot/polaris-key/files/<sha256>/polaris-key-godot-v0.1.0.zip",
+      "url": "https://pkg.plrs.im/godot/polaris-key/files/<sha256>/polaris-key-godot-v0.8.33.zip",
       "source": "zip",
       "subfolder": "addons/polaris_key"
     }
@@ -253,11 +269,11 @@ Mount the project at `/work`:
 
 ```sh
 docker run --rm -v "$PWD:/work" pkg.plrs.im/polaris-key/pkey:latest validate
-podman pull pkg.plrs.im/polaris-key/pkey:0.1.0
+podman pull pkg.plrs.im/polaris-key/pkey:0.8.33
 ```
 
-`latest` is the newest stable release, `beta` the newest tagged pre-release, `main` the newest
-build of `main`, and each version is a tag that never moves.
+`latest` is the newest stable release, `beta` the newest tagged pre-release or stable release,
+whichever is newer, `main` the newest build of `main`, and each version is a tag that never moves.
 
 ## Private feeds
 
@@ -371,8 +387,9 @@ every push to `main` and, through the production deploy, on every `v*` tag: it d
 from git, stamps it into every SDK, builds and tests each one, and publishes each package with
 `pkey release publish` through one reusable workflow, `publish-package.yml`. That workflow is the
 `polaris-key` product's trusted publisher (see [Publishing from CI](/docs/build/ci/)), so the
-repository holds no publishing token. A last job reads every feed back and fails unless each
-package shows the version just published. The whole flow is on
+repository holds no publishing token. The npm packages publish in dependency order, each only once
+the feed lists every version it pins, so every version installs. A last job reads every feed back
+and fails unless each package shows the version just published. The whole flow is on
 [Releasing](/docs/contribute/releasing/).
 
 | Trigger          | Every SDK is published at                  | Channel                                   |

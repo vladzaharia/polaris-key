@@ -1251,6 +1251,23 @@ symbol); review catches the rest.
   protected release tag can publish a version (branch protection and the ruleset are the
   controls), and a version once published is immutable, so a bad release is yanked and
   superseded, never replaced.
+- **Feed coherence and the manual backfill (P0-52).** The npm packages pin each other at exactly
+  one version, so a dependent published without its dependency cannot be installed (nine versions
+  of v0.8.28 and v0.8.29, after legs stuck in `waiting`). `publish-sdks.yml` publishes them in
+  dependency tiers, and `publish-package.yml` publishes an npm package only once the feed lists
+  every `@polaris-key` version its tarball pins; a read-only check (`tools/feed-closure.mjs`) runs
+  after each publish and daily. The one other caller of the trusted publisher is
+  `npm-repair.yml`, a `workflow_dispatch` on `main` that backfills an npm package at an existing
+  release tag's version. It passes `release-tag`, and the publisher then requires a manual dispatch
+  on `main`, an npm deliverable, a `vX.Y.Z[-pre.N]` tag that names exactly the version and is an
+  ancestor of `main`, and the tag's own channel; the plan refuses a version the feed already lists,
+  and the Worker refuses one anyway (unique forever). The OIDC claims are the ones a `main` push
+  presents (`publish-package.yml` at `refs/heads/main`, `package-registry`, `workflow_dispatch` is
+  an allowed event), so the Worker's policy is unchanged. Residual: anyone with write access can
+  dispatch it and publish, from a protected tag's tree, a version of a tagged release that never
+  reached the feed. That is no more than a push to `main` already allows, and every such version
+  is audited like any publish. The channel head is the newest version by SemVer, so a backfilled
+  older release never becomes `latest`.
 - **The deploy hook (`POST /webhooks/deploy`, F-10 automation).** It bootstraps the system
   product, links it to the monorepo and applies the root `.pkey/` sent in its body: the package
   deliverables and the trusted publisher every SDK publish relies on. It is authenticated by the
@@ -1625,7 +1642,8 @@ that property for CI and bounds it everywhere else:
   (never replace one) under the owner's namespace until revoked, and every such version names the
   token on its package record and in the audit.
 - **Never on the platform's own feeds.** The system product's (`polaris-key`) SDK feeds are
-  published only by `publish-sdks.yml`, in lockstep with the server (F-10 owner ruling), because
+  published only by `publish-sdks.yml`, in lockstep with the server (F-10 owner ruling), and by
+  `npm-repair.yml`'s backfill of a tagged version that never landed (P0-52), because
   versions are unique forever and one hand-published version would block the pipeline's next
   publish of it: `mintRegistryToken` refuses a publish token for the system product
   (`system_feeds_pipeline_only`), the console offers no publish option on the platform scope, and
