@@ -1,0 +1,701 @@
+{
+  "$comment": "Console copy debt (test/copyLint.test.ts, ST-37): strings that broke the console copy rules on the concepts page (packages/docs/src/content/docs/start/concepts.md, 'Console copy rules') when the lint landed. 'outlet', 'storefront feed', 'grant' and 'capability' leave the UI; the packages that rebuild these pages rename them: the Distribution, Commerce and release pages (A-21, A-22, CM-23), the catalog's user grant (LX-34), the licensing settings (LX-40), release tracks (P2-08), access and feed vocabulary (P2-10, P2-11) and the service table (ST-38). The test fails on any string not listed here and on an entry that no longer appears as often, so the list only shrinks. Shrink it with PKEY_RECORD_COPY_DEBT=1 (it never adds an entry), then run prettier on this file.",
+  "debt": [
+    {
+      "rule": "capability",
+      "file": "console/areas/distribution/OutletsPage.tsx",
+      "text": "Capabilities",
+      "count": 3
+    },
+    {
+      "rule": "capability",
+      "file": "console/areas/distribution/OutletsPage.tsx",
+      "text": "Change a capability first.",
+      "count": 1
+    },
+    {
+      "rule": "capability",
+      "file": "console/areas/distribution/OutletsPage.tsx",
+      "text": "kind, so it carries no capabilities.",
+      "count": 1
+    },
+    {
+      "rule": "capability",
+      "file": "console/areas/distribution/OutletsPage.tsx",
+      "text": "Narrow {…}'s capabilities?",
+      "count": 1
+    },
+    {
+      "rule": "capability",
+      "file": "console/areas/distribution/OutletsPage.tsx",
+      "text": "Narrow capabilities",
+      "count": 1
+    },
+    {
+      "rule": "capability",
+      "file": "console/areas/distribution/OutletsPage.tsx",
+      "text": "Narrow capabilities…",
+      "count": 1
+    },
+    {
+      "rule": "capability",
+      "file": "console/areas/distribution/OutletsPage.tsx",
+      "text": "Narrowed {…}'s capabilities",
+      "count": 1
+    },
+    {
+      "rule": "capability",
+      "file": "console/areas/distribution/OutletsPage.tsx",
+      "text": "Revert {…}'s capabilities to the manifest?",
+      "count": 1
+    },
+    {
+      "rule": "capability",
+      "file": "console/areas/distribution/OutletsPage.tsx",
+      "text": "Reverted {…}'s capabilities to the manifest",
+      "count": 1
+    },
+    {
+      "rule": "capability",
+      "file": "console/areas/storefronts/StorefrontsPage.tsx",
+      "text": "{…} capabilities",
+      "count": 2
+    },
+    {
+      "rule": "capability",
+      "file": "console/settings.generated.ts",
+      "text": "Outlet capabilities",
+      "count": 1
+    },
+    {
+      "rule": "grant",
+      "file": "console/areas/distribution/CommercePage.tsx",
+      "text": "Grants flag",
+      "count": 1
+    },
+    {
+      "rule": "grant",
+      "file": "console/areas/feeds/model.ts",
+      "text": "Clients whose license grants the package's entitlement flag.",
+      "count": 1
+    },
+    {
+      "rule": "grant",
+      "file": "console/areas/update/FeedPage.tsx",
+      "text": "Every license grant is intersected with this window.",
+      "count": 1
+    },
+    {
+      "rule": "grant",
+      "file": "console/pages/config/CatalogEntryForm.tsx",
+      "text": "Grant label",
+      "count": 1
+    },
+    {
+      "rule": "grant",
+      "file": "console/pages/config/CatalogEntryForm.tsx",
+      "text": "Grant to the user",
+      "count": 1
+    },
+    {
+      "rule": "grant",
+      "file": "console/pages/config/CatalogPage.tsx",
+      "text": "User grant",
+      "count": 2
+    },
+    {
+      "rule": "grant",
+      "file": "console/pages/core/Settings.tsx",
+      "text": "Metadata only. It grants nothing: console access is platform-wide. Clear it to remove the group.",
+      "count": 1
+    },
+    {
+      "rule": "grant",
+      "file": "console/pages/core/Settings.tsx",
+      "text": "Set by adminGroup in .pkey/product. It grants nothing: console access is platform-wide.",
+      "count": 1
+    },
+    {
+      "rule": "grant",
+      "file": "console/pages/license/LicenseSettingsPage.tsx",
+      "text": "A device sees the entitlements of every licence and grant its holder has, combined, not just its own licence's.",
+      "count": 1
+    },
+    {
+      "rule": "grant",
+      "file": "console/pages/license/LicenseSettingsPage.tsx",
+      "text": "A refund or chargeback still revokes the grant; this only delays it.",
+      "count": 1
+    },
+    {
+      "rule": "grant",
+      "file": "console/pages/license/LicenseSettingsPage.tsx",
+      "text": "How licences, grants and entitlements combine for this product. Declared in",
+      "count": 1
+    },
+    {
+      "rule": "grant",
+      "file": "console/settings.generated.ts",
+      "text": "Always revokes that one grant (S-19 decision 5). licensing.refundGraceHours can only delay the revocation, by at most 168 hours, never prevent it; a keep-access-after-refund switch would override a store's revocation.",
+      "count": 1
+    },
+    {
+      "rule": "grant",
+      "file": "console/settings.generated.ts",
+      "text": "Days a subscription grant keeps working while the store retries a failed renewal. Zero follows the store's own billing grace only.",
+      "count": 1
+    },
+    {
+      "rule": "grant",
+      "file": "console/settings.generated.ts",
+      "text": "Grant and licence provenance (LX-08)",
+      "count": 1
+    },
+    {
+      "rule": "grant",
+      "file": "console/settings.generated.ts",
+      "text": "Grants, entitlements, catalog flags and account overrides",
+      "count": 1
+    },
+    {
+      "rule": "grant",
+      "file": "console/settings.generated.ts",
+      "text": "Hooks that turn a verified OIDC claim into an entitlement and a secret on the signed-in person's licence: the claim, the entitlement key and value, and a secret built from a URL template whose host must be one the hook allows. Changing one changes what a sign-in grants.",
+      "count": 1
+    },
+    {
+      "rule": "grant",
+      "file": "console/settings.generated.ts",
+      "text": "Hours a refunded or charged-back grant keeps working before it is revoked. Zero revokes at once. It only delays the revocation; a refund always revokes.",
+      "count": 1
+    },
+    {
+      "rule": "grant",
+      "file": "console/settings.generated.ts",
+      "text": "Named channels beyond stable and beta, each matching release tags by an anchored regular expression (a nightly or canary line). Licences grant them and SDKs request them like any other channel.",
+      "count": 1
+    },
+    {
+      "rule": "grant",
+      "file": "console/settings.generated.ts",
+      "text": "Records of where a grant or a sale-minted licence came from (a store purchase, a Polaris Key sale, an OIDC sign-in, an operator's comp): facts about a sale, not Polaris behaviour.",
+      "count": 1
+    },
+    {
+      "rule": "grant",
+      "file": "console/settings.generated.ts",
+      "text": "The numeric catalog flags (combined by max) that raise a person's total bytes or save slots, so a purchase can grant more storage.",
+      "count": 1
+    },
+    {
+      "rule": "grant",
+      "file": "console/settings.generated.ts",
+      "text": "Whether devices see the combined entitlements of every grant their holder has, or only their own licence's (the legacy model). Products registered before 2026-10-06 start on legacy; newer ones start combined.",
+      "count": 1
+    },
+    {
+      "rule": "grant",
+      "file": "lib/channels.ts",
+      "text": "Manual; the grant also covers beta",
+      "count": 1
+    },
+    {
+      "rule": "grant",
+      "file": "lib/labels.ts",
+      "text": "Devices whose license grants a specific entitlement flag.",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/AppStorePage.tsx",
+      "text": "Open Outlet credentials",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/ascShared.tsx",
+      "text": "App Store Connect isn't configured for this product. Set its key in Outlet credentials.",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/ascShared.tsx",
+      "text": "This product has no App Store Connect connector. Declare an App Store outlet in .pkey/distribution.",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/CellDrawer.tsx",
+      "text": "No rollout: each channel offers its release to every device on this outlet.",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/CellDrawer.tsx",
+      "text": "Not available here: no report from CI or a store connector, and Polaris Key does not serve this release on this outlet.",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/CellDrawer.tsx",
+      "text": "releases, or the outlet was removed.",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/CellDrawer.tsx",
+      "text": "The release or the outlet is not among the rows shown. It may be older than the newest",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/CommercePage.tsx",
+      "text": "Open Outlet credentials",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/CredentialsPage.tsx",
+      "text": "Any of the product's outlets",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/CredentialsPage.tsx",
+      "text": "Bind it to one outlet, or leave Any to let the connector choose.",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/CredentialsPage.tsx",
+      "text": "Delete the outlet credential “{…}”?",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/CredentialsPage.tsx",
+      "text": "Deleted the outlet credential “{…}”",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/CredentialsPage.tsx",
+      "text": "No outlet credentials yet",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/CredentialsPage.tsx",
+      "text": "Outlet",
+      "count": 3
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/CredentialsPage.tsx",
+      "text": "Outlet credential",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/CredentialsPage.tsx",
+      "text": "Outlet credentials",
+      "count": 2
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/CredentialsPage.tsx",
+      "text": "Set an outlet credential",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/HealthPage.tsx",
+      "text": "Also reported from outlets this product doesn't declare (counted, never judged):",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/HealthPage.tsx",
+      "text": "an outlet",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/HealthPage.tsx",
+      "text": "Store a Sentry internal integration's client secret as an outlet credential to receive alerts here.",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/HealthPage.tsx",
+      "text": "the outlet",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/HealthPage.tsx",
+      "text": "The rollout is halted as you: the feeds stop offering the release on this outlet.",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/MatrixPage.tsx",
+      "text": "{…} release × outlet {…} recomputed. Holds follow the new answer.",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/MatrixPage.tsx",
+      "text": "A release appears here once CI publishes one. Each outlet then reports where it is live.",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/MatrixPage.tsx",
+      "text": "Distribution matrix of {…}: releases by outlet",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/MatrixPage.tsx",
+      "text": "No outlets declared",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/MatrixPage.tsx",
+      "text": "Outlets are the places a release reaches: Polaris Key downloads, the stores, the storefront feeds. Declare them in .pkey/distribution and resync.",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/OutletsPage.tsx",
+      "text": "Leave as Any when the key signs for every outlet.",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/OutletsPage.tsx",
+      "text": "No outlet {…}",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/OutletsPage.tsx",
+      "text": "No outlets declared",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/OutletsPage.tsx",
+      "text": "Outlet",
+      "count": 5
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/OutletsPage.tsx",
+      "text": "Outlet not found",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/OutletsPage.tsx",
+      "text": "Outlets",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/OutletsPage.tsx",
+      "text": "Outlets & feeds",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/OutletsPage.tsx",
+      "text": "Outlets are where a release reaches people: Polaris Key downloads, the stores, AltStore, F-Droid, Flathub. Declare them under outlets in .pkey/distribution and resync.",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/OutletsPage.tsx",
+      "text": "Outlets come from .pkey/distribution.",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/OutletsPage.tsx",
+      "text": "Search outlets",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/OutletsPage.tsx",
+      "text": "They are live on the outlet, or the outlet is self-hosted.",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/OutletsPage.tsx",
+      "text": "They have a build for the outlet.",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/RolloutDialogs.tsx",
+      "text": "Choose an outlet",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/RolloutDialogs.tsx",
+      "text": "Choose an outlet.",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/RolloutDialogs.tsx",
+      "text": "Offer a release to a share of the devices on one outlet's channel. Raise the share as it proves itself.",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/RolloutDialogs.tsx",
+      "text": "Outlet",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/RolloutDialogs.tsx",
+      "text": "Resume per outlet from Rollouts, or roll back to {…}.",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/RolloutDialogs.tsx",
+      "text": "Resume per outlet from Rollouts.",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/RolloutsPage.tsx",
+      "text": "A rollout offers a release to a share of the devices on one outlet's channel, so a bad build reaches few before you halt it. Without one, each channel offers its release to everyone.",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/RolloutsPage.tsx",
+      "text": "Outlet",
+      "count": 2
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/StoreControls.tsx",
+      "text": "App Store outlet",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/areas/distribution/StoreControls.tsx",
+      "text": "TestFlight outlet",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/nav.ts",
+      "text": "Outlet credentials",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/nav.ts",
+      "text": "Outlets & feeds",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/pages/core/activityVerbs.ts",
+      "text": "deleted outlet credential",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/pages/core/activityVerbs.ts",
+      "text": "Outlet credentials",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/pages/core/activityVerbs.ts",
+      "text": "re-pinned outlet credential",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/pages/core/activityVerbs.ts",
+      "text": "set outlet credential",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/pages/core/activityVerbs.ts",
+      "text": "used outlet credential",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/pages/platformSettings.tsx",
+      "text": "Outlet credentials",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/pages/platformStores.tsx",
+      "text": "This product holds a {…} key of its own from a different {…} account than the team credential. Assigning would point the two keys at different accounts, so nothing was changed. Re-pin or delete that key under the product's outlet credentials, then assign again.",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/pages/release/CompatibilityPage.tsx",
+      "text": "Distribution did not answer, so the rows don't say which outlets serve each release.",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/pages/release/CompatibilityPage.tsx",
+      "text": "On no outlet",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/pages/release/CompatibilityPage.tsx",
+      "text": "Outlet liveness unavailable",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/pages/release/CompatibilityPage.tsx",
+      "text": "Outlets: {…}",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/pages/release/ReleaseRecord.tsx",
+      "text": "No channel or outlet offers {…}.",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/pages/release/ReleaseRecord.tsx",
+      "text": "No outlets declared",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/pages/release/ReleaseRecord.tsx",
+      "text": "Outlets come from the distribution manifest; declare one to see where this release is available.",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/pages/release/SimulatorPage.tsx",
+      "text": "Outlet",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/settings.generated.ts",
+      "text": "Distribution → Outlets & feeds",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/settings.generated.ts",
+      "text": "Key-material records, registered by an operator or observed at an outlet; they describe keys, not behaviour.",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/settings.generated.ts",
+      "text": "Outlet capabilities",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/settings.generated.ts",
+      "text": "Outlet signing-key fingerprints",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/settings.generated.ts",
+      "text": "Outlets",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/settings.generated.ts",
+      "text": "What an install that arrived through each outlet may do (fetch new code, run downloaded scripts, sell things). The starting point is the compiled default for the outlet's kind; an operator may only narrow it.",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "console/settings.generated.ts",
+      "text": "Which transport carries each deliverable on each outlet: a deliverable's own entry, else the packs entry for a pack, else the default (pkey-cdn when unset).",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "lib/errorCopy.ts",
+      "text": "That outlet isn't declared any more. The page has been refreshed.",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "lib/errorCopy.ts",
+      "text": "The App Store Connect credential has no pin. Set the pin in Outlet credentials.",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "lib/errorCopy.ts",
+      "text": "The App Store Connect credential's pin doesn't match. Check it in Outlet credentials.",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "lib/errorCopy.ts",
+      "text": "This store connector isn't configured. Set it up in Outlet credentials.",
+      "count": 1
+    },
+    {
+      "rule": "outlet",
+      "file": "services.generated.ts",
+      "text": "How releases reach devices and outlets — transports, availability, and rollouts.",
+      "count": 1
+    },
+    {
+      "rule": "storefront-feed",
+      "file": "console/areas/distribution/MatrixPage.tsx",
+      "text": "Outlets are the places a release reaches: Polaris Key downloads, the stores, the storefront feeds. Declare them in .pkey/distribution and resync.",
+      "count": 1
+    },
+    {
+      "rule": "storefront-feed",
+      "file": "console/areas/distribution/RolloutDialogs.tsx",
+      "text": "The signed feed, the updater feeds, the storefront feeds and the download page stop offering {…} on {…}.",
+      "count": 1
+    },
+    {
+      "rule": "storefront-feed",
+      "file": "console/areas/distribution/RolloutDialogs.tsx",
+      "text": "The storefront feeds and the download page stop listing {…} on {…}.",
+      "count": 1
+    },
+    {
+      "rule": "storefront-feed",
+      "file": "console/pages/platformSettings.tsx",
+      "text": "Where download pages link storefront feeds.",
+      "count": 1
+    }
+  ]
+}
