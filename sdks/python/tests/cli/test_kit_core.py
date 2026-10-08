@@ -186,11 +186,11 @@ def test_theme_colors_are_hex_per_role_per_scheme_in_truecolor_only() -> None:
     assert true.palette().params(("muted",)) == "38;2;122;122;122"
     assert true.palette().params(("success",)) == "32"
     ansi16 = Kit.create(env("ansi16", "unicode", 80, "dark"), theme=th, source=Presentation(), product="t")
-    assert ansi16.palette().params(("muted",)) == "90"
+    assert ansi16.palette().params(("muted",)) == "2"
     native = Kit.create(env("truecolor", "unicode", 80, "dark"), theme=th.with_(preset="native"), source=Presentation(), product="t")
-    assert native.palette().params(("muted",)) == "90"
+    assert native.palette().params(("muted",)) == "2"
     light = Kit.create(env("truecolor", "unicode", 80, "light"), theme=th, source=Presentation(), product="t")
-    assert light.palette().params(("muted",)) == "90"
+    assert light.palette().params(("muted",)) == "2"
     _, text = render(FIXTURES[0], env("none", "unicode", 80, "dark"))
     assert "\x1b[" not in text
 
