@@ -45,6 +45,8 @@ export const DOCS_LINKS = {
   manifestNote: "/docs/build/manifest/",
   updateAccessNote: "/docs/services/update/eligibility/",
   identityOidcNote: "/docs/services/identity/oidc/",
+  // P0-47: where auto-issue is set (the manifest's `autoIssue`), named from Identity → Sign-in.
+  autoIssue: "/docs/services/license/enrollment/",
   downloadPage: "/docs/users/downloads/",
   // Editors + policy surfaces
   managedPayloads: "/docs/services/config/profiles/",

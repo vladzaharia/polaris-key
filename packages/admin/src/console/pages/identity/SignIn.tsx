@@ -340,12 +340,18 @@ function SignInBody({
             {oidcDefault
               ? "A signed-in account in no mapped group gets the auto-issue default tier."
               : "A signed-in account in no mapped group is refused (not entitled)."}{" "}
-            <Link
-              to={r.enrollment(slug)}
+            {/* P0-47: Enrollment has no auto-issue control, so this names where it is set. */}
+            Auto-issue is set by the{" "}
+            <code className="font-mono text-xs">autoIssue</code> block in{" "}
+            <code className="font-mono text-xs">.pkey/product</code>.{" "}
+            <a
               className="text-accent-fg underline underline-offset-2"
+              href={docsUrl("autoIssue")}
+              target="_blank"
+              rel="noreferrer"
             >
-              Auto-issue in Enrollment
-            </Link>
+              Auto-issue
+            </a>
           </p>
         </div>
       </SettingsSection>
