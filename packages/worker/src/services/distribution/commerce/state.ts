@@ -113,35 +113,127 @@ export async function upsertStoreProduct(
   db: Db,
   row: Omit<StoreProductRow, "source">,
 ): Promise<void> {
-  await db.run(
-    `INSERT INTO dist_store_products
-       (product, store, store_product_id, deliverable_id, flag, source, modified_at, modified_by)
-     VALUES (?, ?, ?, ?, ?, 'admin', ?, ?)
-     ON CONFLICT (product, store, store_product_id) DO UPDATE SET
-       deliverable_id = excluded.deliverable_id, flag = excluded.flag,
-       modified_at = excluded.modified_at, modified_by = excluded.modified_by`,
-    row.product,
-    row.store,
-    row.store_product_id,
-    row.deliverable_id,
-    row.flag,
-    row.modified_at,
-    row.modified_by,
-  );
+  await db.batch([
+    {
+      sql: `INSERT INTO dist_store_products
+              (product, store, store_product_id, deliverable_id, flag, source, modified_at, modified_by)
+            VALUES (?, ?, ?, ?, ?, 'admin', ?, ?)
+            ON CONFLICT (product, store, store_product_id) DO UPDATE SET
+              deliverable_id = excluded.deliverable_id, flag = excluded.flag,
+              modified_at = excluded.modified_at, modified_by = excluded.modified_by`,
+      params: [
+        row.product,
+        row.store,
+        row.store_product_id,
+        row.deliverable_id,
+        row.flag,
+        row.modified_at,
+        row.modified_by,
+      ],
+    },
+    // LX-08: the mapping's entitlement rows follow its flag in the same batch.
+    ...storeProductEntitlementStatements(row.product, {
+      store: row.store,
+      storeProductId: row.store_product_id,
+    }),
+  ]);
 }
 
-export function deleteStoreProduct(
+export async function deleteStoreProduct(
   db: Db,
   product: string,
   store: Store,
   storeProductId: string,
 ): Promise<number> {
-  return db.runChanges(
-    "DELETE FROM dist_store_products WHERE product = ? AND store = ? AND store_product_id = ?",
-    product,
-    store,
-    storeProductId,
-  );
+  const statements: DbStatement[] = [
+    {
+      sql: "DELETE FROM dist_store_products WHERE product = ? AND store = ? AND store_product_id = ?",
+      params: [product, store, storeProductId],
+    },
+    ...storeProductEntitlementStatements(product, { store, storeProductId }),
+  ];
+  if (db.batchChanges) return (await db.batchChanges(statements))[0] ?? 0;
+  const n = await db.runChanges(statements[0]!.sql, ...statements[0]!.params);
+  await db.batch(statements.slice(1));
+  return n;
+}
+
+// ── the licensing model's dual-write (LX-08, plans/LX-01.md §6.1–6.2) ─────────────────────────
+
+/**
+ * Make `dist_store_product_entitlements` agree with `dist_store_products.flag` for one mapping, or
+ * every mapping of the product: while `flag` is a mapping's one key (until LX-11 maps several),
+ * its entitlement rows are exactly `{flag: true}`, and a deleted mapping keeps none. Idempotent.
+ * The same projection as migrations/0105_m.
+ */
+export function storeProductEntitlementStatements(
+  product: string,
+  mapping: { store: Store; storeProductId: string } | null,
+): DbStatement[] {
+  const scope = mapping ? " AND store = ? AND store_product_id = ?" : "";
+  const scopeParams = mapping ? [mapping.store, mapping.storeProductId] : [];
+  return [
+    {
+      sql: `DELETE FROM dist_store_product_entitlements
+             WHERE product = ?${scope}
+               AND NOT EXISTS (SELECT 1 FROM dist_store_products m
+                                WHERE m.product = dist_store_product_entitlements.product
+                                  AND m.store = dist_store_product_entitlements.store
+                                  AND m.store_product_id = dist_store_product_entitlements.store_product_id
+                                  AND m.flag = dist_store_product_entitlements.key)`,
+      params: [product, ...scopeParams],
+    },
+    {
+      sql: `INSERT INTO dist_store_product_entitlements
+              (product, store, store_product_id, key, value_json)
+            SELECT product, store, store_product_id, flag, 'true'
+              FROM dist_store_products
+             WHERE product = ?${scope}
+            ON CONFLICT (product, store, store_product_id, key) DO NOTHING`,
+      params: [product, ...scopeParams],
+    },
+  ];
+}
+
+/**
+ * Name the grant a purchase made on its `dist_purchases` row (`grant_id`), for one purchase or
+ * every purchase of the product: the grant License's write projected (`core/grants.ts`
+ * `storeGrantId`), once it exists. A purchase that granted nothing (pending, rejected) keeps NULL.
+ * Idempotent.
+ */
+export function purchaseGrantIdStatements(
+  product: string,
+  purchase: { store: Store; purchaseKeyHash: string } | null,
+): DbStatement[] {
+  const scope = purchase ? " AND store = ? AND purchase_key_hash = ?" : "";
+  const scopeParams = purchase
+    ? [purchase.store, purchase.purchaseKeyHash]
+    : [];
+  const id = "'grt_s_' || store || '_' || purchase_key_hash";
+  return [
+    {
+      sql: `UPDATE dist_purchases SET grant_id = ${id}
+             WHERE product = ?${scope}
+               AND grant_id IS NOT (${id})
+               AND EXISTS (SELECT 1 FROM grants g
+                            WHERE g.product = dist_purchases.product
+                              AND g.id = 'grt_s_' || dist_purchases.store || '_' || dist_purchases.purchase_key_hash)`,
+      params: [product, ...scopeParams],
+    },
+  ];
+}
+
+/**
+ * Distribution's share of the licensing catch-up (`ServiceDescriptor.licensingReconcile`,
+ * `core/licensingCatchUp.ts`): re-project every purchase's `grant_id` and every mapping's
+ * entitlement rows, so rows a pre-LX-08 Worker wrote between the migration and the deploy catch
+ * up. Run whatever Distribution's enablement, like the licence merge.
+ */
+export function commerceLicensingReconcile(product: string): DbStatement[] {
+  return [
+    ...purchaseGrantIdStatements(product, null),
+    ...storeProductEntitlementStatements(product, null),
+  ];
 }
 
 // ── bindings ─────────────────────────────────────────────────────────────────────────────────
@@ -467,6 +559,13 @@ export async function recordPurchase(
     });
     if (!outcome.ok) return { ok: false, reason: outcome.reason };
     changed = outcome.changed;
+    // LX-08: the purchase names the grant License's write just projected.
+    await db.batch(
+      purchaseGrantIdStatements(product, {
+        store: p.store,
+        purchaseKeyHash: hash,
+      }),
+    );
   }
   return {
     ok: true,
@@ -535,6 +634,11 @@ export async function revokeRecordedPurchase(
     if (!outcome.ok) return { ok: false, reason: outcome.reason };
     changed ||= outcome.changed;
   }
+  // LX-08: as in `recordPurchase` (a revoked purchase keeps naming its grant).
+  if (flags.length > 0)
+    await ctx.db.batch(
+      purchaseGrantIdStatements(ctx.product, { store, purchaseKeyHash: hash }),
+    );
   return {
     ok: true,
     state: "revoked",

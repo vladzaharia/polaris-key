@@ -28,8 +28,8 @@
  * fingerprints, delta-demand rows and any download token naming them, ahead of the devices
  * themselves because `release_download_tokens` holds a foreign key onto `devices`), the
  * licence's registry tokens, its refused-activation log (`license_refusals`), its auto-attach
- * blocks (`license_auto_attach_blocks`, LX-26) and its key-entry counter (`license_key_entries`,
- * PX-W9). The devices' bearer tokens live in KV and are purged by the caller
+ * blocks (`license_auto_attach_blocks`, LX-26), its key-entry counter (`license_key_entries`,
+ * PX-W9) and its grants with their keys, holder version and entitlement events (LX-08). The devices' bearer tokens live in KV and are purged by the caller
  * after the batch commits.
  *
  * Every table holding a `license_id` column is accounted for here, in a contributor, or by a
@@ -42,6 +42,7 @@
 
 import type { Db, DbParam, DbStatement } from "../db/types.js";
 import { SERVICE_SLUGS } from "./services.js";
+import { licenseGrantDeleteStatements } from "./grants.js";
 
 /** One deletion, as each owner's statements are asked about it. */
 export interface LicenseDeleteTarget {
@@ -235,5 +236,8 @@ export function coreLicenseDeleteStatements(
       sql: "DELETE FROM license_key_entries WHERE product = ? AND license_id = ?",
       params: [product, licenseId],
     },
+    // LX-08: the grants the licence holds (its `oidc` grant: a store grant refuses the deletion),
+    // their keys, its holder version and its entitlement events (`core/grants.ts`).
+    ...licenseGrantDeleteStatements({ product, licenseId }),
   ];
 }

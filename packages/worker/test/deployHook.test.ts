@@ -283,6 +283,44 @@ describe("the deploy hook (F-10 automation)", () => {
     expect((await uploads()).status).toBe(401);
   });
 
+  it("runs the licensing catch-up after the answer and records its outcome (LX-08)", async () => {
+    // Without an execution context the pass runs inline and the answer carries it.
+    const inline = (await (await hook(await token())).json()) as {
+      licensing: Record<string, unknown>;
+    };
+    expect(inline.licensing).toMatchObject({
+      failed: [],
+      provisioned: { moved: 0, deferred: 0, raced: 0, more: false },
+    });
+    // With one, the answer is out before the pass (its `jti` is spent: a pass the runtime cuts
+    // short must never turn the deploy job's retry into a replay), and the pass leaves a row.
+    const pending: Promise<unknown>[] = [];
+    const res = await dispatchWith(
+      new Request(HOOK, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${await token()}`,
+        },
+        body: JSON.stringify({ files: FILES }),
+      }),
+      env,
+      db,
+      NOW,
+      { waitUntil: (p) => void pending.push(p) },
+    );
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { licensing: unknown }).licensing).toEqual({
+      scheduled: true,
+    });
+    expect(pending).toHaveLength(1);
+    await Promise.all(pending);
+    const row = await db.first<{ action: string; after_json: string }>(
+      "SELECT action, after_json FROM platform_audit WHERE action = 'licensing.catch_up'",
+    );
+    expect(JSON.parse(row!.after_json)).toMatchObject({ failed: [] });
+  });
+
   it("is idempotent, and never turns back on what an operator switched off", async () => {
     expect((await hook(await token())).status).toBe(200);
     // An operator turns Distribution and the package feeds off.

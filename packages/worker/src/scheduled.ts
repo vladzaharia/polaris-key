@@ -59,6 +59,7 @@ import { sweepAvatars } from "./services/identity/card/avatars.js";
 import { pruneStorefrontSeen } from "./services/identity/portal/store/analytics.js";
 import { pruneAccountMerges } from "./services/identity/accounts/mergeUndo.js";
 import { overrideMigrationNightly } from "./core/overrideMigration.js";
+import { runLicensingCatchUp } from "./core/licensingCatchUp.js";
 import { pruneEvents as pruneConnectorEvents } from "./services/distribution/connectors/state.js";
 import { REFUSAL_RETENTION_SECONDS, pruneRefusals } from "./core/refusals.js";
 import { lazyDeltaProducts } from "./core/deltaDemand.js";
@@ -410,6 +411,19 @@ export async function runScheduledMaintenance(
   await step(report, "overrideMigration", () =>
     overrideMigrationNightly(db, now),
   );
+  // LX-08: the licensing model's rows catch up with what a pre-LX-08 Worker wrote between the
+  // migration and the deploy (store grants, purchases, mappings), and the OIDC-provisioned keys
+  // of licences that have not signed in since move to their `oidc` grant
+  // (`core/licensingCatchUp.ts`). A no-op once both are done; it changes no document.
+  await step(report, "licensingCatchUp", async () => {
+    const r = await runLicensingCatchUp(db, SERVICES, now);
+    const failed = Object.entries(r.failures);
+    if (failed.length > 0)
+      throw new Error(
+        `licensing reconcile failed for ${failed.map(([p, m]) => `${p}: ${m}`).join("; ")}`,
+      );
+    return r.provisioned.moved;
+  });
   if (env) {
     await step(report, "accountOwnership", () =>
       settleOwnershipConflicts({

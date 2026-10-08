@@ -167,7 +167,7 @@ export async function dispatchWith(
       return handleGithubWebhook(req, env, db, now);
     // F-10 automation: deploy.yml's registration of the platform's own packages.
     case "deployHook":
-      return handleDeployHook(req, env, db, now);
+      return handleDeployHook(req, env, db, now, exec);
     // The gated docs site: session-checked inside the handler (docs.ts), for every path
     // under the prefix — assets and machine-readable artifacts included.
     case "docs":

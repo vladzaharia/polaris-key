@@ -1580,6 +1580,12 @@ export const NOT_A_SETTING_INDEX: readonly NotASettingEntry[] = [
     shows: "License → Licenses",
   },
   {
+    thing: "Grant and licence provenance (LX-08)",
+    reason:
+      "Records of where a grant or a sale-minted licence came from (a store purchase, a Polaris Key sale, an OIDC sign-in, an operator's comp): facts about a sale, not Polaris behaviour.",
+    shows: "License → Licenses",
+  },
+  {
     thing: "Outlet signing-key fingerprints",
     reason:
       "Key-material records, registered by an operator or observed at an outlet; they describe keys, not behaviour.",

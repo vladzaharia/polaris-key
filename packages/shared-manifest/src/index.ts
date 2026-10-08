@@ -304,6 +304,12 @@ export interface ManifestTier {
   channels: string[];
   minVersion: string | null;
   maxVersion: string | null;
+  /** LX-08: higher is better (anchor choice, the OIDC group-map choice, `syncTierOnSignIn`).
+   *  0 when omitted; not unique. */
+  rank: number;
+  /** LX-08: the tier default for a licence's offline grace (0–365 days); null falls back to the
+   *  product default. Not `maxOfflineDays`, the legacy alias of `policyExpiryDays`. */
+  policyOfflineGraceDays: number | null;
 }
 
 export interface ManifestProfile {
@@ -1263,6 +1269,8 @@ const WEB_ORIGIN_RE =
 const CONTROL_CHAR_RE = /[\u0000-\u001f\u007f]/;
 /** Free-text bounds. Labels are UI strings; descriptions may be a short paragraph. */
 const MAX_LABEL_LENGTH = 200;
+/** LX-08: a tier's `policyOfflineGraceDays` upper bound (plans/LX-01.md §3.1). */
+const MAX_TIER_OFFLINE_GRACE_DAYS = 365;
 const MAX_TEXT_LENGTH = 2000;
 /** Probe targets are a bundle id, a registry key, or an absolute path. */
 const MAX_PROBE_TARGET_LENGTH = 512;
@@ -1709,6 +1717,34 @@ function validateDocuments(
         "policyDeviceLimit must be a non-negative integer.",
       );
     }
+    // LX-08 (plans/LX-01.md §3.1): the tier's rank (an integer ≥ 0, not unique) and its offline
+    // grace default (an integer 0–365, or null).
+    if (record.rank !== undefined && !nonNegativeInteger(record.rank)) {
+      add(
+        errors,
+        "product",
+        `/licensing/tiers/${i}/rank`,
+        "invalid_tier_rank",
+        "Tier rank must be a non-negative integer.",
+      );
+    }
+    if (
+      record.policyOfflineGraceDays !== undefined &&
+      record.policyOfflineGraceDays !== null &&
+      !(
+        typeof record.policyOfflineGraceDays === "number" &&
+        nonNegativeInteger(record.policyOfflineGraceDays) &&
+        record.policyOfflineGraceDays <= MAX_TIER_OFFLINE_GRACE_DAYS
+      )
+    ) {
+      add(
+        errors,
+        "product",
+        `/licensing/tiers/${i}/policyOfflineGraceDays`,
+        "invalid_tier_policy_offline_grace_days",
+        "Tier policyOfflineGraceDays must be an integer from 0 to 365, or null.",
+      );
+    }
     boundedText(
       errors,
       "product",
@@ -1780,7 +1816,7 @@ function validateDocuments(
           "product",
           `/licensing/tiers/${i}/maxOfflineDays`,
           "tier_ignored_field",
-          "maxOfflineDays on a tier is ignored because it is not a number; use policyExpiryDays for the licence expiry.",
+          "maxOfflineDays on a tier is ignored because it is not a number; use policyExpiryDays for the licence expiry, and for offline grace use policyOfflineGraceDays.",
         );
       } else if (
         typeof record.policyExpiryDays === "number" ||
@@ -1791,7 +1827,7 @@ function validateDocuments(
           "product",
           `/licensing/tiers/${i}/maxOfflineDays`,
           "tier_ignored_field",
-          "maxOfflineDays on a tier is ignored because policyExpiryDays or expiryDays is also set and wins; it is not offline grace.",
+          "maxOfflineDays on a tier is ignored because policyExpiryDays or expiryDays is also set and wins; it is not offline grace: for offline grace use policyOfflineGraceDays.",
         );
       } else {
         add(
@@ -1799,7 +1835,7 @@ function validateDocuments(
           "product",
           `/licensing/tiers/${i}/maxOfflineDays`,
           "tier_ignored_field",
-          "maxOfflineDays on a tier sets the licence expiry, policyExpiryDays, not offline grace.",
+          "maxOfflineDays on a tier sets the licence expiry, policyExpiryDays, not offline grace: for offline grace use policyOfflineGraceDays.",
         );
       }
     }
@@ -5053,6 +5089,16 @@ function normalizeTier(raw: unknown): ManifestTier | null {
     channels: arrayAt(raw, "channels")?.filter(isString) ?? [],
     minVersion: typeof raw.minVersion === "string" ? raw.minVersion : null,
     maxVersion: typeof raw.maxVersion === "string" ? raw.maxVersion : null,
+    rank:
+      typeof raw.rank === "number" && nonNegativeInteger(raw.rank)
+        ? raw.rank
+        : 0,
+    policyOfflineGraceDays:
+      typeof raw.policyOfflineGraceDays === "number" &&
+      nonNegativeInteger(raw.policyOfflineGraceDays) &&
+      raw.policyOfflineGraceDays <= MAX_TIER_OFFLINE_GRACE_DAYS
+        ? raw.policyOfflineGraceDays
+        : null,
   };
 }
 

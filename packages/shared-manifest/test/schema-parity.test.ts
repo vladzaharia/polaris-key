@@ -153,8 +153,9 @@ function base(): Docs {
             policyFingerprint: "normal",
             channels: ["stable"],
             minVersion: "1.0.0",
+            policyOfflineGraceDays: null,
           },
-          { id: "pro", label: "Pro" },
+          { id: "pro", label: "Pro", rank: 1, policyOfflineGraceDays: 14 },
         ],
       },
       oidc: {
@@ -928,6 +929,31 @@ const MUTATIONS: Mutation[] = [
     file: "product",
     schema: "rejects",
     mutate: (d) => (p(d).licensing.tiers[0].policyFingerprint = "paranoid"),
+  },
+  // LX-08 (plans/LX-01.md §3.1): the tier's rank and its offline grace default.
+  {
+    code: "invalid_tier_rank",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).licensing.tiers[0].rank = -1),
+  },
+  {
+    code: "invalid_tier_rank",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).licensing.tiers[0].rank = 1.5),
+  },
+  {
+    code: "invalid_tier_policy_offline_grace_days",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).licensing.tiers[0].policyOfflineGraceDays = 366),
+  },
+  {
+    code: "invalid_tier_policy_offline_grace_days",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).licensing.tiers[0].policyOfflineGraceDays = "7"),
   },
   // LX-06 (plans/LX-01.md §3.1): one rule per licensing setting, and the sign-in tier sync.
   {

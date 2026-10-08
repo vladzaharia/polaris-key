@@ -10,6 +10,7 @@
  *     commerce bridge's real routes (`commerceWorld.ts`).
  */
 
+import { storeGrantDrift } from "../src/core/grants.js";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { NOW, seedLicenseWithKey, seedProduct, seedTier } from "./seed.js";
@@ -130,7 +131,9 @@ describe("moveDevices is seat-checked (LX-03)", () => {
 
 describe("a licence merge carries store grants, purchases and the binding (LX-03)", () => {
   let w: CommerceWorld | null = null;
-  afterEach(() => {
+  afterEach(async () => {
+    // LX-08: the merge moves the purchases' grants with their store-grant rows (zero drift).
+    if (w) expect(await storeGrantDrift(w.db, SLUG)).toEqual([]);
     w?.close();
     w = null;
   });

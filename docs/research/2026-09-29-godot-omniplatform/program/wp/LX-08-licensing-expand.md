@@ -95,9 +95,84 @@ source of a sale made through Polaris Key itself. No code writes `direct` yet, s
 nothing. The portal badge reads "Polaris Key". The outlet id `direct` is unrelated and does not
 change.
 
+## Corrections from the code (LX-08, 2026-10-06)
+
+The implementer checked the brief and `plans/LX-01.md` §6.1–6.2 against the code. Where they
+disagreed, the code won, as follows:
+
+- **The decision record is Amendment A4, not A3.** A3 is Cloud Sync's (U-01,
+  `docs/superpowers/specs/2026-08-26-polaris-suite-services-design.md`).
+- **The `oidc` layer sits right after the licence overrides, not before them.** It is merged
+  without any key the overrides carry. With disjoint keys both positions give the same values,
+  but not the same bytes. `mergeMap` appends a key it has not seen, so the layer that brings a
+  key in decides where the key sits in the signed `entitlements` and in the ETag material.
+  LX-02's writer re-appends the declared keys after every operator key, and only the "after"
+  position reproduces that order (`core/grants.ts` header).
+- **A move that would reorder keys is deferred.** This affects a licence whose column has an
+  operator key after a provisioned key, or an entry stored in another member order. The
+  background move leaves such a licence to its next sign-in, which rewrites the document anyway.
+  The move never bumps `licenses.modified_at`, which is the `updatedAt` of the injected policy
+  entries.
+- **The backfill is an upsert, not `INSERT OR IGNORE`.** It has the same deterministic ids, and a
+  replay still writes nothing. The catch-up after the deploy runs the same projection to absorb
+  the deploy window. For an active grant only its active flag rows become keys, because a flag a
+  refund revoked under an earlier mapping is not in the legacy layer either; a revoked grant keeps
+  all its keys. `modified_at` is the latest grant or revocation:
+  `MAX(MAX(granted_at), MAX(revoked_at))`, where the plan had
+  `COALESCE(MAX(revoked_at), MAX(granted_at))`.
+- **The DDL has one column per line.** The plan's compact DDL would break the D1 data-model
+  generator, which reads one column per line.
+- **The maxOfflineDays warning keeps its code.** The code stays `tier_ignored_field`, and its
+  three messages gain "for offline grace use policyOfflineGraceDays". The plan's
+  `tier_max_offline_days_alias` name does not exist in the validator, and renaming a code is a
+  breaking change. LX-05b can split it when the warning becomes an error. The new rules are
+  `invalid_tier_rank` and `invalid_tier_policy_offline_grace_days`, with mutation-table entries
+  and the schema.
+- **Subject stores.** `entitlement_events` is registered (`core/entitlementEvents.ts`). `grants`
+  cannot be a subject store: it is keyed by `account_id`, which the registry guard forbids. Its
+  merge re-key and deletion stay with LX-13 (plan §7, I-05 follow-ups), and nothing writes an
+  account-held grant before then.
+- **`holder_versions` is created empty.** LX-08 bumps no version. LX-09 adds the bumps on every
+  licence, grant, override and device write together with the cache that reads them; partial
+  bumps would be a false invariant.
+- **Where the move runs.** The deploy-hook job `licensing.migrateProvisioned` is one bounded pass
+  in `POST /webhooks/deploy` (`core/licensingCatchUp.ts`). The nightly maintenance step
+  `licensingCatchUp` finishes it and re-projects the store grants.
+- **U-03 interaction.** U-03 owns the column's `config` and `secrets` members and LX-08 owns the
+  declared `entitlements` keys, so the two never write the same member. U-03's nightly sweep
+  empties its members with `json_set` in SQL. LX-08's writes are compare-and-set on the whole
+  column. Provisioned secrets keep following U-03 (column until the run, then account rows).
+- **Admin tier API unchanged.** The console tier editor (LX-14) adds `rank` and
+  `policyOfflineGraceDays`. The admin upsert leaves both columns as they are.
+- **`dist_purchases.grant_id` is written in a second batch.** Distribution names the grant after
+  License's store-grant write returns (`recordPurchase` and `revokeRecordedPurchase` in
+  `commerce/state.ts`), because the two writes belong to two services. A failure between them
+  leaves `grant_id` empty or stale; the catch-up's `licensingReconcile` repairs it, and
+  `storeGrantDrift` reports it until then.
+- **Review fixes (2026-10-07).**
+  - The move touches only OIDC licences (`sub IS NOT NULL`): on any other licence a declared key
+    is an operator's override.
+  - The rollback script also deletes the copied keys from the `oidc` grants and the emptied
+    grants, so a roll-forward cannot revive a key the old Worker revoked in between.
+  - Declared keys bind as one JSON parameter (`json_each`), within D1's 100-parameter limit.
+  - The deploy hook runs the catch-up after its answer (`waitUntil`) and records the outcome as a
+    platform activity row (`licensing.catch_up`).
+  - The `upgradeOnly` audit row rides the sign-in's guarded batch.
+
 ## Hand-off
 
 - LX-09 switches reads; LX-12 and LX-13 write grants.
+- **Follow-ups from LX-08's review:**
+  - **N2.** The move pass restarts from the first licence each time, so a large number of deferred
+    licences can starve the ones after them within a pass's budget. Resume from a stored cursor.
+  - **N6.** LX-14 shows the `oidc` grant: provisioned keys no longer appear among a licence's
+    console overrides or in the catalog's usage count.
+  - **N7.** LX-11 and LX-13 add the deletes for `device_store_identities`, `dist_holder_bindings`
+    and `dist_binding_aliases` (licence deletion, account merge and deletion) as they start
+    writing them, with PRIVACY rows.
+  - LX-09 adds the `holder_versions` bumps; LX-11 retires the catch-up's one-key-per-mapping rule;
+    LX-13 moves and deletes account-held grants; LX-14 adds `rank` and `policyOfflineGraceDays`
+    to the admin tier API.
 
 The role agent sets `--set LX-08 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:

@@ -629,6 +629,8 @@ const ACTION_VERBS: Record<string, string> = {
   "platform.setting.revert": "reverted platform setting",
   "feed.bootstrap": "set up the platform's package feeds",
   "feed.policy.update": "changed the platform policy of feed",
+  // LX-08: the deploy hook's licensing catch-up pass.
+  "licensing.catch_up": "ran the licensing catch-up",
 };
 
 /**

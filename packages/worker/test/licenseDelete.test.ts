@@ -47,6 +47,10 @@ const LICENSE_KEYED = [
   "dist_purchase_binding_aliases",
   "dist_purchase_bindings",
   "dist_purchases",
+  // LX-08: the licence's entitlement events and the grants it holds (its `oidc` grant; a store
+  // grant blocks through `license_store_grants`), deleted by Core (`core/grants.ts`).
+  "entitlement_events",
+  "grants",
   "keys_index",
   "license_auto_attach_blocks",
   "license_key_entries",

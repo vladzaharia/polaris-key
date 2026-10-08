@@ -53,7 +53,7 @@ import type {
   SchemaRow,
   TierRow,
 } from "../repo.js";
-import { stmtInsertTier } from "../repo.js";
+import { stmtInsertTier, TIER_COMPARED_PARAMS } from "../repo.js";
 import { randomId } from "./platform.js";
 import { parseWebOrigins, serializeWebOrigins } from "./cors.js";
 import { parseServices } from "./services.js";
@@ -376,11 +376,13 @@ function tierInput(
     channels: t.channels ?? [],
     minVersion: t.minVersion ?? null,
     maxVersion: t.maxVersion ?? null,
+    rank: t.rank ?? 0,
+    policyOfflineGraceDays: t.policyOfflineGraceDays ?? null,
     modifiedAt: now,
   };
 }
 
-/** The comparable columns, in `stmtInsertTier`'s parameter order (2..9), named. */
+/** The comparable columns, in `stmtInsertTier`'s parameter order (`TIER_COMPARED_PARAMS`), named. */
 const TIER_FIELDS = [
   "label",
   "profileId",
@@ -390,6 +392,8 @@ const TIER_FIELDS = [
   "minVersion",
   "maxVersion",
   "policyFingerprint",
+  "rank",
+  "policyOfflineGraceDays",
 ] as const;
 
 function storedTierColumns(t: TierRow): unknown[] {
@@ -402,6 +406,8 @@ function storedTierColumns(t: TierRow): unknown[] {
     t.min_version,
     t.max_version,
     t.policy_fingerprint ?? null,
+    t.rank ?? 0,
+    t.policy_offline_grace_days ?? null,
   ];
 }
 
@@ -875,7 +881,9 @@ export function planBackfill(
   const declaredTiers = new Set(manifest.tiers.map((t) => t.id));
   for (const t of manifest.tiers) {
     const input = tierInput(slug, t, now);
-    const declaredColumns = stmtInsertTier(input).params.slice(2, 10);
+    const declaredColumns = stmtInsertTier(input).params.slice(
+      ...TIER_COMPARED_PARAMS,
+    );
     const stored = storedTiers.get(t.id);
     if (!stored) {
       items.push(
@@ -1147,15 +1155,16 @@ function stmtTierAsManifest(
 ): DbStatement {
   return {
     sql: `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_device_limit,
-             channels_json, min_version, max_version, policy_fingerprint, modified_by, modified_at,
-             source)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 'manifest')
+             channels_json, min_version, max_version, policy_fingerprint, rank,
+             policy_offline_grace_days, modified_by, modified_at, source)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 'manifest')
           ON CONFLICT(product, id) DO UPDATE SET
             label = excluded.label, profile_id = excluded.profile_id,
             policy_expiry_days = excluded.policy_expiry_days,
             policy_device_limit = excluded.policy_device_limit,
             channels_json = excluded.channels_json, min_version = excluded.min_version,
             max_version = excluded.max_version, policy_fingerprint = excluded.policy_fingerprint,
+            rank = excluded.rank, policy_offline_grace_days = excluded.policy_offline_grace_days,
             modified_by = NULL, modified_at = excluded.modified_at, source = 'manifest'`,
     params: stmtInsertTier(input).params,
   };

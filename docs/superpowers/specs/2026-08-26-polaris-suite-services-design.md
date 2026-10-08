@@ -495,3 +495,51 @@ document's shape, `PROTOCOL_VERSION` (4) and the signed corpus are unchanged: ev
 content or an unsigned, feature-detected route. §5's ownership table gains Cloud Sync's
 `sync_directory` and `sync_product_usage` and Config's `account_overrides` and
 `override_migration_report` as the packages that create them land (U-03, U-05).
+
+## Amendment A4 (2026-10-04): the licensing model (OC)
+
+**A licence becomes an access contract; grants become entitlement reasons.** Decided by the owner
+on 2026-10-04 (research note S-19, its owner-decisions header and §10.3) and approved as the
+contract in `docs/research/2026-09-29-godot-omniplatform/program/plans/LX-01.md` on 2026-10-05.
+The plan names this record "Amendment A3"; A3 was already Cloud Sync's, so it is A4. Landed from
+LX-08 on. The owner decisions this amendment records, quoted from that plan's §0:
+
+- **Model OC (S-19 decision 1).** A licence is an **access contract**: tier, seats, term, offline
+  window, version window, channels and keys. A **grant** is one reason someone holds
+  entitlements. A device runs on exactly one **anchor** licence (`devices.license_id`). Its
+  entitlements are **combined** over its contributors.
+- **The account in the document's inputs (decision 2).** S-16 D9 is a rule about the document's
+  _content_: no user claim, no account id and no subject in `pkey-license+jws`. S-17 D20's outcome
+  stands: entitlement overrides stay on the licence.
+- **Holder = the account signed in on the device (decision 4, `entitlementHolder: device`).** A
+  key-entry device that nobody signed in on sees its own licence and that licence's grants only.
+  `owner` is an opt-in and comes with a warning.
+- **Legacy mode is byte-identical (decision 5).** `entitlementModel: legacy` reproduces today's
+  document, `updatedAt` and ETag included. New products start on `combined`. Existing products stay
+  on `legacy` until an operator reads the holder report and switches.
+- **Decisions 3 and 6–24 as recommended.** In particular: `anchorPolicy: rank-first`; purchases are
+  not cancelled by overrides in `combined` mode; the grace clamp is on by default; holder bindings
+  and restore policies; `reanchor: onActivation`; "download ticket"; Cloud Sync `byEntitlement`;
+  licence-less devices need an anchor for `licensed` and `entitled` gates.
+- **Settings home (S-18 D2, D5 and D19).** Every licensing setting is a **claimable
+  `product_settings` row** in S-18's registry: a console edit claims the value and Revert returns
+  it to the manifest. There is no `products.licensing_json`. The account is not a settings scope.
+- **Carried from I-04 and S-16.** D24: an owned licence's key is refused on a new device when
+  Identity is on. D25: per-product removal keeps the licence. The global account id never leaves
+  the Worker. I-05's `licenses.account_id`, `devices.subject` and `devices.bound_by` are used as
+  merged.
+- **Grant source `polaris-key`** (S-21 D9 and S-22 D9, 2026-10-05): a sale made through Polaris Key
+  itself has the source `polaris-key` (the plan's `direct`); a sale recorded through the admin API
+  is a `comp` grant.
+
+**What it changes in this spec.** No wire change in phase B: `PROTOCOL_VERSION` stays 4 and the
+signed corpus is unchanged (phase C is LX-18's plan). §5's ownership table gains Core's `grants`,
+`grant_entitlements`, `device_store_identities`, `holder_versions` and `entitlement_events`, and
+Distribution's `dist_store_product_entitlements`, `dist_holder_bindings` and
+`dist_binding_aliases` (LX-08). `licenses` gains `kind`, `ended_reason`, `superseded_by`, `source`
+and `external_ref_hash`; `tiers` gains `rank` and `policy_offline_grace_days` (manifest
+`licensing.tiers[].rank` and `.policyOfflineGraceDays`); `dist_purchases` gains `grant_id`;
+`dist_store_products` gains `grants_kind` and `base_tier_id`. Migration follows expand → backfill
+→ dual-write → switch (LX-09) → contract (LX-16); nothing is renamed or dropped before LX-16. The
+OIDC-provisioned entitlement keys move from the licence's overrides to its `oidc` grant in the
+same deploy as the new sign-in writer (S-19 §7.14 step 4).
