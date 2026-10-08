@@ -245,7 +245,7 @@ function NavLink({
       {count ? (
         <span
           className={cn(
-            "inline-flex min-w-6 items-center justify-center rounded-full px-2 py-0.5 text-xs font-medium tabular-nums",
+            "inline-flex min-w-6 items-center justify-center rounded-full px-2 py-0.5 text-xs font-normal tabular-nums",
             // Discover's count of offers is always the small violet count (§4.16).
             active || accentCount
               ? "bg-accent-subtle text-accent-fg"

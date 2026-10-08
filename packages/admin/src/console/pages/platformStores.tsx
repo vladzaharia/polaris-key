@@ -1052,7 +1052,7 @@ export function ConnectForm({
           {c.configured ? `Replace the ${c.label}` : `Connect the ${c.label}`}
         </h4>
         {shape.file ? (
-          <label className="inline-flex cursor-pointer items-center gap-1.5 text-sm font-medium text-accent hover:underline focus-within:ring-2 focus-within:ring-focus">
+          <label className="inline-flex cursor-pointer items-center gap-1.5 text-sm font-normal text-accent hover:underline focus-within:ring-2 focus-within:ring-focus">
             <Upload aria-hidden className="size-4" />
             {shape.file.label}
             <input

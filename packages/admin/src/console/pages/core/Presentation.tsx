@@ -736,7 +736,7 @@ function SlotRow({
         {uploadable ? (
           <label
             aria-disabled={busy || undefined}
-            className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-border-strong px-3 text-xs font-medium text-fg hover:bg-hover focus-within:ring-2 focus-within:ring-focus"
+            className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-border-strong px-3 text-xs font-normal text-fg hover:bg-hover focus-within:ring-2 focus-within:ring-focus"
           >
             <Upload aria-hidden className="size-4" />
             {asset?.sha256 ? "Replace" : "Upload"}

@@ -228,7 +228,7 @@ export function BootScreen({
         {error ? (
           <section
             aria-labelledby="boot-error-title"
-            className="w-full rounded-lg border border-border bg-surface-raised p-6 shadow-pk-sm animate-pk-enter sm:p-8"
+            className="w-full rounded-lg border border-border bg-surface-raised p-6 shadow-elevation-1 animate-pk-enter sm:p-8"
           >
             <div className="mb-4 flex size-10 items-center justify-center rounded-full bg-danger-subtle text-danger">
               <AlertTriangle aria-hidden className="size-5" />

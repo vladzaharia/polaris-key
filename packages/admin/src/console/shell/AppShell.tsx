@@ -293,7 +293,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
           style={
             { "--sidebar-w": rail ? "3.5rem" : "15rem" } as React.CSSProperties
           }
-          className="relative grid h-dvh grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-background text-foreground lg:grid-cols-[var(--sidebar-w)_minmax(0,1fr)]"
+          className="relative grid h-dvh grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-surface-page text-fg lg:grid-cols-[var(--sidebar-w)_minmax(0,1fr)]"
         >
           <a
             href="#content"
@@ -361,7 +361,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
                 e.preventDefault();
                 document.getElementById(NAV_BUTTON_ID)?.focus();
               }}
-              className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-border bg-surface-page pt-[env(safe-area-inset-top,0px)] shadow-pk-lg animate-pk-in pk-nav-drawer lg:hidden"
+              className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-border bg-surface-page pt-[env(safe-area-inset-top,0px)] shadow-elevation-3 animate-pk-in pk-nav-drawer lg:hidden"
             >
               <div className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
                 <DialogPrimitive.Title className="text-sm font-bold text-fg-strong">

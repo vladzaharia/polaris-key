@@ -541,7 +541,7 @@ function ServicesForm({
             aside={
               <span className="text-fg-muted">
                 Enforced now:{" "}
-                <span className="font-medium text-fg-strong">
+                <span className="font-normal text-fg-strong">
                   {REGISTRATION_LABELS[data.effectiveRegistration] ??
                     data.effectiveRegistration}
                 </span>
@@ -549,7 +549,7 @@ function ServicesForm({
                 effectiveOf(draft) !== data.effectiveRegistration ? (
                   <>
                     {" · After saving: "}
-                    <span className="font-medium text-fg-strong">
+                    <span className="font-normal text-fg-strong">
                       {REGISTRATION_LABELS[effectiveOf(draft)] ??
                         effectiveOf(draft)}
                     </span>

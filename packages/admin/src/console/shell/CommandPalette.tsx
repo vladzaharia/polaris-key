@@ -148,8 +148,8 @@ export function CommandPalette({
             aria-describedby={undefined}
             className={cn(
               // A phone gets the whole screen (EXPERIENCE.md §3); wider screens a centred panel.
-              "fixed inset-0 z-50 flex flex-col overflow-hidden bg-popover pt-[env(safe-area-inset-top,0px)] text-popover-foreground animate-pk-in",
-              "sm:inset-auto sm:left-1/2 sm:top-[12vh] sm:w-[calc(100vw-1rem)] sm:max-w-xl sm:-translate-x-1/2 sm:rounded-lg sm:border sm:border-border sm:pt-0 sm:shadow-pk-lg",
+              "fixed inset-0 z-50 flex flex-col overflow-hidden bg-surface-overlay pt-[env(safe-area-inset-top,0px)] text-fg animate-pk-in",
+              "sm:inset-auto sm:left-1/2 sm:top-[12vh] sm:w-[calc(100vw-1rem)] sm:max-w-xl sm:-translate-x-1/2 sm:rounded-lg sm:border sm:border-border sm:pt-0 sm:shadow-elevation-3",
             )}
           >
             <DialogPrimitive.Title className="sr-only">
