@@ -20,9 +20,12 @@ import {
 /** What a digest takes: a string (hashed as its UTF-8 bytes) or bytes. */
 export type DigestInput = string | Uint8Array | ArrayBuffer;
 
-function digestBytes(data: DigestInput): ArrayBuffer {
-  if (typeof data === "string") return toArrayBuffer(utf8Encode(data));
-  return data instanceof Uint8Array ? toArrayBuffer(data) : data;
+/**
+ * The bytes to digest, without a copy: WebCrypto reads exactly a view's `byteOffset`/`byteLength`
+ * window, so a whole assembled artifact is hashed in place rather than duplicated first.
+ */
+function digestBytes(data: DigestInput): ArrayBuffer | Uint8Array {
+  return typeof data === "string" ? utf8Encode(data) : data;
 }
 
 /** The raw 32-byte SHA-256 of `data`. */
