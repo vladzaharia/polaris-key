@@ -65,7 +65,7 @@ The fixture behaves like a real product:
 | What you do                                           | What happens                                                                 |
 | ----------------------------------------------------- | ---------------------------------------------------------------------------- |
 | Activate with `pkey_tidewater_7Q2Mx9cLr4TbV0aZ3WPLDA` | The Pro license activates                                                    |
-| Activate with any other Tidewater key                 | The device limit: 3 of 3 seats, with the portal page that frees one (exit 3) |
+| Activate with any other Tidewater key                 | The device limit: 3 of 3 seats, with the portal page that frees one (exit 1) |
 | Activate with another product's key                   | Refused                                                                      |
 | Type a short or malformed key                         | The live verdict says so before anything is sent                             |
 | `login`                                               | Signs in as Mara Fennick after about four seconds; Esc cancels (exit 130)    |
@@ -81,7 +81,7 @@ portal are real pages that know nothing of the fixture's code or key.
 ```sh
 TIDEWATER_STATE=grace tidewater status     # the grace banner: 3 days left
 TIDEWATER_STATE=last-day tidewater status
-TIDEWATER_STATE=revoked tidewater status   # the status screen and its fixes (exit 3)
+TIDEWATER_STATE=revoked tidewater status   # the status screen and its fixes (exit 1)
 TIDEWATER_STATE=version-too-old tidewater  # the gate check falls through to the status
 ```
 
@@ -90,15 +90,15 @@ The other values are `ok`, `needs-activation`, `expired`, `version-too-new` and
 
 ## Scripts, pipes and plain terminals
 
-Every verb takes `--json`: one versioned object on stdout, no prompt and no escape sequence, and
-the exit code says how it went (0 done, 1 failed, 2 usage, 3 not usable or a device limit, 4
-offline, 130 cancelled). Every `--json` run ends with its `"event": "result"` line;
-`login --json` prints a `pending` line with the code first.
+Every verb takes `--json`: JSON lines on stdout, no prompt and no escape sequence, and the exit
+code says how it went (0 done; 1 a refusal, an unusable license or any failure; 2 usage; 130
+Ctrl-C). Every `--json` run ends with its `"event": "result"` line, the verb's fields beside
+`ok` and `exit`; `login --json` prints a `pending` line with the code first.
 
 ```sh
 tidewater status --json
-# {"v":1,"command":"status","event":"result","ok":true,"exit":0,"state":"key-only","result":{…}}
-tidewater --json              # the gate check: {"command":"check","state":"licensed",…}
+# {"v":1,"command":"status","event":"result","ok":true,"exit":0,"status":"ok","usable":true,…}
+tidewater --json              # the gate check: {"command":"check","event":"result","ok":true,"status":"ok",…}
 tidewater login --json        # {"event":"pending",…} then {"event":"result","state":"signedIn",…}
 ```
 

@@ -31,7 +31,7 @@ npm install @polaris-key/node commander   # or yargs
 ```
 
 commander (12 to 14) and yargs (17 or 18) are optional peer dependencies: the kit imports only
-their types, and the program hands its own parser in. It needs Node 22.12 or later. There is no
+their types, and the program hands its own parser in. It needs Node 22.13 or later. There is no
 stylesheet and no font: the terminal's own face and palette draw everything.
 
 ## The one-line flow
@@ -98,7 +98,7 @@ screens and print the same JSON.
 
 `checkFlow` is the check a product runs before its own work: it syncs behind a spinner, then
 prints one line (`✓ Tidewater Studio Pro · Ready`), or falls through to the `status` screen with
-the commands that fix it and exit code 3. `runKitVerb` runs it, or any verb of the program's own,
+the commands that fix it and exit code 1. `runKitVerb` runs it, or any verb of the program's own,
 with the kit's flags and its `--json` envelope. Here it is what the program does with no verb:
 
 ```ts
@@ -303,14 +303,18 @@ copy's typographic symbols are spelled in ASCII too: `…` as `...` and `·` as 
 ## The --json contract
 
 The words the kit prints for people are localised and may change from one release to the next:
-a script never parses them. It runs the verb with `--json` and reads JSON lines instead.
+a script never parses them. It runs the verb with `--json` and reads JSON lines instead. The
+envelope is the one both terminal kits share, written once in the UI-kit specification
+(`docs/design/UI-KITS.md` §1.4, "Terminal output for scripts"); the Python terminal kit follows
+the same rule.
 
-Every verb takes `--json` and prints NDJSON on stdout: one JSON object per line, never a prompt,
-a colour or an escape sequence, and ASCII only (every other character is a `\u` escape). The
-envelope is versioned and stable, and the same as the Python terminal kit's: `v` changes only for
-a breaking change. Every line carries `"v": 1` and `"command"`; a progress line carries an
-`"event"`; and the **last line of every run**, including an unexpected exception and an argument
-error, is the result line, with `"event": "result"`:
+Under `--json` the kit never prompts and never writes an escape, and writes ASCII only (every other
+character, server text included, as a `\u` escape). Every line on stdout is one JSON object with
+`"v": 1` and `"command"`. Progress lines carry an `"event"` (`pending` for a sign-in code,
+`progress` for a download, with `done` and `total`), and the **last line of every run** is
+`"event": "result"` with `"ok"`, `"exit"` and the verb's fields beside them, including when
+something fails: an argument error ends with `"error": "usage"` and exit 2, anything unexpected
+with `"error": "internal"` and exit 1.
 
 ```json
 {
@@ -319,45 +323,58 @@ error, is the result line, with `"event": "result"`:
   "event": "result",
   "ok": true,
   "exit": 0,
+  "status": "ok",
+  "usable": true,
+  "component": "AccountAndLicense",
   "state": "key-only",
-  "result": {
-    "status": { "status": "ok", "graceUntil": 1792565845 },
-    "license": { "tier": "pro", "tierLabel": "Pro", "deviceLimit": 3 }
-  }
+  "graceUntil": 1792565845,
+  "allowedRange": null,
+  "profile": null,
+  "version": "2.4.1",
+  "channel": "stable",
+  "tier": "Pro",
+  "tokenStore": "keyring"
 }
 ```
 
-| Field     | What it holds                                                                                                                                    |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `v`       | `1` (`CLI_JSON_VERSION`)                                                                                                                         |
-| `command` | The verb, as typed: `status`, `devices list`                                                                                                     |
-| `event`   | `result` on the last line; `pending` (a sign-in code) or `progress` (a download: `done`, `total`, `percent`) before it                           |
-| `ok`      | Whether `exit` is 0                                                                                                                              |
-| `exit`    | The process's exit code                                                                                                                          |
-| `state`   | The state the screen would have shown, in the catalog's names: `key-only`, `device-limit`, `up-to-date`                                          |
-| `result`  | The verb's data                                                                                                                                  |
-| `error`   | Only when `ok` is false: the registry code (`device_limit`, `network`), which is stable; `usage` for an argument error, `failed` for a local one |
-| `message` | Only when `ok` is false: the sentence a person reads, in the active locale (it may change)                                                       |
+| Verb                                        | Fields on the result line                                                                                                     |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `status`                                    | `status`, `usable`, `component`, `state`, `graceUntil`, `allowedRange`, `profile`, `version`, `channel`, `tier`, `tokenStore` |
+| `activate`, `enroll`                        | `kind`, `code`, `deviceCount`, `limit`, `manageUrl`; `status` and `tier` once activated                                       |
+| `login`                                     | `state` (`signedIn`, `expired`, `denied`, `cancelled`, `error`); `name`, `email`, `attached`, `status` when signed in         |
+| `logout`, `deactivate`                      | `signedOut` (and `state: "cancelled"` when declined)                                                                          |
+| `register`                                  | `deviceId`, `status`                                                                                                          |
+| `devices list`, `rename`, `deauthorize`     | `devices` (`id`, `label`, `platform`, `current`); `renamed`, `label`; `deauthorized`, `self`                                  |
+| `config get`, `set`, `reset`; `config list` | `key`, `value`, `source`; `settings`                                                                                          |
+| `secret`, `mint`                            | `key`, `present`; `recipe`, `expiresAt` (never the value or the token)                                                        |
+| `update check`, `update apply`              | `state`, `decision`, `channel`; `installed` after `apply`; or `state`, `version`, `updateAvailable`                           |
+| `changelog`                                 | `entries` (`version`, `date`, `summary`, `url`)                                                                               |
+| `packs status`, `packs ensure`              | `packs`                                                                                                                       |
+| `offline-request`, `import-bundle`          | `product`, `requestCode`; `bundleId`, `imported`, `status`                                                                    |
 
-| Exit code | Meaning                                                                     |
-| --------- | --------------------------------------------------------------------------- |
-| 0         | Done; for `status`, the license is usable                                   |
-| 1         | Failed                                                                      |
-| 2         | Usage: a missing argument, an option the verb does not take, no key to read |
-| 3         | The license is not usable, or a device limit was hit                        |
-| 4         | The service could not be reached                                            |
-| 130       | Cancelled (Esc or Ctrl-C)                                                   |
+`"error"` appears on a failure that has a code: a registry code (`device_limit`, `network`),
+`usage`, `internal`, or `interrupted` for Ctrl-C. `"message"` appears only with a usage error and
+an `import-bundle` failure. A refusal from the server is `ok: false` with its `kind` and `code`,
+and an unusable license is `ok: false` with its `status`.
+
+| Exit code | Meaning                                                                                                                 |
+| --------- | ----------------------------------------------------------------------------------------------------------------------- |
+| 0         | Done; for `status`, the license is usable                                                                               |
+| 1         | A refusal, an unusable license, a device limit, a cancelled or declined step, an unreachable service, any other failure |
+| 2         | Usage: a missing argument, an option the verb does not take, no key to read                                             |
+| 130       | Interrupted (Ctrl-C)                                                                                                    |
 
 Under `--json`, `login` never opens a browser: it prints a `pending` line first, with the code and
-the page for the script to show, then the result line with the final `state` (`signedIn`,
-`expired`, `denied` or `cancelled`).
+the page for the script to show, then the result line.
 
 ```text
 {"v":1,"command":"login","event":"pending","verificationUri":"https://key.plrs.im/device","verificationUriComplete":"https://key.plrs.im/device?code=WDJB-MJHT","userCode":"WDJB-MJHT","expiresAt":1791357358}
-{"v":1,"command":"login","event":"result","ok":true,"exit":0,"state":"signedIn","result":{"identity":{"name":"Mara Fennick","email":"mara@fennick.studio"},"status":{"status":"ok"}}}
+{"v":1,"command":"login","event":"result","ok":true,"exit":0,"state":"signedIn","name":"Mara Fennick","email":"mara@fennick.studio","attached":null,"status":"ok"}
 ```
 
-No output carries a license key, a device token or the sign-in poll credential.
+No `--json` line carries a license key, a device token, the sign-in poll credential, a secret's
+value or a minted token. Off `--json`, `secret` and `mint` print the value alone on stdout for a
+script that pipes it.
 
 ## Server text and links
 
@@ -388,9 +405,9 @@ For people using the terminal:
 - Status is always a mark and a word, never colour alone.
 - The key field never shows a character of the secret, only the public `pkey_<product>_` prefix
   and bullets, and a key is never printed, logged or put in JSON.
-- Every key a step takes is named on its last row (`Enter activate · Esc cancel`). Esc, Ctrl-C and
-  Ctrl-D cancel any prompt or wait, with exit code 130, and the terminal leaves raw mode on every
-  path out.
+- Every key a step takes is named on its last row (`Enter activate · Esc cancel`). Esc and Ctrl-D
+  cancel a prompt or a wait (exit 1); Ctrl-C interrupts it (exit 130). The terminal leaves raw mode
+  on every path out.
 - A link is printed as text, without its scheme, and is an OSC 8 hyperlink where the terminal
   supports one; `c` copies the sign-in code with OSC 52.
 - Without animation, every line prints once, which reads well in a screen reader and in a log.

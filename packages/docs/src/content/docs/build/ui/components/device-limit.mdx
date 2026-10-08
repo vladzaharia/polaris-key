@@ -26,7 +26,7 @@ The focused Replace a device flow: the seat meter, the devices as radio rows wit
     **Drop-in.** `activate` (and `enroll`) when every seat is taken: the seat meter and the portal
     page that frees one (`browser-mode`). Enter opens the page, then Enter tries the key again.
     Without a portal link (`default`), or with no terminal to ask on, it ends with the command to
-    run once a seat is free, and exit code 3. `devices deauthorize <deviceId>` frees a seat from a
+    run once a seat is free, and exit code 1. `devices deauthorize <deviceId>` frees a seat from a
     device that holds one.
 
     **Styled part.** `seatMeter(ctx, used, limit)`, `linkSpan` and `hintsRow`.
