@@ -40,6 +40,10 @@ PolarisTheme(branding = PolarisBranding.PolarisKey, showPoweredBy = true) { ... 
 ```
 
 `logo = { Image(...) }` puts your own logo at the top of the kit's screens in either mode.
+`accent = Color(0xFF369186)` applies your product's colour in either mode. It replaces the primary
+roles (the core violet when branded, your scheme's primary when neutral) after the accent resolver
+has adjusted it for contrast in the current scheme. Without it, neutral keeps your scheme exactly,
+dynamic colour included.
 `darkTheme` picks the branded palette's theme. It follows the system by default.
 
 ## The screens
@@ -116,8 +120,27 @@ line on Android TV. The link carries the key fragment on an `/activate` link and
 you pass to `PolarisGateState`.
 
 Every screen shares one scaffold, `PolarisScreen`. It applies the safe-drawing insets (bars,
-cutouts, the keyboard) and centres one column of at most 480 dp. That column scrolls rather than
-clipping when a large font scale or a landscape phone leaves too little height.
+cutouts, the keyboard) and picks the layout from the space it is given:
+
+- **A phone or a foldable:** one centred column of at most 480 dp. It scrolls rather than clipping
+  when a large font scale leaves too little height.
+- **A tablet or a desktop window** (840 dp wide or more): the same column at 520 dp, with the title
+  a role larger. On a large window (1600 x 900 dp or more) the column is 600 dp, the title larger
+  again, and every text in the screen 1.125x.
+- **A short window** (under 480 dp tall, such as a phone in landscape) **and Android TV:** two panes
+  when the screen has controls. The content sits start-aligned on the start side and the controls
+  on the end side, so the primary action never falls below the fold. Pass your own screen's
+  controls as `PolarisScreen`'s `actions` to get the same behaviour.
+
+Spacing follows one rhythm on the 4 dp grid: 8 dp between a title and its lede, 12 dp between
+stacked controls, 24 dp between two groups of controls, and a section gap between the header, the
+content and the controls (24 dp on a phone, 32 on a tablet, 40 on a large window and 16 in a short
+one).
+
+Sign-in shows the product header (your logo and product name), the user code at hero size in a
+monospace face with no letter spacing, the address with a copy button, and a countdown ring. The
+QR code appears only on Android TV, where the person signs in on another device; pass `showQr` to
+`PolarisSignInScreen` to override that. The licence key field is the Material 3 filled field.
 
 ## Copy and translation
 
@@ -172,5 +195,12 @@ needed. Every screen is rendered in seven variants, and the committed references
 - a phone, neutral and branded, light and dark;
 - a phone at a 200 % font scale;
 - a landscape tablet, neutral and branded.
+
+The responsive suite renders sign-in, the gate's screens, devices, settings and the update prompt
+at six more sizes, each neutral (`native-*`) and branded (`polaris-*`): 360 x 640, a phone in
+landscape at 891 x 411, a small phone in landscape at 640 x 360, a foldable at 673 x 841, a desktop
+window at 1920 x 1080, and a phone at a 150 % font scale. Sign-in and activation also render on
+Android TV at 960 x 540. `ResponsiveLayoutTest` checks at every size that the whole sign-in code,
+Open sign-in page, the key field and Activate are on screen without scrolling.
 
 The badge has its own references under `powered-by/`.
