@@ -79,6 +79,26 @@ describe.concurrent("every shipped §4 state at every size", () => {
   }
 });
 
+/**
+ * Tab to the open dialog's scrolling body (a `region` while it overflows) and read its focus
+ * outline; null when Tab never reaches it.
+ */
+async function focusScrollingBody(
+  page: Page,
+): Promise<{ style: string; width: string } | null> {
+  for (let i = 0; i < 12; i++) {
+    await page.keyboard.press("Tab");
+    const ring = await page.evaluate(() => {
+      const el = document.activeElement;
+      if (!el?.matches("[role=dialog] [role=region]")) return null;
+      const cs = getComputedStyle(el);
+      return { style: cs.outlineStyle, width: cs.outlineWidth };
+    });
+    if (ring) return ring;
+  }
+  return null;
+}
+
 /** A fixture's reply body, for a variation on it. */
 function body<T>(h: Handler | undefined): T {
   const reply = typeof h === "function" ? h(undefined as never) : h;
@@ -114,6 +134,7 @@ describe("the signed-in header (PORTAL.md §3.2, §8)", () => {
   ];
   const NAMES = [
     "Maximiliana Fennick-Oyelaran",
+    "Dr. Maximiliana Fennick",
     "عبد الرحمن الفاسي-بنعبد الله",
   ];
 
@@ -170,23 +191,35 @@ describe("the signed-in header (PORTAL.md §3.2, §8)", () => {
             .toBe(
               `Polaris Key: your library · Library12 · Discover24 · Jump to a product · Activate license · Account: ${name}`,
             );
-          // From 1180 px the chip shows the given name, whole: the ⌘K field gives way first.
-          const given = await o.page.evaluate(() => {
-            const span = document.querySelector<HTMLElement>(
-              'header button[aria-label^="Account:"] span[dir="auto"]',
+          // From 1180 px the chip shows the full name. It truncates only once the ⌘K field has
+          // given way to its 176 px floor, or the chip has reached its 18rem cap.
+          const chip = await o.page.evaluate(() => {
+            const button = document.querySelector<HTMLElement>(
+              'header button[aria-label^="Account:"]',
+            )!;
+            const span = button.querySelector<HTMLElement>('span[dir="auto"]');
+            const jump = document.querySelector<HTMLElement>(
+              'header button[aria-label="Jump to a product"]',
             );
             return span?.checkVisibility()
               ? {
                   text: span.textContent,
                   clipped: span.scrollWidth > span.clientWidth,
+                  chip: button.getBoundingClientRect().width,
+                  jump: jump?.getBoundingClientRect().width ?? 0,
                 }
               : null;
           });
-          if (width >= 1180)
-            expect
-              .soft(given, `the chip's name at ${width}`)
-              .toEqual({ text: name.split(" ")[0], clipped: false });
-          else expect.soft(given, `the chip at ${width}`).toBeNull();
+          if (width >= 1180) {
+            expect.soft(chip?.text, `the chip's name at ${width}`).toBe(name);
+            if (chip?.clipped)
+              expect
+                .soft(
+                  chip.jump <= 176.5 || chip.chip >= 287.5,
+                  `the name truncates before ⌘K gives way at ${width} (⌘K ${chip.jump} px, chip ${chip.chip} px)`,
+                )
+                .toBe(true);
+          } else expect.soft(chip, `the chip at ${width}`).toBeNull();
         }
       } finally {
         await o.close();
@@ -258,6 +291,31 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
       { list, item },
     );
 
+  /** Compact tiles whose status pill overlaps their icon (the pill is the art's only child span). */
+  const pillsOverIcons = (page: Page) =>
+    page.evaluate(() =>
+      [...document.querySelectorAll("[data-library-grid=compact] article")]
+        .map((tile) => {
+          const pill = tile.querySelector(
+            ":scope > :first-child span.absolute",
+          );
+          const icon = tile.querySelector(
+            ":scope > div > div:first-child > :first-child",
+          );
+          if (!pill || !icon) return null;
+          const a = pill.getBoundingClientRect();
+          const b = icon.getBoundingClientRect();
+          const overlap =
+            a.width > 0 &&
+            a.left < b.right &&
+            b.left < a.right &&
+            a.top < b.bottom &&
+            b.top < a.bottom;
+          return overlap ? tile.getAttribute("aria-labelledby") : null;
+        })
+        .filter(Boolean),
+    );
+
   it("Needs attention: three columns from 900 px, one-line actions that line up", async ({
     expect,
   }) => {
@@ -269,6 +327,19 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
       for (const width of [900, 1024, 1280, 1440, 1920, 2560]) {
         await o.page.setViewportSize({ width, height: 900 });
         const grid = await rowsOf(o.page, SHELF, "a.w-full");
+        // A truncated label shows in full on hover.
+        expect
+          .soft(
+            await o.page.evaluate(
+              (sel) =>
+                [...document.querySelectorAll(`${sel} a.w-full`)].every(
+                  (a) => a.getAttribute("title") === a.textContent?.trim(),
+                ),
+              SHELF,
+            ),
+            `action titles at ${width}`,
+          )
+          .toBe(true);
         expect.soft(grid.columns, `columns at ${width}`).toBe(3);
         expect.soft(grid.items.length).toBe(3);
         for (const [i, it] of grid.items.entries()) {
@@ -335,6 +406,16 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
           expect
             .soft(it.action?.fits, `tile ${i}'s action at ${width}`)
             .toBe(true);
+        expect
+          .soft(await pillsOverIcons(o.page), `pills over icons at ${width}`)
+          .toEqual([]);
+      }
+      // Four columns from 1180 px: the narrowest tiles, at 1180–1250 px, too.
+      for (const width of [1180, 1220]) {
+        await o.page.setViewportSize({ width, height: 900 });
+        expect
+          .soft(await pillsOverIcons(o.page), `pills over icons at ${width}`)
+          .toEqual([]);
       }
     } finally {
       await o.close();
@@ -439,6 +520,26 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
       // Main · side from 1024 px, the pills until 1180 px.
       await o.page.setViewportSize({ width: 1024, height: 900 });
       expect(await layout()).toMatchObject({ columns: "grid", pills: true });
+      // In the narrow side column Remove sits under the meta line: the name has the row.
+      for (const width of [1024, 1440]) {
+        await o.page.setViewportSize({ width, height: 900 });
+        const rows = await o.page.evaluate(() =>
+          [...document.querySelectorAll("#section-devices li")]
+            .map((li) => {
+              const name = li.querySelector("[data-device-name]");
+              const remove = li.querySelector("button[aria-label^=Remove]");
+              if (!name || !remove) return null;
+              const meta = name.nextElementSibling!.getBoundingClientRect();
+              return remove.getBoundingClientRect().top >= meta.bottom;
+            })
+            .filter((r) => r !== null),
+        );
+        expect.soft(rows.length, `device rows at ${width}`).toBeGreaterThan(0);
+        expect
+          .soft(rows.every(Boolean), `Remove under the meta at ${width}`)
+          .toBe(true);
+      }
+      await o.page.setViewportSize({ width: 1024, height: 900 });
       // The long name's Remove confirmation: both labels inside their buttons.
       const devices = o.page.getByRole("region", { name: "Devices" });
       await devices
@@ -569,6 +670,102 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
         expect
           .soft(bottom, `the lead action at ${width}×${height}`)
           .toBeLessThanOrEqual(limit);
+      } finally {
+        await o.close();
+      }
+    }
+  });
+
+  it("a focused dialog body that scrolls draws its focus ring (WCAG 2.4.7)", async ({
+    expect,
+  }) => {
+    const o = await portal.open("three", "/", { width: 667, height: 375 });
+    try {
+      await toConfirm(o.page);
+      const ring = await focusScrollingBody(o.page);
+      expect(ring).toEqual({ style: "solid", width: "2px" });
+    } finally {
+      await o.close();
+    }
+  });
+
+  it("one product: the hero's download is on the first screen from 1024 px and on a short screen", async ({
+    expect,
+  }) => {
+    for (const [width, height] of [
+      [1024, 768],
+      [1179, 900],
+      [844, 390],
+    ] as const) {
+      const o = await portal.open("one", "/", { width, height });
+      try {
+        await h1(o.page, "Your library");
+        const hero = o.page.locator("article[aria-labelledby=hero-name]");
+        await hero.waitFor();
+        const where = await hero.evaluate((article) => {
+          const art = article.firstElementChild!.getBoundingClientRect();
+          const button = article
+            .querySelector("button")!
+            .getBoundingClientRect();
+          return {
+            bottom: button.bottom,
+            // Side by side: the panel starts beside the art, not under it.
+            sideBySide: button.left >= art.right - 1,
+            // Never cropped: the art keeps 16:9 below 1180 px.
+            ratio: art.width / art.height,
+          };
+        });
+        expect
+          .soft(where.bottom, `the download at ${width}×${height}`)
+          .toBeLessThanOrEqual(height);
+        expect.soft(where.sideBySide, `side by side at ${width}`).toBe(true);
+        expect
+          .soft(where.ratio, `the art at ${width}×${height}`)
+          .toBeCloseTo(16 / 9, 1);
+      } finally {
+        await o.close();
+      }
+    }
+  });
+
+  it("short screens: the focused flows drop their art too", async ({
+    expect,
+  }) => {
+    for (const s of [
+      {
+        scenario: "twelve" as const,
+        path: "/#/p/orbit-survey/free-device?return=orbitsurvey%3A%2F%2Fretry",
+        heading: "Your license is on 2 of 2 devices",
+      },
+      {
+        scenario: "three" as const,
+        path: "/#/p/nightfall/download?platform=linux",
+        heading: "Download Nightfall for Linux",
+      },
+    ]) {
+      const o = await portal.open(s.scenario, s.path, {
+        width: 844,
+        height: 390,
+      });
+      try {
+        await h1(o.page, s.heading);
+        // The flow's card (FocusedFlow's FlowCard): its art strip, then its body with the icon.
+        const card = await o.page.evaluate(() => {
+          const section = document.querySelector(
+            'main section[class*="max-w-[41rem]"]',
+          )!;
+          const icon = section.lastElementChild!.firstElementChild!;
+          return {
+            art: section.firstElementChild!.checkVisibility(),
+            // The icon no longer overlaps: it sits wholly inside the card.
+            iconInside:
+              icon.getBoundingClientRect().top >=
+              section.getBoundingClientRect().top,
+          };
+        });
+        expect
+          .soft(card, `the flow card on ${s.path}`)
+          .toEqual({ art: false, iconInside: true });
       } finally {
         await o.close();
       }

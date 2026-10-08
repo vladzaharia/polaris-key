@@ -906,6 +906,12 @@ export const SHIPPED: ShippedState[] = [
       await p.getByRole("button", { name: "Remove Studio PC" }).first().click();
       await p.getByRole("heading", { name: "Remove Studio PC?" }).waitFor();
       await sectionNavSettled(p);
+      // Checked from the top, like every state: scrolled to Devices, whatever the main column
+      // has at that height passes under the sticky pills (761–1179 px), and a sliver of a target
+      // left showing reads to axe as an obscured target.
+      await p.evaluate(() => window.scrollTo(0, 0));
+      await p.waitForFunction(() => window.scrollY === 0);
+      await sectionNavSettled(p);
     },
   },
   // §4.25 Focused flows (PX-10).
