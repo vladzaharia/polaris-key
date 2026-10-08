@@ -670,7 +670,8 @@ await program.parseAsync();
 
 The verbs, the styled parts and the `@polaris-key/node/terminal` primitives, the headless views,
 theming, localisation, the `--json` contract and the fallbacks (`NO_COLOR`, `TERM=dumb`,
-`--ascii`, CI, 60 columns) are on [Terminal (Node)](/docs/build/ui/frameworks/terminal-node/).
+`--ascii`, CI, narrow and short terminals, a resize) are on
+[Terminal (Node)](/docs/build/ui/frameworks/terminal-node/).
 `kit: false` keeps the plain output, and each verb is also a plain function (`status(client)`,
 `devicesList(client)`, …) returning `{ ok, message, data }`.
 
