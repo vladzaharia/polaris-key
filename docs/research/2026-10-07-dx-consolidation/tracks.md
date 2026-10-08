@@ -71,10 +71,16 @@ across tracks (integration §4.1):
    materialises explicit values under the old semantics, N+1 switches once the report shows zero
    diffs. Columns in `licenses` and `grants` are left dormant rather than rebuilding those tables
    (`migrations/0017`'s warning).
-6. **Windows are days, not releases.** The project ships several releases a day, so every
-   deprecation or safety window (break-glass, `PKEY_ADMIN_COOKIE`, SDK and Action aliases, the
-   Pocket ID env override, cookie mode) is stated in calendar days, ends on a production fact, and
-   is recorded in P0-24's ledger.
+6. **No compatibility windows** (owner, 2026-10-07). When a 0.9 package replaces a route, mode,
+   shape, Action input, CLI form or SDK name, the old one is removed in the same release; a removed
+   manifest field is a validator error naming its replacement, and the package migrates the
+   repo-root `.pkey/` and `products/djdl/*` in the same change (adopters' repos are owner steps).
+   Only three things keep a window, each ending on a production fact recorded in P0-24's ledger:
+   - the break-glass `ADMIN_OIDC_*` window, which prevents a console lockout;
+   - a path that native app binaries already on end-user machines call (today DJDL's desktop
+     builds and the permanent alias routes), removed once DJDL has shipped a build on 0.9;
+   - the two-release DB contracts (rule 5), so the Worker still serving during a deploy never
+     reads a dropped table.
 
 ---
 
@@ -309,8 +315,8 @@ which is what the brief asks for.
   during a session that was not strong counts only after step-up; grants need step-up and are
   audited and notified.
 - `core.adminGroup`, `products.admin_group` and manifest `product.adminGroup` are retired after
-  the conversion offer; `PKEY_ADMIN_COOKIE` is gone from the CLI and docs after 30 days with no
-  cookie-authenticated CLI call; admin and packages tokens are exclusive.
+  the conversion offer; `PKEY_ADMIN_COOKIE` is gone from the CLI and docs in the release that
+  ships ST-34's tokens (rule 6); admin and packages tokens are exclusive.
 - Platform settings render every registered key, ordered by use; the docs gate admits Platform
   admins from ST-29 and any active console member from ST-35, with operator sections behind
   Platform admin.
@@ -684,7 +690,7 @@ longest chain in the whole plan is here: UK-02b → UK-03 → UK-04 → UK-05 �
 - The must-tier kits (elements, React, Electron inside `@polaris-key/node/electron`, SwiftUI iOS
   and macOS, Compose Android and Desktop, Godot, Qt Quick, two terminals) pass UK-41's close-out,
   including rendering SP-33b's goldens; UK-31's recipes build in CI.
-- React cookie mode is deprecated in `api.json` and removed after its window.
+- React cookie mode is removed from the SDK and the Worker in 0.9 (SP-40).
 
 ---
 

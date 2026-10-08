@@ -55,9 +55,10 @@ Five further rules the plan imposes on itself:
 - **Contracts take two releases.** Release N stops every read and write; release N+1 drops the
   table after a production check; value changes run through one data-migration runner (P0-49)
   with a dry run and a report (`tracks.md` rule 5).
-- **Windows are days, not releases.** The project ships several releases a day, so every
-  deprecation or safety window is stated in days and ends on a production fact (`tracks.md`
-  rule 6).
+- **No compatibility windows** (owner, 2026-10-07). A 0.9 package removes what it replaces in the
+  same release, and a removed manifest field is a validator error naming its replacement. Only
+  break-glass, paths that native binaries already shipped call, and the two-release DB contracts
+  keep a window, each ending on a production fact (`tracks.md` rule 6).
 - **Identifiers stay.** UI words change (outlet → Channel, grant → Add-on, update channel →
   Release track, ManagementState → Editable/Read-only/Hidden); stored and wire identifiers do not.
 
@@ -300,8 +301,8 @@ Five further rules the plan imposes on itself:
 - **Every admin route** is declared in one deny-by-default table checked by `can()`, the docs
   gate included; a member without access sees a page naming who can grant it, never a dead end
   (ST-29, ST-31).
-- **The CLI** uses `pkey login` and a role-bounded admin token; `PKEY_ADMIN_COOKIE` retires after
-  30 days unused (ST-34).
+- **The CLI** uses `pkey login` and a role-bounded admin token; `PKEY_ADMIN_COOKIE` goes in the
+  same release (ST-34; owner, 2026-10-07: no compatibility windows).
 - **Platform settings** are ordered by how often they change (Recently changed, Platform ready,
   Product defaults, Sign-in, Storefront and hosting, Email and alerts, Licensing, Jobs, Advanced)
   and render every registered key (ST-09). Disabling a service platform-wide is deferred (§7).
@@ -311,12 +312,13 @@ Five further rules the plan imposes on itself:
 - One config file and one start call in six SDKs (SP-32a, SP-32b), with `doctor()` explaining
   what is missing.
 - **One name per concept**, recorded in `conformance/parity/api.json` with generated surface tests
-  in every SDK; renames only where SDKs disagree today, with deprecated aliases in 0.9 kept for a
-  published window (SP-35). The public-API work runs as one serial lane: SP-35 → SP-34 → SP-32a →
+  in every SDK; renames only where SDKs disagree today, landing in 0.9 with no deprecated aliases
+  (SP-35; owner, 2026-10-07: remove, not deprecate). The public-API work runs as one serial lane: SP-35 → SP-34 → SP-32a →
   SP-32b → SP-39, before the next six-SDK waves.
 - One snippet generator (SP-33a, SP-33b), one examples tree built in CI around one example product
   (SP-36), one start path in the docs (SP-37), one copy pipeline (SP-39). React's cookie mode is
-  deprecated and removed after its window (SP-40, owner decision 7).
+  removed from the SDK and the Worker in 0.9 once I-08 and I-10a provide the redirect (SP-40,
+  owner decision 7).
 - **UI kits**: the must tier ships as packages (elements, React, Electron inside
   `@polaris-key/node/electron`, SwiftUI iOS and macOS, Compose Android and Desktop, Godot, Qt
   Quick, two terminals). Vue, Svelte, Angular, Solid, htmx, Tauri, UIKit, AppKit and Android
@@ -396,12 +398,12 @@ Connections); Config → Edge mint (→ Catalog); Platform → Override migratio
 **Added versus removed** (the ledger the simplicity critique asked for; "planned" means designed
 but never built):
 
-| Kind              | Added                                                                                                                                                                                                                                                            | Removed or never created                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Tables            | 10: `sdk_sightings`, `console_role_bindings`, `identity_connections`, `identity_connection_domains`, `account_tokens`, `subscriptions`, `addons`, `grant_consumptions`, the one sealed credential store, P0-49's job table                                       | 16 dropped (two-release): `override_migration`, `override_migration_report`, 4 `portal_*`, `license_profiles`, `holder_versions`, `device_store_identities`, `grant_entitlements`, `license_store_grants`, `dist_store_product_entitlements`, 3 old credential stores, `dist_listing`. 9 planned, never created: `setup_choices`, `setup_state`, `console_members`, `console_access_rules`, `console_invites`, `console_requests`, `release_channel_moves`, `dist_offer_entitlements`, `dist_subscriptions` |
-| Registry settings | 7 new: `license.access`, `storefront.polarisKey.visibility`, `distribution.intendedPlatforms`, `core.setup`, `console.access`, `identity.claims`, the platform terms version. Planned areas cut down: 4 `commerce.*` (of 26), 2 Cloud Sync (of 4 plus a quota)   | About 28 existing keys removed (licensing 7 → 1, `license.autoIssue`, the group map, `syncTierOnSignIn`, 4 Discover keys, `keyEntryRefusals`, `core.adminGroup`, 2 `license.defaults.*`, `config.edgeMint.recipes`, 2 `release.*`, 4 typed store identities, 3 test-purchase switches → 1); 4 portal toggle columns and `releases_enabled` unread                                                                                                                                                           |
-| Console pages     | Integration; product Access; Platform → Members and Product → Settings → Members; Platform → Connections; License → Entitlements and Add-ons; one page per channel; Commerce's Storefronts overview, Offers, Purchases; Updates (renamed)                        | 19 pages or nav items retired or merged (the list above)                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| Manifest fields   | `licensing.entitlements[]`, `licensing.addons[]`, `licensing.access`, `identity.{methods, connections, claims, terms, keyEntry, redirectPaths}`, tier `entitlements`/`fingerprintMode`/`onExpiry`, the catalog `mint` block, the short `.pkey/distribution` form | Deprecated with validator warnings: `product.adminGroup`, `dist_listing`, `defaultDeviceLimit`, `defaultMaxOfflineDays`, `oidc.*`, `groupRoleMap`, `autoIssue.mode`, provisioning entitlements, `secret: true`, `delivery: serverOnly`, `ui.scopes: device`, `userGrant`, `grantLabel`, `edgeMint[]`, a declared registration policy. `modules` is kept (no `services` rename)                                                                                                                              |
+| Kind              | Added                                                                                                                                                                                                                                                            | Removed or never created                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tables            | 10: `sdk_sightings`, `console_role_bindings`, `identity_connections`, `identity_connection_domains`, `account_tokens`, `subscriptions`, `addons`, `grant_consumptions`, the one sealed credential store, P0-49's job table                                       | 16 dropped (two-release): `override_migration`, `override_migration_report`, 4 `portal_*`, `license_profiles`, `holder_versions`, `device_store_identities`, `grant_entitlements`, `license_store_grants`, `dist_store_product_entitlements`, 3 old credential stores, `dist_listing`. 9 planned, never created: `setup_choices`, `setup_state`, `console_members`, `console_access_rules`, `console_invites`, `console_requests`, `release_channel_moves`, `dist_offer_entitlements`, `dist_subscriptions`                                                          |
+| Registry settings | 7 new: `license.access`, `storefront.polarisKey.visibility`, `distribution.intendedPlatforms`, `core.setup`, `console.access`, `identity.claims`, the platform terms version. Planned areas cut down: 4 `commerce.*` (of 26), 2 Cloud Sync (of 4 plus a quota)   | About 28 existing keys removed (licensing 7 → 1, `license.autoIssue`, the group map, `syncTierOnSignIn`, 4 Discover keys, `keyEntryRefusals`, `core.adminGroup`, 2 `license.defaults.*`, `config.edgeMint.recipes`, 2 `release.*`, 4 typed store identities, 3 test-purchase switches → 1); 4 portal toggle columns and `releases_enabled` unread                                                                                                                                                                                                                    |
+| Console pages     | Integration; product Access; Platform → Members and Product → Settings → Members; Platform → Connections; License → Entitlements and Add-ons; one page per channel; Commerce's Storefronts overview, Offers, Purchases; Updates (renamed)                        | 19 pages or nav items retired or merged (the list above)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Manifest fields   | `licensing.entitlements[]`, `licensing.addons[]`, `licensing.access`, `identity.{methods, connections, claims, terms, keyEntry, redirectPaths}`, tier `entitlements`/`fingerprintMode`/`onExpiry`, the catalog `mint` block, the short `.pkey/distribution` form | Removed (owner, 2026-10-07): each is a validator error naming its replacement, and the package that removes it migrates the repo-root `.pkey/` and `products/djdl/*` in the same change; adopters' repos are owner steps: `product.adminGroup`, `dist_listing`, `defaultDeviceLimit`, `defaultMaxOfflineDays`, `oidc.*`, `groupRoleMap`, `autoIssue.mode`, provisioning entitlements, `secret: true`, `delivery: serverOnly`, `ui.scopes: device`, `userGrant`, `grantLabel`, `edgeMint[]`, a declared registration policy. `modules` is kept (no `services` rename) |
 
 **Planned work that will not be built**: a second authorization server, I-22's product-IdP
 kinds, I-23, SP-10's signed browser-session document, a `commerce` service slug, automatic
@@ -713,7 +715,7 @@ under the brief.
 | 3   | **Who can see and install our SDK packages**, and do our SDKs publish to npmjs and PyPI? The second reverses F-10's "feeds only".                                                                                                                                                 | **Installable anonymously by exact name, unlisted for customers**; console members' tokens list them. Our SDKs stay feeds-only for now; claim the npm org without packages. Public-registry publish (F-35) is offered to adopters.                                                              | If gated: SP-38 must ship in the same release or installs break. If published to npmjs/PyPI: F-35 runs for the system product too.                                                                                                               |
 | 5   | **Polaris Key paid checkout: go for a reduced v1?** CM-01..19 are deferred today.                                                                                                                                                                                                 | **Build store commerce now** (CM-20..CM-28, required). **Go** for reduced checkout v1 (CM-01, 02, 04, 05, 08, 11, 12, 14, 15, 17, re-planned on CM-20, 4 settings instead of 26) after CM-23 lands.                                                                                             | Polaris Key stays a free storefront; subscriptions run through stores and the manual and external sources.                                                                                                                                       |
 | 6   | **UI kits: framework packages become recipes?** Partly revises 2026-10-04's "all major frameworks".                                                                                                                                                                               | **Yes.** Must tier as packages; Vue, Svelte, Angular, Solid, htmx, Tauri, UIKit, AppKit and Android Views as recipes, revived as packages when an adopter ships on one; React Native, visionOS, tvOS, watchOS, widgets and Godot C# parked. Active kit effort drops from 71–102 to 34–48 weeks. | The should tier returns after the consolidation waves, off the critical path.                                                                                                                                                                    |
-| 7   | **Park SP-10 and retire cookie-mode browser sessions** for bearer mode plus I-08's web redirect? Reverses the 2026-10-05 W10 decision.                                                                                                                                            | **Yes.** It avoids a signed document across six SDKs; SP-40 deprecates cookie mode after I-08 and I-10a and removes it after a 30-day window with no cookie-mode sessions.                                                                                                                      | SP-10 runs as a fourth wire train after W-LX; SP-40 is dropped.                                                                                                                                                                                  |
+| 7   | **Park SP-10 and retire cookie-mode browser sessions** for bearer mode plus I-08's web redirect? Reverses the 2026-10-05 W10 decision.                                                                                                                                            | **Yes.** It avoids a signed document across six SDKs; SP-40 removes cookie mode from the SDK and the Worker in 0.9 once I-08 and I-10a provide the redirect.                                                                                                                                    | SP-10 runs as a fourth wire train after W-LX; SP-40 is dropped.                                                                                                                                                                                  |
 | 8   | **Narrow the client-core plan-mode rule** (CLAUDE.md, AGENTS.md) to its wire modules?                                                                                                                                                                                             | **Yes.** SP-34 moves the neutral modules once under plan mode, proven by unchanged transcripts and corpus; after that they are normal code and the Node/React duplicates go.                                                                                                                    | SP-34 still runs once under plan mode; every later change to those modules stays plan mode.                                                                                                                                                      |
 
 **Owner decisions (delegated to Claude, 2026-10-07).** The owner delegated every program question
@@ -733,8 +735,8 @@ recommendation. Each stays open to the owner's veto; a veto takes the "If the an
 - **6: framework kits become recipes.** This partly reverses the owner's 2026-10-04 "all major
   frameworks", so it is the one to look at first. Nothing is deleted: recipes stay documented and
   a framework package returns when an adopter ships on it.
-- **7: park SP-10; retire cookie-mode sessions after I-08 and I-10a** (SP-40, 30 days with none
-  in production).
+- **7: park SP-10; retire cookie-mode sessions after I-08 and I-10a** (SP-40: the SDK and the
+  Worker in the same 0.9 release; owner, 2026-10-07).
 - **8: narrow the client-core plan-mode rule after SP-34** proves the move with unchanged
   transcripts and corpus. CLAUDE.md and AGENTS.md change in SP-34, not before.
 
@@ -831,7 +833,8 @@ and major finding was applied; minor ones were applied except where noted.
   Pocket ID IdP and passkeys, and operator SSO routing plus console domain rules move to ST-32
   after I-30; F-37 mints its own packages-only token and token scopes are exclusive; I-29 waits
   for I-30's enforce; F-34 migrates Entitled feeds onto deliverables; RBAC areas are stable ids on
-  routes with a drift gate; windows are days with production exit facts (`tracks.md` rule 6).
+  routes with a drift gate; no compatibility windows beyond `tracks.md` rule 6's three (owner,
+  2026-10-07).
 - **Sequencing** (feasibility): W-ID is I-27 → I-09 → I-08 → I-10a/b, with I-09 in wave 7 and the
   `identity.keyEntry` shape in I-27; batch-6 file overlaps fixed by two early windows (below);
   waves corrected (UK-02b's plan in week 0; P0-36 and P0-45 in week 0, P0-38 in wave 7, A-25 in wave 8a;
@@ -877,8 +880,15 @@ and major finding was applied; minor ones were applied except where noted.
   review round was gone. P0-20 deletes the dead holder code early; the standalone tables drop at
   LX-16b; the dormant columns in `grants` and `licenses` stay, because dropping them needs a table
   rebuild that `migrations/0017` warns against and the `grants` holder CHECK forbids.
-- **Deprecated aliases only on SDK, CLI and Action** (simplicity): manifest fields keep rule-9
-  validator warnings, because manifests live in adopters' repositories; no console cards, notices
+- **No deprecated aliases on SDK, CLI and Action (owner, 2026-10-07): removed in 0.9**
+  (simplicity): the renamed or replaced API ships as the only API in 0.9.x and the release notes
+  list each break. **No compatibility windows; manifest fields removed** (owner, 2026-10-07): a
+  route, mode or shape a 0.9 package replaces goes in the same release, except a path that native
+  binaries already on end-user machines call (DJDL's desktop builds, the permanent alias routes),
+  which goes once DJDL has shipped a build on 0.9. A removed manifest field is a validator error
+  naming its replacement, with no rule-9 warning period; the package migrates the repo-root
+  `.pkey/` and `products/djdl/*` in the same change, adopters' repos (DJDL's, Diceroll) are owner
+  steps, and `pkey migrate` stays only where a package already plans it. No console cards, notices
   or per-product flags remain.
 - **Approvals and owner steps as graph nodes** (feasibility): not applied. `check.mjs` has no node
   kind for them; plan-mode packages carry their own approval, the one blocking owner step (A-18k)
@@ -893,3 +903,36 @@ and major finding was applied; minor ones were applied except where noted.
 - **"Automatic Grant" casing** (coverage): kept the house sentence-case rule rather than the
   owner's literal casing, now marked adapt and with ST-36's assertions updated in P0-36.
 - **Product editor and viewer roles** (simplicity): deferred as a parked idea, not dropped.
+
+---
+
+## 12. Versions: 0.9.x now, 1.0 later
+
+The owner decided (2026-10-07) that the consolidation ships as the **0.9 line**:
+
+- Batch 6 (LX-08, HA-12, UK-13, UK-14, ST-36) is the last 0.8 release, v0.8.33.
+- The first consolidation batch is **v0.9.0**, and every batch after it is a v0.9.x release. Two-release contracts and fixes ship the same way.
+- A consumer pinned to `^0.8` must widen to `^0.9`. A caret range on 0.x excludes the next minor.
+
+**1.0 is decided later,** from milestone P0-51. That milestone is a readiness review against the bar below, and it depends on every required package in tracks A–K plus P0-50. When all six parts pass, the owner can tag v1.0.0. From then on, every SDK follows semver against `conformance/parity/api.json`.
+
+**The 1.0 bar**
+
+1. **Complete.** Every required package in tracks A–K is done, including the second-release drops (`*b`). Every `UX-*` row is built, parked with a revive condition, or dropped.
+2. **Stable API.** `api.json` is the frozen public surface of all six SDKs; no deprecated alias
+   exists; no wire change is pending in the corpus lane; `PROTOCOL_VERSION` stays 4.
+3. **Secure.**
+   - ST-30's security review has passed.
+   - A final security review of the consolidated surfaces has no open blocking finding. Those surfaces are: console sign-in on accounts and roles, connections and domain routing, personal and service tokens, the access policy, and automatic licences.
+   - P0-50 is done, and no high or medium dependency alert is open.
+4. **Proven in production.**
+   - The consolidated features have run in production for at least 14 days, with no P1 incident and no rollback.
+   - DJDL and the system product run on the new model (tiers, access policy, channels, release tracks), migrated through P0-49 runs.
+5. **Experience.**
+   - A fresh product goes from wizard to Integration to Verified on every must-tier SDK with no undocumented step.
+   - A whole-product audit with the same lenses as 2026-10-07 finds no blocking issue.
+   - The docs have one start path, and every generated page is current.
+6. **Engineering.**
+   - The full CI matrix is green on the launch commit.
+   - Lint and debt baselines (strings, page budget, boundary, table crossings) are no larger than at the start.
+   - The boundary tests block.
