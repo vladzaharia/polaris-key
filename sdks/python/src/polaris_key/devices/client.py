@@ -19,7 +19,7 @@ is no credential, so there is no roster to ask for.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from ..core.cache import CacheManager
@@ -87,7 +87,9 @@ class AccountDevice:
 
 @dataclass(frozen=True)
 class RegisterOk:
-    token: str
+    """200: the device token was minted (and stored by ``register()``); never in the ``repr``."""
+
+    token: str = field(repr=False)
     deviceId: str
     kind: str = "ok"
 

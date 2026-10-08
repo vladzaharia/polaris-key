@@ -12,7 +12,7 @@ new endpoint cannot ship without them (R4-08).
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from ..constants_generated import ErrorCode
@@ -54,7 +54,10 @@ LICENSE_DOCUMENT_PATH = "license/document"
 
 @dataclass(frozen=True)
 class ActivationOk:
-    token: str
+    """200: the device token was minted. ``token`` is the ``pkeyt_`` credential the SDK already
+    stored; it is never in the ``repr``, so a ``print(result)`` or a log line cannot leak it."""
+
+    token: str = field(repr=False)
     schemaVersion: int = 0
     kind: str = "ok"
 
