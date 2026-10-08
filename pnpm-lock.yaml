@@ -352,12 +352,12 @@ importers:
       astro:
         specifier: ^7.3.5
         version: 7.3.5(@types/node@22.20.0)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)
+      js-yaml:
+        specifier: ^4.3.2
+        version: 4.3.2
       tailwindcss:
         specifier: ^4.1.4
         version: 4.3.3
-      yaml:
-        specifier: ^2.9.0
-        version: 2.9.0
     devDependencies:
       '@astrojs/check':
         specifier: ^0.9.10
