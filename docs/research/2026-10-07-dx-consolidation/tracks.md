@@ -165,7 +165,7 @@ registry) so feature work never adds another copy. Everything here is behaviour-
 | 10  | P0-35  | CQF-05        | Vocabularies as data (platforms, ecosystems, licence)                 | P0-39               | 0.5–0.8 |             |
 | 11  | ST-39  | OB-03         | Wizard kit                                                            | P0-39               | 1.2–1.6 |             |
 | 12  | ST-05a | ST-05 (split) | One settings read and write path                                      | P0-17               | 0.6–0.8 |             |
-| 13  | ST-05b | ST-05 (split) | Generic settings routes with bespoke routes as adapters               | ST-05a              | 0.5–0.7 |             |
+| 13  | ST-05b | ST-05 (split) | Generic settings routes; the bespoke settings routes removed          | ST-05a              | 0.5–0.7 |             |
 | 14  | ST-07  | edit          | SettingsRow v2: the one settings engine                               | ST-05a, P0-39       | 0.8–1.1 |             |
 | 15  | P0-17  | CQW-03        | Layering move (lead codemod at the batch-6 boundary)                  | P0-15               | 0.8–1.2 | window      |
 | 16  | P0-31  | CQF-01        | Console shared-layer cleanup (lead window)                            | —                   | 0.5–0.8 | window      |
@@ -867,7 +867,7 @@ reviving it.
 | CQT-04         | P0-45         | pkey command registry, context and doctor                                                        |
 | CQT-05         | P0-46         | Lint baselines with debt ledgers                                                                 |
 | ST-05 (split)  | ST-05a        | One settings read and write path                                                                 |
-| ST-05 (split)  | ST-05b        | Generic settings routes with bespoke routes as adapters                                          |
+| ST-05 (split)  | ST-05b        | Generic settings routes; the bespoke settings routes removed                                     |
 | AC-01          | ST-28         | Plan: console RBAC and console identity on accounts                                              |
 | AC-02          | ST-29         | Admin route table, can(), useCan and NoAccessPage (absorbs ST-21)                                |
 | AC-03          | ST-30         | Console sign-in on Polaris Key accounts                                                          |

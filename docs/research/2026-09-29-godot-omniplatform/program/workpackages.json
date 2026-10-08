@@ -9391,7 +9391,7 @@
     },
     {
       "id": "ST-05b",
-      "title": "Generic settings routes with bespoke routes as adapters",
+      "title": "Generic settings routes; the bespoke settings routes removed",
       "phase": "ST",
       "stage": "DX consolidation B: Foundations (code quality the feature tracks build on)",
       "lane": "worker",

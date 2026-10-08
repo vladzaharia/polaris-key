@@ -721,7 +721,7 @@
       "id": "ST-05",
       "action": "split",
       "target": ["ST-05a", "ST-05b"],
-      "note": "ST-05a: one settings read/write path (fold the A-13 platform store into the registry resolver and writeSetting). ST-05b: the generic routes (S-18 §4.7 minus history, as-of and restore) with the bespoke routes as thin adapters in the same package."
+      "note": "ST-05a: one settings read/write path (fold the A-13 platform store into the registry resolver and writeSetting). ST-05b: the generic routes (S-18 §4.7 minus history, as-of and restore), with the bespoke routes removed in the same release (no alias, no adapter)."
     },
     {
       "id": "ST-07",
@@ -853,7 +853,7 @@
       "id": "ST-25",
       "action": "edit",
       "title": "Legacy settings retirement (widened)",
-      "note": "Widened, driven by P0-24's migration ledger: also products.admin_group, core.adminGroup and manifest product.adminGroup (after ST-32's conversion), legacyDefault (after LX-16), the *_source markers, the retired licensing keys (LX-40), products.branding_json and the portal tintColor read, and the bespoke aliases ST-05b made adapters; PENDING emptied; each removal goes in the release that replaces it (owner, 2026-10-07)."
+      "note": "Widened, driven by P0-24's migration ledger: also products.admin_group, core.adminGroup and manifest product.adminGroup (after ST-32's conversion), legacyDefault (after LX-16), the *_source markers, the retired licensing keys (LX-40), products.branding_json and the portal tintColor read; PENDING emptied; each removal goes in the release that replaces it (owner, 2026-10-07)."
     },
     {
       "id": "LX-05b",
@@ -1996,10 +1996,11 @@
       "deps": ["HA-12", "UK-14"],
       "planMode": false,
       "estimateWeeks": [1, 1.5],
-      "scope": "tools/generators.ts declaring the 13 generator families (inputs, outputs, order, check); pnpm gen, --check, --changed, named runs; CI, gate.sh and pre-commit read it; generated reference/generators.mdx and the AGENTS.md rule-3 table; a test that every GENERATED banner maps to a registered output; old scripts kept as aliases.",
+      "scope": "tools/generators.ts declaring the 13 generator families (inputs, outputs, order, check); pnpm gen, --check, --changed, named runs; CI, gate.sh and pre-commit read it; generated reference/generators.mdx and the AGENTS.md rule-3 table; a test that every GENERATED banner maps to a registered output. The old root scripts (gen:brand, gen:constants, gen:corpus, gen:mirrors, gen:platform-inventory, gen:services, gen:settings, gen:storefront-ci, gen:transcripts) are removed in P0-42's release, with no alias: pnpm gen <family> replaces each, and CI, .husky/pre-commit, AGENTS.md, CLAUDE.md, the skills, the docs and the program's briefs and plans move to it in the same change (the lead's gate.sh, outside the repo, moves with it).",
       "acceptance": [
         "One pnpm gen --check replaces per-family checks in CI and gate.sh",
-        "Every GENERATED banner maps to a registry entry (test)"
+        "Every GENERATED banner maps to a registry entry (test)",
+        "No removed gen:* script name remains in the repo (git grep)"
       ]
     },
     {
@@ -2135,17 +2136,17 @@
     {
       "proposedId": "ST-05b",
       "alias": "ST-05 (split)",
-      "title": "Generic settings routes with bespoke routes as adapters",
+      "title": "Generic settings routes; the bespoke settings routes removed",
       "phase": "ST",
       "lane": "worker",
       "role": "pkey-implementer",
       "deps": ["ST-05a"],
       "planMode": false,
       "estimateWeeks": [0.5, 0.7],
-      "scope": "The generic settings admin routes of S-18 §4.7 minus history, as-of and restore; the bespoke routes rebuilt as thin adapters in the same package (no long alias period); declared on ST-29's route table if it has landed; aliases recorded in P0-24's ledger for ST-25.",
+      "scope": "The generic settings admin routes of S-18 §4.7 minus history, as-of and restore, declared on ST-29's route table if it has landed. The bespoke settings routes (…/update/settings, …/license/policy, …/trust-policy, …/distribution/access and the rest S-18 §4.7 lists) are removed in this package's release, with no alias and no adapter: the console moves to the generic routes in the same change, because it ships in lockstep with the Worker. Neither the CLI nor the Action calls them (checked 2026-10-08: the CLI's admin calls are /manage/api/me, …/bundles, …/distribution/listing/import and the products routes, and the Action is the bundled CLI on the CI plane), so neither moves.",
       "acceptance": [
         "Every settings write goes through the generic path",
-        "OpenAPI and routeCoverage updated"
+        "No bespoke settings route answers; OpenAPI and routeCoverage list none, and the console calls only the generic routes (test)"
       ]
     },
     {
@@ -3707,10 +3708,11 @@
       "deps": ["SP-32a"],
       "planMode": false,
       "estimateWeeks": [1.0, 1.4],
-      "scope": "Executes SP-32a's approved plan for Swift (fromBundle alias), Kotlin (PolarisKeyAndroid.client(context), desktop, JVM) and Godot (res://polaris-key.json with an export filter): fromConfig() then boot(), auto-version, doctor(); legacy plist, .tres and typed-module fallbacks.",
+      "scope": "Executes SP-32a's approved plan for Swift, Kotlin (PolarisKeyAndroid.client(context), desktop, JVM) and Godot (res://polaris-key.json with an export filter): fromConfig() then boot(), auto-version, doctor(). Removed in SP-32b's v0.9.x release, with no alias and no fallback (owner, 2026-10-07): Swift's PolarisKeyClient.fromBundle() and PolarisKey.plist (fromConfig() reads polaris-key.json from the bundle instead), the legacy .tres options and the typed-module config. A legacy config fails with an error naming polaris-key.json, which pkey sdk writes; the Godot setup dock fills it from an old .tres once, as an editor migration, never a run-time read (SP-35 D7). Each removal has its api.json removed row and its Upgrade to 0.9 row.",
       "acceptance": [
         "All six SDKs load the same fixture",
-        "Legacy configs still load (test per SDK)"
+        "A legacy config (PolarisKey.plist, the old .tres options, the typed-module config) fails with an error naming polaris-key.json, and no SDK reads it at run time (test per SDK)",
+        "fromBundle() is gone from the Swift SDK, with its api.json removed row naming fromConfig()"
       ]
     },
     {

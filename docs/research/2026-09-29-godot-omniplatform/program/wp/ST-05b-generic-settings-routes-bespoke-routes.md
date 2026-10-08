@@ -1,4 +1,4 @@
-# ST-05b Generic settings routes with bespoke routes as adapters
+# ST-05b Generic settings routes; the bespoke settings routes removed
 
 | Field       | Value                                                                                                                       |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------- |
@@ -17,11 +17,11 @@
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **ST-05 (split)** in [Track B, Foundations (code quality the feature tracks build on)](../../../2026-10-07-dx-consolidation/tracks.md#b-foundations-code-quality-the-feature-tracks-build-on).
 
 - Owner 2026-10-07: no compatibility window. What this package replaces (a route, mode, shape, Action input or CLI form) is removed in the same release; the one exception is a path that native app binaries already on end-user machines call (DJDL's desktop builds, the permanent alias routes), removed once DJDL has shipped a build on 0.9 (`tracks.md` rule 6).
-- Absorbs ST-05 (split; this package takes its share): ST-05a: one settings read/write path (fold the A-13 platform store into the registry resolver and writeSetting). ST-05b: the generic routes (S-18 §4.7 minus history, as-of and restore) with the bespoke routes as thin adapters in the same package.
+- Absorbs ST-05 (split; this package takes its share): ST-05a: one settings read/write path (fold the A-13 platform store into the registry resolver and writeSetting). ST-05b: the generic routes (S-18 §4.7 minus history, as-of and restore), with the bespoke routes removed in the same release (no alias, no adapter).
 
 ## Goal
 
-Generic settings routes with bespoke routes as adapters, as scoped below. Done when every acceptance criterion holds and the green gate passes.
+Generic settings routes; the bespoke settings routes removed, as scoped below. Done when every acceptance criterion holds and the green gate passes.
 
 ## Why
 
@@ -37,7 +37,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 **In:**
 
-- The generic settings admin routes of S-18 §4.7 minus history, as-of and restore; the bespoke routes rebuilt as thin adapters in the same package (no long alias period); declared on ST-29's route table if it has landed; aliases recorded in P0-24's ledger for ST-25.
+- The generic settings admin routes of S-18 §4.7 minus history, as-of and restore, declared on ST-29's route table if it has landed. The bespoke settings routes (…/update/settings, …/license/policy, …/trust-policy, …/distribution/access and the rest S-18 §4.7 lists) are removed in this package's release, with no alias and no adapter: the console moves to the generic routes in the same change, because it ships in lockstep with the Worker. Neither the CLI nor the Action calls them (checked 2026-10-08: the CLI's admin calls are /manage/api/me, …/bundles, …/distribution/listing/import and the products routes, and the Action is the bundled CLI on the CI plane), so neither moves.
 
 **Out** (and where it belongs instead):
 
@@ -56,7 +56,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 ## Acceptance criteria
 
 - [ ] Every settings write goes through the generic path
-- [ ] OpenAPI and routeCoverage updated
+- [ ] No bespoke settings route answers; OpenAPI and routeCoverage list none, and the console calls only the generic routes (test)
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

@@ -16,7 +16,7 @@
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **ST-05 (split)** in [Track B, Foundations (code quality the feature tracks build on)](../../../2026-10-07-dx-consolidation/tracks.md#b-foundations-code-quality-the-feature-tracks-build-on).
 
-- Absorbs ST-05 (split; this package takes its share): ST-05a: one settings read/write path (fold the A-13 platform store into the registry resolver and writeSetting). ST-05b: the generic routes (S-18 §4.7 minus history, as-of and restore) with the bespoke routes as thin adapters in the same package.
+- Absorbs ST-05 (split; this package takes its share): ST-05a: one settings read/write path (fold the A-13 platform store into the registry resolver and writeSetting). ST-05b: the generic routes (S-18 §4.7 minus history, as-of and restore), with the bespoke routes removed in the same release (no alias, no adapter).
 
 ## Goal
 
