@@ -1,16 +1,16 @@
 # UK-02b UI state fixtures and parity rows: shared component/state/copy-key fixtures, `features.json` `ui.*` rows, every SDK's `parity.json` at `planned`
 
-| Field       | Value                                                                                                                                                                                             |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                                                                                      |
-| Size        | 1–1.5 engineer-weeks                                                                                                                                                                              |
-| Depends on  | [UK-02](UK-02-copy-fixtures-parity-plan.md), [SP-00](SP-00-parity-registry-plan.md), [UK-02a](UK-02a-kit-copy-catalog.md)                                                                         |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [UK-03](UK-03-ui-core.md), [UK-07](UK-07-swiftui-ios.md), [UK-09](UK-09-compose-android.md), [UK-11](UK-11-godot-kit.md), [UK-12](UK-12-python-qt.md)     |
-| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                                              |
-| Plan mode   | yes: executes the approved [`plans/UK-02b.md`](../plans/UK-02b.md) (2026-10-08), which carries [`plans/UK-02.md`](../plans/UK-02.md) §3.5 and §4                                                  |
-| Gates       | plan mode (executes `plans/UK-02b.md`); `pnpm parity:check -- --check`; `gen:constants -- --check` (feature ids); `gen:corpus -- --check`; `gen:brand -- --check`; the generated parity docs page |
-| Human input | none                                                                                                                                                                                              |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                         |
+| Field       | Value                                                                                                                                                                                                                               |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                                                                                                                        |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                                |
+| Depends on  | [UK-02](UK-02-copy-fixtures-parity-plan.md), [SP-00](SP-00-parity-registry-plan.md), [UK-02a](UK-02a-kit-copy-catalog.md)                                                                                                           |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [PX-14](PX-14-passthrough-header.md), [UK-03](UK-03-ui-core.md), [UK-07](UK-07-swiftui-ios.md), [UK-09](UK-09-compose-android.md), [UK-11](UK-11-godot-kit.md), [UK-12](UK-12-python-qt.md) |
+| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                |
+| Plan mode   | yes: executes the approved [`plans/UK-02b.md`](../plans/UK-02b.md) (2026-10-08), which carries [`plans/UK-02.md`](../plans/UK-02.md) §3.5 and §4                                                                                    |
+| Gates       | plan mode (executes `plans/UK-02b.md`); `pnpm parity:check -- --check`; `gen:constants -- --check` (feature ids); `gen:corpus -- --check`; `gen:brand -- --check`; the generated parity docs page                                   |
+| Human input | none                                                                                                                                                                                                                                |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                           |
 
 ## Sign-in alignment (2026-10-05): SIGN-IN.md
 

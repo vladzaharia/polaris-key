@@ -9,7 +9,7 @@
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                   |
 | Plan mode   | yes: executes the approved [`plans/I-27.md`](../plans/I-27.md) (2026-10-08) §7, §7.1, §7.2 and its I-32b rows in §3 and §6                                                                                                                              |
 | Gates       | `plan-mode`, `migration`, `rule-9`, `rule-10`, `threat-model`, `drift-gate`, `cli-bundle`                                                                                                                                                               |
-| Human input | the owner-set date for `legacy-sub-sunset`; DJDL's own `.pkey/product` drops `oidc` and `provisioning` (owner step)                                                                                                                                     |
+| Human input | the owner decides each licence the `legacy-sub-sunset` count lists (re-issue or let go) before deploy; DJDL's own `.pkey/product` drops `oidc` and `provisioning` (owner step)                                                                          |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                               |
 
 ## Goal
@@ -35,7 +35,7 @@ I-27 replaces the env-held Pocket ID and per-product `oidc_config` with connecti
 - The seeded Pocket ID row's audience written once from the last `PLATFORM_OIDC_MIGRATION` and `_SUNSET` values, recorded in P0-24; then both names retire.
 - `PLATFORM_OIDC_*` removed from `Env`, the inventory and `adminOidcConfig`'s fallback, after confirming `ADMIN_OIDC_*` is set in production.
 - §3's retired fields (`oidc.*`, `provisioning[]`) become validator errors naming their replacement (rule 9), and `products/djdl/product.json` migrates in the same change. `provisioning_config`'s readers and writers are listed as §7.1 lists `oidc_config`'s.
-- The P0-49 job `legacy-sub-sunset` at the owner-set date.
+- The P0-49 job `legacy-sub-sunset`, run 60 days after I-32 reaches production (lead decision, 2026-10-08; [`plans/I-27.md`](../plans/I-27.md) Q6). On that date the lead runs the count. If it is non-zero, the affected licences are listed for the owner, who decides each one (re-issue or let go) before I-32b deploys. No licence is dropped unseen.
 - Before any route goes, production request logs confirm no native client calls it, recorded in P0-24.
 
 **Out** (and where it belongs instead):
@@ -62,6 +62,7 @@ I-27 replaces the env-held Pocket ID and per-product `oidc_config` with connecti
 - [ ] `REQUIRED_INDEXES` equals the newest assertion file.
 - [ ] A manifest with a retired `oidc.*` or `provisioning[]` field fails validation naming its replacement; `products/djdl/product.json` resyncs clean.
 - [ ] The native-binary check is recorded in P0-24 before any route is removed.
+- [ ] The `legacy-sub-sunset` count is recorded in P0-24; any licence it lists has the owner's decision before deploy.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify

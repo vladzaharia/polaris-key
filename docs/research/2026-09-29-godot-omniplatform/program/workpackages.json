@@ -1553,7 +1553,8 @@
         "SP-35b",
         "P2-12b",
         "P0-27a",
-        "CM-29b"
+        "CM-29b",
+        "I-27a"
       ],
       "planMode": false,
       "gates": ["docs-links"],
@@ -4666,6 +4667,27 @@
       "status": "done"
     },
     {
+      "id": "I-27a",
+      "title": "SIGN-IN.md as one current text",
+      "phase": "I",
+      "stage": "DX consolidation K: Corpus lane (wire trains, serial)",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.2, 0.4],
+      "deps": ["I-27"],
+      "planMode": false,
+      "gates": ["docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "plans/I-27.md §8 (approved 2026-10-08)",
+        "docs/design/SIGN-IN.md"
+      ],
+      "brief": "wp/I-27a-sign-in-md-one-text.md",
+      "status": "todo"
+    },
+    {
       "id": "I-28",
       "title": "Accounts contract phase",
       "phase": "I",
@@ -4833,7 +4855,7 @@
         "cli-bundle"
       ],
       "humanInputs": [
-        "the owner-set date for the `legacy-sub-sunset` count of email-less `sub` licences (plans/I-27.md §6; Q3 withdrew only the Pocket ID sunset)",
+        "the owner decides each licence the `legacy-sub-sunset` count lists (re-issue or let go) before I-32b deploys; the count runs 60 days after I-32 reaches production (lead decision, 2026-10-08; plans/I-27.md Q6)",
         "DJDL's own `.pkey/product` drops `oidc` and `provisioning` before its first push after this release (plans/I-27.md §12)"
       ],
       "repo": "polaris-key",
@@ -8391,7 +8413,7 @@
       "lane": "portal",
       "role": "pkey-implementer",
       "estimateWeeks": [0.4, 0.8],
-      "deps": ["PX-12", "PX-W13", "I-08", "I-15", "P0-38"],
+      "deps": ["PX-12", "PX-W13", "I-08", "I-15", "P0-38", "UK-02b"],
       "planMode": false,
       "gates": ["console-csp-parity", "portal-e2e"],
       "humanInputs": [],
