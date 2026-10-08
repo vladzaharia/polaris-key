@@ -172,6 +172,12 @@ def status(client: Any, t: Terminal, *, store_line: Optional[str] = None) -> Out
         signed_in = False
     ar = getattr(st, "allowedRange", None)
     core = getattr(client, "core", None)
+    # The tier the licence carries ("Pro"), as the Node kit reads it: its label, else its id.
+    try:
+        info = client.license.license_info()
+    except Exception:
+        info = None
+    tier = (getattr(info, "tierLabel", None) or getattr(info, "tier", None)) if info is not None else None
     view = gate_view(
         st.status,
         now=_now(),
@@ -181,6 +187,7 @@ def status(client: Any, t: Terminal, *, store_line: Optional[str] = None) -> Out
         holder=(getattr(profile, "name", None) or None) if profile else None,
         email=(getattr(profile, "email", None) or None) if profile else None,
         signed_in=signed_in or bool(profile and getattr(profile, "email", None)),
+        tier=tier or None,
         version=getattr(core, "version", None),
         channel=getattr(core, "channel", None),
         developer=t.kit.identity.developer,
@@ -727,7 +734,10 @@ def update(client: Any, t: Terminal, words: Sequence[str], *, channel: Optional[
             return Outcome(0, screens.update(k, view, verb), {"state": state, "version": vc.version, "updateAvailable": vc.updateAvailable})
         check = client.update.decide(channel=channel)
         d = check.decision
-        view = update_view(d, current=current)
+        # The download's size, as the release gave it ("61 MB"), for "2.5.0 is available · 61 MB".
+        bytes_ = getattr(getattr(d, "release", None), "size", None)
+        size = fmt.size(bytes_, k.copy.locale) if isinstance(bytes_, int) and not isinstance(bytes_, bool) and bytes_ > 0 else None
+        view = update_view(d, current=current, size=size)
         data: Dict[str, Any] = {"state": view.state, "decision": d.to_dict(), "channel": check.channel}
         if action == "check":
             return Outcome(0, screens.update(k, view, verb), data)

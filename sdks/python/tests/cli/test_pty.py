@@ -139,3 +139,62 @@ def test_a_live_region_shows_the_cursor_again_when_terminated() -> None:
             proc.wait()
         os.close(master)
         os.close(slave)
+
+
+# ── The kit on a real pty with a terminal that answers (pyte): ptyrun.py, pty_flow.py ──────────
+
+import re
+
+from .ptyrun import PtyRun
+
+
+def _tidy(rows: list) -> str:
+    return re.sub(r"[⠀-⣿]", "*", re.sub(r"\d+:\d\d", "m:ss", "\n".join(r.rstrip() for r in rows).rstrip()))
+
+
+@pytest.mark.parametrize("answers", [True, False], ids=["osc11-answered", "osc11-silent"])
+def test_an_esc_typed_005_seconds_after_launch_is_honoured(answers: bool) -> None:
+    with PtyRun(80, 24, "login", answer_osc11=answers) as run:
+        run.pump(0.05)
+        run.type(b"\x1b")
+        t0 = time.monotonic()
+        code = run.wait_exit(3)
+        text = "\n".join(r for r, _ in run.term.all())
+        assert "Sign-in cancelled" in text and "Code expired" not in text, text
+        assert code == 1 and time.monotonic() - t0 < 3
+        assert run.osc11_seen
+
+
+@pytest.mark.parametrize("mode", ["login", "device-limit"])
+@pytest.mark.parametrize(
+    "sizes",
+    [[(80, 24), (60, 10), (80, 24)], [(80, 24), (32, 10), (110, 30)]],
+    ids=lambda s: "-".join("x".join(map(str, z)) for z in s),
+)
+def test_a_window_dragged_back_on_a_real_pty_shows_a_fresh_launchs_screen(mode: str, sizes: list) -> None:
+    ready = "Esc cancel" if mode == "login" else "Enter"
+    env = {"PKEY_THEME": "dark", "PTY_EXPIRE": "60"}
+    with PtyRun(*sizes[0], mode, "long", env=env) as run, PtyRun(*sizes[-1], mode, "long", env=env) as fresh:
+        assert run.shows(ready) and fresh.shows(ready)
+        for c, r in sizes[1:]:
+            run.resize(c, r)
+            run.pump(0.5)
+        fresh.pump(0.3)
+        assert _tidy(run.term.viewport()) == _tidy(fresh.term.viewport())
+        assert run.cpr_asked >= 1, "the window grew back: the kit asked where the cursor is"
+        run.type(b"\x1b")
+        fresh.type(b"\x1b")
+        run.wait_exit()
+        fresh.wait_exit()
+        assert _tidy(run.term.viewport()) == _tidy(fresh.term.viewport())
+
+
+def test_sigterm_during_update_apply_gives_the_terminal_back() -> None:
+    with PtyRun(80, 24, "update", env={"PKEY_THEME": "dark"}) as run:
+        assert run.shows("Esc cancel")
+        assert run.tty_flags() == [False, False], "cbreak with echo off while the Esc watcher reads"
+        run.signal(signal.SIGTERM)
+        code = run.wait_exit(10)
+        assert code == -signal.SIGTERM, "the termination goes on: exit status 128 + 15"
+        assert run.tty_flags() == [True, True], "cooked mode and echo are back"
+        assert "\x1b[?2004l" in run.raw and "\x1b[?25h" in run.raw

@@ -2,42 +2,34 @@
 [2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · login[0m
 [2m│[0m
 [31m✗[0m  [1mSign-in unavailable[0m
-[2m└[0m
 ── ansi16 · 80 ──
 [2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · login[0m
 [2m│[0m
 [31m✗[0m  [1mSign-in unavailable[0m
-[2m└[0m
 ── no-color · 80 ──
 ┌  [7m Tidewater Studio [0m · login
 │
 ✗  [1mSign-in unavailable[0m
-└
 ── ascii · 80 ──
 [2m+[0m  [1;7;36m Tidewater Studio [0m[2m - login[0m
 [2m|[0m
 [31mx[0m  [1mSign-in unavailable[0m
-[2m`[0m
 ── truecolor · 60 ──
 [2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · login[0m
 [2m│[0m
 [31m✗[0m  [1mSign-in unavailable[0m
-[2m└[0m
 ── ansi16 · 60 ──
 [2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · login[0m
 [2m│[0m
 [31m✗[0m  [1mSign-in unavailable[0m
-[2m└[0m
 ── no-color · 60 ──
 ┌  [7m Tidewater Studio [0m · login
 │
 ✗  [1mSign-in unavailable[0m
-└
 ── ascii · 60 ──
 [2m+[0m  [1;7;36m Tidewater Studio [0m[2m - login[0m
 [2m|[0m
 [31mx[0m  [1mSign-in unavailable[0m
-[2m`[0m
 ── pipe · 80 ──
 Tidewater Studio · login
 Sign-in unavailable

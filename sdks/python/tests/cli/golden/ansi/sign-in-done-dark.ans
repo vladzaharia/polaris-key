@@ -1,42 +1,42 @@
 ── truecolor · 80 ──
 [2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · login[0m
 [2m│[0m
-[32m✓[0m  Signed in as Mara Fennick (mara@fennick.studio)
+[32m✓[0m  [1mSigned in as Mara Fennick (mara@fennick.studio)[0m
 [2m└[0m  [2mYou can close the browser tab.[0m
 ── ansi16 · 80 ──
 [2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · login[0m
 [2m│[0m
-[32m✓[0m  Signed in as Mara Fennick (mara@fennick.studio)
+[32m✓[0m  [1mSigned in as Mara Fennick (mara@fennick.studio)[0m
 [2m└[0m  [2mYou can close the browser tab.[0m
 ── no-color · 80 ──
 ┌  [7m Tidewater Studio [0m · login
 │
-✓  Signed in as Mara Fennick (mara@fennick.studio)
+✓  [1mSigned in as Mara Fennick (mara@fennick.studio)[0m
 └  You can close the browser tab.
 ── ascii · 80 ──
 [2m+[0m  [1;7;36m Tidewater Studio [0m[2m - login[0m
 [2m|[0m
-[32m+[0m  Signed in as Mara Fennick (mara@fennick.studio)
+[32m+[0m  [1mSigned in as Mara Fennick (mara@fennick.studio)[0m
 [2m`[0m  [2mYou can close the browser tab.[0m
 ── truecolor · 60 ──
 [2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · login[0m
 [2m│[0m
-[32m✓[0m  Signed in as Mara Fennick (mara@fennick.studio)
+[32m✓[0m  [1mSigned in as Mara Fennick (mara@fennick.studio)[0m
 [2m└[0m  [2mYou can close the browser tab.[0m
 ── ansi16 · 60 ──
 [2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · login[0m
 [2m│[0m
-[32m✓[0m  Signed in as Mara Fennick (mara@fennick.studio)
+[32m✓[0m  [1mSigned in as Mara Fennick (mara@fennick.studio)[0m
 [2m└[0m  [2mYou can close the browser tab.[0m
 ── no-color · 60 ──
 ┌  [7m Tidewater Studio [0m · login
 │
-✓  Signed in as Mara Fennick (mara@fennick.studio)
+✓  [1mSigned in as Mara Fennick (mara@fennick.studio)[0m
 └  You can close the browser tab.
 ── ascii · 60 ──
 [2m+[0m  [1;7;36m Tidewater Studio [0m[2m - login[0m
 [2m|[0m
-[32m+[0m  Signed in as Mara Fennick (mara@fennick.studio)
+[32m+[0m  [1mSigned in as Mara Fennick (mara@fennick.studio)[0m
 [2m`[0m  [2mYou can close the browser tab.[0m
 ── pipe · 80 ──
 Tidewater Studio · login

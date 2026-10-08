@@ -55,7 +55,8 @@ Lines = List[Line]
 
 def _close(k: Kit, lines: Lines) -> Lines:
     """End the rail on the last content row: a bare ``└`` row under a ``│`` row becomes that row's
-    own ``└``, so no empty closing row hangs below the content."""
+    own ``└``, so no empty closing row hangs below the content. Under a row that has a mark of its
+    own (a ``✓`` result, a status line) the bare row has nothing to close and is dropped."""
     if not k.decor or len(lines) < 2:
         return lines
     last, prev = lines[-1], lines[-2]
@@ -64,6 +65,9 @@ def _close(k: Kit, lines: Lines) -> Lines:
     if bare and len(prev.spans) > 1 and prev.spans[0].text == rail and "".join(s.text for s in prev.spans[1:]).strip():
         first = Span(end, prev.spans[0].roles, None, "symbol")
         return lines[:-2] + [Line([first] + prev.spans[1:], prev.drop, prev.role, prev.hint_spans)]
+    marks = {k.env.symbol[n] for n in ("ok", "fail", "warn", "stepDone", "stepActive")}
+    if bare and len(prev.spans) > 1 and prev.spans[0].text in marks and "".join(s.text for s in prev.spans[1:]).strip():
+        return lines[:-1]
     return lines
 
 
@@ -303,7 +307,10 @@ def device_limit(k: Kit, v: ActivateView, verb: str = "activate", *, opened: boo
     hints = False
     if v.manage_url:
         # The terminal does not poll: it never promises the product continues by itself.
-        body += k.body([k.t("cli.deviceLimit.body")])
+        # Once the person has left, the closing line says what to run: the sentence that asked to try
+        # again here is not said a second time.
+        if not ended:
+            body += k.body([k.t("cli.deviceLimit.body")])
         body += [replace(ln, keep=True) for ln in k.body([k.link(v.manage_url, None, "muted")])]
         if ended:
             end = [k.t("cli.deviceLimit.again", command=f"{k.prog} {verb}")]
@@ -389,7 +396,7 @@ def sign_in(k: Kit, v: SignInView, verb: str = "sign-in", *, frame: int = 0) -> 
             browser = not v.headless and not v.no_browser
             end, hints = _code_hints(k, browser, v.copied), True
     elif v.state == "done":
-        who = [k.t("signin.cli.signedIn", name=v.name, email=v.email)] if (v.name and v.email) else [k.t("account.holder", name=v.name or v.email or k.product)]
+        who = k.units("signin.cli.signedIn", "strong", name=v.name, email=v.email) if (v.name and v.email) else [k.t("account.holder", name=v.name or v.email or k.product)]
         body += k.step("ok", who)
         end = [k.t("signin.cli.closeTab", "muted")] if not v.headless else []
     else:
@@ -631,6 +638,7 @@ def update(k: Kit, v: UpdateView, verb: str = "update") -> Lines:
         body += _fixes(k, [("update apply", "common.tryAgain")])
     elif v.state == "cancelled":
         body += k.step("fail", [k.t("cli.update.cancelled", "strong")])
+        body += k.body([k.t("cli.update.nothingInstalled")])
     else:
         if v.state == "mandatory":
             body += k.step("warn", [k.t("update.mandatoryTitle", "strong", product=k.inline_product)])

@@ -113,6 +113,24 @@ class Kit:
         self.used.append(key)
         return Span(self.copy(key, **args), tuple(roles), link, "key:" + key)
 
+    def units(self, key: str, *roles: str, **values: str) -> List[Span]:
+        """Catalog copy whose named values are keep-units (a name, an email): each moves to the next
+        line whole and breaks at its own spaces only when it is wider than the line, so ``Mara
+        Fennick`` is never split from its surname. The words around them wrap as usual."""
+        self.used.append(key)
+        text = self.copy(key, **{n: f"\ue000{n}\ue001" for n in values})
+        out: List[Span] = []
+        for i, part in enumerate(re.split("(\ue000\\w+\ue001)", text)):
+            if not part:
+                continue
+            if i % 2:
+                name = part[1:-1]
+                kind = name if name in ("email", "device", "version", "tier", "channel", "product", "command") else "value"
+                out.append(Span(str(values.get(name, "")), tuple(roles), None, "data:" + kind, False, True))
+            else:
+                out.append(Span(part, tuple(roles), None, "key:" + key))
+        return out
+
     def s(self, key: str, **args: Any) -> str:
         """Catalog copy as a plain string (for an argument of another message)."""
         self.used.append(key)

@@ -14,6 +14,7 @@ from __future__ import annotations
 import base64
 import json as _json
 import os
+import re
 import shutil
 import signal
 import sys
@@ -21,11 +22,15 @@ import threading
 import time
 from typing import IO, Any, Callable, Iterable, List, Optional, Sequence, Tuple, Union
 
-from .env import TermEnv
+from .env import TermEnv, pop_pending, push_back
 from .screen import fit_screen
 from .text import Line, Palette, Span, _merge, cell_len, clean, safe_link, to_ansi
 
 __all__ = ["Device", "KeyReader", "LiveRegion", "physical_rows", "rich_available", "to_rich"]
+
+
+#: The terminal's answer to ESC [ 6 n: the cursor's row and column.
+_CPR = re.compile(rb"\x1b\[(\d+);(\d+)R")
 
 
 def rich_available() -> bool:
@@ -175,8 +180,18 @@ class KeyReader:
     ``ctrl-u``, or the text typed or pasted (bracketed paste is unwrapped). ``Ctrl-C`` raises
     ``KeyboardInterrupt``. POSIX through termios, Windows through msvcrt."""
 
-    def __init__(self, stdin: Optional[IO[str]] = None, *, bracketed_paste: bool = True, wake: Optional[int] = None) -> None:
+    def __init__(
+        self,
+        stdin: Optional[IO[str]] = None,
+        *,
+        bracketed_paste: bool = True,
+        wake: Optional[int] = None,
+        registry: Optional["set[KeyReader]"] = None,
+    ) -> None:
         self._in = stdin or sys.stdin
+        #: The device's set of open readers, so a termination handled on the main thread can give
+        #: back a terminal that a reader on another thread (the update's Esc watcher) put in cbreak.
+        self._registry = registry
         #: A pipe the device writes to on SIGWINCH: a blocking read wakes (returning ``""``), so the
         #: flow's loop redraws at the new size without waiting for a key.
         self._wake = wake
@@ -185,6 +200,11 @@ class KeyReader:
         self._pending = ""
         self._paste = bracketed_paste
         self._undo_term: Callable[[], None] = lambda: None
+        #: Held while a read waits on the terminal, so a cursor-position question from another
+        #: thread takes its turn.
+        self._lock = threading.Lock()
+        self._cursor: Optional[int] = None
+        self.active = False
 
     def __enter__(self) -> "KeyReader":
         if os.name == "posix":
@@ -200,6 +220,9 @@ class KeyReader:
                 sys.stdout.write("\x1b[?2004h")
                 sys.stdout.flush()
             self._undo_term = guard_sigterm(self._give_back)
+        self.active = True
+        if self._registry is not None:
+            self._registry.add(self)
         return self
 
     def _give_back(self) -> None:
@@ -218,6 +241,9 @@ class KeyReader:
         termios.tcsetattr(self._fd, termios.TCSADRAIN, self._old)
 
     def __exit__(self, *exc: Any) -> None:
+        self.active = False
+        if self._registry is not None:
+            self._registry.discard(self)
         if os.name == "posix" and self._fd is not None:
             import termios
 
@@ -227,22 +253,36 @@ class KeyReader:
                 sys.stdout.flush()
             termios.tcsetattr(self._fd, termios.TCSADRAIN, self._old)
 
+    def _scan(self, data: bytes) -> bytes:
+        """``data`` without the terminal's cursor-position answers, which are noted, not typed."""
+        for m in _CPR.finditer(data):
+            self._cursor = int(m.group(1))
+        return _CPR.sub(b"", data)
+
+    def _read_fd(self, timeout: Optional[float], wake: bool = True) -> bytes:
+        import select
+
+        fds = [self._fd] + ([self._wake] if wake and self._wake is not None else [])
+        ready, _, _ = select.select(fds, [], [], timeout)  # type: ignore[list-item]
+        if wake and self._wake is not None and self._wake in ready:
+            try:
+                os.read(self._wake, 4096)
+            except OSError:
+                pass
+            return b""
+        if self._fd not in ready:
+            return b""
+        return os.read(self._fd, 4096)  # type: ignore[arg-type]
+
     def _raw(self, timeout: Optional[float]) -> str:
         if os.name == "posix":
-            import select
-
-            fds = [self._fd] + ([self._wake] if self._wake is not None else [])
-            ready, _, _ = select.select(fds, [], [], timeout)  # type: ignore[list-item]
-            if self._wake is not None and self._wake in ready:
-                try:
-                    os.read(self._wake, 4096)
-                except OSError:
-                    pass
-                return ""
-            if not ready:
-                return ""
-            data = os.read(self._fd, 4096)  # type: ignore[arg-type]
-            return data.decode("utf-8", "replace")
+            # What the kit read while it asked the terminal something (OSC 11) comes first.
+            given = pop_pending()
+            if given:
+                return self._scan(given).decode("utf-8", "replace")
+            with self._lock:
+                data = self._read_fd(timeout)
+            return self._scan(data).decode("utf-8", "replace")
         import msvcrt  # type: ignore[import-not-found]
 
         deadline = None if timeout is None else time.monotonic() + timeout
@@ -255,6 +295,31 @@ class KeyReader:
             code = msvcrt.getwch()  # type: ignore[attr-defined]
             return {"H": "\x1b[A", "P": "\x1b[B"}.get(code, "")
         return ch
+
+    def cursor_row(self, out: Any, timeout: float = 0.1) -> Optional[int]:
+        """Ask the terminal where the cursor is (ESC [ 6 n) and wait up to ``timeout`` seconds for
+        its answer, 1-based; ``None`` when it does not. Keys read meanwhile go back to the reader."""
+        if os.name != "posix" or self._fd is None or not self.active:
+            return None
+        self._cursor = None
+        try:
+            out.write("\x1b[6n")
+            out.flush()
+        except Exception:
+            return None
+        end = time.monotonic() + timeout
+        while self._cursor is None:
+            left = end - time.monotonic()
+            if left <= 0:
+                break
+            # A key watcher on another thread may be the one that reads the answer: it notes it.
+            if self._lock.acquire(timeout=min(left, 0.03)):
+                try:
+                    data = self._read_fd(min(left, 0.03), wake=False)
+                finally:
+                    self._lock.release()
+                push_back(self._scan(data))
+        return self._cursor
 
     def read(self, timeout: Optional[float] = None) -> Optional[str]:
         buf = self._pending or self._raw(timeout)
@@ -332,6 +397,7 @@ class Device:
         stdin: Optional[IO[str]] = None,
         use_rich: Optional[bool] = None,
         size: Optional[Callable[[], Tuple[int, int]]] = None,
+        cursor_row: Optional[Callable[[], Optional[int]]] = None,
     ) -> None:
         self.env = env
         self.palette = palette
@@ -340,6 +406,9 @@ class Device:
         self.use_rich = rich_available() if use_rich is None else use_rich
         self._console: Any = None
         self._size = size
+        self._cursor_row = cursor_row
+        self._reader: Optional[KeyReader] = None
+        self._readers: "set[KeyReader]" = set()
         self._resized: List[Callable[[TermEnv], None]] = []
         #: A resize pushed the flow's header into the terminal's scrollback: it is never printed again.
         self.header_gone = False
@@ -399,7 +468,28 @@ class Device:
         self.out.flush()
 
     def keys(self) -> KeyReader:
-        return KeyReader(self.inp, bracketed_paste=not self.env.dumb, wake=self._wake_fd())
+        self._reader = KeyReader(self.inp, bracketed_paste=not self.env.dumb, wake=self._wake_fd(), registry=self._readers)
+        return self._reader
+
+    def give_back_keys(self) -> None:
+        """Give the terminal back (cooked mode, paste mode off, cursor shown) from every open key
+        reader: for a termination handled on the main thread while a reader runs on another."""
+        for reader in list(self._readers):
+            try:
+                reader._give_back()
+            except Exception:
+                pass
+
+    def cursor_row(self) -> Optional[int]:
+        """The cursor's row (1-based) from a cursor-position report, for a live region that must find
+        its own top after the window grew; ``None`` when the terminal does not answer in time or no
+        key reader is up to hear it."""
+        if self._cursor_row is not None:
+            return self._cursor_row()
+        reader = self._reader
+        if reader is None or not reader.active or not self.env.interactive:
+            return None
+        return reader.cursor_row(self.out)
 
     def _wake_fd(self) -> Optional[int]:
         """The read end of a pipe SIGWINCH writes to (POSIX, interactive terminals only)."""
@@ -492,6 +582,11 @@ class LiveRegion:
         self._resize_pending = False
         self._old_winch: Any = None
         self._winch = False
+        #: Rows of the flow that went into the terminal's scrollback and have not come back.
+        self._gone = 0
+        #: The window's height at the last resize, and whether it just grew.
+        self._rows_now = 0
+        self._grew = False
 
     @property
     def _redraws(self) -> bool:
@@ -516,8 +611,16 @@ class LiveRegion:
         self.d.out.write("\x1b[?25l")
         self.d.out.flush()
         self._listen(True)
-        self._undo_term = guard_sigterm(lambda: (self.d.out.write("\x1b[?25h"), self.d.out.flush()))
+        self._rows_now = self.d.env.height
+        self._undo_term = guard_sigterm(self._give_back)
         return self
+
+    def _give_back(self) -> None:
+        """Termination: the cursor shown again, and the terminal handed back by any key reader that
+        a thread other than the main one has open (the update's Esc watcher)."""
+        self.d.give_back_keys()
+        self.d.out.write("\x1b[?25h")
+        self.d.out.flush()
 
     def _listen(self, on: bool) -> None:
         """Take SIGWINCH while the region is up (main thread only; the previous handler still runs)."""
@@ -545,18 +648,37 @@ class LiveRegion:
 
     def _erase_rows(self) -> int:
         """Rows to erase before the next frame. After a resize the terminal reflowed what was drawn,
-        and rows beyond its new height went into its scrollback, where they cannot be erased."""
+        and rows beyond its new height went into its scrollback, where they cannot be erased. A
+        window that grew after it shrank usually pulled those rows back onto the screen above the
+        region, as a stale copy of the top of the flow: the terminal is asked where the cursor is
+        (the region ends at it), and the rows above the region's real top are erased with it."""
         cols = self.d.env.columns
         if not self._resize_pending:
             return physical_rows(self._drawn, cols)
         self._resize_pending = False
+        rows_before = self._rows_now or self.d.env.height
         self.d.refresh_size()
         env = self.d.env
         reflowed = physical_rows(self._drawn, env.columns)
+        growth = env.height - rows_before
+        self._rows_now = env.height
+        self._grew = growth > 0
+        above = 0
+        if self._gone > 0 and growth > 0:
+            row = self.d.cursor_row()  # still at the end of the (reflowed) region
+            mine = min(reflowed, env.height)
+            # Without an answer, assume the terminal restored as many rows as it grew by, up to the
+            # rows that scrolled away.
+            room = growth if row is None else max(0, row - mine)
+            above = min(self._gone, room)
+            self._gone -= above
+            if above:
+                self.d.header_gone = False
         gone = max(0, reflowed - env.height)
         if gone > 0 and self._head > 0:
             self.d.header_gone = True
-        return reflowed - gone
+        self._gone += gone
+        return reflowed - gone + above
 
     def update(self, frame: Frame) -> None:
         """Show ``frame`` (lines, or a function that builds them at the current size) in place of the
@@ -571,9 +693,13 @@ class LiveRegion:
                 return
             erase = _erase(self._erase_rows())
             lines = list(frame() if callable(frame) else frame)
+            env = self.d.env
+            if self.d.header_gone and self._grew:
+                # The window may have room for the header again (nothing came back, but it fits).
+                if fit_screen(lines, env.height - 1, env.width, env.symbol["separator"]).head > 0:
+                    self.d.header_gone = False
             if self.d.header_gone:
                 lines = [ln for ln in lines if ln.role != "header"]
-            env = self.d.env
             fitted = fit_screen(lines, env.height - 1, env.width, env.symbol["separator"])
             self._drawn = self._widths(fitted.lines)
             self._head = fitted.head
@@ -590,6 +716,7 @@ class LiveRegion:
             self._drawn = []
             self._frame = None
             self._head = 0
+            self._gone = 0
 
     def __exit__(self, *exc: Any) -> None:
         self.clear()

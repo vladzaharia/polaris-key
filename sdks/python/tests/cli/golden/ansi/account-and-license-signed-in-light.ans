@@ -3,49 +3,41 @@
 [2m│[0m
 [32m✓[0m  License   [1mPro[0m[2m · Lifetime · mara@fennick.studio[0m
 [32m✓[0m  Version   [1m2.4.1[0m[2m · stable[0m
-[2m└[0m
 ── ansi16 · 80 ──
 [2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · status[0m
 [2m│[0m
 [32m✓[0m  License   [1mPro[0m[2m · Lifetime · mara@fennick.studio[0m
 [32m✓[0m  Version   [1m2.4.1[0m[2m · stable[0m
-[2m└[0m
 ── no-color · 80 ──
 ┌  [7m Tidewater Studio [0m · status
 │
 ✓  License   [1mPro[0m · Lifetime · mara@fennick.studio
 ✓  Version   [1m2.4.1[0m · stable
-└
 ── ascii · 80 ──
 [2m+[0m  [1;7;36m Tidewater Studio [0m[2m - status[0m
 [2m|[0m
 [32m+[0m  License   [1mPro[0m[2m - Lifetime - mara@fennick.studio[0m
 [32m+[0m  Version   [1m2.4.1[0m[2m - stable[0m
-[2m`[0m
 ── truecolor · 60 ──
 [2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · status[0m
 [2m│[0m
 [32m✓[0m  License   [1mPro[0m[2m · Lifetime · mara@fennick.studio[0m
 [32m✓[0m  Version   [1m2.4.1[0m[2m · stable[0m
-[2m└[0m
 ── ansi16 · 60 ──
 [2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · status[0m
 [2m│[0m
 [32m✓[0m  License   [1mPro[0m[2m · Lifetime · mara@fennick.studio[0m
 [32m✓[0m  Version   [1m2.4.1[0m[2m · stable[0m
-[2m└[0m
 ── no-color · 60 ──
 ┌  [7m Tidewater Studio [0m · status
 │
 ✓  License   [1mPro[0m · Lifetime · mara@fennick.studio
 ✓  Version   [1m2.4.1[0m · stable
-└
 ── ascii · 60 ──
 [2m+[0m  [1;7;36m Tidewater Studio [0m[2m - status[0m
 [2m|[0m
 [32m+[0m  License   [1mPro[0m[2m - Lifetime - mara@fennick.studio[0m
 [32m+[0m  Version   [1m2.4.1[0m[2m - stable[0m
-[2m`[0m
 ── pipe · 80 ──
 Tidewater Studio · status
 License   Pro · Lifetime · mara@fennick.studio

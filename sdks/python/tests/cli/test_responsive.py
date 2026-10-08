@@ -84,14 +84,25 @@ class Script:
         return step() if callable(step) else step
 
 
-def terminal(term: Term, values: dict, *, verb: str, keys: List[Any], locale: Optional[str] = None, device_code: bool = False, headless: bool = False) -> Terminal:
+def terminal(
+    term: Term,
+    values: dict,
+    *,
+    verb: str,
+    keys: List[Any],
+    locale: Optional[str] = None,
+    device_code: bool = False,
+    headless: bool = False,
+    cpr: bool = True,
+) -> Terminal:
     cols, rows = term.size()
     e = env("truecolor", "unicode", 80, "dark").but(
         width=layout_columns(cols), columns=cols, height=rows, device_code=device_code, headless=headless or device_code
     )
     theme = Theme(copy={"locale": locale}) if locale else None
     k = Kit.create(e, theme=theme, product=PRODUCT, source=Source(values["name"]), prog="tidewater")
-    d = Device(e, k.palette(), stdout=term, use_rich=False, size=term.size)  # type: ignore[arg-type]
+    # The terminal answers a cursor-position request from where its cursor is, or stays silent.
+    d = Device(e, k.palette(), stdout=term, use_rich=False, size=term.size, cursor_row=(lambda: term.screen.cursor.y + 1) if cpr else None)  # type: ignore[arg-type]
     script = Script(keys)
     d.keys = lambda: script  # type: ignore[method-assign]
     d.open_url = lambda url: True  # type: ignore[method-assign]
@@ -499,6 +510,65 @@ def test_a_dragged_window_keeps_one_screen_the_url_and_the_code(start: Any, step
     assert "Waiting for you to sign in" not in "\n".join(term.viewport())
 
 
+# ── A window shrunk and then grown again ─────────────────────────────────────────────────────
+
+
+def _tidy(rows: List[str]) -> str:
+    return re.sub(r"[\u2800-\u28ff]", "*", re.sub(r"\d+:\d\d", "m:ss", "\n".join(r.rstrip() for r in rows).rstrip()))
+
+
+REGROWS = [
+    [(80, 24), (60, 10), (80, 24)],
+    [(80, 24), (32, 10), (110, 30)],
+]
+
+
+@needs_sigwinch
+@pytest.mark.parametrize("sizes", REGROWS, ids=lambda x: "-".join("x".join(map(str, s)) for s in x))
+@pytest.mark.parametrize("cpr", [True, False], ids=["cpr", "no-cpr"])
+@pytest.mark.parametrize("values", ["short", "long"])
+def test_a_window_grown_after_a_shrink_shows_a_fresh_launchs_screen_once(sizes: Any, cpr: bool, values: str) -> None:
+    v = _values(values)
+    term = Term(*sizes[0])
+    snaps: List[List[str]] = []
+    keys: List[Any] = []
+    for c, r in sizes[1:]:
+        keys += [lambda c=c, r=r: _resize(term, c, r), lambda: None]
+    everything: List[List[str]] = []
+    keys.append(lambda: everything.append([r for r, _ in term.all()]))
+    keys.append(_snap(term, snaps, then=None))
+    t = terminal(term, v, verb="login", keys=keys, device_code=True, cpr=cpr)
+    out = flows.sign_in(_client(v, SimpleNamespace(status="expired")), t)
+    fresh = Term(*sizes[-1])
+    fresh_snaps: List[List[str]] = []
+    tf = terminal(fresh, v, verb="login", keys=[_snap(fresh, fresh_snaps)], device_code=True)
+    flows.sign_in(_client(v), tf)
+    assert _tidy(snaps[0]) == _tidy(fresh_snaps[0])
+    # The title of the code view is on the screen once, not once more from the rows that came back.
+    assert everything[0].count("◆  Sign in with a code") == 1, "\n".join(everything[0])
+    t.finish(out)
+    assert len([r for r, _ in term.all() if r.startswith("┌")]) == 1, "\n".join(r for r, _ in term.all())
+
+
+@needs_sigwinch
+@pytest.mark.parametrize("cpr", [True, False], ids=["cpr", "no-cpr"])
+def test_the_device_limit_shrunk_and_grown_again_shows_a_fresh_launchs_screen(cpr: bool) -> None:
+    def run(term: Term, steps: List[Any], use_cpr: bool = True) -> List[List[str]]:
+        snaps: List[List[str]] = []
+        limit = ActivationDeviceLimit(limit=3, deviceCount=3, manage_url=LONG["url"].replace("activate/device", "portal/devices"))
+        t = terminal(term, LONG, verb="activate", keys=[*steps, _snap(term, snaps)], cpr=use_cpr)
+        client = SimpleNamespace(product=PRODUCT, license=SimpleNamespace(activate_with_key=lambda key: limit), status=lambda: None)
+        t.finish(flows.activate(client, t, KEY))
+        return snaps
+
+    term = Term(80, 24)
+    shrink = [lambda: _resize(term, 40, 8), lambda: None, lambda: _resize(term, 80, 24), lambda: None]
+    got = run(term, shrink, cpr)
+    fresh = run(Term(80, 24), [])
+    assert _tidy(got[0]) == _tidy(fresh[0])
+    assert len([r for r, _ in term.all() if r.startswith("┌")]) == 1
+
+
 @pytest.mark.parametrize("cols,rows", [(40, 12), (32, 12), (40, 8), (80, 24)])
 @pytest.mark.parametrize(
     "label,result,title",
@@ -518,6 +588,69 @@ def test_an_end_state_leaves_one_result_block_under_one_header(cols: int, rows: 
     assert len([r for r, _ in term.all() if r.startswith("┌")]) <= 1
     assert title.split(" ")[0] in text.replace("\n", " ")
     assert "Check the code there" not in text and "On any phone or computer" not in text
+
+
+@pytest.mark.parametrize("cols,rows,values", [(40, 12, "long"), (40, 8, "short"), (32, 12, "long")])
+def test_the_device_limit_left_with_esc_keeps_its_header_title_and_closing_row(cols: int, rows: int, values: str) -> None:
+    v = _values(values)
+    url = v["url"].replace("activate/device", "portal/devices") if values == "long" else "https://key.plrs.im/portal/tidewater/devices"
+    limit = ActivationDeviceLimit(limit=3, deviceCount=3, manage_url=url)
+    term = Term(cols, rows)
+    t = terminal(term, v, verb="activate", keys=["esc"])
+    client = SimpleNamespace(product=PRODUCT, license=SimpleNamespace(activate_with_key=lambda key: limit), status=lambda: None)
+    t.finish(flows.activate(client, t, KEY))
+    all_rows = [r for r, _ in term.all()]
+    text = "\n".join(all_rows)
+    assert len([r for r in all_rows if r.startswith("┌")]) == 1
+    assert "Your license is on 3 of" in text and all_rows[-1].startswith("└"), text
+    assert "try again here" not in text and "Free a device, then run" in text
+    assert [r for r, w in term.all() if w] == []
+
+
+@pytest.mark.parametrize("cols", [40, 60, 80])
+def test_a_signed_in_name_is_one_unit(cols: int) -> None:
+    term = Term(cols, 24)
+    t = terminal(term, SHORT, verb="login", keys=[], device_code=True)
+    result = SimpleNamespace(status="ready", identity=SimpleNamespace(name="Mara Fennick", email="mara@fennick.studio"), attached=None)
+    t.finish(flows.sign_in(_client(SHORT, result), t))
+    rows = [r for r, _ in term.all()]
+    assert any("Mara Fennick" in r for r in rows), "\n".join(rows)
+
+
+def test_the_end_of_a_flow_draws_no_empty_closing_row() -> None:
+    term = Term(80, 24)
+    t = terminal(term, SHORT, verb="status", keys=[])
+    t.finish(flows.status(_status_client("ok"), t))
+    assert "└" not in [r for r, _ in term.all()] and term.all()[-1][0].startswith("✓")
+    term = Term(80, 24)
+    t = terminal(term, SHORT, verb="login", keys=[], device_code=True, headless=True)
+    result = SimpleNamespace(status="ready", identity=SimpleNamespace(name=None, email="mara@fennick.studio"), attached=None)
+    t.finish(flows.sign_in(_client(SHORT, result), t))
+    assert term.all()[-1][0].startswith("✓") and "└" not in [r for r, _ in term.all()]
+
+
+def test_an_update_cancelled_with_esc_says_so_in_a_title_and_a_body_line() -> None:
+    term = Term(80, 24)
+    decision = SimpleNamespace(action="binary", release=SimpleNamespace(version="2.5.0"), mandatory=False, to_dict=lambda: {"action": "binary"})
+
+    def install(check: Any, on_progress: Callable[[int, int], None]) -> Any:
+        on_progress(10_000_000, 61_000_000)
+        raise PolarisError("cancelled", "cancelled")
+
+    update = SimpleNamespace(_configured=object(), driver=object(), decide=lambda channel=None: SimpleNamespace(decision=decision, channel="stable"), install=install)
+    client = SimpleNamespace(product=PRODUCT, update=update, core=SimpleNamespace(version="2.4.1"))
+    t = terminal(term, SHORT, verb="update", keys=[])
+    t.finish(flows.update(client, t, ["apply"]))
+    rows = [r for r, _ in term.all()]
+    assert rows[-2] == "✗  Update cancelled." and rows[-1] == "└  Nothing was installed.", rows
+
+
+def test_a_long_url_keeps_its_first_piece_at_32_by_8() -> None:
+    term = Term(32, 8)
+    snaps: List[List[str]] = []
+    t = terminal(term, LONG, verb="login", keys=[_snap(term, snaps)], device_code=True)
+    flows.sign_in(_client(LONG), t)
+    assert shown(LONG["url"]) in joined(snaps[0]), "\n".join(snaps[0])
 
 
 def test_escape_cancels_with_the_result_and_the_verb_that_was_run() -> None:
@@ -568,6 +701,54 @@ def test_status_revoked_reads_the_same_in_both_kits() -> None:
     )
     t.finish(flows.status(status, t))
     assert _drawn(term) == PARITY["status-revoked"]
+
+
+# 2026-10-05 12:00 UTC: the Node kit's fixture clock, so the offline-until date is the same.
+_PARITY_NOW = 1_791_201_600
+
+
+def _status_client(status: str, *, tier: Optional[str] = "Pro") -> Any:
+    info = SimpleNamespace(tier="pro", tierLabel=tier, profile=None)
+    return SimpleNamespace(
+        status=lambda: SimpleNamespace(status=status, graceUntil=_PARITY_NOW + 14 * 86_400, allowedRange=None),
+        license=SimpleNamespace(
+            get_profile=lambda: SimpleNamespace(name="Mara Fennick", email="mara@fennick.studio"),
+            license_info=lambda: info,
+        ),
+        identity=SimpleNamespace(current=lambda: None),
+        core=SimpleNamespace(version="2.4.1", channel="stable"),
+        is_licensed=lambda: status == "ok",
+    )
+
+
+def test_an_active_status_reads_the_same_in_both_kits(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(flows, "_now", lambda: _PARITY_NOW)
+    term = Term(80, 24)
+    t = terminal(term, _values("short"), verb="status", keys=[])
+    t.finish(flows.status(_status_client("ok"), t))
+    assert _drawn(term) == PARITY["status-active"]
+
+
+def test_a_status_with_no_licence_reads_the_same_in_both_kits(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(flows, "_now", lambda: _PARITY_NOW)
+    term = Term(80, 24)
+    t = terminal(term, _values("short"), verb="status", keys=[])
+    client = _status_client("needs-activation")
+    t.finish(flows.status(client, t))
+    assert _drawn(term) == PARITY["status-none"]
+
+
+def test_an_update_check_reads_the_same_in_both_kits() -> None:
+    term = Term(80, 24)
+    t = terminal(term, _values("short"), verb="update", keys=[])
+    release = SimpleNamespace(version="2.5.0", seq=7, size=61_000_000)
+    d = SimpleNamespace(action="binary", release=release, mandatory=False, critical=False, contentBlock=None, to_dict=lambda: {})
+    client = SimpleNamespace(
+        core=SimpleNamespace(version="2.4.1"),
+        update=SimpleNamespace(_configured=object(), decide=lambda channel=None: SimpleNamespace(decision=d, channel="stable")),
+    )
+    t.finish(flows.update(client, t, ["check"]))
+    assert _drawn(term) == PARITY["update-check"]
 
 
 def test_one_device_reads_the_same_in_both_kits() -> None:

@@ -24,14 +24,26 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import sys
+import threading
 from dataclasses import dataclass, replace
 from typing import IO, Any, Callable, Mapping, Optional
 
 from .. import ansi
 
-__all__ = ["TermEnv", "detect", "layout_columns", "parse_colorfgbg", "parse_osc11", "MIN_COLUMNS", "MIN_LAYOUT_COLUMNS"]
+__all__ = [
+    "TermEnv",
+    "detect",
+    "layout_columns",
+    "parse_colorfgbg",
+    "parse_osc11",
+    "pop_pending",
+    "push_back",
+    "MIN_COLUMNS",
+    "MIN_LAYOUT_COLUMNS",
+]
 
 #: Below this many columns the rail and its gutter are dropped.
 MIN_LAYOUT_COLUMNS = 32
@@ -122,9 +134,33 @@ def parse_osc11(reply: str) -> Optional[str]:
     return "light" if luminance > 0.5 else "dark"
 
 
+#: Input read from the terminal while the kit asked it a question, that was not the answer (a key the
+#: person pressed meanwhile): the key reader reads it first.
+_PENDING = bytearray()
+_PENDING_LOCK = threading.Lock()
+
+_OSC11_REPLY = re.compile(rb"\x1b\]11;[^\x07\x1b]*(?:\x07|\x1b\\)")
+
+
+def push_back(data: bytes) -> None:
+    """Give input back to the key reader that comes next."""
+    if data:
+        with _PENDING_LOCK:
+            _PENDING.extend(data)
+
+
+def pop_pending() -> bytes:
+    """The input given back by :func:`push_back`, once."""
+    with _PENDING_LOCK:
+        data = bytes(_PENDING)
+        _PENDING.clear()
+    return data
+
+
 def query_osc11(timeout: float = 0.12) -> Optional[str]:
     """Ask the terminal for its background (POSIX only). ``None`` when it does not answer in
-    ``timeout`` seconds, or when there is no controlling terminal."""
+    ``timeout`` seconds, or when there is no controlling terminal. Whatever is read that is not the
+    answer (an Esc the person pressed meanwhile) goes back to the key reader."""
     if os.name != "posix":
         return None
     try:
@@ -138,7 +174,9 @@ def query_osc11(timeout: float = 0.12) -> Optional[str]:
     try:
         old = termios.tcgetattr(fd)
         try:
-            _tty.setraw(fd)
+            # TCSADRAIN, never the default TCSAFLUSH: a key typed before the question is read, not
+            # thrown away.
+            _tty.setraw(fd, termios.TCSADRAIN)
             os.write(fd, b"\x1b]11;?\x1b\\")
             buf = b""
             while True:
@@ -146,11 +184,13 @@ def query_osc11(timeout: float = 0.12) -> Optional[str]:
                 if not ready:
                     break
                 buf += os.read(fd, 64)
-                if buf.endswith(b"\x1b\\") or buf.endswith(b"\x07"):
+                if _OSC11_REPLY.search(buf):
                     break
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, old)
-        return parse_osc11(buf.decode("ascii", "replace")) if buf else None
+        reply = _OSC11_REPLY.search(buf)
+        push_back(_OSC11_REPLY.sub(b"", buf, count=1))
+        return parse_osc11(reply.group(0).decode("ascii", "replace")) if reply else None
     except Exception:
         return None
     finally:
