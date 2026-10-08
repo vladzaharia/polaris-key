@@ -18,8 +18,10 @@ import { Lockup } from "./Lockup.js";
  * - **Tablet header** (761–1179 px, PORTAL.md §8): the same row, compacted so the account menu
  *   never leaves the screen: the account chip is its avatar, the ⌘K trigger an icon, and below
  *   900 px the lockup drops to its phone size, the gaps to 24 px and the action reads
- *   **Activate** (its accessible name stays "Activate license"). From 1180 px the chip's name
- *   truncates rather than pushing the row wider.
+ *   **Activate** (its accessible name stays "Activate license"). From 1180 px the chip adds the
+ *   given name; when the row is tight the ⌘K field gives way first (down to 176 px), and only then
+ *   does the name truncate. ⌘K, Activate and the chip share one height: 40 px, 44 on a coarse
+ *   pointer.
  * - **Phone bar** (≤ 760 px): Library, the Activate pill in the middle, and Discover.
  * - **Footer**, a skip link, one `banner`, `nav` ("Main"), `main` and `contentinfo`.
  *
@@ -103,17 +105,20 @@ export function PortalShell({
               />
             ) : null}
           </nav>
-          {/* min-w-0: the account chip's name is what gives way when the row is tight. */}
+          {/* min-w-0: when the row is tight from 1180 px, the ⌘K field gives way first (its
+              wrapper shrinks far faster, down to 11rem), then the account chip's name. */}
           <div className="ml-auto flex min-w-0 items-center gap-3">
             {headerExtra ? (
-              <div className="hidden shrink-0 desk:block">{headerExtra}</div>
+              <div className="hidden shrink-0 desk:flex wide:min-w-44 wide:shrink-[999]">
+                {headerExtra}
+              </div>
             ) : null}
             {phoneHeaderExtra ? (
               <div className="shrink-0 desk:hidden">{phoneHeaderExtra}</div>
             ) : null}
             <Button
               variant="action"
-              className="hidden h-10 shrink-0 px-3 desk:inline-flex mid:px-4"
+              className="hidden h-10 shrink-0 px-3 desk:inline-flex mid:px-4 pointer-coarse:h-11"
               iconStart={<KeyRound aria-hidden />}
               aria-label="Activate license"
               onClick={() => activate.open()}
