@@ -1,16 +1,27 @@
 # ST-13 Storefront listing in the settings hub: A-18j's Listing editor hosted in the product hub, with console or manifest provenance
 
-| Field       | Value                                                                         |
-| ----------- | ----------------------------------------------------------------------------- |
-| Phase       | ST: Settings architecture (S-18) (phase 3: coverage)                          |
-| Size        | 0.3–0.4 engineer-weeks                                                        |
-| Depends on  | [ST-08](ST-08-product-settings-hub.md), [A-18j](A-18j-console-storefronts.md) |
-| Unblocks    | none                                                                          |
-| Role        | `pkey-implementer`                                                            |
-| Plan mode   | no                                                                            |
-| Gates       | console CSP parity; docsLinks                                                 |
-| Human input | none                                                                          |
-| Repo        | `vladzaharia/polaris-key`                                                     |
+| Field       | Value                                                              |
+| ----------- | ------------------------------------------------------------------ |
+| Phase       | ST: Settings, access control and console shell (phase 3: coverage) |
+| Size        | 0.3–0.4 engineer-weeks                                             |
+| Depends on  | none                                                               |
+| Unblocks    | none                                                               |
+| Role        | `pkey-implementer`                                                 |
+| Plan mode   | no                                                                 |
+| Gates       | console CSP parity; docsLinks                                      |
+| Human input | none                                                               |
+| Repo        | `vladzaharia/polaris-key`                                          |
+
+## Consolidation 2026-10-07
+
+> **Closed 2026-10-07 (DX consolidation): merged into [A-27](A-27-one-listing-truth-absorbs-st-13.md).** The id stays in the graph as `dropped` so it
+> is not reused; do not build this package. Its scope moves to [A-27](A-27-one-listing-truth-absorbs-st-13.md).
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **merge** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Listing has one home (Core -> Presentation plus per-channel Listing tab); a hub copy would be a third.
+
+- Dependencies cleared on closing (they were ST-08 and A-18j), so nothing in the graph waits on or through a closed package.
 
 ## Goal
 

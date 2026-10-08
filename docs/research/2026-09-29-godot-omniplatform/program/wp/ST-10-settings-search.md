@@ -1,16 +1,26 @@
-# ST-10 ⌘K settings search with filters and deep links
+# ST-10 Cmd-K settings search, permission-filtered
 
-| Field       | Value                                                                            |
-| ----------- | -------------------------------------------------------------------------------- |
-| Phase       | ST: Settings architecture (S-18) (phase 2: experience)                           |
-| Size        | 0.4–0.55 engineer-weeks                                                          |
-| Depends on  | [ST-06](ST-06-settings-docs-coverage.md), [ST-08](ST-08-product-settings-hub.md) |
-| Unblocks    | none                                                                             |
-| Role        | `pkey-implementer`                                                               |
-| Plan mode   | no                                                                               |
-| Gates       | console CSP parity                                                               |
-| Human input | none                                                                             |
-| Repo        | `vladzaharia/polaris-key`                                                        |
+| Field       | Value                                                                                                                            |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | ST: Settings, access control and console shell (phase 2: experience)                                                             |
+| Size        | 0.4–0.55 engineer-weeks                                                                                                          |
+| Depends on  | [ST-06](ST-06-settings-docs-coverage.md), [ST-08](ST-08-product-settings-hub.md), [ST-29](ST-29-admin-route-table-can-usecan.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                           |
+| Role        | `pkey-implementer`                                                                                                               |
+| Plan mode   | no                                                                                                                               |
+| Gates       | console CSP parity                                                                                                               |
+| Human input | none                                                                                                                             |
+| Repo        | `vladzaharia/polaris-key`                                                                                                        |
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track D, Administration, access control and console identity](../../../2026-10-07-dx-consolidation/tracks.md#d-administration-access-control-and-console-identity)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Cmd-K results filtered by view permission.
+
+- Title: was "⌘K settings search with filters and deep links".
+- Depends on: added ST-29.
+- UX rows that name this package: UX-06b (parked: entity search; revive when ST-10's settings search and the product switcher stop being enough (a third product or a support desk)).
 
 ## Goal
 

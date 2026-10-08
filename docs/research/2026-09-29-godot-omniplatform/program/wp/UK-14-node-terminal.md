@@ -1,16 +1,16 @@
 # UK-14 Node terminal kit: sdk-node CLI and `pkey` restyled (clack-style prompts, masked key entry, spinners and progress, half-block QR, OSC 8/52, `--json`, grouped help, completion)
 
-| Field       | Value                                                                                                                                             |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                                      |
-| Size        | 1.5–2.5 engineer-weeks                                                                                                                            |
-| Depends on  | [UK-01](UK-01-brand-kit-tokens.md), [UK-02a](UK-02a-kit-copy-catalog.md), [UK-15](UK-15-visual-qa-harness.md), [UK-16](UK-16-ui-docs-scaffold.md) |
-| Unblocks    | [UK-32](UK-32-node-ink.md), [UK-41](UK-41-must-tier-closeout.md)                                                                                  |
-| Role        | `pkey-sdk-porter`                                                                                                                                 |
-| Plan mode   | no                                                                                                                                                |
-| Gates       | golden ANSI text plus VHS SVG; the CLI reference docs freshness; the Action bundle drift gate if `packages/cli` output changes                    |
-| Human input | none                                                                                                                                              |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                         |
+| Field       | Value                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                                                                                                                                                                                                                                                                                            |
+| Size        | 1.5–2.5 engineer-weeks                                                                                                                                                                                                                                                                                                                                                                                  |
+| Depends on  | [UK-01](UK-01-brand-kit-tokens.md), [UK-02a](UK-02a-kit-copy-catalog.md), [UK-15](UK-15-visual-qa-harness.md), [UK-16](UK-16-ui-docs-scaffold.md)                                                                                                                                                                                                                                                       |
+| Unblocks    | [P0-36](P0-36-portal-on-copy-catalog.md), [P0-42](P0-42-generator-registry-pnpm-gen.md), [P0-45](P0-45-pkey-command-registry-context-doctor.md), [P0-48](P0-48-quick-wins-worker-cli-ci-docs-week-0.md), [ST-46](ST-46-interactive-pkey-init.md), [SP-33a](SP-33a-one-integration-content-generator-on.md), [UK-03](UK-03-ui-core.md), [UK-32](UK-32-node-ink.md), [UK-41](UK-41-must-tier-closeout.md) |
+| Role        | `pkey-sdk-porter`                                                                                                                                                                                                                                                                                                                                                                                       |
+| Plan mode   | no                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Gates       | golden ANSI text plus VHS SVG; the CLI reference docs freshness; the Action bundle drift gate if `packages/cli` output changes                                                                                                                                                                                                                                                                          |
+| Human input | none                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                                                                                                               |
 
 ## Sign-in alignment (2026-10-05): SIGN-IN.md
 
@@ -36,6 +36,12 @@ the owner's license vocabulary (SIGN-IN.md O-17: the tier pill and "{used} of {l
 every row, no "Account-wide"). For this package:
 
 - **The one sign-in form** (SIGN-IN.md §3.17, UI-KITS §1.3): the browser presentation only: `login` opens the card, which chooses the license; never license rows (SIGN-IN.md D-93). Steps morph in place; nothing stacks on the form except the system confirm for Replace where the platform expects one (D-80).
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **keep** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Merged into integ/batch-6 as reviewed after its fix round (58ea8ffb8) and stamped done there (e4a527fee). Its cli/models.ts moves under ui-core (UK-03) and its help.ts seeds the pkey command registry (P0-45); ST-46, P0-36, P0-42 and P0-48 build after it.
 
 ## Goal
 

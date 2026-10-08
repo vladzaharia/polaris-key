@@ -26,6 +26,12 @@ Checked against `main` at `148439c4f`.
   from that engine, so the console panel and the conformance suite's first-party branch read the
   same answer.
 
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **keep** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Already stamped done on main (2eb10597c); the hygiene PR leaves it. Merged (0226e2824). Its Polaris Key panel re-homes as the Polaris Key channel page's Sales tab in A-22.
+
 ## Goal
 
 In the console, Polaris Key appears as a storefront tile with its capability strip, its listing in the shared Listing editor, a Polaris Key panel (listing state, audience, ways to add, group labels), the readiness checklist, a persona-based "Who can see this?" and a 28-day analytics card.

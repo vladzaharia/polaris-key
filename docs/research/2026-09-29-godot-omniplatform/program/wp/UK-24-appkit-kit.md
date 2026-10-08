@@ -28,6 +28,17 @@ every row, no "Account-wide"). For this package:
 
 - **The one sign-in form** (SIGN-IN.md §3.17, UI-KITS §1.3): `beginSignInSheet(for:)` presents the one form as a single sheet whose steps morph inside it; the Welcome window hosts it inline. Steps morph in place; nothing stacks on the form except the system confirm for Replace where the platform expects one (D-80).
 
+## Consolidation 2026-10-07
+
+> **Parked 2026-10-07 (DX consolidation).** Optional and `deferred`, so `--ready` and `--critical`
+> skip it. Revive condition (the note): PolarisKeyAppKit package; the AppKit recipe and Sparkle bridge ship in UK-08. Re-read this brief against the code before reviving it.
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **parked** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> PolarisKeyAppKit package; the AppKit recipe and Sparkle bridge ship in UK-08.
+
+- Optional now (was required).
+
 ## Goal
 
 The AppKit surface of the Swift kit exists, reuses the SwiftUI views and presentation core with no second implementation, and is baselined in both themes.

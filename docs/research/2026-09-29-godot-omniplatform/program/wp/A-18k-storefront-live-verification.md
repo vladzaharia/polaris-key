@@ -5,7 +5,7 @@
 | Phase       | A: Admin: store provisioning (storefronts)                                                                                                                                                                                                            |
 | Size        | 0.5–1 engineer-weeks                                                                                                                                                                                                                                  |
 | Depends on  | [A-18a](A-18a-storefront-adapter-layer.md)                                                                                                                                                                                                            |
-| Unblocks    | none                                                                                                                                                                                                                                                  |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                                                                                                                                |
 | Role        | `pkey-spike-runner`                                                                                                                                                                                                                                   |
 | Plan mode   | no                                                                                                                                                                                                                                                    |
 | Gates       | human approval of every live write                                                                                                                                                                                                                    |
@@ -14,6 +14,12 @@
 
 **Status: blocked** on the owner's credentials and approval. An approval relayed by an agent is not
 the owner's consent (as with A-17h, S-14 §12 decision 3).
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track A, Ground truth, decisions and quick wins](../../../2026-10-07-dx-consolidation/tracks.md#a-ground-truth-decisions-and-quick-wins)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Still blocked on the owner's store credentials (owner step). A per-store gate on production automation, not a build dependency: A-23 and A-33 build without it, and each store's runner rows stay human steps until A-18k verifies that store. Add the commerce live checks: App Store Server Notifications set/verify/test round trip, Play RTDN test, group-scoped Steam CheckAppOwnership, Microsoft Store collections read.
 
 ## Goal
 

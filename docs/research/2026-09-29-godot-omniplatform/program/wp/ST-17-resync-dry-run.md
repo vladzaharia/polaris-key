@@ -1,16 +1,25 @@
-# ST-17 Resync dry-run plan shared by resync, link and the deploy hook; drift endpoint and view from the snapshot; Revert and Keep
+# ST-17 Resync dry-run on the core ingest pipeline
 
-| Field       | Value                                                                         |
-| ----------- | ----------------------------------------------------------------------------- |
-| Phase       | ST: Settings architecture (S-18) (phase 4: manifest round trip)               |
-| Size        | 0.8–1.1 engineer-weeks                                                        |
-| Depends on  | [ST-01c](ST-01c-settings-backfill.md), [ST-08](ST-08-product-settings-hub.md) |
-| Unblocks    | [ST-18](ST-18-promote-export.md), [ST-25](ST-25-legacy-retirement.md)         |
-| Role        | `pkey-implementer`                                                            |
-| Plan mode   | no                                                                            |
-| Gates       | rule 10 (OpenAPI + `routeCoverage`); console CSP parity                       |
-| Human input | none                                                                          |
-| Repo        | `vladzaharia/polaris-key`                                                     |
+| Field       | Value                                                                                                                          |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | ST: Settings, access control and console shell (phase 4: manifest round trip)                                                  |
+| Size        | 0.8–1.1 engineer-weeks                                                                                                         |
+| Depends on  | [ST-01c](ST-01c-settings-backfill.md), [ST-08](ST-08-product-settings-hub.md), [P0-26](P0-26-core-manifest-ingest-pipeline.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [ST-18](ST-18-promote-export.md), [ST-25](ST-25-legacy-retirement.md)                  |
+| Role        | `pkey-implementer`                                                                                                             |
+| Plan mode   | no                                                                                                                             |
+| Gates       | rule 10 (OpenAPI + `routeCoverage`); console CSP parity                                                                        |
+| Human input | none                                                                                                                           |
+| Repo        | `vladzaharia/polaris-key`                                                                                                      |
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track D, Administration, access control and console identity](../../../2026-10-07-dx-consolidation/tracks.md#d-administration-access-control-and-console-identity)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> The dry-run plan is produced by P0-26's core ingest pipeline; resync, link and the deploy hook all call it.
+
+- Title: was "Resync dry-run plan shared by resync, link and the deploy hook; drift endpoint and view from the snapshot; Revert and Keep".
+- Depends on: added P0-26.
 
 ## Goal
 

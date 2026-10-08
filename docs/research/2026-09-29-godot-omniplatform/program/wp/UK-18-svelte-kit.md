@@ -12,6 +12,17 @@
 | Human input | none                                                                                            |
 | Repo        | `vladzaharia/polaris-key`                                                                       |
 
+## Consolidation 2026-10-07
+
+> **Parked 2026-10-07 (DX consolidation).** Optional and `deferred`, so `--ready` and `--critical`
+> skip it. Revive condition (the note): Svelte kit package; a UK-31 recipe until an adopter ships on Svelte. Re-read this brief against the code before reviving it.
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **parked** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Svelte kit package; a UK-31 recipe until an adopter ships on Svelte.
+
+- Optional now (was required).
+
 ## Goal
 
 A Svelte 5 / SvelteKit app gates itself in its framework's idiom, with every element's parts and slots passed through and typed.

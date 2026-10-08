@@ -1,11 +1,11 @@
-# CM-04 Offers, prices and coupons catalogue; idempotent Stripe Product/Price/Coupon sync; priced offers contributed to the S-21 obtain-path engine as `buy` / `upgrade` paths
+# CM-04 Polaris Key prices and coupons on offers (absorbs CM-09, CM-16)
 
 | Field       | Value                                                                                                                                                                                               |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | CM: Polaris Key commerce (S-22): deferred until the owner's go                                                                                                                                      |
+| Phase       | CM: Commerce: store commerce (required) and Polaris Key checkout (deferred)                                                                                                                         |
 | Size        | 1–1.4 engineer-weeks                                                                                                                                                                                |
-| Depends on  | [CM-03](CM-03-merchants.md), [PS-03](PS-03-obtain-path-engine.md)                                                                                                                                   |
-| Unblocks    | [CM-05](CM-05-checkout-fulfilment.md), [CM-16](CM-16-storefront-integration.md)                                                                                                                     |
+| Depends on  | [PS-03](PS-03-obtain-path-engine.md), [CM-02](CM-02-provider-webhooks.md)                                                                                                                           |
+| Unblocks    | [CM-05](CM-05-checkout-fulfilment.md), [CM-12](CM-12-console-commerce.md)                                                                                                                           |
 | Role        | `pkey-implementer`                                                                                                                                                                                  |
 | Plan mode   | no (executes its sections of the approved [`plans/CM-01.md`](../plans/CM-01.md))                                                                                                                    |
 | Gates       | `migration`, `table-owners`, `rule-10`, `rule-6`, `threat-model`, `docs-generated`                                                                                                                  |
@@ -16,6 +16,17 @@
 > `workpackages.json`: the owner asked for the commerce plan on 2026-10-05 but not for its
 > execution. `check.mjs --ready` does not list it. It becomes dispatchable only when the owner says
 > go and the lead removes the `deferred` field.
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track H, Distribution channels, storefronts and commerce](../../../2026-10-07-dx-consolidation/tracks.md#h-distribution-channels-storefronts-and-commerce)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Polaris Key prices (SKUs) and Stripe Product/Price sync on CM-20's offers; absorbs CM-09 (coupons) and CM-16 (priced obtain paths); no inline grants_json.
+
+- Title: was "Offers, prices and coupons catalogue; idempotent Stripe Product/Price/Coupon sync; priced offers contributed to the S-21 obtain-path engine as `buy` / `upgrade` paths".
+- Depends on: added CM-02; removed CM-03.
+- Absorbs CM-09: Coupons belong with offers and prices.
+- Absorbs CM-16: Priced paths on Discover and the storefront page: engine in CM-04, page in CM-11.
 
 ## Goal
 

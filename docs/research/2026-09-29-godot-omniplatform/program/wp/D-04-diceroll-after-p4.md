@@ -1,22 +1,30 @@
 # D-04 Diceroll: packs as release deliverables, with `PKeyBoot` driving the boot shell
 
-| Field       | Value                                                                                                                                                                                     |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | D: Diceroll adoption (vladzaharia/diceroll); stage "After P4"                                                                                                                             |
-| Size        | 1.5–2 engineer-weeks                                                                                                                                                                      |
-| Depends on  | [P4-08](P4-08-godot-packs.md), [P4-12](P4-12-compat-resolution.md), [P4-03](P4-03-ci-patch-artifacts.md), [P4-05](P4-05-pack-transports-cdn.md), [P4-24](P4-24-content-decision-godot.md) |
-| Unblocks    | none                                                                                                                                                                                      |
-| Role        | `pkey-godot-engineer`                                                                                                                                                                     |
-| Plan mode   | no                                                                                                                                                                                        |
-| Gates       | `pkey validate` clean; the publish-time checks P4-12 adds (dry run first); Diceroll's CI including its asset rules                                                                        |
-| Human input | none                                                                                                                                                                                      |
-| Repo        | `vladzaharia/diceroll`                                                                                                                                                                    |
+| Field       | Value                                                                                                                                                                                                                                                 |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | D: Diceroll adoption (vladzaharia/diceroll); stage "After P4"                                                                                                                                                                                         |
+| Size        | 1.5–2 engineer-weeks                                                                                                                                                                                                                                  |
+| Depends on  | [P4-08](P4-08-godot-packs.md), [P4-12](P4-12-compat-resolution.md), [P4-03](P4-03-ci-patch-artifacts.md), [P4-05](P4-05-pack-transports-cdn.md), [P4-24](P4-24-content-decision-godot.md), [P4-34](P4-34-one-click-pack-gate-packs-without-update.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                                                                                                                                |
+| Role        | `pkey-godot-engineer`                                                                                                                                                                                                                                 |
+| Plan mode   | no                                                                                                                                                                                                                                                    |
+| Gates       | `pkey validate` clean; the publish-time checks P4-12 adds (dry run first); Diceroll's CI including its asset rules                                                                                                                                    |
+| Human input | none                                                                                                                                                                                                                                                  |
+| Repo        | `vladzaharia/diceroll`                                                                                                                                                                                                                                |
 
 > **Re-verify first.** Diceroll paths below come from [notes/A4](../../notes/A4-diceroll-mapping.md)
 > (Diceroll `4e78bb6`, 2026-09-29), including its summary of Diceroll's own content-streaming
 > design (`docs/design/2026-09-29-content-streaming.md`), plus what D-01 to D-03 changed. This
 > brief was written without access to the Diceroll repository; confirm each path, and what of the
 > design has been built since, before changing or deleting anything.
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track I, Packages, updates and packs](../../../2026-10-07-dx-consolidation/tracks.md#i-packages-updates-and-packs)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Packs with transports auto; the supporter pack's gate is approved once from the manifest assertion (P4-34).
+
+- Depends on: added P4-34.
 
 ## Goal
 

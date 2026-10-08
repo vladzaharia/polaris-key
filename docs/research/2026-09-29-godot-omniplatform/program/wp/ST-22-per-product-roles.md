@@ -2,15 +2,26 @@
 
 | Field       | Value                                                                                       |
 | ----------- | ------------------------------------------------------------------------------------------- |
-| Phase       | ST: Settings architecture (S-18) (phase 5: governance and environments)                     |
+| Phase       | ST: Settings, access control and console shell (phase 5: governance and environments)       |
 | Size        | 1.2–1.7 engineer-weeks                                                                      |
-| Depends on  | [ST-21](ST-21-capability-gate.md)                                                           |
+| Depends on  | none                                                                                        |
 | Unblocks    | none                                                                                        |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                       |
 | Plan mode   | yes: the plan [`plans/ST-22.md`](../plans/ST-22.md) needs human approval before code        |
 | Gates       | plan mode; THREAT-MODEL                                                                     |
 | Human input | plan approval (`plans/ST-22.md`); a security review of the authorization model before merge |
 | Repo        | `vladzaharia/polaris-key`                                                                   |
+
+## Consolidation 2026-10-07
+
+> **Closed 2026-10-07 (DX consolidation): merged into [ST-31](ST-31-roles-bindings-invites-members-pages.md).** The id stays in the graph as `dropped` so it
+> is not reused; do not build this package. Its scope moves to [ST-31](ST-31-roles-bindings-invites-members-pages.md).
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **merge** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> No longer optional: the owner asks for full RBAC (ST-28 plan, ST-29 gate, ST-30 sign-in, ST-31 roles). Security review carried over.
+
+- Dependencies cleared on closing (they were ST-21), so nothing in the graph waits on or through a closed package.
 
 ## Goal
 
