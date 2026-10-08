@@ -264,6 +264,8 @@ function balanceLast(lines: Span[][], width: number): void {
       widthOf(tail) <= width &&
       words(tail).length >= 2
     ) {
+      while (head.length > 1 && SEPARATOR.test(head[head.length - 1]!.text))
+        head.pop();
       lines[n - 2] = head;
       lines[n - 1] = tail;
       return;
@@ -271,10 +273,16 @@ function balanceLast(lines: Span[][], width: number): void {
   }
 }
 
+/** A separator between items ("·"): it divides items on one line, so a line never ends with one. */
+const SEPARATOR = /^\s*·\s*$/;
+
 function wrapPieces(spans: Line, width: number, ellipsis: string): Span[][] {
   const lines: Span[][] = [[]];
   let w = 0;
   const newLine = () => {
+    const last = lines[lines.length - 1]!;
+    while (last.length > 1 && SEPARATOR.test(last[last.length - 1]!.text))
+      last.pop();
     lines.push([]);
     w = 0;
   };

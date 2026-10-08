@@ -230,6 +230,22 @@ describe("URLs and codes wrap and are never cut", () => {
       "LMNV",
     ]);
   });
+  it("never ends a wrapped line on a separator", () => {
+    const lines = wrapSpans(
+      [
+        { text: "Enter", style: ["strong"], keep: true },
+        { text: " open again", style: ["muted"] },
+        { text: " · ", style: ["muted"] },
+        { text: "c", style: ["strong"], keep: true },
+        { text: " use a code", style: ["muted"] },
+        { text: " · ", style: ["muted"] },
+        { text: "Esc", style: ["strong"], keep: true },
+        { text: " cancel", style: ["muted"] },
+      ],
+      37,
+    ).map((l) => l.map((s) => s.text).join(""));
+    expect(lines).toEqual(["Enter open again · c use a code", "Esc cancel"]);
+  });
   it("has the long-values fixture the owner asked for", () => {
     expect([...LONG.name]).toHaveLength(60);
     expect([...LONG.code]).toHaveLength(19);

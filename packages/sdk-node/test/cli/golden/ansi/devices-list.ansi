@@ -62,7 +62,7 @@
 [90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · devices list[39m
 [90m│[39m
 [36m◆[39m  [1mYour devices[22m [90m· 3 devices[39m
-[90m│[39m  [36m● [39m[1mWork laptop[22m[90m  linux x64 · last seen today ·[39m
+[90m│[39m  [36m● [39m[1mWork laptop[22m[90m  linux x64 · last seen today[39m
 [90m│[39m  [90mThis computer[39m
 [90m│[39m  [90m  dev_9fK2Lw7QmZ[39m
 [90m│[39m  [90m○ [39mMara's iPad[90m  iPadOS[39m
@@ -75,7 +75,7 @@
 [90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · devices list[39m
 [90m│[39m
 [36m◆[39m  [1mYour devices[22m [90m· 3 devices[39m
-[90m│[39m  [36m● [39m[1mWork laptop[22m[90m  linux x64 · last seen today ·[39m
+[90m│[39m  [36m● [39m[1mWork laptop[22m[90m  linux x64 · last seen today[39m
 [90m│[39m  [90mThis computer[39m
 [90m│[39m  [90m  dev_9fK2Lw7QmZ[39m
 [90m│[39m  [90m○ [39mMara's iPad[90m  iPadOS[39m
@@ -88,7 +88,7 @@
 [90m┌[39m  [36m[7m Tidewater Studio [27m[39m[90m · devices list[39m
 [90m│[39m
 [36m◆[39m  [1mYour devices[22m [90m· 3 devices[39m
-[90m│[39m  [36m● [39m[1mWork laptop[22m[90m  linux x64 · last seen today ·[39m
+[90m│[39m  [36m● [39m[1mWork laptop[22m[90m  linux x64 · last seen today[39m
 [90m│[39m  [90mThis computer[39m
 [90m│[39m  [90m  dev_9fK2Lw7QmZ[39m
 [90m│[39m  [90m○ [39mMara's iPad[90m  iPadOS[39m
@@ -101,7 +101,7 @@
 ┌   Tidewater Studio  · devices list
 │
 ◆  Your devices · 3 devices
-│  ● Work laptop  linux x64 · last seen today ·
+│  ● Work laptop  linux x64 · last seen today
 │  This computer
 │    dev_9fK2Lw7QmZ
 │  ○ Mara's iPad  iPadOS
