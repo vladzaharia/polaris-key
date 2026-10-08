@@ -29,7 +29,7 @@ as the GitHub Release notes, and the same text is the Asset Store version's chan
   re-rendered; it now renders with the SDK it is given. A layout switch could leave a container
   unsorted after a resize (the engine drops a re-sort asked for mid-sort); views now verify their
   sort for a few frames after each layout pass.
-- **Tests:** the `ui_matrix` suite (in `ci`) and `tools/ui_matrix/ui_matrix.gd` (PNGs).
+- **Tests:** the `ui_matrix` suite (its own `run_tests.sh` step) and `tools/ui_matrix/ui_matrix.gd` (PNGs).
 
 The SDK parity pass (`notes/SDK-PARITY-PASS.md` §5.6).
 

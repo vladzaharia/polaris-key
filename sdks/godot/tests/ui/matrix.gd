@@ -440,7 +440,7 @@ static func _leaf(c: Control, view: Control, safe: Rect2, kind: String, out: Pac
 		if l.text != "" and l.get_visible_line_count() < l.get_line_count():
 			out.append("%s clips its text (%d of %d lines)" % [_path(view, c), l.get_visible_line_count(), l.get_line_count()])
 		if l.text != "" and l.autowrap_mode == TextServer.AUTOWRAP_OFF:
-			var w := l.get_theme_font("font").get_string_size(l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, l.get_theme_font_size("font_size")).x
+			var w := PKeyUiView.text_width(l, l.text)
 			if w > l.size.x + 1.0:
 				out.append("%s is wider than its rect (%.0f > %.0f)" % [_path(view, c), w, l.size.x])
 	if c is PKeyQrRect and (c as PKeyQrRect).texture != null:

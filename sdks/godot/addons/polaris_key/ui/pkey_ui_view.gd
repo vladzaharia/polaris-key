@@ -593,9 +593,14 @@ static func _unsorted(n: Node) -> bool:
 		if not (ch is Control) or not (ch as Control).visible:
 			continue
 		var c := ch as Control
-		if n is Container and not (n is ScrollContainer):
+		# A scroll area that passes its content through holds it at its minimum too.
+		if n is Container and not (n is ScrollContainer and (n as ScrollContainer).vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED):
 			var m := c.get_combined_minimum_size()
 			if c.size.x + 0.5 < m.x or c.size.y + 0.5 < m.y:
+				return true
+			# Or a child that runs past its container (whose minimum the engine left stale).
+			var pc := n as Control
+			if c.position.x + c.size.x > pc.size.x + 0.5 or c.position.y + c.size.y > pc.size.y + 0.5:
 				return true
 		if _unsorted(ch):
 			return true
@@ -773,7 +778,7 @@ func _size_controls(n: Node) -> void:
 			var ctl := ch as Control
 			if not is_equal_approx(ctl.custom_minimum_size.y, h):
 				ctl.custom_minimum_size.y = h
-		if ch is Button and not (ch is CheckButton or ch is CheckBox or ch is OptionButton):
+		if ch.get_class() == "Button":
 			_fit_label(ch as Button)
 		if not (ch is SpinBox):
 			_size_controls(ch)
@@ -784,10 +789,8 @@ func _size_controls(n: Node) -> void:
 static func _fit_label(b: Button) -> void:
 	var w := 0.0
 	if b.text != "":
-		var font := b.get_theme_font("font")
-		var fs := b.get_theme_font_size("font_size")
 		var box := b.get_theme_stylebox("normal")
-		w = ceilf(font.get_string_size(b.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x + 0.1 * fs + (box.get_minimum_size().x if box != null else 0.0))
+		w = ceilf(text_width(b, b.text) + 0.1 * b.get_theme_font_size("font_size") + (box.get_minimum_size().x if box != null else 0.0))
 	if not is_equal_approx(b.custom_minimum_size.x, w):
 		b.custom_minimum_size.x = w
 
@@ -1058,6 +1061,11 @@ func columns(parent: Node, node_name: String) -> BoxContainer:
 static func set_columns(box: BoxContainer, side_by_side: bool) -> void:
 	box.vertical = not side_by_side
 	box.theme_type_variation = "PKeyColumns" if side_by_side else "PKeySections"
+
+
+## The width `text` takes in `ctl`'s font and size, on one line.
+static func text_width(ctl: Control, text: String) -> float:
+	return ctl.get_theme_font("font").get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, ctl.get_theme_font_size("font_size")).x
 
 
 ## Show `node` with `text`, or hide it when `text` is empty.

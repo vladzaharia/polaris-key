@@ -570,7 +570,7 @@ func _ready() -> void:
 - **Tests.** `boot` drives every stage-matrix row through `PolarisKey.boot()` with a scripted
   host, and the sync classes and keyless registration through the fake server; `ui` pins every
   scene state as a structural snapshot (`tests/ui/snapshots/`), walks focus with ui_down alone,
-  and checks every visible string is PKeyUiCopy text under a pseudo-locale. `ui_matrix` lays every
+  and checks every visible string is PKeyUiCopy text under a pseudo-locale. `ui_matrix` (a `run_tests.sh` step of its own) lays every
   drop-in screen out across the resolution matrix (`tests/ui/matrix.gd`: 640×360, 800×600,
   1280×720, 1280×800, 1920×1080, 2560×1440, 3840×2160 at scale 2, a phone in portrait and
   landscape with a safe area, a 4:3 tablet, and five common stretch settings), in the Polaris Key,

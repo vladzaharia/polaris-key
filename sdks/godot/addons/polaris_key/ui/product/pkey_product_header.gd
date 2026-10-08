@@ -30,7 +30,8 @@ var centered := false:
 		vertical = value
 		alignment = BoxContainer.ALIGNMENT_CENTER if value else BoxContainer.ALIGNMENT_BEGIN
 		if _name != null:
-			_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER if value else HORIZONTAL_ALIGNMENT_LEFT
+			# Back to the label's own start alignment (mirrored with the layout direction).
+			_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER if value else _start
 			_icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER if value else Control.SIZE_FILL
 			_tile.size_flags_horizontal = Control.SIZE_SHRINK_CENTER if value else Control.SIZE_FILL
 
@@ -38,6 +39,7 @@ var _icon: TextureRect
 var _tile: PanelContainer
 var _initial: Label
 var _name: Label
+var _start: HorizontalAlignment
 
 
 func _init() -> void:
@@ -65,6 +67,7 @@ func _init() -> void:
 	_initial.set_meta(PKeyUiView.DATA_META, true)
 	_tile.add_child(_initial)
 	_name = Label.new()
+	_start = _name.horizontal_alignment
 	_name.name = "Name"
 	_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_name.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -90,7 +93,7 @@ func refresh() -> void:
 	_icon.texture = icon
 	_icon.visible = icon != null
 	_tile.visible = icon == null and title != ""
-	_initial.text = title.strip_edges().left(1).to_upper()
+	_initial.text = title.strip_edges().left(1)
 	visible = title != "" or icon != null
 	_size()
 

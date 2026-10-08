@@ -58,7 +58,7 @@ func _apply_width(width: float) -> void:
 	for l in _lines.get_children():
 		var label_ := l as Label
 		if label_ != null and label_.visible:
-			widest = maxf(widest, label_.get_theme_font("font").get_string_size(label_.text, HORIZONTAL_ALIGNMENT_LEFT, -1, label_.get_theme_font_size("font_size")).x)
+			widest = maxf(widest, text_width(label_, label_.text))
 	super(minf(ceilf(widest) + 2.0 + card_padding_x(), width))
 
 

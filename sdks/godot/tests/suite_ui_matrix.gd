@@ -16,6 +16,8 @@ extends RefCounted
 #
 #   godot --headless --path sdks/godot -- --pkey-test ui_matrix
 #   godot --headless --path sdks/godot -- --pkey-test ui_matrix sign_in,gate   # some screens
+#
+# Not in the `ci` set (it takes about a minute): tools/run_tests.sh runs it as its own step.
 
 const MATRIX := preload("res://tests/ui/matrix.gd")
 ## The looks and the locales each is checked in: every locale in the Polaris Key look (which must

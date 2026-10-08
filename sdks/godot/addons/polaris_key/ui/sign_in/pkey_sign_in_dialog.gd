@@ -65,6 +65,8 @@ var _continue: Button
 var _try_again: Button
 var _cancel_btn: Button
 var _accum := 0.0
+## A label's own start alignment (mirrored with the layout direction).
+var _start: HorizontalAlignment
 
 
 func _build() -> void:
@@ -79,6 +81,7 @@ func _build() -> void:
 	var head := vbox(_info, "Header", "PKeyTight")
 	_product = product_header(head, "Product")
 	_title = label(head, "Title", "PKeyTitle")
+	_start = _title.horizontal_alignment
 	_status = label(head, "Status", "PKeyMuted")
 	_steps = vbox(_info, "Steps", "PKeyStack")
 	_instructions = label(_steps, "Instructions")
@@ -138,13 +141,12 @@ func _arrange(m: Dictionary) -> void:
 	var room := content_room()
 	var q := qr_side(room.y * 0.62 if side else minf(room.x, room.y * 0.4))
 	_qr.custom_minimum_size = Vector2(q, q)
-	# Landscape reads left to right from the QR code; a portrait column is centred.
-	var align := HORIZONTAL_ALIGNMENT_LEFT if side or m["landscape"] else HORIZONTAL_ALIGNMENT_CENTER
+	# Landscape reads on from the QR code, from the start edge; a portrait column is centred.
+	var centred: bool = not (side or m["landscape"])
 	for l in [_title, _status, _instructions, _code, _expires, _device, _confirm_body]:
-		(l as Label).horizontal_alignment = align
-	var flow := FlowContainer.ALIGNMENT_BEGIN if align == HORIZONTAL_ALIGNMENT_LEFT else FlowContainer.ALIGNMENT_CENTER
-	_actions.alignment = flow
-	_product.centered = align == HORIZONTAL_ALIGNMENT_CENTER
+		(l as Label).horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER if centred else _start
+	_actions.alignment = FlowContainer.ALIGNMENT_CENTER if centred else FlowContainer.ALIGNMENT_BEGIN
+	_product.centered = centred
 
 
 ## Start a sign-in through `sdk.identity` and follow it to the end.
