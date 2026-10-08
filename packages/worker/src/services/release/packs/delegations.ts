@@ -68,15 +68,18 @@ import { errorResponse, ErrorCode, json } from "../../../core/errors.js";
 import { ciActor } from "../../../core/ciScope.js";
 import type { CiTokenRecord } from "../../../core/publisher.js";
 import { appendAudit } from "../../../core/data.js";
-import type { Db, DbStatement } from "../../../core/platform.js";
-import { randomId } from "../../../core/platform.js";
+import {
+  randomId,
+  sha256Hex,
+  type Db,
+  type DbStatement,
+} from "../../../core/platform.js";
 import { bumpReleaseGeneration } from "../ghCache.js";
 import { getReleaseConfig, type ReleaseConfigRow } from "../config.js";
 import {
   productSigningKeyBytes,
   refuse,
   releaseKeyTrustSet,
-  sha256HexOfAscii,
   verifyRecordJws,
   type RecordRefusalReason,
   type VerifiedRecordJws,
@@ -129,23 +132,10 @@ function cmp(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 
-async function sha256HexOfBytes(bytes: Uint8Array): Promise<string> {
-  const buf = await crypto.subtle.digest(
-    "SHA-256",
-    bytes.buffer.slice(
-      bytes.byteOffset,
-      bytes.byteOffset + bytes.byteLength,
-    ) as ArrayBuffer,
-  );
-  return [...new Uint8Array(buf)]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
 /** The lowercase hex SHA-256 of a raw key's 32 bytes (as `releaseKeyFingerprints`). */
 export async function keyFingerprint(publicKey: string): Promise<string> {
   try {
-    return await sha256HexOfBytes(base64UrlDecode(publicKey));
+    return await sha256Hex(base64UrlDecode(publicKey));
   } catch {
     return "";
   }
@@ -280,7 +270,7 @@ export async function handleDelegationSubmit(
       "delegation-body",
       `the delegation's body is unusable: deliverable must be a pack id, delegate.publicKey 32 raw Ed25519 bytes in base64url, types 1–8 unique types all in ${DELEGABLE_PACK_TYPES.join(", ")}, and issuedAt < expiresAt ≤ issuedAt + 366 days (plans/P4-19.md §2.2).`,
     );
-  const sha256 = await sha256HexOfAscii(shared.jws);
+  const sha256 = await sha256Hex(shared.jws);
   const existing = await readDelegation(db, slug, sha256);
   const view = {
     sha256,
@@ -614,7 +604,7 @@ export async function handleDelegationRevocation(
 ): Promise<Response | null> {
   const { db, env, product, now } = ctx;
   const slug = product.slug;
-  const recordSha256 = await sha256HexOfAscii(shared.jws);
+  const recordSha256 = await sha256Hex(shared.jws);
   const version = shared.payload.version as string;
   const seq = shared.payload.seq as number;
 
@@ -628,7 +618,7 @@ export async function handleDelegationRevocation(
         `the delegation supplied with the revocation ${why}.`,
       );
     if (typeof supplied !== "string") return bad("is not a compact JWS");
-    if ((await sha256HexOfAscii(supplied)) !== body.target)
+    if ((await sha256Hex(supplied)) !== body.target)
       return bad(`does not hash to revokes (${body.target})`);
     const v = await verifyRecordJws(db, {
       product: slug,

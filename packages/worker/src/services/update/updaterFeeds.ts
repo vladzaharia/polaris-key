@@ -56,7 +56,7 @@ import type {
   ReleaseCatalog,
 } from "../../core/hooks.js";
 import { errorResponse, notFound } from "../../core/errors.js";
-import { bearer } from "../../core/platform.js";
+import { bearer, sha256Hex } from "../../core/platform.js";
 import {
   accessRefusal,
   fixedReleaseSelector,
@@ -155,15 +155,6 @@ export function recordedAppReleases(
     APP_DELIVERABLE_ID,
     "app",
   );
-}
-
-async function sha256Hex(bytes: Uint8Array | string): Promise<string> {
-  const data =
-    typeof bytes === "string" ? new TextEncoder().encode(bytes) : bytes;
-  const digest = await crypto.subtle.digest("SHA-256", data);
-  return [...new Uint8Array(digest)]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
 }
 
 /** What one updater feed request needs rendered. */
