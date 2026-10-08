@@ -685,7 +685,7 @@ claim error "owned by another account" (§4.19).
   device limit → **Free a device**; expires within 14 days → **Renew with <developer>** (G16, else
   "Contact"); Steam key not activated → **Activate on Steam**; expired with a newer version →
   **Renew**. Never news. Hidden when empty.
-- **All products:** 4-column compact grid (3 at 761–1179 px), or the **list**: icon · Product ·
+- **All products:** 4-column compact grid (3 at 900–1179 px, 2 at 761–899), or the **list**: icon · Product ·
   Status · Latest · Devices · **Quick action for this Mac** · chevron; 72 px rows; the whole row
   opens the product page.
 - **⌘K trigger** in the header (§4.27). Products without art use the fallback (§5.2).
@@ -1369,7 +1369,7 @@ again." with the reference id. Never render the HTTP status or an internal code 
 | Width       | Library                                                                                        | Product page                                                  | Chrome                                      |
 | ----------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------- |
 | ≥ 1180 px   | Large tiles 3 columns; compact 4 columns                                                       | TOC · main · side (148 · fluid · 384)                         | Full header                                 |
-| 761–1179 px | Large 3, compact 3                                                                             | Main · side (fluid · 340); TOC hidden                         | Compact header (below)                      |
+| 761–1179 px | Large 2, compact 3 (2 below 900 px)                                                            | Main · side (fluid · 340); TOC hidden                         | Compact header (below)                      |
 | ≤ 760 px    | One column; List view by default above 6 products; toolbar: search + view toggle, chips scroll | One column in task order; sticky pill tabs; banner full-bleed | 56 px header, bottom tab bar, bottom sheets |
 
 - **Compact header (761–1179 px):** the same row, so the account menu never leaves the screen: the

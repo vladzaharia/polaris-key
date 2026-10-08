@@ -305,10 +305,12 @@ function ScaledLibrary({
             }
           />
         ) : (
+          // Compact tiles (§8): two columns below 900 px, where a third leaves a tile too narrow
+          // for its "Download for macOS".
           <ul
             ref={stagger.ref}
             className={cn(
-              "grid gap-5 desk:grid-cols-3 wide:grid-cols-4",
+              "grid gap-5 desk:grid-cols-2 mid:grid-cols-3 wide:grid-cols-4",
               stagger.className,
             )}
           >
