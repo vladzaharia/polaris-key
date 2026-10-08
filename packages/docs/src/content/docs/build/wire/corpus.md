@@ -241,8 +241,8 @@ The vectors are signed. Editing `cases.json` by hand either breaks a signature (
 runner fails with an error that points at the wrong thing) or is silently reverted the next
 time anyone runs `gen:corpus` — and `--check` fails CI in the meantime.
 
-Change `tools/sign-corpus.ts`, regenerate, and commit the regenerated files together with the
-generator change.
+Change the generator (`tools/sign-corpus.ts` and its family modules in `tools/corpus/`),
+regenerate, and commit the regenerated files together with the generator change.
 :::
 
 ## Adding a case
@@ -252,11 +252,11 @@ difference that is fixed without being pinned comes back, usually in a different
 
 The loop:
 
-1. Add the vector to the appropriate family in `tools/sign-corpus.ts`, with a `description`
+1. Add the vector to the appropriate family module in `tools/corpus/`, with a `description`
    that states the _rule_, not the symptom. The descriptions are read by whoever debugs a
    failure three years from now.
-2. Run `pnpm gen:corpus`. Commit the regenerated `conformance/corpus/v2/*.json` **and** both
-   mirrors alongside the generator change.
+2. Run `pnpm gen:corpus`. Commit the regenerated `conformance/corpus/v2/*.json` **and** the Godot
+   mirror alongside the generator change.
 3. Run every runner, including the Godot one (`sdks/godot/tools/run_tests.sh`). A vector that only the language you were working in agrees with is
    the finding, not a flake.
 4. Fix the divergence.

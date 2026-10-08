@@ -35,7 +35,7 @@ sdks/
                                                runner; Android :platform (the backend Godot binds),
                                                :android glue and the Compose :ui kit
 conformance/         corpus/v2 (one signer's golden vectors) + the Node and browser runners
-tools/               sign-corpus.ts · gen-mirrors.ts · gen-services.ts + services.json (the service table)
+tools/               sign-corpus.ts (+ corpus/) · gen-mirrors.ts · gen-services.ts + services.json (the service table)
 products/            per-product data (catalog.json + product.json) + gen-seed
 docs/                CONCEPTS · ADOPTER-GUIDE · CONFIG-AUTHORING · RUNBOOK · DEPLOYMENT
                      security/ (threat model, wire contract v4, audit + findings)
