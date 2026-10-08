@@ -8,7 +8,7 @@ import * as React from "react";
 import { render, type RenderResult } from "@testing-library/react";
 import { configureAxe } from "vitest-axe";
 import { expect } from "vitest";
-import { resetCache } from "../src/context.js";
+import { ConsoleQueryProvider } from "../src/console/data/queryClient.js";
 import { resetRouterForTests } from "../src/console/router.js";
 import { Announcer } from "../src/ui/LiveRegion.js";
 import { TooltipProvider } from "../src/ui/Tooltip.js";
@@ -33,13 +33,14 @@ export function stubDom(): void {
 export function mountAt(hash: string, ui: React.ReactElement): RenderResult {
   window.location.hash = hash;
   resetRouterForTests();
-  resetCache();
   stubDom();
   return render(
-    <TooltipProvider delayDuration={300}>
-      {ui}
-      <Announcer />
-    </TooltipProvider>,
+    <ConsoleQueryProvider>
+      <TooltipProvider delayDuration={300}>
+        {ui}
+        <Announcer />
+      </TooltipProvider>
+    </ConsoleQueryProvider>,
   );
 }
 

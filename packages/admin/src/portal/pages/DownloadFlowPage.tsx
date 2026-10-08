@@ -7,6 +7,8 @@ import { FlowCard, FocusedFlow } from "../components/FocusedFlow.js";
 import { StorePills } from "../components/StorePills.js";
 import { ErrorPanel } from "../components/States.js";
 import { DownloadButton } from "../components/product/DownloadButton.js";
+import { InstallSourceList } from "../components/product/InstallSources.js";
+import { GET_IT_COPY as C } from "../copy/getIt.js";
 import { useProduct, useProductDownloads } from "../data.js";
 import { isNotFound } from "../errors.js";
 import {
@@ -44,8 +46,9 @@ const PLATFORM_LABEL: Record<PlatformKey, string> = {
 /**
  * One download, the focused flow (PORTAL.md §3.3, §3.4, PX-10): `#/p/<product>/download?platform=`,
  * the target of "Email me the download" and an app's "Download update". The platform's builds from
- * the downloads view (PX-W2) with their reasons as text, its stores, and a link to every platform;
- * `?return=` is followed only to an origin or scheme the product declares.
+ * the downloads view (PX-W2) with their reasons as text, its stores, its other ways to install
+ * (Homebrew, Scoop, AltStore, F-Droid…, P0-48) and a link to every platform; `?return=` is
+ * followed only to an origin or scheme the product declares.
  */
 export function DownloadFlowPage({
   account,
@@ -106,15 +109,17 @@ function DownloadBody({
   platformParam: string | null;
 }): React.ReactElement {
   const pres = presentationFrom(product);
+  const device = detectDevice();
   const model = downloads
-    ? getItFromDownloads(downloads, detectDevice(), {
+    ? getItFromDownloads(downloads, device, {
         developer: pres.developer,
         website: pres.website,
       })
     : null;
   const platform = downloads ? flowPlatform(platformParam, downloads) : null;
-  const rows: FileRowModel[] =
-    model?.groups.find((g) => g.platform === platform)?.rows ?? [];
+  const group = model?.groups.find((g) => g.platform === platform);
+  const rows: FileRowModel[] = group?.rows ?? [];
+  const sources = group?.sources ?? [];
   // The newest covered build per arch: a release older than the recommendation is history.
   const recommended = downloads?.platforms.find(
     (x) => normalisePlatform(x.platform) === platform,
@@ -142,7 +147,7 @@ function DownloadBody({
       headerUrl={pres.headerUrl}
     >
       <div className="mt-2 space-y-5">
-        <h1 className="text-[1.75rem] font-bold leading-tight text-fg-strong desk:text-[2rem]">
+        <h1 className="text-headline font-bold leading-tight text-fg-strong desk:text-headline-lg">
           {where
             ? `Download ${product.name} for ${where}`
             : `Download ${product.name}`}
@@ -182,7 +187,11 @@ function DownloadBody({
                 : where
                   ? `${product.name} has no download for ${where} here.`
                   : `${product.name} has no download here.`}
-              {stores.length ? " It's available in a store below." : ""}
+              {stores.length
+                ? " It's available in a store below."
+                : sources.length
+                  ? ` ${C["getIt.flow.sourcesBelow"]}`
+                  : ""}
             </span>
           </p>
         )}
@@ -193,6 +202,12 @@ function DownloadBody({
           </p>
         ) : null}
         <StorePills stores={stores} label="Also on" />
+        <InstallSourceList
+          sources={sources}
+          platform={platform}
+          desktop={!device.phone}
+          heading="h2"
+        />
         <p className="text-sm text-fg-muted">
           Download links are made fresh when you click, so they never go stale.
         </p>

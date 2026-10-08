@@ -317,7 +317,9 @@ rows answer only on the registry host, \`pkg.plrs.im\`, and are shown with it.`,
 }
 
 // ── 6. D1 data model ───────────────────────────────────────────────────────────
-const TABLE_OWNERS = {
+// Exported for the worker's table-crossing report (test/tableCrossings.test.ts, P0-48) until the
+// map moves into the worker (P0-18), when this generator imports it from there instead.
+export const TABLE_OWNERS = {
   core: [
     "products",
     "product_keys",
@@ -652,15 +654,16 @@ function corpusInventory() {
   return page(
     "Conformance corpus v2",
     "The case families every SDK verifies identically, generated from the corpus files themselves.",
-    `One generator (\`tools/sign-corpus.ts\`) signs every vector, and every language runner
+    `One generator (\`tools/sign-corpus.ts\`, over its family modules in \`tools/corpus/\`) signs every vector, and every language runner
 verifies them: Node, Python, Swift, React (the gate matrix, the \`web\` rows of
 \`headers.json\` and the no-environment answers of \`config-matrix.json\`), Godot (every
 \`cases.json\` family and the \`fingerprint.json\` device ids, from an editor and an exported
 release template) and Kotlin (every \`cases.json\` family, \`update-matrix.json\`,
 \`plan-matrix.json\`, every \`content/\` section, \`headers.json\`, \`fingerprint.json\`,
-\`stage-matrix.json\` and \`outlet-matrix.json\`, read in place on both Ed25519 backends). \`pnpm gen:corpus -- --check\` is the CI drift gate,
-over the source and both generator-owned mirrors (the Swift test resources and the Godot
-\`res://\` mirror at \`sdks/godot/tests/corpus/v2/\`). Corpus v1 is deleted — v2 is the
+\`stage-matrix.json\` and \`outlet-matrix.json\`, read in place on both Ed25519 backends). Swift reads
+the corpus in place too. \`pnpm gen:corpus -- --check\` is the CI drift gate, over the source and
+the one generator-owned mirror (the Godot \`res://\` mirror at \`sdks/godot/tests/corpus/v2/\`).
+Corpus v1 is deleted — v2 is the
 only corpus. \`corpusVersion ${cases.corpusVersion}\`,
 \`gateMatrixVersion ${gate.gateMatrixVersion}\`, \`fingerprintVersion ${fp.fingerprintVersion}\`,
 \`stageMatrixVersion ${stages.stageMatrixVersion}\`, \`headersVersion ${headers.headersVersion}\`,

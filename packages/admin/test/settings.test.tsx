@@ -79,20 +79,21 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Core → Settings", () => {
-  it("saves only what changed, sending a cleared admin group as null (A-3, PRD-6)", async () => {
+  it("saves only what changed (A-3, PRD-6)", async () => {
     const user = userEvent.setup();
     fns.updateProduct.mockResolvedValue({ ok: true, slug: "djdl" });
-    // A manual product: on a repo-linked one the admin group is manifest-only (ST-01b).
+    // A manual product: no manifest to claim from, so a save is sent as is.
     fns.product.mockResolvedValue({
       product: product({ releaseSource: "manual" }),
     });
     mount();
-    const group = await screen.findByLabelText("Admin group");
-    await user.clear(group);
+    const name = await screen.findByLabelText(/Display name/);
+    await user.clear(name);
+    await user.type(name, "DJDL Pro");
     await user.click(screen.getByRole("button", { name: "Save settings" }));
     await waitFor(() =>
       expect(fns.updateProduct).toHaveBeenCalledWith("djdl", {
-        adminGroup: null,
+        name: "DJDL Pro",
       }),
     );
     // The product refetches (the mutation table).
@@ -272,6 +273,33 @@ describe("Core → Settings", () => {
     expect(
       screen.getByText(/Set by adminGroup in .pkey\/product/),
     ).toBeTruthy();
+  });
+
+  it("has no admin group input on any product, and marks a stored one Not enforced (P0-47)", async () => {
+    // A manual product used to edit it; nothing enforces it, so nothing edits it now.
+    fns.product.mockResolvedValue({
+      product: product({ releaseSource: "manual" }),
+    });
+    mount();
+    const value = await screen.findByText("djdl-admins");
+    expect(screen.queryByLabelText("Admin group")).toBeNull();
+    expect(screen.queryByRole("textbox", { name: /Admin group/ })).toBeNull();
+    const row = value.closest("[data-align]") as HTMLElement;
+    expect(within(row).getByText("Not enforced")).toBeTruthy();
+    expect(row.textContent).toContain(
+      "Not enforced: console access is platform-wide.",
+    );
+    // A long group wraps under the label on a phone and reads from the left.
+    expect(value.className).toContain("max-sm:text-left");
+    cleanup();
+    resetCore();
+    // A product with no admin group shows no row at all.
+    fns.product.mockResolvedValue({
+      product: product({ releaseSource: "manual", adminGroup: null }),
+    });
+    mount();
+    await screen.findByLabelText(/Display name/);
+    expect(screen.queryByText("Admin group")).toBeNull();
   });
 
   it("asks before a save claims a manifest-owned value, and sends nothing on cancel (ST-01b)", async () => {

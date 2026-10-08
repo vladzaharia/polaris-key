@@ -1,14 +1,11 @@
 /**
- * Small pieces the shell components share: keyboard hints, service dots, a product's attention
- * count and the console's live region.
+ * Small pieces the shell components share: service dots and a product's attention count.
  */
 
 import * as React from "react";
 import type { ProductDetail, ProductRef } from "../../api.js";
 import { SERVICE_TABLE } from "../../services.generated.js";
 import { cn } from "../../lib/cn.js";
-
-export { Kbd } from "../../ui/Kbd.js";
 
 /** A product as the switcher and palette see it: the registry row when loaded, else the session's. */
 export type ProductLike = ProductRef | ProductDetail;
@@ -68,5 +65,3 @@ export function ServiceDots({
     </span>
   );
 }
-
-export { LiveRegion } from "../../ui/LiveRegion.js";

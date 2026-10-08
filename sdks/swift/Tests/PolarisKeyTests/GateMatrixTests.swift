@@ -58,7 +58,7 @@ final class GateMatrixTests: XCTestCase {
     }
 
     private func loadMatrix() throws -> GateMatrix {
-        try CorpusBundleLoader.load(GateMatrix.self, "gate-matrix")
+        try CorpusLocator.load(GateMatrix.self, "gate-matrix")
     }
 
     // ── The Worker's build gate, ported ──────────────────────────────────────────────

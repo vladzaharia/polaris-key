@@ -381,8 +381,10 @@ class IdentityClient:
     ) -> SignInResult:
         """Sign in through the system browser: begin a device-code sign-in, open its
         ``verificationUriComplete`` (``webbrowser.open`` by default), and wait. The interim for
-        native hosts until the redirect-token route lands (I-15); the deprecated
-        ``/identity/auth/poll`` is never used. ``on_prompt`` sees the prompt first (show the
+        native hosts until the redirect-token route lands (I-15). It polls
+        ``/identity/auth/device/poll`` like any device-code sign-in (the old
+        ``/identity/auth/poll`` is retired; the Worker no longer serves it). ``on_prompt`` sees
+        the prompt first (show the
         code and a QR — ``polaris_key.qr.terminal(prompt.verificationUriComplete)`` — for a
         browser on another device)."""
         prompt = self.begin_sign_in(device_name, confirm_identity=confirm_identity)

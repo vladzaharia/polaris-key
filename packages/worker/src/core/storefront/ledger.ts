@@ -29,7 +29,8 @@
  */
 
 import type { Db } from "../platform.js";
-import { hashKey, sha256Hex } from "../../crypto.js";
+import { hashKey } from "../../crypto.js";
+import { sha256Hex } from "../../platform/hash.js";
 import type { AdminSession } from "../adminApi.js";
 import type { Plane } from "../adapters/contract.js";
 import { storefrontAdapter, type StorefrontId } from "./adapter.js";

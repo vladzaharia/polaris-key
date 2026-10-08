@@ -258,25 +258,10 @@ export async function attachLicenseAccount(
 
 /**
  * Move a licence from `from` (an account id, or `null` for floating) to `to` (an account, or
- * `null` to detach). Conditional on the current owner, so a concurrent change loses cleanly. The
- * owner's detach and the developer's relink (I-12) both come through here.
- */
-export async function moveLicenseAccount(
-  db: Db,
-  product: string,
-  licenseId: string,
-  from: string | null,
-  to: string | null,
-  now: number,
-): Promise<boolean> {
-  const stmt = stmtMoveLicenseAccount(product, licenseId, from, to, now);
-  const changes = await db.runChanges(stmt.sql, ...stmt.params);
-  return changes > 0;
-}
-
-/**
- * The compare-and-set owner move as one statement, for a caller that must put it in the same
- * batch as its own writes (Identity ends the licence's portal links atomically with the move).
+ * `null` to detach), as one compare-and-set statement: conditional on the current owner, so a
+ * concurrent change loses cleanly. The caller puts it in the same batch as its own writes
+ * (Identity ends the licence's portal links atomically with the move); the owner's detach and
+ * the developer's relink (I-12) both come through here.
  */
 export function stmtMoveLicenseAccount(
   product: string,

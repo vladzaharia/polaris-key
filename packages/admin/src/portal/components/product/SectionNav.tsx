@@ -29,6 +29,8 @@ export function SectionNav({
   return (
     <nav
       aria-label={variant === "toc" ? "On this page" : "Sections"}
+      // The pills stick under the header below desk: the page's scroll padding clears them too.
+      data-section-pills={variant === "pills" ? "" : undefined}
       // pk-vt-chrome: a sticky nav holds still through a list transition (src/motion.css).
       className={cn(
         "pk-vt-chrome",

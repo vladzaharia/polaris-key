@@ -27,6 +27,7 @@
  * the feed-level check, so it discloses nothing.
  */
 
+import { sha256Hex } from "../../../../core/platform.js";
 import type {
   RegistryRoute,
   RegistryRouteContext,
@@ -167,16 +168,6 @@ function namedId<T extends { project: { id: string } }>(
   state: Named<T>,
 ): string | null {
   return state.kind === "found" ? state.project.id : null;
-}
-
-async function sha256Hex(body: string): Promise<string> {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(body),
-  );
-  return [...new Uint8Array(digest)]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
 }
 
 // ── The project list ──────────────────────────────────────────────────────────────────────────

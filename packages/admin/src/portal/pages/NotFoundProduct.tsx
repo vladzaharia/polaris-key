@@ -16,7 +16,7 @@ export function NotFoundProduct({
   return (
     <section className="mx-auto flex max-w-xl flex-col items-center gap-4 py-16 text-center">
       <StationaryStar />
-      <h1 className="text-[1.875rem] font-bold leading-tight text-fg-strong">
+      <h1 className="text-3xl font-bold leading-tight text-fg-strong">
         That product isn't in your library
       </h1>
       <p className="text-fg-muted">

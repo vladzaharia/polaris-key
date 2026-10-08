@@ -10,7 +10,7 @@ import {
 import { act, cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ProductDetail, ServiceSlug } from "../src/api.js";
-import { renderAt, resetCore } from "./coreTestUtils.js";
+import { renderAt, resetCore, testQueryClient } from "./coreTestUtils.js";
 
 /**
  * The console's moments and counters (EXPERIENCE.md §0.7; notes/S-23 §6.1, §6.4; MO-11):
@@ -73,7 +73,6 @@ const { Home } = await import("../src/console/pages/global/Home.js");
 const { forgetFirstLoads } =
   await import("../src/console/templates/Dashboard.js");
 const { RECENT_SECONDS } = await import("../src/console/components/Moment.js");
-const { queryClient } = await import("../src/console/data/queryClient.js");
 const { announce, lastAnnouncement } = await import("../src/ui/LiveRegion.js");
 
 const NOW = Math.floor(Date.now() / 1000);
@@ -151,7 +150,7 @@ function remount(mount: () => unknown): void {
 /** Refetch everything the page reads, as a window refocus would. */
 async function refetch(): Promise<void> {
   await act(async () => {
-    await queryClient.invalidateQueries();
+    await testQueryClient().invalidateQueries();
   });
 }
 
@@ -621,7 +620,7 @@ describe("Overview's attention list staggers in on the page's first load only", 
 
   it("staggers on the page's first visit even when the product is already cached", async () => {
     // Overview gets its product at once from the products list (a placeholder): still its first load.
-    queryClient.setQueryData(["product", "djdl"], warned());
+    testQueryClient().setQueryData(["product", "djdl"], warned());
     overview();
     await screen.findByRole("region", { name: "Needs attention" });
     expect(attentionList().className).toMatch(/\bpk-stagger\b/);
@@ -642,7 +641,7 @@ describe("Overview's attention list staggers in on the page's first load only", 
     overview();
     await screen.findByRole("region", { name: "Needs attention" });
     cleanup();
-    queryClient.clear();
+    testQueryClient().clear();
     overview();
     await screen.findByRole("region", { name: "Needs attention" });
     expect(attentionList().className).not.toMatch(/\bpk-stagger\b/);

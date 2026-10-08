@@ -10,6 +10,8 @@ import {
   strikeArtefact,
   type ArtefactRef,
 } from "./singleUse.js";
+import { randomUint32 } from "../platform/random.js";
+import { normalizeEmail } from "../platform/email.js";
 
 // Email sign-in limits (I-02), the reusable primitives the login card's email flows (I-07) and
 // I-18's delivery operations (`emailDelivery.ts`) build on. S-16 §5.4 item 4 specifies the
@@ -72,14 +74,10 @@ export const EMAIL_SEND_PRODUCT_DAILY_DEFAULT = 500;
 const HOUR = 3600;
 const DAY = 86_400;
 
-/** The canonical form a recipient is hashed in: trimmed, lower-case. */
-export function normalizeRecipient(email: string): string {
-  return email.trim().toLowerCase();
-}
-
-/** The peppered hash a recipient is keyed by; the address itself is never a key. */
+/** The peppered hash a recipient is keyed by (in `normalizeEmail` form); the address itself is
+ *  never a key. */
 export function recipientHash(env: Env, email: string): Promise<string> {
-  return hashKey(`email:${normalizeRecipient(email)}`, env.KEY_HASH_PEPPER);
+  return hashKey(`email:${normalizeEmail(email)}`, env.KEY_HASH_PEPPER);
 }
 
 async function strikesRef(
@@ -183,11 +181,10 @@ export async function checkEmailSend(
 export function generateEmailCode(): string {
   const space = 10 ** EMAIL_CODE_DIGITS;
   const limit = Math.floor(0x1_0000_0000 / space) * space;
-  const draw = new Uint32Array(1);
   for (;;) {
-    crypto.getRandomValues(draw);
-    if (draw[0]! < limit)
-      return String(draw[0]! % space).padStart(EMAIL_CODE_DIGITS, "0");
+    const draw = randomUint32();
+    if (draw < limit)
+      return String(draw % space).padStart(EMAIL_CODE_DIGITS, "0");
   }
 }
 

@@ -5,12 +5,18 @@
 | Phase       | HA: Hosted assets: Polaris Key hosts every file it serves (S-20) (phase 4: operate)                            |
 | Size        | 0.4–0.6 engineer-weeks                                                                                         |
 | Depends on  | [HA-07](HA-07-serve-hosted-copies.md), [HA-08](HA-08-release-mirroring.md), [HA-10](HA-10-hosting-settings.md) |
-| Unblocks    | none                                                                                                           |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                         |
 | Role        | `pkey-implementer`                                                                                             |
 | Plan mode   | no                                                                                                             |
 | Gates       | docs links; generated docs; THREAT-MODEL                                                                       |
 | Human input | an operator runs the production release-file backfill (HA-08's action) after deploy                            |
 | Repo        | `vladzaharia/polaris-key`                                                                                      |
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track J, SDK and UI-kit consolidation](../../../2026-10-07-dx-consolidation/tracks.md#j-sdk-and-ui-kit-consolidation)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Close-out documents A-27's one listing truth instead of the manifest blob; presentation-access docs use generated SDK tabs.
 
 ## Goal
 

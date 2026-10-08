@@ -8,8 +8,8 @@
 // Corpus v2 / wire contract v4. This module drives EVERY vector in its four files through
 // `@polaris-key/client-core` — the single isomorphic implementation every JS SDK will consume —
 // and asserts the expected outcome. The Python, Swift and Godot runners mirror THIS file against
-// the SAME corpus (Swift and Godot read generator-owned
-// mirrors); that is how every SDK proves byte-identical verification. Godot runs `jwsCases`
+// the SAME corpus (Swift reads it in place; Godot reads a generator-owned
+// mirror); that is how every SDK proves byte-identical verification. Godot runs `jwsCases`
 // so far, and reads `expect.docNulReplaced` (WIRE-CONTRACT-V3 §10), which the JS runners ignore.
 //
 // Seven v3 sections, seven layers of the contract:

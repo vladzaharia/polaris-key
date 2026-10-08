@@ -12,6 +12,12 @@
 | Human input | none                                                                                                                                                                         |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                    |
 
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **keep** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Already stamped done on main (2eb10597c); the hygiene PR leaves it. Merged (490c27997).
+
 ## Goal
 
 For 24 hours after a product enters the account's Library, its tile carries a ring and the quiet

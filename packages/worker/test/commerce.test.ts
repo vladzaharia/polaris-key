@@ -13,7 +13,7 @@ import { SERVICES } from "../src/mount.js";
 import { afterEach, describe, expect, it } from "vitest";
 import { CONSOLE, SLUG } from "./releaseRoutesFixture.js";
 import { dispatchWith } from "../src/dispatch.js";
-import { NOW } from "./seed.js";
+import { NOW, setDeliverableAccess } from "./seed.js";
 import { setServices, setTrustPolicy } from "../src/repo.js";
 import { serializeServices } from "../src/core/services.js";
 import {
@@ -1092,6 +1092,23 @@ describe("commerce: admin", () => {
         })
       ).status,
     ).toBe(422);
+    // P0-48: the flag must be a `flag` the product's catalog declares. A typo, or the name of a
+    // config key, would take the purchase and unlock nothing.
+    for (const [flag, message] of [
+      ["extras.diceSkin", "the catalog declares no flag extras.diceSkin"],
+      [
+        "extras.theme",
+        "extras.theme is a config key in the catalog, not a flag",
+      ],
+    ] as const) {
+      const r = await admin(cw, "PUT", "/commerce/products", {
+        store: "play",
+        productId: PLAY_SKU,
+        flag,
+      });
+      expect(r.status, flag).toBe(422);
+      expect(await bodyOf(r)).toMatchObject({ message, fields: ["flag"] });
+    }
     expect(
       (
         await admin(cw, "PUT", "/commerce/products", {
@@ -1116,6 +1133,83 @@ describe("commerce: admin", () => {
     expect(del.status).toBe(200);
     expect(((await bodyOf(del)).products as unknown[]).length).toBe(2);
     expect(await audits(cw, "distribution.commerce.product.delete")).toBe(1);
+  });
+
+  it("maps a pack to its own delivery gate, which the catalog need not declare (P0-48)", async () => {
+    const cw = await world();
+    // A DLC pack whose download is gated by `dlc.coast`, a policy-only entitlement name.
+    await cw.db.run(
+      `INSERT INTO release_deliverables (product, deliverable_id, kind, created_at, modified_at)
+       VALUES (?, 'coast', 'pack', ?, ?)`,
+      SLUG,
+      NOW,
+      NOW,
+    );
+    await setDeliverableAccess(cw.db, SLUG, "coast", "entitled", "dlc.coast");
+    const put = (flag: string, deliverable?: string) =>
+      admin(cw, "PUT", "/commerce/products", {
+        store: "play",
+        productId: PLAY_SKU,
+        flag,
+        ...(deliverable ? { deliverable } : {}),
+      });
+    const pack = await put("dlc.coast", "coast");
+    expect(pack.status).toBe(200);
+    expect((await bodyOf(pack)).products).toContainEqual(
+      expect.objectContaining({
+        store: "play",
+        productId: PLAY_SKU,
+        deliverable: "coast",
+        flag: "dlc.coast",
+      }),
+    );
+    // The gate of one deliverable is no flag for another: the app does not read it.
+    const app = await put("dlc.coast");
+    expect(app.status).toBe(422);
+    expect(await bodyOf(app)).toMatchObject({
+      message: "the catalog declares no flag dlc.coast",
+      fields: ["flag"],
+    });
+  });
+
+  it("says when there is no catalog to check a flag against, or it cannot be read (P0-48)", async () => {
+    const cw = await world();
+    await cw.db.run(
+      `INSERT INTO release_deliverables (product, deliverable_id, kind, created_at, modified_at)
+       VALUES (?, 'coast', 'pack', ?, ?)`,
+      SLUG,
+      NOW,
+      NOW,
+    );
+    await setDeliverableAccess(cw.db, SLUG, "coast", "entitled", "dlc.coast");
+    const put = (flag: string, deliverable?: string) =>
+      admin(cw, "PUT", "/commerce/products", {
+        store: "play",
+        productId: PLAY_SKU,
+        flag,
+        ...(deliverable ? { deliverable } : {}),
+      });
+    await cw.db.run("DELETE FROM product_schema WHERE product = ?", SLUG);
+    const none = await put(FLAG);
+    expect(none.status).toBe(422);
+    expect(await bodyOf(none)).toMatchObject({
+      message: `the product has no catalog to check ${FLAG} against: publish one that declares ${FLAG} as a flag`,
+      fields: ["flag"],
+    });
+    // A delivery gate needs no catalog.
+    expect((await put("dlc.coast", "coast")).status).toBe(200);
+    await cw.db.run(
+      `INSERT INTO product_schema (product, catalog_version, catalog_json, active, created_at)
+       VALUES (?, 1, '{"schemaVersion": 1, "entries": [', 1, ?)`,
+      SLUG,
+      NOW,
+    );
+    const unreadable = await put(FLAG);
+    expect(unreadable.status).toBe(422);
+    expect(await bodyOf(unreadable)).toMatchObject({
+      message: `the product's active catalog cannot be read, so ${FLAG} cannot be checked: publish the catalog again`,
+      fields: ["flag"],
+    });
   });
 });
 

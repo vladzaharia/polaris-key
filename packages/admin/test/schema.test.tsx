@@ -728,6 +728,72 @@ describe("ManagedField — set vs unset is a real state", () => {
     );
     expect(screen.getByText(/Overrides dark from profile “base”/)).toBeTruthy();
   });
+
+  it("a Default row under a lower lock says it is ignored, not that it overrides (P0-47)", () => {
+    const view = render(
+      <ManagedField
+        entry={entry()}
+        value="light"
+        state="default"
+        set
+        inherited={{
+          source: "profile “base”",
+          value: "dark",
+          state: "enforced",
+        }}
+        onSetChange={vi.fn()}
+        onValueChange={vi.fn()}
+        onStateChange={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByText(
+        "Profile “base” enforces dark; this value is ignored. Choose Enforced to override it.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(/Overrides dark/)).toBeNull();
+    // Enforced on the row itself beats the lower lock: it overrides again.
+    view.rerender(
+      <ManagedField
+        entry={entry()}
+        value="light"
+        state="enforced"
+        set
+        inherited={{
+          source: "profile “base”",
+          value: "dark",
+          state: "hidden",
+        }}
+        onSetChange={vi.fn()}
+        onValueChange={vi.fn()}
+        onStateChange={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/Overrides dark from profile “base”/)).toBeTruthy();
+    expect(screen.queryByText(/this value is ignored/)).toBeNull();
+  });
+
+  it("an unset row under a lower lock marks the inherited value locked (P0-47)", () => {
+    render(
+      <ManagedField
+        entry={entry()}
+        value={undefined}
+        state="default"
+        set={false}
+        inherited={{
+          source: "profile “base”",
+          value: "dark",
+          state: "enforced",
+        }}
+        onSetChange={vi.fn()}
+        onValueChange={vi.fn()}
+        onStateChange={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByText(/inherits dark from profile “base” \(locked\)\./),
+    ).toBeTruthy();
+  });
 });
 
 describe("ManagedField — secrets are write-only", () => {

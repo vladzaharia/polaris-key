@@ -12,7 +12,7 @@ import { Popover } from "../../../ui/Popover.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
 import { Timestamp } from "../../../ui/Timestamp.js";
 import { Version } from "../../../ui/Version.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { Link } from "../../router.js";
 import { productPage, r } from "../../routes.js";
 import { CollectionTemplate } from "../../templates/Collection.js";

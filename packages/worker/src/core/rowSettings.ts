@@ -48,6 +48,7 @@ import {
   type SettingsWriteContext,
   type WriteRefusal,
 } from "./settings/write.js";
+import { tryParseJson } from "../platform/json.js";
 
 /** The product facts the row store needs: who it is, when it was registered, how it is linked. */
 export interface RowSettingProduct {
@@ -115,15 +116,6 @@ export function manifestValueAt(manifest: unknown, def: SettingDef): unknown {
   return node;
 }
 
-function parseValue(json: string | null): unknown {
-  if (json === null) return undefined;
-  try {
-    return JSON.parse(json) as unknown;
-  } catch {
-    return undefined;
-  }
-}
-
 function placeholders(n: number): string {
   return Array.from({ length: n }, () => "?").join(", ");
 }
@@ -169,7 +161,7 @@ function viewOf(
   row: ProductSettingRow | null,
 ): RowSettingView {
   const defaultValue = rowSettingDefault(def, product);
-  const stored = row ? parseValue(row.value_json) : undefined;
+  const stored = row ? tryParseJson(row.value_json) : undefined;
   // A stored value the spec no longer accepts (a bound tightened since) reads as the default
   // rather than reaching a reader; the row still shows who wrote it.
   const usable = row !== null && fitsValueSpec(def.value, stored);
@@ -584,7 +576,10 @@ export async function revertRowSetting(
     const snapshot = await getManifestSnapshot(ctx.db, product.slug);
     if (!snapshot) applied = false;
     else {
-      const declared = manifestValueAt(parseValue(snapshot.manifest_json), def);
+      const declared = manifestValueAt(
+        tryParseJson(snapshot.manifest_json),
+        def,
+      );
       if (declared !== undefined) {
         // A snapshot value the write path would refuse keeps the claim, as ST-01b's catalog
         // Revert does: dropping it would leave the key "following" a manifest it cannot.

@@ -12,6 +12,15 @@
 | Human input | none                                                                                                                                   |
 | Repo        | `vladzaharia/polaris-key`                                                                                                              |
 
+## Consolidation 2026-10-07
+
+> **Parked 2026-10-07 (DX consolidation).** Optional and `deferred`, so `--ready` and `--critical`
+> skip it. Revive when a console storefront (PSN, Xbox, Nintendo) becomes real. Re-read this brief against the code before reviving it.
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **parked** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Console-platform backend assertion. Revive when a console storefront (PSN, Xbox, Nintendo) becomes real.
+
 ## Goal
 
 Console-platform games (PSN, Xbox, Nintendo) can sign in through the product's own backend with an RFC 7523 JWT assertion, verified with a `jti` replay cache, with the backend's keys managed in the console.

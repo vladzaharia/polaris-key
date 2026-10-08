@@ -35,10 +35,10 @@ import {
   nativeDescriptor,
   nativeSource,
   planNative,
-  sha256Hex,
   stageFile,
   type StagedFile,
 } from "./publish.js";
+import { sha256Hex } from "../../../../core/platform.js";
 import { publishRoute, refusalResponse, type PublishCall } from "./route.js";
 import {
   finalizeSession,

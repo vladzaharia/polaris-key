@@ -51,6 +51,7 @@ import {
   installationTokenSlot,
 } from "../../src/services/release/githubApp.js";
 import { seal } from "../../src/keyvault.js";
+import { escapeHtmlKeepApostrophe } from "../../src/platform/html.js";
 import { linkRepo, parseRepoUrl } from "../../src/services/release/linkRepo.js";
 import { resyncRepo } from "../../src/services/release/resync.js";
 import {
@@ -1650,7 +1651,11 @@ describe("R9-12 escapeHtml coverage", () => {
       join(HERE, "..", "..", "src", "services", "identity", "oidc.ts"),
       "utf8",
     );
-    expect(src).toContain('.replace(/"/g, "&quot;")');
+    // P0-15: the escaper lives in `platform/html.ts`. oidc.ts binds the variant that escapes
+    // `<>&"` and lets `'` through under its old local name, so every interpolation below still
+    // reads `escapeHtml(…)`; the escaping itself is asserted on the function.
+    expect(src).toContain("escapeHtmlKeepApostrophe as escapeHtml,");
+    expect(escapeHtmlKeepApostrophe(`<>&"'`)).toBe("&lt;&gt;&amp;&quot;'");
     expect(src).not.toContain("&#39;");
     // CHANGED by the R8-02 fix: confirmation is no longer a bare `<a href>` GET link. It is
     // now a POST form carrying a CSRF token, so a GET can neither mutate the flow nor leak

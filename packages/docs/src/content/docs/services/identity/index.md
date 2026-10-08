@@ -5,7 +5,7 @@ sidebar:
   order: 1
 ---
 
-Identity is one of the six opt-in services over Core. It answers who a **human** is, to one
+Identity is one of the seven opt-in services over Core. It answers who a **human** is, to one
 product: a browser or a CLI proves an identity against an OpenID Connect provider, and Identity
 turns that into a **license** the rest of the suite already understands, a **browser session** a
 page can hold as a cookie, or — for a headless client — a per-device token handed back through a

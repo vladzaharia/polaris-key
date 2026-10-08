@@ -5,7 +5,7 @@
 | Phase       | D: Diceroll adoption (vladzaharia/diceroll); stage "Now", before any Polaris Key change                                                                                                                                                                     |
 | Size        | 1.5–2 engineer-weeks                                                                                                                                                                                                                                        |
 | Depends on  | none                                                                                                                                                                                                                                                        |
-| Unblocks    | none                                                                                                                                                                                                                                                        |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                                                                                                                                      |
 | Role        | `pkey-godot-engineer`                                                                                                                                                                                                                                       |
 | Plan mode   | no                                                                                                                                                                                                                                                          |
 | Gates       | Diceroll's CI (`ci.yml`: tests including the updater suites, `tools/ci/selftest.sh`, export smoke) and one tagged pre-release through `release.yml`                                                                                                         |
@@ -16,6 +16,12 @@
 > [notes/A4](../../notes/A4-diceroll-mapping.md), read at Diceroll commit `4e78bb6` on 2026-09-29.
 > This brief was written without access to the Diceroll repository. Open each cited file and
 > confirm the line before changing it; if the code has moved on, follow the code and say so in the PR.
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **keep** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track I, Packages, updates and packs](../../../2026-10-07-dx-consolidation/tracks.md#i-packages-updates-and-packs)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> External repo; no Polaris Key change.
 
 ## Goal
 

@@ -5,7 +5,7 @@ sidebar:
   order: 1
 ---
 
-Config is one of the six opt-in services over Core. It answers one question, asked from several
+Config is one of the seven opt-in services over Core. It answers one question, asked from several
 angles: **what settings, secrets, and toggles does this device get, and who has the last word
 over each one?**
 
@@ -32,7 +32,7 @@ before the column existed. Config with License off and a declared `requires-lice
 policy is the one combination the enablement API refuses outright
 (`config_without_activation`): it would close the product's only device-mint path, leaving Config
 enabled and permanently unreachable. See [Concepts &
-terminology](/docs/start/concepts/) for the full enablement model, shared across all six
+terminology](/docs/start/concepts/) for the full enablement model, shared across all seven
 services.
 
 ## The pages in this section

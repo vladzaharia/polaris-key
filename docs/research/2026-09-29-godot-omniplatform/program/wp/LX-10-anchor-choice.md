@@ -1,16 +1,16 @@
-# LX-10 Anchor choice at activation (`anchorPolicy: rank-first`): sign-in, attach, Discover and base claim; licence-less devices; enroll supersede and grant re-homing on attach
+# LX-10 One rankLicenses() with version-aware re-homing (absorbs LX-21)
 
-| Field       | Value                                                                                                                                                                                    |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase B: the model, server-only)                                                                                             |
-| Size        | 0.5–0.7 engineer-weeks                                                                                                                                                                   |
-| Depends on  | [LX-09](LX-09-entitlement-resolver.md), [I-09](I-09-key-entry-attach.md)                                                                                                                 |
-| Unblocks    | [LX-11](LX-11-commerce-rework.md), [LX-14](LX-14-console-licensing.md), [LX-15](LX-15-portal-licensing.md), [LX-21](LX-21-reanchor-on-refresh.md), [CM-05](CM-05-checkout-fulfilment.md) |
-| Role        | `pkey-implementer`                                                                                                                                                                       |
-| Plan mode   | no                                                                                                                                                                                       |
-| Gates       | THREAT-MODEL                                                                                                                                                                             |
-| Human input | none                                                                                                                                                                                     |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                |
+| Field       | Value                                                                                                                                                                                                                                                                                              |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase B: the model, server-only)                                                                                                                                                                                                       |
+| Size        | 0.5–0.7 engineer-weeks                                                                                                                                                                                                                                                                             |
+| Depends on  | [LX-09](LX-09-entitlement-resolver.md), [I-09](I-09-key-entry-attach.md), [P0-20](P0-20-split-identity-oidc-ts-extract-issuance.md)                                                                                                                                                                |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [LX-11](LX-11-commerce-rework.md), [LX-14](LX-14-console-licensing.md), [LX-15](LX-15-portal-licensing.md), [CM-05](CM-05-checkout-fulfilment.md), [CM-25](CM-25-app-purchase-as-licence-source.md), [LX-40](LX-40-retire-licensing-model-settings-7-1.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                                                                                                                                 |
+| Plan mode   | no                                                                                                                                                                                                                                                                                                 |
+| Gates       | THREAT-MODEL                                                                                                                                                                                                                                                                                       |
+| Human input | none                                                                                                                                                                                                                                                                                               |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                          |
 
 ## Amendments from approved plans (2026-10-05)
 
@@ -44,6 +44,16 @@ differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US 
 **No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
 
 - `chooseAnchor` orders and preselects only, and never preselects a higher rank over the device's current licence or **Keep** (`plans/I-04.md` §F.2, `plans/LX-01.md` Q1 amended); `signin-anchor.json` asserts that a device already on the rank-0 licence keeps it preselected.
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track E, Licensing model](../../../2026-10-07-dx-consolidation/tracks.md#e-licensing-model)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> One rankLicenses() (covers the running build via X-PKey-Version, then rank, no expiry, latest expiry, oldest, id) for chooser, Library, consent and LicenseChoiceStep. Fixed re-home on refresh only when the anchor became unusable or the build left its window, to a covering licence with a free seat. Absorbs LX-21 (portal 'Run this device on'). No anchorPolicy or reanchor. Built in core/licensing/issue.ts.
+
+- Title: was "Anchor choice at activation (`anchorPolicy: rank-first`): sign-in, attach, Discover and base claim; licence-less devices; enroll supersede and grant re-homing on attach".
+- Depends on: added P0-20.
+- Absorbs LX-21: The reanchor: onRefresh setting goes; the useful behaviour is LX-10's fixed re-home rule and a portal device action.
 
 ## Goal
 

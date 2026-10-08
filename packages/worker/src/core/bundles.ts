@@ -80,6 +80,7 @@ import {
 } from "./documents.js";
 import { graceClampFor } from "./graceClamp.js";
 import type { SettingsRegistry } from "./settings/registry.js";
+import { randomBytes } from "../platform/random.js";
 
 /**
  * How long a minted bundle may wait before it is imported: 30 days.
@@ -138,8 +139,7 @@ function ulid(nowSeconds: number): string {
     out = CROCKFORD[ms % 32] + out;
     ms = Math.floor(ms / 32);
   }
-  const bytes = new Uint8Array(16);
-  crypto.getRandomValues(bytes);
+  const bytes = randomBytes(16);
   // `b & 31` over a uniform byte is uniform over 0…31, so each character carries a full 5 bits.
   for (const b of bytes) out += CROCKFORD[b & 31];
   return out;

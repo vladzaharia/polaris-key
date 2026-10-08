@@ -15,7 +15,8 @@ import { focusPageHeading } from "../router.js";
  * Focus (PORTAL.md §9): the confirmation takes focus on **Keep it**, the least destructive
  * choice; Escape or Keep it puts focus back on the menu button that asked. After the removal,
  * focus moves before the tile or page goes (`onRemoved`, else the page's `h1`), so it is never
- * left on a control that no longer exists. Nothing animates: the same end state under any motion
+ * left on a control that no longer exists. When a licence meanwhile keeps the product in the
+ * library, the toast says so (information, not a removal) and `onRemoved` is told. Nothing animates: the same end state under any motion
  * setting.
  */
 export function RemoveEntryConfirm({
@@ -35,8 +36,12 @@ export function RemoveEntryConfirm({
   ask?: number;
   /** Keep it (or Escape): close the confirmation and hand focus back to its opener. */
   onCancel: () => void;
-  /** After the Worker removed the entry; default: focus the page's `h1`. */
-  onRemoved?: () => void;
+  /**
+   * After the Worker removed the entry; default: focus the page's `h1`. `inLibrary`: a licence
+   * keeps the product in the library (the entry was replaced by one meanwhile, PS-05), so nothing
+   * left it.
+   */
+  onRemoved?: (outcome: { inLibrary: boolean }) => void;
   className?: string;
 }): React.ReactElement {
   const remove = useRemoveLibraryEntry();
@@ -60,9 +65,17 @@ export function RemoveEntryConfirm({
     // never on the page's body.
     group.current?.focus();
     remove.mutate(slug, {
-      onSuccess: () => {
-        toast.success(`${name} was removed from your library`);
-        if (onRemoved) onRemoved();
+      onSuccess: (res) => {
+        const inLibrary = res.inLibrary === true;
+        // A licence arrived meanwhile (PS-05): the entry is gone, but the product stays, so no
+        // removal happened to confirm: information, not success (PS-05 review m1).
+        if (inLibrary)
+          toast.info(`${name} stays in your library`, {
+            description:
+              "You have a license for it now, so there's nothing to remove.",
+          });
+        else toast.success(`${name} was removed from your library`);
+        if (onRemoved) onRemoved({ inLibrary });
         else focusPageHeading();
       },
       onError: (err) => {

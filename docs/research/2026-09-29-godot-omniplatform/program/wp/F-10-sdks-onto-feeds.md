@@ -12,6 +12,14 @@
 | Human input | the `package-registry` GitHub environment (deployment policy: the `main` branch and `v*` tags), branch protection on `main` and a `v*` tag ruleset; the Swift signing certificate and key as the `package-registry` secrets `SWIFT_REGISTRY_SIGNING_KEY`, `SWIFT_REGISTRY_SIGNING_CERT` and `SWIFT_REGISTRY_CERT_CHAIN` (the owner provides them later; the Swift job fails clearly until then). The trusted publisher registers itself (amendment below) |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **keep** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Merged (52b52c6f3). Its 'feeds only' stance holds for our SDKs (owner decision 3); public-registry publish for adopters is F-35.
+
+- Status: stamped `done` (was `in-review`).
+
 ## Goal
 
 Every SDK this repository ships is published to its feed on `pkg.plrs.im` by CI, through `pkey

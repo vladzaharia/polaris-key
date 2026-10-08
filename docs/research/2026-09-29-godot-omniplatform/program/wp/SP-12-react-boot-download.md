@@ -12,6 +12,14 @@
 | Human input | none                                                                                                                                                                                |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                           |
 
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **keep** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Merged (7228e0c45). Its React distribution model reads A-26's customer channel actions when that lands.
+
+- Status: stamped `done` (was `in-review`).
+
 ## Goal
 
 `@polaris-key/react` boots in one call and serves the release and download surface the other SDKs already have: `boot()` drives discovery, keyless registration, trust, documents and report to a stage outcome; `release.fetch` downloads a licensed build in bearer mode with Range resume and size and SHA-256 checks; `distribution` exposes `GET /<p>/distribution/download.json`; `update.feedUrl(kind)` answers on the desktop bridge; `crashTags()` returns the Sentry tags.

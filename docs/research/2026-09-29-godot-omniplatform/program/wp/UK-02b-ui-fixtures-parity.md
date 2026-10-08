@@ -1,16 +1,16 @@
 # UK-02b UI state fixtures and parity rows: shared component/state/copy-key fixtures, `features.json` `ui.*` rows, every SDK's `parity.json` at `planned`
 
-| Field       | Value                                                                                                                                                 |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                                          |
-| Size        | 1–1.5 engineer-weeks                                                                                                                                  |
-| Depends on  | [UK-02](UK-02-copy-fixtures-parity-plan.md), [SP-00](SP-00-parity-registry-plan.md)                                                                   |
-| Unblocks    | [UK-03](UK-03-ui-core.md), [UK-07](UK-07-swiftui-ios.md), [UK-09](UK-09-compose-android.md), [UK-11](UK-11-godot-kit.md), [UK-12](UK-12-python-qt.md) |
-| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                  |
-| Plan mode   | yes: executes the approved [`plans/UK-02.md`](../plans/UK-02.md)                                                                                      |
-| Gates       | plan mode (executes `plans/UK-02.md`); `pnpm parity:check -- --check`; `gen:constants -- --check` (feature ids); the generated parity docs page       |
-| Human input | none                                                                                                                                                  |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                             |
+| Field       | Value                                                                                                                                                                                         |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                                                                                  |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                                                          |
+| Depends on  | [UK-02](UK-02-copy-fixtures-parity-plan.md), [SP-00](SP-00-parity-registry-plan.md)                                                                                                           |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [UK-03](UK-03-ui-core.md), [UK-07](UK-07-swiftui-ios.md), [UK-09](UK-09-compose-android.md), [UK-11](UK-11-godot-kit.md), [UK-12](UK-12-python-qt.md) |
+| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                                          |
+| Plan mode   | yes: executes the approved [`plans/UK-02.md`](../plans/UK-02.md)                                                                                                                              |
+| Gates       | plan mode (executes `plans/UK-02.md`); `pnpm parity:check -- --check`; `gen:constants -- --check` (feature ids); the generated parity docs page                                               |
+| Human input | none                                                                                                                                                                                          |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                     |
 
 ## Sign-in alignment (2026-10-05): SIGN-IN.md
 
@@ -36,6 +36,12 @@ the owner's license vocabulary (SIGN-IN.md O-17: the tier pill and "{used} of {l
 every row, no "Account-wide"). For this package:
 
 - Add the `signin-form` fixtures: every step and state of the one form (methods, handoff, no browser, code, finishing, choose and its §6.2 states, replace, replace confirm, key, done, grant expired, cancelled) in the `inline` and `sheet` presentations, and the parity row `ui.kit.signin` (`allowedNa` `headless` for Node).
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **keep** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track J, SDK and UI-kit consolidation](../../../2026-10-07-dx-consolidation/tracks.md#j-sdk-and-ui-kit-consolidation)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Add service-off and presentation-absent fixture rows for every component so kits degrade identically; the portal's hosted card consumes the signin-form fixtures. Its plan is dispatched in week 0 (UK-03 waits for it).
 
 ## Goal
 

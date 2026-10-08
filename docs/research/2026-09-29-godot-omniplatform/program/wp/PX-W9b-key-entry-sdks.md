@@ -4,13 +4,25 @@
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase W: Worker additions)                                                                                                               |
 | Size        | 0.8–1.2 engineer-weeks                                                                                                                                                                |
-| Depends on  | [PX-W9](PX-W9-key-entry-counting.md), [PX-W8](PX-W8-manage-url.md)                                                                                                                    |
-| Unblocks    | [I-10a](I-10a-sdk-identity-node-react-python.md), [I-10b](I-10b-sdk-identity-swift-kotlin-godot.md)                                                                                   |
+| Depends on  | none                                                                                                                                                                                  |
+| Unblocks    | none                                                                                                                                                                                  |
 | Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                                  |
 | Plan mode   | yes: executes §5 of the approved [`plans/PX-W9.md`](../plans/PX-W9.md) (revision 2, approved by the lead under the owner's delegation, 2026-10-06; Q1, Q6)                            |
 | Gates       | plan mode; all six SDKs (`parity:check`); `gen:constants -- --check`; `gen:brand -- --check`; transcripts (rule 1); UI kit snapshots, `ui:lint`, `ui:report`; CI on macOS and Android |
 | Human input | none                                                                                                                                                                                  |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                             |
+
+## Consolidation 2026-10-07
+
+> **Closed 2026-10-07 (DX consolidation): merged into [I-10a](I-10a-sdk-identity-node-react-python.md) and [I-10b](I-10b-sdk-identity-swift-kotlin-godot.md).** The id stays in the graph as `dropped` so it
+> is not reused; do not build this package. Its scope moves to [I-10a](I-10a-sdk-identity-node-react-python.md) and [I-10b](I-10b-sdk-identity-swift-kotlin-godot.md).
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **merge** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Same six-SDK activation surface as identity v2 (C-47): one pass instead of two.
+
+- Dependencies cleared on closing (they were PX-W9 and PX-W8), so nothing in the graph waits on or through a closed package.
+- `planRef` removed on closing (it executed PX-W9's plan, [`plans/PX-W9.md`](../plans/PX-W9.md)).
 
 ## Goal
 

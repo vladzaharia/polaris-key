@@ -56,8 +56,6 @@ export const PROFILE_COPY = {
     "Picture uploads aren't available right now. Try again later.",
 } as const;
 
-export type ProfileCopyKey = keyof typeof PROFILE_COPY;
-
 /** "Steam", "Steam or Google", "Steam, Google or Game Center". */
 export function orList(names: readonly string[]): string {
   if (names.length <= 1) return names[0] ?? "";

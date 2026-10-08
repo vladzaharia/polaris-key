@@ -42,7 +42,7 @@ jobs:
       - run: pnpm lint
       # Drift gate: the cross-language conformance corpus must be regenerable in place.
       - run: pnpm gen:corpus -- --check
-      # Drift gate: the HTTP transcripts (conformance/transcripts/ + the Swift mirror) must
+      # Drift gate: the HTTP transcripts (conformance/transcripts/ + the Godot mirror) must
       # re-record identically through the Worker router. `pnpm test` runs the same check inside
       # the worker suite; this step names it, so a stale transcript is legible at a glance.
       - run: pnpm gen:transcripts -- --check

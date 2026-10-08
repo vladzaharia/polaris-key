@@ -1,21 +1,32 @@
 # CM-16 Storefront integration: `buy` / `upgrade` paths with prices on Discover tiles and the storefront product page, the footnote and counts, owned-elsewhere
 
-| Field       | Value                                                                                                        |
-| ----------- | ------------------------------------------------------------------------------------------------------------ |
-| Phase       | CM: Polaris Key commerce (S-22): deferred until the owner's go                                               |
-| Size        | 0.5–0.8 engineer-weeks                                                                                       |
-| Depends on  | [CM-04](CM-04-offers-catalogue.md), [CM-11](CM-11-portal-billing.md), [PS-05](PS-05-storefront-portal-ui.md) |
-| Unblocks    | [CM-17](CM-17-commerce-closeout.md)                                                                          |
-| Role        | `pkey-implementer`                                                                                           |
-| Plan mode   | no (executes its sections of the approved [`plans/CM-01.md`](../plans/CM-01.md))                             |
-| Gates       | `portal-e2e`, `ui-snapshots`                                                                                 |
-| Human input | the owner's go signal (removes `deferred`)                                                                   |
-| Repo        | `vladzaharia/polaris-key`                                                                                    |
+| Field       | Value                                                                            |
+| ----------- | -------------------------------------------------------------------------------- |
+| Phase       | CM: Commerce: store commerce (required) and Polaris Key checkout (deferred)      |
+| Size        | 0.5–0.8 engineer-weeks                                                           |
+| Depends on  | none                                                                             |
+| Unblocks    | none                                                                             |
+| Role        | `pkey-implementer`                                                               |
+| Plan mode   | no (executes its sections of the approved [`plans/CM-01.md`](../plans/CM-01.md)) |
+| Gates       | `portal-e2e`, `ui-snapshots`                                                     |
+| Human input | the owner's go signal (removes `deferred`)                                       |
+| Repo        | `vladzaharia/polaris-key`                                                        |
 
 > **Deferred. Do not dispatch.** This package is optional and carries `deferred` in
 > `workpackages.json`: the owner asked for the commerce plan on 2026-10-05 but not for its
 > execution. `check.mjs --ready` does not list it. It becomes dispatchable only when the owner says
 > go and the lead removes the `deferred` field.
+
+## Consolidation 2026-10-07
+
+> **Closed 2026-10-07 (DX consolidation): merged into [CM-04](CM-04-offers-catalogue.md).** The id stays in the graph as `dropped` so it
+> is not reused; do not build this package. Its scope moves to [CM-04](CM-04-offers-catalogue.md).
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **merge** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Priced paths on Discover and the storefront page: engine in CM-04, page in CM-11.
+
+- Dependencies cleared on closing (they were CM-04, CM-11 and PS-05), so nothing in the graph waits on or through a closed package.
 
 ## Goal
 

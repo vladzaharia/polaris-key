@@ -1,11 +1,11 @@
-# CM-02 Provider abstraction and Stripe client; platform secrets; webhook intake (verify, dedupe, queue, fetch-latest) and daily reconciliation
+# CM-02 Stripe as the Polaris Key storefront's commerce facet (absorbs CM-03)
 
 | Field       | Value                                                                                                                                                                                               |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | CM: Polaris Key commerce (S-22): deferred until the owner's go                                                                                                                                      |
+| Phase       | CM: Commerce: store commerce (required) and Polaris Key checkout (deferred)                                                                                                                         |
 | Size        | 1–1.4 engineer-weeks                                                                                                                                                                                |
-| Depends on  | [CM-01](CM-01-commerce-plan.md), [LX-08](LX-08-licensing-expand.md)                                                                                                                                 |
-| Unblocks    | [CM-03](CM-03-merchants.md)                                                                                                                                                                         |
+| Depends on  | [CM-01](CM-01-commerce-plan.md), [LX-08](LX-08-licensing-expand.md), [P0-27](P0-27-one-adapter-store-delivery-commerce.md), [P0-28](P0-28-one-sealed-credential-store-resolver.md)                  |
+| Unblocks    | [CM-04](CM-04-offers-catalogue.md)                                                                                                                                                                  |
 | Role        | `pkey-implementer`                                                                                                                                                                                  |
 | Plan mode   | no (executes its sections of the approved [`plans/CM-01.md`](../plans/CM-01.md))                                                                                                                    |
 | Gates       | `migration`, `table-owners`, `wrangler`, `drift-gate`, `rule-10`, `threat-model`, `workerd`                                                                                                         |
@@ -16,6 +16,16 @@
 > `workpackages.json`: the owner asked for the commerce plan on 2026-10-05 but not for its
 > execution. `check.mjs --ready` does not list it. It becomes dispatchable only when the owner says
 > go and the lead removes the `deferred` field.
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track H, Distribution channels, storefronts and commerce](../../../2026-10-07-dx-consolidation/tracks.md#h-distribution-channels-storefronts-and-commerce)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Absorbs CM-03: Stripe is the Polaris Key storefront's commerce facet (P0-27 adapter), connected as a Store connection; secrets in P0-28's one sealed store; webhook intake on the route table.
+
+- Title: was "Provider abstraction and Stripe client; platform secrets; webhook intake (verify, dedupe, queue, fetch-latest) and daily reconciliation".
+- Depends on: added P0-27 and P0-28.
+- Absorbs CM-03: Provider abstraction and merchant connection are one Store connection; commerce.enabled, commerce.mode and merchantCountries are facts, not keys.
 
 ## Goal
 

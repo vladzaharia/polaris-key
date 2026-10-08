@@ -32,8 +32,12 @@ import { SectionCard } from "./Card.js";
  * in plain words the Worker's `origin` decides (PX-23, S-24 D21): "Key ending 3WPLDA" or "Added
  * with a key", "Steam key", "From Steam", "From <Developer>", and "Automatic Grant" for one
  * granted through OIDC at sign-in (owner polish 2026-10-07). The term is not repeated as a meta
- * line: "Updates included" already says it (owner, 2026-10-06). Every licence is account-bound,
- * so none is labelled by type (owner decision, 2026-10-05). Get a new key waits for G7.
+ * line: "Access" already says it (owner, 2026-10-06). Every licence is account-bound, so none is
+ * labelled by type (owner decision, 2026-10-05). Get a new key waits for G7.
+ *
+ * "Access" says what the Worker does today (P0-47): a licence works until its end date and then
+ * stops, so the card never promises "Updates included" or newer versions on renewal. LX-41's
+ * "keeps the last version" brings that wording back for the licences it covers.
  */
 export function LicenseCard({
   product,
@@ -156,7 +160,7 @@ function LicenseFacts({
     store,
     developer: product.presentation.developer,
   });
-  const updates =
+  const access =
     detail.expiresAt === null
       ? "Lifetime"
       : detail.expiresAt <= now
@@ -171,14 +175,14 @@ function LicenseFacts({
       {status.kind === "expired" || status.kind === "suspended" ? (
         <p className="rounded-lg border border-danger-border bg-danger-subtle p-3 text-sm text-fg">
           {status.kind === "expired"
-            ? `${status.note}. To get newer versions, renew with ${product.presentation.developer ?? "the developer"}.`
+            ? `${status.note}. Renew with ${product.presentation.developer ?? "the developer"} to use it again.`
             : `${product.presentation.developer ?? "The developer"} suspended this license. Contact them to find out why.`}
         </p>
       ) : null}
       <dl className="grid grid-cols-2 gap-x-4 gap-y-4 text-sm">
         <div>
-          <dt className="text-xs text-fg-muted">Updates included</dt>
-          <dd className="mt-0.5 text-fg-strong">{updates}</dd>
+          <dt className="text-xs text-fg-muted">Access</dt>
+          <dd className="mt-0.5 text-fg-strong">{access}</dd>
         </div>
         <div>
           <dt className="text-xs text-fg-muted">Covers versions</dt>

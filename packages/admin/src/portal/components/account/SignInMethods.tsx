@@ -192,8 +192,10 @@ function callbackNotice(
   return { tone: "danger", text: `${name} wasn't connected. Try again.` };
 }
 
+// 9rem (6rem on desk) below the top: the shell's scroll padding (`--pk-scroll-top`, the header
+// and the section pills) plus this margin (product/Card.tsx).
 const GROUP_HEADING =
-  "text-xs font-bold text-fg-muted outline-none scroll-mt-36 desk:scroll-mt-24";
+  "text-xs font-bold text-fg-muted outline-none scroll-mt-[calc(9rem_-_var(--pk-scroll-top,0px))] desk:scroll-mt-[calc(6rem_-_var(--pk-scroll-top,0px))]";
 
 function MethodGroups({
   account,

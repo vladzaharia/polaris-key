@@ -21,7 +21,7 @@
  */
 
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
-import type { Db } from "../../../core/platform.js";
+import { parseJsonObject, type Db } from "../../../core/platform.js";
 import { accessModeOf, entitlementOf, isAccessMode } from "../access.js";
 
 /** How long an isolate keeps a settings answer, in seconds. */
@@ -78,18 +78,6 @@ const NONE: RegistrySettings = { policy: null, owner: null, feed: null };
 /** Is `err` D1's (or SQLite's) "no such table"? Only that error reads as "no row". */
 function missingTable(err: unknown): boolean {
   return err instanceof Error && /no such table/i.test(err.message);
-}
-
-function parseObject(raw: unknown): Record<string, unknown> {
-  if (typeof raw !== "string") return {};
-  try {
-    const v: unknown = JSON.parse(raw);
-    return v !== null && typeof v === "object" && !Array.isArray(v)
-      ? (v as Record<string, unknown>)
-      : {};
-  } catch {
-    return {};
-  }
 }
 
 interface FeedRow {
@@ -153,9 +141,9 @@ export function d1RegistrySettings(db: Db): RegistrySettingsSource {
           accessMode: isAccessMode(feed.access_mode)
             ? feed.access_mode
             : "entitled",
-          namespace: parseObject(feed.namespace_json),
+          namespace: parseJsonObject(feed.namespace_json) ?? {},
           maxPackageBytes: feed.max_package_bytes,
-          ext: parseObject(feed.ext_json),
+          ext: parseJsonObject(feed.ext_json) ?? {},
           version: feed.version,
         },
       };

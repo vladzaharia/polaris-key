@@ -45,7 +45,7 @@
  *     first attach only, never an owned licence, never a custom-issuer product's.
  */
 
-import type { Db, Env } from "../../../core/platform.js";
+import { normalizeEmail, type Db, type Env } from "../../../core/platform.js";
 import {
   portalIdentityIssuerKey,
   recordLinkGroups,
@@ -58,7 +58,6 @@ import {
   LEGACY_OIDC_ISSUER,
   findLink,
   getAccountRow,
-  normalizeEmail,
   rekeyLegacyAccountLinks,
   resolveAccount,
   type AccountLinkRow,

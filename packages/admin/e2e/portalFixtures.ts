@@ -1,4 +1,5 @@
 import type { Request } from "playwright";
+import { qrSvg } from "../../worker/src/core/qr.js";
 import { artPng, squirclePng, type Rgb } from "./artPng.js";
 
 /**
@@ -723,9 +724,86 @@ function tidewaterDownloads() {
   };
 }
 
-/** Ember Tactics: expired; the update window covered 1.8, not 2.0 (§5.4 "Download 1.8"). */
+/** The Worker's QR code of a link, as the downloads view carries it (`page/customer.ts`). */
+function qrDataUri(text: string, label: string): string {
+  const svg = qrSvg(text, `QR code: ${label}`)!;
+  return `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
+}
+
+/**
+ * Tidewater with the download page's install sources (P0-48): Homebrew under macOS, Scoop under
+ * Windows, AltStore under iPhone and iPad, F-Droid (with its fingerprint) under Android.
+ */
+export function tidewaterInstallSources() {
+  const base = tidewaterDownloads();
+  const HOST = "https://keys.harbor-audio.example/tidewater/distribution";
+  const source = `${HOST}/altstore/stable/source.json`;
+  const fp = "a3f1c09e7b5d2e4f6a8c0b1d3e5f7a9c2b4d6e8f0a1c3e5b7d9f1a3c5e7b9d1f";
+  const repo = `${HOST}/fdroid/stable/repo?fingerprint=${fp}`;
+  const altDeep = `altstore://source?url=${encodeURIComponent(source)}`;
+  const fdroidDeep = `fdroidrepos://${repo.slice("https://".length)}`;
+  const link = (o: Record<string, unknown>) => ({
+    outletId: "main",
+    url: null,
+    deepLink: null,
+    command: null,
+    activateUrl: null,
+    live: true,
+    version: "2.4.1",
+    fingerprint: null,
+    qr: null,
+    ...o,
+  });
+  return {
+    ...base,
+    installSources: [
+      link({
+        id: "homebrew:main",
+        kind: "homebrew",
+        platforms: ["macos"],
+        label: "Homebrew",
+        command: "brew install --cask tidewater-studio",
+        version: null,
+      }),
+      link({
+        id: "scoop:main",
+        kind: "scoop",
+        platforms: ["windows"],
+        label: "Scoop",
+        command: `scoop install ${HOST}/scoop/stable.json`,
+      }),
+      link({
+        id: "altstore:alt",
+        kind: "altstore",
+        outletId: "alt",
+        platforms: ["ios"],
+        label: "Add to AltStore",
+        url: source,
+        deepLink: altDeep,
+        qr: qrDataUri(altDeep, "Add to AltStore"),
+      }),
+      link({
+        id: "fdroid:fd",
+        kind: "fdroid",
+        outletId: "fd",
+        platforms: ["android"],
+        label: "Add to F-Droid",
+        url: repo,
+        deepLink: fdroidDeep,
+        fingerprint: fp,
+        qr: qrDataUri(fdroidDeep, "Add to F-Droid"),
+      }),
+    ],
+  };
+}
+
+/**
+ * Ember Tactics: expired. The Worker ends a licence at its end date (P0-47), so no file is
+ * downloadable: each says `license_inactive` ("Needs an active license"), and nothing is
+ * recommended, as the License card's "Renew … to use it again" says.
+ */
 function emberDownloads() {
-  const notEntitled = { canDownload: false, reason: "not_entitled" };
+  const inactive = { canDownload: false, reason: "license_inactive" };
   const m20 = file(
     "rel_200",
     "2.0",
@@ -733,7 +811,7 @@ function emberDownloads() {
     "EmberTactics-2.0.dmg",
     "macos",
     "universal",
-    notEntitled,
+    inactive,
   );
   const w20 = file(
     "rel_200",
@@ -742,44 +820,13 @@ function emberDownloads() {
     "EmberTactics-2.0.exe",
     "windows",
     "x86_64",
-    notEntitled,
+    inactive,
   );
-  const m18 = file(
-    "rel_180",
-    "1.8",
-    "e18-mac",
-    "EmberTactics-1.8.dmg",
-    "macos",
-    "universal",
-    { sizeBytes: 1_900_000_000 },
-  );
-  const w18 = file(
-    "rel_180",
-    "1.8",
-    "e18-win",
-    "EmberTactics-1.8.exe",
-    "windows",
-    "x86_64",
-    { sizeBytes: 2_000_000_000 },
-  );
-  const rec = (
-    platform: string,
-    label: string,
-    f: ReturnType<typeof file>,
-  ) => ({
-    platform,
-    label,
-    releaseId: "rel_180",
-    version: "1.8",
-    universal: f.arch === "universal",
-    latest: false,
-    files: [f],
-  });
   return {
     product: { slug: "ember-tactics", name: "Ember Tactics" },
     channel: "stable",
     available: true,
-    access: "entitled",
+    access: "licensed",
     detected: { platform: "macos", arch: null, touchAmbiguous: false },
     latest: {
       releaseId: "rel_200",
@@ -787,19 +834,19 @@ function emberDownloads() {
       title: null,
       publishedAt: NOW - 10 * DAY,
     },
-    recommended: rec("macos", "macOS", m18),
+    recommended: null,
     platforms: [
       {
         platform: "macos",
         label: "macOS",
-        recommended: rec("macos", "macOS", m18),
-        files: [m20, m18],
+        recommended: null,
+        files: [m20],
       },
       {
         platform: "windows",
         label: "Windows",
-        recommended: rec("windows", "Windows", w18),
-        files: [w20, w18],
+        recommended: null,
+        files: [w20],
       },
     ],
     extras: [],
@@ -1643,8 +1690,9 @@ export function portalRoutes(s: PortalScenario): Record<string, Handler> {
             slug: "mossgarden",
             name: "Mossgarden",
             developerName: "Little Fern",
-            iconUrl: null,
-            headerUrl: null,
+            // The hosted art, as the Worker fills it (HA-07): the media proxy's URLs.
+            iconUrl: "/media/mossgarden/icon?v=1",
+            headerUrl: "/media/mossgarden/header?v=1",
           },
           entries: null,
           license: {

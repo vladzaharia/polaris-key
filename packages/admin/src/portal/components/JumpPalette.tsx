@@ -95,7 +95,7 @@ export function JumpPalette({
   };
 
   const item =
-    "flex min-h-11 cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-[0.9375rem] text-fg data-[selected=true]:bg-accent-subtle data-[selected=true]:text-fg-strong";
+    "flex min-h-11 cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-md text-fg data-[selected=true]:bg-accent-subtle data-[selected=true]:text-fg-strong";
   const group =
     "[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-bold [&_[cmdk-group-heading]]:text-fg-muted";
 

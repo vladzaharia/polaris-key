@@ -231,7 +231,10 @@ sections, each saved on its own with only its own fields:
     [Appcast](/docs/services/update/appcast/#the-signature-gate).
 
 A fourth section, **Endpoints**, lists the public URLs updaters read (discovery, the version
-check, the appcasts, WinSparkle and the signed feed per channel), each with a copy button.
+check, the appcasts, WinSparkle and the signed feed per channel), each with a copy button. The
+updater feeds follow the platforms the product's releases ship: the Sparkle appcasts appear when a
+release has a macOS build or file, WinSparkle when one has a Windows one. While no release names a
+platform, every updater feed is listed.
 
 **Artifact access** — who may read the appcast, the downloads and the customer portal's download
 mint — is Distribution's [delivery access](/docs/services/distribution/delivery/#delivery-access).

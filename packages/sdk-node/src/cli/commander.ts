@@ -210,6 +210,7 @@ export function registerPolarisCommands(
           ascii: flags.ascii === true,
           yes: flags.yes === true,
           deviceCode: flags.deviceCode === true,
+          allowWorkflowCommands: flags.allowWorkflowCommands === true,
         },
         () => buildClient(this),
         {

@@ -1,16 +1,26 @@
-# ST-07 Console `SettingsRow` v2: unified SourceBadge, history drawer, pre-save diff, confirmation level from the registry
+# ST-07 SettingsRow v2: the one settings engine
 
-| Field       | Value                                                                            |
-| ----------- | -------------------------------------------------------------------------------- |
-| Phase       | ST: Settings architecture (S-18) (phase 2: experience)                           |
-| Size        | 0.8–1.1 engineer-weeks                                                           |
-| Depends on  | [ST-05](ST-05-settings-admin-api.md)                                             |
-| Unblocks    | [ST-08](ST-08-product-settings-hub.md), [ST-09](ST-09-platform-settings-area.md) |
-| Role        | `pkey-implementer`                                                               |
-| Plan mode   | no                                                                               |
-| Gates       | visual baselines (both themes, phone); console CSP parity                        |
-| Human input | none                                                                             |
-| Repo        | `vladzaharia/polaris-key`                                                        |
+| Field       | Value                                                                                                                                                                                                                                                                           |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | ST: Settings, access control and console shell (phase 2: experience)                                                                                                                                                                                                            |
+| Size        | 0.8–1.1 engineer-weeks                                                                                                                                                                                                                                                          |
+| Depends on  | [ST-05a](ST-05a-one-settings-read-write-path.md), [P0-39](P0-39-console-sections-move-page-budget-lead.md)                                                                                                                                                                      |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [P2-10](P2-10-product-access-page-who-gets-what.md), [U-11a](U-11a-console-data-settings.md), [ST-08](ST-08-product-settings-hub.md), [ST-09](ST-09-platform-settings-area.md), [LX-44](LX-44-license-console-v2-tiers-entitlements.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                                                                                                              |
+| Plan mode   | no                                                                                                                                                                                                                                                                              |
+| Gates       | visual baselines (both themes, phone); console CSP parity                                                                                                                                                                                                                       |
+| Human input | none                                                                                                                                                                                                                                                                            |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                       |
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track B, Foundations (code quality the feature tracks build on)](../../../2026-10-07-dx-consolidation/tracks.md#b-foundations-code-quality-the-feature-tracks-build-on)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> SettingsRow v2 is the one settings engine in ui/settings/ for both scopes: useSettingWrite with conflict and Revert, read-only through useCan with Request access, the duplicated confirmLevel/formatSettingValue deleted. No new settings page before it lands. A console 'now' item: starts after the lead's window (P0-39).
+
+- Title: was "Console `SettingsRow` v2: unified SourceBadge, history drawer, pre-save diff, confirmation level from the registry".
+- Depends on: added ST-05a and P0-39; removed ST-05.
+- UX rows that name this package: UX-28 (dropped: merged into ST-07 (pre-save diff) and ST-16 (fan-out confirm)).
 
 ## Goal
 

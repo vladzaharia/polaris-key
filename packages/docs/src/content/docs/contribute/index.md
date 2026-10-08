@@ -26,6 +26,6 @@ the glossary disagree, the glossary wins.
 | [Setup](/docs/contribute/setup/)                         | Installing the JS workspace, the Python SDK, and the Swift, Godot and Kotlin toolchains; why Node must be 22; the green-gate commands; pre-commit hooks. |
 | [Monorepo layout](/docs/contribute/layout/)              | The full package map, the Worker's `core/` + `services/<slug>/` split, the boundary test that enforces it, and `mount.ts` as the composition root.       |
 | [The contract-first wave model](/docs/contribute/waves/) | The contract → catalog → corpus → SDKs ordering, a six-language walkthrough for a wire-visible field, and the full drift-gate inventory.                 |
-| [The conformance corpus](/docs/contribute/corpus/)       | How one generator, the language runners and the generator-owned mirrors keep the implementations byte-identical, and how to add a case.                  |
+| [The conformance corpus](/docs/contribute/corpus/)       | How one generator, the language runners and the generator-owned Godot mirror keep the implementations byte-identical, and how to add a case.             |
 | [Releasing](/docs/contribute/releasing/)                 | Every SDK published automatically, in lockstep with the server, on each push to main and each v\* tag, and how the worker deploys.                       |
 | [Adding a package feed](/docs/contribute/package-feeds/) | The `FeedAdapter` contract every registry-host feed implements, what stays shared, and the checklist the adapter conformance suite enforces.             |

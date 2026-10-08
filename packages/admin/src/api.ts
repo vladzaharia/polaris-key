@@ -5663,7 +5663,6 @@ const rawApi = {
 
 /** The admin API surface: every endpoint the console calls. */
 export type AdminApi = typeof rawApi;
-export type AdminApiMethod = keyof AdminApi;
 
 /**
  * The admin API client. Reads are called directly; WRITES go through `mutate()` in

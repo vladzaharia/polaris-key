@@ -11562,6 +11562,9 @@ var truthy = (v) => v !== void 0 && v !== "" && v !== "0" && v.toLowerCase() !==
 function isCi(env) {
   return truthy(env.CI) || truthy(env.GITHUB_ACTIONS) || truthy(env.BUILDKITE);
 }
+function readsLogCommands(env) {
+  return truthy(env.GITHUB_ACTIONS) || truthy(env.TF_BUILD) || truthy(env.TEAMCITY_VERSION);
+}
 function isHeadless(env, platform = process.platform) {
   if (truthy(env.SSH_CONNECTION) || truthy(env.SSH_TTY) || isCi(env))
     return true;
@@ -11621,6 +11624,7 @@ function detectTerminal(opts = {}) {
     rows: tty && out?.rows ? out.rows : 24,
     scheme: explicit ?? schemeFromColorFgBg(env.COLORFGBG) ?? "dark",
     ci,
+    logCommands: readsLogCommands(env),
     headless: isHeadless(env, platform),
     json
   };
@@ -13614,12 +13618,12 @@ var RESERVED_ENTITLEMENT_KEYS = [
   {
     key: "app.minVersion",
     type: "string",
-    rule: "The lower of the tier's and the license's minimum version."
+    rule: "The higher of the tier's and the license's minimum version: a license can narrow its tier's version window, never widen it."
   },
   {
     key: "app.maxVersion",
     type: "string",
-    rule: "The higher of the tier's and the license's maximum version."
+    rule: "The lower of the tier's and the license's maximum version: a license can narrow its tier's version window, never widen it."
   },
   {
     key: "license.tier",
@@ -28697,44 +28701,45 @@ export default polarisConfig;
 `;
 }
 function renderReact(facts, js) {
+  const pins = `/** The trust pins. Bearer mode (a page on its own origin, or Tauri) verifies every document in
+ *  the page against them; a desktop host's \`@polaris-key/node\` client pins the same keys. */
+export const pinnedKeys = ${tsMap(facts.pinnedKeys, "")};
+
+/** The pinned release keys, for a desktop host (\`update.pinnedReleaseKeys\`). */
+export const pinnedReleaseKeys = ${tsMap(facts.pinnedReleaseKeys, "")};
+`;
   const props = [
     `  productSlug: ${q(facts.product)},`,
     `  baseUrl: ${q(facts.baseUrl)},`,
+    `  trust: { pinnedKeys },`,
     `  expectServices: [${facts.services.map(q).join(", ")}],`
   ].join("\n");
-  const pins = `/** The trust pins, for the desktop host's \`@polaris-key/node\` client (the bridge's main
- *  process verifies; the renderer never does). */
-export const pinnedKeys = ${tsMap(facts.pinnedKeys, "")};
-
-/** The pinned release keys, for the same host (\`update.pinnedReleaseKeys\`). */
-export const pinnedReleaseKeys = ${tsMap(facts.pinnedReleaseKeys, "")};
-`;
   const doc = `/**
- * The provider's product facts:
+ * The provider's product facts and trust pins:
  *
  *   <PolarisKeyProvider {...polarisConfig} version={APP_VERSION}>…</PolarisKeyProvider>
  */`;
   if (js)
     return `${banner("react", facts, "//")}
 
+${pins}
 ${doc}
 /** @satisfies {Partial<import("@polaris-key/react").PolarisKeyProviderProps>} */
 export const polarisConfig = {
 ${props}
 };
 
-${pins}
 export default polarisConfig;
 `;
   return `${banner("react", facts, "//")}
 import type { PolarisKeyProviderProps } from "@polaris-key/react";
 
+${pins}
 ${doc}
 export const polarisConfig = {
 ${props}
 } satisfies Partial<PolarisKeyProviderProps>;
 
-${pins}
 export default polarisConfig;
 `;
 }
@@ -43062,7 +43067,7 @@ async function cmdSdk(parsed, cwd, stdout, fetchImpl) {
   const lang = flagString(parsed, "lang");
   if (lang === void 0) {
     const product2 = flagString(parsed, "product") ?? parsed.positional[0];
-    const baseUrl = flagString(parsed, "base-url") ?? "https://key.example.com";
+    const baseUrl = flagString(parsed, "base-url") ?? DEFAULT_BASE_URL;
     if (!product2) throw new Error(SDK_CONFIG_USAGE);
     stdout.write(
       `${sdkSnippet({

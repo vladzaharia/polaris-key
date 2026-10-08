@@ -10,17 +10,20 @@
  * - **Compatibility window** (manifest-owned until saved), validated as versions.
  * - **Artifact policy** (operator-only: no manifest writes it). Turning the Sparkle signature
  *   requirement off is L2.
- * - **Endpoints**: the public feed URLs per channel, with copy.
+ * - **Endpoints**: the public feed URLs per channel, with copy. The updater feeds are scoped to
+ *   the platforms the product's releases ship (P0-47): Sparkle for macOS, WinSparkle for Windows.
+ *   While no release names a platform, every updater feed is listed.
  *
  * Artifact access is shown read-only with a link to Distribution → Access, its one owner.
  */
 
 import * as React from "react";
-import type { UpdateSettings } from "../../../api.js";
+import type { ReleaseStoreResponse, UpdateSettings } from "../../../api.js";
 import { errorCopy } from "../../../lib/errorCopy.js";
 import { docsUrl } from "../../../lib/docsLinks.js";
 import { ACCESS_DESCRIPTIONS, ACCESS_LABELS } from "../../../lib/labels.js";
 import { versionRangeError } from "../../../lib/version.js";
+import { Button } from "../../../ui/Button.js";
 import { Callout } from "../../../ui/Callout.js";
 import { ConfirmDialog } from "../../../ui/ConfirmDialog.js";
 import { CopyButton } from "../../../ui/CopyButton.js";
@@ -34,7 +37,7 @@ import { Switch } from "../../../ui/Switch.js";
 import { toast } from "../../../ui/toast.js";
 import { VersionInput, versionError } from "../../../ui/VersionInput.js";
 import { Input } from "../../../ui/Input.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { mutate } from "../../data/mutations.js";
 import { Link } from "../../router.js";
 import { r } from "../../routes.js";
@@ -487,6 +490,65 @@ function PolicySection({
   );
 }
 
+/** The platforms the product's releases ship a build or a file for (`RELEASE_PLATFORMS`). */
+export function shippedPlatforms(
+  store: ReleaseStoreResponse | undefined,
+): string[] {
+  const set = new Set<string>();
+  for (const rel of store?.releases ?? []) {
+    for (const b of rel.builds) if (b.platform) set.add(b.platform);
+    for (const a of rel.artifacts) if (a.platform) set.add(a.platform);
+  }
+  return [...set].sort();
+}
+
+/** The endpoints every product serves, whatever its releases: listed while they load. */
+const BASE_ENDPOINTS: readonly { label: string; path: string }[] = [
+  { label: "Discovery", path: ".well-known/polaris.json" },
+  { label: "Version check", path: "update/version" },
+];
+
+/**
+ * The endpoint rows for these channels and shipped platforms. Discovery, the version check and
+ * the signed feed serve every platform; the Sparkle appcasts are listed only when macOS ships and
+ * WinSparkle only when Windows does. With no platform known yet, every updater is listed.
+ */
+export function endpointRows(
+  channels: readonly string[],
+  platforms: readonly string[],
+): { label: string; path: string }[] {
+  const known = platforms.length > 0;
+  const mac = !known || platforms.includes("macos");
+  const win = !known || platforms.includes("windows");
+  return [
+    ...BASE_ENDPOINTS,
+    ...(mac ? [{ label: "Sparkle appcast", path: "update/appcast.xml" }] : []),
+    ...channels.flatMap((c) => [
+      { label: `Signed feed · ${c}`, path: `update/${c}/feed.jws` },
+      ...(mac
+        ? [{ label: `Sparkle appcast · ${c}`, path: `update/${c}/appcast.xml` }]
+        : []),
+      ...(win
+        ? [{ label: `WinSparkle · ${c}`, path: `update/${c}/winsparkle.xml` }]
+        : []),
+    ]),
+  ];
+}
+
+/**
+ * What the Endpoints section says about the updater feeds it leaves out, or null when it lists
+ * them all. It names only what is missing and when it appears, never the platforms that ship.
+ */
+export function updaterNote(platforms: readonly string[]): string | null {
+  if (platforms.length === 0) return null;
+  const mac = platforms.includes("macos");
+  const win = platforms.includes("windows");
+  if (mac && win) return null;
+  if (mac) return "WinSparkle appears once a release ships for Windows.";
+  if (win) return "Sparkle appears once a release ships for macOS.";
+  return "Sparkle and WinSparkle appear once a release ships for macOS or Windows.";
+}
+
 function EndpointsSection({ slug }: { slug: string }): React.ReactElement {
   const store = useReleaseStore(slug);
   const channels = React.useMemo(() => {
@@ -496,41 +558,70 @@ function EndpointsSection({ slug }: { slug: string }): React.ReactElement {
       a === "stable" ? -1 : b === "stable" ? 1 : a.localeCompare(b),
     );
   }, [store.data]);
-  const rows: { label: string; path: string }[] = [
-    { label: "Discovery", path: ".well-known/polaris.json" },
-    { label: "Version check", path: "update/version" },
-    { label: "Sparkle appcast", path: "update/appcast.xml" },
-    ...channels.flatMap((c) => [
-      { label: `Signed feed · ${c}`, path: `update/${c}/feed.jws` },
-      { label: `Sparkle appcast · ${c}`, path: `update/${c}/appcast.xml` },
-      { label: `WinSparkle · ${c}`, path: `update/${c}/winsparkle.xml` },
-    ]),
-  ];
+  const platforms = React.useMemo(
+    () => shippedPlatforms(store.data),
+    [store.data],
+  );
+  // Discovery and the version check don't depend on the releases; the rest waits for them.
+  const rows = store.isPending
+    ? BASE_ENDPOINTS
+    : endpointRows(channels, platforms);
+  const note = updaterNote(platforms);
   return (
     <SettingsSection
       id="feed-endpoints"
       title="Endpoints"
-      description="Point an app at discovery; it finds the rest."
+      description={
+        note
+          ? `Point an app at discovery; it finds the rest. ${note}`
+          : "Point an app at discovery; it finds the rest."
+      }
     >
-      <ul className="space-y-2 px-5 py-4" aria-label="Feed endpoints">
-        {rows.map((row) => {
-          const url = publicUrl(slug, row.path);
-          return (
-            <li
-              key={row.path}
-              className="flex flex-wrap items-center gap-2 sm:flex-nowrap"
-            >
-              <span className="w-full shrink-0 text-xs font-bold text-fg-muted sm:w-44">
-                {row.label}
-              </span>
-              <code className="min-w-0 flex-1 truncate rounded-sm bg-surface-sunken px-2 py-1 font-mono text-xs">
-                {url}
-              </code>
-              <CopyButton value={url} label={`Copy the ${row.label} URL`} />
-            </li>
-          );
-        })}
-      </ul>
+      <div className="space-y-3 px-5 py-4">
+        {store.isError ? (
+          <p className="text-sm text-fg-muted">
+            Your releases didn&apos;t load, so every updater feed is listed for
+            the stable channel only.{" "}
+            <Button variant="link" onClick={() => void store.refetch()}>
+              Try again
+            </Button>
+          </p>
+        ) : null}
+        <ul
+          className="space-y-2"
+          aria-label="Feed endpoints"
+          aria-busy={store.isPending || undefined}
+        >
+          {rows.map((row) => {
+            const url = publicUrl(slug, row.path);
+            return (
+              <li
+                key={row.path}
+                className="flex flex-wrap items-center gap-2 sm:flex-nowrap"
+              >
+                <span className="w-full shrink-0 text-xs font-bold text-fg-muted sm:w-44">
+                  {row.label}
+                </span>
+                <code className="min-w-0 flex-1 truncate rounded-sm bg-surface-sunken px-2 py-1 font-mono text-xs">
+                  {url}
+                </code>
+                <CopyButton value={url} label={`Copy the ${row.label} URL`} />
+              </li>
+            );
+          })}
+          {store.isPending
+            ? [0, 1, 2].map((i) => (
+                <li
+                  key={`loading-${i}`}
+                  className="flex flex-wrap items-center gap-2 sm:flex-nowrap"
+                >
+                  <Skeleton className="h-4 w-32 shrink-0 sm:w-44" />
+                  <Skeleton className="h-6 min-w-0 flex-1" />
+                </li>
+              ))
+            : null}
+        </ul>
+      </div>
     </SettingsSection>
   );
 }

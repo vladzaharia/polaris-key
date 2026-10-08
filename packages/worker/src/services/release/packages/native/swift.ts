@@ -21,7 +21,7 @@
 import { json } from "../../../../core/errors.js";
 import type { RegistryRoute } from "../../../../core/registryHost.js";
 import { registryOrigin } from "../../../../core/registryHost.js";
-import { randomId } from "../../../../core/platform.js";
+import { randomId, sha256Hex } from "../../../../core/platform.js";
 import { readCappedBody } from "./body.js";
 import { multipartBoundary, parseMultipart, part } from "./multipart.js";
 import {
@@ -30,7 +30,6 @@ import {
   nativeDescriptor,
   nativeSource,
   planNative,
-  sha256Hex,
   stageFile,
   undeclared,
   type NativeFile,

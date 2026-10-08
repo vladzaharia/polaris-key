@@ -23,6 +23,7 @@
  * edge and document, §6.7); with the drain running, a stamp match is the common case.
  */
 
+import { sha256Hex } from "../../../core/platform.js";
 import type {
   CatalogPackageDeliverable,
   CatalogPackageVersion,
@@ -176,13 +177,6 @@ export function catalogPackageSource(
         .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
     },
   };
-}
-
-async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return [...new Uint8Array(digest)]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
 }
 
 export interface FreshReadDeps {

@@ -139,6 +139,7 @@ export function polarisCommandModule(
           ascii: bag.ascii === true,
           yes: bag.yes === true,
           deviceCode: bag.deviceCode === true,
+          allowWorkflowCommands: bag.allowWorkflowCommands === true,
         },
         () => buildClient(argv),
         {

@@ -1,22 +1,30 @@
-# ST-08 Console product settings hub (`#/p/<slug>/settings/<area>`): All settings table, web-origins editor, legacy redirects, phone layout
+# ST-08 Product settings hub: Services, Presentation, Keys & secrets, Members
 
-| Field       | Value                                                                                                                                                                                                                  |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | ST: Settings architecture (S-18) (phase 2: experience)                                                                                                                                                                 |
-| Size        | 1.2–1.7 engineer-weeks                                                                                                                                                                                                 |
-| Depends on  | [ST-07](ST-07-settings-row-v2.md)                                                                                                                                                                                      |
-| Unblocks    | [U-11a](U-11a-console-data-settings.md), [ST-10](ST-10-settings-search.md), [ST-12](ST-12-api-only-settings.md), [ST-13](ST-13-listing-in-hub.md), [ST-14](ST-14-portal-settings.md), [ST-17](ST-17-resync-dry-run.md) |
-| Role        | `pkey-implementer`                                                                                                                                                                                                     |
-| Plan mode   | no                                                                                                                                                                                                                     |
-| Gates       | console CSP parity; docsLinks                                                                                                                                                                                          |
-| Human input | none                                                                                                                                                                                                                   |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                              |
+| Field       | Value                                                                                                                                                                                                                                                                             |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | ST: Settings, access control and console shell (phase 2: experience)                                                                                                                                                                                                              |
+| Size        | 1.2–1.7 engineer-weeks                                                                                                                                                                                                                                                            |
+| Depends on  | [ST-07](ST-07-settings-row-v2.md)                                                                                                                                                                                                                                                 |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [U-11a](U-11a-console-data-settings.md), [ST-10](ST-10-settings-search.md), [ST-12](ST-12-api-only-settings.md), [ST-14](ST-14-portal-settings.md), [ST-17](ST-17-resync-dry-run.md), [ST-45](ST-45-platform-product-sidebar-contexts.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                                                                                                                |
+| Plan mode   | no                                                                                                                                                                                                                                                                                |
+| Gates       | console CSP parity; docsLinks                                                                                                                                                                                                                                                     |
+| Human input | none                                                                                                                                                                                                                                                                              |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                         |
 
 ## Amendments from approved plans (2026-10-05)
 
 The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
 
 - **[`plans/PX-W17.md`](../plans/PX-W17.md):** call `applyServiceTransitions`, and show the dry-run count in the confirm.
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track D, Administration, access control and console identity](../../../2026-10-07-dx-consolidation/tracks.md#d-administration-access-control-and-console-identity)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> The product hub hosts Services (ST-38), Presentation, Keys & secrets and Members (ST-31) so Core nav shrinks; migrates the bespoke manifest-owned forms (FeedPage, Core Settings, EnrollmentPage, Identity Portal, FeedSettings) onto the engine; Distribution -> Access is rebuilt as the product Access page by P2-10, not here; drops the Admin group row.
+
+- Title: was "Console product settings hub (`#/p/<slug>/settings/<area>`): All settings table, web-origins editor, legacy redirects, phone layout".
 
 ## Goal
 

@@ -52,10 +52,9 @@ import { Switch } from "../../../ui/Switch.js";
 import { Timestamp } from "../../../ui/Timestamp.js";
 import { toast } from "../../../ui/toast.js";
 import { useLoadingAnnouncement } from "../../../ui/loading.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { mutate } from "../../data/mutations.js";
 import { qk } from "../../data/queries.js";
-import { queryClient } from "../../data/queryClient.js";
 import { intentOf } from "../../pages/core/confirmGate.js";
 import { SettingsRow, SettingsSection } from "../../templates/Settings.js";
 import { useLicenses } from "../../pages/license/shared.js";
@@ -76,13 +75,10 @@ export function fetchRegistryTokens(
 }
 
 export function useRegistryTokens(scope: FeedScope, licenseId?: string) {
-  return useQuery(
-    {
-      queryKey: qk.pkgFeedTokens(scope, licenseId ?? ""),
-      queryFn: () => fetchRegistryTokens(scope, licenseId),
-    },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.pkgFeedTokens(scope, licenseId ?? ""),
+    queryFn: () => fetchRegistryTokens(scope, licenseId),
+  });
 }
 
 const STATUS_PILL: Record<

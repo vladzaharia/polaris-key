@@ -30,6 +30,7 @@ import type {
   SettingColumnAdapter,
   SqlGuard,
 } from "./types.js";
+import { toJsonColumn } from "../../platform/json.js";
 
 type Row = Readonly<Record<string, unknown>> | null;
 
@@ -60,10 +61,6 @@ function int(v: unknown): number | undefined {
   return typeof v === "number" && Number.isSafeInteger(v) ? v : undefined;
 }
 
-function jsonOrNull(value: unknown): string | null {
-  return value === null || value === undefined ? null : JSON.stringify(value);
-}
-
 /** A plain `products` column holding a scalar value. */
 function productScalar(
   column: string,
@@ -86,7 +83,7 @@ function productClaimedJson(
   column: string,
   markerColumn: string,
   decode: (raw: string) => unknown,
-  encode: (value: unknown) => string | null = jsonOrNull,
+  encode: (value: unknown) => string | null = toJsonColumn,
 ): SettingColumnAdapter {
   return {
     table: "products",
@@ -233,7 +230,7 @@ export const CORE_COLUMN_ADAPTERS: Readonly<
       row?.trust_policy_source === "admin" ? "console" : "default",
     set: (args) =>
       updateProductColumns(args, [
-        ["trust_policy_json", jsonOrNull(args.value)],
+        ["trust_policy_json", toJsonColumn(args.value)],
         ["trust_policy_source", args.value === null ? "default" : "admin"],
       ]),
     reset: (args) =>
@@ -308,7 +305,7 @@ export const CORE_COLUMN_ADAPTERS: Readonly<
       const l = listing(row)!;
       return l.offerPathsAll ? undefined : [...l.offerPaths];
     },
-    (v) => [["store_offer_paths_json", jsonOrNull(v)]],
+    (v) => [["store_offer_paths_json", toJsonColumn(v)]],
   ),
   "storefront.polarisKey.groupLabels": storefront(
     (row) => {

@@ -344,44 +344,47 @@ export default polarisConfig;
 }
 
 function renderReact(facts: SdkConfigFacts, js: boolean): string {
+  // The pins come first so `polarisConfig` can carry them: bearer mode (a page on its own origin,
+  // or Tauri) verifies every document in the page and reports `invalid-options` without them.
+  const pins = `/** The trust pins. Bearer mode (a page on its own origin, or Tauri) verifies every document in
+ *  the page against them; a desktop host's \`@polaris-key/node\` client pins the same keys. */
+export const pinnedKeys = ${tsMap(facts.pinnedKeys, "")};
+
+/** The pinned release keys, for a desktop host (\`update.pinnedReleaseKeys\`). */
+export const pinnedReleaseKeys = ${tsMap(facts.pinnedReleaseKeys, "")};
+`;
   const props = [
     `  productSlug: ${q(facts.product)},`,
     `  baseUrl: ${q(facts.baseUrl)},`,
+    `  trust: { pinnedKeys },`,
     `  expectServices: [${facts.services.map(q).join(", ")}],`,
   ].join("\n");
-  const pins = `/** The trust pins, for the desktop host's \`@polaris-key/node\` client (the bridge's main
- *  process verifies; the renderer never does). */
-export const pinnedKeys = ${tsMap(facts.pinnedKeys, "")};
-
-/** The pinned release keys, for the same host (\`update.pinnedReleaseKeys\`). */
-export const pinnedReleaseKeys = ${tsMap(facts.pinnedReleaseKeys, "")};
-`;
   const doc = `/**
- * The provider's product facts:
+ * The provider's product facts and trust pins:
  *
  *   <PolarisKeyProvider {...polarisConfig} version={APP_VERSION}>…</PolarisKeyProvider>
  */`;
   if (js)
     return `${banner("react", facts, "//")}
 
+${pins}
 ${doc}
 /** @satisfies {Partial<import("@polaris-key/react").PolarisKeyProviderProps>} */
 export const polarisConfig = {
 ${props}
 };
 
-${pins}
 export default polarisConfig;
 `;
   return `${banner("react", facts, "//")}
 import type { PolarisKeyProviderProps } from "@polaris-key/react";
 
+${pins}
 ${doc}
 export const polarisConfig = {
 ${props}
 } satisfies Partial<PolarisKeyProviderProps>;
 
-${pins}
 export default polarisConfig;
 `;
 }

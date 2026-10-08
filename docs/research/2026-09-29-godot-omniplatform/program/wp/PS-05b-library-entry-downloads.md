@@ -1,16 +1,24 @@
 # PS-05b Storefront library entries: downloads and listing (Worker): a shown library entry opens the downloads view, the download-token mint and redemption for `public` and `authenticated` deliverables only, and the entry's product view carries `description`, `screenshots` and `shortDescription`
 
-| Field       | Value                                                                                                 |
-| ----------- | ----------------------------------------------------------------------------------------------------- |
-| Phase       | PS: Polaris Key storefront: the Library as a distribution channel (S-21) (phase 2: engine and portal) |
-| Size        | 0.4–0.8 engineer-weeks                                                                                |
-| Depends on  | [PS-04](PS-04-storefront-portal-api.md), [PS-05](PS-05-storefront-portal-ui.md)                       |
-| Unblocks    | none                                                                                                  |
-| Role        | `pkey-implementer`                                                                                    |
-| Plan mode   | no                                                                                                    |
-| Gates       | rule 10 (OpenAPI and `routeCoverage`); THREAT-MODEL                                                   |
-| Human input | none                                                                                                  |
-| Repo        | `vladzaharia/polaris-key`                                                                             |
+| Field       | Value                                                                                                                     |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | PS: Polaris Key storefront: the Library as a distribution channel (S-21) (phase 2: engine and portal)                     |
+| Size        | 0.4–0.8 engineer-weeks                                                                                                    |
+| Depends on  | [PS-04](PS-04-storefront-portal-api.md), [PS-05](PS-05-storefront-portal-ui.md), [A-26](A-26-customer-channel-actions.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                    |
+| Role        | `pkey-implementer`                                                                                                        |
+| Plan mode   | no                                                                                                                        |
+| Gates       | rule 10 (OpenAPI and `routeCoverage`); THREAT-MODEL                                                                       |
+| Human input | none                                                                                                                      |
+| Repo        | `vladzaharia/polaris-key`                                                                                                 |
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track H, Distribution channels, storefronts and commerce](../../../2026-10-07-dx-consolidation/tracks.md#h-distribution-channels-storefronts-and-commerce)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Library entry downloads read A-26's customer channel actions and reuse P2-13's channel picker.
+
+- Depends on: added A-26.
 
 ## Goal
 

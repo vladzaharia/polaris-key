@@ -53,11 +53,10 @@ import { StatusPill } from "../../../ui/StatusPill.js";
 import { Timestamp } from "../../../ui/Timestamp.js";
 import { toast } from "../../../ui/toast.js";
 import { useLoadingAnnouncement } from "../../../ui/loading.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { useProduct } from "../../data/hooks.js";
 import { mutate } from "../../data/mutations.js";
 import { qk } from "../../data/queries.js";
-import { queryClient } from "../../data/queryClient.js";
 import { Link } from "../../router.js";
 import { r } from "../../routes.js";
 import { SettingsSection, SettingsTemplate } from "../../templates/Settings.js";
@@ -148,10 +147,10 @@ function SigningKeysSection({
   slug: string;
   product: ProductDetail;
 }): React.ReactElement {
-  const keys = useQuery(
-    { queryKey: qk.keys(slug), queryFn: () => fetchSigningKeys(slug) },
-    queryClient,
-  );
+  const keys = useQuery({
+    queryKey: qk.keys(slug),
+    queryFn: () => fetchSigningKeys(slug),
+  });
   const now = useServerNow(keys.data, keys.dataUpdatedAt || Date.now());
   const [prepare, setPrepare] = React.useState(false);
   const [action, setAction] = React.useState<{

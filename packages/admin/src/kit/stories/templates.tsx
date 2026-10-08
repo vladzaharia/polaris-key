@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Plus, RefreshCw } from "lucide-react";
 import { Breadcrumbs } from "../../console/components/Breadcrumbs.js";
-import { PageHeader } from "../../console/components/PageHeader.js";
+import { PageHeader } from "../../ui/PageHeader.js";
 import { PageTabs, TabPanel } from "../../console/components/PageTabs.js";
 import { CollectionTemplate } from "../../console/templates/Collection.js";
 import {

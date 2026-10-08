@@ -23,7 +23,7 @@ import { Tooltip } from "../../../ui/Tooltip.js";
 import { Version } from "../../../ui/Version.js";
 import { Breadcrumbs } from "../../components/Breadcrumbs.js";
 import { EntityLink } from "../../components/EntityLink.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { PageTabs } from "../../components/PageTabs.js";
 import { useProduct } from "../../data/hooks.js";
 import { Link, codecs, navigate, useSearchParam } from "../../router.js";

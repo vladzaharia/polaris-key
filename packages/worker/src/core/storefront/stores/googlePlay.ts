@@ -114,28 +114,6 @@ const OPS: Readonly<Record<StorefrontOp, Support>> = {
 };
 
 /**
- * Steps the operator ticks before the flow promises anything (S-15 §4.1): Play states them but no
- * API reads them. Declared data, rendered by the console (A-18j).
- */
-export const PLAY_PREFLIGHT = [
-  {
-    id: "personal-account-testers",
-    text: "A new personal developer account must have 12 testers opted in to a closed test for 14 days before it can publish to production.",
-    link: "google-play.testers",
-  },
-  {
-    id: "billing-release",
-    text: "One-time products need one release that carries the Play Billing Library before Play accepts them.",
-    link: "google-play.monetization-setup",
-  },
-  {
-    id: "managed-publishing",
-    text: "With managed publishing on, approved changes wait in the Console until the operator publishes them there.",
-    link: "google-play.managed-publishing",
-  },
-] as const;
-
-/**
  * Attributes kept per resource type in a ledger row's before and after. Play's objects are mapped
  * onto `{type, id, attributes}` by the runtime. Tester groups are stored as a COUNT, never the
  * group addresses (S-15 §6.3), and no contact field is kept.

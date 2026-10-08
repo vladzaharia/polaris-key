@@ -2,7 +2,7 @@
 
 | Field       | Value                                                                                     |
 | ----------- | ----------------------------------------------------------------------------------------- |
-| Phase       | P0: Hygiene and unblockers                                                                |
+| Phase       | P0: Hygiene, unblockers and code quality                                                  |
 | Size        | 0.25 engineer-weeks                                                                       |
 | Depends on  | [P0-02](P0-02-release-resolution.md)                                                      |
 | Unblocks    | none                                                                                      |

@@ -4,7 +4,7 @@
 | ----------- | ------------------------------------------------------------------------------ |
 | Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase C: the wire) |
 | Size        | 0.3–0.4 engineer-weeks                                                         |
-| Depends on  | [LX-10](LX-10-anchor-choice.md), [LX-17](LX-17-sdk-licenseid-audit.md)         |
+| Depends on  | none                                                                           |
 | Unblocks    | none                                                                           |
 | Role        | `pkey-implementer`                                                             |
 | Plan mode   | no                                                                             |
@@ -20,6 +20,17 @@ differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US 
 **No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
 
 - Until LX-21, sign-in's LicenseChoiceStep is the way to change a device's license (sign out, sign in, choose; SIGN-IN.md D-42). "Run this device on" reuses `LicenseChoiceView`, including `access` and `current`.
+
+## Consolidation 2026-10-07
+
+> **Closed 2026-10-07 (DX consolidation): merged into [LX-10](LX-10-anchor-choice.md).** The id stays in the graph as `dropped` so it
+> is not reused; do not build this package. Its scope moves to [LX-10](LX-10-anchor-choice.md).
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **merge** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> The reanchor: onRefresh setting goes; the useful behaviour is LX-10's fixed re-home rule and a portal device action.
+
+- Dependencies cleared on closing (they were LX-10 and LX-17), so nothing in the graph waits on or through a closed package.
 
 ## Goal
 

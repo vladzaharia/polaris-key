@@ -2,15 +2,16 @@
  * The console's and portal's styles: Tailwind v4, CSS-first, on @polaris-key/brand.
  *
  * Every colour, type, radius, elevation and motion value comes from the brand package
- * (docs/design/BRAND.md). This file defines none; it only:
+ * (docs/design/BRAND.md). This file defines almost none; it only:
  *   1. imports Tailwind, the Rubik faces, the tokens (both themes, the per-section accents) and
  *      the brand's Tailwind theme (bg-surface-raised, text-fg-muted, bg-accent, ring-focus…);
- *   2. aliases the utility names the views were written against (bg-card,
- *      text-muted-foreground, bg-primary, border-input, ring-ring, bg-destructive…) onto those
- *      tokens, per BRAND.md §11's migration map, so every existing view renders on the brand
- *      palette with no view edits. The aliases go away as the views are rebuilt
- *      (docs/design/ADMIN.md §7);
+ *   2. adds the admin's own few tokens on top of them: the neutral fill (`bg-hover`), the
+ *      customer site's breakpoints and the type steps the brand scale does not have;
  *   3. keeps the few Tailwind v3 defaults the views relied on.
+ *
+ * The pre-brand utility names (bg-card, text-muted-foreground, bg-primary, border-input…) are
+ * gone with their alias layer (docs/design/ADMIN.md §7.2 chunk 11); `test/tokenAliases.test.ts`
+ * keeps them from coming back.
  *
  * Theme: dark first, following the OS, overridden by data-theme on <html> (tokens.css; the
  * pre-paint script in index.html/manage.html and components/theme.tsx). Section: data-service on
@@ -77,46 +78,10 @@
   --pk-admin-fill: var(--pk-surface-sunken);
 }
 
-/* The pre-brand utility names → brand tokens (BRAND.md §11). */
+/* The admin's one colour token of its own: the neutral fill above (hover rows, the sidebar's
+   active row, secondary fills). The brand's `accent` is the section colour, so this is `hover`. */
 @theme inline {
-  --color-background: var(--pk-surface-page);
-  --color-foreground: var(--pk-text-default);
-  --color-card: var(--pk-surface-raised);
-  --color-card-foreground: var(--pk-text-default);
-  --color-popover: var(--pk-surface-overlay);
-  --color-popover-foreground: var(--pk-text-default);
-  /* Section-aware: the accent solid and the text that sits on it. Text in the accent colour
-     uses text-accent-fg (the 4.5:1 variant), not text-primary. */
-  --color-primary: var(--pk-accent);
-  --color-primary-foreground: var(--pk-accent-on);
-  --color-secondary: var(--pk-admin-fill);
-  --color-secondary-foreground: var(--pk-text-strong);
-  --color-muted: var(--pk-surface-sunken);
-  --color-muted-foreground: var(--pk-text-muted);
-  /* The old `accent` was a hover fill; the brand reuses the name for the section colour, so the
-     hover fill is `hover` here and `bg-accent` keeps the brand meaning. */
   --color-hover: var(--pk-admin-fill);
-  --color-destructive: var(--pk-danger);
-  --color-destructive-foreground: var(--pk-danger-on);
-  --color-success-foreground: var(--pk-success-on);
-  --color-warning-foreground: var(--pk-warning-on);
-  /* Control boundaries need 3:1. */
-  --color-input: var(--pk-border-strong);
-  /* Always violet, in every section. */
-  --color-ring: var(--pk-focus);
-  --color-sidebar: var(--pk-surface-page);
-  --color-sidebar-foreground: var(--pk-text-muted);
-  --color-sidebar-border: var(--pk-border-subtle);
-  --color-sidebar-accent: var(--pk-admin-fill);
-
-  /* Rubik ships 400 and 700 only (font-synthesis: none): name the two weights the views ask for
-     by their old names so the browser never picks one by fallback. */
-  --font-weight-medium: var(--pk-font-weight-regular);
-  --font-weight-semibold: var(--pk-font-weight-bold);
-
-  --shadow-pk-sm: var(--pk-elevation-1);
-  --shadow-pk-md: var(--pk-elevation-2);
-  --shadow-pk-lg: var(--pk-elevation-3);
 }
 
 /* Motion through the brand's duration and easing tokens, which collapse to 0 ms under
@@ -130,6 +95,15 @@
      Product titles only (`PageHeader size="display"`; 30 px, text-3xl, on phones). */
   --text-display: 2.5rem;
   --text-display--line-height: 1.1;
+  /* Steps the brand scale (xs 12 … 5xl 48) does not have, named so no view writes an arbitrary
+     bracketed text size (EXPERIENCE.md §3). Each sets the font size only, as the arbitrary values
+     it replaced did. The type-scale pass maps them onto display / title / section / row. */
+  --text-3xs: 0.625rem; /* 10 px: the letter on the 20 px product tile */
+  --text-2xs: 0.6875rem; /* 11 px: keyboard hints */
+  --text-code: 0.8125rem; /* 13 px: code in the portal's prose and key rows */
+  --text-md: 0.9375rem; /* 15 px: the portal's body and control text */
+  --text-headline: 1.75rem; /* 28 px: portal page titles on phones */
+  --text-headline-lg: 2rem; /* 32 px: portal flow titles from desk up */
   --animate-pk-in: pk-in var(--pk-duration-fast) var(--pk-ease-enter);
   /* The motion layer's keyframes (src/motion.css, notes/S-23 §6.1; MO-10), as Tailwind utilities
      on the same tokens and fills, so a component can say `animate-pk-enter` instead of a rule.
@@ -296,8 +270,36 @@
     height: 100%;
   }
 
+  /* The customer site's sticky and fixed chrome. A control or section scrolled into view (a
+     jump, a focused link, Tab or Shift+Tab) stops clear of it, never under it, so focus is never
+     obscured (WCAG 2.4.11, 2.5.8; PS-05):
+     - the header (PortalShell: 3.5rem, 4rem from the desk breakpoint, plus its 1px rule);
+     - below desk, a page's sticky section pills just under it (the product and account pages,
+       `data-section-pills`: 2.25rem pills, 0.5rem above and below, a 1px rule, stuck at 3.5rem,
+       so their lower edge is 6.75rem + 1px down);
+     - below desk, the fixed phone bar (3.25rem, its 1px rule and the safe area).
+     `--pk-scroll-top` is the top padding. Section cards and the sign-in method headings take it
+     off their own scroll-margin, so a jump lands them 9rem (6rem on desk) down whatever chrome
+     is there (product/Card.tsx), and the product page's reading line starts from it. */
+  html:has(.pk-portal-shell) {
+    --pk-scroll-top: calc(3.5rem + 1px);
+    scroll-padding-top: var(--pk-scroll-top);
+    scroll-padding-bottom: calc(3.25rem + 1px + env(safe-area-inset-bottom));
+  }
+  @media (width < 47.5625rem) {
+    html:has(.pk-portal-shell [data-section-pills]) {
+      --pk-scroll-top: calc(6.75rem + 1px);
+    }
+  }
+  @media (width >= 47.5625rem) {
+    html:has(.pk-portal-shell) {
+      --pk-scroll-top: calc(4rem + 1px);
+      scroll-padding-bottom: 0;
+    }
+  }
+
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-surface-page text-fg font-sans antialiased;
     margin: 0;
     /* A long unbroken token (a secret name, a URL, an id) wraps inside its box instead of
        spilling out of it or pushing the page sideways. It changes no box's min-content width,
@@ -308,7 +310,7 @@
   /* Visible focus everywhere keyboard users land: 2 px violet with a 2 px offset in the surface
      colour (BRAND.md §7.4). */
   :focus-visible {
-    @apply outline-hidden ring-2 ring-ring ring-offset-2 ring-offset-background;
+    @apply outline-hidden ring-2 ring-focus ring-offset-2 ring-offset-surface-page;
   }
 
   /* A menu's container takes focus when it opens; the highlighted item shows where focus is, so
@@ -318,10 +320,21 @@
     box-shadow: none;
   }
 
-  /* A page heading takes focus after a navigation (ADMIN.md §5.6) so screen readers start there;
-     it is not a control, so it draws no focus ring. */
+  /* A page heading takes focus after a navigation (ADMIN.md §5.6) so screen readers start there,
+     and a section's heading after a jump to it from the section nav (PS-05 review M4); neither is
+     a control, so it draws no focus ring. */
   [data-page-title]:focus-visible,
-  main h1[tabindex="-1"]:focus-visible {
+  main :is(h1, h2, h3)[tabindex="-1"]:focus-visible {
+    outline: none;
+    box-shadow: none;
+  }
+
+  /* A portal tile's name link stretches over the whole card (its ::after), so its focus ring is
+     the card's: drawn around the name, the heading's truncation clipped it (PS-05 review B1). */
+  .pk-pressable-card > article:has(.pk-press-link:focus-visible) {
+    @apply ring-2 ring-focus ring-offset-2 ring-offset-surface-page;
+  }
+  .pk-pressable-card .pk-press-link:focus-visible {
     outline: none;
     box-shadow: none;
   }

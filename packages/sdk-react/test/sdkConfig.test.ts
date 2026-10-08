@@ -11,7 +11,7 @@ import polarisConfig, {
 } from "./sdkConfigSample.js";
 
 describe("pkey sdk --lang react sample", () => {
-  it("is the provider's product facts, with the pins for the desktop host", () => {
+  it("is the provider's product facts and trust pins, with the pins for the desktop host", () => {
     const props: PolarisKeyProviderProps = {
       ...polarisConfig,
       version: "1.2.3",
@@ -24,6 +24,8 @@ describe("pkey sdk --lang react sample", () => {
       "release",
       "update",
     ]);
+    // P0-47: bearer mode verifies in the page, so the spread props carry the pins themselves.
+    expect(props.trust?.pinnedKeys).toEqual(pinnedKeys);
     expect(Object.keys(pinnedKeys)).toEqual(["pkey-test-prod-2026"]);
     expect(Object.keys(pinnedReleaseKeys)).toEqual(["acme-release-2026"]);
   });

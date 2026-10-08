@@ -4,8 +4,8 @@ A product-agnostic native Swift client for **Polaris Key** (licensing, remotely-
 config, updates). It implements the frozen Polaris Key wire crypto natively on **CryptoKit**
 (Ed25519 compact JWS) and stores the per-device token in the **Keychain** — no Node engine, no
 network dependency for verification. The same cross-language conformance corpus that pins the
-Node/Python/React SDKs is verified here byte-for-byte (`conformance/corpus/v2`, mirrored into
-`Tests/PolarisKeyTests/Resources/v2/`).
+Node/Python/React SDKs is verified here byte-for-byte (`conformance/corpus/v2`, read in place by
+the tests).
 
 Wire contract: `docs/security/WIRE-CONTRACT-V4.md`.
 
@@ -891,9 +891,11 @@ xcodebuild -scheme PolarisKeyUpdate -destination 'generic/platform=iOS' build
 xcodebuild -scheme PolarisKeyPacks -destination 'generic/platform=iOS' build
 ```
 
-`ContentConformanceTests` reads `conformance/corpus/v2/content/` from the checkout (it is not
-mirrored into the test bundle), so run the suite from a monorepo checkout.
+The tests read the corpus (`conformance/corpus/v2/`, `content/` included) and the HTTP transcripts
+(`conformance/transcripts/`) from the checkout through `CorpusLocator`, which finds the repository
+root from its own `#filePath`; nothing is copied into the test bundle, so run the suite from a
+monorepo checkout (from any working directory: CI runs `swift test --package-path sdks/swift`).
 
-The corpus fixtures under `Tests/PolarisKeyTests/Resources/` are **generated**: run
-`pnpm gen:corpus` from the repo root after any wire change, and `pnpm gen:corpus -- --check` is
-the CI drift gate.
+The corpus and the transcripts are **generated**: run `pnpm gen:corpus` (or `pnpm gen:transcripts`)
+from the repo root after any wire change, and `pnpm gen:corpus -- --check` (and
+`pnpm gen:transcripts -- --check`) is the CI drift gate.

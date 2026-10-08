@@ -39,6 +39,8 @@
  * section).
  */
 
+import { toArrayBuffer } from "../platform/bytes.js";
+
 // ── DER ──────────────────────────────────────────────────────────────────────────────────────
 
 /** One DER TLV. `der` is the whole element (tag, length and value); `value` the contents. */
@@ -406,14 +408,11 @@ export function ecdsaDerToRaw(der: Uint8Array, size: number): Uint8Array {
   return out;
 }
 
-const toBuffer = (b: Uint8Array): ArrayBuffer =>
-  b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer;
-
 /** The certificate's public key as a WebCrypto ECDSA verify key. */
 export function certificateKey(cert: X509Certificate): Promise<CryptoKey> {
   return crypto.subtle.importKey(
     "spki",
-    toBuffer(cert.spki),
+    toArrayBuffer(cert.spki),
     { name: "ECDSA", namedCurve: cert.curve },
     false,
     ["verify"],
@@ -437,8 +436,8 @@ async function signedBy(
   return crypto.subtle.verify(
     { name: "ECDSA", hash },
     await certificateKey(issuer),
-    toBuffer(raw),
-    toBuffer(child.tbs),
+    toArrayBuffer(raw),
+    toArrayBuffer(child.tbs),
   );
 }
 
