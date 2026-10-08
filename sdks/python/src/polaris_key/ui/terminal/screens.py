@@ -405,11 +405,11 @@ def offline_activation(k: Kit, v: OfflineView, verb: str = "offline-request") ->
         after: Lines = _gap(k)
         after += k.body([k.t("offlineActivation.loadHint")])
         after += _fixes(k, [("import-bundle <file>", "offlineActivation.submit")])
-        # The QR only where the whole screen fits with it (one blank row on each side, never
-        # two), so it never pushes the header off the screen.
+        # The QR only where the whole screen fits with it, and the line the cursor rests on after
+        # it (one blank row on each side, never two), so it never pushes the header off.
         qr = k.qr(v.request_code or "")
         screen = len(_frame(k, verb, body + after))
-        if qr and screen + len(_gap(k)) + len(qr) <= k.env.height:
+        if qr and screen + len(_gap(k)) + len(qr) + 1 <= k.env.height:
             body += _gap(k)
             body += qr
         body += after

@@ -243,7 +243,7 @@ def test_offline_request_shows_the_qr_only_where_the_whole_screen_fits(cols: int
     check(f"offline {cols}x{rows} {values}", term, [r for r, _ in all_rows][-rows:], code="dev_9fK2Lw7QmZ")
     qr = any("█" in r or "▀" in r for r, _ in all_rows)
     if qr:
-        assert len(all_rows) <= rows, "the QR pushed the header off the screen"
+        assert len(all_rows) < rows, "the QR pushed the header off the screen"
     if rows == 12:
         assert not qr
 
