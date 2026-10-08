@@ -14,6 +14,7 @@
 import { PolarisError } from "@polaris-key/client-core";
 import { ErrorCode, Feature } from "../constants.generated.js";
 import type { CoreContext } from "../core/context.js";
+import { classifyResponse, errorFrom, readJson } from "../core/http.js";
 import type { TokenManager } from "../core/token.js";
 import {
   serviceEndpoint,
@@ -84,8 +85,11 @@ export class ReleaseClient {
   async changelog(): Promise<ChangelogEntry[]> {
     this.ctx.requireService("release", Feature.releaseChangelog);
     const res = await this.get("release/changelog");
-    const body = (await res.json()) as { entries?: ChangelogEntry[] };
-    return Array.isArray(body.entries) ? body.entries : [];
+    const body = await readJson<{ entries?: ChangelogEntry[] } | null>(
+      res,
+      "release/changelog",
+    );
+    return Array.isArray(body?.entries) ? body.entries : [];
   }
 
   /** The canonical install-script URL, for a host that wants to print it rather than run it:
@@ -117,41 +121,34 @@ export class ReleaseClient {
     return url.toString();
   }
 
-  /** Shared GET. Forwards the device token when one is held so an `entitled` feed can
-   *  authenticate; a public feed simply ignores it. */
+  /**
+   * Shared GET. Forwards the device token when one is held so an `entitled` feed can
+   * authenticate; a public feed simply ignores it.
+   *
+   * A refusal names itself: the nested v3 shape (`{"error":{"code":…}}`, the `entitled` mode) or
+   * the flat one (`{"error":"download_auth_required"}`, `authenticated`/`licensed`), surfaced
+   * rather than invented. Everything else is the one taxonomy (SP-46): `network-error`,
+   * `rate_limited`, `server-error`, and `not_found` only for a 404.
+   */
   private async get(path: string): Promise<Response> {
-    const f = this.ctx.fetcher();
     const token = this.tokens.current;
-    const res = await f(this.ctx.url(path), {
-      headers: this.ctx.headers(
-        token ? { authorization: `Bearer ${token}` } : {},
-      ),
-      signal: this.ctx.deadline(),
-    });
-    if (res.status === 401 || res.status === 403) {
-      // The refusal names itself: the nested v3 shape (`{"error":{"code":…}}`, the `entitled`
-      // mode) or the flat one (`{"error":"download_auth_required"}`, `authenticated`/
-      // `licensed`). Surface that code rather than inventing one.
-      const body = (await res.json().catch(() => ({}))) as {
-        error?: string | { code?: string };
-      };
-      const code =
-        typeof body.error === "string" ? body.error : body.error?.code;
-      throw new PolarisError(
-        code ||
-          (res.status === 401 ? ErrorCode.unauthorized : ErrorCode.forbidden),
+    const res = await this.ctx.request(
+      this.ctx.url(path),
+      {
+        headers: this.ctx.headers(
+          token ? { authorization: `Bearer ${token}` } : {},
+        ),
+      },
+      path,
+    );
+    if (res.ok) return res;
+    const c = await classifyResponse(res);
+    if (c.message === undefined && (res.status === 401 || res.status === 403))
+      c.message =
         res.status === 401
           ? `${path} refused: this feed needs a usable licence.`
-          : `${path} refused: this build is not entitled to that feed.`,
-      );
-    }
-    if (!res.ok) {
-      throw new PolarisError(
-        "not_found",
-        `${path} failed with status ${res.status}.`,
-      );
-    }
-    return res;
+          : `${path} refused: this build is not entitled to that feed.`;
+    throw errorFrom(c, path);
   }
 }
 

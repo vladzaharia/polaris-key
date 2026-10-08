@@ -108,11 +108,13 @@ import type {
   InstallOutcome,
 } from "./drivers/types.js";
 import { releaseFetch } from "../release/fetch.js";
+import { classifyResponse, errorFrom, readJson } from "../core/http.js";
 import { openInBrowser } from "../identity/client.js";
 import {
   appcastUrlFrom,
   serviceEndpoint,
   updateEndpointsFrom,
+  type DiscoverProductResult,
   type ProductDiscoveryDocument,
 } from "../discovery.js";
 
@@ -726,42 +728,52 @@ export class UpdateClient {
    *
    * `updateAvailable` is computed from `CoreOptions.version`, the HOST APPLICATION's version,
    * not the SDK's: the SDK ships inside the thing being updated.
+   *
+   * Throws `PolarisError` in the one taxonomy (SP-46): `network-error`, `rate_limited` (with
+   * `retryAfterSeconds`), `server-error`, `not_found` only for a 404, the Worker's own code for a
+   * refusal (a 403 channel the build is not entitled to), and `bad_response` for a 200 that names
+   * no version.
    */
   async check(opts: { channel?: string } = {}): Promise<VersionCheck> {
     this.ctx.requireService("update", Feature.updateCheck);
     const url = new URL(this.ctx.url("update/version"));
     if (opts.channel) url.searchParams.set("channel", opts.channel);
 
-    const f = this.ctx.fetcher();
     const token = this.tokens.current;
-    const res = await f(url.toString(), {
-      headers: this.ctx.headers(
-        token ? { authorization: `Bearer ${token}` } : {},
-      ),
-      signal: this.ctx.deadline(),
-    });
-    if (res.status === 403) {
-      const body = (await res.json().catch(() => ({}))) as {
-        error?: { code?: string };
-      };
-      throw new PolarisError(
-        body.error?.code ?? "forbidden",
-        "This build is not entitled to that update channel.",
-      );
-    }
+    const res = await this.ctx.request(
+      url.toString(),
+      {
+        headers: this.ctx.headers(
+          token ? { authorization: `Bearer ${token}` } : {},
+        ),
+      },
+      "update/version",
+    );
     if (!res.ok) {
-      throw new PolarisError(
-        "not_found",
-        `update/version failed with status ${res.status}.`,
+      const c = await classifyResponse(res);
+      throw errorFrom(
+        res.status === 403 && c.message === undefined
+          ? {
+              ...c,
+              message: "This build is not entitled to that update channel.",
+            }
+          : c,
+        "update/version",
       );
     }
-    const body = (await res.json()) as {
-      version: string;
-      tag: string;
-      url: string;
-    };
+    const body = await readJson<{
+      version?: unknown;
+      tag?: unknown;
+      url?: unknown;
+    } | null>(res, "update/version");
+    if (!body || typeof body.version !== "string")
+      throw new PolarisError(
+        ErrorCode.badResponse,
+        "update/version answered without a version.",
+        { status: res.status },
+      );
     return {
-      ...body,
+      ...(body as { version: string; tag: string; url: string }),
       updateAvailable: compareSemver(this.ctx.version, body.version) < 0,
     };
   }
@@ -911,13 +923,22 @@ export class UpdateClient {
     }).toString();
   }
 
-  /** Load discovery when this session has not (a no-op when it has, or cannot). */
-  async ensureDiscovery(): Promise<void> {
-    if (this.discovery() || !this.discoverNow) return;
+  /**
+   * Load discovery when this session has not (a no-op when it has, or cannot). Answers the
+   * attempt's failure, a `DiscoverProductResult` of kind `error` (`network-error` offline), so a
+   * caller that needed it can report why; null otherwise.
+   */
+  async ensureDiscovery(): Promise<Extract<
+    DiscoverProductResult,
+    { kind: "error" }
+  > | null> {
+    if (this.discovery() || !this.discoverNow) return null;
     try {
-      await this.discoverNow();
+      const r = (await this.discoverNow()) as DiscoverProductResult | undefined;
+      return r?.kind === "error" ? r : null;
     } catch (e) {
       if (e instanceof PolarisError && e.code === ErrorCode.localOnly) throw e;
+      return null;
     }
   }
 

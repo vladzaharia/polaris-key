@@ -31,10 +31,12 @@ import { join } from "node:path";
 import { rm } from "node:fs/promises";
 import { PolarisError } from "@polaris-key/client-core";
 import { readJson, writeJson } from "../core/jsonFile.js";
-import { Feature } from "../constants.generated.js";
+import { ErrorCode, Feature } from "../constants.generated.js";
 import type { CoreContext } from "../core/context.js";
+import { classifyResponse, errorFrom } from "../core/http.js";
 import type { TokenManager } from "../core/token.js";
 import { redactOnPrint } from "../core/redact.js";
+import type { ProductDiscoveryDocument } from "../discovery.js";
 
 /** What the host shows the player, plus the poll credential the SDK keeps using. A prompt from
  *  `beginSignIn` prints (`console.log`, `JSON.stringify`) with `deviceCode` redacted. */
@@ -203,7 +205,10 @@ function pollDelay(interval: number, expiresIn: number): number {
 
 /** Transient failures `waitForSignIn` rides out at the current interval: the network, and a
  *  server that answered 5xx. Anything else ends the wait. */
-const TRANSIENT = new Set(["network-error", "server-error"]);
+const TRANSIENT = new Set<string>([
+  ErrorCode.networkError,
+  ErrorCode.serverError,
+]);
 
 /** Raised after a sign-in mints a credential; the facade syncs. */
 export type SignInAcquiredListener = () => Promise<void>;
@@ -235,6 +240,9 @@ export class IdentityClient {
     private readonly onAcquired: SignInAcquiredListener,
     /** `license.deactivate()`, for `signOut()`. */
     private readonly deactivate: () => Promise<void> = async () => undefined,
+    /** The discovery document this session loaded, or null. */
+    private readonly discovery: () => ProductDiscoveryDocument | null = () =>
+      null,
   ) {
     this.identityFile = join(ctx.dirs.state, "identity.json");
   }
@@ -277,26 +285,37 @@ export class IdentityClient {
   }
 
   /**
-   * Begin a device-code sign-in. Throws `PolarisError("service-unavailable")` before any request
-   * when this product does not run Identity (D-21).
+   * Begin a device-code sign-in. Refuses before any request when the product cannot sign in:
+   * `PolarisError("service-unavailable")` (an `UnsupportedError`) when it does not run Identity
+   * (D-21), and `PolarisError("disabled")` when this session's discovery says Identity is on but
+   * no sign-in provider is set up (`identity.configured: false`), the code the Worker itself
+   * answers for that product.
+   *
+   * Otherwise the one taxonomy (SP-46): `network-error`, `rate_limited` with
+   * `retryAfterSeconds`, `server-error`, or the Worker's code with its message
+   * (`sign-in-unavailable` when it names none).
    *
    * No bearer is sent even when the device holds a token: a sign-in asks for the IDENTITY's
    * credential, and the server binds the flow to this device by its id.
    */
   async beginSignIn(opts: { deviceName?: string } = {}): Promise<SignInPrompt> {
     this.ctx.requireService("identity", Feature.identityDevicecode);
+    if (this.discovery()?.services?.identity?.configured === false)
+      throw new PolarisError(
+        ErrorCode.disabled,
+        "this product has not set up sign-in, so a device sign-in cannot start.",
+      );
     const body: Record<string, string> = { deviceId: this.ctx.deviceId };
     // §12.7.1: the per-call name, else the client's `deviceName`, else the platform default,
     // normalised exactly as the Worker will store it. `""` sends none.
     const label = this.ctx.deviceLabel(opts.deviceName);
     if (label) body.deviceName = label;
     const res = await this.post("identity/auth/device/start", body);
-    if (res.status !== 200) {
-      throw new PolarisError(
-        await errorCode(res, "sign-in-unavailable"),
-        `device sign-in could not start (status ${res.status}).`,
+    if (res.status !== 200)
+      throw errorFrom(
+        await classifyResponse(res, ErrorCode.signInUnavailable),
+        "device sign-in start",
       );
-    }
     const b = (await res.json().catch(() => ({}))) as StartBody;
     if (
       !isString(b.deviceCode) ||
@@ -337,8 +356,9 @@ export class IdentityClient {
    * this resolves.
    *
    * Throws `PolarisError("network-error")` when the request never got an answer and
-   * `PolarisError("server-error")` on a 5xx — neither says anything about the sign-in, so they are
-   * not folded into a status. `waitForSignIn` rides both out.
+   * `PolarisError("server-error")` (with `status`) on a 5xx — neither says anything about the
+   * sign-in, so they are not folded into a status. `waitForSignIn` rides both out. A 429 is
+   * RFC 8628's `slow_down`; any other refusal is `{status: "error"}` with the server's message.
    */
   async pollSignIn(
     prompt: SignInPrompt,
@@ -372,11 +392,15 @@ export class IdentityClient {
       body,
       token ? { authorization: `Bearer ${token}` } : {},
     );
-    if (res.status >= 500) {
-      throw new PolarisError(
-        "server-error",
-        `device sign-in poll failed with status ${res.status}.`,
-      );
+    if (res.status >= 500)
+      throw errorFrom(await classifyResponse(res), "device sign-in poll");
+    if (res.status !== 200 && res.status !== 429) {
+      const c = await classifyResponse(res);
+      return {
+        status: "error",
+        message:
+          c.message ?? `device sign-in poll refused (status ${res.status}).`,
+      };
     }
     const answer = (await res.json().catch(() => ({}))) as {
       status?: unknown;
@@ -394,12 +418,6 @@ export class IdentityClient {
         interval: isSeconds(answer.interval)
           ? wholeSeconds(answer.interval)
           : current + SLOW_DOWN_STEP_SECONDS,
-      };
-    }
-    if (res.status !== 200) {
-      return {
-        status: "error",
-        message: `device sign-in poll refused (status ${res.status}).`,
       };
     }
     const identity = shown(answer.identity);
@@ -487,25 +505,24 @@ export class IdentityClient {
     }
   }
 
-  private async post(
+  /** One POST; a request with no answer throws `network-error` (`CoreContext.request`). */
+  private post(
     path: string,
     body: unknown,
     extra: Record<string, string> = {},
   ): Promise<Response> {
-    const f = this.ctx.fetcher();
-    try {
-      return await f(this.ctx.url(path), {
+    return this.ctx.request(
+      this.ctx.url(path),
+      {
         method: "POST",
         headers: this.ctx.headers({
           "content-type": "application/json",
           ...extra,
         }),
         body: JSON.stringify(body),
-        signal: this.ctx.deadline(),
-      });
-    } catch (e) {
-      throw new PolarisError("network-error", (e as Error).message);
-    }
+      },
+      path,
+    );
   }
 }
 
@@ -517,15 +534,6 @@ function shown(v: unknown): ShownIdentity | null {
   if (typeof o.name === "string" && o.name) out.name = o.name;
   if (typeof o.email === "string" && o.email) out.email = o.email;
   return out.name || out.email ? out : null;
-}
-
-/** The Worker's flat (`{"error":"x"}`) or nested (`{"error":{"code":"x"}}`) code, else `fallback`. */
-async function errorCode(res: Response, fallback: string): Promise<string> {
-  const b = (await res.json().catch(() => ({}))) as {
-    error?: string | { code?: string };
-  };
-  if (typeof b.error === "string") return b.error;
-  return b.error?.code ?? fallback;
 }
 
 /** Wait `seconds`, or reject with the signal's reason when it aborts first. A wait longer than

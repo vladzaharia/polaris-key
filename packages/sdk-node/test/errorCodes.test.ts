@@ -67,15 +67,10 @@ describe("error-code registry (core.errors)", () => {
     const files = sources(SRC);
     expect(files.length).toBeGreaterThan(10);
     const raised = new Set(files.flatMap((f) => raisedCodes(f.text)));
-    // The scan sees the codes this SDK is known to raise.
-    for (const code of [
-      "service-unavailable",
-      "local-only",
-      "insecure-base-url",
-      "device-management-unsupported",
-      "not_found",
-      "forbidden",
-    ])
+    // The scan sees the codes this SDK is known to raise as literals. The SP-46 taxonomy and
+    // the two error classes raise theirs through `ErrorCode`, which the compiler pins to the
+    // registry instead.
+    for (const code of ["local-only", "bad_response"])
       expect(raised).toContain(code);
     expect(unregistered(files, ERROR_CODE_VALUES)).toEqual([]);
     expect(bundleReasons).toEqual([]);

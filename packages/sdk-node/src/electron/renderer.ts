@@ -3,10 +3,12 @@
 // sandboxed preload bundle can include it; `./preload.ts` is the one-line wiring.
 //
 // The object is plain (functions and a number), which is what `contextBridge` can clone. Every
-// method unwraps the main process's envelope and rethrows a refusal as an `Error` carrying the
-// host's `code` (and an update refusal's `detail`), which is how `@polaris-key/react`'s desktop
-// adapter maps it.
+// method unwraps the main process's envelope and rethrows a refusal as a `PolarisBridgeError` (a
+// `PolarisError`) carrying the host's `code` (and an update refusal's `detail`), which is how
+// `@polaris-key/react`'s desktop adapter maps it. `@polaris-key/client-core/errors` is the one
+// import outside this directory: the error class alone, with no Node or Electron dependency.
 
+import { PolarisError } from "@polaris-key/client-core/errors";
 import {
   DEFAULT_BRIDGE_CHANNEL,
   DEFAULT_BRIDGE_KEY,
@@ -35,15 +37,14 @@ export interface ContextBridgeLike {
   exposeInMainWorld(key: string, api: unknown): void;
 }
 
-/** A refusal from the host, as the renderer sees it. */
-export class PolarisBridgeError extends Error {
-  constructor(
-    readonly code: string,
-    message: string,
-    readonly detail: string | null = null,
-  ) {
-    super(message);
+/** A refusal from the host, as the renderer sees it: a `PolarisError` with the host's code. */
+export class PolarisBridgeError extends PolarisError {
+  readonly detail: string | null;
+
+  constructor(code: string, message: string, detail: string | null = null) {
+    super(code, message);
     this.name = "PolarisBridgeError";
+    this.detail = detail;
   }
 }
 

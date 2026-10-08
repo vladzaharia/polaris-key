@@ -46,6 +46,7 @@ import { ErrorCode, Feature, SdkId } from "../constants.generated.js";
 import { SDK_VERSION } from "../version.js";
 import { KeyringStore } from "./store.js";
 import { resolveAppVersion } from "./appVersion.js";
+import { classifyResponse, transportError } from "./http.js";
 import { defaultDirBases, resolveDirs, type ProductDirs } from "./dirs.js";
 import {
   DEFAULT_SERVICES,
@@ -66,12 +67,10 @@ export const nowSec = (): number => Math.floor(Date.now() / 1000);
 
 /** Thrown at construction for a `baseUrl` that would carry the device bearer token in the
  *  clear. A plaintext control plane makes trust-set injection (R4-02) a coffee-shop attack
- *  rather than a local one. */
-export class InsecureBaseUrlError extends Error {
-  readonly code = "insecure-base-url";
-
+ *  rather than a local one. A `PolarisError` with code `insecure-base-url`. */
+export class InsecureBaseUrlError extends PolarisError {
   constructor(message: string) {
-    super(message);
+    super(ErrorCode.insecureBaseUrl, message);
     this.name = "InsecureBaseUrlError";
   }
 }
@@ -160,7 +159,9 @@ export type DocumentResult =
   | { kind: "unauthorized" }
   | { kind: "device-cap"; limit?: number; deviceCount?: number }
   | { kind: "blocked"; reason: BlockReason; allowedRange?: AllowedRange }
-  | { kind: "error"; status: number; message: string };
+  /** Everything else, in the one taxonomy (`./http.ts`): `network-error` with status 0 when no
+   *  answer arrived, `server-error` for a 5xx, else the server's code or the status's. */
+  | { kind: "error"; code: string; status: number; message: string };
 
 /**
  * Core's live state: identity, credentials-adjacent wiring, transport, and the clock floor.
@@ -330,6 +331,31 @@ export class CoreContext {
       : undefined;
   }
 
+  /**
+   * One request under the taxonomy's transport rule (SP-46, `./http.ts`): a request that gets
+   * no answer (refused, reset, DNS, the deadline) throws `PolarisError("network-error")` with
+   * the failure as its `cause`, never a raw `TypeError`. `fetcher()`'s local-only refusal
+   * propagates unchanged, before anything is sent.
+   *
+   * The deadline applies unless `init` names its own `signal` (a download passes the caller's,
+   * or `undefined` for none). When that caller's signal aborted, its reason is rethrown as is:
+   * a cancellation is the caller's own doing, not a network failure.
+   */
+  async request(
+    url: string,
+    init: RequestInit,
+    what: string,
+  ): Promise<Response> {
+    const f = this.fetcher();
+    const own = "signal" in init;
+    try {
+      return await f(url, own ? init : { ...init, signal: this.deadline() });
+    } catch (e) {
+      if (own && init.signal?.aborted) throw e;
+      throw transportError(e, what);
+    }
+  }
+
   /** The `X-PKey-*` client metadata every product-scoped call carries (§5). Platform and arch
    *  are the canonical values of WIRE-CONTRACT-V3 §5.2, mapped from `os.platform()` and
    *  `os.arch()`; a spelling with no value omits its header rather than inventing one. */
@@ -376,7 +402,12 @@ export class CoreContext {
     try {
       res = await f(this.url(path), { headers, signal: this.deadline() });
     } catch (e) {
-      return { kind: "error", status: 0, message: (e as Error).message };
+      return {
+        kind: "error",
+        code: ErrorCode.networkError,
+        status: 0,
+        message: transportError(e, path).message,
+      };
     }
 
     switch (res.status) {
@@ -413,18 +444,29 @@ export class CoreContext {
             : "version-too-old");
         return { kind: "blocked", reason, allowedRange: body.allowedRange };
       }
-      case 200:
-        return {
-          kind: "ok",
-          jws: await res.text(),
-          etag: res.headers.get("etag"),
-        };
-      default:
+      case 200: {
+        let jws: string;
+        try {
+          jws = await res.text();
+        } catch (e) {
+          return {
+            kind: "error",
+            code: ErrorCode.networkError,
+            status: 0,
+            message: transportError(e, path).message,
+          };
+        }
+        return { kind: "ok", jws, etag: res.headers.get("etag") };
+      }
+      default: {
+        const c = await classifyResponse(res);
         return {
           kind: "error",
+          code: c.code,
           status: res.status,
-          message: await res.text().catch(() => ""),
+          message: c.message ?? `${path} failed with status ${res.status}.`,
         };
+      }
     }
   }
 }

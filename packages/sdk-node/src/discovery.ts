@@ -26,6 +26,8 @@ import {
   SERVICE_SLUGS,
   type ServiceSlug,
 } from "./services.generated.js";
+import { ErrorCode } from "./constants.generated.js";
+import { classifyResponse, transportError } from "./core/http.js";
 
 /**
  * The opt-in services and their canonical order are GENERATED from the service table
@@ -112,7 +114,9 @@ export type DiscoverProductResult =
   | { kind: "ok"; manifest: ProductDiscoveryDocument; services: ServicesMap }
   | { kind: "not-found" }
   | { kind: "invalid"; message: string }
-  | { kind: "error"; status: number; message: string };
+  /** The one taxonomy (SP-46): `network-error` with status 0 when no answer arrived,
+   *  `rate_limited`, `server-error` for a 5xx, else the server's code. */
+  | { kind: "error"; code: string; status: number; message: string };
 
 export interface DiscoverProductOptions {
   baseUrl: string;
@@ -245,21 +249,39 @@ export async function discoverProduct(
   try {
     res = await f(url, { signal: opts.signal });
   } catch (e) {
-    return { kind: "error", status: 0, message: (e as Error).message };
+    return {
+      kind: "error",
+      code: ErrorCode.networkError,
+      status: 0,
+      message: transportError(e, "discovery").message,
+    };
   }
 
   if (res.status === 404) return { kind: "not-found" };
   if (!res.ok) {
+    const c = await classifyResponse(res);
     return {
       kind: "error",
+      code: c.code,
       status: res.status,
-      message: await res.text().catch(() => ""),
+      message: c.message ?? `discovery failed with status ${res.status}.`,
     };
   }
 
+  let text: string;
+  try {
+    text = await res.text();
+  } catch (e) {
+    return {
+      kind: "error",
+      code: ErrorCode.networkError,
+      status: 0,
+      message: transportError(e, "discovery").message,
+    };
+  }
   let body: unknown;
   try {
-    body = await res.json();
+    body = JSON.parse(text);
   } catch {
     return {
       kind: "invalid",
