@@ -73,8 +73,9 @@ describe("the service table, as the docs site sees it", () => {
 /**
  * P0-48: prose that counts the services agrees with the table. "The six service slugs" outlived
  * Cloud Sync's row; a count of the WHOLE set ("the N service slugs", "one of the N opt-in
- * services", "all N services", "which of the N services") must say the table's size. A count of
- * a named subset ("the two services sign…", "the three services split…") is not matched.
+ * services", "all N services", "which of the N services", "with all N flags off") must say the
+ * table's size. A count of a named subset ("the two services sign…", "the three services
+ * split…") is not matched.
  */
 describe("prose that counts the services", () => {
   const WORDS = [
@@ -96,6 +97,8 @@ describe("prose that counts the services", () => {
       `\\ball ${n} (?:opt-in )?services\\b`,
       `\\bof the ${n} (?:opt-in )?services\\b`,
       `\\bcarries ${n} services\\b`,
+      `\\ball ${n} service flags\\b`,
+      `\\bwith all ${n} flags off\\b`,
     ].join("|"),
     "gi",
   );

@@ -65,7 +65,7 @@ rest off). Half-honouring a typo is how a typo turns into a silently disabled se
 
 ## What a product that enables nothing still gets
 
-The degenerate case is the useful test of "always on". With all six flags off, a product still:
+The degenerate case is the useful test of "always on". With every service flag off, a product still:
 
 - resolves — `loadProduct` finds the row and opens its sealed signing key;
 - serves discovery, JWKS, and a signed trust manifest;
