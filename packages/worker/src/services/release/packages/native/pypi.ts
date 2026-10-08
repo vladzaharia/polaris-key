@@ -29,11 +29,11 @@ import {
   nativeDescriptor,
   nativeSource,
   planNative,
-  sha256Hex,
   stageFile,
   undeclared,
   type NativeFile,
 } from "./publish.js";
+import { sha256Hex } from "../../../../core/platform.js";
 import { publishRoute, refusalResponse } from "./route.js";
 import {
   openSession,

@@ -40,6 +40,13 @@
 import type { Env } from "../env.js";
 import { secret } from "../env.js";
 import { bytesHostname, normalizeHostname } from "./bytesHostname.js";
+import {
+  b64urlDecodeStrict,
+  b64urlEncode,
+  toArrayBuffer,
+  utf8Encode,
+} from "../platform/bytes.js";
+import { hmacSha256, importHmacKey, sha256 } from "../platform/hash.js";
 
 /** The MAC's domain-separation label (S-19 decision 18). */
 export const DOWNLOAD_TICKET_LABEL = "pkey-download-ticket/1";
@@ -67,47 +74,11 @@ export interface DownloadTicketFile {
   sha256: string;
 }
 
-function toBuffer(b: Uint8Array): ArrayBuffer {
-  return b.buffer.slice(
-    b.byteOffset,
-    b.byteOffset + b.byteLength,
-  ) as ArrayBuffer;
-}
+const enc = (s: string) => toArrayBuffer(utf8Encode(s));
 
-function b64url(bytes: Uint8Array): string {
-  let s = "";
-  for (const b of bytes) s += String.fromCharCode(b);
-  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function b64urlDecode(s: string): Uint8Array | null {
-  try {
-    const bin = atob(s.replace(/-/g, "+").replace(/_/g, "/"));
-    const out = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-    return out;
-  } catch {
-    return null;
-  }
-}
-
-const enc = (s: string) => toBuffer(new TextEncoder().encode(s));
-
+/** The key's public id: the first 6 bytes of SHA-256(secret), base64url (8 characters). */
 async function keyId(material: string): Promise<string> {
-  const digest = new Uint8Array(
-    await crypto.subtle.digest("SHA-256", enc(material)),
-  );
-  return b64url(digest.subarray(0, 6));
-}
-
-function hmacKey(material: string): Promise<CryptoKey> {
-  return crypto.subtle.importKey(
-    "raw",
-    enc(material),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign", "verify"],
-  );
+  return b64urlEncode((await sha256(material)).subarray(0, 6));
 }
 
 /**
@@ -145,10 +116,8 @@ export async function mintDownloadTicket(
   const exp = Math.floor(now) + DOWNLOAD_TICKET_TTL_SECONDS;
   const msg = message(host, file, exp);
   if (msg === null) return null;
-  const mac = new Uint8Array(
-    await crypto.subtle.sign("HMAC", await hmacKey(material), enc(msg)),
-  );
-  return `${VERSION}.${await keyId(material)}.${exp}.${b64url(mac)}`;
+  const mac = await hmacSha256(await importHmacKey(material), msg);
+  return `${VERSION}.${await keyId(material)}.${exp}.${b64urlEncode(mac)}`;
 }
 
 /**
@@ -186,7 +155,9 @@ export async function verifyDownloadTicket(
   const exp = Number(expRaw);
   const t = Math.floor(now);
   if (exp <= t || exp > t + DOWNLOAD_TICKET_TTL_SECONDS) return false;
-  const mac = b64urlDecode(macRaw);
+  // MAC_RE already holds it to 43 base64url characters, so the strict decoder reads exactly
+  // what a plain `atob` did.
+  const mac = b64urlDecodeStrict(macRaw);
   if (!mac || mac.length !== 32) return false;
   const msg = message(normalizeHostname(at.host), at, exp);
   if (msg === null) return false;
@@ -195,8 +166,8 @@ export async function verifyDownloadTicket(
     if (!material || (await keyId(material)) !== kid) continue;
     return crypto.subtle.verify(
       "HMAC",
-      await hmacKey(material),
-      toBuffer(mac),
+      await importHmacKey(material),
+      toArrayBuffer(mac),
       enc(msg),
     );
   }

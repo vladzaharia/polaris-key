@@ -38,7 +38,15 @@
  * mapping, so no crash payload is stored (docs/PRIVACY.md).
  */
 
-import type { Db } from "../../core/platform.js";
+import {
+  constantTimeEqualBytes,
+  hexDecode,
+  hexEncode,
+  hmacSha256,
+  importHmacKey,
+  sha256Hex,
+  type Db,
+} from "../../core/platform.js";
 import type { ServiceContext } from "../../core/registry.js";
 import type { ServiceHooks } from "../../core/hooks.js";
 import type { AdminSession } from "../../core/adminApi.js";
@@ -92,28 +100,10 @@ export async function sentryCredentialId(
 
 // ── Signature ────────────────────────────────────────────────────────────────────────────────
 
-function hexToBytes(hex: string): Uint8Array {
-  const out = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < out.length; i++)
-    out[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
-  return out;
-}
-
-function hex(bytes: Uint8Array): string {
-  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a[i]! ^ b[i]!;
-  return diff === 0;
-}
-
 /** The presented MAC, or `null` when the header is missing or not 64 hex characters. */
 export function parseSentrySignature(header: string | null): Uint8Array | null {
   const v = header?.trim();
-  return v && SIGNATURE.test(v) ? hexToBytes(v) : null;
+  return v && SIGNATURE.test(v) ? hexDecode(v) : null;
 }
 
 /** HMAC-SHA256(secret, body), hex — what Sentry sends. Exported for the tests' signer. */
@@ -121,26 +111,15 @@ export async function sentrySignature(
   secret: string,
   body: Uint8Array,
 ): Promise<string> {
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  return hex(
-    new Uint8Array(await crypto.subtle.sign("HMAC", key, body as BufferSource)),
-  );
+  return hexEncode(await sentryMac(secret, body));
 }
 
-async function sha256Hex(data: Uint8Array | string): Promise<string> {
-  const bytes =
-    typeof data === "string" ? new TextEncoder().encode(data) : data;
-  return hex(
-    new Uint8Array(
-      await crypto.subtle.digest("SHA-256", bytes as BufferSource),
-    ),
-  );
+/** The raw HMAC-SHA256(secret, body). */
+async function sentryMac(
+  secret: string,
+  body: Uint8Array,
+): Promise<Uint8Array> {
+  return hmacSha256(await importHmacKey(secret), body);
 }
 
 // ── Mapping ──────────────────────────────────────────────────────────────────────────────────
@@ -262,10 +241,8 @@ export async function handleSentryWebhook(
     { kind: SENTRY_CREDENTIAL_KIND, now },
   );
   if (!secret) return unauthorized();
-  const expected = hexToBytes(
-    await sentrySignature(secret.value.clientSecret, body),
-  );
-  if (!timingSafeEqual(expected, presented)) return unauthorized();
+  const expected = await sentryMac(secret.value.clientSecret, body);
+  if (!constantTimeEqualBytes(expected, presented)) return unauthorized();
 
   const raw = new TextDecoder().decode(body);
   let payload: Record<string, unknown>;

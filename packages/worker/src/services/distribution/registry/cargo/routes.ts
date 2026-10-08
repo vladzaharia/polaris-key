@@ -26,6 +26,7 @@
  * extracted metadata through Release like every other package.
  */
 
+import { sha256Hex } from "../../../../core/platform.js";
 import type {
   RegistryRoute,
   RegistryRouteContext,
@@ -62,16 +63,6 @@ const RENDER_ONLY: RegistryRenderer = {
   routes: [],
   render: (pkg, ctx) => renderCargo(pkg, ctx),
 };
-
-async function sha256Hex(body: string): Promise<string> {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(body),
-  );
-  return [...new Uint8Array(digest)]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
 
 /** The owner's Cargo package deliverables, or `[]` when Release is off for it. */
 async function crates(

@@ -29,7 +29,7 @@
  */
 
 import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
-import type { Db, Env } from "../../core/platform.js";
+import { parseJsonColumn, type Db, type Env } from "../../core/platform.js";
 import {
   claimsForApply,
   type BreakGlassClaim,
@@ -529,15 +529,6 @@ const claimed = (source: string | null | undefined): boolean =>
 const sameJson = (a: unknown, b: unknown): boolean =>
   JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 
-function parseJson(json: string | null | undefined): unknown {
-  if (!json) return null;
-  try {
-    return JSON.parse(json);
-  } catch {
-    return null;
-  }
-}
-
 function catalogKeys(catalog: unknown): Map<string, string> {
   const out = new Map<string, string>();
   const entries =
@@ -630,7 +621,10 @@ export async function planRepoManifest(
     );
   field(
     "core.web.origins",
-    !sameJson(parseJson(product.web_origins_json) ?? [], manifest.webOrigins),
+    !sameJson(
+      parseJsonColumn(product.web_origins_json) ?? [],
+      manifest.webOrigins,
+    ),
     `${manifest.webOrigins.length} web origins`,
     "web origins",
   );
@@ -686,7 +680,10 @@ export async function planRepoManifest(
   // ── the two policies, declared-only ────────────────────────────────────────
   if (
     manifest.fingerprint &&
-    !sameJson(parseJson(product.fingerprint_policy_json), manifest.fingerprint)
+    !sameJson(
+      parseJsonColumn(product.fingerprint_policy_json),
+      manifest.fingerprint,
+    )
   )
     (claimed(product.fingerprint_policy_source)
       ? plan.skipClaimed
@@ -699,7 +696,7 @@ export async function planRepoManifest(
     });
   if (
     manifest.autoIssue &&
-    !sameJson(parseJson(product.auto_issue_json), manifest.autoIssue)
+    !sameJson(parseJsonColumn(product.auto_issue_json), manifest.autoIssue)
   )
     (claimed(product.auto_issue_source) ? plan.skipClaimed : plan.apply).push({
       area: "autoIssue",
@@ -710,7 +707,7 @@ export async function planRepoManifest(
 
   // ── catalog: one unit, a new version when it changed ───────────────────────
   const active = await getActiveSchema(db, slug);
-  const before = catalogKeys(parseJson(active?.catalog_json));
+  const before = catalogKeys(parseJsonColumn(active?.catalog_json));
   const after = catalogKeys(manifest.catalog);
   if (
     claims.has("config.catalog") &&

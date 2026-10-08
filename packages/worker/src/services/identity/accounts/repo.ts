@@ -6,7 +6,7 @@
  * The account id is INTERNAL: it lives in Identity and Core and never reaches a developer.
  */
 
-import { randomId, type Db } from "../../../core/platform.js";
+import { normalizeEmail, randomId, type Db } from "../../../core/platform.js";
 import { MERGE_REDIRECT_SECONDS } from "../../../core/accountSubjects.js";
 
 export interface AccountRow {
@@ -53,10 +53,6 @@ export const PASSKEY_ISSUER = "passkey";
 
 /** The issuer-less key every portal identity carried before I-01 (migrations/0059). */
 export const LEGACY_OIDC_ISSUER = "oidc";
-
-export function normalizeEmail(email: string): string {
-  return email.trim().toLowerCase();
-}
 
 /** The account row, exactly as stored (no tombstone redirect). */
 export async function getAccountRow(

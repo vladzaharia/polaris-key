@@ -7987,7 +7987,9 @@ reaching Godot, any read inside a package beyond Swift manifests, or a raised na
 publish body cap (F-22); the bucket-lock duration
 changes; the admin authorization model changes; the wire contract
 version increments; any new field is added to `AdminSession` or `PortalSession` (see the
-domain-separation note in the audit report — the two realms share HMAC key material by default);
+domain-separation note in the audit report — the two realms share HMAC key material by default),
+or the token format both realms sign with (`packages/worker/src/platform/hmacToken.ts`, P0-15) or
+either realm's domain tag changes;
 a CI scope is added, the publisher policy gains a field, a manifest is allowed to set any part of
 it beyond the workflow and environment, or `UPLOAD_CREDENTIAL_ACTIONS` changes (P2-02); a new
 way to earn a blob ref is added (P4-02's stage round is the second), or the Worker's index bound

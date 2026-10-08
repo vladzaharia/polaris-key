@@ -1,5 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 import type { Env } from "./env.js";
+import { parseJsonObject } from "./platform/json.js";
+import { constantTimeEqual } from "./platform/compare.js";
 
 // The atomic single-use store (I-02, S-16 §3.2 G15 and §5.4 item 8). Every single-use Identity
 // artefact (sign-in flow records, portal magic links, device codes and their user-code index,
@@ -90,17 +92,6 @@ function reply(body: unknown, status = 200): Response {
   });
 }
 
-function parseObject(raw: string): Record<string, unknown> | null {
-  try {
-    const v: unknown = JSON.parse(raw);
-    return v !== null && typeof v === "object" && !Array.isArray(v)
-      ? (v as Record<string, unknown>)
-      : null;
-  } catch {
-    return null;
-  }
-}
-
 /** `expect` semantics: `null` means "the field is absent (or null)"; anything else must be
  *  deep-equal by JSON encoding. Only top-level fields are compared. */
 function matches(
@@ -116,14 +107,6 @@ function matches(
     }
   }
   return true;
-}
-
-/** Length-independent comparison of two hex digests. */
-function sameProof(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
 }
 
 export class SingleUseDO implements DurableObject {
@@ -215,7 +198,7 @@ export class SingleUseDO implements DurableObject {
         const rec = await this.live(op.key, now);
         if (!rec || rec.proof === undefined || typeof op.proof !== "string")
           return reply({ ok: false });
-        if (sameProof(rec.proof, op.proof)) {
+        if (constantTimeEqual(rec.proof, op.proof)) {
           await storage.delete(op.key);
           return reply({ ok: true, value: rec.v });
         }
@@ -227,7 +210,7 @@ export class SingleUseDO implements DurableObject {
       }
       case "update": {
         const rec = await this.live(op.key, now);
-        const obj = rec ? parseObject(rec.v) : null;
+        const obj = rec ? parseJsonObject(rec.v) : null;
         if (!rec || !obj)
           return reply({ ok: false, value: rec ? rec.v : null });
         if (op.expect && !matches(obj, op.expect))
@@ -244,7 +227,9 @@ export class SingleUseDO implements DurableObject {
         const lockMs = Math.max(1, Math.floor(op.lockSec)) * 1000;
         const threshold = Math.max(1, Math.floor(op.threshold));
         const rec = await this.live(op.key, now);
-        const prior = rec ? (parseObject(rec.v) as StrikeState | null) : null;
+        const prior = rec
+          ? (parseJsonObject(rec.v) as StrikeState | null)
+          : null;
         const hits = (Array.isArray(prior?.hits) ? prior.hits : []).filter(
           (t) => typeof t === "number" && t > now - windowMs,
         );
@@ -266,7 +251,7 @@ export class SingleUseDO implements DurableObject {
       }
       case "locked": {
         const rec = await this.live(op.key, now);
-        const st = rec ? (parseObject(rec.v) as StrikeState | null) : null;
+        const st = rec ? (parseJsonObject(rec.v) as StrikeState | null) : null;
         return reply({
           locked: typeof st?.lockedUntil === "number" && st.lockedUntil > now,
         });

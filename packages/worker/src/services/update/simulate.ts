@@ -62,6 +62,7 @@ import { rolloutBucket, selectPackRows } from "@polaris-key/client-core/decide";
 import { holdsOf, packSetId } from "@polaris-key/client-core/packs";
 import type { ServiceContext } from "../../core/registry.js";
 import { signDoc } from "../../core/signing.js";
+import { base64Encode, b64urlEncode, randomHex } from "../../core/platform.js";
 import { getReleaseConfig } from "../release/config.js";
 import {
   getRecordByHash,
@@ -311,12 +312,6 @@ function payloadOf<T>(jws: string): T | null {
 const ARCH_RANK = (arch: string): number =>
   arch === "universal" ? 1 : arch === "any" ? 2 : 0;
 
-function b64url(bytes: ArrayBuffer): string {
-  let bin = "";
-  for (const b of new Uint8Array(bytes)) bin += String.fromCharCode(b);
-  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
 /** The kid of the per-request key: no product key carries it (product kids never use `sim-`). */
 const EPHEMERAL_KID_PREFIX = "sim-";
 
@@ -341,13 +336,11 @@ export async function ephemeralSigner(): Promise<{
     "raw",
     pair.publicKey,
   )) as ArrayBuffer;
-  const body = btoa(String.fromCharCode(...new Uint8Array(pkcs8)));
-  const id = new Uint8Array(8);
-  crypto.getRandomValues(id);
+  const body = base64Encode(pkcs8);
   return {
     pem: `-----BEGIN PRIVATE KEY-----\n${body}\n-----END PRIVATE KEY-----\n`,
-    publicKey: b64url(raw),
-    kid: `${EPHEMERAL_KID_PREFIX}${[...id].map((b) => b.toString(16).padStart(2, "0")).join("")}`,
+    publicKey: b64urlEncode(raw),
+    kid: `${EPHEMERAL_KID_PREFIX}${randomHex(8)}`,
   };
 }
 
@@ -500,7 +493,7 @@ export async function simulate(
     // refusal still runs for real. Only the ephemeral kid can match the feed's header.
     const trust: Record<string, string> = {};
     for (const [i, bytes] of (await productSigningKeyBytes(db, slug)).entries())
-      trust[`${EPHEMERAL_KID_PREFIX}product-${i}`] = b64url(
+      trust[`${EPHEMERAL_KID_PREFIX}product-${i}`] = b64urlEncode(
         bytes.slice().buffer,
       );
     trust[signer.kid] = signer.publicKey;

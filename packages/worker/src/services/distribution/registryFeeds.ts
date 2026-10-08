@@ -16,19 +16,11 @@ import {
 } from "@polaris-key/manifest";
 import type { PackageFeedSettings } from "../../core/hooks.js";
 import { isAccessMode } from "./access.js";
-import type { Db, DbStatement } from "../../core/platform.js";
-
-function parseObject(json: string | null | undefined): Record<string, unknown> {
-  if (!json) return {};
-  try {
-    const v: unknown = JSON.parse(json);
-    return v && typeof v === "object" && !Array.isArray(v)
-      ? (v as Record<string, unknown>)
-      : {};
-  } catch {
-    return {};
-  }
-}
+import {
+  parseJsonObject,
+  type Db,
+  type DbStatement,
+} from "../../core/platform.js";
 
 /** One ecosystem's feed of `product`, under the owner switch and the platform policy. */
 export async function packageFeedOf(
@@ -64,10 +56,10 @@ export async function packageFeedOf(
     ownerEnabled: row.owner_enabled === 1,
     // A missing policy row is a closed switch (fail closed), as is a disabled one.
     policyEnabled: row.policy_enabled === 1,
-    namespace: parseObject(row.namespace_json),
+    namespace: parseJsonObject(row.namespace_json) ?? {},
     maxPackageBytes:
       row.ceiling === null ? 0 : Math.min(row.max_package_bytes, row.ceiling),
-    ext: parseObject(row.ext_json),
+    ext: parseJsonObject(row.ext_json) ?? {},
     accessMode: isAccessMode(row.access_mode) ? row.access_mode : "entitled",
   };
 }

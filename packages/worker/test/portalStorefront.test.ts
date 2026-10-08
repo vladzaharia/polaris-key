@@ -26,7 +26,7 @@ import { setServices } from "../src/repo.js";
 import { getLicense } from "../src/core/data.js";
 import { authorizeDevice } from "../src/core/authz.js";
 import { loadProduct } from "../src/core/products.js";
-import { sha256Hex } from "../src/crypto.js";
+import { sha256Hex } from "../src/platform/hash.js";
 import type { CustomerDownloads, Delivery } from "../src/core/hooks.js";
 import { STOREFRONT_ENABLED_KEY } from "../src/core/storefrontSwitch.js";
 import {

@@ -10,6 +10,7 @@
  * `api` steps, which need a binding to run.
  */
 
+import { parseJsonColumn } from "../../../core/platform.js";
 import type { Support } from "../../../core/adapters/contract.js";
 import {
   READ_OPS,
@@ -37,7 +38,7 @@ import {
   resolvePlatformCredential,
 } from "../../../core/platformCredentials.js";
 import { peekPlatformAppName } from "../connectors/platformApps.js";
-import { listOutlets, parseJsonColumn } from "../outlets.js";
+import { listOutlets } from "../outlets.js";
 import type {
   FlowContext,
   FlowStore,

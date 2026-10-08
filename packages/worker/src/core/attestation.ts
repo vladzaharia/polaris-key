@@ -66,11 +66,9 @@ import { ErrorCode, json, methodNotAllowed, wireError } from "./errors.js";
 import { rateLimitOk } from "./rateLimit.js";
 import { licenseUsable, validateDeviceToken } from "./devices.js";
 import { trustPolicyOf } from "./deviceTrust.js";
-import {
-  base64url,
-  decodeBase64Any,
-  verifyAppAttestation,
-} from "./appAttest.js";
+import { decodeBase64Any, verifyAppAttestation } from "./appAttest.js";
+import { sha256, sha256B64url } from "../platform/hash.js";
+import { randomToken } from "../platform/random.js";
 import { checkPlayVerdict, PLAY_INTEGRITY_SCOPE } from "./playIntegrity.js";
 import { googleAccessTokenFor, type FetchImpl } from "./outletTokens.js";
 import {
@@ -113,13 +111,7 @@ export async function attestRequestHash(
   deviceId: string,
   challenge: string,
 ): Promise<string> {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(
-      `pkey-attest/1:${product}:${deviceId}:${challenge}`,
-    ),
-  );
-  return base64url(new Uint8Array(digest));
+  return sha256B64url(`pkey-attest/1:${product}:${deviceId}:${challenge}`);
 }
 
 async function authenticate(
@@ -165,7 +157,7 @@ export async function handleAttestChallenge(
   )
     return wireError(429, "rate_limited");
 
-  const challenge = base64url(crypto.getRandomValues(new Uint8Array(32)));
+  const challenge = randomToken(32);
   const expiresAt = now + ATTEST_CHALLENGE_TTL;
   const rec: ChallengeRecord = { deviceId: device.device_id, exp: expiresAt };
   await env.HOT.put(
@@ -321,12 +313,7 @@ async function verifyAppAttest(
       attested: false,
       summary: { kind: "app-attest", outcome: "rejected", reason: "malformed" },
     };
-  const clientDataHash = new Uint8Array(
-    await crypto.subtle.digest(
-      "SHA-256",
-      new TextEncoder().encode(requestHash),
-    ),
-  );
+  const clientDataHash = await sha256(requestHash);
   const result = await verifyAppAttestation({
     attestation,
     keyId: body.keyId,

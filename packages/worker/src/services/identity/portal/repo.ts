@@ -1,6 +1,8 @@
 import {
   hashKey,
   mintOpaqueToken,
+  normalizeEmail,
+  parseJsonColumn,
   randomId,
   type Db,
   type DbParam,
@@ -149,19 +151,6 @@ export interface PortalDownloadTokenRow {
   expires_at: number;
   used_at: number | null;
   created_at: number;
-}
-
-export function normalizeEmail(email: string): string {
-  return email.trim().toLowerCase();
-}
-
-function parseJsonUnknown(raw: string | null): unknown {
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
 }
 
 /**
@@ -694,7 +683,7 @@ export function portalProductSettingsView(
     keyReissueEnabled: row.key_reissue_enabled === 1,
     claimByKey: row.claim_by_key === 1,
     ...listingView(row),
-    branding: parseJsonUnknown(row.branding_json),
+    branding: parseJsonColumn(row.branding_json),
     modifiedAt: row.modified_at,
   };
 }
@@ -1388,7 +1377,7 @@ export async function getPlatformIdentity(
     issuerKey,
   );
   if (!row) return null;
-  const parsed = parseJsonUnknown(row.groups_json);
+  const parsed = parseJsonColumn(row.groups_json);
   return {
     subject: row.subject,
     email: row.email,
