@@ -35,6 +35,7 @@ import {
   type PagePlatformGroup,
 } from "./model.js";
 import { qrSvg } from "../../../core/qr.js";
+import { escapeHtmlDecimalApostrophe as esc } from "../../../core/platform.js";
 
 /** The deep-link schemes the Worker builds (`model.ts`). Nothing else but `https:` is linked. */
 export const DEEP_LINK_SCHEMES = [
@@ -46,16 +47,6 @@ export const DEEP_LINK_SCHEMES = [
   "ms-windows-store:",
   "steam:",
 ] as const;
-
-/** Escape for HTML text and double-quoted attribute values. */
-export function esc(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
 
 /** An escaped `href` value, or `null` when the URL is not one the page may link to. */
 export function safeHref(url: string | null): string | null {

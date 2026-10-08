@@ -41,13 +41,12 @@
  */
 
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
-import type { Db } from "../../core/platform.js";
+import { randomHex, randomId, type Db } from "../../core/platform.js";
 import type {
   RolloutRecord,
   RolloutState,
   ServiceHooks,
 } from "../../core/hooks.js";
-import { randomId } from "../../core/platform.js";
 import { appendAudit } from "../../core/data.js";
 import { audit, type AdminSession } from "../../core/adminApi.js";
 import { ciActor, type CiPrincipal } from "../../core/ciScope.js";
@@ -169,8 +168,7 @@ export function getRollout(
 
 /** 16 random bytes, hex: a new release's bucket salt. */
 export function newRolloutSalt(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
-  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+  return randomHex(16);
 }
 
 // ── Actors and refusals ──────────────────────────────────────────────────────────────────────

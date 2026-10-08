@@ -14,7 +14,11 @@
  * Without all of that the adapter is inert and says why, in the connectors' vocabulary.
  */
 
-import type { Db, Env } from "../../../../core/platform.js";
+import {
+  parseJsonColumn,
+  type Db,
+  type Env,
+} from "../../../../core/platform.js";
 import {
   checkOutletCredentialPin,
   listOutletCredentials,
@@ -26,7 +30,7 @@ import {
 } from "../../../../core/platformCredentials.js";
 import { STEAM_NUMERIC_ID } from "../../../../core/steam/client.js";
 import { STEAM_PLATFORM_CREDENTIAL } from "../../commerce/steam.js";
-import { listOutlets, parseJsonColumn } from "../../outlets.js";
+import { listOutlets } from "../../outlets.js";
 import {
   platformFallback,
   platformFallbackMessage,

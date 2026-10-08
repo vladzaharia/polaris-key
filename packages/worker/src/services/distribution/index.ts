@@ -52,7 +52,7 @@ import type {
   ServiceDescriptor,
 } from "../../core/registry.js";
 import type { ParsedManifest } from "@polaris-key/manifest";
-import type { DbStatement } from "../../core/platform.js";
+import { parseJsonColumn, type DbStatement } from "../../core/platform.js";
 import { bytesHostname } from "../../core/bytesHost.js";
 import { handleDistributionAdmin } from "./admin.js";
 import { registryMaterialiser } from "./registryMaterialiser.js";
@@ -73,7 +73,6 @@ import {
 import {
   getOutlet,
   manifestIngestStatements as outletIngestStatements,
-  parseJsonColumn,
 } from "./outlets.js";
 import { DISTRIBUTION_SETTINGS_SLICE } from "./settings.js";
 import {

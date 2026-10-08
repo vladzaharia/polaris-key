@@ -29,7 +29,7 @@
  */
 
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
-import type { Db } from "../../core/platform.js";
+import { parseJsonColumn, type Db } from "../../core/platform.js";
 import type {
   AvailabilityRecord,
   CatalogRelease,
@@ -54,12 +54,7 @@ import {
   type DistAvailabilityRow,
   type DistSubmissionRow,
 } from "./availability.js";
-import {
-  listOutlets,
-  listTransports,
-  parseJsonColumn,
-  transportSupported,
-} from "./outlets.js";
+import { listOutlets, listTransports, transportSupported } from "./outlets.js";
 import {
   ROLLOUT_STATES,
   TRANSITIONS,

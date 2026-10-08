@@ -8,7 +8,12 @@
  * `.pkey/distribution` reaches the model only through an explicit import (`import.ts`).
  */
 
-import type { Db, DbStatement } from "../../../core/platform.js";
+import {
+  parseJsonOr,
+  tryParseJson,
+  type Db,
+  type DbStatement,
+} from "../../../core/platform.js";
 import type {
   ListingApp,
   ListingAssetInput,
@@ -104,17 +109,8 @@ export interface DistListingOverrideRow {
   modified_by: string;
 }
 
-function json<T>(raw: string | null): T | undefined {
-  if (raw === null) return undefined;
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return undefined;
-  }
-}
-
 function strings(raw: string | null): string[] | undefined {
-  const v = json<unknown>(raw);
+  const v = tryParseJson(raw);
   return Array.isArray(v) && v.every((s) => typeof s === "string")
     ? (v as string[])
     : undefined;
@@ -129,8 +125,14 @@ function compact<T extends object>(o: T): T {
 }
 
 export function appOf(row: DistListingRow): ListingApp {
-  const urls = json<Record<string, string>>(row.urls_json);
-  const cd = json<Record<string, unknown>>(row.content_descriptors_json);
+  const urls = parseJsonOr<Record<string, string> | undefined>(
+    row.urls_json,
+    undefined,
+  );
+  const cd = parseJsonOr<Record<string, unknown> | undefined>(
+    row.content_descriptors_json,
+    undefined,
+  );
   return compact({
     defaultLocale: row.default_locale,
     name: row.name ?? undefined,
@@ -163,7 +165,9 @@ export function overrideOf(row: DistListingOverrideRow): ListingOverride {
     store: row.store,
     locale: row.locale === "" ? null : row.locale,
     field: row.field as ModelField,
-    value: json<string | string[]>(row.value_json) ?? "",
+    value:
+      parseJsonOr<string | string[] | undefined>(row.value_json, undefined) ??
+      "",
   };
 }
 
@@ -171,7 +175,10 @@ export function precedenceOf(
   row: DistListingRow | null,
 ): Record<string, PrecedenceSource[]> {
   const v = row
-    ? json<Record<string, PrecedenceSource[]>>(row.precedence_json)
+    ? parseJsonOr<Record<string, PrecedenceSource[]> | undefined>(
+        row.precedence_json,
+        undefined,
+      )
     : undefined;
   return v && typeof v === "object" && !Array.isArray(v) ? v : {};
 }
@@ -193,7 +200,10 @@ export function provenanceOf(
       if (v) out[k] = "manifest";
     return out;
   }
-  const v = json<Record<string, PrecedenceSource>>(row.provenance_json);
+  const v = parseJsonOr<Record<string, PrecedenceSource> | undefined>(
+    row.provenance_json,
+    undefined,
+  );
   if (!v || typeof v !== "object" || Array.isArray(v)) return {};
   const out: Record<string, PrecedenceSource> = {};
   const flat = flatPresent(present);

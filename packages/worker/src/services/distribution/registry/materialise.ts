@@ -34,6 +34,7 @@
  * the drain.
  */
 
+import { sha256Hex } from "../../../core/platform.js";
 import type {
   RegistryEcosystem,
   RegistryRoute,
@@ -192,15 +193,6 @@ export function renderRecordKey(
   deliverableId: string,
 ): string {
   return registryObjectKey(ecosystem, owner, `.render/${deliverableId}.json`);
-}
-
-async function sha256Hex(data: string | Uint8Array): Promise<string> {
-  const bytes =
-    typeof data === "string" ? new TextEncoder().encode(data) : data;
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return [...new Uint8Array(digest)]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
 }
 
 /** JSON with object keys sorted at every level, so equal state hashes equally. */

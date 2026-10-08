@@ -28,7 +28,12 @@
  * every `src/` file from calling it).
  */
 
-import type { Db, Env } from "../../../core/platform.js";
+import {
+  b64urlDecodeStrict,
+  parseJsonObject,
+  type Db,
+  type Env,
+} from "../../../core/platform.js";
 import {
   checkOutletCredentialPin,
   listOutletCredentials,
@@ -45,12 +50,7 @@ import { X509Error, base64ToBytes, verifyChain } from "../../../core/x509.js";
 import { APPLE_ROOT_CA_G3_DER } from "./appleRoot.js";
 import type { AppStoreSettings } from "./settings.js";
 import { normaliseBinding, type VerifiedPurchase } from "./state.js";
-import {
-  StoreUnavailable,
-  b64urlBytes,
-  jsonObject,
-  storeJson,
-} from "./http.js";
+import { StoreUnavailable, storeJson } from "./http.js";
 
 export const APPLE_LEAF_OID = "1.2.840.113635.100.6.11.1";
 export const APPLE_INTERMEDIATE_OID = "1.2.840.113635.100.6.2.1";
@@ -118,13 +118,13 @@ export async function verifyAppleJws(
   const parts = jws.split(".");
   if (parts.length !== 3) return reject("invalid_jws");
   const [h, p, s] = parts as [string, string, string];
-  const headerBytes = b64urlBytes(h);
-  const payloadBytes = b64urlBytes(p);
-  const sig = b64urlBytes(s);
+  const headerBytes = b64urlDecodeStrict(h);
+  const payloadBytes = b64urlDecodeStrict(p);
+  const sig = b64urlDecodeStrict(s);
   if (!headerBytes || !payloadBytes || !sig || sig.length !== 64)
     return reject("invalid_jws");
-  const header = jsonObject(new TextDecoder().decode(headerBytes));
-  const payload = jsonObject(new TextDecoder().decode(payloadBytes));
+  const header = parseJsonObject(new TextDecoder().decode(headerBytes));
+  const payload = parseJsonObject(new TextDecoder().decode(payloadBytes));
   if (!header || !payload || header.alg !== "ES256")
     return reject("invalid_jws");
   const x5c = header.x5c;

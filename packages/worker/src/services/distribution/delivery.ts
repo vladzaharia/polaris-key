@@ -41,6 +41,7 @@
  * Read-only by contract: a hook never writes.
  */
 
+import { parseJsonColumn, type Env } from "../../core/platform.js";
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
 import {
   DEFAULT_TRANSPORT,
@@ -50,11 +51,10 @@ import {
   type HookContext,
 } from "../../core/hooks.js";
 import { bytesHostname } from "../../core/bytesHost.js";
-import type { Env } from "../../core/platform.js";
 import { accessModeOf, entitlementOf, openAccessOf } from "./access.js";
 import { getRollout, listRollouts, rolloutRecord } from "./rollouts.js";
 import { availabilityFor, inventory, submissionsFor } from "./availability.js";
-import { getListing, listOutlets, parseJsonColumn } from "./outlets.js";
+import { getListing, listOutlets } from "./outlets.js";
 import { selectFeedWith } from "./feeds/select.js";
 import { feedStateStamp } from "./feeds/cache.js";
 import { readinessReader, type ReadinessReader } from "./readiness.js";

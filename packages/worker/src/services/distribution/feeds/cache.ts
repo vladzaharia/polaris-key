@@ -21,7 +21,7 @@
  *   - Where there is no Cache API (Node tests) or it throws, the answer is computed every time.
  */
 
-import type { Db } from "../../../core/platform.js";
+import { sha256Hex, type Db } from "../../../core/platform.js";
 import type { ReleaseCatalog } from "../../../core/hooks.js";
 
 // The cache itself is Core's since P3-09 (Update's app-updater feeds share it).
@@ -30,16 +30,6 @@ export {
   FEED_CACHE_SECONDS,
   feedCacheKey,
 } from "../../../core/feedCache.js";
-
-async function sha256Hex(text: string): Promise<string> {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(text),
-  );
-  return [...new Uint8Array(digest)]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
 
 /**
  * The stamp of the state a feed must follow at once (see the file comment): three D1 reads.
