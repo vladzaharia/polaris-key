@@ -84,6 +84,7 @@ public data class PolarisCopy(
     val activationSubtitle: String = "Sign in or enter a license key to continue.",
     val activationSubtitleKeyOnly: String = "Enter a license key to continue.",
     val signIn: String = "Sign in",
+    /** No longer shown: the activation screen sets its two paths apart by space (UI-KITS.md §1.5 rule 6). */
     val orDivider: String = "or",
     val keyLabel: String = "License key",
     val keyPlaceholder: String = "pkey_…",
@@ -113,7 +114,12 @@ public data class PolarisCopy(
     // ── Sign-in with QR (RFC 8628) ───────────────────────────────────────────────────────────
     val signInTitle: String = "Sign in",
     val signInStarting: String = "Getting a sign-in code…",
+    /** On Android TV, beside the QR code. */
     val signInInstructions: String = "Scan the code with your phone, or go to %1\$s and enter this code:",
+    /** Everywhere else (no QR code; the address follows with a copy button). */
+    val signInCodeInstructions: String = "On any phone or computer, go to this address and enter the code.",
+    val signInCopyLink: String = "Copy link",
+    val signInLinkCopied: String = "Link copied",
     val signInQrDescription: String = "QR code that opens the sign-in page",
     val signInCodeDescription: String = "Sign-in code %1\$s",
     val signInOpenBrowser: String = "Open sign-in page",

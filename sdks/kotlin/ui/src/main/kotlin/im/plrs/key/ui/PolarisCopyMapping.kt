@@ -115,7 +115,7 @@ public fun PolarisCopy.errorCodeMessage(code: String): String? = when (code) {
     }
 }
 
-private val DEFAULT_PRODUCT_NAME: String = PolarisCopy().productName
+internal val DEFAULT_PRODUCT_NAME: String = PolarisCopy().productName
 
 /** The label under the progress indicator while the boot runs through [stage]. */
 public fun PolarisCopy.bootStageLabel(stage: BootStage): String = when (stage) {

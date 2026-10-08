@@ -8,6 +8,7 @@
 package im.plrs.key.ui
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -144,6 +145,44 @@ class BrandingTest {
         rule.waitForIdle()
         assertEquals(1, badges())
         assertEquals(1, marks())
+    }
+
+    /** Neutral is the native preset: the host's scheme reaches the kit untouched, dynamic colour included. */
+    @Test
+    fun neutralInheritsDynamicColour() {
+        val dynamic = dynamicLightColorScheme(rule.activity)
+        var inside: androidx.compose.material3.ColorScheme? = null
+        rule.setContent {
+            MaterialTheme(colorScheme = dynamic) {
+                PolarisTheme(copy = sampleCopy) {
+                    inside = MaterialTheme.colorScheme
+                    screen()
+                }
+            }
+        }
+        show(kitScreens.first { it.first == "gate-activation" }.second)
+        assertTrue("the kit sees the host's own scheme object", inside === dynamic)
+        assertTrue("the primary button wears the dynamic primary", dynamic.primary.toArgb() in pixels())
+    }
+
+    /** A product accent replaces the primary roles, resolved for contrast (UI-KITS.md §3.3). */
+    @Test
+    fun theProductAccentApplies() {
+        // The spec's Tidewater vector: teal #369186 resolves to the solid #26847a in both schemes.
+        val teal = androidx.compose.ui.graphics.Color(0xFF369186)
+        val solid = androidx.compose.ui.graphics.Color(0xFF26847A).toArgb()
+        val violet = PolarisBrandTokens.accent("core", dark = true).solid.toArgb()
+        var branding by mutableStateOf(PolarisBranding.PolarisKey)
+        // An empty host logo, so the (violet) Pinned K is not on screen to confuse the check.
+        host(dark = true) { content ->
+            PolarisTheme(branding = branding, copy = sampleCopy, logo = {}, darkTheme = true, accent = teal, content = content)
+        }
+        show(kitScreens.first { it.first == "gate-activation" }.second)
+        assertTrue("branded: the primary button wears the product accent", solid in pixels())
+        assertTrue("branded: the core violet gives way to it", violet !in pixels())
+        rule.runOnIdle { branding = PolarisBranding.None }
+        rule.waitForIdle()
+        assertTrue("neutral: the accent applies over the host's scheme", solid in pixels())
     }
 
     @Test

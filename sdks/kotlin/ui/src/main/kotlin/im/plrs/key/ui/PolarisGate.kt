@@ -33,10 +33,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -47,7 +45,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -358,10 +355,14 @@ public fun PolarisGateScreen(
 
 /**
  * The activation screen: a welcome, the sign-in button (when [onSignIn] is given), and the licence
- * key field with its Activate button. [notice] (a revoked licence's message) sits above the form.
- * After a device-limit refusal that carries a portal link, "Replace a device" opens it: a button,
- * or a QR code when [manageAsQr] (Android TV, where the link is opened on a phone). Activate again
- * is the "Try again".
+ * key field with its Activate button. [notice] (a revoked licence's message) sits above the
+ * welcome. After a device-limit refusal that carries a portal link, "Replace a device" opens it: a
+ * button, or a QR code when [manageAsQr] (Android TV, where the link is opened on a phone).
+ * Activate again is the "Try again".
+ *
+ * The welcome is the content and the two paths are the controls, so a phone in landscape shows
+ * them side by side and Activate never falls below the fold. The paths are set apart by space,
+ * not an "or" rule (UI-KITS.md §1.5 rule 6).
  */
 @Composable
 public fun PolarisActivationScreen(
@@ -375,95 +376,67 @@ public fun PolarisActivationScreen(
     onOpenManage: ((String) -> Unit)? = null,
 ) {
     val copy = PolarisTheme.copy
-    PolarisScreen(modifier = modifier) {
+    PolarisScreen(
+        modifier = modifier,
+        actions = {
+            if (onSignIn != null) {
+                PolarisPrimaryButton(text = copy.signIn, onClick = onSignIn, enabled = !ui.busy)
+                Spacer(Modifier.height(PolarisSpace.group))
+            }
+            val errorText = ui.error?.let { error ->
+                when (error) {
+                    PolarisActivationError.KeyEmpty -> copy.activationKeyEmpty
+                    is PolarisActivationError.Refused -> copy.activationMessage(error.result)
+                }
+            }
+            PolarisTextField(
+                value = ui.key,
+                onValueChange = onKeyChange,
+                label = copy.keyLabel,
+                placeholder = copy.keyPlaceholder,
+                enabled = !ui.busy,
+                error = errorText,
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.None,
+                    autoCorrectEnabled = false,
+                    keyboardType = KeyboardType.Ascii,
+                    imeAction = ImeAction.Done,
+                ),
+                keyboardActions = KeyboardActions(onDone = { onActivate() }),
+            )
+            Spacer(Modifier.height(PolarisSpace.controls))
+            if (onSignIn != null) {
+                PolarisSecondaryButton(text = if (ui.busy) copy.activating else copy.activate, onClick = onActivate, enabled = !ui.busy)
+            } else {
+                PolarisPrimaryButton(text = if (ui.busy) copy.activating else copy.activate, onClick = onActivate, busy = ui.busy)
+            }
+            // The QR code carries the key-free link: a code on a shared screen never holds the key.
+            val manage = if (manageAsQr) ui.manageQrUrl else ui.manageUrl
+            if (manage != null) {
+                Spacer(Modifier.height(PolarisSpace.controls))
+                if (manageAsQr) {
+                    PolarisQrCode(
+                        content = manage,
+                        contentDescription = copy.freeDeviceQrDescription,
+                        modifier = Modifier.widthIn(max = 200.dp).fillMaxWidth(0.6f),
+                    )
+                    Spacer(Modifier.height(PolarisSpace.controls))
+                    PolarisBody(copy.freeDeviceScan, textAlign = TextAlign.Center)
+                } else {
+                    val uriHandler = LocalUriHandler.current
+                    val open = onOpenManage ?: { uri: String -> uriHandler.openUri(uri) }
+                    PolarisSecondaryButton(text = copy.freeDevice, onClick = { open(manage) }, enabled = !ui.busy)
+                }
+            }
+        },
+    ) {
         if (notice != null) {
             PolarisNotice(notice)
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(polarisWindow.section))
         }
         PolarisTitle(copy.format(copy.activationTitle, copy.productName))
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(PolarisSpace.tight))
         PolarisBody(if (onSignIn != null) copy.activationSubtitle else copy.activationSubtitleKeyOnly)
-        Spacer(Modifier.height(32.dp))
-        if (onSignIn != null) {
-            PolarisPrimaryButton(text = copy.signIn, onClick = onSignIn, enabled = !ui.busy)
-            Spacer(Modifier.height(20.dp))
-            PolarisOrDivider(copy.orDivider)
-            Spacer(Modifier.height(20.dp))
-        }
-        val errorText = ui.error?.let { error ->
-            when (error) {
-                PolarisActivationError.KeyEmpty -> copy.activationKeyEmpty
-                is PolarisActivationError.Refused -> copy.activationMessage(error.result)
-            }
-        }
-        OutlinedTextField(
-            value = ui.key,
-            onValueChange = onKeyChange,
-            label = { Text(copy.keyLabel) },
-            placeholder = { Text(copy.keyPlaceholder) },
-            singleLine = true,
-            enabled = !ui.busy,
-            isError = errorText != null,
-            supportingText = errorText?.let { text ->
-                {
-                    Text(
-                        text = text,
-                        modifier = Modifier.semantics {
-                            liveRegion = LiveRegionMode.Assertive
-                            error(text)
-                        },
-                    )
-                }
-            },
-            shape = PolarisTheme.fieldShape,
-            keyboardOptions = KeyboardOptions(
-                capitalization = KeyboardCapitalization.None,
-                autoCorrectEnabled = false,
-                keyboardType = KeyboardType.Ascii,
-                imeAction = ImeAction.Done,
-            ),
-            keyboardActions = KeyboardActions(onDone = { onActivate() }),
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Spacer(Modifier.height(16.dp))
-        if (onSignIn != null) {
-            PolarisSecondaryButton(text = if (ui.busy) copy.activating else copy.activate, onClick = onActivate, enabled = !ui.busy)
-        } else {
-            PolarisPrimaryButton(text = if (ui.busy) copy.activating else copy.activate, onClick = onActivate, busy = ui.busy)
-        }
-        // The QR code carries the key-free link: a code on a shared screen never holds the key.
-        val manage = if (manageAsQr) ui.manageQrUrl else ui.manageUrl
-        if (manage != null) {
-            Spacer(Modifier.height(16.dp))
-            if (manageAsQr) {
-                PolarisQrCode(
-                    content = manage,
-                    contentDescription = copy.freeDeviceQrDescription,
-                    modifier = Modifier.widthIn(max = 200.dp).fillMaxWidth(0.6f),
-                )
-                Spacer(Modifier.height(12.dp))
-                PolarisBody(copy.freeDeviceScan)
-            } else {
-                val uriHandler = LocalUriHandler.current
-                val open = onOpenManage ?: { uri: String -> uriHandler.openUri(uri) }
-                PolarisSecondaryButton(text = copy.freeDevice, onClick = { open(manage) }, enabled = !ui.busy)
-            }
-        }
-    }
-}
-
-/** A horizontal rule with a centred label ("or"). */
-@Composable
-internal fun PolarisOrDivider(label: String) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        HorizontalDivider(Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant)
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 16.dp),
-        )
-        HorizontalDivider(Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant)
     }
 }
 

@@ -21,6 +21,15 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 
+/**
+ * JetBrains Mono (the kit mono, UI-KITS.md §2.1; OFL, its licence in assets/polaris-key/fonts/
+ * OFL-JetBrainsMono.txt) at weight 500, for user codes and keys when branded. Neutral screens use
+ * the platform monospace instead.
+ */
+public val PolarisKitMono: FontFamily = FontFamily(
+    Font(R.font.polaris_jetbrains_mono_variable, FontWeight.Medium),
+)
+
 /** Rubik Regular and Bold, bundled with the kit. */
 public val PolarisRubik: FontFamily = FontFamily(
     Font(R.font.polaris_rubik_regular, FontWeight.Normal),

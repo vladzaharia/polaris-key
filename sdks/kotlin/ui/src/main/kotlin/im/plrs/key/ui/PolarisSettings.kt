@@ -255,7 +255,7 @@ public fun PolarisSettingsScreen(ui: PolarisSettingsUi, modifier: Modifier = Mod
     }
     PolarisScreen(modifier = modifier, showLogo = false) {
         PolarisTitle(copy.settingsTitle)
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(polarisWindow.section))
         val license = ui.license
         if (license != null) {
             PolarisSection(copy.settingsLicense) {

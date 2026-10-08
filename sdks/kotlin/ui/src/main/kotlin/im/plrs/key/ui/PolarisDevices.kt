@@ -24,7 +24,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -177,14 +176,14 @@ public fun PolarisDevicesScreen(
     var removing by rememberSaveable { mutableStateOf<String?>(null) }
     PolarisScreen(modifier = modifier, showLogo = false) {
         PolarisTitle(copy.devicesTitle)
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(PolarisSpace.tight))
         PolarisBody(copy.devicesSubtitle)
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(polarisWindow.section))
         if (ui.error) {
             PolarisNotice(PolarisMessageCopy(copy.devicesError, copy.retry, PolarisMessageKind.Danger))
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(PolarisSpace.tight))
             PolarisTextButton(copy.retry, onRetry)
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(PolarisSpace.controls))
         }
         PolarisSection(title = null) {
             if (ui.devices.isEmpty()) {
@@ -280,14 +279,11 @@ internal fun PolarisRenameDialog(initial: String, onDismiss: () -> Unit, onSave:
         onDismissRequest = onDismiss,
         title = { Text(copy.deviceRenameTitle) },
         text = {
-            OutlinedTextField(
+            PolarisTextField(
                 value = text,
                 onValueChange = { text = it.take(64) },
-                label = { Text(copy.deviceRenameLabel) },
-                singleLine = true,
-                shape = PolarisTheme.fieldShape,
+                label = copy.deviceRenameLabel,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                modifier = Modifier.fillMaxWidth(),
             )
         },
         confirmButton = { PolarisTextButton(copy.deviceSave, onClick = { onSave(text) }) },

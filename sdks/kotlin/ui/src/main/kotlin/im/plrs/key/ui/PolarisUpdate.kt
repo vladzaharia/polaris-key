@@ -311,7 +311,7 @@ public fun PolarisUpdatePrompt(
             Spacer(Modifier.height(24.dp))
             PolarisPrimaryButton(if (ui.kind == PolarisUpdateUi.Kind.Restart) copy.updateRestart else copy.updateNow, onUpdate)
             if (onLater != null && !ui.mandatory) {
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(PolarisSpace.controls))
                 PolarisTextButton(copy.updateLater, onLater)
             }
         }

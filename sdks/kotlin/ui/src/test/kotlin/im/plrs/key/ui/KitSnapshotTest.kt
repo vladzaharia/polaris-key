@@ -36,6 +36,8 @@ data class SnapshotVariant(
     val widthDp: Int = 411,
     val heightDp: Int = 891,
     val fontScale: Float = 1f,
+    /** Android TV's UI mode (the television qualifier). */
+    val tv: Boolean = false,
 ) {
     override fun toString(): String = name
 }
@@ -49,6 +51,10 @@ internal val snapshotVariants = listOf(
     SnapshotVariant("tablet-neutral-light", PolarisBranding.None, dark = false, widthDp = 1280, heightDp = 800),
     SnapshotVariant("tablet-branded-dark", PolarisBranding.PolarisKey, dark = true, widthDp = 1280, heightDp = 800),
 )
+
+/** The resource qualifiers of [this] variant: size, UI mode, night mode, mdpi. */
+internal val SnapshotVariant.qualifiers: String
+    get() = "w${widthDp}dp-h${heightDp}dp-${if (tv) "television-" else ""}${if (dark) "night" else "notnight"}-mdpi"
 
 /** Small rendering differences between hosts (font hinting) are not changes. */
 @OptIn(ExperimentalRoborazziApi::class)
@@ -65,7 +71,7 @@ internal val snapshotOptions by lazy {
  */
 @OptIn(ExperimentalRoborazziApi::class)
 internal fun ComposeTestRule.capture(name: String, variant: SnapshotVariant, showPoweredBy: Boolean = false, content: @Composable () -> Unit) {
-    RuntimeEnvironment.setQualifiers("w${variant.widthDp}dp-h${variant.heightDp}dp-${if (variant.dark) "night" else "notnight"}-mdpi")
+    RuntimeEnvironment.setQualifiers(variant.qualifiers)
     RuntimeEnvironment.setFontScale(variant.fontScale)
     mainClock.autoAdvance = false
     ActivityScenario.launch(ComponentActivity::class.java).use { scenario ->

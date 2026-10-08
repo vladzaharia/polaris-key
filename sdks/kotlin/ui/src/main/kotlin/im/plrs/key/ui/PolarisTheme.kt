@@ -15,6 +15,11 @@
 // accents for the small section indicators), Rubik (bundled under the OFL) and the brand radii,
 // and the logo slot shows the bit-less Pinned K. The "Powered by Polaris Key" badge is a separate
 // switch, off by default, independent of branding (owner decision 2).
+//
+// THE PRODUCT ACCENT. `accent` (a product's colour) replaces the primary roles in either mode,
+// run through the accent resolver (UI-KITS.md §3.3, brand/PolarisAccent.kt) so the fill, its
+// label and the text-on-surface colour all keep their contrast: branded it replaces the core
+// violet; neutral it is applied over the host's scheme, which otherwise stays exactly the host's.
 
 package im.plrs.key.ui
 
@@ -22,6 +27,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
@@ -35,8 +41,11 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import im.plrs.key.ui.brand.BrandAccent
+import im.plrs.key.ui.brand.PolarisAccent
 import im.plrs.key.ui.brand.PolarisBrandTokens
 
 /** The look the kit renders in. */
@@ -113,8 +122,10 @@ public class PolarisUiConfig internal constructor(
     public val logo: (@Composable () -> Unit)?,
     public val dark: Boolean,
     public val status: PolarisStatusColors,
-    /** The shape of the kit's buttons and fields: the host's (Material) shape neutral, the brand radius branded. */
+    /** The shape of the kit's buttons and fields: the host's (Material) shapes neutral, the brand radius branded. */
     public val controlShape: Shape?,
+    /** The product accent's text colour (the resolver's `fg`), when an accent is given. */
+    public val accentText: Color? = null,
 )
 
 internal val LocalPolarisUi = staticCompositionLocalOf<PolarisUiConfig?> { null }
@@ -132,6 +143,9 @@ internal val LocalPolarisUi = staticCompositionLocalOf<PolarisUiConfig?> { null 
  *   nothing neutral and the Pinned K branded.
  * @param darkTheme the branded palette's theme; follows the system. Neutral, the host's
  *   MaterialTheme decides and this only picks the dark or light badge artwork.
+ * @param accent the product's colour. Null (the default) keeps the host's primary neutral and the
+ *   core violet branded; a colour replaces the primary roles in either mode, resolved for
+ *   contrast in the current scheme.
  */
 @Composable
 public fun PolarisTheme(
@@ -140,12 +154,15 @@ public fun PolarisTheme(
     copy: PolarisCopy = PolarisCopy.localized(),
     logo: (@Composable () -> Unit)? = null,
     darkTheme: Boolean = isSystemInDarkTheme(),
+    accent: Color? = null,
     content: @Composable () -> Unit,
 ) {
     when (branding) {
         PolarisBranding.None -> {
-            val scheme = MaterialTheme.colorScheme
-            val dark = remember(scheme.background) { scheme.background.luminance() < 0.5f }
+            val host = MaterialTheme.colorScheme
+            val dark = remember(host.background) { host.background.luminance() < 0.5f }
+            val resolved = remember(accent, dark) { accent?.let { PolarisAccent.resolve(it.toHex(), dark) } }
+            val scheme = remember(host, resolved) { resolved?.let { host.withAccent(it) } ?: host }
             val config = PolarisUiConfig(
                 branding = branding,
                 showPoweredBy = showPoweredBy,
@@ -154,11 +171,22 @@ public fun PolarisTheme(
                 dark = dark,
                 status = PolarisStatusColors.from(scheme),
                 controlShape = null,
+                accentText = resolved?.let { colorOf(it.fg) },
             )
-            CompositionLocalProvider(LocalPolarisUi provides config, content = content)
+            if (resolved == null) {
+                // Neutral means inherited: no MaterialTheme of the kit's own, dynamic colour and all.
+                CompositionLocalProvider(LocalPolarisUi provides config, content = content)
+            } else {
+                MaterialTheme(colorScheme = scheme, typography = MaterialTheme.typography, shapes = MaterialTheme.shapes) {
+                    CompositionLocalProvider(LocalPolarisUi provides config, content = content)
+                }
+            }
         }
         PolarisBranding.PolarisKey -> {
-            val scheme = remember(darkTheme) { polarisBrandColorScheme(darkTheme) }
+            val resolved = remember(accent, darkTheme) { accent?.let { PolarisAccent.resolve(it.toHex(), darkTheme) } }
+            val scheme = remember(darkTheme, resolved) {
+                polarisBrandColorScheme(darkTheme).let { brand -> resolved?.let { brand.withAccent(it) } ?: brand }
+            }
             val typography = polarisBrandTypography(MaterialTheme.typography)
             val config = PolarisUiConfig(
                 branding = branding,
@@ -168,6 +196,7 @@ public fun PolarisTheme(
                 dark = darkTheme,
                 status = PolarisStatusColors.brand(darkTheme),
                 controlShape = RoundedCornerShape(PolarisBrandTokens.Radius.md.dp),
+                accentText = resolved?.let { colorOf(it.fg) },
             )
             MaterialTheme(colorScheme = scheme, typography = typography, shapes = polarisBrandShapes) {
                 CompositionLocalProvider(LocalPolarisUi provides config, content = content)
@@ -175,6 +204,24 @@ public fun PolarisTheme(
         }
     }
 }
+
+/**
+ * [this] scheme with its primary roles from a resolved accent: the fill and its label, the tinted
+ * container (with the scheme's strongest text on it) and the focus colour.
+ */
+internal fun ColorScheme.withAccent(accent: PolarisAccent.Resolved): ColorScheme = copy(
+    primary = colorOf(accent.solid),
+    onPrimary = colorOf(accent.on),
+    primaryContainer = colorOf(accent.subtle),
+    onPrimaryContainer = onSurface,
+    surfaceTint = colorOf(accent.solid),
+)
+
+/** A colour as the resolver's lower-case "#rrggbb". */
+internal fun Color.toHex(): String = "#%06x".format(toArgb() and 0xFFFFFF)
+
+/** A resolver "#rrggbb" as an opaque colour. */
+internal fun colorOf(hex: String): Color = Color(("ff" + hex.removePrefix("#")).toLong(16))
 
 /** Reads the kit's resolved theme. */
 public object PolarisTheme {
@@ -196,10 +243,23 @@ public object PolarisTheme {
         @Composable
         get() = current.controlShape ?: ButtonDefaults.shape
 
-    /** The shape of the kit's text fields. */
+    /**
+     * The shape of the kit's filled text fields: Material's filled-field shape neutral, the brand
+     * control radius branded (the same corners as the buttons beside it).
+     */
     public val fieldShape: Shape
+        @Composable
+        get() = current.controlShape ?: TextFieldDefaults.shape
+
+    /** The colour of accent text (text buttons, outlined labels): the product accent's `fg` when given. */
+    public val accentText: Color
         @Composable @ReadOnlyComposable
-        get() = current.controlShape ?: MaterialTheme.shapes.extraSmall
+        get() = current.accentText ?: MaterialTheme.colorScheme.primary
+
+    /** The kit mono for user codes and keys: JetBrains Mono branded, the platform monospace neutral. */
+    public val monoFamily: FontFamily
+        @Composable @ReadOnlyComposable
+        get() = if (current.branding == PolarisBranding.PolarisKey) PolarisKitMono else FontFamily.Monospace
 
     /**
      * The accent for a section indicator (an entitlement badge, the update glyph, a pack progress
