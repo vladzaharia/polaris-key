@@ -12,8 +12,8 @@ Fail-closed, leak and error-model fixes (SP-48). Each **breaking** line names wh
   from the constructor, `create()`, `AsyncClient.create()` and `services_from_list()`; the CLI's
   `--service` reports it as a usage error. A misspelt `"licence"` used to turn License off, so
   `is_licensed()` was true on a device never activated. Fix the slug.
-- **The device token is no longer in a result's `repr`.** `ActivationOk`, `RegisterOk` and
-  `Reacquired` hide `token`; `print(result)` and log lines are safe. The field is unchanged.
+- **Credentials are no longer in a `repr`.** `ActivationOk`, `RegisterOk` and
+  `Reacquired` hide `token`; `ConfigDoc.secrets` and `ManagedEntry.value` are hidden too; `print(result)` and log lines are safe. The field is unchanged.
 - **Breaking: one error model.** A request that gets no answer raises (or returns)
   `network-error` with the httpx exception as `__cause__`; a 5xx is `server-error` with `status`.
   No httpx exception reaches the caller.

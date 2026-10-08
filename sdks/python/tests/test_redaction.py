@@ -22,8 +22,15 @@ from polaris_key.core.token import Reacquired
 
 from helpers import BASE_URL, PRODUCT, TOKEN, discovery_doc, make_client
 
-#: Field names that hold a credential. A dataclass field with one of these names must be hidden.
-CREDENTIAL_FIELDS = {"token", "deviceCode", "device_token", "deviceToken", "access_token", "refresh_token"}
+#: Field-name fragments that mark a credential. A dataclass field whose name contains one must be
+#: hidden from repr, unless listed in SAFE.
+CREDENTIAL_WORDS = ("token", "devicecode", "secret", "bearer", "credential", "password", "key_material", "keymaterial")
+#: Types whose ``value`` can be a managed secret: hidden too.
+VALUE_HOLDERS = {"ManagedEntry"}
+#: Explicitly safe: (class, field) -> why.
+SAFE = {
+    ("SyncDeps", "tokens"): "a TokenManager (default object repr), not a token string",
+}
 
 
 def _plane(r: httpx.Request) -> httpx.Response:
@@ -84,8 +91,8 @@ def test_no_public_result_repr_contains_the_device_token() -> None:
 
 
 def test_every_credential_field_in_the_package_is_hidden_from_repr() -> None:
-    """A static sweep: every dataclass under ``polaris_key`` with a credential-named field keeps
-    it out of the repr, so a new result type cannot reintroduce the leak."""
+    """A static sweep: every dataclass under ``polaris_key`` with a credential-named field (or a
+    ``value`` on a secret-holding type) keeps it out of the repr, unless explicitly marked safe."""
     leaks = []
     for mod in pkgutil.walk_packages(polaris_key.__path__, "polaris_key."):
         if ".ui.qt" in mod.name or mod.name.endswith("textual_app"):
@@ -97,6 +104,32 @@ def test_every_credential_field_in_the_package_is_hidden_from_repr() -> None:
         for obj in vars(m).values():
             if isinstance(obj, type) and dataclasses.is_dataclass(obj) and obj.__module__ == m.__name__:
                 for f in dataclasses.fields(obj):
-                    if f.name in CREDENTIAL_FIELDS and f.repr:
+                    low = f.name.lower()
+                    sensitive = any(w in low for w in CREDENTIAL_WORDS) or (
+                        f.name == "value" and obj.__name__ in VALUE_HOLDERS
+                    )
+                    if sensitive and f.repr and (obj.__name__, f.name) not in SAFE:
                         leaks.append(f"{obj.__module__}.{obj.__qualname__}.{f.name}")
     assert leaks == []
+
+
+def test_a_config_doc_never_prints_a_managed_secret() -> None:
+    from polaris_key.core.models import ConfigDoc, ManagedEntry
+
+    doc = ConfigDoc.from_dict(
+        {
+            "iss": "key.plrs.im",
+            "aud": PRODUCT,
+            "deviceId": "d" * 32,
+            "issuedAt": 1,
+            "expiresAt": 2,
+            "graceUntil": 3,
+            "schemaVersion": 1,
+            "config": {"theme": {"value": "dark"}},
+            "secrets": {"k": {"value": "SUPERSECRET"}},
+        }
+    )
+    assert doc is not None and doc.secrets["k"].value == "SUPERSECRET"
+    for obj in (doc, doc.secrets["k"], ManagedEntry("managed", "SUPERSECRET")):
+        assert "SUPERSECRET" not in repr(obj)
+        assert "SUPERSECRET" not in str(obj)

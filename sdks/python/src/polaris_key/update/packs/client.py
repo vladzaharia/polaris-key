@@ -565,7 +565,12 @@ class PacksClient:
                 "GET", url, headers=self._ctx.headers(headers), timeout=self._ctx.timeout
             ) as res:
                 if not res.is_success:
-                    return {"ok": False, "code": ErrorCode.NETWORK_ERROR}
+                    return {
+                        "ok": False,
+                        "code": ErrorCode.SERVER_ERROR
+                        if res.status_code >= 500
+                        else ErrorCode.NETWORK_ERROR,
+                    }
                 # A record over the bound is refused at step `hash` without hashing; never
                 # buffer more than one byte past it.
                 limit = MAX_RECORD_JWS_BYTES + 1
