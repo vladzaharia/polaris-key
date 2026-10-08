@@ -277,14 +277,37 @@ controller: `PKeyBoot`, `PKeyGate` (class `PKeyGateView`), `PKeyActivationPanel`
 Every one is operable with ui_up, ui_down, ui_accept and ui_cancel alone, so it works on a
 gamepad or a TV remote.
 
-- **Layout.** Every scene centres itself: a full-screen scene (`PKeyGate`, `PKeyBoot`) centres
-  its card horizontally and vertically, and a dialog or panel centres its content at a comfortable
-  width (`max_content_width`, 520 px by default, 640 for the settings panel), never wider than the
-  viewport less a 16 px gutter on each side. It holds from a phone in portrait to 4K and under the
-  `canvas_items` and `viewport` stretch modes. A scene nested in another fills the space its parent
-  gives it; set `max_content_width = 0` to make a standalone one fill its rect instead (a sidebar,
-  say). The status banner and the entitlement badge centre their lines and chips across the width
-  they are given.
+- **Layout: responsive.** Every scene lays itself out for the area it is given (its own rect, not
+  the OS), and follows a window resize live without losing the focused control:
+  - *Orientation.* Wider than tall is landscape: the device code stands beside its QR code, the
+    product and what the gate says beside the activation form, the offline request beside its
+    import. Narrow or tall stacks them in one column.
+  - *Scale.* With the Polaris Key look every size (text, padding, radii, the QR code, card
+    widths) follows the screen: 1 on 1280×720 (600×1080 in portrait), down to 0.75 on a 640×360
+    window, up to 2 on 2560×1440. The neutral look and your own theme keep your sizes and only
+    shrink on a screen too small for them. It holds under the `disabled`, `canvas_items` and
+    `viewport` stretch modes and `content_scale_factor`.
+  - *Density.* `options.ui_density` (`spacious`, the default, `comfortable` or `compact`) steps down
+    on its own when the screen is short or narrow.
+  - *Margins and width.* Content keeps at least `page_margin` (32 px at scale 1) from the screen's
+    edges and is capped in width and centred, so it never hugs an edge or floats adrift on 4K. On
+    a phone or tablet the device's safe area (`DisplayServer.get_display_safe_area()`) is kept
+    clear too. A QR code is never under 160 physical pixels.
+  - *Last resort.* A card scrolls (following the focus) only when a theme's type is too large for
+    the screen; the Polaris Key look never needs to.
+
+  A scene nested in another fills the space its parent gives it; set `max_content_width = 0` to
+  make a standalone one fill its rect instead (a sidebar, say).
+- **Spacing and type.** One spacing scale on a 4 px base and the roles every scene uses
+  (`page_margin` 32, `card_padding` 40, `section_gap` 32, `stack_gap` 16, `tight_gap` 8,
+  `inline_gap` 12, `column_gap` 48, `control_height` 56 at scale 1, spacious) live in every stock
+  theme as constants of the type `PKeyLayout` and as the container variations `PKeyStack`,
+  `PKeyTight`, `PKeySections`, `PKeyRow`, `PKeyActions`, `PKeyColumns` and `PKeyGrid`; the type
+  scale is `PKeyTitle` 32, `PKeySection` 24, body 18, `PKeyMuted` 16 and `PKeyCode` 52
+  (`PKeyUiTheme.DENSITIES`, `MEASURES`). No scene writes a margin of its own.
+- **The product leads.** Gate, boot and sign-in screens lead with your product's icon and name
+  (`options.ui_product_name` / `ui_product_icon`, else the project's `application/config/name`
+  and icon, else a monogram tile of its initial); no kit screen shows a Polaris Key mark.
 - **Look: neutral by default.** Out of the box the scenes carry no Polaris Key branding. They take
   your game's own theme and font, as the scene's place in the tree resolves them (a Theme on an
   ancestor, else the project's `gui/theme/custom` and `gui/theme/custom_font`, else the engine's),
@@ -307,17 +330,21 @@ gamepad or a TV remote.
   Kit scenes already on screen re-theme when `configure()` applies the options. A game that only
   calls `PolarisKey.boot()` gets its UI options from `res://polaris_key.tres`, which boot
   configures from once its view is showing: put `ui_branding`, `ui_powered_by` and the rest in
-  that resource (the setup dock's file), not in statics set before `boot()`. With branding on, the gate card and the boot screen show the Pinned K (the display cut, never the
-  terminal bit) and the kit uses the design system's dark or light palette, the platform violet
-  (or your accent), Rubik, and a 2 px violet focus ring on every control. With `ui_powered_by`,
+  that resource (the setup dock's file), not in statics set before `boot()`. With branding on the
+  kit uses the design system's dark or light palette, the platform violet (or your accent),
+  Rubik, the kit's own switch, check box and chevron icons, and a 2 px violet focus ring on every
+  control. With `ui_powered_by`,
   the gate, boot and settings scenes end with the compact "Powered by Polaris Key" badge, at its
   kit minimum of 232 × 88 or larger and never cropped; it is off unless you turn it on, with or
   without branding.
 
 - **Your own theme.** A scene given a Theme of its own (in the inspector or in code) keeps it; only
-  a scene still on the kit's stock theme follows the options. A replacement Theme should style the
-  type variations `PKeyTitle`, `PKeyMuted`, `PKeyCode`, `PKeyError`, `PKeyBadge`, `PKeyBanner`,
-  `PKeyCard` and `PKeyPrimary`; `PKeyQrRect` reads the colours `dark` and `light`. `PKeyBoot`'s
+  a scene still on the kit's stock theme follows the options. `ui_theme` is layered: your Theme
+  wins wherever it sets an item, over the kit's neutral structure (type hierarchy, spacing, card
+  padding) derived from your font size, so a partial theme still lays out well. A replacement
+  Theme may style the type variations `PKeyTitle`, `PKeySection`, `PKeyMuted`, `PKeyCode`,
+  `PKeyMono`, `PKeyStrong`, `PKeyError`, `PKeyBadge`, `PKeyBanner`, `PKeyCard`, `PKeyQrTile` and
+  `PKeyPrimary`; `PKeyQrRect` reads the colours `dark` and `light`. `PKeyBoot`'s
   `theme` option applies a Theme a mounted pack provides. `PKeyUiTheme.build(dark, accent, font,
 bold_font)` makes the Polaris Key theme with your accent or fonts if you want a starting point.
 - **Font.** With branding on, Rubik (Regular for text, Bold for titles and codes) ships in
@@ -542,8 +569,16 @@ func _ready() -> void:
 - **Tests.** `boot` drives every stage-matrix row through `PolarisKey.boot()` with a scripted
   host, and the sync classes and keyless registration through the fake server; `ui` pins every
   scene state as a structural snapshot (`tests/ui/snapshots/`), walks focus with ui_down alone,
-  and checks every visible string is PKeyUiCopy text under a pseudo-locale. Headless runs have no
-  renderer; `tools/ui_screenshots.gd` renders the same states to PNGs for review.
+  and checks every visible string is PKeyUiCopy text under a pseudo-locale. `ui_matrix` lays every
+  drop-in screen out across the resolution matrix (`tests/ui/matrix.gd`: 640×360, 800×600,
+  1280×720, 1280×800, 1920×1080, 2560×1440, 3840×2160 at scale 2, a phone in portrait and
+  landscape with a safe area, a 4:3 tablet, and five common stretch settings), in the Polaris Key,
+  native and custom looks and in English, German and Japanese, and fails on any control outside
+  its container or the screen's safe area, overlapping controls, clipped text, a margin under
+  16 px, a QR code under 160 physical pixels, a landscape screen laid out in portrait, or a Polaris
+  Key card that needs its scroll fallback. Headless runs have no renderer; `tools/ui_matrix/ui_matrix.gd`
+  renders the matrix to PNGs (`godot --path sdks/godot --script tools/ui_matrix/ui_matrix.gd --
+  --out DIR --sheets`) and `tools/ui_screenshots.gd` every pinned state.
 - Timings (M-series Mac, 4.7.2): `stage_matrix` 15 ms in the editor and 13 ms on the release
   template (56 rows, 6,594 probe transitions); `boot` about 6.3 s on both (five deliberate 1 s
   request deadlines); `ui` about 12 s on both (67 states, three passes each).

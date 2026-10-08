@@ -698,6 +698,8 @@ func fit_scrolls(room: float, bounded: bool) -> void:
 		var mode := ScrollContainer.SCROLL_MODE_AUTO if scrolls else ScrollContainer.SCROLL_MODE_DISABLED
 		if sc.vertical_scroll_mode != mode:
 			sc.vertical_scroll_mode = mode
+		# Passing through, it clips nothing (a focus ring at its edge shows whole).
+		sc.clip_contents = scrolls
 		var want := maxf(0.0, room) if scrolls else 0.0
 		if not is_equal_approx(sc.custom_minimum_size.y, want):
 			sc.custom_minimum_size.y = want

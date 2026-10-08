@@ -213,19 +213,20 @@ func resize(tree: SceneTree, st: Dictionary, physical: Vector2i, scale: float, i
 	await settle(tree, st)
 
 
-## Let a staged screen's layout settle: frames until its size and minimum stop changing (at least
-## two, at most six); a strip is trimmed to its own height.
+## Let a staged screen's layout settle: frames until every control's rect stops changing (at
+## least three, the frames a view checks its own sorting after a layout pass; at most ten); a strip
+## is trimmed to its own height.
 static func settle(tree: SceneTree, st: Dictionary) -> void:
 	var v: PKeyUiView = st["view"]
 	v.layout_content()
 	var last := ""
-	for i in 6:
+	for i in 10:
 		await tree.process_frame
 		if st["kind"] != "full" and not v.get("_covering"):
 			# A strip asks for its own height only.
 			v.offset_bottom = v.offset_top + v.get_combined_minimum_size().y
 		var sig := _signature(v)
-		if i >= 1 and sig == last:
+		if i >= 2 and sig == last:
 			break
 		last = sig
 

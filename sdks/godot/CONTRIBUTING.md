@@ -216,6 +216,10 @@ sdks/godot/
     godot.sha512              upstream SHA-512 pins for those downloads
     gen_theme.gd              writes the ui/theme/*.tres themes (`--script`, editor only)
     ui_screenshots.gd         PNGs of every scene per look and size, for review (needs a display)
+    ui_matrix/                the resolution matrix (tests/ui/matrix.gd) to PNGs and contact
+                              sheets, every drop-in screen, size, look and locale (needs a
+                              display); locales.gd holds the de/ja test copy it and the
+                              ui_matrix suite load
 ```
 
 ## Running the tests

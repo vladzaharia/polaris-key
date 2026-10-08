@@ -9,6 +9,28 @@ as the GitHub Release notes, and the same text is the Asset Store version's chan
 
 ## Unreleased
 
+- **Responsive drop-in screens.** Every UI kit scene lays itself out for the area it is given:
+  side by side in landscape (the device code beside its QR code, the product beside the activation
+  form, the offline request beside its import), one column in portrait, following a resize live.
+  The Polaris Key look scales with the screen (0.75 on 640×360 to 2 on 2560×1440), every look
+  keeps the page margin, caps its width and centres, keeps a phone's safe area clear and never
+  draws a QR code under 160 physical pixels. A card scrolls only as a last resort for a game's
+  oversized theme. New `options.ui_density` (spacious, comfortable, compact; it steps down on a
+  small screen), `ui_product_name` and `ui_product_icon`.
+- **A spacing system and type scale** in every stock theme (`PKeyLayout` constants and the
+  container variations `PKeyStack`, `PKeyTight`, `PKeySections`, `PKeyRow`, `PKeyActions`,
+  `PKeyColumns`, `PKeyGrid`; `PKeySection`, `PKeyMono`, `PKeyStrong` and `PKeyQrTile` join the type
+  variations). Gate, boot and sign-in screens lead with the product's icon and name; **behaviour
+  change:** the Pinned K no longer heads the branded gate and boot screens (UI-KITS.md §1.2). The
+  branded theme draws its own switch, check box and chevron icons; banners float as cards; QR
+  codes sit on a rounded white tile. `ui_theme` is now layered over the kit's neutral structure
+  (your items win), so a partial theme keeps the kit's spacing.
+- **Fixed:** offline activation opened from the activation panel showed no request code until
+  re-rendered; it now renders with the SDK it is given. A layout switch could leave a container
+  unsorted after a resize (the engine drops a re-sort asked for mid-sort); views now verify their
+  sort for a few frames after each layout pass.
+- **Tests:** the `ui_matrix` suite (in `ci`) and `tools/ui_matrix/ui_matrix.gd` (PNGs).
+
 The SDK parity pass (`notes/SDK-PARITY-PASS.md` §5.6).
 
 - **Desktop keyring store** (SP-27). On macOS, Windows and Linux the token is kept in the OS

@@ -325,7 +325,8 @@ static func for_view(view: Control) -> Theme:
 	var font := view.get_theme_default_font()
 	var text := view.get_theme_color("font_color", "Label")
 	var panel := view.get_theme_stylebox("panel", "PanelContainer")
-	var key := "%d|%d|%s|%d" % [size, font.get_instance_id() if font != null else 0, text.to_html(), panel.get_instance_id() if panel != null else 0]
+	var button := view.get_theme_stylebox("normal", "Button")
+	var key := "%d|%d|%s|%d|%d" % [size, font.get_instance_id() if font != null else 0, text.to_html(), panel.get_instance_id() if panel != null else 0, button.get_instance_id() if button != null else 0]
 	if not _neutral_cache.has(key):
 		var bold: Font = null
 		if font != null:
@@ -333,7 +334,7 @@ static func for_view(view: Control) -> Theme:
 			v.base_font = font
 			v.variation_embolden = 0.6
 			bold = v
-		_neutral_cache[key] = neutral_with(size, text, bold, panel)
+		_neutral_cache[key] = neutral_with(size, text, bold, panel, button)
 	return _neutral_cache[key]
 
 
@@ -365,21 +366,23 @@ static func neutral() -> Theme:
 	var bold := FontVariation.new()
 	bold.base_font = font
 	bold.variation_embolden = 0.6
-	return neutral_with(base, _project_color("font_color", "Label"), bold, _project_stylebox("panel", "PanelContainer"))
+	return neutral_with(base, _project_color("font_color", "Label"), bold, _project_stylebox("panel", "PanelContainer"), _project_stylebox("normal", "Button"))
 
 
 ## The neutral theme from explicit inputs (`bold` null: titles keep the body face).
-static func neutral_with(base_size: int, text: Color, bold: Font, panel: StyleBox) -> Theme:
+## `button` is the game's normal Button style, which the primary action's ink style is built on.
+static func neutral_with(base_size: int, text: Color, bold: Font, panel: StyleBox, button: StyleBox = null) -> Theme:
 	var t := Theme.new()
 	t.set_meta(STOCK_META, true)
 	for v in VARIATIONS:
 		t.set_type_variation(v, VARIATIONS[v])
-	var card := panel.duplicate() as StyleBox if panel != null else StyleBoxFlat.new()
+	var card := _raised(panel, text)
 	t.set_stylebox("panel", "PKeyCard", card)
 	t.set_stylebox("panel", "PKeyBanner", card.duplicate() as StyleBox)
 	for v in NEUTRAL_RATIOS:
 		t.set_font_size("font_size", v, roundi(base_size * NEUTRAL_RATIOS[v]))
 	_apply_layout(t, float(base_size) / TYPE_BODY, DEFAULT_DENSITY, false)
+	_ink_primary(t, text, panel, button)
 	var muted := text
 	muted.a *= 0.72
 	t.set_color("font_color", "PKeyMuted", muted)
@@ -402,17 +405,57 @@ static func neutral_with(base_size: int, text: Color, bold: Font, panel: StyleBo
 		t.set_font("font", "PKeyPrimary", bold)
 	t.set_color("dark", "PKeyQrRect", Color.BLACK)
 	t.set_color("light", "PKeyQrRect", Color.WHITE)
-	t.set_stylebox("panel", "PKeyQrTile", _box(Color.WHITE, Color.WHITE, 0, RADIUS_CONTROL, 8))
+	t.set_stylebox("panel", "PKeyQrTile", _box(Color.WHITE, Color.WHITE, 0, RADIUS_CONTROL, 6))
 	t.set_meta(UNIT_META, float(base_size) / TYPE_BODY)
 	t.set_meta(BASE_SIZE_META, base_size)
 	return t
+
+
+## A card raised off the game's panel: the panel's own style, its ground lifted a little toward the
+## text colour, with a hairline in the text colour and at least a 12 px radius, so a card shows on
+## a page of the same panel.
+static func _raised(panel: StyleBox, text: Color) -> StyleBox:
+	if panel != null and not (panel is StyleBoxFlat):
+		return panel.duplicate() as StyleBox
+	var f: StyleBoxFlat = panel.duplicate() as StyleBoxFlat if panel != null else StyleBoxFlat.new()
+	if panel == null:
+		f.bg_color = Color(text, 0.06)
+	else:
+		f.bg_color = Color(f.bg_color.lerp(Color(text, f.bg_color.a), 0.06), maxf(f.bg_color.a, 0.94))
+	f.border_color = Color(text, 0.14)
+	for side in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]:
+		f.set_border_width(side, maxi(1, f.get_border_width(side)))
+	for corner in [CORNER_TOP_LEFT, CORNER_TOP_RIGHT, CORNER_BOTTOM_RIGHT, CORNER_BOTTOM_LEFT]:
+		f.set_corner_radius(corner, maxi(12, f.get_corner_radius(corner)))
+	return f
+
+
+## The one primary action in the game's own look: the ink primary of UI-KITS.md §1.2 (filled with
+## the text colour, labelled in the panel's ground), on the game's button shape.
+static func _ink_primary(t: Theme, text: Color, panel: StyleBox, button: StyleBox) -> void:
+	var ground := Color.BLACK if text.get_luminance() > 0.5 else Color.WHITE
+	if panel is StyleBoxFlat and (panel as StyleBoxFlat).bg_color.a > 0.5:
+		ground = Color((panel as StyleBoxFlat).bg_color, 1.0)
+	var ink := Color(text, 1.0)
+	for pair in [["normal", 0.0], ["hover", 0.12], ["pressed", 0.24], ["focus", -1.0]]:
+		if pair[1] < 0.0:
+			continue
+		var b: StyleBoxFlat = button.duplicate() as StyleBoxFlat if button is StyleBoxFlat else StyleBoxFlat.new()
+		b.draw_center = true
+		b.bg_color = ink.lerp(ground, pair[1])
+		b.border_color = b.bg_color
+		if b.get_corner_radius(CORNER_TOP_LEFT) == 0:
+			b.set_corner_radius_all(6)
+		t.set_stylebox(pair[0], "PKeyPrimary", b)
+	for c in ["font_color", "font_hover_color", "font_focus_color", "font_pressed_color"]:
+		t.set_color(c, "PKeyPrimary", ground)
 
 
 ## The committed neutral theme: built over the engine's default theme, without a derived bold
 ## face (a FontVariation of the engine's built-in font cannot be saved).
 static func neutral_default() -> Theme:
 	var d := ThemeDB.get_default_theme()
-	return neutral_with(ThemeDB.fallback_font_size, d.get_color("font_color", "Label"), null, d.get_stylebox("panel", "PanelContainer"))
+	return neutral_with(ThemeDB.fallback_font_size, d.get_color("font_color", "Label"), null, d.get_stylebox("panel", "PanelContainer"), d.get_stylebox("normal", "Button"))
 
 
 static func _project_color(item: StringName, type: StringName) -> Color:
@@ -561,7 +604,7 @@ static func build_with(dark: bool, p_accent: Color, regular: Font, bold: Font, m
 	t.set_color("dark", "PKeyQrRect", Color.BLACK)
 	t.set_color("light", "PKeyQrRect", Color.WHITE)
 	# Its tile: white, rounded, a little padding beyond the code's own quiet zone.
-	t.set_stylebox("panel", "PKeyQrTile", _box(Color.WHITE, Color.WHITE, 0, RADIUS_CONTROL, 8))
+	t.set_stylebox("panel", "PKeyQrTile", _box(Color.WHITE, Color.WHITE, 0, RADIUS_CONTROL, 6))
 	_apply_layout(t, 1.0, DEFAULT_DENSITY, true)
 	return t
 
@@ -873,7 +916,8 @@ static func layered(own: Theme) -> Theme:
 		bold.variation_embolden = 0.6
 	var text := own.get_color("font_color", "Label") if own.has_color("font_color", "Label") else _project_color("font_color", "Label")
 	var panel := own.get_stylebox("panel", "PanelContainer") if own.has_stylebox("panel", "PanelContainer") else _project_stylebox("panel", "PanelContainer")
-	var t := neutral_with(size, text, bold, panel)
+	var button := own.get_stylebox("normal", "Button") if own.has_stylebox("normal", "Button") else _project_stylebox("normal", "Button")
+	var t := neutral_with(size, text, bold, panel, button)
 	t.merge_with(own)
 	t.set_meta(STOCK_META, true)
 	t.set_meta(LAYERED_META, own)

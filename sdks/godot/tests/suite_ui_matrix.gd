@@ -3,7 +3,7 @@ extends RefCounted
 # The drop-in screens across the resolution matrix (tests/ui/matrix.gd), headless: every named
 # screen at every size of the matrix and at the logical sizes common stretch settings give
 # (STRETCHED), in the Polaris Key look, the native look over a game's own theme and a game's whole
-# custom theme, in English, German and Japanese. Each layout must have no control outside its
+# custom theme (PRESET_LOCALES: English, German and Japanese). Each layout must have no control outside its
 # container or the panel's safe rect, no two controls overlapping, no clipped text, at least
 # GUTTER between the content and the screen's edges, every QR code scannable (QR_MIN_PHYSICAL
 # physical pixels) and not swamping the screen, and the two-part screens side by side in
@@ -18,7 +18,10 @@ extends RefCounted
 #   godot --headless --path sdks/godot -- --pkey-test ui_matrix sign_in,gate   # some screens
 
 const MATRIX := preload("res://tests/ui/matrix.gd")
-const PRESETS := ["dark", "native", "custom"]
+## The looks and the locales each is checked in: every locale in the Polaris Key look (which must
+## fit without its scroll fallback), and the longest German and the unspaced Japanese strings
+## under a game's theme. The light preset lays out as the dark one.
+const PRESET_LOCALES := {"dark": ["en", "de", "ja"], "native": ["en", "de"], "custom": ["en", "ja"]}
 
 
 func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
@@ -34,8 +37,8 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 		var k: float = st[1]
 		sizes.append([row[0], Vector2i((Vector2(logical) * k).round()), k, null])
 	var layouts := 0
-	for preset in PRESETS:
-		for locale in MATRIX.LOCALES:
+	for preset in PRESET_LOCALES:
+		for locale in PRESET_LOCALES[preset]:
 			mx.use_locale(locale)
 			for entry in MATRIX.SCREENS:
 				if not only.is_empty() and not only.has(entry[0]):
@@ -58,7 +61,7 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 	mx.drop_locales()
 	PKeyUiView.safe_insets_override = null
 	PKeyUiTheme.reset()
-	t.check("matrix: coverage", layouts >= MATRIX.SCREENS.size() * sizes.size() * PRESETS.size() * MATRIX.LOCALES.size() or not only.is_empty(), "%d layouts" % layouts)
+	t.check("matrix: coverage", layouts >= MATRIX.SCREENS.size() * sizes.size() * 7 or not only.is_empty(), "%d layouts" % layouts)
 	return true
 
 
