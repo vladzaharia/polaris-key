@@ -1,87 +1,4 @@
-<style>
-  /* products.home: only what the kit does not already say. */
-  [data-screen="products.home"] .ready-head {
-    align-items: center;
-  }
-  [data-screen="products.home"] .ready-meter {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    width: 220px;
-  }
-  [data-screen="products.home"] .ready-meter .progress {
-    flex: 1;
-  }
-  [data-screen="products.home"] .done-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px 18px;
-    padding: 12px 20px 14px;
-    border-top: 1px solid var(--mk-line);
-    font-size: 13px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="products.home"] .done-list > span {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    white-space: nowrap;
-  }
-  [data-screen="products.home"] .done-list .ic {
-    width: 14px;
-    height: 14px;
-    color: var(--pk-success);
-  }
-  [data-screen="products.home"] .done-list > .lead {
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="products.home"] .ready-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 9px;
-    background: var(--pk-accent-subtle);
-    color: var(--pk-accent-fg);
-  }
-  /* Cards/Table sits on the section's heading line. */
-  [data-screen="products.home"] .products-head {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  [data-screen="products.home"] .products-head > .segmented {
-    margin-left: auto;
-  }
-  /* Action links keep a 24 px hit height. */
-  [data-screen="products.home"] .attn-row > .link {
-    min-height: 24px;
-  }
-  @container screen (max-width: 639px) {
-    [data-screen="products.home"] .attn-row > .link {
-      justify-self: start;
-    }
-    [data-screen="products.home"] .ready-meter {
-      width: 100%;
-      order: 3;
-    }
-    [data-screen="products.home"] .ready-head {
-      flex-wrap: wrap;
-    }
-    [data-screen="products.home"] .done-list {
-      padding: 12px 16px 14px;
-    }
-    [data-screen="products.home"] .done-list > span:not(.lead):not(.done-summary) {
-      display: none;
-    }
-    [data-screen="products.home"] .done-summary {
-      color: var(--pk-accent-fg);
-    }
-  }
-</style>
-
-<div class="console" data-service="core">
+<div class="console kit-prod" data-service="core">
   <header class="topbar">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
@@ -110,13 +27,13 @@
   </nav>
 
   <main class="main">
-    <div class="page">
+    <!-- Wide (≥ 1600): Needs attention and Products in the main column, Platform ready in the aside. -->
+    <div class="page columns">
       <header class="page-head">
         <div class="page-heading"><h1>Home</h1></div>
-        <p class="page-sub">3 products · 3 things need attention</p>
         <div class="page-actions">
-          <span class="freshness hide-phone">Updated 1 min ago</span>
-          <button class="btn ghost icon" aria-label="Refresh"><i class="ic ic-refresh-cw"></i></button>
+          <span class="freshness">Updated 1 min ago</span>
+          <button class="btn ghost icon" aria-label="Refresh, updated 1 min ago"><i class="ic ic-refresh-cw"></i></button>
           <button class="btn primary"><i class="ic ic-plus"></i>New product</button>
         </div>
       </header>
@@ -124,76 +41,69 @@
       <!-- Attention: one server read (GET /manage/api/attention), broken things only. -->
       <section class="card" aria-labelledby="attn-title">
         <div class="card-head">
-          <div class="title"><h2 id="attn-title">Needs attention</h2></div>
-          <span class="count danger">3</span>
+          <div class="title mk-cluster baseline"><h2 id="attn-title">Needs attention</h2><span class="count danger">3</span></div>
         </div>
         <div class="card-rows">
           <div class="attn-row">
             <span class="pill danger"><i class="ic ic-circle-x"></i>Error</span>
             <span class="attn-subject"><span class="logo xs" data-product="diceroll"></span>Diceroll</span>
-            <span class="attn-text">Resync from repo failed: <code>.pkey/release</code> line 14 names the platform “switch”, which Diceroll doesn’t ship.</span>
+            <span class="attn-text">Resync failed: <code>.pkey/release</code> line 14 names “switch”, a platform this product doesn’t ship.</span>
             <a class="link" href="#">Open error<i class="ic ic-arrow-right"></i></a>
           </div>
           <div class="attn-row">
             <span class="pill warning"><i class="ic ic-triangle-alert"></i>Warning</span>
             <span class="attn-subject"><span class="logo xs" data-product="djdl"></span>DJDL</span>
-            <span class="attn-text">The required secret <code>identity.acoustidKey</code> has no value in the Default profile.</span>
+            <span class="attn-text">Required secret <code>identity.acoustidKey</code> has no value in the Default profile.</span>
             <a class="link" href="#">Set secret<i class="ic ic-arrow-right"></i></a>
           </div>
           <div class="attn-row">
             <span class="pill warning"><i class="ic ic-triangle-alert"></i>Warning</span>
             <span class="attn-subject"><span class="logo xs" data-product="diceroll"></span>Diceroll</span>
-            <span class="attn-text">The Google Play service account key expires on Oct 16, 2026. Uploads to Play stop then.</span>
+            <span class="attn-text">Google Play key expires Oct 16; uploads to Play stop then.</span>
             <a class="link" href="#">Replace key<i class="ic ic-arrow-right"></i></a>
           </div>
         </div>
       </section>
 
       <!-- Platform ready (UX-67): platform admins only, until every row is done. -->
-      <section class="card" aria-labelledby="ready-title">
-        <div class="card-head ready-head">
-          <span class="ready-icon"><i class="ic ic-rocket"></i></span>
-          <div class="title">
-            <h2 id="ready-title">Platform ready</h2>
-            <p>Set these up once for every product. This section leaves Home when all nine are done.</p>
-          </div>
-          <div class="ready-meter">
-            <span class="small muted nowrap tnum">8 of 9 done</span>
-            <div class="progress success" style="--v: 88.9%"></div>
-          </div>
+      <section class="card aside span-2" aria-labelledby="ready-title">
+        <div class="card-head">
+          <div class="title"><h2 id="ready-title">Platform ready</h2></div>
+          <div class="progress-inline"><span>8 of 9 done</span><div class="progress success" style="--v: 88.9%"></div></div>
         </div>
         <div class="tasks padded">
           <div class="task todo">
             <span class="task-mark"></span>
             <div class="task-title">Store connections</div>
-            <div class="task-desc">Steam has no Steamworks publisher key yet, so Diceroll’s Steam channel can’t upload builds.</div>
+            <div class="task-desc">Diceroll’s Steam uploads need a Steamworks publisher key.</div>
             <div class="task-action"><button class="btn outline sm"><i class="ic ic-steam"></i>Connect Steam</button></div>
           </div>
         </div>
         <div class="done-list">
-          <span class="lead">Done</span>
-          <span class="show-phone done-summary">8 steps · Show</span>
-          <span><i class="ic ic-check"></i>Keyring configured</span>
-          <span><i class="ic ic-check"></i>Portal sessions isolated</span>
-          <span><i class="ic ic-check"></i>Console sign-in separate</span>
-          <span><i class="ic ic-check"></i>Background jobs ticking</span>
-          <span><i class="ic ic-check"></i>Email sender verified</span>
-          <span><i class="ic ic-check"></i>Platform packages</span>
-          <span><i class="ic ic-check"></i>Reserved names reviewed</span>
-          <span><i class="ic ic-check"></i>Team access: 6 members</span>
+          <button class="btn link disclosure" aria-expanded="false" aria-controls="ready-done"><i class="ic ic-chevron-right"></i>Show done steps</button>
+          <div class="done-items" id="ready-done" hidden>
+            <span><i class="ic ic-check"></i>Keyring configured</span>
+            <span><i class="ic ic-check"></i>Portal sessions isolated</span>
+            <span><i class="ic ic-check"></i>Console sign-in separate</span>
+            <span><i class="ic ic-check"></i>Background jobs ticking</span>
+            <span><i class="ic ic-check"></i>Email sender verified</span>
+            <span><i class="ic ic-check"></i>Platform packages</span>
+            <span><i class="ic ic-check"></i>Reserved names reviewed</span>
+            <span><i class="ic ic-check"></i>Team access: 6 members</span>
+          </div>
         </div>
       </section>
 
       <!-- Products: cards (default) or table, with facets. ST-36's card, one glyph per feature (not per service). -->
       <section class="section" aria-labelledby="products-title">
-        <div class="products-head">
-          <div class="row"><h2 id="products-title">Products</h2><span class="count">3</span></div>
+        <div class="section-head">
+          <div class="mk-cluster baseline"><h2 id="products-title">Products</h2><span class="count">3</span></div>
           <div class="segmented sm" role="tablist" aria-label="View">
             <span class="on" role="tab" aria-selected="true"><i class="ic ic-layout-grid sm"></i>Cards</span>
             <span role="tab" aria-selected="false"><i class="ic ic-table sm"></i>Table</span>
           </div>
         </div>
-        <div class="toolbar products-toolbar">
+        <div class="toolbar">
           <div class="search-field"><i class="ic ic-search"></i><span>Filter products</span></div>
           <span class="filter"><i class="ic ic-plus"></i>Integration verified</span>
           <span class="filter"><i class="ic ic-plus"></i>Needs attention</span>
@@ -205,11 +115,11 @@
               <span class="logo" data-product="djdl"></span>
               <div class="grow">
                 <h3><a href="#">DJDL</a></h3>
-                <div class="row gap-1"><span class="slug">djdl</span><span class="pips" role="img" aria-label="Licensing, Managed config, Ship builds, Sign-in, Cloud Sync">
+                <div class="mk-cluster-1"><span class="slug">djdl</span><span class="pips" role="img" aria-label="Licensing, Managed config: 1 needs attention, Ship builds, Sign-in, Cloud Sync">
                 <i class="pip" data-service="license"></i><i class="pip" data-service="config"></i><i class="pip" data-service="release"></i><i class="pip" data-service="identity"></i><i class="pip" data-service="sync"></i>
               </span></div>
               </div>
-              <span class="pill warning sm"><i class="ic ic-triangle-alert"></i>1 needs attention</span>
+              <span class="pill warning sm"><i class="ic ic-triangle-alert"></i>Missing secret</span>
             </div>
             <div class="product-card-svcs">
               <div class="svcs">
@@ -227,7 +137,7 @@
               <span class="logo" data-product="diceroll"></span>
               <div class="grow">
                 <h3><a href="#">Diceroll</a></h3>
-                <div class="row gap-1"><span class="slug">diceroll</span><span class="pips" role="img" aria-label="Licensing, Managed config, Ship builds, Commerce">
+                <div class="mk-cluster-1"><span class="slug">diceroll</span><span class="pips" role="img" aria-label="Licensing, Managed config, Ship builds: 2 need attention, Commerce">
                 <i class="pip" data-service="license"></i><i class="pip" data-service="config"></i><i class="pip" data-service="release"></i><i class="pip" data-service="commerce"></i>
               </span></div>
               </div>
@@ -248,7 +158,7 @@
               <span class="logo" data-product="polaris-key"></span>
               <div class="grow">
                 <h3><a href="#">Polaris Key</a></h3>
-                <div class="row gap-1"><span class="slug">polaris-key</span><span class="pips" role="img" aria-label="Ship builds, Sign-in">
+                <div class="mk-cluster-1"><span class="slug">polaris-key</span><span class="pips" role="img" aria-label="Ship builds, Sign-in">
                 <i class="pip" data-service="release"></i><i class="pip" data-service="identity"></i>
               </span></div>
               </div>

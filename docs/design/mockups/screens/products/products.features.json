@@ -15,16 +15,16 @@
     "UX-22",
     "UX-66"
   ],
-  "summary": "Diceroll's Settings → Features: the six features as one table in canonical order, each row with its own switches and its facts as status. Sign-in is off, so Cloud Sync can't be turned on and says why; Commerce is on because Licensing is; raw service slugs and the derived registration are folded, read-only, under Advanced.",
+  "summary": "Diceroll's Settings → Features: the six features as one list in canonical order, each row with its switch, its facts as status and its own settings nested under it. Sign-in is off, so Cloud Sync can't be turned on and says why; Commerce is on because Licensing is; raw service slugs and the derived registration are folded, read-only, under Advanced.",
   "compare": [
     "Features is the first tab of the product Settings hub (Features, Presentation, Keys & secrets, Members); Settings is active in the sidebar foot and the crumbs read Diceroll › Settings.",
     "Exactly six rows in canonical order: Licensing, Managed config, Ship builds, Sign-in, Cloud Sync, Commerce. Each has its service glyph tile, a one-line description, a Status column and one switch. No raw slugs (license, distribution, update) appear outside Advanced.",
-    "The requirement rule is stated once above the table: a feature turns on only when what it needs is on; turning one off turns off what needs it, in one confirmed change; each change is recorded in Activity.",
-    "Requirements read both ways on the rows: Licensing says 'Commerce needs Licensing', Managed config and Sign-in say 'Cloud Sync needs …'. On the dependents each requirement has its own mark, never colour alone: Commerce 'Needs ✓ Licensing is on'; Cloud Sync 'Needs ✓ Managed config is on, 🔒 Sign-in is off'.",
+    "The requirement rule is stated once, in a callout above the list (in the 400px aside at wide): a feature turns on only when what it needs is on; turning one off turns off what needs it too, in one change you confirm.",
+    "Requirements read both ways on the rows (kit .reqs): Licensing says 'Needed by Commerce', Managed config and Sign-in 'Needed by Cloud Sync', with a link mark. On the dependents each requirement has its own mark, never colour alone, and an accessible name with its state: Commerce 'Needs ✓ Licensing'; Cloud Sync 'Needs ✓ Managed config 🔒 Sign-in'.",
     "Cloud Sync's switch is disabled (not merely off) while Sign-in is off, and its status 'Turn on Sign-in first' is a link that moves focus to Sign-in's switch. Turning on Sign-in enables Cloud Sync but never turns it on by itself.",
-    "Feature switches sit inside their feature's row: Managed config → Minted tokens (names the declared token, multiplayer.roomToken); Ship builds → In-app updates (its description ends 'On by default when Ship builds turns on'), Packages (off; glossary: Packages, not Package feeds) and Polaris Key storefront (Unlisted / Eligible / Everyone, one setting, explained as 'Who can find Diceroll in Discover on key.plrs.im. Eligible: only people who own it in a store or qualify under the access policy.'); Sign-in → Customer portal.",
-    "An off feature's own switches stay visible but disabled with 'Turns on with Sign-in'; an off feature's tile is muted and its status says Off.",
-    "Status column shows facts as status text, never pills: 'Verified on 4 platforms · 3 tiers · 18,406 licenses', 'Catalog v6 published', '1.8.2 on stable' with its channels, '3 storefronts ready' with 'itch.io's storefront isn't set up yet'.",
+    "A feature's own switches sit in a sunken box under its text (kit .feature-subs): Managed config → Minted tokens (names the declared token, multiplayer.roomToken); Ship builds → In-app updates (itch.io through the Godot updater, store builds through their store), Packages (off; glossary: Packages, not Package feeds) and Polaris Key storefront (Unlisted / Eligible / Everyone, one setting: 'Who finds Diceroll in Discover on key.plrs.im. Eligible: people who own it in a store or qualify under the access policy.'); Sign-in → Customer portal.",
+    "An off feature's own switches stay visible but disabled with 'Turns on with Sign-in'; an off feature's tile is muted and its status cell stays empty, because its switch already says Off.",
+    "Status column (headed 'Status' over the rows, kit .feature-rows-head) shows facts as status text, never pills: 'Verified on 4 platforms' over '3 tiers · 18,406 licenses', 'Catalog v6 published', '1.8.2 on stable' over its channels, '3 storefronts ready' over 'itch.io isn't set up yet'.",
     "Turning on Ship builds writes release, distribution and update in one audited change; the page never shows them as three switches.",
     "Every turn-off confirms before anything changes (ADMIN.md §5.2: disabling a service is L1): a caution dialog listing what stops when nothing else turns off; a danger dialog naming each dependent when they turn off too, as products.turn-off-licensing does for Licensing.",
     "Advanced is one folded row: service slugs and how devices register, read-only, with Show.",
@@ -59,6 +59,72 @@
         "severity": "minor",
         "issue": "No pending or failed look for an immediate-apply switch; the compare only promised a confirmation with dependents; on phone the tabs cut 'Membe…' with no cue and switches were 36×20.",
         "resolution": "Compare now says every turn-off confirms (caution without dependents, danger with them), a switch shows a spinner while saving, and a failed save reverts it with an inline row error. On phone the tab strip fades at the right edge and switches are 44×24."
+      },
+      {
+        "severity": "major",
+        "issue": "The 'A feature turns on only when…' callout floated alone over a 1000px void beside an empty wide rail.",
+        "resolution": "Callout and wide rail are deleted. The table fills a content column capped at about 1200px, left-aligned with the page title, with a fixed 280px single-line Status column so name, status and toggle sit close together. The Needs lines and the confirm dialog teach the rule.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Dependencies were told three ways (Needed by, Needs, a purple 'Turn on Sign-in first').",
+        "resolution": "One dependency fact and one status fact per row: 'Needs …' stays on the dependent, 'Needed by …' is gone from the providers, the purple cell is gone from Cloud Sync, 'Turns on with Sign-in' is gone from Customer portal. Status is one line (3 tiers · 18,406 licenses; Catalog v6 published; 1.8.2 on stable; 3 of 4 storefronts ready) with a muted 'Off' in the empty cells; 'Verified on 4 platforms' is dropped (Integration owns it).",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Nested groups came in two styles and Advanced was a third card style; sub-copy was long.",
+        "resolution": "One inset panel (8px radius, 16px padding, 1px dividers) reaching 17px past the text column so a sub-row's title lines up with the parent's and its control with the parent's switch; Advanced is a last row of the same table. Storefront, In-app updates, Customer portal and Advanced use the lead's copy.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Disabled text under 3:1; each phone row about 170px tall with status far from its toggle; 'Members' cropped.",
+        "resolution": "Disabled and locked rows dim only the control: text stays 4.5:1 and an off track keeps a 3:1 edge. On phone the status is one line under the title and the description hides below 480px. The tab strip has 12px between tabs and a right fade, so all four tabs show at 390.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux4"
+        ]
+      },
+      {
+        "issue": "Draw extra states: saving, failed save, permission-denied, Advanced open.",
+        "resolution": "declined: Outside this spacing pass, which keeps existing content and states; backlog.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Fill the wide aside with History, an Advanced summary or a '5 of 6 on' summary.",
+        "resolution": "declined: It adds content and duplicates History and Overview; the rail is removed instead.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Cap the table at 960px and centre it, or put the toggle next to the title.",
+        "resolution": "declined: Centring breaks the shared left alignment with the title and tabs; the 1200px cap with a 280px status column closes the gap without it, and a toggle beside the title breaks the kit's switch-column pattern.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Delete the 'Needed by' lines and keep a 7-word hint under the title.",
+        "resolution": "declined: No hint is kept: the callout is deleted outright and 'Needed by' is dropped with the dependent's Needs as the single direction.",
+        "round": "multi-review"
       }
     ]
   }

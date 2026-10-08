@@ -41,6 +41,45 @@
         "severity": "minor",
         "issue": "Counts disagreed (Devices 412 and Licenses 240 here, none on Overview and Integration, Members 6 on Platform but not on Home); 'Platform' and 'All products' both landed on Home; dots were per service, colour-only and unnamed (7 for DJDL).",
         "resolution": "One rule: Devices carries the device count (ST-36's pill) in every product sidebar and nothing else has one, so Licenses 240 and Members 6 are gone and Devices is added on Overview, Integration and Settings. 'All products' dropped. Dots are one per feature (DJDL 5, Diceroll 4, Polaris Key 2), 7 px, with role=img and a label naming the features."
+      },
+      {
+        "severity": "major",
+        "issue": "At wide: 230px dead on the right, notes top-aligned in a side column ending 540px above the sidebars' bottom, about 280px of blank inside each panel.",
+        "resolution": "A centred auto-fit 4-up grid (272px columns, capped at 1360, the title lines up with the grid) with the three notes in one full-width row beneath at every size above tablet. 2 x 2 at tablet with the short pair on one row, the tall pair on the next, notes below. The notes never sit in a side column. Panels size to their content with the Collapse row 24px under the last item.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Captions and notes explained the same rules twice; the dimmed nav under the switcher looked half-rendered.",
+        "resolution": "Captions are one sentence each; the three notes stay. The nav behind the open switcher is not drawn, so the menu is the only thing in focus. The phone drawer is 85% wide over the scrim.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Switcher product dots were colour-only.",
+        "resolution": "DJDL and Diceroll rows carry a trailing plain-text '5 features' / '4 features' from tablet width up; the dots keep their accessible names. The Polaris Key row keeps its 'System' tag only: a count beside it did not fit the 236px menu. Platform is not the current context in this frame, so no check is drawn on it.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "issue": "Delete the notes or the captions; a phone carousel or tabs; feature icons for dots; draw one-time pages.",
+        "resolution": "declined: The notes carry the build rules; a carousel or tabs is new interaction; icons would crowd the switcher row (a text count was added); one-time pages add content.",
+        "round": "multi-review"
       }
     ]
   }

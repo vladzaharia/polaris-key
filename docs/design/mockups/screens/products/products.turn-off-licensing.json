@@ -11,18 +11,18 @@
   "uxRows": [
     "UX-22"
   ],
-  "summary": "The requirement cascade on Diceroll's Features page: turning off Licensing also turns off Commerce, which needs it. The dialog names every dependent with what stops for each, says what is kept, and shows the one audited change it will record in Activity.",
+  "summary": "The requirement cascade on Diceroll's Features page: turning off Licensing also turns off Commerce, which needs it. The dialog names every dependent with what stops for each, says what is kept, and that it records one change in Activity.",
   "compare": [
     "The dialog opens over the Features page (dimmed, drawn as products.features) when the Licensing switch is pressed and before anything changes; Escape and Cancel leave both features on. With the dialog open the page can't scroll: on desktop the dialog is centred in the viewport (ui/Dialog.tsx).",
-    "The title names the feature and the product: 'Turn off Licensing for Diceroll?'. The lead line says why more turns off: 'Commerce needs Licensing, so it turns off too, in the same change.'",
-    "Every feature that turns off is listed, the one pressed first and then each dependent (transitively), each with its glyph, 'On → Off' and one sentence on what stops. A dependent carries 'Needs Licensing'. Features that are already off (Cloud Sync) are not listed.",
-    "The Licensing line says what players experience, from the SDK gate's offline grace: players already activated keep playing until their offline window ends (up to 30 days); after that, and on every new install, Diceroll can't confirm a license, Free tier included. Then the reach in real numbers from the dry run: devices that checked a license in the last 30 days (11,239).",
-    "The Commerce line says what players notice: the game can't show the 4 offers or confirm a purchase, so in-game buying stops and restores are refused.",
-    "What is kept is said plainly (licenses, tiers, offers and purchases), then one sentence on coming back: turning Licensing back on with its switch leaves Commerce off; reverting this change in Activity turns both back on.",
-    "'In Activity, as one change' previews the single audit entry with the actor (Ada Lindqvist), 'Settings → Features · one entry for both'. One entry, not two.",
+    "The title names the feature and the product: 'Turn off Licensing for Diceroll?'. The lead line says why more turns off, once: 'Commerce needs Licensing, so it turns off too.'",
+    "Every feature that turns off is listed (kit .change-list), the one pressed first and then each dependent (transitively), each with its glyph, 'On → Off' on its title line and one sentence on what stops. The lead line already says why Commerce turns off, so its row carries no 'Needs Licensing' tag. Features that are already off (Cloud Sync) are not listed.",
+    "The Licensing line says what players experience: activated players keep playing up to 30 days offline; after that, and on new installs, Diceroll can't confirm any license, Free tier included. The reach is one meta line from the dry run: '11,239 devices checked a license in 30 days'.",
+    "The Commerce line says what players notice, in one sentence: the game can't show its 4 offers; purchases and restores are refused.",
+    "Under the list, two lines with their glyphs: what is kept (licenses, tiers, offers and purchases) and the audit entry.",
+    "'One change in Activity; reverting it turns both back on.' One entry, not two, and the way back in the same sentence.",
     "The danger button says exactly what happens: 'Turn off Licensing and Commerce'. No typed confirmation. Cancel is the neutral outline button (visible in dark) and has focus when the dialog opens (EXPERIENCE.md confirmations).",
     "The words are feature names only; no service slugs (license, commerce) and no 'capability'.",
-    "Phone: the dialog is the console's bottom sheet (rounded top corners, drag handle, safe-area padding at the foot), the danger button full width above Cancel, and the 'On → Off' marks stay on each feature's title line.",
+    "Phone: the dialog is the console's bottom sheet (kit .overlay.sheet: rounded top corners, drag handle, the body scrolling), the danger button full width above Cancel, and the 'On → Off' marks stay on each feature's title line. Desktop and tablet centre the dialog in the viewport (kit .overlay.center).",
     "Pressed, the danger button reads 'Turning off…' with a spinner and both buttons are disabled. If it fails the dialog stays open with an inline error saying what went wrong and how to retry, and both features stay on (ADMIN.md §5.2).",
     "This is a danger dialog because a dependent turns off and it reaches many devices; turning off a feature that nothing needs is a caution dialog (L1) with its consequences."
   ],
@@ -52,6 +52,28 @@
         "severity": "minor",
         "issue": "Cross-screen: the Features page under the dialog had per-service switch colours and 20 px phone switches.",
         "resolution": "The page underneath follows products.features: console-accent switches, Packages, requirement marks, 44×24 switches on phone."
+      },
+      {
+        "severity": "minor",
+        "issue": "The Cancel focus ring was the loudest thing in the dialog; the same pair was named four times; the close X sat off the title's centre.",
+        "resolution": "The lead sentence is gone (the second row reads 'Needs Licensing'); the Licensing row reads 'Players keep playing up to 30 days offline, then Diceroll can't confirm any license (Free tier too).'; the footer is one line 'Data is kept. Undo from Activity turns both back on.'; the X lines up with the title; autofocus is removed so the ring shows only in an interaction state; 'On → Off' is a 12px faint red pill at 4.5:1; meta is 12px; on phone Cancel is a ghost button so the red action is the only emphasised one. The page behind now matches products.features.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "issue": "Shorten to 'Turn off both', reverse the button order, remove the X on phone, highlight the Licensing row in the backdrop, reduce the blur.",
+        "resolution": "declined: The long label is the explicit one and matches the plan's destructive-action rule; button order is a kit convention; the backdrop and X are not spacing.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Draw pressed, failed and success frames and a toast with Undo.",
+        "resolution": "declined: New frames and components are a separate scope.",
+        "round": "multi-review"
       }
     ]
   }

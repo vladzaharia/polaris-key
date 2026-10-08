@@ -26,15 +26,15 @@
   "summary": "DJDL's Integration page part-way through: the SDK picked per platform with Add the SDK as one command, one card per enabled feature (console steps, the generated snippet with an SDK tab per fitting SDK, Verified per platform), and Hide Integration offered because Licensing is Verified on macOS.",
   "compare": [
     "The sidebar is the Product context: DJDL's logo, name and slug with the switcher; Overview, Integration (active), Access, Devices, Users, Activity; the five enabled features as accent-labelled groups; Settings last.",
-    "Hide Integration appears only after the first Verified feature, as one quiet line at the page foot that says exactly what is verified ('Licensing and Managed config are verified on macOS. Windows hasn't been seen yet.'), with a text button and 'It stays in ⌘K and Overview's menu.' as its description. No banner and no callout above unfinished cards. Nothing hides on its own.",
-    "Your app names the SDK per platform (Swift on macOS, Kotlin on Windows) with 'Change SDKs'; Add the SDK defaults to One command (pkey sdk add … --expect <kid>@sha256:<full digest>, the line scrolling inside its block, never an ellipsis a hand-copy would break) with By hand beside it; each platform has an 'n of 5 verified' meter and the latest sighting in words.",
-    "Feature cards follow the canonical order (Licensing, Managed config, Ship builds, Sign-in, Cloud Sync) and only enabled features get one; Commerce, being off, is a single dashed row that links to Features and says it needs Licensing.",
-    "Each card has three parts: In the console (done, to-do and optional rows, each with its one action), In your app (the generated snippet, an SDK tab per fitting SDK with its platform, More for the rest, Copy), and Verified per platform at the foot.",
-    "Snippets use DJDL's real names (entitlement polarisVpn, settings ui.theme and quality.floor) and the start call fromConfig() then boot(); pins come from polaris-key.json, never pasted keys.",
-    "Card heads say where each feature stands, as status text with a mark: Verified on macOS (tick), Console ready (tick), '1 step left:' (open ring) with the step's name as a link to it. On phone the status stays, as a second line under the card title. Verified has four states, defined once and drawn the same on Overview and Integration: Verified (green tick, the time and SDK version) once the console steps are done and the SDK's call succeeded; 'Waiting for the first …' (a console-accent dot with a halo) when the console steps are done and the platform has been seen, but not this feature's call yet; 'Finish the console step' (muted, open ring, a link to the step) when the platform has been seen but a console step is still open; 'Not seen yet' (dashed ring) when no SDK has reached Polaris Key from that platform. Healthy states are status text, never pills.",
-    "Ship builds verifies by domain facts where no SDK request exists: CI (first release) and the updater's first check per platform; until the Sparkle signing key exists its macOS cell reads 'Finish the console step', and its console step carries the command inline.",
+    "Hide Integration appears only after the first Verified feature, as one quiet line at the page foot: a text button and 'It stays in ⌘K and Overview's menu.' What is verified is on each card's Verified row, so the line doesn't repeat it. No banner and no callout above unfinished cards. Nothing hides on its own.",
+    "Your app names the SDK per platform (Swift on macOS, Kotlin on Windows) with 'Change SDKs'; Add the SDK defaults to One command (pkey sdk add … --expect <kid>@sha256:<digest>, wrapped at the flag boundary; the mockup shows the digest cut with an ellipsis and Copy copies the whole value) with By hand beside it; each platform has an 'n of 5 features verified' meter and the latest sighting in words.",
+    "Feature cards follow the canonical order (Licensing, Managed config, Ship builds, Sign-in, Cloud Sync) and only enabled features get one; Commerce, being off, is a single dashed row: 'Commerce is off', what it's for, and Open Features.",
+    "Each card has three parts: In the console (done, to-do and optional rows, each with its one action), In your app (the drop-in UI kit generated for DJDL, the fewest lines that give working screens, with an SDK tab per fitting SDK and its platform, More for the rest, Copy; then 'Integrate directly with your own UI ↗' to that SDK's docs, never a library walkthrough in the console), and Verified per platform at the foot.",
+    "Snippets use DJDL's real names (entitlement polarisVpn, settings ui.theme and quality.floor); pins come from polaris-key.json, never pasted keys.",
+    "Where each feature stands is said once: its open console step is a task row with its one action, and its Verified row at the card foot gives each platform's state as status text with a mark. Verified has four states, defined once and drawn the same on Overview and Integration: Verified (green tick, then the time; the SDK version only when it differs from the latest sighting) once the console steps are done and the SDK's call succeeded; 'Waiting for the first …' (a neutral clock) when the console steps are done and the platform has been seen, but not this feature's call yet; 'After the console step' (muted, open ring, never a link) when the platform has been seen but a console step is still open; 'Not seen yet' (dashed ring) when no SDK has reached Polaris Key from that platform. Healthy states are status text, never pills.",
+    "Ship builds verifies by domain facts where no SDK request exists: CI (first release) and the updater's first check per platform; until the Sparkle signing key exists its macOS cell reads 'After the console step', and its console step carries the command inline.",
     "A Verified feature with no console steps left folds to one row (Managed config) with Show.",
-    "Phone: the sidebar folds into the menu button, each card keeps its head status under the title, its two panes stack (console steps, then code), the code block scrolls sideways inside itself, and the Verified cells stack.",
+    "Phone: the sidebar folds into the menu button, each card's glyph tile stays beside its title, its two panes stack (console steps, then code), the code block scrolls sideways inside itself, and the Verified cells stack. Wide: Your app moves to the 400px aside beside the feature cards.",
     "'Open Features' on the Commerce row opens Settings → Features (products.features), where Commerce can be turned on because Licensing is on.",
     "The service accent sits on each card's glyph tile only: links (including Open Features on the Commerce row), code tabs, buttons and the Waiting dot are the console's colour on every card.",
     "Light theme: code comments are 5.2:1 on the code background (12 px code needs 4.5:1).",
@@ -42,35 +42,139 @@
   ],
   "status": "mockup",
   "designReview": {
-    "round": 1,
-    "reviewer": "UX designer (visual critique of rendered screenshots)",
-    "date": "2026-10-07",
-    "verdict": "Fixed: the banner became one accurate foot line, Verified uses the shared four states, card status survives on phone, and the service colour stays on the glyph tiles.",
+    "round": "multi-review",
+    "reviewer": "Lead product designer, deciding on five UX reviews of products.home and products.overview",
+    "date": "2026-10-08",
+    "verdict": "Applied the shared Verified definitions from products.overview; the rest of this page is the products area pass's.",
     "findings": [
       {
-        "severity": "major",
-        "issue": "The page opened with a boxed callout 'Integration verified on macOS. Windows not seen yet.' and a Hide Integration button, overclaiming (only Licensing and Managed config are verified) and offering hiding above three unfinished cards.",
-        "resolution": "Callout removed. One muted line at the page foot reads 'Licensing and Managed config are verified on macOS. Windows hasn't been seen yet.' with a text button Hide Integration and 'It stays in ⌘K and Overview's menu.' as its description."
+        "severity": "minor",
+        "decision": "accepted",
+        "raisedBy": [
+          "UX2",
+          "UX3"
+        ],
+        "issue": "The shared Verified definitions from Overview land here too: 'After the console step' (muted, open ring, never a link) replaces 'Finish the console step'; the open console step is the one link, verb first ('Add Sparkle signing key', 'Set storage per account'), in the card head; the Verified meta is the time only ('Oct 7, 10:42'), with the SDK version only when it differs from the latest sighting.",
+        "resolution": "Ship builds and Cloud Sync macOS cells now read 'After the console step' (kit .after-step); the heads' '1 step left: <name>' became one verb link (kit .open-step); Licensing's Verified meta dropped '· Swift 2.1.0'. The screen's own .finish-step rules are gone. Compare items for card heads, the four states and Ship builds, and the round-1 resolutions, say the same."
       },
       {
         "severity": "major",
-        "issue": "Ship builds (1 step left) showed macOS 'Waiting for the first update check'; Cloud Sync (1 step left) showed macOS 'Not seen yet' though the Swift SDK had reached Polaris Key from macOS.",
-        "resolution": "Both macOS cells read 'Finish the console step' (open ring, links to the open task: Sparkle signing key, Storage per account). Waiting stays only on Sign-in, whose console is done. The four-state definition is in compare, shared with products.overview."
+        "issue": "One status per feature: macOS and verified were stated 3-4 times per card, and a VERIFIED footer sat over rows that were not verified.",
+        "resolution": "The 40px footer strip is gone. One status pill sits in each card head (Verified Oct 7, CI verified Oct 6, Waiting for the first sign-in, Not verified yet). 'After the console step' is dropped. The folded Managed config row shows only a tick. Per-platform verification lives only in Platforms ('2 of 5 features verified', which agrees with the five feature cards).",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
       },
       {
         "severity": "major",
-        "issue": "Phone: a container rule hid each card head's status, so a card's state only appeared at its Verified foot on a 4,551 px page.",
-        "resolution": "The rule is gone; on phone the status wraps to a second line under the card title, lined up with it. No other card is foldable on phone: Licensing still has its optional test license, and Managed config already folds."
+        "issue": "The command in Add the SDK was clipped at every size.",
+        "resolution": "Wrapped at the flag boundary with '\\\\', --expect on its own line, digest shortened on screen to djdl-2026@sha256:3f9a… (Copy copies the full value). Every .code block scrolls in x with a 24px right-edge fade; on phone 12px type, pre-wrapped comments and a labelled 32px Copy.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "'Your app' sat in two different places: a rail with a void under it at wide, a heavy full-width card at desktop.",
+        "resolution": "From 1440 it is a sticky right rail (top = topbar + 16, 360 wide) with Change SDKs beside the title and no subtitle. Below 1440 it is a single summary row above the features with Add the SDK behind a disclosure.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
       },
       {
         "severity": "minor",
-        "issue": "'Open Features' on the Commerce row was green and the Waiting dot took each feature's accent; light-theme code comments were 4.41:1.",
-        "resolution": "data-service moved from each card to its glyph tile, so links, tabs, buttons and the Waiting dot use the console accent. Light code comments are one step darker on this screen (5.2:1). Lead: the kit token --mk-syn-com (light) should take the same step so every screen with code passes."
+        "issue": "'Integrate directly with your own UI' and the drop-in kit line repeated in all five cards; IN THE CONSOLE / IN YOUR APP labels and subtitles restated titles.",
+        "resolution": "The link is once, in the page head next to Guide. The kit line is once, in Your app. Licensing and Sign-in lose their subtitles; Ship builds is cut to 6 words; Cloud Sync takes the lead's copy fix. The small-cap labels are gone, the column divider stays, columns align at the top. Where the card is under 880px (beside the rail at 1440) the steps sit over the code so the code is never clipped.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
       },
       {
         "severity": "minor",
-        "issue": "Bare 'Change' button; the one-command block showed a truncated digest that breaks if selected by hand; no visible next step from the card heads.",
-        "resolution": "Button reads 'Change SDKs'. The command shows the full 64-character digest and scrolls inside its block. Each open card head names its step as a link ('1 step left: Sparkle signing key', '1 step left: Storage per account')."
+        "issue": "The page is over 4,000px on phone; 'Sign in in' typo; footer line said where the page lives.",
+        "resolution": "Phone folds Licensing, Sign-in and Cloud Sync to their one-line head (status pill under the title) and keeps only Ship builds, the first unverified one, open. Code comment is '// Browser sign-in; sign-out is in the account menu.'; Cloud Sync subtitle 'Settings and crates that follow each person across devices.'; footer 'Hide Integration (still in ⌘K)'.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "11px muted lines and about 20px tall text buttons.",
+        "resolution": "Meta and hints are 12px at the muted token; Show, Copy and tabs are 32px tall; code comments use the muted token (4.5:1).",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux4",
+          "ux2"
+        ]
+      },
+      {
+        "issue": "Draw extra states (saving, failed save, permission-denied, By hand tab, and so on).",
+        "resolution": "declined: This pass is spacing, alignment, rhythm, density and hierarchy and keeps the existing content and states; new frames are a separate scope for the states backlog.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Also show 'Hide Integration' as a header-menu action, a tooltip or a toast with Undo.",
+        "resolution": "declined: Status pills replace the footer text; a header menu or toast is a new component. The footer line stays, cut to 'Hide Integration (still in ⌘K)'.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Tooltips on the tablet icon rail and an at-rest 'Scroll for more' in code blocks.",
+        "resolution": "declined: Rail tooltips are build behaviour a mockup can't show; the edge fade already signals scrolling and a text hint adds clutter.",
+        "round": "multi-review"
+      }
+    ],
+    "notApplied": "The rest of this page (its own spacing rules, the owner's 2026-10-08 drop-in-first direction for each feature's code) is the products area pass's work, not this reference pass.",
+    "previousRounds": [
+      {
+        "round": 1,
+        "reviewer": "UX designer (visual critique of rendered screenshots)",
+        "date": "2026-10-07",
+        "verdict": "Fixed: the banner became one accurate foot line, Verified uses the shared four states, card status survives on phone, and the service colour stays on the glyph tiles.",
+        "findings": [
+          {
+            "severity": "major",
+            "issue": "The page opened with a boxed callout 'Integration verified on macOS. Windows not seen yet.' and a Hide Integration button, overclaiming (only Licensing and Managed config are verified) and offering hiding above three unfinished cards.",
+            "resolution": "Callout removed. One muted line at the page foot reads 'Licensing and Managed config are verified on macOS. Windows hasn't been seen yet.' with a text button Hide Integration and 'It stays in ⌘K and Overview's menu.' as its description."
+          },
+          {
+            "severity": "major",
+            "issue": "Ship builds (1 step left) showed macOS 'Waiting for the first update check'; Cloud Sync (1 step left) showed macOS 'Not seen yet' though the Swift SDK had reached Polaris Key from macOS.",
+            "resolution": "Both macOS cells read 'After the console step' (muted, open ring, not a link; the open task is linked once, verb first, from the card head: 'Add Sparkle signing key', 'Set storage per account'). Waiting stays only on Sign-in, whose console is done. The four-state definition is in compare, shared with products.overview."
+          },
+          {
+            "severity": "major",
+            "issue": "Phone: a container rule hid each card head's status, so a card's state only appeared at its Verified foot on a 4,551 px page.",
+            "resolution": "The rule is gone; on phone the status wraps to a second line under the card title, lined up with it. No other card is foldable on phone: Licensing still has its optional test license, and Managed config already folds."
+          },
+          {
+            "severity": "minor",
+            "issue": "'Open Features' on the Commerce row was green and the Waiting dot took each feature's accent; light-theme code comments were 4.41:1.",
+            "resolution": "data-service moved from each card to its glyph tile, so links, tabs, buttons and the Waiting dot use the console accent. Light code comments are one step darker on this screen (5.2:1). Lead: the kit token --mk-syn-com (light) should take the same step so every screen with code passes."
+          },
+          {
+            "severity": "minor",
+            "issue": "Bare 'Change' button; the one-command block showed a truncated digest that breaks if selected by hand; no visible next step from the card heads.",
+            "resolution": "Button reads 'Change SDKs'. The command shows the full 64-character digest and scrolls inside its block. Each open card head names its step as the one link, verb first ('Add Sparkle signing key', 'Set storage per account')."
+          }
+        ]
       }
     ]
   }

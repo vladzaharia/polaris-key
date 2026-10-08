@@ -1,0 +1,106 @@
+{
+  "id": "products.overview-b",
+  "title": "Product overview — exploration B",
+  "area": "products",
+  "surface": "console",
+  "order": 2,
+  "packages": [
+    "ST-41",
+    "ST-40",
+    "ST-44"
+  ],
+  "uxRows": [
+    "UX-21",
+    "UX-61",
+    "UX-63"
+  ],
+  "summary": "Status board: a hero band (DJDL, the one next step as a large button, Verified per platform) over six feature cards, each with its key number and, until Integration is hidden, a sunken integration well that asks the same three questions in every card.",
+  "compare": [
+    "Two blocks and an aside, no table: the hero band, then Features (a 3 × 2 board at desktop and wide, 2 × 3 at tablet, one column on phone), then Recent activity (the 400px aside at wide, spanning both blocks; below the board under 1600px).",
+    "Hero, left pane: DJDL's logo, name, slug and identity line ('A DJ app for macOS and Windows') with ⋯ More at the end of the row; 32px under it the next step: the Warning pill and 'Managed config' subject, the statement 'Required secret identity.acoustidKey has no value in the Default profile.' at 18/24, and 'Set secret' as the page's one primary (40px, full width on phone). A faint warning wash rises from the pane's lower left while the next step is an issue.",
+    "The next step is computed: the first Needs-attention item, else the first open console step in canonical order (today, after the secret: Ship builds › Add Sparkle signing key), else the first enabled feature's main action. There is no separate Needs attention card and no 'Continue integration' button; with two or more attention items the pill counts them and the statement shows the first.",
+    "Hero, right pane: Integration (16/24) with a ghost 'Hide' (eye-off, aria-label 'Hide Integration'), offered because macOS has a Verified feature and never automatic. macOS: name, '2 of 5 verified' and a 4px bar, then 'Swift SDK 2.1.0 on arm64 · last seen 4 min ago'. Windows: name and 'Not seen yet' (dashed ring), then 'Add the SDK →' (Integration's SDK picker, Windows selected). Windows is said once here and nowhere in the cards.",
+    "The pane's width is one board column (--board-cols), so its divider lines up with the third card at desktop and wide and the second at tablet: the hero and the board read as one grid.",
+    "Each feature card, in canonical order: its service tile and name (the name's link stretches over the card to the feature's home, hover fill, focus ring on the card), the key number at 24/32 and one foot line: Licensing '240 licenses', 'Standard · 3 waiting'; Managed config 'v4 catalog', '12 settings · 3 secrets'; Ship builds '4.2.0 stable', '4.3.0-beta.2 on beta · Oct 6'; Sign-in '312 accounts', 'Pocket ID · members, admins'; Cloud Sync 'Not syncing yet'.",
+    "Managed config carries the warning edge and the dot on its tile (aria-label 'Managed config: 1 needs attention'); the problem itself is said once, in the hero.",
+    "Integration lives in each card's sunken well: three rows, the same in every card, each an 80px muted label and a state. Console: 'Done', or the open ring and the step as one verb link ('Add Sparkle signing key', 'Set storage per account'). App: 'Drop-in kit' (to that feature on Integration, kit code first), then the quieter 'Your own UI ↗' (aria-label 'Integrate <feature> directly with your own UI: Swift SDK docs'). macOS: Verified with the time only ('Oct 7, 10:42'), 'Waiting for the first sign-in', or 'After the console step'. The rows read in the order the work happens: console, app, platform.",
+    "Wells start on one line across a board row (the stat area keeps a value-and-foot height) and every well has the same three rows, so the board scans by row: Done Done Add… / Done Set… across, Verified Verified After… down.",
+    "Ship builds' CI publish isn't a row: '4.2.0 stable' and Recent activity ('CI published 4.2.0 to stable') already say CI publishes.",
+    "Commerce is off: a dashed card in its canonical sixth place, 'Off', 'Sell tiers and add-ons on storefronts' and 'Turn on →' on the line where the other cards' macOS rows sit; the card's link opens the Turn on flow (aria-label 'Commerce: off. Turn on').",
+    "When the operator hides Integration, the hero's right pane and every well go; each card becomes a plain stat card (tile, name, number, foot) and the hero is identity and next step only. Hiding is the operator's recorded choice and is reversible from ⋯ More.",
+    "Phone: the hero stacks (identity, next step with the full-width primary, then the Integration pane under a hairline). Each card is one line of tile, name and value (the value on the right, as a narrow stat strip), its foot under the name, then the well. Recent activity rows wrap with the time 4px under the text; example-org/djdl never breaks.",
+    "Recent activity names the product's events without naming the product: 'Mara Fennick activated a MacBook Pro (macOS 15.1, Standard)', 'Tomás Okafor joined as editor'. The DJDL sidebar is unchanged (Devices 412, feature groups as muted labels; the 56px rail at tablet)."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": "exploration",
+    "reviewer": "Senior product designer (exploration B, status board), from the eight renders",
+    "date": "2026-10-08",
+    "verdict": "Concept B replaces the attention card, the integration matrix and the stats strip with one hero and one board: a single focal point (the next step) and six cards that each carry their number and their integration state. Not yet reviewed by the UX panel.",
+    "findings": [
+      {
+        "severity": "major",
+        "decision": "accepted",
+        "raisedBy": [
+          "owner"
+        ],
+        "issue": "The current Overview has no focal point: Needs attention, a dense integration matrix with Windows floating beside it, and cramped feature tiles all weigh the same.",
+        "resolution": "The hero band holds identity, the one next step as the page's large primary, and the Integration gauge; everything else is the board."
+      },
+      {
+        "severity": "major",
+        "decision": "accepted",
+        "raisedBy": [
+          "self"
+        ],
+        "issue": "First render: integration rows differed per card (an open step, a CI row, links pinned to the foot), leaving gaps mid-well and nothing lined up across a row.",
+        "resolution": "Every well asks the same three questions in the same rows (Console, App, macOS); the CI row is dropped (the 4.2.0 release and Recent activity already show CI publishes)."
+      },
+      {
+        "severity": "minor",
+        "decision": "accepted",
+        "raisedBy": [
+          "self"
+        ],
+        "issue": "With data-service on each card, its links took the service accent: five link colours, Managed config's in an amber that read as a warning.",
+        "resolution": "data-service sits on the icon tile only; links keep the console accent."
+      },
+      {
+        "severity": "minor",
+        "decision": "accepted",
+        "raisedBy": [
+          "self"
+        ],
+        "issue": "Bold platform-name labels in every well made the sunken layer as loud as the numbers above it.",
+        "resolution": "Well labels are muted regular text with their glyph; the states carry the colour."
+      },
+      {
+        "severity": "minor",
+        "decision": "accepted",
+        "raisedBy": [
+          "self"
+        ],
+        "issue": "Cloud Sync has no foot line, so its well started higher than Sign-in's beside it; on phone it fell into the empty foot row.",
+        "resolution": "The stat area keeps a value-and-foot height; on phone the well is placed on its own row."
+      },
+      {
+        "severity": "minor",
+        "decision": "accepted",
+        "raisedBy": [
+          "self"
+        ],
+        "issue": "On phone the cards stacked to about 1,100px.",
+        "resolution": "Phone cards put the value on the name's line (as a narrow stat strip): about 56px less per card."
+      },
+      {
+        "severity": "declined",
+        "decision": "declined",
+        "raisedBy": [
+          "self"
+        ],
+        "issue": "Repeat 'Windows · Not seen yet' in each card for symmetry with macOS.",
+        "resolution": "Declined: one platform-level fact, said once in the hero gauge with its 'Add the SDK'; a Windows row appears in the wells once Windows is seen."
+      }
+    ]
+  }
+}
