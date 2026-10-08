@@ -107,6 +107,7 @@ const V2_FEED_URL_MATRIX_OUT = join(V2_DIR, "feed-url-matrix.json");
 const V2_SYNC_SCENARIOS_OUT = join(V2_DIR, "sync-scenarios.json");
 const V2_DEVICE_LABEL_OUT = join(V2_DIR, "device-label.json");
 const V2_PRESENTATION_MATRIX_OUT = join(V2_DIR, "presentation-matrix.json");
+
 /** Every directory that receives the corpus: the source, then each generator-owned mirror. */
 const CORPUS_TARGETS = [V2_DIR, GODOT_V2_RESOURCES];
 

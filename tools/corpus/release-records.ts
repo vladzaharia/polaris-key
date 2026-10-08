@@ -169,8 +169,6 @@ async function buildRecordVectors(): Promise<Map<string, RecordVector>> {
   return out;
 }
 
-// ── The channel feed (V4 §2.3) ───────────────────────────────────────────────────────────────
-
 /** The record vectors, built once per run before any feed (feeds pin their hashes). */
 export let RECORDS: Map<string, RecordVector> | null = null;
 export const record = (name: string): RecordVector => {
@@ -179,12 +177,14 @@ export const record = (name: string): RecordVector => {
   return r;
 };
 
-export /** Build the record vectors for this run (`cases.json`'s first step: every feed pins one by
- *  its hash) and keep them for `record`. */
-async function buildRecords(): Promise<Map<string, RecordVector>> {
+/** Build the record vectors for this run (`cases.json`'s first step: every feed pins one by its
+ *  hash) and keep them for `record`. */
+export async function buildRecords(): Promise<Map<string, RecordVector>> {
   RECORDS = await buildRecordVectors();
   return RECORDS;
 }
+
+// ── The channel feed (V4 §2.3) ───────────────────────────────────────────────────────────────
 
 export const LIVE = (
   version: string,

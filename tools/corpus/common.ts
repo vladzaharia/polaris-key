@@ -13,6 +13,7 @@ import {
   importSigningKey,
 } from "@polaris-key/jws";
 
+/** The repository root (this file is `tools/corpus/common.ts`). */
 export const REPO_ROOT = join(
   dirname(fileURLToPath(import.meta.url)),
   "..",
