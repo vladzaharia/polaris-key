@@ -10,7 +10,18 @@ import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { configureAxe } from "vitest-axe";
 import { resetConsole } from "./consoleHarness.js";
-import { apiError, bootWith, FEED, P, writes } from "./distributionFixture.js";
+import {
+  apiError,
+  bootWith,
+  FEED,
+  P,
+  RELEASES,
+  writes,
+} from "./distributionFixture.js";
+import {
+  endpointRows,
+  shippedPlatforms,
+} from "../src/console/areas/update/FeedPage.js";
 
 const axe = configureAxe({
   rules: { "color-contrast": { enabled: false }, region: { enabled: false } },
@@ -344,6 +355,39 @@ describe("Update → Feed", () => {
     ).toBeTruthy();
   });
 
+  it("lists only the updaters of the platforms the releases ship (P0-47)", async () => {
+    // A Windows-only product: WinSparkle, never a Sparkle appcast.
+    const build = (platform: string) => ({
+      buildId: `b-${platform}`,
+      platform,
+      arch: "x86_64",
+      format: null,
+      buildNumber: null,
+      minOs: null,
+    });
+    bootWith(HASH, {
+      [P("/release/releases")]: {
+        ...RELEASES,
+        releases: RELEASES.releases.map((r) => ({
+          ...r,
+          builds: [build("windows")],
+        })),
+      },
+    });
+    const section = await screen.findByRole("region", { name: "Endpoints" });
+    const list = within(section).getByRole("list", { name: "Feed endpoints" });
+    expect(
+      await within(list).findByText(/\/djdl\/update\/beta\/winsparkle\.xml$/),
+    ).toBeTruthy();
+    expect(within(list).queryByText(/appcast\.xml$/)).toBeNull();
+    expect(
+      within(list).getByText(/\/djdl\/update\/beta\/feed\.jws$/),
+    ).toBeTruthy();
+    expect(section.textContent).toContain(
+      "Updater feeds are listed for the platforms your releases ship: Windows.",
+    );
+  });
+
   it("passes axe", async () => {
     bootWith(HASH);
     await section("Artifact policy");
@@ -353,5 +397,76 @@ describe("Update → Feed", () => {
         (v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`,
       ),
     ).toEqual([]);
+  });
+});
+
+describe("Update → Feed endpoints (P0-47)", () => {
+  const store = (platforms: (string | null)[], files: (string | null)[] = []) =>
+    ({
+      releases: [
+        {
+          ...RELEASES.releases[0]!,
+          builds: platforms.map((platform, i) => ({
+            buildId: `b${i}`,
+            platform,
+            arch: "arm64",
+            format: null,
+            buildNumber: null,
+            minOs: null,
+          })),
+          artifacts: files.map((platform, i) => ({
+            artifactId: `a${i}`,
+            name: `f${i}`,
+            kind: null,
+            platform,
+            arch: null,
+            sizeBytes: null,
+            access: null,
+            buildId: null,
+            role: null,
+            sha256: null,
+            locations: null,
+          })),
+        },
+      ],
+      channels: [],
+      floors: [],
+    }) as Parameters<typeof shippedPlatforms>[0];
+
+  it("reads the shipped platforms from builds and files, never a pack's null", () => {
+    expect(shippedPlatforms(store(["macos", null], ["windows", null]))).toEqual(
+      ["macos", "windows"],
+    );
+    expect(shippedPlatforms(undefined)).toEqual([]);
+  });
+
+  it("lists Sparkle for macOS and WinSparkle for Windows, and every updater while none is known", () => {
+    const paths = (platforms: string[]) =>
+      endpointRows(["stable"], platforms).map((r) => r.path);
+    const common = [
+      ".well-known/polaris.json",
+      "update/version",
+      "update/stable/feed.jws",
+    ];
+    expect(paths(["macos"])).toEqual([
+      ".well-known/polaris.json",
+      "update/version",
+      "update/appcast.xml",
+      "update/stable/feed.jws",
+      "update/stable/appcast.xml",
+    ]);
+    expect(paths(["windows"])).toEqual([
+      ...common,
+      "update/stable/winsparkle.xml",
+    ]);
+    expect(paths(["linux", "android"])).toEqual(common);
+    expect(paths([])).toEqual([
+      ".well-known/polaris.json",
+      "update/version",
+      "update/appcast.xml",
+      "update/stable/feed.jws",
+      "update/stable/appcast.xml",
+      "update/stable/winsparkle.xml",
+    ]);
   });
 });

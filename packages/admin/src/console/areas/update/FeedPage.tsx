@@ -10,16 +10,22 @@
  * - **Compatibility window** (manifest-owned until saved), validated as versions.
  * - **Artifact policy** (operator-only: no manifest writes it). Turning the Sparkle signature
  *   requirement off is L2.
- * - **Endpoints**: the public feed URLs per channel, with copy.
+ * - **Endpoints**: the public feed URLs per channel, with copy. The updater feeds are scoped to
+ *   the platforms the product's releases ship (P0-47): Sparkle for macOS, WinSparkle for Windows.
+ *   While no release names a platform, every updater feed is listed.
  *
  * Artifact access is shown read-only with a link to Distribution → Access, its one owner.
  */
 
 import * as React from "react";
-import type { UpdateSettings } from "../../../api.js";
+import type { ReleaseStoreResponse, UpdateSettings } from "../../../api.js";
 import { errorCopy } from "../../../lib/errorCopy.js";
 import { docsUrl } from "../../../lib/docsLinks.js";
-import { ACCESS_DESCRIPTIONS, ACCESS_LABELS } from "../../../lib/labels.js";
+import {
+  ACCESS_DESCRIPTIONS,
+  ACCESS_LABELS,
+  PLATFORM_LABELS,
+} from "../../../lib/labels.js";
 import { versionRangeError } from "../../../lib/version.js";
 import { Callout } from "../../../ui/Callout.js";
 import { ConfirmDialog } from "../../../ui/ConfirmDialog.js";
@@ -487,6 +493,54 @@ function PolicySection({
   );
 }
 
+/** The platforms the product's releases ship a build or a file for (`RELEASE_PLATFORMS`). */
+export function shippedPlatforms(
+  store: ReleaseStoreResponse | undefined,
+): string[] {
+  const set = new Set<string>();
+  for (const rel of store?.releases ?? []) {
+    for (const b of rel.builds) if (b.platform) set.add(b.platform);
+    for (const a of rel.artifacts) if (a.platform) set.add(a.platform);
+  }
+  return [...set].sort();
+}
+
+/**
+ * The endpoint rows for these channels and shipped platforms. Discovery, the version check and
+ * the signed feed serve every platform; the Sparkle appcasts are listed only when macOS ships and
+ * WinSparkle only when Windows does. With no platform known yet, every updater is listed.
+ */
+export function endpointRows(
+  channels: readonly string[],
+  platforms: readonly string[],
+): { label: string; path: string }[] {
+  const known = platforms.length > 0;
+  const mac = !known || platforms.includes("macos");
+  const win = !known || platforms.includes("windows");
+  return [
+    { label: "Discovery", path: ".well-known/polaris.json" },
+    { label: "Version check", path: "update/version" },
+    ...(mac ? [{ label: "Sparkle appcast", path: "update/appcast.xml" }] : []),
+    ...channels.flatMap((c) => [
+      { label: `Signed feed · ${c}`, path: `update/${c}/feed.jws` },
+      ...(mac
+        ? [{ label: `Sparkle appcast · ${c}`, path: `update/${c}/appcast.xml` }]
+        : []),
+      ...(win
+        ? [{ label: `WinSparkle · ${c}`, path: `update/${c}/winsparkle.xml` }]
+        : []),
+    ]),
+  ];
+}
+
+/** "macOS and Windows". */
+function platformList(platforms: readonly string[]): string {
+  const names = platforms.map((p) => PLATFORM_LABELS[p] ?? p);
+  return names.length <= 1
+    ? (names[0] ?? "")
+    : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
+
 function EndpointsSection({ slug }: { slug: string }): React.ReactElement {
   const store = useReleaseStore(slug);
   const channels = React.useMemo(() => {
@@ -496,21 +550,20 @@ function EndpointsSection({ slug }: { slug: string }): React.ReactElement {
       a === "stable" ? -1 : b === "stable" ? 1 : a.localeCompare(b),
     );
   }, [store.data]);
-  const rows: { label: string; path: string }[] = [
-    { label: "Discovery", path: ".well-known/polaris.json" },
-    { label: "Version check", path: "update/version" },
-    { label: "Sparkle appcast", path: "update/appcast.xml" },
-    ...channels.flatMap((c) => [
-      { label: `Signed feed · ${c}`, path: `update/${c}/feed.jws` },
-      { label: `Sparkle appcast · ${c}`, path: `update/${c}/appcast.xml` },
-      { label: `WinSparkle · ${c}`, path: `update/${c}/winsparkle.xml` },
-    ]),
-  ];
+  const platforms = React.useMemo(
+    () => shippedPlatforms(store.data),
+    [store.data],
+  );
+  const rows = endpointRows(channels, platforms);
   return (
     <SettingsSection
       id="feed-endpoints"
       title="Endpoints"
-      description="Point an app at discovery; it finds the rest."
+      description={
+        platforms.length > 0
+          ? `Point an app at discovery; it finds the rest. Updater feeds are listed for the platforms your releases ship: ${platformList(platforms)}.`
+          : "Point an app at discovery; it finds the rest."
+      }
     >
       <ul className="space-y-2 px-5 py-4" aria-label="Feed endpoints">
         {rows.map((row) => {
