@@ -25,6 +25,8 @@ import {
  * - `axe(page)`: axe-core's WCAG 2.2 A/AA and best-practice rules, zero violations (§9);
  * - `h1Count(page)`: exactly one visible `h1` per screen (§9 item 1);
  * - `horizontalOverflow(page)`: no horizontal page scroll (§8: never at 360 px);
+ * - `smallTargets(page)`: no pointer target under 24 × 24 px that WCAG 2.2 SC 2.5.8 does not
+ *   excuse (checked at every one of `RESOLUTIONS`, `portalResolutions.e2e.test.ts`);
  * - `matchBaseline(page, name)`: the visual baseline (below).
  *
  * The page's clock is pinned to the fixtures' `FIXTURE_NOW`, in UTC and en-US, so relative times
@@ -102,6 +104,11 @@ export interface OpenOptions {
   routes?: Record<string, Override>;
   /** Motion is off by default so every check sees final states (S-23 §6.8); the motion suite turns it on. */
   reducedMotion?: "reduce" | "no-preference";
+  /**
+   * The device pixel ratio (default 1). Browser zoom is a smaller CSS viewport at a higher ratio:
+   * 200 % zoom in a 1280 × 800 window is a 640 × 400 viewport at 2 (`RESOLUTIONS`).
+   */
+  deviceScaleFactor?: number;
 }
 
 export interface PortalHarness {
@@ -139,6 +146,7 @@ export async function startPortal(): Promise<PortalHarness> {
     const theme = opts.theme ?? "dark";
     const ctx = await browser.newContext({
       viewport: { width: opts.width ?? 1440, height: opts.height ?? 900 },
+      deviceScaleFactor: opts.deviceScaleFactor ?? 1,
       colorScheme: theme,
       userAgent: USER_AGENT,
       locale: "en-US",
@@ -253,6 +261,145 @@ export function h1Count(page: Page): Promise<number> {
         el.checkVisibility({ visibilityProperty: true }),
       ).length,
   );
+}
+
+export interface Resolution {
+  /** Also the screenshot name's size part. */
+  label: string;
+  width: number;
+  height: number;
+  deviceScaleFactor?: number;
+}
+
+/**
+ * The sizes every shipped state is checked at besides the 1440 and 390 px baselines
+ * (`portalResolutions.e2e.test.ts`): the smallest phones, tablets in both orientations, a phone
+ * on its side (whose 844 px puts it in the desktop layout), a 2560 px display and 200 % browser
+ * zoom.
+ */
+export const RESOLUTIONS: readonly Resolution[] = [
+  { label: "320", width: 320, height: 640 },
+  { label: "360", width: 360, height: 780 },
+  { label: "768", width: 768, height: 1024 },
+  { label: "820", width: 820, height: 1180 },
+  { label: "1024", width: 1024, height: 768 },
+  { label: "844x390", width: 844, height: 390 },
+  { label: "2560", width: 2560, height: 1440 },
+  // 200 % zoom in a 1280 × 800 window: half the CSS pixels at twice the density.
+  { label: "zoom200", width: 640, height: 400, deviceScaleFactor: 2 },
+];
+
+/** WCAG 2.2's minimum target size (SC 2.5.8, AA), in CSS px. */
+export const MIN_TARGET = 24;
+
+/**
+ * Pointer targets smaller than {@link MIN_TARGET} square that none of SC 2.5.8's exceptions
+ * excuse; one line per target (`tag "name" W×H`). A target is any visible, enabled link, button,
+ * form control or widget role outside an `inert` or `aria-hidden` subtree (the page behind an open
+ * dialog). Excused, as the criterion says:
+ *
+ * - **inline**: a link laid out in a line of text (`display: inline` beside other text);
+ * - **spacing**: a 24 px circle centred on it overlaps no other target nor another small
+ *   target's circle;
+ * - visually hidden (a skip link until focused), and the browser's own unstyled controls.
+ *
+ * axe's `target-size` rule makes the same check but reports what it cannot settle (overlapping
+ * targets) as "incomplete", which counts as a pass; this one does not.
+ */
+export function smallTargets(page: Page, min = MIN_TARGET): Promise<string[]> {
+  return page.evaluate((min) => {
+    const SEL = [
+      "a[href]",
+      "button",
+      "input:not([type=hidden])",
+      "select",
+      "textarea",
+      "summary",
+      ...[
+        "button",
+        "link",
+        "tab",
+        "menuitem",
+        "menuitemradio",
+        "menuitemcheckbox",
+        "checkbox",
+        "radio",
+        "switch",
+        "option",
+      ].map((r) => `[role=${r}]`),
+    ].join(",");
+    // The layer a target scrolls with: its nearest fixed or sticky box, else the page. Content
+    // passing under the phone bar or the sticky header is not crowding it; the page scrolls.
+    const layer = (el: Element): Element | null => {
+      for (let e: Element | null = el; e; e = e.parentElement) {
+        const p = getComputedStyle(e).position;
+        if (p === "fixed" || p === "sticky") return e;
+      }
+      return null;
+    };
+    const targets: { el: Element; r: DOMRect; layer: Element | null }[] = [];
+    for (const el of document.querySelectorAll(SEL)) {
+      if (el.closest("[inert], [aria-hidden=true]")) continue;
+      if ((el as HTMLButtonElement).disabled) continue;
+      if (
+        !el.checkVisibility({ visibilityProperty: true, opacityProperty: true })
+      )
+        continue;
+      const cs = getComputedStyle(el);
+      if (cs.pointerEvents === "none") continue;
+      const r = el.getBoundingClientRect();
+      // Visually hidden (`sr-only`: 1 px, clipped) until it takes focus.
+      if (r.width <= 1 || r.height <= 1) continue;
+      if (cs.clipPath === "inset(50%)") continue;
+      targets.push({ el, r, layer: layer(el) });
+    }
+    const small = (r: DOMRect) => r.width < min - 0.5 || r.height < min - 0.5;
+    const centre = (r: DOMRect): [number, number] => [
+      r.x + r.width / 2,
+      r.y + r.height / 2,
+    ];
+    const distToRect = (x: number, y: number, r: DOMRect) =>
+      Math.hypot(
+        Math.max(r.left - x, 0, x - r.right),
+        Math.max(r.top - y, 0, y - r.bottom),
+      );
+    const inline = (el: Element) => {
+      if (getComputedStyle(el).display !== "inline") return false;
+      const own = (el.textContent ?? "").trim();
+      const line = (el.parentElement?.textContent ?? "").trim();
+      return line.length > own.length;
+    };
+    const describe = (el: Element, r: DOMRect) =>
+      `${el.tagName.toLowerCase()} "${(el.getAttribute("aria-label") ?? el.textContent ?? "").trim().replace(/\s+/g, " ").slice(0, 40)}" ${Math.round(r.width)}×${Math.round(r.height)}`;
+    const out: string[] = [];
+    for (const t of targets) {
+      if (!small(t.r) || inline(t.el)) continue;
+      const tag = t.el.tagName.toLowerCase();
+      const input = t.el as HTMLInputElement;
+      if (
+        tag === "input" &&
+        ["checkbox", "radio"].includes(input.type) &&
+        getComputedStyle(input).appearance !== "none"
+      )
+        continue;
+      const [cx, cy] = centre(t.r);
+      const crowd = targets.find((o) => {
+        // A target nested in another (a link inside a clickable row) is part of it.
+        if (o === t || o.el.contains(t.el) || t.el.contains(o.el)) return false;
+        if (o.layer !== t.layer) return false;
+        if (small(o.r)) {
+          const [ox, oy] = centre(o.r);
+          return Math.hypot(cx - ox, cy - oy) < min;
+        }
+        return distToRect(cx, cy, o.r) < min / 2;
+      });
+      if (!crowd) continue;
+      out.push(
+        `${describe(t.el, t.r)} crowded by ${describe(crowd.el, crowd.r)}`,
+      );
+    }
+    return out;
+  }, min);
 }
 
 /** The WCAG 2.2 A/AA rule set plus axe's best practices (landmarks, heading order, regions). */

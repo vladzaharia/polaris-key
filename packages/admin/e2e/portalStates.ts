@@ -13,7 +13,9 @@ import {
  *
  * `SHIPPED` are the states the portal renders today: `portalQuality.e2e.test.ts` opens each one in
  * both themes at 1440 and 390 px and checks it under the Worker's CSP (zero violations), with axe
- * (zero violations), exactly one `h1`, no horizontal scroll at 360 px, and its visual baseline.
+ * (zero violations), exactly one `h1`, no horizontal scroll at 360 px, and its visual baseline (a
+ * few key pages also at 768 px); `portalResolutions.e2e.test.ts` opens each one again at every
+ * other size (`RESOLUTIONS`) for the same checks without pixels, plus target sizes.
  *
  * `PENDING` are the states whose work package has not landed. Each names the §4 section and the
  * owning package(s), and the suite lists it as a todo, so the gap is visible in every run rather

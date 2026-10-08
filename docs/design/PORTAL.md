@@ -1366,14 +1366,24 @@ again." with the reference id. Never render the HTTP status or an internal code 
 
 ## 8. Responsive rules
 
-| Width       | Library                                                                                        | Product page                                                  | Chrome                                                    |
-| ----------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------- |
-| ≥ 1180 px   | Large tiles 3 columns; compact 4 columns                                                       | TOC · main · side (148 · fluid · 384)                         | Full header                                               |
-| 761–1179 px | Large 3, compact 3                                                                             | Main · side (fluid · 340); TOC hidden                         | Full header; ⌘K trigger collapses to an icon below 900 px |
-| ≤ 760 px    | One column; List view by default above 6 products; toolbar: search + view toggle, chips scroll | One column in task order; sticky pill tabs; banner full-bleed | 56 px header, bottom tab bar, bottom sheets               |
+| Width       | Library                                                                                        | Product page                                                  | Chrome                                      |
+| ----------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------- |
+| ≥ 1180 px   | Large tiles 3 columns; compact 4 columns                                                       | TOC · main · side (148 · fluid · 384)                         | Full header                                 |
+| 761–1179 px | Large 3, compact 3                                                                             | Main · side (fluid · 340); TOC hidden                         | Compact header (below)                      |
+| ≤ 760 px    | One column; List view by default above 6 products; toolbar: search + view toggle, chips scroll | One column in task order; sticky pill tabs; banner full-bleed | 56 px header, bottom tab bar, bottom sheets |
 
+- **Compact header (761–1179 px):** the same row, so the account menu never leaves the screen: the
+  account chip is its avatar and the ⌘K trigger a 40 px icon; below 900 px the lockup drops to its
+  52 px phone size, the header's gaps to 24 px and the action reads **Activate** (its accessible
+  name stays "Activate license"). From 1180 px the chip's name truncates before the row overflows.
+  On a short screen (at most 512 px tall: a phone on its side, 200 % zoom) the header scrolls away
+  instead of sticking.
+- **Shelves on tablets:** Needs attention and Ready to add use two columns at 761–1179 px and three
+  from 1180 px; an attention card shows its thumbnail only when it has 22rem for it beside the
+  text, and its action's label wraps rather than leaving the card.
 - **No horizontal page scroll at 360 px**, ever (the render script checks every screen). Only code
-  blocks scroll inside themselves.
+  blocks scroll inside themselves. The quality bar checks every screen at 1440 and 390 px with
+  pixels, and at 320, 360, 768, 820, 1024, 844 × 390, 2560 px and 200 % zoom without (PX-20).
 - **Touch targets** ≥ 44 × 44 px on touch (buttons are 44 px; small buttons 36 px tall with 44 px hit
   areas through padding). The tab bar items are 52 px tall.
 - **Tables become rows:** the list view drops columns and keeps status as a pill under the name.
