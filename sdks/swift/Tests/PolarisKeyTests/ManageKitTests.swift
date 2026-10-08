@@ -12,7 +12,7 @@
     final class ManageKitTests: XCTestCase {
         func testCopy() {
             let copy = PolarisCopy()
-            XCTAssertEqual(copy.freeDeviceButton, "Replace a device")
+            XCTAssertEqual(copy.freeDeviceButton, KitButtonCase.button("Replace a device"))
             XCTAssertFalse(copy.freeDeviceScanCaption.isEmpty)
             XCTAssertEqual(PolarisCopy(freeDeviceButton: "Libérer").freeDeviceButton, "Libérer")
         }

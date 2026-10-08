@@ -108,7 +108,8 @@ final class LoginCopyTests: XCTestCase {
         // The previously-hardcoded divider/retry/reconnect strings are branded copy.
         let copy = PolarisCopy()
         XCTAssertEqual(copy.orDividerLabel, "or")
-        XCTAssertEqual(copy.retryButton, "Retry")
+        // One verb for one action ("Try again"), title case on macOS.
+        XCTAssertEqual(copy.retryButton, KitButtonCase.button("Try again"))
         XCTAssertEqual(copy.reconnectButton, "Reconnect")
         XCTAssertFalse(copy.graceSubtitle.isEmpty)
     }
