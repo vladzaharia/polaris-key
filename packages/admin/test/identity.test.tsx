@@ -624,12 +624,13 @@ describe("Identity → Sign-in", () => {
     const line = (await screen.findByText(/is refused \(not entitled\)/))
       .parentElement as HTMLElement;
     expect(line.textContent).toContain(
-      "Auto-issue is set by the autoIssue block in .pkey/product.",
+      "Auto-issue is set by the autoIssue block (opens a new tab) in .pkey/product.",
     );
     expect(screen.queryByRole("link", { name: /Enrollment/ })).toBeNull();
-    const docs = within(line).getByRole("link", { name: "Auto-issue" });
-    expect(docs.getAttribute("href")).toContain(
-      "/docs/services/license/enrollment/",
+    // The phrase itself is the link, to the policy page's Auto-issue section.
+    const docs = within(line).getByRole("link", { name: /^autoIssue block/ });
+    expect(docs.getAttribute("href")).toMatch(
+      /\/docs\/services\/license\/policy\/#auto-issue$/,
     );
   });
 
