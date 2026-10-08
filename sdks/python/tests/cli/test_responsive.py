@@ -371,7 +371,8 @@ def test_a_resize_lays_the_sign_in_code_out_again_with_one_header() -> None:
     t = terminal(term, LONG, verb="login", keys=[narrow, _snap(term, snaps)], device_code=True)
     flows.sign_in(_client(LONG), t)
     check("resize login", term, snaps[0], code=LONG["code"], url=LONG["url"], hints=True)
-    headers = [r for r in snaps[0] if "· login" in r]
+    headers = [r for r in snaps[0] if r.startswith("┌")]
+    # One header: the verb suffix gave way first, then the name's end.
     assert len(headers) == 1 and headers[0].startswith("┌") and "…" in headers[0], snaps[0]
 
 
@@ -424,7 +425,9 @@ def test_help_never_runs_past_the_terminal_and_stacks_below_50_columns(cols: int
     term.write(text)
     assert [t for t, w in term.all() if w] == [], f"help {cols}: a line wider than the terminal"
     if cols < 50:
-        assert "\n  activate\n    Add a license key" in text
+        import re as _re
+
+        assert "\n  activate\n    Add a license key" in _re.sub(r"\x1b\[[0-9;]*m", "", text)
 
 
 # ── A window dragged through several sizes, and the end states ───────────────────────────────

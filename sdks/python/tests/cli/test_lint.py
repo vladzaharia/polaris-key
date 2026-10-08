@@ -42,8 +42,20 @@ BORROWS: Dict[str, Dict[str, str]] = {
     },
     "AccountAndLicense": {
         "part.status.ok": "the tier row opens with the status pill",
+        "cli.status.license": "the status table's row labels, as the Node kit's",
+        "cli.status.devices": "the status table's row labels, as the Node kit's",
+        "cli.status.offline": "the status table's row labels, as the Node kit's",
+        "cli.status.offlineUntil": "the status table's offline row",
+        "cli.status.seatsOf": "the status table's devices row",
+        "cli.status.version": "the status table's row labels, as the Node kit's",
     },
     "GraceBanner": {
+        "cli.status.license": "the status table's row labels, as the Node kit's",
+        "cli.status.devices": "the status table's row labels, as the Node kit's",
+        "cli.status.offline": "the status table's row labels, as the Node kit's",
+        "cli.status.offlineUntil": "the status table's offline row",
+        "cli.status.seatsOf": "the status table's devices row",
+        "cli.status.version": "the status table's row labels, as the Node kit's",
         "account.title": "the grace line sits over the account summary",
         "account.tier": "the grace line sits over the account summary",
         "account.holder": "the grace line sits over the account summary",
@@ -52,6 +64,7 @@ BORROWS: Dict[str, Dict[str, str]] = {
     },
     "StatusScreen": {
         "status.contact": "channel-not-entitled names the developer",
+        "cli.fix.signIn": "a revoked device can be fixed with the account's license",
     },
     "Boot": {
         "status.update": "the blocked boot's fix is the update verb",
@@ -99,20 +112,39 @@ BORROWS: Dict[str, Dict[str, str]] = {
     },
     "Devices": {},
     "UpdatePrompt": {
+        "cli.update.available": "the check's title, as the Node kit's",
+        "cli.update.availableNoSize": "the check's title when the size is not known",
+        "cli.update.have": "the version installed now",
+        "cli.update.install": "the apply command's label",
+        "cli.update.ready": "the finished block's title",
+        "cli.update.readyNoSize": "the finished block's title when the size is not known",
+        "cli.update.restart": "the finished block's next step",
+        "cli.update.nothingInstalled": "a failed download changed nothing",
+        "cli.update.cancelled": "Esc or Ctrl-C stops the download",
+        "cli.update.figures": "the progress line's sizes",
+        "cli.update.figuresShort": "the progress line's sizes on a narrow line",
+        "cli.update.timeLeft": "the progress line's time left",
+        "cli.keys.download": "the download's key hint, as the Node kit's",
+        "common.tryAgain": "a failed download names the command to run again",
         "account.version": "the installed version line",
         "update.platform.generic": "store and platform outlets name where it installs",
     },
     "UpdateProgress": {},
-    "ReleaseNotes": {},
+    "ReleaseNotes": {
+        "cli.changelog.fix": "a failed load says what to run next",
+    },
     "Settings": {
         "settings.saved": "config set saves at once",
     },
-    "OfflineActivation": {},
+    "OfflineActivation": {
+        "cli.verb.importBundle": "the footer command row's label, as the Node kit's",
+        "cli.import.fix": "a refused file says who to ask for a new one",
+    },
 }
 
 DATA_KINDS = {
     "product", "command", "key", "code", "url", "device", "platform", "id", "email", "term",
-    "channel", "notes", "pack", "percent", "setting", "value", "imported", "diagnostic",
+    "channel", "notes", "pack", "percent", "setting", "value", "imported", "diagnostic", "count", "tier", "version",
 }
 KEY_NAMES = {"Enter", "Esc", "c", "o", "y", "n", "Ctrl-C"}
 SYMBOLS: Set[str] = {ch for table in ansi.SYMBOLS.values() for v in table.values() for ch in v}

@@ -3262,10 +3262,10 @@ msgstr "라이선스"
 msgid "cli.status.offline"
 msgstr "오프라인"
 
-#. Works offline until {date}
-#. Terminal status: the license keeps working without the internet until {date} (a short date).
+#. until {date}
+#. Terminal status: the license keeps working without the internet until {date} (a short date). It follows the row label 'Offline', so it starts with the preposition.
 msgid "cli.status.offlineUntil"
-msgstr "{date}까지 오프라인으로 사용 가능"
+msgstr "{date}까지"
 
 #. Version
 #. Terminal status: the row label for the app's version and release channel.
@@ -3446,6 +3446,56 @@ msgstr "설치된 항목이 없어요."
 #. Terminal: every device on the license is in use. The terminal does not poll, so it says what to do and asks to try again here.
 msgid "cli.deviceLimit.body"
 msgstr "브라우저에서 기기를 교체한 다음 여기서 다시 시도하세요."
+
+#. Devices
+#. Terminal status: the row label for how many devices use the license.
+msgid "cli.status.devices"
+msgstr "기기"
+
+#. {used} of {limit}
+#. Terminal status: devices in use out of the license's limit, like '2 of 3'.
+msgid "cli.status.seatsOf"
+msgstr "{limit}대 중 {used}대"
+
+#. {version} is available · {size}
+#. Terminal update check: a newer version exists. {version} is the version, {size} the download size (like '61 MB'). The chip above already names the product.
+msgid "cli.update.available"
+msgstr "{version} 사용 가능 · {size}"
+
+#. {version} is available
+#. Terminal update check: a newer version exists and its size is not known. {version} is the version.
+msgid "cli.update.availableNoSize"
+msgstr "{version} 사용 가능"
+
+#. You have {version}
+#. Terminal update check: the version installed now. {version} is that version.
+msgid "cli.update.have"
+msgstr "현재 {version}을(를) 사용 중이에요"
+
+#. Install
+#. Terminal update check: what the 'update apply' command does, beside the command.
+msgid "cli.update.install"
+msgstr "설치"
+
+#. Check your connection and run {command} again.
+#. Terminal changelog: what to do after the release notes failed to load. {command} is a command line.
+msgid "cli.changelog.fix"
+msgstr "연결을 확인한 다음 {command}을(를) 다시 실행하세요."
+
+#. Ask whoever sent it for a new file.
+#. Terminal offline activation: what to do after an activation file was refused.
+msgid "cli.import.fix"
+msgstr "보낸 사람에게 새 파일을 요청하세요."
+
+#. {product} doesn't use Polaris Key sign-in.
+#. Terminal sign-in: the product does not use Polaris Key sign-in. {product} is the product.
+msgid "cli.identityOff.notice"
+msgstr "{product}은(는) Polaris Key 로그인을 사용하지 않아요."
+
+#. Run {command} with your license key.
+#. Terminal sign-in: what to do instead when the product has no sign-in. {command} is a command line such as 'tidewater activate'.
+msgid "cli.identityOff.fix"
+msgstr "라이선스 키로 {command}을(를) 실행하세요."
 
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).

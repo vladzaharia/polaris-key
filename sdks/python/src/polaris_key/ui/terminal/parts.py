@@ -19,6 +19,7 @@ Every line a part returns is a :class:`~.text.Line`; nothing is printed.
 from __future__ import annotations
 
 import re
+import warnings
 from dataclasses import dataclass, field
 from typing import Any, List, Optional, Sequence, Tuple
 
@@ -27,7 +28,7 @@ from .. import ansi
 from ..core.copy import Copy
 from ..core.identity import ResolvedIdentity, resolve_identity
 from ..core.theme import Theme
-from .env import TermEnv
+from .env import MIN_LAYOUT_COLUMNS, TermEnv
 from .text import DROP, Line, Palette, Span, cell_len, middle, wrap
 
 __all__ = ["Kit", "STEP_GLYPHS"]
@@ -67,6 +68,14 @@ def role_colors(colors: Any, scheme: str, color: str, native: bool) -> Tuple[Tup
     for role, value in dict(colors.get(scheme, {}) or {}).items():
         if isinstance(value, str) and _HEX.match(value.strip()):
             out.append((role, "38;2;" + _rgb(value)))
+        else:
+            # The pre-hex form (SGR parameters such as "2") is gone: say so, naming the role.
+            warnings.warn(
+                f"Theme.colors[{scheme!r}][{role!r}] = {value!r} is not a hex colour ('#rrggbb'); "
+                "SGR parameters are no longer accepted, so the value is ignored.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
     return tuple(out)
 
 
@@ -115,6 +124,11 @@ class Kit:
         return Span(str(text), tuple(roles), link, "data:" + kind, nobreak)
 
     @staticmethod
+    def u(text: Any, kind: str, *roles: str) -> Span:
+        """A keep-unit of data (a name, an email, a date): it moves to the next line whole."""
+        return Span(str(text), tuple(roles), None, "data:" + kind, False, True)
+
+    @staticmethod
     def sp(n: int = 1) -> Span:
         return Span(" " * n)
 
@@ -147,10 +161,16 @@ class Kit:
         native = self.theme.preset == "native"
         overrides = role_colors(self.theme.colors, env.scheme, env.color, native)
         if env.color == "none":
-            return Palette(color="none")
+            # NO_COLOR drops colour, not weight: bold and reverse stay on a terminal (never a pipe,
+            # TERM=dumb or --json), and links stay wherever the terminal takes them.
+            attributes = env.tty and not env.dumb and not env.json
+            return Palette(color="none", hyperlinks=env.hyperlinks, attributes=attributes)
         resolved = None if native else self.identity.accent(env.scheme)
-        if resolved is None:
-            # Ink (no product colour) or the host's own colours: strong text, a plain reverse chip.
+        if native:
+            # The host's own palette: the accent role is ANSI cyan, the chip plain reverse video.
+            accent, chip = ansi.SGR["accent"], "1;" + ansi.SGR["chip"]
+        elif resolved is None:
+            # Ink (no product colour): strong text, a plain reverse chip.
             accent, chip = ansi.SGR["strong"], "1;" + ansi.SGR["chip"]
         elif env.color == "truecolor":
             accent = "38;2;" + _rgb(resolved.fg)
@@ -169,8 +189,14 @@ class Kit:
         return self.env.tty and not self.env.dumb
 
     @property
+    def narrow(self) -> bool:
+        """Too narrow for the rail (below 32 columns): it and its gutter are dropped, a step keeps
+        its mark on its first line, and everything wraps to the real width."""
+        return self.decor and self.env.width < MIN_LAYOUT_COLUMNS
+
+    @property
     def body_width(self) -> int:
-        return self.env.width - (3 if self.decor else 0)
+        return self.env.width - (3 if self.decor and not self.narrow else 0)
 
     def gap(self, tier: int = DROP["blank_prose"]) -> List[Line]:
         """A blank rail row between blocks (none under ``density="compact"``). On a live screen it
@@ -178,7 +204,9 @@ class Kit:
         terminal (``screen.fit_screen``)."""
         if self.decor and self.theme.density == "compact":
             return []
-        return [Line([Span(self.env.symbol["rail"], ("muted",), None, "symbol")], drop=tier)] if self.decor else [Line([])]
+        if self.decor and not self.narrow:
+            return [Line([Span(self.env.symbol["rail"], ("muted",), None, "symbol")], drop=tier)]
+        return [Line([], drop=tier)]
 
     def fits(self, spans: Sequence[Span]) -> bool:
         """``spans`` fit one line of the body."""
@@ -187,30 +215,43 @@ class Kit:
     def _prefix(self, symbol: str, role: str = "muted") -> List[Span]:
         if not self.decor:
             return []
+        if self.narrow:
+            # No rail: only a step's own mark stays, with one cell after it.
+            if symbol in ("rail", "railStart", "railEnd"):
+                return []
+            return [Span(self.env.symbol[symbol], (role,), None, "symbol"), Span(" ")]
         return [Span(self.env.symbol[symbol], (role,), None, "symbol"), Span("  ")]
 
     def header(self, verb: str) -> Line:
-        """``┌  [ Product ] · verb``: the product chip opens every flow. A name too long for the
-        line ends in an ellipsis inside the chip (never a hard crop)."""
+        """``┌  [ Product ] · verb``: the product chip opens every flow. A row too wide for the line
+        drops its `` · verb`` suffix first; the name ends in an ellipsis inside the chip only when
+        the chip alone is wider than the line."""
         if not self.product:
             return Line(self._prefix("railStart") + [self.d(verb, "command", *(("muted",) if self.decor else ()))], role="header")
         if not self.decor:
             return Line([Span(self.product, (), None, "data:product"), self.sep(), self.d(verb, "command")], role="header")
-        room = max(8, self.body_width - 2 - 3 - cell_len(verb))
-        chip = Span(" " + _end_cut(self.product, room, self.env.symbol["ellipsis"]) + " ", ("chip",), None, "data:product")
-        return Line(self._prefix("railStart") + [chip, self.sep(), self.d(verb, "command", "muted")], role="header")
+        ell = self.env.symbol["ellipsis"]
+        chip_text = " " + self.product + " "
+        suffix = [self.sep(), self.d(verb, "command", "muted")]
+        suffix_w = sum(cell_len(sp.text) for sp in suffix)
+        if cell_len(chip_text) + suffix_w > self.body_width:
+            suffix = []
+        chip = Span(" " + _end_cut(self.product, max(8, self.body_width - 2), ell) + " ", ("chip",), None, "data:product") if cell_len(chip_text) > self.body_width else Span(chip_text, ("chip",), None, "data:product")
+        return Line(self._prefix("railStart") + [chip] + suffix, role="header")
 
     def rail(self) -> Line:
-        return Line([Span(self.env.symbol["rail"], ("muted",), None, "symbol")] if self.decor else [])
+        return Line([Span(self.env.symbol["rail"], ("muted",), None, "symbol")] if self.decor and not self.narrow else [])
 
     def step(self, kind: str, spans: Sequence[Span]) -> List[Line]:
         """A step line: its glyph on the rail, then the title (wrapped under itself)."""
         name, role = STEP_GLYPHS[kind]
         first = self._prefix(name, role) if self.decor else []
-        rows = wrap(spans, self.body_width)
+        # On a line too narrow for the rail the mark takes two cells, so the title wraps a little
+        # earlier and hangs under itself.
+        rows = wrap(spans, self.body_width - (2 if self.narrow else 0))
         out = [Line(first + rows[0])] if rows else [Line(first)]
         for r in rows[1:]:
-            out.append(Line(self._prefix("rail") + r))
+            out.append(Line(([Span("  ")] if self.narrow else self._prefix("rail")) + r))
         return out
 
     def body(self, spans: Sequence[Span], indent: int = 0) -> List[Line]:
@@ -261,7 +302,8 @@ class Kit:
     def command(self, words: str, label_key: Optional[str] = None, width: int = 0, **args: Any) -> List[Span]:
         """A fix as a command (``polaris-key activate   Use a different key``), §4.1 StatusScreen."""
         cmd = f"{self.prog} {words}".rstrip()
-        out = [self.d(cmd, "command", "strong", nobreak=True)]
+        # A command moves whole when it fits and wraps at its own spaces when it does not.
+        out = [Span(cmd, ("strong",), None, "data:command", False, True)]
         if label_key:
             out += [Span(" " * max(3, width - cell_len(cmd) + 3)), self.t(label_key, "muted", **args)]
         return out
@@ -286,11 +328,12 @@ class Kit:
         out = [Span(on * filled, ("strong",), None, "symbol"), Span(off * (n - filled), ("muted",), None, "symbol")]
         return out + ([Span(" "), text] if caption else [])
 
-    def bar(self, fraction: float) -> List[Span]:
-        """The progress bar: the done part in the accent, the rest in mute, scaled to the width."""
+    def bar(self, fraction: float, width: Optional[int] = None) -> List[Span]:
+        """The progress bar: the done part in the accent, the rest in mute, ``width`` cells wide
+        (default: scaled to the layout)."""
         if not self.decor:
             return []
-        width = max(10, round(ansi.LAYOUT["barWidth"] * self.env.width / ansi.LAYOUT["columns"]))
+        width = width if width is not None else max(10, round(ansi.LAYOUT["barWidth"] * self.env.width / ansi.LAYOUT["columns"]))
         f = max(0.0, min(1.0, fraction))
         done = round(f * width)
         return [
@@ -309,33 +352,77 @@ class Kit:
         return Span(shown, ("link",) + tuple(roles), url, "data:url", True)
 
     def key(self, raw: str, width: Optional[int] = None) -> Span:
-        """A license key once it has been entered: its product prefix and its last six
-        characters (what people compare against the purchase email, §4.3), the rest left out, so
-        scrollback and logs never hold a usable key. One line, never wrapped (§1.5 rule 12)."""
+        """A license key once it has been entered: its public product prefix and six bullets, never
+        a character of the secret, so scrollback and logs never hold a usable key (the Node kit's
+        rule). One line, never wrapped (§1.5 rule 12): when it does not fit, ``pkey_`` and the
+        bullets stay and the slug is cut in the middle."""
+        return self.key_mask(raw, fixed=True, width=width)
+
+    def key_mask(self, raw: str, *, fixed: bool = False, width: Optional[int] = None) -> Span:
         from ..core.models import parse_key
 
-        ell = self.env.symbol["ellipsis"]
-        v = parse_key(raw, final=True)
-        body = raw[len(v.prefix) :] if v.prefix and raw.startswith(v.prefix) else raw
-        shown = (v.prefix or "") + ell + body[-6:] if len(body) > 8 else (v.prefix or "") + ell
-        w = width if width is not None else self.body_width - 16
-        return Span(middle(shown, w, ellipsis=ell), ("muted",), None, "data:key", True)
+        bullet = "*" if self.env.symbols == "ascii" else "•"
+        v = parse_key(raw, final=False)
+        prefix = v.prefix or ""
+        secret = len(raw.strip()) - len(prefix)
+        count = 6 if fixed else max(0, min(secret, 40))
+        room = (width if width is not None else self.body_width) - count
+        if cell_len(prefix) > room:
+            ell = self.env.symbol["ellipsis"]
+            head = prefix[:5]
+            rest = prefix[5:]
+            prefix = head + (middle(rest, max(1, room - len(head)), keep_tail=2, ellipsis=ell) if room - len(head) > 1 else ell)
+        return Span(prefix + bullet * count, ("muted",), None, "data:key", True)
 
-    def qr(self, payload: str) -> List[Line]:
-        """The half-block QR, black on white, lined up under the code, or nothing without Unicode
-        or as wide as the terminal. QR codes are always paired with the text code (§4.4 rule 7);
-        whether the screen has the rows for it is the screen's to decide (``screens``)."""
+    def table(self, rows: Sequence[Tuple[str, Span, Sequence[Span]]]) -> List[Line]:
+        """Label and value rows (status, doctor): ``(mark, label span, value spans)``. The values
+        align in a column and a long one wraps inside it, hanging under its own first character; a
+        continuation never lands under the label column. Below 50 columns, or when the value
+        column would be narrower than 20 cells, each row stacks: the label, then the value indented
+        two cells. A mark of ``""`` is a plain rail row."""
+        gap = 3
+        label_w = max((cell_len(label.text) for _, label, _ in rows), default=0)
+        width = self.body_width
+        value_w = width - label_w - gap
+        stack = self.env.width < STACK_COLUMNS or value_w < 20
+        out: List[Line] = []
+        for mark, label, value in rows:
+            if stack:
+                out += self.step(mark, [label]) if mark else self.body([label])
+                out += self.body(list(value), 2)
+                continue
+            lines = wrap(list(value), max(1, value_w))
+            pad = Span(" " * (label_w - cell_len(label.text) + gap))
+            first = lines[0] if lines else []
+            out.append(self.step(mark, [label, pad] + first)[0] if mark else Line(self._prefix("rail") + [label, pad] + first))
+            for ln in lines[1:]:
+                out.append(Line(self._prefix("rail") + [Span(" " * (label_w + gap))] + ln))
+        return out
+
+    def qr_spans(self, payload: str) -> Optional[List[Span]]:
+        """The half-block QR, one span per row (black on white, a ``qr`` role: the quiet zone and
+        the light modules are background-coloured cells, so no stripes at any line spacing), or
+        ``None`` without Unicode or when it is wider than the terminal. QR codes are always paired
+        with the text code (§4.4 rule 7)."""
         if not self.decor or self.env.symbols == "ascii":
-            return []
+            return None
         invert = self.env.color == "none" and self.env.scheme == "dark"
         text = _qr.terminal(payload, quiet_zone=2, invert=invert)
         if text is None:
-            return []
+            return None
         rows = text.split("\n")
         if QR_INDENT + max(cell_len(r) for r in rows) > self.env.columns:
-            return []
+            return None
         roles = () if self.env.color == "none" else ("qr",)
-        return [Line(self._prefix("rail") + [Span("   "), Span(row, roles, None, "symbol", True)]) for row in rows]
+        return [Span(row, roles, None, "symbol", True) for row in rows]
+
+    def qr(self, payload: str) -> List[Line]:
+        """The QR under the code, lined up with it, or nothing. Whether the screen has the rows for
+        it is the screen's to decide (``screens``)."""
+        rows = self.qr_spans(payload)
+        if rows is None:
+            return []
+        return [Line(self._prefix("rail") + [Span("   "), row]) for row in rows]
 
 
 def _end_cut(text: str, width: int, ellipsis: str) -> str:

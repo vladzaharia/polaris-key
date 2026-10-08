@@ -3271,8 +3271,8 @@ msgstr ""
 msgid "cli.status.offline"
 msgstr ""
 
-#. Works offline until {date}
-#. Terminal status: the license keeps working without the internet until {date} (a short date).
+#. until {date}
+#. Terminal status: the license keeps working without the internet until {date} (a short date). It follows the row label 'Offline', so it starts with the preposition.
 msgid "cli.status.offlineUntil"
 msgstr ""
 
@@ -3454,6 +3454,56 @@ msgstr ""
 #. Replace a device in your browser, then try again here.
 #. Terminal: every device on the license is in use. The terminal does not poll, so it says what to do and asks to try again here.
 msgid "cli.deviceLimit.body"
+msgstr ""
+
+#. Devices
+#. Terminal status: the row label for how many devices use the license.
+msgid "cli.status.devices"
+msgstr ""
+
+#. {used} of {limit}
+#. Terminal status: devices in use out of the license's limit, like '2 of 3'.
+msgid "cli.status.seatsOf"
+msgstr ""
+
+#. {version} is available · {size}
+#. Terminal update check: a newer version exists. {version} is the version, {size} the download size (like '61 MB'). The chip above already names the product.
+msgid "cli.update.available"
+msgstr ""
+
+#. {version} is available
+#. Terminal update check: a newer version exists and its size is not known. {version} is the version.
+msgid "cli.update.availableNoSize"
+msgstr ""
+
+#. You have {version}
+#. Terminal update check: the version installed now. {version} is that version.
+msgid "cli.update.have"
+msgstr ""
+
+#. Install
+#. Terminal update check: what the 'update apply' command does, beside the command.
+msgid "cli.update.install"
+msgstr ""
+
+#. Check your connection and run {command} again.
+#. Terminal changelog: what to do after the release notes failed to load. {command} is a command line.
+msgid "cli.changelog.fix"
+msgstr ""
+
+#. Ask whoever sent it for a new file.
+#. Terminal offline activation: what to do after an activation file was refused.
+msgid "cli.import.fix"
+msgstr ""
+
+#. {product} doesn't use Polaris Key sign-in.
+#. Terminal sign-in: the product does not use Polaris Key sign-in. {product} is the product.
+msgid "cli.identityOff.notice"
+msgstr ""
+
+#. Run {command} with your license key.
+#. Terminal sign-in: what to do instead when the product has no sign-in. {command} is a command line such as 'tidewater activate'.
+msgid "cli.identityOff.fix"
 msgstr ""
 
 #. Something went wrong

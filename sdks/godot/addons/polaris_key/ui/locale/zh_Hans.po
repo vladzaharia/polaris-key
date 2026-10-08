@@ -3262,10 +3262,10 @@ msgstr "许可证"
 msgid "cli.status.offline"
 msgstr "离线"
 
-#. Works offline until {date}
-#. Terminal status: the license keeps working without the internet until {date} (a short date).
+#. until {date}
+#. Terminal status: the license keeps working without the internet until {date} (a short date). It follows the row label 'Offline', so it starts with the preposition.
 msgid "cli.status.offlineUntil"
-msgstr "可离线使用至{date}"
+msgstr "至{date}"
 
 #. Version
 #. Terminal status: the row label for the app's version and release channel.
@@ -3446,6 +3446,56 @@ msgstr "未安装任何内容。"
 #. Terminal: every device on the license is in use. The terminal does not poll, so it says what to do and asks to try again here.
 msgid "cli.deviceLimit.body"
 msgstr "请在浏览器中替换一台设备，然后在此重试。"
+
+#. Devices
+#. Terminal status: the row label for how many devices use the license.
+msgid "cli.status.devices"
+msgstr "设备"
+
+#. {used} of {limit}
+#. Terminal status: devices in use out of the license's limit, like '2 of 3'.
+msgid "cli.status.seatsOf"
+msgstr "{used}/{limit}"
+
+#. {version} is available · {size}
+#. Terminal update check: a newer version exists. {version} is the version, {size} the download size (like '61 MB'). The chip above already names the product.
+msgid "cli.update.available"
+msgstr "{version} 可用 · {size}"
+
+#. {version} is available
+#. Terminal update check: a newer version exists and its size is not known. {version} is the version.
+msgid "cli.update.availableNoSize"
+msgstr "{version} 可用"
+
+#. You have {version}
+#. Terminal update check: the version installed now. {version} is that version.
+msgid "cli.update.have"
+msgstr "当前版本为{version}"
+
+#. Install
+#. Terminal update check: what the 'update apply' command does, beside the command.
+msgid "cli.update.install"
+msgstr "安装"
+
+#. Check your connection and run {command} again.
+#. Terminal changelog: what to do after the release notes failed to load. {command} is a command line.
+msgid "cli.changelog.fix"
+msgstr "请检查网络连接，然后再次运行{command}。"
+
+#. Ask whoever sent it for a new file.
+#. Terminal offline activation: what to do after an activation file was refused.
+msgid "cli.import.fix"
+msgstr "请向发送者索取新文件。"
+
+#. {product} doesn't use Polaris Key sign-in.
+#. Terminal sign-in: the product does not use Polaris Key sign-in. {product} is the product.
+msgid "cli.identityOff.notice"
+msgstr "{product}不使用 Polaris Key 登录。"
+
+#. Run {command} with your license key.
+#. Terminal sign-in: what to do instead when the product has no sign-in. {command} is a command line such as 'tidewater activate'.
+msgid "cli.identityOff.fix"
+msgstr "请使用许可证密钥运行{command}。"
 
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).

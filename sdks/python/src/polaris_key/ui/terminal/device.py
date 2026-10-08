@@ -94,7 +94,7 @@ def to_rich(lines: Iterable[Line], palette: Palette) -> Any:
         for s in spans:
             text = clean(s.text)
             link = safe_link(s.link) if palette.hyperlinks else None
-            if palette.color == "none" or not (s.roles or link):
+            if (palette.color == "none" and not palette.attributes and not link) or not (s.roles or link):
                 out.append(text)
                 continue
             params = palette.params(s.roles) if s.roles else ""
@@ -105,10 +105,13 @@ def to_rich(lines: Iterable[Line], palette: Palette) -> Any:
 def rich_console(env: TermEnv, stream: IO[str], *, width: Optional[int] = None, environ: Optional[dict] = None) -> Any:
     from rich.console import Console
 
-    system = {"none": None, "ansi16": "standard", "truecolor": "truecolor"}[env.color]
+    # NO_COLOR drops colour, not weight: on a terminal rich keeps bold and reverse (no_color strips the
+    # colours), anywhere else it writes nothing.
+    keeps_weight = env.tty and not env.dumb and not env.json
+    system = {"none": "standard" if keeps_weight else None, "ansi16": "standard", "truecolor": "truecolor"}[env.color]
     kw: dict = dict(
         file=stream,
-        force_terminal=env.tty and env.color != "none",
+        force_terminal=env.tty and not env.dumb and not env.json,
         color_system=system,
         no_color=env.color == "none",
         highlight=False,

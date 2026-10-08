@@ -1209,8 +1209,8 @@
     <string name="cli_status_license">ライセンス</string>
     <!-- Terminal status: the row label for how long the app works without the internet. -->
     <string name="cli_status_offline">オフライン</string>
-    <!-- Terminal status: the license keeps working without the internet until {date} (a short date). Arguments: 1=date. -->
-    <string name="cli_status_offlineUntil">%1$sまでオフラインで使用可能</string>
+    <!-- Terminal status: the license keeps working without the internet until {date} (a short date). It follows the row label 'Offline', so it starts with the preposition. Arguments: 1=date. -->
+    <string name="cli_status_offlineUntil">%1$sまで</string>
     <!-- Terminal status: the row label for the app's version and release channel. -->
     <string name="cli_status_version">バージョン</string>
     <!-- Terminal status: the heading over the commands that fix a blocked license. Arguments: 1=product. -->
@@ -1283,6 +1283,26 @@
     <string name="cli_update_nothingInstalled">何もインストールされていません。</string>
     <!-- Terminal: every device on the license is in use. The terminal does not poll, so it says what to do and asks to try again here. -->
     <string name="cli_deviceLimit_body">ブラウザでデバイスを入れ替えてから、ここでもう一度お試しください。</string>
+    <!-- Terminal status: the row label for how many devices use the license. -->
+    <string name="cli_status_devices">デバイス</string>
+    <!-- Terminal status: devices in use out of the license's limit, like '2 of 3'. Arguments: 1=used, 2=limit. -->
+    <string name="cli_status_seatsOf">%2$s台中%1$s台</string>
+    <!-- Terminal update check: a newer version exists. {version} is the version, {size} the download size (like '61 MB'). The chip above already names the product. Arguments: 1=version, 2=size. -->
+    <string name="cli_update_available">%1$sが利用可能です · %2$s</string>
+    <!-- Terminal update check: a newer version exists and its size is not known. {version} is the version. Arguments: 1=version. -->
+    <string name="cli_update_availableNoSize">%1$sが利用可能です</string>
+    <!-- Terminal update check: the version installed now. {version} is that version. Arguments: 1=version. -->
+    <string name="cli_update_have">現在のバージョンは%1$sです</string>
+    <!-- Terminal update check: what the 'update apply' command does, beside the command. -->
+    <string name="cli_update_install">インストール</string>
+    <!-- Terminal changelog: what to do after the release notes failed to load. {command} is a command line. Arguments: 1=command. -->
+    <string name="cli_changelog_fix">接続を確認してから、もう一度%1$sを実行してください。</string>
+    <!-- Terminal offline activation: what to do after an activation file was refused. -->
+    <string name="cli_import_fix">送ってくれた人に新しいファイルを依頼してください。</string>
+    <!-- Terminal sign-in: the product does not use Polaris Key sign-in. {product} is the product. Arguments: 1=product. -->
+    <string name="cli_identityOff_notice">%1$sはPolaris Keyのサインインを使いません。</string>
+    <!-- Terminal sign-in: what to do instead when the product has no sign-in. {command} is a command line such as 'tidewater activate'. Arguments: 1=command. -->
+    <string name="cli_identityOff_fix">ライセンスキーを使って%1$sを実行してください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">問題が発生しました</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

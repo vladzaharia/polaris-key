@@ -1219,8 +1219,8 @@
     <string name="cli_status_license">License</string>
     <!-- Terminal status: the row label for how long the app works without the internet. -->
     <string name="cli_status_offline">Offline</string>
-    <!-- Terminal status: the license keeps working without the internet until {date} (a short date). Arguments: 1=date. -->
-    <string name="cli_status_offlineUntil">Works offline until %1$s</string>
+    <!-- Terminal status: the license keeps working without the internet until {date} (a short date). It follows the row label 'Offline', so it starts with the preposition. Arguments: 1=date. -->
+    <string name="cli_status_offlineUntil">until %1$s</string>
     <!-- Terminal status: the row label for the app's version and release channel. -->
     <string name="cli_status_version">Version</string>
     <!-- Terminal status: the heading over the commands that fix a blocked license. Arguments: 1=product. -->
@@ -1293,6 +1293,26 @@
     <string name="cli_update_nothingInstalled">Nothing was installed.</string>
     <!-- Terminal: every device on the license is in use. The terminal does not poll, so it says what to do and asks to try again here. -->
     <string name="cli_deviceLimit_body">Replace a device in your browser, then try again here.</string>
+    <!-- Terminal status: the row label for how many devices use the license. -->
+    <string name="cli_status_devices">Devices</string>
+    <!-- Terminal status: devices in use out of the license's limit, like '2 of 3'. Arguments: 1=used, 2=limit. -->
+    <string name="cli_status_seatsOf">%1$s of %2$s</string>
+    <!-- Terminal update check: a newer version exists. {version} is the version, {size} the download size (like '61 MB'). The chip above already names the product. Arguments: 1=version, 2=size. -->
+    <string name="cli_update_available">%1$s is available · %2$s</string>
+    <!-- Terminal update check: a newer version exists and its size is not known. {version} is the version. Arguments: 1=version. -->
+    <string name="cli_update_availableNoSize">%1$s is available</string>
+    <!-- Terminal update check: the version installed now. {version} is that version. Arguments: 1=version. -->
+    <string name="cli_update_have">You have %1$s</string>
+    <!-- Terminal update check: what the 'update apply' command does, beside the command. -->
+    <string name="cli_update_install">Install</string>
+    <!-- Terminal changelog: what to do after the release notes failed to load. {command} is a command line. Arguments: 1=command. -->
+    <string name="cli_changelog_fix">Check your connection and run %1$s again.</string>
+    <!-- Terminal offline activation: what to do after an activation file was refused. -->
+    <string name="cli_import_fix">Ask whoever sent it for a new file.</string>
+    <!-- Terminal sign-in: the product does not use Polaris Key sign-in. {product} is the product. Arguments: 1=product. -->
+    <string name="cli_identityOff_notice">%1$s doesn't use Polaris Key sign-in.</string>
+    <!-- Terminal sign-in: what to do instead when the product has no sign-in. {command} is a command line such as 'tidewater activate'. Arguments: 1=command. -->
+    <string name="cli_identityOff_fix">Run %1$s with your license key.</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Something went wrong</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

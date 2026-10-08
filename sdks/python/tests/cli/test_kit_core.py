@@ -6,6 +6,8 @@ and a state."""
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from polaris_key.devices.client import RegisterOk  # noqa: F401  (imported for parity with flows)
@@ -177,6 +179,14 @@ def test_light_and_dark_resolve_the_accent_per_scheme() -> None:
     assert dark.accent == "38;2;114;202;190" and light.accent == "38;2;20;121;111"
 
 
+def test_a_non_hex_theme_color_warns_naming_the_role() -> None:
+    th = Theme(colors={"dark": {"success": "2"}})
+    k = Kit.create(env("truecolor", "unicode", 80, "dark"), theme=th, source=Presentation(), product="t")
+    with pytest.warns(DeprecationWarning, match="'success'"):
+        k.palette()
+
+
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_theme_colors_are_hex_per_role_per_scheme_in_truecolor_only() -> None:
     """One value language across kits (the Node kit takes the same): a hex colour per role, per
     scheme, drawn only where the terminal draws truecolor; ANSI-16 keeps the user's palette, the
@@ -192,7 +202,8 @@ def test_theme_colors_are_hex_per_role_per_scheme_in_truecolor_only() -> None:
     light = Kit.create(env("truecolor", "unicode", 80, "light"), theme=th, source=Presentation(), product="t")
     assert light.palette().params(("muted",)) == "2"
     _, text = render(FIXTURES[0], env("none", "unicode", 80, "dark"))
-    assert "\x1b[" not in text
+    # NO_COLOR keeps bold and reverse, never a colour.
+    assert not re.search(r"\x1b\[(?:[0-9;]*(?:3[0-79]|9[0-7]|4[0-79]|10[0-7]|[34]8))", text)
 
 
 def test_theme_validates_its_fields() -> None:
@@ -357,7 +368,7 @@ def test_detect_width_scheme_motion_and_headless() -> None:
     assert _detect(env={}).width == 80
     assert _detect(env={}, size=lambda: (64, 24)).width == 64
     assert _detect(env={}, size=lambda: (40, 24)).width == 40
-    assert _detect(env={}, size=lambda: (20, 24)).width == 32
+    assert _detect(env={}, size=lambda: (20, 24)).width == 20
     assert _detect(env={}).scheme == "dark"
     assert _detect(env={"COLORFGBG": "0;15"}).scheme == "light"
     assert _detect(env={"PKEY_THEME": "light"}).scheme == "light"

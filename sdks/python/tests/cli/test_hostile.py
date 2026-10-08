@@ -95,7 +95,9 @@ def test_no_variant_draws_a_server_escape(label: str, env: Any) -> None:
         text = "\n".join(to_ansi(ln, pal) for ln in lines)
         _assert_clean(text, label)
         if env.color == "none":
-            assert "\x1b" not in text, label
+            # NO_COLOR drops colour, not weight: only bold, reverse, their reset and links remain.
+            leftover = re.sub(r"\x1b\[(?:0|1|7|1;7)m|\x1b\]8;;[^\x1b]*\x1b\\", "", text)
+            assert "\x1b" not in leftover, label
         for m in re.finditer(r"\x1b\]8;;([^\x1b]+)\x1b\\", text):
             assert safe_link(m.group(1)) == m.group(1), m.group(1)
         # Lines are lines: a newline in data never starts a new terminal row.

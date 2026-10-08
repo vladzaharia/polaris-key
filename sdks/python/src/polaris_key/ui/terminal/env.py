@@ -4,9 +4,10 @@
   not a terminal drop every escape; ``FORCE_COLOR`` keeps them on a pipe. Status roles are
   ANSI-16; truecolor is used for the product accent only with ``COLORTERM=truecolor`` or ``24bit``.
 * **Symbols.** Unicode, or ASCII with ``--ascii``, ``theme.symbols = "ascii"`` or ``TERM=dumb``.
-* **Width.** The layout is ``min(80, columns)``, never below 32 (the narrowest layout: a 19-character
-  code still fits a line, rail and indent included). Prose wraps; a URL or a code wraps at its own
-  break points and is never cut (:mod:`.text`). The Node kit lays out the same way.
+* **Width.** The layout is ``min(80, columns)``. Below 32 columns the rail and its gutter are dropped
+  and everything lays out at the real width, rather than drawing for 32 and being cropped. Prose
+  wraps; a URL or a code wraps at its own break points and is never cut (:mod:`.text`). The Node kit
+  lays out the same way.
 * **Height.** 16 rows or fewer is a short terminal (a "landscape" window): the screens drop their
   blank rows and put the key hints inline, so the code, the URL and the keys stay in view.
 * **Scheme.** The theme's ``color_scheme``, then ``PKEY_THEME``, then the terminal's background
@@ -30,18 +31,18 @@ from typing import IO, Any, Callable, Mapping, Optional
 
 from .. import ansi
 
-__all__ = ["TermEnv", "detect", "layout_columns", "parse_colorfgbg", "parse_osc11", "MIN_LAYOUT_COLUMNS", "SHORT_ROWS"]
+__all__ = ["TermEnv", "detect", "layout_columns", "parse_colorfgbg", "parse_osc11", "MIN_COLUMNS", "MIN_LAYOUT_COLUMNS"]
 
-#: The narrowest layout, in cells.
+#: Below this many columns the rail and its gutter are dropped.
 MIN_LAYOUT_COLUMNS = 32
 
-#: A terminal this many rows high or fewer gets the short layout.
-SHORT_ROWS = 16
+#: The narrowest width anything is laid out at, in cells.
+MIN_COLUMNS = 10
 
 
 def layout_columns(columns: int) -> int:
-    """The layout width for a terminal ``columns`` cells wide: 80, or the terminal's, never below 32."""
-    return max(MIN_LAYOUT_COLUMNS, min(ansi.LAYOUT["columns"], int(columns)))
+    """The layout width for a terminal ``columns`` cells wide: 80, or the terminal's own width."""
+    return max(MIN_COLUMNS, min(ansi.LAYOUT["columns"], int(columns)))
 
 
 @dataclass(frozen=True)
@@ -52,10 +53,10 @@ class TermEnv:
     interactive: bool = False
     color: str = "none"
     symbols: str = "unicode"
-    #: Layout width in cells, 32 to 80.
+    #: Layout width in cells, up to 80.
     width: int = ansi.LAYOUT["columns"]
-    #: Terminal rows: a short terminal (16 or fewer) drops blank rows; a QR shows only when the
-    #: whole screen fits them.
+    #: Terminal rows: a live screen taller than this compacts by fit; a QR shows only when the whole
+    #: screen fits them.
     height: int = 24
     #: ``"dark"`` or ``"light"``: the terminal's background.
     scheme: str = "dark"
@@ -69,16 +70,11 @@ class TermEnv:
     #: ``TERM=dumb``: a terminal that draws no escape at all, so plain lines, no rails, no
     #: prompts, no cursor control and no bracketed paste (SIGN-IN.md D-77).
     dumb: bool = False
-    #: The terminal's real width in cells (``width`` is the layout's, never below 32).
+    #: The terminal's real width in cells (``width`` is the layout's, at most 80).
     columns: int = ansi.LAYOUT["columns"]
     #: The person asked for a code (``--device-code``): sign-in shows it without saying there is
     #: no browser.
     device_code: bool = False
-
-    @property
-    def short(self) -> bool:
-        """A short terminal: 16 rows or fewer, on a terminal (never a pipe)."""
-        return self.tty and not self.dumb and self.height <= SHORT_ROWS
 
     def resized(self, columns: int, rows: int) -> "TermEnv":
         """The same terminal at a new size (SIGWINCH)."""
@@ -204,7 +200,10 @@ def detect(
     else:
         color = "ansi16"
 
-    sym = symbols if symbols in ("unicode", "ascii") else ("ascii" if (ascii or dumb) else "unicode")
+    # ASCII symbols and the ASCII spinner where the terminal has no braille: TERM=dumb, the kernel
+    # console (TERM=linux), PKEY_ASCII=1 and --ascii (the Node kit's rules).
+    plain_symbols = ascii or dumb or term == "linux" or (e.get("PKEY_ASCII", "") not in ("", "0", "false", "False"))
+    sym = symbols if symbols in ("unicode", "ascii") else ("ascii" if plain_symbols else "unicode")
     if ascii:
         sym = "ascii"
 
@@ -239,7 +238,7 @@ def detect(
         width=width,
         height=rows if out_tty else 24,
         scheme=scheme,
-        hyperlinks=color != "none" and not dumb,
+        hyperlinks=tty and not dumb and not ci and not json,
         clipboard=interactive and not dumb,
         motion=interactive and not dumb and motion == "system",
         headless=headless,

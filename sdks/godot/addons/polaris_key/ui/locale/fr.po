@@ -3282,10 +3282,10 @@ msgstr "Licence"
 msgid "cli.status.offline"
 msgstr "Hors ligne"
 
-#. Works offline until {date}
-#. Terminal status: the license keeps working without the internet until {date} (a short date).
+#. until {date}
+#. Terminal status: the license keeps working without the internet until {date} (a short date). It follows the row label 'Offline', so it starts with the preposition.
 msgid "cli.status.offlineUntil"
-msgstr "Fonctionne hors ligne jusqu’au {date}"
+msgstr "jusqu’au {date}"
 
 #. Version
 #. Terminal status: the row label for the app's version and release channel.
@@ -3466,6 +3466,56 @@ msgstr "Rien n’a été installé."
 #. Terminal: every device on the license is in use. The terminal does not poll, so it says what to do and asks to try again here.
 msgid "cli.deviceLimit.body"
 msgstr "Remplacez un appareil dans votre navigateur, puis réessayez ici."
+
+#. Devices
+#. Terminal status: the row label for how many devices use the license.
+msgid "cli.status.devices"
+msgstr "Appareils"
+
+#. {used} of {limit}
+#. Terminal status: devices in use out of the license's limit, like '2 of 3'.
+msgid "cli.status.seatsOf"
+msgstr "{used} sur {limit}"
+
+#. {version} is available · {size}
+#. Terminal update check: a newer version exists. {version} is the version, {size} the download size (like '61 MB'). The chip above already names the product.
+msgid "cli.update.available"
+msgstr "{version} est disponible · {size}"
+
+#. {version} is available
+#. Terminal update check: a newer version exists and its size is not known. {version} is the version.
+msgid "cli.update.availableNoSize"
+msgstr "{version} est disponible"
+
+#. You have {version}
+#. Terminal update check: the version installed now. {version} is that version.
+msgid "cli.update.have"
+msgstr "Vous avez {version}"
+
+#. Install
+#. Terminal update check: what the 'update apply' command does, beside the command.
+msgid "cli.update.install"
+msgstr "Installer"
+
+#. Check your connection and run {command} again.
+#. Terminal changelog: what to do after the release notes failed to load. {command} is a command line.
+msgid "cli.changelog.fix"
+msgstr "Vérifiez votre connexion, puis exécutez à nouveau {command}."
+
+#. Ask whoever sent it for a new file.
+#. Terminal offline activation: what to do after an activation file was refused.
+msgid "cli.import.fix"
+msgstr "Demandez un nouveau fichier à la personne qui vous l’a envoyé."
+
+#. {product} doesn't use Polaris Key sign-in.
+#. Terminal sign-in: the product does not use Polaris Key sign-in. {product} is the product.
+msgid "cli.identityOff.notice"
+msgstr "{product} n’utilise pas la connexion Polaris Key."
+
+#. Run {command} with your license key.
+#. Terminal sign-in: what to do instead when the product has no sign-in. {command} is a command line such as 'tidewater activate'.
+msgid "cli.identityOff.fix"
+msgstr "Exécutez {command} avec votre clé de licence."
 
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).

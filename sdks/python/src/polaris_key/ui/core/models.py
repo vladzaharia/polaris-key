@@ -64,6 +64,9 @@ class GateView:
     channel: Optional[str] = None
     developer: Optional[str] = None
     usable: bool = False
+    #: Devices in use and the license's limit, when the status data carries them.
+    seats_used: Optional[int] = None
+    seats_limit: Optional[int] = None
 
 
 _BLOCKED = ("expired", "revoked", "version-too-old", "version-too-new", "channel-not-entitled")
@@ -84,6 +87,8 @@ def gate_view(
     version: Optional[str] = None,
     channel: Optional[str] = None,
     developer: Optional[str] = None,
+    seats_used: Optional[int] = None,
+    seats_limit: Optional[int] = None,
 ) -> GateView:
     """Map a gate status (``LICENSE_STATUS_VALUES``) to its component and state."""
     days: Optional[int] = None
@@ -115,6 +120,8 @@ def gate_view(
         channel=channel,
         developer=developer,
         usable=status in ("ok", "grace", "not-applicable"),
+        seats_used=seats_used,
+        seats_limit=seats_limit,
     )
 
 
@@ -318,7 +325,7 @@ class DevicesView:
 @dataclass(frozen=True)
 class UpdateView:
     """``UpdatePrompt``: ``available``, ``mandatory``, ``up-to-date``, ``blocked``, ``store``,
-    ``platform``, ``downloading``, ``ready`` or ``revoked-required-content``."""
+    ``platform``, ``downloading``, ``ready``, ``failed``, ``cancelled`` or ``revoked-required-content``."""
 
     component: str
     state: str
@@ -334,6 +341,13 @@ class UpdateView:
     done: Optional[str] = None
     total: Optional[str] = None
     eta: Optional[str] = None
+    #: The download in bytes, and the estimated seconds left, for a progress line that lays itself
+    #: out for its width (the strings above are for a caller that has only text).
+    done_bytes: Optional[int] = None
+    total_bytes: Optional[int] = None
+    eta_seconds: Optional[float] = None
+    #: A ``failed`` update's registry code (its title is the catalog's for that code).
+    code: Optional[str] = None
     #: Whether this build can install it (a build without signed updates can only point at it).
     installable: bool = True
 

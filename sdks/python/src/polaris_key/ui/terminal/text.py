@@ -438,9 +438,16 @@ class Palette:
     chip: str = "1;" + ansi.SGR["chip"] + ";" + ansi.SGR["accent"]
     hyperlinks: bool = False
     overrides: Tuple[Tuple[str, str], ...] = ()
+    #: With ``color="none"`` on a terminal: keep weight, not colour. Bold and reverse video stay
+    #: (the code chip, the key hints, titles) so the code is still the focal point; a pipe, TERM=dumb
+    #: and ``--json`` write no escape at all.
+    attributes: bool = False
 
     def params(self, roles: Sequence[str]) -> str:
         """The SGR parameters for ``roles``, in rich's order (attributes, then colours)."""
+        if self.color == "none":
+            keep = {"strong": ["1"], "code": ["1", "7"], "chip": ["7"]}
+            return _order([c for r in roles for c in keep.get(r, [])]) if self.attributes else ""
         over: Dict[str, str] = dict(self.overrides)
         codes: List[str] = []
         for role in roles:
@@ -516,7 +523,7 @@ def to_ansi(line: Line, palette: Palette) -> str:
         last = spans[-1]
         trimmed = last.text.rstrip(" ")
         spans = spans[:-1] + ([Span(trimmed, last.roles, last.link, last.src)] if trimmed else [])
-    if palette.color == "none":
+    if palette.color == "none" and not palette.attributes and not palette.hyperlinks:
         return "".join(clean(s.text) for s in spans)
     out: List[str] = []
     for s in spans:

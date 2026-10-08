@@ -18,7 +18,7 @@ import json as _json
 import sys
 import threading
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import IO, Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from ...core.errors import PolarisError
@@ -430,6 +430,8 @@ def sign_in(
     else:
         if not t.env.json:
             t.device.print(screens.sign_in(k, view, verb))
+            # Piped output prints its header once: the result that follows is only the result.
+            t.device.header_gone = True
         worker.join()
     if cancelled or (isinstance(worker.error, PolarisError) and worker.error.code == "cancelled"):
         model.cancelled()
@@ -470,11 +472,15 @@ def sign_out(client: Any, t: Terminal, *, yes: bool = False) -> Outcome:
 # ── devices ──────────────────────────────────────────────────────────────────────────────────
 
 
-def _rows(client: Any) -> Tuple[DeviceRow, ...]:
+def _rows(client: Any, locale: str = "en") -> Tuple[DeviceRow, ...]:
     rows = []
     for d in client.list_devices():
-        rows.append(DeviceRow(d.id, d.label, d.platform, bool(d.current)))
-    return tuple(rows)
+        seen = getattr(d, "lastVerifiedAt", None) if d.current else None
+        when = fmt.relative(seen, time.time(), locale) if seen else None
+        platform = " ".join(p for p in (d.platform, getattr(d, "arch", None)) if p) or None
+        rows.append(DeviceRow(d.id, d.label, platform, bool(d.current), when))
+    # This device first, as the Node kit lists them.
+    return tuple(sorted(rows, key=lambda r: not r.current))
 
 
 def devices(client: Any, t: Terminal, words: Sequence[str], *, yes: bool = False) -> Outcome:
@@ -483,7 +489,7 @@ def devices(client: Any, t: Terminal, words: Sequence[str], *, yes: bool = False
     action = words[0] if words else "list"
     try:
         if action == "list":
-            rows = _rows(client)
+            rows = _rows(client, k.copy.locale)
             view = DevicesView("Devices", "list" if rows else "empty", rows)
             data = {"devices": [{"id": r.id, "label": r.label, "platform": r.platform, "current": r.current} for r in rows]}
             return Outcome(0, screens.devices(k, view, verb), data)
@@ -589,25 +595,49 @@ def mint(client: Any, t: Terminal, words: Sequence[str]) -> Outcome:
 
 
 class _Progress:
-    """Download progress into a live region (≤ 10 Hz) and ``--json`` progress lines (each 5 %)."""
+    """Download progress into a live region (≤ 10 Hz) and ``--json`` progress lines (each 5 %). On an
+    interactive terminal Esc cancels the download (a key watcher beside it); Ctrl-C raises
+    ``KeyboardInterrupt`` out of it, and both leave a result block, never a blank screen."""
 
-    def __init__(self, t: Terminal, draw: Callable[[float, str, str, Optional[str]], List[Line]]) -> None:
+    def __init__(self, t: Terminal, draw: Callable[[float, int, int, Optional[float]], List[Line]]) -> None:
         self.t = t
         self.draw = draw
         self.live = t.device.live()
         self.started = time.monotonic()
         self.last = 0.0
         self.pct = -1
+        self.total = 0
+        self.cancelled = threading.Event()
+        self._stop = threading.Event()
+        self._watcher: Optional[threading.Thread] = None
 
     def __enter__(self) -> "_Progress":
         self.live.__enter__()
+        if self.t.env.interactive:
+            self._watcher = threading.Thread(target=self._watch, daemon=True)
+            self._watcher.start()
         return self
 
+    def _watch(self) -> None:
+        try:
+            with self.t.device.keys() as keys:
+                while not self._stop.is_set():
+                    if keys.read(0.1) == "esc":
+                        self.cancelled.set()
+                        return
+        except Exception:
+            return
+
     def __exit__(self, *exc: Any) -> None:
+        self._stop.set()
+        if self._watcher is not None:
+            self._watcher.join(1)
         self.live.__exit__(*exc)
 
     def __call__(self, done: int, total: int) -> None:
-        loc = self.t.kit.copy.locale
+        if self.cancelled.is_set():
+            raise PolarisError("cancelled", "The download was cancelled; the next call resumes.")
+        self.total = total
         f = done / total if total else 1.0
         pct = int(f * 100)
         if pct != self.pct and (pct % 5 == 0 or pct == 100):
@@ -618,9 +648,58 @@ class _Progress:
             return
         self.last = now
         elapsed = now - self.started
-        eta = fmt.duration(elapsed * (total - done) / done, loc) if done and done < total else None
-        a, b = fmt.size(done, loc), fmt.size(total, loc)
-        self.live.update(lambda: self.draw(f, a, b, eta))
+        eta = elapsed * (total - done) / done if done and done < total else None
+        self.live.update(lambda: self.draw(f, done, total, eta))
+
+
+def _update_lines(k: Kit, verb: str, view: UpdateView, f: float, done: int, total: int, eta: Optional[float]) -> List[Line]:
+    loc = k.copy.locale
+    shown = replace(
+        view,
+        state="downloading",
+        fraction=f,
+        done=fmt.size(done, loc),
+        total=fmt.size(total, loc),
+        eta=fmt.duration(eta, loc) if eta else None,
+        done_bytes=done,
+        total_bytes=total,
+        eta_seconds=eta,
+    )
+    return screens.update(k, shown, verb)
+
+
+def _fetch(
+    client: Any,
+    t: Terminal,
+    view: UpdateView,
+    current: Optional[str],
+    verb: str,
+    data: Dict[str, Any],
+    run: Callable[["_Progress"], Any],
+    extra: Callable[[Any], Dict[str, Any]],
+    unsupported_check: bool = False,
+) -> Outcome:
+    """Download (or install) with progress, ending in one result block: ready, cancelled (Esc exits 1,
+    Ctrl-C 130, nothing installed) or failed (what happened, that nothing was installed, and the
+    command to try again)."""
+    k = t.kit
+    base = replace(view, current=current)
+    bar = _Progress(t, lambda f, a, b, e: _update_lines(k, verb, base, f, a, b, e))
+    try:
+        with bar:
+            out = run(bar)
+    except KeyboardInterrupt:
+        t.interrupted = True
+        return Outcome(130, screens.update(k, replace(base, state="cancelled"), verb), {**data, "state": "cancelled"})
+    except PolarisError as e:
+        if e.code == "cancelled":
+            return Outcome(1, screens.update(k, replace(base, state="cancelled"), verb), {**data, "state": "cancelled"})
+        return Outcome(1, screens.update(k, replace(base, state="failed", code=e.code), verb), {**data, "state": "error", "error": e.code})
+    if unsupported_check and getattr(out, "kind", None) == "unsupported":
+        return _error_outcome(t, "unsupported", verb)
+    size = fmt.size(bar.total, k.copy.locale) if bar.total else None
+    done = replace(base, state="ready", size=size)
+    return Outcome(0, screens.update(k, done, verb), {**data, **extra(out)})
 
 
 def update(client: Any, t: Terminal, words: Sequence[str], *, channel: Optional[str] = None, to: Optional[str] = None) -> Outcome:
@@ -645,23 +724,17 @@ def update(client: Any, t: Terminal, words: Sequence[str], *, channel: Optional[
         if action == "download":
             if not to:
                 return usage(t, "update download --to <path>")
-            draw = lambda f, a, b, e: screens.update(k, UpdateView("UpdatePrompt", "downloading", view.version, current, fraction=f, done=a, total=b, eta=e), verb)  # noqa: E731
-            with _Progress(t, draw) as bar:
-                got = client.release.fetch(check, to=to, on_progress=bar)
-            done = UpdateView("UpdatePrompt", "ready", view.version, current)
-            return Outcome(0, screens.update(k, done, verb), {**data, "path": got.path, "size": got.size, "sha256": got.sha256})
+            return _fetch(client, t, view, current, verb, data, lambda bar: client.release.fetch(check, to=to, on_progress=bar), lambda got: {"path": got.path, "size": got.size, "sha256": got.sha256})
         if action == "apply":
             if client.update.driver is None and d.action == "binary":
                 from ...update.drivers import SelfReplaceDriver
 
                 client.update.set_driver(SelfReplaceDriver())
-            draw = lambda f, a, b, e: screens.update(k, UpdateView("UpdatePrompt", "downloading", view.version, current, fraction=f, done=a, total=b, eta=e), verb)  # noqa: E731
-            with _Progress(t, draw) as bar:
-                out = client.update.install(check, on_progress=bar)
-            if out.kind == "unsupported":
-                return _error_outcome(t, "unsupported", verb)
-            done = UpdateView("UpdatePrompt", "ready", view.version, current)
-            return Outcome(0, screens.update(k, done, verb), {**data, "installed": out.kind})
+
+            def finish(out: Any) -> Dict[str, Any]:
+                return {"installed": out.kind}
+
+            return _fetch(client, t, view, current, verb, data, lambda bar: client.update.install(check, on_progress=bar), finish, unsupported_check=True)
     except PolarisError as e:
         return _error_outcome(t, e.code, verb)
     return usage(t, "update [check | download --to <path> | apply]")
