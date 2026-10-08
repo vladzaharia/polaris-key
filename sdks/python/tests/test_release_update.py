@@ -632,7 +632,7 @@ def test_decide_reports_a_refused_record_and_offers_nothing_self_installed() -> 
     c.close()
 
 
-def test_a_stale_committed_feed_freezes_when_the_network_is_down() -> None:
+def test_a_stale_committed_feed_freezes_when_the_feed_cannot_be_fetched() -> None:
     worker = Worker()
     worker.feeds["stable"] = seeded(worker, issued=NOW - 2000)
     store = InMemoryStore(PRODUCT)
@@ -646,7 +646,8 @@ def test_a_stale_committed_feed_freezes_when_the_network_is_down() -> None:
         time.time = real  # type: ignore[assignment]
     del worker.feeds["stable"]
     check = c.update.decide(channel="stable")
-    assert [e.to_dict() for e in check.errors] == [{"code": "network-error", "detail": None}]
+    # The fake Worker answers 503 for a missing feed: server-error, never network-error.
+    assert [e.to_dict() for e in check.errors] == [{"code": "server-error", "detail": None}]
     assert check.feed == "committed"
     assert check.decision.to_dict() == {
         "action": "none",
@@ -671,12 +672,12 @@ def test_the_effective_clock_refuses_an_expired_feed_a_wound_back_clock_would_ac
     c.close()
 
 
-def test_nothing_to_decide_from_raises_the_transport_code() -> None:
-    worker = Worker()
+def test_nothing_to_decide_from_raises_the_fetch_code() -> None:
+    worker = Worker()  # a missing feed answers 503
     c = v4_client(worker)
     with pytest.raises(UpdateError) as exc:
         c.update.decide(channel="stable")
-    assert exc.value.code == "network-error"
+    assert exc.value.code == "server-error"
     c.close()
 
 

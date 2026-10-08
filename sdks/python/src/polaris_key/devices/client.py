@@ -22,8 +22,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Union
 
+from ..constants_generated import ErrorCode
 from ..core.cache import CacheManager
-from ..core.context import CoreContext
+from ..core.context import CoreContext, server_message_of
 from ..core.errors import PolarisError
 from ..core.telemetry import build_snapshot, report_snapshot
 from ..core.token import TokenManager
@@ -125,8 +126,13 @@ class RegisterRefused:
 
 @dataclass(frozen=True)
 class RegisterError:
+    """No usable answer: ``network-error`` (no answer), ``server-error`` (a 5xx, with
+    ``status``) or ``bad_response`` (a 200 without a token and device id)."""
+
     message: str
     kind: str = "error"
+    code: str = ErrorCode.NETWORK_ERROR
+    status: Optional[int] = None
 
 
 RegisterResult = Union[
@@ -139,8 +145,14 @@ RegisterResult = Union[
 ]
 
 
-class DeviceManagementUnsupportedError(RuntimeError):
-    code = "device-management-unsupported"
+class DeviceManagementUnsupportedError(PolarisError):
+    """There is no credential, so there is no roster to manage: activate, enrol, sign in or
+    register first. ``code`` is ``device-management-unsupported``."""
+
+    code = ErrorCode.DEVICE_MANAGEMENT_UNSUPPORTED
+
+    def __init__(self, message: str) -> None:
+        super().__init__(ErrorCode.DEVICE_MANAGEMENT_UNSUPPORTED, message)
 
 
 class DeviceRefusedError(PolarisError):
@@ -150,18 +162,14 @@ class DeviceRefusedError(PolarisError):
     HTTP status."""
 
     def __init__(self, code: str, message: str, status: int) -> None:
-        super().__init__(code, message)
-        self.status = status
+        super().__init__(code, message, status=status)
 
 
 def _refusal(res: Any, fallback: str, what: str) -> DeviceRefusedError:
-    body = _json_or_empty(res)
-    raw = body.get("error")
-    code = raw if isinstance(raw, str) and raw else (
-        raw.get("code") if isinstance(raw, dict) and isinstance(raw.get("code"), str) else None
-    )
     return DeviceRefusedError(
-        code or fallback, f"{what} failed: {res.status_code}", res.status_code
+        _code_of(res) or fallback,
+        server_message_of(res) or f"{what} failed: {res.status_code}",
+        res.status_code,
     )
 
 
@@ -248,17 +256,22 @@ class DevicesClient:
                 res = self._ctx.request(
                     "POST", self._ctx.url(REGISTER_PATH), headers=self._ctx.headers()
                 )
-        except PolarisError:
-            raise
-        except Exception as e:
-            return RegisterError(message=str(e))
+        except PolarisError as e:
+            # `network-error` and `server-error` are outcomes; local-only is the host's to fix.
+            if e.code == ErrorCode.LOCAL_ONLY:
+                raise
+            return RegisterError(message=e.message, code=e.code, status=e.status)
 
         if res.status_code == 200:
             body = _json_or_empty(res)
             token = body.get("token")
             device_id = body.get("deviceId")
             if not isinstance(token, str) or not isinstance(device_id, str):
-                return RegisterError(message="registration response was malformed")
+                return RegisterError(
+                    message="registration response was malformed",
+                    code=ErrorCode.BAD_RESPONSE,
+                    status=200,
+                )
             return RegisterOk(token=token, deviceId=device_id)
         if res.status_code == 403:
             code = _code_of(res)
@@ -275,11 +288,17 @@ class DevicesClient:
                 status=res.status_code,
                 message=_message_of(res),
             )
-        return RegisterError(message=_text_or_empty(res))
+        return RegisterError(
+            message=_text_or_empty(res), code=ErrorCode.HTTP_ERROR, status=res.status_code
+        )
 
     # ── Roster ──────────────────────────────────────────────────────────────────────
     def list(self) -> List[AccountDevice]:
-        """``GET /<p>/devices`` — the product's roster for this credential."""
+        """``GET /<p>/devices`` — the product's roster for this credential.
+
+        Raises :class:`DeviceManagementUnsupportedError` without a credential,
+        ``network-error`` / ``server-error``, or :class:`DeviceRefusedError` for a refusal (as
+        do :meth:`rename` and :meth:`deauthorize`)."""
         token = self._require_token()
         res = self._ctx.request(
             "GET",

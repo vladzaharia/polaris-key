@@ -237,11 +237,18 @@ def test_roster_operations_need_a_credential() -> None:
 
 
 def test_a_failing_roster_call_raises_a_polaris_error() -> None:
+    # A refusal that names no code is the call's fallback code; a 5xx is server-error.
+    c = make_client(lambda r: httpx.Response(400, text="boom"))
+    c._tokens.set(TOKEN)
+    with pytest.raises(PolarisError) as exc:
+        c.devices.list()
+    assert (exc.value.code, exc.value.status) == ("device_list_failed", 400)
+    c.close()
     c = make_client(lambda r: httpx.Response(500, text="boom"))
     c._tokens.set(TOKEN)
     with pytest.raises(PolarisError) as exc:
         c.devices.list()
-    assert exc.value.code == "device_list_failed"
+    assert (exc.value.code, exc.value.status) == ("server-error", 500)
     c.close()
 
 

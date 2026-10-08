@@ -22,7 +22,7 @@ from urllib.parse import quote, urlencode, urlsplit, urlunsplit
 import threading
 
 from ..constants_generated import ErrorCode, Feature
-from ..core.context import CoreContext
+from ..core.context import CoreContext, refusal_error
 from ..core.errors import PolarisError
 from ..core.headers import canonical_arch, canonical_platform
 from ..core.models import ReleaseRecordBuild, ReleaseRecordDoc, UpdateCheck, UpdateDecision
@@ -75,7 +75,9 @@ class ReleaseClient:
 
         Raises ``PolarisError("service-unavailable")`` when this product does not run
         Release: a client that has not been told the service exists must not probe for it
-        (D-21).
+        (D-21). A failed call raises ``network-error`` (no answer), ``server-error`` (a 5xx),
+        the ``entitled`` refusal's code on a 401 or 403, and for any other refusal the server's
+        code (``not_found`` only for a real 404, else ``rate_limited`` or ``http-error``).
         """
         self._ctx.require_service("release", Feature.RELEASE_CHANGELOG)
         res = self._get("release/changelog")
@@ -247,15 +249,15 @@ class ReleaseClient:
                 raise PolarisError(
                     code or ErrorCode.UNAUTHORIZED,
                     f"{path} refused: this feed needs a usable licence.",
+                    status=401,
                 )
             raise PolarisError(
                 code or ErrorCode.FORBIDDEN,
                 f"{path} refused: this build is not entitled to that feed.",
+                status=403,
             )
         if not res.is_success:
-            raise PolarisError(
-                "not_found", f"{path} failed with status {res.status_code}."
-            )
+            raise refusal_error(res, path)
         return res
 
 

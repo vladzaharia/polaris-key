@@ -115,25 +115,11 @@ def _mint_once(
         # ``_get`` refused locally when no token was presented, so it is a string here.
         assert presented is not None
         return presented, MintedToken(token=tok, expiresAt=exp)
-    try:
-        body = res.json()
-    except ValueError:
-        body = {}
-    body = body if isinstance(body, dict) else {}
-    err = body.get("error")
-    if isinstance(err, str):
-        code = err
-    elif isinstance(err, dict) and isinstance(err.get("code"), str):
-        code = err["code"]
-    else:
-        code = f"http_{res.status_code}"
-    message = body.get("message")
-    raise PolarisError(
-        code,
-        message
-        if isinstance(message, str)
-        else f'edge-mint of "{recipe_id}" failed with status {res.status_code}.',
-    )
+    # The server's code and message; a 5xx never gets here (`server-error`, raised by the
+    # request), and an answer that names no code is its status's registry code.
+    from ..core.context import refusal_error
+
+    raise refusal_error(res, f'edge-mint of "{recipe_id}"')
 
 
 def _get(ctx: "CoreContext", token: Optional[str], recipe_id: str) -> httpx.Response:
@@ -143,12 +129,9 @@ def _get(ctx: "CoreContext", token: Optional[str], recipe_id: str) -> httpx.Resp
             "unauthorized",
             "edge-mint needs a device token: activate, enrol, sign in or register first.",
         )
-    ctx.http()  # the local-only refusal propagates as itself, not as a network error
-    try:
-        return ctx.request(
-            "GET",
-            ctx.url(f"config/mint/{recipe_id}/token"),
-            headers=ctx.headers({"authorization": f"Bearer {token}"}),
-        )
-    except httpx.HTTPError as e:
-        raise PolarisError("network-error", str(e)) from e
+    # Raises local-only, network-error or server-error (CoreContext.request).
+    return ctx.request(
+        "GET",
+        ctx.url(f"config/mint/{recipe_id}/token"),
+        headers=ctx.headers({"authorization": f"Bearer {token}"}),
+    )

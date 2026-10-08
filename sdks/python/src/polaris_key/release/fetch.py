@@ -29,7 +29,7 @@ from urllib.parse import urljoin, urlsplit
 
 import httpx
 
-from ..core.context import CoreContext
+from ..core.context import CoreContext, server_error
 from ..core.errors import PolarisError
 
 __all__ = ["FetchedFile", "MAX_REDIRECTS", "fetch_verified"]
@@ -98,10 +98,11 @@ def fetch_verified(
     """Download ``url`` to ``to``, verified against ``expected_size`` and ``expected_sha256``
     (lowercase hex). ``on_progress(done, total)`` runs as bytes arrive.
 
-    Raises :class:`PolarisError`: ``local-only``, ``network-error``, ``insecure-redirect``,
-    ``too-many-redirects``, ``cancelled`` (the ``.part`` is kept), ``payload-mismatch`` (size
-    or hash; the ``.part`` is removed), or the server's refusal code (``download_auth_required``,
-    ``attestation_required``, ``not_found``, …; ``http-error`` when it names none).
+    Raises :class:`PolarisError`: ``local-only``, ``network-error``, ``server-error`` (a 5xx),
+    ``insecure-redirect``, ``too-many-redirects``, ``cancelled`` (the ``.part`` is kept),
+    ``payload-mismatch`` (size or hash; the ``.part`` is removed), or the server's refusal code
+    (``download_auth_required``, ``attestation_required``, ``not_found``, …; ``http-error`` when
+    it names none).
     """
     client = ctx.http()  # local-only refuses here, before anything is written
     if not _secure(url):
@@ -155,8 +156,8 @@ def fetch_verified(
             try:
                 req = client.build_request("GET", current, headers=headers, timeout=ctx.timeout)
                 res = client.send(req, stream=True, follow_redirects=False)
-            except httpx.HTTPError as e:
-                raise PolarisError("network-error", str(e)) from e
+            except (httpx.HTTPError, OSError) as e:
+                raise PolarisError("network-error", str(e) or type(e).__name__) from e
             try:
                 if res.status_code in (301, 302, 303, 307, 308):
                     loc = res.headers.get("location")
@@ -170,9 +171,19 @@ def fetch_verified(
                     continue
                 if res.status_code == 416 and have == expected_size:
                     break
+                if res.status_code >= 500:
+                    try:
+                        res.read()  # for the server's message; unread, there is none
+                    except Exception:  # noqa: BLE001
+                        pass
+                    raise server_error(res, "The download")
                 if res.status_code not in (200, 206):
                     code = _code_of(res) or "http-error"
-                    raise PolarisError(code, f"The download was refused (status {res.status_code}).")
+                    raise PolarisError(
+                        code,
+                        f"The download was refused (status {res.status_code}).",
+                        status=res.status_code,
+                    )
                 if res.status_code == 200:
                     have = 0  # the server ignored Range (or If-Range failed): start over
                 new_etag = res.headers.get("etag")

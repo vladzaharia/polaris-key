@@ -69,13 +69,20 @@ def test_rate_limited_reads_retry_after() -> None:
     c.close()
 
 
-def test_a_transport_failure_is_network() -> None:
+def test_a_transport_failure_is_network_error() -> None:
     def boom(_r):
         raise httpx.ConnectError("down")
 
     c = make_client(boom)
     r = c.license.activate_with_key("k")
-    assert r.kind == "error" and r.code == "network" and r.status is None
+    assert r.kind == "error" and r.code == "network-error" and r.status is None
+    c.close()
+
+
+def test_a_5xx_is_server_error_with_the_server_message() -> None:
+    c = make_client(lambda r: httpx.Response(503, json={"error": "unavailable", "message": "try later"}))
+    r = c.license.activate_with_key("k")
+    assert (r.kind, r.code, r.status, r.message) == ("error", "server-error", 503, "try later")
     c.close()
 
 

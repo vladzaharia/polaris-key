@@ -156,9 +156,14 @@ class DiscoveryInvalid:
 
 @dataclass(frozen=True)
 class DiscoveryError:
+    """The document could not be fetched: ``code`` is ``network-error`` (``status`` 0, no
+    answer), ``server-error`` (a 5xx) or the server's own code for another refusal
+    (``http-error`` when it names none)."""
+
     status: int
     message: str
     kind: str = "error"
+    code: Optional[str] = None
 
 
 DiscoveryResult = Any  # Union of the four above; kept loose for 3.9 compatibility.
@@ -239,7 +244,7 @@ def discover_product(
     try:
         res = client.get(url, timeout=timeout)
     except Exception as e:  # network error
-        return DiscoveryError(status=0, message=str(e))
+        return DiscoveryError(status=0, message=str(e) or type(e).__name__, code="network-error")
 
     if res.status_code == 404:
         return DiscoveryNotFound()
@@ -248,12 +253,30 @@ def discover_product(
             text = res.text
         except Exception:
             text = ""
-        return DiscoveryError(status=res.status_code, message=text)
+        return DiscoveryError(
+            status=res.status_code,
+            message=text,
+            code="server-error" if res.status_code >= 500 else _error_code(res) or "http-error",
+        )
     try:
         body = res.json()
     except Exception:
         return DiscoveryInvalid("Discovery response is not valid JSON.")
     return parse_discovery(body, product)
+
+
+def _error_code(res: Any) -> Optional[str]:
+    """The flat or nested error code of a JSON answer, or ``None``."""
+    try:
+        body = res.json()
+    except Exception:
+        return None
+    raw = body.get("error") if isinstance(body, dict) else None
+    if isinstance(raw, str) and raw:
+        return raw
+    if isinstance(raw, dict) and isinstance(raw.get("code"), str) and raw["code"]:
+        return raw["code"]
+    return None
 
 
 def service_endpoint(

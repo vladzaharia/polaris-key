@@ -169,13 +169,13 @@ class ActivationRefused:
 
 @dataclass(frozen=True)
 class ActivationError:
-    """No usable answer: a transport failure (``code`` ``network``, ``status`` ``None``, as in
-    the other SDKs; SDK parity pass §3.1) or a 5xx / malformed 200 (``server-error``, with the
-    status)."""
+    """No usable answer: a transport failure (``code`` ``network-error``, ``status`` ``None``) or
+    a 5xx / malformed 200 (``server-error``, with the status). ``message`` is the server's own
+    when it sent one."""
 
     message: str
     kind: str = "error"
-    code: str = ErrorCode.NETWORK
+    code: str = ErrorCode.NETWORK_ERROR
     status: Optional[int] = None
 
 
@@ -310,6 +310,8 @@ def _activation_like(
     # Swallowing it into `ActivationError` would make it indistinguishable from a dropped
     # connection, so the caller could never branch on the one thing it can actually fix.
     ctx.http()
+    # `CoreContext.request` raises `network-error` (no answer) and `server-error` (a 5xx);
+    # both are the `error` kind here, with the code, status and server message they carry.
     try:
         body: Dict[str, object] = {}
         if fingerprint:
@@ -323,10 +325,10 @@ def _activation_like(
             # No body at all when there is neither a fingerprint nor a label, so a host that
             # opted out sends a byte-identical request to one that has nothing to report.
             res = ctx.request("POST", ctx.url(path), headers=headers)
-    except PolarisError:
-        raise
-    except Exception as e:
-        return ActivationError(message=str(e))
+    except PolarisError as e:
+        if e.code == ErrorCode.LOCAL_ONLY:
+            raise
+        return ActivationError(message=e.message, code=e.code, status=e.status)
 
     if res.status_code == 200:
         b = _json_or_empty(res)
@@ -358,7 +360,13 @@ def activate_with_key(
     ctx: "CoreContext", key: str, fingerprint: Optional[dict] = None
 ) -> ActivationResult:
     """``POST /<p>/license/activate`` — exchange a licence key for a per-device ``pkeyt_``
-    token."""
+    token.
+
+    An empty (or blank) key is refused here as ``unauthorized``, the Worker's own answer to an
+    empty bearer, without a request: it would only spend one of the device's rate-limited
+    activation attempts."""
+    if not isinstance(key, str) or not key.strip():
+        return ActivationUnauthorized()
     return _activation_like(
         ctx,
         "license/activate",
