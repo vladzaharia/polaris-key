@@ -99,6 +99,9 @@ what a payment unlocks or whose purchases are believed. As a platform admin:
    ```
 
    `productId` is the App Store product id, the Play product id, or the Steam DLC's app id.
+   `flag` must be a `flag` entry of the product's active catalog: an undeclared name (a typo) or
+   a `config` or `secret` key is refused `422` with `fields: ["flag"]`, since a purchase mapped to
+   it would grant a name the app never reads.
    `DELETE …/commerce/products/<store>/<productId>` removes a mapping; flags already granted stay
    until a refund revokes them.
 

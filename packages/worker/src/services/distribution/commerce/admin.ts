@@ -6,8 +6,8 @@
  *     GET    …/distribution/commerce                         settings, store products, setup per
  *                                                            store, recent purchases and events
  *     PUT    …/distribution/commerce/settings                replace the settings (`settings.ts`)
- *     PUT    …/distribution/commerce/products                map one store product to a flag and
- *                                                            a deliverable
+ *     PUT    …/distribution/commerce/products                map one store product to a flag the
+ *                                                            catalog declares, and a deliverable
  *     DELETE …/distribution/commerce/products/<store>/<id>   remove a mapping: no new grant for
  *                                                            the product; grants already made
  *                                                            stay, and a later refund or
@@ -28,7 +28,13 @@ import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
 import { ErrorCode } from "../../../core/errors.js";
 import type { ServiceContext } from "../../../core/registry.js";
 import type { AdminSession } from "../../../core/adminApi.js";
-import { adminJson, audit, err, readBody } from "../../../core/adminApi.js";
+import {
+  adminJson,
+  audit,
+  err,
+  loadCatalog,
+  readBody,
+} from "../../../core/adminApi.js";
 import { isStore, STORES, type Store } from "../../../core/storeGrants.js";
 import { listEvents } from "../connectors/state.js";
 import {
@@ -214,6 +220,20 @@ export async function handleCommerceAdmin(
         {
           fields: ["flag"],
         },
+      );
+    // The flag must be one the product's catalog declares as a `flag`: a purchase grants the
+    // name it is mapped to, and a name the app never reads (a typo, or a config key's name)
+    // would take the player's money and unlock nothing.
+    const flag = body.flag as string;
+    const declared = (await loadCatalog(db, slug))?.entryByKey(flag);
+    if (declared?.kind !== "flag")
+      return err(
+        422,
+        ErrorCode.BadRequest,
+        declared
+          ? `${flag} is a ${declared.kind} key in the catalog, not a flag`
+          : `the catalog declares no flag ${flag}`,
+        { fields: ["flag"] },
       );
     const deliverable =
       body.deliverable === undefined ? APP_DELIVERABLE_ID : body.deliverable;

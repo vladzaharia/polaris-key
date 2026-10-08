@@ -1092,6 +1092,20 @@ describe("commerce: admin", () => {
         })
       ).status,
     ).toBe(422);
+    // P0-48: the flag must be a `flag` the product's catalog declares. A typo, or the name of a
+    // config key, would take the purchase and unlock nothing.
+    for (const [flag, message] of [
+      ["extras.diceSkin", "the catalog declares no flag extras.diceSkin"],
+      ["extras.theme", "extras.theme is a config key in the catalog, not a flag"],
+    ] as const) {
+      const r = await admin(cw, "PUT", "/commerce/products", {
+        store: "play",
+        productId: PLAY_SKU,
+        flag,
+      });
+      expect(r.status, flag).toBe(422);
+      expect(await bodyOf(r)).toMatchObject({ message, fields: ["flag"] });
+    }
     expect(
       (
         await admin(cw, "PUT", "/commerce/products", {
