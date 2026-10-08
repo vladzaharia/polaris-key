@@ -3202,6 +3202,11 @@ msgstr "로그아웃 전에 확인하지 않음"
 msgid "cli.option.deviceCode"
 msgstr "이 컴퓨터의 브라우저 대신 코드로 로그인"
 
+#. Print the value even if a CI log would run a line of it as a command
+#. Terminal help: what the --allow-workflow-commands flag of the secret and mint commands does. A CI log is a build server's job log (GitHub Actions, Azure Pipelines); a command is an instruction the build server reads from that log.
+msgid "cli.option.allowWorkflowCommands"
+msgstr "CI 로그가 값의 한 줄을 명령으로 실행하더라도 값을 출력"
+
 #. Enter activate · Esc cancel
 #. Terminal key hints under the license key prompt. Each part is a key name, a space, then what it does; keep the key first and the ' · ' separators.
 msgid "cli.keys.activate"
@@ -3341,6 +3346,11 @@ msgstr "{name}에 값이 없어요."
 #. Terminal: the secret command found nothing. {name} is the secret's key.
 msgid "cli.secret.none"
 msgstr "이 기기에 전달된 {name} 시크릿이 없어요."
+
+#. The value was not printed: this CI log would run a line of it as a command. To print it anyway, run {command}.
+#. Terminal: the secret or mint command did not print its value (a secret or a token) because the build server reading the output would treat a line of it as an instruction. {command} is a command line (the same command with --allow-workflow-commands).
+msgid "cli.output.workflowCommand"
+msgstr "값을 출력하지 않았어요. 이 CI 로그는 값의 한 줄을 명령으로 실행해요. 그래도 출력하려면 실행하세요: {command}"
 
 #. Then run {command} with the file you get back.
 #. Terminal offline activation: what to do with the activation file. {command} is a command line.

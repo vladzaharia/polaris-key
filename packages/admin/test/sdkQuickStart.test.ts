@@ -78,10 +78,23 @@ describe("SDK quick start: initialise", () => {
     for (const { value } of SDK_OPTIONS) {
       const { code } = sdkInit(value, input);
       expect(code, value).not.toContain("key.plrs.im");
-      if (value === "react") continue; // the browser provider takes no pins
       expect(code, value).toContain("PUB-A");
       expect(code, value).toContain("PUB-B");
     }
+  });
+
+  it("React passes the pins as the provider's trust prop, so bearer mode verifies (P0-47)", () => {
+    const { code } = sdkInit("react", input);
+    expect(code).toContain(
+      [
+        "      trust={{",
+        "        pinnedKeys: {",
+        '          "tb-a": "PUB-A",',
+        '          "tb-b": "PUB-B",',
+        "        },",
+        "      }}",
+      ].join("\n"),
+    );
   });
 
   it("names the base URL off production", () => {

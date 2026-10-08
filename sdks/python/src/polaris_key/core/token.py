@@ -33,7 +33,7 @@ answers a licensed device ``registration_closed``, license/token answers a licen
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Callable, Literal, Optional
 
 from .store import Store
@@ -83,9 +83,10 @@ def choose_reacquire_route(
 
 @dataclass(frozen=True)
 class Reacquired:
-    """A re-acquired token and how it was obtained (which becomes the token's source)."""
+    """A re-acquired token and how it was obtained (which becomes the token's source). The token
+    is never in the ``repr``."""
 
-    token: str
+    token: str = field(repr=False)
     source: TokenSource
 
 

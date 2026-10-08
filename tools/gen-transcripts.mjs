@@ -9,9 +9,8 @@
 // behaviour as they record. This wrapper only runs that one test file, with or without
 // `PKEY_WRITE_TRANSCRIPTS=1`:
 //
-//   conformance/transcripts/<id>.json                          the canonical files
-//   sdks/swift/Tests/PolarisKeyTests/Resources/transcripts/    the generator-owned Swift mirror
-//   sdks/godot/tests/transcripts/                              the generator-owned Godot mirror
+//   conformance/transcripts/<id>.json   the canonical files
+//   sdks/godot/tests/transcripts/       the generator-owned Godot mirror
 //
 // Without the flag the test compares instead of writing, which is also what the ordinary
 // `pnpm --filter @polaris-key/worker test` run does — so a Worker change that alters a recorded
@@ -58,5 +57,5 @@ if (result.status !== 0) {
 console.log(
   check
     ? "gen:transcripts --check: every transcript is fresh"
-    : "gen:transcripts: wrote conformance/transcripts and the Swift and Godot mirrors",
+    : "gen:transcripts: wrote conformance/transcripts and the Godot mirror",
 );

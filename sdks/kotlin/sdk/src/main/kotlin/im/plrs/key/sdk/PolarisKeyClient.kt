@@ -91,8 +91,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -175,6 +178,11 @@ public data class DeviceInfo(
     /** Epoch MILLIseconds. */
     val lastVerifiedAt: Long? = null,
     val label: String? = null,
+    /**
+     * True when the roster could not be fetched (offline, no credential, a refusal) and this is the
+     * device alone: a screen can say "offline" instead of showing a one-device roster as the truth.
+     */
+    val offline: Boolean = false,
 )
 
 public class PolarisKeyClient(options: PolarisKeyClientOptions) {
@@ -198,7 +206,15 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     /** The §5 re-acquire every authenticated path shares (documents and edge-mint alike). */
     private val reacquire: ReacquireFn = { current, source -> reacquireToken(current, source) }
 
-    public val license: LicenseClient = LicenseClient(core, options.license) { syncAfterAcquisition() }
+    public val license: LicenseClient = LicenseClient(
+        core, options.license,
+        onAcquired = { syncAfterAcquisition() },
+        onDeactivated = {
+            tokenRejection.clear()
+            config.publish()
+            publishLicense(force = true)
+        },
+    )
     private val attestationProvider: AttestationProvider? = options.attestation
 
     /** The provider attest() uses now (the option, the process's installed one, or none). */
@@ -231,6 +247,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
      * outlet); the options are the current channel, `stable` and every channel the licence grants.
      */
     public suspend fun channelChoices(): ChannelChoices {
+        core.ensureStarted()
         val current = core.channel
         val options = LinkedHashSet<String>()
         options += current
@@ -302,6 +319,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
      * dependency: pass them to `Sentry.init` (or any reporter) yourself.
      */
     public suspend fun crashTags(): Map<String, String> {
+        core.ensureStarted()
         val out = linkedMapOf(
             "release" to "app@${core.version}${buildNumber?.let { "+$it" } ?: ""}",
             "environment" to core.channel,
@@ -368,8 +386,44 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
 
     private val changes = MutableSharedFlow<LicenseState>(extraBufferCapacity = 16)
 
-    /** The licence state after every sync whose documents actually changed (the ETags moved). */
+    /**
+     * The licence state after every transition (SP-51): an activation, a sync that moved the
+     * documents OR the gate (a 401 that revoked this device, a block, grace and expiry as the floor
+     * moves), a deactivation or wipe. A state equal to the last one emitted is not emitted again.
+     */
     public val licenseChanges: SharedFlow<LicenseState> = changes.asSharedFlow()
+
+    private val stateFlow = kotlinx.coroutines.flow.MutableStateFlow<LicenseState?>(null)
+
+    /** The licence state now: null until the first read, then every transition (a hot StateFlow). */
+    public val licenseState: kotlinx.coroutines.flow.StateFlow<LicenseState?> = stateFlow.asStateFlow()
+
+    private val publishLock = kotlinx.coroutines.sync.Mutex()
+    private var lastKey: Pair<LicenseState, String?>? = null
+
+    /**
+     * Read the gate and emit when it, or the licence document's content (a hash fallback for a
+     * server that sends no usable ETag), differs from the last emission. [force] emits regardless.
+     */
+    private suspend fun publishLicense(force: Boolean = false) {
+        // Read INSIDE the lock: overlapping passes would otherwise publish an older read last and
+        // leave the state stale (a revoked device shown as licensed).
+        var state: LicenseState? = null
+        val emit = publishLock.withLock {
+            val read = license.status()
+            state = read
+            val hash = core.cache().license?.jws?.let { sha256Hex(it) }
+            val key = read to hash
+            val changed = force || lastKey != key
+            lastKey = key
+            stateFlow.value = read
+            changed
+        }
+        if (emit) changes.tryEmit(state!!)
+    }
+
+    private fun sha256Hex(text: String): String =
+        java.security.MessageDigest.getInstance("SHA-256").digest(text.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
 
     /** The client's own scope: event fan-out, the refresh loop and `boot()`'s launch confirmation. */
     internal val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -386,12 +440,42 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
         packs.on { eventFlow.tryEmit(PolarisEvent.Packs(it)) }
     }
     private var refreshJob: Job? = null
+    private val startLock = kotlinx.coroutines.sync.Mutex()
+    @Volatile private var started = false
 
-    /** Load device id, token and cached documents, re-verifying everything. NO NETWORK. */
+    /**
+     * Load device id, token and cached documents, re-verifying everything (NO NETWORK), and start
+     * the refresh loop when one is configured. Once: later calls return at once. Optional, since
+     * every call loads what it needs first (SP-50), and main-safe. `core.start()` reloads.
+     */
     public suspend fun start() {
-        core.start()
-        config.publish(emit = false)
+        if (!started) {
+            startLock.withLock {
+                if (!started) {
+                    core.ensureStarted()
+                    config.publish(emit = false)
+                    started = true
+                }
+            }
+        }
         startRefreshLoop()
+    }
+
+    /**
+     * [start] in the client's own scope, without waiting: what `PolarisKeyAndroid.client` does. A
+     * failure surfaces at the next call, which starts the client itself.
+     */
+    public fun startInBackground() {
+        scope.launch {
+            try {
+                start()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                // Never a crash from a background warm-up: the next call that needs the state loads
+                // it, and reports the failure where the host can see it.
+            }
+        }
     }
 
     // ── Capabilities (D-21) ──────────────────────────────────────────────────────────────────
@@ -412,24 +496,47 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     // ── Sync ─────────────────────────────────────────────────────────────────────────────────
     /** One Core pass: trust refresh, the enabled documents in parallel, verify, cache, floor, report. */
     public suspend fun sync(force: Boolean = false): SyncResult {
-        val beforeLicense = core.etag(DocumentSlice.license)
-        val beforeConfig = core.etag(DocumentSlice.config)
-        val result = core.sync(force, reacquire) { report() }
-        // The ETags are the change signal: they exclude per-request timestamps, so a differing tag
-        // means the CONTENT changed rather than that the document was re-signed.
-        val changed = core.etag(DocumentSlice.license) != beforeLicense || core.etag(DocumentSlice.config) != beforeConfig
-        if (result.applied && changed) {
-            changes.tryEmit(license.status())
-            config.publish()
+        // De-duplicated (SP-51): a call that arrives while a pass of the same kind runs shares it
+        // (a forced call is not satisfied by an unforced pass). One pass at a time, never two.
+        var shared: SyncFlight? = null
+        val mine = SyncFlight(force)
+        syncFlightLock.withLock {
+            val running = syncFlight
+            if (running != null && (running.force || !force)) shared = running else syncFlight = mine
         }
-        return result
+        shared?.let { return it.result.await() }
+        try {
+            val beforeLicense = core.etag(DocumentSlice.license)
+            val beforeConfig = core.etag(DocumentSlice.config)
+            val result = core.sync(force, reacquire) { report() }
+            // The ETags say the CONTENT changed; the gate says what the device may do. A pass that
+            // moved neither (a 401 that left the cache alone is the exception: it moves the gate).
+            val changed = core.etag(DocumentSlice.license) != beforeLicense || core.etag(DocumentSlice.config) != beforeConfig
+            if (result.applied && changed) config.publish()
+            publishLicense()
+            mine.result.complete(result)
+            return result
+        } catch (e: Throwable) {
+            mine.result.completeExceptionally(e)
+            throw e
+        } finally {
+            syncFlightLock.withLock { if (syncFlight === mine) syncFlight = null }
+        }
     }
+
+    private class SyncFlight(val force: Boolean) {
+        val result = kotlinx.coroutines.CompletableDeferred<SyncResult>()
+    }
+
+    private val syncFlightLock = kotlinx.coroutines.sync.Mutex()
+    @Volatile private var syncFlight: SyncFlight? = null
 
     /** The post-acquisition sync, forced so a stale ETag cannot 304 away the very first document. */
     private suspend fun syncAfterAcquisition() {
+        tokenRejection.clear()
         core.sync(force = true, reacquire = reacquire) { report() }
-        changes.tryEmit(license.status())
         config.publish()
+        publishLicense(force = true)
     }
 
     /**
@@ -439,18 +546,52 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
      * the hard-401 path applies.
      */
     private suspend fun reacquireToken(current: String, source: TokenSource?): Reacquired? =
-        when (chooseReacquireRoute(core.enabled(ServiceSlug.license), source)) {
+        if (!tokenRejection.mayAsk(current)) null else when (chooseReacquireRoute(core.enabled(ServiceSlug.license), source)) {
             ReacquireRoute.devicesRegister ->
                 (core.requestDeviceRegistration(registrationFingerprint()) as? RegisterResult.Ok)
                     ?.let { Reacquired(it.token, TokenSource.register) }
-            ReacquireRoute.licenseToken ->
-                (LicenseEndpoints.reacquireToken(core, current) as? ActivationResult.Ok)
-                    ?.let { Reacquired(it.token, TokenSource.reacquire) }
+            ReacquireRoute.licenseToken -> {
+                val answer = LicenseEndpoints.reacquireToken(core, current)
+                // A 401 on /license/token is final for this token (SP-51): the licence is gone, and
+                // asking again only hammers the Worker until a new credential arrives.
+                if (answer is ActivationResult.Unauthorized) tokenRejection.reject(current)
+                (answer as? ActivationResult.Ok)?.let { Reacquired(it.token, TokenSource.reacquire) }
+            }
         }
 
+    /**
+     * Bounds the §5 re-acquire (SP-51): a token the Worker refused at `/license/token` is not asked
+     * about again until a new credential arrives, and at most [MAX_PER_MINUTE] token requests go out
+     * in any minute whatever the callers do.
+     */
+    private class TokenRejection(private val clock: () -> Long) {
+        private val lock = Any()
+        private var rejected: String? = null
+        private val sent = ArrayDeque<Long>()
+
+        fun mayAsk(token: String): Boolean = synchronized(lock) {
+            if (rejected == token) return false
+            val now = clock()
+            while (sent.isNotEmpty() && now - sent.first() >= 60_000) sent.removeFirst()
+            if (sent.size >= MAX_PER_MINUTE) return false
+            sent.addLast(now)
+            true
+        }
+
+        fun reject(token: String) = synchronized(lock) { rejected = token }
+
+        fun clear() = synchronized(lock) { rejected = null }
+
+        companion object {
+            const val MAX_PER_MINUTE = 5
+        }
+    }
+
+    private val tokenRejection = TokenRejection { System.currentTimeMillis() }
+
     /** The fingerprint a registration sends: collected when fingerprinting is enabled, none otherwise. */
-    private fun registrationFingerprint(): HardwareFingerprint? =
-        if (fingerprintEnabled) fingerprintSource.collect(product) else null
+    private suspend fun registrationFingerprint(): HardwareFingerprint? =
+        if (fingerprintEnabled) withContext(Dispatchers.IO) { fingerprintSource.collect(product) } else null
 
     // ── Telemetry (§6) ───────────────────────────────────────────────────────────────────────
     /**
@@ -459,7 +600,10 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
      * `sync()` already reports after every pass that warrants it. Best-effort: false when no
      * credential is held, the server refused, or the network failed; never throws at the host.
      */
-    public suspend fun report(): Boolean {
+    public suspend fun report(): Boolean = withContext(Dispatchers.IO) { reportOnIo() }
+
+    /** [report]'s body: the facts, the pending journal and the post are blocking work (SP-50). */
+    private suspend fun reportOnIo(): Boolean {
         val facts = try {
             factsSource.collect(probes).toJson()
         } catch (e: CancellationException) {
@@ -525,7 +669,12 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
 
     // ── Offline bundles (§7) ─────────────────────────────────────────────────────────────────
     /** Verify and install an offline activation bundle. All-or-nothing; no token is created. */
-    public suspend fun importBundle(jws: String): VerifiedBundle = core.importBundle(jws)
+    public suspend fun importBundle(jws: String): VerifiedBundle {
+        val bundle = core.importBundle(jws)
+        config.publish()
+        publishLicense(force = true)
+        return bundle
+    }
 
     // ── Convenience passthroughs (the suite's shape is `client.<service>.<verb>`) ────────────
     public suspend fun status(now: Long? = null): LicenseState = license.status(now)
@@ -542,9 +691,14 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
      * The keyless mint path (§6). It does NOT sync: a registration is a provisioning step a host
      * may take long before it wants documents.
      */
-    public suspend fun register(): RegisterResult = core.registerDevice(registrationFingerprint())
+    public suspend fun register(): RegisterResult {
+        tokenRejection.clear()
+        return core.registerDevice(registrationFingerprint())
+    }
 
-    public suspend fun deactivate(): Unit = license.deactivate()
+    public suspend fun deactivate() {
+        license.deactivate()
+    }
 
     public suspend fun currentDevice(): DeviceInfo {
         val cache = core.cache()
@@ -564,14 +718,16 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
      */
     public suspend fun listDevices(): List<DeviceInfo> {
         val current = currentDevice()
+        var offline = false
         val roster = try {
             core.listDevices()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
+            offline = true
             emptyList()
         }
-        if (roster.isEmpty()) return listOf(current)
+        if (roster.isEmpty()) return listOf(current.copy(offline = offline))
         return roster.map { device ->
             val isCurrent = device.current ?: (device.id == current.id)
             DeviceInfo(
@@ -592,7 +748,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     /** Deauthorizing THIS device is a full local deactivation; any other is a roster operation. */
     public suspend fun deauthorizeDevice(deviceId: String) {
         if (deviceId == core.deviceId()) {
-            license.deactivate()
+            deactivate()
             return
         }
         core.deauthorizeDevice(deviceId)
@@ -603,6 +759,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
 
     // ── Lifecycle ────────────────────────────────────────────────────────────────────────────
     /** Start polling on `refreshIntervalSeconds` (no-op when unset, already running or local-only). */
+    @Synchronized
     public fun startRefreshLoop() {
         val seconds = refreshIntervalSeconds ?: return
         if (seconds <= 0 || refreshJob != null || core.localOnly) return
@@ -621,9 +778,14 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     }
 
     /** Stop the refresh loop. Safe to call more than once. */
+    @Synchronized
     public fun close() {
         refreshJob?.cancel()
         refreshJob = null
+        // SP-51: the client's own scope (event fan-out, the refresh loop, the launch confirmation) and
+        // the HTTP stack's threads go too, so a JVM `main` can exit.
+        scope.cancel()
+        core.close()
     }
 
     public companion object {

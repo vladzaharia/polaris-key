@@ -11503,7 +11503,7 @@ var TERMINAL_SGR = {
   warning: "33",
   danger: "31",
   info: "35",
-  muted: "90",
+  muted: "2",
   strong: "1",
   link: "4",
   chip: "7",
@@ -11522,7 +11522,7 @@ var TERMINAL_SYMBOLS = {
     railStart: "┌",
     railEnd: "└",
     barFull: "━",
-    barEmpty: "━",
+    barEmpty: "─",
     separator: "·",
     ellipsis: "…",
     arrows: "↑↓"
@@ -11558,13 +11558,16 @@ var TERMINAL_LAYOUT = {
 };
 
 // ../sdk-node/dist/cli/term/caps.js
-var MIN_LAYOUT_COLUMNS = 32;
+var MIN_COLUMNS = 10;
 function layoutColumns(columns) {
-  return Math.max(MIN_LAYOUT_COLUMNS, Math.min(TERMINAL_LAYOUT.columns, Math.floor(columns)));
+  return Math.max(MIN_COLUMNS, Math.min(TERMINAL_LAYOUT.columns, Math.floor(columns)));
 }
 var truthy = (v) => v !== void 0 && v !== "" && v !== "0" && v.toLowerCase() !== "false";
 function isCi(env) {
   return truthy(env.CI) || truthy(env.GITHUB_ACTIONS) || truthy(env.BUILDKITE);
+}
+function readsLogCommands(env) {
+  return truthy(env.GITHUB_ACTIONS) || truthy(env.TF_BUILD) || truthy(env.TEAMCITY_VERSION);
 }
 function isHeadless(env, platform = process.platform) {
   if (truthy(env.SSH_CONNECTION) || truthy(env.SSH_TTY) || isCi(env))
@@ -11625,6 +11628,7 @@ function detectTerminal(opts = {}) {
     rows: tty && out?.rows ? out.rows : 24,
     scheme: explicit ?? schemeFromColorFgBg(env.COLORFGBG) ?? "dark",
     ci,
+    logCommands: readsLogCommands(env),
     headless: isHeadless(env, platform),
     json
   };
@@ -11673,6 +11677,7 @@ function osc8(url, text) {
 // ../sdk-node/dist/cli/term/paint.js
 var STYLE_NAMES = {
   "1": "bold",
+  "2": "dim",
   "4": "underline",
   "7": "inverse",
   "31": "red",
@@ -11685,6 +11690,8 @@ var STYLE_NAMES = {
 function roleStyles(role) {
   if (role === "code")
     return ["inverse", "bold"];
+  if (role === "qr")
+    return ["black", "bgWhiteBright"];
   if (role === "reset")
     return [];
   return TERMINAL_SGR[role].split(";").map((code) => STYLE_NAMES[code]).filter((s) => s !== void 0);
@@ -11710,16 +11717,36 @@ var Painter = class {
   get colored() {
     return this.caps.color !== "none";
   }
+  /**
+   * NO_COLOR and --no-color drop the colour, not the weight: on a terminal that is not dumb, bold
+   * and reverse video stay (the code chip, the key hints, titles), so the code is still the focal
+   * point. A pipe, TERM=dumb and --json write no escape at all.
+   */
+  get attributes() {
+    return this.caps.color === "none" && this.caps.tty && !this.caps.dumb && !this.caps.json;
+  }
   /** Apply roles to text. */
   style(raw, roles = []) {
     const text = clean(raw);
-    if (!this.colored || text === "" || roles.length === 0)
+    if (!this.colored) {
+      if (!this.attributes || text === "")
+        return text;
+      const keep = roles.filter((r) => r === "strong" || r === "code" || r === "chip");
+      const names = keep.flatMap((r) => r === "chip" ? ["inverse"] : roleStyles(r));
+      return names.length ? styleText([...new Set(names)], text, { validateStream: false }) : text;
+    }
+    if (text === "" || roles.length === 0)
       return text;
     let out = text;
     for (const r of roles) {
       const role = this.ink && r === "accent" ? "strong" : r;
-      const hex5 = this.caps.color === "truecolor" && role !== "code" ? this.overrides[role] : void 0;
-      const c = hex5 ? rgb(hex5) : null;
+      const hex5 = this.caps.color === "truecolor" && role !== "code" && role !== "qr" ? this.overrides[role] : void 0;
+      if (role === "qr" && this.caps.color === "truecolor") {
+        out = `\x1B[38;2;0;0;0m\x1B[48;2;255;255;255m${out}\x1B[39m\x1B[49m`;
+        continue;
+      }
+      const fg = !hex5 && role === "accent" && this.caps.color === "truecolor" ? this.accent?.fg : void 0;
+      const c = hex5 ? rgb(hex5) : fg ? rgb(fg) : null;
       if (c) {
         out = `\x1B[38;2;${c[0]};${c[1]};${c[2]}m${out}\x1B[39m`;
         continue;
@@ -11750,7 +11777,7 @@ var Painter = class {
   chipText(raw) {
     const text = clean(raw);
     if (!this.colored)
-      return text;
+      return this.attributes && text ? styleText("inverse", text, { validateStream: false }) : text;
     if (this.caps.color === "truecolor" && this.accent) {
       const bg = rgb(this.accent.solid);
       const fg = rgb(this.accent.on);
@@ -11905,7 +11932,7 @@ var widthOf = (pieces2) => cellWidth(textOf(pieces2).trimEnd());
 var words = (pieces2) => pieces2.filter((p) => p.text.trim() !== "");
 function isOrphan(pieces2) {
   const ws = words(pieces2);
-  if (ws.length !== 1 || ws[0].keep || ws[0].break)
+  if (ws.length !== 1 || ws[0].keep || ws[0].break || ws[0].unit)
     return false;
   return ![...ws[0].text].some((c) => charWidth(c) === 2);
 }
@@ -11916,7 +11943,7 @@ function balanceLast(lines3, width) {
   const prev = lines3[n - 2];
   const last = lines3[n - 1];
   for (let k = prev.length - 1; k >= 1; k--) {
-    if (prev.slice(k).some((p) => p.break))
+    if (prev.slice(k).some((p) => p.break || p.unit))
       return;
     const head = prev.slice(0, k);
     const moved = prev.slice(k).map((p, i, all) => i === all.length - 1 && !/\s$/.test(p.text) ? { ...p, text: `${p.text} ` } : p);
@@ -11933,48 +11960,97 @@ function balanceLast(lines3, width) {
   }
 }
 var SEPARATOR = /^\s*·\s*$/;
+var runWidth = (run2) => cellWidth(run2.map((p) => p.text).join("").trimEnd());
+function pullLeadIn(line, first, width) {
+  const moved = [];
+  let w = first;
+  while (line.length) {
+    const word = line[line.length - 1];
+    if (word.break || word.unit || /^\s+$/.test(word.text))
+      break;
+    const ww = cellWidth(word.text.trimEnd());
+    if (ww > 6 || moved.length >= 2 || w + ww + 1 > width)
+      break;
+    moved.unshift(line.pop());
+    w += ww + 1;
+  }
+  while (line.length && SEPARATOR.test(line[line.length - 1].text))
+    line.pop();
+  return moved;
+}
 function wrapPieces(spans, width, ellipsis) {
   const lines3 = [[]];
   let w = 0;
+  const cur = () => lines3[lines3.length - 1];
+  const onlyWhitespace = () => cur().every((p) => /^\s*$/.test(p.text));
   const newLine = () => {
-    const last = lines3[lines3.length - 1];
+    const last = cur();
     while (last.length > 1 && SEPARATOR.test(last[last.length - 1].text))
       last.pop();
     lines3.push([]);
     w = 0;
   };
+  const runs = [];
   for (const span of spans) {
-    if (span.break) {
-      const tw = cellWidth(span.text);
-      if (w > 0 && w + tw > width)
-        newLine();
-      for (const text of breakPieces(span.text, span.break, width)) {
-        const pw = cellWidth(text);
-        if (w > 0 && w + pw > width)
+    const last = runs[runs.length - 1];
+    if (span.unit && last && last[0].unit)
+      last.push(span);
+    else
+      runs.push([span]);
+  }
+  for (const run2 of runs) {
+    if (run2[0].unit && run2.length >= 1 && !run2[0].break) {
+      const rw = runWidth(run2);
+      if (rw <= width) {
+        if (w > 0 && w + rw > width)
           newLine();
-        lines3[lines3.length - 1].push({ ...span, text });
-        w += pw;
+        for (const p of run2) {
+          cur().push(p);
+          w += cellWidth(p.text);
+        }
+        continue;
       }
-      continue;
     }
-    for (let p of pieces(span)) {
-      const pw = cellWidth(p.text.trimEnd());
-      if (w > 0 && w + pw > width) {
-        newLine();
-        if (/^\s+$/.test(p.text))
-          continue;
+    for (const span of run2) {
+      if (span.break) {
+        const tw = cellWidth(span.text);
+        if (w > 0 && w + tw > width && !onlyWhitespace()) {
+          const lead = pullLeadIn(cur(), cellWidth(breakPieces(span.text, span.break, width)[0] ?? ""), width);
+          newLine();
+          for (const p of lead) {
+            cur().push(p);
+            w += cellWidth(p.text);
+          }
+        }
+        for (const text of breakPieces(span.text, span.break, width)) {
+          const pw = cellWidth(text);
+          if (w > 0 && w + pw > width)
+            newLine();
+          cur().push({ ...span, text });
+          w += pw;
+        }
+        continue;
       }
-      if (pw > width && p.keep)
-        p = { ...p, text: truncateMiddle(p.text, width, ellipsis) };
-      lines3[lines3.length - 1].push(p);
-      w += cellWidth(p.text);
+      for (let p of pieces(span)) {
+        const pw = cellWidth(p.text.trimEnd());
+        if (w > 0 && w + pw > width) {
+          newLine();
+          if (/^\s+$/.test(p.text))
+            continue;
+        }
+        if (pw > width && p.keep)
+          p = { ...p, text: truncateMiddle(p.text, width, ellipsis) };
+        cur().push(p);
+        w += cellWidth(p.text);
+      }
     }
   }
   return lines3;
 }
 var SHRINK_FLOOR = 8;
 function shrinkToFit(spans, width, ellipsis) {
-  const total = cellWidth(spans.map((s) => s.text).join("").trimEnd());
+  const joined = spans.map((s) => s.text).join("");
+  const total = cellWidth(spans.at(-1)?.shrink ? joined : joined.trimEnd());
   const i = spans.findIndex((s) => s.shrink);
   if (i < 0 || total <= width)
     return spans;
@@ -11996,7 +12072,7 @@ function merge(pieces2) {
   const out = [];
   for (const p of pieces2) {
     const last2 = out[out.length - 1];
-    if (last2 && last2.link === p.link && last2.keep === p.keep && last2.break === p.break && (last2.style ?? []).join() === (p.style ?? []).join())
+    if (last2 && last2.link === p.link && last2.keep === p.keep && last2.break === p.break && last2.unit === p.unit && (last2.style ?? []).join() === (p.style ?? []).join())
       last2.text += p.text;
     else
       out.push({ ...p });
@@ -12040,8 +12116,7 @@ function eraseRows(n) {
   return s;
 }
 var widthsOf = (lines3) => lines3.map((l) => cellWidth(l));
-var BLANK_RAIL = /^\s*[│|]?\s*$/;
-var linesOf = (f) => typeof f === "function" ? f() : f;
+var rowsOf = (f) => typeof f === "function" ? f() : f;
 function guardCursor(out) {
   if (!out.isTTY || typeof process === "undefined")
     return () => void 0;
@@ -12064,61 +12139,36 @@ function guardCursor(out) {
 }
 var LiveRegion = class {
   out;
-  caps;
   host;
   drawn = [];
-  frame = null;
-  /** Lines at the top of the current frame already printed above the region. */
+  /** Leading drawn lines that are the flow's header. */
   head = 0;
+  /** A resize pushed the header into the scrollback: it is never drawn again. */
+  headerGone = false;
+  screen = null;
   printedOnce = false;
   hidden = false;
   listening = false;
   unguard = () => void 0;
-  constructor(out, caps, host) {
+  constructor(out, host) {
     this.out = out;
-    this.caps = caps;
     this.host = host;
   }
-  get columns() {
-    return this.out.columns;
-  }
-  get rows() {
-    return this.caps.rows ?? this.out.rows ?? Infinity;
-  }
   erase() {
-    const s = eraseRows(physicalRows(this.drawn, this.columns));
+    const s = eraseRows(physicalRows(this.drawn, this.out.columns));
     this.drawn = [];
     return s;
   }
-  /**
-   * The frame's lines from `head` on, fitted to the screen: when they are taller than it, the
-   * blank rail rows go first, then the top lines that still do not fit are printed above the
-   * region (they scroll away; the header first).
-   */
-  place(frame) {
-    let lines3 = frame;
-    if (physicalRows(widthsOf(lines3.slice(this.head)), this.columns) > this.rows)
-      lines3 = lines3.filter((l) => !BLANK_RAIL.test(stripAnsi(l)));
-    const widths = widthsOf(lines3);
-    let start = Math.min(this.head, lines3.length);
-    while (start < lines3.length - 1 && physicalRows(widths.slice(start), this.columns) > this.rows)
-      start++;
-    let s = "";
-    if (start > this.head) {
-      const fixed = lines3.slice(this.head, start);
-      s += `${fixed.join("\n")}
-`;
-      this.host?.printed.push({
-        lines: fixed,
-        widths: widths.slice(this.head, start),
-        redraw: null,
-        owner: this
-      });
-      this.head = start;
-    }
-    s += lines3.slice(start).join("\n");
-    this.drawn = widths.slice(start);
-    return s;
+  /** The screen's rows, without the header once it has scrolled into the scrollback. */
+  rows(screen) {
+    const rows = rowsOf(screen);
+    return this.headerGone ? rows.filter((r) => r.role !== "header") : rows;
+  }
+  paint(screen) {
+    const { lines: lines3, head } = this.host.fit(this.rows(screen));
+    this.drawn = widthsOf(lines3);
+    this.head = head;
+    return lines3.join("\n");
   }
   listen(on) {
     if (on === this.listening)
@@ -12131,47 +12181,31 @@ var LiveRegion = class {
       off?.call(this.out, "resize", this.onResize);
     }
   }
-  /** SIGWINCH: lay the region (and the flow's lines above it, when they are all on the screen) out again. */
+  /** SIGWINCH: lay the whole screen out again at the new size. */
   onResize = () => {
-    if (!this.caps.animate || this.frame === null)
+    if (!this.host.caps.animate || this.screen === null)
       return;
-    this.host?.refreshSize();
-    const region = physicalRows(this.drawn, this.columns);
-    const printed = this.host?.printed ?? [];
-    const above = printed.reduce((n, b) => n + physicalRows(b.widths, this.columns), 0);
-    let s;
-    if (printed.length > 0 && above + region <= this.rows) {
-      s = eraseRows(above + region);
-      for (let i = printed.length - 1; i >= 0; i--)
-        if (printed[i].owner === this)
-          printed.splice(i, 1);
-      this.head = 0;
-      for (const b of printed) {
-        if (b.redraw) {
-          b.lines = b.redraw();
-          b.widths = widthsOf(b.lines);
-        }
-        if (b.lines.length)
-          s += `${b.lines.join("\n")}
-`;
-      }
-    } else
-      s = eraseRows(region);
+    const reflowed = physicalRows(this.drawn, this.out.columns);
+    const rows = this.out.rows ?? Infinity;
+    const gone = Math.max(0, reflowed - rows);
+    if (gone > 0 && this.head > 0)
+      this.headerGone = true;
+    const s = eraseRows(reflowed - gone);
     this.drawn = [];
-    s += this.place(linesOf(this.frame));
-    this.out.write(s);
+    this.host.refreshSize();
+    this.out.write(s + this.paint(this.screen));
   };
-  /** Show `frame` in place of the previous one. */
-  draw(frame) {
-    if (!this.caps.animate) {
-      const lines3 = linesOf(frame);
+  /** Show `screen` in place of the previous one. */
+  draw(screen) {
+    if (!this.host.caps.animate) {
+      const lines3 = this.host.render(rowsOf(screen));
       if (!this.printedOnce && lines3.length)
         this.out.write(`${lines3.join("\n")}
 `);
       this.printedOnce = true;
       return;
     }
-    this.frame = frame;
+    this.screen = screen;
     let s = this.erase();
     if (!this.hidden) {
       s = HIDE_CURSOR + s;
@@ -12179,25 +12213,7 @@ var LiveRegion = class {
       this.unguard = guardCursor(this.out);
     }
     this.listen(true);
-    s += this.place(linesOf(frame));
-    this.out.write(s);
-  }
-  /** Print lines above the region (they stay), then redraw nothing until the next draw. */
-  print(frame) {
-    const lines3 = linesOf(frame);
-    const s = this.caps.animate ? this.erase() : "";
-    this.out.write(`${s}${lines3.join("\n")}
-`);
-    this.keep(frame, lines3);
-    this.printedOnce = false;
-  }
-  keep(frame, lines3) {
-    if (lines3.length)
-      this.host?.printed.push({
-        lines: lines3,
-        widths: widthsOf(lines3),
-        redraw: typeof frame === "function" ? frame : null
-      });
+    this.out.write(s + this.paint(screen));
   }
   stop() {
     const show3 = this.hidden ? SHOW_CURSOR : "";
@@ -12205,23 +12221,28 @@ var LiveRegion = class {
     this.unguard();
     this.unguard = () => void 0;
     this.listen(false);
-    this.frame = null;
+    this.screen = null;
+    this.headerGone = false;
     this.head = 0;
     return show3;
   }
-  /** Replace the region with its final lines and stop. */
-  commit(frame = []) {
-    const lines3 = linesOf(frame);
-    const s = this.caps.animate ? this.erase() : "";
+  /**
+   * Replace the region with its final screen (it stays) and stop. Without animation the first
+   * frame was already printed once, so only `plain` (the result, no header) prints.
+   */
+  commit(screen = [], plain) {
+    const animate2 = this.host.caps.animate;
+    const rows = animate2 || plain === void 0 ? this.rows(screen) : rowsOf(plain);
+    const s = animate2 ? this.erase() : "";
     const show3 = this.stop();
+    const lines3 = animate2 ? this.host.fit(rows).lines : this.host.render(rows);
     this.out.write(`${s}${lines3.length ? `${lines3.join("\n")}
 ` : ""}${show3}`);
-    this.keep(frame, lines3);
     this.printedOnce = false;
   }
   /** Clear the region without printing (Ctrl-C, an error path). */
   close() {
-    const s = this.caps.animate ? this.erase() : "";
+    const s = this.host.caps.animate ? this.erase() : "";
     const show3 = this.stop();
     if (s || show3)
       this.out.write(s + show3);
@@ -22806,22 +22827,26 @@ function twoColumns(term, rows, column, indent = 2) {
   const width = Math.max(1, caps.columns - descCol);
   const out = [];
   for (const [t, text] of rows) {
-    const lines3 = wrapSpans([{ text, style: ["muted"] }], width);
     const name = painter.style(t, ["strong"]);
     const fits = !stacked && cellWidth(t) <= column;
-    if (!fits)
-      wrapSpans(
-        [{ text: t, style: ["strong"] }],
-        Math.max(1, caps.columns - indent - 2)
-      ).forEach(
-        (l, i) => out.push(
-          `${" ".repeat(i === 0 ? indent : indent + 2)}${painter.line(l)}`
-        )
-      );
+    const termLines = fits ? [] : wrapSpans(
+      [{ text: t, style: ["strong"] }],
+      Math.max(1, caps.columns - indent - 2)
+    );
+    const col = stacked && termLines.length > 1 ? indent + 4 : descCol;
+    const lines3 = wrapSpans(
+      [{ text, style: ["muted"] }],
+      Math.max(1, caps.columns - col)
+    );
+    termLines.forEach(
+      (l, i) => out.push(
+        `${" ".repeat(i === 0 ? indent : indent + 2)}${painter.line(l)}`
+      )
+    );
     lines3.forEach((l, i) => {
       const body = painter.line(l);
       out.push(
-        i === 0 && fits ? `${" ".repeat(indent)}${name}${" ".repeat(column - cellWidth(t) + 2)}${body}` : `${" ".repeat(descCol)}${body}`
+        i === 0 && fits ? `${" ".repeat(indent)}${name}${" ".repeat(column - cellWidth(t) + 2)}${body}` : `${" ".repeat(col)}${body}`
       );
     });
   }
@@ -22967,13 +22992,17 @@ function renderCommandHelp(term, cmd, sub) {
   const row2 = known ? cmd.rows.find(([t]) => rowSubs(t).includes(sub)) : void 0;
   const title = known ? `pkey ${cmd.name} ${sub}` : `pkey ${cmd.name}`;
   const out = [
-    line([
-      { text: title, style: ["strong"] },
-      {
-        text: ` ${symbols.separator} ${row2 ? row2[1] : cmd.summary}`,
-        style: ["muted"]
-      }
-    ]),
+    // The title and its summary wrap to the terminal like every other line.
+    ...wrapSpans(
+      [
+        { text: title, style: ["strong"] },
+        {
+          text: ` ${symbols.separator} ${row2 ? row2[1] : cmd.summary}`,
+          style: ["muted"]
+        }
+      ],
+      term.caps.columns
+    ).map(line),
     "",
     line([{ text: "Usage", style: ["strong"] }])
   ];
@@ -23183,7 +23212,17 @@ var Spinner = class {
   constructor(err, env, flags = {}, ticker = realTicker) {
     this.ticker = ticker;
     this.term = termFor(err, env, flags);
-    this.region = this.term.caps.animate ? new LiveRegion(err, this.term.caps) : null;
+    const caps = this.term.caps;
+    const render = (rows) => rows.map((r) => r.spans.map((x) => x.text).join(""));
+    this.region = caps.animate ? new LiveRegion(err, {
+      caps,
+      refreshSize: () => {
+        if (err.columns) caps.columns = layoutColumns(err.columns);
+        if (err.rows) caps.rows = err.rows;
+      },
+      render,
+      fit: (rows) => ({ lines: render(rows), head: 0 })
+    }) : null;
   }
   ticker;
   term;
@@ -23257,7 +23296,7 @@ var Spinner = class {
   }
   draw() {
     if (!this.region || !this.label || !this.atLineStart) return;
-    this.region.draw([this.line()]);
+    this.region.draw(() => [{ mark: "none", spans: [{ text: this.line() }] }]);
   }
   /** One line, never wider than the terminal (a wrapped line would break the redraw). */
   line() {
@@ -28915,44 +28954,45 @@ export default polarisConfig;
 `;
 }
 function renderReact(facts, js) {
+  const pins = `/** The trust pins. Bearer mode (a page on its own origin, or Tauri) verifies every document in
+ *  the page against them; a desktop host's \`@polaris-key/node\` client pins the same keys. */
+export const pinnedKeys = ${tsMap(facts.pinnedKeys, "")};
+
+/** The pinned release keys, for a desktop host (\`update.pinnedReleaseKeys\`). */
+export const pinnedReleaseKeys = ${tsMap(facts.pinnedReleaseKeys, "")};
+`;
   const props = [
     `  productSlug: ${q(facts.product)},`,
     `  baseUrl: ${q(facts.baseUrl)},`,
+    `  trust: { pinnedKeys },`,
     `  expectServices: [${facts.services.map(q).join(", ")}],`
   ].join("\n");
-  const pins = `/** The trust pins, for the desktop host's \`@polaris-key/node\` client (the bridge's main
- *  process verifies; the renderer never does). */
-export const pinnedKeys = ${tsMap(facts.pinnedKeys, "")};
-
-/** The pinned release keys, for the same host (\`update.pinnedReleaseKeys\`). */
-export const pinnedReleaseKeys = ${tsMap(facts.pinnedReleaseKeys, "")};
-`;
   const doc = `/**
- * The provider's product facts:
+ * The provider's product facts and trust pins:
  *
  *   <PolarisKeyProvider {...polarisConfig} version={APP_VERSION}>…</PolarisKeyProvider>
  */`;
   if (js)
     return `${banner("react", facts, "//")}
 
+${pins}
 ${doc}
 /** @satisfies {Partial<import("@polaris-key/react").PolarisKeyProviderProps>} */
 export const polarisConfig = {
 ${props}
 };
 
-${pins}
 export default polarisConfig;
 `;
   return `${banner("react", facts, "//")}
 import type { PolarisKeyProviderProps } from "@polaris-key/react";
 
+${pins}
 ${doc}
 export const polarisConfig = {
 ${props}
 } satisfies Partial<PolarisKeyProviderProps>;
 
-${pins}
 export default polarisConfig;
 `;
 }
@@ -42878,11 +42918,7 @@ async function runCommand(argv2, io) {
           { cwd, stdout, stderr, ...ci }
         );
       default:
-        stderr.write(
-          `Unknown command "${parsed.command}".
-
-${renderHelp(term(stderr))}`
-        );
+        stderr.write(unknownCommand(parsed.command, term(stderr)));
         return 2;
     }
   } catch (err) {
@@ -42890,6 +42926,15 @@ ${renderHelp(term(stderr))}`
 `);
     return 1;
   }
+}
+function unknownCommand(name, term) {
+  const { painter, symbols, caps } = term;
+  const text = `Unknown command "${name}". Run pkey help to see every command.`;
+  const lines3 = wrapSpans([{ text }], Math.max(1, caps.columns - 3));
+  return `${lines3.map(
+    (l, i) => i === 0 ? `${painter.style(symbols.fail, ["danger"])}  ${painter.line(l)}` : `   ${painter.line(l)}`
+  ).join("\n")}
+`;
 }
 function cmdHelp(words2, stdout, stderr, term) {
   const [name, sub] = words2;
@@ -42899,9 +42944,7 @@ function cmdHelp(words2, stdout, stderr, term) {
   }
   const cmd = findCommand(name);
   if (!cmd) {
-    stderr.write(`Unknown command "${name}".
-
-${renderHelp(term(stderr))}`);
+    stderr.write(unknownCommand(name, term(stderr)));
     return 2;
   }
   stdout.write(renderCommandHelp(term(stdout), cmd, sub));
@@ -43044,7 +43087,7 @@ async function validateText(dir, cwd, stdout, term) {
     );
   const gap = " ".repeat(2);
   for (const row2 of rows) {
-    const lines3 = caps.tty ? wrapSpans(row2.spans, Math.max(20, caps.columns - 3), symbols.ellipsis) : [row2.spans];
+    const lines3 = caps.tty ? wrapSpans(row2.spans, Math.max(1, caps.columns - 3), symbols.ellipsis) : [row2.spans];
     lines3.forEach(
       (l, i) => stdout.write(`${i === 0 ? row2.mark : " "}${gap}${painter.line(l)}
 `)
@@ -43280,7 +43323,7 @@ async function cmdSdk(parsed, cwd, stdout, fetchImpl) {
   const lang = flagString(parsed, "lang");
   if (lang === void 0) {
     const product2 = flagString(parsed, "product") ?? parsed.positional[0];
-    const baseUrl = flagString(parsed, "base-url") ?? "https://key.example.com";
+    const baseUrl = flagString(parsed, "base-url") ?? DEFAULT_BASE_URL;
     if (!product2) throw new Error(SDK_CONFIG_USAGE);
     stdout.write(
       `${sdkSnippet({

@@ -374,7 +374,12 @@ the page for the script to show, then the result line.
 
 No `--json` line carries a license key, a device token, the sign-in poll credential, a secret's
 value or a minted token. Off `--json`, `secret` and `mint` print the value alone on stdout for a
-script that pipes it.
+script that pipes it. Inside a CI job whose runner reads commands from its log (`GITHUB_ACTIONS`,
+`TF_BUILD` for Azure Pipelines, or `TEAMCITY_VERSION` set), a value with a line the runner would
+obey (`::…` at the start of a line, or `##[`, `##vso[` or `##teamcity[`) is not printed when stdout
+is not a terminal: the command exits 1 and says so on stderr. The value is never altered, so a
+script that captures it (`TOKEN=$(tidewater mint cdn --allow-workflow-commands)`) adds
+`--allow-workflow-commands` to have it printed as it is.
 
 ## Server text and links
 

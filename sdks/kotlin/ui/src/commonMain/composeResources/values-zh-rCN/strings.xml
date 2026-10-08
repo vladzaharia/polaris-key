@@ -1185,6 +1185,8 @@
     <string name="cli_option_yes">退出登录前不再询问</string>
     <!-- Terminal help: what the -device-code flag does. -->
     <string name="cli_option_deviceCode">使用代码登录，而非此电脑的浏览器</string>
+    <!-- Terminal help: what the -allow-workflow-commands flag of the secret and mint commands does. A CI log is a build server's job log (GitHub Actions, Azure Pipelines); a command is an instruction the build server reads from that log. -->
+    <string name="cli_option_allowWorkflowCommands">即使CI日志会将其中一行作为命令执行，也输出该值</string>
     <!-- Terminal key hints under the license key prompt. Each part is a key name, a space, then what it does; keep the key first and the ' · ' separators. -->
     <string name="cli_keys_activate">Enter 激活 · Esc 取消</string>
     <!-- Terminal key hints while waiting for a code sign-in. 'c' is the key to press; keep the key first and the ' · ' separators. -->
@@ -1241,6 +1243,8 @@
     <string name="cli_config_unset">%1$s没有值。</string>
     <!-- Terminal: the secret command found nothing. {name} is the secret's key. Arguments: 1=name. -->
     <string name="cli_secret_none">没有名为%1$s的机密发送到此设备。</string>
+    <!-- Terminal: the secret or mint command did not print its value (a secret or a token) because the build server reading the output would treat a line of it as an instruction. {command} is a command line (the same command with -allow-workflow-commands). Arguments: 1=command. -->
+    <string name="cli_output_workflowCommand">未输出该值：此CI日志会将其中一行作为命令执行。如仍要输出，请运行%1$s。</string>
     <!-- Terminal offline activation: what to do with the activation file. {command} is a command line. Arguments: 1=command. -->
     <string name="cli_offline_import">然后使用你收到的文件运行%1$s。</string>
     <!-- Terminal diagnostics: the row label for the SDK name and version. -->

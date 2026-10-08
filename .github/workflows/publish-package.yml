@@ -22,6 +22,15 @@ name: Publish a package to its feed
 # `package-registry` environment with a deployment policy admitting the `main` branch and `v*`
 # tags, and branch protection on main plus a tag ruleset on v* (the publisher requires
 # ref_protected).
+#
+# One exception, npm only (P0-52): npm-repair.yml, dispatched by hand on main, backfills an npm
+# package at the version of an existing release tag whose own run never published it. It passes
+# `release-tag`; the job then publishes exactly that tag's version, on that tag's channel, only
+# from a manual dispatch on main and only when the tag is on main.
+#
+# Before an npm package is published, the job waits until the feed lists every @polaris-key
+# version the packed tarball pins (tools/feed-closure.mjs requires), so no version on the feed can
+# pin a sibling the feed does not have, whatever order a caller runs its legs in.
 
 on:
   workflow_call:
@@ -52,6 +61,11 @@ on:
         required: false
         type: string
         default: https://key.plrs.im
+      release-tag:
+        description: npm-repair.yml only. The release tag (vX.Y.Z) whose version a manual dispatch on main backfills.
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -73,6 +87,8 @@ jobs:
         env:
           VERSION: ${{ inputs.version }}
           CHANNEL: ${{ inputs.channel }}
+          DELIVERABLE: ${{ inputs.deliverable }}
+          RELEASE_TAG: ${{ inputs.release-tag }}
         run: |
           case "$GITHUB_REF" in
             refs/heads/main) want=main ;;
@@ -87,6 +103,29 @@ jobs:
               exit 1
               ;;
           esac
+          # npm-repair.yml's backfill: that tag's version on that tag's channel, from a manual
+          # dispatch on main, npm only.
+          if [ -n "$RELEASE_TAG" ]; then
+            if [ "$GITHUB_REF" != refs/heads/main ] || [ "$GITHUB_EVENT_NAME" != workflow_dispatch ]; then
+              echo "::error::A release-tag backfill runs only from a manual dispatch on main (got $GITHUB_EVENT_NAME on $GITHUB_REF)." >&2
+              exit 1
+            fi
+            case "$DELIVERABLE" in
+              npm.*) ;;
+              *)
+                echo "::error::A release-tag backfill publishes npm packages only (got $DELIVERABLE)." >&2
+                exit 1
+                ;;
+            esac
+            if ! [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta|rc|a|b)\.[0-9]+)?$ ]] || [ "$RELEASE_TAG" != "v$VERSION" ]; then
+              echo "::error::$RELEASE_TAG is not a release tag of version $VERSION." >&2
+              exit 1
+            fi
+            case "$VERSION" in
+              *-*) want=beta ;;
+              *) want=stable ;;
+            esac
+          fi
           if [ "$CHANNEL" != "$want" ]; then
             echo "::error::$VERSION on $GITHUB_REF belongs on the $want channel, not $CHANNEL." >&2
             exit 1
@@ -102,10 +141,37 @@ jobs:
             echo "Refusing to publish: $GITHUB_SHA is not an ancestor of origin/main." >&2
             exit 1
           fi
+      - name: The release tag is on main
+        if: inputs.release-tag != ''
+        env:
+          RELEASE_TAG: ${{ inputs.release-tag }}
+        run: |
+          if ! commit="$(git rev-parse -q --verify "refs/tags/$RELEASE_TAG^{commit}")"; then
+            echo "::error::There is no tag $RELEASE_TAG." >&2
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$commit" origin/main; then
+            echo "::error::$RELEASE_TAG ($commit) is not an ancestor of origin/main." >&2
+            exit 1
+          fi
       - uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.artifact }}
           path: dist-feed
+      - if: startsWith(inputs.deliverable, 'npm.')
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      # Waits (up to ten minutes, the render queue) until the feed lists every @polaris-key version
+      # the packed tarball pins; refuses at once a range pin or a tarball at another version.
+      - name: Every @polaris-key version it pins is on the feed
+        if: startsWith(inputs.deliverable, 'npm.')
+        env:
+          DIR: dist-feed/${{ inputs.dir }}
+          VERSION: ${{ inputs.version }}
+        run: >-
+          node tools/feed-closure.mjs requires "$DIR" --version "$VERSION"
+          --origin https://pkg.plrs.im --owner polaris-key --timeout 600
       - name: Publish ${{ inputs.deliverable }}
         id: publish
         uses: ./actions/publish

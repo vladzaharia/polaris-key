@@ -94,7 +94,7 @@ export function LoginCard({
         <Lockup height={52} className="sm:hidden" />
       </div>
       <main className="relative z-10 flex flex-1 flex-col items-center sm:px-4">
-        <div className="w-full overflow-hidden bg-surface-raised sm:mb-6 sm:max-w-[28.5rem] sm:rounded-[1.375rem] sm:border sm:border-border sm:shadow-pk-lg">
+        <div className="w-full overflow-hidden bg-surface-raised sm:mb-6 sm:max-w-[28.5rem] sm:rounded-[1.375rem] sm:border sm:border-border sm:shadow-elevation-3">
           {header ? (
             <div className="border-b border-border">{header}</div>
           ) : null}

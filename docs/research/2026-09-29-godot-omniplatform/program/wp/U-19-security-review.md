@@ -1,16 +1,28 @@
 # U-19 Security review of U-05 before any production deploy: T1–T3 and T13–T16, cross-tenant, cross-product and cross-account tests, CORS, clamp and quota paths
 
-| Field       | Value                                                                                               |
-| ----------- | --------------------------------------------------------------------------------------------------- |
-| Phase       | U: Cloud Sync (S-17) (U1 MVP)                                                                       |
-| Size        | 0.4–0.55 engineer-weeks                                                                             |
-| Depends on  | [U-05](U-05-cloud-sync-do.md)                                                                       |
-| Unblocks    | [U-10](U-10-saves-backend.md), [U-09](U-09-collections-backend.md)                                  |
-| Role        | `pkey-implementer`                                                                                  |
-| Plan mode   | no: follows the approved [`plans/U-01.md`](../plans/U-01.md) where it names this package            |
-| Gates       | THREAT-MODEL; gates U-05's production deploy and every U1 SDK release; findings tracked as R-series |
-| Human input | none                                                                                                |
-| Repo        | `vladzaharia/polaris-key`                                                                           |
+| Field       | Value                                                                                                      |
+| ----------- | ---------------------------------------------------------------------------------------------------------- |
+| Phase       | U: Cloud Sync (S-17) (U1 MVP)                                                                              |
+| Size        | 0.4–0.55 engineer-weeks                                                                                    |
+| Depends on  | [U-05](U-05-cloud-sync-do.md)                                                                              |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [U-10](U-10-saves-backend.md), [U-09](U-09-collections-backend.md) |
+| Role        | `pkey-implementer`                                                                                         |
+| Plan mode   | no: follows the approved [`plans/U-01.md`](../plans/U-01.md) where it names this package                   |
+| Gates       | THREAT-MODEL; gates U-05's production deploy and every U1 SDK release; findings tracked as R-series        |
+| Human input | none                                                                                                       |
+| Repo        | `vladzaharia/polaris-key`                                                                                  |
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **keep** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track G, Managed config and Cloud Sync](../../../2026-10-07-dx-consolidation/tracks.md#g-managed-config-and-cloud-sync)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Security review before any production deploy; scope also covers open settings and files on records (U-10).
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/U-01b.md`](../plans/U-01b.md) §11: open settings (T17's cross-device reach), files, the entitlement quota and `cloudSyncWrite`.
 
 ## Goal
 

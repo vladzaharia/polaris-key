@@ -189,6 +189,7 @@ describe.each(DOCUMENTS)("$name document — status taxonomy", (doc) => {
     const { impl } = fakeFetch(500, "boom");
     expect(await doc.fetchDoc(await makeCtx(impl), TOKEN)).toEqual({
       kind: "error",
+      code: "server-error",
       status: 500,
       message: "boom",
     });
@@ -199,8 +200,9 @@ describe.each(DOCUMENTS)("$name document — status taxonomy", (doc) => {
     // status, so `sync()` can tell an offline client from a refusing one.
     expect(await doc.fetchDoc(await makeCtx(explodingFetch()), TOKEN)).toEqual({
       kind: "error",
+      code: "network-error",
       status: 0,
-      message: "ECONNREFUSED",
+      message: expect.stringContaining("ECONNREFUSED"),
     });
   });
 });

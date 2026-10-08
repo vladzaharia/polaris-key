@@ -1,14 +1,15 @@
 ---
 title: "Platform settings"
-description: "The instance-wide settings: which five can change at runtime, how precedence works, and what the read-only inventory shows."
+description: "The instance-wide settings: the eight that can change at runtime, how precedence works, and what the read-only inventory shows."
 sidebar:
   order: 13
 ---
 
 Platform settings apply to the whole instance, not to one product. Almost all of them are
 deploy-time: they live in `wrangler.toml` or as Worker secrets and change only with a deploy.
-Four background-job settings and one licensing setting can also be changed at runtime, without a
-deploy, and every change is recorded in the
+Eight can also be changed at runtime, without a deploy: four background-job settings, the two
+reserved-name settings, the key-entry refusal switch and the hosted-assets switch. Every change is
+recorded in the
 [platform trail](/docs/admin/activity/#the-platform-trail).
 
 In the console this is **Platform → Settings** (`#/platform/settings`; `#/platform` opens it).
@@ -23,6 +24,7 @@ In the console this is **Platform → Settings** (`#/platform/settings`; `#/plat
 | `BLOB_GC_GRACE_DAYS`              | How long an object stays unreferenced before the collector may delete it.                           | 1 to 365 days (default 30)                 |
 | `LICENSING_RESERVED_NAMES`        | What happens to a catalog flag that declares a reserved entitlement name with an incompatible type. | `warn` or `error` (default `warn`)         |
 | `IDENTITY_RESERVED_DISPLAY_NAMES` | What happens to a product or listing name that uses a platform or store name.                       | `warn` or `error` (default `warn`)         |
+| `KEYENTRY_REFUSALS`               | Lets Identity products refuse key entry past the per-licence limit and on owned licences.           | `on` or `off` (default `off`)              |
 | `ASSET_HOSTING`                   | Serves Polaris Key's own copies of product images and mirrors release files (hosted assets).        | `on` or `off` (default `on`)               |
 
 32 MiB is the measured ceiling of the delta consumer, so a runtime size cap can only lower it.
@@ -50,6 +52,13 @@ itch.io (see [display names](/docs/build/manifest/authoring/#display-names)). Wi
 link, resync and the console's listing edits refuse it. Either way the sign-in card shows the
 product slug in a neutral frame instead of a reserved name. The setting starts at `warn` for two
 minor releases or 60 days, whichever is later. It sits under Identity & access in the console.
+
+`KEYENTRY_REFUSALS` is `identity.keyEntryRefusals`, the rollout switch for
+[key entries](/docs/services/identity/#key-entries). Key entries are counted either way. On, a
+product with Identity on refuses a new device a key whose licence is in no account and has used
+every key entry, with a link to add the key to an account; a device already using its key is never
+refused. Turn it on only once the SDKs that show the refusal are released. Turning it either way
+asks first. It sits under Identity & access in the console.
 
 `ASSET_HOSTING` is `assets.hosting.enabled`, the hosted-assets rollback switch. Off, every
 surface goes back to the developer's own image URLs and the portal's media proxy, release-file
@@ -117,7 +126,9 @@ Platform → Settings has these sections, top to bottom.
   fail its next resync.
 - **Delivery.** The hosted-assets switch (`ASSET_HOSTING`; turning it either way asks first),
   then the deploy-time delivery values, read-only.
-- **Identity & access** and **Email.** The deploy-time values, read-only. Identity
+- **Identity & access.** The reserved display-name setting and the key-entry refusal switch, then
+  the deploy-time values, read-only.
+- **Email.** The deploy-time values, read-only. Identity
   shows the console's own client (`ADMIN_OIDC_ISSUER`, `ADMIN_OIDC_CLIENT_ID`) above the platform
   client the portal and products use (`PLATFORM_OIDC_*`).
 - **Limits.** The code constants: retention, the bucket's age lock, the collector's shortest

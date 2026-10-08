@@ -45,6 +45,7 @@ import type {
   SettingScope,
   SettingSource,
 } from "./types.js";
+import { tryParseJson } from "../../platform/json.js";
 
 // ── Values ───────────────────────────────────────────────────────────────────────────────────
 
@@ -497,14 +498,6 @@ export function followsManifest(product: ProductFacts): boolean {
   return product.release_source === "github" || product.system === 1;
 }
 
-function parseJson(raw: string): unknown {
-  try {
-    return JSON.parse(raw) as unknown;
-  } catch {
-    return undefined;
-  }
-}
-
 /** One select per adapted table (the `products` row is the one the caller already holds). */
 async function readColumnRows(
   db: Db,
@@ -628,7 +621,7 @@ export async function resolveProductSettings(
   let manifest: unknown;
   if (opts.withDrift) {
     const snap = await getManifestSnapshot(ctx.db, row.slug);
-    manifest = snap ? parseJson(snap.manifest_json) : undefined;
+    manifest = snap ? tryParseJson(snap.manifest_json) : undefined;
   }
 
   return defs.map((def) => {
@@ -649,7 +642,7 @@ export async function resolveProductSettings(
         };
     } else if (ps && ps.value_json !== null) {
       layer = {
-        value: parseJson(ps.value_json),
+        value: tryParseJson(ps.value_json),
         source: ps.source,
         from: "product_settings",
         version: ps.version,

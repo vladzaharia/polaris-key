@@ -12,6 +12,21 @@
 | Human input | none                                                                                            |
 | Repo        | `vladzaharia/polaris-key`                                                                       |
 
+## Consolidation 2026-10-07
+
+> **Parked 2026-10-07 (DX consolidation).** Optional and `deferred`, so `--ready` and `--critical`
+> skip it. Revive condition (the note): Angular kit package; a UK-31 recipe until an adopter ships on Angular. Re-read this brief against the code before reviving it.
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **parked** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Angular kit package; a UK-31 recipe until an adopter ships on Angular.
+
+- Optional now (was required).
+
+## Owner direction (2026-10-08)
+
+- **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
+
 ## Goal
 
 A Angular app gates itself in its framework's idiom, with every element's parts and slots passed through and typed.

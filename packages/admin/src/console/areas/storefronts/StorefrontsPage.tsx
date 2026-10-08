@@ -41,7 +41,7 @@ import { ErrorState } from "../../../ui/ErrorState.js";
 import { Skeleton } from "../../../ui/Skeleton.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
 import { Stepper, type Step } from "../../../ui/Stepper.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { Link, useSearchParam } from "../../router.js";
 import { codecs, globalPage, r } from "../../routes.js";
 import { Panel } from "../../templates/Dashboard.js";

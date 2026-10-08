@@ -5,12 +5,18 @@
 | Phase       | PS: Polaris Key storefront: the Library as a distribution channel (S-21) (phase 2: engine and portal)                                                |
 | Size        | 0.8–1.2 engineer-weeks                                                                                                                               |
 | Depends on  | [PS-04](PS-04-storefront-portal-api.md), [PX-16](PX-16-discover-page.md)                                                                             |
-| Unblocks    | [PS-05b](PS-05b-library-entry-downloads.md), [PS-11](PS-11-storefront-closeout.md), [CM-16](CM-16-storefront-integration.md)                         |
+| Unblocks    | [PS-05b](PS-05b-library-entry-downloads.md), [PS-11](PS-11-storefront-closeout.md)                                                                   |
 | Role        | `pkey-implementer`                                                                                                                                   |
 | Plan mode   | no                                                                                                                                                   |
 | Gates       | the PORTAL.md §11 green gate; CSP browser test; `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations; `vitest-axe` on new components |
 | Human input | none                                                                                                                                                 |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                            |
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **keep** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Already stamped done on main (2eb10597c); the hygiene PR leaves it. Merged (464c6780d).
 
 ## Goal
 

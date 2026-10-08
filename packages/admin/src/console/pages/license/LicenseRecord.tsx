@@ -18,11 +18,10 @@ import { api, ApiError, type LicenseDetail } from "../../../api.js";
 import { useMe, useProduct } from "../../data/hooks.js";
 import { mutate } from "../../data/mutations.js";
 import { qk } from "../../data/queries.js";
-import { queryClient } from "../../data/queryClient.js";
 import { r } from "../../routes.js";
 import { navigate } from "../../router.js";
 import { Breadcrumbs } from "../../components/Breadcrumbs.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { PageTabs } from "../../components/PageTabs.js";
 import { LicenseRegistryTokens } from "../../areas/feeds/RegistryTokens.js";
 import { confirmFor } from "../../../lib/actions.js";
@@ -72,10 +71,10 @@ export const LICENSE_TABS = ["overview", "keys", "devices", "config"] as const;
 export type LicenseTab = (typeof LICENSE_TABS)[number];
 
 export function useLicense(slug: string, id: string) {
-  return useQuery(
-    { queryKey: qk.license(slug, id), queryFn: () => api.license(slug, id) },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.license(slug, id),
+    queryFn: () => api.license(slug, id),
+  });
 }
 
 export function LicenseRecord({

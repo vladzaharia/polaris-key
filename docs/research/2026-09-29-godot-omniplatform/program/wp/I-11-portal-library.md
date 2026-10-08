@@ -1,16 +1,16 @@
-# I-11 Portal as the Library: Library, Discover (Add to library), Activate License modal, product pages with a reserved Cloud Sync section, account settings (sign-in methods, Profile, devices and sessions, connected apps), export and deletion, the one Core revocation hook
+# I-11 Account data lifecycle: export, removal, support code, revocation hook
 
-| Field       | Value                                                                                                             |
-| ----------- | ----------------------------------------------------------------------------------------------------------------- |
-| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, phase-1a)                            |
-| Size        | 1.6–2.25 engineer-weeks                                                                                           |
-| Depends on  | [I-05](I-05-accounts-core.md), [I-07](I-07-login-card-email.md), [I-09](I-09-key-entry-attach.md)                 |
-| Unblocks    | [I-19](I-19-identity-docs.md), [I-20](I-20-layer-2-plan.md), [U-12](U-12-privacy-settings-portal.md)              |
-| Role        | `pkey-implementer`                                                                                                |
-| Plan mode   | no: follows the approved [`plans/I-04.md`](../plans/I-04.md) where it names this package                          |
-| Gates       | D1 migration; `TABLE_OWNERS`; rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; privacy docs; console CSP parity |
-| Human input | none                                                                                                              |
-| Repo        | `vladzaharia/polaris-key`                                                                                         |
+| Field       | Value                                                                                                                                                                                         |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, phase-1a)                                                                                                        |
+| Size        | 1.6–2.25 engineer-weeks                                                                                                                                                                       |
+| Depends on  | [I-05](I-05-accounts-core.md), [I-07](I-07-login-card-email.md), [I-09](I-09-key-entry-attach.md)                                                                                             |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [I-19](I-19-identity-docs.md), [I-20](I-20-layer-2-plan.md), [I-34](I-34-granular-consent-connected-apps.md), [U-12](U-12-privacy-settings-portal.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                            |
+| Plan mode   | no: follows the approved [`plans/I-04.md`](../plans/I-04.md) where it names this package                                                                                                      |
+| Gates       | D1 migration; `TABLE_OWNERS`; rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; privacy docs; console CSP parity                                                                             |
+| Human input | none                                                                                                                                                                                          |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                     |
 
 ## Amendments from approved plans (2026-10-05)
 
@@ -39,6 +39,14 @@ Checked against `main` at `148439c4f`. Each item names the package whose review 
   and its record disagrees with itself. `fix/followups-sweep-1006` owns the fix. If it has landed
   when this package starts there is nothing to do; otherwise the link-existing-account merge's
   tests pin it.
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track F, Identity](../../../2026-10-07-dx-consolidation/tracks.md#f-identity)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Narrowed to the account data lifecycle (C-44): per-product export and removal, the support code, full export, soft deletion and the one Core revocation hook. Library, Discover, Activate and account settings already shipped (PX-02..PX-24, PS-04/05). Connected apps move to I-34.
+
+- Title: was "Portal as the Library: Library, Discover (Add to library), Activate License modal, product pages with a reserved Cloud Sync section, account settings (sign-in methods, Profile, devices and sessions, connected apps), export and deletion, the one Core revocation hook".
 
 ## Goal
 
@@ -95,6 +103,7 @@ The owner chose a Steam-like account home ([S-16 owner decisions](../../notes/S-
 - [ ] Per-product removal deletes account × product data and the subject but keeps the licence unless chosen (test).
 - [ ] Account deletion cascades as above and survives a simulated restore through the tombstone list (test).
 - [ ] Detaching a licence revokes F-20 licence-bound tokens through the one hook (test).
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): `help/your-data` (self-serve export); the export task in `operate/console/help-a-customer`.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify

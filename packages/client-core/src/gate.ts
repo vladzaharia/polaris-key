@@ -31,7 +31,9 @@ export interface BlockedState {
 
 export interface LicenseState {
   status: LicenseStatus;
+  /** Epoch SECONDS: the signed document's `graceUntil`. */
   graceUntil?: number;
+  /** Epoch MILLISECONDS: `GateInput.lastVerifiedAt`, passed through. */
   lastVerifiedAt?: number;
   allowedRange?: AllowedRange;
 }
@@ -62,7 +64,9 @@ export interface GateInput {
   lastSyncUnauthorized?: boolean;
   /** Set when the last document fetch returned a 403 version/channel block. */
   blocked?: BlockedState | null;
-  /** Epoch seconds of the last successful online verify, surfaced for "last checked" UI. */
+  /** Epoch MILLISECONDS of the last successful online verify (unlike every other time here,
+   *  which is seconds), surfaced for "last checked" UI. The Node and React SDKs fill it in
+   *  milliseconds: divide by 1000 before comparing it with `now` or `graceUntil`. */
   lastVerifiedAt?: number | null;
 }
 

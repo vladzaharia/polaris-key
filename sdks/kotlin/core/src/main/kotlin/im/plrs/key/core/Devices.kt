@@ -13,7 +13,6 @@
 package im.plrs.key.core
 
 import java.io.File
-import java.lang.management.ManagementFactory
 import java.util.concurrent.TimeUnit
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -268,9 +267,14 @@ public object JvmFingerprintSource : FingerprintSource {
     }
 }
 
-/** Total physical memory through the JDK's management bean, or null where it is not exposed. */
-internal fun physicalMemoryBytes(): Long? = try {
-    val bean = ManagementFactory.getOperatingSystemMXBean()
+/**
+ * Total physical memory through the JDK's management bean, or null where it is not exposed. A JVM-only
+ * probe (SP-50): `java.lang.management` does not exist on Android, so it is reached by reflection
+ * and never linked (R8 refused a minified app that referenced it), and Android answers null here
+ * (its RAM bucket is :android's).
+ */
+internal fun physicalMemoryBytes(): Long? = if (RuntimeFamily.isAndroid) null else try {
+    val bean = Class.forName("java.lang.management.ManagementFactory").getMethod("getOperatingSystemMXBean").invoke(null)
     val api = Class.forName("com.sun.management.OperatingSystemMXBean")
     if (!api.isInstance(bean)) {
         null

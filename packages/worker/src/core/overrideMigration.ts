@@ -66,6 +66,7 @@ import {
   parseAccountOverridePayload,
   type AccountOverridePayload,
 } from "./accountOverrides.js";
+import { parseJsonOr } from "../platform/json.js";
 
 /** Decision 21: the notice runs 30 days before the run. */
 export const OVERRIDE_MIGRATION_NOTICE_DAYS = 30;
@@ -127,15 +128,6 @@ interface StateRow {
   columns_emptied_at: number | null;
 }
 
-function parseJson<T>(raw: string | null, fallback: T): T {
-  if (!raw) return fallback;
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
-}
-
 /** The migration's state; every field null (nothing started) when the row was never written. */
 export async function readOverrideMigrationState(
   db: Db,
@@ -143,7 +135,7 @@ export async function readOverrideMigrationState(
   const r = await db.first<StateRow>(
     "SELECT * FROM override_migration WHERE id = 'platform'",
   );
-  const done = parseJson<unknown>(r?.products_done_json ?? null, []);
+  const done = parseJsonOr<unknown>(r?.products_done_json ?? null, []);
   return {
     loginCardLiveAt: r?.login_card_live_at ?? null,
     loginCardLiveBy: r?.login_card_live_by ?? null,
@@ -160,7 +152,7 @@ export async function readOverrideMigrationState(
       ? done.filter((p): p is string => typeof p === "string")
       : [],
     runLeaseUntil: r?.run_lease_until ?? null,
-    inventory: parseJson<OverrideInventorySummary | null>(
+    inventory: parseJsonOr<OverrideInventorySummary | null>(
       r?.inventory_json ?? null,
       null,
     ),
@@ -368,7 +360,7 @@ async function scanProduct(db: Db, product: string): Promise<ScannedLicence[]> {
       SCAN_PAGE,
     );
     for (const r of rows) {
-      const parsed = parseJson<unknown>(r.overrides_json, null);
+      const parsed = parseJsonOr<unknown>(r.overrides_json, null);
       if (!isRecord(parsed)) continue;
       const config = bucketOf(parsed, "config");
       const secrets = bucketOf(parsed, "secrets");
@@ -1270,8 +1262,8 @@ export async function listOverrideMigrationReport(
     outcome: r.outcome,
     subject: r.subject,
     buyerEmail: r.buyer_email,
-    keys: parseJson(r.keys_json, { config: [], secrets: [] }),
-    values: parseJson(r.values_json, {}),
+    keys: parseJsonOr(r.keys_json, { config: [], secrets: [] }),
+    values: parseJsonOr(r.values_json, {}),
     createdAt: r.created_at,
     expiresAt: r.expires_at,
   }));

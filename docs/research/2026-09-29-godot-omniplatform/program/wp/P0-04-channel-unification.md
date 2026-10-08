@@ -2,7 +2,7 @@
 
 | Field       | Value                                                                                                                    |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | P0: Hygiene and unblockers                                                                                               |
+| Phase       | P0: Hygiene, unblockers and code quality                                                                                 |
 | Size        | 1–1.25 engineer-weeks                                                                                                    |
 | Depends on  | none                                                                                                                     |
 | Unblocks    | [P1-03](P1-03-godot-license.md), [P1b-05](P1b-05-runners.md)                                                             |

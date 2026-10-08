@@ -12,6 +12,17 @@
 | Human input | test devices (Windows 10/11 and a Linux desktop with Flatpak)                                              |
 | Repo        | `vladzaharia/polaris-key`                                                                                  |
 
+## Consolidation 2026-10-07
+
+> **Parked 2026-10-07 (DX consolidation).** Optional and `deferred`, so `--ready` and `--critical`
+> skip it. Revive condition (the note): Godot side of SP-29. Re-read this brief against the code before reviving it.
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **parked** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Godot side of SP-29.
+
+- Optional now (was required).
+
 ## Goal
 
 A Godot desktop export takes packs from an MSIX optional package (through `pkey_win.dll`'s package-identity calls) or a Flatpak extension (`/app/extensions/...`), verifying the marker exactly as SP-29's layout defines.

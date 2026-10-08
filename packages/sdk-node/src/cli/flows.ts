@@ -65,7 +65,7 @@ import {
 } from "./term/layout.js";
 import { animate, LiveRegion, spinnerFrames } from "./term/live.js";
 import { osc52 } from "./term/osc.js";
-import { clean } from "./term/sanitize.js";
+import { clean, hasLogCommand } from "./term/sanitize.js";
 import {
   percent,
   progressSpans,
@@ -2300,11 +2300,49 @@ export async function configWriteFlow(
   };
 }
 
+export interface OutputArgs {
+  /** `--allow-workflow-commands`: print a value even when a CI log would run a line of it. */
+  allowWorkflowCommands?: boolean;
+}
+
+/**
+ * Whether `value` is withheld from stdout: stdout is not a terminal, a CI runner that obeys
+ * commands in its log may read it (`caps.logCommands`), a line of the value is such a command
+ * (`hasLogCommand`) and `--allow-workflow-commands` was not given. A script's `$(… secret …)`
+ * must capture the value byte for byte, so it is never defused (a zero-width space, a
+ * `::stop-commands::` pair around it); the verb refuses instead, and the flag is for the script
+ * that captures the value rather than letting it reach the log (THREAT-MODEL, UK-14).
+ */
+function logCommandWithheld(
+  ctx: KitContext,
+  value: string,
+  flags: OutputArgs,
+): boolean {
+  return (
+    !ctx.caps.tty &&
+    ctx.caps.logCommands &&
+    flags.allowWorkflowCommands !== true &&
+    hasLogCommand(value)
+  );
+}
+
+/** The refusal `logCommandWithheld` prints on stderr (never under `--json`, which prints no
+ *  value), naming the same command with the flag. */
+function logCommandRefusal(ctx: KitContext, verb: string, arg: string): void {
+  const message = ctx.copy.t("cli.output.workflowCommand", {
+    command: `${ctx.bin} ${verb} ${arg} --allow-workflow-commands`,
+  });
+  ctx.stderr.write(
+    `${ctx.render([stepRow("fail", [{ text: message }])]).join("\n")}\n`,
+  );
+}
+
 /** `secret`: the value alone on stdout, for a script to read. */
 export function secretFlow(
   ctx: KitContext,
   client: PolarisKeyClient,
   key: string,
+  flags: OutputArgs = {},
 ): FlowResult {
   const value = client.config.getSecret(key);
   if (value === null) {
@@ -2321,7 +2359,17 @@ export function secretFlow(
   }
   // A script gets the value as stored; a terminal never gets a control character from it. The
   // `--json` line never carries the value (the Python kit's `key` and `present`).
-  if (!quiet(ctx)) ctx.stdout.write(`${ctx.caps.tty ? clean(value) : value}\n`);
+  if (!quiet(ctx)) {
+    if (logCommandWithheld(ctx, value, flags)) {
+      logCommandRefusal(ctx, "secret", key);
+      return {
+        exitCode: EXIT.failed,
+        state: "error",
+        result: { key, present: true },
+      };
+    }
+    ctx.stdout.write(`${ctx.caps.tty ? clean(value) : value}\n`);
+  }
   return { exitCode: EXIT.ok, result: { key, present: true } };
 }
 
@@ -2330,11 +2378,22 @@ export async function mintFlow(
   ctx: KitContext,
   client: PolarisKeyClient,
   recipeId: string,
+  flags: OutputArgs = {},
 ): Promise<FlowResult> {
   try {
     const tk = await client.config.mintToken(recipeId);
-    if (!quiet(ctx))
+    if (!quiet(ctx)) {
+      // A token that would run as a CI log command is dropped unprinted; it expires on its own.
+      if (logCommandWithheld(ctx, tk.token, flags)) {
+        logCommandRefusal(ctx, "mint", recipeId);
+        return {
+          exitCode: EXIT.failed,
+          state: "error",
+          result: { recipe: recipeId, expiresAt: tk.expiresAt },
+        };
+      }
       ctx.stdout.write(`${ctx.caps.tty ? clean(tk.token) : tk.token}\n`);
+    }
     // The token goes to stdout for a script; the `--json` line never carries it (the Python
     // kit's `recipe` and `expiresAt`).
     return {

@@ -1,16 +1,16 @@
-# I-10a SDK identity v2 for layer 1 in Node, React and Python plus the React activation component: key-entry refusals with deep link and QR, passthrough sign-in (device code; web redirect in React), attach, `subject`, `signOut`, `openAccount`
+# I-10a SDK identity v2 and key-entry outcome: Node, React, Python (absorbs PX-W9b, UK-44)
 
-| Field       | Value                                                                                                                                                                                                                                                                                                                                |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, phase-1a)                                                                                                                                                                                                                                               |
-| Size        | 1–1.4 engineer-weeks                                                                                                                                                                                                                                                                                                                 |
-| Depends on  | [I-04](I-04-account-contract-plan.md), [I-08](I-08-app-passthrough.md), [I-09](I-09-key-entry-attach.md), [PX-W9b](PX-W9b-key-entry-sdks.md)                                                                                                                                                                                         |
-| Unblocks    | [I-13](I-13-exchange-endpoint.md), [I-15](I-15-native-redirect.md), [I-19](I-19-identity-docs.md), [I-20](I-20-layer-2-plan.md), [I-24b](I-24b-named-user-seats-sdks.md), [U-06](U-06-sdk-settings-node-python.md), [U-20](U-20-sdk-settings-react.md), [UK-42](UK-42-activation-holders-web.md), [UK-44](UK-44-sdk-signin-hints.md) |
-| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                                                                                                 |
-| Plan mode   | yes: executes the approved [`plans/I-04.md`](../plans/I-04.md) (no separate plan)                                                                                                                                                                                                                                                    |
-| Gates       | plan mode; all six SDKs (`parity:check`); `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; UI kit screenshots                                                                                                                                                                                               |
-| Human input | none                                                                                                                                                                                                                                                                                                                                 |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                                            |
+| Field       | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, phase-1a)                                                                                                                                                                                                                                                                                                                                                                   |
+| Size        | 1–1.4 engineer-weeks                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Depends on  | [I-04](I-04-account-contract-plan.md), [I-08](I-08-app-passthrough.md), [I-09](I-09-key-entry-attach.md), [SP-35](SP-35-sdk-api-registry-api-json-0-9.md)                                                                                                                                                                                                                                                                                                |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [I-13](I-13-exchange-endpoint.md), [I-15](I-15-native-redirect.md), [I-19](I-19-identity-docs.md), [I-20](I-20-layer-2-plan.md), [I-24b](I-24b-named-user-seats-sdks.md), [U-06](U-06-sdk-settings-node-python.md), [U-20](U-20-sdk-settings-react.md), [SP-40](SP-40-retire-react-cookie-mode-browser.md), [LX-39](LX-39-licences-in-account-need-sign-in-product.md), [UK-42](UK-42-activation-holders-web.md) |
+| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                                                                                                                                                                                                                     |
+| Plan mode   | yes: executes the approved [`plans/I-04.md`](../plans/I-04.md) (no separate plan)                                                                                                                                                                                                                                                                                                                                                                        |
+| Gates       | plan mode; all six SDKs (`parity:check`); `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; UI kit screenshots                                                                                                                                                                                                                                                                                                                   |
+| Human input | none                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                                                                                                                                                                |
 
 ## Amendments from approved plans (2026-10-05)
 
@@ -87,6 +87,32 @@ every row, no "Account-wide"). For this package:
 - **Transcripts.** The `keyentry-*` transcripts are replayed by PX-W9b, not here. "N activations left" is PX-W9b's
   "{left} key entries left".
 
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track K, Corpus lane (wire trains, serial)](../../../2026-10-07-dx-consolidation/tracks.md#k-corpus-lane-wire-trains-serial)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Absorbs PX-W9b (key-entry outcome) and UK-44 (sign-in hints) for Node, React and Python: one six-SDK pass over activation and sign-in. One signIn facade (signIn.start/exchange/choice/subject/signOut) on the OAuth-shaped endpoints, names from SP-35's api.json, deprecated aliases kept for the published SDK deprecation window (P0-24's ledger). Ships layer (c) only; the React activation UI renders in UK-05.
+
+- Title: was "SDK identity v2 for layer 1 in Node, React and Python plus the React activation component: key-entry refusals with deep link and QR, passthrough sign-in (device code; web redirect in React), attach, `subject`, `signOut`, `openAccount`".
+- Depends on: added SP-35; removed PX-W9b.
+- Owner 2026-10-07: removal, not deprecation. No aliases; the 0.9 release notes list the break.
+- Absorbs PX-W9b: Same six-SDK activation surface as identity v2 (C-47): one pass instead of two.
+- Absorbs UK-44: Hints are an argument of the same signIn.start call I-10a/b introduce.
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/I-27.md`](../plans/I-27.md) §12: §5.
+- [`plans/SP-35.md`](../plans/SP-35.md) §12: the `identity.signIn` and `subject` rows from I-27's plan; `beginSignIn`, `pollSignIn`, `waitForSignIn` and `signInWithBrowser` are removed, not aliased.
+- [`plans/UK-02b.md`](../plans/UK-02b.md) §8: the D3 mapping into the sign-in session vocabulary, and the `account` family appended to `ui-matrix.json`.
+
+## SDK usability review (2026-10-08)
+
+Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.1. Where they differ from the text below, they win.
+
+- `identity.subject()` survives a restart and is null for key-only devices; confirm-and-attach in every kit; typed sign-in errors; an `identity` event kind.
+
 ## Goal
 
 Node, React and Python handle layer 1 identity end to end: `activate(key)` surfaces `key_entry_limit` (deep link and QR) and `license_owned` (offer sign-in) without wiping state; device-code passthrough lands on the card; React web apps sign in by the web redirect and exchange the code; `attach`, `subject`, `signOut` and `openAccount` exist; and React's activation component shows the refusals and the "add to your Library" prompt.
@@ -137,6 +163,7 @@ S-16 re-estimated the SDK work and split it by toolchain so the two halves run i
 - [ ] React completes a web redirect sign-in against the exchange transcript (test).
 - [ ] UI component screenshots for both refusals.
 - [ ] `parity.json` manifests updated for all three SDKs.
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/sign-in/*`; `operate/platform/connections`; `help/work-account`, `help/account`, `help/connected-apps`; the React cookie note removed.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify

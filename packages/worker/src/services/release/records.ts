@@ -42,7 +42,7 @@ import { MAX_RECORD_JWS_BYTES } from "@polaris-key/protocol/core";
 import type { ReleaseRecordDoc } from "@polaris-key/protocol/release";
 import { releaseRecordClaims } from "@polaris-key/client-core/record";
 import { parseVersion } from "@polaris-key/client-core/version";
-import type { Db, DbStatement } from "../../core/platform.js";
+import { sha256Hex, type Db, type DbStatement } from "../../core/platform.js";
 import type { ReleaseConfigRow } from "./config.js";
 
 /** The one ingest refusal code (registered in `conformance/parity/errors.json`). */
@@ -142,29 +142,6 @@ export function isRecordHash(s: string): boolean {
   return SHA256_HEX_RE.test(s);
 }
 
-export async function sha256HexOfAscii(text: string): Promise<string> {
-  const buf = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(text),
-  );
-  return [...new Uint8Array(buf)]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-async function sha256HexOfBytes(bytes: Uint8Array): Promise<string> {
-  const buf = await crypto.subtle.digest(
-    "SHA-256",
-    bytes.buffer.slice(
-      bytes.byteOffset,
-      bytes.byteOffset + bytes.byteLength,
-    ) as ArrayBuffer,
-  );
-  return [...new Uint8Array(buf)]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
 // ── Declared release keys ────────────────────────────────────────────────────
 
 /** `release_config.release_keys_json` read back; malformed JSON or entries are dropped. */
@@ -199,7 +176,7 @@ export async function releaseKeyFingerprints(
   const out: string[] = [];
   for (const k of parseReleaseKeysJson(cfg?.release_keys_json)) {
     const bytes = releaseKeyBytes(k.publicKey);
-    if (bytes) out.push(await sha256HexOfBytes(bytes));
+    if (bytes) out.push(await sha256Hex(bytes));
   }
   return out;
 }
@@ -480,7 +457,7 @@ export async function checkReleaseRecord(
       `the record says seq ${record.seq}; ${descriptor.deliverable} ${descriptor.version} has seq ${input.seq}. Ask the upload route for the release's seq and sign again.`,
     );
 
-  return { ok: true, record, sha256: await sha256HexOfAscii(jws), kid, jws };
+  return { ok: true, record, sha256: await sha256Hex(jws), kid, jws };
 }
 
 // ── Storage ──────────────────────────────────────────────────────────────────

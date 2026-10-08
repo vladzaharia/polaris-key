@@ -27,7 +27,7 @@ import { Timestamp } from "../../../ui/Timestamp.js";
 import { toast } from "../../../ui/toast.js";
 import { useLoadingAnnouncement } from "../../../ui/loading.js";
 import { errorCopy } from "../../../lib/errorCopy.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { PageTabs } from "../../components/PageTabs.js";
 import { mutate } from "../../data/mutations.js";
 import { Link } from "../../router.js";

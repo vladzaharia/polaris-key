@@ -135,3 +135,49 @@ def test_pack_progress_stream_yields_engine_events() -> None:
         await c.aclose()
 
     asyncio.run(main())
+
+
+# ── A forgotten await fails loudly (the truthy-coroutine gate) ──────────────────────────────
+def test_if_aclient_is_licensed_without_await_raises() -> None:
+    """The acceptance line: ``if aclient.is_licensed():`` raises instead of passing. A bare
+    coroutine object is truthy, so the gate used to pass on a device never activated."""
+
+    async def main():
+        c = await _create(_handler())
+        assert await c.is_licensed() is False  # awaited: the real, unactivated answer
+        with pytest.raises(TypeError, match=r"await it"):
+            if c.is_licensed():  # noqa: SIM102 - the bug under test
+                pytest.fail("a never-activated device passed the gate")
+        with pytest.raises(TypeError):
+            if c.license.is_licensed():
+                pass
+        with pytest.raises(TypeError):
+            if c.license.is_entitled("pro"):
+                pass
+        with pytest.raises(TypeError):
+            bool(c.status())
+        with pytest.raises(TypeError):
+            assert not c.license.is_entitled("pro")  # `not` is a truth test too
+        await c.aclose()
+
+    asyncio.run(main())
+
+
+def test_guarded_coroutines_still_work_everywhere_a_coroutine_does() -> None:
+    import inspect
+
+    async def main():
+        c = await _create(_handler())
+        coro = c.is_licensed()
+        assert asyncio.iscoroutine(coro)
+        assert await coro is False
+        task = asyncio.create_task(c.is_licensed())
+        assert await task is False
+        got = await asyncio.gather(c.is_licensed(), c.license.is_entitled("pro"))
+        assert got == [False, False]
+        assert await asyncio.wait_for(c.is_licensed(), 5) is False
+        if hasattr(inspect, "markcoroutinefunction"):
+            assert inspect.iscoroutinefunction(c.license.is_licensed)
+        await c.aclose()
+
+    asyncio.run(main())

@@ -409,6 +409,22 @@ applies. The defusing knows GitHub's `::` and `##[` syntax only: Azure Pipelines
 (including `task.setvariable`) and TeamCity `##teamcity[…]` lines pass through unchanged, and the
 vendor tools `pkey storefront` runs with inherited stdio (`storefronts/run.ts`) bypass the guard.
 
+**A secret or a minted token is never a CI log command (UK-14 follow-up).** The Node kit's `secret`
+and `mint` print the value alone on stdout when stdout is not a terminal, so a script's
+`$(tidewater secret api.key)` captures it, and the capture must stay byte-exact: defusing the value
+(a zero-width space, a `::stop-commands::` pair around it) would corrupt what the script receives.
+Where that stdout may instead reach a job log whose runner obeys commands written into it
+(`GITHUB_ACTIONS`, Azure Pipelines' `TF_BUILD` or `TEAMCITY_VERSION` set; `readsLogCommands`), a
+value with a line the runner would obey (`::` after leading whitespace, or `##[`, `##vso[` or
+`##teamcity[` anywhere in it, lines broken at CR, LF or CRLF; `hasLogCommand`) is withheld: nothing
+reaches stdout, stderr names the same command with `--allow-workflow-commands`, and the verb exits 1.
+The flag is the script's statement that it captures the value. A terminal gets the cleaned value as
+before, `--json` never carries it, and the Python kit's `secret` and `mint` never print a value at
+all (`tests/test_cli_verbs.py` pins that). Residual: a minted token that is withheld was still
+minted (it expires on its own); a runner the kit cannot see (a container started without those
+variables) gets the value raw; and the pre-kit output (`kit: false`), which prints each verb's plain
+message, is not guarded.
+
 **Residual risk: an existence oracle on other tenants' bytes.** `blob_objects` is shared, and
 `promote` short-circuits a target that already exists (`alreadyStored`: no copy). The submit
 route never reads that flag and answers identically either way, and `present` on a ticket
@@ -1235,6 +1251,23 @@ symbol); review catches the rest.
   protected release tag can publish a version (branch protection and the ruleset are the
   controls), and a version once published is immutable, so a bad release is yanked and
   superseded, never replaced.
+- **Feed coherence and the manual backfill (P0-52).** The npm packages pin each other at exactly
+  one version, so a dependent published without its dependency cannot be installed (nine versions
+  of v0.8.28 and v0.8.29, after legs stuck in `waiting`). `publish-sdks.yml` publishes them in
+  dependency tiers, and `publish-package.yml` publishes an npm package only once the feed lists
+  every `@polaris-key` version its tarball pins; a read-only check (`tools/feed-closure.mjs`) runs
+  after each publish and daily. The one other caller of the trusted publisher is
+  `npm-repair.yml`, a `workflow_dispatch` on `main` that backfills an npm package at an existing
+  release tag's version. It passes `release-tag`, and the publisher then requires a manual dispatch
+  on `main`, an npm deliverable, a `vX.Y.Z[-pre.N]` tag that names exactly the version and is an
+  ancestor of `main`, and the tag's own channel; the plan refuses a version the feed already lists,
+  and the Worker refuses one anyway (unique forever). The OIDC claims are the ones a `main` push
+  presents (`publish-package.yml` at `refs/heads/main`, `package-registry`, `workflow_dispatch` is
+  an allowed event), so the Worker's policy is unchanged. Residual: anyone with write access can
+  dispatch it and publish, from a protected tag's tree, a version of a tagged release that never
+  reached the feed. That is no more than a push to `main` already allows, and every such version
+  is audited like any publish. The channel head is the newest version by SemVer, so a backfilled
+  older release never becomes `latest`.
 - **The deploy hook (`POST /webhooks/deploy`, F-10 automation).** It bootstraps the system
   product, links it to the monorepo and applies the root `.pkey/` sent in its body: the package
   deliverables and the trusted publisher every SDK publish relies on. It is authenticated by the
@@ -1440,6 +1473,29 @@ main, which are disposable by design. Nothing a client sends selects a version t
 candidates are computed from D1. The backfill routes take only `apply` and an optional
 deliverable id.
 
+**The standing prune token (P0-48).** The backstop after each stable tag (`publish-sdks.yml`'s
+`prune` job) authenticates with `PKEY_FEED_PRUNE_TOKEN`, a static `pkeyci_` token of
+`polaris-key` whose only scope is `release:yank`.
+
+- **Blast radius.** The scope is not prune-only. It also authorises
+  `POST /polaris-key/release/releases/<id>/yank` (`services/release/routes.ts` `handleCiYank`),
+  so a leaked token can yank any polaris-key release as well as run the prune, which deletes only
+  what the rule above selects. It cannot publish, promote or pin, and it cannot reach another
+  product (401). Every use is audited under `ci:<subject>`, and a yank is undone with an unyank.
+- **Where it lives.** It is a secret of the `package-registry` environment. GitHub gives an
+  environment's secrets to every job that declares the environment, so it is not confined to
+  the prune job: `swift-sign` and every publish leg (`publish-package.yml`, on pushes to main as
+  well as on tags) can read it by naming it, which takes a change to that workflow on main. The
+  environment's deployment policy admits only `main` and `v*` tags, so a pull-request branch
+  cannot.
+- **Lifetime.** A static token expires at most 90 days after issue
+  (`STATIC_CI_TOKEN_MAX_TTL_SECONDS`). It is rotated before then: issue the new one, replace the
+  secret, revoke the old one (RUNBOOK "Feed retention", the backstop).
+- **Why not OIDC.** The product has one trusted-publisher policy, and its scopes go to every
+  token it mints. Granting it `release:yank` would put the scope in every publish leg's token,
+  on every push to main, with no change to any workflow. The standing secret reaches only a job
+  that names it, which today is the prune job alone.
+
 **What it can never touch.** A stable or beta version, a prerelease of a version newer than V,
 another package, another product, or a version that a channel policy points at or that any
 other row names (a revocation, a pack pin or hold, a download token). Those are reported as
@@ -1586,7 +1642,8 @@ that property for CI and bounds it everywhere else:
   (never replace one) under the owner's namespace until revoked, and every such version names the
   token on its package record and in the audit.
 - **Never on the platform's own feeds.** The system product's (`polaris-key`) SDK feeds are
-  published only by `publish-sdks.yml`, in lockstep with the server (F-10 owner ruling), because
+  published only by `publish-sdks.yml`, in lockstep with the server (F-10 owner ruling), and by
+  `npm-repair.yml`'s backfill of a tagged version that never landed (P0-52), because
   versions are unique forever and one hand-published version would block the pipeline's next
   publish of it: `mintRegistryToken` refuses a publish token for the system product
   (`system_feeds_pipeline_only`), the console offers no publish option on the platform scope, and
@@ -5163,8 +5220,8 @@ group-assignment mistake on that client crossed from customer to operator (notes
   shows `console_oidc_shared`, naming the admin variables still unset. Until the owner sets them
   the pre-I-03 exposure stands: the residual this package closes only once the secrets are set
   and `/manage/callback` is removed from the platform client (DEPLOYMENT §2).
-- **Authorisation is unchanged.** Console access is still `PLATFORM_ADMIN_GROUP` (or a product
-  admin group) in the ID token's `groups` (§5). A separate client narrows who can obtain a token
+- **Authorisation is unchanged.** Console access is still `PLATFORM_ADMIN_GROUP` in the ID
+  token's `groups` (§5); a product's `adminGroup` grants no console access. A separate client narrows who can obtain a token
   for the console's audience; it does not change what the token grants. Where Pocket ID can
   restrict a client to user groups, allowing only the admin group on the console client adds a
   second check at the IdP.
@@ -5229,11 +5286,26 @@ directory holds operators only, which closes G5 (operator and customer in one di
   again before it shows the identity, activates or mints, because an account can be disabled
   while the flow waits, and answers the generic `error` (D8). A subject that holds no method (a
   floating licence only, an erased account, which leaves no link, or a custom-issuer product's
-  subject) signs in as before. Residual: a device or browser session signed in before the
-  disable keeps its token (disabling clears the device's account binding, `devices.subject`, not
-  its licence seat), and on a `requires-identity` product a live browser session can still
-  register devices; this closes new sign-ins only. Ending those is a product decision about
-  licence seats (follow-up).
+  subject) signs in as before. A product browser session signed in before the disable ends too.
+  The OIDC return path records two things on the session's KV record (`browserSessionBinding`;
+  neither for a custom issuer): the platform subject itself (issuer and `sub`), and the account
+  that holds its platform-IdP method at sign-in, if any. At every read, `loadBrowserSession` runs
+  this same N9 check on the subject (`platformSubjectAccountRefused`, so whichever account holds
+  the method now counts: one the subject joined after the session opened, or one its method moved
+  to) and checks the sign-in account. It deletes the record and answers "no session" once either
+  is disabled, being deleted or gone (an absorbed account follows its join for 30 days, as
+  `signIn` reads it). The sign-in account is kept for erasure, which deletes the account's methods,
+  so the subject alone would then resolve no account. So the page reads signed out at its next
+  request, a `requires-identity` product refuses to register a device on it, and sign-out finds
+  nothing to end. A D1 error during the check reads as signed out for that request (never a 500,
+  fail closed) and keeps the record, since the error says nothing about the account. Residual, by
+  decision: device seats and device tokens are kept, the browser device's included. They belong
+  to the licence, not the account; disabling clears each device's account binding
+  (`devices.subject`) and nothing else, and the operator deauthorizes a seat or disables the
+  licence when that is wanted. A browser session opened before this binding existed carries no
+  subject and lives out its 30 days. A subject whose account is erased after it joined one that
+  the session did not record (it had none at sign-in) is a subject with no account again, which
+  signs in as before, so its session lives on too.
 - **The switch is deploy-time (AT-2).** `PLATFORM_OIDC_MIGRATION` and `PLATFORM_OIDC_SUNSET` are
   `[vars]`, explained in `NOT_A_SETTING`, never console values: a console session cannot move
   people between sign-in paths or end anyone's sign-in. Off by default; an unrecognised mode reads
@@ -7987,7 +8059,9 @@ reaching Godot, any read inside a package beyond Swift manifests, or a raised na
 publish body cap (F-22); the bucket-lock duration
 changes; the admin authorization model changes; the wire contract
 version increments; any new field is added to `AdminSession` or `PortalSession` (see the
-domain-separation note in the audit report — the two realms share HMAC key material by default);
+domain-separation note in the audit report — the two realms share HMAC key material by default),
+or the token format both realms sign with (`packages/worker/src/platform/hmacToken.ts`, P0-15) or
+either realm's domain tag changes;
 a CI scope is added, the publisher policy gains a field, a manifest is allowed to set any part of
 it beyond the workflow and environment, or `UPLOAD_CREDENTIAL_ACTIONS` changes (P2-02); a new
 way to earn a blob ref is added (P4-02's stage round is the second), or the Worker's index bound

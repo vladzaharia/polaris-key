@@ -6,6 +6,11 @@
 // (`java.net.http` does not exist on Android). It follows redirects ITSELF: an `Authorization`
 // header is never forwarded across a redirect (OkHttp would keep it on a same-host hop), a redirect
 // from https to plain http is refused, and at most `MAX_REDIRECTS` hops are taken.
+//
+// SP-50: `send` is main-safe. OkHttp's callback resumes the caller as soon as the HEADERS arrive, and
+// the body is read after that; on Android, from `Dispatchers.Main`, that read throws
+// NetworkOnMainThreadException whenever the body has not arrived with the headers (always, on a
+// real network). The whole exchange, the body read included, runs on `Dispatchers.IO`.
 
 package im.plrs.key.core
 
@@ -13,7 +18,9 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -82,11 +89,32 @@ public object NoNetworkTransport : PolarisTransport {
         throw PolarisException(ErrorCode.localOnly, "This client is in local-only mode; network calls are refused.")
 }
 
-/** The production transport, over OkHttp. */
-public class OkHttpTransport(client: OkHttpClient = OkHttpClient()) : PolarisTransport {
+/** The production transport, over OkHttp. Main-safe: every byte is read on `Dispatchers.IO`. */
+public class OkHttpTransport private constructor(client: OkHttpClient, private val owned: Boolean) : PolarisTransport, AutoCloseable {
+    /** A transport over an OkHttp client the SDK builds itself; [close] shuts that client down. */
+    public constructor() : this(OkHttpClient(), true)
+
+    /** A transport over the host's [client], which it shares: [close] leaves the host's client alone. */
+    public constructor(client: OkHttpClient) : this(client, false)
+
     private val base: OkHttpClient = client.newBuilder().followRedirects(false).followSslRedirects(false).build()
 
-    override suspend fun send(request: PolarisRequest): PolarisResponse {
+    /**
+     * Cancel in-flight calls and shut OkHttp's dispatcher and connection pool down (SP-51), so a JVM
+     * `main` exits. Only when the SDK built the client itself: a host-supplied client shares its
+     * dispatcher and pool with the host's other calls, so closing here would break them (close it
+     * yourself if it is not otherwise needed).
+     */
+    override fun close() {
+        if (!owned) return
+        base.dispatcher.cancelAll()
+        base.dispatcher.executorService.shutdown()
+        base.connectionPool.evictAll()
+    }
+
+    override suspend fun send(request: PolarisRequest): PolarisResponse = withContext(Dispatchers.IO) { exchange(request) }
+
+    private suspend fun exchange(request: PolarisRequest): PolarisResponse {
         val client = if (request.timeoutSeconds > 0) {
             base.newBuilder().callTimeout((request.timeoutSeconds * 1000).toLong(), TimeUnit.MILLISECONDS).build()
         } else {

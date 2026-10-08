@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug only: the on-device tests run a plain-HTTP server on 127.0.0.1 (the SDK allows http only
+     to localhost), and Android refuses cleartext traffic unless the app's network config allows it. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application android:networkSecurityConfig="@xml/network_security_config" />
+</manifest>

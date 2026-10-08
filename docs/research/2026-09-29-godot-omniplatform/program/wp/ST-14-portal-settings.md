@@ -1,16 +1,25 @@
-# ST-14 Portal settings consolidation: Customer portal hub area visible with Identity off, branding editor and schema, one branding store, `portal_product_settings` into rows, one `claimByKey`
+# ST-14 Customer portal settings: three keys
 
-| Field       | Value                                                                           |
-| ----------- | ------------------------------------------------------------------------------- |
-| Phase       | ST: Settings architecture (S-18) (phase 3: coverage)                            |
-| Size        | 0.7–1 engineer-weeks                                                            |
-| Depends on  | [ST-08](ST-08-product-settings-hub.md)                                          |
-| Unblocks    | [ST-25](ST-25-legacy-retirement.md)                                             |
-| Role        | `pkey-implementer`                                                              |
-| Plan mode   | no                                                                              |
-| Gates       | D1 migration (replayable, scratch-SQLite rehearsal); `TABLE_OWNERS`; portal e2e |
-| Human input | none                                                                            |
-| Repo        | `vladzaharia/polaris-key`                                                       |
+| Field       | Value                                                                                          |
+| ----------- | ---------------------------------------------------------------------------------------------- |
+| Phase       | ST: Settings, access control and console shell (phase 3: coverage)                             |
+| Size        | 0.7–1 engineer-weeks                                                                           |
+| Depends on  | [ST-08](ST-08-product-settings-hub.md), [I-29](I-29-retire-product-account-toggles-one-app.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [ST-25](ST-25-legacy-retirement.md)                    |
+| Role        | `pkey-implementer`                                                                             |
+| Plan mode   | no                                                                                             |
+| Gates       | D1 migration (replayable, scratch-SQLite rehearsal); `TABLE_OWNERS`; portal e2e                |
+| Human input | none                                                                                           |
+| Repo        | `vladzaharia/polaris-key`                                                                      |
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track D, Administration, access control and console identity](../../../2026-10-07-dx-consolidation/tracks.md#d-administration-access-control-and-console-identity)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Register only portal.enabled, keyReissue and identity.keyEntry.claimByKey. Never register oidc_enabled, magic_enabled, license_key_claim_enabled or auto_link_enabled: I-29 retires them first.
+
+- Title: was "Portal settings consolidation: Customer portal hub area visible with Identity off, branding editor and schema, one branding store, `portal_product_settings` into rows, one `claimByKey`".
+- Depends on: added I-29.
 
 ## Goal
 

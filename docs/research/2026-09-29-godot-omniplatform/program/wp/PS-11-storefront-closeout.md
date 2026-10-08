@@ -1,16 +1,24 @@
 # PS-11 Storefront close-out: docs, glossary, THREAT-MODEL S1–S11, ADMIN.md and PORTAL.md amendments, `discover_enabled` readers retired
 
-| Field       | Value                                                                                         |
-| ----------- | --------------------------------------------------------------------------------------------- |
-| Phase       | PS: Polaris Key storefront: the Library as a distribution channel (S-21) (phase 5: close-out) |
-| Size        | 0.4–0.6 engineer-weeks                                                                        |
-| Depends on  | [PS-05](PS-05-storefront-portal-ui.md), [PS-06](PS-06-console-polaris-key-storefront.md)      |
-| Unblocks    | none                                                                                          |
-| Role        | `pkey-implementer`                                                                            |
-| Plan mode   | no                                                                                            |
-| Gates       | docs help-link drift gate; THREAT-MODEL; migration (readers retired, column kept)             |
-| Human input | none                                                                                          |
-| Repo        | `vladzaharia/polaris-key`                                                                     |
+| Field       | Value                                                                                                                                       |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | PS: Polaris Key storefront: the Library as a distribution channel (S-21) (phase 5: close-out)                                               |
+| Size        | 0.4–0.6 engineer-weeks                                                                                                                      |
+| Depends on  | [PS-05](PS-05-storefront-portal-ui.md), [PS-06](PS-06-console-polaris-key-storefront.md), [PS-12](PS-12-discover-visibility-one-setting.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                      |
+| Role        | `pkey-implementer`                                                                                                                          |
+| Plan mode   | no                                                                                                                                          |
+| Gates       | docs help-link drift gate; THREAT-MODEL; migration (readers retired, column kept)                                                           |
+| Human input | none                                                                                                                                        |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                   |
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track H, Distribution channels, storefronts and commerce](../../../2026-10-07-dx-consolidation/tracks.md#h-distribution-channels-storefronts-and-commerce)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Close-out with the Storefront/Channel vocabulary (ST-37); retires the listed, offerPaths and discover_enabled readers after PS-12 as migration-ledger rows (P0-24).
+
+- Depends on: added PS-12.
 
 ## Goal
 

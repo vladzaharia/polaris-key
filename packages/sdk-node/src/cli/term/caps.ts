@@ -82,6 +82,11 @@ export interface TerminalCaps {
   rows: number;
   scheme: ColorScheme;
   ci: boolean;
+  /**
+   * stdout may reach a CI log whose runner obeys commands written into it (`readsLogCommands`):
+   * a raw value a script prints there must not carry one (`hasLogCommand`).
+   */
+  logCommands: boolean;
   /** No browser on this computer (SIGN-IN.md D-68). */
   headless: boolean;
   json: boolean;
@@ -128,6 +133,21 @@ export function isCi(
   env: Readonly<Record<string, string | undefined>>,
 ): boolean {
   return truthy(env.CI) || truthy(env.GITHUB_ACTIONS) || truthy(env.BUILDKITE);
+}
+
+/**
+ * The CI runners that read commands out of a job's log: GitHub Actions (workflow commands, `::`
+ * and the legacy `##[`), Azure Pipelines (logging commands, `##vso[`) and TeamCity (service
+ * messages, `##teamcity[`).
+ */
+export function readsLogCommands(
+  env: Readonly<Record<string, string | undefined>>,
+): boolean {
+  return (
+    truthy(env.GITHUB_ACTIONS) ||
+    truthy(env.TF_BUILD) ||
+    truthy(env.TEAMCITY_VERSION)
+  );
 }
 
 /** SIGN-IN.md D-68: no usable local browser. */
@@ -218,6 +238,7 @@ export function detectTerminal(opts: DetectOptions = {}): TerminalCaps {
     rows: tty && out?.rows ? out.rows : 24,
     scheme: explicit ?? schemeFromColorFgBg(env.COLORFGBG) ?? "dark",
     ci,
+    logCommands: readsLogCommands(env),
     headless: isHeadless(env, platform),
     json,
   };

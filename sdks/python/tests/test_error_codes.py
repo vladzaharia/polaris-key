@@ -58,7 +58,7 @@ def test_every_code_src_raises_is_registered() -> None:
     files = _sources()
     assert len(files) > 10
     raised = {code for _, text in files for code in raised_codes(text)}
-    for code in ("service-unavailable", "local-only", "insecure-base-url", "device_list_failed"):
+    for code in ("service-unavailable", "local-only", "network-error", "device_list_failed"):
         assert code in raised
     assert unregistered(files, constants.ERROR_CODE_VALUES) == []
 

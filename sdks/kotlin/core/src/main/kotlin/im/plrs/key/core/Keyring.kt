@@ -19,13 +19,41 @@
 // it at runtime (PolarisKeyDesktop's README line), and where it is absent, or no backend is
 // reachable (a headless Linux session with no Secret Service), the store keeps the token in the
 // 0600 file, `status()` reports `file` with `keyring-unavailable`, and `supports(core.store)`
-// answers the registry's jvm `dependency` N/A. Nothing here is ever a silent downgrade.
+// answers the registry's jvm `dependency` N/A. Nothing here is ever a silent downgrade: SP-50 adds a
+// warning, once per run, the first time the token is kept in (or read from) the file because the
+// keyring could not take it (`DegradedStoreWarning`; java.util.logging `im.plrs.key` by default).
 
 package im.plrs.key.core
 
 import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+
+/**
+ * The once-per-run warning a [KeyringStore] gives when it keeps the device token in its 0600 file
+ * instead of the OS keyring (SP-50): java-keyring missing (add `im.plrs.key:polaris-key-desktop`), no
+ * reachable keyring, or a write the keyring would not verify.
+ */
+public object DegradedStoreWarning {
+    private val warned = AtomicBoolean(false)
+
+    /** Where the warning goes: java.util.logging's `im.plrs.key` logger at WARNING unless replaced. */
+    @Volatile
+    public var sink: (String) -> Unit = { java.util.logging.Logger.getLogger("im.plrs.key").warning(it) }
+
+    /** Whether this run has warned. */
+    public val hasWarned: Boolean get() = warned.get()
+
+    internal fun once(message: String) {
+        if (warned.compareAndSet(false, true)) sink(message)
+    }
+
+    /** Forget that this run warned (tests). */
+    internal fun reset() {
+        warned.set(false)
+    }
+}
 
 /** A keyring operation failed for a reason other than a missing entry. */
 public class KeyringException(message: String, cause: Throwable? = null) : Exception(message, cause)
@@ -184,6 +212,10 @@ public class KeyringStore(
     private val backend: KeyringBackend = JavaKeyringBackend(),
 ) : Store {
     private val lock = Mutex()
+
+    /** The store's lock, on `Dispatchers.IO`: every file (and keyring) access is main-safe (SP-50). */
+    private suspend inline fun <T> locked(crossinline block: suspend () -> T): T =
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { lock.withLock { block() } }
     private val files = FileStore(productSlug, directory)
 
     /** The keyring service tag, `pkey:<product>` (§8). */
@@ -196,20 +228,23 @@ public class KeyringStore(
         e.message ?: e.javaClass.simpleName
     }
 
-    override suspend fun getToken(): String? = lock.withLock {
+    override suspend fun getToken(): String? = locked {
         val fromFile = files.getToken()
         if (fromFile != null) {
             // An earlier FileStore build, or a write that fell back: move it when the move verifies.
-            if (keyringUnavailable() == null && writeVerified(fromFile)) {
+            val why = keyringUnavailable()
+            if (why == null && writeVerified(fromFile)) {
                 try {
                     files.clearToken()
                 } catch (e: StoreException) {
                     // The file still holds the same token; reads stay file-first.
                 }
+            } else {
+                warnDegraded(why ?: "the OS keyring did not verify the move")
             }
-            return@withLock fromFile
+            return@locked fromFile
         }
-        if (keyringUnavailable() != null) return@withLock null
+        if (keyringUnavailable() != null) return@locked null
         try {
             backend.get(service, ACCOUNT)?.ifEmpty { null }
         } catch (e: Exception) {
@@ -217,7 +252,7 @@ public class KeyringStore(
         }
     }
 
-    override suspend fun setToken(token: String): Unit = lock.withLock {
+    override suspend fun setToken(token: String): Unit = locked {
         val usable = keyringUnavailable() == null
         if (usable && writeVerified(token)) {
             try {
@@ -226,10 +261,11 @@ public class KeyringStore(
                 // A surviving file must never hold an OLDER token than the keyring.
                 files.setToken(token)
             }
-            return@withLock
+            return@locked
         }
         // Throws on failure: losing the token silently is worse than an error.
         files.setToken(token)
+        warnDegraded(if (usable) "the OS keyring did not verify the write" else keyringUnavailable() ?: "no OS keyring")
         if (usable) {
             try {
                 backend.delete(service, ACCOUNT)
@@ -239,7 +275,7 @@ public class KeyringStore(
         }
     }
 
-    override suspend fun clearToken(): Unit = lock.withLock {
+    override suspend fun clearToken(): Unit = locked {
         if (keyringUnavailable() == null) {
             try {
                 backend.delete(service, ACCOUNT)
@@ -258,7 +294,9 @@ public class KeyringStore(
 
     override suspend fun clearCache(): Unit = files.clearCache()
 
-    override suspend fun status(): StoreStatus = try {
+    override suspend fun status(): StoreStatus = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { statusOnIo() }
+
+    private suspend fun statusOnIo(): StoreStatus = try {
         val why = keyringUnavailable()
         if (why != null) {
             StoreStatus(StoreBackend.file, StoreStatus.Degraded(StoreDegradedReason.keyringUnavailable, why))
@@ -284,6 +322,11 @@ public class KeyringStore(
     } catch (e: Exception) {
         StoreStatus(StoreBackend.file, StoreStatus.Degraded(StoreDegradedReason.keyringError, e.message ?: e.javaClass.simpleName))
     }
+
+    private fun warnDegraded(why: String) = DegradedStoreWarning.once(
+        "Polaris Key ($productSlug): the device token is in a 0600 file in $directory, not the OS keyring ($why). " +
+            "On a desktop, add im.plrs.key:polaris-key-desktop and check that a keyring is reachable.",
+    )
 
     /** Set, then read back: true only when the keyring now holds exactly [token]. */
     private fun writeVerified(token: String): Boolean = try {

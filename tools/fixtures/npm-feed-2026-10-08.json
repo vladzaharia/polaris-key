@@ -1,0 +1,1136 @@
+{
+  "recorded": "2026-10-08T08:18:29.445Z",
+  "source": "https://pkg.plrs.im/npm/polaris-key/ (every @polaris-key/* packument, read-only); per version, only its @polaris-key/* pins",
+  "packages": {
+    "@polaris-key/brand": {
+      "dist-tags": {
+        "latest": "0.8.33",
+        "beta": "0.8.33",
+        "main": "0.8.34-main.117"
+      },
+      "versions": {
+        "0.8.18": {
+          "pins": {}
+        },
+        "0.8.19": {
+          "pins": {}
+        },
+        "0.8.20": {
+          "pins": {}
+        },
+        "0.8.21": {
+          "pins": {}
+        },
+        "0.8.22": {
+          "pins": {}
+        },
+        "0.8.23": {
+          "pins": {}
+        },
+        "0.8.24": {
+          "pins": {}
+        },
+        "0.8.25": {
+          "pins": {}
+        },
+        "0.8.26": {
+          "pins": {}
+        },
+        "0.8.27": {
+          "pins": {}
+        },
+        "0.8.28": {
+          "pins": {}
+        },
+        "0.8.29": {
+          "pins": {}
+        },
+        "0.8.31": {
+          "pins": {}
+        },
+        "0.8.32": {
+          "pins": {}
+        },
+        "0.8.33": {
+          "pins": {}
+        },
+        "0.8.34-main.1": {
+          "pins": {}
+        },
+        "0.8.34-main.116": {
+          "pins": {}
+        },
+        "0.8.34-main.117": {
+          "pins": {}
+        }
+      }
+    },
+    "@polaris-key/catalog": {
+      "dist-tags": {
+        "latest": "0.8.33",
+        "beta": "0.8.33",
+        "main": "0.8.34-main.117"
+      },
+      "versions": {
+        "0.8.18": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.18"
+          }
+        },
+        "0.8.19": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.19"
+          }
+        },
+        "0.8.20": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.20"
+          }
+        },
+        "0.8.21": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.21"
+          }
+        },
+        "0.8.22": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.22"
+          }
+        },
+        "0.8.23": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.23"
+          }
+        },
+        "0.8.24": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.24"
+          }
+        },
+        "0.8.25": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.25"
+          }
+        },
+        "0.8.26": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.26"
+          }
+        },
+        "0.8.27": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.27"
+          }
+        },
+        "0.8.28": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.28"
+          }
+        },
+        "0.8.29": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.29"
+          }
+        },
+        "0.8.31": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.31"
+          }
+        },
+        "0.8.32": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.32"
+          }
+        },
+        "0.8.33": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.33"
+          }
+        },
+        "0.8.34-main.1": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.34-main.1"
+          }
+        },
+        "0.8.34-main.116": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.34-main.116"
+          }
+        },
+        "0.8.34-main.117": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.34-main.117"
+          }
+        }
+      }
+    },
+    "@polaris-key/cli": {
+      "dist-tags": {
+        "latest": "0.8.33",
+        "beta": "0.8.33",
+        "main": "0.8.34-main.117"
+      },
+      "versions": {
+        "0.8.18": {
+          "pins": {
+            "@polaris-key/client-core": "0.8.18",
+            "@polaris-key/protocol": "0.8.18",
+            "@polaris-key/zstd-wasm": "0.8.18",
+            "@polaris-key/manifest": "0.8.18",
+            "@polaris-key/jws": "0.8.18"
+          }
+        },
+        "0.8.19": {
+          "pins": {
+            "@polaris-key/jws": "0.8.19",
+            "@polaris-key/protocol": "0.8.19",
+            "@polaris-key/zstd-wasm": "0.8.19",
+            "@polaris-key/manifest": "0.8.19",
+            "@polaris-key/client-core": "0.8.19"
+          }
+        },
+        "0.8.20": {
+          "pins": {
+            "@polaris-key/client-core": "0.8.20",
+            "@polaris-key/manifest": "0.8.20",
+            "@polaris-key/protocol": "0.8.20",
+            "@polaris-key/zstd-wasm": "0.8.20",
+            "@polaris-key/jws": "0.8.20"
+          }
+        },
+        "0.8.21": {
+          "pins": {
+            "@polaris-key/client-core": "0.8.21",
+            "@polaris-key/protocol": "0.8.21",
+            "@polaris-key/zstd-wasm": "0.8.21",
+            "@polaris-key/jws": "0.8.21",
+            "@polaris-key/manifest": "0.8.21"
+          }
+        },
+        "0.8.22": {
+          "pins": {
+            "@polaris-key/jws": "0.8.22",
+            "@polaris-key/protocol": "0.8.22",
+            "@polaris-key/zstd-wasm": "0.8.22",
+            "@polaris-key/client-core": "0.8.22",
+            "@polaris-key/manifest": "0.8.22"
+          }
+        },
+        "0.8.23": {
+          "pins": {
+            "@polaris-key/client-core": "0.8.23",
+            "@polaris-key/manifest": "0.8.23",
+            "@polaris-key/protocol": "0.8.23",
+            "@polaris-key/jws": "0.8.23",
+            "@polaris-key/zstd-wasm": "0.8.23"
+          }
+        },
+        "0.8.24": {
+          "pins": {
+            "@polaris-key/jws": "0.8.24",
+            "@polaris-key/manifest": "0.8.24",
+            "@polaris-key/client-core": "0.8.24",
+            "@polaris-key/zstd-wasm": "0.8.24",
+            "@polaris-key/protocol": "0.8.24"
+          }
+        },
+        "0.8.25": {
+          "pins": {
+            "@polaris-key/client-core": "0.8.25",
+            "@polaris-key/jws": "0.8.25",
+            "@polaris-key/zstd-wasm": "0.8.25",
+            "@polaris-key/manifest": "0.8.25",
+            "@polaris-key/protocol": "0.8.25"
+          }
+        },
+        "0.8.26": {
+          "pins": {
+            "@polaris-key/client-core": "0.8.26",
+            "@polaris-key/jws": "0.8.26",
+            "@polaris-key/manifest": "0.8.26",
+            "@polaris-key/zstd-wasm": "0.8.26",
+            "@polaris-key/protocol": "0.8.26"
+          }
+        },
+        "0.8.27": {
+          "pins": {
+            "@polaris-key/client-core": "0.8.27",
+            "@polaris-key/jws": "0.8.27",
+            "@polaris-key/protocol": "0.8.27",
+            "@polaris-key/manifest": "0.8.27",
+            "@polaris-key/catalog": "0.8.27",
+            "@polaris-key/zstd-wasm": "0.8.27"
+          }
+        },
+        "0.8.28": {
+          "pins": {
+            "@polaris-key/client-core": "0.8.28",
+            "@polaris-key/protocol": "0.8.28",
+            "@polaris-key/jws": "0.8.28",
+            "@polaris-key/catalog": "0.8.28",
+            "@polaris-key/manifest": "0.8.28",
+            "@polaris-key/zstd-wasm": "0.8.28"
+          }
+        },
+        "0.8.29": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.29",
+            "@polaris-key/jws": "0.8.29",
+            "@polaris-key/manifest": "0.8.29",
+            "@polaris-key/client-core": "0.8.29",
+            "@polaris-key/protocol": "0.8.29",
+            "@polaris-key/zstd-wasm": "0.8.29"
+          }
+        },
+        "0.8.31": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.31",
+            "@polaris-key/jws": "0.8.31",
+            "@polaris-key/client-core": "0.8.31",
+            "@polaris-key/protocol": "0.8.31",
+            "@polaris-key/zstd-wasm": "0.8.31",
+            "@polaris-key/manifest": "0.8.31"
+          }
+        },
+        "0.8.32": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.32",
+            "@polaris-key/client-core": "0.8.32",
+            "@polaris-key/jws": "0.8.32",
+            "@polaris-key/manifest": "0.8.32",
+            "@polaris-key/protocol": "0.8.32",
+            "@polaris-key/zstd-wasm": "0.8.32"
+          }
+        },
+        "0.8.33": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.33",
+            "@polaris-key/client-core": "0.8.33",
+            "@polaris-key/manifest": "0.8.33",
+            "@polaris-key/node": "0.8.33",
+            "@polaris-key/jws": "0.8.33",
+            "@polaris-key/protocol": "0.8.33",
+            "@polaris-key/zstd-wasm": "0.8.33"
+          }
+        },
+        "0.8.34-main.1": {
+          "pins": {
+            "@polaris-key/client-core": "0.8.34-main.1",
+            "@polaris-key/catalog": "0.8.34-main.1",
+            "@polaris-key/jws": "0.8.34-main.1",
+            "@polaris-key/manifest": "0.8.34-main.1",
+            "@polaris-key/zstd-wasm": "0.8.34-main.1",
+            "@polaris-key/node": "0.8.34-main.1",
+            "@polaris-key/protocol": "0.8.34-main.1"
+          }
+        },
+        "0.8.34-main.116": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.34-main.116",
+            "@polaris-key/jws": "0.8.34-main.116",
+            "@polaris-key/manifest": "0.8.34-main.116",
+            "@polaris-key/node": "0.8.34-main.116",
+            "@polaris-key/client-core": "0.8.34-main.116",
+            "@polaris-key/protocol": "0.8.34-main.116",
+            "@polaris-key/zstd-wasm": "0.8.34-main.116"
+          }
+        },
+        "0.8.34-main.117": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.34-main.117",
+            "@polaris-key/client-core": "0.8.34-main.117",
+            "@polaris-key/jws": "0.8.34-main.117",
+            "@polaris-key/manifest": "0.8.34-main.117",
+            "@polaris-key/node": "0.8.34-main.117",
+            "@polaris-key/protocol": "0.8.34-main.117",
+            "@polaris-key/zstd-wasm": "0.8.34-main.117"
+          }
+        }
+      }
+    },
+    "@polaris-key/client-core": {
+      "dist-tags": {
+        "latest": "0.8.33",
+        "beta": "0.8.33",
+        "main": "0.8.34-main.117"
+      },
+      "versions": {
+        "0.8.18": {
+          "pins": {
+            "@polaris-key/jws": "0.8.18",
+            "@polaris-key/protocol": "0.8.18"
+          }
+        },
+        "0.8.19": {
+          "pins": {
+            "@polaris-key/jws": "0.8.19",
+            "@polaris-key/protocol": "0.8.19"
+          }
+        },
+        "0.8.20": {
+          "pins": {
+            "@polaris-key/jws": "0.8.20",
+            "@polaris-key/protocol": "0.8.20"
+          }
+        },
+        "0.8.21": {
+          "pins": {
+            "@polaris-key/jws": "0.8.21",
+            "@polaris-key/protocol": "0.8.21"
+          }
+        },
+        "0.8.22": {
+          "pins": {
+            "@polaris-key/jws": "0.8.22",
+            "@polaris-key/protocol": "0.8.22"
+          }
+        },
+        "0.8.23": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.23",
+            "@polaris-key/jws": "0.8.23"
+          }
+        },
+        "0.8.24": {
+          "pins": {
+            "@polaris-key/jws": "0.8.24",
+            "@polaris-key/protocol": "0.8.24"
+          }
+        },
+        "0.8.25": {
+          "pins": {
+            "@polaris-key/jws": "0.8.25",
+            "@polaris-key/protocol": "0.8.25"
+          }
+        },
+        "0.8.26": {
+          "pins": {
+            "@polaris-key/jws": "0.8.26",
+            "@polaris-key/protocol": "0.8.26"
+          }
+        },
+        "0.8.27": {
+          "pins": {
+            "@polaris-key/jws": "0.8.27",
+            "@polaris-key/protocol": "0.8.27"
+          }
+        },
+        "0.8.28": {
+          "pins": {
+            "@polaris-key/jws": "0.8.28",
+            "@polaris-key/protocol": "0.8.28"
+          }
+        },
+        "0.8.29": {
+          "pins": {
+            "@polaris-key/jws": "0.8.29",
+            "@polaris-key/protocol": "0.8.29"
+          }
+        },
+        "0.8.31": {
+          "pins": {
+            "@polaris-key/jws": "0.8.31",
+            "@polaris-key/protocol": "0.8.31"
+          }
+        },
+        "0.8.32": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.32",
+            "@polaris-key/jws": "0.8.32"
+          }
+        },
+        "0.8.33": {
+          "pins": {
+            "@polaris-key/jws": "0.8.33",
+            "@polaris-key/protocol": "0.8.33"
+          }
+        },
+        "0.8.34-main.1": {
+          "pins": {
+            "@polaris-key/jws": "0.8.34-main.1",
+            "@polaris-key/protocol": "0.8.34-main.1"
+          }
+        },
+        "0.8.34-main.116": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.34-main.116",
+            "@polaris-key/jws": "0.8.34-main.116"
+          }
+        },
+        "0.8.34-main.117": {
+          "pins": {
+            "@polaris-key/jws": "0.8.34-main.117",
+            "@polaris-key/protocol": "0.8.34-main.117"
+          }
+        }
+      }
+    },
+    "@polaris-key/jws": {
+      "dist-tags": {
+        "latest": "0.8.33",
+        "beta": "0.8.33",
+        "main": "0.8.34-main.117"
+      },
+      "versions": {
+        "0.8.18": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.18"
+          }
+        },
+        "0.8.19": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.19"
+          }
+        },
+        "0.8.20": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.20"
+          }
+        },
+        "0.8.21": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.21"
+          }
+        },
+        "0.8.22": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.22"
+          }
+        },
+        "0.8.23": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.23"
+          }
+        },
+        "0.8.24": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.24"
+          }
+        },
+        "0.8.25": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.25"
+          }
+        },
+        "0.8.26": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.26"
+          }
+        },
+        "0.8.27": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.27"
+          }
+        },
+        "0.8.29": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.29"
+          }
+        },
+        "0.8.31": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.31"
+          }
+        },
+        "0.8.32": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.32"
+          }
+        },
+        "0.8.33": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.33"
+          }
+        },
+        "0.8.34-main.1": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.34-main.1"
+          }
+        },
+        "0.8.34-main.116": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.34-main.116"
+          }
+        },
+        "0.8.34-main.117": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.34-main.117"
+          }
+        }
+      }
+    },
+    "@polaris-key/manifest": {
+      "dist-tags": {
+        "latest": "0.8.33",
+        "beta": "0.8.33",
+        "main": "0.8.34-main.117"
+      },
+      "versions": {
+        "0.8.18": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.18",
+            "@polaris-key/protocol": "0.8.18"
+          }
+        },
+        "0.8.19": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.19",
+            "@polaris-key/protocol": "0.8.19"
+          }
+        },
+        "0.8.20": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.20",
+            "@polaris-key/protocol": "0.8.20"
+          }
+        },
+        "0.8.21": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.21",
+            "@polaris-key/protocol": "0.8.21"
+          }
+        },
+        "0.8.22": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.22",
+            "@polaris-key/protocol": "0.8.22"
+          }
+        },
+        "0.8.23": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.23",
+            "@polaris-key/protocol": "0.8.23"
+          }
+        },
+        "0.8.24": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.24",
+            "@polaris-key/protocol": "0.8.24"
+          }
+        },
+        "0.8.25": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.25",
+            "@polaris-key/protocol": "0.8.25"
+          }
+        },
+        "0.8.26": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.26",
+            "@polaris-key/protocol": "0.8.26"
+          }
+        },
+        "0.8.27": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.27",
+            "@polaris-key/protocol": "0.8.27"
+          }
+        },
+        "0.8.28": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.28",
+            "@polaris-key/protocol": "0.8.28"
+          }
+        },
+        "0.8.29": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.29",
+            "@polaris-key/protocol": "0.8.29"
+          }
+        },
+        "0.8.31": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.31",
+            "@polaris-key/protocol": "0.8.31"
+          }
+        },
+        "0.8.32": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.32",
+            "@polaris-key/protocol": "0.8.32"
+          }
+        },
+        "0.8.33": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.33",
+            "@polaris-key/protocol": "0.8.33"
+          }
+        },
+        "0.8.34-main.1": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.34-main.1",
+            "@polaris-key/protocol": "0.8.34-main.1"
+          }
+        },
+        "0.8.34-main.116": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.34-main.116",
+            "@polaris-key/protocol": "0.8.34-main.116"
+          }
+        },
+        "0.8.34-main.117": {
+          "pins": {
+            "@polaris-key/protocol": "0.8.34-main.117",
+            "@polaris-key/catalog": "0.8.34-main.117"
+          }
+        }
+      }
+    },
+    "@polaris-key/node": {
+      "dist-tags": {
+        "latest": "0.8.33",
+        "beta": "0.8.33",
+        "main": "0.8.34-main.117"
+      },
+      "versions": {
+        "0.8.18": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.18",
+            "@polaris-key/jws": "0.8.18",
+            "@polaris-key/zstd-wasm": "0.8.18",
+            "@polaris-key/client-core": "0.8.18",
+            "@polaris-key/protocol": "0.8.18"
+          }
+        },
+        "0.8.19": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.19",
+            "@polaris-key/client-core": "0.8.19",
+            "@polaris-key/jws": "0.8.19",
+            "@polaris-key/zstd-wasm": "0.8.19",
+            "@polaris-key/protocol": "0.8.19"
+          }
+        },
+        "0.8.20": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.20",
+            "@polaris-key/jws": "0.8.20",
+            "@polaris-key/protocol": "0.8.20",
+            "@polaris-key/zstd-wasm": "0.8.20",
+            "@polaris-key/client-core": "0.8.20"
+          }
+        },
+        "0.8.21": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.21",
+            "@polaris-key/client-core": "0.8.21",
+            "@polaris-key/jws": "0.8.21",
+            "@polaris-key/zstd-wasm": "0.8.21",
+            "@polaris-key/protocol": "0.8.21"
+          }
+        },
+        "0.8.22": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.22",
+            "@polaris-key/client-core": "0.8.22",
+            "@polaris-key/jws": "0.8.22",
+            "@polaris-key/zstd-wasm": "0.8.22",
+            "@polaris-key/protocol": "0.8.22"
+          }
+        },
+        "0.8.23": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.23",
+            "@polaris-key/jws": "0.8.23",
+            "@polaris-key/protocol": "0.8.23",
+            "@polaris-key/client-core": "0.8.23",
+            "@polaris-key/zstd-wasm": "0.8.23"
+          }
+        },
+        "0.8.24": {
+          "pins": {
+            "@polaris-key/client-core": "0.8.24",
+            "@polaris-key/jws": "0.8.24",
+            "@polaris-key/protocol": "0.8.24",
+            "@polaris-key/catalog": "0.8.24",
+            "@polaris-key/zstd-wasm": "0.8.24"
+          }
+        },
+        "0.8.25": {
+          "pins": {
+            "@polaris-key/client-core": "0.8.25",
+            "@polaris-key/jws": "0.8.25",
+            "@polaris-key/zstd-wasm": "0.8.25",
+            "@polaris-key/catalog": "0.8.25",
+            "@polaris-key/protocol": "0.8.25"
+          }
+        },
+        "0.8.26": {
+          "pins": {
+            "@polaris-key/jws": "0.8.26",
+            "@polaris-key/client-core": "0.8.26",
+            "@polaris-key/protocol": "0.8.26",
+            "@polaris-key/zstd-wasm": "0.8.26",
+            "@polaris-key/catalog": "0.8.26"
+          }
+        },
+        "0.8.27": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.27",
+            "@polaris-key/jws": "0.8.27",
+            "@polaris-key/zstd-wasm": "0.8.27",
+            "@polaris-key/protocol": "0.8.27",
+            "@polaris-key/client-core": "0.8.27"
+          }
+        },
+        "0.8.28": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.28",
+            "@polaris-key/jws": "0.8.28",
+            "@polaris-key/protocol": "0.8.28",
+            "@polaris-key/client-core": "0.8.28",
+            "@polaris-key/zstd-wasm": "0.8.28"
+          }
+        },
+        "0.8.31": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.31",
+            "@polaris-key/jws": "0.8.31",
+            "@polaris-key/zstd-wasm": "0.8.31",
+            "@polaris-key/protocol": "0.8.31",
+            "@polaris-key/client-core": "0.8.31"
+          }
+        },
+        "0.8.32": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.32",
+            "@polaris-key/jws": "0.8.32",
+            "@polaris-key/client-core": "0.8.32",
+            "@polaris-key/protocol": "0.8.32",
+            "@polaris-key/zstd-wasm": "0.8.32"
+          }
+        },
+        "0.8.33": {
+          "pins": {
+            "@polaris-key/zstd-wasm": "0.8.33",
+            "@polaris-key/jws": "0.8.33",
+            "@polaris-key/client-core": "0.8.33",
+            "@polaris-key/catalog": "0.8.33",
+            "@polaris-key/protocol": "0.8.33"
+          }
+        },
+        "0.8.34-main.1": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.34-main.1",
+            "@polaris-key/client-core": "0.8.34-main.1",
+            "@polaris-key/jws": "0.8.34-main.1",
+            "@polaris-key/protocol": "0.8.34-main.1",
+            "@polaris-key/zstd-wasm": "0.8.34-main.1"
+          }
+        },
+        "0.8.34-main.116": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.34-main.116",
+            "@polaris-key/client-core": "0.8.34-main.116",
+            "@polaris-key/jws": "0.8.34-main.116",
+            "@polaris-key/zstd-wasm": "0.8.34-main.116",
+            "@polaris-key/protocol": "0.8.34-main.116"
+          }
+        },
+        "0.8.34-main.117": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.34-main.117",
+            "@polaris-key/client-core": "0.8.34-main.117",
+            "@polaris-key/protocol": "0.8.34-main.117",
+            "@polaris-key/zstd-wasm": "0.8.34-main.117",
+            "@polaris-key/jws": "0.8.34-main.117"
+          }
+        }
+      }
+    },
+    "@polaris-key/protocol": {
+      "dist-tags": {
+        "latest": "0.8.33",
+        "beta": "0.8.33",
+        "main": "0.8.34-main.117"
+      },
+      "versions": {
+        "0.8.18": {
+          "pins": {}
+        },
+        "0.8.19": {
+          "pins": {}
+        },
+        "0.8.20": {
+          "pins": {}
+        },
+        "0.8.21": {
+          "pins": {}
+        },
+        "0.8.22": {
+          "pins": {}
+        },
+        "0.8.23": {
+          "pins": {}
+        },
+        "0.8.24": {
+          "pins": {}
+        },
+        "0.8.25": {
+          "pins": {}
+        },
+        "0.8.26": {
+          "pins": {}
+        },
+        "0.8.27": {
+          "pins": {}
+        },
+        "0.8.28": {
+          "pins": {}
+        },
+        "0.8.31": {
+          "pins": {}
+        },
+        "0.8.32": {
+          "pins": {}
+        },
+        "0.8.33": {
+          "pins": {}
+        },
+        "0.8.34-main.1": {
+          "pins": {}
+        },
+        "0.8.34-main.116": {
+          "pins": {}
+        },
+        "0.8.34-main.117": {
+          "pins": {}
+        }
+      }
+    },
+    "@polaris-key/react": {
+      "dist-tags": {
+        "latest": "0.8.33",
+        "beta": "0.8.33",
+        "main": "0.8.34-main.117"
+      },
+      "versions": {
+        "0.8.18": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.18",
+            "@polaris-key/client-core": "0.8.18",
+            "@polaris-key/protocol": "0.8.18",
+            "@polaris-key/brand": "0.8.18",
+            "@polaris-key/zstd-wasm": "0.8.18"
+          }
+        },
+        "0.8.19": {
+          "pins": {
+            "@polaris-key/brand": "0.8.19",
+            "@polaris-key/catalog": "0.8.19",
+            "@polaris-key/client-core": "0.8.19",
+            "@polaris-key/protocol": "0.8.19",
+            "@polaris-key/zstd-wasm": "0.8.19"
+          }
+        },
+        "0.8.20": {
+          "pins": {
+            "@polaris-key/brand": "0.8.20",
+            "@polaris-key/catalog": "0.8.20",
+            "@polaris-key/zstd-wasm": "0.8.20",
+            "@polaris-key/protocol": "0.8.20",
+            "@polaris-key/client-core": "0.8.20"
+          }
+        },
+        "0.8.21": {
+          "pins": {
+            "@polaris-key/brand": "0.8.21",
+            "@polaris-key/catalog": "0.8.21",
+            "@polaris-key/client-core": "0.8.21",
+            "@polaris-key/protocol": "0.8.21",
+            "@polaris-key/zstd-wasm": "0.8.21"
+          }
+        },
+        "0.8.22": {
+          "pins": {
+            "@polaris-key/brand": "0.8.22",
+            "@polaris-key/catalog": "0.8.22",
+            "@polaris-key/client-core": "0.8.22",
+            "@polaris-key/protocol": "0.8.22",
+            "@polaris-key/zstd-wasm": "0.8.22"
+          }
+        },
+        "0.8.23": {
+          "pins": {
+            "@polaris-key/brand": "0.8.23",
+            "@polaris-key/client-core": "0.8.23",
+            "@polaris-key/protocol": "0.8.23",
+            "@polaris-key/catalog": "0.8.23",
+            "@polaris-key/zstd-wasm": "0.8.23"
+          }
+        },
+        "0.8.24": {
+          "pins": {
+            "@polaris-key/brand": "0.8.24",
+            "@polaris-key/catalog": "0.8.24",
+            "@polaris-key/zstd-wasm": "0.8.24",
+            "@polaris-key/client-core": "0.8.24",
+            "@polaris-key/protocol": "0.8.24"
+          }
+        },
+        "0.8.25": {
+          "pins": {
+            "@polaris-key/brand": "0.8.25",
+            "@polaris-key/client-core": "0.8.25",
+            "@polaris-key/protocol": "0.8.25",
+            "@polaris-key/catalog": "0.8.25",
+            "@polaris-key/zstd-wasm": "0.8.25"
+          }
+        },
+        "0.8.26": {
+          "pins": {
+            "@polaris-key/brand": "0.8.26",
+            "@polaris-key/catalog": "0.8.26",
+            "@polaris-key/protocol": "0.8.26",
+            "@polaris-key/zstd-wasm": "0.8.26",
+            "@polaris-key/client-core": "0.8.26"
+          }
+        },
+        "0.8.27": {
+          "pins": {
+            "@polaris-key/brand": "0.8.27",
+            "@polaris-key/catalog": "0.8.27",
+            "@polaris-key/protocol": "0.8.27",
+            "@polaris-key/client-core": "0.8.27",
+            "@polaris-key/zstd-wasm": "0.8.27"
+          }
+        },
+        "0.8.28": {
+          "pins": {
+            "@polaris-key/brand": "0.8.28",
+            "@polaris-key/catalog": "0.8.28",
+            "@polaris-key/zstd-wasm": "0.8.28",
+            "@polaris-key/client-core": "0.8.28",
+            "@polaris-key/protocol": "0.8.28"
+          }
+        },
+        "0.8.29": {
+          "pins": {
+            "@polaris-key/brand": "0.8.29",
+            "@polaris-key/catalog": "0.8.29",
+            "@polaris-key/protocol": "0.8.29",
+            "@polaris-key/zstd-wasm": "0.8.29",
+            "@polaris-key/client-core": "0.8.29"
+          }
+        },
+        "0.8.31": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.31",
+            "@polaris-key/brand": "0.8.31",
+            "@polaris-key/client-core": "0.8.31",
+            "@polaris-key/protocol": "0.8.31",
+            "@polaris-key/zstd-wasm": "0.8.31"
+          }
+        },
+        "0.8.32": {
+          "pins": {
+            "@polaris-key/brand": "0.8.32",
+            "@polaris-key/catalog": "0.8.32",
+            "@polaris-key/client-core": "0.8.32",
+            "@polaris-key/zstd-wasm": "0.8.32",
+            "@polaris-key/protocol": "0.8.32"
+          }
+        },
+        "0.8.33": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.33",
+            "@polaris-key/brand": "0.8.33",
+            "@polaris-key/client-core": "0.8.33",
+            "@polaris-key/zstd-wasm": "0.8.33",
+            "@polaris-key/protocol": "0.8.33"
+          }
+        },
+        "0.8.34-main.1": {
+          "pins": {
+            "@polaris-key/brand": "0.8.34-main.1",
+            "@polaris-key/client-core": "0.8.34-main.1",
+            "@polaris-key/protocol": "0.8.34-main.1",
+            "@polaris-key/zstd-wasm": "0.8.34-main.1",
+            "@polaris-key/catalog": "0.8.34-main.1"
+          }
+        },
+        "0.8.34-main.116": {
+          "pins": {
+            "@polaris-key/brand": "0.8.34-main.116",
+            "@polaris-key/catalog": "0.8.34-main.116",
+            "@polaris-key/client-core": "0.8.34-main.116",
+            "@polaris-key/zstd-wasm": "0.8.34-main.116",
+            "@polaris-key/protocol": "0.8.34-main.116"
+          }
+        },
+        "0.8.34-main.117": {
+          "pins": {
+            "@polaris-key/catalog": "0.8.34-main.117",
+            "@polaris-key/client-core": "0.8.34-main.117",
+            "@polaris-key/brand": "0.8.34-main.117",
+            "@polaris-key/zstd-wasm": "0.8.34-main.117",
+            "@polaris-key/protocol": "0.8.34-main.117"
+          }
+        }
+      }
+    },
+    "@polaris-key/zstd-wasm": {
+      "dist-tags": {
+        "latest": "0.8.33",
+        "beta": "0.8.33",
+        "main": "0.8.34-main.117"
+      },
+      "versions": {
+        "0.8.18": {
+          "pins": {}
+        },
+        "0.8.19": {
+          "pins": {}
+        },
+        "0.8.20": {
+          "pins": {}
+        },
+        "0.8.21": {
+          "pins": {}
+        },
+        "0.8.23": {
+          "pins": {}
+        },
+        "0.8.22": {
+          "pins": {}
+        },
+        "0.8.24": {
+          "pins": {}
+        },
+        "0.8.25": {
+          "pins": {}
+        },
+        "0.8.26": {
+          "pins": {}
+        },
+        "0.8.27": {
+          "pins": {}
+        },
+        "0.8.28": {
+          "pins": {}
+        },
+        "0.8.29": {
+          "pins": {}
+        },
+        "0.8.31": {
+          "pins": {}
+        },
+        "0.8.32": {
+          "pins": {}
+        },
+        "0.8.33": {
+          "pins": {}
+        },
+        "0.8.34-main.1": {
+          "pins": {}
+        },
+        "0.8.34-main.116": {
+          "pins": {}
+        },
+        "0.8.34-main.117": {
+          "pins": {}
+        }
+      }
+    }
+  }
+}

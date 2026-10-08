@@ -62,6 +62,7 @@ from .headers import canonical_arch, canonical_platform
 from ..discovery import (
     DEFAULT_SERVICES,
     ServicesMap,
+    check_service_slugs,
     copy_services,
     services_from_list,
 )
@@ -164,9 +165,14 @@ class DocumentBlocked:
 
 @dataclass(frozen=True)
 class DocumentError:
+    """No usable answer. ``code`` is ``network-error`` (``status`` 0: the request never got an
+    answer), ``server-error`` (a 5xx) or the server's own code for any other refusal
+    (``http-error`` when it names none)."""
+
     status: int
     message: str
     kind: str = "error"
+    code: Optional[str] = None
 
 
 DocumentResult = Union[
@@ -208,6 +214,15 @@ class CoreContext:
         device_name: Optional[str] = None,
     ) -> None:
         self.product = product_slug
+        # `is not None`, not truthiness: an EMPTY list means "this build expects no
+        # services" and turns every sub-client off, which is deliberately distinct from
+        # saying nothing and inheriting the suite default. (JS's `[]` is truthy, so this
+        # is what keeps the two SDKs answering the same way.) Checked FIRST: a misspelt slug
+        # raises `invalid-options` here instead of turning its service off (a typo in
+        # "license" would otherwise make an unactivated device licensed).
+        self._expected_services = (
+            check_service_slugs(expected_services) if expected_services is not None else None
+        )
         #: This device's label (WIRE-CONTRACT-V4 §12.7.1). ``None``: the platform default;
         #: ``""``: send none.
         self._device_name = device_name
@@ -247,13 +262,6 @@ class CoreContext:
 
         self._client = client
         self._owns_client = client is None
-        # `is not None`, not truthiness: an EMPTY list means "this build expects no
-        # services" and turns every sub-client off, which is deliberately distinct from
-        # saying nothing and inheriting the suite default. (JS's `[]` is truthy, so this
-        # is what keeps the two SDKs answering the same way.)
-        self._expected_services = (
-            list(expected_services) if expected_services is not None else None
-        )
         self._discovered: Optional[ServicesMap] = None
         self._device_id = ""
         # §4.2 monotonic time floor: `max(issuedAt)` over EVERY artifact this client has
@@ -393,9 +401,30 @@ class CoreContext:
         EVERY Core/service call goes through here, including calls made on an httpx
         client the host injected: ``timeout=`` is a per-request argument in httpx, so the
         deadline applies regardless of how the client was built.
+
+        It is also the ONE place transport and server failures are mapped, so no service can
+        leak an httpx exception or call a 5xx something else. Raises :class:`PolarisError`:
+
+        * ``local-only`` — this client has no transport (raised before anything is built);
+        * ``network-error`` — the request never got an answer (refused, reset, timed out, a
+          TLS failure); the httpx exception is the ``__cause__``;
+        * ``server-error`` — the server answered 5xx; ``status`` is set and ``message`` is the
+          server's own when it sent one.
+
+        Every other answer is returned for the caller to map.
         """
+        client = self.http()
         kwargs.setdefault("timeout", self.timeout)
-        return self.http().request(method, url, **kwargs)
+        try:
+            res = client.request(method, url, **kwargs)
+        except (httpx.HTTPError, OSError) as e:
+            raise PolarisError(
+                ErrorCode.NETWORK_ERROR,
+                f"{method} {_path_of(url)} got no answer: {str(e) or type(e).__name__}",
+            ) from e
+        if res.status_code >= 500:
+            raise server_error(res, f"{method} {_path_of(url)}")
+        return res
 
     def headers(self, extra: Optional[Dict[str, str]] = None) -> Dict[str, str]:
         """The ``X-PKey-*`` client metadata every product-scoped call carries (§5).
@@ -445,12 +474,12 @@ class CoreContext:
             headers["if-none-match"] = etag
         try:
             res = self.request("GET", self.url(path), headers=headers)
-        except PolarisError:
+        except PolarisError as e:
             # local-only is a configuration error the host can fix, not a transport
             # outcome — let it propagate rather than flattening it into `error`.
-            raise
-        except Exception as e:  # network error
-            return DocumentError(status=0, message=str(e))
+            if e.code == ErrorCode.LOCAL_ONLY:
+                raise
+            return DocumentError(status=e.status or 0, message=e.message, code=e.code)
 
         status = res.status_code
         if status == 304:
@@ -483,7 +512,80 @@ class CoreContext:
             )
         if status == 200:
             return DocumentOk(jws=res.text, etag=res.headers.get("etag"))
-        return DocumentError(status=status, message=_text_or_empty(res))
+        return DocumentError(
+            status=status,
+            message=_text_or_empty(res),
+            code=wire_code_of(res) or ErrorCode.HTTP_ERROR,
+        )
+
+
+# ── One mapping for every answer that is not a success ───────────────────────────────
+def _path_of(url: str) -> str:
+    """The URL's path for a message: never the query, which can carry a channel or a code."""
+    try:
+        return urlsplit(url).path or url
+    except Exception:  # noqa: BLE001 - a message helper never fails the call
+        return ""
+
+
+def wire_code_of(res: Any) -> Optional[str]:
+    """The server's error code from a JSON body: the flat ``{"error": "x"}`` or the nested
+    ``{"error": {"code": "x"}}``; ``None`` when the body names none."""
+    body = _json_or_empty(res)
+    raw = body.get("error")
+    if isinstance(raw, str) and raw:
+        return raw
+    if isinstance(raw, dict) and isinstance(raw.get("code"), str) and raw["code"]:
+        return raw["code"]
+    return None
+
+
+def server_message_of(res: Any) -> Optional[str]:
+    """The server's own human-readable message (top-level ``message``, or the nested
+    ``error.message``), or ``None``."""
+    body = _json_or_empty(res)
+    msg = body.get("message")
+    if isinstance(msg, str) and msg:
+        return msg
+    raw = body.get("error")
+    if isinstance(raw, dict) and isinstance(raw.get("message"), str) and raw["message"]:
+        return raw["message"]
+    return None
+
+
+def server_error(res: Any, what: str) -> PolarisError:
+    """``server-error`` for a 5xx answer to ``what``, with its status and the server's
+    message."""
+    status = getattr(res, "status_code", 0)
+    return PolarisError(
+        ErrorCode.SERVER_ERROR,
+        server_message_of(res) or f"{what} failed with status {status}.",
+        status=status,
+    )
+
+
+#: The registry code an answer that names none stands for, by status.
+_STATUS_CODES = {
+    401: ErrorCode.UNAUTHORIZED,
+    403: ErrorCode.FORBIDDEN,
+    404: ErrorCode.NOT_FOUND,
+    429: ErrorCode.RATE_LIMITED,
+}
+
+
+def refusal_error(res: Any, what: str) -> PolarisError:
+    """The error for any other non-2xx answer to ``what``: the server's own code and message,
+    else the status's registry code (``unauthorized``, ``forbidden``, ``not_found``,
+    ``rate_limited``), else ``http-error``. A 5xx is ``server-error``. ``status`` is set."""
+    status = getattr(res, "status_code", 0)
+    if status >= 500:
+        return server_error(res, what)
+    code = wire_code_of(res) or _STATUS_CODES.get(status) or ErrorCode.HTTP_ERROR
+    return PolarisError(
+        code,
+        server_message_of(res) or f"{what} was refused with status {status}.",
+        status=status,
+    )
 
 
 def _json_or_empty(res: httpx.Response) -> Dict[str, Any]:

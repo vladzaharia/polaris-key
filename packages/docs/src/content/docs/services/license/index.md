@@ -5,7 +5,7 @@ sidebar:
   order: 1
 ---
 
-License is one of the six opt-in services over Core. It answers exactly one question, from
+License is one of the seven opt-in services over Core. It answers exactly one question, from
 several distances: **on what terms does this machine get a seat, and what does that seat
 grant?**
 

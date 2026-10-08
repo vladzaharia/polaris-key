@@ -9,8 +9,16 @@
 // `CoreContext.headers()` / `.deadline()`, so a new endpoint cannot ship without them (R4-08).
 
 import type { HardwareFingerprint } from "@polaris-key/protocol/core";
-import { readManageUrl } from "@polaris-key/client-core";
+import { readManageUrl, type PolarisError } from "@polaris-key/client-core";
+import { ErrorCode } from "../constants.generated.js";
 import type { CoreContext, DocumentResult } from "../core/context.js";
+import {
+  codeForStatus,
+  readJson,
+  retryAfterSeconds,
+  transportError,
+} from "../core/http.js";
+import { redactOnPrint } from "../core/redact.js";
 
 /**
  * The typed outcome of `license.activate`, `license.enroll` and `license.token` (SDK parity pass
@@ -23,6 +31,8 @@ import type { CoreContext, DocumentResult } from "../core/context.js";
  * §3.1's camelCase names map one to one (`deviceLimit` ↔ `device-limit`).
  */
 export type ActivationResult =
+  /** The device token is stored by the license client. `token` stays readable, but the result
+   *  prints (`console.log`, `util.inspect`, `JSON.stringify`) with it redacted. */
   | { kind: "ok"; token: string; schemaVersion: number }
   /** Every seat is taken. `manageUrl` (PX-W8) is the customer-portal link that frees one,
    *  present while the product's portal is on; add the app's return with `withManageReturn`
@@ -56,16 +66,21 @@ export type ActivationResult =
   | { kind: "license-expired"; code: string }
   /** The product's device-trust policy wants an attested device (Node cannot attest). */
   | { kind: "attestation-required"; code: string }
-  /** Too many attempts; `retryAfterSeconds` from the `Retry-After` header when present. */
+  /** Any 429: too many attempts; `retryAfterSeconds` from the `Retry-After` header when
+   *  present. `code` is the server's, else `rate_limited`. */
   | { kind: "rate-limited"; code: string; retryAfterSeconds?: number }
   /** Any other 4xx: the server's code, the status and its message. */
   | { kind: "refused"; code: string; status: number; message: string }
-  /** No answer (`network`) or a 5xx (`server`). */
+  /** The one taxonomy's failures (SP-46): no answer (`network-error`), a 5xx (`server-error`,
+   *  with the status, the server's code as `wireCode` and its `Retry-After`), or a 200 whose
+   *  body carries no token (`bad_response`). */
   | {
       kind: "error";
-      code: "network" | "server";
+      code: "network-error" | "server-error" | "bad_response";
       status?: number;
       message: string;
+      wireCode?: string;
+      retryAfterSeconds?: number;
     };
 
 /** The refusal kinds a registry code names directly (§3.1). */
@@ -124,24 +139,37 @@ export function activationRefusal(
   const message =
     (typeof nested?.message === "string" ? nested.message : undefined) ??
     (typeof body.message === "string" ? body.message : "");
-  if (status >= 500) return { kind: "error", code: "server", status, message };
+  const seconds = retryAfterSeconds(retryAfter);
+  if (status >= 500)
+    return {
+      kind: "error",
+      code: ErrorCode.serverError,
+      status,
+      message,
+      ...(code !== undefined ? { wireCode: code } : {}),
+      ...(seconds !== undefined ? { retryAfterSeconds: seconds } : {}),
+    };
   const kind =
-    code !== undefined
-      ? KIND_BY_CODE[code]
-      : num(body.limit) !== undefined
-        ? "device-limit"
-        : num(body.drift) !== undefined || Array.isArray(body.changed)
-          ? "hardware-mismatch"
-          : status === 401
-            ? "unauthorized"
-            : undefined;
+    status === 429
+      ? "rate-limited"
+      : code !== undefined
+        ? KIND_BY_CODE[code]
+        : num(body.limit) !== undefined
+          ? "device-limit"
+          : num(body.drift) !== undefined || Array.isArray(body.changed)
+            ? "hardware-mismatch"
+            : status === 401
+              ? "unauthorized"
+              : undefined;
   const wire =
     code ??
     (kind === "device-limit"
       ? "device_limit"
       : kind === "hardware-mismatch"
         ? "hardware_mismatch"
-        : undefined);
+        : kind === "rate-limited"
+          ? ErrorCode.rateLimited
+          : undefined);
   switch (kind) {
     case "device-limit": {
       const limit = num(body.limit) ?? num(nested?.limit);
@@ -169,16 +197,12 @@ export function activationRefusal(
         ...(changed !== undefined ? { changed } : {}),
       };
     }
-    case "rate-limited": {
-      const seconds = retryAfter !== null ? Number(retryAfter) : NaN;
+    case "rate-limited":
       return {
         kind,
         code: wire!,
-        ...(Number.isFinite(seconds) && seconds >= 0
-          ? { retryAfterSeconds: Math.ceil(seconds) }
-          : {}),
+        ...(seconds !== undefined ? { retryAfterSeconds: seconds } : {}),
       };
-    }
     case "unauthorized":
       return { kind, code: code ?? "unauthorized" };
     case undefined:
@@ -193,25 +217,8 @@ export function activationRefusal(
   }
 }
 
-/** The registry code a codeless 4xx is reported under. */
-function fallbackCode(status: number): string {
-  switch (status) {
-    case 400:
-      return "bad_request";
-    case 403:
-      return "forbidden";
-    case 404:
-      return "not_found";
-    case 405:
-      return "method_not_allowed";
-    case 413:
-      return "body_too_large";
-    case 429:
-      return "rate_limited";
-    default:
-      return "http-error";
-  }
-}
+/** The registry code a codeless 4xx is reported under (`./core/http.ts`, the one taxonomy). */
+const fallbackCode = codeForStatus;
 
 /**
  * The three mint/rotate endpoints share a response ladder, so they share a reader. Codes are
@@ -251,11 +258,42 @@ async function activationLike(
         : { method: "POST", headers, signal: ctx.deadline() };
     res = await f(ctx.url(path), init);
   } catch (e) {
-    return { kind: "error", code: "network", message: (e as Error).message };
+    return {
+      kind: "error",
+      code: ErrorCode.networkError,
+      message: transportError(e, path).message,
+    };
   }
   if (res.status === 200) {
-    const b = (await res.json()) as { token: string; schemaVersion: number };
-    return { kind: "ok", token: b.token, schemaVersion: b.schemaVersion };
+    let b: { token?: unknown; schemaVersion?: unknown };
+    try {
+      b = await readJson(res, path);
+    } catch (e) {
+      const err = e as PolarisError;
+      return {
+        kind: "error",
+        code:
+          err.code === ErrorCode.networkError
+            ? ErrorCode.networkError
+            : ErrorCode.badResponse,
+        message: err.message,
+      };
+    }
+    if (typeof b?.token !== "string" || b.token === "")
+      return {
+        kind: "error",
+        code: ErrorCode.badResponse,
+        status: 200,
+        message: `${path} answered without a device token.`,
+      };
+    return redactOnPrint<ActivationResult & { kind: "ok" }>(
+      {
+        kind: "ok",
+        token: b.token,
+        schemaVersion: b.schemaVersion as number,
+      },
+      ["token"],
+    );
   }
   const text = await res.text().catch(() => "");
   let body: RefusalBody = {};

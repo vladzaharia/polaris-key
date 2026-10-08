@@ -50,6 +50,7 @@ import java.io.File
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -62,6 +63,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
+import kotlinx.coroutines.withContext
 
 /** What a fetch reports back while it runs. */
 public interface PolarisFetchReporter {
@@ -102,9 +104,13 @@ private inline fun <T> quietly(block: () -> T): T? = try {
     null
 }
 
+/** The wait before boot's attempt number [failures] + 1: 1 s doubling to a 30 s cap (SP-51). */
+internal fun bootBackoffMillis(failures: Int): Long = minOf(30_000L, 1_000L shl (failures - 1).coerceIn(0, 5))
+
 /**
  * The default update slots: `<stateDirectory>/update-slots` when the host has created it (a host that
- * stages its own payloads there), else null (an installer- or store-updated app stages nothing).
+ * stages its own payloads there), else null (an installer- or store-updated app stages nothing). It
+ * looks at the disk: call it (and [bootHost], whose default guard uses it) off the main thread.
  */
 public fun PolarisKeyClient.defaultUpdateSlots(): UpdateSlots? {
     val dir = core.store.stateDirectory?.let { File(it, "update-slots") } ?: return null
@@ -132,9 +138,13 @@ public fun PolarisKeyClient.bootHost(
     suspend fun registrationOpen(): Boolean =
         registration && client.core.discoveryDocument()?.core?.registration == RegistrationPolicy.`open`
 
+    // SP-51: a sync that failed or went offline is retried with exponential backoff (1 s, 2 s, 4 s,
+    // up to 30 s), so a boot that keeps failing never becomes a request storm.
+    var failedSyncs = 0
+
     return object : PolarisBootHost {
         override suspend fun shell() {
-            val fresh = client.core.store.getToken() == null
+            val fresh = client.core.token() == null
             if (!client.servicesPinned || fresh) quietly { client.discover() }
             if (fresh && registrationOpen()) quietly { client.register() }
         }
@@ -146,18 +156,22 @@ public fun PolarisKeyClient.bootHost(
 
         override suspend fun confirm(outcome: BootOutcome) {
             val g = guard ?: return
-            if (g.confirm(outcome) == BootConfirmation.afterOkSeconds) {
+            // SP-50: the guard's state file is read and written on Dispatchers.IO.
+            if (withContext(Dispatchers.IO) { g.confirm(outcome) } == BootConfirmation.afterOkSeconds) {
                 delay(BOOT_OK_SECONDS * 1000L)
-                g.confirmNow()
+                withContext(Dispatchers.IO) { g.confirmNow() }
                 // A healthy launch also confirms the running pack set (CONTENT §10 step 7).
                 if (client.packs.configured) quietly { client.packs.confirm() }
             }
         }
 
         override suspend fun sync(): BootEvent.SyncResult {
-            val result = quietly { client.sync() } ?: return BootEvent.SyncResult.offline
-            val ran = result.documents.values.filter { it != DocOutcome.Skipped }
-            return if (ran.isNotEmpty() && ran.all { it == DocOutcome.Error }) BootEvent.SyncResult.offline else BootEvent.SyncResult.ok
+            if (failedSyncs > 0) delay(bootBackoffMillis(failedSyncs))
+            val result = quietly { client.sync() }
+            val ran = result?.documents?.values?.filter { it != DocOutcome.Skipped }.orEmpty()
+            val offline = result == null || (ran.isNotEmpty() && ran.all { it == DocOutcome.Error })
+            failedSyncs = if (offline || result?.unauthorized == true) failedSyncs + 1 else 0
+            return if (offline) BootEvent.SyncResult.offline else BootEvent.SyncResult.ok
         }
 
         override suspend fun gate(): LicenseStatus {
@@ -171,7 +185,7 @@ public fun PolarisKeyClient.bootHost(
         override suspend fun decide(): BootEvent.Decision {
             if (!decide || !isUsable(client.status().status)) return BootEvent.Decision.none
             return try {
-                val check = client.update.decide(skipVersion = guard?.skipVersion)
+                val check = client.update.decide(skipVersion = withContext(Dispatchers.IO) { guard?.skipVersion })
                 lastCheck = check
                 onCheck?.invoke(check)
                 check.boot
@@ -385,8 +399,10 @@ public data class BootResult(
  * and the host renders its activation screen.
  */
 public suspend fun PolarisKeyClient.boot(options: ClientBootOptions = ClientBootOptions()): BootResult {
-    val (stampRequired, stampEssential) =
+    // SP-50: the content stamp and the default update slots are on disk; read them off the main thread.
+    val (stampRequired, stampEssential) = withContext(Dispatchers.IO) {
         if (packs.configured) quietly { packs.bootOptions() } ?: (emptyList<String>() to emptyList()) else emptyList<String>() to emptyList()
+    }
     val bootOptions = BootOptions(
         allowOffline = options.allowOffline,
         allowGrace = options.allowGrace,
@@ -395,13 +411,15 @@ public suspend fun PolarisKeyClient.boot(options: ClientBootOptions = ClientBoot
     )
     var decision: UpdateCheck? = null
     val emits = ArrayList<BootEmit>()
-    val host = bootHost(
-        mount = options.mount,
-        consent = options.consent,
-        metered = { options.metered },
-        onCheck = { decision = it },
-        registration = options.registration,
-    )
+    val host = withContext(Dispatchers.IO) {
+        bootHost(
+            mount = options.mount,
+            consent = options.consent,
+            metered = { options.metered },
+            onCheck = { decision = it },
+            registration = options.registration,
+        )
+    }
     val driver = BootDriver(bootOptions, answer = options.answer) { t ->
         emits += t.emits
         options.onStage?.invoke(t)

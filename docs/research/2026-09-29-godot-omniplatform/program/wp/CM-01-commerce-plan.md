@@ -1,8 +1,8 @@
-# CM-01 Plan Polaris Key commerce: decision record, exact DDL, routes, wire changes W1–W4, settings, threat model
+# CM-01 Polaris Key checkout plan, reduced (deferred)
 
 | Field       | Value                                                                                                                                         |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | CM: Polaris Key commerce (S-22): deferred until the owner's go                                                                                |
+| Phase       | CM: Commerce: store commerce (required) and Polaris Key checkout (deferred)                                                                   |
 | Size        | 0.6–0.9 engineer-weeks                                                                                                                        |
 | Depends on  | [LX-01](LX-01-licensing-plan.md), [ST-03](ST-03-settings-registry.md)                                                                         |
 | Unblocks    | [CM-02](CM-02-provider-webhooks.md), [CM-14](CM-14-device-checkout-wire.md), [CM-18](CM-18-store-link-out-programmes.md)                      |
@@ -16,6 +16,20 @@
 > `workpackages.json`: the owner asked for the commerce plan on 2026-10-05 but not for its
 > execution. `check.mjs --ready` does not list it. It becomes dispatchable only when the owner says
 > go and the lead removes the `deferred` field.
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track H, Distribution channels, storefronts and commerce](../../../2026-10-07-dx-consolidation/tracks.md#h-distribution-channels-storefronts-and-commerce)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Reduced re-plan on CM-20's model (offers, purchases ledger, Core subscriptions taken as given): 4 settings instead of 26, plans W1, W3 and the Stripe tables only. Still deferred: owner decision 5 (recommended go after CM-23).
+
+- Title: was "Plan Polaris Key commerce: decision record, exact DDL, routes, wire changes W1–W4, settings, threat model".
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/CM-20.md`](../plans/CM-20.md) §14: §10, as a note only: the reduced Polaris Key checkout v1 sits on CM-20's model. It stays deferred until the owner's "commerce: go".
 
 ## Goal
 

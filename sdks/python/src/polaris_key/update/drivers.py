@@ -36,6 +36,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 from ..constants_generated import UnsupportedReason
 from ..core.models import UpdateCheck, UpdateDecision
+from ..core.events import listener_failed
 
 if TYPE_CHECKING:  # pragma: no cover
     from ..client import PolarisKeyClient
@@ -244,7 +245,7 @@ class VelopackDriver(InstallDriver):
                 try:
                     on_progress(int(pct), 100)
                 except Exception:
-                    pass
+                    listener_failed("on_progress")
 
         try:
             manager.download_updates(info, progress)

@@ -23,7 +23,7 @@
 // v4's pointer-set section (§4.1), over the JWS families with `feedCases`,
 // `releaseRecordCases`, `packRecordCases` and `markerCases`, is `PointerSetTests.swift`.
 //
-// Everything reads `Resources/v2/`, which mirrors `conformance/corpus/v2/` path-for-path.
+// Everything reads `conformance/corpus/v2/` from the checkout through `CorpusLocator`.
 // The wire-v2 corpus is gone; there is one corpus.
 
 import CryptoKit
@@ -151,37 +151,10 @@ struct BundleExpect: Decodable {
     let reason: String?
 }
 
-// ── Loading ────────────────────────────────────────────────────────────────────────
-
-enum CorpusBundleLoader {
-    /// The v3 corpus lives in a `v2/` subdirectory of the test bundle so both corpora can keep
-    /// their canonical file names until P8 promotes these.
-    static func url(_ resource: String) throws -> URL {
-        guard
-            let url = Bundle.module.url(
-                forResource: resource, withExtension: "json", subdirectory: "v2")
-        else {
-            throw NSError(
-                domain: "corpus", code: 1,
-                userInfo: [
-                    NSLocalizedDescriptionKey:
-                        "v2/\(resource).json missing from the test bundle — run `pnpm gen:corpus`"
-                ])
-        }
-        return url
-    }
-
-    static func load<T: Decodable>(_ type: T.Type, _ resource: String) throws -> T {
-        try JSONDecoder().decode(type, from: Data(contentsOf: url(resource)))
-    }
-
-    static func corpus() throws -> Corpus { try load(Corpus.self, "cases") }
-}
-
 // ── The runner ─────────────────────────────────────────────────────────────────────
 
 final class ConformanceTests: XCTestCase {
-    private func loadCorpus() throws -> Corpus { try CorpusBundleLoader.corpus() }
+    private func loadCorpus() throws -> Corpus { try CorpusLocator.load(Corpus.self, "cases") }
 
     /// The corpus this build is held to is v2, and every section carries at least what it
     /// carried when this runner was written.
@@ -554,7 +527,7 @@ struct CorpusRecordCase: Decodable {
 }
 
 extension ConformanceTests {
-    private func v4Corpus() throws -> V4Corpus { try CorpusBundleLoader.load(V4Corpus.self, "cases") }
+    private func v4Corpus() throws -> V4Corpus { try CorpusLocator.load(V4Corpus.self, "cases") }
 
     /// Steps 4–6 alone, over every feed case that reaches them: the case's reason where it fails
     /// at the claims, the channel binding or the selector, no refusal otherwise.

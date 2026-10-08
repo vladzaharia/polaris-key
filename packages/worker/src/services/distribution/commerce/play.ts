@@ -32,7 +32,7 @@ import {
   jwtVerify,
   type JSONWebKeySet,
 } from "jose";
-import type { Db, Env } from "../../../core/platform.js";
+import { parseJsonObject, type Db, type Env } from "../../../core/platform.js";
 import {
   checkOutletCredentialPin,
   listOutletCredentials,
@@ -53,7 +53,7 @@ import {
 } from "../connectors/play/client.js";
 import type { PlaySettings } from "./settings.js";
 import { normaliseBinding, type VerifiedPurchase } from "./state.js";
-import { StoreUnavailable, jsonObject } from "./http.js";
+import { StoreUnavailable } from "./http.js";
 
 export const GOOGLE_JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs";
 export const GOOGLE_PUSH_ISSUERS = [
@@ -244,7 +244,7 @@ export function decodeRtdn(body: Record<string, unknown>): RtdnMessage | null {
   } catch {
     return null;
   }
-  const data = jsonObject(raw);
+  const data = parseJsonObject(raw);
   if (!data || typeof data.packageName !== "string") return null;
   const obj = (v: unknown) =>
     v && typeof v === "object" && !Array.isArray(v)

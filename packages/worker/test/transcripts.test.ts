@@ -1,5 +1,5 @@
 // The HTTP transcripts (P1b-03, PARITY §4.2): record every scenario through the real router and
-// hold `conformance/transcripts/*.json` (and its Swift and Godot mirrors) to what the Worker
+// hold `conformance/transcripts/*.json` (and its Godot mirror) to what the Worker
 // answers today.
 //
 //   pnpm --filter @polaris-key/worker test            # CHECK: fails when a file is stale
@@ -48,8 +48,8 @@ describe("HTTP transcripts", () => {
 
   it(
     write
-      ? "writes conformance/transcripts and the Swift and Godot mirrors"
-      : "conformance/transcripts and the Swift and Godot mirrors are fresh",
+      ? "writes conformance/transcripts and the Godot mirror"
+      : "conformance/transcripts and the Godot mirror are fresh",
     async () => {
       // A scenario whose own test did not finish (a timeout on a loaded machine) left no entry:
       // record it here, so this check reports drift, never another test's failure.

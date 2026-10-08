@@ -34,7 +34,6 @@ import { Timestamp } from "../../../ui/Timestamp.js";
 import { toast } from "../../../ui/toast.js";
 import { mutate } from "../../data/mutations.js";
 import { qk } from "../../data/queries.js";
-import { queryClient } from "../../data/queryClient.js";
 import { Link } from "../../router.js";
 import { r } from "../../routes.js";
 import { SettingsSection } from "../../templates/Settings.js";
@@ -72,17 +71,14 @@ export function AccountOverrideEditor({
   slug,
   subject,
 }: UserSlotProps): React.ReactElement {
-  const overridesQ = useQuery(
-    {
-      queryKey: qk.userOverrides(slug, subject),
-      queryFn: () => api.productUserOverrides(slug, subject),
-    },
-    queryClient,
-  );
-  const catalogQ = useQuery(
-    { queryKey: qk.catalog(slug), queryFn: () => api.schema(slug) },
-    queryClient,
-  );
+  const overridesQ = useQuery({
+    queryKey: qk.userOverrides(slug, subject),
+    queryFn: () => api.productUserOverrides(slug, subject),
+  });
+  const catalogQ = useQuery({
+    queryKey: qk.catalog(slug),
+    queryFn: () => api.schema(slug),
+  });
   const [serverFields, setServerFields] = React.useState<
     string[] | undefined
   >();

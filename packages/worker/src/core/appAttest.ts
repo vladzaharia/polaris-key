@@ -33,6 +33,9 @@
  * gets the pinned Apple root. Pure apart from `crypto.subtle`; runs in Node and workerd.
  */
 
+import { b64urlDecode, b64urlEncode } from "../platform/bytes.js";
+import { constantTimeEqualBytes } from "../platform/compare.js";
+import { sha256 } from "../platform/hash.js";
 import { CborError, decodeCbor, type CborValue } from "./cbor.js";
 import {
   base64ToBytes,
@@ -160,7 +163,8 @@ function publicKeyPoint(cert: X509Certificate): Uint8Array {
   return point;
 }
 
-async function sha256(...parts: Uint8Array[]): Promise<Uint8Array> {
+/** SHA-256 over the concatenation of `parts`. */
+function sha256Of(...parts: Uint8Array[]): Promise<Uint8Array> {
   const len = parts.reduce((n, p) => n + p.length, 0);
   const buf = new Uint8Array(len);
   let o = 0;
@@ -168,35 +172,19 @@ async function sha256(...parts: Uint8Array[]): Promise<Uint8Array> {
     buf.set(p, o);
     o += p.length;
   }
-  return new Uint8Array(await crypto.subtle.digest("SHA-256", buf));
-}
-
-function eq(a: Uint8Array, b: Uint8Array): boolean {
-  if (a.length !== b.length) return false;
-  let d = 0;
-  for (let i = 0; i < a.length; i++) d |= a[i]! ^ b[i]!;
-  return d === 0;
+  return sha256(buf);
 }
 
 /** Decode base64 in either alphabet, with or without padding; `null` when it is not base64. */
 export function decodeBase64Any(s: string): Uint8Array | null {
   if (!/^[A-Za-z0-9+/_-]*={0,2}$/.test(s)) return null;
-  const std = s.replace(/-/g, "+").replace(/_/g, "/").replace(/=+$/, "");
-  if (std.length % 4 === 1) return null;
+  const bare = s.replace(/=+$/, "");
+  if (bare.length % 4 === 1) return null;
   try {
-    const bin = atob(std + "=".repeat((4 - (std.length % 4)) % 4));
-    const out = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-    return out;
+    return b64urlDecode(bare);
   } catch {
     return null;
   }
-}
-
-export function base64url(bytes: Uint8Array): string {
-  let bin = "";
-  for (const b of bytes) bin += String.fromCharCode(b);
-  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
 function field(m: Map<CborValue, CborValue>, k: string): CborValue {
@@ -287,12 +275,13 @@ export async function verifyAppAttestation(
   }
 
   // 2–4. The nonce.
-  const expected = await sha256(authData, input.clientDataHash);
+  const expected = await sha256Of(authData, input.clientDataHash);
   const nonce = nonceOf(credCert);
-  if (!nonce || !eq(nonce, expected)) return { ok: false, reason: "nonce" };
+  if (!nonce || !constantTimeEqualBytes(nonce, expected))
+    return { ok: false, reason: "nonce" };
 
   // 5. The key id.
-  if (!eq(await sha256(credentialKey), keyIdBytes))
+  if (!constantTimeEqualBytes(await sha256Of(credentialKey), keyIdBytes))
     return { ok: false, reason: "key_id" };
 
   // authenticatorData: rpIdHash(32) flags(1) signCount(4) aaguid(16) credIdLen(2) credId …
@@ -310,7 +299,12 @@ export async function verifyAppAttestation(
   const rpIdHash = authData.subarray(0, 32);
   let appId: string | null = null;
   for (const candidate of input.appIds) {
-    if (eq(await sha256(new TextEncoder().encode(candidate)), rpIdHash)) {
+    if (
+      constantTimeEqualBytes(
+        await sha256Of(new TextEncoder().encode(candidate)),
+        rpIdHash,
+      )
+    ) {
       appId = candidate;
       break;
     }
@@ -326,14 +320,21 @@ export async function verifyAppAttestation(
   if (counter !== 0) return { ok: false, reason: "counter" };
 
   // 8. The environment.
-  if (!eq(authData.subarray(37, 53), AAGUID[input.environment]))
+  if (
+    !constantTimeEqualBytes(
+      authData.subarray(37, 53),
+      AAGUID[input.environment],
+    )
+  )
     return { ok: false, reason: "aaguid" };
 
   // 9. The credential id.
   const credIdLen = (authData[53]! << 8) | authData[54]!;
   if (authData.length < 55 + credIdLen)
     return { ok: false, reason: "malformed", detail: "credentialId" };
-  if (!eq(authData.subarray(55, 55 + credIdLen), keyIdBytes))
+  if (
+    !constantTimeEqualBytes(authData.subarray(55, 55 + credIdLen), keyIdBytes)
+  )
     return { ok: false, reason: "credential_id" };
 
   return {
@@ -341,6 +342,6 @@ export async function verifyAppAttestation(
     appId,
     environment: input.environment,
     keyId: input.keyId,
-    publicKey: base64url(credentialKey),
+    publicKey: b64urlEncode(credentialKey),
   };
 }

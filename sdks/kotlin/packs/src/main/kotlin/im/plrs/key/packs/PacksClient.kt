@@ -16,6 +16,9 @@
 // once (marker, bytes, stamp pin) and then count as installed. The active set's `packSetId` rides on
 // `devices/report` as `content`. The facet is the update client's content host
 // ([UpdateContentHost]); the umbrella client wires the two, so :update never sees :packs.
+//
+// SP-50: every public suspend function is main-safe: it runs on `Dispatchers.IO` (the store, the
+// state file, hashing and zstd are blocking work).
 
 package im.plrs.key.packs
 
@@ -185,6 +188,10 @@ public class PacksClient(
     @Volatile private var zstdInfo: PackZstdInfo? = null
     private val refused = java.util.concurrent.CopyOnWriteArrayList<Pair<String, String>>()
 
+    /** The blocking work of every public call, off the caller's dispatcher (SP-50). */
+    private suspend inline fun <T> io(crossinline block: suspend () -> T): T =
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { block() }
+
     /** plans/P4-29.md §2.4 step 1: the delta menu of the most recently committed feed (null until known). */
     @Volatile private var feedMenu: FeedMenu? = null
 
@@ -200,18 +207,18 @@ public class PacksClient(
     }
 
     /** Install the pinned release of each pack (CONTENT §10). */
-    public suspend fun ensure(packIds: List<String>): List<PackInstall> {
+    public suspend fun ensure(packIds: List<String>): List<PackInstall> = io {
         core.requireService(ServiceSlug.release, Feature.packsState)
-        return journaled(packIds.associateWith { null }) { start().ensure(packIds) }
+        return@io journaled(packIds.associateWith { null }) { start().ensure(packIds) }
     }
 
     /** The install state and this process's running set. */
-    public suspend fun state(): PacksSnapshot = start().state()
+    public suspend fun state(): PacksSnapshot = io { start().state() }
 
     /** The directory of a pack's running tree payload, or null when it is not running. */
-    public suspend fun path(packId: String): File? {
-        val i = state().running[packId] ?: return null
-        return if (i.layout == "tree") File(i.location) else null
+    public suspend fun path(packId: String): File? = io {
+        val i = state().running[packId] ?: return@io null
+        return@io if (i.layout == "tree") File(i.location) else null
     }
 
     /** Add a handler for a pack type (CONTENT §4.1). */
@@ -236,9 +243,9 @@ public class PacksClient(
     }
 
     /** The running set's `packSetId`; null without a stamp or before packs can start. */
-    public suspend fun packSetId(): String? {
-        if (!configured) return null
-        return try {
+    public suspend fun packSetId(): String? = io {
+        if (!configured) return@io null
+        return@io try {
             start().packSetId()
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
@@ -248,13 +255,13 @@ public class PacksClient(
     }
 
     /** Mark this boot healthy (CONTENT §10 step 7). */
-    public suspend fun confirm(): Unit = start().confirm()
+    public suspend fun confirm(): Unit = io { start().confirm() }
 
     /** Operator recovery after a torn `state.json`. */
-    public suspend fun recoverState(): Unit = start().recoverState()
+    public suspend fun recoverState(): Unit = io { start().recoverState() }
 
     /** Re-point a pack at the install it replaced. */
-    public suspend fun rollback(packId: String): Boolean = start().rollback(packId)
+    public suspend fun rollback(packId: String): Boolean = io { start().rollback(packId) }
 
     /** The boot stage machine's pack options from the content stamp, for `BootOptions`. */
     public fun bootOptions(): Pair<List<String>, List<String>> = bootPackOptions(readStamp())
@@ -266,7 +273,7 @@ public class PacksClient(
         metered: Boolean = false,
         answer: (suspend (Long, Boolean) -> Boolean)? = null,
         install: List<PackTarget>? = null,
-    ): BootFetchResult {
+    ): BootFetchResult = io {
         val engine = start()
         val stamp = readStamp()
         val before = try {
@@ -299,13 +306,13 @@ public class PacksClient(
                 journal.record(UpdateEvent.packFailed, targets[id] ?: before[id]?.second ?: "unknown", deliverable = id, fromRelease = before[id]?.second, code = if (out.result == im.plrs.key.core.BootEvent.FetchResult.offline) ErrorCode.networkError else ErrorCode.fetchFailed)
             }
         }
-        return out
+        return@io out
     }
 
     /** Install exact releases: a `packs` decision's `install` list (plans/P4-13.md §2.6). */
-    public suspend fun ensureReleases(targets: List<PackTarget>): List<PackInstall> {
+    public suspend fun ensureReleases(targets: List<PackTarget>): List<PackInstall> = io {
         core.requireService(ServiceSlug.release, Feature.packsState)
-        return journaled(targets.associate { it.pack to it.release.version }) { start().ensureReleases(targets) }
+        return@io journaled(targets.associate { it.pack to it.release.version }) { start().ensureReleases(targets) }
     }
 
     /**
@@ -347,26 +354,26 @@ public class PacksClient(
     }
 
     /** Preflight sizes for a consent dialog. */
-    public suspend fun estimate(packIds: List<String>): PackEstimate = start().estimate(packIds)
+    public suspend fun estimate(packIds: List<String>): PackEstimate = io { start().estimate(packIds) }
 
     /** Save compatibility: whether a running pack release provides [contentId]. False without a stamp. */
-    public suspend fun isAvailable(contentId: String): Boolean = if (!configured) false else start().isAvailable(contentId)
+    public suspend fun isAvailable(contentId: String): Boolean = io { if (!configured) false else start().isAvailable(contentId) }
 
     /** The pack whose target release provides [contentId]; null when none or without a stamp. */
-    public suspend fun packFor(contentId: String, targets: List<PackTarget>? = null): PackProvider? = if (!configured) null else start().packFor(contentId, targets)
+    public suspend fun packFor(contentId: String, targets: List<PackTarget>? = null): PackProvider? = io { if (!configured) null else start().packFor(contentId, targets) }
 
     /** The stored and this process's verified revocations, and `relearn`. */
-    public suspend fun revocations(): RevocationsSnapshot = start().revocations()
+    public suspend fun revocations(): RevocationsSnapshot = io { start().revocations() }
 
-    override suspend fun contentInput(): UpdateCheckContent? {
-        if (!configured) return null
-        val bytes = readStampBytes() ?: return null
-        val stamp = readStamp() ?: return null
+    override suspend fun contentInput(): UpdateCheckContent? = io {
+        if (!configured) return@io null
+        val bytes = readStampBytes() ?: return@io null
+        val stamp = readStamp() ?: return@io null
         val e = start()
         val active = e.state().running.mapValues { (_, i) -> ReleasePin(i.recordSha256, i.seq, i.version) }
         val revs = e.revocations()
         val prefs = VariantPrefs(opts.engine, opts.axes)
-        return UpdateCheckContent(
+        return@io UpdateCheckContent(
             stamp = stamp.stamp(stampHolds(bytes)),
             active = active,
             engine = opts.engine,
@@ -378,20 +385,20 @@ public class PacksClient(
         )
     }
 
-    override suspend fun recordRevocations(revocations: UpdateCheckRevocations) {
+    override suspend fun recordRevocations(revocations: UpdateCheckRevocations): Unit = io {
         start().recordRevocations(revocations.learned, revocations.relearnCleared)
     }
 
     /** Which decoder serves frames (after the start-up probe). */
-    public suspend fun zstd(): PackZstdInfo {
+    public suspend fun zstd(): PackZstdInfo = io {
         start()
-        return zstdInfo!!
+        return@io zstdInfo!!
     }
 
     /** The embedded baselines `start` refused, by marker step. */
-    public suspend fun refusedEmbedded(): List<Pair<String, String>> {
+    public suspend fun refusedEmbedded(): List<Pair<String, String>> = io {
         start()
-        return refused.toList()
+        return@io refused.toList()
     }
 
     // ── Internals ───────────────────────────────────────────────────────────────────────────
@@ -456,9 +463,9 @@ public class PacksClient(
         return e
     }
 
+    /** `<the store's state directory>/packs` (a FileStore's directory; Android's no-backup directory). */
     private fun defaultRoot(): Path {
-        val store = core.store
-        val base = if (store is FileStore) store.directory else FileStore.defaultDirectory(core.product)
+        val base = core.store.stateDirectory ?: FileStore.defaultDirectory(core.product)
         return File(base, "packs").toPath()
     }
 
@@ -504,6 +511,8 @@ public class PacksClient(
     /** The licence's granted boolean flags, or null when the product runs no License service. */
     private suspend fun entitlements(): Set<String>? {
         if (!core.enabled(ServiceSlug.license)) return null
+        // SP-51: a revoked, expired or never-activated install is entitled to nothing.
+        if (!im.plrs.key.core.isUsable(core.licenseStatus().status)) return emptySet()
         val ent = core.cache().license?.doc?.entitlements ?: return emptySet()
         return ent.filterValues { it.value.boolValue == true }.keys
     }

@@ -23,7 +23,9 @@ import {
   CSRF_HEADER,
   issueSession,
 } from "../src/admin/session.js";
+import { RESERVED_ENTITLEMENT_KEYS } from "@polaris-key/manifest";
 import { reservedNamesMode } from "../src/core/reservedNames.js";
+import { tighterMax, tighterMin } from "../src/core/entitlements.js";
 import {
   invalidatePlatformSettings,
   writePlatformSetting,
@@ -266,5 +268,24 @@ describe("console catalog writes", () => {
     expect(strict.body.reason).toBe("incompatible_reserved_name");
     const lenient = await create(envWith(), "lenient-one");
     expect(lenient.status).toBeLessThan(300);
+  });
+});
+
+describe("the reserved keys' rule text (reservedNames.ts) matches the policy injection", () => {
+  // The console shows these rules read-only; they once said the opposite of the code ("the
+  // lower of" the minimums, "the higher of" the maximums). The window is an intersection: a
+  // licence can narrow its tier's window, never widen it (`core/entitlements.ts`).
+  const rule = (key: string) =>
+    RESERVED_ENTITLEMENT_KEYS.find((k) => k.key === key)!.rule;
+
+  it("app.minVersion is the higher minimum, app.maxVersion the lower maximum", () => {
+    expect(tighterMin("1.2.0", "2.0.0")).toBe("2.0.0");
+    expect(tighterMin("2.0.0", "1.2.0")).toBe("2.0.0");
+    expect(tighterMax("3.0.0", "2.5.0")).toBe("2.5.0");
+    expect(tighterMax("2.5.0", "3.0.0")).toBe("2.5.0");
+    expect(rule("app.minVersion")).toMatch(/^The higher of .* minimum version/);
+    expect(rule("app.maxVersion")).toMatch(/^The lower of .* maximum version/);
+    for (const key of ["app.minVersion", "app.maxVersion"])
+      expect(rule(key)).toContain("never widen");
   });
 });

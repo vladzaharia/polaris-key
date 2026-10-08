@@ -1,11 +1,11 @@
 import * as React from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, Pencil, Plus, Trash2 } from "lucide-react";
 import {
   ApiError,
   type ConfigEntry,
   type ProductCatalog,
 } from "../../../api.js";
-import { invalidate } from "../../../context.js";
 import { cn } from "../../../lib/cn.js";
 import { diffSummary } from "../../../lib/diff.js";
 import { errorCopy } from "../../../lib/errorCopy.js";
@@ -35,7 +35,7 @@ import { toast } from "../../../ui/toast.js";
 import { Textarea } from "../../../ui/Textarea.js";
 import { BREAK_GLASS_REASON_MAX } from "../../components/BreakGlassDialog.js";
 import { Breadcrumbs } from "../../components/Breadcrumbs.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { useProduct } from "../../data/hooks.js";
 import { mutate } from "../../data/mutations.js";
 import { qk } from "../../data/queries.js";
@@ -717,6 +717,7 @@ function ReviewDrawer({
   onPublished: (version: number) => void;
   onDiscard: () => void;
 }): React.ReactElement {
+  const queryClient = useQueryClient();
   const diff = React.useMemo(() => draftDiff(draft), [draft]);
   const removedKeys = React.useMemo(
     () => (open ? diff.removed.map((c) => c.key) : []),
@@ -774,7 +775,7 @@ function ReviewDrawer({
     } catch (err) {
       setError(err);
       if (err instanceof ApiError && err.status === 409)
-        invalidate(qk.catalog(slug));
+        void queryClient.invalidateQueries({ queryKey: qk.catalog(slug) });
     } finally {
       setPublishing(false);
     }

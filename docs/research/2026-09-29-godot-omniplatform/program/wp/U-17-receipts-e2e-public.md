@@ -4,13 +4,24 @@
 | ----------- | ------------------------------------------------------------------------------------------- |
 | Phase       | U: Cloud Sync (S-17) (U4 later)                                                             |
 | Size        | 1.2–2 engineer-weeks                                                                        |
-| Depends on  | [U-09](U-09-collections-backend.md), [U-10](U-10-saves-backend.md)                          |
+| Depends on  | none                                                                                        |
 | Unblocks    | none                                                                                        |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                       |
 | Plan mode   | yes: `pkey-wire-planner` writes `plans/U-17.md` first; it needs human approval before code  |
 | Gates       | plan mode; THREAT-MODEL; rule 10 (OpenAPI + `routeCoverage`); all six SDKs (`parity:check`) |
 | Human input | none                                                                                        |
 | Repo        | `vladzaharia/polaris-key`                                                                   |
+
+## Consolidation 2026-10-07
+
+> **Closed 2026-10-07 (DX consolidation): dropped.** The id stays in the graph as `dropped` so it
+> is not reused; do not build this package.
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **drop** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Receipts keyring, end-to-end value type and public collections: three new concepts with no owner ask.
+
+- Dependencies cleared on closing (they were U-09 and U-10), so nothing in the graph waits on or through a closed package.
 
 ## Goal
 

@@ -494,7 +494,7 @@ describe("Needs attention", () => {
       external: true,
     });
     expect(items[0]!.text).toMatch(
-      /^Your Studio license ends on \d+ \w{3}\. Updates stop after that\.$/,
+      /^Your Studio license ends on \d+ \w{3}\. Renew with [^.]+ to keep using it\.$/,
     );
   });
 });

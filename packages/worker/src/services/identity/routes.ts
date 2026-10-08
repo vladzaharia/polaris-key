@@ -74,7 +74,7 @@ export async function handleIdentityRoutes(
       case "callback":
         return handleAuthCallback(req, env, db, product, now);
       case "logout":
-        return handleBrowserLogout(req, env, db, product);
+        return handleBrowserLogout(req, env, db, product, now);
       case "device":
         return handleAuthDeviceEntry(req, env, product);
       case "choose":

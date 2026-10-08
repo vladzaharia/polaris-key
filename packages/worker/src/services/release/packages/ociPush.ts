@@ -75,7 +75,7 @@ import {
 } from "../../../core/registryTokens.js";
 import { rateLimitOk } from "../../../core/rateLimit.js";
 import { appendAudit } from "../../../core/data.js";
-import { randomId } from "../../../core/platform.js";
+import { randomId, sha256Hex } from "../../../core/platform.js";
 import {
   classifyChannel,
   isMovingSelector,
@@ -1091,19 +1091,7 @@ const putManifest = async (req: Request, push: Push): Promise<Response> => {
       "SIZE_INVALID",
       "the manifest is not the length it declared",
     );
-  const hex = [
-    ...new Uint8Array(
-      await crypto.subtle.digest(
-        "SHA-256",
-        bytes.buffer.slice(
-          bytes.byteOffset,
-          bytes.byteOffset + bytes.byteLength,
-        ) as ArrayBuffer,
-      ),
-    ),
-  ]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+  const hex = await sha256Hex(bytes);
   const digest = `sha256:${hex}`;
   if (refHex !== undefined && refHex !== hex)
     return ociError(

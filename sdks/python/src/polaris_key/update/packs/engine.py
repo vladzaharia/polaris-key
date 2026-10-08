@@ -39,6 +39,7 @@ from ...constants_generated import (
 )
 from ...core.b64url import b64url_decode
 from ...core.errors import PolarisError
+from ...core.events import listener_failed
 from ...core.jws import TrustSet
 from ...core.models import ReleasePin
 from ...core.pack_claims import variant_key
@@ -1204,7 +1205,7 @@ class PackEngine:
             try:
                 listener(e)
             except Exception:
-                pass  # A listener never fails an install.
+                listener_failed("packs progress listener")  # never fails an install
 
     def _hold_list(self, st: Any) -> Optional[Tuple[List[str], List[str]]]:
         """The torn hold's snapshot: the saved one, else ``storage.list()`` now (saved when the

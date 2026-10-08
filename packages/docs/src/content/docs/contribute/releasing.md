@@ -81,6 +81,34 @@ its feed, as a client would, and fails the run unless each one's newest version 
 is this build's version (and npm's dist-tag and the image's tag for the channel name it), retrying
 for up to ten minutes while the feeds' render queue catches up.
 
+## npm: dependency order and closure
+
+The npm packages depend on each other at exactly the build's version, so a version whose sibling
+never reached the feed cannot install. GitHub occasionally leaves one deployment to
+`package-registry` in `waiting` for good, and when all ten legs ran in one matrix the others
+published anyway: `jws@0.8.28` and `protocol@0.8.29` never landed, and nine versions pin them. Three
+things keep that from happening again:
+
+- **Tiers.** `publish-sdks.yml` publishes the npm packages in five jobs, each needing the one
+  below: `brand`, `protocol`, `zstd-wasm`; then `catalog`, `jws`; then `client-core`, `manifest`;
+  then `node`, `react`; then `cli`. A leg that fails, is cancelled or stays in `waiting` stops every
+  tier above it. `releaseWorkflows.test.ts` derives the order from each package's dependencies and
+  simulates a stuck leg in every tier, so a new dependency that breaks the order fails CI.
+- **The gate.** Before any npm publish, `publish-package.yml` reads the packed tarball's
+  `package.json` and waits until the feed lists every `@polaris-key` version it pins
+  (`tools/feed-closure.mjs requires`). A re-run of one leg cannot skip a missing dependency.
+- **The closure check.** `tools/feed-closure.mjs` reads every packument and fails on a pin to a
+  version the feed does not list. The drift job runs it for the version just published, the
+  `npm-install` job then installs from the feed in empty directories (pnpm 11 with its one-day age
+  gate, npm with React's peers, and this build's exact set), and `feed-closure.yml` checks every
+  version on the npm and PyPI feeds daily.
+
+`.github/workflows/npm-repair.yml` backfills a version a tag's own run never published. It is
+dispatched by hand on `main` with a release tag and the package names. It builds those packages at
+the tag, refuses a version the feed already has or a pin the feed lacks, and publishes through
+`publish-package.yml` on the tag's channel. The steps are in `docs/RUNBOOK.md`, "Releasing our SDKs
+to the feeds".
+
 ## Proving it locally
 
 `pnpm --filter @polaris-key/worker registry:self-publish` runs the whole pipeline against a local

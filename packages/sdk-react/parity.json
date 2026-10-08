@@ -380,7 +380,7 @@
     },
     "ui.kit.manage": {
       "status": "implemented",
-      "note": "PX-W8: LicenseGate and PolarisLogin show Replace a device on device-limit."
+      "note": "PX-W8: a device-limit refusal stays on PolarisLogin's card (screenFor) as a neutral callout (deviceLimit.heading, deviceLimit.browser) with Replace a device as the one filled action, focused, re-trying the key when the person comes back; a failure that reaches the error screen with the portal link leads with Replace a device beside Try again. test/kitLayout.test.tsx, and test/browser in Chromium at every size."
     },
     "ui.kit.keyentry": {
       "status": "planned",

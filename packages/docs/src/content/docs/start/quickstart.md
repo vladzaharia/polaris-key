@@ -223,8 +223,8 @@ mode is a console setting, not a manifest one. See [Update](/docs/services/updat
 
 ## Goal: everything
 
-All six services, the closed registration policy, and the full manifest set. This is the shape
-`djdl` — the first Polaris Key product — actually ships.
+Every service except Cloud Sync, the closed registration policy, and the full manifest set. This
+is the shape `djdl` — the first Polaris Key product — actually ships.
 
 ```yaml
 # .pkey/product.yaml

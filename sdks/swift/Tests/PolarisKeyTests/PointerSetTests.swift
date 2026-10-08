@@ -48,7 +48,7 @@ private func markerRelease(_ text: String?) -> String {
 
 final class PointerSetTests: XCTestCase {
     func testEveryCaseOfTheNineFamilies() throws {
-        let corpus = try CorpusBundleLoader.load(PointerCorpus.self, "cases")
+        let corpus = try CorpusLocator.load(PointerCorpus.self, "cases")
         typealias View = (jws: String, keys: TrustSet, typ: JwsTyp, cap: Int?)
         let families: [(String, [PointerCase], (PointerCase) -> View)] = [
             ("jwsCases", corpus.jwsCases, { ($0.jws!, $0.trust!, JwsTyp(rawValue: $0.typ!)!, $0.maxPayloadBytes) }),

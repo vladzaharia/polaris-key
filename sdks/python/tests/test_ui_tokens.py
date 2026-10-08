@@ -88,7 +88,7 @@ def test_qt_theme_and_stylesheets():
 
 
 def test_ansi_tables():
-    assert ansi.SGR["success"] == "32" and ansi.SGR["danger"] == "31" and ansi.SGR["muted"] == "90"
+    assert ansi.SGR["success"] == "32" and ansi.SGR["danger"] == "31" and ansi.SGR["muted"] == "2"
     assert ansi.sgr("warning") == "\x1b[33m"
     assert ansi.truecolor("#4fd8c4") == "\x1b[38;2;79;216;196m"
     assert set(ansi.SYMBOLS["unicode"]) == set(ansi.SYMBOLS["ascii"])

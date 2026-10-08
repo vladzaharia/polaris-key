@@ -14,16 +14,29 @@ Kinds (:data:`EVENT_KINDS`):
 * ``store`` — the token store is degraded (``reason``, ``detail``).
 
 Listeners run synchronously on the thread that caused the change (a sync, a ``config.set``) and
-must not block; an exception in one is swallowed so it cannot break the others or the SDK.
+must not block. An exception in one cannot break the others or the SDK: it is logged, with its
+traceback, on the ``polaris_key`` logger (:func:`listener_failed`) and the next listener runs.
 """
 
 from __future__ import annotations
 
+import logging
 import threading
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
-__all__ = ["Event", "EventBus", "EVENT_KINDS"]
+__all__ = ["Event", "EventBus", "EVENT_KINDS", "listener_failed"]
+
+#: The SDK's logger. No handler is attached here: the host's logging configuration decides,
+#: and without one Python's last-resort handler still prints a failing listener to stderr.
+log = logging.getLogger("polaris_key")
+
+
+def listener_failed(what: str) -> None:
+    """Log the exception being handled as a failure of the host's ``what`` callback (an event
+    listener, ``on_change``, ``on_stage``, ``on_progress``), with its traceback. Call it from an
+    ``except`` block. A host bug is never swallowed silently, and never breaks the SDK."""
+    log.exception("polaris_key: the %s callback raised; continuing", what)
 
 EVENT_KINDS = ("license", "entitlement", "config", "updateAvailable", "packs", "store")
 
@@ -77,5 +90,5 @@ class EventBus:
             try:
                 fn(event)
             except Exception:
-                pass
+                listener_failed(f"{kind!r} event listener")
         return event

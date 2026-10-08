@@ -159,10 +159,11 @@ npmScopes:
 "@acme" = "https://pkg.plrs.im/npm/acme/"
 ```
 
-Recent Yarn releases refuse versions younger than their `npmMinimalAgeGate` setting by
-default ("quarantined"), reading each version's publication time from the packument; a version
-just published installs with Yarn once that window has passed, or at once with
-`npmMinimalAgeGate: 0` in `.yarnrc.yml`.
+pnpm 11 and recent Yarn releases refuse versions younger than one day by default
+(`minimumReleaseAge`, `npmMinimalAgeGate`), reading each version's publication time from the
+packument; a version just published installs once that window has passed, or at once for a scope
+the client exempts. [Age gates](/docs/build/install-from-feeds/#age-gates) has each client's
+setting and exemption.
 
 The snippets take three inputs: the registry host's origin, the owner (the product slug), and
 the feed's scope (`dist_registry_feeds.namespace_json` `{scope}`). The console's setup tab and

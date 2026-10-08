@@ -240,6 +240,8 @@ describe("devices.register() — the keyless mint path (§6)", () => {
     });
     await expect(h.client.devices.register()).resolves.toEqual({
       kind: "error",
+      code: "server-error",
+      status: 500,
       message: "upstream exploded",
     });
   });
@@ -253,7 +255,8 @@ describe("devices.register() — the keyless mint path (§6)", () => {
     });
     await expect(h.client.devices.register()).resolves.toEqual({
       kind: "error",
-      message: "ECONNREFUSED",
+      code: "network-error",
+      message: expect.stringContaining("ECONNREFUSED"),
     });
     expect(await h.store.getToken()).toBeNull();
   });
@@ -348,11 +351,14 @@ describe("devices.list() — the product's roster for this credential", () => {
     expect(h.calls).toHaveLength(0);
   });
 
-  it("throws on a non-OK status", async () => {
+  it("throws a PolarisError in the one taxonomy on a non-OK status (SP-46)", async () => {
     const h = await harness({ respond: status(500), token: STALE_TOKEN });
-    await expect(h.client.devices.list()).rejects.toThrow(
-      "device list failed: 500",
-    );
+    await expect(h.client.devices.list()).rejects.toMatchObject({
+      name: "PolarisError",
+      code: "server-error",
+      status: 500,
+      message: "device list failed with status 500.",
+    });
   });
 });
 
@@ -405,14 +411,18 @@ describe("devices.rename() / .deauthorize() — the per-device routes", () => {
     expect(h.calls).toHaveLength(0);
   });
 
-  it("both throw on a non-OK status", async () => {
+  it("both throw a PolarisError on a non-OK status (SP-46)", async () => {
     const h = await harness({ respond: status(403), token: STALE_TOKEN });
-    await expect(h.client.devices.rename("x", "y")).rejects.toThrow(
-      "device rename failed: 403",
-    );
-    await expect(h.client.devices.deauthorize("x")).rejects.toThrow(
-      "device deauthorize failed: 403",
-    );
+    await expect(h.client.devices.rename("x", "y")).rejects.toMatchObject({
+      code: "forbidden",
+      status: 403,
+      message: "device rename failed with status 403.",
+    });
+    await expect(h.client.devices.deauthorize("x")).rejects.toMatchObject({
+      code: "forbidden",
+      status: 403,
+      message: "device deauthorize failed with status 403.",
+    });
   });
 });
 

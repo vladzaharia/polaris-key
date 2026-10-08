@@ -2,13 +2,15 @@ import * as React from "react";
 import { Command } from "cmdk";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { Search } from "lucide-react";
-import { useAdmin } from "../../context.js";
+import type { Me } from "../../api.js";
 import { cn } from "../../lib/cn.js";
 import { StatusPill } from "../../ui/StatusPill.js";
 import { useProduct, useProducts } from "../data/hooks.js";
 import { pageOfRoute, slugOfRoute } from "../routes.js";
 import { navigate, useLocation } from "../router.js";
-import { Kbd, LiveRegion, ServiceDots, type ProductLike } from "./bits.js";
+import { Kbd } from "../../ui/Kbd.js";
+import { LiveRegion } from "../../ui/LiveRegion.js";
+import { ServiceDots, type ProductLike } from "./bits.js";
 import { rankPalette } from "./palette/rank.js";
 import {
   readRecents,
@@ -23,18 +25,12 @@ import type {
   PanelRender,
 } from "./palette/types.js";
 
-// The sources and the filter live in `palette/`; these names stay importable from here.
-export { navigationSource, productSource } from "./palette/navigation.js";
-export { filterItems } from "./palette/rank.js";
-export type { PaletteItem } from "./palette/types.js";
-
 /**
  * What the palette's sources read: the product on screen (when the session has it), what it runs,
- * and every product but the system one. Read here rather than passed in, so a source can be added
- * without touching the shell.
+ * and every product but the system one. Read here from the session rather than passed in piece by
+ * piece, so a source can be added without touching the shell.
  */
-function usePaletteContext(): PaletteContext {
-  const { me } = useAdmin();
+function usePaletteContext(me: Me): PaletteContext {
   const { route } = useLocation();
   const routeSlug = slugOfRoute(route);
   const slug =
@@ -82,18 +78,25 @@ function openInNewTab(href: string): void {
  * stagger, no list transition), and the selection highlight eases between rows at `micro`.
  *
  * `items` are rows a caller adds to the sources' own; a row whose id a source already offers is
- * dropped, so the shell's navigation and product rows never show twice.
+ * dropped, so the shell's navigation and product rows never show twice. `initialQuery` is typed
+ * in each time it opens (a not-found page's dead segment), selected, so typing replaces it.
  */
 export function CommandPalette({
+  me,
   open,
   onOpenChange,
+  initialQuery = "",
   items: extra,
 }: {
+  /** The session: which products the palette may offer. */
+  me: Me;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** The query the palette opens with. */
+  initialQuery?: string;
   items?: PaletteItem[];
 }): React.ReactElement {
-  const ctx = usePaletteContext();
+  const ctx = usePaletteContext(me);
   const { route } = useLocation();
   useRecordRecents(route, route.kind !== "product" || ctx.slug !== null);
 
@@ -105,12 +108,17 @@ export function CommandPalette({
     open: boolean;
     key: number;
   } | null>(null);
-  React.useEffect(() => {
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  // Reset on open, during render rather than in an effect, so the input mounts holding the
+  // initial query and the dialog's open focus can select it.
+  const [wasOpen, setWasOpen] = React.useState(false);
+  if (open !== wasOpen) {
+    setWasOpen(open);
     if (open) {
-      setQuery("");
+      setQuery(initialQuery);
       setRecentIds(readRecents());
     }
-  }, [open]);
+  }
 
   const items = usePaletteItems(ctx, query, extra);
   const recents = resolveRecents(recentIds, items, ctx.products);
@@ -147,10 +155,16 @@ export function CommandPalette({
           <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs animate-pk-overlay-in" />
           <DialogPrimitive.Content
             aria-describedby={undefined}
+            onOpenAutoFocus={(e) => {
+              if (!initialQuery) return;
+              e.preventDefault();
+              inputRef.current?.focus();
+              inputRef.current?.select();
+            }}
             className={cn(
               // A phone gets the whole screen (EXPERIENCE.md §3); wider screens a centred panel.
-              "fixed inset-0 z-50 flex flex-col overflow-hidden bg-popover pt-[env(safe-area-inset-top,0px)] text-popover-foreground animate-pk-in",
-              "sm:inset-auto sm:left-1/2 sm:top-[12vh] sm:w-[calc(100vw-1rem)] sm:max-w-xl sm:-translate-x-1/2 sm:rounded-lg sm:border sm:border-border sm:pt-0 sm:shadow-pk-lg",
+              "fixed inset-0 z-50 flex flex-col overflow-hidden bg-surface-overlay pt-[env(safe-area-inset-top,0px)] text-fg animate-pk-in",
+              "sm:inset-auto sm:left-1/2 sm:top-[12vh] sm:w-[calc(100vw-1rem)] sm:max-w-xl sm:-translate-x-1/2 sm:rounded-lg sm:border sm:border-border sm:pt-0 sm:shadow-elevation-3",
             )}
           >
             <DialogPrimitive.Title className="sr-only">
@@ -176,6 +190,7 @@ export function CommandPalette({
               <div className="flex items-center gap-2 border-b border-border px-3">
                 <Search aria-hidden className="size-4 shrink-0 text-fg-muted" />
                 <Command.Input
+                  ref={inputRef}
                   value={query}
                   onValueChange={setQuery}
                   aria-label="Search or jump to"

@@ -4,13 +4,24 @@
 | ----------- | ----------------------------------------------------------------------------------------------------------------------- |
 | Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase W: Worker additions)                                                 |
 | Size        | 0.4–0.8 engineer-weeks                                                                                                  |
-| Depends on  | [U-05](U-05-cloud-sync-do.md), [I-05](I-05-accounts-core.md)                                                            |
-| Unblocks    | [PX-18](PX-18-cloud-sync-section.md)                                                                                    |
+| Depends on  | none                                                                                                                    |
+| Unblocks    | none                                                                                                                    |
 | Role        | `pkey-implementer`                                                                                                      |
 | Plan mode   | no                                                                                                                      |
 | Gates       | the PORTAL.md §11 green gate; rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; `typecheck:workerd` and `test:workerd` |
 | Human input | none                                                                                                                    |
 | Repo        | `vladzaharia/polaris-key`                                                                                               |
+
+## Consolidation 2026-10-07
+
+> **Closed 2026-10-07 (DX consolidation): merged into [PX-18](PX-18-cloud-sync-section.md).** The id stays in the graph as `dropped` so it
+> is not reused; do not build this package. Its scope moves to [PX-18](PX-18-cloud-sync-section.md).
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **merge** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> One portal Cloud Sync package (API and card). Its 'not on Identity' note was wrong.
+
+- Dependencies cleared on closing (they were U-05 and I-05), so nothing in the graph waits on or through a closed package.
 
 ## Goal
 

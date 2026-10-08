@@ -1,16 +1,16 @@
 # UK-08 SwiftUI kit for macOS 26: Settings scene pane, `CommandGroup`s, inset sheets, a SwiftUI Sparkle `SPUUserDriver`, the inactive-window button fix, macOS 15 fallback
 
-| Field       | Value                                                                        |
-| ----------- | ---------------------------------------------------------------------------- |
-| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must) |
-| Size        | 2–3 engineer-weeks                                                           |
-| Depends on  | [UK-07](UK-07-swiftui-ios.md)                                                |
-| Unblocks    | [UK-24](UK-24-appkit-kit.md), [UK-41](UK-41-must-tier-closeout.md)           |
-| Role        | `pkey-sdk-porter`                                                            |
-| Plan mode   | no                                                                           |
-| Gates       | Mac snapshot baselines on macOS 26 and 15; the SwiftUI lint equivalents      |
-| Human input | none                                                                         |
-| Repo        | `vladzaharia/polaris-key`                                                    |
+| Field       | Value                                                                                                      |
+| ----------- | ---------------------------------------------------------------------------------------------------------- |
+| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                               |
+| Size        | 2–3 engineer-weeks                                                                                         |
+| Depends on  | [UK-07](UK-07-swiftui-ios.md)                                                                              |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [UK-24](UK-24-appkit-kit.md), [UK-41](UK-41-must-tier-closeout.md) |
+| Role        | `pkey-sdk-porter`                                                                                          |
+| Plan mode   | no                                                                                                         |
+| Gates       | Mac snapshot baselines on macOS 26 and 15; the SwiftUI lint equivalents                                    |
+| Human input | none                                                                                                       |
+| Repo        | `vladzaharia/polaris-key`                                                                                  |
 
 ## Sign-in alignment (2026-10-05): SIGN-IN.md
 
@@ -36,6 +36,33 @@ the owner's license vocabulary (SIGN-IN.md O-17: the tier pill and "{used} of {l
 every row, no "Account-wide"). For this package:
 
 - **The one sign-in form** (SIGN-IN.md §3.17, UI-KITS §1.3): the Welcome pane as the inline form (frames 23, 24, 35, 36, 37, 41), one inset sheet for `presentation: .sheet` (frames 38, 18), **Sign In…** in the account menu opening the sheet, `confirmationDialog` for Replace, and the SwiftUI motion of SIGN-IN.md §3.18. Steps morph in place; nothing stacks on the form except the system confirm for Replace where the platform expects one (D-80).
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track J, SDK and UI-kit consolidation](../../../2026-10-07-dx-consolidation/tracks.md#j-sdk-and-ui-kit-consolidation)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Adds the AppKit hosting recipe and the Sparkle bridge (from UK-24); the Sparkle user driver reads P2-11's config.
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/UK-02b.md`](../plans/UK-02b.md) §8: runs all ten families of `ui-matrix.json`. `hidden` rows assert that nothing renders. Baselines cover every `components.json` state, not `hidden`.
+
+## SDK usability review (2026-10-08)
+
+Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.1. Where they differ from the text below, they win.
+
+- The Sparkle user driver is injectable.
+
+## Owner direction (2026-10-08)
+
+- **Responsive.** Every kit screen adapts to its window, with landscape layouts where the window is landscape.
+- **Resolution matrix.** Tested at every size in [UI-KITS.md](../../../../design/UI-KITS.md) §7.1, including 200% text or zoom.
+- **Spacing and theming.** One spacing rhythm, and themable with `preset: "polaris-key" | "native"`, where `native` matches the platform.
+- **Quality bar.** Meets the bar in `.claude/agents/pkey-ux-reviewer.md` ("a GOOD UI", good use of visual space), not just no overflow.
+- **Review.** Several UX reviews (`pkey-ux-reviewer`), not one.
+- **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
 
 ## Goal
 
@@ -91,6 +118,7 @@ The iOS layout at Mac scale reads as a phone app; macOS needs its own sizes, win
 - [ ] The kit's framework page and its tab on each component page exist in the docs `build/ui/` section (UK-16 scaffold); the kit README is install + one-line flow + link.
 - [ ] A design review against the mockups (`desktop.html`) is recorded in the PR (§7.4); any disagreement between mockup and spec is fixed first.
 - [ ] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs.
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `<StatesToHandle>` from the fixtures; a kit tab per component; a component page returns when a kit ships it; a recipes page at UK-31.
 - [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify

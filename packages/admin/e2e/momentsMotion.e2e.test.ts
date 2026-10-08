@@ -205,13 +205,11 @@ const probe = (page: Page): Promise<Probe> =>
   page.evaluate(() => (window as unknown as { __p: Probe }).__p);
 
 /**
- * Animations that MOVE: an instant swap still fires `animationstart` for its 0 ms animation, and
- * the spinner is a loading indicator that keeps turning by design (S-23 §6.6).
+ * Animations that MOVE: an instant swap still fires `animationstart` for its 0 ms animation. The
+ * spinner is not exempt: under reduced motion it is a still ring, like every loading indicator.
  */
 const moving = (p: Probe): AnimStart[] =>
-  p.starts.filter(
-    (s) => s.name !== "pk-spin" && (s.duration > 0 || s.delay > 0),
-  );
+  p.starts.filter((s) => s.duration > 0 || s.delay > 0);
 
 async function atRest(page: Page, timeout = 4000): Promise<void> {
   await page

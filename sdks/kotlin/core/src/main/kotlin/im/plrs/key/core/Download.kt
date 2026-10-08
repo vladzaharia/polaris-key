@@ -56,6 +56,19 @@ public suspend fun CoreContext.fetchVerified(
     bearer: Boolean = true,
     onProgress: ((Long, Long) -> Unit)? = null,
     window: Int = DOWNLOAD_WINDOW,
+): FetchedFile = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+    // SP-50: main-safe; the file work and the hash run on Dispatchers.IO.
+    fetchVerifiedOnIo(url, dest, size, sha256, bearer, onProgress, window)
+}
+
+private suspend fun CoreContext.fetchVerifiedOnIo(
+    url: String,
+    dest: File,
+    size: Long,
+    sha256: String,
+    bearer: Boolean,
+    onProgress: ((Long, Long) -> Unit)?,
+    window: Int,
 ): FetchedFile {
     require(size >= 0 && window > 0)
     val part = File(dest.absoluteFile.parentFile, dest.name + ".part")

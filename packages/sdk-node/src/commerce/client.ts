@@ -19,6 +19,7 @@
 import { PolarisError } from "@polaris-key/client-core";
 import { ErrorCode, Feature } from "../constants.generated.js";
 import type { CoreContext } from "../core/context.js";
+import { classifyResponse } from "../core/http.js";
 import type { TokenManager } from "../core/token.js";
 
 /** The stores the claim accepts (the Worker's `isStore`). */
@@ -39,13 +40,17 @@ export type BindingResult =
   | CommerceRefusal;
 
 /** A refusal: the Worker's code (`forbidden`, `not_entitled`, `not_found`, `bad_request`,
- *  `unavailable`, `rate_limited`, `attestation_required`, …), its `reason`, the status. */
+ *  `rate_limited`, `attestation_required`, …), its `reason`, the status. `error` is the one
+ *  taxonomy's failures (SP-46): `network-error` (status 0) or `server-error` (a 5xx, the
+ *  server's own code as `wireCode`). A 429 carries `retryAfterSeconds` when the server sent one. */
 export interface CommerceRefusal {
   kind: "refused" | "not-owned" | "attestation-required" | "error";
   code: string;
   reason?: string;
   status: number;
   message: string;
+  retryAfterSeconds?: number;
+  wireCode?: string;
 }
 
 /** `commerce.claim()`: `ok` (the flag is granted and the client has synced), `not-owned`,
@@ -175,7 +180,7 @@ export class CommerceClient {
     body?: unknown,
   ): Promise<{ body: unknown } | CommerceRefusal> {
     this.ctx.requireService("distribution", Feature.commerceReceipt);
-    const f = this.ctx.fetcher();
+    this.ctx.fetcher(); // local-only refuses first, as before the token check
     const token = this.tokens.current;
     if (!token)
       return {
@@ -187,63 +192,62 @@ export class CommerceClient {
       };
     let res: Response;
     try {
-      res = await f(this.ctx.url(path), {
-        method,
-        headers: this.ctx.headers({
-          authorization: `Bearer ${token}`,
-          ...(body !== undefined ? { "content-type": "application/json" } : {}),
-        }),
-        ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-        signal: this.ctx.deadline(),
-      });
+      res = await this.ctx.request(
+        this.ctx.url(path),
+        {
+          method,
+          headers: this.ctx.headers({
+            authorization: `Bearer ${token}`,
+            ...(body !== undefined
+              ? { "content-type": "application/json" }
+              : {}),
+          }),
+          ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+        },
+        path,
+      );
     } catch (e) {
+      if (!(e instanceof PolarisError) || e.code !== ErrorCode.networkError)
+        throw e;
       return {
         kind: "error",
-        code: "network",
+        code: ErrorCode.networkError,
         status: 0,
-        message: (e as Error).message,
+        message: e.message,
       };
     }
-    const parsed: unknown = await res.json().catch(() => null);
-    if (res.ok) return { body: parsed };
-    const b = isRecord(parsed) ? parsed : {};
-    const nested = isRecord(b.error) ? b.error : undefined;
-    const code =
-      typeof b.error === "string"
-        ? b.error
-        : typeof nested?.code === "string"
-          ? nested.code
-          : res.status >= 500
-            ? "server"
-            : res.status === 404
-              ? ErrorCode.notFound
-              : ErrorCode.forbidden;
+    if (res.ok) {
+      const parsed: unknown = await res.json().catch(() => null);
+      return { body: parsed };
+    }
+    // The one taxonomy (SP-46): the server's code for a refusal, else the status's; a 5xx is
+    // `server-error` whatever it names.
+    const c = await classifyResponse(res);
+    const nested = isRecord(c.body.error) ? c.body.error : undefined;
     const reason =
-      typeof b.reason === "string"
-        ? b.reason
+      typeof c.body.reason === "string"
+        ? c.body.reason
         : typeof nested?.reason === "string"
           ? nested.reason
           : undefined;
-    const message =
-      typeof b.message === "string"
-        ? b.message
-        : typeof nested?.message === "string"
-          ? nested.message
-          : "";
     const kind: CommerceRefusal["kind"] =
-      code === "attestation_required"
-        ? "attestation-required"
-        : reason === "not_owned"
-          ? "not-owned"
-          : res.status >= 500 && code === "server"
-            ? "error"
+      c.code === ErrorCode.serverError
+        ? "error"
+        : c.code === ErrorCode.attestationRequired
+          ? "attestation-required"
+          : reason === "not_owned"
+            ? "not-owned"
             : "refused";
     return {
       kind,
-      code,
+      code: c.code,
       ...(reason !== undefined ? { reason } : {}),
       status: res.status,
-      message,
+      message: c.message ?? "",
+      ...(c.retryAfterSeconds !== undefined
+        ? { retryAfterSeconds: c.retryAfterSeconds }
+        : {}),
+      ...(c.wireCode !== undefined ? { wireCode: c.wireCode } : {}),
     };
   }
 }

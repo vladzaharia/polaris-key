@@ -187,11 +187,12 @@ describe("ReleaseClient — the truth store's public face (§R1)", () => {
     },
   );
 
-  it("maps any other non-OK status to a PolarisError rather than a raw Response", async () => {
+  it("maps a 5xx to server-error, never not_found (SP-46)", async () => {
     const mock = mockFetch({ "/release/changelog": () => json({}, 500) });
     const c = await client(mock);
     await expect(c.release.changelog()).rejects.toMatchObject({
-      code: "not_found",
+      code: "server-error",
+      status: 500,
     });
     c.close();
   });

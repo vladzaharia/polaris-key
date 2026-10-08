@@ -42,7 +42,15 @@
  * the callback to the browser that started it.
  */
 
-import { hashKey, type Db, type Env } from "../../../core/platform.js";
+import {
+  hashKey,
+  pkceChallenge,
+  PORTAL_SIGNIN_RETURN_TO,
+  randomToken,
+  safeReturnTo,
+  type Db,
+  type Env,
+} from "../../../core/platform.js";
 import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
 import { readCappedText } from "../../../core/readCapped.js";
 import {
@@ -56,7 +64,7 @@ import { importProfile } from "../card/profile.js";
 import { linkIdentity } from "../accounts/links.js";
 import { accountUsingEmail } from "../accounts/repo.js";
 import { providerVouchesForEmail } from "./vouch.js";
-import { htmlError, safeReturnTo, signInPage } from "../portal/auth.js";
+import { htmlError, signInPage } from "../portal/auth.js";
 import { portalSecurityHeaders } from "../portal/headers.js";
 import { portalAuthCapabilities } from "../portal/repo.js";
 import {
@@ -136,26 +144,6 @@ export async function signInFlowKey(
 export interface ProviderRouteOptions {
   now: number;
   fetch?: ProviderFetch;
-}
-
-function b64url(bytes: Uint8Array): string {
-  let s = "";
-  for (const b of bytes) s += String.fromCharCode(b);
-  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function randomToken(n = 32): string {
-  const a = new Uint8Array(n);
-  crypto.getRandomValues(a);
-  return b64url(a);
-}
-
-async function s256(verifier: string): Promise<string> {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(verifier),
-  );
-  return b64url(new Uint8Array(digest));
 }
 
 function bindCookie(value: string): string {
@@ -262,7 +250,7 @@ async function buildProviderFlow(
           redirectUri,
           state,
           nonce,
-          codeChallenge: await s256(verifier),
+          codeChallenge: await pkceChallenge(verifier),
         }),
         record: {
           provider: kind,
@@ -336,7 +324,7 @@ export async function handleProviderStart(
 
   const url = new URL(req.url);
   const rawReturnTo = url.searchParams.get("return_to");
-  const returnTo = safeReturnTo(req, rawReturnTo);
+  const returnTo = safeReturnTo(req, rawReturnTo, PORTAL_SIGNIN_RETURN_TO);
   if (rawReturnTo && !returnTo) return htmlError(400, "Invalid return URL.");
 
   const built = await buildProviderFlow(env, kind, url.origin, returnTo, opts);

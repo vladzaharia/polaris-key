@@ -14,10 +14,8 @@ import platform as _platform
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
-import httpx
-
 from ..constants_generated import Feature
-from ..core.context import CoreContext
+from ..core.context import CoreContext, refusal_error
 from ..core.errors import PolarisError
 from ..core.headers import canonical_platform
 
@@ -70,27 +68,20 @@ class DistributionClient:
     def download_model(self) -> DownloadModel:
         """The public download model. Raises ``service-unavailable`` (no Distribution),
         ``not_found`` (the product's app is not publicly delivered, so there is no page),
-        ``rate_limited``, ``network-error`` or ``bad_response``."""
+        ``rate_limited``, ``network-error``, ``server-error`` or ``bad_response``."""
         self._ctx.require_service("distribution", Feature.RELEASE_DOWNLOAD)
-        self._ctx.http()
-        try:
-            res = self._ctx.request(
-                "GET",
-                self._ctx.url(DOWNLOAD_MODEL_PATH),
-                headers=self._ctx.headers({"accept": "application/json"}),
-            )
-        except httpx.HTTPError as e:
-            raise PolarisError("network-error", str(e)) from e
+        # Raises local-only, network-error or server-error (CoreContext.request).
+        res = self._ctx.request(
+            "GET",
+            self._ctx.url(DOWNLOAD_MODEL_PATH),
+            headers=self._ctx.headers({"accept": "application/json"}),
+        )
+        if res.status_code != 200:
+            raise refusal_error(res, "download.json")
         try:
             body = res.json()
         except ValueError:
             body = None
-        if res.status_code != 200:
-            code = None
-            if isinstance(body, dict):
-                e = body.get("error")
-                code = e if isinstance(e, str) else (e.get("code") if isinstance(e, dict) else None)
-            raise PolarisError(code or "http-error", f"download.json answered {res.status_code}.")
         if not isinstance(body, dict) or not isinstance(body.get("platforms"), list):
             raise PolarisError("bad_response", "download.json is not a download model.")
         groups: List[DownloadPlatform] = []

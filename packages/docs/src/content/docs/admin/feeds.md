@@ -76,30 +76,33 @@ settings; nothing is overwritten. A feed with no settings yet gets them on its f
 | Section                 | What it sets                                                                                                                                                                                                                                                                                                                                         |
 | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | General                 | Whether the feed answers. Switching it off asks first: every client then gets not-found within 30 seconds.                                                                                                                                                                                                                                           |
-| Access                  | Who may install: Public, Token, Licensed or Entitled (see [Access](#access)). Leaving Public asks first. Entitled lists the feed's packages that have no delivery gate.                                                                                                                                                                              |
+| Access                  | Who may install: Public, Customers or Entitled (see [Access](#access)). Leaving Public asks first. Entitled lists the feed's packages that have no delivery gate.                                                                                                                                                                                    |
 | Namespace               | The names the feed may hold, one row per namespace field the ecosystem's ingest rules declare: an npm or Swift scope, PyPI names and prefixes, Maven group prefixes, a Godot publisher, Go module prefixes. OCI repositories and Cargo crates always sit under the owner. A feed cannot be enabled without a namespace.                              |
 | Limits                  | The largest package ingest accepts, at most the platform's ceiling for the ecosystem.                                                                                                                                                                                                                                                                |
 | Yank policy             | What a yank does to clients in this protocol. Maven only: **Hide yanked versions**, which leaves a yanked version out of `maven-metadata.xml`.                                                                                                                                                                                                       |
-| Upstream                | None, the only option: a feed never proxies or mirrors another registry, so a name it does not hold answers not-found.                                                                                                                                                                                                                               |
 | Simple API              | PyPI only: **HTML pages**, whether a client that cannot take PEP 691 JSON gets the inert PEP 503 HTML page (on) or 406 (off).                                                                                                                                                                                                                        |
 | Signing and identifiers | Swift only: **Require signed releases** (ingest refuses an unsigned release; always on for the platform's own packages) and **Repository URLs**, one `identity url` per line, which `GET /identifiers?url=` answers from.                                                                                                                            |
 | Retention               | OCI only: **Untagged manifests**, the days an image manifest no tag points at may be kept. It is stored only: nothing removes untagged manifests yet, so every one is kept whatever it holds. A published version is never removed, except by feed retention's prune of builds of main (see [Retention: builds of main](#retention-builds-of-main)). |
 | Asset listing           | Godot only: the asset library category, support level, license and oldest editor every addon of the feed is listed with.                                                                                                                                                                                                                             |
 | Platform policy         | Platform scope only: whether the ecosystem is served at all, and its size ceiling, for every product. Switching an ecosystem off is a danger confirmation.                                                                                                                                                                                           |
 
+A feed never proxies or mirrors another registry, so a name it does not hold answers not-found
+and a public package can never stand in for one of yours.
+
 ### Access
 
 The stricter of the feed's mode and each package's own delivery access applies.
 
-| Mode     | Who may install                                                                                                                                    |
-| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Public   | Anyone, with no credentials. No token is ever looked up.                                                                                           |
-| Token    | A client presenting a registry token of this product (owner-bound or licence-bound) or one of its CI tokens.                                       |
-| Licensed | The same strictness as Token: a licence-bound token must belong to an active licence. Owner-bound and CI tokens pass.                              |
-| Entitled | Owner-bound and CI tokens pass; a licence-bound token also needs the package's delivery gate flag. A package with no gate admits no licence token. |
+| Mode      | Who may install                                                                                                                                      |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Public    | Anyone, with no credentials. No token is ever looked up.                                                                                             |
+| Customers | A client presenting a registry token of this product: an owner-bound or CI token passes, and a licence-bound token must belong to an active licence. |
+| Entitled  | Owner-bound and CI tokens pass; a licence-bound token also needs the package's delivery gate flag. A package with no gate admits no licence token.   |
 
-Token and Licensed are one strictness, as for byte delivery, which is stricter than the portal
-download's meaning of "authenticated". A package stricter than its feed is left out of list
+Customers is stored as `authenticated` or `licensed` (the console's former Token and Licensed).
+They are one strictness, as for byte delivery, and stricter than the portal download's meaning of
+"authenticated". The console keeps whichever a feed already has; a feed newly opened to customers
+stores `licensed`. A package stricter than its feed is left out of list
 documents, so a licence holder finds it in Godot search or the PyPI project list only by its exact
 name.
 

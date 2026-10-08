@@ -1192,9 +1192,10 @@ async function cmdSdk(
 ): Promise<number> {
   const lang = flagString(parsed, "lang");
   if (lang === undefined) {
-    // The original snippet mode: a Node example with whatever pins were given.
+    // The original snippet mode: a Node example with whatever pins were given, against the
+    // production origin unless `--base-url` names another (the default every other command uses).
     const product = flagString(parsed, "product") ?? parsed.positional[0];
-    const baseUrl = flagString(parsed, "base-url") ?? "https://key.example.com";
+    const baseUrl = flagString(parsed, "base-url") ?? DEFAULT_BASE_URL;
     if (!product) throw new Error(SDK_CONFIG_USAGE);
     stdout.write(
       `${sdkSnippet({

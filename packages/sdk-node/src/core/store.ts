@@ -29,6 +29,7 @@ import {
   type StoreStatus,
 } from "@polaris-key/client-core";
 import { deriveDeviceId } from "../devices/deviceId.js";
+import { printAs, REDACTED } from "./redact.js";
 
 export { CACHE_VERSION };
 export type { CacheRecordV3, Store, StoreStatus };
@@ -41,6 +42,11 @@ export class InMemoryStore implements Store {
 
   constructor(productSlug = "test") {
     this.deviceId = deriveDeviceId(productSlug);
+    // Prints whether a token is held, never the token (SP-46).
+    printAs(this, () => ({
+      deviceId: this.deviceId,
+      token: this.token === null ? null : REDACTED,
+    }));
   }
   async getToken() {
     return this.token;

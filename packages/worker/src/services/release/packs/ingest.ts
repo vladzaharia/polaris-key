@@ -76,7 +76,13 @@ import type {
   PayloadDelta,
 } from "@polaris-key/protocol/packs";
 import { decode as zstdDecode } from "@polaris-key/zstd-wasm";
-import type { Db, DbParam, DbStatement } from "../../../core/platform.js";
+import {
+  b64urlDecodeUtf8,
+  parseJsonObject,
+  type Db,
+  type DbParam,
+  type DbStatement,
+} from "../../../core/platform.js";
 import { blobKey } from "../../../core/blobs.js";
 import type { RecordRefusalReason } from "../records.js";
 
@@ -1032,13 +1038,7 @@ export function storedRecordPayload(
   const middle = jws.split(".")[1];
   if (!middle) return null;
   try {
-    const b64 = middle.replace(/-/g, "+").replace(/_/g, "/");
-    const bin = atob(b64 + "=".repeat((4 - (b64.length % 4)) % 4));
-    const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
-    const v: unknown = JSON.parse(new TextDecoder().decode(bytes));
-    return v && typeof v === "object" && !Array.isArray(v)
-      ? (v as Record<string, unknown>)
-      : null;
+    return parseJsonObject(b64urlDecodeUtf8(middle));
   } catch {
     return null;
   }

@@ -35,6 +35,9 @@ pnpm gen:corpus -- --check       # conformance drift gate (must regenerate in pl
 pnpm gen:transcripts -- --check  # HTTP-transcript drift gate (re-records through the Worker router)
 pnpm gen:services -- --check     # service-table drift gate (tools/services.json → every language)
 pnpm gen:constants -- --check    # SDK-constants drift gate (error codes, headers, enums, feature ids)
+pnpm gen:platform-inventory -- --check  # platform-inventory drift gate (Env ↔ inventory ↔ wrangler.toml)
+pnpm gen:settings -- --check     # settings drift gate (registry → settings reference page + console search index)
+pnpm gen:brand -- --check        # brand-token drift gate (packages/brand → CSS, Tailwind, TS, JSON, GDScript, Swift, Kotlin)
 pnpm --filter @polaris-key/cli bundle:action -- --check  # Action-bundle drift gate (after pnpm build)
 pnpm parity:check                # every SDK's parity.json agrees with the feature registry
 pnpm typecheck
@@ -52,6 +55,11 @@ pnpm --filter @polaris-key/worker test:workerd
 # `pnpm test` leaves it out because it needs a Playwright browser; install Chromium once with
 # `pnpm --filter @polaris-key/conformance-browser exec playwright install chromium`.
 pnpm test:browser                # add `-- --browser=firefox` or `-- --browser=webkit`
+
+# The React drop-in kit at every size in Chromium (CI job react-kit): no sideways scroll, the main
+# action in the first viewport, 24 px targets, text that scales with the root font. Set
+# PKEY_KIT_SHOTS=<dir> to also write each render to <dir>/react.<screen>/<size>-<scheme>.png.
+pnpm --filter @polaris-key/react test:browser
 
 ( cd sdks/python && .venv/bin/python -m pytest -q )   # Python (CPython 3.9 + 3.14 on ubuntu, macOS in CI)
 ( cd sdks/swift && swift build && swift test )        # Swift
@@ -98,7 +106,7 @@ section, gated to platform admins (sign in at `/manage`; see the [README](README
   catalog → corpus → SDKs, the six-language walkthrough for a wire-visible field, and the full
   drift-gate inventory.
 - [The conformance corpus](https://key.plrs.im/docs/contribute/corpus/) — the generator, the
-  language runners, the generator-owned mirrors (Swift, Godot), and how to add a case.
+  language runners, the generator-owned Godot mirror (Swift reads the corpus in place), and how to add a case.
 - [Releasing](https://key.plrs.im/docs/contribute/releasing/) — every SDK published to its feed
   automatically, in lockstep with the server (each push to `main`, each `v*` tag), and how the
   worker deploys.

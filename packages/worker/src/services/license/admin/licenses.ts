@@ -17,14 +17,16 @@
  * list filters on it (`?batch=`). Batches themselves are `batches.ts`.
  */
 
-import type { Db } from "../../../core/platform.js";
-import { ErrorCode } from "../../../core/errors.js";
 import {
   deleteTokenRecord,
   hashKey,
   mintLicenseKey,
+  parseJsonColumn,
+  parseJsonStringList,
   randomId,
+  type Db,
 } from "../../../core/platform.js";
+import { ErrorCode } from "../../../core/errors.js";
 import {
   countActiveDevices,
   seatActiveSince,
@@ -52,8 +54,6 @@ import {
   listProfiles,
   listTiers,
   loadCatalog,
-  parseJsonColumn,
-  parseJsonList,
   parsePayload,
   patchLicense,
   readBody,
@@ -445,7 +445,7 @@ export async function handleLicenses(
         ...(await summarize(ctx, license)),
         deletion: (await deletionVerdicts(ctx, [license])).get(id),
         // R11-06: guarded reads — a corrupt column degrades to empty/undefined, never a 500.
-        groups: parseJsonList(license.groups_json),
+        groups: parseJsonStringList(license.groups_json),
         profiles: profiles.map((p) => p.profile_id),
         maxOfflineDays: license.max_offline_days,
         // LX-14a: the seat-holding devices with the dormancy cutoff `authorizeDevice` and the

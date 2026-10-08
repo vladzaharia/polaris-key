@@ -28,6 +28,19 @@ bit more help."
 > on Overview with "Tonebox is ready" and the launch path. It supersedes §0.4 S1's one-screen shape
 > (its substance stands) and adds Wave 6 (UX-72 to UX-81) to §13.3.
 
+> **Vocabulary follows the concepts page (2026-10-07).** Every UI word in both apps comes from
+> [UI words and the identifiers they keep](../../packages/docs/src/content/docs/start/concepts.md#ui-words-and-the-identifiers-they-keep)
+> (AGENTS.md rule 4, ST-37): one word per concept, each mapped to an identifier that keeps its
+> name. Where this document uses an older word, the concepts page wins: outlet, and storefront for
+> a place builds are delivered, become **Channel**; storefront feed becomes **Install source**;
+> update channel and the Channels page become **Release track**; grant becomes **Add-on**; flag
+> becomes **Entitlement**; policy and terms become **Limits** and **Duration**; default, enforced
+> and hidden become **Editable**, **Read-only** and **Hidden**; auto-issue becomes **Access
+> policy**; **Features** group services. §2's copy rules gain one: "outlet", "storefront feed",
+> "grant" and "capability" leave every console string (the portal's **Automatic grant** label is
+> the one kept use), checked by `packages/admin/test/copyLint.test.ts`. SETUP.md's D1 is amended
+> to match.
+
 **What this document is.** The single experience spec for both apps: the console
 (`packages/admin/src/console`) and the customer portal (`packages/admin/src/portal`), plus the pages
 the Worker renders (`packages/worker/src/core/brandHtml.ts`) and the emails. It leads with

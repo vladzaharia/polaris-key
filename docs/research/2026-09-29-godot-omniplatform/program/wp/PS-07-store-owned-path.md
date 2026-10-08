@@ -1,16 +1,27 @@
 # PS-07 `store_owned` obtain path: Steam ownership through the account's linked Steam sign-in, cached and budgeted, Add through the LX-11 holder binding
 
-| Field       | Value                                                                                                    |
-| ----------- | -------------------------------------------------------------------------------------------------------- |
-| Phase       | PS: Polaris Key storefront: the Library as a distribution channel (S-21) (phase 4: more paths)           |
-| Size        | 0.6–1 engineer-weeks                                                                                     |
-| Depends on  | [PS-03](PS-03-obtain-path-engine.md), [LX-11](LX-11-commerce-rework.md), [I-06](I-06-login-providers.md) |
-| Unblocks    | none                                                                                                     |
-| Role        | `pkey-implementer`                                                                                       |
-| Plan mode   | no                                                                                                       |
-| Gates       | THREAT-MODEL (S11 Steam ownership oracle); workerd                                                       |
-| Human input | none                                                                                                     |
-| Repo        | `vladzaharia/polaris-key`                                                                                |
+| Field       | Value                                                                                          |
+| ----------- | ---------------------------------------------------------------------------------------------- |
+| Phase       | PS: Polaris Key storefront: the Library as a distribution channel (S-21) (phase 4: more paths) |
+| Size        | 0.6–1 engineer-weeks                                                                           |
+| Depends on  | none                                                                                           |
+| Unblocks    | none                                                                                           |
+| Role        | `pkey-implementer`                                                                             |
+| Plan mode   | no                                                                                             |
+| Gates       | THREAT-MODEL (S11 Steam ownership oracle); workerd                                             |
+| Human input | none                                                                                           |
+| Repo        | `vladzaharia/polaris-key`                                                                      |
+
+## Consolidation 2026-10-07
+
+> **Closed 2026-10-07 (DX consolidation): merged into [CM-24](CM-24-one-steam-ownership-engine-absorbs-ps-07.md).** The id stays in the graph as `dropped` so it
+> is not reused; do not build this package. Its scope moves to [CM-24](CM-24-one-steam-ownership-engine-absorbs-ps-07.md).
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **merge** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> store_owned becomes one trigger of the one Steam ownership engine.
+
+- Dependencies cleared on closing (they were PS-03, LX-11 and I-06), so nothing in the graph waits on or through a closed package.
 
 ## Goal
 

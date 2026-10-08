@@ -5,12 +5,18 @@
 | Phase       | HA: Hosted assets: Polaris Key hosts every file it serves (S-20) (phase 3: serve) |
 | Size        | 0.2–0.4 engineer-weeks                                                            |
 | Depends on  | [HA-08](HA-08-release-mirroring.md), [PX-W3](PX-W3-licensed-r2-downloads.md)      |
-| Unblocks    | none                                                                              |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [PX-09](PX-09-get-it-complete.md)         |
 | Role        | `pkey-implementer`                                                                |
 | Plan mode   | no                                                                                |
 | Gates       | portal e2e; THREAT-MODEL                                                          |
 | Human input | none                                                                              |
 | Repo        | `vladzaharia/polaris-key`                                                         |
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **keep** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track H, Distribution channels, storefronts and commerce](../../../2026-10-07-dx-consolidation/tracks.md#h-distribution-channels-storefronts-and-commerce)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Small; ship before PX-09 (fixes private-repo 404s). P0-23 later moves its mint behind the delivery.downloadToken hook.
 
 ## Goal
 

@@ -86,17 +86,6 @@ export function formatDateTime(ms: number, opts: FormatOptions = {}): string {
   }).format(ms);
 }
 
-/** The short zone name at an instant ("CEST", "GMT+2"). */
-export function zoneName(ms: number, opts: FormatOptions = {}): string {
-  const part = new Intl.DateTimeFormat(opts.locale, {
-    timeZoneName: "short",
-    timeZone: opts.timeZone,
-  })
-    .formatToParts(ms)
-    .find((p) => p.type === "timeZoneName");
-  return part?.value ?? "";
-}
-
 /** Tables: relative under 7 days ("3 hr. ago"), else the date ("3 Sep 2026"). */
 export function formatTableTime(
   ms: number,

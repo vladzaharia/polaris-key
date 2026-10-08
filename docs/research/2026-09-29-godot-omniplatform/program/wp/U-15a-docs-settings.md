@@ -1,16 +1,31 @@
-# U-15a Cloud Sync docs, settings half: concepts, the five-minute quickstart, client-writable banner, "no Cloud Sync without sign-in", the operators' migration notice, clock limits
+# U-15a Cloud Sync developer guide (absorbs U-15b)
 
 | Field       | Value                                                                                    |
 | ----------- | ---------------------------------------------------------------------------------------- |
 | Phase       | U: Cloud Sync (S-17) (U1 MVP)                                                            |
 | Size        | 0.4–0.55 engineer-weeks                                                                  |
 | Depends on  | [U-06](U-06-sdk-settings-node-python.md), [U-21](U-21-sdk-settings-godot.md)             |
-| Unblocks    | [U-15b](U-15b-docs-saves.md), [U-15c](U-15c-docs-records.md)                             |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                   |
 | Role        | `pkey-implementer`                                                                       |
 | Plan mode   | no: follows the approved [`plans/U-01.md`](../plans/U-01.md) where it names this package |
 | Gates       | `check:links`; generated docs pages (`gen-docs` drift)                                   |
 | Human input | none                                                                                     |
 | Repo        | `vladzaharia/polaris-key`                                                                |
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track G, Managed config and Cloud Sync](../../../2026-10-07-dx-consolidation/tracks.md#g-managed-config-and-cloud-sync)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Becomes the one Cloud Sync developer guide (absorbs U-15b): concepts, quick start, synced settings, saves with Steam Cloud coexistence, Godot save security, per-SDK tabs from SP-33b.
+
+- Title: was "Cloud Sync docs, settings half: concepts, the five-minute quickstart, client-writable banner, "no Cloud Sync without sign-in", the operators' migration notice, clock limits".
+- Absorbs U-15b: One Cloud Sync docs package.
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/U-01b.md`](../plans/U-01b.md) §11: one quota number per tier, shown read-only with a link to Tiers, plus the ceiling and the pause state. Labels are read server-side.
 
 ## Goal
 

@@ -13,7 +13,7 @@ import { EmptyState } from "../../../ui/EmptyState.js";
 import { Hash } from "../../../ui/Hash.js";
 import { SignedBadge } from "../../../ui/SignedBadge.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { Link } from "../../router.js";
 import { productPage } from "../../routes.js";
 import { CollectionTemplate } from "../../templates/Collection.js";

@@ -158,7 +158,9 @@ one PowerShell `Get-CimInstance` call, run with no console window and a null std
 
 ## Sub-packages
 
-Every one is importable on its own, so a config-only daemon never pulls the licence module:
+Every one is importable on its own, so a config-only daemon never pulls the licence module.
+`import polaris_key` itself loads no service, httpx or cryptography until a name is used, so a
+host CLI that mounts the verbs pays for the client only when a verb runs.
 
 | Import                 | Owns                                                                                                                 |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------- |
@@ -179,8 +181,8 @@ order, or `["stable"]` when the licence carries none — the Worker's own answer
 `client.config.fetch_schema()` returns the product's catalog as a `dict`, or `None` on any
 failure (it is unsigned and diagnostic, so it never raises). `client.release` raises
 `service-unavailable` when the product does not run Release, forwards the device token when one
-is held, and raises a 401/403 with the refusal body's own code (`unauthorized`,
-`channel_not_allowed`, …); a changelog entry's `summary` is `None` when the release has none.
+is held, and raises a refusal with its own code (`unauthorized`, `channel_not_allowed`, …; see
+[Errors](#errors)); a changelog entry's `summary` is `None` when the release has none.
 
 ### Capabilities (fail-closed)
 
@@ -191,6 +193,11 @@ and Identity are OFF in that default, so their sub-clients raise
 `PolarisError("service-unavailable")` until something says otherwise — a service that is
 not advertised must not be reachable. License and Config are ON, because an offline-first
 client must not lose its gate to an unreachable control plane.
+
+A slug outside `SERVICE_SLUGS` raises `PolarisError("invalid-options")` from the constructor,
+`create()` and `AsyncClient.create()`, and the CLI's `--service` refuses it. A misspelt
+`"licence"` used to turn License off, and a product without License is usable, so an unactivated
+device read as licensed.
 
 ### supports() and capabilities
 
@@ -271,9 +278,12 @@ healthy, so an update that fails to start rolls back (`update.confirm_boot()` by
 `ok`, `device-limit` (only for the Worker's `device_limit` refusal, with the roster),
 `unauthorized`, `fingerprint-required`, `enroll-disabled`, `hardware-mismatch`,
 `enroll-claimed`, `license-disabled`, `license-expired`, `attestation-required`,
-`rate-limited`, `refused` (any other 4xx, keeping the server's `code`) or `error`. An unknown
-403 is `refused`, never `device-limit`. Device calls (`rename`, `deauthorize`) raise with the
-server's own code too. `polaris_key.copy.message(code)` and `title(code)` give the wording for
+`rate-limited`, `refused` (any other 4xx, keeping the server's `code`) or `error`
+(`network-error` with no answer, `server-error` on a 5xx). An unknown 403 is `refused`, never
+`device-limit`. An empty or blank key is `unauthorized` without a request. Device calls
+(`rename`, `deauthorize`) raise with the server's own code too. `ActivationOk.token` and
+`RegisterOk.token` stay out of `repr`, so printing or logging a result does not leak the device
+token. `polaris_key.copy.message(code)` and `title(code)` give the wording for
 any registry code, gate status or activation result from the generated catalog
 (`copy_generated.py`, from `conformance/parity/copy.en.json`); `activation_message(kind)` and
 `describe_error(result_or_error)` read a typed activation result from the activation table only.
@@ -299,7 +309,10 @@ client.config.clear("ui.theme")
 ```
 
 `client.events` is the bus. Kinds: `license`, `entitlement` (per name), `config` (per key, from
-a sync or a local change), `updateAvailable`, `packs` and `store`. Local overrides persist in
+a sync or a local change), `updateAvailable`, `packs` and `store`. `license.deactivate()`,
+`deactivate()` and `identity.sign_out()` each emit one `license` event. A listener (or
+`on_change`, `on_stage`, `on_progress`) that raises is logged with its traceback on the
+`polaris_key` logger, and the other listeners still run. Local overrides persist in
 the state directory. `config.set` refuses a key the signed document enforces or hides
 (`managed_by_admin`) and a value that fails the key's catalog schema (`bad_request`).
 
@@ -354,7 +367,26 @@ async for progress in client.update.packs.progress(until_done=True):
 
 `AsyncClient` shares the sync client's core, cache and gate: each sub-client method is a
 coroutine, `wait_for_sign_in` and `sign_in_with_browser` are native `asyncio` loops that cancel
-immediately, and `events.stream()` is an async iterator.
+immediately, and `events.stream()` is an async iterator. A forgotten `await` raises:
+`if client.is_licensed():` is a `TypeError`, never a truthy coroutine that passes the gate.
+
+### Errors
+
+Every error the SDK raises is a `PolarisError` with a registry `code`, a `message` (the server's
+own when it sent one) and, for an answer, its HTTP `status`. `InsecureBaseUrlError`,
+`DeviceManagementUnsupportedError`, `DeviceRefusedError`, `UnsupportedError`, `UpdateError` and
+`PackError` are subclasses, so `except PolarisError` catches all of them. No httpx exception
+reaches the caller:
+
+| Failure                      | `code`                                                                                                                                                                            |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| no answer (refused, timeout) | `network-error`; the httpx exception is the `__cause__`                                                                                                                           |
+| a 5xx                        | `server-error`, with `status`                                                                                                                                                     |
+| any other refusal            | the server's code; when it names none, `not_found` (a real 404), `unauthorized`, `forbidden` or `rate_limited` by status, else `http-error` (the roster calls: `device_*_failed`) |
+
+A call that returns a typed result carries the code on it instead: `ActivationError`,
+`RegisterError`, `DiscoveryError` and `SyncResult.documents[<slug>].code`. Deactivation, the
+device report and `fetch_schema()` are best-effort and never raise.
 
 ### Where it runs
 
@@ -421,7 +453,8 @@ returns `expired` once `prompt.expiresAt` has passed without asking the server a
 `cancel` event (a `threading.Event`) is set. `poll_sign_in(prompt)` makes exactly one poll
 (`pending`, `slow-down` with an `interval`, `ready`, `expired` or `error`).
 
-`prompt.deviceCode` is the poll credential: never show it. A sign-in yields the signed-in
+A refused start or poll carries the server's message (`PolarisError.message`,
+`SignInPoll.message`). `prompt.deviceCode` is the poll credential: never show it. A sign-in yields the signed-in
 identity's **own** licence; it does not attach a licence this device already held.
 
 **After `ready`, show on the device which account signed in.** Anyone holding the user code can
@@ -437,8 +470,9 @@ licence profile (`name`, `email`) — show, for example, "Signed in as Ada Lovel
 (`polaris_key.qr.terminal(prompt.verificationUriComplete)`) for a browser on another device.
 `begin_sign_in(..., confirm_identity=True)` with `on_confirm` is the attach opt-in: the poll
 stops at `confirm` (with `identity` and `attachable`) until the player accepts, and
-`accept_sign_in(prompt, attach_license=True)` attaches this device's free licence. The deprecated
-`/identity/auth/poll` route is never used.
+`accept_sign_in(prompt, attach_license=True)` attaches this device's free licence. It polls
+`/identity/auth/device/poll` like any device-code sign-in; the old `/identity/auth/poll` route is
+retired and the Worker no longer serves it.
 
 The prompt's `repr` leaves out `deviceCode`, and a `MintedToken`'s leaves out `token`, so
 logging either object does not leak the credential.
@@ -452,8 +486,8 @@ never in the cache file or the keyring — and reused until 30 seconds before `e
 while the client still holds the device token it was minted with — `deactivate()`, a cleared
 token or a different sign-in drops it. A 401 gets the usual single re-acquire, on the same route a document 401 takes (so a registered device without a licence re-registers), and one retry. Failures raise `PolarisError`:
 `service-unavailable` (Config off) and `bad_request` (an id outside `[a-z0-9-]`) before any
-request, `unauthorized` (no token, or still 401), or the Worker's `not_found` /
-`rate_limited` / `misconfigured`.
+request, `unauthorized` (no token, or still 401), `network-error`, `server-error`, or the
+Worker's `not_found` / `rate_limited` / `misconfigured`.
 
 ## Layered config
 
@@ -678,7 +712,8 @@ What it does, in the contract's order (`docs/security/WIRE-CONTRACT-V4.md` §3.4
   decision** (below): pack updates, pack floors and revocations.
 
 It raises `UpdateError` (a `PolarisError` with a `detail`) only when it has nothing to decide
-from (`feed-rejected` with the step as `detail`, `network-error`, the Worker's wire code), and
+from (`feed-rejected` with the step as `detail`, `network-error`, the Worker's wire code, else
+`server-error` for a 5xx), and
 for `not-configured` (no `pinned_release_keys`), `service-unavailable` and `local-only`. Bad
 options (an unknown outlet or method, a release key that is also a trust pin) raise
 `invalid-options` from the constructor. `client.update.feed()` returns the verified feed alone;

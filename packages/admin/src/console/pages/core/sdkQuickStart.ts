@@ -185,6 +185,13 @@ export function sdkInit(sdk: SdkId, o: SdkInitInput): SdkInit {
           `      productSlug=${q(o.slug)}`,
           ...(base ? [`      baseUrl=${q(base)}`] : []),
           "      version={APP_VERSION}",
+          // Bearer mode (a page on its own origin, or Tauri) verifies every document in the
+          // page, and reports `invalid-options` without pins (P0-47).
+          "      trust={{",
+          "        pinnedKeys: {",
+          ...pins.map((p) => `          ${q(p.kid)}: ${q(p.publicKey)},`),
+          "        },",
+          "      }}",
           `      expectServices={[${o.services.map(q).join(", ")}]}`,
           "    >",
           "      {children}",

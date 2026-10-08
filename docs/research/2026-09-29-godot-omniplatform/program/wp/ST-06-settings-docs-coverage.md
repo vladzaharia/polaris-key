@@ -2,7 +2,7 @@
 
 | Field       | Value                                                                                                   |
 | ----------- | ------------------------------------------------------------------------------------------------------- |
-| Phase       | ST: Settings architecture (S-18) (phase 1: foundation)                                                  |
+| Phase       | ST: Settings, access control and console shell (phase 1: foundation)                                    |
 | Size        | 0.5–0.7 engineer-weeks                                                                                  |
 | Depends on  | [ST-03](ST-03-settings-registry.md), [ST-02](ST-02-platform-inventory.md)                               |
 | Unblocks    | [ST-10](ST-10-settings-search.md)                                                                       |

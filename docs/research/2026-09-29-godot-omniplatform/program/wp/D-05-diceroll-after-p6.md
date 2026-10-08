@@ -4,8 +4,8 @@
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | D: Diceroll adoption (vladzaharia/diceroll); stage "After P5–P6"                                                                                                                                                                                                                        |
 | Size        | 1–2 engineer-weeks                                                                                                                                                                                                                                                                      |
-| Depends on  | [P5-08](P5-08-platform-pack-transports.md), [P6-01](P6-01-commerce-bridge.md)                                                                                                                                                                                                           |
-| Unblocks    | none                                                                                                                                                                                                                                                                                    |
+| Depends on  | [P5-08](P5-08-platform-pack-transports.md), [P6-01](P6-01-commerce-bridge.md), [P4-33](P4-33-pack-transports-auto.md), [LX-35](LX-35-add-on-definitions-grantaddon.md)                                                                                                                  |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                                                                                                                                                                  |
 | Role        | `pkey-godot-engineer`                                                                                                                                                                                                                                                                   |
 | Plan mode   | no                                                                                                                                                                                                                                                                                      |
 | Gates       | `pkey validate` clean; Diceroll's CI; a TestFlight build and a Play internal-track build exercised on devices                                                                                                                                                                           |
@@ -15,6 +15,14 @@
 > **Re-verify first.** Diceroll paths below come from [notes/A4](../../notes/A4-diceroll-mapping.md)
 > (Diceroll `4e78bb6`, 2026-09-29) plus what D-01 to D-04 changed. This brief was written without
 > access to the Diceroll repository; confirm each path before changing or deleting it.
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track I, Packages, updates and packs](../../../2026-10-07-dx-consolidation/tracks.md#i-packages-updates-and-packs)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Background Assets through transports auto plus the Action (P4-33), not hand-written pkey transport steps; paid packs are add-ons (LX-35).
+
+- Depends on: added P4-33 and LX-35.
 
 ## Goal
 

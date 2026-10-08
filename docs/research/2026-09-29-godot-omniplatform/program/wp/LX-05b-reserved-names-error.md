@@ -5,12 +5,18 @@
 | Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase A: independent fixes)                                          |
 | Size        | 0.1–0.15 engineer-weeks                                                                                                          |
 | Depends on  | [LX-05](LX-05-reserved-names-warn.md)                                                                                            |
-| Unblocks    | none                                                                                                                             |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [LX-40](LX-40-retire-licensing-model-settings-7-1.md)                                    |
 | Role        | `pkey-implementer`                                                                                                               |
 | Plan mode   | no                                                                                                                               |
 | Gates       | rule 9 (validator rule, mutation table, JSON schema)                                                                             |
 | Human input | the lead confirms the warn window has elapsed: two minor releases or 60 days after LX-05 ships, whichever is later (decision 15) |
 | Repo        | `vladzaharia/polaris-key`                                                                                                        |
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **keep** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track E, Licensing model](../../../2026-10-07-dx-consolidation/tracks.md#e-licensing-model)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Scheduled flip to error. LX-40 then removes the licensing.reservedNames setting (a switch with one value is noise).
 
 ## Goal
 

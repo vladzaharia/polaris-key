@@ -1,11 +1,11 @@
-# I-20 Plan layer 2: app-specific profiles, apps signing users in beyond licence attach, product-IdP kinds and their scoping, the per-product issuer (in-house `jose` against Ory Hydra), clients and consent
+# I-20 Plan layer 2 on I-08's endpoints (re-scoped)
 
 | Field       | Value                                                                                                                                                              |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-2)                                                                                       |
-| Size        | 0.6–0.85 engineer-weeks                                                                                                                                            |
+| Size        | 0.4–0.6 engineer-weeks                                                                                                                                             |
 | Depends on  | [I-10a](I-10a-sdk-identity-node-react-python.md), [I-10b](I-10b-sdk-identity-swift-kotlin-godot.md), [I-11](I-11-portal-library.md), [I-12](I-12-console-users.md) |
-| Unblocks    | [I-21](I-21-product-issuer.md), [I-22](I-22-bring-your-own-auth.md), [I-23](I-23-app-profiles.md)                                                                  |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [I-21](I-21-product-issuer.md), [I-23](I-23-app-profiles.md)                                                               |
 | Role        | `pkey-wire-planner` (planning only)                                                                                                                                |
 | Plan mode   | yes: planning only; writes `plans/I-20.md`, which needs human approval (merging the plan PR)                                                                       |
 | Gates       | plan mode; human approval                                                                                                                                          |
@@ -17,6 +17,21 @@
 The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
 
 - **[`plans/LX-01.md`](../plans/LX-01.md):** the issuer's `pkey:entitlements` claim is `resolveSubjectEntitlements(p, sub)`, filtered to `userGrant` keys. No corpus change.
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track F, Identity](../../../2026-10-07-dx-consolidation/tracks.md#f-identity)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Re-scoped layer-2 plan, after the consolidation: the issuer extends I-08's endpoints (no oauth/\* tree), product connections (I-32) replace product-IdP kinds, app-specific profiles dropped, clients extend PX-W13's record.
+
+- Title: was "Plan layer 2: app-specific profiles, apps signing users in beyond licence attach, product-IdP kinds and their scoping, the per-product issuer (in-house `jose` against Ory Hydra), clients and consent".
+- Estimate: 0.4–0.6 engineer-weeks (was 0.6–0.85).
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/I-27.md`](../plans/I-27.md) §12: the same endpoints; `openid`; clients extend `ClientRecord`; the §12.8 sentence.
 
 ## Goal
 

@@ -1,16 +1,16 @@
-# PX-12 Login card v2: identifier-first with `UsualMethodHint` (G30), code entry, passkeys with conditional UI, Apple/Google/Steam per product, license-key path, `AccountUpgrade` skippable and forced
+# PX-12 Login card v2 on the AuthCard
 
-| Field       | Value                                                                                                                                                                                                  |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase B: new API, S-16, S-17)                                                                                                                             |
-| Size        | 0.4–0.8 engineer-weeks                                                                                                                                                                                 |
-| Depends on  | [PX-05](PX-05-login-card-today.md), [PX-W4](PX-W4-email-code.md), [PX-W9](PX-W9-key-entry-counting.md), [I-16](I-16-passkeys.md), [I-06](I-06-login-providers.md)                                      |
-| Unblocks    | [PX-14](PX-14-passthrough-header.md), [PX-15](PX-15-after-sign-in.md), [PX-21](PX-21-email-gate-ui.md)                                                                                                 |
-| Role        | `pkey-implementer`                                                                                                                                                                                     |
-| Plan mode   | no                                                                                                                                                                                                     |
-| Gates       | the PORTAL.md §11 green gate; CSP browser test (zero violations); admin build; `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations; `vitest-axe` on new page components; THREAT-MODEL |
-| Human input | none                                                                                                                                                                                                   |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                              |
+| Field       | Value                                                                                                                                                                                                                                                    |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase B: new API, S-16, S-17)                                                                                                                                                                               |
+| Size        | 0.4–0.8 engineer-weeks                                                                                                                                                                                                                                   |
+| Depends on  | [PX-05](PX-05-login-card-today.md), [PX-W4](PX-W4-email-code.md), [PX-W9](PX-W9-key-entry-counting.md), [I-16](I-16-passkeys.md), [I-06](I-06-login-providers.md), [P0-38](P0-38-authcard-in-ui-auth-ux-40.md), [P0-36](P0-36-portal-on-copy-catalog.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [PX-14](PX-14-passthrough-header.md), [PX-15](PX-15-after-sign-in.md), [PX-21](PX-21-email-gate-ui.md)                                                                                                           |
+| Role        | `pkey-implementer`                                                                                                                                                                                                                                       |
+| Plan mode   | no                                                                                                                                                                                                                                                       |
+| Gates       | the PORTAL.md §11 green gate; CSP browser test (zero violations); admin build; `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations; `vitest-axe` on new page components; THREAT-MODEL                                                   |
+| Human input | none                                                                                                                                                                                                                                                     |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                |
 
 ## Amendments from approved plans (2026-10-05)
 
@@ -72,6 +72,15 @@ Checked against `main` at `148439c4f`. Each item names the package whose review 
   with `identity.keyEntryRefusals` on (Q4). Otherwise render the skippable body with the meter, even at 0 left.
 - **The meter.** It reads `keyEntries {used, limit}` and shows `max(0, limit − used)` left. `used` may exceed
   `limit`. With Identity off, `keyEntries` is `null`: show no meter.
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track F, Identity](../../../2026-10-07-dx-consolidation/tracks.md#f-identity)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Built as AuthCard steps (P0-38) reading signin.\* from the catalog (P0-36). The identifier step routes to connections ({next: 'sso'}) and shows the enforce state once I-30 lands; new accounts end in FinishStep (PX-21).
+
+- Title: was "Login card v2: identifier-first with `UsualMethodHint` (G30), code entry, passkeys with conditional UI, Apple/Google/Steam per product, license-key path, `AccountUpgrade` skippable and forced".
+- Depends on: added P0-38 and P0-36.
 
 ## Goal
 

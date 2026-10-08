@@ -238,8 +238,8 @@ def test_status_licensed_with_profile():
     )
     r = core.status(c)
     assert r.code == 0
-    assert C("account.title") in r.lines
-    assert any("Grace Hopper" in ln for ln in r.lines)
+    # The status table: the license row carries the account's email (the name is in --json).
+    assert any(ln.startswith("License") and "grace@example.com" in ln for ln in r.lines)
     assert r.data["status"] == "ok" and r.data["usable"] is True and r.data["graceUntil"] == 123
     assert r.data["profile"] == {"name": "Grace Hopper", "email": "grace@example.com"}
 
@@ -567,7 +567,7 @@ def test_polaris_typer_app_builds_and_invokes():
     runner = CliRunner()
     result = runner.invoke(app, ["polaris", "status", "--product", "djdl"])
     assert result.exit_code == 0, result.output
-    assert C("account.title") in result.output and "Ada Lovelace" in result.output
+    assert "License" in result.output and "ada@example.com" in result.output
 
 
 def test_polaris_typer_app_config():

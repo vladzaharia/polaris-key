@@ -40,15 +40,6 @@ export const SIGN_IN_LABELS: Record<string, string> = {
   magic: "Email link",
 };
 
-/** Who owns a value (`SettingsSource`, `servicesSource`). */
-export const SOURCE_LABELS: Record<string, string> = {
-  manifest: "From manifest",
-  admin: "Set in console",
-  default: "Code default",
-  deploy: "Deploy var",
-  runtime: "Set in console",
-};
-
 /** Where a product comes from. */
 export const PROVIDER_LABELS: Record<string, string> = {
   github: "GitHub",
@@ -68,29 +59,6 @@ export const MANAGEMENT_LABELS: Record<string, string> = {
   default: "Default",
   enforced: "Enforced",
   hidden: "Hidden",
-};
-
-/** Fingerprint policy modes. */
-export const FINGERPRINT_MODE_LABELS: Record<string, string> = {
-  off: "Off",
-  lenient: "Lenient",
-  normal: "Normal",
-  strict: "Strict",
-};
-
-/** Release channels, with their semantics as descriptions (ChannelPicker). */
-export const CHANNEL_LABELS: Record<string, string> = {
-  stable: "Stable",
-  beta: "Beta",
-  pr: "PR builds",
-  dev: "Dev",
-};
-
-export const CHANNEL_DESCRIPTIONS: Record<string, string> = {
-  stable: "General releases",
-  beta: "Pre-releases, plus everything on stable",
-  pr: "Every PR build",
-  dev: "Skips the version window and channel checks",
 };
 
 /**

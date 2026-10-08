@@ -1,16 +1,16 @@
-# LX-31 Licence holders close-out: glossary (floating, assigned), the New License and bulk-keys docs pages, THREAT-MODEL T-H1–T-H5, and one e2e path from the console wizard through a kit activation to the portal
+# LX-31 Licence holders and automatic licences close-out
 
-| Field       | Value                                                                                                                                                             |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (S-24: licence holders)                                                                                |
-| Size        | 0.4–0.6 engineer-weeks                                                                                                                                            |
-| Depends on  | [LX-29](LX-29-new-license-wizard.md), [LX-30](LX-30-console-holder-surfaces.md), [PX-23](PX-23-portal-floating-keys.md), [UK-42](UK-42-activation-holders-web.md) |
-| Unblocks    | none                                                                                                                                                              |
-| Role        | `pkey-implementer`                                                                                                                                                |
-| Plan mode   | no                                                                                                                                                                |
-| Gates       | docsLinks; generated docs; THREAT-MODEL; console and portal e2e                                                                                                   |
-| Human input | none                                                                                                                                                              |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                         |
+| Field       | Value                                                                                                                                                                                                                                                                      |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (S-24: licence holders)                                                                                                                                                                                         |
+| Size        | 0.4–0.6 engineer-weeks                                                                                                                                                                                                                                                     |
+| Depends on  | [LX-29](LX-29-new-license-wizard.md), [LX-30](LX-30-console-holder-surfaces.md), [PX-23](PX-23-portal-floating-keys.md), [UK-42](UK-42-activation-holders-web.md), [LX-39](LX-39-licences-in-account-need-sign-in-product.md), [UK-43](UK-43-activation-holders-native.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                                                                                                                                                     |
+| Role        | `pkey-implementer`                                                                                                                                                                                                                                                         |
+| Plan mode   | no                                                                                                                                                                                                                                                                         |
+| Gates       | docsLinks; generated docs; THREAT-MODEL; console and portal e2e                                                                                                                                                                                                            |
+| Human input | none                                                                                                                                                                                                                                                                       |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                  |
 
 ## Follow-ups from the 2026-10-06 reviews
 
@@ -24,6 +24,15 @@ Checked against `main` at `148439c4f`.
   (every attach, now including the automatic ones by `email` or `oidc`) and
   `account.license.auto_attach_block` (a removal or reassignment keeps the licence from
   re-attaching to that account).
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track E, Licensing model](../../../2026-10-07-dx-consolidation/tracks.md#e-licensing-model)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Glossary (in an account, waiting, floating, add-on, automatic grant), access-policy docs, and e2e paths: an automatic licence via sign-in and via Discover for an email-only account, and an invitation-delivered licence. Also flips the license_owned default on for new products once the rebuilt native kits ship (UK-43); per-product flips are LX-39's.
+
+- Title: was "Licence holders close-out: glossary (floating, assigned), the New License and bulk-keys docs pages, THREAT-MODEL T-H1–T-H5, and one e2e path from the console wizard through a kit activation to the portal".
+- Depends on: added LX-39 and UK-43.
 
 ## Goal
 

@@ -97,7 +97,9 @@ async function open(o: OpenOptions = {}): Promise<Page> {
     return route.fulfill({ response: res, headers });
   });
   const page = await ctx.newPage();
-  await page.goto(`${base}/manage.html${o.hash ?? "#/p/djdl/licenses"}`);
+  await page.goto(
+    `${base}/manage.html${o.hash ?? "#/p/djdl/license/licenses"}`,
+  );
   await page.locator("[data-page-title]").first().waitFor({ timeout: 15_000 });
   if (o.dataMotion)
     expect(

@@ -25,11 +25,11 @@ import { normalizeHostname } from "./bytesHostname.js";
 import {
   LANDING_CACHE,
   LANDING_CSS,
-  escapeHtml,
   landingArt,
   landingCsp,
 } from "./bytesLanding.js";
 import { registryHostname } from "./registryHostname.js";
+import { escapeHtml } from "../platform/html.js";
 
 /** The console origin to link when `CONSOLE_ORIGIN` is unset or unusable: the platform's own. */
 const DEFAULT_CONSOLE_ORIGIN = "https://key.plrs.im";

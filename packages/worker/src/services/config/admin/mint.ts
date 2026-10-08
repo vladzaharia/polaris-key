@@ -86,6 +86,7 @@ import {
   readBody,
 } from "../../../core/adminApi.js";
 import { getProductSecretUsage } from "../../../core/products.js";
+import { parseJsonColumn } from "../../../core/platform.js";
 import {
   allowsAnonymousEnroll,
   allowsOidcDefault,
@@ -165,16 +166,6 @@ function sameIdentityEcho(
   );
 }
 
-/** Parsed for display only. Never used to decide anything; a corrupt column shows as null. */
-function parsedTemplate(json: string | null): unknown {
-  if (json === null) return null;
-  try {
-    return JSON.parse(json) as unknown;
-  } catch {
-    return null;
-  }
-}
-
 function statusOf(
   recipe: MintRecipeFields,
   approval: MintApprovalRow | null,
@@ -200,7 +191,8 @@ async function handleList(ctx: ConfigAdminContext): Promise<Response> {
     recipes.push({
       id: recipe.id,
       ...wireFields(recipe),
-      claimsTemplate: parsedTemplate(recipe.claims_template_json),
+      // Parsed for display only. Never used to decide anything; a corrupt column shows as null.
+      claimsTemplate: parseJsonColumn(recipe.claims_template_json),
       status,
       /** `edge-mint` | `general` | `missing` (no such secret) | `unrecognised`. */
       secretUsage:

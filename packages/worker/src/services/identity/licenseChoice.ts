@@ -46,10 +46,9 @@ import {
 } from "../../core/data.js";
 import { licenseUsable } from "../../core/devices.js";
 import { licenseDeviceLimit, tierFingerprintMode } from "../../core/authz.js";
-import type { Db } from "../../core/platform.js";
+import { escapeHtml, type Db } from "../../core/platform.js";
 import type { Product } from "../../core/products.js";
 import type { PurchaseSourceKind, ServiceHooks } from "../../core/hooks.js";
-import { escapeHtml } from "../../core/brandHtml.js";
 import { getAccountRow } from "./accounts/repo.js";
 import { platformSubjectLink } from "./accounts/platformMigration.js";
 import {

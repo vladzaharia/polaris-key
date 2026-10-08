@@ -44,7 +44,16 @@ import {
   platformOidcConfig,
   secret,
   brandedHtmlSecurityHeaders,
+  // The product sign-in pages have always escaped `& < > "` and let an apostrophe through;
+  // every sink is a text node or a double-quoted attribute (R9-12), and the bytes are kept.
+  escapeHtmlKeepApostrophe as escapeHtml,
+  pkcePair,
+  PRODUCT_SIGNIN_RETURN_TO,
+  randomBytes,
   randomId,
+  randomToken,
+  safeReturnTo,
+  tryParseJson,
   type Db,
   type Env,
 } from "../../core/platform.js";
@@ -54,6 +63,7 @@ import {
   type ProductPublic,
 } from "../../core/products.js";
 import { renderBrandPage } from "../../core/brandHtml.js";
+import { accountDisabledPage } from "./card/http.js";
 import { errorResponse, json, methodNotAllowed } from "../../core/errors.js";
 import {
   clientIp,
@@ -95,7 +105,10 @@ import {
 import { licenseUsable, validateDeviceToken } from "../../core/devices.js";
 import { applyProvisionedAccountSecrets } from "../../core/accountOverrides.js";
 import { licenseConfigOverridesFrozen } from "../../core/overrideMigration.js";
-import { createBrowserSession } from "./browserSession.js";
+import {
+  createBrowserSession,
+  type BrowserSessionSubject,
+} from "./browserSession.js";
 import type { ServiceHooks } from "../../core/hooks.js";
 import {
   binderClearCookie,
@@ -116,6 +129,7 @@ import {
   claimPlatformSubject,
   platformSignInEnded,
   platformSubjectAccountRefused,
+  platformSubjectLink,
   PLATFORM_SIGNIN_ENDED,
 } from "./accounts/platformMigration.js";
 import {
@@ -241,31 +255,6 @@ interface DeviceFlowRecord {
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
-function b64url(bytes: Uint8Array): string {
-  let s = "";
-  for (const b of bytes) s += String.fromCharCode(b);
-  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-function toAB(b: Uint8Array): ArrayBuffer {
-  return b.buffer.slice(
-    b.byteOffset,
-    b.byteOffset + b.byteLength,
-  ) as ArrayBuffer;
-}
-function randomBytes(n: number): Uint8Array {
-  const a = new Uint8Array(n);
-  crypto.getRandomValues(a);
-  return a;
-}
-async function pkce(): Promise<{ verifier: string; challenge: string }> {
-  const verifier = b64url(randomBytes(32));
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    toAB(new TextEncoder().encode(verifier)),
-  );
-  return { verifier, challenge: b64url(new Uint8Array(digest)) };
-}
-
 async function getOidcConfig(
   db: Db,
   product: string,
@@ -532,18 +521,6 @@ async function deleteUserCodeIndex(
   if (code) await deleteArtefact(env, await deviceUserKey(env, product, code));
 }
 
-function safeReturnTo(req: Request, raw: string | null): string | undefined {
-  if (!raw) return undefined;
-  try {
-    const parsed = new URL(raw);
-    const here = new URL(req.url);
-    if (parsed.origin !== here.origin) return undefined;
-    return parsed.toString();
-  } catch {
-    return undefined;
-  }
-}
-
 /**
  * Whether the computed `redirectUri` is permitted by the product's `redirect_uris_json`
  * allowlist. When the column is unset we cannot enforce, so we allow (the IdP still
@@ -559,18 +536,6 @@ function redirectUriAllowed(oidc: OidcConfigRow, redirectUri: string): boolean {
     return false;
   }
   return Array.isArray(allowed) && allowed.includes(redirectUri);
-}
-
-/** Parse a JSON config column, failing CLOSED (undefined) instead of throwing. A malformed
- *  column is an operator mistake, not a reason to take the whole sign-in path down with an
- *  uncaught SyntaxError (R8-06). */
-function parseJsonColumn<T>(raw: string | null | undefined): T | undefined {
-  if (!raw) return undefined;
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return undefined;
-  }
 }
 
 /**
@@ -722,9 +687,9 @@ function applyProvisioningHooks(
     if (h.entitlement_key) {
       let value: ManagedEntry["value"] = true;
       if (h.entitlement_value_json) {
-        const parsed = parseJsonColumn<ManagedEntry["value"]>(
-          h.entitlement_value_json,
-        );
+        const parsed = tryParseJson(h.entitlement_value_json) as
+          | ManagedEntry["value"]
+          | undefined;
         // A hook row we cannot parse is a hook we do not trust: skip it entirely. So is one
         // whose value no signed document could carry (plans/P3-01.md §2.2): the manifest
         // validator refuses such a value at sync, so only a row stored before it lands here,
@@ -753,7 +718,9 @@ function applyProvisioningHooks(
       const url = h.secret_url_template.replaceAll("{claim}", encodedClaim);
       // Host allowlist (defense against templated-secret injection). Fails CLOSED: a missing
       // or malformed allowlist drops the secret rather than emitting any host (R8-06).
-      const allowed = parseJsonColumn<string[]>(h.allowed_hosts_json);
+      const allowed = tryParseJson(h.allowed_hosts_json) as
+        | string[]
+        | undefined;
       if (!Array.isArray(allowed)) continue;
       try {
         if (!allowed.includes(new URL(url).host)) continue;
@@ -796,9 +763,9 @@ async function identityTier(
   const oidc = await getOidcConfig(db, product.slug);
   // A malformed map grants nothing (fail closed) instead of throwing out of sign-in (R8-06).
   const map =
-    parseJsonColumn<Record<string, { role: string; tier?: string }>>(
-      oidc?.group_role_map_json,
-    ) ?? {};
+    (tryParseJson(oidc?.group_role_map_json) as
+      | Record<string, { role: string; tier?: string }>
+      | undefined) ?? {};
 
   let entitledBy: string | null = null;
   const tiered: { group: string; tier: string }[] = [];
@@ -1041,9 +1008,9 @@ export async function identityIssuePolicy(
 ): Promise<{ groups: IdentityPolicyGroup[]; defaultTier: string | null }> {
   const oidc = await getOidcConfig(db, product.slug);
   const map =
-    parseJsonColumn<Record<string, { role: string; tier?: string }>>(
-      oidc?.group_role_map_json,
-    ) ?? {};
+    (tryParseJson(oidc?.group_role_map_json) as
+      | Record<string, { role: string; tier?: string }>
+      | undefined) ?? {};
   const groups: IdentityPolicyGroup[] = [];
   if (map && typeof map === "object" && !Array.isArray(map))
     for (const [group, m] of Object.entries(map))
@@ -1512,9 +1479,9 @@ async function beginAuthFlow(
       ? platformSignInEndedPage()
       : errorResponse(404, "disabled", "platform sign-in has ended");
   }
-  const state = b64url(randomBytes(16));
-  const nonce = b64url(randomBytes(16));
-  const { verifier, challenge } = await pkce();
+  const state = randomToken(16);
+  const nonce = randomToken(16);
+  const { verifier, challenge } = await pkcePair();
   // §R1: the callback moved under the service namespace with the rest of Identity. This is the
   // value the IdP must have REGISTERED — `redirectUriAllowed` below refuses anything else the
   // moment `redirect_uris_json` is set — so an operator upgrading a product with a custom (or
@@ -1534,7 +1501,7 @@ async function beginAuthFlow(
   if ((oidc.row.provider ?? "platform") === "platform") {
     flow.binderEligible = true;
     if (opts.browser) {
-      const binder = b64url(randomBytes(32));
+      const binder = randomToken(32);
       flow.binder = await hashKey(binder, env.KEY_HASH_PEPPER);
       binderCookie = binderSetCookie(binder, FLOW_TTL_SECONDS);
     }
@@ -1579,7 +1546,7 @@ export async function handleAuthStart(
   );
   if (limited) return limited;
   const rawReturnTo = new URL(req.url).searchParams.get("return_to");
-  const returnTo = safeReturnTo(req, rawReturnTo);
+  const returnTo = safeReturnTo(req, rawReturnTo, PRODUCT_SIGNIN_RETURN_TO);
   if (rawReturnTo && !returnTo)
     return errorResponse(400, "bad_request", "return_to not allowed");
   const flow = await beginAuthFlow(
@@ -1640,7 +1607,7 @@ export async function handleAuthDeviceStart(
     { deviceName },
   );
   if (flow instanceof Response) return flow;
-  const deviceCode = b64url(randomBytes(16));
+  const deviceCode = randomToken(16);
   // The user code is independent of the device code (RFC 8628 §6.1). A live collision would
   // point two flows at one code, so the index slot is claimed atomically (`ifAbsent`) and an
   // occupied one means "draw again". The device record is written right after; until then the
@@ -1690,20 +1657,12 @@ export async function handleAuthDeviceStart(
   });
 }
 
-function escapeHtml(input: string): string {
-  return input
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
 /** The CSRF token the confirmation form posts back, from either an HTML form body or JSON. */
 async function readConfirmToken(req: Request): Promise<string | null> {
   const text = await req.text().catch(() => "");
   if (!text) return null;
   if ((req.headers.get("content-type") ?? "").includes("application/json")) {
-    const body = parseJsonColumn<Record<string, unknown>>(text);
+    const body = tryParseJson(text) as Record<string, unknown> | undefined;
     return typeof body?.csrf === "string" ? body.csrf : null;
   }
   return new URLSearchParams(text).get("csrf") || null;
@@ -1748,7 +1707,7 @@ async function confirmDeviceFlow(
   // 13). Minted here, never at `/device/start`: that request comes from the device, not from
   // the browser that signs in.
   let binder: string | null = null;
-  if (flowRecord.binderEligible) binder = b64url(randomBytes(32));
+  if (flowRecord.binderEligible) binder = randomToken(32);
   const stamped = await updateArtefact(env, stateKey, {
     set: {
       confirmedAt: now,
@@ -1840,7 +1799,7 @@ async function renderDeviceConfirmation(
   hidden: Record<string, string>,
   now: number,
 ): Promise<Response> {
-  const csrf = b64url(randomBytes(16));
+  const csrf = randomToken(16);
   record.csrf = csrf;
   // An update, never a put: it cannot resurrect a record a poll redeemed meanwhile.
   const minted = await updateArtefact(
@@ -1928,7 +1887,7 @@ async function readEntryForm(
   if ((req.headers.get("content-type") ?? "").includes("application/json")) {
     // Only a JSON object is a form: `1`, `"x"`, `true` or `null` would make the `in` below throw
     // (an uncaught 500 on an unauthenticated route), so any other shape reads as an empty form.
-    const parsed = parseJsonColumn<unknown>(text);
+    const parsed = tryParseJson(text);
     const body = (
       parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)
         ? parsed
@@ -2261,7 +2220,7 @@ export async function handleAuthCallback(
     )
   ) {
     await deleteArtefact(env, stateKey);
-    return accountDisabledPage();
+    return productAccountDisabledPage(product, flow);
   }
 
   // I-17: moving end users off the platform IdP. With `PLATFORM_OIDC_MIGRATION` off (the
@@ -2342,6 +2301,7 @@ export async function handleAuthCallback(
     stateKey,
     flow,
     result.licenseId,
+    identity.sub,
     now,
     [],
     migration.notice,
@@ -2407,7 +2367,7 @@ async function migratePlatformSubject(
     case "refused":
       if (claim.result.reason === "account_disabled") {
         await deleteArtefact(env, stateKey);
-        return accountDisabledPage();
+        return productAccountDisabledPage(product, flow);
       }
       return { notice: null };
     default:
@@ -2453,19 +2413,62 @@ function platformSignInEndedPage(): Response {
   );
 }
 
-/** "This account can't sign in" (SIGN-IN.md §3.13, Account disabled): the answer the portal and
- *  the login card give a disabled account, on a product's sign-in (N9). 403, names nothing. */
-function accountDisabledPage(): Response {
-  return signInRefusalPage(
-    "This account can't sign in",
-    "<p>Contact Polaris Key support.</p>",
-  );
+/**
+ * "This account can't sign in" (SIGN-IN.md §3.13, Account disabled): the page the portal and the
+ * login card give a disabled account, on a product's sign-in (N9). 403, names nothing.
+ *
+ * **Sign in with another account** goes to Polaris Key's sign-in page, not back into this
+ * product's sign-in: that would go straight back to the platform IdP, whose own session (the
+ * authorize request asks for no `prompt`) signs the same subject in again and is refused again.
+ * Polaris Key's sign-in is where another account can be chosen, as "Single sign-on ended" sends
+ * people there too. **Back to <Product>** returns to the app's page when the flow came from one
+ * (`returnTo`, checked same-origin at the start); a device-code flow has none.
+ */
+function productAccountDisabledPage(
+  product: Product,
+  flow: FlowRecord,
+): Response {
+  return accountDisabledPage({
+    signInHref: "/",
+    back: flow.returnTo
+      ? { href: flow.returnTo, productName: product.name }
+      : null,
+  });
 }
 
 /** The signed-in page's join offer (I-17): the address is the one the person's own IdP just
  *  asserted, so it names nothing they did not already prove. Nothing has joined. */
 function joinOfferNotice(email: string): string {
   return `<p>A Polaris Key account already uses ${escapeHtml(email)}. To add this sign-in to it, <a href="/login">continue with single sign-on on Polaris Key</a>, then sign in to that account when asked.</p>`;
+}
+
+/**
+ * What a browser session opened by this sign-in is bound to: on a `provider: platform` product,
+ * the platform-IdP subject itself (N9's check runs on it at every read, so an account it joins
+ * or is moved to later counts too) and the account holding its method now, if any (kept for
+ * erasure, which deletes the method); otherwise nothing. The session then ends when either can
+ * no longer sign in (`loadBrowserSession`); a custom issuer's subject opens a session bound to
+ * nothing, as before. Read-only, and like {@link pollAccountRefused} it reads the provider from
+ * the product's row and the issuer from the Worker's secrets.
+ */
+async function browserSessionBinding(
+  env: Env,
+  db: Db,
+  product: Product,
+  sub: string,
+): Promise<{
+  subject: BrowserSessionSubject;
+  accountId: string | null;
+} | null> {
+  const row = await getOidcConfig(db, product.slug);
+  if ((row?.provider ?? "platform") !== "platform") return null;
+  const platform = platformOidcConfig(env);
+  if (!platform) return null;
+  const link = await platformSubjectLink(db, platform.issuer, sub);
+  return {
+    subject: { issuer: platform.issuer, sub: sub.trim() },
+    accountId: link?.account_id ?? null,
+  };
 }
 
 /**
@@ -2481,6 +2484,9 @@ async function completeBrowserFlow(
   stateKey: ArtefactRef,
   flow: FlowRecord,
   licenseId: string,
+  /** The verified subject that signed in: a `returnTo` flow's browser session is bound to it
+   *  and to its account, if it has one ({@link browserSessionBinding}). */
+  sub: string,
   now: number,
   extraCookies: string[] = [],
   /** I-17: TRUSTED markup the "signed in" page adds (the join offer); a `returnTo` flow has no
@@ -2494,6 +2500,7 @@ async function completeBrowserFlow(
       await deleteArtefact(env, stateKey);
       return errorResponse(401, "unauthorized", "license unavailable");
     }
+    const binding = await browserSessionBinding(env, db, product, sub);
     const session = await createBrowserSession(
       env,
       db,
@@ -2501,6 +2508,10 @@ async function completeBrowserFlow(
       license,
       now,
       req,
+      {
+        subject: binding?.subject ?? null,
+        accountId: binding?.accountId ?? null,
+      },
     );
     await deleteArtefact(env, stateKey);
     if (!session.ok) {
@@ -2890,7 +2901,7 @@ async function renderChooser(
 ): Promise<Response> {
   const view = await chooserView(req, db, product, c, now, hooks);
   if (!view) return endChooser(env, c);
-  const token = b64url(randomBytes(24));
+  const token = randomToken(24);
   const minted = await updateArtefact(env, c.stateKey, {
     expect: { choiceOpen: true },
     set: { choiceToken: await hashKey(token, env.KEY_HASH_PEPPER) },
@@ -3028,6 +3039,7 @@ async function completeChoice(
     c.stateKey,
     flow,
     licenseId,
+    identity.sub,
     now,
     cookies,
   );

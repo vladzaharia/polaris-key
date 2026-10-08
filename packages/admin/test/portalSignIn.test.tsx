@@ -234,6 +234,51 @@ describe("LoginCard (SIGN-IN.md §3.1–§3.4, §3.9)", () => {
     expect((code as HTMLInputElement).value).toBe("");
   });
 
+  it("ends the code step for an account that can't sign in: no Continue, no resend, a different email", async () => {
+    signedOut(CAPS_ALL, {
+      "POST /api/signin/email/verify": {
+        status: 403,
+        body: {
+          error: "forbidden",
+          message: "This account can't sign in.",
+        },
+      },
+    });
+    renderPortal();
+    await userEvent.type(
+      await screen.findByRole("textbox", { name: "Email" }),
+      "mara@fennick.studio",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+    await userEvent.type(
+      await screen.findByRole("textbox", { name: "6-digit code" }),
+      "481207",
+    );
+    // A terminal step (SIGN-IN.md §3.13): its own h1, focused, and nothing that would end the
+    // same way again.
+    const title = await screen.findByRole("heading", {
+      level: 1,
+      name: "This account can't sign in",
+    });
+    await waitFor(() => expect(document.activeElement).toBe(title));
+    expect(
+      screen.getByText(/belongs to an account that can't sign in/).textContent,
+    ).toBe(
+      "mara@fennick.studio belongs to an account that can't sign in. Try a different email or another way to sign in.",
+    );
+    expect(screen.queryByRole("textbox", { name: "6-digit code" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Continue" })).toBeNull();
+    expect(screen.queryByText(/Send a new code/)).toBeNull();
+    expect(screen.queryByText(/Polaris Key support/)).toBeNull();
+    expect(await axeViolations()).toEqual([]);
+    // The way on: the email step, empty.
+    await userEvent.click(
+      screen.getByRole("button", { name: "Use a different email" }),
+    );
+    const email = await screen.findByRole("textbox", { name: "Email" });
+    expect((email as HTMLInputElement).value).toBe("");
+  });
+
   it("puts the quiet Have a license key? link under a rule, centred", async () => {
     signedOut();
     renderPortal();

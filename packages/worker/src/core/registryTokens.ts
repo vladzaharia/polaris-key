@@ -35,6 +35,15 @@ import type { Env } from "../env.js";
 import { secret } from "../env.js";
 import type { Db, DbStatement } from "../db/types.js";
 import { hashKey, mintOpaqueToken, randomId } from "../crypto.js";
+import {
+  b64urlDecodeStrict,
+  b64urlEncode,
+  b64urlEncodeUtf8,
+  toArrayBuffer,
+  utf8Encode,
+} from "../platform/bytes.js";
+import { hmacSha256, importHmacKey } from "../platform/hash.js";
+import { tryParseJson } from "../platform/json.js";
 import { getLicense, type LicenseRow } from "../repo.js";
 import { CI_TOKEN_PREFIX } from "./ciVocabulary.js";
 import { lookupCiToken } from "./publisher.js";
@@ -110,16 +119,14 @@ export interface RegistryTokenView {
   readonly status: "active" | "expired" | "revoked";
 }
 
+/** A JSON list-of-strings column: `null` for SQL NULL, `[]` for anything that is not one (a
+ *  list with a non-string member included). */
 function parseList(raw: string | null): string[] | null {
   if (raw === null) return null;
-  try {
-    const v: unknown = JSON.parse(raw);
-    return Array.isArray(v) && v.every((x) => typeof x === "string")
-      ? (v as string[])
-      : [];
-  } catch {
-    return [];
-  }
+  const v = tryParseJson(raw);
+  return Array.isArray(v) && v.every((x) => typeof x === "string")
+    ? (v as string[])
+    : [];
 }
 
 function viewOf(row: RegistryTokenRow, now: number): RegistryTokenView {
@@ -807,41 +814,6 @@ export interface PullTokenClaims {
 
 const PULL_PREFIX = "v1.";
 
-function b64urlEncode(bytes: Uint8Array): string {
-  let bin = "";
-  for (const b of bytes) bin += String.fromCharCode(b);
-  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function b64urlDecode(s: string): Uint8Array | null {
-  if (!/^[A-Za-z0-9_-]*$/.test(s)) return null;
-  try {
-    const bin = atob(
-      s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4),
-    );
-    return Uint8Array.from(bin, (c) => c.charCodeAt(0));
-  } catch {
-    return null;
-  }
-}
-
-function toBuffer(b: Uint8Array): ArrayBuffer {
-  return b.buffer.slice(
-    b.byteOffset,
-    b.byteOffset + b.byteLength,
-  ) as ArrayBuffer;
-}
-
-async function hmacKey(material: string): Promise<CryptoKey> {
-  return crypto.subtle.importKey(
-    "raw",
-    toBuffer(new TextEncoder().encode(material)),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign", "verify"],
-  );
-}
-
 /** Is the pull-token secret set? Without it `/v2/token` answers 503 and `/v2/` stays 200. */
 export function registryTokenKeyConfigured(env: Env): boolean {
   return !!secret(env, "REGISTRY_TOKEN_KEY");
@@ -863,15 +835,11 @@ export async function signPullToken(
     iat: now,
     exp: now + REGISTRY_PULL_TOKEN_TTL_SECONDS,
   };
-  const body = b64urlEncode(new TextEncoder().encode(JSON.stringify(full)));
+  const body = b64urlEncodeUtf8(JSON.stringify(full));
   const signed = `${PULL_PREFIX}${body}`;
-  const sig = await crypto.subtle.sign(
-    "HMAC",
-    await hmacKey(material),
-    toBuffer(new TextEncoder().encode(signed)),
-  );
+  const sig = await hmacSha256(await importHmacKey(material), signed);
   return {
-    token: `${signed}.${b64urlEncode(new Uint8Array(sig))}`,
+    token: `${signed}.${b64urlEncode(sig)}`,
     expiresIn: REGISTRY_PULL_TOKEN_TTL_SECONDS,
     issuedAt: now,
   };
@@ -895,8 +863,8 @@ export async function verifyPullToken(
   const dot = token.lastIndexOf(".");
   if (dot <= PULL_PREFIX.length) return null;
   const signed = token.slice(0, dot);
-  const sig = b64urlDecode(token.slice(dot + 1));
-  const body = b64urlDecode(signed.slice(PULL_PREFIX.length));
+  const sig = b64urlDecodeStrict(token.slice(dot + 1));
+  const body = b64urlDecodeStrict(signed.slice(PULL_PREFIX.length));
   if (!sig || !body) return null;
   const keys = [
     secret(env, "REGISTRY_TOKEN_KEY"),
@@ -907,9 +875,9 @@ export async function verifyPullToken(
     if (
       await crypto.subtle.verify(
         "HMAC",
-        await hmacKey(material),
-        toBuffer(sig),
-        toBuffer(new TextEncoder().encode(signed)),
+        await importHmacKey(material),
+        toArrayBuffer(sig),
+        toArrayBuffer(utf8Encode(signed)),
       )
     ) {
       valid = true;

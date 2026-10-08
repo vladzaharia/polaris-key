@@ -213,10 +213,12 @@ def test_document_403_defaults_to_the_stricter_reason_when_the_body_says_nothing
     assert res.allowedRange is None
 
 
-def test_document_500_is_error_with_status_and_text() -> None:
+def test_document_500_is_server_error_with_status() -> None:
     res = _get_document(lambda r: httpx.Response(500, text="boom"))
     assert isinstance(res, DocumentError)
-    assert res.status == 500 and res.message == "boom"
+    assert res.status == 500 and res.code == "server-error"
+    res = _get_document(lambda r: httpx.Response(500, json={"error": "internal_error", "message": "boom"}))
+    assert (res.status, res.code, res.message) == (500, "server-error", "boom")
 
 
 def test_document_network_exception_is_error_status_zero() -> None:
@@ -224,7 +226,7 @@ def test_document_network_exception_is_error_status_zero() -> None:
         raise httpx.ConnectError("offline")
 
     res = _get_document(handler)
-    assert isinstance(res, DocumentError) and res.status == 0
+    assert isinstance(res, DocumentError) and res.status == 0 and res.code == "network-error"
 
 
 # ── device facts ────────────────────────────────────────────────────────────────────
@@ -274,7 +276,7 @@ def test_cli_activate_then_status_then_deactivate() -> None:
     st = core.status(c)
     assert st.code == 0
     assert st.data["status"] == "ok" and st.data["usable"] is True
-    assert any("Grace Hopper" in line for line in st.lines)
+    assert any(line.startswith("License") for line in st.lines)
     # P1b-09: the token store is named (in --json; in the lines only when degraded).
     assert st.data["tokenStore"] == {"backend": "memory", "degraded": None}
 
@@ -370,8 +372,8 @@ def test_cli_import_bundle_success_and_refusal(tmp_path) -> None:
     bad = sign_bundle("someone-else")
     r2 = core.import_bundle(c, bad)
     assert r2.code == 1
-    # The copy names the STEP, which is the operator's remedy.
-    assert C("core.codes.bundle-claims-rejected.message") in r2.lines
+    # One title and who to ask for a new file: the same two lines in both kits.
+    assert C("cli.import.fix") in r2.lines
     assert r2.data["error"] == "bundle-claims-rejected"
     c.close()
 

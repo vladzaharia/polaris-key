@@ -7,7 +7,7 @@
 // question with an actual answer.
 
 import { usePolarisAuth, usePolarisTheme } from "../react/hooks.js";
-import { Button } from "./primitives/buttons.js";
+import { Button, quietStyle } from "./primitives/buttons.js";
 
 export interface PolarisLogoutProps {
   /** Extra className on the button. */
@@ -27,8 +27,13 @@ export function PolarisLogout(props: PolarisLogoutProps): JSX.Element {
     <Button
       className={props.className}
       variant={props.variant === "ghost" ? "ghost" : "secondary"}
-      style={{ padding: "10px 16px", fontSize: "14px" }}
-      disabled={auth.busy}
+      style={{
+        padding: quietStyle.padding,
+        fontSize: quietStyle.fontSize,
+        lineHeight: quietStyle.lineHeight,
+        // Its own opaque ground, so the label never depends on the host's background.
+        background: "var(--pk-surface)",
+      }}
       busy={auth.busy}
       label={label}
       onClick={() => {

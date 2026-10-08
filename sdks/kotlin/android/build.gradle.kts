@@ -18,8 +18,9 @@
 // PolarisKeyAndroid.client(context, …) wires all of it into the umbrella PolarisKeyClient.
 //
 // A LEAF: nothing in this build depends on it except :boundary (checkModuleBoundaries). It links
-// tink-android (Ed25519 below API 33, :core's Tink backend) and zstd-jni's Android AAR in place of
-// the desktop JAR :packs carries (16 KB page aligned, tools/check_16k_alignment.py).
+// tink-android (:core's Tink backend, preferred on Android: SP-50 chooses Ed25519 by a known-answer
+// test, and Android 16's JCA answers wrongly). zstd is not linked: an app that uses packs adds
+// polaris-key-zstd (SP-50), whose Android variant is zstd-jni's 16 KB-aligned AAR.
 //
 // Published per flavour as im.plrs.key:polaris-key-android-play and -direct to the local
 // repository sdks/kotlin/build/repo only (no signing, no Maven Central).
@@ -83,19 +84,14 @@ kotlin {
 base { archivesName.set("polaris-key-android") }
 
 dependencies {
-    // The SDK without zstd-jni's desktop JAR: the Android AAR of the same version replaces it.
-    api(project(":sdk")) { exclude(group = "com.github.luben", module = "zstd-jni") }
+    // SP-50: no exclude. :packs links zstd-jni compileOnly, so the SDK carries no native library; an
+    // app that uses packs adds polaris-key-zstd, whose Android variant is zstd-jni's AAR.
+    api(project(":sdk"))
     // :platform by its published per-flavour coordinate, as the Godot binding does (P6-09, P6-10):
     // the play variant links polaris-key-platform-play (and through its `api`, Play Core), the
     // direct variant polaris-key-platform-direct, and the POMs name exactly that. Inside this build
     // both resolve to the :platform project (sdks/kotlin/build.gradle.kts).
     for (f in flavours) "${f}Api"("${project.group}:polaris-key-platform-$f:${project.version}")
-    implementation(libs.zstd.jni.android) {
-        artifact {
-            name = "zstd-jni"
-            type = "aar"
-        }
-    }
     // tink-android's androidx.annotation-jvm 1.8 duplicates the androidx.annotation 1.3 Play Core
     // brings (the same classes, class-retention annotations only): Play Core's copy serves both.
     implementation(libs.tink.android) { exclude(group = "androidx.annotation", module = "annotation-jvm") }

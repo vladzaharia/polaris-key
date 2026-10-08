@@ -27,9 +27,8 @@ import {
 import { EmptyState } from "../../../ui/EmptyState.js";
 import { Timestamp } from "../../../ui/Timestamp.js";
 import { useLoadingAnnouncement } from "../../../ui/loading.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { qk } from "../../data/queries.js";
-import { queryClient } from "../../data/queryClient.js";
 import { Link, navigate } from "../../router.js";
 import { r } from "../../routes.js";
 import { CollectionTemplate } from "../../templates/Collection.js";
@@ -64,21 +63,17 @@ function UsersCollection({ slug }: { slug: string }): React.ReactElement {
   const [state, setState] = useTableUrlState("users", { facets: [] });
   const q = state.q.trim();
 
-  const list = useInfiniteQuery(
-    {
-      queryKey: [...qk.users(slug), "list", q],
-      queryFn: ({ pageParam }) =>
-        api.productUsers(slug, {
-          ...(q ? { q } : {}),
-          limit: PAGE_SIZE,
-          cursor: pageParam,
-        }),
-      initialPageParam: null as string | null,
-      getNextPageParam: (last: ProductUsersPage) =>
-        last.nextCursor ?? undefined,
-    },
-    queryClient,
-  );
+  const list = useInfiniteQuery({
+    queryKey: [...qk.users(slug), "list", q],
+    queryFn: ({ pageParam }) =>
+      api.productUsers(slug, {
+        ...(q ? { q } : {}),
+        limit: PAGE_SIZE,
+        cursor: pageParam,
+      }),
+    initialPageParam: null as string | null,
+    getNextPageParam: (last: ProductUsersPage) => last.nextCursor ?? undefined,
+  });
   useLoadingAnnouncement("users", list.isPending);
 
   const rows = React.useMemo(

@@ -14,7 +14,7 @@
  *   - `product`: `.pkey/product`'s product name.
  */
 
-import type { Db, Env } from "../../../core/platform.js";
+import { parseJsonColumn, type Db, type Env } from "../../../core/platform.js";
 import type { ServiceHooks } from "../../../core/hooks.js";
 import type { FetchImpl } from "../../../core/outletTokens.js";
 import { AscError, AscWriteDenied } from "../../../core/asc/client.js";
@@ -28,7 +28,7 @@ import {
   type SnapshotAsset,
   type SourceOutcome,
 } from "../../../core/storefront/listingImport.js";
-import { listOutlets, parseJsonColumn } from "../outlets.js";
+import { listOutlets } from "../outlets.js";
 import { readAppStoreListing } from "../connectors/asc/listing.js";
 import { ascRun, finishRun as finishAscRun } from "../connectors/asc/run.js";
 import { resolveAscSetup } from "../connectors/asc/setup.js";

@@ -2,7 +2,7 @@
 
 | Field       | Value                                                                                                                         |
 | ----------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | ST: Settings architecture (S-18) (phase 0: stop the bleeding)                                                                 |
+| Phase       | ST: Settings, access control and console shell (phase 0: stop the bleeding)                                                   |
 | Size        | 0.4–0.55 engineer-weeks                                                                                                       |
 | Depends on  | [ST-01b](ST-01b-resync-claims.md)                                                                                             |
 | Unblocks    | [ST-17](ST-17-resync-dry-run.md)                                                                                              |

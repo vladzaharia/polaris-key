@@ -23,7 +23,7 @@ enum PackFixtures {
     private struct Keys: Decodable { let keys: [Key] }
 
     private static let keys: [Key] = {
-        (try? CorpusBundleLoader.load(Keys.self, "cases").keys) ?? []
+        (try? CorpusLocator.load(Keys.self, "cases").keys) ?? []
     }()
 
     private static func key(_ kid: String) -> Key { keys.first { $0.kid == kid }! }

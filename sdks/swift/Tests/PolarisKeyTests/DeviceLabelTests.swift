@@ -1,7 +1,7 @@
 // @pkey-feature identity.devicelabel
 // The device label (WIRE-CONTRACT-V4 §12.7.1, plans/PX-W13.md §4), driven off
-// `conformance/corpus/v2`'s `device-label.json`, mirrored into this bundle's `Resources/v2/` by
-// `pnpm gen:corpus`. Labels compare as Unicode scalars, never with `String ==` (which is
+// `conformance/corpus/v2`'s `device-label.json`, read from the checkout through `CorpusLocator`.
+// Labels compare as Unicode scalars, never with `String ==` (which is
 // canonical equivalence and would merge a decomposed accent with a composed one).
 
 import Foundation
@@ -23,7 +23,7 @@ final class DeviceLabelTests: XCTestCase {
     private func scalars(_ s: String?) -> [UInt32]? { s.map { $0.unicodeScalars.map(\.value) } }
 
     func testCorpusRows() throws {
-        let corpus = try CorpusBundleLoader.load(Corpus.self, "device-label")
+        let corpus = try CorpusLocator.load(Corpus.self, "device-label")
         XCTAssertEqual(corpus.deviceLabelVersion, DEVICE_LABEL_VERSION)
         XCTAssertGreaterThanOrEqual(corpus.cases.count, 20)
         for row in corpus.cases {

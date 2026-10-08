@@ -1,21 +1,29 @@
 # D-03 Diceroll: publish through the Action, take feeds from Polaris Key, delete the old updater
 
-| Field       | Value                                                                                                                                                                                                                                                                         |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | D: Diceroll adoption (vladzaharia/diceroll); stage "After P2–P3"                                                                                                                                                                                                              |
-| Size        | 1–2 engineer-weeks                                                                                                                                                                                                                                                            |
-| Depends on  | [P3-10](P3-10-godot-updater.md), [P2b-05](P2b-05-storefront-feeds.md), [P2-06](P2-06-publish-cli-action.md), [P5-07](P5-07-desktop-plugins.md)                                                                                                                                |
-| Unblocks    | none                                                                                                                                                                                                                                                                          |
-| Role        | `pkey-godot-engineer`                                                                                                                                                                                                                                                         |
-| Plan mode   | no                                                                                                                                                                                                                                                                            |
-| Gates       | `pkey validate` clean; Diceroll's CI; one tagged pre-release published end to end through the Action                                                                                                                                                                          |
-| Human input | none in the graph. Needed in practice: a GitHub Environment `release` with required reviewers holding the new Ed25519 release key; the trusted-publisher policy set in the console; an F-Droid repo signing key as a CI secret; the go-ahead to retire the `channels` release |
-| Repo        | `vladzaharia/diceroll`                                                                                                                                                                                                                                                        |
+| Field       | Value                                                                                                                                                                                                                                                                                                                      |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | D: Diceroll adoption (vladzaharia/diceroll); stage "After P2–P3"                                                                                                                                                                                                                                                           |
+| Size        | 1–2 engineer-weeks                                                                                                                                                                                                                                                                                                         |
+| Depends on  | [P3-10](P3-10-godot-updater.md), [P2b-05](P2b-05-storefront-feeds.md), [P2-06](P2-06-publish-cli-action.md), [P5-07](P5-07-desktop-plugins.md), [A-25](A-25-action-v2-channels-auto-thin-inputs.md), [P2-08](P2-08-built-in-dev-release-track-default-store.md), [P2-11](P2-11-updates-page-updaters-shipped-platforms.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                                                                                                                                                                                                     |
+| Role        | `pkey-godot-engineer`                                                                                                                                                                                                                                                                                                      |
+| Plan mode   | no                                                                                                                                                                                                                                                                                                                         |
+| Gates       | `pkey validate` clean; Diceroll's CI; one tagged pre-release published end to end through the Action                                                                                                                                                                                                                       |
+| Human input | none in the graph. Needed in practice: a GitHub Environment `release` with required reviewers holding the new Ed25519 release key; the trusted-publisher policy set in the console; an F-Droid repo signing key as a CI secret; the go-ahead to retire the `channels` release                                              |
+| Repo        | `vladzaharia/diceroll`                                                                                                                                                                                                                                                                                                     |
 
 > **Re-verify first.** Diceroll paths below come from [notes/A4](../../notes/A4-diceroll-mapping.md)
 > (Diceroll `4e78bb6`, 2026-09-29) plus what D-01 and D-02 changed; this brief was written without
 > access to the Diceroll repository. Confirm every path before deleting it, and list the actual
 > deletions in the PR.
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track I, Packages, updates and packs](../../../2026-10-07-dx-consolidation/tracks.md#i-packages-updates-and-packs)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Publish with channels: auto (A-25); the per-outlet channel lock maps onto default track maps; Diceroll gains dev for dev-menu builds (P2-08). Acceptance adds Wired on Updates (P2-11) for every self-updating channel.
+
+- Depends on: added A-25, P2-08 and P2-11.
 
 ## Goal
 

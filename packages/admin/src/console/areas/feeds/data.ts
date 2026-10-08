@@ -12,17 +12,16 @@ import {
   type FeedScope,
 } from "../../../api.js";
 import { qk } from "../../data/queries.js";
-import { queryClient } from "../../data/queryClient.js";
 
 export function fetchFeedsOverview(scope: FeedScope) {
   return api.feedsOverview(scope);
 }
 
 export function useFeedsOverview(scope: FeedScope) {
-  return useQuery(
-    { queryKey: qk.pkgFeeds(scope), queryFn: () => fetchFeedsOverview(scope) },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.pkgFeeds(scope),
+    queryFn: () => fetchFeedsOverview(scope),
+  });
 }
 
 export function fetchFeedDetail(scope: FeedScope, eco: FeedEcosystem) {
@@ -30,13 +29,10 @@ export function fetchFeedDetail(scope: FeedScope, eco: FeedEcosystem) {
 }
 
 export function useFeedDetail(scope: FeedScope, eco: FeedEcosystem) {
-  return useQuery(
-    {
-      queryKey: qk.pkgFeed(scope, eco),
-      queryFn: () => fetchFeedDetail(scope, eco),
-    },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.pkgFeed(scope, eco),
+    queryFn: () => fetchFeedDetail(scope, eco),
+  });
 }
 
 /** The packages list, a page at a time (`Load more`). */
@@ -52,16 +48,13 @@ export function useFeedPackages(
     { pages: FeedPackagesPage[] },
     readonly unknown[],
     string | null
-  >(
-    {
-      queryKey: qk.pkgFeedPackages(scope, eco, q, owner),
-      queryFn: ({ pageParam }) =>
-        api.feedPackages(scope, eco, { q, owner, cursor: pageParam }),
-      initialPageParam: null,
-      getNextPageParam: (last) => last.nextCursor,
-    },
-    queryClient,
-  );
+  >({
+    queryKey: qk.pkgFeedPackages(scope, eco, q, owner),
+    queryFn: ({ pageParam }) =>
+      api.feedPackages(scope, eco, { q, owner, cursor: pageParam }),
+    initialPageParam: null,
+    getNextPageParam: (last) => last.nextCursor,
+  });
 }
 
 export function fetchFeedPackage(
@@ -79,13 +72,10 @@ export function useFeedPackage(
   owner: string,
   name: string,
 ) {
-  return useQuery(
-    {
-      queryKey: qk.pkgFeedPackage(scope, eco, owner, name),
-      queryFn: () => fetchFeedPackage(scope, eco, owner, name),
-    },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.pkgFeedPackage(scope, eco, owner, name),
+    queryFn: () => fetchFeedPackage(scope, eco, owner, name),
+  });
 }
 
 export function fetchFeedActivity(scope: FeedScope, eco: FeedEcosystem) {
@@ -93,11 +83,8 @@ export function fetchFeedActivity(scope: FeedScope, eco: FeedEcosystem) {
 }
 
 export function useFeedActivity(scope: FeedScope, eco: FeedEcosystem) {
-  return useQuery(
-    {
-      queryKey: qk.pkgFeedActivity(scope, eco),
-      queryFn: () => fetchFeedActivity(scope, eco),
-    },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.pkgFeedActivity(scope, eco),
+    queryFn: () => fetchFeedActivity(scope, eco),
+  });
 }

@@ -43,7 +43,9 @@
 
 import {
   hashKey,
+  normalizeEmail,
   randomId,
+  randomToken,
   type Db,
   type Env,
 } from "../../../core/platform.js";
@@ -73,10 +75,7 @@ import {
 } from "../../../core/accountCookies.js";
 import { portalAudit } from "../portal/repo.js";
 import { portalEmailConfigured, sendSignInEmail } from "../portal/email.js";
-import {
-  checkAccountSession,
-  randomSecret,
-} from "../portal/accountSessions.js";
+import { checkAccountSession } from "../portal/accountSessions.js";
 import {
   portalSessionAuthenticatedAt,
   portalSessionFromRequest,
@@ -92,7 +91,6 @@ import {
   findLink,
   getAccountRow,
   insertLink,
-  normalizeEmail,
   resolveAccount,
   touchAccountSignIn,
   touchLink,
@@ -114,6 +112,8 @@ import {
 } from "./emailSignIn.js";
 import { finishSignIn } from "./finish.js";
 import {
+  ACCOUNT_DISABLED_MESSAGE,
+  accountDisabledPage,
   cardJson,
   cardPage,
   cardRedirect,
@@ -250,15 +250,6 @@ function refusedPage(status: number, heading: string): Response {
 const unverifiedPage = (): Response =>
   refusedPage(401, "We couldn't confirm that sign-in");
 
-/** "This account can't sign in" (SIGN-IN.md §3.13, Account disabled). */
-function accountDisabledPage(): Response {
-  return cardPage(403, {
-    title: "Sign in",
-    heading: "This account can't sign in",
-    body: "<p>Contact Polaris Key support.</p>",
-  });
-}
-
 /** Whether the account still has to accept `terms` (no row for this version yet). */
 async function needsTerms(
   db: Db,
@@ -311,7 +302,7 @@ export async function beginProviderSignIn(
   if (link) {
     account = await resolveAccount(db, link.account_id, now);
     if (!account || account.status !== "active") {
-      return accountDisabledPage();
+      return accountDisabledPage({ signInHref: input.returnTo });
     }
     const emailConfirmed = account.primary_email_verified_at !== null;
     if (emailConfirmed && !(await needsTerms(db, account, product, terms))) {
@@ -319,7 +310,7 @@ export async function beginProviderSignIn(
         product: product ? { slug: product, tenantScopes: scopes } : undefined,
       });
       if (result.status !== "signed_in") {
-        return accountDisabledPage();
+        return accountDisabledPage({ signInHref: input.returnTo });
       }
       await importProfile(
         env,
@@ -349,7 +340,7 @@ export async function beginProviderSignIn(
       return cardRedirect(input.returnTo ?? "/", [finished.cookie]);
     }
   }
-  const secret = randomSecret(32);
+  const secret = randomToken(32);
   const ref = await gateRefFor(env, secret);
   const gate: GateRecord = {
     v: 1,
@@ -721,7 +712,7 @@ async function gatePass(
     const account = await getAccountRow(db, gate.accountId);
     const link = await findLink(db, key);
     if (!account || account.status !== "active" || !link) {
-      return gateRefused(403, ACCOUNT_DISABLED);
+      return gateRefused(403, ACCOUNT_DISABLED_MESSAGE);
     }
     if (email) {
       const added = await addEmailMethod(db, account.id, email, now);
@@ -896,10 +887,6 @@ function emailTaken(): Response {
   );
 }
 
-/** The JSON refusal's message for a disabled account (SIGN-IN.md §3.13). */
-const ACCOUNT_DISABLED =
-  "This account can't sign in. Contact Polaris Key support.";
-
 function gateRefused(status: number, message: string): Response {
   return cardJson({ error: "forbidden", message }, status, [clearGate()]);
 }
@@ -940,7 +927,7 @@ async function completeGate(
     now,
   );
   const account = await getAccountRow(db, done.accountId);
-  if (!account) return gateRefused(403, ACCOUNT_DISABLED);
+  if (!account) return gateRefused(403, ACCOUNT_DISABLED_MESSAGE);
   const finished = await finishSignIn(
     env,
     db,
@@ -1021,7 +1008,7 @@ async function gateJoin(
         ? cardJson({ error: "link_conflict" }, 409, [clearGate()])
         : linked.error === "step_up_required"
           ? cardJson({ error: "step_up_required" }, 403, [clearGate()])
-          : gateRefused(403, ACCOUNT_DISABLED);
+          : gateRefused(403, ACCOUNT_DISABLED_MESSAGE);
     }
     return completeGate(
       req,
@@ -1059,7 +1046,7 @@ async function gateJoin(
     tenantScope: gate.identity.tenantScope,
     subject: gate.identity.subject,
   });
-  if (!link) return gateRefused(403, ACCOUNT_DISABLED);
+  if (!link) return gateRefused(403, ACCOUNT_DISABLED_MESSAGE);
   return completeGate(
     req,
     env,

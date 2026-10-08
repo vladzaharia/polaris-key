@@ -13,6 +13,7 @@ export {
   SHORT_ROWS,
   isHeadless,
   queryBackground,
+  readsLogCommands,
   schemeFromColorFgBg,
   schemeFromOsc11,
   schemeIsGuessed,
@@ -93,7 +94,7 @@ export {
 } from "./progress.js";
 export { displayUrl, osc52, osc8 } from "./osc.js";
 export { fitScreen, inlineHints, type FitOptions } from "./screen.js";
-export { clean, CONTROL_CHARS, safeLink } from "./sanitize.js";
+export { clean, CONTROL_CHARS, hasLogCommand, safeLink } from "./sanitize.js";
 export {
   TERMINAL_LAYOUT,
   TERMINAL_SGR,

@@ -17,17 +17,26 @@
 // catalog. A host that keeps overrides itself passes `onOverride`, which takes over the save.
 //
 // Slots follow the `LicenseGate` pattern: every region is replaceable while the data layer and
-// the a11y contract stay.
+// the a11y contract stay. Every state renders inside the panel, in the host's page (the
+// disabled one too); the panel measures itself, and from 32rem of width an editable row is one
+// line: the key and its state at the start, the value and Override at the end.
 
-import { useId, useState, type ReactNode } from "react";
+import { useId, useState, type CSSProperties, type ReactNode } from "react";
 import type { JSONValue } from "@polaris-key/protocol/core";
 import type { ConfigSource } from "@polaris-key/client-core";
 import { useManagedConfig, usePolarisTheme } from "../react/hooks.js";
 import { Button } from "./primitives/buttons.js";
-import { FONT } from "@polaris-key/brand";
-import { Panel, chipStyle, mutedText, titleText } from "./primitives/card.js";
-import { MessageScreen } from "./primitives/MessageScreen.js";
+import { FONT, SPACE } from "@polaris-key/brand";
+import {
+  Panel,
+  chipStyle,
+  dangerText,
+  mutedText,
+  titleText,
+  typeStep,
+} from "./primitives/card.js";
 import { TextField } from "./primitives/input.js";
+import { useRemSize } from "./primitives/layout.js";
 import { describeError } from "../core/copy.js";
 import type { PolarisTheme } from "./theme.js";
 
@@ -61,7 +70,13 @@ export interface ConfigPanelProps {
   onOverride?: (key: string, value: string) => void;
   /** Hide the override affordance entirely (read-only settings display). */
   readOnly?: boolean;
+  /** No border, background, radius or inline padding, for a host that frames the panel itself
+   *  (the title and the row dividers stay). */
+  bare?: boolean;
 }
+
+/** From this width (rem) an editable row is one line. */
+const ONE_LINE_FROM_REM = 32;
 
 function badgeFor(theme: PolarisTheme, source: ConfigSource): string {
   switch (source) {
@@ -78,12 +93,21 @@ function badgeFor(theme: PolarisTheme, source: ConfigSource): string {
 
 const badgeStyle = { ...chipStyle, display: "inline-block" } as const;
 
-const rowStyle = {
+const rowStyle = (last: boolean): CSSProperties => ({
   display: "flex",
-  flexDirection: "column" as const,
-  gap: "6px",
-  padding: "12px 0",
-  borderBottom: "1px solid var(--pk-border)",
+  flexDirection: "column",
+  gap: SPACE["2"],
+  paddingBlock: SPACE["3"],
+  borderBottom: last ? "none" : "1px solid var(--pk-border)",
+});
+
+/** The key and its state chip. */
+const keyLine: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: SPACE["2"],
+  alignItems: "center",
+  minWidth: 0,
 };
 
 export function ConfigPanel(props: ConfigPanelProps): JSX.Element {
@@ -91,16 +115,32 @@ export function ConfigPanel(props: ConfigPanelProps): JSX.Element {
   const cfg = useManagedConfig();
   const titleId = useId();
   const slots = props.slots ?? {};
+  // The rows' own width: a panel in a narrow sidebar stacks its rows like one on a phone.
+  const [measure, size] = useRemSize<HTMLDivElement>();
+  const oneLine = size.width >= ONE_LINE_FROM_REM;
+
+  const header = (title: string, lede: string): ReactNode => (
+    <div>
+      <h2 id={titleId} style={titleText}>
+        {title}
+      </h2>
+      <p style={mutedText}>{lede}</p>
+    </div>
+  );
 
   if (!cfg.enabled) {
     return slots.disabled ? (
       <>{slots.disabled()}</>
     ) : (
-      <MessageScreen
-        title={theme.copy.configDisabledTitle}
-        body={theme.copy.configDisabledBody}
+      // In the host's page like every other state: the panel explains itself in place.
+      <Panel
+        className={props.className}
+        bare={props.bare}
         data-polaris-config="disabled"
-      />
+        aria-labelledby={titleId}
+      >
+        {header(theme.copy.configDisabledTitle, theme.copy.configDisabledBody)}
+      </Panel>
     );
   }
 
@@ -117,53 +157,52 @@ export function ConfigPanel(props: ConfigPanelProps): JSX.Element {
   return (
     <Panel
       className={props.className}
+      bare={props.bare}
       data-polaris-config="panel"
       aria-labelledby={titleId}
     >
-      <div>
-        <h2 id={titleId} style={titleText}>
-          {theme.copy.configTitle}
-        </h2>
-        <p style={mutedText}>{theme.copy.configSubtitle}</p>
-      </div>
-      {rows.length === 0 ? (
-        slots.empty ? (
-          <>{slots.empty()}</>
+      {header(theme.copy.configTitle, theme.copy.configSubtitle)}
+      <div ref={measure}>
+        {rows.length === 0 ? (
+          slots.empty ? (
+            <>{slots.empty()}</>
+          ) : (
+            <p style={mutedText} role="status" data-polaris-config="empty">
+              {theme.copy.configEmpty}
+            </p>
+          )
+        ) : slots.rows ? (
+          <>{slots.rows(rows)}</>
         ) : (
-          <p style={mutedText} role="status" data-polaris-config="empty">
-            {theme.copy.configEmpty}
-          </p>
-        )
-      ) : slots.rows ? (
-        <>{slots.rows(rows)}</>
-      ) : (
-        <ul
-          style={{ listStyle: "none", margin: 0, padding: 0 }}
-          data-polaris-config="rows"
-        >
-          {rows.map((row) => (
-            <li
-              key={row.key}
-              style={rowStyle}
-              data-polaris-config-row={row.key}
-            >
-              {slots.row ? (
-                slots.row(row)
-              ) : (
-                <ConfigEntryRow
-                  row={row}
-                  theme={theme}
-                  readOnly={props.readOnly}
-                  onOverride={props.onOverride}
-                  canSet={cfg.canSet}
-                  set={cfg.set}
-                  clear={cfg.clear}
-                />
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
+          <ul
+            style={{ listStyle: "none", margin: 0, padding: 0 }}
+            data-polaris-config="rows"
+          >
+            {rows.map((row, index) => (
+              <li
+                key={row.key}
+                style={rowStyle(index === rows.length - 1)}
+                data-polaris-config-row={row.key}
+              >
+                {slots.row ? (
+                  slots.row(row)
+                ) : (
+                  <ConfigEntryRow
+                    row={row}
+                    theme={theme}
+                    oneLine={oneLine}
+                    readOnly={props.readOnly}
+                    onOverride={props.onOverride}
+                    canSet={cfg.canSet}
+                    set={cfg.set}
+                    clear={cfg.clear}
+                  />
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </Panel>
   );
 }
@@ -171,13 +210,15 @@ export function ConfigPanel(props: ConfigPanelProps): JSX.Element {
 function ConfigEntryRow(props: {
   row: ConfigRow;
   theme: PolarisTheme;
+  /** The panel is wide enough for the row on one line. */
+  oneLine: boolean;
   readOnly?: boolean;
   onOverride?: (key: string, value: string) => void;
   canSet: boolean;
   set: (key: string, value: JSONValue) => Promise<void>;
   clear: (key: string) => Promise<void>;
 }): JSX.Element {
-  const { row, theme } = props;
+  const { row, theme, oneLine } = props;
   const inputId = useId();
   const errorId = useId();
   const [draft, setDraft] = useState(() => stringify(row.value));
@@ -196,91 +237,130 @@ function ConfigEntryRow(props: {
       ),
     );
 
-  return (
-    <>
-      <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-        <span style={{ fontSize: "14px", fontWeight: 700 }}>{row.key}</span>
+  const key = (
+    <div style={keyLine}>
+      <span
+        style={{
+          ...typeStep("sm"),
+          fontWeight: 600,
+          minWidth: 0,
+          overflowWrap: "anywhere",
+        }}
+      >
+        {row.key}
+      </span>
+      <span
+        style={badgeStyle}
+        data-polaris-config-source={row.source}
+        // The badge is the row's explanation, so it is announced with the row rather than
+        // left as decorative styling.
+        aria-label={`${row.key}: ${badgeFor(theme, row.source)}`}
+      >
+        {badgeFor(theme, row.source)}
+      </span>
+    </div>
+  );
+
+  // One line from 32rem: the key at the start, the value at the end; stacked below that.
+  const line: CSSProperties = oneLine
+    ? {
+        display: "flex",
+        flexWrap: "wrap",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: `${SPACE["2"]} ${SPACE["4"]}`,
+      }
+    : { display: "flex", flexDirection: "column", gap: SPACE["2"] };
+
+  if (!showOverride)
+    return (
+      <div style={line}>
+        {key}
         <span
-          style={badgeStyle}
-          data-polaris-config-source={row.source}
-          // The badge is the row's explanation, so it is announced with the row rather than
-          // left as decorative styling.
-          aria-label={`${row.key}: ${badgeFor(theme, row.source)}`}
-        >
-          {badgeFor(theme, row.source)}
-        </span>
-      </div>
-      {showOverride ? (
-        <form
-          style={{ display: "flex", flexDirection: "column", gap: "6px" }}
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (props.onOverride) {
-              props.onOverride(row.key, draft);
-              return;
-            }
-            setError(null);
-            props.set(row.key, parseDraft(draft, row.value)).catch(fail);
+          style={{
+            ...mutedText,
+            fontFamily: FONT.mono,
+            overflowWrap: "anywhere",
           }}
-        >
-          <TextField
-            id={inputId}
-            label={`${row.key} ${theme.copy.configOverrideLabel}`}
-            value={draft}
-            onChange={(v) => {
-              setDraft(v);
-              setError(null);
-            }}
-            data-polaris-config-input={row.key}
-            invalid={Boolean(error)}
-            errorId={error ? errorId : undefined}
-          />
-          {error ? (
-            <span
-              id={errorId}
-              role="alert"
-              style={{ fontSize: "14px", color: "var(--pk-danger)" }}
-              data-polaris-config-error={row.key}
-            >
-              {error}
-            </span>
-          ) : null}
-          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-            <Button
-              variant="secondary"
-              type="submit"
-              style={{ fontSize: "14px" }}
-            >
-              {theme.copy.configOverrideLabel}
-            </Button>
-            {ownSave && row.source === "local" ? (
-              <Button
-                variant="secondary"
-                type="button"
-                style={{ fontSize: "14px" }}
-                data-polaris-config-reset={row.key}
-                onClick={() => {
-                  setError(null);
-                  props
-                    .clear(row.key)
-                    .then(() => setDraft(stringify(row.value)))
-                    .catch(fail);
-                }}
-              >
-                {theme.copy.configResetLabel}
-              </Button>
-            ) : null}
-          </div>
-        </form>
-      ) : (
-        <span
-          style={{ ...mutedText, fontSize: "14px", fontFamily: FONT.mono }}
           data-polaris-config-value={row.key}
         >
           {stringify(row.value)}
         </span>
-      )}
-    </>
+      </div>
+    );
+
+  // The field is fitted to its value on one line (at most 16rem), full width when stacked.
+  const fitted = `min(16rem, calc(${Math.max(draft.length, 4)}ch + ${SPACE["6"]} + 2px))`;
+  return (
+    <form
+      style={line}
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (props.onOverride) {
+          props.onOverride(row.key, draft);
+          return;
+        }
+        setError(null);
+        props.set(row.key, parseDraft(draft, row.value)).catch(fail);
+      }}
+    >
+      {key}
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
+          gap: SPACE["2"],
+          ...(oneLine ? { justifyContent: "flex-end" } : null),
+        }}
+      >
+        {/* The key names the field; no visible "{key} Override" label repeats it. */}
+        <TextField
+          id={inputId}
+          label={row.key}
+          hideLabel
+          value={draft}
+          onChange={(v) => {
+            setDraft(v);
+            setError(null);
+          }}
+          style={oneLine ? { width: fitted } : undefined}
+          data-polaris-config-input={row.key}
+          invalid={Boolean(error)}
+          errorId={error ? errorId : undefined}
+        />
+        <Button variant="secondary" type="submit" size="compact">
+          {theme.copy.configOverrideLabel}
+        </Button>
+        {ownSave && row.source === "local" ? (
+          <Button
+            variant="secondary"
+            type="button"
+            size="compact"
+            data-polaris-config-reset={row.key}
+            onClick={() => {
+              setError(null);
+              props
+                .clear(row.key)
+                .then(() => setDraft(stringify(row.value)))
+                .catch(fail);
+            }}
+          >
+            {theme.copy.configResetLabel}
+          </Button>
+        ) : null}
+      </div>
+      {error ? (
+        <span
+          id={errorId}
+          role="alert"
+          style={{ ...dangerText, flexBasis: "100%" }}
+          data-polaris-config-error={row.key}
+        >
+          {error}
+        </span>
+      ) : null}
+    </form>
   );
 }
 

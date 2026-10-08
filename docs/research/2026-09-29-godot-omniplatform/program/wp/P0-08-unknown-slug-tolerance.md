@@ -2,7 +2,7 @@
 
 | Field       | Value                                                                       |
 | ----------- | --------------------------------------------------------------------------- |
-| Phase       | P0: Hygiene and unblockers                                                  |
+| Phase       | P0: Hygiene, unblockers and code quality                                    |
 | Size        | 0.1–0.25 engineer-weeks                                                     |
 | Depends on  | none                                                                        |
 | Unblocks    | [P0-09](P0-09-service-table.md)                                             |

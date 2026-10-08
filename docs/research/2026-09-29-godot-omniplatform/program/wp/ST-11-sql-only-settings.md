@@ -2,15 +2,23 @@
 
 | Field       | Value                                                                                       |
 | ----------- | ------------------------------------------------------------------------------------------- |
-| Phase       | ST: Settings architecture (S-18) (phase 3: coverage)                                        |
+| Phase       | ST: Settings, access control and console shell (phase 3: coverage)                          |
 | Size        | 0.6–0.85 engineer-weeks                                                                     |
-| Depends on  | [ST-05](ST-05-settings-admin-api.md), [ST-09](ST-09-platform-settings-area.md)              |
-| Unblocks    | [ST-25](ST-25-legacy-retirement.md)                                                         |
+| Depends on  | [ST-09](ST-09-platform-settings-area.md), [ST-05a](ST-05a-one-settings-read-write-path.md)  |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [ST-25](ST-25-legacy-retirement.md)                 |
 | Role        | `pkey-implementer`                                                                          |
 | Plan mode   | no                                                                                          |
 | Gates       | D1 migration (replayable, scratch-SQLite rehearsal); `TABLE_OWNERS`; drift gate (`--check`) |
 | Human input | none                                                                                        |
 | Repo        | `vladzaharia/polaris-key`                                                                   |
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **keep** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track D, Administration, access control and console identity](../../../2026-10-07-dx-consolidation/tracks.md#d-administration-access-control-and-console-identity)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> SQL-only settings into the one registry; depends on ST-05a only.
+
+- Depends on: added ST-05a; removed ST-05.
 
 ## Goal
 

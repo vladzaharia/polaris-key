@@ -13,6 +13,7 @@ import type {
   PortalDownloads,
   PortalEntryItem,
   PortalLibraryItem,
+  PortalInstallSource,
   PortalLicensedItem,
   PortalStoreLink,
   PortalLicenseDetail,
@@ -332,6 +333,18 @@ export function storeLink(
     activateUrl: null,
     live: true,
     version: "1.4.2",
+    ...over,
+  };
+}
+
+/** An install source (P0-48): a store link's shape with F-Droid's fingerprint and a QR code. */
+export function installSource(
+  over: Partial<PortalInstallSource> & { kind: string; label: string },
+): PortalInstallSource {
+  return {
+    ...storeLink({ url: null, ...over }),
+    fingerprint: null,
+    qr: null,
     ...over,
   };
 }

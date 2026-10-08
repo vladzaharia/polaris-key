@@ -21,7 +21,8 @@ import { PolarisError } from "@polaris-key/client-core";
 import { Feature } from "../constants.generated.js";
 import type { CoreContext } from "../core/context.js";
 import type { TokenManager } from "../core/token.js";
-import { redactOnPrint } from "../core/redact.js";
+import { responseError } from "../core/http.js";
+import { printAs, redactOnPrint } from "../core/redact.js";
 
 /** What a mint returns. It prints (`console.log`, `JSON.stringify`) with `token` redacted. */
 export interface MintedToken {
@@ -45,10 +46,15 @@ interface Bound<T> {
 }
 
 /** The per-client, per-recipe memory cache, with in-flight sharing so two concurrent asks for
- *  the same recipe (under the same device token) make one request. */
+ *  the same recipe (under the same device token) make one request. It prints as its recipe ids
+ *  only: each entry holds a minted token and the device token it was minted with. */
 export class MintCache {
   readonly tokens = new Map<string, Bound<MintedToken>>();
   readonly inFlight = new Map<string, Bound<Promise<MintedToken>>>();
+
+  constructor() {
+    printAs(this, () => ({ recipes: [...this.tokens.keys()] }));
+  }
 }
 
 export async function mintToken(
@@ -112,8 +118,8 @@ async function mintOnce(
     const b = (await res.json().catch(() => ({}))) as {
       token?: unknown;
       expiresAt?: unknown;
-    };
-    if (typeof b.token !== "string" || typeof b.expiresAt !== "number") {
+    } | null;
+    if (typeof b?.token !== "string" || typeof b.expiresAt !== "number") {
       throw new PolarisError(
         "bad_response",
         "edge-mint answered without a token and its expiry.",
@@ -128,19 +134,10 @@ async function mintOnce(
       deviceToken: presented as string,
     };
   }
-  const body = (await res.json().catch(() => ({}))) as {
-    error?: string | { code?: string };
-    message?: string;
-  };
-  const code =
-    typeof body.error === "string"
-      ? body.error
-      : (body.error?.code ?? `http_${res.status}`);
-  throw new PolarisError(
-    code,
-    body.message ??
-      `edge-mint of "${recipeId}" failed with status ${res.status}.`,
-  );
+  // The one taxonomy (SP-46): the Worker's code (`not_found` for an unknown recipe,
+  // `unauthorized`), `rate_limited` with `retryAfterSeconds`, `server-error` for a 5xx (its
+  // `misconfigured` as `wireCode`), with the server's message.
+  throw await responseError(res, `edge-mint of "${recipeId}"`);
 }
 
 /** One GET, or a local refusal when there is no credential to present. */
@@ -155,13 +152,9 @@ async function get(
       "edge-mint needs a device token: activate, enrol, sign in or register first.",
     );
   }
-  const f = ctx.fetcher();
-  try {
-    return await f(ctx.url(`config/mint/${recipeId}/token`), {
-      headers: ctx.headers({ authorization: `Bearer ${token}` }),
-      signal: ctx.deadline(),
-    });
-  } catch (e) {
-    throw new PolarisError("network-error", (e as Error).message);
-  }
+  return ctx.request(
+    ctx.url(`config/mint/${recipeId}/token`),
+    { headers: ctx.headers({ authorization: `Bearer ${token}` }) },
+    `edge-mint of "${recipeId}"`,
+  );
 }

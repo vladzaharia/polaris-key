@@ -33,7 +33,11 @@
  * third time; one app can hold at most one product's platform pin (a table constraint).
  */
 
-import type { Db, Env } from "../../../../core/platform.js";
+import {
+  parseJsonColumn,
+  type Db,
+  type Env,
+} from "../../../../core/platform.js";
 import {
   checkOutletCredentialPin,
   listOutletCredentials,
@@ -43,7 +47,7 @@ import {
   resolvePlatformCredential,
   type PlatformCredentialSource,
 } from "../../../../core/platformCredentials.js";
-import { listOutlets, parseJsonColumn } from "../../outlets.js";
+import { listOutlets } from "../../outlets.js";
 
 export const ASC_CONNECTOR = "asc";
 export const ASC_LABEL = "App Store Connect";

@@ -2,6 +2,7 @@ import type {
   PortalArtifact,
   PortalDownloadFile,
   PortalDownloads,
+  PortalInstallSource,
   PortalLicenseDetail,
   PortalLicenseSummary,
   PortalProduct,
@@ -225,6 +226,9 @@ export interface PlatformGroup {
   /** "macOS", "Windows", "Linux", or "Extras" for files with no platform. */
   label: string;
   rows: FileRowModel[];
+  /** The platform's install sources, offered after its files ("Other ways to install", P0-48);
+   *  always empty for Extras. */
+  sources: PortalInstallSource[];
 }
 
 const GROUP_LABEL: Record<PlatformKey, string> = {
@@ -260,12 +264,81 @@ function groupRows(rows: FileRowModel[]): PlatformGroup[] {
       .filter((x) => x.platform === p)
       .sort((a, b) => (ARCH_RANK[a.title] ?? 9) - (ARCH_RANK[b.title] ?? 9));
     if (own.length)
-      groups.push({ platform: p, label: GROUP_LABEL[p], rows: own });
+      groups.push({
+        platform: p,
+        label: GROUP_LABEL[p],
+        rows: own,
+        sources: [],
+      });
   }
   const extras = rows.filter((x) => x.platform === null);
   if (extras.length)
-    groups.push({ platform: null, label: "Extras", rows: extras });
+    groups.push({ platform: null, label: "Extras", rows: extras, sources: [] });
   return groups;
+}
+
+/**
+ * Each install source under its platform, after that platform's files (P0-48, §2.5 "all
+ * applicable ones per platform"): a platform with sources and no files gets a group of its own,
+ * so a Mac user reads Homebrew under macOS and never an iPhone source without its OS. The
+ * device's own OS comes first; Extras stays last.
+ */
+function placeSources(
+  groups: PlatformGroup[],
+  sources: readonly PortalInstallSource[],
+  os: PlatformKey | null,
+): PlatformGroup[] {
+  const out = groups.map((g) => ({ ...g, sources: [...g.sources] }));
+  for (const s of sources)
+    for (const raw of s.platforms) {
+      const p = normalisePlatform(raw);
+      if (!p) continue;
+      let g = out.find((x) => x.platform === p);
+      if (!g) {
+        g = { platform: p, label: GROUP_LABEL[p], rows: [], sources: [] };
+        out.push(g);
+      }
+      if (!g.sources.some((x) => x.id === s.id)) g.sources.push(s);
+    }
+  const rank = (g: PlatformGroup) =>
+    g.platform === null
+      ? GROUP_ORDER.length + 1
+      : g.platform === os
+        ? -1
+        : GROUP_ORDER.indexOf(g.platform);
+  return out.sort((a, b) => rank(a) - rank(b));
+}
+
+/**
+ * The install sources a downloads view offers (P0-48): its `installSources`, then any live store
+ * with a command and no page (winget), which is installed the same way, with a command to copy,
+ * and so is never an "Also yours on" pill.
+ */
+function installSourcesOf(d: PortalDownloads): PortalInstallSource[] {
+  const commands = d.stores
+    .filter((s) => s.live && !httpsOrNull(s.url) && s.command)
+    .map((s) => ({ ...s, url: null, fingerprint: null, qr: null }));
+  return [
+    ...(d.installSources ?? []).filter((s) => s.deepLink || s.url || s.command),
+    ...commands,
+  ];
+}
+
+/** On a phone, what installs on the device in hand (P0-48): see {@link GetItModel.here}. */
+function hereFor(
+  device: DeviceInHand,
+  stores: readonly PortalStoreLink[],
+  groups: readonly PlatformGroup[],
+): GetItModel["here"] {
+  if (!device.phone || !device.os) return null;
+  const os = device.os;
+  const own = stores.filter((s) =>
+    s.platforms.some((p) => normalisePlatform(p) === os),
+  );
+  const sources = (groups.find((g) => g.platform === os)?.sources ?? []).filter(
+    (s) => s.deepLink || httpsOrNull(s.url),
+  );
+  return own.length || sources.length ? { os, stores: own, sources } : null;
 }
 
 export interface GetItModel {
@@ -282,9 +355,21 @@ export interface GetItModel {
   os: PlatformKey | null;
   /** Covered builds for `os` (Universal or Apple silicon first); empty when there's no match. */
   recommended: FileRowModel[];
+  /** Every platform's files, then its install sources (P0-48); the device's own OS first. */
   groups: PlatformGroup[];
-  /** Store outlets reporting a live release (G2, "Also yours on"); empty without PX-W2. */
+  /** Store outlets with a page reporting a live release (G2, "Also yours on"); empty without
+   *  PX-W2. Install sources are not stores: they sit under their platform in `groups`. */
   stores: PortalStoreLink[];
+  /**
+   * On a phone, what installs on the phone in hand, to lead with ("Install on this iPhone",
+   * P0-48): its OS's live stores and the install sources it can open. `null` on a computer, or
+   * when the phone has neither (the page then says to open it on a computer).
+   */
+  here: {
+    os: PlatformKey;
+    stores: PortalStoreLink[];
+    sources: PortalInstallSource[];
+  } | null;
 }
 
 export function getItModel(
@@ -298,7 +383,11 @@ export function getItModel(
   if (!newest) return null;
   const covered = releases.find((r) => r.artifacts.some((a) => a.canDownload));
   const release = covered ?? newest;
-  const groups = groupFiles(release, licenseUsable, ctx);
+  const groups = placeSources(
+    groupFiles(release, licenseUsable, ctx),
+    [],
+    device.os,
+  );
   const os = device.phone ? null : device.os;
   const recommended = os
     ? (groups.find((g) => g.platform === os)?.rows ?? []).filter(
@@ -313,6 +402,7 @@ export function getItModel(
     recommended,
     groups,
     stores: [],
+    here: null,
   };
 }
 
@@ -375,10 +465,15 @@ export function getItFromDownloads(
   const recommended = rec
     ? rec.files.filter((f) => f.canDownload).map(row)
     : [];
-  const groups = groupRows([
-    ...d.platforms.flatMap((p) => p.files.map(row)),
-    ...d.extras.map(row),
-  ]);
+  const groups = placeSources(
+    groupRows([
+      ...d.platforms.flatMap((p) => p.files.map(row)),
+      ...d.extras.map(row),
+    ]),
+    installSourcesOf(d),
+    device.os,
+  );
+  const stores = d.stores.filter((s) => s.live && httpsOrNull(s.url));
   const headline = rec ? recommended[0]?.release : undefined;
   return {
     release: headline ?? {
@@ -400,7 +495,10 @@ export function getItFromDownloads(
     os,
     recommended,
     groups,
-    stores: d.stores.filter((s) => s.live && (s.url || s.command)),
+    // "Also yours on" is the live stores alone. Only a store answers "where else" for a file not
+    // hosted here (`where` above): an install source serves the very files listed (P0-48).
+    stores,
+    here: hereFor(device, stores, groups),
   };
 }
 

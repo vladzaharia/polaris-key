@@ -179,23 +179,6 @@ export function matchCiCommand(
   return null;
 }
 
-/** A parameter's value in `argv` for command `id` (after its prefix), or undefined. */
-export function ciParamValue(
-  list: CiAllowList,
-  id: string,
-  argv: readonly string[],
-  param: string,
-): string | undefined {
-  const rule = list.commands[id];
-  if (!rule) return undefined;
-  const i = rule.argv.findIndex(
-    (a) => typeof a !== "string" && a.param === param,
-  );
-  if (i < 0 || argv[i] === undefined) return undefined;
-  const a = rule.argv[i] as CiParam;
-  return argv[i]!.slice((a.prefix ?? "").length);
-}
-
 /** Every literal token a list could ever run (for the never-list check), prefixes included. */
 export function ciLiterals(list: CiAllowList): string[] {
   return Object.values(list.commands).flatMap((c) =>

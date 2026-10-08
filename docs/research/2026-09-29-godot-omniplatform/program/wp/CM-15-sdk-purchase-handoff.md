@@ -1,8 +1,8 @@
-# CM-15 SDKs and UI kits: `offers()`, `purchase()` hand-off to Polaris Key checkout on desktop and web, store billing on store builds, `manageBilling()`
+# CM-15 Checkout hand-off and manageBilling() in the SDKs (deferred)
 
 | Field       | Value                                                                            |
 | ----------- | -------------------------------------------------------------------------------- |
-| Phase       | CM: Polaris Key commerce (S-22): deferred until the owner's go                   |
+| Phase       | CM: Commerce: store commerce (required) and Polaris Key checkout (deferred)      |
 | Size        | 1.4–2 engineer-weeks                                                             |
 | Depends on  | [CM-14](CM-14-device-checkout-wire.md), [LX-19](LX-19-sdks-licensing.md)         |
 | Unblocks    | [CM-17](CM-17-commerce-closeout.md), [CM-18](CM-18-store-link-out-programmes.md) |
@@ -16,6 +16,20 @@
 > `workpackages.json`: the owner asked for the commerce plan on 2026-10-05 but not for its
 > execution. `check.mjs --ready` does not list it. It becomes dispatchable only when the owner says
 > go and the lead removes the `deferred` field.
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track K, Corpus lane (wire trains, serial)](../../../2026-10-07-dx-consolidation/tracks.md#k-corpus-lane-wire-trains-serial)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Adds only the Polaris Key checkout hand-off and manageBilling(); offers()/purchase() names come from api.json and the store side ships in LX-20; Paywall renders in the rebuilt kits.
+
+- Title: was "SDKs and UI kits: `offers()`, `purchase()` hand-off to Polaris Key checkout on desktop and web, store billing on store builds, `manageBilling()`".
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/SP-35.md`](../plans/SP-35.md) §12: its verbs become `api.json` rows when it is built. It stays deferred with Polaris Key checkout. [`plans/UK-02b.md`](../plans/UK-02b.md) §8: appends its rows to `ui-matrix.json` (§4.8).
 
 ## Goal
 
