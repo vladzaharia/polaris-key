@@ -4,7 +4,7 @@ High-fidelity mockups of every screen the DX consolidation builds or changes
 (`docs/research/2026-10-07-dx-consolidation/`): the console, the customer portal, terminal output,
 SDK code and the in-app UI kits. A mockup is the target a package builds to and the picture its
 built screen is reviewed against. All of them are drawn with one kit, so they look like one
-product, in both themes, at desktop and phone width.
+product, in both themes, at four sizes: wide, desktop, tablet and phone.
 
 They are published together as one page (an artifact the lead owns). Each screen shows its
 mockup, then its built screenshots beside it once they exist, its design reviews, what to check,
@@ -45,9 +45,12 @@ digits and hyphens, such as `licenses.detail` or `commerce.offer-editor`.
 - Styled by `kit/mockup.css` only, plus an optional `<style>` block at the top for this screen,
   every rule scoped as `[data-screen="<id>"] …` and every colour a token. The renderer puts
   `data-screen="<id>"` on `<body>`.
-- Correct at 1440×900 (desktop) and 390×844 (phone), in `data-theme="dark"` and `"light"`
-  (set on `<html>` by the renderer). Nothing may scroll the page sideways; wide tables and code
-  scroll inside their own block.
+- Correct at four sizes, wide 1920×1080, desktop 1440×900, tablet 1024×768 and phone 390×844, in
+  `data-theme="dark"` and `"light"` (set on `<html>` by the renderer). Each size adapts, not just
+  shrinks: wide uses the width (an aside column, a capped line length), tablet reflows (the 56px
+  icon rail, grids drop a column), phone stacks; device-code, QR and activation screens go side by
+  side in landscape and stack in portrait (`kit/README.md`, "Four sizes"). Nothing may scroll the
+  page sideways; wide tables and code scroll inside their own block.
 - No external requests: no `<link>`, no remote images or fonts, no `@import`. No JavaScript is
   needed to render; a small inline script is allowed only to show a toggle, never to draw the
   screen.
@@ -59,6 +62,9 @@ digits and hyphens, such as `licenses.detail` or `commerce.offer-editor`.
   and PORTAL.md: sentence case, US "license", say exactly what happens ("Publish", then
   "Published"), errors say what went wrong and how to fix it, and never "outlet", "grant" (except
   "Automatic grant"), "capability" or "storefront feed".
+- Each fact once per page, and briefly: no subtitle that restates a count or the title, no
+  sentence that narrates the layout or the mechanism, one sentence where one will do
+  (`kit/README.md`, "Say it once, and briefly").
 
 **`<id>.json`**:
 
@@ -84,18 +90,19 @@ digits and hyphens, such as `licenses.detail` or `commerce.offer-editor`.
 | `uxRows`       | the UX rows it settles, if any                                                                                            |
 | `compare`      | the checklist a reviewer walks when the built screen comes back: layout, states, words, phone. Specific and checkable.    |
 | `status`       | `mockup` in the file. Later states (`building`, `built`, `shipped`) live in the page's database, not here.                |
-| `designReview` | `null` until a UX designer reviews the mockup; then `{ "round": 1, "verdict": "…", "findings": [{ "severity", "issue", "resolution" }] }` |
+| `designReview` | `null` until a UX designer reviews the mockup; then `{ "round": 1, "verdict": "…", "findings": [{ "severity", "issue", "resolution" }] }`. A later round keeps the earlier ones in `previousRounds`; a lead's decision on several reviews is round `"multi-review"`, each finding with `"decision": "accepted"` or `"declined"` and `raisedBy` |
 | `order`        | optional number to order screens inside an area (otherwise by id)                                                         |
 
 Draw one screen per state that matters (an empty list, an error, a confirmation) rather than one
-screen with everything at once. Reference screens: `products.home` and `products.integration`.
+screen with everything at once. Reference screens: `products.home` and `products.overview` (the
+spacing system, the content rules and the four sizes), and `products.integration`.
 
 ## Rendering
 
 From the worktree root, with Node 22:
 
 ```sh
-# one area: writes <id>.desktop-dark.png, .desktop-light.png, .phone-dark.png, .phone-light.png
+# one area: writes <id>.{wide,desktop,tablet,phone}-{dark,light}.png
 mise exec node@22 -- node tools/mockups/shoot.mjs --area products --out /Users/vlad/Repos/pk-wt/_mockups/shots/products
 
 # one screen
@@ -107,15 +114,16 @@ mise exec node@22 -- node tools/mockups/shoot.mjs --gallery --out /Users/vlad/Re
 mise exec node@22 -- node tools/mockups/shoot.mjs --all --check
 ```
 
-Other options: `--sizes desktop,phone`, `--themes dark,light`, `--scale 2` for retina PNGs, and
+Other options: `--sizes wide,desktop,tablet,phone` (the default), `--themes dark,light`, `--scale 2` for retina PNGs, and
 `--html <dir>` to also write each composed page for opening in a browser. Shots are full page and
 deterministic: fonts are embedded and awaited, animation and the caret are off, and every network
 request is refused. The run fails on a contract error, a console error, a font that didn't load,
-a blocked request, or a page wider than its viewport, and names the widest element. On phone, the
-portal's fixed bottom bar and toasts are drawn at the end of the page (where they sit when it is
-scrolled down), so a full-page shot never paints them over the content at the 844 px line.
+a blocked request, or a page wider than its viewport, and names the widest element. On phone, and
+on any page taller than its viewport, the portal's fixed bottom bar and toasts are drawn at the end
+of the page (where they sit when it is scrolled down), so a full-page shot never paints them over
+the content at the viewport's bottom line.
 
-Open the PNGs and look at them, in both themes and on phone, before calling a screen done. If
+Open the PNGs and look at them, all eight (four sizes, both themes), before calling a screen done. If
 `node_modules` is missing in the worktree, run `mise exec node@22 -- pnpm install --frozen-lockfile`
 first; the renderer uses the Playwright the admin package already has.
 
@@ -128,18 +136,15 @@ blocks are current). Everything else in `mockup.css` is edited by hand.
 1. **Mockup.** A designer draws the screen and renders it; a UX designer subagent critiques the
    mockup visually and the result goes in `designReview`.
 2. **Build.** A package that builds a mocked screen names its screen ids in its brief. When the
-   screen is built, its builder saves screenshots of **the built screen**, in the same four
+   screen is built, its builder saves screenshots of **the built screen**, in the same eight
    variants, to
 
    ```text
-   /Users/vlad/Repos/pk-wt/_mockups/built/<screen-id>/desktop-dark.png
-   /Users/vlad/Repos/pk-wt/_mockups/built/<screen-id>/desktop-light.png
-   /Users/vlad/Repos/pk-wt/_mockups/built/<screen-id>/phone-dark.png
-   /Users/vlad/Repos/pk-wt/_mockups/built/<screen-id>/phone-light.png
+   /Users/vlad/Repos/pk-wt/_mockups/built/<screen-id>/{wide,desktop,tablet,phone}-{dark,light}.png
    ```
 
-   at 1440×900 and 390×844, full page, with the same fixture content as the mockup where the
-   fixtures allow, and **names the screen ids in its hand-off**.
+   at 1920×1080, 1440×900, 1024×768 and 390×844, full page, with the same fixture content as the
+   mockup where the fixtures allow, and **names the screen ids in its hand-off**.
 3. **Publish.** The lead uploads them to the mockups page and sets the screen's status
    (`building`, `built`, `shipped`) and the build it came from in the page's database, so the
    page needs no rebuild.

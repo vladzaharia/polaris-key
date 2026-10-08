@@ -4,10 +4,10 @@
   .gallery {
     display: flex;
     flex-direction: column;
-    gap: 40px;
+    gap: var(--sp-10);
     max-width: 1280px;
     margin: 0 auto;
-    padding: 40px 32px 64px;
+    padding: var(--sp-10) var(--sp-8) var(--sp-16);
   }
   .g-title h1 {
     font-size: 28px;
@@ -23,13 +23,13 @@
   .g-sec {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: var(--sp-4);
   }
   .g-sec > h2 {
     display: flex;
     align-items: baseline;
-    gap: 10px;
-    padding-bottom: 8px;
+    gap: var(--sp-2);
+    padding-bottom: var(--sp-2);
     border-bottom: 1px solid var(--mk-line);
     font-size: 16px;
     font-weight: 700;
@@ -47,22 +47,41 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 12px;
+    gap: var(--sp-3);
   }
   .g-cols {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 20px;
+    gap: var(--sp-5);
     align-items: start;
   }
   .g-note {
     font-size: 12px;
     color: var(--pk-text-subtle);
   }
+  /* The spacing scale, drawn as bars. */
+  .g-scale {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-1);
+    font: 400 12px/16px var(--pk-font-mono);
+    color: var(--pk-text-muted);
+  }
+  .g-scale > span {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+  }
+  .g-scale i {
+    width: var(--w);
+    height: 12px;
+    border-radius: 2px;
+    background: var(--pk-accent);
+  }
   @container screen (max-width: 639px) {
     .gallery {
-      padding: 24px 16px 48px;
-      gap: 32px;
+      padding: var(--sp-6) var(--sp-4) var(--sp-12);
+      gap: var(--sp-8);
     }
     .g-cols {
       grid-template-columns: minmax(0, 1fr);
@@ -75,6 +94,103 @@
     <h1>Mockup kit</h1>
     <p>Every component in kit/mockup.css, drawn once with realistic content. Class names are in each heading; kit/README.md has the markup.</p>
   </header>
+
+  <section class="g-sec">
+    <h2>Spacing and layout <code>--sp-* · .mk-stack-N .mk-cluster(-N) .mk-split .mk-tiles .mk-grid-N · .type-* · .page.columns (wide) · @container (card &lt; 560px)</code></h2>
+    <div class="g-cols">
+      <div class="mk-stack-3">
+        <p class="eyebrow">The scale</p>
+        <div class="g-scale">
+          <span><i style="--w: var(--sp-0-5)"></i>0-5 · 2</span>
+          <span><i style="--w: var(--sp-1)"></i>1 · 4</span>
+          <span><i style="--w: var(--sp-2)"></i>2 · 8</span>
+          <span><i style="--w: var(--sp-3)"></i>3 · 12</span>
+          <span><i style="--w: var(--sp-4)"></i>4 · 16</span>
+          <span><i style="--w: var(--sp-5)"></i>5 · 20</span>
+          <span><i style="--w: var(--sp-6)"></i>6 · 24</span>
+          <span><i style="--w: var(--sp-8)"></i>8 · 32</span>
+          <span><i style="--w: var(--sp-10)"></i>10 · 40</span>
+          <span><i style="--w: var(--sp-12)"></i>12 · 48</span>
+          <span><i style="--w: var(--sp-16)"></i>16 · 64</span>
+        </div>
+      </div>
+      <div class="mk-stack-3">
+        <p class="eyebrow">Type</p>
+        <div class="mk-stack-2">
+          <span class="type-page">Page title 28/36</span>
+          <span class="type-section">Block title 18/24</span>
+          <span class="type-card">Card title 16/24</span>
+          <span class="type-body">Body 14/20: the text most of a screen is set in.</span>
+          <span class="type-small muted">Small 13/20: descriptions, hints and cell subs.</span>
+          <span class="type-meta">Meta 12/16 · Oct 7, 10:42 · Swift 2.1.0</span>
+          <span class="type-mono">Mono 13/20 · pkey_djdl_7HJM…Q2KD</span>
+        </div>
+      </div>
+    </div>
+    <div class="mk-split">
+      <div class="mk-stack-1"><h3 class="type-card">.mk-split</h3><p class="type-small muted">A title block on the left, actions on the right, first baselines aligned.</p></div>
+      <div><button class="btn outline sm">Export</button><button class="btn primary sm"><i class="ic ic-plus"></i>New license</button></div>
+    </div>
+    <div class="mk-cluster"><span class="chip on"><i class="ic ic-apple"></i>macOS</span><span class="chip"><i class="ic ic-windows"></i>Windows</span><span class="pill"><i class="dot"></i>System</span><span class="status"><i class="ic ic-circle-check"></i>Live</span></div>
+    <div class="mk-tiles">
+      <div class="stat" data-service="license"><span class="stat-label"><i class="svc"></i>Licensing</span><span class="stat-value">240 <small>licenses</small></span><span class="stat-foot">Standard · 3 waiting licenses</span></div>
+      <div class="stat" data-service="config"><span class="stat-label"><i class="svc"></i>Managed config</span><span class="stat-value">v4 <small>catalog</small></span><span class="stat-foot text-warning">1 required secret has no value</span></div>
+      <div class="stat" data-service="release"><span class="stat-label"><i class="svc"></i>Ship builds</span><span class="stat-value">4.2.0 <small>stable</small></span><span class="stat-foot">4.3.0-beta.2 on beta · Oct 6</span></div>
+    </div>
+    <section class="card">
+      <div class="card-head">
+        <div class="title mk-cluster baseline"><h2>Integration</h2><span class="count">5</span></div>
+        <button class="btn ghost icon sm" aria-label="More"><i class="ic ic-ellipsis"></i></button>
+      </div>
+      <div class="card-body tight show-narrow">
+        <div class="meter-head"><span class="platform-name"><i class="ic ic-apple"></i>macOS</span><span class="meta">2 of 5</span><div class="progress success" style="--v: 40%"></div></div>
+      </div>
+      <table class="table fixed stack-phone">
+        <colgroup><col style="width: 26%"><col style="width: 24%"><col style="width: 26%"><col style="width: 24%"></colgroup>
+        <thead><tr><th>Feature</th><th>In the console</th><th><div class="meter-head"><span class="platform-name"><i class="ic ic-apple"></i>macOS</span><span class="meta">2 of 5</span><div class="progress success" style="--v: 40%"></div></div></th><th><span class="platform-name"><i class="ic ic-windows"></i>Windows</span></th></tr></thead>
+        <tbody>
+          <tr>
+            <td><div class="cell-with-logo"><span class="icon-tile sm" data-service="license"><i class="svc"></i></span><div class="cell-title">Licensing</div></div></td>
+            <td><span class="cell-label">Console</span><span class="status"><i class="ic ic-circle-check"></i>Done</span></td>
+            <td><span class="cell-label"><i class="ic ic-apple"></i>macOS</span><div class="status-stack"><span class="verified">Verified</span><span class="meta">Oct 7, 10:42</span></div></td>
+            <td rowspan="3" class="hide-narrow"><div class="status-stack"><span class="unseen">Not seen yet</span><a class="link" href="#">Add the SDK</a></div></td>
+          </tr>
+          <tr>
+            <td><div class="cell-with-logo"><span class="icon-tile sm" data-service="release"><i class="svc"></i></span><div><div class="cell-title">Ship builds</div><div class="meta">First CI publish Oct 6</div></div></div></td>
+            <td><span class="cell-label">Console</span><span class="open-step"><a class="link" href="#">Add Sparkle signing key</a></span></td>
+            <td><span class="cell-label"><i class="ic ic-apple"></i>macOS</span><span class="after-step">After the console step</span></td>
+          </tr>
+          <tr>
+            <td><div class="cell-with-logo"><span class="icon-tile sm" data-service="identity"><i class="svc"></i></span><div class="cell-title">Sign-in</div></div></td>
+            <td><span class="cell-label">Console</span><span class="links"><a class="link" href="#">Drop-in kit</a><a class="link quiet" href="#">Your own UI<i class="ic ic-arrow-up-right"></i></a></span></td>
+            <td><span class="cell-label"><i class="ic ic-apple"></i>macOS</span><span class="waiting-dot">Waiting for the first sign-in</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="tasks padded">
+        <div class="task"><span class="task-mark"></span><div class="task-title">Store connections</div><div class="task-desc">Diceroll’s Steam uploads need a Steamworks publisher key.</div><div class="task-action"><button class="btn outline sm"><i class="ic ic-steam"></i>Connect Steam</button></div></div>
+      </div>
+      <div class="card-rows">
+        <div class="list-row"><span class="avatar">MF</span><span class="list-row-text"><strong>Mara Fennick</strong> activated a MacBook Pro</span><span class="list-row-meta">Today, 10:42</span></div>
+        <div class="list-row"><span class="icon-tile muted"><i class="ic ic-github"></i></span><span class="list-row-text"><strong>CI</strong> published 4.2.0 to stable from <span class="mono">example-org/djdl</span></span><span class="list-row-meta">Oct 6, 16:20</span></div>
+      </div>
+      <div class="done-list">
+        <button class="btn link disclosure" aria-expanded="true" aria-controls="g-done"><i class="ic ic-chevron-down"></i>Hide done steps</button>
+        <div class="done-items" id="g-done"><span><i class="ic ic-check"></i>Keyring configured</span><span><i class="ic ic-check"></i>Email sender verified</span><span><i class="ic ic-check"></i>Platform packages</span></div>
+      </div>
+      <div class="card-foot between"><span class="mk-cluster no-wrap type-small muted"><i class="ic ic-code-xml"></i><span>Last seen 4 min ago · Swift SDK 2.1.0 on macOS arm64</span></span><button class="btn ghost sm"><i class="ic ic-eye-off"></i>Hide</button></div>
+    </section>
+    <p class="g-note">One 28px media column: the head's title, task titles, list text and row titles all start at card-px + 28 + 12. Under 560px of card width (render at phone) the rows take their stacked layouts.</p>
+    <section class="card">
+      <div class="card-head"><div class="title"><h2>Features</h2></div><a class="btn link" href="#">Manage features<i class="ic ic-arrow-right"></i></a></div>
+      <div class="stats strip">
+        <div class="stat" data-service="license"><span class="stat-label"><i class="svc"></i><a href="#">Licensing</a></span><span class="stat-value">240 <small>licenses</small></span><span class="stat-foot">Standard · 3 waiting</span></div>
+        <div class="stat hover" data-service="config"><span class="stat-label"><span class="glyph issue"><i class="svc"></i></span><a href="#" aria-label="Managed config: 1 needs attention">Managed config</a></span><span class="stat-value">v4 <small>catalog</small></span><span class="stat-foot">12 settings · 3 secrets</span></div>
+        <div class="stat" data-service="release"><span class="stat-label"><i class="svc"></i><a href="#">Ship builds</a></span><span class="stat-value">4.2.0 <small>stable</small></span><span class="stat-foot">4.3.0-beta.2 on beta · Oct 6</span></div>
+        <div class="stat" data-service="sync"><span class="stat-label"><i class="svc"></i><a href="#">Cloud Sync</a></span><span class="stat-value"><small>Not syncing yet</small></span></div>
+      </div>
+    </section>
+  </section>
 
   <section class="g-sec">
     <h2>Buttons <code>.btn .primary .outline .ghost .action .danger .danger-outline .link · .sm .xs .lg .icon .block .busy .disabled</code></h2>
@@ -103,7 +219,7 @@
   </section>
 
   <section class="g-sec">
-    <h2>Pills, status, counts, ids <code>.pill .warning .danger .info .success .accent .signed .outline .sm · .status · .count · .id · .slug · .dot</code></h2>
+    <h2>Pills, status, counts, ids <code>.pill .warning .danger .info .success .accent .signed .outline .sm · .status · .verified .waiting-dot .after-step .unseen .open-step · .count · .id · .slug · .dot</code></h2>
     <p class="g-note">A pill means attention or a neutral fact, always with an icon or dot. A healthy state is .status text.</p>
     <div class="g-row">
       <span class="pill danger"><i class="ic ic-circle-x"></i>Revoked</span>
@@ -114,7 +230,7 @@
       <span class="pill signed">Signed</span>
       <span class="pill"><i class="dot"></i>System</span>
       <span class="pill outline">Standard</span>
-      <span class="pill sm warning"><i class="ic ic-triangle-alert"></i>1 needs attention</span>
+      <span class="pill sm warning"><i class="ic ic-triangle-alert"></i>Missing secret</span>
     </div>
     <div class="g-row">
       <span class="status"><i class="ic ic-circle-check"></i>Live</span>
@@ -122,6 +238,11 @@
       <span class="status danger"><i class="ic ic-circle-x"></i>Upload failed</span>
       <span class="status info"><i class="ic ic-loader-circle"></i>Syncing</span>
       <span class="status muted">Not using</span>
+      <span class="verified">Verified</span>
+      <span class="waiting-dot">Waiting for the first sign-in</span>
+      <span class="after-step">After the console step</span>
+      <span class="unseen">Not seen yet</span>
+      <span class="open-step"><a class="link" href="#">Add Sparkle signing key</a></span>
       <span class="count">240</span>
       <span class="count warning">3</span>
       <span class="count danger">2</span>
@@ -189,6 +310,57 @@
       <div class="title"><h3>Managed config</h3><span class="status"><i class="ic ic-circle-check"></i>Verified on macOS</span><span class="meta">Windows not seen yet</span></div>
       <button class="btn ghost sm">Show<i class="ic ic-chevron-down"></i></button>
     </section>
+  </section>
+
+  <section class="g-sec">
+    <h2>Feature rows, requirements, choices (products screens) <code>.feature-rows-head .feature-rows .feature-row(.off) .feature-subs · .reqs > .req(.met .unmet) · .choices.multi .choice.locked .choice-foot · .change-list · .switch.touch</code></h2>
+    <section class="card" aria-label="Features">
+      <div class="feature-rows-head" aria-hidden="true"><span>Feature</span><span>Status</span></div>
+      <div class="feature-rows">
+        <div class="feature-row">
+          <span class="icon-tile sm" data-service="config"><i class="svc"></i></span>
+          <div class="feature-row-text"><div class="feature-row-name">Managed config</div>
+            <p class="feature-row-desc">Settings, secrets and profiles you change without shipping a build.</p>
+            <div class="reqs"><span class="req" aria-label="Cloud Sync needs Managed config">Needed by Cloud Sync</span></div></div>
+          <div class="feature-row-status"><div class="status-stack"><span class="status"><i class="ic ic-circle-check"></i>Catalog v6 published</span><span class="meta">Default and 3 tier profiles</span></div></div>
+          <span class="switch touch on" role="switch" aria-checked="true" aria-label="Managed config"></span>
+          <div class="feature-subs"><div class="setting-row"><div><div class="setting-title">Minted tokens</div><div class="setting-desc">Short-lived tokens for each device.</div></div><span class="switch touch on" role="switch" aria-checked="true" aria-label="Minted tokens"></span></div></div>
+        </div>
+        <div class="feature-row off">
+          <span class="icon-tile sm muted" data-service="sync"><i class="svc"></i></span>
+          <div class="feature-row-text"><div class="feature-row-name">Cloud Sync</div>
+            <p class="feature-row-desc">Each player’s saves and settings, the same on every device.</p>
+            <div class="reqs"><span>Needs</span><span class="req met" aria-label="Managed config is on">Managed config</span><span class="req unmet" aria-label="Sign-in is off">Sign-in</span></div></div>
+          <div class="feature-row-status"><a class="link" href="#">Turn on Sign-in first</a></div>
+          <span class="switch touch disabled" role="switch" aria-checked="false" aria-disabled="true" aria-label="Cloud Sync, needs Sign-in"></span>
+        </div>
+      </div>
+    </section>
+    <div class="choices multi cols-3" role="group" aria-label="Features">
+      <div class="choice on" role="checkbox" aria-checked="true">
+        <div class="choice-title"><span class="icon-tile sm" data-service="license"><i class="svc"></i></span>Licensing</div>
+        <div class="choice-desc">Gate Diceroll on a license and sell it as tiers and add-ons.</div>
+        <div class="choice-foot"><b>Turns on</b> tiers, licenses and device limits</div>
+      </div>
+      <div class="choice" role="checkbox" aria-checked="false">
+        <div class="choice-title"><span class="icon-tile sm" data-service="identity"><i class="svc"></i></span>Sign-in</div>
+        <div class="choice-desc">Let players sign in with a Polaris Key account.</div>
+        <div class="choice-foot"><b>Turns on</b> accounts in the game and the customer portal</div>
+      </div>
+      <div class="choice locked" role="checkbox" aria-checked="false" aria-disabled="true">
+        <div class="choice-title"><span class="icon-tile sm muted" data-service="sync"><i class="svc"></i></span>Cloud Sync</div>
+        <div class="choice-desc">Each player’s saves and settings, the same on every device.</div>
+        <div class="reqs"><span>Needs</span><span class="req met" aria-label="Managed config, chosen">Managed config</span><span class="req unmet" aria-label="Sign-in, not chosen">Sign-in</span></div>
+        <div class="choice-foot"><b>Turns on</b> synced settings and storage per account</div>
+      </div>
+    </div>
+    <div class="change-list">
+      <div class="change-item">
+        <span class="icon-tile sm" data-service="commerce"><i class="svc"></i></span>
+        <div class="change-title">Commerce</div><span class="change-to">On<i class="ic ic-arrow-right"></i>Off</span>
+        <p class="change-text">The game can’t show its 4 offers; purchases and restores are refused.</p>
+      </div>
+    </div>
   </section>
 
   <section class="g-sec">
@@ -312,7 +484,8 @@
         <div class="callout danger"><i class="ic ic-circle-x"></i><div class="grow"><div class="callout-title">Resync failed</div><div class="callout-text"><code>.pkey/release</code> line 14 names “switch”, which Diceroll doesn’t ship.</div></div></div>
         <div class="callout success"><i class="ic ic-circle-check"></i><div class="grow"><div class="callout-title">Catalog v4 published</div></div></div>
         <div class="card"><div class="card-rows">
-          <div class="attn-row"><span class="pill warning"><i class="ic ic-triangle-alert"></i>Warning</span><span class="attn-subject"><span class="logo xs" data-product="djdl"></span>DJDL</span><span class="attn-text">The required secret <code>identity.acoustidKey</code> has no value in the Default profile.</span><a class="link" href="#">Set secret<i class="ic ic-arrow-right"></i></a></div>
+          <div class="attn-row"><span class="pill warning"><i class="ic ic-triangle-alert"></i>Warning</span><span class="attn-subject"><span class="logo xs" data-product="djdl"></span>DJDL</span><span class="attn-text">Required secret <code>identity.acoustidKey</code> has no value in the Default profile.</span><a class="link" href="#">Set secret<i class="ic ic-arrow-right"></i></a></div>
+          <div class="attn-row"><span class="pill danger"><i class="ic ic-circle-x"></i>Error</span><span class="attn-subject"><span class="logo xs" data-product="diceroll"></span>Diceroll</span><span class="attn-text">Resync failed: <code>.pkey/release</code> line 14 names “switch”, a platform this product doesn’t ship.</span><a class="link" href="#">Open error<i class="ic ic-arrow-right"></i></a></div>
         </div></div>
       </div>
       <div class="card" data-service="commerce">
@@ -404,15 +577,36 @@
   </section>
 
   <section class="g-sec">
-    <h2>Customer portal pieces <code>.ptiles .ptile .art · .license-card .key-field · .platforms</code></h2>
-    <p class="g-note">A whole portal screen uses .portal with .portal-top, .portal-page and .portal-foot (and .portal-tabbar on phone).</p>
-    <div class="g-cols">
+    <h2>Customer portal pieces <code>.portal-grid .ptile .ptile-title .pill-row .icon-lines .on-art .end-tile .media-list · .license-term · .license-card .key-field · .platforms</code></h2>
+    <p class="g-note">A whole portal screen uses .portal with .portal-top, .portal-page and .portal-foot (and .portal-tabbar on phone). A product page uses .product-hero and .product-layout (portal.license).</p>
+    <div class="portal-grid">
       <article class="ptile">
-        <div class="art" data-product="diceroll"></div>
-        <div class="ptile-head"><span class="logo lg" data-product="diceroll"></span><span class="ptile-name">Diceroll</span></div>
-        <div class="ptile-body"><span>Standard · 2 of 3 devices</span><span class="platforms"><i class="ic ic-apple"></i><i class="ic ic-android"></i><i class="ic ic-steam"></i></span></div>
-        <div class="ptile-foot"><button class="btn outline"><i class="ic ic-download"></i>Get it on Steam</button><button class="btn outline icon" aria-label="More"><i class="ic ic-ellipsis"></i></button></div>
+        <div class="art" data-product="diceroll"><span class="pill success on-art"><i class="ic ic-circle-check"></i>In your library</span></div>
+        <div class="ptile-head"><span class="logo lg" data-product="diceroll"></span><div class="ptile-title"><h3><a href="#">Diceroll</a></h3><span>Example Games</span></div></div>
+        <div class="ptile-body"><div class="mk-stack-3">
+          <div class="pill-row"><div class="mk-cluster"><span class="pill sm"><i class="ic ic-key-round"></i>Standard</span><span class="pill sm"><i class="ic ic-monitor-smartphone"></i>2 of 3 devices</span></div><span class="platforms"><i class="ic ic-apple"></i><i class="ic ic-android"></i></span></div>
+          <ul class="icon-lines"><li><i class="ic ic-calendar-clock"></i><span>Lifetime</span></li><li><i class="ic ic-store"></i><span>Bought on Steam</span></li></ul>
+        </div></div>
+        <div class="ptile-foot"><button class="btn outline"><i class="ic ic-download"></i>Download for macOS</button><button class="btn outline icon" aria-label="More"><i class="ic ic-ellipsis"></i></button></div>
       </article>
+      <aside class="ptile end-tile"><h3>Missing a license?</h3>
+        <ul class="media-list">
+          <li><span class="icon-tile muted"><i class="ic ic-key-round"></i></span><span><strong>You have a license key</strong>Activate it to move it into your account.</span></li>
+          <li><span class="icon-tile muted"><i class="ic ic-mail"></i></span><span><strong>It was sent to another email</strong>Add and confirm that email under Sign-in methods.</span></li>
+        </ul>
+        <div class="btn-row"><button class="btn outline"><i class="ic ic-key-round"></i>Activate license</button></div>
+      </aside>
+    </div>
+    <div class="g-cols">
+      <div class="license-term">
+        <div class="mk-stack-1"><span class="type-card">Updates until Sep 14, 2027</span><span class="type-small muted">Then keeps working on the last version</span></div>
+        <div class="term-chart" style="--term-today: 4.4%" aria-hidden="true">
+          <div class="term-today"><span>Today, Oct 7</span></div>
+          <div class="term-track"><div class="progress" style="--v: 6%"></div><div class="term-after"></div><span class="term-mark"></span></div>
+          <div class="term-scale"><span><span>Sep 14, 2026</span><span>Sep 14, 2027</span></span><span>Last version</span></div>
+        </div>
+        <span class="status"><i class="ic ic-circle-check"></i>You're on the latest version</span>
+      </div>
       <section class="license-card">
         <div class="row between"><h2>DJDL license</h2><span class="pill">Standard</span></div>
         <dl class="dl cols"><div><dt>Updates included</dt><dd>Lifetime</dd></div><div><dt>Devices</dt><dd>2 of 5</dd></div><div><dt>License source</dt><dd>Automatic grant</dd></div></dl>
@@ -422,18 +616,174 @@
   </section>
 
   <section class="g-sec">
-    <h2>Frames <code>.device (.android) .device-screen .device-status .device-body · .window (.win) · .browser .url · .anno</code></h2>
+    <h2>Frames <code>.device (.android .landscape) .device-screen .device-status .device-body · .kit-split · .window (.win) · .browser .url · .anno</code></h2>
     <div class="g-row" style="align-items: flex-start">
       <div class="window" style="width: min(100%, 440px)">
         <div class="window-bar"><span class="term-dots"><i></i><i></i><i></i></span>DJDL</div>
-        <div class="window-body" style="padding: 24px" data-pk-platform="macos">
-          <div class="empty" style="padding: 8px"><span class="logo lg" data-product="djdl"></span><h3>Activate DJDL</h3><p>Sign in with your Polaris Key account or enter a license key.</p></div>
+        <div class="window-body" style="padding: var(--sp-6)" data-pk-platform="macos">
+          <div class="empty" style="padding: var(--sp-2)"><span class="logo lg" data-product="djdl"></span><h3>Activate DJDL</h3><p>Sign in with your Polaris Key account or enter a license key.</p></div>
+        </div>
+      </div>
+      <div class="window" style="width: min(100%, 720px)">
+        <div class="window-bar"><span class="term-dots"><i></i><i></i><i></i></span>DJDL · .kit-split</div>
+        <div class="window-body" data-pk-platform="macos">
+          <div class="card-body"><div class="kit-split">
+            <div class="mk-stack-2"><span class="logo lg" data-product="djdl"></span><h3 class="type-card">Activate DJDL</h3><p class="type-small muted">Side by side in a landscape frame, stacked in a portrait one.</p></div>
+            <div class="mk-stack-3"><div class="input mono"><span class="ph">pkey_djdl_…</span></div><button class="btn primary block">Activate</button></div>
+          </div></div>
         </div>
       </div>
       <div class="browser" style="width: min(100%, 440px)">
         <div class="browser-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="url"><i class="ic ic-lock"></i>key.plrs.im/djdl</span></div>
-        <div style="padding: 20px; position: relative"><span class="anno at" style="top: 12px; right: 12px">1</span><p class="muted">The download page, with the build for this computer first.</p></div>
+        <div style="padding: var(--sp-5); position: relative"><span class="anno at" style="top: 12px; right: 12px">1</span><p class="muted">The download page, with the build for this computer first.</p></div>
       </div>
+    </div>
+  </section>
+
+  <section class="g-sec">
+    <h2>Packages helpers <code>.with-toc &gt; .jump-nav + .toc-select · tr.group-row (stacked) · .code-tabs.fade · .field.fit · .card-foot.actions</code></h2>
+    <div class="g-row" style="align-items: flex-start">
+      <section class="card" style="width: min(100%, 520px)">
+        <div class="card-head"><div class="title"><h2>Packages</h2><p>One token installs all of them.</p></div></div>
+        <table class="table fixed stack-phone flow" aria-label="Packages">
+          <colgroup><col style="width: 60%"><col style="width: 20%"><col style="width: 20%"></colgroup>
+          <thead><tr><th>Package</th><th>Ecosystem</th><th class="num">Stable</th></tr></thead>
+          <tbody>
+            <tr class="group-row"><td colspan="3"><span class="mk-cluster"><span class="logo xs" data-product="djdl"></span><span>DJDL · Standard license</span></span></td></tr>
+            <tr><td><div class="cell-title type-mono">@djdl/source-kit</div><div class="cell-sub">Write DJDL source plugins</div></td><td>npm</td><td class="num type-mono">2.3.0</td></tr>
+          </tbody>
+        </table>
+        <div class="card-body"><div class="field fit"><label class="field-label">Type <span class="confirm-word">djdl-crates</span> to approve</label><div class="input mono"><span class="grow">djdl-crates</span></div></div></div>
+        <div class="card-foot actions"><button class="btn outline">Cancel</button><button class="btn primary">Approve publishing to PyPI.org</button></div>
+      </section>
+      <div class="code" style="width: min(100%, 360px)">
+        <div class="code-head"><div class="code-tabs fade"><span class="active">npm, pnpm</span><span>Yarn</span><span>Bun</span><span>uv, pip</span><span>Docker</span></div><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
+<pre><span class="t-p">@djdl:registry</span>=<span class="t-s">https://pkg.plrs.im/npm/djdl/</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="g-sec">
+    <h2>Commerce helpers <code>.toast-actions · .input.medium · .choice-body · .kv-rows.stack-narrow</code></h2>
+    <div class="g-row" style="align-items: flex-start">
+      <div class="toast success" role="status" style="width: min(100%, 380px)">
+        <i class="ic ic-circle-check"></i>
+        <div class="grow">
+          <div class="toast-title">Commerce is on for DJDL</div>
+          <div class="toast-text">Storefronts, Offers and Purchases are in the sidebar.</div>
+          <div class="toast-actions"><button class="btn outline xs">Undo</button><button class="btn ghost xs">Open Storefronts</button></div>
+        </div>
+      </div>
+      <div class="field" style="width: min(100%, 240px)">
+        <label class="field-label">New base price <span class="optional">Now $2.99</span></label>
+        <div class="input medium"><span class="affix">$</span><span class="grow tnum">3.99</span><span class="affix">USD</span></div>
+      </div>
+      <div class="choices cols-1" style="width: min(100%, 520px)">
+        <div class="choice on">
+          <div class="choice-title">A new offer from <span class="mono">holiday_bundle</span></div>
+          <div class="choice-body mk-stack-2">
+            <div class="mk-grid-2">
+              <div class="field"><label class="field-label">Name</label><div class="input"><span class="grow">Holiday bundle</span></div></div>
+              <div class="field"><label class="field-label">Sells the add-on</label><div class="select"><span class="grow">Holiday dice set</span><i class="ic ic-chevrons-up-down"></i></div></div>
+            </div>
+            <span class="hint">One-time, as Google Play sells it.</span>
+          </div>
+        </div>
+      </div>
+      <div class="card flat compact tile" style="width: min(100%, 360px)">
+        <dl class="kv-rows stack-narrow">
+          <div><dt>Order</dt><dd><span class="id">GPA.3391-2284-1170-55120<i class="ic ic-copy"></i></span></dd></div>
+          <div><dt>Device</dt><dd>Pixel 8<span class="source">Diceroll 2.4.1</span></dd></div>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <section class="g-sec">
+    <h2>SDK helpers <code>.cmd.one-line · .docs-card (.hover) · .kit-input.bad · .kit-pill.neutral · .kit-option (full) · .card-answers</code></h2>
+    <div class="g-row" style="align-items: flex-start">
+      <div class="stack gap-3" style="width: min(100%, 420px)">
+        <div class="cmd one-line"><span>pkey sdk add swift --dir macos/ --expect djdl-2026@sha256:3f9a0c…e41b</span><button class="btn ghost icon xs" aria-label="Copy"><i class="ic ic-copy"></i></button></div>
+        <div class="docs" style="min-height: 0">
+          <div class="docs-cards" style="grid-template-columns: repeat(2, minmax(0, 1fr))">
+            <a class="docs-card" href="#" data-service="license"><span class="docs-card-title"><i class="svc"></i>Licensing<i class="ic ic-arrow-right sm"></i></span>At rest.</a>
+            <a class="docs-card hover" href="#" data-service="config"><span class="docs-card-title"><i class="svc"></i>Managed config<i class="ic ic-arrow-right sm"></i></span>Hover.</a>
+          </div>
+        </div>
+      </div>
+      <div class="kit-form" style="width: min(100%, 360px)">
+        <div class="kit-field">
+          <label class="kit-label">License key</label>
+          <div class="kit-input bad"><span>HSND-7HJM-2QKD-9XRL</span><button class="kit-btn sm">Paste</button></div>
+          <span class="kit-error" role="alert"><i class="ic ic-circle-x"></i><span>That doesn’t look like a license key. Keys start with <code>pkey_</code>.</span></span>
+        </div>
+        <span class="kit-pill neutral">Recommended</span>
+        <div class="kit-options">
+          <div class="kit-option">
+            <i class="ic ic-ban"></i>
+            <div class="kit-option-text">
+              <span class="kit-option-title">Key ending Q2KD7H</span>
+              <span class="kit-line"><span class="kit-pill">Standard</span><span><span class="warn">No free devices</span> · Lifetime</span></span>
+              <button class="kit-btn sm">Replace a device</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <section class="card" style="width: min(100%, 640px)">
+        <div class="card-head"><h3>Other answers</h3></div>
+        <div class="card-answers">
+          <div class="card-answer"><span class="card-answer-label">Revoked</span><span class="kit-error"><i class="ic ic-circle-x"></i><span>That key’s license was revoked.</span></span></div>
+          <div class="card-answer"><span class="card-answer-label">In another account</span><span class="kit-error"><i class="ic ic-circle-x"></i><span>This license is in another account.</span></span><div class="kit-links"><a class="kit-link" href="#">Sign in to that account</a></div></div>
+        </div>
+      </section>
+    </div>
+  </section>
+  <section class="g-sec">
+    <h2>Entitlements helpers <code>.ref-legend (.cols .cols-lg .inline) · .callout-close · .action-pair · .end-control · .setting-row.top · .stats.strip.quad · .kit-next</code></h2>
+    <div class="g-row kit-next" style="align-items: flex-start">
+      <section class="card" style="width: min(100%, 400px)">
+        <div class="card-head"><div class="title"><h2>Kinds</h2></div></div>
+        <div class="ref-legend">
+          <div class="legend-item"><i class="ic ic-toggle-right legend-glyph" aria-hidden="true"></i><div class="legend-text"><span class="legend-name">On/off</span> <span class="legend-rule">Off unless the tier, the license or an <span class="nowrap">add-on</span> turns it on</span></div></div>
+          <div class="legend-item"><i class="ic ic-layers legend-glyph" aria-hidden="true"></i><div class="legend-text"><span class="legend-name">Quantity</span> <span class="legend-rule">The license’s value, else the tier’s, plus each <span class="nowrap">add-on’s</span></span></div></div>
+        </div>
+        <div class="card-foot start"><span>Applied in order: tier, the license’s own values, add-ons, platform entitlements.</span></div>
+      </section>
+      <div class="stack gap-4" style="width: min(100%, 560px)">
+        <div class="callout info"><i class="ic ic-git-branch"></i>
+          <div class="grow"><div class="callout-title">5.0.0-beta.1 is DJDL’s first 5.x build</div><div class="callout-text">Pro 4’s 64 licenses cover 4.x, so they won’t get 5.x.</div></div>
+          <div class="btn-row"><button class="btn outline sm">Start a 5.x tier…</button><button class="btn outline sm">Extend Pro 4 to 5.x…</button></div>
+          <button class="btn ghost icon sm callout-close" aria-label="Dismiss for everyone"><i class="ic ic-x"></i></button></div>
+        <section class="card">
+          <div class="card-rows">
+            <div class="setting-row dense top"><div><div class="setting-title" id="g-neon">Neon dice</div><div class="setting-desc mono">pack.neon</div></div>
+              <div class="end-control"><span class="val-on">On</span><button class="btn ghost icon xs" aria-label="Remove pack.neon"><i class="ic ic-x"></i></button></div></div>
+            <div class="setting-row dense top"><div><div class="setting-title" id="g-loadouts">Loadout slots</div><div class="setting-desc mono">loadouts</div></div>
+              <div class="end-control"><span class="was">was +1</span><div class="input sm short changed" role="group" aria-labelledby="g-loadouts"><span class="affix">+</span><span class="grow tnum">2</span></div><button class="btn ghost icon xs" aria-label="Remove loadouts"><i class="ic ic-x"></i></button></div></div>
+            <div class="setting-row dense"><div><div class="setting-title" id="g-lossless">Lossless audio</div><div class="setting-desc mono">lossless</div></div>
+              <button class="switch on" role="switch" aria-checked="true" aria-labelledby="g-lossless"></button></div>
+          </div>
+        </section>
+        <div class="mk-cluster"><div class="segmented sm" role="radiogroup" aria-label="Kind"><span class="on" role="radio" aria-checked="true">All<span class="count">7</span></span><span role="radio" aria-checked="false">On/off<span class="count">5</span></span></div>
+          <span class="val-on">On</span><span class="val-off">Off</span></div>
+      </div>
+      <section class="card" style="width: min(100%, 640px)">
+        <div class="card-head"><div class="title"><h2>Gems</h2></div></div>
+        <div class="stats strip quad">
+          <div class="stat"><span class="stat-label"><i class="ic ic-coins"></i>Balance</span><span class="stat-value">1,350</span></div>
+          <div class="stat"><span class="stat-label"><i class="ic ic-circle-plus"></i>Bought</span><span class="stat-value">2,700</span></div>
+          <div class="stat"><span class="stat-label"><i class="ic ic-arrow-up-right"></i>Redeemed</span><span class="stat-value">1,200</span><span class="stat-foot"><span class="nowrap">4 times</span>&nbsp;· <span class="nowrap">350 reversed</span></span></div>
+          <div class="stat"><span class="stat-label"><i class="ic ic-circle-minus"></i>Refunded</span><span class="stat-value">150</span></div>
+        </div>
+      </section>
+    </div>
+  </section>
+  <section class="g-sec">
+    <h2 class="g-h">Identity multi-review</h2>
+    <div class="mk-stack-4">
+      <div class="stats row-3"><div class="stat"><span class="stat-label">Last sign-in</span><span class="stat-value">2 h ago</span></div><div class="stat"><span class="stat-label">Accounts</span><span class="stat-value">83</span></div><div class="stat"><span class="stat-label">Errors</span><span class="stat-value">0</span></div></div>
+      <div class="segmented sm fixed-224"><span>Required</span><span class="on">Optional</span><span>Not asked</span></div>
+      <div class="step-line" style="display:flex"><span>Step 3 of 5 · Test sign-in</span><span class="progress" style="--v: 60%"></span></div>
     </div>
   </section>
 </div>
