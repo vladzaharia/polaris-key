@@ -365,6 +365,64 @@ describe("prepareLink (the dry run)", () => {
     expect(plan.skipClaimed.map((i) => i.area)).toContain("services");
     expect(plan.apply.map((i) => i.area)).not.toContain("services");
   });
+  it("plans the presentation the apply writes: icon and accents set, changed and cleared (HA-12)", async () => {
+    const { db } = await manualProduct();
+    const plan = async (presentation?: Record<string, unknown>) => {
+      const manifest = parseManifest({
+        schema: SCHEMA,
+        product: productJson("tonebox", presentation ? { presentation } : {}),
+      });
+      expect(manifest.ok).toBe(true);
+      if (!manifest.ok) throw new Error("manifest");
+      const p = await planRepoManifest(db, "tonebox", manifest.manifest, NOW);
+      return p.apply
+        .filter((i) => i.area === "presentation")
+        .map((i) => i.summary);
+    };
+
+    // Nothing stored, nothing declared: no line.
+    expect(await plan()).toEqual([]);
+    // Declared on a product that has none.
+    expect(
+      await plan({
+        icon: "./art/icon.png",
+        accent: "#2bb8a4",
+        accentDark: "#5fd4c2",
+      }),
+    ).toEqual([
+      "Presentation: icon art/icon.png, accent #2bb8a4, dark accent #5fd4c2",
+    ]);
+
+    // What the apply stores, and the plan read against it: only what moves is named.
+    await db.run(
+      "UPDATE products SET presentation_json = ? WHERE slug = 'tonebox'",
+      JSON.stringify({
+        icon: { kind: "repo", src: "art/icon.png" },
+        accent: "#2bb8a4",
+        accentDark: "#5fd4c2",
+      }),
+    );
+    expect(
+      await plan({
+        icon: "./art/icon.png",
+        accent: "#2bb8a4",
+        accentDark: "#5fd4c2",
+      }),
+    ).toEqual([]);
+    expect(
+      await plan({
+        icon: "https://cdn.example/icon.png",
+        accent: "#2bb8a4",
+      }),
+    ).toEqual([
+      "Presentation: icon https://cdn.example/icon.png, no dark accent",
+    ]);
+    // Dropping the block clears every member, as the apply clears the column.
+    expect(await plan()).toEqual([
+      "Presentation: no icon, no accent, no dark accent",
+    ]);
+  });
+
   it("console-owned tiers are planned as kept, as the apply keeps them (ST-01b)", async () => {
     const { db } = await manualProduct();
     await seedTier(db, "tonebox", "pro");

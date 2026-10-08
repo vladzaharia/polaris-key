@@ -935,7 +935,9 @@ device counter (on the License card or in Devices); the sign-in licence keeps it
   column is the licence's (License, product sign-in, Devices) and starts beside Get it. The mark
   follows the reading line (where a jump puts a section), walking down the nav in order as the page
   scrolls, the line sliding to the screen's bottom over the last screen so the last cards are
-  marked too; a section picked in the nav holds the mark until the person scrolls. The Devices
+  marked too; a section picked in the nav holds the mark until the person scrolls, and its
+  heading takes focus, so the next Tab starts in it. Whatever scrolls into view (a jump, Tab,
+  Shift+Tab) stops clear of the sticky header, the phone pills and the phone bar. The Devices
   count is a small neutral pill after the label. A page with no main-column card (no releases, no
   help) shows the licence's cards as one column beside the nav.
 - **License card.** The tier pill sits at the top right of the card's header, before any issue

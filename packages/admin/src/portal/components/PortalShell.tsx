@@ -54,7 +54,8 @@ export function PortalShell({
   usePhoneBarToastInset();
 
   return (
-    <div className="flex min-h-dvh flex-col bg-surface-page text-fg">
+    // pk-portal-shell: the document's scroll padding clears the sticky header (styles.css).
+    <div className="pk-portal-shell flex min-h-dvh flex-col bg-surface-page text-fg">
       {/* "#content", not "#/": the hash router never sees it (onClick), and axe recognises a skip
           link only by an in-page fragment (PX-20). */}
       <a

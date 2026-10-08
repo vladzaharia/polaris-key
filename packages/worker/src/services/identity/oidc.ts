@@ -63,6 +63,7 @@ import {
   type ProductPublic,
 } from "../../core/products.js";
 import { renderBrandPage } from "../../core/brandHtml.js";
+import { accountDisabledPage } from "./card/http.js";
 import { errorResponse, json, methodNotAllowed } from "../../core/errors.js";
 import {
   clientIp,
@@ -104,7 +105,10 @@ import {
 import { licenseUsable, validateDeviceToken } from "../../core/devices.js";
 import { applyProvisionedAccountSecrets } from "../../core/accountOverrides.js";
 import { licenseConfigOverridesFrozen } from "../../core/overrideMigration.js";
-import { createBrowserSession } from "./browserSession.js";
+import {
+  createBrowserSession,
+  type BrowserSessionSubject,
+} from "./browserSession.js";
 import type { ServiceHooks } from "../../core/hooks.js";
 import {
   binderClearCookie,
@@ -125,6 +129,7 @@ import {
   claimPlatformSubject,
   platformSignInEnded,
   platformSubjectAccountRefused,
+  platformSubjectLink,
   PLATFORM_SIGNIN_ENDED,
 } from "./accounts/platformMigration.js";
 import {
@@ -2215,7 +2220,7 @@ export async function handleAuthCallback(
     )
   ) {
     await deleteArtefact(env, stateKey);
-    return accountDisabledPage();
+    return productAccountDisabledPage(product, flow);
   }
 
   // I-17: moving end users off the platform IdP. With `PLATFORM_OIDC_MIGRATION` off (the
@@ -2296,6 +2301,7 @@ export async function handleAuthCallback(
     stateKey,
     flow,
     result.licenseId,
+    identity.sub,
     now,
     [],
     migration.notice,
@@ -2361,7 +2367,7 @@ async function migratePlatformSubject(
     case "refused":
       if (claim.result.reason === "account_disabled") {
         await deleteArtefact(env, stateKey);
-        return accountDisabledPage();
+        return productAccountDisabledPage(product, flow);
       }
       return { notice: null };
     default:
@@ -2407,19 +2413,62 @@ function platformSignInEndedPage(): Response {
   );
 }
 
-/** "This account can't sign in" (SIGN-IN.md §3.13, Account disabled): the answer the portal and
- *  the login card give a disabled account, on a product's sign-in (N9). 403, names nothing. */
-function accountDisabledPage(): Response {
-  return signInRefusalPage(
-    "This account can't sign in",
-    "<p>Contact Polaris Key support.</p>",
-  );
+/**
+ * "This account can't sign in" (SIGN-IN.md §3.13, Account disabled): the page the portal and the
+ * login card give a disabled account, on a product's sign-in (N9). 403, names nothing.
+ *
+ * **Sign in with another account** goes to Polaris Key's sign-in page, not back into this
+ * product's sign-in: that would go straight back to the platform IdP, whose own session (the
+ * authorize request asks for no `prompt`) signs the same subject in again and is refused again.
+ * Polaris Key's sign-in is where another account can be chosen, as "Single sign-on ended" sends
+ * people there too. **Back to <Product>** returns to the app's page when the flow came from one
+ * (`returnTo`, checked same-origin at the start); a device-code flow has none.
+ */
+function productAccountDisabledPage(
+  product: Product,
+  flow: FlowRecord,
+): Response {
+  return accountDisabledPage({
+    signInHref: "/",
+    back: flow.returnTo
+      ? { href: flow.returnTo, productName: product.name }
+      : null,
+  });
 }
 
 /** The signed-in page's join offer (I-17): the address is the one the person's own IdP just
  *  asserted, so it names nothing they did not already prove. Nothing has joined. */
 function joinOfferNotice(email: string): string {
   return `<p>A Polaris Key account already uses ${escapeHtml(email)}. To add this sign-in to it, <a href="/login">continue with single sign-on on Polaris Key</a>, then sign in to that account when asked.</p>`;
+}
+
+/**
+ * What a browser session opened by this sign-in is bound to: on a `provider: platform` product,
+ * the platform-IdP subject itself (N9's check runs on it at every read, so an account it joins
+ * or is moved to later counts too) and the account holding its method now, if any (kept for
+ * erasure, which deletes the method); otherwise nothing. The session then ends when either can
+ * no longer sign in (`loadBrowserSession`); a custom issuer's subject opens a session bound to
+ * nothing, as before. Read-only, and like {@link pollAccountRefused} it reads the provider from
+ * the product's row and the issuer from the Worker's secrets.
+ */
+async function browserSessionBinding(
+  env: Env,
+  db: Db,
+  product: Product,
+  sub: string,
+): Promise<{
+  subject: BrowserSessionSubject;
+  accountId: string | null;
+} | null> {
+  const row = await getOidcConfig(db, product.slug);
+  if ((row?.provider ?? "platform") !== "platform") return null;
+  const platform = platformOidcConfig(env);
+  if (!platform) return null;
+  const link = await platformSubjectLink(db, platform.issuer, sub);
+  return {
+    subject: { issuer: platform.issuer, sub: sub.trim() },
+    accountId: link?.account_id ?? null,
+  };
 }
 
 /**
@@ -2435,6 +2484,9 @@ async function completeBrowserFlow(
   stateKey: ArtefactRef,
   flow: FlowRecord,
   licenseId: string,
+  /** The verified subject that signed in: a `returnTo` flow's browser session is bound to it
+   *  and to its account, if it has one ({@link browserSessionBinding}). */
+  sub: string,
   now: number,
   extraCookies: string[] = [],
   /** I-17: TRUSTED markup the "signed in" page adds (the join offer); a `returnTo` flow has no
@@ -2448,6 +2500,7 @@ async function completeBrowserFlow(
       await deleteArtefact(env, stateKey);
       return errorResponse(401, "unauthorized", "license unavailable");
     }
+    const binding = await browserSessionBinding(env, db, product, sub);
     const session = await createBrowserSession(
       env,
       db,
@@ -2455,6 +2508,10 @@ async function completeBrowserFlow(
       license,
       now,
       req,
+      {
+        subject: binding?.subject ?? null,
+        accountId: binding?.accountId ?? null,
+      },
     );
     await deleteArtefact(env, stateKey);
     if (!session.ok) {
@@ -2982,6 +3039,7 @@ async function completeChoice(
     c.stateKey,
     flow,
     licenseId,
+    identity.sub,
     now,
     cookies,
   );

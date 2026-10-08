@@ -40,6 +40,7 @@ import {
   PLATFORM_SIGNIN_ENDED,
 } from "../accounts/platformMigration.js";
 import { beginProviderSignIn } from "../card/gate.js";
+import { accountDisabledPage } from "../card/http.js";
 import { buildPortalClearCookie, portalSessionFromRequest } from "./session.js";
 import {
   revokeSessionByHash,
@@ -159,11 +160,10 @@ export const signInPage = {
   /** The identity could not be verified. */
   unverified: (): Response =>
     htmlError(401, "We couldn't confirm that sign-in"),
-  /** The account is disabled. */
-  accountDisabled: (): Response =>
-    htmlError(403, "This account can't sign in", {
-      body: "<p>Contact Polaris Key support.</p>",
-    }),
+  /** The account is disabled: **Sign in with another account**, back to where the sign-in was
+   *  headed (`returnTo`, already checked) or the sign-in page (`card/http.ts`). */
+  accountDisabled: (returnTo?: string | null): Response =>
+    accountDisabledPage({ signInHref: returnTo }),
   /** I-17: the platform IdP no longer signs this person in (past the sunset, or
    *  `operators-only` for a subject that never moved). **Sign in again** goes to the card. */
   platformEnded: (): Response =>
@@ -488,7 +488,7 @@ async function completePortalCallback(
     default:
       result = claim.result;
   }
-  const refused = signInRefusal(result);
+  const refused = signInRefusal(result, flow.returnTo);
   if (refused) return refused;
   const signedIn = result as Extract<SignInResult, { status: "signed_in" }>;
   const account = signedIn.account;
@@ -526,17 +526,21 @@ function emailInUsePage(): Response {
  * offers to join once the person proves the other account; until it lands, the page says so and
  * names nobody.
  */
-export function signInRefusal(result: SignInResult): Response | null {
+export function signInRefusal(
+  result: SignInResult,
+  /** Where the sign-in was headed (already checked): the disabled page's way on. */
+  returnTo?: string | null,
+): Response | null {
   switch (result.status) {
     case "signed_in":
       return result.account.status === "active"
         ? null
-        : signInPage.accountDisabled();
+        : signInPage.accountDisabled(returnTo);
     case "join_offer":
       return emailInUsePage();
     case "refused":
       return result.reason === "account_disabled"
-        ? signInPage.accountDisabled()
+        ? signInPage.accountDisabled(returnTo)
         : signInPage.unverified();
   }
 }

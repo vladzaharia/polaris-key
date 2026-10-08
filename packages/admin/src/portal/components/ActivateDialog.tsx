@@ -882,11 +882,22 @@ export function ConfirmStep({
         {notes}
       </DialogBody>
       <DialogFooter>
-        <Button variant="outline" className="font-bold" onClick={onBack}>
+        <Button
+          variant="outline"
+          className="shrink-0 font-bold"
+          onClick={onBack}
+        >
           Back
         </Button>
-        <Button className="font-bold" loading={adding} onClick={onAdd}>
-          {primaryLabel ?? `Add ${p.name}`}
+        {/* A long product name is cut short with an ellipsis rather than spilling out of the
+            button (PS-05 review M5); the name is read in full (the label, the heading above). */}
+        <Button
+          className="min-w-0 font-bold"
+          loading={adding}
+          onClick={onAdd}
+          aria-label={primaryLabel ?? `Add ${p.name}`}
+        >
+          <span className="truncate">{primaryLabel ?? `Add ${p.name}`}</span>
         </Button>
       </DialogFooter>
     </>

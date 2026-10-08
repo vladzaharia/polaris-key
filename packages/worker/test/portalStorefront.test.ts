@@ -890,7 +890,7 @@ describe("library entries (GET /api/library, GET /api/products/<p>, DELETE /api/
     const removed = await call(w, w.anon, "DELETE", "/api/library/openutil");
     expect(removed).toEqual({
       status: 200,
-      body: { ok: true, product: "openutil" },
+      body: { ok: true, product: "openutil", inLibrary: false },
     });
     expect((await library(w, w.anon)).body.products).toEqual([]);
     expect(
@@ -908,14 +908,76 @@ describe("library entries (GET /api/library, GET /api/products/<p>, DELETE /api/
       status: 404,
       body: { error: "not_found" },
     });
-    // The licence stays in the library: it leaves only by the existing detach.
+    // The licence stays in the library: it leaves only by the existing detach. With no entry
+    // to remove, the answer says the product is still there, and nothing is written.
     expect(
-      (await call(w, w.member, "DELETE", "/api/library/mossgarden")).status,
-    ).toBe(404);
+      await call(w, w.member, "DELETE", "/api/library/mossgarden"),
+    ).toEqual({
+      status: 200,
+      body: { ok: true, product: "mossgarden", inLibrary: true },
+    });
+    expect(
+      await w.db.first(
+        "SELECT id FROM portal_audit WHERE account_id = ? AND action = 'portal.library.remove'",
+        w.member,
+      ),
+    ).toBeNull();
     const held = await w.db.all<{ account_id: string }>(
       "SELECT account_id FROM licenses WHERE product = 'mossgarden'",
     );
     expect(held).toEqual([{ account_id: w.member }]);
+  });
+
+  it("DELETE of an entry a licence replaced: the success shape, and the product stays", async () => {
+    const w = await world();
+    await claim(w, w.anon, "openutil");
+    // A licence for the product arrives by another route; the entry is hidden behind it.
+    await w.db.run(
+      `INSERT INTO licenses (product, id, status, tier_id, activated_at, modified_at)
+       VALUES ('openutil', 'lic_open', 'active', NULL, ?, ?)`,
+      NOW,
+      NOW,
+    );
+    await linkLicense(w.db, w.anon, "openutil", "lic_open", "license-key", NOW);
+
+    const removed = await call(w, w.anon, "DELETE", "/api/library/openutil");
+    expect(removed).toEqual({
+      status: 200,
+      body: { ok: true, product: "openutil", inLibrary: true },
+    });
+    // The licence is untouched and still the library item; the hidden entry is gone.
+    const after = (await library(w, w.anon)).body.products;
+    expect(after).toEqual([
+      expect.objectContaining({ product: "openutil", kind: "license" }),
+    ]);
+    expect(await w.db.all("SELECT product FROM library_entries")).toEqual([]);
+    expect(
+      await w.db.first<{ account_id: string }>(
+        "SELECT account_id FROM licenses WHERE id = 'lic_open'",
+      ),
+    ).toEqual({ account_id: w.anon });
+    // The history says what happened: the entry went, the licence keeps the product.
+    expect(
+      await w.db.first<{ summary: string }>(
+        "SELECT summary FROM portal_audit WHERE account_id = ? AND action = 'portal.library.remove'",
+        w.anon,
+      ),
+    ).toEqual({
+      summary:
+        "Removed a product's library entry; its license keeps it in the library (source: discover; path: open)",
+    });
+
+    // Asked again (another tab): the same answer, idempotent, and nothing more is written.
+    expect(await call(w, w.anon, "DELETE", "/api/library/openutil")).toEqual({
+      status: 200,
+      body: { ok: true, product: "openutil", inLibrary: true },
+    });
+    expect(
+      await w.db.all(
+        "SELECT id FROM portal_audit WHERE account_id = ? AND action = 'portal.library.remove'",
+        w.anon,
+      ),
+    ).toHaveLength(1);
   });
 
   it("DELETE needs the CSRF header and is DELETE only", async () => {

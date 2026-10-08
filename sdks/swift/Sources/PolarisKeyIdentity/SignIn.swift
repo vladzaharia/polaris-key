@@ -3,8 +3,9 @@
 //   signInWithBrowser()  device code with `verificationUriComplete` opened in a system browser
 //                        sheet (ASWebAuthenticationSession), then the paced wait; the sheet is
 //                        dismissed once the sign-in settles. No new route: this is the interim
-//                        until the native redirect route (I-15) lands, and it never touches the
-//                        deprecated `/identity/auth/poll`.
+//                        until the native redirect route (I-15) lands. It polls
+//                        `/identity/auth/device/poll` like any device-code sign-in (the old
+//                        `/identity/auth/poll` is retired; the Worker no longer serves it).
 //   signOut()            the facade's `deactivate()` (release the seat, wipe the credential) —
 //                        after a device-code sign-in the identity IS the credential — then the
 //                        `license` event. The facade installs it (`installSignOut`), because the

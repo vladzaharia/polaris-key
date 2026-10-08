@@ -1,7 +1,8 @@
 # @pkey-feature identity.devicecode
 """Sign-in conveniences (SDK parity pass §3.12, SP-P10): P1-07's attach opt-in, ``ready`` carrying
-the identity, ``sign_in_with_browser()`` (device code opened in the system browser, never the
-deprecated ``/identity/auth/poll``), ``current()`` and ``sign_out()``."""
+the identity, ``sign_in_with_browser()`` (device code opened in the system browser, polled at
+``/identity/auth/device/poll``, never the retired ``/identity/auth/poll``), ``current()`` and
+``sign_out()``."""
 
 from __future__ import annotations
 

@@ -48,6 +48,53 @@ export function signInAgainAction(href = "/"): string {
   return `<p class="actions"><a class="button" href="${escapeHtml(href)}">Sign in again</a></p>`;
 }
 
+/** The heading of the Account disabled page and the start of its JSON message (SIGN-IN.md
+ *  §3.13). `// signin.disabled.title` */
+export const ACCOUNT_DISABLED_HEADING = "This account can't sign in";
+
+/** The JSON refusal's message for an account that cannot sign in (disabled, or its deletion under
+ *  way): the heading as a sentence, and nothing to contact (there is no support page to send
+ *  anyone to; the page offers the ways on instead). */
+export const ACCOUNT_DISABLED_MESSAGE = `${ACCOUNT_DISABLED_HEADING}.`;
+
+/**
+ * "This account can't sign in" (SIGN-IN.md §3.13, Account disabled): the one page every Worker
+ * sign-in renders for an account that cannot sign in (the login card's link and gate, the portal's
+ * provider callbacks, a product's single sign-on). 403, names nothing about the account, and is
+ * never a dead end:
+ *
+ * - **Sign in with another account** (the button) goes to `signInHref`: the sign-in page, or a
+ *   same-origin return URL the caller already checked, which lands on the sign-in page with its
+ *   context kept, as **Sign in again** does (`signInAgainAction`).
+ * - **Back to <Product>**, only when the caller knows both a checked return URL into the product
+ *   and the product's name (a product's own sign-in).
+ *
+ * No "Contact Polaris Key support": the platform has no support page or setting to link to yet,
+ * and a sentence that names a channel nobody can reach is a dead end of its own. `// signin.disabled.*`
+ */
+export function accountDisabledPage(
+  opts: {
+    signInHref?: string | null;
+    back?: { href: string; productName: string } | null;
+  } = {},
+  cookies: readonly string[] = [],
+): Response {
+  const back = opts.back
+    ? `<a class="button secondary" href="${escapeHtml(opts.back.href)}">Back to ${escapeHtml(opts.back.productName)}</a>` // signin.disabled.back
+    : "";
+  return cardPage(
+    403,
+    {
+      title: "Sign in",
+      heading: ACCOUNT_DISABLED_HEADING,
+      body:
+        `<p class="actions stack"><a class="button" href="${escapeHtml(opts.signInHref || "/")}">Sign in with another account</a>` + // signin.disabled.another
+        `${back}</p>`,
+    },
+    cookies,
+  );
+}
+
 /**
  * The wrong-code message (SIGN-IN.md §3.4): `signin.code.wrong`, plus `signin.code.triesLeft`
  * when two or fewer tries are left, or `signin.code.tooMany` when none are.

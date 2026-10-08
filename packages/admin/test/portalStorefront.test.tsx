@@ -172,6 +172,9 @@ function storefrontWorker(
     slowLibrary?: number;
     /** Milliseconds `DELETE /api/library/<p>` takes. */
     slowDelete?: number;
+    /** A licence for the product arrives just before the DELETE lands (the Worker then answers
+     *  `inLibrary: true`, PS-05). */
+    licensedOnDelete?: boolean;
   } = {},
 ) {
   const later = <T,>(ms: number, value: () => T): T | Promise<T> =>
@@ -256,7 +259,21 @@ function storefrontWorker(
         if (!entries.some((x) => x.product === e.product))
           return { status: 404, body: { error: "not_found" } };
         entries = entries.filter((x) => x.product !== e.product);
-        return { ok: true, product: e.product };
+        if (opts.licensedOnDelete)
+          held.push(
+            license({
+              product: e.product,
+              productName: e.name,
+              identityProvider: "oidc",
+              keyCount: 0,
+              deviceCount: 0,
+            }),
+          );
+        return {
+          ok: true,
+          product: e.product,
+          inLibrary: held.some((l) => l.product === e.product),
+        };
       });
   // The entries' product view (PS-04: `kind: "entry"`, no licences).
   for (const e of [
@@ -675,6 +692,44 @@ describe("open products in the Library (PS-05)", () => {
     expect(fetchedRequests()).toContain("DELETE /api/library/driftwood");
   });
 
+  it("an entry a licence replaced meanwhile: the toast says the product stays", async () => {
+    window.history.replaceState(null, "", "/");
+    mockFetch(
+      storefrontWorker([DRIFTWOOD], {
+        held: [NIGHTFALL],
+        entries: [DRIFT_ENTRY],
+        licensedOnDelete: true,
+      }),
+    );
+    renderPortal();
+    const drift = await tile("Driftwood Notes");
+    await userEvent.click(
+      within(drift).getByRole("button", { name: "More for Driftwood Notes" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Remove from library" }),
+    );
+    await userEvent.click(
+      within(await within(drift).findByRole("group")).getByRole("button", {
+        name: "Remove from library",
+      }),
+    );
+    // Information, not a removal (PS-05 review m1): a title and why.
+    expect(
+      await screen.findByText("Driftwood Notes stays in your library"),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        "You have a license for it now, so there's nothing to remove.",
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.queryByText("Driftwood Notes was removed from your library"),
+    ).toBeNull();
+    // The library shows the licence's tile in the entry's place.
+    expect(await tile("Driftwood Notes")).toBeTruthy();
+  });
+
   it("Remove chosen again puts focus back on Keep it; while it removes, focus waits on the confirmation", async () => {
     window.history.replaceState(null, "", "/");
     mockFetch(
@@ -757,6 +812,49 @@ describe("open products in the Library (PS-05)", () => {
     expect(
       await screen.findByRole("heading", { level: 1, name: "Your library" }),
     ).toBeTruthy();
+  });
+
+  it("an entry's product page whose entry a licence replaced meanwhile: the page stays, now the licence's, its heading focused", async () => {
+    window.history.replaceState(null, "", "/#/p/driftwood");
+    mockFetch(
+      storefrontWorker([DRIFTWOOD], {
+        held: [NIGHTFALL],
+        entries: [DRIFT_ENTRY],
+        licensedOnDelete: true,
+      }),
+    );
+    renderPortal();
+    await screen.findByRole("heading", { level: 1, name: "Driftwood Notes" });
+    await userEvent.click(
+      screen.getByRole("button", { name: "More for Driftwood Notes" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Remove from library" }),
+    );
+    const confirm = await screen.findByRole("group", {
+      name: "Remove Driftwood Notes from your library?",
+    });
+    await userEvent.click(
+      within(confirm).getByRole("button", { name: "Remove from library" }),
+    );
+    expect(
+      await screen.findByText("Driftwood Notes stays in your library"),
+    ).toBeTruthy();
+    // The licence's page: its License card arrives, the URL never left, and its h1 has focus.
+    expect(
+      await screen.findByRole("region", { name: "Driftwood Notes license" }),
+    ).toBeTruthy();
+    expect(window.location.hash).toBe("#/p/driftwood");
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("heading", { level: 1, name: "Driftwood Notes" }),
+      ),
+    );
+    expect(
+      screen.queryByRole("group", {
+        name: "Remove Driftwood Notes from your library?",
+      }),
+    ).toBeNull();
   });
 
   it("the free-device flow has nothing to free for an entry: it goes to the product page", async () => {

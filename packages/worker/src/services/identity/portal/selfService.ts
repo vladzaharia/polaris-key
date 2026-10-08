@@ -100,6 +100,7 @@ import {
   shapeLicenseSummaryWithStore,
   type PortalHooksFor,
 } from "./api.js";
+import { presentationFor } from "./library.js";
 
 // ── The claim rules ─────────────────────────────────────────────────────────────────────────
 
@@ -295,19 +296,33 @@ async function licenseTerms(
   };
 }
 
-function productView(
+/**
+ * The product as a key preview shows it. The name, the developer name, the tint and the art come
+ * from the same presentation the library draws (`presentationFor`, HA-07): the listing's display
+ * name, else the product's; the hosted copies when the product has them, else the media proxy's
+ * URLs, sized like a library tile (the confirm step's banner and icon). `null` art when there is
+ * none, and a `null` tint when the product declares no accent.
+ */
+async function productView(
+  env: Env,
+  db: Db,
   product: ProductFacts | null,
-): Record<string, unknown> | null {
+  hooksFor: PortalHooksFor | undefined,
+  now: number,
+): Promise<Record<string, unknown> | null> {
   if (!product) return null;
+  const pub = await loadProductPublic(db, product.slug);
+  const pres = pub
+    ? await presentationFor(env, db, pub, hooksFor, now, "library")
+    : null;
   return {
     slug: product.slug,
-    name: product.name,
+    name: pres?.name ?? product.name,
     branding: product.branding,
-    // G1's presentation (developer name and same-origin art through the media proxy) is PX-W1's;
-    // the fields are reserved here so the confirm step binds to one shape before and after it lands.
-    developerName: null,
-    iconUrl: null,
-    headerUrl: null,
+    developerName: pres?.developerName ?? null,
+    tintColor: pres?.tintColor ?? null,
+    iconUrl: pres?.iconUrl ?? null,
+    headerUrl: pres?.headerUrl ?? null,
   };
 }
 
@@ -340,7 +355,7 @@ export async function handleActivatePreview(
   }
   const base = {
     verdict: verdict.kind,
-    product: productView(verdict.product),
+    product: await productView(env, db, verdict.product, hooksFor, now),
     // PX-W9 (§12.2 rule 8): the licence's key entries on an Identity product, for a licence this
     // account can see; `null` otherwise. Previewing never counts.
     keyEntries:
@@ -595,7 +610,8 @@ export async function handleKeyPreview(
   if (resolved.kind === "unknown")
     return err(401, ErrorCode.Unauthorized, "license key not found");
   const { product, license } = resolved;
-  const view = productView(product)!;
+  // Signed out, so no listing hooks: the art is the hosted copies, else the media proxy's.
+  const view = (await productView(env, db, product, undefined, now))!;
   if (resolved.kind === "portal_off") {
     return portalJson({
       product: view,

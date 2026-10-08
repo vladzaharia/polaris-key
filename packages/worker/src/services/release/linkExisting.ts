@@ -28,7 +28,10 @@
  * resync, the webhook and the deploy hook record it too.
  */
 
-import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
+import {
+  SYSTEM_PRODUCT_SLUG,
+  type ManifestPresentation,
+} from "@polaris-key/manifest";
 import { parseJsonColumn, type Db, type Env } from "../../core/platform.js";
 import {
   claimsForApply,
@@ -44,6 +47,10 @@ import {
   type ClaimKey,
 } from "../../core/ingest.js";
 import { parseServices } from "../../core/services.js";
+import {
+  parseStoredPresentation,
+  serializePresentation,
+} from "../../core/products.js";
 import { reservedNamesMode } from "../../core/reservedNames.js";
 import { getPublisherPolicy } from "../../core/publisher.js";
 import { getReleaseConfig } from "./config.js";
@@ -84,6 +91,7 @@ export interface PlanItem {
     | "product"
     | "compat"
     | "services"
+    | "presentation"
     | "fingerprint"
     | "autoIssue"
     | "catalog"
@@ -546,6 +554,28 @@ function catalogKeys(catalog: unknown): Map<string, string> {
   return out;
 }
 
+/**
+ * What the manifest's `presentation` changes against the stored one, member by member (HA-12):
+ * `icon <src>` or `no icon`, `accent #rrggbb` or `no accent`, the same for the dark accent. Both
+ * sides are compared as `parseStoredPresentation` reads them, so a stored row that only differs
+ * in spelling changes nothing visible and lists nothing.
+ */
+function presentationChanges(
+  before: ManifestPresentation | null,
+  after: ManifestPresentation | null,
+): string[] {
+  const out: string[] = [];
+  if (!sameJson(before?.icon, after?.icon))
+    out.push(after?.icon ? `icon ${after.icon.src}` : "no icon");
+  if ((before?.accent ?? null) !== (after?.accent ?? null))
+    out.push(after?.accent ? `accent ${after.accent}` : "no accent");
+  if ((before?.accentDark ?? null) !== (after?.accentDark ?? null))
+    out.push(
+      after?.accentDark ? `dark accent ${after.accentDark}` : "no dark accent",
+    );
+  return out;
+}
+
 const list = (ids: string[]): string =>
   ids.length <= 4
     ? ids.join(", ")
@@ -630,6 +660,18 @@ export async function planRepoManifest(
   );
   if (fields.length)
     plan.apply.push({ area: "product", summary: `Sets ${fields.join(", ")}` });
+  // HA-12: `presentation` (the icon and the accents) is manifest-only, like the admin group: the
+  // apply writes `presentation_json` from the manifest, clears it when the block is dropped, and
+  // audits it as `core.presentation`. Discovery serves the new value within its cache window.
+  const presentation = presentationChanges(
+    parseStoredPresentation(product.presentation_json ?? null),
+    parseStoredPresentation(serializePresentation(manifest.presentation)),
+  );
+  if (presentation.length)
+    plan.apply.push({
+      area: "presentation",
+      summary: `Presentation: ${presentation.join(", ")}`,
+    });
   if (kept.length)
     plan.skipClaimed.push({
       area: "product",

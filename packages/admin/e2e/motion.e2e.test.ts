@@ -581,9 +581,13 @@ async function clickSectionLink(
     link.click();
     const el = document.getElementById(`section-${section}`)!;
     const margin = parseFloat(getComputedStyle(el).scrollMarginTop) || 0;
-    // Where the section lands: its top at the scroll margin (or the page's end).
+    // The page's scroll padding: the sticky header (and, below desk, the section pills).
+    const padding =
+      parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) ||
+      0;
+    // Where the section lands: its top at the scroll padding plus its margin (or the page's end).
     const target = Math.min(
-      window.scrollY + el.getBoundingClientRect().top - margin,
+      window.scrollY + el.getBoundingClientRect().top - padding - margin,
       document.documentElement.scrollHeight - window.innerHeight,
     );
     return { before, sync: window.scrollY, target };

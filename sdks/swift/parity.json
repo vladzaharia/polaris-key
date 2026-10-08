@@ -133,7 +133,7 @@
     "identity.oidc": {
       "status": "planned",
       "wp": "I-15",
-      "note": "No OIDC redirect flow yet: native browser sign-in waits on I-15. The interim is client.identity signInWithBrowser(), which opens the device-code verification URL in ASWebAuthenticationSession and polls identity.devicecode (never the deprecated /identity/auth/poll)."
+      "note": "No OIDC redirect flow yet: native browser sign-in waits on I-15. The interim is client.identity signInWithBrowser(), which opens the device-code verification URL in ASWebAuthenticationSession and polls /identity/auth/device/poll (identity.devicecode; the old /identity/auth/poll is retired and the Worker no longer serves it)."
     },
     "identity.devicecode": {
       "status": "implemented"

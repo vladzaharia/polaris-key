@@ -532,6 +532,14 @@ def _one_setting(client: Any, t: Terminal, key: str, *, saved: bool = False, fal
     return Outcome(0, screens.settings(t.kit, view, t.verb or "config"), {"key": key, "value": value, "source": source})
 
 
+# ``secret`` and ``mint`` say whether a value is there and when a token expires; they never print
+# the value or the token, on a terminal, in a pipe or under ``--json``. That is also why neither
+# needs the Node kit's CI guard (UK-14): a raw value printed inside GitHub Actions, Azure
+# Pipelines or TeamCity could carry a line the runner obeys (``::add-mask::``, ``##vso[``), so the
+# Node kit withholds such a value unless ``--allow-workflow-commands``. A change that makes these
+# verbs print a value must take that guard with it (tests/test_cli_verbs.py pins the rule).
+
+
 def secret(client: Any, t: Terminal, words: Sequence[str]) -> Outcome:
     if len(words) != 1:
         return usage(t, "secret <key>")

@@ -1147,11 +1147,14 @@ export const portalApi = {
       method: "POST",
       ...(path ? { body: JSON.stringify({ path }) } : {}),
     }),
-  /** PS-04: remove a library ENTRY (an open product); a licence is never removed here. */
+  /** PS-04: remove a library ENTRY (an open product); a licence is never removed here.
+   *  `inLibrary`: a licence keeps the product in the library (an entry a licence replaced
+   *  meanwhile); absent from a Worker that predates it. */
   removeLibraryEntry: (product: string) =>
-    call<{ ok: true; product: string }>(`/api/library/${enc(product)}`, {
-      method: "DELETE",
-    }),
+    call<{ ok: true; product: string; inLibrary?: boolean }>(
+      `/api/library/${enc(product)}`,
+      { method: "DELETE" },
+    ),
   product: (product: string) =>
     call<PortalProduct>(`/api/products/${enc(product)}`),
   downloads: (product: string) =>

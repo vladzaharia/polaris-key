@@ -84,6 +84,8 @@ import { portalEmailConfigured, sendSignInEmail } from "../portal/email.js";
 import { finishSignIn } from "./finish.js";
 import {
   cardJson,
+  ACCOUNT_DISABLED_MESSAGE,
+  accountDisabledPage,
   cardPage,
   cardRedirect,
   parseEmail,
@@ -507,7 +509,7 @@ async function completeEmailSignIn(
     const inUse = result.status === "join_offer";
     const message = inUse
       ? "A Polaris Key account already uses this email address, but not as a way to sign in. Sign in with the method you used before; you can add this email to that account afterwards."
-      : "This account can't sign in. Contact Polaris Key support.";
+      : ACCOUNT_DISABLED_MESSAGE;
     return answer === "json"
       ? cardJson(
           inUse
@@ -516,17 +518,9 @@ async function completeEmailSignIn(
           inUse ? 409 : 403,
           [clearFlow()],
         )
-      : cardPage(
-          inUse ? 409 : 403,
-          inUse
-            ? { title: "Sign in", heading: message }
-            : {
-                title: "Sign in",
-                heading: "This account can't sign in",
-                body: "<p>Contact Polaris Key support.</p>",
-              },
-          [clearFlow()],
-        );
+      : inUse
+        ? cardPage(409, { title: "Sign in", heading: message }, [clearFlow()])
+        : accountDisabledPage({ signInHref: record.returnTo }, [clearFlow()]);
   }
   const finished = await finishSignIn(
     env,

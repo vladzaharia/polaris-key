@@ -1690,8 +1690,9 @@ export function portalRoutes(s: PortalScenario): Record<string, Handler> {
             slug: "mossgarden",
             name: "Mossgarden",
             developerName: "Little Fern",
-            iconUrl: null,
-            headerUrl: null,
+            // The hosted art, as the Worker fills it (HA-07): the media proxy's URLs.
+            iconUrl: "/media/mossgarden/icon?v=1",
+            headerUrl: "/media/mossgarden/header?v=1",
           },
           entries: null,
           license: {
