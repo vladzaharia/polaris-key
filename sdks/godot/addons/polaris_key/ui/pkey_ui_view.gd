@@ -73,7 +73,6 @@ var auto_sdk := true
 ## the theme says.
 const GUTTER := 16.0
 ## The kinds of brand node `brand_node()` makes.
-const BRAND_MARK := &"mark"
 const BRAND_POWERED_BY := &"powered_by"
 
 ## The design reference: a landscape screen of this size is scale 1, and so is a portrait one of
@@ -98,6 +97,25 @@ const COLUMNS_MIN_WIDTH := 680.0
 ## [left, top, right, bottom] in logical pixels to use instead of the device's safe area (tests,
 ## the screenshot matrix); null reads the device.
 static var safe_insets_override: Variant = null
+## Tests and the screenshot matrix: pretend this is a phone or tablet ({"dpr": density-independent
+## pixels per 160 dpi, e.g. 2.75}) or not (false); null reads the device (OS.has_feature("mobile")
+## and DisplayServer.screen_get_dpi()).
+static var mobile_override: Variant = null
+## Tests and the matrix: true or false for "a joypad is the only input"; null reads the device.
+static var pad_only_override: Variant = null
+## The least a phone's body text is, in density-independent pixels, and its controls' height (44 pt
+## on iOS, 48 dp on Android).
+const MOBILE_BODY_DP := 16.0
+const MOBILE_CONTROL_DP := 48.0
+## The widest panel, in layout pixels, that is a phone's (with a portrait aspect) on a desktop.
+const PHONE_MAX_WIDTH := 560.0
+## True after the last keyboard or joypad input, false after the last mouse or touch input: a
+## screen grabs focus on its own only for the former.
+static var pointer_last := false
+static var _pointer_known := false
+## How long (ms) a modal ignores input after it opens, so a button press that opened it cannot
+## also answer it (UI-KITS.md §4.3).
+const MODAL_GUARD_MSEC := 250
 
 ## The outermost view's last measurements (see `layout_metrics()`).
 var metrics: Dictionary = {}
@@ -113,6 +131,23 @@ var _safe_theme: Theme = null
 var _card_box: PanelContainer = null
 var _scrolls: Array = []
 var _checks_left := 0
+## How far the layout has squeezed to fit a short screen (0: not at all, up to `squeeze_max()`).
+## The outermost view owns it; every view inside reads it through `squeeze_level()`.
+var _squeeze := 0
+var _squeeze_key := ""
+var _action_rows: Array = []
+var _loading_bar: ProgressBar = null
+var _loading_since := 0
+var _flips := 0
+## The focus chain as last wired, and the index the focus held when its control went away.
+var _last_chain: Array = []
+var _lost_index := -1
+## The screen the view showed when it last asked for focus (see `_screen_key()`).
+var _focus_key := ""
+var _was_visible := false
+## The control that had focus when this view opened (`remember_opener()`), restored on `close()`.
+var _opener: Control = null
+var _guard_until := 0
 var _layout_frame := -1
 var _layouts_in_frame := 0
 
@@ -144,10 +179,45 @@ func _notification(what: int) -> void:
 		queue_layout()
 
 
+## The last kind of input, for `pointer_last`; and a modal's input guard.
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey or event is InputEventJoypadButton or (event is InputEventJoypadMotion and absf((event as InputEventJoypadMotion).axis_value) > 0.5):
+		pointer_last = false
+		_pointer_known = true
+	elif event is InputEventMouseButton or event is InputEventScreenTouch:
+		pointer_last = true
+		_pointer_known = true
+	if _guard_until > 0 and Time.get_ticks_msec() < _guard_until and is_visible_in_tree() and outer_view() == self:
+		if event is InputEventKey or event is InputEventJoypadButton or event is InputEventMouseButton or event is InputEventScreenTouch:
+			get_viewport().set_input_as_handled()
+
+
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("ui_cancel") and is_visible_in_tree() and _has_focus_inside():
+	if not is_visible_in_tree():
+		return
+	var inside := _has_focus_inside()
+	if event.is_action_pressed("ui_cancel") and (inside or (outer_view() == self and not _focus_elsewhere())):
 		if _cancel():
 			get_viewport().set_input_as_handled()
+		return
+	# Nothing has focus (a screen opened after a pointer): the first direction or accept key
+	# focuses the screen's initial control and is consumed.
+	if outer_view() == self and not inside and not _focus_elsewhere() and _is_nav_event(event):
+		if ensure_focus(true):
+			get_viewport().set_input_as_handled()
+
+
+static func _is_nav_event(event: InputEvent) -> bool:
+	for a in ["ui_up", "ui_down", "ui_left", "ui_right", "ui_accept"]:
+		if event.is_action_pressed(a):
+			return true
+	return false
+
+
+## True when something outside this view holds the focus (the game's own control).
+func _focus_elsewhere() -> bool:
+	var f := get_viewport().gui_get_focus_owner() if get_viewport() != null else null
+	return f != null and f != self and not is_ancestor_of(f)
 
 
 ## The copy in use: `copy`, else the shared defaults.
@@ -162,14 +232,33 @@ func refresh_view() -> void:
 	# A deferred refresh (PKeyUiTheme.refresh_views()) can outlive the SDK node it was given.
 	if not is_instance_valid(sdk):
 		sdk = null
-	if outer_view() == self and is_inside_tree():
+	var outer := outer_view() == self
+	if outer and is_inside_tree():
 		metrics = _measure()
+	# The control holding focus before the render, and its place in the chain: a render can hide or
+	# disable it, and the engine then drops the focus.
+	var held: Control = null
+	if outer and is_inside_tree():
+		held = get_viewport().gui_get_focus_owner()
+		if held != null and not (held == self or is_ancestor_of(held)):
+			held = null
+	var held_at := _last_chain.find(held) if held != null else -1
 	_resolve_theme()
 	_render_brand()
 	_render()
+	if outer:
+		# What the device decides (a phone shows no QR code, say) is rendered by every view inside,
+		# not only the ones whose own state changed.
+		for v in _views():
+			if v != self:
+				(v as PKeyUiView)._render()
 	auto_hide(self)
 	wire_focus()
 	layout_content()
+	if outer:
+		if held != null and held_at >= 0 and not held.has_focus() and _lost_index < 0:
+			_lost_index = held_at
+		_manage_focus.call_deferred()
 
 
 ## Hide every container under `n` marked AUTO_HIDE_META whose children are all hidden, innermost
@@ -243,6 +332,9 @@ func wire_focus() -> void:
 			continue
 		var usable := is_focusable(ctl)
 		if not usable and ctl.has_focus():
+			# The focus is leaving this control (hidden or disabled): remember its place in the
+			# old chain so the new chain can take it at the same index.
+			_lost_index = maxi(_last_chain.find(ctl), 0)
 			ctl.release_focus()
 		ctl.focus_mode = Control.FOCUS_ALL if _enabled(ctl) else Control.FOCUS_NONE
 	var chain := focus_order()
@@ -255,6 +347,104 @@ func wire_focus() -> void:
 		ctl.focus_next = next
 		ctl.focus_neighbor_top = prev
 		ctl.focus_previous = prev
+	_last_chain = chain
+	_after_wire()
+
+
+## After a render: focus a control when the view needs one (see `ensure_focus()`), at the index the
+## lost focus held, or the screen's initial control when the screen itself changed.
+func _manage_focus() -> void:
+	if not is_inside_tree():
+		return
+	var visible_now := is_visible_in_tree()
+	var key := _screen_key()
+	var changed := key != _focus_key or (visible_now and not _was_visible)
+	_focus_key = key
+	_was_visible = visible_now
+	if not visible_now:
+		return
+	if _lost_index >= 0 and not changed:
+		var chain := focus_order()
+		var idx := _lost_index
+		_lost_index = -1
+		if not chain.is_empty() and not _focus_elsewhere() and not _has_focus_inside():
+			chain[clampi(idx, 0, chain.size() - 1)].grab_focus()
+		return
+	_lost_index = -1
+	if changed:
+		if _guard_for_modal():
+			_guard_until = Time.get_ticks_msec() + MODAL_GUARD_MSEC
+		ensure_focus(false)
+
+
+## Focus the view's initial control when nothing inside it has focus: after keyboard or joypad
+## input, or `force` (a direction or accept key pressed while nothing is focused). After a mouse or
+## touch nothing is focused until `force`. Returns true when a control now has focus.
+func ensure_focus(force := false) -> bool:
+	var outer := outer_view()
+	if outer != self:
+		return outer.ensure_focus(force)
+	if not is_inside_tree() or not is_visible_in_tree():
+		return false
+	var f := get_viewport().gui_get_focus_owner()
+	if f != null and (f == self or is_ancestor_of(f)) and is_focusable(f):
+		return true
+	if _focus_elsewhere() and not force:
+		return false
+	var pointer := pointer_last if _pointer_known else (DisplayServer.is_touchscreen_available() and Input.get_connected_joypads().is_empty() and not _has_keyboard())
+	if pointer and not force:
+		return false
+	var c := _initial_focus()
+	if c == null or not c.is_inside_tree():
+		var chain := focus_order()
+		c = chain[0] if not chain.is_empty() else null
+	if c == null:
+		return false
+	c.grab_focus()
+	return c.has_focus()
+
+
+static func _has_keyboard() -> bool:
+	return OS.has_feature("pc") or OS.has_feature("web")
+
+
+## The control a screen puts focus on when it opens: its primary action, else the first control.
+## Scenes override it (a stop card: Try again; a pad-only gate: Sign in).
+func _initial_focus() -> Control:
+	var chain := focus_order()
+	for ctl in chain:
+		if ctl is Button and ctl.theme_type_variation == &"PKeyPrimary":
+			return ctl
+	return chain[0] if not chain.is_empty() else null
+
+
+## A key naming the screen the view shows now: when it changes, the view asks for focus again.
+func _screen_key() -> String:
+	return ""
+
+
+## Whether this view guards its first 250 ms against input (a modal).
+func _guard_for_modal() -> bool:
+	return false
+
+
+## Remember the control that has focus now (the one that opened this view), to give it back on
+## `close_view()`.
+func remember_opener() -> void:
+	var f := get_viewport().gui_get_focus_owner() if is_inside_tree() else null
+	_opener = f if f != null and f != self and not is_ancestor_of(f) else null
+
+
+## Give the focus back to the control that opened this view, if it is still there.
+func restore_opener() -> void:
+	if _opener != null and is_instance_valid(_opener) and _opener.is_inside_tree() and is_focusable(_opener):
+		_opener.grab_focus.call_deferred()
+	_opener = null
+
+
+## Called after the focus chain is wired: a scene adds focus neighbours of its own.
+func _after_wire() -> void:
+	pass
 
 
 ## The outermost PKeyUiView this one is nested in (itself when it is not nested).
@@ -336,7 +526,8 @@ func _measure() -> Dictionary:
 	var ins := safe_insets()
 	var room := Vector2(maxf(1.0, area.x - ins[0] - ins[2]), maxf(1.0, area.y - ins[1] - ins[3]))
 	var screen := get_viewport_rect().size if is_inside_tree() else area
-	var k := _scale_for(screen)
+	var physical := physical_scale()
+	var k := _scale_for(screen, physical)
 	# A strip (not stretched vertically) takes its density from the screen's height, not its own.
 	var tall := room.y if _stretches_vertically() else maxf(room.y, screen.y)
 	var u := Vector2(room.x, tall) / k
@@ -345,32 +536,92 @@ func _measure() -> Dictionary:
 		density = "compact"
 	elif (u.x < COMFORTABLE_ROOM.x or u.y < COMFORTABLE_ROOM.y) and density == "spacious":
 		density = "comfortable"
+	var landscape := room.x > room.y and room.x / k >= COLUMNS_MIN_WIDTH
+	var mobile := is_mobile()
 	return {
 		"area": area,
 		"insets": ins,
 		"room": room,
 		"screen": screen,
-		"physical": physical_scale(),
+		"physical": physical,
 		"scale": k,
 		"density": density,
-		"landscape": room.x > room.y and room.x / k >= COLUMNS_MIN_WIDTH,
+		"landscape": landscape,
+		# A phone's layout: portrait, on a phone or on a panel narrower than a phone.
+		"phone": room.y >= room.x and (mobile or room.x / k < PHONE_MAX_WIDTH),
+		"mobile": mobile,
+		# On a phone a control is at least 48 dp tall: the floor, in layout pixels.
+		"min_control": MOBILE_CONTROL_DP * device_dpr() / physical if mobile else 0.0,
+		# Two identity-plus-form panes only on a wide enough, wide-shaped panel (Deck 1.6, 16:9).
+		"wide": landscape and room.x / room.y >= 1.5,
 	}
 
 
+## True on a phone or tablet.
+static func is_mobile() -> bool:
+	if mobile_override is bool:
+		return mobile_override
+	if mobile_override is Dictionary:
+		return true
+	return OS.has_feature("mobile")
+
+
+## True on a phone: a mobile device whose shorter side is under 600 dp, in either orientation (a
+## tablet is not one).
+func is_phone_device() -> bool:
+	if not is_mobile():
+		return false
+	var screen := get_viewport_rect().size if is_inside_tree() else Vector2(1, 1) * 400.0
+	return minf(screen.x, screen.y) * physical_scale() / device_dpr() < 600.0
+
+
+## Density-independent pixels per 160 dpi: the factor a platform minimum (16 dp, 48 dp) is
+## multiplied by to get physical pixels.
+static func device_dpr() -> float:
+	if mobile_override is Dictionary:
+		return float((mobile_override as Dictionary).get("dpr", 2.0))
+	var dpi := DisplayServer.screen_get_dpi()
+	if dpi > 0:
+		return float(dpi) / 160.0
+	return maxf(1.0, DisplayServer.screen_get_scale())
+
+
+## True when a joypad is the only input here (a TV, a console, a Steam Deck in game mode).
+static func pad_only() -> bool:
+	if pad_only_override is bool:
+		return pad_only_override
+	return PKeyActivationController.manage_presentation_here() == "qr"
+
+
 ## The scale for a screen of `screen` logical pixels: 1 at REFERENCE, within SCALE_MIN..SCALE_MAX
-## in SCALE_STEP steps, on the Polaris Key theme. The neutral look and a game's own theme keep the
-## game's sizes (1) and only shrink, down to SCALE_MIN, on a screen too small for them (under 80 %
-## of the reference); a Theme the kit did not build is never scaled.
-func _scale_for(screen: Vector2) -> float:
+## in SCALE_STEP steps, on the Polaris Key theme. The neutral look and a game's own theme are
+## measured against the size the game designed its theme for (display/window/size) and scale the
+## same way, unless the engine already scales the UI (a stretch mode: physical pixels per logical
+## one other than 1), where they stay as they are; they only shrink on a screen under 80 % of it.
+## On a phone the floor is whatever puts body text at 16 dp. A Theme the kit did not build is
+## never scaled.
+func _scale_for(screen: Vector2, physical := 1.0) -> float:
 	if not PKeyUiTheme.is_stock(outer_view().theme):
 		return 1.0
+	var branded := PKeyUiTheme.branded()
 	var ref := REFERENCE if screen.x >= screen.y else REFERENCE_PORTRAIT
+	if not branded:
+		var design := Vector2(
+			float(ProjectSettings.get_setting("display/window/size/viewport_width", 1152)),
+			float(ProjectSettings.get_setting("display/window/size/viewport_height", 648)))
+		ref = design if screen.x >= screen.y else Vector2(design.y, design.x)
+		if absf(physical - 1.0) > 0.01:
+			return 1.0
 	var raw := minf(screen.x / ref.x, screen.y / ref.y)
 	var top := SCALE_MAX
-	if not PKeyUiTheme.branded():
-		raw /= 0.8
-		top = 1.0
-	return clampf(floorf(raw / SCALE_STEP + 0.001) * SCALE_STEP, SCALE_MIN, top)
+	var k := clampf(floorf(raw / SCALE_STEP + 0.001) * SCALE_STEP, SCALE_MIN, top)
+	if is_mobile():
+		# Body text at 16 dp or more: the ladder's floor on a phone, raised past the usual top.
+		var body := 18.0 if branded else float(PKeyUiTheme.neutral_body_size(outer_view().theme))
+		var need := MOBILE_BODY_DP * device_dpr() / (body * physical)
+		k = maxf(k, ceilf(need / SCALE_STEP - 0.001) * SCALE_STEP)
+		k = minf(k, 4.0)
+	return k
 
 
 func _stretches_vertically() -> bool:
@@ -441,6 +692,13 @@ func safe_insets() -> Array:
 ## `card_width`, `card_width_wide`, `content_width`, `qr_size`, `space_N`), in logical pixels.
 ## A Theme of the game's own that does not set it gets the kit's value for the screen.
 func role(name: StringName) -> float:
+	var v := _role(name)
+	if name == &"control_height":
+		v = maxf(v, float(layout_metrics().get("min_control", 0.0)))
+	return v
+
+
+func _role(name: StringName) -> float:
 	if has_theme_constant(name, PKeyUiTheme.LAYOUT_TYPE):
 		return float(get_theme_constant(name, PKeyUiTheme.LAYOUT_TYPE))
 	var m := layout_metrics()
@@ -552,6 +810,7 @@ func layout_content() -> void:
 ## container asks for while it is sorting, which text re-wrapping after a resize can do.
 func _schedule_checks() -> void:
 	_checks_left = 3
+	_flips = 0
 	_connect_check()
 
 
@@ -561,9 +820,60 @@ func _connect_check() -> void:
 		tree.process_frame.connect(_check_sorted, CONNECT_ONE_SHOT)
 
 
+## How many steps a scene can squeeze (0: none). Each step drops something optional or moves
+## something so the primary action and the user code stay on screen before any scrolling: 1 the QR
+## code toward its smallest, 2 the actions into the spare space or under both columns, 3 the
+## secondary lines.
+func squeeze_max() -> int:
+	return 0
+
+
+func squeeze_level() -> int:
+	return outer_view()._squeeze
+
+
+## Step the squeeze up while the content is taller than the room (outermost, vertically bounded
+## views only). Returns true when it changed.
+func _fit_squeeze() -> bool:
+	if outer_view() != self or squeeze_max() == 0 or not _stretches_vertically():
+		return false
+	var content := _content()
+	if content == null:
+		return false
+	var m := layout_metrics()
+	var key := "%s|%s|%s|%s|%s" % [m["area"], m["scale"], m["density"], m["landscape"], _screen_key()]
+	if key != _squeeze_key:
+		_squeeze_key = key
+		_squeeze = 0
+		return true
+	# The content's own height, not the card's: a scrolling card is only as tall as its room.
+	var need := content.get_combined_minimum_size().y
+	var room := content_room().y
+	if not _scrolls.is_empty() and (_scrolls[0] as ScrollContainer).get_child_count() > 0:
+		var inner := (_scrolls[0] as ScrollContainer).get_child(0) as Control
+		need = inner.get_combined_minimum_size().y
+		room = available_height()
+	if need > room + 0.5 and _squeeze < squeeze_max():
+		_squeeze += 1
+		return true
+	return false
+
+
 func _check_sorted() -> void:
 	if not is_inside_tree():
 		return
+	if _fit_squeeze():
+		_flips = 0
+		_checks_left = 3
+		layout_content()
+	var rows_changed := false
+	for v in _views():
+		if (v as PKeyUiView).fit_action_rows():
+			rows_changed = true
+	if rows_changed and _flips < 8:
+		_flips += 1
+		_resort_all(self)
+		_checks_left = 3
 	if _unsorted(self):
 		_resort_all(self)
 	if _scrolls_stale():
@@ -641,6 +951,7 @@ static func _collect_views(n: Node, out: Array) -> void:
 ## content at `content_width()`. Subclasses add their landscape and portrait arrangements and call
 ## this first.
 func _arrange(_m: Dictionary) -> void:
+	_apply_scrim()
 	_nest_panel()
 	_style_card()
 	_size_controls(self)
@@ -717,7 +1028,25 @@ func _card_shown() -> bool:
 
 ## The card's left plus right padding while it shows, else 0.
 func card_padding_x() -> float:
-	return side_padding(_card_box) if _card_box != null and _card_shown() else 0.0
+	if _card_box == null or not _card_shown() or phone_bleed():
+		return 0.0
+	return side_padding(_card_box) + scrollbar_width()
+
+
+## The width this view's content can take: the room the screen leaves, less the padding of every
+## panel around it (a host card's) and of its own card.
+func room_x() -> float:
+	return maxf(0.0, card_width(INF) - card_padding_x())
+
+
+## The width a scrolling card's scroll bar takes from its content (0 while it passes through).
+func scrollbar_width() -> float:
+	if _scrolls.is_empty():
+		return 0.0
+	var sc := _scrolls[0] as ScrollContainer
+	if sc.vertical_scroll_mode == ScrollContainer.SCROLL_MODE_DISABLED:
+		return 0.0
+	return sc.get_v_scroll_bar().get_combined_minimum_size().x
 
 
 ## The type variation of the dialog's card while it shows (PKeyBanner for a strip's card).
@@ -750,12 +1079,53 @@ func _float_strip() -> void:
 func _style_card() -> void:
 	if _card_box == null:
 		return
-	if _card_shown():
+	if _card_shown() and phone_bleed():
+		# Full-bleed: the page is the card, at the page margin from the (safe) edges.
+		var pad := maxf(0.0, role("page_margin") - side_padding(outer_view()) / 2.0)
+		var e := _card_box.get_theme_stylebox("panel") as StyleBoxEmpty if _card_box.has_theme_stylebox_override("panel") else null
+		if e == null or not is_equal_approx(e.content_margin_left, pad) or not is_equal_approx(e.content_margin_top, pad):
+			var box := StyleBoxEmpty.new()
+			box.content_margin_left = pad
+			box.content_margin_right = pad
+			box.content_margin_top = pad
+			_card_box.add_theme_stylebox_override("panel", box)
+	elif _card_shown():
 		if _card_box.has_theme_stylebox_override("panel"):
 			_card_box.remove_theme_stylebox_override("panel")
 		_card_box.theme_type_variation = _card_variation()
 	elif not _card_box.has_theme_stylebox_override("panel"):
 		_card_box.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+
+
+## Whether the outermost view fills a phone's screen edge to edge (UI-KITS.md §1.5): portrait, on a
+## phone, for a scene that bleeds (`_bleeds()`). Its content is then top-aligned under the safe
+## area, its actions dock to the bottom, and no card floats.
+func phone_bleed() -> bool:
+	return outer_view() == self and _bleeds() and bool(layout_metrics().get("phone", false))
+
+
+func _bleeds() -> bool:
+	return false
+
+
+## Whether the screen this view is on bleeds on a phone: its own state as the outermost view, the
+## outermost view's when it sits inside one (a dialog inside the gate).
+func phone_screen() -> bool:
+	return outer_view().phone_bleed()
+
+
+## Whether, as the outermost view, this one paints the scrim over the game instead of an opaque
+## page (a dialog that opens over a running game; UI-KITS.md §2.1 scrim tokens).
+func _scrim_wanted() -> bool:
+	return false
+
+
+func _apply_scrim() -> void:
+	if outer_view() == self and _scrim_wanted():
+		if theme_type_variation != &"PKeyScrim":
+			theme_type_variation = &"PKeyScrim"
+	elif theme_type_variation == &"PKeyScrim":
+		theme_type_variation = &""
 
 
 func _nest_panel() -> void:
@@ -847,6 +1217,11 @@ func _apply_width(width: float) -> void:
 	var content := _content()
 	if content == null:
 		return
+	if phone_screen():
+		content.size_flags_horizontal = Control.SIZE_FILL
+		content.size_flags_vertical = Control.SIZE_FILL
+		content.custom_minimum_size.x = 0.0
+		return
 	if width <= 0.0:
 		content.size_flags_horizontal = Control.SIZE_FILL
 		content.size_flags_vertical = Control.SIZE_FILL
@@ -900,9 +1275,17 @@ func _content() -> Control:
 static func place(node: Node, parent: Node, index := -1) -> void:
 	var old := node.get_parent()
 	if old != parent:
+		# Moving a subtree drops the focus held inside it: give it back.
+		var held: Control = null
+		if node.is_inside_tree():
+			var f := node.get_viewport().gui_get_focus_owner()
+			if f != null and (f == node or node.is_ancestor_of(f)):
+				held = f
 		if old != null:
 			old.remove_child(node)
 		parent.add_child(node)
+		if held != null and held.is_inside_tree() and held.is_visible_in_tree():
+			held.grab_focus()
 	if index >= 0 and node.get_index() != index:
 		parent.move_child(node, index)
 	if old != parent:
@@ -922,10 +1305,9 @@ static func _resort(n: Node) -> void:
 
 # ── Brand and product ────────────────────────────────────────────────────────────────────
 
-## A TextureRect for the Pinned K (`BRAND_MARK`, shown only when Polaris Key branding is on) or
-## the compact "Powered by Polaris Key" badge (`BRAND_POWERED_BY`, shown only when
-## `PKeyUiTheme.powered_by` is on, at its kit minimum or larger, never cropped). Hidden otherwise,
-## so the default look carries no Polaris Key artwork.
+## A TextureRect for the compact "Powered by Polaris Key" badge (`BRAND_POWERED_BY`, shown only when
+## `PKeyUiTheme.powered_by` is on, at its kit minimum or larger, never cropped). Hidden otherwise:
+## no screen carries a Polaris Key mark of its own, the product leads every one.
 func brand_node(parent: Node, node_name: String, kind: StringName, align := Control.SIZE_SHRINK_CENTER) -> TextureRect:
 	var r := TextureRect.new()
 	r.name = node_name
@@ -934,14 +1316,10 @@ func brand_node(parent: Node, node_name: String, kind: StringName, align := Cont
 	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	r.size_flags_horizontal = align
 	r.visible = false
-	if kind == BRAND_MARK:
-		r.custom_minimum_size = Vector2(PKeyUiTheme.MARK_SIZE, PKeyUiTheme.MARK_SIZE)
-		r.tooltip_text = ""
-	else:
-		r.custom_minimum_size = PKeyUiTheme.powered_by_size("compact")
-		r.tooltip_text = PKeyBrand.POWERED_BY_PHRASE
+	r.custom_minimum_size = PKeyUiTheme.powered_by_size("compact")
+	r.tooltip_text = PKeyBrand.POWERED_BY_PHRASE
 	if "accessibility_name" in r:
-		r.set("accessibility_name", "Polaris Key" if kind == BRAND_MARK else PKeyBrand.POWERED_BY_PHRASE)
+		r.set("accessibility_name", PKeyBrand.POWERED_BY_PHRASE)
 	parent.add_child(r)
 	_brand_nodes.append([r, kind])
 	return r
@@ -953,8 +1331,8 @@ func _render_brand() -> void:
 	var dark := PKeyUiTheme.is_dark(self)
 	for pair in _brand_nodes:
 		var r: TextureRect = pair[0]
-		var on := PKeyUiTheme.branded() if pair[1] == BRAND_MARK else PKeyUiTheme.powered_by
-		r.texture = (PKeyUiTheme.mark_texture(dark) if pair[1] == BRAND_MARK else PKeyUiTheme.powered_by_texture(dark)) if on else null
+		var on := PKeyUiTheme.powered_by
+		r.texture = PKeyUiTheme.powered_by_texture(dark) if on else null
 		r.visible = on and r.texture != null
 
 
@@ -1036,14 +1414,126 @@ func qr_tile(parent: Node, node_name := "QrCode") -> PKeyQrRect:
 
 
 ## A row of buttons that wraps when it runs out of width (PKeyActions), the primary action first.
-func actions_row(parent: Node, node_name: String, align := FlowContainer.ALIGNMENT_CENTER) -> HFlowContainer:
-	var f := HFlowContainer.new()
+func actions_row(parent: Node, node_name: String, align: int = BoxContainer.ALIGNMENT_CENTER) -> BoxContainer:
+	var f := BoxContainer.new()
 	f.name = node_name
-	f.theme_type_variation = "PKeyActions"
-	f.alignment = align
+	f.theme_type_variation = "PKeyActionRow"
+	f.alignment = align as BoxContainer.AlignmentMode
 	f.set_meta(AUTO_HIDE_META, true)
+	f.set_meta(&"pkey_align", align)
 	parent.add_child(f)
+	_action_rows.append(f)
 	return f
+
+
+## Lay every action row out on one line while its buttons fit the width, and otherwise stack all of
+## them at equal width, the primary (first) on top (UI-KITS.md §1.5 rules 10 and 11): never two on
+## a line and one alone. Returns true when a row changed.
+func fit_action_rows() -> bool:
+	var changed := false
+	for row in _action_rows:
+		var r := row as BoxContainer
+		if not is_instance_valid(r) or not r.is_visible_in_tree():
+			continue
+		var buttons: Array = []
+		for ch in r.get_children():
+			if ch is Control and (ch as Control).visible:
+				buttons.append(ch)
+		var need := 0.0
+		for b in buttons:
+			need += (b as Control).get_combined_minimum_size().x
+		need += maxf(0.0, buttons.size() - 1.0) * float(r.get_theme_constant("separation"))
+		var avail := r.size.x
+		var parent := r.get_parent_control()
+		if parent != null and parent.size.x > 0.0:
+			avail = parent.size.x
+		# A parent that grew to hold the row is no measure of the room: the width it was given, and
+		# the screen's, are.
+		if parent != null and parent.custom_minimum_size.x > 1.0:
+			avail = minf(avail, parent.custom_minimum_size.x)
+		if avail > 1.0:
+			avail = minf(avail, card_width(INF) - card_padding_x())
+		var stack: bool = outer_view().phone_bleed() or bool(r.get_meta(&"pkey_force_stack", false)) or (avail > 1.0 and need > avail + 0.5)
+		if r.vertical != stack:
+			r.vertical = stack
+			changed = true
+		for b in buttons:
+			var want := Control.SIZE_FILL if stack else Control.SIZE_SHRINK_BEGIN
+			if (b as Control).size_flags_horizontal != want:
+				(b as Control).size_flags_horizontal = want
+				changed = true
+		var align: int = r.get_meta(&"pkey_align", BoxContainer.ALIGNMENT_CENTER)
+		if not stack and r.alignment != align:
+			r.alignment = align as BoxContainer.AlignmentMode
+	return changed
+
+
+## A control that takes the space left in its column: it docks what follows it (the actions) to the
+## bottom of a full-height phone screen. Hidden unless `phone_bleed()`.
+func spacer(parent: Node, node_name := "Spacer") -> Control:
+	var c := Control.new()
+	c.name = node_name
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	c.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	c.visible = false
+	parent.add_child(c)
+	return c
+
+
+## A status glyph (lock, cloud_off, warning) at `px` logical pixels, tinted by `modulate`.
+func glyph_node(parent: Node, node_name: String, glyph_name: String) -> TextureRect:
+	var r := TextureRect.new()
+	r.name = node_name
+	r.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	r.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	r.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	r.set_meta(&"pkey_glyph", glyph_name)
+	parent.add_child(r)
+	return r
+
+
+## Draw the glyphs of this view for the screen's scale; `px` is the size at scale 1.
+func size_glyph(r: TextureRect, px := 24.0, tint := Color.WHITE) -> void:
+	var k := float(layout_metrics()["scale"]) * float(layout_metrics()["physical"])
+	var side := roundf(px * float(layout_metrics()["scale"]))
+	r.texture = PKeyUiTheme.glyph(String(r.get_meta(&"pkey_glyph")), Color.WHITE, px, k * 2.0)
+	r.custom_minimum_size = Vector2(side, side)
+	r.modulate = tint
+
+
+## A 2 px indeterminate bar for a loading state, shown only once `loading` has been true for
+## 250 ms (UI-KITS.md §1.5 rule 4). `set_loading()` drives it.
+func loading_bar(parent: Node) -> ProgressBar:
+	var b := ProgressBar.new()
+	b.name = "Loading"
+	b.show_percentage = false
+	b.indeterminate = true
+	b.visible = false
+	b.set_meta(FREE_HEIGHT_META, true)
+	b.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.custom_minimum_size.y = 2.0
+	parent.add_child(b)
+	_loading_bar = b
+	return b
+
+
+func set_loading(on: bool) -> void:
+	if _loading_bar == null:
+		return
+	if not on:
+		_loading_since = 0
+		_loading_bar.visible = false
+		return
+	if _loading_since == 0:
+		_loading_since = Time.get_ticks_msec()
+	_loading_bar.visible = Time.get_ticks_msec() - _loading_since >= 250
+
+
+## The loading bar's delay needs a timer when nothing else re-renders.
+func _tick_loading() -> void:
+	if _loading_bar != null and _loading_since > 0 and not _loading_bar.visible and Time.get_ticks_msec() - _loading_since >= 250:
+		_loading_bar.visible = true
 
 
 ## Two parts side by side in landscape, stacked in portrait (`set_columns()`), `column_gap` apart
@@ -1066,6 +1556,20 @@ static func set_columns(box: BoxContainer, side_by_side: bool) -> void:
 ## The width `text` takes in `ctl`'s font and size, on one line.
 static func text_width(ctl: Control, text: String) -> float:
 	return ctl.get_theme_font("font").get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, ctl.get_theme_font_size("font_size")).x
+
+
+## Make Tab and Shift+Tab leave a TextEdit for the next and previous control instead of typing a
+## tab (the engine's `tab_input_mode` where it exists, a gui_input handler otherwise).
+static func tab_leaves(te: TextEdit) -> void:
+	if "tab_input_mode" in te:
+		te.set("tab_input_mode", false)
+		return
+	te.gui_input.connect(func(e: InputEvent) -> void:
+		if e is InputEventKey and (e as InputEventKey).pressed and (e as InputEventKey).keycode == KEY_TAB:
+			var target := te.find_next_valid_focus() if not (e as InputEventKey).shift_pressed else te.find_prev_valid_focus()
+			if target != null:
+				target.grab_focus()
+			te.accept_event())
 
 
 ## Show `node` with `text`, or hide it when `text` is empty.

@@ -1,7 +1,8 @@
 == grace ==
-Card/Lines/Line0: Label "Offline — 3 days left"
-Card/Lines/Line1: Label "Checked 3 hours ago"
+Card/Row/Glyph: TextureRect
+Card/Row/Lines/Line0: Label "Offline — 3 days left"
+Card/Row/Lines/Line1: Label "Checked 3 hours ago"
 == update available ==
-Card/Lines/Line0: Label "An update is available"
+Card/Row/Lines/Line0: Label "An update is available"
 == nothing to say ==
 <hidden>

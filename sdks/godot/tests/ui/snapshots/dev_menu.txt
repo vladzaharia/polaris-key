@@ -16,7 +16,7 @@ Card/Scroll/Body/Facts/Fact5Name: Label "License"
 Card/Scroll/Body/Facts/Fact5Value: Label "ok"
 Card/Scroll/Body/Facts/Fact6Name: Label "Last sync"
 Card/Scroll/Body/Facts/Fact6Value: Label "2023-11-14 22:13:20"
-Card/Scroll/Body/Actions/CopyDiagnostics: Button "COPY DIAGNOSTICS" [focus 2]
+Card/Scroll/Body/Actions/CopyDiagnostics: Button "Copy diagnostics" [focus 2]
 Card/Scroll/Body/Actions/ForceCheck: Button "Force check" [focus 3]
 == steam build ==
 Card/Scroll/Body/Title: Label "Polaris Key"
@@ -37,5 +37,5 @@ Card/Scroll/Body/Facts/Fact5Name: Label "License"
 Card/Scroll/Body/Facts/Fact5Value: Label "ok"
 Card/Scroll/Body/Facts/Fact6Name: Label "Last sync"
 Card/Scroll/Body/Facts/Fact6Value: Label "2023-11-14 22:13:20"
-Card/Scroll/Body/Actions/CopyDiagnostics: Button "COPY DIAGNOSTICS" [focus 1]
+Card/Scroll/Body/Actions/CopyDiagnostics: Button "Copy diagnostics" [focus 1]
 Card/Scroll/Body/Actions/ForceCheck: Button "Force check" [focus 2]

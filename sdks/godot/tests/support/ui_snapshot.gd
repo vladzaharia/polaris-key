@@ -120,7 +120,13 @@ static func _collect(node: Node, out: Array) -> void:
 		if child is Window:
 			continue
 		if child is BaseButton:
-			if not (child as BaseButton).disabled:
+			# A pointer-only control (a stepper's minus and plus: left and right do it on a pad)
+			# takes no focus.
+			if not (child as BaseButton).disabled and (child as BaseButton).focus_mode != Control.FOCUS_NONE:
+				out.append(child)
+			continue
+		if child is Slider:
+			if (child as Slider).editable and (child as Slider).focus_mode != Control.FOCUS_NONE:
 				out.append(child)
 			continue
 		if child is SpinBox:

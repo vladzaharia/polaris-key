@@ -16,6 +16,16 @@ var hero := false:
 	set(value):
 		hero = value
 		_size()
+## The product's icon on a card of its own (an update, the settings): 56 px at scale 1.
+var card := false:
+	set(value):
+		card = value
+		_size()
+## The name in the title type, for a pane that names the product as its title.
+var as_title := false:
+	set(value):
+		as_title = value
+		_size()
 ## Lead a splash (the boot screen): twice the hero icon, the name in the title type.
 var splash := false:
 	set(value):
@@ -106,10 +116,11 @@ func product_name() -> String:
 func _size() -> void:
 	if _name == null:
 		return
-	var side := float(_constant("hero_icon_size" if hero or splash else "icon_size")) * (2.0 if splash else 1.0)
+	var which := "hero_icon_size" if hero or splash else ("icon_size_card" if card else "icon_size")
+	var side := float(_constant(which)) * (2.0 if splash else 1.0)
 	_icon.custom_minimum_size = Vector2(side, side)
 	_tile.custom_minimum_size = Vector2(side, side)
-	_name.theme_type_variation = "PKeyTitle" if splash else ("PKeySection" if hero else "PKeyStrong")
+	_name.theme_type_variation = "PKeyTitle" if splash or as_title else ("PKeySection" if hero else "PKeyStrong")
 	var ink := get_theme_color("font_color", "PKeyTitle") if has_theme_color("font_color", "PKeyTitle") else get_theme_color("font_color", "Label")
 	var tile := StyleBoxFlat.new()
 	tile.bg_color = Color(ink, 0.12)

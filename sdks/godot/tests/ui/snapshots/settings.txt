@@ -1,99 +1,99 @@
 == catalog ==
-Card/Frame/Scroll/Inset/Body/Head/Title: Label "Settings"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Operations/Category: Label "Operations"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Operations/Row_game_killSwitch/Line/Label: Label "Online play off"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Operations/Row_game_killSwitch/Line/Input: CheckButton [pressed, disabled]
-Card/Frame/Scroll/Inset/Body/Rows/Group_Operations/Row_game_killSwitch/Line/Badge: Label "Locked"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Operations/Row_game_killSwitch/SetBy: Label "Set by djdl"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Operations/Row_game_killSwitch/Description: Label "Set by the operator."
-Card/Frame/Scroll/Inset/Body/Rows/Group_Audio/Category: Label "Audio"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Audio/Row_audio_volume/Line/Label: Label "Volume"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Audio/Row_audio_volume/Line/Input: SpinBox [value 60.0, focus 1]
-Card/Frame/Scroll/Inset/Body/Rows/Group_Audio/Row_audio_volume/Line/Badge: Label "Default"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Audio/Row_audio_volume/Description: Label "Master volume."
-Card/Frame/Scroll/Inset/Body/Rows/Group_Audio/Row_audio_muted/Line/Label: Label "Mute"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Audio/Row_audio_muted/Line/Input: CheckButton [pressed, focus 2]
-Card/Frame/Scroll/Inset/Body/Rows/Group_Audio/Row_audio_muted/Line/Badge: Label "Set by the environment"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Interface/Category: Label "Interface"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Interface/Row_ui_theme/Line/Label: Label "Theme"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Interface/Row_ui_theme/Line/Input: OptionButton "Dark" [items [Dark, Light], focus 3]
-Card/Frame/Scroll/Inset/Body/Rows/Group_Interface/Row_ui_theme/Line/Badge: Label "Default"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Interface/Row_ui_theme/Description: Label "Colour theme."
-Card/Frame/Scroll/Inset/Body/Rows/Group_Interface/Row_ui_reducedMotion/Line/Label: Label "Reduce motion"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Interface/Row_ui_reducedMotion/Line/Input: CheckButton [focus 4]
-Card/Frame/Scroll/Inset/Body/Rows/Group_Interface/Row_ui_reducedMotion/Line/Badge: Label "Built-in default"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Interface/Row_ui_reducedMotion/Description: Label "Only with the dark theme."
-Card/Frame/Scroll/Inset/Body/Rows/Group_Notes/Category: Label "Notes"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Notes/Row_notes_motd/Line/Label: Label "Message of the day"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Notes/Row_notes_motd/Line/Input: TextEdit "Welcome" [focus 5]
-Card/Frame/Scroll/Inset/Body/Rows/Group_Notes/Row_notes_motd/Line/Badge: Label "Built-in default"
-Card/Frame/Scroll/Inset/Body/AdvancedToggle: CheckButton "Show advanced settings" [focus 6]
+Card/Frame/Head/Product/Monogram/Initial: Label "P"
+Card/Frame/Head/Product/Name: Label "Polaris Key SDK"
+Card/Frame/Head/Title: Label "Settings"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/Category: Label "Operations"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Text/Label: Label "Online play off"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Text/Locked/Lock: TextureRect
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Text/Locked/SetBy: Label "Set by Polaris Key SDK"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Control/Line/Input: Label "On"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/Category: Label "Audio"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_volume/Text/Label: Label "Volume"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_volume/Text/Description: Label "Master volume."
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_volume/Control/Line/Minus: Button "−"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_volume/Control/Line/Plus: Button "+"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_volume/Control/Line/Value: Label "60 %"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_muted/Text/Label: Label "Mute"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_muted/Text/Status: Label "Set by the environment"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_muted/Control/Line/Input: CheckButton [pressed, focus 2]
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Interface/Category: Label "Interface"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Interface/List/Rows/Row_ui_theme/Text/Label: Label "Theme"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Interface/List/Rows/Row_ui_theme/Text/Description: Label "Colour theme."
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Interface/List/Rows/Row_ui_theme/Control/Line/Input: OptionButton "Dark" [items [Dark, Light], focus 3]
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Interface/List/Rows/Row_ui_reducedMotion/Text/Label: Label "Reduce motion"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Interface/List/Rows/Row_ui_reducedMotion/Text/Description: Label "Only with the dark theme."
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Interface/List/Rows/Row_ui_reducedMotion/Control/Line/Input: CheckButton [focus 4]
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/Category: Label "Notes"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/List/Rows/Row_notes_motd/Text/Label: Label "Message of the day"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/List/Rows/Row_notes_motd/Control/Line/Input: TextEdit "Welcome" [focus 5]
+Card/Frame/Body/Pane/Scroll/Inset/Body/AdvancedToggle: CheckButton "Show advanced settings" [focus 6]
 == advanced shown ==
-Card/Frame/Scroll/Inset/Body/Head/Title: Label "Settings"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Operations/Category: Label "Operations"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Operations/Row_game_killSwitch/Line/Label: Label "Online play off"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Operations/Row_game_killSwitch/Line/Input: CheckButton [pressed, disabled]
-Card/Frame/Scroll/Inset/Body/Rows/Group_Operations/Row_game_killSwitch/Line/Badge: Label "Locked"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Operations/Row_game_killSwitch/SetBy: Label "Set by djdl"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Operations/Row_game_killSwitch/Description: Label "Set by the operator."
-Card/Frame/Scroll/Inset/Body/Rows/Group_Audio/Category: Label "Audio"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Audio/Row_audio_volume/Line/Label: Label "Volume"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Audio/Row_audio_volume/Line/Input: SpinBox [value 60.0, focus 1]
-Card/Frame/Scroll/Inset/Body/Rows/Group_Audio/Row_audio_volume/Line/Badge: Label "Default"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Audio/Row_audio_volume/Description: Label "Master volume."
-Card/Frame/Scroll/Inset/Body/Rows/Group_Audio/Row_audio_muted/Line/Label: Label "Mute"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Audio/Row_audio_muted/Line/Input: CheckButton [pressed, focus 2]
-Card/Frame/Scroll/Inset/Body/Rows/Group_Audio/Row_audio_muted/Line/Badge: Label "Set by the environment"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Interface/Category: Label "Interface"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Interface/Row_ui_theme/Line/Label: Label "Theme"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Interface/Row_ui_theme/Line/Input: OptionButton "Dark" [items [Dark, Light], focus 3]
-Card/Frame/Scroll/Inset/Body/Rows/Group_Interface/Row_ui_theme/Line/Badge: Label "Default"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Interface/Row_ui_theme/Description: Label "Colour theme."
-Card/Frame/Scroll/Inset/Body/Rows/Group_Interface/Row_ui_reducedMotion/Line/Label: Label "Reduce motion"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Interface/Row_ui_reducedMotion/Line/Input: CheckButton [focus 4]
-Card/Frame/Scroll/Inset/Body/Rows/Group_Interface/Row_ui_reducedMotion/Line/Badge: Label "Built-in default"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Interface/Row_ui_reducedMotion/Description: Label "Only with the dark theme."
-Card/Frame/Scroll/Inset/Body/Rows/Group_Network/Category: Label "Network"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Network/Row_net_proxyUrl/Line/Label: Label "Proxy URL"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Network/Row_net_proxyUrl/Line/Input: LineEdit [placeholder "https://proxy.example", focus 5]
-Card/Frame/Scroll/Inset/Body/Rows/Group_Network/Row_net_proxyUrl/Line/Badge: Label "Default"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Network/Row_net_proxyUrl/Description: Label "Advanced."
-Card/Frame/Scroll/Inset/Body/Rows/Group_Network/Row_net_proxyPassword/Line/Label: Label "Proxy password"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Network/Row_net_proxyPassword/Line/Input: LineEdit [secret, focus 6]
-Card/Frame/Scroll/Inset/Body/Rows/Group_Network/Row_net_proxyPassword/Line/Badge: Label "Built-in default"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Notes/Category: Label "Notes"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Notes/Row_notes_motd/Line/Label: Label "Message of the day"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Notes/Row_notes_motd/Line/Input: TextEdit "Welcome" [focus 7]
-Card/Frame/Scroll/Inset/Body/Rows/Group_Notes/Row_notes_motd/Line/Badge: Label "Built-in default"
-Card/Frame/Scroll/Inset/Body/AdvancedToggle: CheckButton "Show advanced settings" [pressed, focus 8]
+Card/Frame/Head/Product/Monogram/Initial: Label "P"
+Card/Frame/Head/Product/Name: Label "Polaris Key SDK"
+Card/Frame/Head/Title: Label "Settings"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/Category: Label "Operations"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Text/Label: Label "Online play off"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Text/Locked/Lock: TextureRect
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Text/Locked/SetBy: Label "Set by Polaris Key SDK"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Control/Line/Input: Label "On"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/Category: Label "Audio"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_volume/Text/Label: Label "Volume"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_volume/Text/Description: Label "Master volume."
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_volume/Control/Line/Minus: Button "−"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_volume/Control/Line/Plus: Button "+"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_volume/Control/Line/Value: Label "60 %"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_muted/Text/Label: Label "Mute"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_muted/Text/Status: Label "Set by the environment"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_muted/Control/Line/Input: CheckButton [pressed, focus 2]
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Interface/Category: Label "Interface"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Interface/List/Rows/Row_ui_theme/Text/Label: Label "Theme"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Interface/List/Rows/Row_ui_theme/Text/Description: Label "Colour theme."
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Interface/List/Rows/Row_ui_theme/Control/Line/Input: OptionButton "Dark" [items [Dark, Light], focus 3]
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Interface/List/Rows/Row_ui_reducedMotion/Text/Label: Label "Reduce motion"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Interface/List/Rows/Row_ui_reducedMotion/Text/Description: Label "Only with the dark theme."
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Interface/List/Rows/Row_ui_reducedMotion/Control/Line/Input: CheckButton [focus 4]
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Network/Category: Label "Network"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Network/List/Rows/Row_net_proxyUrl/Text/Label: Label "Proxy URL"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Network/List/Rows/Row_net_proxyUrl/Text/Description: Label "Advanced."
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Network/List/Rows/Row_net_proxyUrl/Control/Line/Input: LineEdit [placeholder "https://proxy.example", focus 5]
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Network/List/Rows/Row_net_proxyPassword/Text/Label: Label "Proxy password"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Network/List/Rows/Row_net_proxyPassword/Control/Line/Input: LineEdit [secret, focus 6]
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/Category: Label "Notes"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/List/Rows/Row_notes_motd/Text/Label: Label "Message of the day"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/List/Rows/Row_notes_motd/Control/Line/Input: TextEdit "Welcome" [focus 7]
+Card/Frame/Body/Pane/Scroll/Inset/Body/AdvancedToggle: CheckButton "Show advanced settings" [pressed, focus 8]
 == local override, dependsOn hidden ==
-Card/Frame/Scroll/Inset/Body/Head/Title: Label "Settings"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Operations/Category: Label "Operations"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Operations/Row_game_killSwitch/Line/Label: Label "Online play off"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Operations/Row_game_killSwitch/Line/Input: CheckButton [pressed, disabled]
-Card/Frame/Scroll/Inset/Body/Rows/Group_Operations/Row_game_killSwitch/Line/Badge: Label "Locked"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Operations/Row_game_killSwitch/SetBy: Label "Set by djdl"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Operations/Row_game_killSwitch/Description: Label "Set by the operator."
-Card/Frame/Scroll/Inset/Body/Rows/Group_Audio/Category: Label "Audio"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Audio/Row_audio_volume/Line/Label: Label "Volume"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Audio/Row_audio_volume/Line/Input: SpinBox [value 25.0, focus 1]
-Card/Frame/Scroll/Inset/Body/Rows/Group_Audio/Row_audio_volume/Line/Badge: Label "Changed by you"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Audio/Row_audio_volume/Line/Reset: Button "Reset to default" [focus 2]
-Card/Frame/Scroll/Inset/Body/Rows/Group_Audio/Row_audio_volume/Description: Label "Master volume."
-Card/Frame/Scroll/Inset/Body/Rows/Group_Audio/Row_audio_muted/Line/Label: Label "Mute"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Audio/Row_audio_muted/Line/Input: CheckButton [pressed, focus 3]
-Card/Frame/Scroll/Inset/Body/Rows/Group_Audio/Row_audio_muted/Line/Badge: Label "Set by the environment"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Interface/Category: Label "Interface"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Interface/Row_ui_theme/Line/Label: Label "Theme"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Interface/Row_ui_theme/Line/Input: OptionButton "Light" [items [Dark, Light], focus 4]
-Card/Frame/Scroll/Inset/Body/Rows/Group_Interface/Row_ui_theme/Line/Badge: Label "Changed by you"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Interface/Row_ui_theme/Line/Reset: Button "Reset to default" [focus 5]
-Card/Frame/Scroll/Inset/Body/Rows/Group_Interface/Row_ui_theme/Description: Label "Colour theme."
-Card/Frame/Scroll/Inset/Body/Rows/Group_Notes/Category: Label "Notes"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Notes/Row_notes_motd/Line/Label: Label "Message of the day"
-Card/Frame/Scroll/Inset/Body/Rows/Group_Notes/Row_notes_motd/Line/Input: TextEdit "Welcome" [focus 6]
-Card/Frame/Scroll/Inset/Body/Rows/Group_Notes/Row_notes_motd/Line/Badge: Label "Built-in default"
-Card/Frame/Scroll/Inset/Body/AdvancedToggle: CheckButton "Show advanced settings" [focus 7]
+Card/Frame/Head/Product/Monogram/Initial: Label "P"
+Card/Frame/Head/Product/Name: Label "Polaris Key SDK"
+Card/Frame/Head/Title: Label "Settings"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/Category: Label "Operations"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Text/Label: Label "Online play off"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Text/Locked/Lock: TextureRect
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Text/Locked/SetBy: Label "Set by Polaris Key SDK"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Control/Line/Input: Label "On"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/Category: Label "Audio"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_volume/Text/Label: Label "Volume"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_volume/Text/Status: Label "Changed by you"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_volume/Text/Description: Label "Master volume."
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_volume/Control/Line/Minus: Button "−"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_volume/Control/Line/Plus: Button "+"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_volume/Control/Line/Value: Label "25 %"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_volume/Control/Reset: Button "Reset to default" [focus 2]
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_muted/Text/Label: Label "Mute"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_muted/Text/Status: Label "Set by the environment"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_muted/Control/Line/Input: CheckButton [pressed, focus 3]
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Interface/Category: Label "Interface"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Interface/List/Rows/Row_ui_theme/Text/Label: Label "Theme"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Interface/List/Rows/Row_ui_theme/Text/Status: Label "Changed by you"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Interface/List/Rows/Row_ui_theme/Text/Description: Label "Colour theme."
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Interface/List/Rows/Row_ui_theme/Control/Line/Input: OptionButton "Light" [items [Dark, Light], focus 4]
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Interface/List/Rows/Row_ui_theme/Control/Reset: Button "Reset to default" [focus 5]
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/Category: Label "Notes"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/List/Rows/Row_notes_motd/Text/Label: Label "Message of the day"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/List/Rows/Row_notes_motd/Control/Line/Input: TextEdit "Welcome" [focus 6]
+Card/Frame/Body/Pane/Scroll/Inset/Body/AdvancedToggle: CheckButton "Show advanced settings" [focus 7]
 == empty ==
-Card/Frame/Scroll/Inset/Body/Head/Title: Label "Settings"
-Card/Frame/Scroll/Inset/Body/Head/Empty: Label "There are no settings to show."
+Card/Frame/Head/Product/Monogram/Initial: Label "P"
+Card/Frame/Head/Product/Name: Label "Polaris Key SDK"
+Card/Frame/Head/Title: Label "Settings"
+Card/Frame/Head/Empty: Label "There are no settings to show."

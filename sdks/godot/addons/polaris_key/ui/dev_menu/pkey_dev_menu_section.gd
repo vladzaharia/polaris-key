@@ -1,7 +1,7 @@
 class_name PKeyDevMenuSection
 extends PKeyUiView
 ## A section for the game's own developer menu: a channel picker (locked, with the reason, when
-## the build's outlet owns the channel), build info, COPY DIAGNOSTICS, and Force check.
+## the build's outlet owns the channel), build info, Copy diagnostics, and Force check.
 ##
 ## Two ways in, so either menu shape works (report §5.8 says Diceroll registers sections with
 ## `DevMenu.register_section`, notes/A4 §4.1 says `DevMenu.register_row`; D-02 confirms which):
@@ -17,7 +17,7 @@ extends PKeyUiView
 ## next update check uses it, and staged code from the old channel is dropped at once, notes/A4
 ## P11); the licence gate keeps this build's channel.
 signal channel_selected(channel: String)
-## COPY DIAGNOSTICS put this text on the clipboard.
+## Copy diagnostics put this text on the clipboard.
 signal diagnostics_copied(text: String)
 ## Force check finished: the sync and the update check it ran.
 signal checked(sync: PKeySyncResult, update: PKeyResult)
@@ -65,6 +65,10 @@ func _build() -> void:
 	_copy = button(actions, "CopyDiagnostics", copy_diagnostics)
 	_check = button(actions, "ForceCheck", force_check)
 	_status = label(actions.get_parent(), "Status", "PKeyMuted")
+
+
+func _bleeds() -> bool:
+	return true
 
 
 func facts() -> Dictionary:
@@ -119,12 +123,14 @@ func _render() -> void:
 	var cells := _facts.get_children()
 	while cells.size() < fact_rows.size() * 2:
 		var idx := cells.size()
-		var l := label(_facts, "Fact%d%s" % [idx / 2, "Name" if idx % 2 == 0 else "Value"], "PKeyMuted" if idx % 2 == 0 else "", idx % 2 == 1)
+		# Identifiers and values in the mono face, where I and l differ.
+		var l := label(_facts, "Fact%d%s" % [idx / 2, "Name" if idx % 2 == 0 else "Value"], "PKeyMuted" if idx % 2 == 0 else "PKeyMono", idx % 2 == 1)
 		if idx % 2 == 0:
 			l.autowrap_mode = TextServer.AUTOWRAP_OFF
 		else:
 			# A value (a 32-character device id) wraps inside its column on a narrow screen.
 			l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			l.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
 		cells.append(l)
 	for i in fact_rows.size():
 		(cells[i * 2] as Label).text = fact_rows[i]["label"]

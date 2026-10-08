@@ -309,17 +309,22 @@ gamepad or a TV remote.
 - **The product leads.** Gate, boot and sign-in screens lead with your product's icon and name
   (`options.ui_product_name` / `ui_product_icon`, else the project's `application/config/name`
   and icon, else a monogram tile of its initial); no kit screen shows a Polaris Key mark.
-- **Look: neutral by default.** Out of the box the scenes carry no Polaris Key branding. They take
+- **Look: the Polaris Key design system by default.** Out of the box the scenes use the
+  design system's dark palette and Rubik, with your product's accent (derived from its icon, else
+  ink; never the platform violet by default), the kit's own switch, check box and chevron icons,
+  and a 3 px focus ring with a gap on every control. The product leads every screen; the kit's
+  own mark appears on none. A QR code stays black on white, and is never shown on a phone (the
+  phone opens the browser itself).
+- **Your game's own look is one option away.** `options.ui_branding = "none"` makes the scenes take
   your game's own theme and font, as the scene's place in the tree resolves them (a Theme on an
   ancestor, else the project's `gui/theme/custom` and `gui/theme/custom_font`, else the engine's),
-  and add only a type hierarchy (title, muted and code sizes derived from your font size, a bold
-  face derived from your font), padded cards and centring. A QR code stays black on white.
-- **Polaris Key branding is opt-in.** One option on your `PKeyOptions` (applied by
-  `PolarisKey.configure()`):
+  and add only a type hierarchy (sizes derived from your font size, a bold face derived from your
+  font), padded cards, an ink primary action and centring. One option on your `PKeyOptions`
+  (applied by `PolarisKey.configure()`):
 
   ```gdscript
-  options.ui_branding = "polaris-key"   # the Polaris Key theme: its palette, Rubik, the Pinned K
-  options.ui_brand_scheme = "light"     # its light theme (default "dark")
+  options.ui_branding = "none"          # your game's theme and font ("polaris-key" is the default)
+  options.ui_brand_scheme = "light"     # the Polaris Key light theme (default "dark")
   options.ui_accent = Color("#39d075")  # your accent for the primary action and chips (optional)
   options.ui_theme = preload("res://ui/my_theme.tres")  # or your whole Theme, whatever the branding
   options.ui_powered_by = true          # the "Powered by Polaris Key" badge (off by default)
@@ -331,10 +336,7 @@ gamepad or a TV remote.
   Kit scenes already on screen re-theme when `configure()` applies the options. A game that only
   calls `PolarisKey.boot()` gets its UI options from `res://polaris_key.tres`, which boot
   configures from once its view is showing: put `ui_branding`, `ui_powered_by` and the rest in
-  that resource (the setup dock's file), not in statics set before `boot()`. With branding on the
-  kit uses the design system's dark or light palette, the platform violet (or your accent),
-  Rubik, the kit's own switch, check box and chevron icons, and a 2 px violet focus ring on every
-  control. With `ui_powered_by`,
+  that resource (the setup dock's file), not in statics set before `boot()`. With `ui_powered_by`,
   the gate, boot and settings scenes end with the compact "Powered by Polaris Key" badge, at its
   kit minimum of 232 × 88 or larger and never cropped; it is off unless you turn it on, with or
   without branding.

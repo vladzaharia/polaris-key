@@ -117,6 +117,7 @@ var _background_running := false
 
 var _center: CenterContainer
 var _lead: VBoxContainer
+var _head: VBoxContainer
 var _side: VBoxContainer
 var _logo: TextureRect
 var _product: PKeyProductHeader
@@ -142,6 +143,9 @@ func _apply_width(_width: float) -> void:
 	var side_by_side := not _shell.vertical
 	_side.custom_minimum_size.x = card_width(role("card_width")) if not side_by_side else minf(role("card_width"), content_room().x * 0.62)
 	_shell.custom_minimum_size.x = 0.0
+	# The card under the hero is at most 440 px wide at scale 1, centred.
+	_card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_card.custom_minimum_size.x = minf(440.0 * float(layout_metrics()["scale"]), _side.custom_minimum_size.x)
 	_logo.custom_minimum_size.y = roundf(role("hero_icon_size") * 2.0)
 	_progress.custom_minimum_size.y = role("space_2")
 	# The corner pill keeps the page margin from the corner.
@@ -191,8 +195,13 @@ func _build() -> void:
 	var cb := vbox(_card, "Body", "PKeySections")
 	var head := vbox(cb, "Head", "PKeyTight")
 	_title = label(head, "Title", "PKeyTitle")
+	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_body = label(head, "Message", "PKeyMuted")
-	var actions := actions_row(cb, "Actions", FlowContainer.ALIGNMENT_BEGIN)
+	_body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var actions := actions_row(cb, "Actions", BoxContainer.ALIGNMENT_CENTER)
+	# One axis: the card under the centred hero stacks its actions at full width, primary first.
+	actions.set_meta(&"pkey_force_stack", true)
+	_head = head
 	_update_action = button(actions, "UpdateAction", _on_update_action, "PKeyPrimary")
 	_retry = button(actions, "Retry", retry, "PKeyPrimary")
 	_play_offline = button(actions, "PlayOffline", play_offline)
@@ -609,7 +618,7 @@ func _render() -> void:
 	# While BACKGROUND runs the view is only its corner pill: transparent, taking no input.
 	self_modulate.a = 1.0 if show_default_view and not _background_running else 0.0
 	mouse_filter = Control.MOUSE_FILTER_IGNORE if _background_running else Control.MOUSE_FILTER_STOP
-	_center.visible = show_default_view and not waiting_gate and not _background_running
+	_center.visible = show_default_view and not waiting_gate and not _background_running and not (outcome == BLOCKED and _block_reason != "content-declined" and _block_reason != "update-required")
 	_logo.texture = logo
 	_logo.visible = logo != null
 	_product.visible = logo == null
@@ -624,21 +633,22 @@ func _render() -> void:
 	else:
 		_progress.set("indeterminate", true)
 	show_text(_notice, t.text("boot_rolled_back") if rolled_back and not stopped else "")
-	_card.visible = stopped
+	_card.visible = stopped and not (outcome == BLOCKED and _block_reason != "content-declined" and _block_reason != "update-required")
 	var title := ""
 	var body := ""
 	var url := ""
+	var unavailable := false
 	match outcome:
 		OFFLINE:
 			title = t.text("boot_offline_title")
 			body = t.text("boot_offline_body")
 		ERROR:
-			title = t.text("boot_error_title")
-			body = t.text("boot_error_body", _error_code)
+			# No code on the card (it is in the dev menu's diagnostics), and the product's name.
+			title = t.text("boot_error_title", _product_name())
 		BLOCKED:
 			if _block_reason == "content-declined":
 				title = t.text("boot_declined_title")
-				body = t.text("boot_declined_body")
+				body = t.text("boot_declined_body", _product_name())
 			elif _block_reason == "update-required" and _revoked_content():
 				# plans/P4-13.md §2.6 "Host copy": revoked REQUIRED content, with the offer's button
 				# when the answer is an offer and none for `blocked`.
@@ -648,11 +658,14 @@ func _render() -> void:
 					url = PKeyUpdatePromptController.update_url(update_result, gate._outlet(), String(_opts.get("release_url", "")))
 			elif _block_reason == "update-required":
 				title = t.text("boot_blocked_update_title")
-				body = t.text("boot_blocked_update_body")
+				body = t.text("boot_blocked_update_body", _product_name())
 				url = PKeyUpdatePromptController.update_url(update_result, gate._outlet(), String(_opts.get("release_url", "")))
 			else:
-				title = t.text("boot_blocked_unavailable_title")
-				body = t.text("boot_blocked_unavailable_body")
+				# Not available on this license: a way forward, not a dead end (the gate's
+				# "Use another license" form), so no card of its own.
+				title = ""
+				body = ""
+				unavailable = true
 	show_text(_title, title)
 	show_text(_body, body)
 	show_text(_update_action, t.text("update_action") if stopped and url != "" else "")
@@ -664,17 +677,27 @@ func _render() -> void:
 	if consent:
 		_card.visible = true
 		show_text(_title, t.text("boot_consent_title"))
-		show_text(_body, t.text("boot_consent_body_metered" if _consent_metered else "boot_consent_body", human_size(_consent_bytes)))
+		show_text(_body, t.text("boot_consent_body_metered" if _consent_metered else "boot_consent_body", [_product_name(), human_size(_consent_bytes)]))
+		# A question hides the progress that would say the download had begun.
+		_status.visible = false
+		_progress.visible = false
+		_progress.get_parent().visible = false
 	show_text(_consent_yes, t.text("boot_consent_download") if consent else "")
 	show_text(_consent_no, t.text("boot_consent_later") if consent else "")
 	var pct := int(round(100.0 * _background_done / _background_total)) if _background_total > 0 else 0
 	show_text(_pill, t.text("boot_background", clampi(pct, 0, 100)) if _background_running and show_default_view else "")
-	gate.visible = show_default_view and waiting_gate
+	gate.visible = show_default_view and (waiting_gate or unavailable)
 	if waiting_gate:
 		var st: Dictionary = sdk.status() if sdk != null and sdk.has_method("status") and sdk.get("core") != null else {}
 		if st.get("status") != _wait_status:
 			st = {"status": _wait_status}
 		gate.show_state(st)
+	elif unavailable:
+		gate.show_state({"status": "channel-not-entitled"})
+	var primary_lone: bool = stopped and url == "" and not (outcome == OFFLINE and state.get("canPlayOffline") == true)
+	_retry.theme_type_variation = &"PKeyPrimary" if primary_lone or outcome == ERROR or outcome == OFFLINE else &""
+	if outcome == OFFLINE and state.get("canPlayOffline") == true:
+		_retry.theme_type_variation = &"PKeyPrimary"
 	prompt.visible = show_default_view and prompt.model.get("visible", false) and not prompt.is_dismissed
 
 
@@ -692,6 +715,27 @@ func _focus_chain() -> Array:
 	if prompt.visible:
 		out.append_array(prompt._focus_chain())
 	return out
+
+
+## The product's name for the cards ("Diceroll couldn't start").
+func _product_name() -> String:
+	var n := String(PKeyUiTheme.product_identity()["name"])
+	return n if n != "" else "The game"
+
+
+## The screen the boot shows: its stage and outcome, and whether a question is open.
+func _screen_key() -> String:
+	return "%s|%s|%s|%s" % [state["stage"], state["outcome"], _block_reason, _consent_open]
+
+
+## A stop card puts the focus on its way forward; the consent card on Download.
+func _initial_focus() -> Control:
+	for b in [_consent_yes, _update_action, _retry, _play_offline]:
+		if is_focusable(b):
+			return b
+	if gate.visible:
+		return gate._initial_focus()
+	return null
 
 
 func _on_update_action() -> void:

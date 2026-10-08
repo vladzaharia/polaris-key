@@ -757,6 +757,18 @@ export const KIT_ICONS: Record<
     size: [24, 24],
     svg: '<path d="M7 7l10 10M17 7L7 17" fill="none" stroke="{fg}" stroke-width="2" stroke-linecap="round"/>',
   },
+  lock: {
+    size: [24, 24],
+    svg: '<rect x="5" y="11" width="14" height="9" rx="2.5" fill="none" stroke="{fg}" stroke-width="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="{fg}" stroke-width="2" stroke-linecap="round"/>',
+  },
+  cloud_off: {
+    size: [24, 24],
+    svg: '<path d="M7 18h10a4 4 0 0 0 1.2-7.8A6 6 0 0 0 7.3 9.2 4.5 4.5 0 0 0 7 18z" fill="none" stroke="{fg}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 4l16 16" fill="none" stroke="{fg}" stroke-width="2" stroke-linecap="round"/>',
+  },
+  warning: {
+    size: [24, 24],
+    svg: '<path d="M12 4l9 16H3z" fill="none" stroke="{fg}" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v4.5" fill="none" stroke="{fg}" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="17.2" r="1.1" fill="{fg}"/>',
+  },
   clear: {
     size: [24, 24],
     svg: '<circle cx="12" cy="12" r="9" fill="{bg}"/><path d="M9 9l6 6M15 9l-6 6" fill="none" stroke="{fg}" stroke-width="2" stroke-linecap="round"/>',

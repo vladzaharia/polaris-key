@@ -55,6 +55,9 @@ func all() -> Array:
 	out.append(["gate", "loading", gate.bind("", true, "")])
 	out.append(["gate", "needs-activation after an error", gate.bind("needs-activation", true, "That license key wasn't accepted.")])
 	out.append(["gate", "version-too-old with a store action", gate_store])
+	out.append(["gate", "network error", gate_network.bind(true)])
+	out.append(["gate", "network error, no lease", gate_network.bind(false)])
+	out.append(["gate", "not available (version-too-new)", gate_not_available])
 	# The gate with sign-in and offline activation open inside it (what a player sees after
 	# choosing them on the needs-activation card).
 	out.append(["gate", "sign-in pending", gate_flow.bind("sign-in")])
@@ -75,7 +78,6 @@ func all() -> Array:
 	out.append(["sign_in", "confirm, attachable", sign_in.bind("confirm")])
 	out.append(["sign_in", "ok", sign_in.bind("ok")])
 	out.append(["sign_in", "expired", sign_in.bind("expired")])
-	out.append(["sign_in", "cancelled", sign_in.bind("cancelled")])
 	out.append(["sign_in", "denied", sign_in.bind("denied")])
 	# ── PKeyOfflineDialog.
 	out.append(["offline", "native", offline.bind(false, "")])
@@ -96,6 +98,7 @@ func all() -> Array:
 	# ── PKeyEntitlementBadge.
 	out.append(["badge", "two grants", badge.bind(["Supporter", "Founder"])])
 	out.append(["badge", "none", badge.bind([])])
+	out.append(["badge", "eight grants", badge.bind(["Supporter", "Founder", "Beta tester", "Speedrunner", "Moderator", "Translator", "Artist", "Contributor"])])
 	# ── PKeyDevMenuSection.
 	out.append(["dev_menu", "editor", dev_menu.bind("")])
 	out.append(["dev_menu", "steam build", dev_menu.bind("steam")])
@@ -132,6 +135,24 @@ func gate(status: String, allow_grace: bool, err: String) -> Control:
 		if status == "version-too-old":
 			s["allowed_range"] = {"min": "1.4.0"}
 		g.show_state(s, err)
+	return g
+
+
+func gate_network(lease: bool) -> Control:
+	var g := PKeyGateView.new()
+	g.network_error = true
+	g.can_continue_offline = lease
+	g.activation.set_capabilities(PKeyActivationController.capabilities(true, true, false, false))
+	add(g)
+	g.show_state({"status": "needs-activation"}, "network-error")
+	return g
+
+
+func gate_not_available() -> Control:
+	var g := PKeyGateView.new()
+	g.activation.set_capabilities(PKeyActivationController.capabilities(true, true, false, false))
+	add(g)
+	g.show_state({"status": "version-too-new", "allowed_range": {"max": "1.4.0"}})
 	return g
 
 
@@ -230,8 +251,6 @@ func sign_in(state: String) -> Control:
 			d.show_result(PKeySignInResult.signed_in({"name": "Ada"}, "", true, null))
 		"expired":
 			d.show_result(PKeySignInResult.ended(PKeySignInResult.KIND_EXPIRED, PKeyErrors.SIGN_IN_EXPIRED, ""))
-		"cancelled":
-			d.show_result(PKeySignInResult.ended(PKeySignInResult.KIND_CANCELLED, PKeyErrors.CANCELLED, ""))
 		"denied":
 			d.show_result(PKeySignInResult.ended(PKeySignInResult.KIND_DENIED, PKeyErrors.SIGN_IN_DENIED, ""))
 	return d

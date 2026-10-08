@@ -1,35 +1,44 @@
 == native ==
-Card/Scroll/Body/Request/Head/Title: Label "Offline activation"
-Card/Scroll/Body/Request/Head/RequestText: Label "Send this request code to whoever issues your license:"
-Card/Scroll/Body/Request/Code/Product: Label "Product: djdl"
-Card/Scroll/Body/Request/Code/RequestCode: Label "Q2hYlBg0Zx9uR7m1VvC4tKpE8sWnJ3aD"
-Card/Scroll/Body/Request/CopyRow/CopyCode: Button "Copy code" [focus 1]
-Card/Scroll/Body/Import/LoadHint: Label "Then load the activation file you receive, or paste its text:"
-Card/Scroll/Body/Import/LoadRow/LoadFile: Button "Load file…" [focus 2]
-Card/Scroll/Body/Import/Paste: TextEdit [placeholder "Paste the activation text here", focus 3]
-Card/Scroll/Body/Import/DropHint: Label "You can also drop the file onto this window."
-Card/Scroll/Body/Import/Actions/Import: Button "Activate" [focus 4]
-Card/Scroll/Body/Import/Actions/Close: Button "Close" [focus 5]
+Card/Scroll/Stack/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Stack/Head/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Stack/Head/Title: Label "Offline activation"
+Card/Scroll/Stack/Body/Request/SendTitle: Label "1  Send this code"
+Card/Scroll/Stack/Body/Request/RequestText: Label "Send this request code to whoever issues your license."
+Card/Scroll/Stack/Body/Request/CodeField/CodeRow/RequestCode: Label "Q2hYlBg0Zx9uR7m1VvC4tKpE8sWnJ3aD"
+Card/Scroll/Stack/Body/Request/CodeField/CodeRow/CopyCode: Button "Copy code" [focus 1]
+Card/Scroll/Stack/Body/Import/LoadTitle: Label "2  Load the reply"
+Card/Scroll/Stack/Body/Import/LoadHint: Label "Load the activation file you receive, or paste its text."
+Card/Scroll/Stack/Body/Import/LoadRow/LoadFile: Button "Load file…" [focus 2]
+Card/Scroll/Stack/Body/Import/Paste: TextEdit [placeholder "Paste the activation text here", focus 3]
+Card/Scroll/Stack/Body/Import/DropHint: Label "You can also drop the file onto this window."
+Card/Scroll/Stack/Actions/Import: Button "Activate" [focus 4]
+Card/Scroll/Stack/Actions/Close: Button "Close" [focus 5]
 == web ==
-Card/Scroll/Body/Request/Head/Title: Label "Offline activation"
-Card/Scroll/Body/Request/Head/RequestText: Label "Send this request code to whoever issues your license:"
-Card/Scroll/Body/Request/Code/Product: Label "Product: djdl"
-Card/Scroll/Body/Request/Code/RequestCode: Label "Q2hYlBg0Zx9uR7m1VvC4tKpE8sWnJ3aD"
-Card/Scroll/Body/Request/CopyRow/CopyCode: Button "Copy code" [focus 1]
-Card/Scroll/Body/Import/LoadHint: Label "Then load the activation file you receive, or paste its text:"
-Card/Scroll/Body/Import/Paste: TextEdit [placeholder "Paste the activation text here", focus 2]
-Card/Scroll/Body/Import/Actions/Import: Button "Activate" [focus 3]
-Card/Scroll/Body/Import/Actions/Close: Button "Close" [focus 4]
+Card/Scroll/Stack/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Stack/Head/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Stack/Head/Title: Label "Offline activation"
+Card/Scroll/Stack/Body/Request/SendTitle: Label "1  Send this code"
+Card/Scroll/Stack/Body/Request/RequestText: Label "Send this request code to whoever issues your license."
+Card/Scroll/Stack/Body/Request/CodeField/CodeRow/RequestCode: Label "Q2hYlBg0Zx9uR7m1VvC4tKpE8sWnJ3aD"
+Card/Scroll/Stack/Body/Request/CodeField/CodeRow/CopyCode: Button "Copy code" [focus 1]
+Card/Scroll/Stack/Body/Import/LoadTitle: Label "2  Load the reply"
+Card/Scroll/Stack/Body/Import/LoadHint: Label "Load the activation file you receive, or paste its text."
+Card/Scroll/Stack/Body/Import/Paste: TextEdit [placeholder "Paste the activation text here", focus 2]
+Card/Scroll/Stack/Actions/Import: Button "Activate" [focus 3]
+Card/Scroll/Stack/Actions/Close: Button "Close" [focus 4]
 == rejected signature ==
-Card/Scroll/Body/Request/Head/Title: Label "Offline activation"
-Card/Scroll/Body/Request/Head/RequestText: Label "Send this request code to whoever issues your license:"
-Card/Scroll/Body/Request/Code/Product: Label "Product: djdl"
-Card/Scroll/Body/Request/Code/RequestCode: Label "Q2hYlBg0Zx9uR7m1VvC4tKpE8sWnJ3aD"
-Card/Scroll/Body/Request/CopyRow/CopyCode: Button "Copy code" [focus 1]
-Card/Scroll/Body/Import/LoadHint: Label "Then load the activation file you receive, or paste its text:"
-Card/Scroll/Body/Import/LoadRow/LoadFile: Button "Load file…" [focus 2]
-Card/Scroll/Body/Import/Paste: TextEdit [placeholder "Paste the activation text here", focus 3]
-Card/Scroll/Body/Import/DropHint: Label "You can also drop the file onto this window."
-Card/Scroll/Body/Import/Message: Label "The file's signature isn't valid."
-Card/Scroll/Body/Import/Actions/Import: Button "Activate" [focus 4]
-Card/Scroll/Body/Import/Actions/Close: Button "Close" [focus 5]
+Card/Scroll/Stack/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Stack/Head/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Stack/Head/Title: Label "Offline activation"
+Card/Scroll/Stack/Body/Request/SendTitle: Label "1  Send this code"
+Card/Scroll/Stack/Body/Request/RequestText: Label "Send this request code to whoever issues your license."
+Card/Scroll/Stack/Body/Request/CodeField/CodeRow/RequestCode: Label "Q2hYlBg0Zx9uR7m1VvC4tKpE8sWnJ3aD"
+Card/Scroll/Stack/Body/Request/CodeField/CodeRow/CopyCode: Button "Copy code" [focus 1]
+Card/Scroll/Stack/Body/Import/LoadTitle: Label "2  Load the reply"
+Card/Scroll/Stack/Body/Import/LoadHint: Label "Load the activation file you receive, or paste its text."
+Card/Scroll/Stack/Body/Import/LoadRow/LoadFile: Button "Load file…" [focus 2]
+Card/Scroll/Stack/Body/Import/Paste: TextEdit [placeholder "Paste the activation text here", focus 3]
+Card/Scroll/Stack/Body/Import/DropHint: Label "You can also drop the file onto this window."
+Card/Scroll/Stack/Message: Label "The file's signature isn't valid."
+Card/Scroll/Stack/Actions/Import: Button "Activate" [focus 4]
+Card/Scroll/Stack/Actions/Close: Button "Close" [focus 5]

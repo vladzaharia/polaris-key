@@ -43,8 +43,9 @@ var is_dismissed := false
 var model: Dictionary = {}
 
 var _card: BoxContainer
+var _product: PKeyProductHeader
 var _text: VBoxContainer
-var _actions: HFlowContainer
+var _actions: BoxContainer
 var _title: Label
 var _body: Label
 var _action: Button
@@ -64,9 +65,12 @@ func _build() -> void:
 	_text = vbox(_card, "Text", "PKeyTight")
 	_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_text.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	# On the modal card the product leads, its icon at the card size (56 px).
+	_product = product_header(_text, "Product")
+	_product.card = true
 	_title = label(_text, "Title", "PKeyTitle")
 	_body = label(_text, "Message", "PKeyMuted")
-	_actions = actions_row(_card, "Actions", FlowContainer.ALIGNMENT_BEGIN)
+	_actions = actions_row(_card, "Actions", BoxContainer.ALIGNMENT_BEGIN)
 	_actions.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_action = button(_actions, "Action", _on_action, "PKeyPrimary")
 	_dismiss = button(_actions, "Dismiss", _on_dismiss)
@@ -75,6 +79,30 @@ func _build() -> void:
 
 func _floats() -> bool:
 	return not _covering
+
+
+## The modal card dims the game with the scrim instead of replacing it with a page.
+func _scrim_wanted() -> bool:
+	return _covering
+
+
+func _bleeds() -> bool:
+	return _covering
+
+
+func _guard_for_modal() -> bool:
+	return _covering and visible
+
+
+func _screen_key() -> String:
+	return "%s|%s|%s" % [model.get("state", ""), model.get("locked", false), _covering]
+
+
+## A modal opens on its way out ("Not now"), never on the update, so a stray press cannot start it.
+func _initial_focus() -> Control:
+	if _covering and is_focusable(_dismiss):
+		return _dismiss
+	return _action if is_focusable(_action) else (_dismiss if is_focusable(_dismiss) else null)
 
 
 ## Always its own card: the modal's, or the banner's floating strip card.
@@ -103,7 +131,8 @@ func _arrange(m: Dictionary) -> void:
 	set_columns(_card, row)
 	# In a row the actions sit at the end on one line; stacked, they lead under the words.
 	_actions.size_flags_horizontal = Control.SIZE_SHRINK_END if row else Control.SIZE_FILL
-	_actions.alignment = FlowContainer.ALIGNMENT_END if row else FlowContainer.ALIGNMENT_BEGIN
+	_actions.set_meta(&"pkey_align", BoxContainer.ALIGNMENT_END if row else BoxContainer.ALIGNMENT_BEGIN)
+	_product.visible = _covering and _product.visible
 	_title.theme_type_variation = "PKeyTitle" if _covering else "PKeySection"
 	if _covering:
 		if get_theme_stylebox("panel") is StyleBoxEmpty:
@@ -222,14 +251,37 @@ func _render() -> void:
 		# Never left full-rect: a locked answer must not cover the running game. The anchors hold
 		# under a plain Control or a CanvasLayer; a Container parent ignores anchors, so the
 		# banner also asks a container for its own height only, at the top.
-		if _covering:
+		if _covering or (not (get_parent() is Container) and anchor_top != anchor_bottom):
+			# A locked or non-modal answer asked for in a full-screen slot is still a strip at the
+			# top, whatever was true before.
 			set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 			_covering = false
 		size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 		theme_type_variation = ""
 		_queue_fit()
-	show_text(_title, t.text(model["title"]) if model["title"] != "" else "")
-	show_text(_body, t.text(model["body"], model["body_arg"]) if model["body"] != "" else "")
+	var product := String(PKeyUiTheme.product_identity()["name"])
+	var title_text: String = t.text(model["title"]) if model["title"] != "" else ""
+	var body_text: String = t.text(model["body"], model["body_arg"]) if model["body"] != "" else ""
+	var plain: bool = model["state"] in ["binary", "store", "platform", "version"] and model["version"] != ""
+	if as_modal and plain and product != "":
+		# "{product} {version}", and what the player has: nothing else to read.
+		title_text = t.text("update_modal_title", [product, model["version"]])
+		var have := String(ProjectSettings.get_setting("application/config/version", ""))
+		var size = (result as PKeyUpdateCheck).decision.get("size") if result is PKeyUpdateCheck else null
+		if have == "":
+			body_text = ""
+		elif PKeyClaims.is_number(size) and float(size) > 0.0:
+			body_text = t.text("update_current", [have, PKeyBoot.human_size(int(size))])
+		else:
+			body_text = t.text("update_current_nosize", have)
+	elif locked and model["body"] == "update_mandatory_body" and product != "":
+		title_text = t.text("update_mandatory_title", product)
+		body_text = ""
+	show_text(_title, title_text)
+	show_text(_body, body_text)
+	_product.visible = as_modal
+	if as_modal:
+		_product.refresh()
 	show_text(_action, t.text(model["action"]) if model["action"] != "" else "")
 	_dismiss.visible = not locked and model["state"] != "current"
 	_dismiss.text = t.text("update_dismiss")
@@ -256,6 +308,8 @@ func _on_dismiss() -> void:
 	is_dismissed = true
 	refresh_view()
 	dismissed.emit()
+	# Back to the control (the game's own) that had focus when the modal opened.
+	restore_opener()
 
 
 func _cancel() -> bool:

@@ -164,9 +164,10 @@ sdks/godot/
                               one scene each (`.tscn` + view script) with a headless controller
                               (PKeyGateController, PKeyActivationController, …)
     ui/copy/pkey_ui_copy.gd   PKeyUiCopy: every string, English defaults, through tr()
-    ui/theme/                 PKeyUiTheme (pkey_ui_theme.gd): the neutral look (pkey_theme.tres,
-                              the stock theme every scene references) and the opt-in Polaris Key
-                              theme (pkey_brand_{dark,light}.tres), written by tools/gen_theme.gd;
+    ui/theme/                 PKeyUiTheme (pkey_ui_theme.gd): the Polaris Key look, the default
+                              (pkey_brand_{dark,light}.tres) and the game-theme look for
+                              ui_branding none (pkey_theme.tres, the stock theme every scene
+                              references), written by tools/gen_theme.gd;
                               PKeyBrand and PKeyBrandMarks (generated); fonts/ holds Rubik (OFL 1.1)
   tests/
     runner.gd                 PKeyTestRunner

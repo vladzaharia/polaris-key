@@ -1,5 +1,13 @@
 == two grants ==
-Chips/Chip0: Label "Included with Supporter"
-Chips/Chip1: Label "Included with Founder"
+Chips/Lead: Label "Included with"
+Chips/Chip0: Label "Supporter"
+Chips/Chip1: Label "Founder"
 == none ==
 <hidden>
+== eight grants ==
+Chips/Lead: Label "Included with"
+Chips/Chip0: Label "Supporter"
+Chips/Chip1: Label "Founder"
+Chips/Chip2: Label "Beta tester"
+Chips/Chip3: Label "Speedrunner"
+Chips/Chip4: Label "+4"

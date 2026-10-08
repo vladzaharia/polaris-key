@@ -139,14 +139,14 @@ const CONFIG_ENV_NEVER := 2
 @export var pack_attachable := PackedStringArray()
 
 @export_group("UI")
-## The UI kit's look (PKeyUiTheme). `none` (the default): no Polaris Key branding, the scenes
-## follow the game's project theme and font. `polaris-key`: the Polaris Key design system (its
-## palette, Rubik, the Pinned K above the gate and boot screens).
-@export_enum("none", "polaris-key") var ui_branding := "none"
+## The UI kit's look (PKeyUiTheme). `polaris-key` (the default): the Polaris Key design system (its
+## palette, Rubik, your product's accent and icon; no Polaris Key mark on the screens). `none`: the
+## scenes follow your game's project theme and font instead.
+@export_enum("none", "polaris-key") var ui_branding := "polaris-key"
 ## The Polaris Key theme's scheme when `ui_branding` is `polaris-key`: `dark` or `light`.
 @export_enum("dark", "light") var ui_brand_scheme := "dark"
-## Your accent in the Polaris Key theme (primary button, chips); transparent keeps the platform
-## violet. Pick a colour with at least 3:1 against the theme's surfaces.
+## Your accent in the Polaris Key theme (primary button, chips, focus ring); transparent derives
+## it from your product's icon, else ink. It is resolved for contrast on every surface.
 @export var ui_accent := Color(0, 0, 0, 0)
 ## A Theme of your own for every kit scene, whatever `ui_branding` says. Null: none.
 @export var ui_theme: Theme = null

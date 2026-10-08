@@ -29,6 +29,18 @@ as the GitHub Release notes, and the same text is the Asset Store version's chan
   re-rendered; it now renders with the SDK it is given. A layout switch could leave a container
   unsorted after a resize (the engine drops a re-sort asked for mid-sort); views now verify their
   sort for a few frames after each layout pass.
+- **Fix round (review of the responsive screens).** The Polaris Key look is the default
+  (`ui_branding` `polaris-key`; `none` is the game-theme look), with ink as the primary colour
+  unless the product has an accent, a 3 px focus ring and the kit's lock, cloud-off and warning
+  glyphs. A banner is a card with a glyph in every look. A phone's portrait screen is full-bleed
+  with its actions docked at the bottom, also inside the gate; gamepad focus starts inside the
+  screen (ui_down on a cold screen lands on its primary action) and survives a layout change;
+  number settings are a slider (or spin box) that left and right change, with pointer-only minus
+  and plus buttons; a screen too short for its content squeezes in steps (smaller QR, actions
+  into a column, secondary lines dropped) before it scrolls. **Behaviour change:** a QR code never
+  shows on a phone (the old "Use another device" button is gone); tablets, desktops and TVs keep
+  it. Host fonts of 28 and 36 px, and 18-20 px type on a 360 px tall canvas, are tight cases: the
+  primary action stays reachable through the card's scroll fallback.
 - **Tests:** the `ui_matrix` suite (its own `run_tests.sh` step) and `tools/ui_matrix/ui_matrix.gd` (PNGs).
 
 The SDK parity pass (`notes/SDK-PARITY-PASS.md` §5.6).

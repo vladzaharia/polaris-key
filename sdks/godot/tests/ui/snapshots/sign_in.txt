@@ -1,66 +1,63 @@
 == starting ==
-Card/Scroll/Body/Info/Header/Product/Monogram/Initial: Label "P"
-Card/Scroll/Body/Info/Header/Product/Name: Label "Polaris Key SDK"
-Card/Scroll/Body/Info/Header/Title: Label "Sign in"
-Card/Scroll/Body/Info/Header/Status: Label "Starting sign-in…"
-Card/Scroll/Body/Info/Actions/Cancel: Button "Cancel" [focus 1]
+Card/Scroll/Stack/Body/Info/Header/Product/Monogram/Initial: Label "P"
+Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Stack/Body/Info/Header/TitleRow/Title: Label "Sign in"
+Card/Scroll/Stack/Body/Info/Header/Status: Label "Starting sign-in…"
+Card/Scroll/Stack/Body/Info/Actions/Cancel: Button "Cancel" [focus 1]
 == pending ==
-Card/Scroll/Body/Info/Header/Product/Monogram/Initial: Label "P"
-Card/Scroll/Body/Info/Header/Product/Name: Label "Polaris Key SDK"
-Card/Scroll/Body/Info/Header/Title: Label "Sign in"
-Card/Scroll/Body/Info/Steps/Instructions: Label "Scan the code, or go to key.plrs.im/device and enter:"
-Card/Scroll/Body/Info/Steps/UserCode: Label "WDJB-MJHT"
-Card/Scroll/Body/Info/Steps/QrCodeTile/QrCode: PKeyQrRect "https://key.plrs.im/device?user_code=WDJB-MJHT"
-Card/Scroll/Body/Info/Steps/Timing/Expires: Label "The code expires in 2:05."
-Card/Scroll/Body/Info/Steps/Timing/DeviceLabel: Label "The sign-in page will show “Living room TV”."
-Card/Scroll/Body/Info/Actions/OpenBrowser: Button "Open browser" [focus 1]
-Card/Scroll/Body/Info/Actions/CopyLink: Button "Copy link" [focus 2]
-Card/Scroll/Body/Info/Actions/Cancel: Button "Cancel" [focus 3]
+Card/Scroll/Stack/Body/Info/Header/Product/Monogram/Initial: Label "P"
+Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Stack/Body/Info/Header/TitleRow/Title: Label "Sign in"
+Card/Scroll/Stack/Body/Info/Steps/Where/Instructions: Label "Scan the code, or go to"
+Card/Scroll/Stack/Body/Info/Steps/Where/Address: Label "key.plrs.im/device"
+Card/Scroll/Stack/Body/Info/Steps/UserCode: Label "WDJB-MJHT"
+Card/Scroll/Stack/Body/Info/Steps/QrCodeTile/QrCode: PKeyQrRect "https://key.plrs.im/device?user_code=WDJB-MJHT"
+Card/Scroll/Stack/Body/Info/Steps/Timing/Expires: Label "The code expires in 2:05."
+Card/Scroll/Stack/Body/Info/Steps/Timing/DeviceLabel: Label "The sign-in page will show “Living room TV”."
+Card/Scroll/Stack/Body/Info/Actions/OpenBrowser: Button "Open browser" [focus 1]
+Card/Scroll/Stack/Body/Info/Actions/CopyLink: Button "Copy link" [focus 2]
+Card/Scroll/Stack/Body/Info/Actions/Cancel: Button "Cancel" [focus 3]
 == pending, link copied ==
-Card/Scroll/Body/Info/Header/Product/Monogram/Initial: Label "P"
-Card/Scroll/Body/Info/Header/Product/Name: Label "Polaris Key SDK"
-Card/Scroll/Body/Info/Header/Title: Label "Sign in"
-Card/Scroll/Body/Info/Header/Status: Label "Link copied."
-Card/Scroll/Body/Info/Steps/Instructions: Label "Scan the code, or go to key.plrs.im/device and enter:"
-Card/Scroll/Body/Info/Steps/UserCode: Label "WDJB-MJHT"
-Card/Scroll/Body/Info/Steps/QrCodeTile/QrCode: PKeyQrRect "https://key.plrs.im/device?user_code=WDJB-MJHT"
-Card/Scroll/Body/Info/Steps/Timing/Expires: Label "The code expires in 2:05."
-Card/Scroll/Body/Info/Steps/Timing/DeviceLabel: Label "The sign-in page will show “Living room TV”."
-Card/Scroll/Body/Info/Actions/OpenBrowser: Button "Open browser" [focus 1]
-Card/Scroll/Body/Info/Actions/CopyLink: Button "Copy link" [focus 2]
-Card/Scroll/Body/Info/Actions/Cancel: Button "Cancel" [focus 3]
+Card/Scroll/Stack/Body/Info/Header/Product/Monogram/Initial: Label "P"
+Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Stack/Body/Info/Header/TitleRow/Title: Label "Sign in"
+Card/Scroll/Stack/Body/Info/Header/Status: Label "Link copied."
+Card/Scroll/Stack/Body/Info/Steps/Where/Instructions: Label "Scan the code, or go to"
+Card/Scroll/Stack/Body/Info/Steps/Where/Address: Label "key.plrs.im/device"
+Card/Scroll/Stack/Body/Info/Steps/UserCode: Label "WDJB-MJHT"
+Card/Scroll/Stack/Body/Info/Steps/QrCodeTile/QrCode: PKeyQrRect "https://key.plrs.im/device?user_code=WDJB-MJHT"
+Card/Scroll/Stack/Body/Info/Steps/Timing/Expires: Label "The code expires in 2:05."
+Card/Scroll/Stack/Body/Info/Steps/Timing/DeviceLabel: Label "The sign-in page will show “Living room TV”."
+Card/Scroll/Stack/Body/Info/Actions/OpenBrowser: Button "Open browser" [focus 1]
+Card/Scroll/Stack/Body/Info/Actions/CopyLink: Button "Copy link" [focus 2]
+Card/Scroll/Stack/Body/Info/Actions/Cancel: Button "Cancel" [focus 3]
 == confirm, attachable ==
-Card/Scroll/Body/Info/Header/Product/Monogram/Initial: Label "P"
-Card/Scroll/Body/Info/Header/Product/Name: Label "Polaris Key SDK"
-Card/Scroll/Body/Info/Header/Title: Label "Is this you?"
-Card/Scroll/Body/Info/Steps/ConfirmBody: Label "Signed in as Ada Lovelace (ada@example.com)."
-Card/Scroll/Body/Info/Steps/AttachLicense: CheckButton "Also attach this device's license to my account" [focus 1]
-Card/Scroll/Body/Info/Actions/Continue: Button "Continue" [focus 2]
-Card/Scroll/Body/Info/Actions/Cancel: Button "Cancel" [focus 3]
+Card/Scroll/Stack/Body/Info/Header/Product/Monogram/Initial: Label "P"
+Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Stack/Body/Info/Header/TitleRow/Title: Label "Is this you?"
+Card/Scroll/Stack/Body/Info/Steps/Account/Avatar/Initials: Label "A"
+Card/Scroll/Stack/Body/Info/Steps/Account/Who/Name: Label "Ada Lovelace"
+Card/Scroll/Stack/Body/Info/Steps/Account/Who/Email: Label "ada@example.com"
+Card/Scroll/Stack/Body/Info/Steps/AttachLicense: CheckButton "Also attach this device's license to my account" [focus 1]
+Card/Scroll/Stack/Body/Info/Actions/Continue: Button "Continue" [focus 2]
+Card/Scroll/Stack/Body/Info/Actions/Cancel: Button "Cancel" [focus 3]
 == ok ==
-Card/Scroll/Body/Info/Header/Product/Monogram/Initial: Label "P"
-Card/Scroll/Body/Info/Header/Product/Name: Label "Polaris Key SDK"
-Card/Scroll/Body/Info/Header/Title: Label "Sign in"
-Card/Scroll/Body/Info/Header/Status: Label "Signed in."
-Card/Scroll/Body/Info/Actions/Cancel: Button "Close" [focus 1]
+Card/Scroll/Stack/Body/Info/Header/Product/Monogram/Initial: Label "P"
+Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Stack/Body/Info/Header/TitleRow/Title: Label "Sign in"
+Card/Scroll/Stack/Body/Info/Header/Status: Label "Signed in."
+Card/Scroll/Stack/Body/Info/Actions/Cancel: Button "Close" [focus 1]
 == expired ==
-Card/Scroll/Body/Info/Header/Product/Monogram/Initial: Label "P"
-Card/Scroll/Body/Info/Header/Product/Name: Label "Polaris Key SDK"
-Card/Scroll/Body/Info/Header/Title: Label "Sign in"
-Card/Scroll/Body/Info/Header/Status: Label "The code expired before sign-in finished."
-Card/Scroll/Body/Info/Actions/TryAgain: Button "Try again" [focus 1]
-Card/Scroll/Body/Info/Actions/Cancel: Button "Close" [focus 2]
-== cancelled ==
-Card/Scroll/Body/Info/Header/Product/Monogram/Initial: Label "P"
-Card/Scroll/Body/Info/Header/Product/Name: Label "Polaris Key SDK"
-Card/Scroll/Body/Info/Header/Title: Label "Sign in"
-Card/Scroll/Body/Info/Header/Status: Label "Sign-in was cancelled."
-Card/Scroll/Body/Info/Actions/TryAgain: Button "Try again" [focus 1]
-Card/Scroll/Body/Info/Actions/Cancel: Button "Close" [focus 2]
+Card/Scroll/Stack/Body/Info/Header/Product/Monogram/Initial: Label "P"
+Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Stack/Body/Info/Header/TitleRow/Glyph: TextureRect
+Card/Scroll/Stack/Body/Info/Header/TitleRow/Title: Label "Code expired"
+Card/Scroll/Stack/Body/Info/Actions/TryAgain: Button "Get a new code" [focus 1]
+Card/Scroll/Stack/Body/Info/Actions/Cancel: Button "Close" [focus 2]
 == denied ==
-Card/Scroll/Body/Info/Header/Product/Monogram/Initial: Label "P"
-Card/Scroll/Body/Info/Header/Product/Name: Label "Polaris Key SDK"
-Card/Scroll/Body/Info/Header/Title: Label "Sign in"
-Card/Scroll/Body/Info/Header/Status: Label "Sign-in was declined."
-Card/Scroll/Body/Info/Actions/TryAgain: Button "Try again" [focus 1]
-Card/Scroll/Body/Info/Actions/Cancel: Button "Close" [focus 2]
+Card/Scroll/Stack/Body/Info/Header/Product/Monogram/Initial: Label "P"
+Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Stack/Body/Info/Header/TitleRow/Title: Label "Sign in"
+Card/Scroll/Stack/Body/Info/Header/Status: Label "Sign-in was declined."
+Card/Scroll/Stack/Body/Info/Actions/TryAgain: Button "Try again" [focus 1]
+Card/Scroll/Stack/Body/Info/Actions/Cancel: Button "Close" [focus 2]

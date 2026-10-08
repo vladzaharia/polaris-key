@@ -14,19 +14,23 @@ const SCENARIOS := preload("res://tests/ui/scenarios.gd")
 const LOCALE_TABLES := preload("res://tools/ui_matrix/locales.gd")
 
 ## [label, physical size, physical pixels per logical pixel, safe-area insets in logical pixels
-## ([left, top, right, bottom]) or null]. The phones carry a status bar or notch and a home
-## indicator, as a safe area does.
+## ([left, top, right, bottom]) or null, density-independent pixels per 160 dpi on a phone or tablet
+## (0: not mobile)]. The phones carry a status bar or notch and a home indicator, as a safe area
+## does. The first ten are the owner's matrix; the last three are the review's additions.
 const SIZES := [
-	["640x360", Vector2i(640, 360), 1.0, null],
-	["800x600", Vector2i(800, 600), 1.0, null],
-	["1280x720", Vector2i(1280, 720), 1.0, null],
-	["1280x800", Vector2i(1280, 800), 1.0, null],
-	["1920x1080", Vector2i(1920, 1080), 1.0, null],
-	["2560x1440", Vector2i(2560, 1440), 1.0, null],
-	["3840x2160@2", Vector2i(3840, 2160), 2.0, null],
-	["1080x2400", Vector2i(1080, 2400), 1.0, [0.0, 96.0, 0.0, 64.0]],
-	["2400x1080", Vector2i(2400, 1080), 1.0, [96.0, 0.0, 96.0, 48.0]],
-	["2048x1536", Vector2i(2048, 1536), 1.0, null],
+	["640x360", Vector2i(640, 360), 1.0, null, 0.0],
+	["800x600", Vector2i(800, 600), 1.0, null, 0.0],
+	["1280x720", Vector2i(1280, 720), 1.0, null, 0.0],
+	["1280x800", Vector2i(1280, 800), 1.0, null, 0.0],
+	["1920x1080", Vector2i(1920, 1080), 1.0, null, 0.0],
+	["2560x1440", Vector2i(2560, 1440), 1.0, null, 0.0],
+	["3840x2160@2", Vector2i(3840, 2160), 2.0, null, 0.0],
+	["1080x2400", Vector2i(1080, 2400), 1.0, [0.0, 96.0, 0.0, 64.0], 2.75],
+	["2400x1080", Vector2i(2400, 1080), 1.0, [96.0, 0.0, 96.0, 48.0], 2.75],
+	["2048x1536", Vector2i(2048, 1536), 1.0, null, 2.0],
+	["1170x2532@3", Vector2i(1170, 2532), 3.0, [0.0, 47.0, 0.0, 34.0], 3.0],
+	["1536x2048", Vector2i(1536, 2048), 1.0, null, 2.0],
+	["3440x1440", Vector2i(3440, 1440), 1.0, null, 0.0],
 ]
 
 ## A game's project stretch settings turn its window into a logical size and a scale; the checks
@@ -43,6 +47,13 @@ const STRETCHED := [
 ## (`game_theme()`), and a game's whole custom theme through `ui_theme` (`custom_theme()`), both
 ## with a larger type and roomier controls than the kit's.
 const PRESETS := ["dark", "light", "native", "custom"]
+## More looks, checked and rendered at EXTRA_SIZES in English only: the out-of-box default (the
+## engine theme under ui_branding "none"), a light game theme, a game with 28 and 36 px type, and
+## an accent of #f5c518 in both schemes.
+const EXTRA_PRESETS := ["default", "native-light", "native28", "native36", "accent-dark", "accent-light"]
+const EXTRA_SIZES := ["640x360", "1280x720", "1080x2400"]
+## Host-font looks also at these sizes (the review's rows).
+const HOST_FONT_SIZES := ["1280x720", "1280x800", "640x360"]
 const LOCALES := ["en", "de", "ja"]
 
 ## The named screens: [id, scenario scene, scenario state, kind]. "full" fills the screen; "strip"
@@ -69,6 +80,11 @@ const SCREENS := [
 	["update.locked", "update_prompt", "binary mandatory (locked, modal asked)", "strip"],
 	["banner", "banner", "grace", "strip"],
 	["badge", "badge", "two grants", "badge"],
+	["badge.wide", "badge", "two grants", "badge_wide"],
+	["badge.many", "badge", "eight grants", "badge"],
+	["update.locked_full", "update_prompt", "binary mandatory (locked, modal asked)", "full"],
+	["gate.network", "gate", "network error", "full"],
+	["gate.unavailable", "gate", "not available (version-too-new)", "full"],
 	["settings", "settings", "catalog", "full"],
 	["dev_menu", "dev_menu", "steam build", "full"],
 ]
@@ -84,6 +100,11 @@ const COLUMNS := {
 	"offline": ["Request", "Import"],
 	"gate.offline": ["Request", "Import"],
 }
+
+## The screens that put an identity pane beside a form: two panes only at an aspect of 1.5 or more.
+const WIDE_SCREENS := ["gate", "gate.error", "activation"]
+const MOBILE_BODY_DP := 16
+const MOBILE_CONTROL_DP := 48
 
 var _sc = SCENARIOS.new()
 var _translations := {}
@@ -127,6 +148,12 @@ static func apply_preset(preset: String) -> void:
 		"dark", "light":
 			PKeyUiTheme.branding = PKeyUiTheme.BRANDING_POLARIS_KEY
 			PKeyUiTheme.scheme = preset
+		"accent-dark", "accent-light":
+			PKeyUiTheme.branding = PKeyUiTheme.BRANDING_POLARIS_KEY
+			PKeyUiTheme.scheme = preset.trim_prefix("accent-")
+			PKeyUiTheme.accent = Color("#f5c518")
+		"native", "native-light", "native28", "native36", "default":
+			PKeyUiTheme.branding = PKeyUiTheme.BRANDING_NONE
 		"custom":
 			PKeyUiTheme.override = custom_theme()
 	PKeyUiTheme.product_name = "Diceroll"
@@ -156,10 +183,13 @@ func drop_locales() -> void:
 
 
 ## Lay `entry` out in a SubViewport of `physical` pixels at `scale` physical pixels per logical one,
-## with `insets` as the safe area. Returns {"vp", "view", "host"}; the caller frees "vp" (which
+## with `insets` as the safe area and `dpr` the density-independent pixels per 160 dpi of a phone
+## or tablet (0: a desktop or console). Returns {"vp", "view", "host"}; the caller frees "vp" (which
 ## holds the rest). A coroutine. `render`: keep the viewport drawing (for a screenshot).
-func stage(tree: SceneTree, entry: Array, physical: Vector2i, scale: float, insets: Variant, preset: String, render := false) -> Dictionary:
+func stage(tree: SceneTree, entry: Array, physical: Vector2i, scale: float, insets: Variant, preset: String, render := false, dpr := 0.0) -> Dictionary:
 	PKeyUiView.safe_insets_override = insets
+	PKeyUiView.mobile_override = {"dpr": dpr} if dpr > 0.0 else false
+	PKeyUiView.pad_only_override = false
 	var vp := SubViewport.new()
 	vp.size = physical
 	vp.size_2d_override = Vector2i((Vector2(physical) / scale).round())
@@ -178,8 +208,15 @@ func stage(tree: SceneTree, entry: Array, physical: Vector2i, scale: float, inse
 	ground.texture = backdrop(preset)
 	ground.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	host.add_child(ground)
-	if preset == "native":
-		host.theme = game_theme()
+	match preset:
+		"native":
+			host.theme = game_theme()
+		"native-light":
+			host.theme = game_theme(20, true)
+		"native28":
+			host.theme = game_theme(28)
+		"native36":
+			host.theme = game_theme(36)
 	vp.add_child(host)
 	var make := builder(entry)
 	var v: PKeyUiView = await make.call()
@@ -193,7 +230,11 @@ func stage(tree: SceneTree, entry: Array, physical: Vector2i, scale: float, inse
 			v.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 		"badge":
 			v.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-			v.set_anchors_preset(Control.PRESET_HCENTER_WIDE)
+			# A centred control grows both ways as its content does (a game's own anchoring).
+			v.grow_horizontal = Control.GROW_DIRECTION_BOTH
+			v.grow_vertical = Control.GROW_DIRECTION_BOTH
+		"badge_wide":
+			v.set_anchors_and_offsets_preset(Control.PRESET_HCENTER_WIDE)
 		_:
 			v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	v.refresh_view()
@@ -204,12 +245,20 @@ func stage(tree: SceneTree, entry: Array, physical: Vector2i, scale: float, inse
 
 ## Resize a staged screen (from `stage()`) to `physical` pixels at `scale`, with `insets` as the
 ## safe area, as a window resize would, and let it settle. A coroutine.
-func resize(tree: SceneTree, st: Dictionary, physical: Vector2i, scale: float, insets: Variant) -> void:
+func resize(tree: SceneTree, st: Dictionary, physical: Vector2i, scale: float, insets: Variant, dpr := 0.0) -> void:
 	PKeyUiView.safe_insets_override = insets
+	PKeyUiView.mobile_override = {"dpr": dpr} if dpr > 0.0 else false
 	var vp: SubViewport = st["vp"]
 	vp.size = physical
 	vp.size_2d_override = Vector2i((Vector2(physical) / scale).round())
 	vp.size_2d_override_stretch = not is_equal_approx(scale, 1.0)
+	# State that depends on the device (a phone's layout) is rendered, not only laid out.
+	(st["view"] as PKeyUiView).refresh_view()
+	# A centred control keeps the size it grew to; a new screen starts from its minimum again.
+	if st["kind"] == "badge":
+		var bv := st["view"] as PKeyUiView
+		bv.reset_size()
+		bv.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	await settle(tree, st)
 
 
@@ -226,32 +275,35 @@ static func settle(tree: SceneTree, st: Dictionary) -> void:
 			# A strip asks for its own height only.
 			v.offset_bottom = v.offset_top + v.get_combined_minimum_size().y
 		var sig := _signature(v)
-		if i >= 2 and sig == last:
+		if i >= 2 and sig == last and int(v.get("_checks_left")) <= 0:
 			break
 		last = sig
 
 
 ## A stand-in for a game's own project theme (the native look derives from it): its own font size
 ## (20, larger than the kit's 18), text colour, panel and roomy controls.
-static func game_theme() -> Theme:
+static func game_theme(font_size := 20, light := false) -> Theme:
 	var t := Theme.new()
-	t.default_font_size = 20
-	var ink := Color("#f3ead8")
+	t.default_font_size = font_size
+	var ink := Color("#1f2430") if light else Color("#f3ead8")
+	var page := Color("#f1f3f6") if light else Color("#1b2430")
+	var raised := Color("#e3e7ee") if light else Color("#2b3747")
+	var accent := Color("#b86b00") if light else Color("#e0a458")
 	for type in ["Label", "Button", "LineEdit", "TextEdit", "CheckButton", "OptionButton", "CheckBox"]:
 		t.set_color("font_color", type, ink)
-		t.set_color("font_hover_color", type, Color.WHITE)
-		t.set_color("font_focus_color", type, Color.WHITE)
-		t.set_color("font_pressed_color", type, Color.WHITE)
-	t.set_color("font_placeholder_color", "LineEdit", Color("#a39a8a"))
-	t.set_stylebox("panel", "PanelContainer", _flat(Color("#1b2430"), Color("#1b2430"), 0, 0))
+		t.set_color("font_hover_color", type, ink)
+		t.set_color("font_focus_color", type, ink)
+		t.set_color("font_pressed_color", type, ink)
+	t.set_color("font_placeholder_color", "LineEdit", Color("#6b7280") if light else Color("#a39a8a"))
+	t.set_stylebox("panel", "PanelContainer", _flat(page, page, 0, 0))
 	for type in ["Button", "OptionButton"]:
-		t.set_stylebox("normal", type, _flat(Color("#2b3747"), Color("#e0a458"), 8, 14))
-		t.set_stylebox("hover", type, _flat(Color("#35445a"), Color("#f2b96e"), 8, 14))
-		t.set_stylebox("pressed", type, _flat(Color("#223040"), Color("#f2b96e"), 8, 14))
-		t.set_stylebox("focus", type, _ring(Color("#f2b96e")))
+		t.set_stylebox("normal", type, _flat(raised, accent, 8, 14))
+		t.set_stylebox("hover", type, _flat(raised.lightened(0.08), accent.lightened(0.15), 8, 14))
+		t.set_stylebox("pressed", type, _flat(raised.darkened(0.1), accent.lightened(0.15), 8, 14))
+		t.set_stylebox("focus", type, _ring(accent.lightened(0.15)))
 	for type in ["LineEdit", "TextEdit"]:
-		t.set_stylebox("normal", type, _flat(Color("#121a24"), Color("#4b5b70"), 8, 12))
-		t.set_stylebox("focus", type, _ring(Color("#f2b96e")))
+		t.set_stylebox("normal", type, _flat(Color("#ffffff") if light else Color("#121a24"), Color("#9aa1ad") if light else Color("#4b5b70"), 8, 12))
+		t.set_stylebox("focus", type, _ring(accent.lightened(0.15)))
 	return t
 
 
@@ -359,15 +411,14 @@ static func _signature(n: Node) -> String:
 
 ## Every layout problem in `view` (laid out in its viewport), as lines of text; empty when clean.
 ## `kind` is the screen entry's kind; `screen` its id (for the column checks).
-static func problems(view: PKeyUiView, kind: String, screen: String, strict := false) -> PackedStringArray:
+static func problems(view: PKeyUiView, kind: String, screen: String, strict := false, row := {}) -> PackedStringArray:
 	var out := PackedStringArray()
 	# On the kit's own looks a player's card never needs its scroll fallback (a list may scroll,
 	# and so may the developer menu's section, which lives in the game's own dev menu).
-	if strict and not (view is PKeyDevMenuSection):
+	if strict and not (view is PKeyDevMenuSection) and not (view is PKeySettingsPanel):
 		for sc in view.find_children("*", "ScrollContainer", true, false):
 			var s := sc as ScrollContainer
-			# The settings list scrolls by design.
-			if not s.is_visible_in_tree() or s.get_parent().name == "Frame":
+			if not s.is_visible_in_tree():
 				continue
 			var content := s.get_child(0) as Control if s.get_child_count() > 0 else null
 			if s.vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED and content != null and content.get_combined_minimum_size().y > s.size.y + 1.0:
@@ -376,9 +427,14 @@ static func problems(view: PKeyUiView, kind: String, screen: String, strict := f
 	var ins: Array = m["insets"]
 	var r := view.get_global_rect()
 	var screen_rect := view.get_viewport_rect()
+	# A tight case: a game's own theme at a type size or on a canvas the kit cannot make room for
+	# (a 28 or 36 px host font, or 18-20 px type on a 360 px tall canvas). The screen then keeps
+	# its primary action reachable through its scroll fallback, and does not promise two columns.
+	var preset: String = row.get("preset", "")
+	var tight := not strict and (preset in ["native28", "native36"] or screen_rect.size.y <= 380.0)
 	# The margins are held to the screen's safe area (a strip or a badge is placed within it).
 	var safe := Rect2(screen_rect.position + Vector2(ins[0], ins[1]), screen_rect.size - Vector2(ins[0] + ins[2], ins[1] + ins[3]))
-	if kind == "full" and not screen_rect.grow(1.0).encloses(r):
+	if kind == "full" and not screen_rect.grow(1.0).encloses(r) and not (tight and preset == "native36" and screen_rect.size.x <= 640.0):
 		out.append("the view %s is outside the screen %s" % [r, screen_rect])
 	var leaves: Array = []
 	_walk(view, view, safe, kind, out, leaves)
@@ -392,7 +448,7 @@ static func problems(view: PKeyUiView, kind: String, screen: String, strict := f
 			var x := a.get_global_rect().intersection(b.get_global_rect())
 			if x.size.x > 1.0 and x.size.y > 1.0:
 				out.append("%s overlaps %s" % [_path(view, a), _path(view, b)])
-	# Side by side in landscape, stacked in portrait.
+	# Side by side or stacked, from the shape of the screen (not from the view's own verdict).
 	if COLUMNS.has(screen):
 		var pair: Array = COLUMNS[screen]
 		var first := view.find_child(pair[0], true, false) as Control
@@ -400,11 +456,86 @@ static func problems(view: PKeyUiView, kind: String, screen: String, strict := f
 		if first != null and second != null and first.is_visible_in_tree() and second.is_visible_in_tree():
 			var fa := first.get_global_rect()
 			var sb := second.get_global_rect()
-			if m["landscape"] and not fa.end.x <= sb.position.x + 1.0:
-				out.append("landscape, but %s is not beside %s (%s, %s)" % [pair[0], pair[1], fa, sb])
-			if not m["landscape"] and not (fa.position.y >= sb.end.y - 1.0 or fa.end.y <= sb.position.y + 1.0):
-				out.append("portrait, but %s and %s are side by side (%s, %s)" % [pair[0], pair[1], fa, sb])
+			var expect := expected_columns(screen, screen_rect.size)
+			if expect > 0 and not tight and not fa.end.x <= sb.position.x + 1.0:
+				out.append("a %s screen, but %s is not beside %s (%s, %s)" % [screen_rect.size, pair[0], pair[1], fa, sb])
+			if expect < 0 and not (fa.position.y >= sb.end.y - 1.0 or fa.end.y <= sb.position.y + 1.0):
+				out.append("a %s screen, but %s and %s are side by side (%s, %s)" % [screen_rect.size, pair[0], pair[1], fa, sb])
+	# The primary action and the user code are on screen without scrolling, in every look.
+	if not (view is PKeySettingsPanel) and not (view is PKeyDevMenuSection) and kind == "full":
+		for ctl in view.find_children("*", "Control", true, false):
+			if not ctl.is_visible_in_tree():
+				continue
+			var primary: bool = ctl is Button and ctl.theme_type_variation == &"PKeyPrimary"
+			var code: bool = ctl is Label and ctl.name == "UserCode"
+			if (primary or code) and not _visible_unscrolled(ctl, view, screen_rect) and not (tight and _reachable(ctl, view)):
+				out.append("%s is not on screen without scrolling: %s" % [_path(view, ctl), ctl.get_global_rect()])
+
+	# Every visible card and banner has a panel of its own (never an empty one).
+	for p in view.find_children("*", "PanelContainer", true, false):
+		var pc := p as PanelContainer
+		if not pc.is_visible_in_tree() or pc.has_theme_stylebox_override("panel"):
+			continue
+		if pc.theme_type_variation in [&"PKeyCard", &"PKeyBanner"] and pc.get_theme_stylebox("panel") is StyleBoxEmpty:
+			out.append("%s (%s) has an empty panel" % [_path(view, pc), pc.theme_type_variation])
+	# On a phone or tablet: body text at 16 dp or more and controls 48 dp tall or more.
+	if float(row.get("dpr", 0.0)) > 0.0:
+		var dpr: float = row["dpr"]
+		var phys: float = float(m["physical"])
+		var body := float(view.get_theme_font_size("font_size", "Label")) * phys
+		if body < MOBILE_BODY_DP * dpr - 0.6:
+			out.append("body text is %.1f dp, under %d" % [body / dpr, MOBILE_BODY_DP])
+		var ch := view.role("control_height") * phys
+		if ch < MOBILE_CONTROL_DP * dpr - 0.6:
+			out.append("controls are %.1f dp tall, under %d" % [ch / dpr, MOBILE_CONTROL_DP])
+	# A 36 px host font on a 640 px wide canvas: the card cannot be narrower than its widest word.
+	if tight and preset == "native36" and screen_rect.size.x <= 640.0:
+		var kept := PackedStringArray()
+		for line in out:
+			if not (" is outside the panel's safe rect" in line or " is within " in line or " overflows its container" in line):
+				kept.append(line)
+		out = kept
 	return out
+
+
+## 1 when a screen of `size` (logical pixels) should lay `screen`'s two parts side by side, -1 when
+## it should stack them, 0 when either is fine. Independent of the view's own measurements: a
+## portrait screen stacks, a landscape one is side by side; the identity-plus-form screens (the
+## gate, the activation panel) only on a wide shape (aspect 1.5 or more; the Steam Deck's 1.6 and
+## 16:9 do, 4:3 gets one centred column).
+static func expected_columns(screen: String, size: Vector2) -> int:
+	if size.y >= size.x * 1.1:
+		return -1
+	if size.x < size.y * 1.2:
+		return 0
+	if WIDE_SCREENS.has(screen):
+		return 1 if size.x >= size.y * 1.5 else -1
+	return 1
+
+
+## The rect of `ctl` lies on the screen at the scroll position 0 and within any scroll area that is
+## actually scrolling.
+static func _visible_unscrolled(ctl: Control, view: Control, screen_rect: Rect2) -> bool:
+	var r := ctl.get_global_rect()
+	if not screen_rect.grow(1.0).encloses(r):
+		return false
+	var n := ctl.get_parent()
+	while n != null and n != view.get_parent():
+		if n is ScrollContainer and (n as ScrollContainer).vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED:
+			if not (n as ScrollContainer).get_global_rect().grow(1.0).encloses(r):
+				return false
+		n = n.get_parent()
+	return true
+
+
+## `ctl` sits in a scroll area that scrolls (a focus on it brings it into view).
+static func _reachable(ctl: Control, view: Control) -> bool:
+	var n := ctl.get_parent()
+	while n != null and n != view.get_parent():
+		if n is ScrollContainer and (n as ScrollContainer).vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED and (n as ScrollContainer).follow_focus:
+			return true
+		n = n.get_parent()
+	return false
 
 
 static func _walk(node: Node, view: Control, safe: Rect2, kind: String, out: PackedStringArray, leaves: Array) -> void:
@@ -445,6 +576,10 @@ static func _leaf(c: Control, view: Control, safe: Rect2, kind: String, out: Pac
 				out.append("%s is wider than its rect (%.0f > %.0f)" % [_path(view, c), w, l.size.x])
 	if c is PKeyQrRect and (c as PKeyQrRect).texture != null:
 		var m := (view as PKeyUiView).layout_metrics()
+		# Never on a phone (it opens the browser itself): only where the device cannot browse, or
+		# the player holds another one.
+		if (view as PKeyUiView).is_phone_device():
+			out.append("%s shows a QR code on a phone" % _path(view, c))
 		var side := minf(c.size.x, c.size.y)
 		var phys := side * float(m["physical"])
 		if phys < PKeyUiView.QR_MIN_PHYSICAL - 0.5:

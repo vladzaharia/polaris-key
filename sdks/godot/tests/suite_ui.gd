@@ -160,6 +160,10 @@ func _layout(t: PKeyTestContext, all: Array) -> void:
 				# A two-column landscape card is as wide as a wide card (PKeyUiTheme.MEASURES).
 				var maxw: float = maxf(v.max_content_width, float(PKeyUiTheme.MEASURES["card_width_wide"]))
 				var ok: bool = dx <= 1.5 and dy <= 1.5 and r.size.x <= maxw + 1.0 and r.position.x >= PKeyUiView.GUTTER - 1.0 and r.end.x <= sz.x - PKeyUiView.GUTTER + 1.0
+				# A phone's portrait screen is full-bleed for the scenes that bleed: the page fills it.
+				if v.phone_screen() and node != null:
+					# (a gate's card keeps the page margin to the edge; a dialog's is edge to edge)
+					ok = r.size.x >= vr.size.x - 2.0 * v.role("page_margin") - 1.0
 				if t.check("layout: %s / %s centred at %dx%d (%s)" % [c[0], c[1], sz.x, sz.y, look], ok, "rect %s in %s" % [r, vr]):
 					checked += 1
 				_free(v)
@@ -175,7 +179,8 @@ func _layout(t: PKeyTestContext, all: Array) -> void:
 		elif c[0] == "banner" and c[1] == "grace":
 			var b: PKeyUiView = await _build(c)
 			var line := b.find_child("Line0", true, false) as Label
-			t.check("layout: banner lines centred", line != null and line.horizontal_alignment == HORIZONTAL_ALIGNMENT_CENTER)
+			# The banner is a centred card; its glyph and lines read from the start.
+			t.check("layout: banner lines start-aligned beside the glyph", line != null and line.horizontal_alignment == HORIZONTAL_ALIGNMENT_LEFT)
 			_free(b)
 	t.check("layout: coverage", seen.size() >= 8 and cases.size() == seen.size() + LAYOUT_EXTRA.size() and checked == cases.size() * LAYOUT_SIZES.size() * LAYOUT_LOOKS.size(), "%d checks over %s" % [checked, cases.map(func(x): return "%s / %s" % [x[0], x[1]])])
 
@@ -303,19 +308,19 @@ func _settings(t: PKeyTestContext) -> void:
 	t.check("settings: hidden keys are never rows (document hidden, catalog hidden, secrets, flags)", not keys.has("game.tuning") and not keys.has("debug.overlay") and not keys.has("leaderboard.key") and not keys.has("extras.skins"), str(keys))
 	t.check("settings: grouped by category, sorted by ui.order", keys == ["game.killSwitch", "audio.volume", "audio.muted", "ui.theme", "ui.reducedMotion", "net.proxyUrl", "net.proxyPassword", "notes.motd"], str(keys))
 	var kill := _row_nodes(p, "game.killSwitch")
-	var kill_input: CheckButton = kill.get("input")
-	t.check("settings: an enforced setting is a disabled control", kill_input != null and kill_input.disabled and kill_input.button_pressed, str(kill_input))
-	t.check("settings: an enforced setting says \"Set by djdl\" with a lock", (kill["set_by"] as Label).visible and (kill["set_by"] as Label).text == "Set by djdl" and (kill["badge"] as Label).text == "Locked")
+	var kill_input: Control = kill.get("input")
+	t.check("settings: an enforced setting is text, never a dimmed control", kill_input is Label and not (kill_input as Label).text.is_empty() and not kill_input is BaseButton, str(kill_input))
+	t.check("settings: an enforced setting says who set it (the product's name) with a lock", (kill["set_by"] as Label).visible and (kill["set_by"] as Label).text == "Set by %s" % PKeySettingsController.product_name(sdk) and not PKeySettingsController.product_name(sdk).is_empty() and (kill["lock"] as Control).visible and (kill["lock_row"] as Control).visible)
 	var before: StringName = sdk.config.get_source("audio.volume")
 	var vol := _row_nodes(p, "audio.volume")
-	var spin: SpinBox = vol.get("input")
+	var spin: Range = vol.get("input")
 	spin.value = 35
 	await _tree().process_frame
 	var store: PKeyOverrideStore = sdk.config.get_override_store()
 	t.check("settings: editing a default setting writes the override store", store.has_override("audio.volume") and store.get_override("audio.volume") == 35, str(store.values))
 	t.check("settings: ... and get_source() becomes local", before == &"remote-default" and sdk.config.get_source("audio.volume") == &"local" and sdk.config.get_value("audio.volume") == 35, "%s -> %s" % [before, sdk.config.get_source("audio.volume")])
 	vol = _row_nodes(p, "audio.volume")
-	t.check("settings: a local row shows its badge and Reset to default", (vol["badge"] as Label).text == "Changed by you" and (vol["reset"] as Button).visible)
+	t.check("settings: a local row shows its badge and Reset to default", (vol["status"] as Label).text == "Changed by you" and (vol["reset"] as Button).visible)
 	(vol["reset"] as Button).pressed.emit()
 	await _tree().process_frame
 	t.check("settings: Reset to default clears the override", not store.has_override("audio.volume") and sdk.config.get_source("audio.volume") == &"remote-default")
