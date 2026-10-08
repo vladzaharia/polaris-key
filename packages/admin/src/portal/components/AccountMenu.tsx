@@ -19,9 +19,10 @@ import { Avatar } from "./Avatar.js";
  * picture (PX-22, §4.30 rule 5) from the signed-in session, else the initials. Approve a new device waits for G29 and Help for a
  * public help URL; both are left out rather than shown as dead ends.
  *
- * The chip (§8): from 1180 px it adds the given name (the name's first word) and a chevron; with
- * no name, and below 1180 px, it is the avatar alone. The menu's header keeps the full name and
- * the email. 40 px tall like the header's other controls, 44 px on a coarse pointer.
+ * The chip (§8): from 1180 px it adds the full name and a chevron, the name truncating in the room
+ * the ⌘K field gives up (never its first word alone: "Dr.", a compound prefix, a family name first);
+ * with no name, and below 1180 px, it is the avatar alone. The menu's header keeps the full name
+ * and the email. 40 px tall like the header's other controls, 44 px on a coarse pointer.
  *
  * Sign out is a form POST (R1-03): a state change is never a link.
  */
@@ -35,8 +36,6 @@ export function AccountMenu({
   const name = account.name?.trim();
   const named = Boolean(name) && name !== account.email;
   const label = named ? name! : account.email || name || "Account";
-  // The given name: what the chip shows from 1180 px (the menu shows the full name).
-  const given = named ? name!.split(/\s+/)[0]! : null;
   return (
     <>
       <DropdownMenu>
@@ -45,11 +44,11 @@ export function AccountMenu({
             type="button"
             aria-label={`Account: ${label}`}
             // The avatar alone on phones and tablets, and with no name (PORTAL.md §8); from 1180
-            // px the given name and the chevron, the name truncating (min-w-0) only once the ⌘K
+            // px the full name and the chevron, the name truncating (min-w-0) only once the ⌘K
             // trigger has given way (PortalShell).
             className={cn(
               "inline-flex h-10 w-10 min-w-0 max-w-[18rem] shrink-0 items-center justify-center gap-2 rounded-full border border-border bg-surface-raised p-1 text-sm text-fg-strong hover:bg-hover pointer-coarse:h-11",
-              given
+              named
                 ? "max-wide:pointer-coarse:w-11 wide:w-auto wide:shrink wide:justify-start wide:pr-3"
                 : "pointer-coarse:w-11",
             )}
@@ -59,13 +58,13 @@ export function AccountMenu({
               email={account.email}
               picture={account.avatarUrl}
             />
-            {given ? (
+            {named ? (
               <>
                 <span
                   dir="auto"
                   className="hidden min-w-0 truncate wide:inline"
                 >
-                  {given}
+                  {name}
                 </span>
                 <ChevronDown
                   aria-hidden
