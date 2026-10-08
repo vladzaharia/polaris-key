@@ -4,9 +4,9 @@
  * `licensing:` block, a console edit claims it, and Revert returns it to the manifest (S-18 §4.5).
  *
  * The offline grace clamp is in effect (LX-07). The behaviour behind the other settings ships in
- * later packages (LX-09, LX-10, LX-12), so the page says that those take effect as each part of
- * the licensing model arrives. The billing-retry grace stays hidden until LX-23 (the registry
- * marks it pending).
+ * later packages (LX-09, LX-10, LX-12), so those rows are marked pending (P0-47): read-only,
+ * labelled "Not in effect yet", their stored value kept for when it ships. The billing-retry grace
+ * stays hidden until LX-23 (the registry marks it pending).
  */
 
 import * as React from "react";
@@ -74,6 +74,22 @@ export const LICENSING_COPY: Record<string, SettingCopy> = {
   },
 };
 
+/** What devices do while a setting's behaviour has not shipped. */
+const NOT_YET = "Devices keep today's behaviour whatever it is set to.";
+
+/**
+ * The settings stored and resynced today that change nothing yet (P0-47): the entitlement model
+ * and holder (LX-09), the anchor choice and re-anchor (LX-10), the refund grace (LX-12). Only the
+ * offline grace clamp is in effect.
+ */
+export const LICENSING_PENDING: Record<string, string> = {
+  "licensing.entitlementModel": NOT_YET,
+  "licensing.entitlementHolder": NOT_YET,
+  "licensing.anchorPolicy": NOT_YET,
+  "licensing.reanchor": NOT_YET,
+  "licensing.refundGraceHours": NOT_YET,
+};
+
 export function LicenseSettingsPage({
   slug,
 }: {
@@ -98,9 +114,10 @@ export function LicenseSettingsPage({
       sections={[{ id: SECTION, title: "Licensing model" }]}
     >
       <Callout tone="info">
-        Clamping offline grace to expiry applies to devices at their next
-        licence refresh. The other settings take effect as each part of the
-        licensing model ships; until then devices keep today&apos;s behaviour.
+        Only clamping offline grace to expiry is in effect, at each
+        device&apos;s next licence refresh. The settings marked Not in effect
+        yet keep their value but change nothing until their part of the
+        licensing model ships.
       </Callout>
       <ProductSettingsSection
         slug={slug}
@@ -108,6 +125,7 @@ export function LicenseSettingsPage({
         id={SECTION}
         title="Licensing model"
         copy={LICENSING_COPY}
+        pending={LICENSING_PENDING}
       />
     </SettingsTemplate>
   );
