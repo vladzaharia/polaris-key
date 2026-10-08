@@ -127,6 +127,46 @@ def rich_console(env: TermEnv, stream: IO[str], *, width: Optional[int] = None, 
     return Console(**kw)
 
 
+def guard_sigterm(restore: Callable[[], None]) -> Callable[[], None]:
+    """Run ``restore`` (give the terminal back: cooked mode, cursor, paste mode) when the process is
+    terminated by SIGTERM, then let the termination go on as it would have (the previous handler,
+    or the default action, so the exit status is still 128 + 15). Returns the call that removes it.
+    Nothing is installed off the main thread, where Python cannot set handlers, or where the host
+    ignores SIGTERM on purpose."""
+    if not hasattr(signal, "SIGTERM") or threading.current_thread() is not threading.main_thread():
+        return lambda: None
+    prev: Any = signal.getsignal(signal.SIGTERM)
+    if prev == signal.SIG_IGN:
+        return lambda: None
+    if not callable(prev):
+        prev = signal.SIG_DFL  # getsignal says 0 or None for a handler Python did not install
+
+    def on_term(signum: int, frame: Any) -> None:
+        try:
+            restore()
+        except Exception:
+            pass
+        signal.signal(signal.SIGTERM, prev)
+        if callable(prev):
+            prev(signum, frame)
+        else:
+            os.kill(os.getpid(), signal.SIGTERM)
+
+    try:
+        signal.signal(signal.SIGTERM, on_term)
+    except (ValueError, OSError):
+        return lambda: None
+
+    def undo() -> None:
+        try:
+            if signal.getsignal(signal.SIGTERM) is on_term:
+                signal.signal(signal.SIGTERM, prev)
+        except (ValueError, OSError):
+            pass
+
+    return undo
+
+
 # ── Keys ─────────────────────────────────────────────────────────────────────────────────────
 
 
@@ -144,6 +184,7 @@ class KeyReader:
         self._old: Any = None
         self._pending = ""
         self._paste = bracketed_paste
+        self._undo_term: Callable[[], None] = lambda: None
 
     def __enter__(self) -> "KeyReader":
         if os.name == "posix":
@@ -152,16 +193,35 @@ class KeyReader:
 
             self._fd = self._in.fileno()
             self._old = termios.tcgetattr(self._fd)
-            tty.setcbreak(self._fd)
+            # TCSADRAIN, never the default TCSAFLUSH: a key typed while the flow waited on the
+            # network (Esc, say) is read, not thrown away.
+            tty.setcbreak(self._fd, termios.TCSADRAIN)
             if self._paste:
                 sys.stdout.write("\x1b[?2004h")
                 sys.stdout.flush()
+            self._undo_term = guard_sigterm(self._give_back)
         return self
+
+    def _give_back(self) -> None:
+        """Cooked mode, paste mode off and the cursor shown again (also from a SIGTERM handler)."""
+        import termios
+
+        if self._fd is None:
+            return
+        try:
+            if self._paste:
+                sys.stdout.write("\x1b[?2004l")
+            sys.stdout.write("\x1b[?25h")
+            sys.stdout.flush()
+        except Exception:
+            pass
+        termios.tcsetattr(self._fd, termios.TCSADRAIN, self._old)
 
     def __exit__(self, *exc: Any) -> None:
         if os.name == "posix" and self._fd is not None:
             import termios
 
+            self._undo_term()
             if self._paste:
                 sys.stdout.write("\x1b[?2004l")
                 sys.stdout.flush()
@@ -428,6 +488,7 @@ class LiveRegion:
         self._head = 0
         self._live: Any = None
         self._lock = threading.RLock()
+        self._undo_term: Callable[[], None] = lambda: None
         self._resize_pending = False
         self._old_winch: Any = None
         self._winch = False
@@ -455,6 +516,7 @@ class LiveRegion:
         self.d.out.write("\x1b[?25l")
         self.d.out.flush()
         self._listen(True)
+        self._undo_term = guard_sigterm(lambda: (self.d.out.write("\x1b[?25h"), self.d.out.flush()))
         return self
 
     def _listen(self, on: bool) -> None:
@@ -532,6 +594,8 @@ class LiveRegion:
     def __exit__(self, *exc: Any) -> None:
         self.clear()
         self._listen(False)
+        self._undo_term()
+        self._undo_term = lambda: None
         if self._live is not None:
             self._live.__exit__(None, None, None)
         elif self._redraws:

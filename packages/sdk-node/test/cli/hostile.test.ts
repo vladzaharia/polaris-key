@@ -453,3 +453,152 @@ describe("opening the browser", () => {
     expect(opened).toEqual(["https://key.plrs.im/device?code=X"]);
   });
 });
+
+// ── Text that reads differently from what it is ───────────────────────────────────────────────
+// Bidi overrides and isolates, bidi marks and zero-width characters draw nothing, but a device
+// name with U+202E in it reads backwards, and one with U+200B can pass for another. `clean` strips
+// them; the joiners U+200C and U+200D stay inside a string (ja, ar, fa, emoji) and go at its edges.
+
+const SPOOF = "\u202e\u2066\u200b\u200e\u200f\ufeff\u2060\u2069\u202a\u061c";
+const HIDDEN =
+  /[\u061c\u200b\u200e\u200f\u202a-\u202e\u2060\u2066-\u2069\ufeff]/;
+
+describe("text that reads differently from what it is", () => {
+  it("strips bidi controls and zero-width characters, and keeps joiners inside a word", () => {
+    expect(clean(`Work${SPOOF} laptop`)).toBe("Work laptop");
+    expect(clean("\u200dabc\u200c")).toBe("abc");
+    // Persian uses ZWNJ inside a word, and an emoji sequence uses ZWJ: both stay.
+    expect(clean("می\u200cخواهم")).toBe("می\u200cخواهم");
+    expect(clean("👩\u200d💻")).toBe("👩\u200d💻");
+    expect(clean("ライセンス · Mara’s iPad")).toBe("ライセンス · Mara’s iPad");
+  });
+
+  it("keeps the one zero-width space that breaks a CI workflow command, and no other", () => {
+    expect(clean("\u200b::error title=x::y")).toBe("\u200b::error title=x::y");
+    expect(clean("##\u200b[group]")).toBe("##\u200b[group]");
+    expect(clean("a\u200bb \u200b:x")).toBe("ab :x");
+  });
+
+  it("links nothing whose URL hides a character", () => {
+    expect(safeLink(`https://key.plrs.im/\u202eportal`)).toBeNull();
+    expect(safeLink(`https://key.plrs.im/\u200bportal`)).toBeNull();
+  });
+
+  const spoofClient = stubClient({
+    licenseInfo: {
+      licenseId: "l",
+      tier: "pro",
+      tierLabel: "Pro",
+      deviceLimit: 3,
+      profile: { name: `Mara${SPOOF}`, email: `mara${SPOOF}@fennick.studio` },
+      entitledChannels: [],
+      status: "ok",
+    },
+    listDevices: async () => [
+      {
+        id: "dev_1",
+        current: true,
+        status: "ok",
+        label: `Work${SPOOF} laptop`,
+        platform: "macOS",
+      },
+    ],
+    license: {
+      activateWithKey: async () => ({
+        kind: "device-limit",
+        code: "device_limit",
+        limit: 3,
+        deviceCount: 3,
+        manageUrl: `https://key.plrs.im/\u202eportal/devices`,
+      }),
+    },
+  });
+  const spoofPresentation = {
+    name: `Tide${SPOOF}water Studio`,
+    developerName: `Harbor${SPOOF}`,
+    accent: "#369186",
+  };
+  const cases: Array<
+    [
+      string,
+      (h: Parameters<Parameters<typeof render>[1]>[0]) => Promise<unknown>,
+    ]
+  > = [
+    ["status (and the header)", (h) => statusFlow(h.ctx, spoofClient)],
+    ["devices list", (h) => devicesListFlow(h.ctx, spoofClient)],
+    ["device limit", (h) => activateFlow(h.ctx, spoofClient, { key: KEY })],
+  ];
+  for (const locale of ["en", "ja"])
+    for (const [name, run] of cases)
+      it(`${name} in ${locale}: nothing hidden reaches the screen, in every variant`, async () => {
+        for (const v of VARIANTS) {
+          const r = await render(
+            {
+              variant: v,
+              presentation: spoofPresentation,
+              theme: { copy: { locale } },
+            },
+            run,
+          );
+          expect(HIDDEN.test(r.raw), `${name} ${v.id}`).toBe(false);
+          expect(HIDDEN.test(r.stderr), `${name} ${v.id} (stderr)`).toBe(false);
+        }
+        const r = await render(
+          {
+            variant: VARIANTS[0]!,
+            presentation: spoofPresentation,
+            theme: { copy: { locale } },
+          },
+          run,
+        );
+        expect(r.text).toContain("Tidewater Studio");
+      });
+});
+
+// ── A terminated terminal gets its cursor back ────────────────────────────────────────────────
+
+describe("a live region and a terminated process", () => {
+  for (const [signal, code] of [
+    ["SIGINT", 130],
+    ["SIGTERM", 143],
+  ] as const)
+    it(`${signal} shows the cursor again, then exits ${code}`, async () => {
+      const { vi } = await import("vitest");
+      const { guardCursor } = await import("../../src/cli/term/live.js");
+      const written: string[] = [];
+      const out = {
+        isTTY: true,
+        columns: 80,
+        write: (s: string) => (written.push(s), true),
+      };
+      const exit = vi
+        .spyOn(process, "exit")
+        .mockImplementation((() => undefined) as never);
+      const before = process.listenerCount(signal);
+      const release = guardCursor(out as never);
+      try {
+        expect(process.listenerCount(signal)).toBe(before + 1);
+        process.emit(signal);
+        expect(written.join("")).toContain("\x1b[?25h");
+        expect(exit).toHaveBeenCalledWith(code);
+      } finally {
+        release();
+        exit.mockRestore();
+      }
+      expect(process.listenerCount(signal)).toBe(before);
+    });
+
+  it("leaves a host's own SIGTERM handler alone", async () => {
+    const { guardCursor } = await import("../../src/cli/term/live.js");
+    const own = () => undefined;
+    process.on("SIGTERM", own);
+    const before = process.listenerCount("SIGTERM");
+    const release = guardCursor({ isTTY: true, write: () => true } as never);
+    try {
+      expect(process.listenerCount("SIGTERM")).toBe(before);
+    } finally {
+      release();
+      process.removeListener("SIGTERM", own);
+    }
+  });
+});

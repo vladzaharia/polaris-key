@@ -11643,13 +11643,14 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 
 // ../sdk-node/dist/cli/term/sanitize.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
-var CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f]/g;
+var HIDDEN_CHARS = /[\u0000-\u001f\u007f-\u009f\u061c\u200b\u200e\u200f\u202a-\u202e\u2060\u2066-\u2069\ufeff]/g;
+var EDGE_JOINERS = /^[\u200c\u200d]+|[\u200c\u200d]+$/g;
 function clean(text) {
-  return text.replace(CONTROL_CHARS, "");
+  return text.replace(HIDDEN_CHARS, (ch, at) => ch === "​" && (text.startsWith("::", at + 1) || text.slice(at - 2, at) === "##" && text[at + 1] === "[") ? ch : "").replace(EDGE_JOINERS, "");
 }
 var LOOPBACK = /* @__PURE__ */ new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
 function safeLink(url) {
-  if (!url || /[\s\u0000-\u001f\u007f-\u009f]/.test(url))
+  if (!url || /[\s\u0000-\u001f\u007f-\u009f\u061c\u200b\u200e\u200f\u202a-\u202e\u2060\u2066-\u2069\ufeff]/.test(url))
     return null;
   let u;
   try {
@@ -12123,18 +12124,25 @@ function guardCursor(out) {
   const restore = () => {
     out.write(SHOW_CURSOR);
   };
-  const ownSigint = process.listenerCount("SIGINT") === 0;
-  const onSigint = () => {
-    restore();
-    process.exit(130);
-  };
+  const ours = [];
+  for (const [signal, code] of [
+    ["SIGINT", 130],
+    ["SIGTERM", 143]
+  ]) {
+    if (process.listenerCount(signal) !== 0)
+      continue;
+    const on = () => {
+      restore();
+      process.exit(code);
+    };
+    process.once(signal, on);
+    ours.push([signal, on]);
+  }
   process.once("exit", restore);
-  if (ownSigint)
-    process.once("SIGINT", onSigint);
   return () => {
     process.removeListener("exit", restore);
-    if (ownSigint)
-      process.removeListener("SIGINT", onSigint);
+    for (const [signal, on] of ours)
+      process.removeListener(signal, on);
   };
 }
 var LiveRegion = class {

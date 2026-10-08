@@ -42,20 +42,29 @@ __all__ = [
 #: C0 controls, DEL and C1 controls: what could start or end a terminal escape (ESC, BEL, CSI
 #: 0x9B, OSC 0x9D, ST 0x9C …) or move the cursor. Text never carries them to a terminal.
 _CONTROLS = re.compile("[\x00-\x1f\x7f-\x9f]")
+#: Controls, plus what changes how text reads without showing: bidi marks, overrides and isolates
+#: (U+061C, U+200E, U+200F, U+202A-202E, U+2066-2069) and the zero-width characters U+200B, U+2060
+#: and U+FEFF. A device name with U+202E in it could otherwise read backwards.
+_HIDDEN = re.compile("[\x00-\x1f\x7f-\x9f\u061c\u200b\u200e\u200f\u202a-\u202e\u2060\u2066-\u2069\ufeff]")
+#: U+200C and U+200D join letters and emoji (ja, ar, fa): kept inside a string, where they do their
+#: job, and stripped at its edges, where they only hide.
+_EDGE_JOINERS = re.compile("^[\u200c\u200d]+|[\u200c\u200d]+$")
 
 
 def clean(text: str) -> str:
-    """``text`` without control characters. Copy and data (a device label, a product name, a
-    changelog line, a URL from the server) are drawn as text, never as escapes: the kit's own
-    escapes are written by :func:`to_ansi` outside every span's text."""
-    return _CONTROLS.sub("", text) if text else text
+    """``text`` without control characters, bidi controls or zero-width characters. Copy and data (a
+    device label, a product name, a changelog line, a URL from the server) are drawn as text, never as
+    escapes: the kit's own escapes are written by :func:`to_ansi` outside every span's text."""
+    if not text:
+        return text
+    return _EDGE_JOINERS.sub("", _HIDDEN.sub("", text))
 
 
 def safe_link(url: Optional[str]) -> Optional[str]:
     """``url`` when it may become an OSC 8 hyperlink: an absolute ``https`` URL (or ``http`` to a
     loopback host) with no whitespace, control character or userinfo (the manage-URL rule of
     ``polaris_key.core.manage``). Anything else is drawn as text without a link."""
-    if not url or _CONTROLS.search(url) or not is_manage_url(url):
+    if not url or _HIDDEN.search(url) or not is_manage_url(url):
         return None
     return url
 
@@ -75,7 +84,7 @@ class Span:
     unit: bool = False
 
     def __post_init__(self) -> None:
-        if self.text and _CONTROLS.search(self.text):
+        if self.text and (_HIDDEN.search(self.text) or _EDGE_JOINERS.search(self.text)):
             object.__setattr__(self, "text", clean(self.text))
 
 

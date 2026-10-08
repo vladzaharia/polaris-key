@@ -232,8 +232,8 @@ def _busy(t: Terminal, fn: Callable[[], Any], draw: Callable[[int], List[Line]])
 
 
 def read_key(t: Terminal) -> Optional[str]:
-    """Masked key entry (UI-KITS §4.3): the prefix stays clear, the body is bullets, the last six
-    characters show; the verdict updates as you type, a cut-short key is caught on Enter, a key for
+    """Masked key entry (UI-KITS §4.3): the prefix stays clear, the body is bullets and none of it
+    shows; the verdict updates as you type, a cut-short key is caught on Enter, a key for
     another product is a warning that does not submit, and the key never touches argv or shell
     history. ``None`` when the person cancels (Esc, or Ctrl-C with ``t.interrupted`` set)."""
     k = t.kit

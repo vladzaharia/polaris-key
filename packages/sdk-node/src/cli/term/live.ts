@@ -67,25 +67,33 @@ const rowsOf = (f: Screen): readonly RailRow[] =>
   typeof f === "function" ? f() : f;
 
 /**
- * While a region hides the cursor, an interrupt must not leave the user's terminal without one.
- * Only on a real terminal, and only when the host installed no SIGINT handler of its own (then
- * the default action, exiting, is kept: the cursor is restored first and the exit code is 130).
+ * While a region hides the cursor, an interrupt or a termination must not leave the user's
+ * terminal without one. Only on a real terminal, and only for the signals the host installed no
+ * handler of its own for (then the default action, exiting, is kept: the cursor is restored first
+ * and the exit code is 130 for SIGINT, 143 for SIGTERM).
  */
-function guardCursor(out: TerminalOutput): () => void {
+export function guardCursor(out: TerminalOutput): () => void {
   if (!out.isTTY || typeof process === "undefined") return () => undefined;
   const restore = () => {
     out.write(SHOW_CURSOR);
   };
-  const ownSigint = process.listenerCount("SIGINT") === 0;
-  const onSigint = () => {
-    restore();
-    process.exit(130);
-  };
+  const ours: Array<[NodeJS.Signals, () => void]> = [];
+  for (const [signal, code] of [
+    ["SIGINT", 130],
+    ["SIGTERM", 143],
+  ] as const) {
+    if (process.listenerCount(signal) !== 0) continue;
+    const on = () => {
+      restore();
+      process.exit(code);
+    };
+    process.once(signal, on);
+    ours.push([signal, on]);
+  }
   process.once("exit", restore);
-  if (ownSigint) process.once("SIGINT", onSigint);
   return () => {
     process.removeListener("exit", restore);
-    if (ownSigint) process.removeListener("SIGINT", onSigint);
+    for (const [signal, on] of ours) process.removeListener(signal, on);
   };
 }
 
