@@ -69,8 +69,8 @@ CSP-safe and the layout lint stays at zero.
 ## Contents
 
 - [Owner decisions (delegated to Claude, 2026-10-05)](#owner-decisions-delegated-to-claude-2026-10-05),
-  the [critique pass](#critique-pass-2026-10-05) and the
-  [automation pass](#automation-pass-2026-10-05)
+  the [D1 amendment](#d1-amendment-2026-10-07), the [critique pass](#critique-pass-2026-10-05) and
+  the [automation pass](#automation-pass-2026-10-05)
 - [0. What the audits found](#0-what-the-audits-found)
 - [1. The wizard pattern](#1-the-wizard-pattern)
 - [2. Storefronts: one catalogue, one page per storefront](#2-storefronts-one-catalogue-one-page-per-storefront)
@@ -138,6 +138,30 @@ this document it is worked out.
 | D46 | **Some things stay human forever.** Polaris Key never deletes anything in a store, never revokes certificates, never manages users, roles, devices, profiles or signing identities in the Apple account (or users, grants and app signing on Play, or users, payouts and tax in Partner Center), never touches agreements, tax, banking or payments, and never answers a legal declaration for the developer. The wizard links to each and never offers to do it. These are the adapters' `NeverList`s, unchanged                                                                                                                                                                                                               | The owner's deny-by-default rules (S-14, S-15)                                                                                                                                                                                     | §2.9                                           |
 | D47 | **Sideload feeds stay declared, not implied.** AltStore and SideStore, AltStore PAL, F-Droid, Obtainium and App Installer serve a feed only for a declared outlet (`feeds/select.ts`); implying them like Scoop (D26) would change feed selection for undeclared outlet kinds, which this pass does not decide. Their declaration rides in Polaris Key's pull request, so their whole wizard is one merge                                                                                                                                                                                                                                                                                                                       | Smallest change that reaches one step without touching outlet semantics                                                                                                                                                            | §2.9                                           |
 | D48 | **Package feeds and the Polaris Key storefront need no wizard steps.** Turning on Packages provisions the feed; the trusted-publisher policy is derived from the linked repository; the first package arrives from the release workflow. The Polaris Key storefront's download page and updater feeds are live from the first release                                                                                                                                                                                                                                                                                                                                                                                           | The first-party channels are Polaris Key's own; there is nothing for a person to decide                                                                                                                                            | §2.10, §4.2                                    |
+
+### D1 amendment (2026-10-07)
+
+The DX consolidation (`docs/research/2026-10-07-dx-consolidation/integration.md`, decisions C-18,
+C-19 and C-58; landed by ST-37) amends D1. Its aim stands: every place a customer gets the app has
+one home in one catalogue. Its words change:
+
+- Every place a customer gets the app is a **distribution channel**, "Channel" in the UI: the
+  stores, the package managers, the sideload sources, the web and Polaris Key itself.
+- A **storefront** is only the selling facet of a channel (App Store, Google Play, Steam, Microsoft
+  Store, itch.io, Polaris Key). The channel page's storefront tab is **Sales**.
+- A third-party catalogue the customer adds (AltStore and SideStore, AltStore PAL, F-Droid,
+  Obtainium, a Scoop bucket, Flathub) is an **install source** of its channel, never a "storefront
+  feed".
+- "Outlet" leaves the console's navigation and copy, as D1 said. "Channel" stays, meaning the
+  distribution channel only: a release's lanes are **Release tracks**.
+- No identifier changes: `outlet`, `channel` and `direct` keep their names in code, manifests and on
+  the wire.
+
+Where this document says "storefront" for a place builds are delivered, including the Storefronts
+catalogue and the storefront page of §2, read "channel". The console's information architecture is
+A-21's: Distribution holds Overview, Rollouts, Health, Channels and Packages; Commerce holds
+Storefronts, Offers and Purchases. Every UI word, and the identifier it keeps, is on the concepts
+page under [UI words and the identifiers they keep](../../packages/docs/src/content/docs/start/concepts.md#ui-words-and-the-identifiers-they-keep).
 
 ### Critique pass (2026-10-05)
 
@@ -545,6 +569,10 @@ ships a minimal `Celebration` that UX-35 then extends.
 ## 2. Storefronts: one catalogue, one page per storefront
 
 ### 2.1 The model
+
+> **Amended (2026-10-07).** Read "storefront" in this section as **channel** (a distribution
+> channel); a storefront is now only a channel's selling facet, its **Sales** tab. See the
+> [D1 amendment](#d1-amendment-2026-10-07).
 
 A **storefront** is any place a customer gets the app (D1). Each storefront has one page, reached
 from one catalogue, and everything about it lives on that page: setup, connection, listing,
