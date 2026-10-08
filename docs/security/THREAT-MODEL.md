@@ -5245,18 +5245,26 @@ directory holds operators only, which closes G5 (operator and customer in one di
   again before it shows the identity, activates or mints, because an account can be disabled
   while the flow waits, and answers the generic `error` (D8). A subject that holds no method (a
   floating licence only, an erased account, which leaves no link, or a custom-issuer product's
-  subject) signs in as before. A product browser session signed in before the disable ends too:
-  the OIDC return path records, on the session's KV record, the account that holds the subject's
-  platform-IdP method (`browserSessionAccount`; none for a custom issuer or a subject with no
-  account), and `loadBrowserSession` deletes the record and answers "no session" once that
-  account is disabled, being deleted or erased (an absorbed account follows its join for 30 days,
-  as `signIn` reads it). So the page reads signed out at its next request, a `requires-identity`
-  product refuses to register a device on it, and sign-out finds nothing to end. Residual, by
+  subject) signs in as before. A product browser session signed in before the disable ends too.
+  The OIDC return path records two things on the session's KV record (`browserSessionBinding`;
+  neither for a custom issuer): the platform subject itself (issuer and `sub`), and the account
+  that holds its platform-IdP method at sign-in, if any. At every read, `loadBrowserSession` runs
+  this same N9 check on the subject (`platformSubjectAccountRefused`, so whichever account holds
+  the method now counts: one the subject joined after the session opened, or one its method moved
+  to) and checks the sign-in account. It deletes the record and answers "no session" once either
+  is disabled, being deleted or gone (an absorbed account follows its join for 30 days, as
+  `signIn` reads it). The sign-in account is kept for erasure, which deletes the account's methods,
+  so the subject alone would then resolve no account. So the page reads signed out at its next
+  request, a `requires-identity` product refuses to register a device on it, and sign-out finds
+  nothing to end. A D1 error during the check reads as signed out for that request (never a 500,
+  fail closed) and keeps the record, since the error says nothing about the account. Residual, by
   decision: device seats and device tokens are kept, the browser device's included. They belong
   to the licence, not the account; disabling clears each device's account binding
   (`devices.subject`) and nothing else, and the operator deauthorizes a seat or disables the
   licence when that is wanted. A browser session opened before this binding existed carries no
-  account and lives out its 30 days.
+  subject and lives out its 30 days. A subject whose account is erased after it joined one that
+  the session did not record (it had none at sign-in) is a subject with no account again, which
+  signs in as before, so its session lives on too.
 - **The switch is deploy-time (AT-2).** `PLATFORM_OIDC_MIGRATION` and `PLATFORM_OIDC_SUNSET` are
   `[vars]`, explained in `NOT_A_SETTING`, never console values: a console session cannot move
   people between sign-in paths or end anyone's sign-in. Off by default; an unrecognised mode reads

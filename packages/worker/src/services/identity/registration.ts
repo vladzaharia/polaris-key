@@ -28,9 +28,10 @@
  *   - the cookie alone proves nothing — a record can outlive the device it was minted for
  *     (logout deauthorizes the device row and deletes the token record, and an operator can
  *     deauthorize it from the console), so a stale cookie must not keep minting credentials;
- *   - a session a `provider: platform` sign-in opened ends with its account: once the account
- *     is disabled or erased, `loadBrowserSession` answers no session, so it registers nothing
- *     (the N9 residual), while the browser device's licence seat is left as it is;
+ *   - a session a `provider: platform` sign-in opened ends with its subject's account: once an
+ *     account that holds the subject (then or since) is disabled or erased, `loadBrowserSession`
+ *     answers no session, so it registers nothing (the N9 residual), while the browser device's
+ *     licence seat is left as it is;
  *   - `validateDeviceToken` and not `requireLicensedDevice`, because `requires-identity` is
  *     precisely the policy a product picks when it does NOT run License (D-08). Demanding a
  *     usable licence here would make the policy unsatisfiable for its own audience.

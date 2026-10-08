@@ -95,7 +95,10 @@ import {
 import { licenseUsable, validateDeviceToken } from "../../core/devices.js";
 import { applyProvisionedAccountSecrets } from "../../core/accountOverrides.js";
 import { licenseConfigOverridesFrozen } from "../../core/overrideMigration.js";
-import { createBrowserSession } from "./browserSession.js";
+import {
+  createBrowserSession,
+  type BrowserSessionSubject,
+} from "./browserSession.js";
 import type { ServiceHooks } from "../../core/hooks.js";
 import {
   binderClearCookie,
@@ -2471,25 +2474,32 @@ function joinOfferNotice(email: string): string {
 }
 
 /**
- * The account a browser session opened by this sign-in is bound to: on a `provider: platform`
- * product, the account holding the subject's platform-IdP method (the one N9's refusal reads),
- * otherwise none. The session then ends when that account is disabled or erased
- * (`loadBrowserSession`); a custom issuer's subject, or a subject with no account, opens a
- * session bound to nothing, as before. Read-only, and like {@link pollAccountRefused} it reads
- * the provider from the product's row and the issuer from the Worker's secrets.
+ * What a browser session opened by this sign-in is bound to: on a `provider: platform` product,
+ * the platform-IdP subject itself (N9's check runs on it at every read, so an account it joins
+ * or is moved to later counts too) and the account holding its method now, if any (kept for
+ * erasure, which deletes the method); otherwise nothing. The session then ends when either can
+ * no longer sign in (`loadBrowserSession`); a custom issuer's subject opens a session bound to
+ * nothing, as before. Read-only, and like {@link pollAccountRefused} it reads the provider from
+ * the product's row and the issuer from the Worker's secrets.
  */
-async function browserSessionAccount(
+async function browserSessionBinding(
   env: Env,
   db: Db,
   product: Product,
   sub: string,
-): Promise<string | null> {
+): Promise<{
+  subject: BrowserSessionSubject;
+  accountId: string | null;
+} | null> {
   const row = await getOidcConfig(db, product.slug);
   if ((row?.provider ?? "platform") !== "platform") return null;
   const platform = platformOidcConfig(env);
   if (!platform) return null;
   const link = await platformSubjectLink(db, platform.issuer, sub);
-  return link?.account_id ?? null;
+  return {
+    subject: { issuer: platform.issuer, sub: sub.trim() },
+    accountId: link?.account_id ?? null,
+  };
 }
 
 /**
@@ -2505,8 +2515,8 @@ async function completeBrowserFlow(
   stateKey: ArtefactRef,
   flow: FlowRecord,
   licenseId: string,
-  /** The verified subject that signed in: a `returnTo` flow's browser session is bound to its
-   *  account, if it has one ({@link browserSessionAccount}). */
+  /** The verified subject that signed in: a `returnTo` flow's browser session is bound to it
+   *  and to its account, if it has one ({@link browserSessionBinding}). */
   sub: string,
   now: number,
   extraCookies: string[] = [],
@@ -2521,6 +2531,7 @@ async function completeBrowserFlow(
       await deleteArtefact(env, stateKey);
       return errorResponse(401, "unauthorized", "license unavailable");
     }
+    const binding = await browserSessionBinding(env, db, product, sub);
     const session = await createBrowserSession(
       env,
       db,
@@ -2528,7 +2539,10 @@ async function completeBrowserFlow(
       license,
       now,
       req,
-      { accountId: await browserSessionAccount(env, db, product, sub) },
+      {
+        subject: binding?.subject ?? null,
+        accountId: binding?.accountId ?? null,
+      },
     );
     await deleteArtefact(env, stateKey);
     if (!session.ok) {

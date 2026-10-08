@@ -46,7 +46,10 @@ import {
   insertAccount,
   insertLink,
 } from "../src/services/identity/accounts/repo.js";
-import { disableAccount } from "../src/services/identity/accounts/deletion.js";
+import {
+  deleteAccount,
+  disableAccount,
+} from "../src/services/identity/accounts/deletion.js";
 import {
   handleBrowserLogout,
   handleBrowserSession,
@@ -1231,6 +1234,97 @@ describe("claim at next sign-in through a provider: platform product", () => {
         expect((await sessionRead(cookie)).authenticated).toBe(true);
         expect((await registerOn(cookie, DEVICE)).status).toBe(200);
         expect((await sessionRead(cookie, NOW + 60)).authenticated).toBe(true);
+      });
+
+      it("a session opened before the subject had an account ends when that account is disabled", async () => {
+        // No account holds SUB at sign-in: the session is bound to the subject alone.
+        const cookie = await browserSessionSignIn();
+        expect((await sessionRead(cookie)).authenticated).toBe(true);
+        expect((await registerOn(cookie, DEVICE)).status).toBe(200);
+
+        // Later the subject's method joins an account, which is then disabled.
+        const account = await platformLinkedAccount(db, SUB);
+        expect((await sessionRead(cookie)).authenticated).toBe(true);
+        expect(await disableAccount(ctx(), account)).toEqual({ ok: true });
+
+        expect(await sessionRead(cookie)).toEqual({
+          authenticated: false,
+          doc: null,
+        });
+        expect((await registerOn(cookie, DEVICE_2)).status).toBe(403);
+        expect(sessionKeys()).toHaveLength(0);
+      });
+
+      it("a method moved to a disabled account ends it, whichever account it signed in as", async () => {
+        const first = await platformLinkedAccount(db, SUB);
+        const cookie = await browserSessionSignIn();
+        // The subject's method moves to another account, which is disabled; the first stays
+        // active.
+        const second = await platformLinkedAccount(db, "placeholder");
+        await db.run(
+          "UPDATE account_links SET account_id = ? WHERE account_id = ? AND subject = ?",
+          second,
+          first,
+          SUB,
+        );
+        expect((await sessionRead(cookie)).authenticated).toBe(true);
+        expect(await disableAccount(ctx(), second)).toEqual({ ok: true });
+        expect((await sessionRead(cookie)).authenticated).toBe(false);
+        expect(sessionKeys()).toHaveLength(0);
+      });
+
+      it("erasing the account (no row, no method left) ends it", async () => {
+        const account = await platformLinkedAccount(db, SUB);
+        const cookie = await browserSessionSignIn();
+        expect((await sessionRead(cookie)).authenticated).toBe(true);
+        expect(await deleteAccount(ctx(), account)).toEqual({ ok: true });
+        expect(
+          await count(
+            db,
+            "SELECT COUNT(*) AS n FROM accounts WHERE id = ?",
+            account,
+          ),
+        ).toBe(0);
+        expect(
+          await count(
+            db,
+            "SELECT COUNT(*) AS n FROM account_links WHERE subject = ?",
+            SUB,
+          ),
+        ).toBe(0);
+        expect(await sessionRead(cookie)).toEqual({
+          authenticated: false,
+          doc: null,
+        });
+        expect((await registerOn(cookie, DEVICE)).status).toBe(403);
+        expect(sessionKeys()).toHaveLength(0);
+      });
+
+      it("a D1 error while checking reads as signed out, never a 500, and keeps the session", async () => {
+        await platformLinkedAccount(db, SUB);
+        const cookie = await browserSessionSignIn();
+        // D1 fails on the subject's lookup, the check's first read.
+        const first = db.first.bind(db);
+        let failed = 0;
+        const spy = vi.spyOn(db, "first").mockImplementation(((
+          sql: string,
+          ...params: unknown[]
+        ) => {
+          if (sql.includes("FROM account_links")) {
+            failed++;
+            return Promise.reject(new Error("D1 down"));
+          }
+          return first(sql, ...(params as never[]));
+        }) as typeof db.first);
+        expect(await sessionRead(cookie)).toEqual({
+          authenticated: false,
+          doc: null,
+        });
+        expect(failed).toBe(1);
+        spy.mockRestore();
+        // Transient: the record is kept, and the next read finds the session again.
+        expect(sessionKeys()).toHaveLength(1);
+        expect((await sessionRead(cookie)).authenticated).toBe(true);
       });
     });
 
