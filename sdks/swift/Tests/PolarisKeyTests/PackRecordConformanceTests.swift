@@ -56,7 +56,7 @@ private struct PackCorpus: Decodable {
 }
 
 final class PackRecordConformanceTests: XCTestCase {
-    private func corpus() throws -> PackCorpus { try CorpusBundleLoader.load(PackCorpus.self, "cases") }
+    private func corpus() throws -> PackCorpus { try CorpusLocator.load(PackCorpus.self, "cases") }
 
     /// Step 13's key selection from the pinned release keys, then the signature: the payload the
     /// claims see.

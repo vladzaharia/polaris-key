@@ -27,7 +27,7 @@
  * (Console only, decision 4), live permission checks (A-18k).
  */
 
-import type { Db, Env } from "../../../../core/platform.js";
+import { hexEncode, type Db, type Env } from "../../../../core/platform.js";
 import type { ServiceHooks } from "../../../../core/hooks.js";
 import type { AdminSession } from "../../../../core/adminApi.js";
 import { parsePlatformCredentialHandle } from "../../../../core/platformCredentials.js";
@@ -596,10 +596,7 @@ async function hexDigest(
   algo: "SHA-1" | "SHA-256",
   bytes: Uint8Array,
 ): Promise<string> {
-  const d = await crypto.subtle.digest(algo, bytes);
-  return [...new Uint8Array(d)]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+  return hexEncode(await crypto.subtle.digest(algo, bytes));
 }
 
 export interface PlayImageUploadResult {

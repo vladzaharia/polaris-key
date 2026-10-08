@@ -33,8 +33,8 @@ product view and portal capabilities all read that one column. A disabled servic
 if the product had never existed — the same answer an unregistered slug gets, so probing tells a
 caller nothing.
 
-The six service slugs (`license`, `config`, `release`, `distribution`, `update`, `identity`) are
-the current
+The seven service slugs (`license`, `config`, `release`, `distribution`, `update`, `identity`,
+`sync`) are the current
 vocabulary; the pre-suite module names still validate and are translated, so a manifest may mix
 them. `licensing` → license, `oidc` → identity, `edgeMint` → config (edge-minting is a
 secret-**delivery** capability of Config, not a service of its own), and `releases` → release,
@@ -54,7 +54,7 @@ suite existed.
 Leaving it undeclared is meaningfully different from choosing a value: an undeclared product
 tracks the derivation — `requires-license` if License is on, else `requires-identity` if Identity
 is on, else `open` — so turning License off later moves it rather than leaving it pinned to a
-policy nobody wrote. djdl declares all six services and the closed policy:
+policy nobody wrote. djdl declares every service except Cloud Sync, and the closed policy:
 
 ```jsonc
 {

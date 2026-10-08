@@ -6223,6 +6223,66 @@
         }
       }
     },
+    "cli.option.allowWorkflowCommands": {
+      "comment": "Terminal help: what the --allow-workflow-commands flag of the secret and mint commands does. A CI log is a build server's job log (GitHub Actions, Azure Pipelines); a command is an instruction the build server reads from that log.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Print the value even if a CI log would run a line of it as a command"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Den Wert auch ausgeben, wenn ein CI-Log eine Zeile davon als Befehl ausführen würde"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afficher la valeur même si un journal de CI exécuterait l’une de ses lignes comme une commande"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar el valor aunque un registro de CI ejecute una de sus líneas como comando"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar o valor mesmo que um log de CI execute uma linha dele como comando"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostra il valore anche se un log di CI eseguirebbe una sua riga come comando"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CIログが値の行をコマンドとして実行する場合でも値を出力"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CI 로그가 값의 한 줄을 명령으로 실행하더라도 값을 출력"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "即使CI日志会将其中一行作为命令执行，也输出该值"
+          }
+        }
+      }
+    },
     "cli.option.ascii": {
       "comment": "Terminal help: what the --ascii flag does.",
       "extractionState": "manual",
@@ -6579,6 +6639,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "退出登录前不再询问"
+          }
+        }
+      }
+    },
+    "cli.output.workflowCommand": {
+      "comment": "Terminal: the secret or mint command did not print its value (a secret or a token) because the build server reading the output would treat a line of it as an instruction. {command} is a command line (the same command with --allow-workflow-commands). Arguments: 1=command.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The value was not printed: this CI log would run a line of it as a command. To print it anyway, run %1$@."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Wert wurde nicht ausgegeben: Dieses CI-Log würde eine Zeile davon als Befehl ausführen. Um ihn trotzdem auszugeben, führen Sie %1$@ aus."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La valeur n’a pas été affichée : ce journal de CI exécuterait l’une de ses lignes comme une commande. Pour l’afficher quand même, exécutez %1$@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se ha mostrado el valor: este registro de CI ejecutaría una de sus líneas como comando. Para mostrarlo de todos modos, ejecuta %1$@."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O valor não foi mostrado: este log de CI executaria uma linha dele como comando. Para mostrá-lo mesmo assim, execute %1$@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il valore non è stato mostrato: questo log di CI eseguirebbe una sua riga come comando. Per mostrarlo comunque, esegui %1$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "値を出力していません。このCIログでは、値の行がコマンドとして実行されます。それでも出力するには%1$@を実行してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "값을 출력하지 않았어요. 이 CI 로그는 값의 한 줄을 명령으로 실행해요. 그래도 출력하려면 실행하세요: %1$@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未输出该值：此CI日志会将其中一行作为命令执行。如仍要输出，请运行%1$@。"
           }
         }
       }

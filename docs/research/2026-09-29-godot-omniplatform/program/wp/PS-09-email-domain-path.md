@@ -4,13 +4,24 @@
 | ----------- | ---------------------------------------------------------------------------------------------- |
 | Phase       | PS: Polaris Key storefront: the Library as a distribution channel (S-21) (phase 4: more paths) |
 | Size        | 0.5–0.8 engineer-weeks                                                                         |
-| Depends on  | [PS-03](PS-03-obtain-path-engine.md)                                                           |
+| Depends on  | none                                                                                           |
 | Unblocks    | none                                                                                           |
 | Role        | `pkey-implementer`                                                                             |
 | Plan mode   | no                                                                                             |
 | Gates       | rule 9 (mutation-table entry); THREAT-MODEL (S4); workerd                                      |
 | Human input | none                                                                                           |
 | Repo        | `vladzaharia/polaris-key`                                                                      |
+
+## Consolidation 2026-10-07
+
+> **Closed 2026-10-07 (DX consolidation): merged into [LX-36](LX-36-access-policy-license-access-absorbs-ps.md).** The id stays in the graph as `dropped` so it
+> is not reused; do not build this package. Its scope moves to [LX-36](LX-36-access-policy-license-access-absorbs-ps.md).
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **merge** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> An email-domain rule is one branch of license.access; autoIssue.emailDomains is never created.
+
+- Dependencies cleared on closing (they were PS-03), so nothing in the graph waits on or through a closed package.
 
 ## Goal
 

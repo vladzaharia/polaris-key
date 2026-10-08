@@ -11,7 +11,7 @@ import { ErrorState } from "../../../ui/ErrorState.js";
 import { ProductLogo } from "../../../ui/ProductLogo.js";
 import { ServiceGlyph, serviceLabel } from "../../../ui/ServiceBadge.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { useProducts } from "../../data/hooks.js";
 import { Link } from "../../router.js";
 import { r } from "../../routes.js";
@@ -341,7 +341,7 @@ export function ProductCard({
   return (
     <article
       aria-label={name}
-      className="relative flex w-full min-w-0 flex-col gap-3 rounded-lg border border-border bg-surface-raised p-4 hover:border-border-strong light:shadow-elevation-1 has-[a[data-card-link]:focus-visible]:ring-2 has-[a[data-card-link]:focus-visible]:ring-focus has-[a[data-card-link]:focus-visible]:ring-offset-2 has-[a[data-card-link]:focus-visible]:ring-offset-background max-sm:flex-row max-sm:items-center max-sm:py-3"
+      className="relative flex w-full min-w-0 flex-col gap-3 rounded-lg border border-border bg-surface-raised p-4 hover:border-border-strong light:shadow-elevation-1 has-[a[data-card-link]:focus-visible]:ring-2 has-[a[data-card-link]:focus-visible]:ring-focus has-[a[data-card-link]:focus-visible]:ring-offset-2 has-[a[data-card-link]:focus-visible]:ring-offset-surface-page max-sm:flex-row max-sm:items-center max-sm:py-3"
     >
       <div
         data-card-header=""
@@ -355,7 +355,7 @@ export function ProductCard({
         />
         <div className="min-w-0 flex-1">
           <h3
-            className="line-clamp-2 break-words text-base font-semibold text-fg-strong max-sm:line-clamp-1"
+            className="line-clamp-2 break-words text-base font-bold text-fg-strong max-sm:line-clamp-1"
             title={name}
           >
             <Link

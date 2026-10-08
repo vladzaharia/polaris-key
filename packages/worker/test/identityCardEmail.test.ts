@@ -23,6 +23,7 @@ import {
 } from "../src/core/accountCookies.js";
 import { TURNSTILE_VERIFY_URL } from "../src/services/identity/card/turnstile.js";
 import { EMAIL_RESEND_AFTER_SECONDS } from "../src/services/identity/card/emailSignIn.js";
+import { disableAccount } from "../src/services/identity/accounts/deletion.js";
 
 // I-07: the login card's email sign-in (S-16 §5.4 item 4; PORTAL.md §4.1, §4.4). A code and a
 // magic link in one email, bound to the browser that asked; identical answers for known and
@@ -371,6 +372,63 @@ describe("magic link", () => {
     ).toBe(302);
     asker.jar.set(SIGNIN_FLOW_COOKIE, flow);
     expect((await asker.send("POST", VERIFY, { code })).status).toBe(400);
+  });
+});
+
+describe("an account that can't sign in (SIGN-IN.md §3.13, Account disabled)", () => {
+  async function disabledAda(w: CardWorld): Promise<void> {
+    const account = await getOrCreateAccountByEmail(
+      w.db,
+      "ada@example.com",
+      NOW,
+    );
+    expect(
+      await disableAccount(
+        { db: w.db, env: w.env, now: NOW, origin: "https://key.plrs.im" },
+        account.id,
+      ),
+    ).toEqual({ ok: true });
+  }
+
+  it("the code answers 403 forbidden, naming no channel to contact", async () => {
+    const w = await seededWorld();
+    await disabledAda(w);
+    const d = new Device(w);
+    const res = await d.signInWithCode("ada@example.com");
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({
+      error: "forbidden",
+      message: "This account can't sign in.",
+    });
+    expect(d.jar.has(ACCOUNT_SESSION_COOKIE)).toBe(false);
+  });
+
+  it("the link's page offers another account, back where the sign-in was headed", async () => {
+    const w = await seededWorld();
+    await disabledAda(w);
+    const asker = new Device(w);
+    await asker.send("POST", START, {
+      email: "ada@example.com",
+      returnTo: "/#/p/acme",
+    });
+    const token = new URL(lastLink(w, "ada@example.com")).searchParams.get(
+      "token",
+    )!;
+    const res = await asker.send(
+      "POST",
+      "/magic/verify",
+      { token },
+      { form: true },
+    );
+    expect(res.status).toBe(403);
+    const html = await res.text();
+    expect(html).toMatch(/This account can(&#39;|&#x27;|')t sign in/);
+    expect(html).toContain(
+      '<a class="button" href="/#/p/acme">Sign in with another account</a>',
+    );
+    expect(html).not.toContain("Polaris Key support");
+    expect(html).not.toContain("Back to ");
+    expect(asker.jar.has(ACCOUNT_SESSION_COOKIE)).toBe(false);
   });
 });
 

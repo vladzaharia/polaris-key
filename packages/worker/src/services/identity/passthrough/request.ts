@@ -30,7 +30,7 @@ import {
   REQUEST_HANDLE_TTL_SECONDS,
   type ClientKind,
 } from "@polaris-key/protocol/identity";
-import { hashKey, type Env } from "../../../core/platform.js";
+import { hashKey, randomToken, type Env } from "../../../core/platform.js";
 import {
   artefactRef,
   getArtefact,
@@ -56,18 +56,6 @@ export interface SignInRequestRecord {
   binder: string;
   /** Epoch seconds. */
   expiresAt: number;
-}
-
-function b64url(bytes: Uint8Array): string {
-  let s = "";
-  for (const b of bytes) s += String.fromCharCode(b);
-  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function random(n: number): string {
-  const a = new Uint8Array(n);
-  crypto.getRandomValues(a);
-  return b64url(a);
 }
 
 /** True for a string shaped like a handle. Anything else is never looked up. */
@@ -120,8 +108,8 @@ export async function createSignInRequest(
   now: number,
 ): Promise<{ handle: string; setCookie: string | null }> {
   const existing = readBinder(req);
-  const binder = existing ?? random(32);
-  const handle = `rq_${random(16)}`;
+  const binder = existing ?? randomToken(32);
+  const handle = `rq_${randomToken(16)}`;
   const record: SignInRequestRecord = {
     product: init.product,
     kind: init.kind,

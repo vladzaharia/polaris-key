@@ -46,7 +46,18 @@ import {
   insertAccount,
   insertLink,
 } from "../src/services/identity/accounts/repo.js";
-import { disableAccount } from "../src/services/identity/accounts/deletion.js";
+import {
+  deleteAccount,
+  disableAccount,
+} from "../src/services/identity/accounts/deletion.js";
+import {
+  handleBrowserLogout,
+  handleBrowserSession,
+} from "../src/services/identity/browserSession.js";
+import { handleRegister } from "../src/core/register.js";
+import { SERVICES } from "../src/mount.js";
+import { serializeServices } from "../src/core/services.js";
+import { setServices } from "../src/repo.js";
 import {
   parseSunsetDate,
   platformMigrationReport,
@@ -365,9 +376,13 @@ describe("claim at next sign-in through a provider: platform product", () => {
     sub = SUB,
     /** Runs between the start and the callback (e.g. the sunset passing meanwhile). */
     meanwhile: () => void = () => {},
+    /** The app page the flow returns to (`return_to`), if any. */
+    returnTo?: string,
   ): Promise<Response> {
     const start = await handleAuthStart(
-      new Request(`${ORIGIN}/djdl/identity/auth/start`) as unknown as Request,
+      new Request(
+        `${ORIGIN}/djdl/identity/auth/start${returnTo ? `?return_to=${encodeURIComponent(returnTo)}` : ""}`,
+      ) as unknown as Request,
       env,
       db,
       product,
@@ -809,12 +824,26 @@ describe("claim at next sign-in through a provider: platform product", () => {
       };
     }
 
-    async function expectRefusedPage(res: Response): Promise<void> {
+    /** SIGN-IN.md §3.13's Account disabled page: never a dead end. **Sign in with another
+     *  account** goes to Polaris Key's sign-in (not back into the IdP that just signed the same
+     *  subject in); **Back to <Product>** only when the flow came from an app page. */
+    async function expectRefusedPage(
+      res: Response,
+      back?: { href: string; name: string },
+    ): Promise<void> {
       expect(res.status).toBe(403);
       expect(res.headers.get("location")).toBeNull();
       const html = await res.text();
       expect(html).toMatch(/This account can(&#39;|&#x27;|')t sign in/);
-      expect(html).toContain("Contact Polaris Key support.");
+      expect(html).not.toContain("Polaris Key support");
+      expect(html).toContain(
+        '<a class="button" href="/">Sign in with another account</a>',
+      );
+      if (back)
+        expect(html).toContain(
+          `<a class="button secondary" href="${back.href}">Back to ${back.name}</a>`,
+        );
+      else expect(html).not.toContain("Back to ");
     }
 
     /** A device-code flow up to its callback; `poll` is then the device-code holder's poll. */
@@ -929,6 +958,17 @@ describe("claim at next sign-in through a provider: platform product", () => {
       expect(await snapshot()).toEqual(before);
     });
 
+    it("a sign-in from an app page offers the way back to it", async () => {
+      const account = await platformLinkedAccount(db, SUB);
+      expect(await disableAccount(ctx(), account)).toEqual({ ok: true });
+      const before = await snapshot();
+      await expectRefusedPage(
+        await browserSignIn(undefined, SUB, undefined, `${ORIGIN}/djdl/app`),
+        { href: `${ORIGIN}/djdl/app`, name: product.name },
+      );
+      expect(await snapshot()).toEqual(before);
+    });
+
     it("a method still keyed by the pre-I-01 literal counts as the subject's account", async () => {
       env.PLATFORM_OIDC_MIGRATION = "claim";
       const account = await platformLinkedAccount(db, SUB);
@@ -1023,6 +1063,298 @@ describe("claim at next sign-in through a provider: platform product", () => {
       const { callback, poll } = await deviceSignIn();
       expect(callback.status).toBe(200);
       expect((await poll()).status).toBe("ready");
+    });
+
+    // ── the residual, closed: a live product browser session ends with its account ─────────
+
+    describe("a live product browser session (the N9 residual)", () => {
+      const DEVICE = "AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH";
+      const DEVICE_2 = "IIIIJJJJKKKKLLLLMMMMNNNNOOOOPPPP";
+      const COOKIE = "pkey_djdl_session";
+
+      beforeEach(async () => {
+        // License, Config and Identity on; registration only behind a product sign-in.
+        await setServices(
+          db,
+          "djdl",
+          serializeServices({
+            services: {
+              license: { enabled: true },
+              config: { enabled: true },
+              release: { enabled: false },
+              distribution: { enabled: false },
+              update: { enabled: false },
+              identity: { enabled: true },
+              sync: { enabled: false },
+            },
+            registration: "requires-identity",
+          }),
+          "manifest",
+          NOW,
+        );
+        product = (await loadProduct(env, db, "djdl"))!;
+        expect(product.registration).toBe("requires-identity");
+      });
+
+      /** The `return_to` browser flow: the callback answers with the product session cookie. */
+      async function browserSessionSignIn(sub = SUB): Promise<string> {
+        const returnTo = encodeURIComponent(`${ORIGIN}/djdl/app`);
+        const start = await handleAuthStart(
+          new Request(
+            `${ORIGIN}/djdl/identity/auth/start?return_to=${returnTo}`,
+          ) as unknown as Request,
+          env,
+          db,
+          product,
+        );
+        expect(start.status).toBe(302);
+        const binder = cookieOf(start, LICENSE_CHOICE_BINDER_COOKIE);
+        const authorize = new URL(start.headers.get("location")!);
+        installIdp({
+          sub,
+          groups: ["members"],
+          nonce: authorize.searchParams.get("nonce"),
+        });
+        const res = await handleAuthCallback(
+          new Request(
+            `${ORIGIN}/djdl/identity/auth/callback?code=c&state=${authorize.searchParams.get("state")}`,
+            {
+              headers: binder
+                ? { cookie: `${LICENSE_CHOICE_BINDER_COOKIE}=${binder}` }
+                : {},
+            },
+          ) as unknown as Request,
+          env,
+          db,
+          product,
+          NOW,
+        );
+        expect(res.status).toBe(302);
+        expect(res.headers.get("location")).toBe(`${ORIGIN}/djdl/app`);
+        const value = cookieOf(res, COOKIE);
+        expect(value).toBeTruthy();
+        return `${COOKIE}=${value}`;
+      }
+
+      async function sessionRead(cookie: string, at = NOW + 10) {
+        const res = await handleBrowserSession(
+          new Request(`${ORIGIN}/djdl/identity/session`, {
+            headers: { cookie },
+          }) as unknown as Request,
+          env,
+          db,
+          product,
+          at,
+        );
+        expect(res.status).toBe(200);
+        return (await res.json()) as {
+          authenticated: boolean;
+          doc: unknown;
+        };
+      }
+
+      async function registerOn(cookie: string, device: string) {
+        return handleRegister(
+          new Request(`${ORIGIN}/djdl/devices/register`, {
+            method: "POST",
+            headers: { "x-pkey-device": device, cookie },
+          }) as unknown as Request,
+          env,
+          db,
+          product,
+          NOW + 10,
+          SERVICES,
+        );
+      }
+
+      /** Every device seat and its credential: what disabling the account must not touch. */
+      const seats = () =>
+        db.all<{
+          device_id: string;
+          license_id: string;
+          status: string;
+          token_hash: string | null;
+        }>(
+          "SELECT device_id, license_id, status, token_hash FROM devices WHERE product = 'djdl' ORDER BY device_id",
+        );
+
+      const sessionKeys = () =>
+        (env.HOT as unknown as KvMock)
+          .keys()
+          .filter((k) => k.startsWith("p:djdl:browser-session:"));
+
+      it("disabling the account ends it: signed out, no registration, seats and tokens kept", async () => {
+        const account = await platformLinkedAccount(db, SUB);
+        const cookie = await browserSessionSignIn();
+        expect(sessionKeys()).toHaveLength(1);
+
+        // Live: the page reads its settings and the session registers a device.
+        expect((await sessionRead(cookie)).authenticated).toBe(true);
+        expect((await registerOn(cookie, DEVICE)).status).toBe(200);
+        const before = await seats();
+        expect(before.map((d) => d.device_id)).toEqual(
+          expect.arrayContaining([
+            DEVICE,
+            `browser:${(await licenseOf())!.id}`,
+          ]),
+        );
+        expect(before.every((d) => d.status === "authorized")).toBe(true);
+
+        expect(await disableAccount(ctx(), account)).toEqual({ ok: true });
+
+        // Ended: signed out, and it registers nothing more.
+        expect(await sessionRead(cookie)).toEqual({
+          authenticated: false,
+          doc: null,
+        });
+        const refused = await registerOn(cookie, DEVICE_2);
+        expect(refused.status).toBe(403);
+        expect(await refused.json()).toEqual({
+          error: { code: "registration_closed" },
+        });
+        expect(sessionKeys()).toHaveLength(0);
+
+        // The seats are the licence's: every one is still authorized, with its token.
+        expect(await seats()).toEqual(before);
+        for (const d of before)
+          expect(
+            await env.HOT.get(`p:djdl:token:${d.token_hash}`),
+          ).not.toBeNull();
+
+        // Sign-out finds nothing to end, and still deauthorizes no seat.
+        const logout = await handleBrowserLogout(
+          new Request(`${ORIGIN}/djdl/identity/auth/logout`, {
+            method: "POST",
+            headers: { cookie },
+          }) as unknown as Request,
+          env,
+          db,
+          product,
+          NOW + 20,
+        );
+        expect(logout.status).toBe(200);
+        expect(await seats()).toEqual(before);
+      });
+
+      it("an account whose deletion is under way ends it the same way", async () => {
+        const account = await platformLinkedAccount(db, SUB);
+        const cookie = await browserSessionSignIn();
+        expect((await sessionRead(cookie)).authenticated).toBe(true);
+        await db.run(
+          "UPDATE accounts SET status = 'deleted', deleted_at = ? WHERE id = ?",
+          NOW,
+          account,
+        );
+        expect((await sessionRead(cookie)).authenticated).toBe(false);
+        expect((await registerOn(cookie, DEVICE)).status).toBe(403);
+      });
+
+      it("a subject with no account keeps its session, beside a disabled account", async () => {
+        const other = await platformLinkedAccount(db, "someone-else");
+        const cookie = await browserSessionSignIn();
+        expect(await disableAccount(ctx(), other)).toEqual({ ok: true });
+        expect((await sessionRead(cookie)).authenticated).toBe(true);
+        expect((await registerOn(cookie, DEVICE)).status).toBe(200);
+      });
+
+      it("an active account's session lives on", async () => {
+        await platformLinkedAccount(db, SUB);
+        const cookie = await browserSessionSignIn();
+        expect((await sessionRead(cookie)).authenticated).toBe(true);
+        expect((await registerOn(cookie, DEVICE)).status).toBe(200);
+        expect((await sessionRead(cookie, NOW + 60)).authenticated).toBe(true);
+      });
+
+      it("a session opened before the subject had an account ends when that account is disabled", async () => {
+        // No account holds SUB at sign-in: the session is bound to the subject alone.
+        const cookie = await browserSessionSignIn();
+        expect((await sessionRead(cookie)).authenticated).toBe(true);
+        expect((await registerOn(cookie, DEVICE)).status).toBe(200);
+
+        // Later the subject's method joins an account, which is then disabled.
+        const account = await platformLinkedAccount(db, SUB);
+        expect((await sessionRead(cookie)).authenticated).toBe(true);
+        expect(await disableAccount(ctx(), account)).toEqual({ ok: true });
+
+        expect(await sessionRead(cookie)).toEqual({
+          authenticated: false,
+          doc: null,
+        });
+        expect((await registerOn(cookie, DEVICE_2)).status).toBe(403);
+        expect(sessionKeys()).toHaveLength(0);
+      });
+
+      it("a method moved to a disabled account ends it, whichever account it signed in as", async () => {
+        const first = await platformLinkedAccount(db, SUB);
+        const cookie = await browserSessionSignIn();
+        // The subject's method moves to another account, which is disabled; the first stays
+        // active.
+        const second = await platformLinkedAccount(db, "placeholder");
+        await db.run(
+          "UPDATE account_links SET account_id = ? WHERE account_id = ? AND subject = ?",
+          second,
+          first,
+          SUB,
+        );
+        expect((await sessionRead(cookie)).authenticated).toBe(true);
+        expect(await disableAccount(ctx(), second)).toEqual({ ok: true });
+        expect((await sessionRead(cookie)).authenticated).toBe(false);
+        expect(sessionKeys()).toHaveLength(0);
+      });
+
+      it("erasing the account (no row, no method left) ends it", async () => {
+        const account = await platformLinkedAccount(db, SUB);
+        const cookie = await browserSessionSignIn();
+        expect((await sessionRead(cookie)).authenticated).toBe(true);
+        expect(await deleteAccount(ctx(), account)).toEqual({ ok: true });
+        expect(
+          await count(
+            db,
+            "SELECT COUNT(*) AS n FROM accounts WHERE id = ?",
+            account,
+          ),
+        ).toBe(0);
+        expect(
+          await count(
+            db,
+            "SELECT COUNT(*) AS n FROM account_links WHERE subject = ?",
+            SUB,
+          ),
+        ).toBe(0);
+        expect(await sessionRead(cookie)).toEqual({
+          authenticated: false,
+          doc: null,
+        });
+        expect((await registerOn(cookie, DEVICE)).status).toBe(403);
+        expect(sessionKeys()).toHaveLength(0);
+      });
+
+      it("a D1 error while checking reads as signed out, never a 500, and keeps the session", async () => {
+        await platformLinkedAccount(db, SUB);
+        const cookie = await browserSessionSignIn();
+        // D1 fails on the subject's lookup, the check's first read.
+        const first = db.first.bind(db);
+        let failed = 0;
+        const spy = vi.spyOn(db, "first").mockImplementation(((
+          sql: string,
+          ...params: unknown[]
+        ) => {
+          if (sql.includes("FROM account_links")) {
+            failed++;
+            return Promise.reject(new Error("D1 down"));
+          }
+          return first(sql, ...(params as never[]));
+        }) as typeof db.first);
+        expect(await sessionRead(cookie)).toEqual({
+          authenticated: false,
+          doc: null,
+        });
+        expect(failed).toBe(1);
+        spy.mockRestore();
+        // Transient: the record is kept, and the next read finds the session again.
+        expect(sessionKeys()).toHaveLength(1);
+        expect((await sessionRead(cookie)).authenticated).toBe(true);
+      });
     });
 
     it("a custom-issuer product's subject resolves no account: unchanged", async () => {

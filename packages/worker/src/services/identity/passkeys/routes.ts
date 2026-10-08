@@ -28,7 +28,13 @@
  *     id: one "Polaris Key" entry per authenticator.
  */
 
-import type { Db, Env } from "../../../core/platform.js";
+import {
+  CARD_RETURN_TO,
+  randomToken,
+  safeReturnTo,
+  type Db,
+  type Env,
+} from "../../../core/platform.js";
 import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
 import {
   PASSKEY_FLOW_COOKIE,
@@ -47,9 +53,9 @@ import {
 import { portalAudit, portalAuthCapabilities } from "../portal/repo.js";
 import { sendSecurityNotice } from "../portal/email.js";
 import { signInMethodAddedNotice } from "../portal/notices.js";
-import { browserLabel, randomSecret } from "../portal/accountSessions.js";
+import { browserLabel } from "../portal/accountSessions.js";
 import { finishSignIn } from "../card/finish.js";
-import { cardJson, safeReturnTo } from "../card/http.js";
+import { ACCOUNT_DISABLED_MESSAGE, cardJson } from "../card/http.js";
 import {
   MAX_PASSKEYS_PER_ACCOUNT,
   accountUserHandle,
@@ -191,7 +197,7 @@ export async function handlePasskeySignInOptions(
   const body = await readBoundedJson(req);
   if (!body)
     return cardJson({ error: "bad_request", message: "invalid json" }, 400);
-  const returnTo = safeReturnTo(req, body.returnTo);
+  const returnTo = safeReturnTo(req, body.returnTo, CARD_RETURN_TO);
   if (body.returnTo !== undefined && body.returnTo !== null && !returnTo) {
     return cardJson(
       { error: "bad_request", message: "invalid return URL" },
@@ -199,7 +205,7 @@ export async function handlePasskeySignInOptions(
     );
   }
   const options = await signInOptions(rp);
-  const secret = randomSecret(32);
+  const secret = randomToken(32);
   await putCeremony(env, await signInCeremonyRef(env, secret), {
     v: 1,
     purpose: "signin",
@@ -299,7 +305,7 @@ export async function handlePasskeySignInVerify(
     return cardJson(
       {
         error: "forbidden",
-        message: "This account can't sign in. Contact Polaris Key support.",
+        message: ACCOUNT_DISABLED_MESSAGE,
       },
       403,
       [clearPasskeyFlow()],

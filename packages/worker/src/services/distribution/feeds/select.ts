@@ -35,8 +35,8 @@
  * Reads Release only through the catalog hook, and Distribution's own tables directly.
  */
 
+import { parseJsonColumn, type Db, type Env } from "../../../core/platform.js";
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
-import type { Db, Env } from "../../../core/platform.js";
 import {
   DEFAULT_TRANSPORT,
   type CatalogBuild,
@@ -56,11 +56,7 @@ import {
   transportOf,
 } from "../availability.js";
 import { fileDeliveryUrl } from "../delivery.js";
-import {
-  listOutlets,
-  parseJsonColumn,
-  type DistOutletRow,
-} from "../outlets.js";
+import { listOutlets, type DistOutletRow } from "../outlets.js";
 import { FULL_ROLLOUT_BP, type DistRolloutRow } from "../rollouts.js";
 import { readinessReader, type ReadinessReader } from "../readiness.js";
 import type { RenderListing } from "./render.js";

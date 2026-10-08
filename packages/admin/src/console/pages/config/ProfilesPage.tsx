@@ -7,7 +7,7 @@ import { Button } from "../../../ui/Button.js";
 import { DataTable, type DataColumn } from "../../../ui/data-table/index.js";
 import { EmptyState } from "../../../ui/EmptyState.js";
 import { Timestamp } from "../../../ui/Timestamp.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { Link, navigate } from "../../router.js";
 import { r } from "../../routes.js";
 import { CollectionTemplate } from "../../templates/Collection.js";

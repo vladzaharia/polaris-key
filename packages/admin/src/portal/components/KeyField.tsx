@@ -102,7 +102,7 @@ export function KeyField({
       >
         <div
           aria-hidden
-          className="min-h-[3.25rem] whitespace-pre-wrap py-3.5 pl-4 pr-24 font-mono text-[0.9375rem] leading-6 [overflow-wrap:anywhere] [word-break:break-all]"
+          className="min-h-[3.25rem] whitespace-pre-wrap py-3.5 pl-4 pr-24 font-mono text-md leading-6 [overflow-wrap:anywhere] [word-break:break-all]"
         >
           {value ? (
             parts ? (
@@ -145,7 +145,7 @@ export function KeyField({
               e.currentTarget.form?.requestSubmit();
             }
           }}
-          className="absolute inset-0 size-full resize-none overflow-hidden bg-transparent py-3.5 pl-4 pr-24 font-mono text-[0.9375rem] leading-6 text-transparent caret-fg-strong outline-none [overflow-wrap:anywhere] [word-break:break-all] focus-visible:ring-0 focus-visible:ring-offset-0"
+          className="absolute inset-0 size-full resize-none overflow-hidden bg-transparent py-3.5 pl-4 pr-24 font-mono text-md leading-6 text-transparent caret-fg-strong outline-none [overflow-wrap:anywhere] [word-break:break-all] focus-visible:ring-0 focus-visible:ring-offset-0"
         />
         <div className="absolute right-2 top-2.5 flex items-center">
           {value === "" ? (

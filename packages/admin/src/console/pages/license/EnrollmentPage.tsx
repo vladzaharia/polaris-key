@@ -24,11 +24,10 @@ import {
 import { useProduct } from "../../data/hooks.js";
 import { mutate } from "../../data/mutations.js";
 import { qk } from "../../data/queries.js";
-import { queryClient } from "../../data/queryClient.js";
 import { r } from "../../routes.js";
 import { Link } from "../../router.js";
 import { useTableUrlState } from "../../useTableUrlState.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { useResyncFlow } from "../../components/ResyncDialog.js";
 import {
   SettingsRow,
@@ -111,13 +110,10 @@ export function policyPatch(mode: FingerprintMode): {
 }
 
 export function EnrollmentPage({ slug }: { slug: string }): React.ReactElement {
-  const policyQ = useQuery(
-    {
-      queryKey: qk.fingerprintPolicy(slug),
-      queryFn: () => api.fingerprintPolicy(slug),
-    },
-    queryClient,
-  );
+  const policyQ = useQuery({
+    queryKey: qk.fingerprintPolicy(slug),
+    queryFn: () => api.fingerprintPolicy(slug),
+  });
   return (
     <SettingsTemplate
       header={
@@ -207,10 +203,10 @@ function ProbesShell({
 }
 
 function RegistrationSection({ slug }: { slug: string }): React.ReactElement {
-  const servicesQ = useQuery(
-    { queryKey: qk.services(slug), queryFn: () => api.services(slug) },
-    queryClient,
-  );
+  const servicesQ = useQuery({
+    queryKey: qk.services(slug),
+    queryFn: () => api.services(slug),
+  });
   const data = servicesQ.data;
   const label = (v: string) => REGISTRATION_LABELS[v] ?? v;
   return (

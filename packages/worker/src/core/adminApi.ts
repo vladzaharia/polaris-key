@@ -93,6 +93,5 @@ export {
   licenseSummary,
   type KeyEntryListContext,
   loadCatalog,
-  parseJsonColumn,
-  parseJsonList,
+  readActiveCatalog,
 } from "../admin/lib/shape.js";

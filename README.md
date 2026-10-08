@@ -3,12 +3,13 @@
 A reusable, multi-product **licensing + remotely-managed-config + release-delivery**
 platform — a single Cloudflare Worker at `key.plrs.im` plus SDKs for **Node, React, Python,
 Swift, Godot and Kotlin**. An always-on **Core** substrate (product registry, the device principal, trust
-and signing, discovery, rate limiting, audit) carries six services a product opts into one
+and signing, discovery, rate limiting, audit) carries seven services a product opts into one
 at a time: **License** (activation, tiers, entitlements), **Config** (signed config/secret
 delivery, edge token minting), **Release** (GitHub-connected release truth, artifacts,
 changelogs), **Distribution** (how releases reach devices and outlets: transports,
-availability, rollouts), **Update** (Sparkle appcasts, version feeds), and **Identity** (OIDC,
-browser sessions, customer portal). Release, Distribution and Update form a chain —
+availability, rollouts), **Update** (Sparkle appcasts, version feeds), **Identity** (OIDC,
+browser sessions, customer portal), and **Cloud Sync** (per-person saves and settings across
+devices; it requires Config and Identity). Release, Distribution and Update form a chain —
 release ← distribution ← update — and read one another only through Core's descriptor hooks. Any product registers as data (no worker redeploy) and enables
 only what it uses — Config serves any registered device with no licence in the picture.
 Extracted and generalized from DJDL's baked-in system; djdl is the first product.
@@ -35,7 +36,7 @@ sdks/
                                                runner; Android :platform (the backend Godot binds),
                                                :android glue and the Compose :ui kit
 conformance/         corpus/v2 (one signer's golden vectors) + the Node and browser runners
-tools/               sign-corpus.ts · gen-mirrors.ts · gen-services.ts + services.json (the service table)
+tools/               sign-corpus.ts (+ corpus/) · gen-mirrors.ts · gen-services.ts + services.json (the service table)
 products/            per-product data (catalog.json + product.json) + gen-seed
 docs/                CONCEPTS · ADOPTER-GUIDE · CONFIG-AUTHORING · RUNBOOK · DEPLOYMENT
                      security/ (threat model, wire contract v4, audit + findings)

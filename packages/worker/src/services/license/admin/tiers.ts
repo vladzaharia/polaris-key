@@ -6,9 +6,12 @@
  * resync never overwrites or deletes it; a manifest tier edited here is claimed.
  */
 
-import type { Db } from "../../../core/platform.js";
+import {
+  parseJsonStringList,
+  randomId,
+  type Db,
+} from "../../../core/platform.js";
 import { ErrorCode } from "../../../core/errors.js";
-import { randomId } from "../../../core/platform.js";
 import {
   adminJson,
   adminNotFound,
@@ -18,7 +21,6 @@ import {
   err,
   listProfiles,
   listTiers,
-  parseJsonList,
   readBody,
   upsertTier,
   WriteChecks,
@@ -96,7 +98,7 @@ export async function handleTiers(
           policyExpiryDays: t.policy_expiry_days,
           policyDeviceLimit: t.policy_device_limit,
           // R11-06: guarded — a corrupt tiers.channels_json must not 500 the tier list.
-          channels: parseJsonList(t.channels_json),
+          channels: parseJsonStringList(t.channels_json),
           minVersion: t.min_version,
           maxVersion: t.max_version,
           // ST-01b: who owns the row; a resync leaves `console` rows alone.

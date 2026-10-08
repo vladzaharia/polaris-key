@@ -4,13 +4,24 @@
 | ----------- | ----------------------------------------------------------------------------- |
 | Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (could) |
 | Size        | 1–1.5 engineer-weeks                                                          |
-| Depends on  | [UK-11](UK-11-godot-kit.md), [UK-04](UK-04-web-components.md)                 |
+| Depends on  | none                                                                          |
 | Unblocks    | none                                                                          |
 | Role        | `pkey-godot-engineer`                                                         |
 | Plan mode   | no                                                                            |
 | Gates       | Godot screenshots in both themes; `sdks/godot/tools/run_tests.sh`             |
 | Human input | none                                                                          |
 | Repo        | `vladzaharia/polaris-key`                                                     |
+
+## Consolidation 2026-10-07
+
+> **Closed 2026-10-07 (DX consolidation): dropped.** The id stays in the graph as `dropped` so it
+> is not reused; do not build this package.
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **drop** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Godot web-export overlay (icebox); the elements already embed in HTML5 exports.
+
+- Dependencies cleared on closing (they were UK-11 and UK-04), so nothing in the graph waits on or through a closed package.
 
 ## Goal
 

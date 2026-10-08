@@ -1198,6 +1198,8 @@
     <string name="cli_option_yes">로그아웃 전에 확인하지 않음</string>
     <!-- Terminal help: what the -device-code flag does. -->
     <string name="cli_option_deviceCode">이 컴퓨터의 브라우저 대신 코드로 로그인</string>
+    <!-- Terminal help: what the -allow-workflow-commands flag of the secret and mint commands does. A CI log is a build server's job log (GitHub Actions, Azure Pipelines); a command is an instruction the build server reads from that log. -->
+    <string name="cli_option_allowWorkflowCommands">CI 로그가 값의 한 줄을 명령으로 실행하더라도 값을 출력</string>
     <!-- Terminal key hints under the license key prompt. Each part is a key name, a space, then what it does; keep the key first and the ' · ' separators. -->
     <string name="cli_keys_activate">Enter 활성화 · Esc 취소</string>
     <!-- Terminal key hints while waiting for a code sign-in. 'c' is the key to press; keep the key first and the ' · ' separators. -->
@@ -1254,6 +1256,8 @@
     <string name="cli_config_unset">%1$s에 값이 없어요.</string>
     <!-- Terminal: the secret command found nothing. {name} is the secret's key. Arguments: 1=name. -->
     <string name="cli_secret_none">이 기기에 전달된 %1$s 시크릿이 없어요.</string>
+    <!-- Terminal: the secret or mint command did not print its value (a secret or a token) because the build server reading the output would treat a line of it as an instruction. {command} is a command line (the same command with -allow-workflow-commands). Arguments: 1=command. -->
+    <string name="cli_output_workflowCommand">값을 출력하지 않았어요. 이 CI 로그는 값의 한 줄을 명령으로 실행해요. 그래도 출력하려면 실행하세요: %1$s</string>
     <!-- Terminal offline activation: what to do with the activation file. {command} is a command line. Arguments: 1=command. -->
     <string name="cli_offline_import">그런 다음 받은 파일로 다음 명령을 실행하세요: %1$s</string>
     <!-- Terminal diagnostics: the row label for the SDK name and version. -->

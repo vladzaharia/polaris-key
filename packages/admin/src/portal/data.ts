@@ -294,8 +294,9 @@ export function useClaimDiscover() {
 /**
  * Remove from library (PS-04): an open product's ENTRY only (`DELETE /api/library/<p>`); a
  * licence leaves only by its own removal. A 404 means it is gone already (another tab): the same
- * outcome, so it resolves as removed. The library, Discover (the product may be offered again)
- * and the product's views refresh.
+ * outcome, so it resolves as removed. `inLibrary: true` means a licence keeps the product (the
+ * entry was replaced by one meanwhile, PS-05). The library, Discover (the product may be offered
+ * again) and the product's views refresh.
  */
 export function useRemoveLibraryEntry() {
   const qc = useQueryClient();
@@ -305,7 +306,7 @@ export function useRemoveLibraryEntry() {
         return await portalApi.removeLibraryEntry(product);
       } catch (err) {
         if (err instanceof PortalApiError && err.status === 404)
-          return { ok: true as const, product };
+          return { ok: true as const, product, inLibrary: false };
         throw err;
       }
     },

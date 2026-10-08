@@ -27,7 +27,7 @@ import {
   type PackageEcosystem,
   type PackageReleaseDescriptor,
 } from "@polaris-key/manifest";
-import type { Db, Env } from "../../../../core/platform.js";
+import { randomId, type Db, type Env } from "../../../../core/platform.js";
 import type { RegistryRouteContext } from "../../../../core/registryHost.js";
 import type { PackageFeedSettings } from "../../../../core/hooks.js";
 import type { PublishPrincipal } from "../../../../core/registryPublish.js";
@@ -38,7 +38,6 @@ import {
   stagingKey,
 } from "../../../../core/blobs.js";
 import { appendAudit } from "../../../../core/data.js";
-import { randomId } from "../../../../core/platform.js";
 import { bumpReleaseGeneration } from "../../ghCache.js";
 import {
   ingestPackageDescriptor,
@@ -89,20 +88,6 @@ export function nativeRefusal(
   message: string,
 ): NativeRefusal {
   return { ok: false, status, code, reason, message };
-}
-
-/** The lowercase hex SHA-256 of `bytes`. */
-export async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  const buf = await crypto.subtle.digest(
-    "SHA-256",
-    bytes.buffer.slice(
-      bytes.byteOffset,
-      bytes.byteOffset + bytes.byteLength,
-    ) as ArrayBuffer,
-  );
-  let out = "";
-  for (const b of new Uint8Array(buf)) out += b.toString(16).padStart(2, "0");
-  return out;
 }
 
 /**

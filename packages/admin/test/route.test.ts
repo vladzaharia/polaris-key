@@ -24,12 +24,14 @@ import {
   type ServiceState,
 } from "../src/console/nav.js";
 import {
-  LEGACY_REDIRECTS,
+  MOVED_TABS,
   codecs,
   hrefFor,
+  movedHref,
   parseLocation,
   productPage,
   r,
+  searchTermFor,
   viewKey,
   withParam,
   type Route,
@@ -38,8 +40,8 @@ import type { ServiceSlug } from "../src/api.js";
 
 /**
  * The console's URL contract (docs/design/ADMIN.md §2.5–2.6): every page parses and round-trips,
- * every pre-redesign URL redirects, a page that is not built yet redirects to the page that holds
- * its capability today, and anything else is a not-found page that names the segment (SH-8).
+ * a section's key alone redirects to its first page, and anything else is a not-found page that
+ * names the segment (SH-8); a pre-redesign tab's not-found page knows where its page moved.
  * The nav model those URLs come from (nav.ts) is pinned here too.
  */
 
@@ -69,9 +71,6 @@ const parse = (hash: string) => {
   return { route: bare(parsed.route), redirect: parsed.redirect };
 };
 
-const READY_PRODUCT = PRODUCT_PAGES.filter((p) => p.ready);
-const NOT_READY = ALL_PAGES.filter((p) => !p.ready);
-
 describe("every page parses and round-trips", () => {
   it("Home is the empty hash, `#` and `#/`", () => {
     for (const hash of ["", "#", "#/"]) {
@@ -82,8 +81,8 @@ describe("every page parses and round-trips", () => {
     }
   });
 
-  it("each built global page", () => {
-    for (const p of GLOBAL_PAGES.filter((g) => g.ready)) {
+  it("each global page", () => {
+    for (const p of GLOBAL_PAGES) {
       const hash = `#/${p.path}`;
       const { route, redirect } = parse(hash);
       expect(redirect, p.page).toBeUndefined();
@@ -92,8 +91,8 @@ describe("every page parses and round-trips", () => {
     }
   });
 
-  it("each built product page, at #/p/<slug>/<section>/<page>", () => {
-    for (const p of READY_PRODUCT) {
+  it("each product page, at #/p/<slug>/<section>/<page>", () => {
+    for (const p of PRODUCT_PAGES) {
       const hash = productPage("djdl", p.page as ProductPageId);
       expect(hash).toBe(`#/p/djdl${p.path ? `/${p.path}` : ""}`);
       const { route, redirect } = parse(hash);
@@ -103,8 +102,8 @@ describe("every page parses and round-trips", () => {
     }
   });
 
-  it("each built record, with and without each tab", () => {
-    for (const p of READY_PRODUCT.filter((x) => x.record?.ready)) {
+  it("each record, with and without each tab", () => {
+    for (const p of PRODUCT_PAGES.filter((x) => x.record)) {
       const page = p.page as ProductPageId;
       const plain = productPage("djdl", page, { id: "rec_1" });
       expect(parse(plain)).toEqual({
@@ -182,104 +181,8 @@ describe("every page parses and round-trips", () => {
   });
 });
 
-describe("every old URL redirects (ADMIN.md §2.5)", () => {
-  // The table, verbatim. Each row: old hash → new hash.
-  const TABLE: [string, string][] = [
-    ["#/p/djdl/overview", "#/p/djdl"],
-    ["#/p/djdl/secrets", "#/p/djdl/keys"],
-    ["#/p/djdl/licenses", "#/p/djdl/license/licenses"],
-    ["#/p/djdl/licenses/lic_1", "#/p/djdl/license/licenses/lic_1"],
-    ["#/p/djdl/tiers", "#/p/djdl/license/tiers"],
-    ["#/p/djdl/fingerprints", "#/p/djdl/license/enrollment"],
-    ["#/p/djdl/config", "#/p/djdl/config/catalog"],
-    ["#/p/djdl/profiles", "#/p/djdl/config/profiles"],
-    ["#/p/djdl/profiles/trial", "#/p/djdl/config/profiles/trial"],
-    ["#/p/djdl/releases", "#/p/djdl/release/releases"],
-    ["#/p/djdl/deliverables", "#/p/djdl/release/deliverables"],
-    [
-      "#/p/djdl/deliverables/core%20pack",
-      "#/p/djdl/release/deliverables/core%20pack",
-    ],
-    ["#/p/djdl/compatibility", "#/p/djdl/release/compatibility"],
-    ["#/p/djdl/distribution", "#/p/djdl/distribution/matrix"],
-    ["#/p/djdl/distribution-matrix", "#/p/djdl/distribution/matrix"],
-    ["#/p/djdl/distribution-health", "#/p/djdl/distribution/health"],
-    ["#/p/djdl/updates", "#/p/djdl/update/feed"],
-    ["#/p/djdl/identity", "#/p/djdl/identity/portal"],
-  ];
-
-  it.each(TABLE)("%s → %s", (from, to) => {
-    const parsed = parseLocation(from);
-    expect(parsed.redirect).toBe(to);
-    // The route already is the target, so the first render shows the right page.
-    expect(bare(parsed.route)).toEqual(bare(parseLocation(to).route));
-    expect(parseLocation(to).redirect).toBeUndefined();
-  });
-
-  it("covers every one of the 19 tabs the old router knew", () => {
-    // The pre-redesign `Tab` union (route.ts at 17b90a32), written out so a change to the redirect
-    // table cannot quietly shrink what this test checks.
-    const OLD_TABS = [
-      "overview",
-      "services",
-      "devices",
-      "secrets",
-      "activity",
-      "settings",
-      "licenses",
-      "tiers",
-      "fingerprints",
-      "config",
-      "profiles",
-      "releases",
-      "deliverables",
-      "compatibility",
-      "distribution",
-      "distribution-matrix",
-      "distribution-health",
-      "updates",
-      "identity",
-    ];
-    expect(OLD_TABS).toHaveLength(19);
-    // Unchanged paths (Core's services, devices, activity, settings) still resolve directly.
-    const UNCHANGED = ["services", "devices", "activity", "settings"];
-    expect([...Object.keys(LEGACY_REDIRECTS), ...UNCHANGED].sort()).toEqual(
-      [...OLD_TABS].sort(),
-    );
-    for (const tab of OLD_TABS) {
-      const { route, redirect } = parseLocation(`#/p/djdl/${tab}`);
-      expect(route.kind, tab).toBe("product");
-      if (UNCHANGED.includes(tab)) expect(redirect, tab).toBeUndefined();
-      else expect(redirect, tab).toBeDefined();
-    }
-    // The three detail leaves keep their ids.
-    for (const [leaf, page] of [
-      ["licenses", "licenses"],
-      ["profiles", "profiles"],
-      ["deliverables", "deliverables"],
-    ] as const) {
-      expect(bare(parseLocation(`#/p/djdl/${leaf}/x1`).route)).toEqual({
-        kind: "product",
-        slug: "djdl",
-        page,
-        id: "x1",
-      });
-    }
-  });
-
-  it("keeps the query across a redirect", () => {
-    expect(parseLocation("#/p/djdl/licenses?status=expired").redirect).toBe(
-      "#/p/djdl/license/licenses?status=expired",
-    );
-  });
-
-  it("does not invent a shape the old URL never had", () => {
-    expect(parseLocation("#/p/djdl/licenses/a/b").route.kind).toBe("not-found");
-    expect(parseLocation("#/p/djdl/tiers/t1").route.kind).toBe("not-found");
-    expect(parseLocation("#/p/djdl/config/nope").route.kind).toBe("not-found");
-  });
-
-  it("a section alone goes to its first page", () => {
+describe("section roots redirect to the section's first page", () => {
+  it("a product section alone goes to its first page", () => {
     expect(parseLocation("#/p/djdl/license").redirect).toBe(
       "#/p/djdl/license/licenses",
     );
@@ -290,35 +193,97 @@ describe("every old URL redirects (ADMIN.md §2.5)", () => {
       "#/p/djdl/update/feed",
     );
   });
+
+  it("#/platform goes to the Platform group's first page, keeping the query", () => {
+    const parsed = parseLocation("#/platform?x=1");
+    expect(parsed.redirect).toBe("#/platform/settings?x=1");
+    expect(bare(parsed.route)).toEqual({
+      kind: "global",
+      page: "platform-settings",
+    });
+    expect(r.platform()).toBe("#/platform");
+  });
+
+  it("pre-redesign tabs do not redirect: their not-found route says where the page moved", () => {
+    // ADMIN.md §2.5: old hash → the new address the moved page links to (id and query kept).
+    const OLD: [string, string][] = [
+      ["#/p/djdl/overview", "#/p/djdl"],
+      ["#/p/djdl/secrets", "#/p/djdl/keys"],
+      ["#/p/djdl/licenses", "#/p/djdl/license/licenses"],
+      ["#/p/djdl/licenses/lic_1", "#/p/djdl/license/licenses/lic_1"],
+      [
+        "#/p/djdl/licenses?status=disabled",
+        "#/p/djdl/license/licenses?status=disabled",
+      ],
+      ["#/p/djdl/tiers", "#/p/djdl/license/tiers"],
+      ["#/p/djdl/fingerprints", "#/p/djdl/license/enrollment"],
+      ["#/p/djdl/profiles", "#/p/djdl/config/profiles"],
+      ["#/p/djdl/profiles/p1", "#/p/djdl/config/profiles/p1"],
+      ["#/p/djdl/releases", "#/p/djdl/release/releases"],
+      ["#/p/djdl/deliverables", "#/p/djdl/release/deliverables"],
+      [
+        "#/p/djdl/deliverables/textures",
+        "#/p/djdl/release/deliverables/textures",
+      ],
+      ["#/p/djdl/compatibility", "#/p/djdl/release/compatibility"],
+      ["#/p/djdl/distribution-matrix", "#/p/djdl/distribution/matrix"],
+      ["#/p/djdl/distribution-health", "#/p/djdl/distribution/health"],
+      ["#/p/djdl/updates", "#/p/djdl/update/feed"],
+      ["#/p/a%20b/licenses/lic%2F1", "#/p/a%20b/license/licenses/lic%2F1"],
+    ];
+    for (const [old, now] of OLD) {
+      const parsed = parseLocation(old);
+      expect(parsed.redirect, old).toBeUndefined();
+      const route = parsed.route;
+      if (route.kind !== "not-found") throw new Error(`${old}: ${route.kind}`);
+      expect(route.moved, old).toBeDefined();
+      expect(movedHref(route.slug!, route.moved!, route.query), old).toBe(now);
+      // The new address is a page, not another not-found.
+      expect(parseLocation(now).route.kind, now).toBe("product");
+    }
+    // Every old tab in the map is a page that exists, and it is not a path a page owns today.
+    for (const [tab, page] of MOVED_TABS) {
+      expect(pageOf(page).page).toBe(page);
+      expect(parseLocation(`#/p/djdl/${tab}`).route.kind, tab).toBe(
+        "not-found",
+      );
+    }
+  });
+
+  it("only an old tab, or an old tab and an id its page has records for, is moved", () => {
+    for (const hash of [
+      "#/p/djdl/nope",
+      "#/p/djdl/secrets/x", // Keys & secrets has no records
+      "#/p/djdl/licenses/lic_1/keys", // the old URLs had no record tabs
+      "#/p/djdl/constructor",
+      "#/p/djdl/config/nope",
+    ]) {
+      const route = parseLocation(hash).route;
+      expect(route.kind, hash).toBe("not-found");
+      expect(route.kind === "not-found" && route.moved, hash).toBeFalsy();
+    }
+    // The old tabs that are section keys now are section roots, and redirect as before.
+    expect(parseLocation("#/p/djdl/config").redirect).toBe(
+      "#/p/djdl/config/catalog",
+    );
+    for (const key of ["distribution", "identity"])
+      expect(parseLocation(`#/p/djdl/${key}`).redirect, key).toMatch(
+        new RegExp(`^#/p/djdl/${key}/`),
+      );
+  });
+
+  it("a not-found path's search term is its first segment that is not a section key", () => {
+    expect(searchTermFor("nope")).toBe("nope");
+    expect(searchTermFor("license/nope")).toBe("nope");
+    expect(searchTermFor("licensez/lic_1")).toBe("licensez");
+    expect(searchTermFor("distribution-foo_bar")).toBe("distribution foo bar");
+    expect(searchTermFor("license")).toBe("license");
+    expect(searchTermFor("")).toBe("");
+  });
 });
 
-describe("pages that are not built yet redirect to their host", () => {
-  const hashOf = (page: PageId): string =>
-    GLOBAL_PAGES.some((g) => g.page === page)
-      ? `#/${pageOf(page).path}`
-      : productPage("djdl", page as ProductPageId);
-
-  /**
-   * A host may itself redirect (the Platform section root goes to Settings, which goes to
-   * Deployment until Settings is built): follow the chain to the page that renders.
-   */
-  const builtHost = (page: PageId): PageId => {
-    let p = pageOf(page);
-    for (let i = 0; i < 5 && !p.ready; i++) p = pageOf(p.host!);
-    return p.page;
-  };
-
-  it.each(NOT_READY.map((p) => [p.page, builtHost(p.page)] as const))(
-    "%s → %s",
-    (page, host) => {
-      const parsed = parseLocation(hashOf(page));
-      expect(parsed.redirect, page).toBe(hashOf(host));
-      const target = parsed.route;
-      expect(target.kind === "not-found" ? null : target.page).toBe(host);
-    },
-  );
-
-  it("every record is built: the tier record parses as a record and stays put (chunk 6)", () => {
+describe("records parse in place", () => {
+  it("the tier record parses as a record and stays put (chunk 6)", () => {
     expect(parseLocation("#/p/djdl/license/tiers/t1").redirect).toBeUndefined();
     expect(
       parseLocation("#/p/djdl/license/tiers/t1/used-by").route,
@@ -335,7 +300,7 @@ describe("pages that are not built yet redirect to their host", () => {
     });
   });
 
-  it("a built record keeps its id and tab (the release record, chunk 8)", () => {
+  it("a record keeps its id and tab (the release record, chunk 8)", () => {
     const parsed = parseLocation("#/p/djdl/release/releases/rel_1/builds");
     expect(parsed.redirect).toBeUndefined();
     expect(parsed.route).toMatchObject({
@@ -344,7 +309,6 @@ describe("pages that are not built yet redirect to their host", () => {
       id: "rel_1",
       tab: "builds",
     });
-    // The Release section's pages are all built: none redirects to a host any more.
     for (const path of [
       "channels",
       "content-keys",
@@ -353,17 +317,6 @@ describe("pages that are not built yet redirect to their host", () => {
       expect(
         parseLocation(`#/p/djdl/release/${path}`).redirect,
       ).toBeUndefined();
-    }
-  });
-
-  it("every host chain ends at a built page in the same scope", () => {
-    for (const p of NOT_READY) {
-      expect(p.host, p.page).toBeDefined();
-      const host = pageOf(builtHost(p.page));
-      expect(host.ready, `${p.page} → ${p.host}`).toBe(true);
-      expect(sectionOf(host.page) === null, p.page).toBe(
-        sectionOf(p.page) === null,
-      );
     }
   });
 });
@@ -491,7 +444,6 @@ describe("the nav model (nav.ts)", () => {
       "home",
       "products",
       "product-new",
-      "platform",
       "platform-settings",
       "platform-deployment",
       "platform-operations",
@@ -614,7 +566,7 @@ describe("the nav model (nav.ts)", () => {
     });
   });
 
-  it("every section lists at least one built page", () => {
+  it("every section lists at least one page", () => {
     for (const s of SECTIONS)
       expect(navItems(s).length, s.key).toBeGreaterThan(0);
   });
@@ -690,7 +642,6 @@ describe("global pages", () => {
     for (const id of [
       "home",
       "products",
-      "platform",
       "product-new",
       "platform-deployment",
     ] as GlobalPageId[]) {
@@ -715,17 +666,21 @@ describe("global pages", () => {
     expect(groupOf("home")).toBeNull();
     expect(groupOf("tiers")).toBe("license");
     expect(platformLinks().map((p) => p.page)).toEqual(["home", "products"]);
+    // P0-47: Override migration (U-03, cancelled) is out of the sidebar and the palette; its
+    // URL still answers until U-27 removes the page.
     expect(platformItems().map((p) => p.page)).toEqual([
       "platform-settings",
       "platform-deployment",
       "platform-operations",
       "platform-stores",
       "platform-feeds",
-      "platform-override-migration",
     ]);
+    expect(
+      parseLocation("#/platform/override-migration").redirect,
+    ).toBeUndefined();
   });
 
-  it("#/platform redirects to Settings; every Platform page is built", () => {
+  it("#/platform redirects to Settings; every Platform page renders in place", () => {
     expect(parseLocation("#/platform").redirect).toBe("#/platform/settings");
     expect(parseLocation("#/platform/settings").redirect).toBeUndefined();
     expect(parseLocation("#/platform/operations").redirect).toBeUndefined();

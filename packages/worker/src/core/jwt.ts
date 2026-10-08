@@ -18,20 +18,11 @@
  * An EdDSA JWT is not here on purpose: that is a compact JWS, and `@polaris-key/jws` owns it.
  */
 
-function b64url(bytes: Uint8Array): string {
-  let s = "";
-  for (const b of bytes) s += String.fromCharCode(b);
-  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-const b64urlStr = (s: string): string => b64url(new TextEncoder().encode(s));
-
-function toAB(b: Uint8Array): ArrayBuffer {
-  return b.buffer.slice(
-    b.byteOffset,
-    b.byteOffset + b.byteLength,
-  ) as ArrayBuffer;
-}
+import {
+  b64urlEncode,
+  b64urlEncodeUtf8,
+  toArrayBuffer,
+} from "../platform/bytes.js";
 
 /** Strip PEM armor + whitespace and decode the base64 body to raw DER bytes. */
 function pemToDer(pem: string): Uint8Array {
@@ -65,7 +56,7 @@ function derLen(tag: number, n: number): number[] {
  */
 function rsaToPkcs8(pem: string): ArrayBuffer {
   const der = pemToDer(pem);
-  if (/BEGIN PRIVATE KEY/.test(pem)) return toAB(der);
+  if (/BEGIN PRIVATE KEY/.test(pem)) return toArrayBuffer(der);
   // PKCS#8 = SEQUENCE { version 0, AlgorithmIdentifier rsaEncryption NULL, OCTET STRING pkcs1 }
   const rsaOid = [
     0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01,
@@ -75,7 +66,7 @@ function rsaToPkcs8(pem: string): ArrayBuffer {
   const octetHeader = derLen(0x04, der.length);
   const inner = [...version, ...rsaOid, ...octetHeader, ...der];
   const seq = [...derLen(0x30, inner.length), ...inner];
-  return toAB(Uint8Array.from(seq));
+  return toArrayBuffer(Uint8Array.from(seq));
 }
 
 /** Import an ES256 signing key from a PKCS#8 PEM. THROWS unless it is a P-256 PKCS#8 key —
@@ -83,7 +74,7 @@ function rsaToPkcs8(pem: string): ArrayBuffer {
 export async function importEs256PrivateKey(pem: string): Promise<CryptoKey> {
   return crypto.subtle.importKey(
     "pkcs8",
-    toAB(pemToDer(pem)),
+    toArrayBuffer(pemToDer(pem)),
     { name: "ECDSA", namedCurve: "P-256" },
     false,
     ["sign"],
@@ -109,7 +100,9 @@ function signingInput(
 ): string {
   const header = { alg, typ: "JWT", ...(kid ? { kid } : {}) };
   return (
-    b64urlStr(JSON.stringify(header)) + "." + b64urlStr(JSON.stringify(payload))
+    b64urlEncodeUtf8(JSON.stringify(header)) +
+    "." +
+    b64urlEncodeUtf8(JSON.stringify(payload))
   );
 }
 
@@ -127,9 +120,9 @@ export async function signJwtEs256(
   const sig = await crypto.subtle.sign(
     { name: "ECDSA", hash: "SHA-256" },
     key,
-    toAB(new TextEncoder().encode(input)),
+    toArrayBuffer(new TextEncoder().encode(input)),
   );
-  return input + "." + b64url(new Uint8Array(sig));
+  return input + "." + b64urlEncode(sig);
 }
 
 /**
@@ -147,9 +140,9 @@ export async function signJwtRs256(
   const sig = await crypto.subtle.sign(
     "RSASSA-PKCS1-v1_5",
     key,
-    toAB(new TextEncoder().encode(input)),
+    toArrayBuffer(new TextEncoder().encode(input)),
   );
-  return input + "." + b64url(new Uint8Array(sig));
+  return input + "." + b64urlEncode(sig);
 }
 
 /**
@@ -164,7 +157,7 @@ export async function signJwtHs256(
   const input = signingInput("HS256", payload, undefined);
   const key = await crypto.subtle.importKey(
     "raw",
-    toAB(new TextEncoder().encode(secret)),
+    toArrayBuffer(new TextEncoder().encode(secret)),
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"],
@@ -172,7 +165,7 @@ export async function signJwtHs256(
   const sig = await crypto.subtle.sign(
     "HMAC",
     key,
-    toAB(new TextEncoder().encode(input)),
+    toArrayBuffer(new TextEncoder().encode(input)),
   );
-  return input + "." + b64url(new Uint8Array(sig));
+  return input + "." + b64urlEncode(sig);
 }

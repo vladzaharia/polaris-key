@@ -13,8 +13,7 @@
  * staged rollout through P2b-04's `mirrorRollout`. Nothing here opens a credential.
  */
 
-import type { Db } from "../../../core/platform.js";
-import { randomId } from "../../../core/platform.js";
+import { parseJsonObject, randomId, type Db } from "../../../core/platform.js";
 import { appendAudit } from "../../../core/data.js";
 import type { AvailabilityWriter } from "../availability.js";
 
@@ -103,18 +102,6 @@ export interface ConnectorObject {
   terminal: boolean;
 }
 
-function objectJson(raw: string | null): Record<string, unknown> {
-  if (!raw) return {};
-  try {
-    const v = JSON.parse(raw) as unknown;
-    return v && typeof v === "object" && !Array.isArray(v)
-      ? (v as Record<string, unknown>)
-      : {};
-  } catch {
-    return {};
-  }
-}
-
 export function objectView(row: ConnectorObjectRow) {
   return {
     type: row.object_type,
@@ -125,8 +112,8 @@ export function objectView(row: ConnectorObjectRow) {
     unresolved: row.release_id === null,
     storeState: row.store_state,
     state: row.state,
-    ref: objectJson(row.ref_json),
-    detail: objectJson(row.detail_json),
+    ref: parseJsonObject(row.ref_json) ?? {},
+    detail: parseJsonObject(row.detail_json) ?? {},
     terminal: row.terminal === 1,
     firstSeenAt: row.first_seen_at,
     updatedAt: row.updated_at,

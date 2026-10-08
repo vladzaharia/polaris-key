@@ -7,7 +7,9 @@
 import { vi } from "vitest";
 import { render } from "@testing-library/react";
 import * as React from "react";
+import type { QueryClient } from "@tanstack/react-query";
 import { App } from "../src/App.js";
+import { createQueryClient } from "../src/console/data/queryClient.js";
 import { ALL_ON, ME, productRow, type Enablement } from "./consoleHarness.js";
 import { DISTRIBUTION_ROUTES } from "./distributionData.js";
 
@@ -33,7 +35,7 @@ export function bootWith(
   hash: string,
   routes: Record<string, Answer> = {},
   opts: { services?: Enablement } = {},
-): { calls: Call[] } {
+): { calls: Call[]; queryClient: QueryClient } {
   const calls: Call[] = [];
   window.location.hash = hash;
   const services = opts.services ?? ALL_ON;
@@ -95,8 +97,9 @@ export function bootWith(
       });
     }),
   );
-  render(React.createElement(App));
-  return { calls };
+  const queryClient = createQueryClient();
+  render(React.createElement(App, { queryClient }));
+  return { calls, queryClient };
 }
 
 /** A JSON error response, in the admin API's shape. */

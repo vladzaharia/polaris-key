@@ -47,7 +47,7 @@ import { StatusPill } from "../../../ui/StatusPill.js";
 import { Stepper, type Step } from "../../../ui/Stepper.js";
 import { Textarea } from "../../../ui/Textarea.js";
 import { Timestamp } from "../../../ui/Timestamp.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { Link, useSearchParam } from "../../router.js";
 import { codecs, r } from "../../routes.js";
 import { Panel } from "../../templates/Dashboard.js";

@@ -9,6 +9,10 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AppToaster } from "../src/ui/toast.js";
+import {
+  ConsoleQueryProvider,
+  createQueryClient,
+} from "../src/console/data/queryClient.js";
 import { Products } from "../src/console/pages/global/Products.js";
 import {
   ALL_ON,
@@ -85,24 +89,30 @@ function expectNoReactError(): void {
 
 describe("qk.products() holds one shape for the Products page and the switcher", () => {
   it("Products page first, then the shell's useProducts", async () => {
-    // The Products page's fetcher fills the cache before the shell mounts.
+    // The Products page's fetcher fills the cache before the shell mounts; the shell then mounts
+    // on the same client, as every page does under the console's one provider.
+    const queryClient = createQueryClient();
     mockFetch({
       "/manage/api/products": {
         products: ONE.map((p) => productRow(p.slug, p.name, ALL_ON)),
       },
     });
     const standalone = render(
-      <>
+      <ConsoleQueryProvider client={queryClient}>
         <Products />
         <AppToaster />
-      </>,
+      </ConsoleQueryProvider>,
     );
     await waitFor(() =>
       expect(within(standalone.container).getByText("djdl")).toBeTruthy(),
     );
 
     // Now the shell, whose switcher reads the same cache entry.
-    boot("#/p/djdl", { services: ALL_ON, me: { ...ME, products: ONE } });
+    boot("#/p/djdl", {
+      services: ALL_ON,
+      me: { ...ME, products: ONE },
+      queryClient,
+    });
     await screen.findByRole("navigation", { name: "Console" });
     expect((await switcherOptions()).some((t) => t.startsWith("DJDL"))).toBe(
       true,

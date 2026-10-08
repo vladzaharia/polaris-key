@@ -520,6 +520,60 @@ describe("terms", () => {
   });
 });
 
+describe("an account that can't sign in (SIGN-IN.md §3.13, Account disabled)", () => {
+  it("a provider sign-in gets the page, with another account as the way on", async () => {
+    const w = await seededWorld();
+    const a = await insertAccount(
+      w.db,
+      {
+        primaryEmail: "ada@gmail.com",
+        primaryEmailVerified: true,
+        displayName: null,
+      },
+      NOW,
+    );
+    await insertLink(
+      w.db,
+      a.id,
+      {
+        issuerKey: GOOGLE,
+        tenantScope: "",
+        subject: "g-disabled",
+        kind: "google",
+        email: "ada@gmail.com",
+        emailVerified: true,
+        displayName: null,
+        amr: null,
+      },
+      NOW,
+    );
+    await w.db.run(
+      "UPDATE accounts SET status = 'disabled' WHERE id = ?",
+      a.id,
+    );
+    for (const [returnTo, href] of [
+      ["/#/p/acme", "/#/p/acme"],
+      [null, "/"],
+    ] as const) {
+      const d = new Device(w);
+      const res = await arrive(w, d, {
+        ...google("g-disabled", "ada@gmail.com"),
+        returnTo,
+      });
+      expect(res.status).toBe(403);
+      const html = await res.text();
+      expect(html).toMatch(/This account can(&#39;|&#x27;|')t sign in/);
+      expect(html).toContain(
+        `<a class="button" href="${href}">Sign in with another account</a>`,
+      );
+      expect(html).not.toContain("Polaris Key support");
+      expect(html).not.toContain("Back to ");
+      expect(d.jar.has(ACCOUNT_SESSION_COOKIE)).toBe(false);
+      expect(d.jar.has(EMAIL_GATE_COOKIE)).toBe(false);
+    }
+  });
+});
+
 describe("the gate's lifecycle", () => {
   it("cancel ends it; a later step answers expired", async () => {
     const w = await seededWorld();

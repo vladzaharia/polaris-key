@@ -250,7 +250,7 @@ function FreeDevice({
         <h1
           ref={headingRef}
           tabIndex={-1}
-          className="flex items-center gap-3 text-[1.75rem] font-bold leading-tight text-fg-strong outline-none"
+          className="flex items-center gap-3 text-headline font-bold leading-tight text-fg-strong outline-none"
         >
           {/* The success check draws once (S-23 §6.4): no sparks, freeing a device is not a
               first-time moment. It sits in a ring the size of the icon it replaces. */}
@@ -279,7 +279,7 @@ function FreeDevice({
         <h1
           ref={titleRef}
           tabIndex={-1}
-          className="text-[1.75rem] font-bold leading-tight text-fg-strong outline-none"
+          className="text-headline font-bold leading-tight text-fg-strong outline-none"
         >
           Your license has a free device
         </h1>
@@ -311,7 +311,7 @@ function FreeDevice({
       <h1
         ref={titleRef}
         tabIndex={-1}
-        className="text-[1.75rem] font-bold leading-tight text-fg-strong outline-none desk:text-[2rem]"
+        className="text-headline font-bold leading-tight text-fg-strong outline-none desk:text-headline-lg"
       >
         Your license is on {inUse} of {limit}{" "}
         {limit === 1 ? "device" : "devices"}

@@ -26,7 +26,12 @@
  */
 
 import { assetRefUrl, normalizeAssetRef } from "@polaris-key/manifest";
-import type { Db, Env } from "../../../core/platform.js";
+import {
+  hexEncode,
+  sha256,
+  type Db,
+  type Env,
+} from "../../../core/platform.js";
 import {
   HOSTED_REF_HELD,
   hostedImageOrigin,
@@ -157,11 +162,5 @@ export async function hostedArtStamp(
     product,
   );
   const text = `${origin}|${row?.s ?? ""}`;
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(text),
-  );
-  return [...new Uint8Array(digest).slice(0, 8)]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+  return hexEncode((await sha256(text)).subarray(0, 8));
 }

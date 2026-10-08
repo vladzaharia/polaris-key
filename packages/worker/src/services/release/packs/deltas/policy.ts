@@ -13,6 +13,7 @@
 
 import { ZSTD_DICTIONARY_MAGIC } from "@polaris-key/protocol/packs";
 import { LAZY_DELTA_MAX_BYTES_CEILING } from "../../../../core/platformSettings.js";
+import { hexEncode } from "../../../../core/platform.js";
 
 /** The one method v1 generates. */
 export const LAZY_DELTA_METHOD = "zstd-patch-from";
@@ -127,9 +128,9 @@ export function shouldQueue(f: PairFacts): PolicyAnswer {
 /** `dictionary-base` when the decoded base begins with `37 A4 30 EC`, else null. */
 export function baseRefusal(head: Uint8Array): LazyDeltaRefusal | null {
   if (head.byteLength < 4) return null;
-  let hex = "";
-  for (const b of head.subarray(0, 4)) hex += b.toString(16).padStart(2, "0");
-  return hex === ZSTD_DICTIONARY_MAGIC ? "dictionary-base" : null;
+  return hexEncode(head.subarray(0, 4)) === ZSTD_DICTIONARY_MAGIC
+    ? "dictionary-base"
+    : null;
 }
 
 /**

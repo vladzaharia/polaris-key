@@ -1,11 +1,11 @@
-# I-21 `Sign in with <Product>`: per-product OIDC issuer with a separate RS256 keyring, `sub` = pairwise subject, `pkey:*` scopes, static clients
+# I-21 Sign in with <Product> on the OAuth-shaped endpoints
 
 | Field       | Value                                                                                                                                                                                                                                    |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-2)                                                                                                                                                             |
-| Size        | 2.8–3.9 engineer-weeks                                                                                                                                                                                                                   |
+| Size        | 1.9–2.6 engineer-weeks                                                                                                                                                                                                                   |
 | Depends on  | [I-20](I-20-layer-2-plan.md)                                                                                                                                                                                                             |
-| Unblocks    | [U-16](U-16-developer-backend-api.md)                                                                                                                                                                                                    |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [U-16](U-16-developer-backend-api.md)                                                                                                                                                            |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                    |
 | Plan mode   | yes: executes the approved [`plans/I-20.md`](../plans/I-20.md) (no separate plan)                                                                                                                                                        |
 | Gates       | plan mode; D1 migration; `TABLE_OWNERS`; rule 9 (validator rule, mutation table, JSON schema); rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; `check:links`; OIDF Basic OP and Config OP conformance against staging; R-series audit |
@@ -29,6 +29,15 @@ Checked against `main` at `148439c4f`.
   re-encoded and served by `/media/avatar/<asset>` (which already allows cross-origin embedding).
   It is absent when the account shows initials (`avatar_key` NULL), and never a provider's original
   picture URL.
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track F, Identity](../../../2026-10-07-dx-consolidation/tracks.md#f-identity)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Sign in with <Product> on I-08's OAuth-shaped endpoints: adds discovery, a separate RS256 JWKS, id_token, userinfo, refresh, revocation, end-session and OIDF conformance. No second authorization-server tree; estimate drops about a third.
+
+- Title: was "`Sign in with <Product>`: per-product OIDC issuer with a separate RS256 keyring, `sub` = pairwise subject, `pkey:*` scopes, static clients".
+- Estimate: 1.9–2.6 engineer-weeks (was 2.8–3.9).
 
 ## Goal
 

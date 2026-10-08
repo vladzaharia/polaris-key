@@ -1002,8 +1002,18 @@ describe("Release record Status (UX-08, EXPERIENCE.md O2)", () => {
     expect(within(direct).queryByRole("checkbox")).toBeNull();
     const store = rows.find((x) => x.textContent?.includes("App Store"))!;
     expect(store.getAttribute("aria-disabled")).toBe("true");
+    // P0-47: the store row says what to do in App Store Connect on a second line under its
+    // channel, and the dialog says to stop store rollouts there (A-24 halts them from here).
+    const instruction = within(store).getByText(
+      "Pause the phased release in App Store Connect",
+    );
+    expect(instruction.previousElementSibling?.textContent).toBe(
+      "App Store · stable",
+    );
     expect(
-      within(store).getByText("Halt it in App Store Connect"),
+      within(dialog).getByText(
+        "Stop store rollouts in each store, as shown below.",
+      ),
     ).toBeTruthy();
     const play = within(dialog).getByRole("checkbox", {
       name: "Google Play · stable",
@@ -1050,6 +1060,85 @@ describe("Release record Status (UX-08, EXPERIENCE.md O2)", () => {
       await within(dialog).findByText("Google Play · stable was not halted"),
     ).toBeTruthy();
     expect(rolloutAction).toHaveBeenCalledTimes(2);
+  });
+
+  it("names each store's own halt for a mirrored rollout (P0-47)", async () => {
+    const { haltBlocker, storeHalt } =
+      await import("../src/console/areas/distribution/RolloutDialogs.js");
+    const mirror = (source: string, over: Record<string, unknown> = {}) =>
+      rollout(source, {
+        mirrored: true,
+        source,
+        controls: [],
+        ...over,
+      }) as unknown as Parameters<typeof haltBlocker>[0];
+    expect(haltBlocker(mirror("play"))).toBe(
+      "Halt the staged rollout in Google Play",
+    );
+    expect(haltBlocker(mirror("asc"))).toBe(
+      "Pause the phased release in App Store Connect",
+    );
+    expect(haltBlocker(mirror("ms-store"))).toBe("Halt it in Microsoft Store");
+    // A store rollout already halted or complete needs nothing in the store.
+    expect(storeHalt(mirror("play", { state: "halted" }))).toBeNull();
+    expect(haltBlocker(mirror("play", { state: "complete" }))).toBe("Complete");
+    expect(storeHalt(rollout("direct") as never)).toBeNull();
+  });
+
+  it("opens Halt everywhere on store rollouts alone: only the store rows, each with its store's step, and nothing to confirm (P0-47)", async () => {
+    distributionMatrix.mockResolvedValue(
+      matrixWith(
+        [
+          rollout("direct", { state: "halted", controls: ["resume"] }),
+          rollout("asc", {
+            mirrored: true,
+            source: "asc",
+            rolloutBp: 700,
+            controls: [],
+          }),
+          rollout("play", {
+            mirrored: true,
+            source: "play",
+            controls: [],
+          }),
+        ],
+        [{ outletId: "asc", kind: "app-store" }],
+      ),
+    );
+    mountStatus();
+    await screen.findByText("20 % · halted");
+    const halt = await screen.findByRole("button", {
+      name: "Halt everywhere…",
+    });
+    await waitFor(() => expect(halt.getAttribute("aria-disabled")).toBeNull());
+    await userEvent.click(halt);
+    const dialog = await screen.findByRole("alertdialog", {
+      name: "Halt 0.4.2 in its stores",
+    });
+    expect(
+      within(dialog).getByText(
+        "No rollout of 0.4.2 can be halted here. Stop each one in its store, as shown below.",
+      ),
+    ).toBeTruthy();
+    const rows = within(dialog).getAllByRole("listitem");
+    // Only the store rows: the halted direct rollout is not listed.
+    expect(rows).toHaveLength(2);
+    expect(
+      within(dialog).getByText("Pause the phased release in App Store Connect"),
+    ).toBeTruthy();
+    expect(
+      within(dialog).getByText("Halt the staged rollout in Google Play"),
+    ).toBeTruthy();
+    expect(within(dialog).queryByRole("checkbox")).toBeNull();
+    expect(
+      (
+        within(dialog).getByRole("button", {
+          name: "Halt 0 rollouts",
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
+    await userEvent.click(within(dialog).getByRole("button", { name: "Done" }));
+    expect(rolloutAction).not.toHaveBeenCalled();
   });
 
   it("disables Halt everywhere with the reason when nothing can be halted", async () => {

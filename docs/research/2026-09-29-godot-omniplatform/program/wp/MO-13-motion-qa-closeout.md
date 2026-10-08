@@ -5,7 +5,7 @@
 | Phase       | MO: Motion system (notes/S-23) (wave 4: closeout)                                                                                                                                                                                                                                                                                                                                                             |
 | Size        | 0.3–0.5 engineer-weeks                                                                                                                                                                                                                                                                                                                                                                                        |
 | Depends on  | [MO-04](MO-04-console-navigation-motion.md), [MO-05](MO-05-portal-navigation-motion.md), [MO-06](MO-06-portal-device-activation-motion.md), [MO-07](MO-07-portal-library-motion.md), [MO-08](MO-08-console-overlay-controls-motion.md), [MO-09](MO-09-console-data-motion.md), [MO-10](MO-10-console-shell-motion.md), [MO-11](MO-11-console-moments-counters.md), [MO-12](MO-12-reduce-motion-preference.md) |
-| Unblocks    | none                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                                                                                                                                                                                                                                                                                        |
 | Role        | `pkey-implementer`                                                                                                                                                                                                                                                                                                                                                                                            |
 | Plan mode   | no                                                                                                                                                                                                                                                                                                                                                                                                            |
 | Gates       | `test:e2e` (the strips and frame checks run behind an opt-in variable); `pnpm --filter @polaris-key/docs check:links`; `adminCspParity`                                                                                                                                                                                                                                                                       |
@@ -47,6 +47,12 @@ Checked against `main` at `148439c4f`. Each item names the package whose review 
   because rows entering from below the fold crossed survivors that were still moving. Check the
   other lists whose items enter while others move, and apply the same timing where the crossing
   shows.
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track J, SDK and UI-kit consolidation](../../../2026-10-07-dx-consolidation/tracks.md#j-sdk-and-ui-kit-consolidation)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Trimmed: no committed real-app frame strips (they go stale on every UI change); TabPanel adoption moves into P0-39; keep the contributor page (including the kits' motion mapping) and the 30-second poll QA.
 
 ## Goal
 

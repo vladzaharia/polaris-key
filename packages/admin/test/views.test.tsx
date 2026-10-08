@@ -8,7 +8,7 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
-import { AdminProvider } from "../src/context.js";
+import { ConsoleQueryProvider } from "../src/console/data/queryClient.js";
 import type { Me } from "../src/api.js";
 import { Button } from "../src/ui/Button.js";
 import { ConfirmDialog } from "../src/ui/ConfirmDialog.js";
@@ -30,14 +30,8 @@ const ME: Me = {
   products: [{ slug: "djdl", name: "DJDL", schemaVersion: 2 }],
 };
 
-function withAdmin(node: ReactElement) {
-  return render(
-    <AdminProvider
-      value={{ me: ME, product: "djdl", setProduct: () => undefined }}
-    >
-      {node}
-    </AdminProvider>,
-  );
+function withConsole(node: ReactElement) {
+  return render(<ConsoleQueryProvider>{node}</ConsoleQueryProvider>);
 }
 
 beforeEach(() => {
@@ -115,7 +109,7 @@ describe("brand + dashboard views", () => {
       "/manage/api/me": ME,
       "/manage/api/products": { products: [productRow("djdl", "DJDL", {})] },
     });
-    withAdmin(<Home />);
+    withConsole(<Home />);
     expect(
       await screen.findByRole("heading", { level: 1, name: "Home" }),
     ).toBeTruthy();

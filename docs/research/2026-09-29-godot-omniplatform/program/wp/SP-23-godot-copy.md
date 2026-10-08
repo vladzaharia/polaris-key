@@ -12,6 +12,14 @@
 | Human input | none                                                                                    |
 | Repo        | `vladzaharia/polaris-key`                                                               |
 
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **keep** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Merged (084693d4f).
+
+- Status: stamped `done` (was `in-review`).
+
 ## Goal
 
 `PKeyCore` exposes `copy.message(code)` and `copy.title(code)` over `core/copy_generated.gd` (`PKeyCoreCopy`) with React's code-versus-activation table rule, `COPY_FALLBACK` and placeholder fill, plus a host override layer, and the kit's `PKeyUiCopy` uses it instead of its own table.

@@ -88,7 +88,7 @@ function registry(): Record<string, unknown> {
         {
           id: "edge-mint:studio",
           label: "Review and approve edge-mint recipe studio",
-          route: "#/p/djdl/secrets",
+          route: "#/p/djdl/config/edge-mint",
         },
       ],
       sync: { status: "ok", lastSyncedAt: 1_900 },

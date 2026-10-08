@@ -51,7 +51,14 @@ import {
   detectPlatform,
 } from "../../../core/platformDetect.js";
 import { qrSvg } from "../../../core/qr.js";
-import { hashKey, type Db, type Env } from "../../../core/platform.js";
+import {
+  constantTimeEqual,
+  hashKey,
+  parseJsonColumn,
+  randomToken,
+  type Db,
+  type Env,
+} from "../../../core/platform.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import {
   artefactRef,
@@ -155,25 +162,6 @@ function expired(): Response {
   return err(410, "expired", "this request has expired");
 }
 
-function b64url(bytes: Uint8Array): string {
-  let bin = "";
-  for (const b of bytes) bin += String.fromCharCode(b);
-  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function randomSecret(): string {
-  const buf = new Uint8Array(32);
-  crypto.getRandomValues(buf);
-  return b64url(buf);
-}
-
-function safeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
-
 async function recordRef(env: Env, pollId: string): Promise<ArtefactRef> {
   return artefactRef(
     "device-login",
@@ -193,15 +181,10 @@ export async function deviceLoginCodeRef(
 }
 
 function parseRecord(raw: string | null): DeviceLoginRecord | null {
-  if (!raw) return null;
-  try {
-    const rec = JSON.parse(raw) as DeviceLoginRecord;
-    return rec && typeof rec === "object" && typeof rec.status === "string"
-      ? rec
-      : null;
-  } catch {
-    return null;
-  }
+  const rec = parseJsonColumn<DeviceLoginRecord>(raw);
+  return rec && typeof rec === "object" && typeof rec.status === "string"
+    ? rec
+    : null;
 }
 
 // ── What is asking ──────────────────────────────────────────────────────────────────────────
@@ -385,8 +368,8 @@ export async function handleDeviceLoginStart(
   if (!(await portalAuthCapabilities(db)).portalEnabled)
     return err(404, "auth_method_disabled", "the portal is off");
 
-  const pollId = `dl_${randomSecret()}`;
-  const binding = randomSecret();
+  const pollId = `dl_${randomToken(32)}`;
+  const binding = randomToken(32);
   const ref = await recordRef(env, pollId);
 
   let code: string | null = null;
@@ -463,7 +446,10 @@ export async function handleDeviceLoginPoll(
   if (
     !record ||
     record.expiresAt <= now ||
-    !safeEqual(record.binding, await hashKey(cookie, env.KEY_HASH_PEPPER))
+    !constantTimeEqual(
+      record.binding,
+      await hashKey(cookie, env.KEY_HASH_PEPPER),
+    )
   )
     return expired();
 

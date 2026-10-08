@@ -58,6 +58,14 @@ sha256}, now)` as planned; the host is compared normalized (case, trailing dot).
 - **Q4 (a)** needs no code: neither `accountMayDownload` nor the ticketed byte route consults the
   device trust policy. A test pins it.
 
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **keep** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Merged via 551a31e37. DOWNLOAD_TICKET_KEY per environment stays a human input.
+
+- Status: stamped `done` (was `in-review`).
+
 ## Goal
 
 Licensed builds hosted on R2 download from the portal through either a signed short-lived bytes URL or streaming through `/download/<token>`, as chosen by an approved plan, so the Get it panel never says "Not available here yet" for a build Polaris Key hosts.

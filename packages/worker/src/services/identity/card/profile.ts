@@ -22,7 +22,12 @@
  * BCP 47 tag; nothing is ever rendered as markup.
  */
 
-import { hashKey, type Db, type Env } from "../../../core/platform.js";
+import {
+  hashKey,
+  parseJsonColumn,
+  type Db,
+  type Env,
+} from "../../../core/platform.js";
 import {
   AVATAR_ASSET_PATTERN,
   avatarView,
@@ -88,18 +93,14 @@ export function sanitizeLocale(raw: unknown): string | null {
     : null;
 }
 
-function parseJson<T>(raw: string | null | undefined): T | null {
-  if (!raw) return null;
-  try {
-    const v = JSON.parse(raw) as unknown;
-    return v && typeof v === "object" ? (v as T) : null;
-  } catch {
-    return null;
-  }
+/** A stored JSON object, or `null`. An array passes too, as it always has here. */
+function storedObject<T>(raw: string | null | undefined): T | null {
+  const v = parseJsonColumn(raw);
+  return v && typeof v === "object" ? (v as T) : null;
 }
 
 export function parseLinkProfile(raw: string | null | undefined): LinkProfile {
-  const p = parseJson<Partial<LinkProfile>>(raw) ?? {};
+  const p = storedObject<Partial<LinkProfile>>(raw) ?? {};
   return {
     name: typeof p.name === "string" ? p.name : null,
     locale: typeof p.locale === "string" ? p.locale : null,
@@ -204,7 +205,8 @@ export async function importProfile(
     input.accountId,
   );
   if (!account) return;
-  const details = parseJson<DetailsSources>(account.details_source_json) ?? {};
+  const details =
+    storedObject<DetailsSources>(account.details_source_json) ?? {};
   const source = `link:${input.linkId}`;
   // A value follows this link when the account is new, when it already follows this link and
   // was never chosen, or when it was never set at all.
@@ -336,7 +338,8 @@ export async function profileView(
     accountId,
   );
   const kinds = new Map(links.map((l) => [l.id, l.kind]));
-  const details = parseJson<DetailsSources>(account.details_source_json) ?? {};
+  const details =
+    storedObject<DetailsSources>(account.details_source_json) ?? {};
   const sources: ProfileSourceOption[] = [];
   for (const l of links) {
     const p = parseLinkProfile(l.profile_json);
@@ -412,7 +415,8 @@ export async function updateProfile(
     accountId,
   );
   if (!account) return { ok: false, reason: "unknown_source" };
-  const details = parseJson<DetailsSources>(account.details_source_json) ?? {};
+  const details =
+    storedObject<DetailsSources>(account.details_source_json) ?? {};
   let displayName = account.display_name;
   let avatarKey = account.avatar_key;
 

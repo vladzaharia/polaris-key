@@ -10,7 +10,6 @@ import userEvent from "@testing-library/user-event";
 import { configureAxe } from "vitest-axe";
 import type { ConfigEntry, ProductCatalog, ProductDetail } from "../src/api.js";
 import { ApiError } from "../src/api.js";
-import { resetCache } from "../src/context.js";
 import { KitProviders } from "../src/kit/KitProviders.js";
 import { catalogIssues } from "../src/schema/catalogValidation.js";
 
@@ -108,7 +107,6 @@ function renderPage() {
 }
 
 beforeEach(() => {
-  resetCache();
   product.mockReset();
   schema.mockReset();
   product.mockResolvedValue({ product: PRODUCT(true) });

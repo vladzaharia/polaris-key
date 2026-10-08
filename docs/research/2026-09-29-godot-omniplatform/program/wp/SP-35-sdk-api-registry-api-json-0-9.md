@@ -1,0 +1,77 @@
+# SP-35 SDK API registry (api.json) and 0.9 normalisation
+
+| Field       | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (DX consolidation J: SDK and UI-kit consolidation)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Size        | 2–3 engineer-weeks                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Depends on  | [P0-42](P0-42-generator-registry-pnpm-gen.md), [HA-13](HA-13-sdks-presentation.md), [HA-14](HA-14-godot-presentation.md)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [I-10a](I-10a-sdk-identity-node-react-python.md), [I-10b](I-10b-sdk-identity-swift-kotlin-godot.md), [U-06](U-06-sdk-settings-node-python.md), [U-20](U-20-sdk-settings-react.md), [U-07](U-07-sdk-settings-swift-kotlin.md), [U-21](U-21-sdk-settings-godot.md), [LX-19](LX-19-sdks-licensing.md), [LX-20](LX-20-commerce-clients.md), [SP-32a](SP-32a-polaris-key-json-plan-schema-fromconfig.md), [SP-33b](SP-33b-integration-content-on-polaris-key-json.md), [SP-34](SP-34-client-core-takes-neutral-typescript.md), [SP-40](SP-40-retire-react-cookie-mode-browser.md) |
+| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Plan mode   | yes: `pkey-wire-planner` writes `plans/SP-35.md` first; no code before a human approves it                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Gates       | `plan-mode`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Human input | plan approval (`plans/SP-35.md`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+
+## Consolidation 2026-10-07
+
+Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **SDX-04** in [Track J, SDK and UI-kit consolidation](../../../2026-10-07-dx-consolidation/tracks.md#j-sdk-and-ui-kit-consolidation).
+
+- Owner 2026-10-07: removal, not deprecation. No aliases; the 0.9 release notes list the break.
+
+## Goal
+
+SDK API registry (api.json) and 0.9 normalisation, as scoped below. Done when every acceptance criterion holds and the green gate passes.
+
+## Why
+
+Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) (2026-10-07) as **SDX-04** in [Track J, SDK and UI-kit consolidation](../../../2026-10-07-dx-consolidation/tracks.md#j-sdk-and-ui-kit-consolidation). The decision record is [`integration.md`](../../../2026-10-07-dx-consolidation/integration.md) (§1.5, §3.2, §4.1, §4.2, §4.3); the crosswalk from its working ids to graph ids is at the end of [`tracks.md`](../../../2026-10-07-dx-consolidation/tracks.md#crosswalk-integrationmd-ids-to-registered-ids). Evidence: [`audits/cq-sdks-tools.md`](../../../2026-10-07-dx-consolidation/audits/cq-sdks-tools.md), [`audits/sdk-uikits-dx.md`](../../../2026-10-07-dx-consolidation/audits/sdk-uikits-dx.md).
+
+## Read first
+
+- `AGENTS.md` (always) and `CLAUDE.md` (plan mode), and the skill that applies, if any.
+- [Track J, SDK and UI-kit consolidation](../../../2026-10-07-dx-consolidation/tracks.md#j-sdk-and-ui-kit-consolidation): the package's row, the track's dependencies and exit criteria, and the six cross-track rules at the top.
+- [`integration.md`](../../../2026-10-07-dx-consolidation/integration.md) §1.5, §3.2, §4.1, §4.2, §4.3, for **SDX-04**.
+- [`audits/cq-sdks-tools.md`](../../../2026-10-07-dx-consolidation/audits/cq-sdks-tools.md), for file and line evidence.
+- [`audits/sdk-uikits-dx.md`](../../../2026-10-07-dx-consolidation/audits/sdk-uikits-dx.md), for file and line evidence.
+
+## Scope
+
+**In:**
+
+- conformance/parity/api.json: canonical concept -> per-SDK symbol with deprecated rows and removal versions; the canonical name is the one most SDKs ship (config.get, getSecret, mintToken, set, clear, clearAll, setting(key) with visibility and sync, onConfigChange; entitlements.has/value/grants with quantity reserved; identity.signIn/subject/signOut; one events stream with a cloudSync kind; collection() reserved); renames only where SDKs disagree (React expectedServices, Godot product_slug, Python pinned_keys, Kotlin options flattened) with language-native deprecated aliases kept for the published deprecation window (P0-24); HA-13 and HA-14's presentation readers land first and are recorded; React cookie mode marked deprecated for SP-40; generated per-SDK surface tests; reference/api-names.mdx; samples, docs and console snippets regenerated. Two slices: TypeScript and Python, then Swift, Kotlin and Godot. Heads the serial SDK lane (SP-35 -> SP-34 -> SP-32a -> SP-32b -> SP-39); lands before I-10a/b, LX-19, U-06 and CM-15.
+
+**Out** (and where it belongs instead):
+
+- Work owned by the packages in the Depends on and Unblocks rows, and the rest of Track J (→ the ids in [`tracks.md`](../../../2026-10-07-dx-consolidation/tracks.md)).
+
+## Design notes
+
+- Working id **SDX-04**; DX consolidation J: SDK and UI-kit consolidation.
+- Plan mode (client api): the plan is approved before any code.
+- No new copies (tracks.md rule 4): build on the one mechanism this plan names, never beside it.
+
+## Steps
+
+1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
+2. Wait for the approved `plans/SP-35.md` (written by `pkey-wire-planner`).
+3. Implement the scope; run the green gate; hand off.
+
+## Acceptance criteria
+
+- [ ] Each SDK's surface test asserts every canonical symbol
+- [ ] No new SDK verb outside api.json (lint)
+- [ ] Plan approved (all-SDK public API)
+- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+
+## Verify
+
+```sh
+mise exec node@22 -- pnpm parity:check
+```
+
+Then the full green gate in `AGENTS.md`.
+
+## Hand-off
+
+What downstream work packages rely on from this one is named in their briefs (the Unblocks row). The role agent sets `--set SP-35 in-review` when it hands off. After review, the lead adds the last commit of the PR:
+`node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set SP-35 done`.

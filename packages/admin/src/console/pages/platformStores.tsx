@@ -25,7 +25,11 @@
  */
 
 import * as React from "react";
-import { useQuery, type UseQueryResult } from "@tanstack/react-query";
+import {
+  useQuery,
+  useQueryClient,
+  type UseQueryResult,
+} from "@tanstack/react-query";
 import { KeyRound, RefreshCw, Upload } from "lucide-react";
 import {
   ApiError,
@@ -65,11 +69,10 @@ import { StatusPill } from "../../ui/StatusPill.js";
 import { Switch } from "../../ui/Switch.js";
 import { Timestamp } from "../../ui/Timestamp.js";
 import { toast } from "../../ui/toast.js";
-import { PageHeader } from "../components/PageHeader.js";
+import { PageHeader } from "../../ui/PageHeader.js";
 import { useProducts } from "../data/hooks.js";
 import { mutate } from "../data/mutations.js";
 import { qk } from "../data/queries.js";
-import { queryClient } from "../data/queryClient.js";
 import { Link, navigate, useSearchParam } from "../router.js";
 import { setUpHref } from "../areas/storefronts/StorefrontsPage.js";
 import { codecs, r } from "../routes.js";
@@ -307,10 +310,10 @@ export function appStatusLines(
 // ── page ─────────────────────────────────────────────────────────────────────────────────────
 
 export function StoreConnections(): React.ReactElement {
-  const stores = useQuery(
-    { queryKey: qk.platformStores(), queryFn: fetchPlatformStores },
-    queryClient,
-  );
+  const stores = useQuery({
+    queryKey: qk.platformStores(),
+    queryFn: fetchPlatformStores,
+  });
   const [selected, setSelected] = useSearchParam("store", storeCodec);
   const list = stores.data ?? [];
   const current = list.find((s) => s.store === selected) ?? null;
@@ -448,18 +451,16 @@ function StoreDetail({
 }: {
   connection: PlatformStoreConnection;
 }): React.ReactElement {
+  const queryClient = useQueryClient();
   const [tracksRaw, setTracksRaw] = useSearchParam("tracks", tracksCodec);
   const tracks = s.store === "google-play" && tracksRaw === "1";
   const configured = s.configured;
-  const apps = useQuery(
-    {
-      queryKey: qk.platformStoreApps(s.store, tracks),
-      queryFn: () => fetchPlatformStoreApps(s.store, tracks),
-      enabled: configured && s.appsListing,
-      retry: false,
-    },
-    queryClient,
-  );
+  const apps = useQuery({
+    queryKey: qk.platformStoreApps(s.store, tracks),
+    queryFn: () => fetchPlatformStoreApps(s.store, tracks),
+    enabled: configured && s.appsListing,
+    retry: false,
+  });
   const [checking, setChecking] = React.useState(false);
   const [outcome, setOutcome] = React.useState<Outcome | null>(null);
 
@@ -1051,7 +1052,7 @@ export function ConnectForm({
           {c.configured ? `Replace the ${c.label}` : `Connect the ${c.label}`}
         </h4>
         {shape.file ? (
-          <label className="inline-flex cursor-pointer items-center gap-1.5 text-sm font-medium text-accent hover:underline focus-within:ring-2 focus-within:ring-focus">
+          <label className="inline-flex cursor-pointer items-center gap-1.5 text-sm font-normal text-accent hover:underline focus-within:ring-2 focus-within:ring-focus">
             <Upload aria-hidden className="size-4" />
             {shape.file.label}
             <input

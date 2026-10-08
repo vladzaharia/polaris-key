@@ -28,7 +28,7 @@ import { EmptyState } from "../../../ui/EmptyState.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
 import { Timestamp } from "../../../ui/Timestamp.js";
 import { entityHref } from "../../components/EntityLink.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { PageTabs } from "../../components/PageTabs.js";
 import { navigate, Link, useSearchParam } from "../../router.js";
 import { codecs } from "../../routes.js";

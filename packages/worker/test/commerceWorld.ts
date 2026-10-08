@@ -49,6 +49,38 @@ import {
 
 export const FLAG = "extras.diceSkins";
 
+/** The catalog a mapping is checked against: FLAG and `extras.other` as `flag`s, and one `config`
+ *  key that is not one. */
+export const COMMERCE_CATALOG = {
+  schemaVersion: 1,
+  entries: [
+    {
+      key: FLAG,
+      kind: "flag",
+      category: "Extras",
+      label: "Dice skins",
+      description: "",
+      schema: { type: "boolean" },
+    },
+    {
+      key: "extras.other",
+      kind: "flag",
+      category: "Extras",
+      label: "Other extras",
+      description: "",
+      schema: { type: "boolean" },
+    },
+    {
+      key: "extras.theme",
+      kind: "config",
+      category: "Extras",
+      label: "Theme",
+      description: "",
+      schema: { type: "string" },
+    },
+  ],
+};
+
 export interface CommerceWorld {
   env: Env;
   db: Db;
@@ -190,6 +222,11 @@ export async function commerceWorld(
 ): Promise<CommerceWorld> {
   const db = makeTestDb();
   await seedReleaseProduct(db);
+  await db.run(
+    "UPDATE product_schema SET catalog_json = ? WHERE product = ? AND active = 1",
+    JSON.stringify(COMMERCE_CATALOG),
+    SLUG,
+  );
   const env = envFor();
   const a = await seedLicenseWithKey(db, SLUG, { id: "lic_a" });
   const b = await seedLicenseWithKey(db, SLUG, { id: "lic_b" });

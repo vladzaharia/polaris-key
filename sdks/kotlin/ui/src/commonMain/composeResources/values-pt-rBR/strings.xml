@@ -1218,6 +1218,8 @@
     <string name="cli_option_yes">Não perguntar antes de sair</string>
     <!-- Terminal help: what the -device-code flag does. -->
     <string name="cli_option_deviceCode">Entrar com um código, sem o navegador deste computador</string>
+    <!-- Terminal help: what the -allow-workflow-commands flag of the secret and mint commands does. A CI log is a build server's job log (GitHub Actions, Azure Pipelines); a command is an instruction the build server reads from that log. -->
+    <string name="cli_option_allowWorkflowCommands">Mostrar o valor mesmo que um log de CI execute uma linha dele como comando</string>
     <!-- Terminal key hints under the license key prompt. Each part is a key name, a space, then what it does; keep the key first and the ' · ' separators. -->
     <string name="cli_keys_activate">Enter ativa · Esc cancela</string>
     <!-- Terminal key hints while waiting for a code sign-in. 'c' is the key to press; keep the key first and the ' · ' separators. -->
@@ -1274,6 +1276,8 @@
     <string name="cli_config_unset">%1$s não tem valor.</string>
     <!-- Terminal: the secret command found nothing. {name} is the secret's key. Arguments: 1=name. -->
     <string name="cli_secret_none">Este dispositivo não recebe nenhum segredo chamado %1$s.</string>
+    <!-- Terminal: the secret or mint command did not print its value (a secret or a token) because the build server reading the output would treat a line of it as an instruction. {command} is a command line (the same command with -allow-workflow-commands). Arguments: 1=command. -->
+    <string name="cli_output_workflowCommand">O valor não foi mostrado: este log de CI executaria uma linha dele como comando. Para mostrá-lo mesmo assim, execute %1$s.</string>
     <!-- Terminal offline activation: what to do with the activation file. {command} is a command line. Arguments: 1=command. -->
     <string name="cli_offline_import">Depois, execute %1$s com o arquivo que você receber.</string>
     <!-- Terminal diagnostics: the row label for the SDK name and version. -->

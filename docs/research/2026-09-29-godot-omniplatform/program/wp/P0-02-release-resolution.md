@@ -2,7 +2,7 @@
 
 | Field       | Value                                                                                                      |
 | ----------- | ---------------------------------------------------------------------------------------------------------- |
-| Phase       | P0: Hygiene and unblockers                                                                                 |
+| Phase       | P0: Hygiene, unblockers and code quality                                                                   |
 | Size        | 1–1.25 engineer-weeks                                                                                      |
 | Depends on  | none                                                                                                       |
 | Unblocks    | [P0-03](P0-03-release-webhook.md), [P2-03](P2-03-release-data-model.md), [D-02](D-02-diceroll-after-p1.md) |

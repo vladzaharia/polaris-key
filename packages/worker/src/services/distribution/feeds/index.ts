@@ -31,7 +31,7 @@
 
 import type { ServiceContext } from "../../../core/registry.js";
 import { errorResponse, notFound } from "../../../core/errors.js";
-import { appSecurityHeaders } from "../../../core/platform.js";
+import { appSecurityHeaders, sha256Hex } from "../../../core/platform.js";
 import { bytesHostname } from "../../../core/bytesHost.js";
 import { readCiJson, requireCiScope } from "../../../core/ciScope.js";
 import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
@@ -89,16 +89,6 @@ function harden(res: Response): Response {
   const headers = appSecurityHeaders(new Headers(res.headers));
   headers.set("x-content-type-options", "nosniff");
   return new Response(res.body, { status: res.status, headers });
-}
-
-async function sha256Hex(text: string): Promise<string> {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(text),
-  );
-  return [...new Uint8Array(digest)]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
 }
 
 /** A feed document's body: pretty JSON and a final newline. */

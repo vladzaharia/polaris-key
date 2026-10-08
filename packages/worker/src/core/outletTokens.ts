@@ -34,7 +34,7 @@
 
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
-import { sha256Hex } from "../crypto.js";
+import { sha256Hex } from "../platform/hash.js";
 import { open, seal, type SealContext } from "../keyvault.js";
 import { pk } from "../kv.js";
 import { signJwtEs256, signJwtRs256 } from "./jwt.js";

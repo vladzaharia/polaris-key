@@ -10,7 +10,7 @@
  * One D1 read: the listing row, the default locale and the feed's overrides together.
  */
 
-import type { Db } from "../../../core/platform.js";
+import { parseJsonColumn, type Db } from "../../../core/platform.js";
 import type { RenderListing } from "../feeds/render.js";
 
 /** The feeds that read the model, as override store ids. */
@@ -31,15 +31,6 @@ interface Row {
 
 const str = (v: unknown): string | undefined =>
   typeof v === "string" && v !== "" ? v : undefined;
-
-function parse(raw: string | null): unknown {
-  if (raw === null) return null;
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
 
 /**
  * The model's fields for a feed (undefined members dropped), or null when the product has no
@@ -67,7 +58,7 @@ export async function modelFeedListing(
   );
   if (!row) return null;
   const ov = new Map<string, unknown>();
-  const list = parse(row.overrides);
+  const list = parseJsonColumn(row.overrides);
   if (Array.isArray(list)) {
     // A locale's override beats the every-locale one: every-locale first, then the locale's.
     const entries = list as { locale: string; field: string; value: unknown }[];
@@ -75,7 +66,7 @@ export async function modelFeedListing(
       for (const o of entries)
         if ((o.locale === "") === everyLocale) ov.set(o.field, o.value);
   }
-  const urls = parse(row.urls_json) as Record<string, unknown> | null;
+  const urls = parseJsonColumn<Record<string, unknown>>(row.urls_json);
   const pick = (field: string, model: unknown) =>
     str(ov.get(field)) ?? str(model);
   const out: RenderListing = {};

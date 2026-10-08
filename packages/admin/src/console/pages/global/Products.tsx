@@ -17,7 +17,7 @@ import { ServiceGlyph } from "../../../ui/ServiceBadge.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
 import { Timestamp } from "../../../ui/Timestamp.js";
 import { DeleteProductDialog } from "../../components/DeleteProductDialog.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { useResyncFlow } from "../../components/ResyncDialog.js";
 import { useProducts } from "../../data/hooks.js";
 import { Link, navigate } from "../../router.js";

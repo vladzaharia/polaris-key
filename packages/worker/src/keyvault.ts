@@ -21,6 +21,15 @@
 // auth-tag mismatch — it NEVER returns a wrong or partial plaintext.
 
 import type { Env } from "./env.js";
+import {
+  b64urlDecode,
+  b64urlEncode,
+  base64DecodeEitherAlphabet,
+  base64Encode,
+  toArrayBuffer,
+} from "./platform/bytes.js";
+import { constantTimeEqualBytes } from "./platform/compare.js";
+import { randomBytes } from "./platform/random.js";
 
 /** A sealed value: AES-256-GCM under a versioned platform KEK. `aad` is not stored; callers
  *  provide it again on open so ciphertext is bound to product/kind/name metadata.
@@ -37,36 +46,6 @@ export interface Sealed {
 
 const enc = new TextEncoder();
 const dec = new TextDecoder();
-
-function toArrayBuffer(b: Uint8Array): ArrayBuffer {
-  return b.buffer.slice(
-    b.byteOffset,
-    b.byteOffset + b.byteLength,
-  ) as ArrayBuffer;
-}
-
-function b64urlEncode(bytes: Uint8Array): string {
-  let bin = "";
-  for (const b of bytes) bin += String.fromCharCode(b);
-  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function b64urlDecode(s: string): Uint8Array {
-  const b64 = s.replace(/-/g, "+").replace(/_/g, "/");
-  const pad = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
-  const bin = atob(pad);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
-}
-
-/** Decode a standard base64 string (the KEK is base64, not base64url). */
-function b64Decode(s: string): Uint8Array {
-  const bin = atob(s.replace(/-/g, "+").replace(/_/g, "/"));
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
-}
 
 /**
  * The slot a sealed value is bound to; it becomes the AAD `pkey:v2:<product>:<kind>:<id>`.
@@ -232,14 +211,6 @@ function resolveKeyring(env: Env): RawKeyring {
  *  fresh isolate needs no restart hook and a stale ring can never outlive its configuration. */
 let cachedRing: { fingerprint: string; ring: Keyring } | null = null;
 
-/** Equal key bytes, compared without an early exit. */
-function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a[i]! ^ b[i]!;
-  return diff === 0;
-}
-
 function importKek(
   keyBytes: Uint8Array,
   usages: ("encrypt" | "decrypt")[],
@@ -270,7 +241,7 @@ async function loadKeyring(env: Env): Promise<Keyring> {
 
   const keys = new Map<string, CryptoKey>();
   for (const [kid, b64] of Object.entries(raw)) {
-    const keyBytes = b64Decode(b64);
+    const keyBytes = base64DecodeEitherAlphabet(b64);
     if (keyBytes.length !== 32) {
       throw new Error(
         single
@@ -283,7 +254,7 @@ async function loadKeyring(env: Env): Promise<Keyring> {
 
   let legacy: LegacyKey | null = null;
   if (openOnly) {
-    const keyBytes = b64Decode(openOnly.b64);
+    const keyBytes = base64DecodeEitherAlphabet(openOnly.b64);
     if (keyBytes.length !== 32) {
       throw new Error("PLATFORM_KEK must decode to exactly 32 bytes");
     }
@@ -291,7 +262,9 @@ async function loadKeyring(env: Env): Promise<Keyring> {
       ? raw[openOnly.kid]
       : undefined;
     if (inRing !== undefined) {
-      if (!sameBytes(keyBytes, b64Decode(inRing))) {
+      if (
+        !constantTimeEqualBytes(keyBytes, base64DecodeEitherAlphabet(inRing))
+      ) {
         throw new Error(
           `PLATFORM_KEK and PLATFORM_KEK_KEYS both define kid ${openOnly.kid} with different keys; ` +
             `refusing to choose. Give the new key in PLATFORM_KEK_KEYS a kid of its own ` +
@@ -338,8 +311,7 @@ export async function seal(
   const { active, keys } = await loadKeyring(env);
   const key = keys.get(active);
   if (!key) throw new Error(`active KEK ${active} is not in the keyring`);
-  const iv = new Uint8Array(12);
-  crypto.getRandomValues(iv);
+  const iv = randomBytes(12);
   const ct = await crypto.subtle.encrypt(
     {
       name: "AES-GCM",
@@ -353,7 +325,7 @@ export async function seal(
     v: 2,
     kekId: active,
     iv: b64urlEncode(iv),
-    ct: b64urlEncode(new Uint8Array(ct)),
+    ct: b64urlEncode(ct),
   };
   return JSON.stringify(sealed);
 }
@@ -404,10 +376,7 @@ export async function open(
 }
 
 function pkcs8ToPem(der: ArrayBuffer): string {
-  let bin = "";
-  const bytes = new Uint8Array(der);
-  for (const b of bytes) bin += String.fromCharCode(b);
-  const b64 = btoa(bin);
+  const b64 = base64Encode(der);
   const lines = b64.match(/.{1,64}/g) ?? [b64];
   return `-----BEGIN PRIVATE KEY-----\n${lines.join("\n")}\n-----END PRIVATE KEY-----`;
 }

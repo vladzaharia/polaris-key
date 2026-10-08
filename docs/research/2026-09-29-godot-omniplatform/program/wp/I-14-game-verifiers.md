@@ -1,11 +1,11 @@
-# I-14 Game verifiers: Steam ticket with optional ownership grants through a Core hook, Game Center, Play Games, EOS; Godot iOS and Android shims; Swift and Kotlin helpers
+# I-14 Game and store sign-in derived from channels
 
 | Field       | Value                                                                                                                                                                                                                                       |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, phase-1b)                                                                                                                                                      |
 | Size        | 1.6–2.25 engineer-weeks                                                                                                                                                                                                                     |
 | Depends on  | [I-13](I-13-exchange-endpoint.md)                                                                                                                                                                                                           |
-| Unblocks    | [I-19](I-19-identity-docs.md)                                                                                                                                                                                                               |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [I-19](I-19-identity-docs.md)                                                                                                                                                                       |
 | Role        | `pkey-implementer`                                                                                                                                                                                                                          |
 | Plan mode   | no: follows the approved [`plans/I-04.md`](../plans/I-04.md) where it names this package                                                                                                                                                    |
 | Gates       | THREAT-MODEL; `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; all six SDKs (`parity:check`); rule 9 (validator rule, mutation table, JSON schema); CI: Android; CI: macOS; per-verifier security review in the PR |
@@ -36,6 +36,14 @@ the owner's license vocabulary (SIGN-IN.md O-17: the tier pill and "{used} of {l
 every row, no "Account-wide"). For this package:
 
 - Steam, Game Center, Play Games and EOS ride I-13's exchange, so they inherit `licenseChoice` (default `"app"`) and the `choose` answer with a grant (I-04 §G.4). Godot's Steam build signs in with the ticket and shows step 3 in the in-game form (SIGN-IN.md frame 39).
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track F, Identity](../../../2026-10-07-dx-consolidation/tracks.md#f-identity)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Drop identity.native and its checklists. Store sign-in turns on with the store channel, reading Steam app id/publisher key, ASC team and bundle ids, Play package and PGS client from store connections through a Core hook. Steam ownership is CM-24's engine, which the Steam link triggers when present; no raw-flag grants. EOS waits for an Epic channel.
+
+- Title: was "Game verifiers: Steam ticket with optional ownership grants through a Core hook, Game Center, Play Games, EOS; Godot iOS and Android shims; Swift and Kotlin helpers".
 
 ## Goal
 

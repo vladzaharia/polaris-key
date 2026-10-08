@@ -16,8 +16,7 @@
  * and the user handle are not derived from it.
  */
 
-import { randomId, type Db } from "../../../core/platform.js";
-import { randomSecret } from "../portal/accountSessions.js";
+import { randomId, randomToken, type Db } from "../../../core/platform.js";
 import { PASSKEY_ISSUER } from "../accounts/repo.js";
 
 /** Passkeys one account may hold. Rate limits bound how fast they are added; this bounds rows. */
@@ -135,7 +134,7 @@ export async function accountUserHandle(
   await db.run(
     `UPDATE accounts SET passkey_user_handle = ?
       WHERE id = ? AND passkey_user_handle IS NULL`,
-    randomSecret(32),
+    randomToken(32),
     accountId,
   );
   const row = await db.first<{ passkey_user_handle: string | null }>(

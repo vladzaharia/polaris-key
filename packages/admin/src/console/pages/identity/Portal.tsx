@@ -25,11 +25,10 @@ import { Switch } from "../../../ui/Switch.js";
 import { Timestamp } from "../../../ui/Timestamp.js";
 import { toast } from "../../../ui/toast.js";
 import { useUnsavedChangesGuard } from "../../../ui/useUnsavedChangesGuard.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { useProduct } from "../../data/hooks.js";
 import { mutate } from "../../data/mutations.js";
 import { qk } from "../../data/queries.js";
-import { queryClient } from "../../data/queryClient.js";
 import { Link } from "../../router.js";
 import { r } from "../../routes.js";
 import {
@@ -115,13 +114,10 @@ const PORTAL_OFF = "Turn on the customer portal to change this.";
 export function PortalPage({ slug }: { slug: string }): React.ReactElement {
   // Identity's own endpoint, not the copy on the product row: `identity/portal` owns the table, so
   // it is the value a save round-trips against.
-  const settings = useQuery(
-    {
-      queryKey: qk.portal(slug),
-      queryFn: () => api.portalSettings(slug).then((r) => r.settings),
-    },
-    queryClient,
-  );
+  const settings = useQuery({
+    queryKey: qk.portal(slug),
+    queryFn: () => api.portalSettings(slug).then((r) => r.settings),
+  });
   const product = useProduct(slug);
 
   const header = (

@@ -19,7 +19,10 @@ import {
   secureResponse,
 } from "../src/securityHeaders.js";
 import { handleAdminCallback } from "../src/admin/auth.js";
-import { handleMagicVerify } from "../src/services/identity/portal/auth.js";
+import {
+  handleMagicVerify,
+  signInRefusal,
+} from "../src/services/identity/portal/auth.js";
 import {
   deviceFlowKey,
   handleAuthDeviceEntry,
@@ -223,6 +226,28 @@ describe("every server-rendered page on the console host uses the shell", () => 
     expect(html).toContain("Codes and links work once, for 10 minutes.");
     expect(html).toContain(">Sign in again</a>");
     expect(html).not.toContain('class="surface"');
+  });
+
+  it("the portal's Account disabled page: another account, then where it was headed", async () => {
+    for (const [returnTo, href] of [
+      ["/#/p/acme", "/#/p/acme"],
+      [undefined, "/"],
+    ] as const) {
+      const res = signInRefusal(
+        { status: "refused", reason: "account_disabled" },
+        returnTo,
+      )!;
+      expect(res.status).toBe(403);
+      const html = await expectBrandedPage(res);
+      expect(html).toMatch(/This account can(&#39;|&#x27;|')t sign in/);
+      expect(html).toContain(
+        `<p class="actions stack"><a class="button" href="${href}">Sign in with another account</a></p>`,
+      );
+      // No channel nobody can reach (no support page or setting exists), and no product here.
+      expect(html).not.toContain("Polaris Key support");
+      expect(html).not.toContain("Back to ");
+      expect(html).not.toContain('class="surface"');
+    }
   });
 
   it("the device code entry page", async () => {

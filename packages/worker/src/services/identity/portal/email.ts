@@ -22,22 +22,13 @@
  */
 
 import { BRAND, FONT, THEME_TOKENS } from "@polaris-key/brand";
-import type { Db, Env } from "../../../core/platform.js";
+import { escapeHtml, type Db, type Env } from "../../../core/platform.js";
 import { deliverEmail } from "../../../core/emailDelivery.js";
 import type { NoticeMessage } from "./notices.js";
 import { listVerifiedAccountEmails } from "./repo.js";
 
 export function portalEmailConfigured(env: Env): boolean {
   return Boolean(env.EMAIL);
-}
-
-function escapeHtml(input: string): string {
-  return input
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#x27;");
 }
 
 /** An `https:` origin (or `http:` on loopback, for local development) to load the lockup from. */

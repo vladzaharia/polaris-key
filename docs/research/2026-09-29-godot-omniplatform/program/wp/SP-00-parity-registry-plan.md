@@ -12,6 +12,14 @@
 | Human input | none                                                                                                                            |
 | Repo        | `vladzaharia/polaris-key`                                                                                                       |
 
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **keep** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Merged (c515bf0e8). SP-35's api.json extends its parity registry.
+
+- Status: stamped `done` (was `in-review`).
+
 ## Goal
 
 One registry and corpus change makes the SDK parity pass measurable: the proposed parity ids exist

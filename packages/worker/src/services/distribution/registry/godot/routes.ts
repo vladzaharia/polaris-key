@@ -33,6 +33,7 @@
  * (§6.6 step 3), and its own documents answer the ladder's refusal.
  */
 
+import { sha256Hex } from "../../../../core/platform.js";
 import type { ReleaseCatalog } from "../../../../core/hooks.js";
 import { blobKey, blobResponse, hasRef } from "../../../../core/blobs.js";
 import {
@@ -95,16 +96,6 @@ const HEX64 = "([0-9a-f]{64})";
 const SLUG = "([a-z0-9][a-z0-9_-]{0,63})";
 
 const notFound = (): Response => registryNotFound(ECO);
-
-async function sha256Hex(text: string): Promise<string> {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(text),
-  );
-  return [...new Uint8Array(digest)]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
 
 /** A composed JSON document with the index-document headers of §6.7 (strong ETag = body hash). */
 async function jsonAnswer(

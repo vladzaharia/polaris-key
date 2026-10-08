@@ -36,7 +36,7 @@ import { PageSkeleton } from "../../../ui/Skeleton.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
 import { Version } from "../../../ui/Version.js";
 import { EntityLink, entityHref } from "../../components/EntityLink.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { PageTabs } from "../../components/PageTabs.js";
 import { useProduct } from "../../data/hooks.js";
 import {

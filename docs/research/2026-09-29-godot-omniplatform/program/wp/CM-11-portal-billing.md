@@ -1,21 +1,30 @@
-# CM-11 Customer portal commerce: Account → Billing (orders, subscriptions, invoices across developers), product-page buy / upgrade / gift / manage, Stripe Customer Portal hand-off per merchant
+# CM-11 Portal Polaris Key orders on Account -> Purchases
 
-| Field       | Value                                                                                                |
-| ----------- | ---------------------------------------------------------------------------------------------------- |
-| Phase       | CM: Polaris Key commerce (S-22): deferred until the owner's go                                       |
-| Size        | 1.2–1.6 engineer-weeks                                                                               |
-| Depends on  | [CM-07](CM-07-tier-upgrades.md), [CM-08](CM-08-subscriptions.md), [LX-15](LX-15-portal-licensing.md) |
-| Unblocks    | [CM-16](CM-16-storefront-integration.md), [CM-17](CM-17-commerce-closeout.md)                        |
-| Role        | `pkey-implementer`                                                                                   |
-| Plan mode   | no (executes its sections of the approved [`plans/CM-01.md`](../plans/CM-01.md))                     |
-| Gates       | `portal-e2e`, `ui-snapshots`, `rule-10`, `docs-links`, `console-csp-parity`                          |
-| Human input | the owner's go signal (removes `deferred`)                                                           |
-| Repo        | `vladzaharia/polaris-key`                                                                            |
+| Field       | Value                                                                                                                  |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Phase       | CM: Commerce: store commerce (required) and Polaris Key checkout (deferred)                                            |
+| Size        | 1.2–1.6 engineer-weeks                                                                                                 |
+| Depends on  | [CM-08](CM-08-subscriptions.md), [LX-15](LX-15-portal-licensing.md), [CM-26](CM-26-portal-account-purchases-across.md) |
+| Unblocks    | [CM-17](CM-17-commerce-closeout.md)                                                                                    |
+| Role        | `pkey-implementer`                                                                                                     |
+| Plan mode   | no (executes its sections of the approved [`plans/CM-01.md`](../plans/CM-01.md))                                       |
+| Gates       | `portal-e2e`, `ui-snapshots`, `rule-10`, `docs-links`, `console-csp-parity`                                            |
+| Human input | the owner's go signal (removes `deferred`)                                                                             |
+| Repo        | `vladzaharia/polaris-key`                                                                                              |
 
 > **Deferred. Do not dispatch.** This package is optional and carries `deferred` in
 > `workpackages.json`: the owner asked for the commerce plan on 2026-10-05 but not for its
 > execution. `check.mjs --ready` does not list it. It becomes dispatchable only when the owner says
 > go and the lead removes the `deferred` field.
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track H, Distribution channels, storefronts and commerce](../../../2026-10-07-dx-consolidation/tracks.md#h-distribution-channels-storefronts-and-commerce)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Builds on CM-26's Account -> Purchases: adds Polaris Key orders, invoices and cancel/resume; no separate Billing section.
+
+- Title: was "Customer portal commerce: Account → Billing (orders, subscriptions, invoices across developers), product-page buy / upgrade / gift / manage, Stripe Customer Portal hand-off per merchant".
+- Depends on: added CM-26; removed CM-07.
 
 ## Goal
 

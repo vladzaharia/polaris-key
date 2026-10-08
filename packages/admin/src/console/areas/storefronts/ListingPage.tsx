@@ -32,7 +32,7 @@ import { toast } from "../../../ui/toast.js";
 import { useUnsavedChangesGuard } from "../../../ui/useUnsavedChangesGuard.js";
 import { errorCopy } from "../../../lib/errorCopy.js";
 import { mutate } from "../../data/mutations.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { PageTabs } from "../../components/PageTabs.js";
 import { useSearchParam } from "../../router.js";
 import { codecs, r } from "../../routes.js";

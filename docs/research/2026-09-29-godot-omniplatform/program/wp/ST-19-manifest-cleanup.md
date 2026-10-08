@@ -2,7 +2,7 @@
 
 | Field       | Value                                                                                                                 |
 | ----------- | --------------------------------------------------------------------------------------------------------------------- |
-| Phase       | ST: Settings architecture (S-18) (phase 4: manifest round trip)                                                       |
+| Phase       | ST: Settings, access control and console shell (phase 4: manifest round trip)                                         |
 | Size        | 0.5–0.7 engineer-weeks                                                                                                |
 | Depends on  | [ST-03](ST-03-settings-registry.md)                                                                                   |
 | Unblocks    | [ST-18](ST-18-promote-export.md), [ST-19b](ST-19b-manifest-settings.md)                                               |

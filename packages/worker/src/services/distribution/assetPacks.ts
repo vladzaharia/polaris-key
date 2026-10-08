@@ -20,7 +20,7 @@
  */
 
 import { APP_DELIVERABLE_ID, parseAssetPackId } from "@polaris-key/manifest";
-import type { Db } from "../../core/platform.js";
+import { parseJsonObject, type Db } from "../../core/platform.js";
 import type { ReleaseCatalog } from "../../core/hooks.js";
 
 /** Apple's per-app limits (ASC Help "Apple-hosted asset pack size limits"; notes/S-07 row 16). */
@@ -61,18 +61,6 @@ export interface AssetPackListing {
     bytes: number | null;
     maxBytes: number;
   };
-}
-
-function obj(raw: string | null): Record<string, unknown> {
-  if (!raw) return {};
-  try {
-    const v = JSON.parse(raw) as unknown;
-    return v && typeof v === "object" && !Array.isArray(v)
-      ? (v as Record<string, unknown>)
-      : {};
-  } catch {
-    return {};
-  }
 }
 
 const str = (v: unknown): string | null => (typeof v === "string" ? v : null);
@@ -189,12 +177,12 @@ export async function listAssetPacks(
     product,
   ))
     await note(
-      obj(row.ref_json),
+      parseJsonObject(row.ref_json) ?? {},
       row.release_id,
       row.object_type,
       row.store_state,
       row.updated_at,
-      obj(row.detail_json),
+      parseJsonObject(row.detail_json) ?? {},
     );
   for (const row of await db.all<{
     release_id: string;
@@ -213,8 +201,11 @@ export async function listAssetPacks(
     // P5-08: an apple-ba row is keyed by its asset pack (`build_id`); that key names the level.
     await note(
       row.build_id !== ""
-        ? { ...obj(row.platform_ref_json), assetPackIdentifier: row.build_id }
-        : obj(row.platform_ref_json),
+        ? {
+            ...(parseJsonObject(row.platform_ref_json) ?? {}),
+            assetPackIdentifier: row.build_id,
+          }
+        : (parseJsonObject(row.platform_ref_json) ?? {}),
       row.release_id,
       `availability:${row.outlet_id}`,
       row.state,

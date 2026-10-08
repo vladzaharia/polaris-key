@@ -95,6 +95,10 @@ export function ManagedField({
     </span>
   );
   const fallback = entryDefault(entry);
+  // A lower `enforced`/`hidden` entry beats a higher `default` one (the Worker's `mergeMap`), so
+  // an override left at Default under such a lock changes nothing on devices (P0-47).
+  const inheritedLocked = !!inherited && inherited.state !== "default";
+  const overrideIgnored = inheritedLocked && state === "default";
 
   if (!managed) {
     return (
@@ -116,7 +120,8 @@ export function ManagedField({
                 <>
                   {" "}
                   · inherits {formatValue(inherited.value)} from{" "}
-                  {inherited.source}.
+                  {inherited.source}
+                  {inheritedLocked ? " (locked)" : null}.
                 </>
               ) : fallback !== undefined ? (
                 <> · clients fall back to {formatValue(fallback)}.</>
@@ -197,7 +202,13 @@ export function ManagedField({
           onChange={onStateChange}
         />
         <div className="flex flex-col items-end gap-0.5 text-xs text-fg-muted">
-          {inherited ? (
+          {inherited && overrideIgnored ? (
+            <span className="text-right font-bold text-warning">
+              {capitalize(inherited.source)} enforces{" "}
+              {formatValue(inherited.value)}; this value is ignored. Choose
+              Enforced to override it.
+            </span>
+          ) : inherited ? (
             <span>
               Overrides {formatValue(inherited.value)} from {inherited.source}
             </span>
@@ -221,4 +232,9 @@ export function ManagedField({
       ) : null}
     </div>
   );
+}
+
+/** `profile “base”` → `Profile “base”`, to open a sentence. */
+function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }

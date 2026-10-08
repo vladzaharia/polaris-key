@@ -5,12 +5,18 @@
 | Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (SDK gaps)                              |
 | Size        | 1–1.5 engineer-weeks                                                                   |
 | Depends on  | [SP-12](SP-12-react-boot-download.md), [SP-14](SP-14-react-update-telemetry.md)        |
-| Unblocks    | none                                                                                   |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                 |
 | Role        | `pkey-sdk-porter`                                                                      |
 | Plan mode   | no                                                                                     |
 | Gates       | `stage-matrix.json` guard cases; unit tests; `parity:check`; the generated parity page |
 | Human input | none                                                                                   |
 | Repo        | `vladzaharia/polaris-key`                                                              |
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **keep** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track J, SDK and UI-kit consolidation](../../../2026-10-07-dx-consolidation/tracks.md#j-sdk-and-ui-kit-consolidation)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> React local client and update lifecycle; P2-11's Updates page documents it.
 
 ## Goal
 

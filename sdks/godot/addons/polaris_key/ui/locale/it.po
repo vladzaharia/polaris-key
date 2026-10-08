@@ -3257,6 +3257,11 @@ msgstr "Non chiedere conferma prima di uscire"
 msgid "cli.option.deviceCode"
 msgstr "Accedi con un codice invece del browser locale"
 
+#. Print the value even if a CI log would run a line of it as a command
+#. Terminal help: what the --allow-workflow-commands flag of the secret and mint commands does. A CI log is a build server's job log (GitHub Actions, Azure Pipelines); a command is an instruction the build server reads from that log.
+msgid "cli.option.allowWorkflowCommands"
+msgstr "Mostra il valore anche se un log di CI eseguirebbe una sua riga come comando"
+
 #. Enter activate · Esc cancel
 #. Terminal key hints under the license key prompt. Each part is a key name, a space, then what it does; keep the key first and the ' · ' separators.
 msgid "cli.keys.activate"
@@ -3396,6 +3401,11 @@ msgstr "{name} non ha un valore."
 #. Terminal: the secret command found nothing. {name} is the secret's key.
 msgid "cli.secret.none"
 msgstr "Questo dispositivo non ha ricevuto alcun segreto di nome {name}."
+
+#. The value was not printed: this CI log would run a line of it as a command. To print it anyway, run {command}.
+#. Terminal: the secret or mint command did not print its value (a secret or a token) because the build server reading the output would treat a line of it as an instruction. {command} is a command line (the same command with --allow-workflow-commands).
+msgid "cli.output.workflowCommand"
+msgstr "Il valore non è stato mostrato: questo log di CI eseguirebbe una sua riga come comando. Per mostrarlo comunque, esegui {command}."
 
 #. Then run {command} with the file you get back.
 #. Terminal offline activation: what to do with the activation file. {command} is a command line.

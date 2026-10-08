@@ -54,7 +54,8 @@ export function PortalShell({
   usePhoneBarToastInset();
 
   return (
-    <div className="flex min-h-dvh flex-col bg-surface-page text-fg">
+    // pk-portal-shell: the document's scroll padding clears the sticky header (styles.css).
+    <div className="pk-portal-shell flex min-h-dvh flex-col bg-surface-page text-fg">
       {/* "#content", not "#/": the hash router never sees it (onClick), and axe recognises a skip
           link only by an in-page fragment (PX-20). */}
       <a
@@ -235,7 +236,7 @@ function NavLink({
       href={to}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "relative inline-flex items-center gap-2.5 px-1 text-[0.9375rem]",
+        "relative inline-flex items-center gap-2.5 px-1 text-md",
         active
           ? "font-bold text-fg-strong after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:rounded-full after:bg-accent"
           : "text-fg-muted hover:text-fg-strong",
@@ -245,7 +246,7 @@ function NavLink({
       {count ? (
         <span
           className={cn(
-            "inline-flex min-w-6 items-center justify-center rounded-full px-2 py-0.5 text-xs font-medium tabular-nums",
+            "inline-flex min-w-6 items-center justify-center rounded-full px-2 py-0.5 text-xs font-normal tabular-nums",
             // Discover's count of offers is always the small violet count (§4.16).
             active || accentCount
               ? "bg-accent-subtle text-accent-fg"
