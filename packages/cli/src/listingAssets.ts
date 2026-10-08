@@ -44,6 +44,7 @@ import path from "node:path";
 import { ciClient, type Out, type Sleep, type StageProgress } from "./ci.js";
 import { mask, resolveCiToken, type CiEnv } from "./oidc.js";
 import { putFile } from "./s3.js";
+import { untrusted } from "./untrusted.js";
 import { zipStore } from "./zip.js";
 import { decodeImage, encodeImage, type Decoded } from "./listing/io.js";
 import {
@@ -808,6 +809,7 @@ export async function listingAssets(
     fetchImpl: opts.fetchImpl,
     sleep: opts.sleep,
     log: opts.stderr,
+    env: opts.env,
   });
   // Every object goes up under this ticket: the register earns only a listing row's own refs, so
   // `present` (a ref of any kind) is not a reason to skip.
@@ -854,6 +856,7 @@ export async function listingAssets(
       fetchImpl: opts.fetchImpl,
       sleep: opts.sleep,
       log: opts.stderr,
+      env: opts.env,
     });
     result.uploaded.push(r.slot);
     opts.progress?.advance(result.uploaded.length, ticket.objects.length);
@@ -864,10 +867,11 @@ export async function listingAssets(
     body: { ticket: ticket.ticket, assets: body },
   })) as unknown as { stored?: unknown[]; kept?: Array<{ slot: string }> };
   result.registered = { stored: answer.stored ?? [], kept: answer.kept ?? [] };
+  // The kept slots are the server's: cleaned (`untrusted.ts`).
   out.write(
     `Registered ${result.registered.stored.length} listing assets for ${opts.product}` +
       (answer.kept?.length
-        ? `; kept ${answer.kept.length} the operator uploaded (${answer.kept.map((k) => k.slot).join(", ")})`
+        ? `; kept ${answer.kept.length} the operator uploaded (${answer.kept.map((k) => untrusted(k?.slot, opts.env)).join(", ")})`
         : "") +
       ". Nothing was pushed to a store: accept each output in the console first.\n",
   );

@@ -14,6 +14,7 @@
  */
 
 import type { Sleep } from "../ci.js";
+import { untrusted } from "../untrusted.js";
 
 export const GITHUB_API = "https://api.github.com";
 
@@ -139,7 +140,7 @@ export function githubClient(o: GitHubClientOptions = {}): GitHubClient {
     if (res.ok) return parsed as T;
     const message =
       parsed && typeof parsed === "object" && "message" in parsed
-        ? String((parsed as { message: unknown }).message)
+        ? untrusted((parsed as { message: unknown }).message, {})
         : `HTTP ${res.status}`;
     const remaining = res.headers.get("x-ratelimit-remaining");
     throw new GitHubError(

@@ -40,6 +40,7 @@ import { promisify } from "node:util";
 import { ciClient, type CiClient, type Out, type Sleep } from "./ci.js";
 import { mask, resolveCiToken, type CiEnv } from "./oidc.js";
 import { putFile } from "./s3.js";
+import { untrusted, type UntrustedEnv } from "./untrusted.js";
 import { withZip, zipStore } from "./zip.js";
 import { apkSignerSha256 } from "./buildMetadata.js";
 
@@ -658,6 +659,7 @@ async function currentIndex(
   inputs: FdroidInputs,
   fetchImpl: typeof fetch,
   log: Out,
+  env: UntrustedEnv,
 ): Promise<Record<string, unknown> | null> {
   const reg = inputs.files.find((f) => f.path === "index-v2.json");
   if (!reg) return null;
@@ -669,7 +671,7 @@ async function currentIndex(
     return JSON.parse(bytes.toString("utf8")) as Record<string, unknown>;
   } catch (e) {
     log.write(
-      `warning: could not read the current index (${(e as Error).message}); no diff is written.\n`,
+      `warning: could not read the current index (${untrusted((e as Error).message, env)}); no diff is written.\n`,
     );
     return null;
   }
@@ -702,19 +704,23 @@ export async function buildFdroidFeed(
     fetchImpl: opts.fetchImpl,
     sleep: opts.sleep,
     log: opts.stderr,
+    env: opts.env,
   });
   const route = `distribution/feeds/fdroid/${encodeURIComponent(opts.channel.trim())}`;
   const inputs = await client.getJson<FdroidInputs>(route, {
     what: "Reading the F-Droid feed inputs",
   });
+  // The inputs are the server's: every field shown is cleaned (`untrusted.ts`).
+  const u = (v: unknown) => untrusted(v, opts.env);
   out.write(
-    `F-Droid ${inputs.channel}: ${inputs.versions.length} APK${inputs.versions.length === 1 ? "" : "s"} for ${inputs.packageName ?? "(no package)"}\n`,
+    `F-Droid ${u(inputs.channel)}: ${inputs.versions.length} APK${inputs.versions.length === 1 ? "" : "s"} for ${u(inputs.packageName ?? "(no package)")}\n`,
   );
 
   const previous = await currentIndex(
     inputs,
     opts.fetchImpl ?? fetch,
     opts.stderr,
+    opts.env,
   );
   const now = (opts.now ?? Date.now)();
   const prevTs =
@@ -835,6 +841,7 @@ export async function buildFdroidFeed(
       fetchImpl: opts.fetchImpl,
       sleep: opts.sleep,
       log: opts.stderr,
+      env: opts.env,
     });
     result.uploaded.push(f.path);
   }
@@ -847,11 +854,11 @@ export async function buildFdroidFeed(
   });
   result.registered = true;
   out.write(
-    `Registered ${all.length} files for ${inputs.channel} (${result.uploaded.length} uploaded): ${inputs.repo.address}\n`,
+    `Registered ${all.length} files for ${u(inputs.channel)} (${result.uploaded.length} uploaded): ${u(inputs.repo.address)}\n`,
   );
   if (inputs.repo.fingerprints.length)
     out.write(
-      `Add with: ${inputs.repo.address}?fingerprint=${inputs.repo.fingerprints[0]}\n`,
+      `Add with: ${u(inputs.repo.address)}?fingerprint=${u(inputs.repo.fingerprints[0])}\n`,
     );
   else
     out.write(

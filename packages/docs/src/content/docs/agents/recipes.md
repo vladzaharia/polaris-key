@@ -30,7 +30,7 @@ Deep page: [The `.pkey/` manifest](/docs/build/manifest/) · Skill: `authoring-p
 
 ```sh
 pkey validate          # exit 0, no error lines
-pkey validate --json   # the same verdict as one JSON object: result.errors[] and result.warnings[]
+pkey validate --json   # the same verdict as one JSON line: valid, errors[] and warnings[]
                        # each {code, message, at, file}; pkey validate <path> for a .pkey/ elsewhere
 ```
 

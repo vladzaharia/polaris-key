@@ -33,6 +33,7 @@ import {
   statusHint,
 } from "./bundle.js";
 import { readGodotListing, type GodotListing } from "./godotProject.js";
+import { untrusted, type UntrustedEnv } from "./untrusted.js";
 
 export const LISTING_USAGE =
   "Usage: pkey listing import --godot <project> --product <slug> [--preset <name> ...]\n" +
@@ -160,7 +161,7 @@ export async function listingImport(
         );
       }
       throw new Error(
-        `Importing at ${url} failed (409): ${String(payload.message ?? payload.reason ?? "conflict")}`,
+        `Importing at ${url} failed (409): ${untrusted(payload.message ?? payload.reason ?? "conflict", {})}`,
       );
     }
     if (!res.ok) throw await httpError(res, `Importing at ${url}`, listingHint);
@@ -182,16 +183,25 @@ export async function listingImport(
 }
 
 /** One value, quoted and clipped, control characters escaped (imported text is data). */
-function show(v: unknown): string {
+function show(v: unknown, env: UntrustedEnv): string {
   const s = JSON.stringify(v) ?? "null";
-  return s.length > 72 ? `${s.slice(0, 71)}…` : s;
+  // JSON escapes C0 but leaves DEL and C1 as they are: `untrusted` removes those too.
+  return untrusted(s.length > 72 ? `${s.slice(0, 71)}…` : s, env);
 }
 
-/** The human form of a result: the diff, refusals, identifiers, icons and warnings. */
-export function formatImport(r: ListingImportResult): string {
+/**
+ * The human form of a result: the diff, refusals, identifiers, icons and warnings. Everything in
+ * `r.import` is the server's answer, so each field is cleaned on its own (`untrusted.ts`); pass
+ * the job's `env` so inside GitHub Actions no field reads as a workflow command either.
+ */
+export function formatImport(
+  r: ListingImportResult,
+  env: UntrustedEnv = {},
+): string {
+  const u = (v: unknown) => untrusted(v, env);
   const lines: string[] = [];
   if (r.presets.length) lines.push(`Presets read: ${r.presets.join(", ")}`);
-  for (const w of r.warnings) lines.push(`warning: ${w}`);
+  for (const w of r.warnings) lines.push(`warning: ${u(w)}`);
   const imp = r.import;
   if (!imp) {
     lines.push(JSON.stringify(r.upload, null, 2));
@@ -199,38 +209,44 @@ export function formatImport(r: ListingImportResult): string {
   }
   if (imp.createsListing)
     lines.push(
-      `The product has no listing yet: this creates it (default locale ${imp.defaultLocale}).`,
+      `The product has no listing yet: this creates it (default locale ${u(imp.defaultLocale)}).`,
     );
   if (!imp.changes.length)
     lines.push("No changes: the listing already holds what the project has.");
-  const width = Math.max(0, ...imp.changes.map((c) => c.field.length));
+  const width = Math.max(0, ...imp.changes.map((c) => u(c.field).length));
   for (const c of imp.changes) {
     const value =
       c.action === "replace"
-        ? `${show(c.current)} -> ${show(c.proposed)}`
+        ? `${show(c.current, env)} -> ${show(c.proposed, env)}`
         : c.action === "keep"
-          ? `${show(c.current)} (kept: ${c.reason ?? "kept"}; godot has ${show(c.proposed)})`
-          : show(c.proposed);
-    lines.push(`  ${c.action.padEnd(7)}  ${c.field.padEnd(width)}  ${value}`);
+          ? `${show(c.current, env)} (kept: ${u(c.reason ?? "kept")}; godot has ${show(c.proposed, env)})`
+          : show(c.proposed, env);
+    lines.push(
+      `  ${u(c.action).padEnd(7)}  ${u(c.field).padEnd(width)}  ${value}`,
+    );
   }
-  for (const x of imp.refused) lines.push(`refused  ${x.field}: ${x.message}`);
+  for (const x of imp.refused)
+    lines.push(`refused  ${u(x.field)}: ${u(x.message)}`);
   for (const i of imp.identifiers) {
     const where = i.outlets.length
       ? i.outlets
-          .map((o) => `${o.outlet} ${o.matches ? "matches" : `has ${o.value}`}`)
+          .map(
+            (o) =>
+              `${u(o.outlet)} ${o.matches ? "matches" : `has ${u(o.value)}`}`,
+          )
           .join(", ")
       : "no outlet declares one";
-    lines.push(`${i.kind} (${i.platform}) ${i.value}: ${where}`);
+    lines.push(`${u(i.kind)} (${u(i.platform)}) ${u(i.value)}: ${where}`);
   }
   for (const a of imp.assets)
     lines.push(
-      `icon ${a.slot}: ${a.ref}${a.width && a.height ? ` (${a.width}x${a.height})` : ""}; upload it with pkey listing assets`,
+      `icon ${u(a.slot)}: ${u(a.ref)}${a.width && a.height ? ` (${u(a.width)}x${u(a.height)})` : ""}; upload it with pkey listing assets`,
     );
   const applicable = imp.changes.filter((c) => c.action !== "keep").length;
   if (imp.applied)
     lines.push(
       imp.written.length
-        ? `Applied ${imp.written.length} change${imp.written.length === 1 ? "" : "s"}: ${imp.written.join(", ")}`
+        ? `Applied ${imp.written.length} change${imp.written.length === 1 ? "" : "s"}: ${imp.written.map(u).join(", ")}`
         : "Nothing to apply.",
     );
   else if (applicable)

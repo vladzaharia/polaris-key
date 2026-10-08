@@ -28,6 +28,7 @@ import {
   type Sleep,
 } from "../ci.js";
 import { resolveCiToken, type CiEnv } from "../oidc.js";
+import { untrusted } from "../untrusted.js";
 import {
   checkCiCommand,
   ciParamValue,
@@ -286,7 +287,7 @@ export async function runStoreSteps(
   if (o.dryRun) {
     for (const step of steps)
       o.stdout.write(
-        `Would run: ${commandLine(o.toolPath ?? step.tool, step.argv)}\n`,
+        `Would run: ${untrusted(commandLine(o.toolPath ?? step.tool, step.argv), o.env)}\n`,
       );
     return steps.map((step) => ({ step, outcome: "dry-run", exitCode: null }));
   }
@@ -308,6 +309,7 @@ export async function runStoreSteps(
       fetchImpl: o.fetchImpl,
       sleep: o.sleep,
       log: o.stderr,
+      env: o.env,
     });
   }
   const runId = stepRunId(o.env);
@@ -327,7 +329,11 @@ export async function runStoreSteps(
       ...(exitCode !== undefined ? { exitCode } : {}),
       ...(runUrl ? { runUrl } : {}),
     });
-    const line = commandLine(o.toolPath ?? step.tool, step.argv);
+    // The argv carries the outlet's identity (the server's): the line is cleaned to be shown.
+    const line = untrusted(
+      commandLine(o.toolPath ?? step.tool, step.argv),
+      o.env,
+    );
     if (client) {
       let opened: ReportedStep;
       try {

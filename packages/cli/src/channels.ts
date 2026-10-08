@@ -48,6 +48,7 @@ async function clientFor(opts: ChannelCommandOptions) {
     fetchImpl: opts.fetchImpl,
     sleep: opts.sleep,
     log: opts.stderr,
+    env: opts.env,
   });
 }
 

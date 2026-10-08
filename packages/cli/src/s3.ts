@@ -35,6 +35,7 @@ import {
   type Out,
   type Sleep,
 } from "./ci.js";
+import { untrusted, type UntrustedEnv } from "./untrusted.js";
 
 /** R2's single-part PutObject ceiling, as the Worker enforces it on a ticket (5 GiB − 5 MiB). */
 export const MAX_SINGLE_PUT_BYTES = 5 * 1024 ** 3 - 5 * 1024 ** 2;
@@ -153,6 +154,8 @@ export interface PutFileOptions {
   sleep?: Sleep;
   maxAttempts?: number;
   log?: Out;
+  /** The job's environment, for `untrusted()`: the store's answer is quoted in the retry line. */
+  env?: UntrustedEnv;
   /** Clock seam for the signature date. */
   now?: () => Date;
 }
@@ -222,8 +225,9 @@ export async function putFile(opts: PutFileOptions): Promise<void> {
         `Uploading ${opts.file} to ${opts.key} failed after ${maxAttempts} attempts: ${failure}`,
       );
     const wait = BASE_BACKOFF_MS * 2 ** (attempt - 1);
+    // The key came in the ticket and the failure is the store's own text: both cleaned.
     opts.log?.write(
-      `Uploading ${opts.key}: ${failure}; retrying (attempt ${attempt + 1} of ${maxAttempts})\n`,
+      `Uploading ${untrusted(opts.key, opts.env ?? {})}: ${untrusted(failure, opts.env ?? {})}; retrying (attempt ${attempt + 1} of ${maxAttempts})\n`,
     );
     await sleep(wait);
   }

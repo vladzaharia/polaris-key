@@ -11474,6 +11474,645 @@ import path28 from "node:path";
 init_define_PKEY_EMBEDDED_SCHEMAS();
 import { stat, writeFile } from "node:fs/promises";
 import path from "node:path";
+
+// src/untrusted.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+
+// ../sdk-node/dist/cli/term/index.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+
+// ../sdk-node/dist/cli/term/caps.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+
+// ../sdk-node/dist/cli/tokens.generated.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var TERMINAL_SGR = {
+  accent: "36",
+  success: "32",
+  warning: "33",
+  danger: "31",
+  info: "35",
+  muted: "90",
+  strong: "1",
+  link: "4",
+  chip: "7",
+  reset: "0"
+};
+var TERMINAL_SYMBOLS = {
+  unicode: {
+    stepActive: "◆",
+    stepDone: "◇",
+    ok: "✓",
+    fail: "✗",
+    warn: "▲",
+    radioOn: "●",
+    radioOff: "○",
+    rail: "│",
+    railStart: "┌",
+    railEnd: "└",
+    barFull: "━",
+    barEmpty: "━",
+    separator: "·",
+    ellipsis: "…",
+    arrows: "↑↓"
+  },
+  ascii: {
+    stepActive: "*",
+    stepDone: "o",
+    ok: "+",
+    fail: "x",
+    warn: "!",
+    radioOn: "(*)",
+    radioOff: "( )",
+    rail: "|",
+    railStart: "+",
+    railEnd: "`",
+    barFull: "#",
+    barEmpty: "-",
+    separator: "-",
+    ellipsis: "...",
+    arrows: "^v"
+  }
+};
+var TERMINAL_SPINNER = {
+  unicode: ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"],
+  ascii: ["|", "/", "-", "\\"],
+  frameMs: 80
+};
+var TERMINAL_LAYOUT = {
+  columns: 80,
+  minColumns: 60,
+  gutter: 2,
+  barWidth: 36
+};
+
+// ../sdk-node/dist/cli/term/caps.js
+var truthy = (v) => v !== void 0 && v !== "" && v !== "0" && v.toLowerCase() !== "false";
+function isCi(env) {
+  return truthy(env.CI) || truthy(env.GITHUB_ACTIONS) || truthy(env.BUILDKITE);
+}
+function isHeadless(env, platform = process.platform) {
+  if (truthy(env.SSH_CONNECTION) || truthy(env.SSH_TTY) || isCi(env))
+    return true;
+  return platform === "linux" && !truthy(env.DISPLAY) && !truthy(env.WAYLAND_DISPLAY);
+}
+function schemeFromColorFgBg(value) {
+  if (!value)
+    return null;
+  const last = value.split(";").at(-1);
+  const n = Number(last);
+  if (!Number.isInteger(n) || n < 0 || n > 15)
+    return null;
+  return n === 7 || n >= 9 ? "light" : "dark";
+}
+function colorLevel(env, tty, flags) {
+  if (flags.json)
+    return "none";
+  if (flags.color === false)
+    return "none";
+  if (env.NO_COLOR !== void 0 && env.NO_COLOR !== "")
+    return "none";
+  if (env.TERM === "dumb")
+    return "none";
+  const deep = env.COLORTERM === "truecolor" || env.COLORTERM === "24bit" || env.FORCE_COLOR === "3";
+  const forced = flags.color === true || env.FORCE_COLOR !== void 0 && env.FORCE_COLOR !== "0" && env.FORCE_COLOR !== "false";
+  if (env.FORCE_COLOR === "0" || env.FORCE_COLOR === "false")
+    return "none";
+  if (!tty && !forced)
+    return "none";
+  return deep ? "truecolor" : "ansi16";
+}
+function detectTerminal(opts = {}) {
+  const env = opts.env ?? process.env;
+  const flags = opts.flags ?? {};
+  const platform = opts.platform ?? process.platform;
+  const out = opts.stdout;
+  const tty = out?.isTTY === true;
+  const ci = isCi(env);
+  const json = flags.json === true;
+  const dumb = env.TERM === "dumb";
+  const color = colorLevel(env, tty, flags);
+  const unicode = !flags.ascii && !dumb && env.TERM !== "linux" && !truthy(env.PKEY_ASCII);
+  const motion = opts.theme?.motion ?? "system";
+  const reduced = motion === "none" || motion === "reduced" || truthy(env.PKEY_REDUCED_MOTION);
+  const interactive = !json && !ci && tty && opts.stdin?.isTTY === true && !dumb;
+  const termCols = tty && out?.columns ? out.columns : TERMINAL_LAYOUT.columns;
+  const explicit = opts.theme?.colorScheme === "dark" || opts.theme?.colorScheme === "light" ? opts.theme.colorScheme : env.PKEY_THEME === "dark" || env.PKEY_THEME === "light" ? env.PKEY_THEME : null;
+  return {
+    color,
+    unicode,
+    tty,
+    interactive,
+    dumb,
+    animate: tty && !ci && !dumb && !json && !reduced,
+    links: tty && !dumb && !ci && !json,
+    columns: Math.max(20, Math.min(TERMINAL_LAYOUT.columns, termCols)),
+    rows: tty && out?.rows ? out.rows : 24,
+    scheme: explicit ?? schemeFromColorFgBg(env.COLORFGBG) ?? "dark",
+    ci,
+    headless: isHeadless(env, platform),
+    json
+  };
+}
+
+// ../sdk-node/dist/cli/term/paint.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+import { styleText } from "node:util";
+
+// ../sdk-node/dist/cli/term/osc.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+
+// ../sdk-node/dist/cli/term/sanitize.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f]/g;
+function clean(text) {
+  return text.replace(CONTROL_CHARS, "");
+}
+var LOOPBACK = /* @__PURE__ */ new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
+function safeLink(url) {
+  if (!url || /[\s\u0000-\u001f\u007f-\u009f]/.test(url))
+    return null;
+  let u;
+  try {
+    u = new URL(url);
+  } catch {
+    return null;
+  }
+  if (u.username || u.password)
+    return null;
+  if (u.protocol === "https:")
+    return url;
+  if (u.protocol === "http:" && LOOPBACK.has(u.hostname))
+    return url;
+  return null;
+}
+
+// ../sdk-node/dist/cli/term/osc.js
+function osc8(url, text) {
+  const safe = safeLink(url);
+  if (!safe)
+    return text;
+  return `\x1B]8;;${safe}\x1B\\${text}\x1B]8;;\x1B\\`;
+}
+
+// ../sdk-node/dist/cli/term/paint.js
+var STYLE_NAMES = {
+  "1": "bold",
+  "4": "underline",
+  "7": "inverse",
+  "31": "red",
+  "32": "green",
+  "33": "yellow",
+  "35": "magenta",
+  "36": "cyan",
+  "90": "gray"
+};
+function roleStyles(role) {
+  if (role === "code")
+    return ["inverse", "bold"];
+  if (role === "reset")
+    return [];
+  return TERMINAL_SGR[role].split(";").map((code) => STYLE_NAMES[code]).filter((s) => s !== void 0);
+}
+function rgb(hex5) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex5.trim());
+  if (!m)
+    return null;
+  const n = parseInt(m[1], 16);
+  return [n >> 16 & 255, n >> 8 & 255, n & 255];
+}
+var Painter = class {
+  caps;
+  accent;
+  overrides;
+  ink;
+  constructor(caps, accent = null, overrides = {}, ink = false) {
+    this.caps = caps;
+    this.accent = accent;
+    this.overrides = overrides;
+    this.ink = ink;
+  }
+  get colored() {
+    return this.caps.color !== "none";
+  }
+  /** Apply roles to text. */
+  style(raw, roles = []) {
+    const text = clean(raw);
+    if (!this.colored || text === "" || roles.length === 0)
+      return text;
+    let out = text;
+    for (const r of roles) {
+      const role = this.ink && r === "accent" ? "strong" : r;
+      const hex5 = this.caps.color === "truecolor" && role !== "code" ? this.overrides[role] : void 0;
+      const c = hex5 ? rgb(hex5) : null;
+      if (c) {
+        out = `\x1B[38;2;${c[0]};${c[1]};${c[2]}m${out}\x1B[39m`;
+        continue;
+      }
+      const names = roleStyles(role);
+      if (names.length)
+        out = styleText(names, out, { validateStream: false });
+    }
+    return out;
+  }
+  /** One span: its roles, a code's pad, and an OSC 8 link when the terminal takes them. */
+  span(s) {
+    const roles = s.style ?? [];
+    const painted = roles.includes("chip") ? this.chipText(s.text) : this.style(s.text, roles);
+    return s.link && this.caps.links ? osc8(s.link, painted) : painted;
+  }
+  line(line) {
+    return line.map((s) => this.span(s)).join("");
+  }
+  /**
+   * The product chip: the name on the accent (truecolor), inverse cyan (ANSI-16 with an accent),
+   * plain inverse (the ink chip) or a padded name (no colour).
+   */
+  chip(name) {
+    return this.chipText(` ${name} `);
+  }
+  /** The chip's colours over already padded text. */
+  chipText(raw) {
+    const text = clean(raw);
+    if (!this.colored)
+      return text;
+    if (this.caps.color === "truecolor" && this.accent) {
+      const bg = rgb(this.accent.solid);
+      const fg = rgb(this.accent.on);
+      if (bg && fg)
+        return `\x1B[48;2;${bg[0]};${bg[1]};${bg[2]}m\x1B[38;2;${fg[0]};${fg[1]};${fg[2]}m${text}\x1B[39m\x1B[49m`;
+    }
+    return this.accent && !this.ink ? styleText(["cyan", "inverse"], text, { validateStream: false }) : styleText("inverse", text, { validateStream: false });
+  }
+};
+
+// ../sdk-node/dist/cli/term/layout.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+
+// ../sdk-node/dist/cli/term/width.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var ESCAPES = /\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g;
+function stripAnsi(s) {
+  return s.replace(ESCAPES, "");
+}
+function isWide(cp3) {
+  return cp3 >= 4352 && cp3 <= 4447 || cp3 >= 11904 && cp3 <= 12350 || cp3 >= 12353 && cp3 <= 13311 || cp3 >= 13312 && cp3 <= 19903 || cp3 >= 19968 && cp3 <= 40959 || cp3 >= 40960 && cp3 <= 42191 || cp3 >= 44032 && cp3 <= 55203 || cp3 >= 63744 && cp3 <= 64255 || cp3 >= 65072 && cp3 <= 65103 || cp3 >= 65280 && cp3 <= 65376 || cp3 >= 65504 && cp3 <= 65510 || cp3 >= 127744 && cp3 <= 128591 || cp3 >= 129280 && cp3 <= 129535 || cp3 >= 131072 && cp3 <= 262141;
+}
+var ZERO = /[\p{Mn}\p{Me}\u200b-\u200f\u2060\ufe0f]/u;
+function charWidth(ch) {
+  if (ZERO.test(ch))
+    return 0;
+  const cp3 = ch.codePointAt(0) ?? 0;
+  if (cp3 < 32 || cp3 >= 127 && cp3 < 160)
+    return 0;
+  return isWide(cp3) ? 2 : 1;
+}
+function cellWidth(s) {
+  let w = 0;
+  for (const ch of stripAnsi(s))
+    w += charWidth(ch);
+  return w;
+}
+function truncateMiddle(s, max, ellipsis = "…") {
+  if (cellWidth(s) <= max)
+    return s;
+  const room = Math.max(2, max - cellWidth(ellipsis));
+  const chars = [...s];
+  const headRoom = Math.ceil(room / 2);
+  const tailRoom = room - headRoom;
+  let head = "";
+  let hw = 0;
+  for (const ch of chars) {
+    const cw = charWidth(ch);
+    if (hw + cw > headRoom)
+      break;
+    head += ch;
+    hw += cw;
+  }
+  let tail = "";
+  let tw = 0;
+  for (let i = chars.length - 1; i >= 0; i--) {
+    const cw = charWidth(chars[i]);
+    if (tw + cw > tailRoom)
+      break;
+    tail = chars[i] + tail;
+    tw += cw;
+  }
+  return head + ellipsis + tail;
+}
+function truncateEnd(s, max, ellipsis = "…") {
+  if (cellWidth(s) <= max)
+    return s;
+  let out = "";
+  let w = 0;
+  const room = max - cellWidth(ellipsis);
+  for (const ch of s) {
+    const cw = charWidth(ch);
+    if (w + cw > room)
+      break;
+    out += ch;
+    w += cw;
+  }
+  return out + ellipsis;
+}
+function pieces(span) {
+  if (span.keep)
+    return [span];
+  const out = [];
+  const re = /[^\s]+\s*|\s+/gu;
+  for (const m of span.text.matchAll(re)) {
+    const word = m[0];
+    if ([...word].some((c) => charWidth(c) === 2)) {
+      let cur = "";
+      for (const ch of word) {
+        if (charWidth(ch) === 2 && cur !== "") {
+          out.push({ ...span, text: cur });
+          cur = "";
+        }
+        cur += ch;
+      }
+      if (cur)
+        out.push({ ...span, text: cur });
+    } else
+      out.push({ ...span, text: word });
+  }
+  return out;
+}
+function wrapSpans(spans, width, ellipsis = "…") {
+  const lines3 = wrapPieces(spans, width, ellipsis);
+  balanceLast(lines3, width);
+  return lines3.map(merge);
+}
+var textOf = (pieces2) => pieces2.map((p) => p.text).join("");
+var widthOf = (pieces2) => cellWidth(textOf(pieces2).trimEnd());
+var words = (pieces2) => pieces2.filter((p) => p.text.trim() !== "");
+function isOrphan(pieces2) {
+  const ws = words(pieces2);
+  if (ws.length !== 1 || ws[0].keep)
+    return false;
+  return ![...ws[0].text].some((c) => charWidth(c) === 2);
+}
+function balanceLast(lines3, width) {
+  const n = lines3.length;
+  if (n < 2 || !isOrphan(lines3[n - 1]))
+    return;
+  const prev = lines3[n - 2];
+  const last = lines3[n - 1];
+  for (let k = prev.length - 1; k >= 1; k--) {
+    const head = prev.slice(0, k);
+    const moved = prev.slice(k).map((p, i, all) => i === all.length - 1 && !/\s$/.test(p.text) ? { ...p, text: `${p.text} ` } : p);
+    const tail = [...moved, ...last];
+    if (words(head).length === 0)
+      return;
+    if (widthOf(head) <= width && widthOf(tail) <= width && words(tail).length >= 2) {
+      lines3[n - 2] = head;
+      lines3[n - 1] = tail;
+      return;
+    }
+  }
+}
+function wrapPieces(spans, width, ellipsis) {
+  const lines3 = [[]];
+  let w = 0;
+  for (const span of spans) {
+    for (let p of pieces(span)) {
+      const pw = cellWidth(p.text.trimEnd());
+      if (w > 0 && w + pw > width) {
+        lines3.push([]);
+        w = 0;
+        if (/^\s+$/.test(p.text))
+          continue;
+      }
+      if (pw > width && p.keep)
+        p = { ...p, text: truncateMiddle(p.text, width, ellipsis) };
+      lines3[lines3.length - 1].push(p);
+      w += cellWidth(p.text);
+    }
+  }
+  return lines3;
+}
+function merge(pieces2) {
+  const out = [];
+  for (const p of pieces2) {
+    const last2 = out[out.length - 1];
+    if (last2 && last2.link === p.link && last2.keep === p.keep && (last2.style ?? []).join() === (p.style ?? []).join())
+      last2.text += p.text;
+    else
+      out.push({ ...p });
+  }
+  const last = out[out.length - 1];
+  if (last && !last.keep)
+    last.text = last.text.trimEnd();
+  return out.filter((s) => s.text !== "");
+}
+
+// ../sdk-node/dist/cli/term/layout.js
+function symbolsFor(caps) {
+  return caps.unicode ? TERMINAL_SYMBOLS.unicode : TERMINAL_SYMBOLS.ascii;
+}
+var GUTTER = TERMINAL_LAYOUT.gutter;
+
+// ../sdk-node/dist/cli/term/live.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var realTicker = {
+  setInterval: (fn, ms) => {
+    const h = setInterval(fn, ms);
+    h.unref?.();
+    return h;
+  },
+  clearInterval: (h) => clearInterval(h)
+};
+var ERASE_LINE = "\r\x1B[2K";
+var UP = "\x1B[1A";
+var HIDE_CURSOR = "\x1B[?25l";
+var SHOW_CURSOR = "\x1B[?25h";
+function guardCursor(out) {
+  if (!out.isTTY || typeof process === "undefined")
+    return () => void 0;
+  const restore = () => {
+    out.write(SHOW_CURSOR);
+  };
+  const ownSigint = process.listenerCount("SIGINT") === 0;
+  const onSigint = () => {
+    restore();
+    process.exit(130);
+  };
+  process.once("exit", restore);
+  if (ownSigint)
+    process.once("SIGINT", onSigint);
+  return () => {
+    process.removeListener("exit", restore);
+    if (ownSigint)
+      process.removeListener("SIGINT", onSigint);
+  };
+}
+var LiveRegion = class {
+  out;
+  caps;
+  drawn = 0;
+  printedOnce = false;
+  hidden = false;
+  unguard = () => void 0;
+  constructor(out, caps) {
+    this.out = out;
+    this.caps = caps;
+  }
+  erase() {
+    if (this.drawn === 0)
+      return "";
+    let s = ERASE_LINE;
+    for (let i = 1; i < this.drawn; i++)
+      s += UP + ERASE_LINE;
+    this.drawn = 0;
+    return s;
+  }
+  /** Show `lines` in place of the previous frame. */
+  draw(lines3) {
+    if (!this.caps.animate) {
+      if (!this.printedOnce && lines3.length)
+        this.out.write(`${lines3.join("\n")}
+`);
+      this.printedOnce = true;
+      return;
+    }
+    let s = this.erase();
+    if (!this.hidden) {
+      s = HIDE_CURSOR + s;
+      this.hidden = true;
+      this.unguard = guardCursor(this.out);
+    }
+    s += lines3.join("\n");
+    this.drawn = lines3.length;
+    this.out.write(s);
+  }
+  /** Print lines above the region (they stay), then redraw nothing until the next draw. */
+  print(lines3) {
+    const s = this.caps.animate ? this.erase() : "";
+    this.out.write(`${s}${lines3.join("\n")}
+`);
+    this.printedOnce = false;
+  }
+  /** Replace the region with its final lines and stop. */
+  commit(lines3) {
+    const s = this.caps.animate ? this.erase() : "";
+    const show3 = this.hidden ? SHOW_CURSOR : "";
+    this.hidden = false;
+    this.unguard();
+    this.unguard = () => void 0;
+    this.out.write(`${s}${lines3.length ? `${lines3.join("\n")}
+` : ""}${show3}`);
+    this.printedOnce = false;
+  }
+  /** Clear the region without printing (Ctrl-C, an error path). */
+  close() {
+    const s = this.caps.animate ? this.erase() : "";
+    const show3 = this.hidden ? SHOW_CURSOR : "";
+    this.hidden = false;
+    this.unguard();
+    this.unguard = () => void 0;
+    if (s || show3)
+      this.out.write(s + show3);
+  }
+};
+function spinnerFrames(unicode) {
+  return unicode ? TERMINAL_SPINNER.unicode : TERMINAL_SPINNER.ascii;
+}
+function animate(caps, render, ticker = realTicker, frameMs = TERMINAL_SPINNER.frameMs) {
+  let frame = 0;
+  render(frame);
+  if (!caps.animate)
+    return () => void 0;
+  const h = ticker.setInterval(() => render(++frame), frameMs);
+  return () => ticker.clearInterval(h);
+}
+
+// ../sdk-node/dist/cli/term/progress.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+function progressSpans(fraction, symbols, width = TERMINAL_LAYOUT.barWidth) {
+  const f = Number.isFinite(fraction) ? Math.min(1, Math.max(0, fraction)) : 0;
+  const filled = Math.round(f * width);
+  return [
+    { text: symbols.barFull.repeat(filled), style: ["accent"] },
+    { text: symbols.barEmpty.repeat(width - filled), style: ["muted"] }
+  ];
+}
+
+// src/untrusted.ts
+var COMMAND_BREAK = "​";
+function underActions(env) {
+  const v = env.GITHUB_ACTIONS;
+  return v !== void 0 && v !== "" && v !== "0" && v.toLowerCase() !== "false";
+}
+function defuse(line) {
+  const s = line.replace(/##\[/g, `##${COMMAND_BREAK}[`);
+  return s.trimStart().startsWith("::") ? `${COMMAND_BREAK}${s}` : s;
+}
+function untrusted(value, env) {
+  const text = clean(String(value));
+  return underActions(env) ? defuse(text) : text;
+}
+function untrustedLines(text, env) {
+  return String(text).split("\n").map((line) => untrusted(line, env)).join("\n");
+}
+function untrustedJson(value, space) {
+  return (JSON.stringify(value, null, space) ?? "null").replace(
+    /[\u007f-\u009f\u2028\u2029]/g,
+    (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`
+  ).replace(/##\[/g, "#\\u0023[");
+}
+function escapeData(s) {
+  return s.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
+}
+var OWN_COMMANDS = ["::add-mask::", "::error title=pkey "];
+var GUARDED = /\x1b\[[0-9;]*m|[\u0000-\u0008\u000a-\u001f\u007f-\u009f]/g;
+function guardLine(line) {
+  const s = line.replace(GUARDED, (m) => m.length > 1 ? m : "");
+  if (OWN_COMMANDS.some((c) => s.startsWith(c))) return s;
+  return defuse(s);
+}
+function guardOutput(out, env) {
+  if (!underActions(env)) return { stream: out, flush: () => void 0 };
+  const decoder2 = new TextDecoder();
+  let pending = "";
+  const write = (chunk, ...rest) => {
+    pending += typeof chunk === "string" ? chunk : decoder2.decode(chunk, { stream: true });
+    const cb = rest.find((r) => typeof r === "function");
+    const end = pending.lastIndexOf("\n");
+    if (end < 0) {
+      if (cb) queueMicrotask(cb);
+      return true;
+    }
+    const complete = pending.slice(0, end);
+    pending = pending.slice(end + 1);
+    const text = `${complete.split("\n").map(guardLine).join("\n")}
+`;
+    return cb ? out.write(text, cb) : out.write(text);
+  };
+  const stream = {
+    write,
+    get isTTY() {
+      return out.isTTY;
+    },
+    get columns() {
+      return out.columns;
+    },
+    get rows() {
+      return out.rows;
+    }
+  };
+  return {
+    stream,
+    flush() {
+      pending += decoder2.decode();
+      if (!pending) return;
+      const last = pending;
+      pending = "";
+      out.write(guardLine(last));
+    }
+  };
+}
+
+// src/bundle.ts
 var DEFAULT_BASE_URL = "https://key.plrs.im";
 var ADMIN_COOKIE_ENV = "PKEY_ADMIN_COOKIE";
 var ADMIN_COOKIE_NAME = "__Host-pkey_admin";
@@ -11592,9 +12231,10 @@ async function request(f, url, init) {
 }
 async function httpError(res, what, hintFor = statusHint) {
   const detail = await errorDetail(res);
-  const label = [String(res.status), detail.code].filter(Boolean).join(" ");
-  const message = detail.message ? `: ${detail.message}` : "";
-  const fields = detail.fields?.length ? ` (fields: ${detail.fields.join(", ")})` : "";
+  const u = (v) => untrusted(v, {});
+  const label = [String(res.status), detail.code && u(detail.code)].filter(Boolean).join(" ");
+  const message = detail.message ? `: ${u(detail.message)}` : "";
+  const fields = detail.fields?.length ? ` (fields: ${detail.fields.map(u).join(", ")})` : "";
   const hint = hintFor(res.status);
   return new Error(
     `${what} failed (${label})${message}${fields}${hint ? `
@@ -21115,565 +21755,6 @@ function add4(list2, file, path30, code, message) {
   list2.push({ file, path: path30, code, message });
 }
 
-// ../sdk-node/dist/cli/term/index.js
-init_define_PKEY_EMBEDDED_SCHEMAS();
-
-// ../sdk-node/dist/cli/term/caps.js
-init_define_PKEY_EMBEDDED_SCHEMAS();
-
-// ../sdk-node/dist/cli/tokens.generated.js
-init_define_PKEY_EMBEDDED_SCHEMAS();
-var TERMINAL_SGR = {
-  accent: "36",
-  success: "32",
-  warning: "33",
-  danger: "31",
-  info: "35",
-  muted: "90",
-  strong: "1",
-  link: "4",
-  chip: "7",
-  reset: "0"
-};
-var TERMINAL_SYMBOLS = {
-  unicode: {
-    stepActive: "◆",
-    stepDone: "◇",
-    ok: "✓",
-    fail: "✗",
-    warn: "▲",
-    radioOn: "●",
-    radioOff: "○",
-    rail: "│",
-    railStart: "┌",
-    railEnd: "└",
-    barFull: "━",
-    barEmpty: "━",
-    separator: "·",
-    ellipsis: "…",
-    arrows: "↑↓"
-  },
-  ascii: {
-    stepActive: "*",
-    stepDone: "o",
-    ok: "+",
-    fail: "x",
-    warn: "!",
-    radioOn: "(*)",
-    radioOff: "( )",
-    rail: "|",
-    railStart: "+",
-    railEnd: "`",
-    barFull: "#",
-    barEmpty: "-",
-    separator: "-",
-    ellipsis: "...",
-    arrows: "^v"
-  }
-};
-var TERMINAL_SPINNER = {
-  unicode: ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"],
-  ascii: ["|", "/", "-", "\\"],
-  frameMs: 80
-};
-var TERMINAL_LAYOUT = {
-  columns: 80,
-  minColumns: 60,
-  gutter: 2,
-  barWidth: 36
-};
-
-// ../sdk-node/dist/cli/term/caps.js
-var truthy = (v) => v !== void 0 && v !== "" && v !== "0" && v.toLowerCase() !== "false";
-function isCi(env) {
-  return truthy(env.CI) || truthy(env.GITHUB_ACTIONS) || truthy(env.BUILDKITE);
-}
-function isHeadless(env, platform = process.platform) {
-  if (truthy(env.SSH_CONNECTION) || truthy(env.SSH_TTY) || isCi(env))
-    return true;
-  return platform === "linux" && !truthy(env.DISPLAY) && !truthy(env.WAYLAND_DISPLAY);
-}
-function schemeFromColorFgBg(value) {
-  if (!value)
-    return null;
-  const last = value.split(";").at(-1);
-  const n = Number(last);
-  if (!Number.isInteger(n) || n < 0 || n > 15)
-    return null;
-  return n === 7 || n >= 9 ? "light" : "dark";
-}
-function colorLevel(env, tty, flags) {
-  if (flags.json)
-    return "none";
-  if (flags.color === false)
-    return "none";
-  if (env.NO_COLOR !== void 0 && env.NO_COLOR !== "")
-    return "none";
-  if (env.TERM === "dumb")
-    return "none";
-  const deep = env.COLORTERM === "truecolor" || env.COLORTERM === "24bit" || env.FORCE_COLOR === "3";
-  const forced = flags.color === true || env.FORCE_COLOR !== void 0 && env.FORCE_COLOR !== "0" && env.FORCE_COLOR !== "false";
-  if (env.FORCE_COLOR === "0" || env.FORCE_COLOR === "false")
-    return "none";
-  if (!tty && !forced)
-    return "none";
-  return deep ? "truecolor" : "ansi16";
-}
-function detectTerminal(opts = {}) {
-  const env = opts.env ?? process.env;
-  const flags = opts.flags ?? {};
-  const platform = opts.platform ?? process.platform;
-  const out = opts.stdout;
-  const tty = out?.isTTY === true;
-  const ci = isCi(env);
-  const json = flags.json === true;
-  const dumb = env.TERM === "dumb";
-  const color = colorLevel(env, tty, flags);
-  const unicode = !flags.ascii && !dumb && env.TERM !== "linux" && !truthy(env.PKEY_ASCII);
-  const motion = opts.theme?.motion ?? "system";
-  const reduced = motion === "none" || motion === "reduced" || truthy(env.PKEY_REDUCED_MOTION);
-  const interactive = !json && !ci && tty && opts.stdin?.isTTY === true && !dumb;
-  const termCols = tty && out?.columns ? out.columns : TERMINAL_LAYOUT.columns;
-  const explicit = opts.theme?.colorScheme === "dark" || opts.theme?.colorScheme === "light" ? opts.theme.colorScheme : env.PKEY_THEME === "dark" || env.PKEY_THEME === "light" ? env.PKEY_THEME : null;
-  return {
-    color,
-    unicode,
-    tty,
-    interactive,
-    dumb,
-    animate: tty && !ci && !dumb && !json && !reduced,
-    links: tty && !dumb && !ci && !json,
-    columns: Math.max(20, Math.min(TERMINAL_LAYOUT.columns, termCols)),
-    rows: tty && out?.rows ? out.rows : 24,
-    scheme: explicit ?? schemeFromColorFgBg(env.COLORFGBG) ?? "dark",
-    ci,
-    headless: isHeadless(env, platform),
-    json
-  };
-}
-
-// ../sdk-node/dist/cli/term/paint.js
-init_define_PKEY_EMBEDDED_SCHEMAS();
-import { styleText } from "node:util";
-
-// ../sdk-node/dist/cli/term/osc.js
-init_define_PKEY_EMBEDDED_SCHEMAS();
-
-// ../sdk-node/dist/cli/term/sanitize.js
-init_define_PKEY_EMBEDDED_SCHEMAS();
-var CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f]/g;
-function clean(text) {
-  return text.replace(CONTROL_CHARS, "");
-}
-var LOOPBACK = /* @__PURE__ */ new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
-function safeLink(url) {
-  if (!url || /[\s\u0000-\u001f\u007f-\u009f]/.test(url))
-    return null;
-  let u;
-  try {
-    u = new URL(url);
-  } catch {
-    return null;
-  }
-  if (u.username || u.password)
-    return null;
-  if (u.protocol === "https:")
-    return url;
-  if (u.protocol === "http:" && LOOPBACK.has(u.hostname))
-    return url;
-  return null;
-}
-
-// ../sdk-node/dist/cli/term/osc.js
-function osc8(url, text) {
-  const safe = safeLink(url);
-  if (!safe)
-    return text;
-  return `\x1B]8;;${safe}\x1B\\${text}\x1B]8;;\x1B\\`;
-}
-
-// ../sdk-node/dist/cli/term/paint.js
-var STYLE_NAMES = {
-  "1": "bold",
-  "4": "underline",
-  "7": "inverse",
-  "31": "red",
-  "32": "green",
-  "33": "yellow",
-  "35": "magenta",
-  "36": "cyan",
-  "90": "gray"
-};
-function roleStyles(role) {
-  if (role === "code")
-    return ["inverse", "bold"];
-  if (role === "reset")
-    return [];
-  return TERMINAL_SGR[role].split(";").map((code) => STYLE_NAMES[code]).filter((s) => s !== void 0);
-}
-function rgb(hex5) {
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex5.trim());
-  if (!m)
-    return null;
-  const n = parseInt(m[1], 16);
-  return [n >> 16 & 255, n >> 8 & 255, n & 255];
-}
-var Painter = class {
-  caps;
-  accent;
-  overrides;
-  ink;
-  constructor(caps, accent = null, overrides = {}, ink = false) {
-    this.caps = caps;
-    this.accent = accent;
-    this.overrides = overrides;
-    this.ink = ink;
-  }
-  get colored() {
-    return this.caps.color !== "none";
-  }
-  /** Apply roles to text. */
-  style(raw, roles = []) {
-    const text = clean(raw);
-    if (!this.colored || text === "" || roles.length === 0)
-      return text;
-    let out = text;
-    for (const r of roles) {
-      const role = this.ink && r === "accent" ? "strong" : r;
-      const hex5 = this.caps.color === "truecolor" && role !== "code" ? this.overrides[role] : void 0;
-      const c = hex5 ? rgb(hex5) : null;
-      if (c) {
-        out = `\x1B[38;2;${c[0]};${c[1]};${c[2]}m${out}\x1B[39m`;
-        continue;
-      }
-      const names = roleStyles(role);
-      if (names.length)
-        out = styleText(names, out, { validateStream: false });
-    }
-    return out;
-  }
-  /** One span: its roles, a code's pad, and an OSC 8 link when the terminal takes them. */
-  span(s) {
-    const roles = s.style ?? [];
-    const painted = roles.includes("chip") ? this.chipText(s.text) : this.style(s.text, roles);
-    return s.link && this.caps.links ? osc8(s.link, painted) : painted;
-  }
-  line(line) {
-    return line.map((s) => this.span(s)).join("");
-  }
-  /**
-   * The product chip: the name on the accent (truecolor), inverse cyan (ANSI-16 with an accent),
-   * plain inverse (the ink chip) or a padded name (no colour).
-   */
-  chip(name) {
-    return this.chipText(` ${name} `);
-  }
-  /** The chip's colours over already padded text. */
-  chipText(raw) {
-    const text = clean(raw);
-    if (!this.colored)
-      return text;
-    if (this.caps.color === "truecolor" && this.accent) {
-      const bg = rgb(this.accent.solid);
-      const fg = rgb(this.accent.on);
-      if (bg && fg)
-        return `\x1B[48;2;${bg[0]};${bg[1]};${bg[2]}m\x1B[38;2;${fg[0]};${fg[1]};${fg[2]}m${text}\x1B[39m\x1B[49m`;
-    }
-    return this.accent && !this.ink ? styleText(["cyan", "inverse"], text, { validateStream: false }) : styleText("inverse", text, { validateStream: false });
-  }
-};
-
-// ../sdk-node/dist/cli/term/layout.js
-init_define_PKEY_EMBEDDED_SCHEMAS();
-
-// ../sdk-node/dist/cli/term/width.js
-init_define_PKEY_EMBEDDED_SCHEMAS();
-var ESCAPES = /\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g;
-function stripAnsi(s) {
-  return s.replace(ESCAPES, "");
-}
-function isWide(cp3) {
-  return cp3 >= 4352 && cp3 <= 4447 || cp3 >= 11904 && cp3 <= 12350 || cp3 >= 12353 && cp3 <= 13311 || cp3 >= 13312 && cp3 <= 19903 || cp3 >= 19968 && cp3 <= 40959 || cp3 >= 40960 && cp3 <= 42191 || cp3 >= 44032 && cp3 <= 55203 || cp3 >= 63744 && cp3 <= 64255 || cp3 >= 65072 && cp3 <= 65103 || cp3 >= 65280 && cp3 <= 65376 || cp3 >= 65504 && cp3 <= 65510 || cp3 >= 127744 && cp3 <= 128591 || cp3 >= 129280 && cp3 <= 129535 || cp3 >= 131072 && cp3 <= 262141;
-}
-var ZERO = /[\p{Mn}\p{Me}\u200b-\u200f\u2060\ufe0f]/u;
-function charWidth(ch) {
-  if (ZERO.test(ch))
-    return 0;
-  const cp3 = ch.codePointAt(0) ?? 0;
-  if (cp3 < 32 || cp3 >= 127 && cp3 < 160)
-    return 0;
-  return isWide(cp3) ? 2 : 1;
-}
-function cellWidth(s) {
-  let w = 0;
-  for (const ch of stripAnsi(s))
-    w += charWidth(ch);
-  return w;
-}
-function truncateMiddle(s, max, ellipsis = "…") {
-  if (cellWidth(s) <= max)
-    return s;
-  const room = Math.max(2, max - cellWidth(ellipsis));
-  const chars = [...s];
-  const headRoom = Math.ceil(room / 2);
-  const tailRoom = room - headRoom;
-  let head = "";
-  let hw = 0;
-  for (const ch of chars) {
-    const cw = charWidth(ch);
-    if (hw + cw > headRoom)
-      break;
-    head += ch;
-    hw += cw;
-  }
-  let tail = "";
-  let tw = 0;
-  for (let i = chars.length - 1; i >= 0; i--) {
-    const cw = charWidth(chars[i]);
-    if (tw + cw > tailRoom)
-      break;
-    tail = chars[i] + tail;
-    tw += cw;
-  }
-  return head + ellipsis + tail;
-}
-function truncateEnd(s, max, ellipsis = "…") {
-  if (cellWidth(s) <= max)
-    return s;
-  let out = "";
-  let w = 0;
-  const room = max - cellWidth(ellipsis);
-  for (const ch of s) {
-    const cw = charWidth(ch);
-    if (w + cw > room)
-      break;
-    out += ch;
-    w += cw;
-  }
-  return out + ellipsis;
-}
-function pieces(span) {
-  if (span.keep)
-    return [span];
-  const out = [];
-  const re = /[^\s]+\s*|\s+/gu;
-  for (const m of span.text.matchAll(re)) {
-    const word = m[0];
-    if ([...word].some((c) => charWidth(c) === 2)) {
-      let cur = "";
-      for (const ch of word) {
-        if (charWidth(ch) === 2 && cur !== "") {
-          out.push({ ...span, text: cur });
-          cur = "";
-        }
-        cur += ch;
-      }
-      if (cur)
-        out.push({ ...span, text: cur });
-    } else
-      out.push({ ...span, text: word });
-  }
-  return out;
-}
-function wrapSpans(spans, width, ellipsis = "…") {
-  const lines3 = wrapPieces(spans, width, ellipsis);
-  balanceLast(lines3, width);
-  return lines3.map(merge);
-}
-var textOf = (pieces2) => pieces2.map((p) => p.text).join("");
-var widthOf = (pieces2) => cellWidth(textOf(pieces2).trimEnd());
-var words = (pieces2) => pieces2.filter((p) => p.text.trim() !== "");
-function isOrphan(pieces2) {
-  const ws = words(pieces2);
-  if (ws.length !== 1 || ws[0].keep)
-    return false;
-  return ![...ws[0].text].some((c) => charWidth(c) === 2);
-}
-function balanceLast(lines3, width) {
-  const n = lines3.length;
-  if (n < 2 || !isOrphan(lines3[n - 1]))
-    return;
-  const prev = lines3[n - 2];
-  const last = lines3[n - 1];
-  for (let k = prev.length - 1; k >= 1; k--) {
-    const head = prev.slice(0, k);
-    const moved = prev.slice(k).map((p, i, all) => i === all.length - 1 && !/\s$/.test(p.text) ? { ...p, text: `${p.text} ` } : p);
-    const tail = [...moved, ...last];
-    if (words(head).length === 0)
-      return;
-    if (widthOf(head) <= width && widthOf(tail) <= width && words(tail).length >= 2) {
-      lines3[n - 2] = head;
-      lines3[n - 1] = tail;
-      return;
-    }
-  }
-}
-function wrapPieces(spans, width, ellipsis) {
-  const lines3 = [[]];
-  let w = 0;
-  for (const span of spans) {
-    for (let p of pieces(span)) {
-      const pw = cellWidth(p.text.trimEnd());
-      if (w > 0 && w + pw > width) {
-        lines3.push([]);
-        w = 0;
-        if (/^\s+$/.test(p.text))
-          continue;
-      }
-      if (pw > width && p.keep)
-        p = { ...p, text: truncateMiddle(p.text, width, ellipsis) };
-      lines3[lines3.length - 1].push(p);
-      w += cellWidth(p.text);
-    }
-  }
-  return lines3;
-}
-function merge(pieces2) {
-  const out = [];
-  for (const p of pieces2) {
-    const last2 = out[out.length - 1];
-    if (last2 && last2.link === p.link && last2.keep === p.keep && (last2.style ?? []).join() === (p.style ?? []).join())
-      last2.text += p.text;
-    else
-      out.push({ ...p });
-  }
-  const last = out[out.length - 1];
-  if (last && !last.keep)
-    last.text = last.text.trimEnd();
-  return out.filter((s) => s.text !== "");
-}
-
-// ../sdk-node/dist/cli/term/layout.js
-function symbolsFor(caps) {
-  return caps.unicode ? TERMINAL_SYMBOLS.unicode : TERMINAL_SYMBOLS.ascii;
-}
-var GUTTER = TERMINAL_LAYOUT.gutter;
-
-// ../sdk-node/dist/cli/term/live.js
-init_define_PKEY_EMBEDDED_SCHEMAS();
-var realTicker = {
-  setInterval: (fn, ms) => {
-    const h = setInterval(fn, ms);
-    h.unref?.();
-    return h;
-  },
-  clearInterval: (h) => clearInterval(h)
-};
-var ERASE_LINE = "\r\x1B[2K";
-var UP = "\x1B[1A";
-var HIDE_CURSOR = "\x1B[?25l";
-var SHOW_CURSOR = "\x1B[?25h";
-function guardCursor(out) {
-  if (!out.isTTY || typeof process === "undefined")
-    return () => void 0;
-  const restore = () => {
-    out.write(SHOW_CURSOR);
-  };
-  const ownSigint = process.listenerCount("SIGINT") === 0;
-  const onSigint = () => {
-    restore();
-    process.exit(130);
-  };
-  process.once("exit", restore);
-  if (ownSigint)
-    process.once("SIGINT", onSigint);
-  return () => {
-    process.removeListener("exit", restore);
-    if (ownSigint)
-      process.removeListener("SIGINT", onSigint);
-  };
-}
-var LiveRegion = class {
-  out;
-  caps;
-  drawn = 0;
-  printedOnce = false;
-  hidden = false;
-  unguard = () => void 0;
-  constructor(out, caps) {
-    this.out = out;
-    this.caps = caps;
-  }
-  erase() {
-    if (this.drawn === 0)
-      return "";
-    let s = ERASE_LINE;
-    for (let i = 1; i < this.drawn; i++)
-      s += UP + ERASE_LINE;
-    this.drawn = 0;
-    return s;
-  }
-  /** Show `lines` in place of the previous frame. */
-  draw(lines3) {
-    if (!this.caps.animate) {
-      if (!this.printedOnce && lines3.length)
-        this.out.write(`${lines3.join("\n")}
-`);
-      this.printedOnce = true;
-      return;
-    }
-    let s = this.erase();
-    if (!this.hidden) {
-      s = HIDE_CURSOR + s;
-      this.hidden = true;
-      this.unguard = guardCursor(this.out);
-    }
-    s += lines3.join("\n");
-    this.drawn = lines3.length;
-    this.out.write(s);
-  }
-  /** Print lines above the region (they stay), then redraw nothing until the next draw. */
-  print(lines3) {
-    const s = this.caps.animate ? this.erase() : "";
-    this.out.write(`${s}${lines3.join("\n")}
-`);
-    this.printedOnce = false;
-  }
-  /** Replace the region with its final lines and stop. */
-  commit(lines3) {
-    const s = this.caps.animate ? this.erase() : "";
-    const show3 = this.hidden ? SHOW_CURSOR : "";
-    this.hidden = false;
-    this.unguard();
-    this.unguard = () => void 0;
-    this.out.write(`${s}${lines3.length ? `${lines3.join("\n")}
-` : ""}${show3}`);
-    this.printedOnce = false;
-  }
-  /** Clear the region without printing (Ctrl-C, an error path). */
-  close() {
-    const s = this.caps.animate ? this.erase() : "";
-    const show3 = this.hidden ? SHOW_CURSOR : "";
-    this.hidden = false;
-    this.unguard();
-    this.unguard = () => void 0;
-    if (s || show3)
-      this.out.write(s + show3);
-  }
-};
-function spinnerFrames(unicode) {
-  return unicode ? TERMINAL_SPINNER.unicode : TERMINAL_SPINNER.ascii;
-}
-function animate(caps, render, ticker = realTicker, frameMs = TERMINAL_SPINNER.frameMs) {
-  let frame = 0;
-  render(frame);
-  if (!caps.animate)
-    return () => void 0;
-  const h = ticker.setInterval(() => render(++frame), frameMs);
-  return () => ticker.clearInterval(h);
-}
-
-// ../sdk-node/dist/cli/term/progress.js
-init_define_PKEY_EMBEDDED_SCHEMAS();
-function progressSpans(fraction, symbols, width = TERMINAL_LAYOUT.barWidth) {
-  const f = Number.isFinite(fraction) ? Math.min(1, Math.max(0, fraction)) : 0;
-  const filled = Math.round(f * width);
-  return [
-    { text: symbols.barFull.repeat(filled), style: ["accent"] },
-    { text: symbols.barEmpty.repeat(width - filled), style: ["muted"] }
-  ];
-}
-
 // src/oidc.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 import { appendFile } from "node:fs/promises";
@@ -21722,6 +21803,7 @@ function ciClient(opts) {
   const f = opts.fetchImpl ?? fetch;
   const sleep = opts.sleep ?? defaultSleep;
   const maxAttempts = opts.maxAttempts ?? MAX_ATTEMPTS;
+  const env = opts.env ?? {};
   const url = (path30) => `${baseUrl}/${encodeURIComponent(product)}/${path30.replace(/^\/+/, "")}`;
   async function postJson(path30, p) {
     const target = url(path30);
@@ -21750,7 +21832,7 @@ function ciClient(opts) {
       if (res.ok) return parsed;
       const retryable = parsed.retryable === true || p.retryRateLimit === true && res.status === 429 && parsed.reason === "rate_limited";
       const err = new CiRequestError(
-        renderRefusal(p.what, target, res.status, parsed),
+        renderRefusal(p.what, target, res.status, parsed, env),
         res.status,
         parsed,
         retryable
@@ -21758,7 +21840,7 @@ function ciClient(opts) {
       if (!retryable || attempt >= maxAttempts) throw err;
       const wait = backoff(attempt, res.headers.get("retry-after"));
       opts.log?.write(
-        `${p.what}: ${res.status} ${err.reason ?? ""} is retryable; attempt ${attempt + 1} of ${maxAttempts} in ${Math.round(wait / 1e3)}s
+        `${p.what}: ${res.status} ${untrusted(err.reason ?? "", env)} is retryable; attempt ${attempt + 1} of ${maxAttempts} in ${Math.round(wait / 1e3)}s
 `
       );
       await sleep(wait);
@@ -21785,7 +21867,7 @@ function ciClient(opts) {
     const parsed = await readBody(res);
     if (res.ok) return parsed;
     throw new CiRequestError(
-      renderRefusal(p.what, target, res.status, parsed),
+      renderRefusal(p.what, target, res.status, parsed, env),
       res.status,
       parsed,
       false
@@ -21810,22 +21892,23 @@ async function readBody(res) {
   const trimmed2 = text.trim();
   return trimmed2 ? { message: clip2(trimmed2) } : {};
 }
-function renderRefusal(what, target, status, body) {
+function renderRefusal(what, target, status, body, env = {}) {
+  const u = (v) => untrusted(v, env);
   const reason = typeof body.reason === "string" ? body.reason : void 0;
   const code = typeof body.error === "string" ? body.error : void 0;
-  const label = [String(status), reason ?? code].filter(Boolean).join(" ");
+  const label = [String(status), reason ?? code].filter(Boolean).map(u).join(" ");
   const lines3 = [`${what} failed (${label}) at ${target}`];
-  if (typeof body.message === "string") lines3.push(`  ${body.message}`);
+  if (typeof body.message === "string") lines3.push(`  ${u(body.message)}`);
   if (typeof body.claim === "string")
-    lines3.push(`  failing claim: ${body.claim}`);
-  if (typeof body.key === "string") lines3.push(`  object: ${body.key}`);
+    lines3.push(`  failing claim: ${u(body.claim)}`);
+  if (typeof body.key === "string") lines3.push(`  object: ${u(body.key)}`);
   if (Array.isArray(body.fields) && body.fields.length)
-    lines3.push(`  fields: ${body.fields.join(", ")}`);
+    lines3.push(`  fields: ${body.fields.map(u).join(", ")}`);
   if (Array.isArray(body.errors)) {
     for (const e of body.errors.slice(0, 50)) {
-      const rec = e;
+      const rec = e ?? {};
       lines3.push(
-        `  ${String(rec.path ?? "")} ${String(rec.code ?? "")}: ${String(rec.message ?? "")}`
+        `  ${u(rec.path ?? "")} ${u(rec.code ?? "")}: ${u(rec.message ?? "")}`
       );
     }
   }
@@ -21876,7 +21959,8 @@ function inGithubActions(env) {
   return env.GITHUB_ACTIONS === "true";
 }
 function mask(env, out, value) {
-  if (inGithubActions(env) && value) out.write(`::add-mask::${value}
+  if (inGithubActions(env) && typeof value === "string" && value)
+    out.write(`::add-mask::${escapeData(value)}
 `);
 }
 async function requestGithubOidcToken(env, audience, fetchImpl = fetch) {
@@ -21915,7 +21999,8 @@ async function exchangeGithubOidc(opts) {
     product: opts.product,
     fetchImpl: opts.fetchImpl,
     sleep: opts.sleep,
-    log: opts.log
+    log: opts.log,
+    env: opts.env
   });
   const audience = publishAudience(client.baseUrl, client.product);
   const body = await client.postJson(
@@ -22021,7 +22106,7 @@ var COMMANDS = [
         text: "pkey validate reads the .pkey/ under path (relative to the current directory; default the current directory) and runs it through the validator repo-link and resync apply. It prints a verdict, the services the manifest enables, any required secret names, then every warning and error with its document, JSON pointer and the file it was read from, and exits 1 when the manifest is invalid."
       },
       {
-        text: `--json prints one JSON line on stdout instead, the terminal kits' result line: {"v":1,"command":"validate","event":"result","ok","exit","result":{"valid","modules","requiredSecrets","warnings","errors"}}, each warning and error as {"code","message","at","file"}; "error" and "message" replace "result" when no manifest can be read.`
+        text: `--json prints one JSON line on stdout instead, the terminal kits' result line, its fields beside the envelope's: {"v":1,"command":"validate","event":"result","ok","exit","valid","modules","requiredSecrets","warnings","errors"}, each warning and error as {"code","message","at","file"}. When no manifest can be read it is {"v":1,"command":"validate","event":"result","ok":false,"exit":1,"error":"no-manifest","message"}.`
       }
     ]
   },
@@ -22661,9 +22746,9 @@ function renderCommandHelp(term, cmd, sub) {
       )
     );
   }
-  const shown = usage.join(" ");
+  const shown2 = usage.join(" ");
   const valueless = VALUELESS.filter(
-    (f) => new RegExp(`${f}(?![\\w-])`).test(shown)
+    (f) => new RegExp(`${f}(?![\\w-])`).test(shown2)
   );
   if (valueless.length) {
     const list2 = valueless.length === 1 ? valueless[0] : `${valueless.slice(0, -1).join(", ")} and ${valueless.at(-1)}`;
@@ -23383,7 +23468,7 @@ async function putFile(opts) {
       );
     const wait = BASE_BACKOFF_MS * 2 ** (attempt - 1);
     opts.log?.write(
-      `Uploading ${opts.key}: ${failure}; retrying (attempt ${attempt + 1} of ${maxAttempts})
+      `Uploading ${untrusted(opts.key, opts.env ?? {})}: ${untrusted(failure, opts.env ?? {})}; retrying (attempt ${attempt + 1} of ${maxAttempts})
 `
     );
     await sleep(wait);
@@ -27580,21 +27665,22 @@ async function markerPins(dir, ctx) {
   }
   return pins;
 }
-function describeContent(out, content, pins) {
-  out.write(`Content: contentApi ${content.contentApi}
+function describeContent(out, content, pins, env = {}) {
+  const u = (v) => untrusted(v, env);
+  out.write(`Content: contentApi ${u(content.contentApi)}
 `);
   if (content.pins.length === 0) out.write("  pins: none\n");
   for (const p of content.pins) {
     const src = pins.find((x) => x.pack === p.pack)?.source;
     const e = content.expects.find((x) => x.pack === p.pack);
     out.write(
-      `  pin ${p.pack}@${p.release.version} (seq ${p.release.seq}, record ${p.release.sha256.slice(0, 12)}…)${e ? ` ${e.required ? "required" : "optional"}, ${e.delivery}` : ""}${src ? ` — from ${src}` : ""}
+      `  pin ${u(p.pack)}@${u(p.release.version)} (seq ${u(p.release.seq)}, record ${u(String(p.release.sha256).slice(0, 12))}…)${e ? ` ${e.required ? "required" : "optional"}, ${u(e.delivery)}` : ""}${src ? ` — from ${u(src)}` : ""}
 `
     );
   }
   for (const h of content.holds ?? [])
     out.write(
-      `  hold ${h.pack}@${h.release.version} (seq ${h.release.seq}, record ${h.release.sha256.slice(0, 12)}…)${h.reason !== void 0 ? ` — ${h.reason}` : ""}
+      `  hold ${u(h.pack)}@${u(h.release.version)} (seq ${u(h.release.seq)}, record ${u(String(h.release.sha256).slice(0, 12))}…)${h.reason !== void 0 ? ` — ${u(h.reason)}` : ""}
 `
     );
 }
@@ -27645,7 +27731,8 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
       token,
       fetchImpl: opts.fetchImpl,
       sleep: opts.sleep,
-      log: opts.stderr
+      log: opts.stderr,
+      env: opts.env
     });
     await requirePacksDiscovery(client, opts.fetchImpl);
     pins.push(...await resolvePins(client, opts.pins ?? []));
@@ -27664,7 +27751,7 @@ ${problems.map((p) => `  ${p}`).join("\n")}`
     );
   const file = path5.resolve(opts.cwd, opts.out);
   await writeFile4(file, stampText(content));
-  describeContent(opts.stdout, content, merged);
+  describeContent(opts.stdout, content, merged, opts.env);
   opts.stdout.write(`Wrote ${path5.relative(opts.cwd, file) || file}
 `);
   return { content, file };
@@ -28125,7 +28212,7 @@ ${JSON.stringify(descriptor, null, 2)}
     );
     out.write("Local validation: ok\n");
     if (descriptor.content)
-      describeContent(out, descriptor.content, pinSources);
+      describeContent(out, descriptor.content, pinSources, opts.env);
     else if (pinsPending)
       out.write(
         "Content: --pin resolves through Polaris Key; shown once a CI credential is available\n"
@@ -28164,8 +28251,10 @@ ${JSON.stringify(record, null, 2)}
 `
         );
       }
-      out.write(`Server validation: skipped (${e.message})
-`);
+      out.write(
+        `Server validation: skipped (${untrusted(e.message, opts.env)})
+`
+      );
       return result;
     }
     throw e;
@@ -28176,7 +28265,8 @@ ${JSON.stringify(record, null, 2)}
     token,
     fetchImpl: opts.fetchImpl,
     sleep: opts.sleep,
-    log: opts.stderr
+    log: opts.stderr,
+    env: opts.env
   });
   if (packs.length > 0) await requirePacksDiscovery(client, opts.fetchImpl);
   if (pinsPending) {
@@ -28188,7 +28278,8 @@ ${JSON.stringify(record, null, 2)}
         `The release descriptor does not validate with its content:
 ${again.errors.map((e) => `  ${e.path} ${e.code}: ${e.message}`).join("\n")}`
       );
-    if (opts.dryRun) describeContent(out, descriptor.content, pinSources);
+    if (opts.dryRun)
+      describeContent(out, descriptor.content, pinSources, opts.env);
   }
   if (descriptor.content) result.content = descriptor.content;
   const objects = /* @__PURE__ */ new Map();
@@ -28289,7 +28380,8 @@ ${JSON.stringify(record, null, 2)}
         sha256: file.sha256,
         fetchImpl: opts.fetchImpl,
         sleep: opts.sleep,
-        log: opts.stderr
+        log: opts.stderr,
+        env: opts.env
       });
       result.uploaded.push(o.target);
       opts.progress?.advance(result.uploaded.length, toUpload);
@@ -28318,13 +28410,13 @@ ${JSON.stringify(record, null, 2)}
   if (opts.dryRun) {
     const unverified = Array.isArray(server.unverified) ? server.unverified.length : 0;
     out.write(
-      `Server validation: ok — would be ${String(server.outcome)} as ${String(server.releaseId)}${unverified ? ` (${unverified} object${unverified === 1 ? "" : "s"} judged as if uploaded)` : ""}
+      `Server validation: ok — would be ${untrusted(server.outcome, opts.env)} as ${untrusted(server.releaseId, opts.env)}${unverified ? ` (${unverified} object${unverified === 1 ? "" : "s"} judged as if uploaded)` : ""}
 `
     );
     out.write("Dry run: nothing uploaded, nothing written.\n");
   } else {
     out.write(
-      `Published ${String(server.releaseId)} (${String(server.outcome)})
+      `Published ${untrusted(server.releaseId, opts.env)} (${untrusted(server.outcome, opts.env)})
 `
     );
   }
@@ -28352,6 +28444,7 @@ var SDK_CONFIG_DEFAULT_OUT = {
   kotlin: "PolarisConfig.kt",
   godot: "polaris_key_config.gd"
 };
+var shown = (v) => untrusted(v, {});
 var PRODUCT_RE = /^[a-z0-9][a-z0-9_-]*$/;
 var KID_RE2 = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 var KEY_RE = /^[A-Za-z0-9_-]{43}$/;
@@ -28420,11 +28513,11 @@ async function resolveSdkFacts(opts) {
   if (!isRecord8(doc)) throw new Error(`${discoveryUrl} is not an object.`);
   if (doc.product !== opts.product)
     throw new Error(
-      `Discovery names product ${JSON.stringify(doc.product)}, not ${opts.product}.`
+      `Discovery names product ${shown(JSON.stringify(doc.product))}, not ${opts.product}.`
     );
   if (doc.protocolVersion !== PROTOCOL_VERSION)
     throw new Error(
-      `Discovery speaks protocol ${String(doc.protocolVersion)}; this pkey speaks ${PROTOCOL_VERSION}. Update pkey or the server.`
+      `Discovery speaks protocol ${shown(doc.protocolVersion)}; this pkey speaks ${PROTOCOL_VERSION}. Update pkey or the server.`
     );
   const trust = isRecord8(doc.trust) ? doc.trust : {};
   const pins = isRecord8(trust.pinnedKeys) ? trust.pinnedKeys : {};
@@ -28433,7 +28526,7 @@ async function resolveSdkFacts(opts) {
     const key = pins[kid];
     if (!KID_RE2.test(kid) || typeof key !== "string" || !KEY_RE.test(key))
       throw new Error(
-        `Discovery's trust.pinnedKeys has a malformed entry (${kid}).`
+        `Discovery's trust.pinnedKeys has a malformed entry (${shown(kid)}).`
       );
     pinnedKeys[kid] = key;
   }
@@ -28483,7 +28576,7 @@ async function resolveSdkFacts(opts) {
   const undeclared = advertised.filter((fp) => !declaredPrints.has(fp));
   if (undeclared.length > 0)
     throw new Error(
-      `Discovery advertises ${undeclared.length} release key${undeclared.length === 1 ? "" : "s"} you did not declare (fingerprint ${undeclared.join(", ")}). Run pkey sdk in the product repo (it reads .pkey/release), or pass each key with --release-key <kid>=<key>.`
+      `Discovery advertises ${undeclared.length} release key${undeclared.length === 1 ? "" : "s"} you did not declare (fingerprint ${undeclared.map(shown).join(", ")}). Run pkey sdk in the product repo (it reads .pkey/release), or pass each key with --release-key <kid>=<key>.`
     );
   return {
     product: opts.product,
@@ -29425,7 +29518,8 @@ async function clientFor(opts) {
     token,
     fetchImpl: opts.fetchImpl,
     sleep: opts.sleep,
-    log: opts.stderr
+    log: opts.stderr,
+    env: opts.env
   });
 }
 async function movePointer(opts) {
@@ -31232,8 +31326,10 @@ Local validation: ok
       });
     } catch (e) {
       if (opts.dryRun && !(e instanceof CiRequestError)) {
-        out.write(`Server validation: skipped (${e.message})
-`);
+        out.write(
+          `Server validation: skipped (${untrusted(e.message, opts.env)})
+`
+        );
         return result;
       }
       throw e;
@@ -31244,7 +31340,8 @@ Local validation: ok
       token,
       fetchImpl: opts.fetchImpl,
       sleep: opts.sleep,
-      log: opts.stderr
+      log: opts.stderr,
+      env: opts.env
     });
     const objects = new Map(hashed.map((f) => [f.sha256, f]));
     const ticket = await client.postJson("release/publish/uploads", {
@@ -31276,7 +31373,7 @@ Local validation: ok
     if (opts.dryRun) {
       result.server = verdict;
       out.write(
-        `Server validation: ok — would be ${String(verdict.outcome)} as ${String(verdict.releaseId)}
+        `Server validation: ok — would be ${untrusted(verdict.outcome, opts.env)} as ${untrusted(verdict.releaseId, opts.env)}
 Dry run: nothing uploaded, nothing written.
 `
       );
@@ -31300,7 +31397,8 @@ Dry run: nothing uploaded, nothing written.
         sha256: file.sha256,
         fetchImpl: opts.fetchImpl,
         sleep: opts.sleep,
-        log: opts.stderr
+        log: opts.stderr,
+        env: opts.env
       });
       result.uploaded.push(o.target);
     }
@@ -31314,7 +31412,7 @@ Dry run: nothing uploaded, nothing written.
     });
     result.server = server;
     out.write(
-      `Published ${String(server.releaseId)} (${String(server.outcome)})
+      `Published ${untrusted(server.releaseId, opts.env)} (${untrusted(server.outcome, opts.env)})
 `
     );
     return result;
@@ -32031,12 +32129,15 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
       token,
       fetchImpl: opts.fetchImpl,
       sleep: opts.sleep,
-      log: opts.stderr
+      log: opts.stderr,
+      env: opts.env
     });
   } catch (e) {
     if (!opts.dryRun || e instanceof CiRequestError) throw e;
-    out.write(`Server checks: skipped (${e.message})
-`);
+    out.write(
+      `Server checks: skipped (${untrusted(e.message, opts.env)})
+`
+    );
   }
   let seq = 1;
   if (client) {
@@ -32047,7 +32148,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
     );
     if (reused)
       throw new Error(
-        `The key ${fingerprint2.slice(0, 12)}… is already named by delegation ${reused.sha256.slice(0, 12)}… (${reused.deliverable}, seq ${reused.seq}${reused.revoked ? ", revoked" : ""}): one content key, one delegation. Generate a new key to rotate.`
+        `The key ${fingerprint2.slice(0, 12)}… is already named by delegation ${untrusted(String(reused.sha256).slice(0, 12), opts.env)}… (${untrusted(reused.deliverable, opts.env)}, seq ${untrusted(reused.seq, opts.env)}${reused.revoked ? ", revoked" : ""}): one content key, one delegation. Generate a new key to rotate.`
       );
     if (listed.nextSeq === void 0)
       throw new Error(
@@ -32127,7 +32228,7 @@ Content kid: ${kid}
     );
   }
   out.write(
-    `Delegated ${opts.prefix} to ${kid} (${String(server.outcome ?? "submitted")})
+    `Delegated ${opts.prefix} to ${kid} (${untrusted(server.outcome ?? "submitted", opts.env)})
 `
   );
   return { record, jws, sha256: sha2566, kid, server };
@@ -33798,6 +33899,7 @@ function markerPathFor(type, location) {
 }
 async function publishPack(opts) {
   const out = opts.stdout;
+  const u = (v) => untrusted(v, opts.env);
   const warnings = [];
   const warn = (w) => {
     warnings.push(w);
@@ -33976,12 +34078,15 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
         token,
         fetchImpl: opts.fetchImpl,
         sleep: opts.sleep,
-        log: opts.stderr
+        log: opts.stderr,
+        env: opts.env
       });
     } catch (e) {
       if (!opts.dryRun || e instanceof CiRequestError) throw e;
-      out.write(`Server checks: skipped (${e.message})
-`);
+      out.write(
+        `Server checks: skipped (${untrusted(e.message, opts.env)})
+`
+      );
     }
     if (client) {
       const discovery = await requirePacksDiscovery(client, opts.fetchImpl);
@@ -34011,7 +34116,7 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
         });
         sign2 = opts.signRecord ?? content.sign;
         out.write(
-          `Delegation ${opts.delegation.slice(0, 12)}…: ${content.delegation.deliverable} for ${content.delegation.types.join(", ")}; signing as ${content.kid.slice(0, 17)}…
+          `Delegation ${opts.delegation.slice(0, 12)}…: ${u(content.delegation.deliverable)} for ${content.delegation.types.map(u).join(", ")}; signing as ${u(content.kid.slice(0, 17))}…
 `
         );
       } else
@@ -34064,7 +34169,7 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
       seq = mine.seq;
       gate = mine.entitlement;
       out.write(
-        `Release ${releaseId}: seq ${seq}; delivery gate: ${gate ?? "none (ungated)"}
+        `Release ${releaseId}: seq ${seq}; delivery gate: ${gate == null ? "none (ungated)" : u(gate)}
 `
       );
       if (pack.entitlement !== null && pack.entitlement !== gate)
@@ -34363,11 +34468,11 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
 `
         );
       }
-      const { seq: _seq, ...shown } = record;
+      const { seq: _seq, ...shown2 } = record;
       out.write(
         `
 Pack record (unsigned; a dry run signs nothing${seq === void 0 ? "; seq is the preflight's answer" : ""}):
-${JSON.stringify(seq === void 0 ? shown : record, null, 2)}
+${JSON.stringify(seq === void 0 ? shown2 : record, null, 2)}
 `
       );
       out.write("Dry run: nothing uploaded, signed or written.\n");
@@ -34427,7 +34532,7 @@ ${JSON.stringify(seq === void 0 ? shown : record, null, 2)}
           attempt += 1;
           if (attempt > 1 || !(e instanceof CiRequestError)) throw e;
           opts.stderr.write(
-            `Stage round failed (${e.message.split("\n")[0]}); retrying with a new ticket
+            `Stage round failed (${u(e.message.split("\n")[0])}); retrying with a new ticket
 `
           );
         }
@@ -34444,11 +34549,11 @@ ${JSON.stringify(seq === void 0 ? shown : record, null, 2)}
     });
     result.server = server;
     out.write(
-      `Published ${String(server.releaseId ?? releaseId)} (${String(server.outcome)})
+      `Published ${u(server.releaseId ?? releaseId)} (${u(server.outcome)})
 `
     );
     if (Array.isArray(server.warnings)) {
-      for (const w of server.warnings) if (typeof w === "string") warn(w);
+      for (const w of server.warnings) if (typeof w === "string") warn(u(w));
     }
     const marker2 = markerJson(packId, version, jws);
     for (const v of variants) {
@@ -34555,7 +34660,8 @@ async function stageRound(client, round, gated, packId, objDir, opts, result, ob
       sha256: obj.sha256,
       fetchImpl: opts.fetchImpl,
       sleep: opts.sleep,
-      log: opts.stderr
+      log: opts.stderr,
+      env: opts.env
     });
     uploaded.push(o.target);
     opts.progress?.advance(
@@ -34723,7 +34829,8 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
     token,
     fetchImpl: opts.fetchImpl,
     sleep: opts.sleep,
-    log: opts.stderr
+    log: opts.stderr,
+    env: opts.env
   });
   await requireRevocationsDiscovery(client, opts.fetchImpl);
   const flags = [`${pack}@${version}`];
@@ -34763,7 +34870,7 @@ ${jws}
     { what: "Submitting the revocation record", body: { record: jws } }
   );
   out.write(
-    `Revoked ${pack}@${version} (${String(server.outcome ?? "submitted")})
+    `Revoked ${pack}@${version} (${untrusted(server.outcome ?? "submitted", opts.env)})
 `
   );
   return { record, jws, sha256: sha2566, server };
@@ -34817,7 +34924,8 @@ ${REVOKE_DELEGATION_USAGE}`
     token,
     fetchImpl: opts.fetchImpl,
     sleep: opts.sleep,
-    log: opts.stderr
+    log: opts.stderr,
+    env: opts.env
   });
   await requireRevocationsDiscovery(client, opts.fetchImpl);
   await requireDelegationsDiscovery(client, opts.fetchImpl);
@@ -34875,7 +34983,7 @@ ${signed}
     }
   );
   out.write(
-    `Revoked delegation ${hash.slice(0, 12)}… (${String(server.outcome ?? "submitted")}); every pack release signed under it is refused from now on.
+    `Revoked delegation ${hash.slice(0, 12)}… (${untrusted(server.outcome ?? "submitted", opts.env)}); every pack release signed under it is refused from now on.
 `
   );
   return { record, jws: signed, sha256: sha2566, server, supplied };
@@ -34907,7 +35015,8 @@ async function clientFor2(opts) {
     token,
     fetchImpl: opts.fetchImpl,
     sleep: opts.sleep,
-    log: opts.stderr
+    log: opts.stderr,
+    env: opts.env
   });
 }
 function normalizeFingerprint2(raw) {
@@ -34991,25 +35100,26 @@ async function reportDistribution(opts) {
     what,
     body: payload
   });
+  const u = (v) => untrusted(v, opts.env);
   if (opts.type === "key") {
     const key = body.key ?? {};
     if (key.match === true) {
       opts.stdout.write(
-        `The ${String(key.purpose)} key ${String(key.sha256)} is in the key inventory.
+        `The ${u(key.purpose)} key ${u(key.sha256)} is in the key inventory.
 `
       );
       return { body, ok: true };
     }
     opts.stderr.write(
-      `The ${String(key.purpose)} key ${String(key.sha256)} is NOT in the product's key inventory. Polaris Key flagged it for an operator; the inventory is unchanged. If the key was rotated on purpose, an operator adopts it in the console (Distribution → Keys).
+      `The ${u(key.purpose)} key ${u(key.sha256)} is NOT in the product's key inventory. Polaris Key flagged it for an operator; the inventory is unchanged. If the key was rotated on purpose, an operator adopts it in the console (Distribution → Keys).
 `
     );
     return { body, ok: false };
   }
   const rec = body[opts.type] ?? {};
-  const target = `${String(rec.releaseId)}${rec.buildId ? `/${String(rec.buildId)}` : ""}`;
+  const target = `${u(rec.releaseId)}${rec.buildId ? `/${u(rec.buildId)}` : ""}`;
   opts.stdout.write(
-    `Reported ${opts.type} of ${target} on ${String(rec.outletId)}: ${String(rec.state)}
+    `Reported ${opts.type} of ${target} on ${u(rec.outletId)}: ${u(rec.state)}
 `
   );
   return { body, ok: true };
@@ -35044,9 +35154,10 @@ ${DISTRIBUTION_CI_USAGE}`
       ...bp !== void 0 ? { bp } : {}
     }
   });
+  const u = (v) => untrusted(v, opts.env);
   const r = body.rollout ?? {};
   opts.stdout.write(
-    `${String(r.deliverableId)} ${String(r.releaseId)} on ${String(r.outletId)}/${String(r.channel)}: ${String(r.state)} at ${Number(r.rolloutBp) / 100}%
+    `${u(r.deliverableId)} ${u(r.releaseId)} on ${u(r.outletId)}/${u(r.channel)}: ${u(r.state)} at ${Number(r.rolloutBp) / 100}%
 `
   );
   return body;
@@ -35467,7 +35578,7 @@ var AscApi = class {
       if (!r.ok)
         throw new AscUploadError(
           "asc-http-error",
-          `${method} ${p} answered ${r.status}: ${text.slice(0, 500)}`
+          `${method} ${p} answered ${r.status}: ${untrusted(text.slice(0, 500), {})}`
         );
       return text ? JSON.parse(text) : {};
     }
@@ -35560,6 +35671,7 @@ async function baUpload(o) {
   const expected = recorded?.resource ?? o.expectResource;
   const creds = await ascCredentials(o);
   const api = new AscApi(creds, o.fetchImpl ?? fetch, o.sleep ?? defaultSleep);
+  const u = (v2) => untrusted(v2, o.env);
   const found = await api.call(
     "GET",
     `/v1/apps/${encodeURIComponent(appId)}/backgroundAssets?filter[assetPackIdentifier]=${encodeURIComponent(assetPackId)}`
@@ -35574,12 +35686,12 @@ async function baUpload(o) {
     if (expected === void 0)
       throw new AscUploadError(
         "asset-pack-unrecorded",
-        `App Store Connect already has asset pack ${assetPackId} (resource ${resource}), but ${path18.relative(o.cwd, lockFile)} records none. Confirm in App Store Connect that it is ${product.pack.id}'s, then pass --expect-resource ${resource}.`
+        `App Store Connect already has asset pack ${assetPackId} (resource ${u(resource)}), but ${path18.relative(o.cwd, lockFile)} records none. Confirm in App Store Connect that it is ${product.pack.id}'s, then pass --expect-resource ${u(resource)}.`
       );
     if (resource !== expected)
       throw new AscUploadError(
         "asset-pack-resource-mismatch",
-        `asset pack ${assetPackId} is resource ${resource}, but ${expected} is recorded: refusing to upload into another pack's asset pack.`
+        `asset pack ${assetPackId} is resource ${u(resource)}, but ${expected} is recorded: refusing to upload into another pack's asset pack.`
       );
   } else {
     if (expected !== void 0)
@@ -35597,7 +35709,7 @@ async function baUpload(o) {
     resource = r.data.id;
     created = true;
     o.stdout.write(
-      `Created asset pack ${assetPackId} (resource ${resource})
+      `Created asset pack ${assetPackId} (resource ${u(resource)})
 `
     );
   }
@@ -35614,7 +35726,7 @@ async function baUpload(o) {
     await mkdir6(path18.dirname(lockFile), { recursive: true });
     await writeFile12(lockFile, prettyJson(lock));
     o.stdout.write(
-      `Recorded ${assetPackId} → ${resource} in ${path18.relative(o.cwd, lockFile)}: commit it, so later uploads can prove the asset pack is this pack's.
+      `Recorded ${assetPackId} → ${u(resource)} in ${path18.relative(o.cwd, lockFile)}: commit it, so later uploads can prove the asset pack is this pack's.
 `
     );
   }
@@ -35629,7 +35741,7 @@ async function baUpload(o) {
   const version = v.data;
   const ascVersion = typeof version.attributes?.version === "number" ? version.attributes.version : typeof version.attributes?.version === "string" && /^[0-9]+$/.test(version.attributes.version) ? Number(version.attributes.version) : null;
   o.stdout.write(
-    `Created version ${ascVersion ?? "?"} of ${assetPackId} (${version.id})
+    `Created version ${ascVersion ?? "?"} of ${assetPackId} (${u(version.id)})
 `
   );
   await uploadFile(api, o, version.id, manifestFile, "MANIFEST");
@@ -35646,7 +35758,7 @@ async function baUpload(o) {
     if ((o.now?.() ?? Date.now()) >= until) break;
     await (o.sleep ?? defaultSleep)(3e4);
   }
-  if (state) o.stdout.write(`Version ${version.id}: ${state}
+  if (state) o.stdout.write(`Version ${u(version.id)}: ${u(state)}
 `);
   if (state === "FAILED")
     throw new AscUploadError(
@@ -37521,7 +37633,7 @@ function githubClient(o = {}) {
       parsed = null;
     }
     if (res.ok) return parsed;
-    const message = parsed && typeof parsed === "object" && "message" in parsed ? String(parsed.message) : `HTTP ${res.status}`;
+    const message = parsed && typeof parsed === "object" && "message" in parsed ? untrusted(parsed.message, {}) : `HTTP ${res.status}`;
     const remaining = res.headers.get("x-ratelimit-remaining");
     throw new GitHubError(
       `GitHub ${method} ${path30.split("?")[0]}: ${res.status} ${message}${remaining === "0" ? " (the token's rate limit is spent; retry after X-RateLimit-Reset)" : ""}`,
@@ -37910,7 +38022,7 @@ async function runStoreSteps(steps, o) {
   if (o.dryRun) {
     for (const step of steps)
       o.stdout.write(
-        `Would run: ${commandLine(o.toolPath ?? step.tool, step.argv)}
+        `Would run: ${untrusted(commandLine(o.toolPath ?? step.tool, step.argv), o.env)}
 `
       );
     return steps.map((step) => ({ step, outcome: "dry-run", exitCode: null }));
@@ -37932,7 +38044,8 @@ async function runStoreSteps(steps, o) {
       token,
       fetchImpl: o.fetchImpl,
       sleep: o.sleep,
-      log: o.stderr
+      log: o.stderr,
+      env: o.env
     });
   }
   const runId = stepRunId(o.env);
@@ -37952,7 +38065,10 @@ async function runStoreSteps(steps, o) {
       ...exitCode2 !== void 0 ? { exitCode: exitCode2 } : {},
       ...runUrl ? { runUrl } : {}
     });
-    const line = commandLine(o.toolPath ?? step.tool, step.argv);
+    const line = untrusted(
+      commandLine(o.toolPath ?? step.tool, step.argv),
+      o.env
+    );
     if (client) {
       let opened;
       try {
@@ -38429,7 +38545,8 @@ async function reporter(o) {
     token,
     fetchImpl: o.fetchImpl,
     sleep: o.sleep,
-    log: o.stderr
+    log: o.stderr,
+    env: o.env
   });
   return {
     post: (body, what) => client.postJson("distribution/report", { what, body })
@@ -38451,7 +38568,8 @@ async function inputsClient(o) {
     token,
     fetchImpl: o.fetchImpl,
     sleep: o.sleep,
-    log: o.stderr
+    log: o.stderr,
+    env: o.env
   });
 }
 function needStore(id) {
@@ -38489,18 +38607,21 @@ async function runPrStep(o) {
     plan.argv,
     plan.files.map((f) => f.path)
   );
-  for (const w of plan.warnings) o.stderr.write(`warning: ${w}
+  const u = (v) => untrusted(v, o.env);
+  for (const w of plan.warnings) o.stderr.write(`warning: ${u(w)}
 `);
-  const line = commandLine(store.list.tool, plan.argv);
+  const line = u(commandLine(store.list.tool, plan.argv));
   if (o.dryRun) {
     o.stdout.write(
       `Would open: ${line}
-  ${plan.title} (${plan.repo}, branch ${plan.branch})
+  ${u(plan.title)} (${u(plan.repo)}, branch ${u(plan.branch)})
 `
     );
     for (const f of plan.files)
-      o.stdout.write(`  ${f.path} (${Buffer.byteLength(f.content)} bytes)
-`);
+      o.stdout.write(
+        `  ${u(f.path)} (${Buffer.byteLength(f.content)} bytes)
+`
+      );
     if (o.outDir) {
       for (const f of plan.files) {
         const target = path22.resolve(o.cwd, o.outDir, f.path);
@@ -38533,7 +38654,7 @@ async function runPrStep(o) {
   const existing = await existingPull(github, plan, headOwner);
   if (existing) {
     o.stdout.write(
-      `A pull request for ${key} is already ${existing.merged ? "merged" : "open"}: ${existing.url}
+      `A pull request for ${u(key)} is already ${existing.merged ? "merged" : "open"}: ${u(existing.url)}
 `
     );
     if (rep) {
@@ -38568,7 +38689,7 @@ async function runPrStep(o) {
       }
     if (same) {
       o.stdout.write(
-        `${plan.repo} already carries ${plan.version} on ${baseBranch}: nothing to open.
+        `${u(plan.repo)} already carries ${u(plan.version)} on ${u(baseBranch)}: nothing to open.
 `
       );
       return { outcome: "unchanged", plan, pr: null, verdict: null };
@@ -38639,7 +38760,7 @@ Created with Polaris Key (pkey storefront ${store.store} pr).`;
       }),
       `Reporting the ${store.store} step pull-request`
     );
-  o.stdout.write(`Opened ${pr.url}
+  o.stdout.write(`Opened ${u(pr.url)}
 `);
   return { outcome: "opened", plan, pr, verdict: prVerdict(store, pr) };
 }
@@ -38667,8 +38788,9 @@ async function runPrStatus(o) {
   const pr = candidates.find((p) => p.state === "open") ?? candidates.find((p) => p.merged) ?? candidates[0] ?? null;
   if (!pr) throw new Error(`No pull request for ${key} on ${repo}.`);
   const verdict = prVerdict(store, pr);
+  const u = (v) => untrusted(v, o.env);
   o.stdout.write(
-    `${pr.url}: ${verdict}${pr.labels.length ? ` (${pr.labels.join(", ")})` : ""}
+    `${u(pr.url)}: ${u(verdict)}${pr.labels.length ? ` (${pr.labels.map(u).join(", ")})` : ""}
 `
   );
   const rep = await reporter(o);
@@ -38710,13 +38832,14 @@ async function writeFlathubInit(o) {
     o.outlet
   );
   const { files, warnings } = generateFlathubSkeleton(inputs, o.generator);
-  for (const w of warnings) o.stderr.write(`warning: ${w}
+  const u = (v) => untrusted(v, o.env);
+  for (const w of warnings) o.stderr.write(`warning: ${u(w)}
 `);
   for (const f of files) {
     const target = path22.resolve(o.cwd, o.outDir, f.path);
     await mkdir9(path22.dirname(target), { recursive: true });
     await writeFile15(target, f.content, "utf8");
-    o.stdout.write(`Wrote ${path22.join(o.outDir, f.path)}
+    o.stdout.write(`Wrote ${u(path22.join(o.outDir, f.path))}
 `);
   }
   o.stdout.write(
@@ -38877,7 +39000,8 @@ async function writeSnapMetadata(o) {
     token,
     fetchImpl: o.fetchImpl,
     sleep: o.sleep,
-    log: o.stderr
+    log: o.stderr,
+    env: o.env
   });
   const body = await client.getJson(
     "distribution/listing/snap",
@@ -38889,7 +39013,7 @@ async function writeSnapMetadata(o) {
   if (o.dryRun) {
     o.stdout.write(
       `Would write into ${o.yamlPath}:
-  summary: ${fields.summary}
+  summary: ${untrusted(fields.summary, o.env)}
   description: ${fields.description.length} characters
 `
     );
@@ -38897,7 +39021,7 @@ async function writeSnapMetadata(o) {
   }
   if (next !== current) await writeFile16(o.yamlPath, next, "utf8");
   o.stdout.write(
-    `${next === current ? "Unchanged" : "Wrote"} the Snap listing's summary and description in ${o.yamlPath} (${body.listing.defaultLocale}).
+    `${next === current ? "Unchanged" : "Wrote"} the Snap listing's summary and description in ${o.yamlPath} (${untrusted(body.listing.defaultLocale, o.env)}).
 `
   );
   return fields;
@@ -39544,7 +39668,7 @@ async function staleOutFiles(dir, cwd) {
     );
   return { files, dirs };
 }
-async function currentIndex(inputs, fetchImpl, log) {
+async function currentIndex(inputs, fetchImpl, log, env) {
   const reg = inputs.files.find((f) => f.path === "index-v2.json");
   if (!reg) return null;
   try {
@@ -39555,7 +39679,7 @@ async function currentIndex(inputs, fetchImpl, log) {
     return JSON.parse(bytes.toString("utf8"));
   } catch (e) {
     log.write(
-      `warning: could not read the current index (${e.message}); no diff is written.
+      `warning: could not read the current index (${untrusted(e.message, env)}); no diff is written.
 `
     );
     return null;
@@ -39584,20 +39708,23 @@ ${FEEDS_USAGE}`);
     token,
     fetchImpl: opts.fetchImpl,
     sleep: opts.sleep,
-    log: opts.stderr
+    log: opts.stderr,
+    env: opts.env
   });
   const route = `distribution/feeds/fdroid/${encodeURIComponent(opts.channel.trim())}`;
   const inputs = await client.getJson(route, {
     what: "Reading the F-Droid feed inputs"
   });
+  const u = (v) => untrusted(v, opts.env);
   out.write(
-    `F-Droid ${inputs.channel}: ${inputs.versions.length} APK${inputs.versions.length === 1 ? "" : "s"} for ${inputs.packageName ?? "(no package)"}
+    `F-Droid ${u(inputs.channel)}: ${inputs.versions.length} APK${inputs.versions.length === 1 ? "" : "s"} for ${u(inputs.packageName ?? "(no package)")}
 `
   );
   const previous = await currentIndex(
     inputs,
     opts.fetchImpl ?? fetch,
-    opts.stderr
+    opts.stderr,
+    opts.env
   );
   const now = (opts.now ?? Date.now)();
   const prevTs = previous?.repo?.timestamp ?? 0;
@@ -39702,7 +39829,8 @@ ${FEEDS_USAGE}`);
       sha256: f.sha256,
       fetchImpl: opts.fetchImpl,
       sleep: opts.sleep,
-      log: opts.stderr
+      log: opts.stderr,
+      env: opts.env
     });
     result.uploaded.push(f.path);
   }
@@ -39715,12 +39843,12 @@ ${FEEDS_USAGE}`);
   });
   result.registered = true;
   out.write(
-    `Registered ${all.length} files for ${inputs.channel} (${result.uploaded.length} uploaded): ${inputs.repo.address}
+    `Registered ${all.length} files for ${u(inputs.channel)} (${result.uploaded.length} uploaded): ${u(inputs.repo.address)}
 `
   );
   if (inputs.repo.fingerprints.length)
     out.write(
-      `Add with: ${inputs.repo.address}?fingerprint=${inputs.repo.fingerprints[0]}
+      `Add with: ${u(inputs.repo.address)}?fingerprint=${u(inputs.repo.fingerprints[0])}
 `
     );
   else
@@ -39790,8 +39918,9 @@ ${FEEDS_SETUP_USAGE}`);
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var MAX_ROUNDS = 50;
 var FEEDS_PRUNE_USAGE = "Usage: pkey feeds prune --product <slug> [--deliverable id] [--apply] [--json] [--base-url url]";
-function formatBytes(n) {
-  if (n < 1e3) return `${n} B`;
+function formatBytes(bytes) {
+  const n = Number(bytes);
+  if (!(n >= 1e3)) return `${n} B`;
   const units = ["kB", "MB", "GB", "TB"];
   let v = n;
   let u = -1;
@@ -39801,30 +39930,32 @@ function formatBytes(n) {
   }
   return `${v.toFixed(1)} ${units[u]}`;
 }
-function renderPruneReport(r) {
+function renderPruneReport(r, env = {}) {
+  const u = (v) => untrusted(v, env);
   const lines3 = [];
   const verb = r.dryRun ? "Would prune" : "Pruned";
   lines3.push(
-    `${r.dryRun ? "Dry run: nothing was deleted." : "Applied."} Product ${r.product} (automatic retention ${r.prunePrereleases ? "on" : "off"}).`
+    `${r.dryRun ? "Dry run: nothing was deleted." : "Applied."} Product ${u(r.product)} (automatic retention ${r.prunePrereleases ? "on" : "off"}).`
   );
   for (const p of r.packages) {
     lines3.push(
-      `${p.ecosystem} ${p.name}: newest stable ${p.stable}; ${verb.toLowerCase()} ${p.prune.length} build${p.prune.length === 1 ? "" : "s"} of main, ${formatBytes(p.bytes)} (${formatBytes(p.freedBytes)} freed)`
+      `${u(p.ecosystem)} ${u(p.name)}: newest stable ${u(p.stable)}; ${verb.toLowerCase()} ${p.prune.length} build${p.prune.length === 1 ? "" : "s"} of main, ${formatBytes(p.bytes)} (${formatBytes(p.freedBytes)} freed)`
     );
     for (const v of p.prune)
       lines3.push(
-        `  - ${v.version}  ${v.files} file${v.files === 1 ? "" : "s"}, ${formatBytes(v.bytes)} (${formatBytes(v.freedBytes)} freed)`
+        `  - ${u(v.version)}  ${u(v.files)} file${v.files === 1 ? "" : "s"}, ${formatBytes(v.bytes)} (${formatBytes(v.freedBytes)} freed)`
       );
-    for (const k of p.kept) lines3.push(`  = ${k.version}  kept (${k.reason})`);
+    for (const k of p.kept)
+      lines3.push(`  = ${u(k.version)}  kept (${u(k.reason)})`);
     for (const s of p.skipped ?? [])
       lines3.push(
-        `  ~ ${s.version}  skipped (${s.reason} since the plan; kept)`
+        `  ~ ${u(s.version)}  skipped (${u(s.reason)} since the plan; kept)`
       );
     for (const f of p.failed ?? [])
-      lines3.push(`  ! ${f.version}  failed: ${f.error}`);
+      lines3.push(`  ! ${u(f.version)}  failed: ${u(f.error)}`);
   }
   for (const s of r.skipped)
-    lines3.push(`${s.deliverableId}: skipped (no stable release yet)`);
+    lines3.push(`${u(s.deliverableId)}: skipped (no stable release yet)`);
   const skipped = r.totals.skipped ?? 0;
   lines3.push(
     `Total: ${verb.toLowerCase()} ${r.totals.versions} version${r.totals.versions === 1 ? "" : "s"}, ${formatBytes(r.totals.bytes)}, of which ${formatBytes(r.totals.freedBytes)} is referenced by nothing else.${skipped ? ` ${skipped} skipped: held since the plan, kept.` : ""}${r.totals.failed ? ` ${r.totals.failed} failed: run it again.` : ""}`
@@ -39853,7 +39984,8 @@ ${FEEDS_PRUNE_USAGE}`);
     token,
     fetchImpl: opts.fetchImpl,
     sleep: opts.sleep,
-    log: opts.stderr
+    log: opts.stderr,
+    env: opts.env
   });
   const ask = () => client.postJson("release/packages/prune", {
     what: opts.apply ? "Pruning builds of main" : "Planning the prune",
@@ -39880,8 +40012,8 @@ ${FEEDS_PRUNE_USAGE}`);
     };
   }
   opts.stdout.write(
-    opts.json ? `${JSON.stringify(report, null, 2)}
-` : renderPruneReport(report)
+    opts.json ? `${untrustedJson(report, 2)}
+` : renderPruneReport(report, opts.env)
   );
   return report;
 }
@@ -40355,7 +40487,7 @@ Re-run to review and apply it.`
         );
       }
       throw new Error(
-        `Importing at ${url} failed (409): ${String(payload2.message ?? payload2.reason ?? "conflict")}`
+        `Importing at ${url} failed (409): ${untrusted(payload2.message ?? payload2.reason ?? "conflict", {})}`
       );
     }
     if (!res.ok) throw await httpError(res, `Importing at ${url}`, listingHint);
@@ -40374,14 +40506,15 @@ Re-run to review and apply it.`
   });
   return result;
 }
-function show2(v) {
+function show2(v, env) {
   const s = JSON.stringify(v) ?? "null";
-  return s.length > 72 ? `${s.slice(0, 71)}…` : s;
+  return untrusted(s.length > 72 ? `${s.slice(0, 71)}…` : s, env);
 }
-function formatImport(r) {
+function formatImport(r, env = {}) {
+  const u = (v) => untrusted(v, env);
   const lines3 = [];
   if (r.presets.length) lines3.push(`Presets read: ${r.presets.join(", ")}`);
-  for (const w of r.warnings) lines3.push(`warning: ${w}`);
+  for (const w of r.warnings) lines3.push(`warning: ${u(w)}`);
   const imp = r.import;
   if (!imp) {
     lines3.push(JSON.stringify(r.upload, null, 2));
@@ -40389,28 +40522,33 @@ function formatImport(r) {
   }
   if (imp.createsListing)
     lines3.push(
-      `The product has no listing yet: this creates it (default locale ${imp.defaultLocale}).`
+      `The product has no listing yet: this creates it (default locale ${u(imp.defaultLocale)}).`
     );
   if (!imp.changes.length)
     lines3.push("No changes: the listing already holds what the project has.");
-  const width = Math.max(0, ...imp.changes.map((c) => c.field.length));
+  const width = Math.max(0, ...imp.changes.map((c) => u(c.field).length));
   for (const c of imp.changes) {
-    const value = c.action === "replace" ? `${show2(c.current)} -> ${show2(c.proposed)}` : c.action === "keep" ? `${show2(c.current)} (kept: ${c.reason ?? "kept"}; godot has ${show2(c.proposed)})` : show2(c.proposed);
-    lines3.push(`  ${c.action.padEnd(7)}  ${c.field.padEnd(width)}  ${value}`);
+    const value = c.action === "replace" ? `${show2(c.current, env)} -> ${show2(c.proposed, env)}` : c.action === "keep" ? `${show2(c.current, env)} (kept: ${u(c.reason ?? "kept")}; godot has ${show2(c.proposed, env)})` : show2(c.proposed, env);
+    lines3.push(
+      `  ${u(c.action).padEnd(7)}  ${u(c.field).padEnd(width)}  ${value}`
+    );
   }
-  for (const x of imp.refused) lines3.push(`refused  ${x.field}: ${x.message}`);
+  for (const x of imp.refused)
+    lines3.push(`refused  ${u(x.field)}: ${u(x.message)}`);
   for (const i of imp.identifiers) {
-    const where2 = i.outlets.length ? i.outlets.map((o) => `${o.outlet} ${o.matches ? "matches" : `has ${o.value}`}`).join(", ") : "no outlet declares one";
-    lines3.push(`${i.kind} (${i.platform}) ${i.value}: ${where2}`);
+    const where2 = i.outlets.length ? i.outlets.map(
+      (o) => `${u(o.outlet)} ${o.matches ? "matches" : `has ${u(o.value)}`}`
+    ).join(", ") : "no outlet declares one";
+    lines3.push(`${u(i.kind)} (${u(i.platform)}) ${u(i.value)}: ${where2}`);
   }
   for (const a of imp.assets)
     lines3.push(
-      `icon ${a.slot}: ${a.ref}${a.width && a.height ? ` (${a.width}x${a.height})` : ""}; upload it with pkey listing assets`
+      `icon ${u(a.slot)}: ${u(a.ref)}${a.width && a.height ? ` (${u(a.width)}x${u(a.height)})` : ""}; upload it with pkey listing assets`
     );
   const applicable = imp.changes.filter((c) => c.action !== "keep").length;
   if (imp.applied)
     lines3.push(
-      imp.written.length ? `Applied ${imp.written.length} change${imp.written.length === 1 ? "" : "s"}: ${imp.written.join(", ")}` : "Nothing to apply."
+      imp.written.length ? `Applied ${imp.written.length} change${imp.written.length === 1 ? "" : "s"}: ${imp.written.map(u).join(", ")}` : "Nothing to apply."
     );
   else if (applicable)
     lines3.push(
@@ -42075,7 +42213,8 @@ ${LISTING_ASSETS_USAGE}`);
     token,
     fetchImpl: opts.fetchImpl,
     sleep: opts.sleep,
-    log: opts.stderr
+    log: opts.stderr,
+    env: opts.env
   });
   const unique = new Map(rows.map((r) => [r.sha256, r]));
   const ticket = await client.postJson("release/publish/uploads", {
@@ -42109,7 +42248,8 @@ ${LISTING_ASSETS_USAGE}`);
       sha256: r.sha256,
       fetchImpl: opts.fetchImpl,
       sleep: opts.sleep,
-      log: opts.stderr
+      log: opts.stderr,
+      env: opts.env
     });
     result.uploaded.push(r.slot);
     opts.progress?.advance(result.uploaded.length, ticket.objects.length);
@@ -42121,7 +42261,7 @@ ${LISTING_ASSETS_USAGE}`);
   });
   result.registered = { stored: answer.stored ?? [], kept: answer.kept ?? [] };
   out.write(
-    `Registered ${result.registered.stored.length} listing assets for ${opts.product}` + (answer.kept?.length ? `; kept ${answer.kept.length} the operator uploaded (${answer.kept.map((k) => k.slot).join(", ")})` : "") + ". Nothing was pushed to a store: accept each output in the console first.\n"
+    `Registered ${result.registered.stored.length} listing assets for ${opts.product}` + (answer.kept?.length ? `; kept ${answer.kept.length} the operator uploaded (${answer.kept.map((k) => untrusted(k?.slot, opts.env)).join(", ")})` : "") + ". Nothing was pushed to a store: accept each output in the console first.\n"
   );
   writeNotUploaded();
   if (pending.length)
@@ -42233,7 +42373,8 @@ async function pushAssets(opts) {
     token,
     fetchImpl: opts.fetchImpl,
     sleep: opts.sleep,
-    log: opts.stderr
+    log: opts.stderr,
+    env: opts.env
   });
   const unique = new Map(files.map((f) => [f.sha256, f]));
   const ticket = await client.postJson("release/publish/uploads", {
@@ -42264,7 +42405,8 @@ async function pushAssets(opts) {
       sha256: f.sha256,
       fetchImpl: opts.fetchImpl,
       sleep: opts.sleep,
-      log: opts.stderr
+      log: opts.stderr,
+      env: opts.env
     });
   }
   const answer = await client.postJson("assets", {
@@ -42285,18 +42427,20 @@ async function pushAssets(opts) {
     kept: answer.kept ?? [],
     refused: answer.refused ?? []
   };
+  const u = (v) => untrusted(v, opts.env);
+  const at = (slot, locale) => where(u(slot), locale ? u(locale) : void 0);
   for (const s of result.stored)
     out.write(
-      `Hosted ${where(s.slot, s.locale)}: ${s.size} bytes, sha256 ${s.sha256}
+      `Hosted ${at(s.slot, s.locale)}: ${u(s.size)} bytes, sha256 ${u(s.sha256)}
 `
     );
   for (const k of result.kept)
     out.write(
-      `Kept ${where(k.slot, k.locale)}: ${k.reason === "console" ? "the console's upload wins" : "the manifest names this slot"}
+      `Kept ${at(k.slot, k.locale)}: ${k.reason === "console" ? "the console's upload wins" : "the manifest names this slot"}
 `
     );
   for (const r of result.refused)
-    opts.stderr.write(`Refused ${where(r.slot, r.locale)}: ${r.reason}
+    opts.stderr.write(`Refused ${at(r.slot, r.locale)}: ${u(r.reason)}
 `);
   out.write(
     `Pushed to ${opts.product}: ${result.stored.length} hosted, ${result.kept.length} kept, ${result.refused.length} refused.
@@ -42408,13 +42552,28 @@ function globalFlags(argv2) {
   return { argv: rest, flags };
 }
 async function runPkey(argv2, io = {}) {
+  const env = io.env ?? process.env;
+  const stdout = guardOutput(io.stdout ?? process.stdout, env);
+  const stderr = guardOutput(io.stderr ?? process.stderr, env);
+  try {
+    return await runCommand(argv2, {
+      ...io,
+      env,
+      stdout: stdout.stream,
+      stderr: stderr.stream
+    });
+  } finally {
+    stdout.flush();
+    stderr.flush();
+  }
+}
+async function runCommand(argv2, io) {
   const global = globalFlags(argv2);
   const parsed = parseArgs(global.argv);
   const cwd = io.cwd ?? process.cwd();
-  const stdout = io.stdout ?? process.stdout;
-  const stderr = io.stderr ?? process.stderr;
+  const { stdout, stderr } = io;
   const ci = {
-    env: io.env ?? process.env,
+    env: io.env,
     fetchImpl: io.fetchImpl,
     sleep: io.sleep
   };
@@ -42435,9 +42594,9 @@ async function runPkey(argv2, io = {}) {
       case "distribution":
         return await cmdDistribution(parsed, cwd, stdout, stderr, ci);
       case "doctor":
-        return await cmdDoctor(parsed, cwd, stdout, term(stdout));
+        return await cmdDoctor(parsed, cwd, stdout, term(stdout), ci.env);
       case "bundle":
-        return await cmdBundle(parsed, cwd, stdout);
+        return await cmdBundle(parsed, cwd, stdout, ci.env);
       case "trust":
         return cmdTrust(parsed, stdout);
       case "sdk":
@@ -42476,7 +42635,7 @@ ${renderHelp(term(stderr))}`
         return 2;
     }
   } catch (err) {
-    stderr.write(`${err.message}
+    stderr.write(`${untrustedLines(err.message, ci.env)}
 `);
     return 1;
   }
@@ -42670,22 +42829,20 @@ async function validateJson(dir, cwd, stdout) {
   const exitCode = result.ok ? 0 : 1;
   stdout.write(
     envelope(exitCode, {
-      result: {
-        valid: result.ok,
-        modules: result.enabledModules,
-        requiredSecrets: result.requiredSecrets,
-        warnings: [
-          // The CLI's own duplicate-file warning has no validator code.
-          ...(manifest.fileWarnings ?? []).map((message) => ({
-            code: null,
-            message,
-            at: ".pkey/",
-            file: null
-          })),
-          ...result.warnings.map(entry)
-        ],
-        errors: result.errors.map(entry)
-      }
+      valid: result.ok,
+      modules: result.enabledModules,
+      requiredSecrets: result.requiredSecrets,
+      warnings: [
+        // The CLI's own duplicate-file warning has no validator code.
+        ...(manifest.fileWarnings ?? []).map((message) => ({
+          code: null,
+          message,
+          at: ".pkey/",
+          file: null
+        })),
+        ...result.warnings.map(entry)
+      ],
+      errors: result.errors.map(entry)
     })
   );
   return exitCode;
@@ -42790,7 +42947,8 @@ async function cmdDistributionCi(parsed, stdout, stderr, ci) {
   });
   return 0;
 }
-async function cmdDoctor(parsed, cwd, stdout, term) {
+async function cmdDoctor(parsed, cwd, stdout, term, env) {
+  const u = (v) => untrusted(v, env);
   const localCode = await validateText(cwd, cwd, stdout, term);
   const baseUrl = flagString(parsed, "base-url");
   const product = flagString(parsed, "product");
@@ -42812,18 +42970,18 @@ Remote discovery: failed (${res.status}) ${url}
   stdout.write(`
 Remote discovery: ok ${url}
 `);
-  const enabled = Object.entries(body.services ?? {}).filter(([, service]) => service?.enabled === true).map(([slug]) => slug);
+  const enabled = Object.entries(body.services ?? {}).filter(([, service]) => service?.enabled === true).map(([slug]) => u(slug));
   stdout.write(
     `Services enabled: ${enabled.length ? enabled.join(", ") : "none"}
 `
   );
   stdout.write(
-    `Signing keys exposed: ${JSON.stringify(body.signing ?? body.trust ?? {})}
+    `Signing keys exposed: ${u(JSON.stringify(body.signing ?? body.trust ?? {}))}
 `
   );
   return localCode;
 }
-async function cmdBundle(parsed, cwd, stdout) {
+async function cmdBundle(parsed, cwd, stdout, env) {
   const product = flagString(parsed, "product");
   const device = flagString(parsed, "device");
   const graceRaw = flagString(parsed, "grace-days");
@@ -42843,7 +43001,7 @@ async function cmdBundle(parsed, cwd, stdout) {
     cookie: process.env[ADMIN_COOKIE_ENV]
   });
   const rel = path28.relative(cwd, result.file);
-  stdout.write(`Minted bundle ${result.bundleId}
+  stdout.write(`Minted bundle ${untrusted(result.bundleId, env)}
 `);
   stdout.write(`- File: ${rel}
 `);
@@ -42974,8 +43132,9 @@ async function cmdAuth(parsed, stdout, stderr, ci) {
     fetchImpl: ci.fetchImpl,
     sleep: ci.sleep
   });
+  const scopes = issued.scopes.map((s) => untrusted(s, ci.env));
   stdout.write(
-    `Exchanged the job's OIDC token for a CI token (${issued.scopes.join(", ") || "no scopes"}); ${CI_TOKEN_ENV} is set for the job's later steps.
+    `Exchanged the job's OIDC token for a CI token (${scopes.join(", ") || "no scopes"}); ${CI_TOKEN_ENV} is set for the job's later steps.
 `
   );
   return 0;
@@ -43581,8 +43740,8 @@ async function cmdListingImport(parsed, cwd, stdout, ci) {
     ...ci.fetchImpl ? { fetchImpl: ci.fetchImpl } : {}
   });
   stdout.write(
-    flagBool(parsed, "json") || flagBool(parsed, "dry-run") ? `${JSON.stringify(flagBool(parsed, "dry-run") ? result.upload : result, null, 2)}
-` : `${formatImport(result)}
+    flagBool(parsed, "json") || flagBool(parsed, "dry-run") ? `${untrustedJson(flagBool(parsed, "dry-run") ? result.upload : result, 2)}
+` : `${formatImport(result, ci.env)}
 `
   );
   return 0;
@@ -43694,10 +43853,21 @@ function ensureZstd(io) {
       `${need2}; apt-get installed ${after ?? "no zstd"}. Use a newer runner image (ubuntu-24.04 or later) or install zstd ≥ ${MIN_ZSTD_VERSION} before this step.`
     );
 }
-function escapeData(s) {
-  return s.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
+async function runAction(given) {
+  const stdout = guardOutput(given.stdout, given.env);
+  const stderr = guardOutput(given.stderr, given.env);
+  try {
+    return await runActionSteps({
+      ...given,
+      stdout: stdout.stream,
+      stderr: stderr.stream
+    });
+  } finally {
+    stdout.flush();
+    stderr.flush();
+  }
 }
-async function runAction(io) {
+async function runActionSteps(io) {
   const input = (name) => actionInput(io.env, name);
   try {
     const product = input("product");
@@ -43878,11 +44048,12 @@ async function runAction(io) {
     await writeOutputs(io, result.releaseId, result.server);
     return 0;
   } catch (e) {
+    const message = untrustedLines(e.message, io.env);
     io.stdout.write(
-      `::error title=pkey release publish::${escapeData(e.message)}
+      `::error title=pkey release publish::${escapeData(message)}
 `
     );
-    io.stderr.write(`${e.message}
+    io.stderr.write(`${message}
 `);
     return 1;
   }
@@ -44136,16 +44307,21 @@ async function runAssetsStep(io, input, product, dir, assets) {
   });
   if (answer && answer.refused.length > 0)
     throw new Error(
-      `${answer.refused.length} file${answer.refused.length === 1 ? " was" : "s were"} refused: ${answer.refused.map((r) => `${r.slot} (${r.reason})`).join(", ")}.`
+      `${answer.refused.length} file${answer.refused.length === 1 ? " was" : "s were"} refused: ${answer.refused.map(
+        (r) => `${untrusted(r.slot, io.env)} (${untrusted(r.reason, io.env)})`
+      ).join(", ")}.`
     );
 }
+var OUTCOME_RE = /^[a-z][a-z_-]{0,63}$/;
+var RELEASE_ID_RE = /^[^\s\p{Cc}\p{Cf}]{1,255}$/u;
 async function writeOutputs(io, releaseId, server) {
   const outputFile = io.env.GITHUB_OUTPUT;
   if (!outputFile) return;
-  const outcome = typeof server?.outcome === "string" ? server.outcome : "";
+  const id = RELEASE_ID_RE.test(releaseId) ? releaseId : "";
+  const outcome = typeof server?.outcome === "string" && OUTCOME_RE.test(server.outcome) ? server.outcome : "";
   await appendFile2(
     outputFile,
-    `release-id=${releaseId}
+    `release-id=${id}
 outcome=${outcome}
 `,
     "utf8"

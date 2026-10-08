@@ -86,6 +86,7 @@ import {
 import { loadManifest, validateLoadedManifest } from "./manifest.js";
 import { mask, resolveCiToken, type CiEnv } from "./oidc.js";
 import { putFile } from "./s3.js";
+import { untrusted } from "./untrusted.js";
 import {
   checkSignedRecord,
   recordSigner,
@@ -637,6 +638,8 @@ export async function publishPack(
   opts: PackPublishOptions,
 ): Promise<PackPublishResult> {
   const out = opts.stdout;
+  // The server's words (a gate, an outcome, a warning) are cleaned before they are shown.
+  const u = (v: unknown) => untrusted(v, opts.env);
   const warnings: string[] = [];
   const warn = (w: string) => {
     warnings.push(w);
@@ -841,10 +844,13 @@ export async function publishPack(
         fetchImpl: opts.fetchImpl,
         sleep: opts.sleep,
         log: opts.stderr,
+        env: opts.env,
       });
     } catch (e) {
       if (!opts.dryRun || e instanceof CiRequestError) throw e;
-      out.write(`Server checks: skipped (${(e as Error).message})\n`);
+      out.write(
+        `Server checks: skipped (${untrusted((e as Error).message, opts.env)})\n`,
+      );
     }
     if (client) {
       const discovery = await requirePacksDiscovery(client, opts.fetchImpl);
@@ -874,7 +880,7 @@ export async function publishPack(
         });
         sign = opts.signRecord ?? content.sign;
         out.write(
-          `Delegation ${opts.delegation!.slice(0, 12)}…: ${content.delegation.deliverable} for ${content.delegation.types.join(", ")}; signing as ${content.kid.slice(0, 17)}…\n`,
+          `Delegation ${opts.delegation!.slice(0, 12)}…: ${u(content.delegation.deliverable)} for ${content.delegation.types.map(u).join(", ")}; signing as ${u(content.kid.slice(0, 17))}…\n`,
         );
       } else
         out.write(
@@ -933,7 +939,7 @@ export async function publishPack(
       seq = mine.seq;
       gate = mine.entitlement;
       out.write(
-        `Release ${releaseId}: seq ${seq}; delivery gate: ${gate ?? "none (ungated)"}\n`,
+        `Release ${releaseId}: seq ${seq}; delivery gate: ${gate == null ? "none (ungated)" : u(gate)}\n`,
       );
       if (pack.entitlement !== null && pack.entitlement !== gate)
         throw new Error(
@@ -1330,7 +1336,7 @@ export async function publishPack(
           attempt += 1;
           if (attempt > 1 || !(e instanceof CiRequestError)) throw e;
           opts.stderr.write(
-            `Stage round failed (${e.message.split("\n")[0]}); retrying with a new ticket\n`,
+            `Stage round failed (${u(e.message.split("\n")[0])}); retrying with a new ticket\n`,
           );
         }
       }
@@ -1345,11 +1351,11 @@ export async function publishPack(
     });
     result.server = server;
     out.write(
-      `Published ${String(server.releaseId ?? releaseId)} (${String(server.outcome)})\n`,
+      `Published ${u(server.releaseId ?? releaseId)} (${u(server.outcome)})\n`,
     );
     // P4-20: the server's warnings (save compatibility), never a failure.
     if (Array.isArray(server.warnings))
-      for (const w of server.warnings) if (typeof w === "string") warn(w);
+      for (const w of server.warnings) if (typeof w === "string") warn(u(w));
 
     // 8. Markers beside the payloads, then the cache for the next publish's --bases.
     const marker = markerJson(packId, version, jws);
@@ -1509,6 +1515,7 @@ async function stageRound(
       fetchImpl: opts.fetchImpl,
       sleep: opts.sleep,
       log: opts.stderr,
+      env: opts.env,
     });
     uploaded.push(o.target);
     opts.progress?.advance(

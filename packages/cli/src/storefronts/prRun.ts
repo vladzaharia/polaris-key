@@ -24,6 +24,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { ciClient, type CiClient, type Out, type Sleep } from "../ci.js";
 import { resolveCiToken, type CiEnv } from "../oidc.js";
+import { untrusted } from "../untrusted.js";
 import {
   flathubAppId,
   generateFlathubSkeleton,
@@ -304,6 +305,7 @@ async function reporter(o: PrStepOptions): Promise<Reporter | null> {
     fetchImpl: o.fetchImpl,
     sleep: o.sleep,
     log: o.stderr,
+    env: o.env,
   });
   return {
     post: (body, what) =>
@@ -328,6 +330,7 @@ async function inputsClient(o: PrStepOptions): Promise<CiClient> {
     fetchImpl: o.fetchImpl,
     sleep: o.sleep,
     log: o.stderr,
+    env: o.env,
   });
 }
 
@@ -376,15 +379,19 @@ export async function runPrStep(o: PrStepOptions): Promise<PrStepOutcome> {
     plan.argv,
     plan.files.map((f) => f.path),
   );
-  for (const w of plan.warnings) o.stderr.write(`warning: ${w}\n`);
-  const line = commandLine(store.list.tool, plan.argv);
+  // The plan is built from the server's inputs and GitHub's answers: what it shows is cleaned.
+  const u = (v: unknown) => untrusted(v, o.env);
+  for (const w of plan.warnings) o.stderr.write(`warning: ${u(w)}\n`);
+  const line = u(commandLine(store.list.tool, plan.argv));
 
   if (o.dryRun) {
     o.stdout.write(
-      `Would open: ${line}\n  ${plan.title} (${plan.repo}, branch ${plan.branch})\n`,
+      `Would open: ${line}\n  ${u(plan.title)} (${u(plan.repo)}, branch ${u(plan.branch)})\n`,
     );
     for (const f of plan.files)
-      o.stdout.write(`  ${f.path} (${Buffer.byteLength(f.content)} bytes)\n`);
+      o.stdout.write(
+        `  ${u(f.path)} (${Buffer.byteLength(f.content)} bytes)\n`,
+      );
     if (o.outDir) {
       for (const f of plan.files) {
         const target = path.resolve(o.cwd, o.outDir, f.path);
@@ -420,7 +427,7 @@ export async function runPrStep(o: PrStepOptions): Promise<PrStepOutcome> {
   const existing = await existingPull(github, plan, headOwner);
   if (existing) {
     o.stdout.write(
-      `A pull request for ${key} is already ${existing.merged ? "merged" : "open"}: ${existing.url}\n`,
+      `A pull request for ${u(key)} is already ${existing.merged ? "merged" : "open"}: ${u(existing.url)}\n`,
     );
     if (rep) {
       const opened = await rep.post(
@@ -457,7 +464,7 @@ export async function runPrStep(o: PrStepOptions): Promise<PrStepOutcome> {
       }
     if (same) {
       o.stdout.write(
-        `${plan.repo} already carries ${plan.version} on ${baseBranch}: nothing to open.\n`,
+        `${u(plan.repo)} already carries ${u(plan.version)} on ${u(baseBranch)}: nothing to open.\n`,
       );
       return { outcome: "unchanged", plan, pr: null, verdict: null };
     }
@@ -529,7 +536,7 @@ export async function runPrStep(o: PrStepOptions): Promise<PrStepOutcome> {
       }),
       `Reporting the ${store.store} step pull-request`,
     );
-  o.stdout.write(`Opened ${pr.url}\n`);
+  o.stdout.write(`Opened ${u(pr.url)}\n`);
   return { outcome: "opened", plan, pr, verdict: prVerdict(store, pr) };
 }
 
@@ -573,8 +580,10 @@ export async function runPrStatus(
     null;
   if (!pr) throw new Error(`No pull request for ${key} on ${repo}.`);
   const verdict = prVerdict(store, pr);
+  // GitHub's answer: the URL starts the line, so it is cleaned like the verdict and each label.
+  const u = (v: unknown) => untrusted(v, o.env);
   o.stdout.write(
-    `${pr.url}: ${verdict}${pr.labels.length ? ` (${pr.labels.join(", ")})` : ""}\n`,
+    `${u(pr.url)}: ${u(verdict)}${pr.labels.length ? ` (${pr.labels.map(u).join(", ")})` : ""}\n`,
   );
   const rep = await reporter(o);
   if (rep)
@@ -619,12 +628,13 @@ export async function writeFlathubInit(
     o.outlet,
   );
   const { files, warnings } = generateFlathubSkeleton(inputs, o.generator);
-  for (const w of warnings) o.stderr.write(`warning: ${w}\n`);
+  const u = (v: unknown) => untrusted(v, o.env);
+  for (const w of warnings) o.stderr.write(`warning: ${u(w)}\n`);
   for (const f of files) {
     const target = path.resolve(o.cwd, o.outDir, f.path);
     await mkdir(path.dirname(target), { recursive: true });
     await writeFile(target, f.content, "utf8");
-    o.stdout.write(`Wrote ${path.join(o.outDir, f.path)}\n`);
+    o.stdout.write(`Wrote ${u(path.join(o.outDir, f.path))}\n`);
   }
   o.stdout.write(
     "Open the first submission by hand: a PR to flathub/flathub against the new-pr branch (https://docs.flathub.org/docs/for-app-authors/submission). Later versions: pkey storefront flathub pr, or Flathub's external-data checker.\n",

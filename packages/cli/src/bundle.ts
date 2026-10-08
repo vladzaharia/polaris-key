@@ -51,6 +51,7 @@
 
 import { stat, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { untrusted } from "./untrusted.js";
 
 /**
  * The platform's production origin — the same value as `DEFAULT_BASE` in
@@ -298,10 +299,14 @@ export async function httpError(
   hintFor: (status: number) => string | undefined = statusHint,
 ): Promise<Error> {
   const detail = await errorDetail(res);
-  const label = [String(res.status), detail.code].filter(Boolean).join(" ");
-  const message = detail.message ? `: ${detail.message}` : "";
+  // The server's words: each cleaned (`untrusted.ts`) before it joins pkey's message.
+  const u = (v: unknown) => untrusted(v, {});
+  const label = [String(res.status), detail.code && u(detail.code)]
+    .filter(Boolean)
+    .join(" ");
+  const message = detail.message ? `: ${u(detail.message)}` : "";
   const fields = detail.fields?.length
-    ? ` (fields: ${detail.fields.join(", ")})`
+    ? ` (fields: ${detail.fields.map(u).join(", ")})`
     : "";
   const hint = hintFor(res.status);
   return new Error(

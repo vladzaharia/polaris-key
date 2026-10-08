@@ -23,6 +23,7 @@ import path from "node:path";
 import { ciClient, type Out, type Sleep } from "./ci.js";
 import { mask, resolveCiToken, type CiEnv } from "./oidc.js";
 import { putFile } from "./s3.js";
+import { untrusted } from "./untrusted.js";
 
 export const ASSETS_PUSH_USAGE =
   "Usage: pkey assets push <file> --slot <slot> [--locale <code>] --product <slug>\n" +
@@ -183,6 +184,7 @@ export async function pushAssets(
     fetchImpl: opts.fetchImpl,
     sleep: opts.sleep,
     log: opts.stderr,
+    env: opts.env,
   });
   const unique = new Map(files.map((f) => [f.sha256, f]));
   const ticket = (await client.postJson("release/publish/uploads", {
@@ -225,6 +227,7 @@ export async function pushAssets(
       fetchImpl: opts.fetchImpl,
       sleep: opts.sleep,
       log: opts.stderr,
+      env: opts.env,
     });
   }
   const answer = (await client.postJson("assets", {
@@ -245,20 +248,24 @@ export async function pushAssets(
     kept: answer.kept ?? [],
     refused: answer.refused ?? [],
   };
+  // The answer is the server's: every field it names is cleaned (`untrusted.ts`).
+  const u = (v: unknown) => untrusted(v, opts.env);
+  const at = (slot: unknown, locale: unknown) =>
+    where(u(slot), locale ? u(locale) : undefined);
   for (const s of result.stored)
     out.write(
-      `Hosted ${where(s.slot, s.locale)}: ${s.size} bytes, sha256 ${s.sha256}\n`,
+      `Hosted ${at(s.slot, s.locale)}: ${u(s.size)} bytes, sha256 ${u(s.sha256)}\n`,
     );
   for (const k of result.kept)
     out.write(
-      `Kept ${where(k.slot, k.locale)}: ${
+      `Kept ${at(k.slot, k.locale)}: ${
         k.reason === "console"
           ? "the console's upload wins"
           : "the manifest names this slot"
       }\n`,
     );
   for (const r of result.refused)
-    opts.stderr.write(`Refused ${where(r.slot, r.locale)}: ${r.reason}\n`);
+    opts.stderr.write(`Refused ${at(r.slot, r.locale)}: ${u(r.reason)}\n`);
   out.write(
     `Pushed to ${opts.product}: ${result.stored.length} hosted, ${result.kept.length} kept, ${result.refused.length} refused.\n`,
   );

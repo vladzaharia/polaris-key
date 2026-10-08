@@ -33,6 +33,7 @@ import { ciClient, CiRequestError, type Out, type Sleep } from "../ci.js";
 import { loadManifest, validateLoadedManifest } from "../manifest.js";
 import { mask, resolveCiToken, type CiEnv } from "../oidc.js";
 import { MAX_SINGLE_PUT_BYTES, putFile } from "../s3.js";
+import { untrusted } from "../untrusted.js";
 import {
   blobKey,
   descriptorManifestOf,
@@ -226,7 +227,9 @@ export async function publishPackage(
       });
     } catch (e) {
       if (opts.dryRun && !(e instanceof CiRequestError)) {
-        out.write(`Server validation: skipped (${(e as Error).message})\n`);
+        out.write(
+          `Server validation: skipped (${untrusted((e as Error).message, opts.env)})\n`,
+        );
         return result;
       }
       throw e;
@@ -238,6 +241,7 @@ export async function publishPackage(
       fetchImpl: opts.fetchImpl,
       sleep: opts.sleep,
       log: opts.stderr,
+      env: opts.env,
     });
     const objects = new Map(hashed.map((f) => [f.sha256, f]));
     const ticket = (await client.postJson("release/publish/uploads", {
@@ -289,7 +293,7 @@ export async function publishPackage(
     if (opts.dryRun) {
       result.server = verdict;
       out.write(
-        `Server validation: ok — would be ${String(verdict.outcome)} as ${String(verdict.releaseId)}\nDry run: nothing uploaded, nothing written.\n`,
+        `Server validation: ok — would be ${untrusted(verdict.outcome, opts.env)} as ${untrusted(verdict.releaseId, opts.env)}\nDry run: nothing uploaded, nothing written.\n`,
       );
       return result;
     }
@@ -314,6 +318,7 @@ export async function publishPackage(
         fetchImpl: opts.fetchImpl,
         sleep: opts.sleep,
         log: opts.stderr,
+        env: opts.env,
       });
       result.uploaded.push(o.target);
     }
@@ -326,7 +331,7 @@ export async function publishPackage(
     });
     result.server = server;
     out.write(
-      `Published ${String(server.releaseId)} (${String(server.outcome)})\n`,
+      `Published ${untrusted(server.releaseId, opts.env)} (${untrusted(server.outcome, opts.env)})\n`,
     );
     return result;
   } finally {

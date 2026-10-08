@@ -382,6 +382,31 @@ transient failures of the content-addressed PUT. Supply chain: the Action runs t
 fails CI on any difference from the reviewed source; workflows pin it by commit SHA until a
 Marketplace `v1` tag exists.
 
+**Server text is data, not terminal control or a workflow command (UK-14).** A response field (a
+refusal's message, a release id, a device label, a pull request's labels, a URL) could carry an
+OSC 52 clipboard write or a screen clear for the terminal that prints it, or, in a job log, a line
+the Actions runner obeys (`::add-mask::`, `::error`, `::stop-commands::`, the legacy `##[…]`).
+Both terminal kits remove it where they draw: the Node kit strips every C0 control, DEL and C1
+control from server and product text at its one writer, `Painter` (`clean()` in
+`@polaris-key/node/terminal`), and the Python kit's `clean()` (`polaris_key/ui/terminal/text.py`)
+does the same; either makes an OSC 8 hyperlink only of an `https:` URL, or `http:` to a loopback
+host, with no whitespace, control character or userinfo, and prints any other URL as text. `pkey`
+and the Action pass every echo of a response through `untrusted()` (`packages/cli/src/untrusted.ts`):
+`clean()`, then, inside Actions, a value whose `trimStart()` begins with `::` is led by U+200B and
+every `##[` is broken by one (U+200B is whitespace neither to JavaScript's `trimStart()` nor to
+the runner's `TrimStart()`). A refusal's fields are cleaned one by one, so none adds a line of its
+own; a thrown error's message is cleaned line by line where it is printed. In depth, inside
+Actions the streams `runPkey` and `runAction` write to run behind a line guard that strips foreign
+controls (pkey's own SGR colour excepted) and defuses every command line but pkey's own
+`::add-mask::` and `::error title=pkey …` annotation; a masked value is escaped as command data, so
+a ticket the server sent with a line break stays one `::add-mask::` line; and `$GITHUB_OUTPUT`
+receives `outcome` only as a lower-case word (`^[a-z][a-z_-]*$`) and `release-id` only in the
+shape it is minted (1–255 characters, no whitespace, control or format character), else an empty
+value. `packages/cli/test/untrusted.test.ts` drives `pkey` and the Action against a Worker that
+answers with all of these. Residual: a step that runs `pkey` in a container started without
+`GITHUB_ACTIONS` still has its output read by the runner, and there only the control stripping
+applies.
+
 **Residual risk: an existence oracle on other tenants' bytes.** `blob_objects` is shared, and
 `promote` short-circuits a target that already exists (`alreadyStored`: no copy). The submit
 route never reads that flag and answers identically either way, and `present` on a ticket

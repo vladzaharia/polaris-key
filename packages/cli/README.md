@@ -82,6 +82,14 @@ on **stderr**, only when stderr is a terminal and never under CI (`CI`, `GITHUB_
 line is erased before anything else is printed, and stdout is byte for byte what it is in a
 pipe.
 
+Text a server sends (a refusal's message, a release id, a label, a URL) is printed as text, never
+as an escape: every control character is removed before it reaches the terminal, so a field
+cannot write the clipboard, clear the screen or start a line of its own. Inside GitHub Actions
+(`GITHUB_ACTIONS` set) it also never reads as a workflow command: a value that would begin a line
+with `::`, or holds `##[`, carries an invisible U+200B, and the only commands `pkey` and the Action
+write are their own `::add-mask::` lines and the Action's `::error` annotation. In a job log
+`pkey`'s own colour (under `FORCE_COLOR`) survives; no other escape does.
+
 ### Shell completion
 
 `pkey completion bash|zsh|fish` prints a completion script generated from `pkey`'s own command
@@ -150,7 +158,9 @@ $ pkey validate game
 
 On a terminal the roles are coloured and a long message wraps under its own column; anywhere else
 each message is one plain line. `--json` prints one JSON line on stdout instead, the terminal kits'
-result line (the Node and Python CLI kits use the same envelope; shown here pretty-printed):
+result line: the envelope's `v`, `command`, `event`, `ok` and `exit`, and the verdict's own fields
+beside them (the Node and Python CLI kits use the same flattened envelope; shown here
+pretty-printed):
 
 ```json
 {
@@ -159,36 +169,35 @@ result line (the Node and Python CLI kits use the same envelope; shown here pret
   "event": "result",
   "ok": false,
   "exit": 1,
-  "result": {
-    "valid": false,
-    "modules": ["config", "release", "update"],
-    "requiredSecrets": [],
-    "warnings": [
-      {
-        "code": "config_without_activation",
-        "message": "Config is enabled without an activation method.",
-        "at": "product/modules/config",
-        "file": "game/.pkey/product.yaml"
-      }
-    ],
-    "errors": [
-      {
-        "code": "missing_release",
-        "message": "Releases are enabled, so .pkey/release.yaml or release.json is required.",
-        "at": "release/",
-        "file": null
-      }
-    ]
-  }
+  "valid": false,
+  "modules": ["config", "release", "update"],
+  "requiredSecrets": [],
+  "warnings": [
+    {
+      "code": "config_without_activation",
+      "message": "Config is enabled without an activation method.",
+      "at": "product/modules/config",
+      "file": "game/.pkey/product.yaml"
+    }
+  ],
+  "errors": [
+    {
+      "code": "missing_release",
+      "message": "Releases are enabled, so .pkey/release.yaml or release.json is required.",
+      "at": "release/",
+      "file": null
+    }
+  ]
 }
 ```
 
 (Printed on one line.) `at` is the document and JSON pointer, `file` the file it was read from
 relative to the current directory (`null` when the document is missing). The CLI's own warning
 that one document exists under two extensions has `"code": null` and `"at": ".pkey/"`. When no
-manifest can be read at all, `result` is replaced by `"error": "no-manifest"` and a
-`"message"` for people, and the exit code is `1`. Every non-ASCII character is written as a `\u`
-escape. Human output (everything without `--json`) may change between releases; scripts read
+manifest can be read at all (a file problem) the line is
+`{"v":1,"command":"validate","event":"result","ok":false,"exit":1,"error":"no-manifest","message":"…"}`,
+with the `message` for people, and the exit code is `1`. Every non-ASCII character is written as a
+`\u` escape. Human output (everything without `--json`) may change between releases; scripts read
 `--json`.
 
 The full code list is at [Manifest validation codes](/docs/reference/validation-codes/).

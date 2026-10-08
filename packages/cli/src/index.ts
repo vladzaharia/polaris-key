@@ -38,6 +38,13 @@ import { authGithubOidc, CI_TOKEN_ENV, type CiEnv } from "./oidc.js";
 import type { StageProgress } from "./ci.js";
 import { wrapSpans, type Line } from "@polaris-key/node/terminal";
 import {
+  guardOutput,
+  untrusted,
+  untrustedJson,
+  untrustedLines,
+  type UntrustedEnv,
+} from "./untrusted.js";
+import {
   descriptorManifestOf,
   PUBLISH_USAGE,
   publishRelease,
@@ -455,6 +462,17 @@ export {
   type TermOut,
 } from "./terminal.js";
 export type { StageProgress } from "./ci.js";
+export {
+  COMMAND_BREAK,
+  escapeData,
+  guardLine,
+  guardOutput,
+  underActions,
+  untrusted,
+  untrustedJson,
+  untrustedLines,
+  type UntrustedEnv,
+} from "./untrusted.js";
 
 export interface CliIo {
   cwd?: string;
@@ -516,13 +534,34 @@ function globalFlags(argv: readonly string[]): {
 }
 
 export async function runPkey(argv: string[], io: CliIo = {}): Promise<number> {
+  const env = io.env ?? (process.env as CiEnv);
+  // Inside GitHub Actions both streams run behind the output guard (`untrusted.ts`): no line the
+  // server's words reach can read as a workflow command, whichever command printed it.
+  const stdout = guardOutput(io.stdout ?? process.stdout, env);
+  const stderr = guardOutput(io.stderr ?? process.stderr, env);
+  try {
+    return await runCommand(argv, {
+      ...io,
+      env,
+      stdout: stdout.stream,
+      stderr: stderr.stream,
+    });
+  } finally {
+    stdout.flush();
+    stderr.flush();
+  }
+}
+
+async function runCommand(
+  argv: string[],
+  io: CliIo & { env: CiEnv; stdout: TermOut; stderr: TermOut },
+): Promise<number> {
   const global = globalFlags(argv);
   const parsed = parseArgs(global.argv);
   const cwd = io.cwd ?? process.cwd();
-  const stdout = io.stdout ?? process.stdout;
-  const stderr = io.stderr ?? process.stderr;
+  const { stdout, stderr } = io;
   const ci = {
-    env: io.env ?? (process.env as CiEnv),
+    env: io.env,
     fetchImpl: io.fetchImpl,
     sleep: io.sleep,
   };
@@ -549,9 +588,9 @@ export async function runPkey(argv: string[], io: CliIo = {}): Promise<number> {
       case "distribution":
         return await cmdDistribution(parsed, cwd, stdout, stderr, ci);
       case "doctor":
-        return await cmdDoctor(parsed, cwd, stdout, term(stdout));
+        return await cmdDoctor(parsed, cwd, stdout, term(stdout), ci.env);
       case "bundle":
-        return await cmdBundle(parsed, cwd, stdout);
+        return await cmdBundle(parsed, cwd, stdout, ci.env);
       case "trust":
         return cmdTrust(parsed, stdout);
       case "sdk":
@@ -588,7 +627,9 @@ export async function runPkey(argv: string[], io: CliIo = {}): Promise<number> {
         return 2;
     }
   } catch (err) {
-    stderr.write(`${(err as Error).message}\n`);
+    // An error's message may quote the server (a refusal, a URL it answered, a field it sent):
+    // cleaned per line, so it draws no escape and no line of it reads as a workflow command.
+    stderr.write(`${untrustedLines((err as Error).message, ci.env)}\n`);
     return 1;
   }
 }
@@ -819,10 +860,12 @@ async function validateText(
 }
 
 /**
- * `pkey validate --json`: one JSON line on stdout in the terminal kits' envelope
- * (`@polaris-key/node`'s cli/json.ts, the Python kit's too):
- * `{"v":1,"command":"validate","event":"result","ok","exit","result"}`, or `"error"` (a code)
- * and `"message"` instead of `result` when no manifest could be read. ASCII only.
+ * `pkey validate --json`: one JSON line on stdout in the terminal kits' flattened envelope (the
+ * Python kit's, which the Node kit and pkey follow): `v`, `command`, `event`, `ok` and `exit`,
+ * then the verdict's own fields beside them,
+ * `{"v":1,"command":"validate","event":"result","ok","exit","valid","modules","requiredSecrets",
+ * "warnings","errors"}`, or `"error":"no-manifest"` and a `"message"` when no manifest could be
+ * read (a file problem, exit 1). ASCII only.
  */
 async function validateJson(
   dir: string,
@@ -856,22 +899,20 @@ async function validateJson(
   const exitCode = result.ok ? 0 : 1;
   stdout.write(
     envelope(exitCode, {
-      result: {
-        valid: result.ok,
-        modules: result.enabledModules,
-        requiredSecrets: result.requiredSecrets,
-        warnings: [
-          // The CLI's own duplicate-file warning has no validator code.
-          ...(manifest.fileWarnings ?? []).map((message) => ({
-            code: null,
-            message,
-            at: ".pkey/",
-            file: null,
-          })),
-          ...result.warnings.map(entry),
-        ],
-        errors: result.errors.map(entry),
-      },
+      valid: result.ok,
+      modules: result.enabledModules,
+      requiredSecrets: result.requiredSecrets,
+      warnings: [
+        // The CLI's own duplicate-file warning has no validator code.
+        ...(manifest.fileWarnings ?? []).map((message) => ({
+          code: null,
+          message,
+          at: ".pkey/",
+          file: null,
+        })),
+        ...result.warnings.map(entry),
+      ],
+      errors: result.errors.map(entry),
     }),
   );
   return exitCode;
@@ -1032,7 +1073,9 @@ async function cmdDoctor(
   cwd: string,
   stdout: TermOut,
   term: Term,
+  env: UntrustedEnv,
 ): Promise<number> {
+  const u = (v: unknown) => untrusted(v, env);
   const localCode = await validateText(cwd, cwd, stdout, term);
   const baseUrl = flagString(parsed, "base-url");
   const product = flagString(parsed, "product");
@@ -1055,14 +1098,15 @@ async function cmdDoctor(
     services?: Record<string, { enabled?: unknown } | undefined>;
   };
   stdout.write(`\nRemote discovery: ok ${url}\n`);
+  // Every name and value below is the server's: each is cleaned (`untrusted.ts`).
   const enabled = Object.entries(body.services ?? {})
     .filter(([, service]) => service?.enabled === true)
-    .map(([slug]) => slug);
+    .map(([slug]) => u(slug));
   stdout.write(
     `Services enabled: ${enabled.length ? enabled.join(", ") : "none"}\n`,
   );
   stdout.write(
-    `Signing keys exposed: ${JSON.stringify(body.signing ?? body.trust ?? {})}\n`,
+    `Signing keys exposed: ${u(JSON.stringify(body.signing ?? body.trust ?? {}))}\n`,
   );
   return localCode;
 }
@@ -1076,6 +1120,7 @@ async function cmdBundle(
   parsed: ParsedArgs,
   cwd: string,
   stdout: Pick<NodeJS.WriteStream, "write">,
+  env: UntrustedEnv,
 ): Promise<number> {
   const product = flagString(parsed, "product");
   const device = flagString(parsed, "device");
@@ -1098,7 +1143,7 @@ async function cmdBundle(
   });
 
   const rel = path.relative(cwd, result.file);
-  stdout.write(`Minted bundle ${result.bundleId}\n`);
+  stdout.write(`Minted bundle ${untrusted(result.bundleId, env)}\n`);
   stdout.write(`- File: ${rel}\n`);
   stdout.write(`- Device: ${result.deviceId}\n`);
   stdout.write(
@@ -1268,8 +1313,9 @@ async function cmdAuth(
     fetchImpl: ci.fetchImpl,
     sleep: ci.sleep,
   });
+  const scopes = issued.scopes.map((s) => untrusted(s, ci.env));
   stdout.write(
-    `Exchanged the job's OIDC token for a CI token (${issued.scopes.join(", ") || "no scopes"}); ` +
+    `Exchanged the job's OIDC token for a CI token (${scopes.join(", ") || "no scopes"}); ` +
       `${CI_TOKEN_ENV} is set for the job's later steps.\n`,
   );
   return 0;
@@ -2017,8 +2063,8 @@ async function cmdListingImport(
   });
   stdout.write(
     flagBool(parsed, "json") || flagBool(parsed, "dry-run")
-      ? `${JSON.stringify(flagBool(parsed, "dry-run") ? result.upload : result, null, 2)}\n`
-      : `${formatImport(result)}\n`,
+      ? `${untrustedJson(flagBool(parsed, "dry-run") ? result.upload : result, 2)}\n`
+      : `${formatImport(result, ci.env)}\n`,
   );
   return 0;
 }

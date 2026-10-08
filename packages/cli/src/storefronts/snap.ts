@@ -19,6 +19,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { parseDocument } from "yaml";
 import { ciClient, type Out, type Sleep } from "../ci.js";
 import { resolveCiToken, type CiEnv } from "../oidc.js";
+import { untrusted } from "../untrusted.js";
 import { ciStore } from "./allowList.js";
 import type { StepOutlet } from "./outlets.js";
 import type { StoreStep } from "./run.js";
@@ -176,6 +177,7 @@ export async function writeSnapMetadata(o: SnapMetadataOptions): Promise<{
     fetchImpl: o.fetchImpl,
     sleep: o.sleep,
     log: o.stderr,
+    env: o.env,
   });
   const body = await client.getJson<{ listing: SnapProjection }>(
     "distribution/listing/snap",
@@ -184,15 +186,16 @@ export async function writeSnapMetadata(o: SnapMetadataOptions): Promise<{
   const fields = snapMetadataFields(body.listing);
   const current = await readFile(o.yamlPath, "utf8");
   const next = applySnapMetadata(current, fields);
+  // The listing is the server's: what is shown of it is cleaned (`untrusted.ts`).
   if (o.dryRun) {
     o.stdout.write(
-      `Would write into ${o.yamlPath}:\n  summary: ${fields.summary}\n  description: ${fields.description.length} characters\n`,
+      `Would write into ${o.yamlPath}:\n  summary: ${untrusted(fields.summary, o.env)}\n  description: ${fields.description.length} characters\n`,
     );
     return fields;
   }
   if (next !== current) await writeFile(o.yamlPath, next, "utf8");
   o.stdout.write(
-    `${next === current ? "Unchanged" : "Wrote"} the Snap listing's summary and description in ${o.yamlPath} (${body.listing.defaultLocale}).\n`,
+    `${next === current ? "Unchanged" : "Wrote"} the Snap listing's summary and description in ${o.yamlPath} (${untrusted(body.listing.defaultLocale, o.env)}).\n`,
   );
   return fields;
 }

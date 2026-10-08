@@ -76,6 +76,7 @@ import {
 import { loadManifest, validateLoadedManifest } from "./manifest.js";
 import { mask, resolveCiToken, type CiEnv } from "./oidc.js";
 import { MAX_SINGLE_PUT_BYTES, putFile } from "./s3.js";
+import { untrusted } from "./untrusted.js";
 import { buildMetadataFor } from "./buildMetadata.js";
 import {
   contentInterfaceFingerprint,
@@ -809,7 +810,7 @@ export async function publishRelease(
     );
     out.write("Local validation: ok\n");
     if (descriptor.content)
-      describeContent(out, descriptor.content, pinSources);
+      describeContent(out, descriptor.content, pinSources, opts.env);
     else if (pinsPending)
       out.write(
         "Content: --pin resolves through Polaris Key; shown once a CI credential is available\n",
@@ -849,7 +850,9 @@ export async function publishRelease(
           `\nRelease record (unsigned; seq is the upload route's answer):\n${JSON.stringify(record, null, 2)}\n`,
         );
       }
-      out.write(`Server validation: skipped (${(e as Error).message})\n`);
+      out.write(
+        `Server validation: skipped (${untrusted((e as Error).message, opts.env)})\n`,
+      );
       return result;
     }
     throw e;
@@ -861,6 +864,7 @@ export async function publishRelease(
     fetchImpl: opts.fetchImpl,
     sleep: opts.sleep,
     log: opts.stderr,
+    env: opts.env,
   });
   // P4-03: no app record carries pins a Worker did not mirror (release.packs in discovery).
   if (packs.length > 0) await requirePacksDiscovery(client, opts.fetchImpl);
@@ -874,7 +878,8 @@ export async function publishRelease(
           .map((e) => `  ${e.path} ${e.code}: ${e.message}`)
           .join("\n")}`,
       );
-    if (opts.dryRun) describeContent(out, descriptor.content!, pinSources);
+    if (opts.dryRun)
+      describeContent(out, descriptor.content!, pinSources, opts.env);
   }
   if (descriptor.content) result.content = descriptor.content;
 
@@ -988,6 +993,7 @@ export async function publishRelease(
         fetchImpl: opts.fetchImpl,
         sleep: opts.sleep,
         log: opts.stderr,
+        env: opts.env,
       });
       result.uploaded.push(o.target);
       opts.progress?.advance(result.uploaded.length, toUpload);
@@ -1020,13 +1026,13 @@ export async function publishRelease(
       ? server.unverified.length
       : 0;
     out.write(
-      `Server validation: ok — would be ${String(server.outcome)} as ${String(server.releaseId)}` +
+      `Server validation: ok — would be ${untrusted(server.outcome, opts.env)} as ${untrusted(server.releaseId, opts.env)}` +
         `${unverified ? ` (${unverified} object${unverified === 1 ? "" : "s"} judged as if uploaded)` : ""}\n`,
     );
     out.write("Dry run: nothing uploaded, nothing written.\n");
   } else {
     out.write(
-      `Published ${String(server.releaseId)} (${String(server.outcome)})\n`,
+      `Published ${untrusted(server.releaseId, opts.env)} (${untrusted(server.outcome, opts.env)})\n`,
     );
   }
   return result;

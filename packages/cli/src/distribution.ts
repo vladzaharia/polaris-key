@@ -22,6 +22,7 @@
 
 import { ciClient, type CiClient, type Out, type Sleep } from "./ci.js";
 import { resolveCiToken, type CiEnv } from "./oidc.js";
+import { untrusted } from "./untrusted.js";
 
 export const DISTRIBUTION_CI_USAGE =
   "Usage: pkey distribution report availability --product <slug> --outlet <id> (--release <id> | --version <v> [--deliverable id])\n" +
@@ -74,6 +75,7 @@ async function clientFor(opts: DistributionCommandOptions): Promise<CiClient> {
     fetchImpl: opts.fetchImpl,
     sleep: opts.sleep,
     log: opts.stderr,
+    env: opts.env,
   });
 }
 
@@ -192,16 +194,18 @@ export async function reportDistribution(
     body: payload,
   });
 
+  // The answer is the server's: every field shown is cleaned (`untrusted.ts`).
+  const u = (v: unknown) => untrusted(v, opts.env);
   if (opts.type === "key") {
     const key = (body.key ?? {}) as Record<string, unknown>;
     if (key.match === true) {
       opts.stdout.write(
-        `The ${String(key.purpose)} key ${String(key.sha256)} is in the key inventory.\n`,
+        `The ${u(key.purpose)} key ${u(key.sha256)} is in the key inventory.\n`,
       );
       return { body, ok: true };
     }
     opts.stderr.write(
-      `The ${String(key.purpose)} key ${String(key.sha256)} is NOT in the product's key inventory. ` +
+      `The ${u(key.purpose)} key ${u(key.sha256)} is NOT in the product's key inventory. ` +
         "Polaris Key flagged it for an operator; the inventory is unchanged. If the key was " +
         "rotated on purpose, an operator adopts it in the console (Distribution → Keys).\n",
     );
@@ -209,9 +213,9 @@ export async function reportDistribution(
   }
 
   const rec = (body[opts.type] ?? {}) as Record<string, unknown>;
-  const target = `${String(rec.releaseId)}${rec.buildId ? `/${String(rec.buildId)}` : ""}`;
+  const target = `${u(rec.releaseId)}${rec.buildId ? `/${u(rec.buildId)}` : ""}`;
   opts.stdout.write(
-    `Reported ${opts.type} of ${target} on ${String(rec.outletId)}: ${String(rec.state)}\n`,
+    `Reported ${opts.type} of ${target} on ${u(rec.outletId)}: ${u(rec.state)}\n`,
   );
   return { body, ok: true };
 }
@@ -259,10 +263,12 @@ export async function driveRollout(
       ...(bp !== undefined ? { bp } : {}),
     },
   });
+  // The line starts with the server's deliverable id: cleaned, so it cannot start a command.
+  const u = (v: unknown) => untrusted(v, opts.env);
   const r = (body.rollout ?? {}) as Record<string, unknown>;
   opts.stdout.write(
-    `${String(r.deliverableId)} ${String(r.releaseId)} on ${String(r.outletId)}/${String(r.channel)}: ` +
-      `${String(r.state)} at ${Number(r.rolloutBp) / 100}%\n`,
+    `${u(r.deliverableId)} ${u(r.releaseId)} on ${u(r.outletId)}/${u(r.channel)}: ` +
+      `${u(r.state)} at ${Number(r.rolloutBp) / 100}%\n`,
   );
   return body;
 }

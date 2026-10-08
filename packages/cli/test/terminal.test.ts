@@ -248,7 +248,7 @@ describe("pkey validate [path]", () => {
     expect(r.out).not.toContain(ESC);
   });
 
-  it("--json prints one object in the CLI envelope, before or after the path", async () => {
+  it("--json prints one object in the kits' flattened envelope, before or after the path", async () => {
     const cwd = await tempDir();
     await mkdir(path.join(cwd, "game"));
     await productAt(path.join(cwd, "game"));
@@ -265,13 +265,11 @@ describe("pkey validate [path]", () => {
         event: "result",
         ok: true,
         exit: 0,
-        result: {
-          valid: true,
-          modules: ["license", "config"],
-          requiredSecrets: [],
-          warnings: [],
-          errors: [],
-        },
+        valid: true,
+        modules: ["license", "config"],
+        requiredSecrets: [],
+        warnings: [],
+        errors: [],
       });
     }
   });
@@ -285,29 +283,31 @@ describe("pkey validate [path]", () => {
     );
     const r = await run(["validate", "--json"], { cwd });
     expect(r.code).toBe(1);
-    const body = JSON.parse(r.out) as {
-      ok: boolean;
-      exit: number;
-      result: {
-        valid: boolean;
-        warnings: Array<Record<string, unknown>>;
-        errors: Array<Record<string, unknown>>;
-      };
-    };
-    expect(body.ok).toBe(false);
-    expect(body.exit).toBe(1);
-    expect(body.result.valid).toBe(false);
-    expect(body.result.errors).toContainEqual({
-      code: "missing_schema",
-      message: expect.any(String),
-      at: "schema/",
-      file: null,
-    });
-    expect(body.result.warnings).toContainEqual({
-      code: "deprecated_spelling",
-      message: expect.any(String),
-      at: "product/slug",
-      file: ".pkey/product.json",
+    expect(JSON.parse(r.out)).toEqual({
+      v: 1,
+      command: "validate",
+      event: "result",
+      ok: false,
+      exit: 1,
+      valid: false,
+      modules: expect.any(Array),
+      requiredSecrets: expect.any(Array),
+      warnings: expect.arrayContaining([
+        {
+          code: "deprecated_spelling",
+          message: expect.any(String),
+          at: "product/slug",
+          file: ".pkey/product.json",
+        },
+      ]),
+      errors: expect.arrayContaining([
+        {
+          code: "missing_schema",
+          message: expect.any(String),
+          at: "schema/",
+          file: null,
+        },
+      ]),
     });
   });
 
@@ -315,8 +315,7 @@ describe("pkey validate [path]", () => {
     const r = await run(["validate", "--json", "missing"]);
     expect(r.code).toBe(1);
     expect(r.err).toBe("");
-    const body = JSON.parse(r.out) as Record<string, unknown>;
-    expect(body).toMatchObject({
+    expect(JSON.parse(r.out)).toEqual({
       v: 1,
       command: "validate",
       event: "result",
@@ -325,7 +324,8 @@ describe("pkey validate [path]", () => {
       error: "no-manifest",
       message: expect.any(String),
     });
-    expect(body).not.toHaveProperty("result");
+    // ASCII only, one line.
+    expect(r.out).toMatch(/^[\x20-\x7e]+\n$/);
   });
 });
 
