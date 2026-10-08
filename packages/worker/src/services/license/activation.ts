@@ -41,6 +41,7 @@ import {
 import { clientIp, rateLimitOk } from "../../core/rateLimit.js";
 import {
   deviceMetadata,
+  isValidClientDeviceId,
   readDeviceBody,
   rotateDeviceToken,
   shapeDevice,
@@ -85,6 +86,8 @@ export function authorizationError(
 ): Response {
   switch (err.error) {
     case "unauthorized":
+      // Also SEC-LIC-1's answer for a device id another licence holds: indistinguishable from a
+      // refused key, saying neither who holds the id nor whether anything does.
       return errorResponse(401, ErrorCode.Unauthorized);
     case "device_limit":
       return errorResponse(403, ErrorCode.DeviceLimit, "device limit reached", {
@@ -151,6 +154,8 @@ async function activateWithKey(
   const deviceId = req.headers.get(HEADER_DEVICE);
   if (!deviceId)
     return errorResponse(400, ErrorCode.BadRequest, "missing device id");
+  if (!isValidClientDeviceId(deviceId))
+    return errorResponse(400, ErrorCode.BadRequest, "malformed device id");
 
   const keyHash = await hashKey(key, env.KEY_HASH_PEPPER);
   const keyRow = await getKey(db, product.slug, keyHash);
@@ -270,6 +275,8 @@ export async function handleToken(
   const deviceId = req.headers.get(HEADER_DEVICE);
   if (!deviceId)
     return errorResponse(400, ErrorCode.BadRequest, "missing device id");
+  if (!isValidClientDeviceId(deviceId))
+    return errorResponse(400, ErrorCode.BadRequest, "malformed device id");
 
   const currentToken = bearer(req);
   const valid = await requireLicensedDevice(

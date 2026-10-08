@@ -74,6 +74,7 @@ import {
   upsertDeviceFacts,
   upsertFingerprint,
   resetDeviceTrust,
+  clearDeviceInheritance,
   type DeviceBoundBy,
   type DeviceFactsRow,
   type DeviceRow,
@@ -154,6 +155,16 @@ export interface LicensedDeviceToken extends ValidDeviceToken {
 
 /** The hardware-reconciliation outcome that aborts an authorization. Structurally identical to
  *  `AuthzError`'s `hardware_mismatch` member, which stays license-side with `authorizeDevice`. */
+/**
+ * SEC-LIC-1: the device id is held, live, by a licence the caller has not proven it controls.
+ * Carries nothing: not who holds it, not which components differ (SEC-LIC-10).
+ */
+export interface DeviceConflict {
+  error: "unauthorized";
+  /** Internal only: why. It never reaches the response, which is a plain `unauthorized`. */
+  heldBy: "another_licence";
+}
+
 export interface DeviceHardwareMismatch {
   error: "hardware_mismatch";
   drift: number;
@@ -192,6 +203,23 @@ export interface ReconciledDevice {
  * two call sites below therefore key off `valid.license` being null, not off the id.
  */
 export const NO_LICENSE_ID = "";
+
+/**
+ * The device id a client may CLAIM on a request that holds a licence key (activate, enrol, token,
+ * sign-in start): 1-128 characters of `[A-Za-z0-9_-]`. The SDK-derived form is 32 base64url
+ * characters (`register.ts` pins that stricter shape for the keyless route); this bound is wide
+ * enough for every id an SDK has ever sent and narrow enough that the value going into a primary
+ * key, a KV key, a signed `deviceId` claim and a CSV export is opaque and separator-free.
+ *
+ * SEC-LIC-9 / SEC-IDN-5: `:` is outside the set, so a client can never claim a SERVER-MINTED id.
+ * `browser:<licenceId>` (the browser session's device row) is minted only by `browserSession.ts`
+ * and `licenseChoice.ts`; the validator is what keeps a key holder from naming it.
+ */
+export const CLIENT_DEVICE_ID = /^[A-Za-z0-9_-]{1,128}$/;
+
+export function isValidClientDeviceId(id: string | null): id is string {
+  return id !== null && CLIENT_DEVICE_ID.test(id);
+}
 
 export function licenseUsable(
   license: LicenseRow | null,
@@ -241,6 +269,49 @@ export async function retireDeviceBinding(
 }
 
 /**
+ * Does the caller control the live row `existing`, which belongs to a licence other than
+ * `license`? Two proofs, either suffices:
+ *
+ *   - the two licences belong to one identity (same account, or same OIDC subject) — a person
+ *     moving their own machine between their own licences; or
+ *   - the presented fingerprint is the stored one: the same machine anchor and every stored
+ *     component equal. A stored `unverified` row or one with no anchor proves nothing, because an empty component map matches anything.
+ */
+async function provesOwnership(
+  db: Db,
+  product: string,
+  existing: DeviceRow,
+  license: LicenseRow,
+  presented: PresentedFingerprint | null,
+  adoptAnonymousEnrolled: boolean,
+): Promise<boolean> {
+  const held = await getLicense(db, product, existing.license_id);
+  if (held) {
+    if (license.account_id && held.account_id === license.account_id)
+      return true;
+    if (license.sub && held.sub === license.sub) return true;
+    // The account sign-in flow (device code) carries no fingerprint, and signing in on a machine
+    // that enrolled free is its whole purpose. The device-code holder is the device here, so the
+    // machine's own anonymous enrolment licence is adoptable by that flow and by nothing else.
+    // Residual: the starter names the device id unauthenticated (SEC-WP-10 / SEC-IDN-4).
+    if (adoptAnonymousEnrolled && held.origin === "enroll" && held.sub === null)
+      return true;
+  }
+  if (!presented) return false;
+  const row = await getFingerprint(db, product, existing.device_id);
+  if (!row || row.status !== "verified" || !row.anchor_hash) return false;
+  if (presented.components[FINGERPRINT_ANCHOR] !== row.anchor_hash)
+    return false;
+  // Exact, not tolerated: a drifted fingerprint is a plausible upgrade of the same machine, but
+  // also what a caller who knows only the anchor can fake. A real owner re-binds through a
+  // deauthorize; a stranger gets nothing.
+  return (
+    matchFingerprint(toStoredFingerprint(row), presented, "strict").kind ===
+    "exact"
+  );
+}
+
+/**
  * Reconcile the presented hardware against what this product already knows, BEFORE any seat
  * decision is taken (see the seam note at the top of this file).
  */
@@ -251,10 +322,51 @@ export async function reconcileDeviceHardware(
   license: LicenseRow,
   deviceId: string,
   now: number,
-  opts: { mode: FingerprintMode; presented: PresentedFingerprint | null },
-): Promise<ReconciledDevice | DeviceHardwareMismatch> {
+  opts: {
+    mode: FingerprintMode;
+    presented: PresentedFingerprint | null;
+    /** An account sign-in on the device (device-code holder) may take over the device's own
+     *  anonymous free licence; see `provesOwnership`. */
+    adoptAnonymousEnrolled?: boolean;
+  },
+): Promise<ReconciledDevice | DeviceHardwareMismatch | DeviceConflict> {
   const { mode, presented } = opts;
   const existing = await getDevice(db, product.slug, deviceId);
+
+  // SEC-LIC-1 / SEC-CLI-18 / SEC-IDN-5: `devices` is keyed (product, device_id) and the id is
+  // client-claimed, so a row held LIVE by another licence is not this caller's to rewrite. Until
+  // ownership is shown, nothing below may run: the mismatch arm retires the row, the seat claim
+  // moves it, and `changed[]` would leak which components differ. A dead row (deauthorized) holds
+  // nothing worth protecting and is adopted, with what it carried cleared (`bindDevice`).
+  const foreign = existing !== null && existing.license_id !== license.id;
+  if (foreign && existing.status === "authorized") {
+    if (
+      !(await provesOwnership(
+        db,
+        product.slug,
+        existing,
+        license,
+        presented,
+        opts.adoptAnonymousEnrolled === true,
+      ))
+    ) {
+      await appendAudit(db, {
+        product: product.slug,
+        id: randomId("aud"),
+        at: now,
+        actor_sub: null,
+        actor_name: null,
+        actor_email: null,
+        action: "device.claim.refused",
+        target_kind: "device",
+        target_id: deviceId,
+        parent_id: license.id,
+        summary:
+          "A device id held by another licence was presented without proof of the machine; refused",
+      });
+      return { error: "unauthorized", heldBy: "another_licence" };
+    }
+  }
 
   // The hardware check runs BEFORE the seat check so a swapped machine gets a precise
   // `hardware_mismatch` instead of a confusing `device_limit`.
@@ -414,18 +526,23 @@ export async function bindDevice(
     await deleteTokenRecord(env, product.slug, existing.token_hash);
   }
 
+  // SEC-LIC-2: a row changing licence carries nothing of the previous one. Operator overrides,
+  // the label and the reported data were set for ANOTHER licence's device; inheriting them would
+  // put that licence's comped entitlements and config into this licence's signed document.
+  const relicensed = existing !== null && existing.license_id !== license.id;
+  const inherited = relicensed ? null : existing;
   const device: DeviceRow = {
     product: product.slug,
     device_id: deviceId,
-    customer_id: existing?.customer_id ?? null,
+    customer_id: inherited?.customer_id ?? null,
     license_id: license.id,
     status: "authorized",
     first_seen: existing?.first_seen ?? now,
     last_seen: now,
     ua: meta.userAgent ?? existing?.ua ?? null,
-    label: existing?.label ?? meta.label ?? null,
-    overrides_json: existing?.overrides_json ?? null,
-    reported_json: existing?.reported_json ?? null,
+    label: inherited?.label ?? meta.label ?? null,
+    overrides_json: inherited?.overrides_json ?? null,
+    reported_json: inherited?.reported_json ?? null,
     token_hash: tokenHash,
     platform: meta.platform ?? existing?.platform ?? null,
     arch: meta.arch ?? existing?.arch ?? null,
@@ -438,6 +555,7 @@ export async function bindDevice(
     // previous binding (that would hand the caller another account's Cloud Sync principal).
     subject: null,
   };
+  if (relicensed) await clearDeviceInheritance(db, product.slug, deviceId);
   await upsertDevice(db, device);
   if (opts.subject) {
     await writeDeviceSubject(db, product.slug, deviceId, opts.subject);

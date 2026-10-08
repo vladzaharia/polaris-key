@@ -40,6 +40,7 @@ import {
 } from "./activation.js";
 import {
   deviceMetadata,
+  isValidClientDeviceId,
   readFingerprint,
   shapeDevice,
 } from "../../core/devices.js";
@@ -183,6 +184,8 @@ export async function handleEnroll(
   const deviceId = req.headers.get(HEADER_DEVICE);
   if (!deviceId)
     return errorResponse(400, ErrorCode.BadRequest, "missing device id");
+  if (!isValidClientDeviceId(deviceId))
+    return errorResponse(400, ErrorCode.BadRequest, "malformed device id");
 
   const tier = await getTier(db, product.slug, policy.tierId);
   if (!tier) {

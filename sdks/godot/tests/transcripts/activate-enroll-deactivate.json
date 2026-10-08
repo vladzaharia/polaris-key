@@ -314,7 +314,7 @@
                 "device": {
                   "id": "TRANSCRIPTDEVICE0000000000000001",
                   "licenseId": "lic_h6SHr90ZapVy",
-                  "label": "Transcript Device",
+                  "label": null,
                   "status": "authorized",
                   "current": true,
                   "firstSeen": 1700000000,
