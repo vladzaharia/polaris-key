@@ -22799,7 +22799,15 @@ function twoColumns(term, rows, column, indent = 2) {
     const lines3 = wrapSpans([{ text, style: ["muted"] }], width);
     const name = painter.style(t, ["strong"]);
     const fits = !stacked && cellWidth(t) <= column;
-    if (!fits) out.push(`${" ".repeat(indent)}${name}`);
+    if (!fits)
+      wrapSpans(
+        [{ text: t, style: ["strong"] }],
+        Math.max(1, caps.columns - indent - 2)
+      ).forEach(
+        (l, i) => out.push(
+          `${" ".repeat(i === 0 ? indent : indent + 2)}${painter.line(l)}`
+        )
+      );
     lines3.forEach((l, i) => {
       const body = painter.line(l);
       out.push(
@@ -22824,13 +22832,16 @@ function renderHelp(term) {
     ...COMMON_OPTIONS.map(([t]) => t)
   ]);
   const out = [
-    line([
-      { text: "pkey", style: ["strong"] },
-      {
-        text: ` ${symbols.separator} Polaris Key platform CLI`,
-        style: ["muted"]
-      }
-    ]),
+    ...wrapSpans(
+      [
+        { text: "pkey", style: ["strong"] },
+        {
+          text: ` ${symbols.separator} Polaris Key platform CLI`,
+          style: ["muted"]
+        }
+      ],
+      term.caps.columns
+    ).map(line),
     "",
     line([
       { text: "Usage", style: ["muted"] },
@@ -22849,12 +22860,15 @@ function renderHelp(term) {
   out.push(...twoColumns(term, COMMON_OPTIONS, column));
   out.push(
     "",
-    line([
-      {
-        text: "Run pkey <command> --help for a command's options.",
-        style: ["muted"]
-      }
-    ])
+    ...wrapSpans(
+      [
+        {
+          text: "Run pkey <command> --help for a command's options.",
+          style: ["muted"]
+        }
+      ],
+      term.caps.columns
+    ).map(line)
   );
   return `${out.join("\n")}
 `;

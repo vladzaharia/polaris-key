@@ -125,6 +125,23 @@ describe("grouped help", () => {
     expect(lines[i + 1]).toMatch(/^ {30}Pause, resume, halt or complete/);
   });
 
+  it("fits 40 columns too: below 50 each command stacks above its description", async () => {
+    const tiny = await run([], {
+      tty: true,
+      columns: 40,
+      env: { NO_COLOR: "1" },
+    });
+    for (const line of tiny.out.split("\n"))
+      expect(cellWidth(line), line).toBeLessThanOrEqual(40);
+    const lines = tiny.out.split("\n");
+    const i = lines.indexOf("  init");
+    expect(i).toBeGreaterThan(0);
+    expect(lines[i + 1]).toMatch(/^ {4}Scaffold \.pkey\/ in this directory/);
+    // A term wider than the line wraps at its spaces, continued two cells further in.
+    const j = lines.indexOf("  distribution");
+    expect(lines[j + 1]).toBe("    pause|resume|halt|complete");
+  });
+
   it("an unknown command prints the overview on stderr and exits 2", async () => {
     const r = await run(["nope"]);
     expect(r.code).toBe(2);
