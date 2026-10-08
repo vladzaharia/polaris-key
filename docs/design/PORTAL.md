@@ -924,6 +924,25 @@ account holds a key licence and a sign-in licence for the same product, the key 
 device counter (on the License card or in Devices); the sign-in licence keeps its counter.
 **Devices** is shown for every licence, always with the device list and **Remove** (remote deauthorize, §4.22).
 
+**Owner polish 2026-10-07** (supersedes the TOC order, Help's column and the tier line above):
+
+- **Section nav.** The TOC and the phone pills list one order, the page's own: Get it, License,
+  Devices, Cloud Sync, What's new, Package access, Help. Help closes the main column, so the side
+  column is the licence's (License, product sign-in, Devices) and starts beside Get it. The mark
+  follows the reading line (where a jump puts a section), walking down the nav in order as the page
+  scrolls, the line sliding to the screen's bottom over the last screen so the last cards are
+  marked too; a section picked in the nav holds the mark until the person scrolls. The Devices
+  count is a small neutral pill after the label. A page with no main-column card (no releases, no
+  help) shows the licence's cards as one column beside the nav.
+- **License card.** The tier pill sits at the top right of the card's header, before any issue
+  pill. The "N of M devices" line is gone: the Devices card says it. A licence granted through
+  OIDC at sign-in (auto-issue or a group grant) reads **Automatic Grant** as its License source;
+  the status and the picker keep "From signing in" and "Sign-in".
+- **What's new.** The notes are Markdown, drawn formatted (headings under the card's `h2`, bold,
+  italic, lists, quotes, code, `https:` and `mailto:` links only; raw HTML shows as text; never an
+  HTML string). A summary shows at once (the first paragraph or list, cut to three lines or
+  items), and **Show full notes** opens the rest in place with the expand pattern.
+
 **States:** loading (skeleton header and two skeleton cards); not found (§4.28); load error
 (`ErrorState` with Retry); license expired (a `danger` callout with **Renew with <developer>**);
 suspended by the developer; a sign-in licence (Get it becomes **Open Quill** plus store links;
