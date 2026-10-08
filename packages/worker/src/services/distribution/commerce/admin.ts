@@ -6,8 +6,10 @@
  *     GET    …/distribution/commerce                         settings, store products, setup per
  *                                                            store, recent purchases and events
  *     PUT    …/distribution/commerce/settings                replace the settings (`settings.ts`)
- *     PUT    …/distribution/commerce/products                map one store product to a flag the
- *                                                            catalog declares, and a deliverable
+ *     PUT    …/distribution/commerce/products                map one store product to a flag (one
+ *                                                            the catalog declares, or the
+ *                                                            deliverable's delivery gate) and a
+ *                                                            deliverable
  *     DELETE …/distribution/commerce/products/<store>/<id>   remove a mapping: no new grant for
  *                                                            the product; grants already made
  *                                                            stay, and a later refund or
@@ -32,10 +34,11 @@ import {
   adminJson,
   audit,
   err,
-  loadCatalog,
+  readActiveCatalog,
   readBody,
 } from "../../../core/adminApi.js";
 import { isStore, STORES, type Store } from "../../../core/storeGrants.js";
+import { entitlementOf } from "../access.js";
 import { listEvents } from "../connectors/state.js";
 import {
   readCommerceSettings,
@@ -152,6 +155,38 @@ const licenseOff = () =>
     },
   );
 
+/**
+ * Why a mapping's flag is refused, or `null` (P0-48). A purchase grants the name it is mapped to,
+ * so the name must be one something reads, or the store takes the player's money and unlocks
+ * nothing (a typo, or a config key's name). Two names are read:
+ *
+ * - the deliverable's delivery gate (`dist_access.entitlement`, `entitlementOf`): a pack sold as
+ *   DLC is mapped to the very flag that gates its download, and that gate is an entitlement name
+ *   the catalog need not declare (policy-only gates pass through unpruned, `core/payload.ts`);
+ * - a `flag` entry of the product's active catalog, which the app reads.
+ *
+ * With no catalog, or one that cannot be read, only the gate is accepted, and the refusal says
+ * which: "declares no flag" would be untrue there.
+ */
+async function flagRefusal(
+  db: AdminCtx["db"],
+  slug: string,
+  flag: string,
+  deliverable: string,
+): Promise<string | null> {
+  if ((await entitlementOf(db, slug, deliverable)) === flag) return null;
+  const active = await readActiveCatalog(db, slug);
+  if (active.state === "missing")
+    return `the product has no catalog to check ${flag} against: publish one that declares ${flag} as a flag`;
+  if (active.state === "unreadable")
+    return `the product's active catalog cannot be read, so ${flag} cannot be checked: publish the catalog again`;
+  const declared = active.catalog.entryByKey(flag);
+  if (declared?.kind === "flag") return null;
+  return declared
+    ? `${flag} is a ${declared.kind} key in the catalog, not a flag`
+    : `the catalog declares no flag ${flag}`;
+}
+
 export async function handleCommerceAdmin(
   ctx: AdminCtx,
 ): Promise<Response | null> {
@@ -221,20 +256,6 @@ export async function handleCommerceAdmin(
           fields: ["flag"],
         },
       );
-    // The flag must be one the product's catalog declares as a `flag`: a purchase grants the
-    // name it is mapped to, and a name the app never reads (a typo, or a config key's name)
-    // would take the player's money and unlock nothing.
-    const flag = body.flag as string;
-    const declared = (await loadCatalog(db, slug))?.entryByKey(flag);
-    if (declared?.kind !== "flag")
-      return err(
-        422,
-        ErrorCode.BadRequest,
-        declared
-          ? `${flag} is a ${declared.kind} key in the catalog, not a flag`
-          : `the catalog declares no flag ${flag}`,
-        { fields: ["flag"] },
-      );
     const deliverable =
       body.deliverable === undefined ? APP_DELIVERABLE_ID : body.deliverable;
     if (!isDeliverableId(deliverable))
@@ -255,6 +276,14 @@ export async function handleCommerceAdmin(
       return err(422, ErrorCode.BadRequest, `no deliverable ${deliverable}`, {
         fields: ["deliverable"],
       });
+    const refused = await flagRefusal(
+      db,
+      slug,
+      body.flag as string,
+      deliverable,
+    );
+    if (refused)
+      return err(422, ErrorCode.BadRequest, refused, { fields: ["flag"] });
     await upsertStoreProduct(db, {
       product: slug,
       store,

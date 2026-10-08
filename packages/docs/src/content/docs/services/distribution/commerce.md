@@ -99,9 +99,15 @@ what a payment unlocks or whose purchases are believed. As a platform admin:
    ```
 
    `productId` is the App Store product id, the Play product id, or the Steam DLC's app id.
-   `flag` must be a `flag` entry of the product's active catalog: an undeclared name (a typo) or
-   a `config` or `secret` key is refused `422` with `fields: ["flag"]`, since a purchase mapped to
-   it would grant a name the app never reads.
+   `flag` must be a name something reads: a `flag` entry of the product's active catalog, or the
+   deliverable's own delivery gate (the licence flag set under Distribution → Access, so a pack
+   sold as DLC maps to the flag that gates its download whether or not the catalog declares it).
+   Anything else is refused `422` with `fields: ["flag"]`, since a purchase mapped to it would
+   grant a name nothing reads: an undeclared name (a typo), a `config` or `secret` key, and any
+   flag but a gate while the product has no catalog or its catalog cannot be read (the message
+   says which). The check runs when a mapping is written, so re-PUTting a mapping saved before it
+   (to change its deliverable, say) returns `422` if its flag no longer passes; the mapping keeps
+   granting until then.
    `DELETE …/commerce/products/<store>/<productId>` removes a mapping; flags already granted stay
    until a refund revokes them.
 

@@ -128,12 +128,30 @@ export async function loadCatalog(
   db: Db,
   product: string,
 ): Promise<Catalog | null> {
+  const active = await readActiveCatalog(db, product);
+  return active.state === "ok" ? active.catalog : null;
+}
+
+/**
+ * A product's active catalog, or why there is none: `missing` (no catalog published) or
+ * `unreadable` (the stored JSON does not parse or compile). For a refusal that must say which
+ * (P0-48, a commerce mapping's flag); `loadCatalog` folds both into `null`.
+ */
+export type ActiveCatalog =
+  | { state: "ok"; catalog: Catalog }
+  | { state: "missing" }
+  | { state: "unreadable" };
+
+export async function readActiveCatalog(
+  db: Db,
+  product: string,
+): Promise<ActiveCatalog> {
   const row = await getActiveSchema(db, product);
-  if (!row) return null;
+  if (!row) return { state: "missing" };
   try {
-    return new Catalog(JSON.parse(row.catalog_json));
+    return { state: "ok", catalog: new Catalog(JSON.parse(row.catalog_json)) };
   } catch {
-    return null;
+    return { state: "unreadable" };
   }
 }
 
