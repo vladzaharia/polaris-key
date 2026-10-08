@@ -88,7 +88,10 @@ own terminal UI uses them with `polaris_key.ui.core.Copy` and gets the same stat
 
 The human output is localised catalog copy, drawn for people: its words, layout and language can
 change between releases, so a script must not parse it. Scripts use `--json`, whose shape is
-versioned (`"v": 1`) and changes only with that version.
+versioned (`"v": 1`) and changes only with that version. The envelope is the one both terminal
+kits share, written once in the UI-kit specification (`docs/design/UI-KITS.md` §1.4, "Terminal
+output for scripts"); the [Node terminal kit](/docs/build/ui/frameworks/terminal-node/) writes
+the same lines.
 
 Every verb takes `--json`. It never prompts and never writes an escape, and it is plain ASCII
 (server text included, with its control characters escaped). Each line on stdout is one JSON
