@@ -125,10 +125,11 @@ export function LibraryTile({
             </div>
           </div>
           <div className="mt-4 flex items-center justify-between gap-3 text-sm text-fg-muted">
+            {/* Two lines on a compact tile, so the device count is never cut off. */}
             <span
               className={cn(
                 "min-w-0",
-                product.justAdded ? "line-clamp-2" : "truncate",
+                product.justAdded || compact ? "line-clamp-2" : "truncate",
               )}
             >
               {product.justAdded ? (
@@ -158,11 +159,18 @@ export function LibraryTile({
               {note}
             </p>
           ) : null}
-          <div className="relative mt-auto flex gap-2 pt-5">
+          {/* A size container on a compact tile: its download shortens under 15rem. */}
+          <div
+            className={cn(
+              "relative mt-auto flex gap-2 pt-5",
+              compact && "@container",
+            )}
+          >
             <QuickActionButton
               product={product}
               action={action}
               lead={product.justAdded && isDownloadAction(action)}
+              shortLabel={compact}
               size={compact ? "md" : "lg"}
               className={cn("min-w-0 flex-1", compact ? "h-10" : "h-11")}
             />

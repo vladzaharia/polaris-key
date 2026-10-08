@@ -26,12 +26,16 @@ import { useRoute } from "../router.js";
  * the hero and the product header pass `lead` for the solid primary. A product without downloads
  * offers "Get it from <developer>", and a "View details" that would point at the page already
  * open renders nothing (`settleAction`, §0.6 P3).
+ *
+ * `shortLabel` (the compact library tile, PORTAL.md §4.15): inside a `@container` narrower than
+ * 15rem, "Download for <OS>" reads "Download". The accessible name keeps the full label.
  */
 export function QuickActionButton({
   product,
   action: proposed,
   lead = false,
   twoLine = false,
+  shortLabel = false,
   size = "lg",
   className,
 }: {
@@ -40,6 +44,8 @@ export function QuickActionButton({
   lead?: boolean;
   /** The hero's two-line download button (label, then version · arch · size). */
   twoLine?: boolean;
+  /** "Download" for "Download for <OS>" in a container under 15rem (the compact tile). */
+  shortLabel?: boolean;
   size?: "md" | "lg";
   className?: string;
 }): React.ReactElement | null {
@@ -118,7 +124,7 @@ export function QuickActionButton({
             </span>
           </>
         ) : (
-          <span className="font-bold">{action.label}</span>
+          <Label label={action.label} short={shortLabel} />
         )}
       </Button>
     );
@@ -141,8 +147,26 @@ export function QuickActionButton({
         aria-label={`${action.label}: ${product.name}`}
       >
         <Icon aria-hidden />
-        <span className="font-bold">{action.label}</span>
+        <Label label={action.label} short={shortLabel} />
       </a>
     </Button>
+  );
+}
+
+/** The visible label; with `short`, "Download for <OS>" gives way to "Download" under 15rem. */
+function Label({
+  label,
+  short,
+}: {
+  label: string;
+  short: boolean;
+}): React.ReactElement {
+  if (!short || !label.startsWith("Download for "))
+    return <span className="font-bold">{label}</span>;
+  return (
+    <>
+      <span className="font-bold @[15rem]:hidden">Download</span>
+      <span className="hidden font-bold @[15rem]:inline">{label}</span>
+    </>
   );
 }
