@@ -144,7 +144,7 @@ describe("the admin's tokens on the brand", () => {
       expect(brandColors.has(name), `--color-${name}`).toBe(false);
   });
 
-  it("every type size is a named step, never an arbitrary text-[…] size (EXPERIENCE.md §3)", () => {
+  it("every type size is a named step, never an arbitrary bracketed size (EXPERIENCE.md §3)", () => {
     const sizes = new Set(themeDecls(styles, "text").keys());
     for (const step of ["3xs", "2xs", "code", "md", "headline", "headline-lg"])
       expect(sizes.has(step), `--text-${step}`).toBe(true);
