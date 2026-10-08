@@ -22,6 +22,8 @@ import {
   statusFlow,
   updateApplyFlow,
 } from "../../src/cli/flows.js";
+import { renderHelp } from "../../src/cli/help.js";
+import { CLI_VERBS } from "../../src/cli/kit.js";
 import { breakPieces, wrapSpans } from "../../src/cli/term/width.js";
 import {
   deferred,
@@ -414,6 +416,28 @@ describe("the resolution matrix (40/60/80/120 × 12/24, long values)", () => {
           expect(text).toContain("100%");
         });
       }
+});
+
+describe("help", () => {
+  for (const columns of COLUMNS)
+    it(`never runs past ${columns} columns; below 50 each verb stacks above its description`, async () => {
+      const { screen } = await run({ columns, rows: 24 }, async (h) => {
+        h.screen.write(renderHelp(h.ctx, CLI_VERBS));
+      });
+      // (Usage syntax has its own "..." — `[label...]` — so only the width is checked here.)
+      expect(
+        screen
+          .all()
+          .filter((r) => r.wrapped)
+          .map((r) => r.text),
+        `help ${columns}: a line wider than the terminal`,
+      ).toEqual([]);
+      const text = screen
+        .all()
+        .map((r) => r.text)
+        .join("\n");
+      if (columns < 50) expect(text).toMatch(/\n {2}status\n {4}\S/);
+    });
 });
 
 describe("German and Japanese at 40 and 60 columns", () => {

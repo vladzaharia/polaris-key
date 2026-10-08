@@ -71,7 +71,15 @@ function twoColumns(
         ? null
         : " ".repeat(termWidth - cellWidth(r.term) + 2);
     if (pad === null) {
-      out.push(`${" ".repeat(indent)}${term}`);
+      // A term wider than the line wraps at its spaces, continued two cells further in.
+      wrapSpans(
+        [{ text: r.term, style: ["strong"] }],
+        Math.max(1, columns - indent - 2),
+      ).forEach((l, i) =>
+        out.push(
+          `${" ".repeat(i === 0 ? indent : indent + 2)}${ctx.painter.line(l)}`,
+        ),
+      );
       lines.forEach((l) =>
         out.push(`${" ".repeat(descCol)}${ctx.painter.line(l)}`),
       );
@@ -98,13 +106,16 @@ export function renderHelp(ctx: KitContext, verbs: readonly CliVerb[]): string {
   const t = ctx.copy.t.bind(ctx.copy);
   const line = (spans: Line) => ctx.painter.line(spans);
   const out: string[] = [
-    line([
-      { text: ctx.bin, style: ["strong"] },
-      {
-        text: ` ${ctx.symbols.separator} ${t("cli.help.lede", { product: ctx.product.name })}`,
-        style: ["muted"],
-      },
-    ]),
+    ...wrapSpans(
+      [
+        { text: ctx.bin, style: ["strong"] },
+        {
+          text: ` ${ctx.symbols.separator} ${t("cli.help.lede", { product: ctx.product.name })}`,
+          style: ["muted"],
+        },
+      ],
+      ctx.caps.columns,
+    ).map(line),
     "",
     line([
       { text: t("cli.help.usage"), style: ["muted"] },
@@ -146,12 +157,15 @@ export function renderHelp(ctx: KitContext, verbs: readonly CliVerb[]): string {
   );
   out.push(
     "",
-    line([
-      {
-        text: t("cli.help.more", { command: `${ctx.bin} <command> --help` }),
-        style: ["muted"],
-      },
-    ]),
+    ...wrapSpans(
+      [
+        {
+          text: t("cli.help.more", { command: `${ctx.bin} <command> --help` }),
+          style: ["muted"],
+        },
+      ],
+      ctx.caps.columns,
+    ).map(line),
   );
   return `${out.join("\n")}\n`;
 }
