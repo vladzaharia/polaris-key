@@ -21,7 +21,7 @@ import { PolarisError } from "@polaris-key/client-core";
 import { Feature } from "../constants.generated.js";
 import type { CoreContext } from "../core/context.js";
 import type { TokenManager } from "../core/token.js";
-import { redactOnPrint } from "../core/redact.js";
+import { printAs, redactOnPrint } from "../core/redact.js";
 
 /** What a mint returns. It prints (`console.log`, `JSON.stringify`) with `token` redacted. */
 export interface MintedToken {
@@ -45,10 +45,15 @@ interface Bound<T> {
 }
 
 /** The per-client, per-recipe memory cache, with in-flight sharing so two concurrent asks for
- *  the same recipe (under the same device token) make one request. */
+ *  the same recipe (under the same device token) make one request. It prints as its recipe ids
+ *  only: each entry holds a minted token and the device token it was minted with. */
 export class MintCache {
   readonly tokens = new Map<string, Bound<MintedToken>>();
   readonly inFlight = new Map<string, Bound<Promise<MintedToken>>>();
+
+  constructor() {
+    printAs(this, () => ({ recipes: [...this.tokens.keys()] }));
+  }
 }
 
 export async function mintToken(

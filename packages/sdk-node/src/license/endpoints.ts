@@ -11,6 +11,7 @@
 import type { HardwareFingerprint } from "@polaris-key/protocol/core";
 import { readManageUrl } from "@polaris-key/client-core";
 import type { CoreContext, DocumentResult } from "../core/context.js";
+import { redactOnPrint } from "../core/redact.js";
 
 /**
  * The typed outcome of `license.activate`, `license.enroll` and `license.token` (SDK parity pass
@@ -23,6 +24,8 @@ import type { CoreContext, DocumentResult } from "../core/context.js";
  * §3.1's camelCase names map one to one (`deviceLimit` ↔ `device-limit`).
  */
 export type ActivationResult =
+  /** The device token is stored by the license client. `token` stays readable, but the result
+   *  prints (`console.log`, `util.inspect`, `JSON.stringify`) with it redacted. */
   | { kind: "ok"; token: string; schemaVersion: number }
   /** Every seat is taken. `manageUrl` (PX-W8) is the customer-portal link that frees one,
    *  present while the product's portal is on; add the app's return with `withManageReturn`
@@ -255,7 +258,10 @@ async function activationLike(
   }
   if (res.status === 200) {
     const b = (await res.json()) as { token: string; schemaVersion: number };
-    return { kind: "ok", token: b.token, schemaVersion: b.schemaVersion };
+    return redactOnPrint<Extract<ActivationResult, { kind: "ok" }>>(
+      { kind: "ok", token: b.token, schemaVersion: b.schemaVersion },
+      ["token"],
+    );
   }
   const text = await res.text().catch(() => "");
   let body: RefusalBody = {};

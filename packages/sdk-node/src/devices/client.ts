@@ -14,6 +14,7 @@ import type { HardwareFingerprint } from "@polaris-key/protocol/core";
 import { PolarisError } from "@polaris-key/client-core";
 import type { PackInstallReport } from "@polaris-key/client-core/packs";
 import type { CoreContext } from "../core/context.js";
+import { redactOnPrint } from "../core/redact.js";
 import type { CacheManager } from "../core/cache.js";
 import type { TokenManager } from "../core/token.js";
 import {
@@ -41,6 +42,8 @@ export interface AccountDevice {
 }
 
 export type RegisterResult =
+  /** The token is stored. It stays readable here, but the result prints (`console.log`,
+   *  `util.inspect`, `JSON.stringify`) with it redacted. */
   | { kind: "ok"; token: string; deviceId: string }
   /** The product's policy is `requires-license` or `requires-identity`: activation (or a
    *  sign-in) is the mint path, and the endpoint refuses without telling you which. */
@@ -163,7 +166,10 @@ export class DevicesClient {
     }
     if (res.status === 200) {
       const body = (await res.json()) as { token: string; deviceId: string };
-      return { kind: "ok", token: body.token, deviceId: body.deviceId };
+      return redactOnPrint<Extract<RegisterResult, { kind: "ok" }>>(
+        { kind: "ok", token: body.token, deviceId: body.deviceId },
+        ["token"],
+      );
     }
     if (res.status === 403) return { kind: "registration-closed" };
     if (res.status === 429) return { kind: "rate-limited" };

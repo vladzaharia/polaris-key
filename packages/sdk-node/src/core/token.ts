@@ -30,6 +30,7 @@
 // a licensed device `registration_closed`, license/token answers a licence-less one 401, and
 // either way the single attempt is spent and the hard-401 path applies.
 
+import { printAs, REDACTED } from "./redact.js";
 import type { Store } from "@polaris-key/client-core";
 import type { CoreContext } from "./context.js";
 
@@ -100,7 +101,14 @@ export class TokenManager {
     private readonly ctx: CoreContext,
     private readonly store: Store,
     private readonly reacquireFn: ReacquireFn,
-  ) {}
+  ) {
+    // `console.log(client)` reaches this object: it prints whether a token is held, never the
+    // token (SP-46).
+    printAs(this, () => ({
+      token: this.token === null ? null : REDACTED,
+      source: this.tokenSource,
+    }));
+  }
 
   async load(): Promise<void> {
     this.token = await this.store.getToken();
