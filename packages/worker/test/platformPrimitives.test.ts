@@ -32,11 +32,15 @@ import {
 } from "../src/services/identity/portal/session.js";
 import {
   b64urlDecode,
+  b64urlDecodeBinary,
+  b64urlDecodeBinaryUnpadded,
   b64urlDecodeStrict,
   b64urlDecodeUtf8,
   b64urlEncode,
+  b64urlEncodeBinary,
   b64urlEncodeUtf8,
   base64Decode,
+  base64DecodeEitherAlphabet,
   base64Encode,
   hexDecode,
   hexEncode,
@@ -72,6 +76,12 @@ import {
   safeReturnTo,
 } from "../src/platform/returnTo.js";
 import type { Env } from "../src/env.js";
+import { open, seal } from "../src/keyvault.js";
+import {
+  mintDownloadTicket,
+  verifyDownloadTicket,
+} from "../src/core/downloadTicket.js";
+import { signPullToken, verifyPullToken } from "../src/core/registryTokens.js";
 
 // ── 1. Session pins ──────────────────────────────────────────────────────────────────────────
 
@@ -238,6 +248,81 @@ describe("session cookies survive the move onto platform/hmacToken", () => {
   });
 });
 
+describe("sealed values, download tickets and pull tokens survive the move", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  // Minted by the pre-P0-15 keyvault.ts, downloadTicket.ts and registryTokens.ts.
+  const env = {
+    PLATFORM_KEK: "BRIfLDlGU2BteoeUoa67yNXi7/wJFiMwPUpXZHF+i5g=",
+    PLATFORM_KEK_ID: "pin1",
+    DOWNLOAD_TICKET_KEY: "pin-ticket-key",
+    BLOB_ORIGIN: "https://dl.example.test",
+    REGISTRY_TOKEN_KEY: "pin-registry-key",
+  } as unknown as Env;
+  const slot = {
+    product: "pinprod",
+    kind: "product-secret",
+    id: "S1",
+  } as const;
+  const SEALED =
+    '{"v":2,"kekId":"pin1","iv":"AwoRGB8mLTQ7QklQ","ct":"J6AlVXfS89WT-FkLfcw8dwzKEbF5nLCaOFlSElBYJwc"}';
+  const file = {
+    product: "pinprod",
+    releaseId: "rel_1",
+    name: "App 1.0.dmg",
+    sha256: "a".repeat(64),
+  };
+  const TICKET =
+    "v1.mEA8dVfO.1800000120.2ynWwdSkaMFyC33U9TC92IkQIrohAXD_6hMba9IV71Q";
+  const PULL =
+    "v1.eyJzdWIiOiJhY2N0XzEiLCJyZXBvcyI6WyJwaW5wcm9kL2FwcCJdLCJwdXNoIjpbInBpbnByb2QvYXBwIl0sImlhdCI6MTgwMDAwMDAwMCwiZXhwIjoxODAwMDAwMzAwfQ.37SzGD7tEeWK0HGeMtcBQYekl4glbc_4PIA7k4fJcSY";
+
+  it("opens a value sealed by the old vault and seals the identical bytes", async () => {
+    expect(await open(env, SEALED, slot)).toBe("pin plaintext Ü");
+    fixRandom();
+    expect(await seal(env, "pin plaintext Ü", slot)).toBe(SEALED);
+  });
+
+  it("opens under a KEK pasted with a trailing newline, as atob always allowed", async () => {
+    const pasted = {
+      ...env,
+      PLATFORM_KEK: `${env.PLATFORM_KEK}\n`,
+    } as unknown as Env;
+    expect(await open(pasted, SEALED, slot)).toBe("pin plaintext Ü");
+  });
+
+  it("mints and verifies the identical download ticket", async () => {
+    expect(await mintDownloadTicket(env, file, PIN_NOW)).toBe(TICKET);
+    const at = { ...file, host: "dl.example.test" };
+    expect(await verifyDownloadTicket(env, TICKET, at, PIN_NOW)).toBe(true);
+    expect(
+      await verifyDownloadTicket(env, `${TICKET.slice(0, -1)}A`, at, PIN_NOW),
+    ).toBe(false);
+  });
+
+  it("mints the identical registry pull token, and the format round-trips", async () => {
+    const signed = await signPullToken(
+      env,
+      { sub: "acct_1", repos: ["pinprod/app"], push: ["pinprod/app"] } as never,
+      PIN_NOW,
+    );
+    expect(signed?.token).toBe(PULL);
+    const full = await signPullToken(
+      env,
+      { sub: "acct_1", own: null, repos: ["pinprod/app"] } as never,
+      PIN_NOW,
+    );
+    expect(await verifyPullToken(env, full!.token, PIN_NOW)).toMatchObject({
+      sub: "acct_1",
+      repos: ["pinprod/app"],
+      exp: PIN_NOW + 300,
+    });
+    expect(
+      await verifyPullToken(env, `${full!.token.slice(0, -1)}A`, PIN_NOW),
+    ).toBeNull();
+  });
+});
+
 // ── 2. Semantics ─────────────────────────────────────────────────────────────────────────────
 
 describe("bytes", () => {
@@ -259,6 +344,23 @@ describe("bytes", () => {
     expect(() => b64urlDecode("ab!c")).toThrow();
     expect(b64urlDecodeUtf8("w5w")).toBe("Ü");
     expect([...base64Decode("+/8APj8=")]).toEqual([...bytes]);
+  });
+
+  it("keeps the binary-string variants on btoa/atob semantics, padded and as-is", () => {
+    expect(b64urlEncodeBinary('[1,"a"]')).toBe("WzEsImEiXQ");
+    expect(() => b64urlEncodeBinary("Ā")).toThrow();
+    expect(b64urlDecodeBinary("WzEsImEiXQ")).toBe('[1,"a"]');
+    expect(b64urlDecodeBinaryUnpadded("WzEsImEiXQ")).toBe('[1,"a"]');
+    // A partial padding is repaired by one and refused by the other, as the two cursors were.
+    expect(b64urlDecodeBinary("WzEsImEiXQ=")).toBe('[1,"a"]');
+    expect(() => b64urlDecodeBinaryUnpadded("WzEsImEiXQ=")).toThrow();
+    expect(b64urlDecodeBinary("w5w")).toBe("\u00c3\u009c");
+  });
+
+  it("reads operator key material in either alphabet with atob's whitespace rule", () => {
+    expect([...base64DecodeEitherAlphabet("+/8APj8=\n")]).toEqual([...bytes]);
+    expect([...base64DecodeEitherAlphabet("-_8APj8")]).toEqual([...bytes]);
+    expect(() => base64DecodeEitherAlphabet("-_8APj8=A")).toThrow();
   });
 
   it("decodes base64url strictly: alphabet only, no padding, never a dangling character", () => {
@@ -465,6 +567,8 @@ const COPY_NAMES = [
   "hexOf",
   "toHex",
   "hexToBytes",
+  "toAB",
+  "toBuffer",
   // hash
   "sha256Hex",
   "sha256HexOfAscii",
@@ -479,6 +583,7 @@ const COPY_NAMES = [
   "randomBytes",
   "randomToken",
   "randomHex",
+  "randomSecret",
   // pkce
   "pkce",
   "s256",
@@ -557,6 +662,22 @@ const RULES: Rule[] = [
   },
 ];
 
+/**
+ * The documented exceptions: a file that may keep a local copy because it must not import the
+ * platform module, each with the rule it may break and why. Adding one is a review decision.
+ * An entry that no longer matches anything fails too, so a stale exception cannot linger.
+ */
+const EXCEPTIONS: Record<string, { rules: string[]; why: string }> = {
+  "src/core/storefront/polarisKeyListing.ts": {
+    rules: ["JSON-column reader", "local copy by name"],
+    why: "an A-18a declaration module: it imports only the adapter layer, so the CLI's copy is a straight serialise (boundaries.test.ts, 'the adapter layer')",
+  },
+  "src/services/distribution/dictionary.ts": {
+    rules: ["hex encoder"],
+    why: "the pure half of dcz with no imports at all, loaded as-is by the Chromium harness in conformance/runners/browser/dcz.setup.ts",
+  },
+};
+
 function walkTs(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {
     const full = join(dir, name);
@@ -580,6 +701,23 @@ function findings(source: string): { rule: Rule; line: number }[] {
   }
   return out;
 }
+
+describe("src/platform/ is a leaf layer", () => {
+  it("imports nothing but its own siblings (no src/ module, no package)", () => {
+    const bad: string[] = [];
+    for (const file of walkTs(join(SRC, "platform"))) {
+      const source = readFileSync(file, "utf8");
+      for (const m of source.matchAll(
+        /(?:^|[\s;}])(?:import|export)\s+(?:type\s+)?(?:[^'"()]*?\sfrom\s+)?["']([^"']+)["']/g,
+      )) {
+        const spec = m[1]!;
+        if (!/^\.\/[A-Za-z]+\.js$/.test(spec))
+          bad.push(`${relative(WORKER_ROOT, file)}: ${spec}`);
+      }
+    }
+    expect(bad).toEqual([]);
+  });
+});
 
 describe("no new local copies of the platform primitives", () => {
   it("each rule fires on the shape it names (the guard is not vacuous)", () => {
@@ -617,13 +755,24 @@ describe("no new local copies of the platform primitives", () => {
       expect(files.map((f) => relative(WORKER_ROOT, f))).toContain(c);
     }
     const offenders: string[] = [];
+    const excused = new Set<string>();
     for (const file of files) {
       const rel = relative(WORKER_ROOT, file).split("\\").join("/");
       if (CANONICAL.has(rel)) continue;
       for (const f of findings(readFileSync(file, "utf8"))) {
+        if (EXCEPTIONS[rel]?.rules.includes(f.rule.id)) {
+          excused.add(`${rel} ${f.rule.id}`);
+          continue;
+        }
         offenders.push(`${rel}:${f.line} ${f.rule.id} → use ${f.rule.use}`);
       }
     }
     expect(offenders, offenders.join("\n")).toEqual([]);
+    for (const [file, { rules }] of Object.entries(EXCEPTIONS))
+      for (const rule of rules)
+        expect(
+          excused.has(`${file} ${rule}`),
+          `stale exception: ${file} no longer needs "${rule}"; remove it`,
+        ).toBe(true);
   });
 });
