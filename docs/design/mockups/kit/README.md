@@ -898,6 +898,17 @@ count the nav already shows.
 - `.progress-inline > .meter`: a head's count with a segmented meter (devices); `.dl.cols > .full`
   takes a whole row of a fact grid (a sentence, a list); `.md`: release notes drawn from Markdown
   (h3, list, link, emphasis).
+- **License pages** (block `portal-license-pages`; `portal.license`, `portal.license-lapsed`): the
+  portal's hero is the `--hero-h` band (220, 260 from 1700px, 160 under 1100, 112 on phone) with
+  the 56px icon 20 over it (portal-multi-review), and `.product-hero-note` never ends on an orphan
+  word. `.device-row` (a device or an account: 28px tile or avatar, `.device-name` over one
+  `.device-meta` line whose `span` facts never break, the action at the end; `.this` ends the
+  meta in the accent for this device). `.meter.neutral` and `.progress.neutral`: a device or
+  storage meter in the strong text colour, never the accent or a warning (a limit, not an error,
+  UI-KITS §1.5 rule 9). A `.card-head` holding a `.progress-inline` drops it under the title on a
+  narrow card. `.card-foot.stack-phone`: buttons full width and stacked on a phone. Release notes
+  in the portal take dash markers, never discs. One state per page: a healthy license has no
+  pill; a lapse has one pill in the hero and explains itself in a neutral callout.
 - `.license-card` and `.key-field` (`<div class="key-field"><span>pkey_djdl_7HJM…Q2KD</span></div>`,
   a key in a mono field on the accent tint) stay for a license that has a key.
 

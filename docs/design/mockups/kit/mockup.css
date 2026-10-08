@@ -19131,6 +19131,82 @@ a.card:focus-visible {
   text-underline-offset: 2px;
 }
 /* END portal-owner-notes */
+
+/* BEGIN portal-license-pages (2026-10-08): the parts portal.license and portal.license-lapsed
+   draw with, in UI-KITS.md's language where it applies to the web. kit/README.md "Customer portal". */
+
+/* A full license is a limit, not an error (UI-KITS §1.5 rule 9): the device meter is neutral,
+   filled in the strong text colour; warning appears only over the limit. */
+.meter.neutral > i.on,
+.progress.neutral::after {
+  background: color-mix(in oklab, var(--pk-text-strong) 80%, transparent);
+}
+/* Release notes take no disc bullets (UI-KITS §1.5 rule 6): a quiet dash. */
+.portal .md ul {
+  list-style-type: "–\2002";
+}
+/* A device row (or an account row): its 28px tile or avatar, the name over one meta line whose
+   facts never break inside themselves, and its action at the end. */
+.device-row {
+  display: grid;
+  grid-template-columns: var(--card-media) minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--sp-3);
+  min-height: var(--row-h);
+  padding: var(--sp-2) var(--card-px);
+}
+.device-row > .icon-tile {
+  width: var(--card-media);
+  height: var(--card-media);
+  border-radius: 8px;
+}
+.device-row > .icon-tile > .ic {
+  width: 16px;
+  height: 16px;
+}
+.device-name {
+  font-weight: 700;
+  color: var(--pk-text-strong);
+}
+/* "This device" ends the meta line, in the accent, so the row keeps two lines in a 384px column. */
+.device-meta > .this {
+  font-weight: 700;
+  color: var(--pk-accent-fg);
+}
+.device-meta {
+  font-size: var(--fs-small);
+  line-height: var(--lh-small);
+  color: var(--pk-text-muted);
+}
+.device-meta > span {
+  white-space: nowrap;
+}
+/* No line of the hero's note ends on one orphan word (UI-KITS §1.5 rule 11). */
+.portal .product-hero-note {
+  text-wrap: pretty;
+}
+/* The term's one action or status, under the chart. */
+.license-term > :is(.status, .btn) {
+  align-self: flex-start;
+}
+/* A portal card head whose right side is a count and its bar: on a narrow card the bar drops
+   under the title, full width. */
+@container (max-width: 559px) {
+  .portal .card-head:has(> .progress-inline) {
+    flex-wrap: wrap;
+  }
+  .portal .card-head > .progress-inline {
+    flex-basis: 100%;
+    width: auto;
+  }
+}
+/* Buttons in a card foot on a phone: full width, stacked, the first on top (UI-KITS rule 10). */
+@container screen (max-width: 639px) {
+  .portal .card-foot.stack-phone > .btn {
+    flex: 1 1 100%;
+  }
+}
+/* END portal-license-pages */
 /* BEGIN products-multi-review */
 /*
  * Products area, spacing pass 2 (multi-review). Opt-in per screen: put .kit-prod on the screen's
