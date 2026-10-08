@@ -204,7 +204,10 @@ export function commandRows(
   // A command wider than the line wraps at its spaces and keeps a four-cell hanging indent, deeper
   // than the label under it, so the two can be told apart without bold.
   return rows.flatMap((r) => [
-    ...wrapSpans(r.label, Math.max(1, width - 4)).map((l, i) => ({
+    ...wrapSpans(
+      r.label.map((s) => ({ ...s, keep: false })),
+      Math.max(1, width - 4),
+    ).map((l, i) => ({
       mark: "rail" as const,
       spans: i === 0 ? l : [{ text: "    " }, ...l],
     })),

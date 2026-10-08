@@ -551,6 +551,8 @@ describe("the resolution matrix (40/60/80/120 × 12/24, long values)", () => {
           // Below 50 columns a command row stacks: the command, then its label under it.
           if (columns < 50)
             expect(text).toMatch(/^(│ {2})?tidewater activate\n/m);
+          // A command is wrapped at its spaces, never cut short.
+          expect(text).not.toMatch(/tidewater[^\n]*…/);
           // A finished download never reads "Up to date" above "Restart to finish updating".
           expect(text).not.toContain("Up to date");
           // The finished block replaces the bar: ready, the size, then what to do next.
