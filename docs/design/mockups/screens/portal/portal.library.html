@@ -81,7 +81,7 @@
                 <span class="pill sm tier"><i class="ic ic-key-round"></i>Education</span>
                 <span class="pill sm"><i class="ic ic-monitor-smartphone"></i>3/4 devices</span>
               </div>
-              <span class="platforms" aria-label="macOS and Windows"><i class="ic ic-apple"></i><i class="ic ic-windows"></i></span>
+              <span class="platforms" role="img" aria-label="macOS and Windows"><i class="ic ic-apple"></i><i class="ic ic-windows"></i></span>
             </div>
             <ul class="icon-lines">
               <li><i class="ic ic-calendar-clock"></i><span>Updates until Sep 14, 2027 <span class="muted">· then keeps the last version</span></span></li>
@@ -113,7 +113,7 @@
                 <span class="pill sm tier"><i class="ic ic-key-round"></i>Standard</span>
                 <span class="pill sm warning"><i class="ic ic-triangle-alert"></i>3/3 devices</span>
               </div>
-              <span class="platforms" aria-label="iOS, Android, Windows and Linux"><i class="ic ic-smartphone"></i><i class="ic ic-android"></i><i class="ic ic-windows"></i><i class="ic ic-linux"></i></span>
+              <span class="platforms" role="img" aria-label="iOS, Android, Windows and Linux"><i class="ic ic-smartphone"></i><i class="ic ic-android"></i><i class="ic ic-windows"></i><i class="ic ic-linux"></i></span>
             </div>
             <ul class="icon-lines">
               <li><i class="ic ic-calendar-clock"></i><span>Lifetime</span></li>
@@ -128,15 +128,32 @@
         </div>
       </article>
 
+      <!-- The Library's own entry for a key (owner, 2026-10-08: better styling for "Have a license"):
+           the grid's last tile, dashed and quiet beside the products; its one action is level with theirs. -->
+      <aside class="ptile end-tile entry-tile" aria-labelledby="key-title">
+        <div class="entry-inner">
+          <div class="entry-art"><span class="entry-mark"><i class="ic ic-key-round"></i></span></div>
+          <div class="entry-text">
+            <h2 id="key-title">Have a license key?</h2>
+            <p>Activate it to add its product here.</p>
+          </div>
+          <div class="ptile-foot">
+            <button class="btn outline"><i class="ic ic-key-round"></i>Activate license</button>
+          </div>
+        </div>
+      </aside>
     </div>
 
-    <!-- How a license joins the account: a floating key, a license sent to another email, a store
-         purchase (Steam through a sign-in method; App Store and Google Play through the game's sign-in). -->
-    <section class="help-strip" aria-labelledby="add-title">
-      <h2 id="add-title">Missing a license?</h2>
-      <div class="help-row"><span class="help-q">Have a key?</span><span><a href="#">Activate it</a></span></div>
-      <div class="help-row"><span class="help-q">Sent to another email?</span><span>Add it under <a href="#">Sign-in methods</a></span></div>
-      <div class="help-row"><span class="help-q">Bought in a store?</span><span>Steam: add Steam under Sign-in methods. App Store, Google Play: sign in to the game once.</span></div>
+    <!-- The other ways a license joins the account: a license sent to another email, a store purchase
+         (Steam through a sign-in method; App Store and Google Play through the game's sign-in). -->
+    <section class="mk-stack-4" aria-labelledby="add-title">
+      <h2 id="add-title" class="type-card">Missing a license?</h2>
+      <ul class="media-list">
+        <li><span class="icon-tile muted"><i class="ic ic-mail"></i></span>
+          <span><strong>Sent to another email?</strong>Add that email under <a href="#">Sign-in methods</a>.</span></li>
+        <li><span class="icon-tile muted"><i class="ic ic-store"></i></span>
+          <span><strong>Bought in a store?</strong>Steam: add Steam under Sign-in methods. App Store, Google Play: sign in to the game once.</span></li>
+      </ul>
     </section>
   </main>
 

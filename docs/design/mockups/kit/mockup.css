@@ -18958,6 +18958,179 @@ a.card:focus-visible {
   }
 }
 /* END portal-multi-review */
+
+/* BEGIN portal-owner-notes (2026-10-08): the owner's notes on Library and Discover. Appended, so
+   they win over the blocks above at equal specificity. kit/README.md "Customer portal". */
+
+/* Tile art runs all the way: the cover's whole 16:9 frame from the tile's top edge, edge to
+   edge (the tile clips its corners), at most 280px tall, never a cropped band. The icon sits 20
+   over its lower edge and a state pill (.on-art) on its lower right, as on the built portal. */
+.portal .portal-grid > .ptile > .art {
+  aspect-ratio: 16 / 9;
+  max-height: 280px;
+}
+@container screen (max-width: 639px) {
+  .portal .portal-grid > .ptile > .art {
+    max-height: none;
+  }
+}
+
+/*
+ * The Library's entry for a license key ("Have a license key?"): the grid's last tile, dashed
+ * like an end tile and as tall as the tiles beside it. Its art slot is a quiet well holding the
+ * key in a 64px accent tile; then the question, one line, and Activate license level with the
+ * tiles' actions. Where it has a row to itself (640px of tile and up: it would start a row
+ * alone) it is one line: key, text, button. On a phone it is the key beside the text, the button
+ * under them, full width.
+ *   <aside class="ptile end-tile entry-tile"><div class="entry-inner">
+ *     <div class="entry-art"><span class="entry-mark"><i class="ic ic-key-round"></i></span></div>
+ *     <div class="entry-text"><h2>Have a license key?</h2><p>…</p></div>
+ *     <div class="ptile-foot"><button class="btn outline">…Activate license</button></div></div></aside>
+ */
+.ptile.end-tile.entry-tile {
+  container: entry / inline-size;
+  gap: 0;
+  padding: 0;
+}
+.entry-inner {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+.entry-art {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 9;
+  max-height: 280px;
+  border-bottom: 1px dashed var(--mk-line);
+  background:
+    radial-gradient(circle at 50% 50%, color-mix(in oklab, var(--pk-accent) 16%, transparent) 0, transparent 46%),
+    color-mix(in oklab, var(--pk-surface-sunken) 70%, transparent);
+}
+.entry-mark {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: var(--pk-accent-subtle);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--pk-accent) 35%, transparent);
+  color: var(--pk-accent-fg);
+}
+.entry-mark > .ic {
+  width: 28px;
+  height: 28px;
+}
+.entry-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-width: 0;
+  padding: var(--sp-4) var(--sp-5);
+}
+.entry-text > :is(h2, h3) {
+  font-size: 20px;
+  line-height: 24px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--pk-text-strong);
+}
+.entry-text > p {
+  font-size: var(--fs-small);
+  line-height: var(--lh-small);
+  color: var(--pk-text-muted);
+}
+.entry-inner > .ptile-foot {
+  margin-top: auto;
+}
+/* A row to itself: key, text, action on one line. */
+@container entry (min-width: 640px) {
+  .entry-inner {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: var(--sp-4);
+    padding: var(--sp-5) var(--sp-6);
+  }
+  .entry-art {
+    aspect-ratio: auto;
+    border: 0;
+    background: none;
+  }
+  .entry-mark {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+  }
+  .entry-mark > .ic {
+    width: 22px;
+    height: 22px;
+  }
+  .entry-text,
+  .entry-inner > .ptile-foot {
+    padding: 0;
+  }
+}
+@container screen (max-width: 639px) {
+  .entry-inner {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: var(--sp-4) var(--sp-3);
+    padding: var(--sp-4);
+  }
+  .entry-art {
+    aspect-ratio: auto;
+    border: 0;
+    background: none;
+  }
+  .entry-mark {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+  }
+  .entry-mark > .ic {
+    width: 20px;
+    height: 20px;
+  }
+  .entry-text {
+    padding: 0;
+  }
+  .entry-text > :is(h2, h3) {
+    font-size: var(--fs-card);
+  }
+  .entry-inner > .ptile-foot {
+    grid-column: 1 / -1;
+    padding: 0;
+  }
+}
+
+/* The other ways a license joins the library, under the grid: a 16/24 title, then the kit's
+   .media-list (two side by side when they fit, stacked on a phone). */
+.portal .media-list a {
+  color: var(--pk-accent-fg);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* From 640 to 899px the header has no room for the account's name: the avatar and chevron stay
+   (the name is the menu's first line), so the header never scrolls the page sideways. */
+@container screen (min-width: 640px) and (max-width: 899px) {
+  .portal-top,
+  .portal-nav {
+    gap: var(--sp-6);
+  }
+  .account > :not(.avatar, .ic) {
+    display: none;
+  }
+}
+/* A link in the footer's line is told from the text around it by more than its colour. */
+.portal-foot a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+/* END portal-owner-notes */
 /* BEGIN products-multi-review */
 /*
  * Products area, spacing pass 2 (multi-review). Opt-in per screen: put .kit-prod on the screen's

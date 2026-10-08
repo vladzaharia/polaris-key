@@ -830,7 +830,9 @@ count the nav already shows.
 
 - `.portal-grid`: three tiles from 1280px, two from 640px, one on phone; 24 apart (16 on phone).
   An `.end-tile` that would start a row alone spans it, and its `.media-list` goes into columns.
-- `.ptile`: the 16:9 `.art`, then `.ptile-head` (the 56px `.logo.lg` 20 over the art, 36 under it,
+- `.ptile`: the `.art` at its whole 16:9 frame from the tile's top edge, edge to edge, at most
+  280px tall, never a cropped band (owner, 2026-10-08: the card image runs all the way), then
+  `.ptile-head` (the 56px `.logo.lg` 20 over the art, 36 under it,
   and `.ptile-title`: the name at 18/24, the tiles being the page's blocks, with a quiet second fact
   such as the developer on its line), `.ptile-body` (one `.mk-stack-3`: a `.pill-row`, then
   `.icon-lines`, a reason `.callout`, store `.links`), and `.ptile-foot`, whose main action fills
@@ -844,7 +846,17 @@ count the nav already shows.
 - `.ptile.end-tile`: the dashed last tile that says how things get here: an 18/24 title, a
   `.media-list`, actions at its foot level with the tiles' actions.
 - `.media-list`: items led by a 28px `.icon-tile`, a bold 14/20 title over a 13/20 muted line; 16
-  apart, columns (min 220px, 24 apart) when the list has the room.
+  apart, columns (min 220px, 24 apart) when the list has the room. In the portal its links are
+  underlined.
+- `.ptile.end-tile.entry-tile` (`.entry-inner` > `.entry-art` with an `.entry-mark`, `.entry-text`,
+  `.ptile-foot`): the Library's entry for a license key, last in the grid (owner, 2026-10-08:
+  better styling for the have-a-license entry). Dashed and unfilled, as tall as the tiles beside
+  it: a quiet well in the art's place with the key in a 64px accent tile, the question at 20/24,
+  one line, and the action at the foot level with the tiles' actions. With a row to itself (640px
+  of tile and up) it is one line: the 48px key, the text, the button. On a phone the 40px key sits
+  beside the text and the button runs full width under them.
+- The portal header hides the account's name from 640 to 899px (the avatar and chevron stay), and
+  the footer's links are underlined.
 
 **Product page** (`portal.license`, `portal.license-lapsed`):
 
@@ -2022,7 +2034,8 @@ changed (they win by coming later at equal specificity).
 
 - `--hero-h` token on `.portal`: 220px, 260px from 1700px, 160px under 1100px, 112px on phone; the
   product hero's icon is 56px and overlaps the band by 20px.
-- Tile art 16:7 capped at 140px (112px on phone), tile body padding 16/20, `.ptile-links` row under the
+- Tile art 16:7 capped at 140px (112px on phone; superseded by the owner's note of 2026-10-08: the
+  whole 16:9 frame, at most 280px, block `portal-owner-notes`), tile body padding 16/20, `.ptile-links` row under the
   actions (min 76px so the primary buttons are level), `.page-note` muted line under a grid.
 - Wide: from 1700px `--portal-max` 1520px and a 420px license rail; tile grids use
   `repeat(auto-fit, minmax(380px, 1fr))` from 640px (auto-fit rather than auto-fill, so two tiles do not
