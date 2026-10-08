@@ -378,7 +378,7 @@ export const STORE_KINDS = [
   "flathub",
   "snap",
   "winget",
-] as const;
+] as const satisfies readonly ActionKind[];
 export type StoreKind = (typeof STORE_KINDS)[number];
 
 /**
@@ -398,13 +398,20 @@ export const INSTALL_SOURCE_KINDS = [
 ] as const satisfies readonly ActionKind[];
 export type InstallSourceKind = (typeof INSTALL_SOURCE_KINDS)[number];
 
-/** Every action kind is a store, an install source or the download (a compile-time check). */
+/** Every action kind is a store, an install source or the download, and no kind is both a store
+ *  and an install source (compile-time checks: the portal shows the two lists apart). */
 const EVERY_ACTION_KIND_SORTED: [
   Exclude<ActionKind, StoreKind | InstallSourceKind | "download">,
 ] extends [never]
   ? true
   : false = true;
+const STORES_AND_SOURCES_DISJOINT: [
+  Extract<StoreKind, InstallSourceKind>,
+] extends [never]
+  ? true
+  : false = true;
 void EVERY_ACTION_KIND_SORTED;
+void STORES_AND_SOURCES_DISJOINT;
 
 /** The order actions are offered in, per platform: the first present is the primary. */
 const PRIORITY: Readonly<Record<PagePlatform, readonly ActionKind[]>> = {

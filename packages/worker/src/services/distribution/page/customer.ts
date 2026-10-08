@@ -42,10 +42,12 @@ import type {
   CustomerDownloadsQuery,
   CustomerFile,
   CustomerPick,
+  CustomerInstallSource,
   CustomerRelease,
   CustomerStoreLink,
   HookContext,
 } from "../../../core/hooks.js";
+import { qrSvg } from "../../../core/qr.js";
 import {
   PAGE_PLATFORMS,
   type PagePlatform,
@@ -63,9 +65,11 @@ import {
   STORE_KINDS,
   storeLink,
   storeState,
+  type PageAction,
   type StoreKind,
 } from "./model.js";
 import { consoleOriginOf } from "./index.js";
+import { esc } from "./render.js";
 
 /** The most releases one answer reads (each costs a builds and an artifacts read). */
 export const CUSTOMER_MAX_RELEASES = 20;
@@ -299,7 +303,7 @@ export async function customerDownloads(
 async function installSources(
   ctx: HookContext,
   channel: string,
-): Promise<CustomerStoreLink[]> {
+): Promise<CustomerInstallSource[]> {
   const model = await buildDownloadModel({
     db: ctx.db,
     env: ctx.env,
@@ -324,5 +328,23 @@ async function installSources(
       activateUrl: null,
       live: true,
       version: a.version,
+      fingerprint: a.fingerprint,
+      qr: scanCode(a),
     }));
+}
+
+/**
+ * The QR code the portal shows on a computer, for the phone that will act on it (P0-48): the
+ * deep link where there is one (scanned, `altstore://` or `fdroidrepos://` opens the app that
+ * adds the source, while the source's `https:` URL opens JSON or a 404 in a browser), else the
+ * page's own QR text (also when the deep link is too long to encode). A `data:` URI, as the
+ * portal's sign-in code is (`identity/portal/deviceLogin.ts`): the portal's CSP allows
+ * `img-src 'self' data:`. `null` for a command, or when neither fits the encoder (`core/qr.ts`).
+ */
+function scanCode(a: PageAction): string | null {
+  for (const text of [a.deepLink, a.qr]) {
+    const svg = text ? qrSvg(text, esc(`QR code: ${a.label}`)) : null;
+    if (svg) return `data:image/svg+xml;base64,${btoa(svg)}`;
+  }
+  return null;
 }

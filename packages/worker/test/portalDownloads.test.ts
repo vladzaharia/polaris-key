@@ -35,6 +35,7 @@ import {
   picksOf,
 } from "../src/services/distribution/page/customer.js";
 import { INSTALL_SOURCE_KINDS } from "../src/services/distribution/page/model.js";
+import { qrSvg } from "../src/core/qr.js";
 import type { CustomerFile } from "../src/core/hooks.js";
 import { detectPlatform as coreDetect } from "../src/core/platformDetect.js";
 import { detectPlatform as pageDetect } from "../src/services/distribution/page/detect.js";
@@ -304,6 +305,26 @@ describe("Distribution's customerDownloads hook (through Core)", () => {
     );
     for (const s of d!.installSources!)
       expect(s).toMatchObject({ live: true, activateUrl: null });
+    // Beside each: the page's F-Droid fingerprint, and a QR code of the deep link for a phone to
+    // scan from a computer (a data: URI the portal's CSP allows); a command has no code.
+    for (const s of d!.installSources!) {
+      const a = page.find((x) => x.id === s.id)!;
+      expect(s.fingerprint, s.id).toBe(a.fingerprint);
+      const svg = [a.deepLink, a.qr]
+        .map((t) => (t ? qrSvg(t, `QR code: ${a.label}`) : null))
+        .find((x) => x !== null);
+      expect(s.qr, s.id).toBe(
+        svg ? `data:image/svg+xml;base64,${btoa(svg)}` : null,
+      );
+    }
+    const fdroid = d!.installSources!.find((s) => s.kind === "fdroid")!;
+    expect(fdroid.deepLink).toMatch(/^fdroidrepos:\/\//);
+    expect(atob(fdroid.qr!.slice("data:image/svg+xml;base64,".length))).toBe(
+      qrSvg(fdroid.deepLink!, `QR code: ${fdroid.label}`),
+    );
+    expect(
+      d!.installSources!.find((s) => s.kind === "homebrew")!.qr,
+    ).toBeNull();
     expect(d!.installSources!.find((s) => s.kind === "homebrew")!.command).toBe(
       "brew install --cask diceroll",
     );

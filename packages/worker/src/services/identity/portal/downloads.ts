@@ -49,6 +49,7 @@ import type { Db, Env } from "../../../core/platform.js";
 import type {
   CustomerFile,
   CustomerRelease,
+  CustomerInstallSource,
   CustomerStoreLink,
 } from "../../../core/hooks.js";
 import {
@@ -151,7 +152,7 @@ export interface PortalDownloads {
   stores: CustomerStoreLink[];
   /** The download page's install sources for the channel (Homebrew, Scoop, AltStore, F-Droid,
    *  Obtainium…), so an owner sees every channel a stranger does (P0-48); empty when none. */
-  installSources: CustomerStoreLink[];
+  installSources: CustomerInstallSource[];
 }
 
 function emptyDownloads(

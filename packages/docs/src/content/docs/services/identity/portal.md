@@ -503,7 +503,11 @@ not_removable` with `reason` `no_active_key` or `key_claim_off`, and nothing is 
   page, for a held Steam key), and `installSources` in the same shape: the package managers and
   sideloading sources the public download page offers for the channel (Homebrew, Scoop, AltStore,
   SideStore, AltStore PAL, F-Droid, Obtainium), taken from the page model, so an owner sees every
-  channel a stranger sees there (empty for a non-public deliverable, which has no feeds). A universal build is recommended alone and flagged `universal`; otherwise
+  channel a stranger sees there (empty for a non-public deliverable, which has no feeds). Each
+  also carries `fingerprint` (F-Droid's repository fingerprint, else `null`) and `qr`, a QR code
+  of its deep link as a `data:image/svg+xml` URI for a phone to scan from a computer (`null` for
+  a command). The portal leads with the deep link, never the source URL, which a browser cannot
+  open usefully. A universal build is recommended alone and flagged `universal`; otherwise
   every arch is, Apple silicon first on a Mac and the detected arch first when the browser said.
   Each file carries `canDownload` and, when false, a `reason`: `license_inactive` (no usable
   license), `not_entitled` (the license's channels or update window do not reach the release) or
