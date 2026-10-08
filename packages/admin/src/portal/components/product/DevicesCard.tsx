@@ -350,16 +350,19 @@ export function DeviceRow({
   };
 
   return (
-    <li ref={rowRef} className="py-3">
-      <div className="flex items-center gap-3">
+    // A size container: in a narrow card (the side column from 1024 px, a phone) Remove goes under
+    // the meta line, so the name has the row's full width.
+    <li ref={rowRef} className="py-3 @container">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-2 @[24rem]:grid-cols-[auto_minmax(0,1fr)_auto] @[24rem]:items-center">
         <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-fg-strong">
           <DeviceGlyph platform={device.platform} />
         </span>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0">
           {/* Wraps, never cut short: two machines often differ only at the end of the name. */}
           <p
             data-device-name=""
-            className="line-clamp-2 break-words font-bold text-fg-strong"
+            dir="auto"
+            className="break-words font-bold text-fg-strong"
           >
             {name}
           </p>
@@ -370,7 +373,7 @@ export function DeviceRow({
             ref={removeRef}
             variant="quiet"
             size="md"
-            className="h-10"
+            className="col-start-2 h-10 justify-self-start @[24rem]:col-start-3 @[24rem]:row-start-1"
             aria-label={`Remove ${name}`}
             aria-expanded={false}
             aria-controls={panelId}
