@@ -78,19 +78,47 @@ export interface PolarisThemeTokens {
   fontFamily: string;
 }
 
-/** Copy overrides for the built-in screens (everything user-visible is overridable). */
+/**
+ * Copy overrides for the built-in screens (everything user-visible is overridable). Every default
+ * is a verbatim value from the kit copy catalog (packages/brand/kit-copy/en.json) or the core copy
+ * catalog (conformance/parity/copy.en.json), in the catalogs' ICU subset: `{name}` arguments and
+ * `{n, plural, one {…} other {…}}`. UK-05 reads the catalogs directly; until then a string an
+ * integrator overrides here wins.
+ */
 export interface PolarisThemeCopy {
+  /** The product's name, in copy that names it ("Welcome to Tidewater"). The base themes carry
+   *  a placeholder ("This app"), which no screen treats as a name: the title, the identity tile
+   *  and the product lines appear only once it is set. */
   productName: string;
+  /** The sign-in title when the product's name is not known (signin.methods.titleApp). */
   signInTitle: string;
+  /** The sign-in title once `productName` is set (welcome.title). */
+  welcomeTitle: string;
+  /** A line under the sign-in title. None by default; rendered when an integrator sets it. */
   signInSubtitle: string;
+  /** The sign-in button (welcome.signIn). */
   oidcButtonLabel: string;
+  /** The button that reveals the key form when sign-in is offered too (welcome.useKey). */
+  useKeyLabel: string;
+  /** The key field's label (activate.title). */
   keyEntryLabel: string;
   keyEntryPlaceholder: string;
+  /** The key form's submit (activate.submit). */
   keySubmitLabel: string;
-  /** The divider between the sign-in button and the key form when both appear. */
+  /** @deprecated No longer rendered: "Use a license key" reveals the key form instead. */
   orDivider: string;
+  /** The device-limit callout's first line, when the counts are known (deviceLimit.heading). */
+  deviceLimitHeading: string;
+  /** The device-limit callout's second line (deviceLimit.browser). */
+  deviceLimitBrowser: string;
+  /** The error screen's title when no catalog title fits the failure (gate.error.title). */
+  errorTitle: string;
   graceTitle: string;
   graceBody: string;
+  /** The grace banner while days remain (grace.daysLeft). */
+  graceDaysLeft: string;
+  /** The grace banner on the last day (grace.lastDay). */
+  graceLastDay: string;
   expiredTitle: string;
   expiredBody: string;
   revokedTitle: string;
@@ -123,13 +151,20 @@ export interface PolarisThemeCopy {
   configDisabledTitle: string;
   configDisabledBody: string;
   // ── UpdatePrompt (./update) ──────────────────────────────────────────────
+  /** The update title when the product's name is not known (update.availableTitle). */
   updateTitle: string;
+  /** The update title once `productName` is set (update.title). */
+  updateProductTitle: string;
+  /** A line under the update title. None by default (update.current needs the download size,
+   *  which the version check does not carry); rendered when an integrator sets it. */
   updateBody: string;
   updateActionLabel: string;
   updateDismissLabel: string;
   updateUpToDateLabel: string;
   /** wire v4 decisions (`<UpdatePrompt source="decision">`). */
   updateReadyTitle: string;
+  /** The ready title once `productName` is set (update.readyTitle). */
+  updateReadyProductTitle: string;
   updateReadyBody: string;
   updateRestartLabel: string;
   updateStoreLabel: string;
@@ -144,14 +179,41 @@ export interface PolarisThemeCopy {
   updateRevokedContentBody: string;
   // ── DeviceManager (./license) ────────────────────────────────────────────
   devicesTitle: string;
+  /** @deprecated Replaced by `deviceLimitHeading` (the limit known) or `devicesCount`. */
   devicesSubtitle: string;
+  /** The list's subtitle when the device limit is not known (devices.count). */
+  devicesCount: string;
   devicesEmpty: string;
+  /** The first load (common.loading). */
+  devicesLoadingLabel: string;
   deviceCurrentBadge: string;
+  /** A device with no name (devices.unnamed). */
+  deviceUnnamed: string;
+  /** A row's meta line when the last-seen time is known (devices.meta). */
+  deviceMeta: string;
+  /** The row action that opens the inline rename field (devices.rename). */
+  deviceRenameActionLabel: string;
+  /** The rename action's accessible name (a11y.renameDevice). */
+  deviceRenameA11yLabel: string;
   deviceRenameLabel: string;
   deviceRenameSubmitLabel: string;
+  /** Closes an inline editor without saving (common.cancel). */
+  deviceRenameCancelLabel: string;
+  /** The row action that removes another device (devices.remove). */
+  deviceRemoveLabel: string;
+  /** The remove action's accessible name (a11y.removeDevice). */
+  deviceRemoveA11yLabel: string;
+  /** The inline confirm before a removal (devices.removeConfirm). */
+  deviceRemoveConfirm: string;
+  /** @deprecated Replaced by `deviceRemoveLabel`, and `signOutLabel` on this device's row. */
   deviceDisconnectLabel: string;
+  /** @deprecated No longer rendered: the unsupported state is the `devicesUnsupportedBody`
+   *  line inside the panel. */
   devicesUnsupportedTitle: string;
+  /** The unsupported state's line (devices.browser). */
   devicesUnsupportedBody: string;
+  /** The link to the portal's device page in the unsupported state (devices.manage). */
+  devicesManageLabel: string;
 }
 
 /** Which "Powered by Polaris Key" badge layout a licence/account screen shows (BRAND.md §7.2):
@@ -288,38 +350,47 @@ export const defaultTheme: PolarisTheme = {
   copy: {
     productName: "This app",
     signInTitle: "Sign in",
-    signInSubtitle: "Authenticate to unlock this app.",
+    welcomeTitle: "Welcome to {product}",
+    signInSubtitle: "",
     // Neutral: the host's sign-in, not ours (no Polaris Key name on a neutral screen).
-    oidcButtonLabel: "Continue to sign in",
-    keyEntryLabel: "Have a license key?",
+    oidcButtonLabel: "Sign in",
+    useKeyLabel: "Use a license key",
+    keyEntryLabel: "Enter your license key",
     keyEntryPlaceholder: "Paste your key",
-    keySubmitLabel: "Activate",
+    keySubmitLabel: "Activate license",
     orDivider: "or",
+    deviceLimitHeading:
+      "Your license is on {used} of {limit, plural, one {# device} other {# devices}}",
+    deviceLimitBrowser:
+      "Replace a device in your browser. {product} continues when you're done.",
+    errorTitle: "{product} couldn't start",
     graceTitle: "Offline grace",
     graceBody:
-      "The licensing service is offline. You can keep working until grace ends.",
+      "The licensing service can't be reached. You can keep using the app until the grace period ends.",
+    graceDaysLeft:
+      "Offline · {days, plural, one {# day} other {# days}} left to reconnect",
+    graceLastDay: "Offline · reconnect today to keep using {product}",
     expiredTitle: "License expired",
-    expiredBody:
-      "Your license or offline grace period has ended. Sign in or activate a key to continue.",
-    revokedTitle: "License revoked",
-    revokedBody:
-      "This license is no longer active on this device. Contact your administrator.",
+    // The sign-in methods under the title are the action; no line repeats them.
+    expiredBody: "",
+    revokedTitle: "Signed out",
+    revokedBody: "",
     versionTooOldTitle: "Update required",
     versionTooOldBody:
-      "This version is no longer supported. Please update the app.",
-    versionTooNewTitle: "Version not allowed",
-    versionTooNewBody: "This app version is newer than your license permits.",
-    channelNotEntitledTitle: "Channel not entitled",
+      "This version is no longer supported. Update the app to continue.",
+    versionTooNewTitle: "Not available on this license",
+    versionTooNewBody: "This build is newer than your license allows.",
+    channelNotEntitledTitle: "Channel not included",
     channelNotEntitledBody:
-      "Your license doesn't include this release channel. Switch channels or contact your administrator.",
+      "Your license doesn't include this release channel.",
     loadingLabel: "Checking your license…",
     retryLabel: "Try again",
     freeDeviceLabel: "Replace a device",
     signOutLabel: "Sign out",
     notApplicableLabel: "This product is not licensed separately.",
     configTitle: "Settings",
-    configSubtitle:
-      "Values your administrator manages. Locked rows are set for you.",
+    // "Managed" is the one term for a locked row.
+    configSubtitle: "Values your administrator manages.",
     configEmpty: "No settings have been delivered for this product.",
     configEnforcedBadge: "Managed",
     configLocalBadge: "Overridden",
@@ -330,11 +401,13 @@ export const defaultTheme: PolarisTheme = {
     configDisabledBody:
       "This product does not distribute managed settings, so there is nothing to show here.",
     updateTitle: "An update is available",
-    updateBody: "A newer version of this app has been released.",
+    updateProductTitle: "{product} {version}",
+    updateBody: "",
     updateActionLabel: "Get the update",
-    updateDismissLabel: "Not now",
+    updateDismissLabel: "Later",
     updateUpToDateLabel: "You're up to date.",
     updateReadyTitle: "An update is ready",
+    updateReadyProductTitle: "{product} {version} is ready",
     updateReadyBody: "Restart the app to finish updating.",
     updateRestartLabel: "Restart now",
     updateStoreLabel: "Open the store",
@@ -352,14 +425,24 @@ export const defaultTheme: PolarisTheme = {
       "Some of this game's content was withdrawn by its developer and can't be used. Update the app to keep playing.",
     devicesTitle: "Your devices",
     devicesSubtitle: "Devices signed in with this license.",
-    devicesEmpty: "No devices are registered to this license yet.",
+    devicesCount: "{count, plural, one {# device} other {# devices}}",
+    devicesEmpty: "No devices are using this license yet.",
+    devicesLoadingLabel: "Loading…",
     deviceCurrentBadge: "This device",
+    deviceUnnamed: "Unnamed device",
+    deviceMeta: "{platform} · last seen {when}",
+    deviceRenameActionLabel: "Rename",
+    deviceRenameA11yLabel: "Rename {device}",
     deviceRenameLabel: "Device name",
     deviceRenameSubmitLabel: "Save",
+    deviceRenameCancelLabel: "Cancel",
+    deviceRemoveLabel: "Remove",
+    deviceRemoveA11yLabel: "Remove {device}",
+    deviceRemoveConfirm: "Remove {device}? It signs out of {product}.",
     deviceDisconnectLabel: "Disconnect",
     devicesUnsupportedTitle: "Device management is unavailable",
-    devicesUnsupportedBody:
-      "This app can't manage the device list from here. Sign in to the portal to review your devices.",
+    devicesUnsupportedBody: "Manage your devices in your browser.",
+    devicesManageLabel: "Manage devices",
   },
 };
 
@@ -390,6 +473,20 @@ const POLARIS_KEY_COPY: Partial<PolarisThemeCopy> = {
   productName: "Polaris Key",
   oidcButtonLabel: "Continue with Polaris Key",
 };
+
+/** The product's name when the integrator gave one (`copy.productName`), or `null` while it is
+ *  a base theme's placeholder: "This app", or "Polaris Key", which names the platform rather
+ *  than the product behind the gate. */
+export function knownProductName(theme: PolarisTheme): string | null {
+  const name = theme.copy.productName.trim();
+  if (
+    name === "" ||
+    name === defaultTheme.copy.productName ||
+    name === POLARIS_KEY_COPY.productName
+  )
+    return null;
+  return name;
+}
 
 /** The one-option preset for the Polaris Key brand: `theme={polarisKeyTheme}`. */
 export const polarisKeyTheme: PartialTheme = { branding: "polaris-key" };
@@ -424,6 +521,23 @@ export function mergeTheme(
     logo: partial.logo,
     poweredBy: partial.poweredBy ?? base.poweredBy,
   };
+}
+
+/**
+ * The font the kit falls back to when its font token is `inherit` and the host page sets no font
+ * of its own: the platform's UI face, never the browser's default serif.
+ */
+export const SYSTEM_FONT_STACK =
+  'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+
+/** The computed `font-family` a page gets when it sets none: Times or plain `serif` in every
+ *  engine (WebKit names it `-webkit-standard`). */
+const BROWSER_DEFAULT_FONT =
+  /^\s*(?:"?times new roman"?|"?times"?|serif|-webkit-standard)\s*$/i;
+
+/** Whether a computed `font-family` is the browser's default rather than one the host set. */
+export function isBrowserDefaultFont(fontFamily: string): boolean {
+  return BROWSER_DEFAULT_FONT.test(fontFamily);
 }
 
 /** Serialize tokens to a `--pk-*` CSS custom-property style object. */

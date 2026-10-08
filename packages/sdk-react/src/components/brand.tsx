@@ -1,30 +1,24 @@
-// The Polaris Key marks and the "Powered by Polaris Key" badge inside the SDK's UI. Both are
-// opt-in (owner decision 2026-10-04): the marks appear only under `branding: "polaris-key"`,
-// the badge only when the integrator sets `poweredBy` or places <PoweredByPolarisKey>. Rendered
-// through `@polaris-key/brand/react` so the artwork is the launch kit's own (never redrawn) and
-// the rules travel with it (docs/design/BRAND.md):
+// The product identity atop the SDK's screens, and the "Powered by Polaris Key" badge.
 //
-//   * which mark (§7.1): the Pinned K on the gate, activation and sign-in screens; the Star Cut
-//     ("Polaris Key Delivery") on update screens, as identity only, never as a progress or
-//     "update available" indicator;
-//   * the default Pinned K has no terminal bit (§6, rule 0), so nothing here passes `bit` or
-//     `signed`;
-//   * dark means FOR dark grounds (§1.2): the variant follows the luminance of the background
-//     token actually in use, so an integrator who re-tints the surfaces still gets legible art;
-//   * the badge (§1.5, §7.2) is the exact phrase, never below its minimum, never cropped, and
-//     appears only on an integrator's licence/account/credits surfaces, when they opt in.
-//
-// Nothing here emits an inline `style` attribute or a `<style>`/`<script>` element: the brand
-// components draw with SVG presentation attributes, so the markup is CSP-safe.
+//   * The identity (UI-KITS §1.2, §1.6) is the PRODUCT's, never Polaris Key's: the integrator's
+//     `theme.logo`; otherwise, once `copy.productName` is set, a monogram tile (the name's
+//     initial on the sunken surface); otherwise nothing. No screen shows a Polaris Key mark
+//     under any branding: the gate belongs to the product behind it.
+//   * The badge (BRAND.md §1.5, §7.2) is opt-in (`poweredBy` or <PoweredByPolarisKey>), the exact
+//     phrase, never below its minimum, never cropped, and only on an integrator's licence,
+//     account or credits surfaces. It is rendered through `@polaris-key/brand/react`, so the
+//     artwork is the launch kit's own; dark means FOR dark grounds (§1.2), so its variant
+//     follows the luminance of the background token actually in use.
 
 import type { ReactNode } from "react";
-import { PolarisMark, PoweredByBadge } from "@polaris-key/brand/react";
+import { PoweredByBadge } from "@polaris-key/brand/react";
 import { relativeLuminance } from "@polaris-key/brand/color";
 import { usePolarisTheme } from "../react/hooks.js";
-import type {
-  PolarisResolvedScheme,
-  PolarisTheme,
-  PoweredByLayout,
+import {
+  knownProductName,
+  type PolarisResolvedScheme,
+  type PolarisTheme,
+  type PoweredByLayout,
 } from "./theme.js";
 
 const HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
@@ -45,29 +39,46 @@ export function groundOf(theme: PolarisTheme): PolarisResolvedScheme {
   return theme.scheme ?? "dark";
 }
 
-/** The mark kind a screen uses: the platform ("key") or the delivery family ("delivery"). */
-export type ScreenIdentity = "key" | "delivery";
-
-/** The logo a gate/update screen renders: the integrator's `theme.logo` when set, nothing when
- *  it is `null` or the branding is neutral, and otherwise (branding "polaris-key") the design
- *  system's mark for that screen at 48 px. */
-export function screenLogo(
-  theme: PolarisTheme,
-  identity: ScreenIdentity = "key",
-): ReactNode {
-  if (theme.logo !== undefined) return theme.logo;
-  // Polaris Key branding is opt-in: the neutral theme shows no mark.
-  if (theme.branding !== "polaris-key") return null;
-  const delivery = identity === "delivery";
+/** The product's monogram: its name's first letter, weight 600, on the sunken surface. It is
+ *  decorative: the title beside it names the product. */
+function MonogramTile(props: { name: string; size: string }): JSX.Element {
+  const initial = Array.from(props.name.trim())[0]?.toLocaleUpperCase() ?? "";
   return (
-    <PolarisMark
-      kind={delivery ? "update" : "key"}
-      size={48}
-      theme={groundOf(theme)}
-      title={delivery ? "Polaris Key Delivery" : "Polaris Key"}
-      data-polaris-mark={delivery ? "delivery" : "key"}
-    />
+    <span
+      aria-hidden="true"
+      data-polaris-identity="monogram"
+      style={{
+        boxSizing: "border-box",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flex: "none",
+        width: props.size,
+        height: props.size,
+        borderRadius: "var(--pk-radius)",
+        border: "1px solid var(--pk-border)",
+        background: "var(--pk-surface-sunken, var(--pk-surface))",
+        color: "var(--pk-text-strong, var(--pk-text))",
+        fontFamily: "var(--pk-font-family)",
+        fontWeight: 600,
+        fontSize: `calc(${props.size} * 0.45)`,
+        lineHeight: 1,
+      }}
+    >
+      {initial}
+    </span>
   );
+}
+
+/**
+ * The product identity a gate or update screen shows above its title, at `size`: the
+ * integrator's `theme.logo` (`null` for none), else a monogram tile once the product's name is
+ * known, else nothing. Never a Polaris Key mark (UI-KITS §1.6).
+ */
+export function screenLogo(theme: PolarisTheme, size = "4rem"): ReactNode {
+  if (theme.logo !== undefined) return theme.logo;
+  const name = knownProductName(theme);
+  return name ? <MonogramTile name={name} size={size} /> : null;
 }
 
 export interface PoweredByPolarisKeyProps {

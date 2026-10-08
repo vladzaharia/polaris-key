@@ -247,6 +247,27 @@ jobs:
             docs/design/ui-kits/shots
           if-no-files-found: ignore
 
+  # The React drop-in kit in real Chromium (packages/sdk-react/test/browser): every screen at 320,
+  # 390, 768, 1024, 1440 and 2560 px, a phone on its side (844x390), 200 % zoom and a 24 px root
+  # font, in dark and light. No sideways scroll, the main action in the first viewport, every
+  # control at least 24 px, no browser serif, and every piece of text scaling with the root font.
+  # In Playwright's image, like the console job, so the Chromium build is pinned.
+  react-kit:
+    name: React kit (Chromium, responsive)
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter=@polaris-key/react...
+      - run: pnpm exec turbo run build --filter=@polaris-key/react^...
+      - run: pnpm --filter @polaris-key/react test:browser
+
   # P1b-05 Part D: the same runner in Firefox 155.0, the build bundled with playwright 1.63.0 (the
   # engine S-04 measured), in Playwright's own image, which already carries that browser. Firefox
   # refuses to run as root under a $HOME another user owns, and Actions sets HOME=/github/home, so

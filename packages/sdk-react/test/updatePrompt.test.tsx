@@ -170,7 +170,11 @@ describe("UpdatePrompt", () => {
     const adapter = adapterWith(capabilities, (async () =>
       check()) as PolarisBridge["invoke"]);
     const utils = render(
-      <PolarisKeyProvider productSlug="acme" adapter={adapter}>
+      <PolarisKeyProvider
+        productSlug="acme"
+        adapter={adapter}
+        theme={{ copy: { productName: "Acme" } }}
+      >
         <UpdatePrompt {...props} />
       </PolarisKeyProvider>,
     );
@@ -181,7 +185,9 @@ describe("UpdatePrompt", () => {
     const { container, adapter } = renderPrompt(withUpdate, async () => newer);
     const banner = await waitFor(() => within(container).getByRole("status"));
     expect(banner.getAttribute("aria-live")).toBe("polite");
-    expect(banner.textContent).toContain("2.0.0");
+    // update.title "{product} {version}", never a bracketed version or an em-dash run-on.
+    expect(banner.textContent).toContain("Acme 2.0.0");
+    expect(banner.textContent).not.toMatch(/[(—]/);
     // An update is not a blocker: no dialog, and focus stays where the user put it.
     expect(container.querySelector('[role="alertdialog"]')).toBeNull();
     expect(document.activeElement).toBe(document.body);
@@ -422,7 +428,11 @@ describe('UpdatePrompt source="decision" — every v4 action', () => {
     const adapter = adapterWith(withUpdate);
     const decider = vi.fn(async () => checkOf(decision));
     const utils = render(
-      <PolarisKeyProvider productSlug="acme" adapter={adapter}>
+      <PolarisKeyProvider
+        productSlug="acme"
+        adapter={adapter}
+        theme={{ copy: { productName: "Acme" } }}
+      >
         <UpdatePrompt source="decision" decider={decider} {...props} />
       </PolarisKeyProvider>,
     );
@@ -460,7 +470,8 @@ describe('UpdatePrompt source="decision" — every v4 action', () => {
         `[data-polaris-update="${decision.action}"]`,
       );
       expect(banner.getAttribute("role")).toBe("status");
-      expect(banner.textContent).toContain("1.5.0");
+      expect(banner.textContent).toContain("Acme 1.5.0");
+      expect(banner.textContent).not.toMatch(/[(—]/);
       expect(
         container.querySelector("[data-polaris-update-mandatory]"),
       ).toBeNull();

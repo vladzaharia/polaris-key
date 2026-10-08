@@ -152,16 +152,24 @@ Two axes, and they compose — a **transport** entry says how you talk to the co
 - **`<PolarisKeyProvider>`** — the context root: owns the adapter, the gate state, and the
   `--pk-*` theme variables. Everything else must render inside it.
 - **`<LicenseGate>`** (`./license`) — the drop-in status gate above.
-- **`<PolarisLogin>` / `<PolarisLogout>`** (`./identity`) — the sign-in card (OIDC button plus
-  typed license-key entry, each shown only when its service is enabled) and a sign-out button.
+- **`<PolarisLogin>` / `<PolarisLogout>`** (`./identity`) — the sign-in card (Sign in, and a
+  license key behind "Use a license key", each shown only when its service is enabled; titled
+  "Welcome to {product}" once `copy.productName` is set) and a sign-out button.
 - **`<ConfigPanel>`** (`./config`) — a settings panel over the shipped
   `listUserConfig`/`getConfigSource` data layer (one row per document entry, `hidden` ones
   excluded), with per-entry provenance badges and an override affordance on `default`-state
   keys only. It saves an override itself through `config.set` (and offers a reset for one it
   set) wherever `supports("config.local")`; a host that keeps its own overrides passes
   `onOverride`, which takes over the save.
-- **`<DeviceManager>`** (`./license`) — list / rename / disconnect, rendering the
-  `device-management-unsupported` refusal as an explanation rather than an error.
+- **`<DeviceManager>`** (`./license`) — list / rename / remove (with an inline confirm; "Sign out"
+  on this device's row), rendering the `device-management-unsupported` refusal as an
+  explanation rather than an error, and a failed load as a load error with Try again.
+
+`<DeviceManager>` and `<ConfigPanel>` sit in your page: they start at your container's start edge,
+fill it up to 40rem, and keep their border at every width. Pass **`bare`** when you frame the
+panel yourself: it drops the border, background, radius and inline padding, and keeps the title
+and the row dividers.
+
 - **`<UpdatePrompt>`** (`./update`) — a polite banner (or a blocking dialog) over
   `useLatestVersion`, or, with `source="decision"`, over wire v4's signed decision
   (`useUpdateDecision`): one state per action, and a prompt the player cannot dismiss for a
@@ -195,11 +203,13 @@ exposes the aggregates (`busy`, `error`) alongside `busyByService` / `errorBySer
 
 On a device-limit refusal, `PolarisError.manageUrl` carries the customer-portal link that frees a
 seat (WIRE-CONTRACT-V4 §5.3), validated, and only while the product's portal is on. `<PolarisLogin>`
-(and `<LicenseGate>`, which renders it) shows **Replace a device** under the error: it opens the
-link in a new tab with the key fragment on an `/activate` link and `return=` set to `returnUrl`
-when you pass one. Activate again is the "try again". `openManageUrl(url, { key, returnUrl })` and
-the `withManageReturn` / `withManageKey` helpers are exported for a custom screen. The link is
-never an auth failure: nothing is wiped and nothing retries.
+(and `<LicenseGate>`, which keeps a refused key on that card) shows a neutral callout under the
+key field ("Your license is on 3 of 3 devices", "Replace a device in your browser. … continues
+when you're done.") and **Replace a device** as the card's one filled action, focused. It opens
+the link in a new tab with the key fragment on an `/activate` link and `return=` set to
+`returnUrl` when you pass one; when the person comes back to the app, the key is tried again
+once. `openManageUrl(url, { key, returnUrl })` and the `withManageReturn` / `withManageKey`
+helpers are exported for a custom screen. The link is never an auth failure: nothing is wiped.
 
 ## Layered config
 
@@ -466,15 +476,14 @@ without `importBundle` reports bundle import as `bundle-import-unsupported`.
 
 ## Theming
 
-Brand entirely through CSS custom properties (`--pk-*`) — no CSS-in-JS dependency. Pass a
-partial `theme` (tokens + copy + logo) to the Provider. It publishes the variables **twice**: on
-a wrapper element, so two providers can carry different brands without leaking into each other,
-and on `:root`, so anything React portals (a dialog, a toast) still inherits them. You can also
-override any `--pk-*` var from your own stylesheet.
+Brand through the Provider's `theme` (tokens + copy + logo): no CSS-in-JS dependency. The
+Provider publishes the tokens as `--pk-*` custom properties **twice**: on a wrapper element, so
+two providers can carry different brands without leaking into each other, and on `:root`, so
+anything React portals (a dialog, a toast) still inherits them. The `tokens` prop is the
+supported way to change them until UK-05's stylesheet.
 
-The neutral default sets `font-family: inherit`, so the SDK uses your app's font. A bare webview
-that never sets a body font shows the browser's serif default; pass
-`theme={{ tokens: { fontFamily: "system-ui, sans-serif" } }}` there.
+The neutral default sets `font-family: inherit`, so the SDK uses your app's font. With font
+inherit on a page that sets no font, the kit uses system-ui.
 
 **Two brandings.** Polaris Key branding is optional:
 
@@ -506,30 +515,38 @@ that never sets a body font shows the browser's serif default; pass
 >
 ```
 
-- **Scheme.** "system" follows `prefers-color-scheme` live and is dark when the OS states no
-  preference. The wrapper carries `data-theme="dark|light"` and the matching `color-scheme`, so
-  form controls follow. Persisting a user's choice is yours: store it and pass it back.
+- **Scheme.** "system" matches the page the kit sits on. The first ancestor of the Provider that
+  paints a background decides, light or dark by its luminance. On a page that paints none, the
+  kit is dark only when the page opts in to dark (`color-scheme`, or `<meta name="color-scheme">`,
+  includes `dark`) and the OS prefers dark; otherwise light. It re-resolves when the OS
+  preference changes or your app switches theme with a class or `data-theme` on `<html>` or
+  `<body>`. "dark" and "light" pin it. The wrapper carries `data-theme="dark|light"` and the
+  matching `color-scheme`, so form controls follow. Persisting a user's choice is yours.
 - **Tokens.** `neutralDarkTokens`, `neutralLightTokens`, `polarisKeyDarkTokens`,
   `polarisKeyLightTokens`, `defaultTheme` (neutral dark), `lightTheme` (neutral light),
   `polarisKeyTheme` and `highContrastTheme` (AAA text) are exported. Every token maps to one `--pk-*` variable
   (`themeVars`). If you change a colour, keep text at 4.5:1 and control borders and the focus
-  ring at 3:1 against the surfaces.
-- **Marks.** Neutral screens show only your `logo`, if you give one. Under the Polaris Key branding
-  with no `logo`, the gate, activation and sign-in screens show the Polaris Key mark (the Pinned
-  K, without the terminal bit) and update dialogs show the Polaris Key Delivery mark, picked for a
-  dark or light ground from your `background` token.
-- **Layout.** Every blocking screen (loading, sign-in, expired, error, update dialog) is a
-  max-width card centred horizontally and vertically; a card taller than a small screen scrolls
-  from its top. Banners (offline grace, update available) centre their content. Everything
-  works from 320 px wide.
+  ring at 3:1 against the surfaces. A host accent in the dark scheme needs `darkTokens.ring` too
+  for a visible focus ring (the ring defaults to the neutral grey).
+- **Identity.** The screens show the product's identity, never a Polaris Key mark: your `logo`;
+  otherwise, once `copy.productName` is set, a monogram tile of its initial; otherwise nothing.
+- **Copy.** Every default string is a value from the kit and core copy catalogs; any one is
+  overridable through `copy`.
+- **Layout.** A blocking screen is a centred card that never scrolls inside. Below 35rem of
+  window width it goes full-bleed with the title in the upper third and the actions docked at
+  the bottom; below 30rem of height (a phone on its side) it lays out in two columns, the title
+  beside the controls. The dismissible update dialog sits over a scrim with your app visible
+  behind it, as a bottom sheet on a phone. Everything is sized in rem and works from 320 px wide
+  and with a larger default font.
 - **"Powered by Polaris Key".** Off by default under both brandings. `poweredBy: true` (or `"horizontal"` /
   `"stacked"`) adds it to the sign-in card and the device list; `<PoweredByPolarisKey>` places it
   on your about or credits screen. It never renders below its minimum size (compact 232 × 88,
   horizontal 376 × 144, stacked 288 × 336).
-- **Focus and CSP.** Keyboard focus draws a 2 px `--pk-ring` outline on `:focus-visible`. The
-  components style through React's `style` prop, which the browser applies through the CSSOM, and
-  render no `<style>` or `<script>` element, so they need no `'unsafe-inline'` in your
-  Content-Security-Policy.
+- **Focus and CSP.** Keyboard focus draws a 2 px `--pk-ring` outline; a pointer press, and the
+  focus a screen moves to its first action when it opens, draw none. A blocking screen keeps
+  Tab inside and makes the page behind it inert. The components style through React's `style`
+  prop, which the browser applies through the CSSOM, and render no `<style>` or `<script>`
+  element, so they need no `'unsafe-inline'` in your Content-Security-Policy.
 
 ## Develop
 
