@@ -227,6 +227,11 @@ describe("the portal's presentation on hosted copies", () => {
       sha256: H,
       widths: [640, 1280],
     });
+    // The product's own accent (`.pkey/product` presentation) is the tint, as the library's.
+    await db.run(
+      "UPDATE products SET presentation_json = ? WHERE slug = 'tidewater'",
+      JSON.stringify({ accent: "#1F6FEB" }),
+    );
     const s = await signedIn(env, db);
     const { key } = await seedLicenseWithKey(db, "tidewater", {
       id: "lic_new",
@@ -252,15 +257,21 @@ describe("the portal's presentation on hosted copies", () => {
       return ((await res.json()) as { product: Record<string, unknown> })
         .product;
     };
-    // The confirm step draws the art at a library tile's size.
+    // The confirm step draws the art at a library tile's size, in the library's tint.
     const art = {
       slug: "tidewater",
+      tintColor: "#1f6feb",
       iconUrl: `${IMG}/tidewater/a/${A}/${PRESENTATION_WIDTHS.library.icon}.webp`,
       headerUrl: `${IMG}/tidewater/a/${H}/${PRESENTATION_WIDTHS.library.header}.webp`,
     };
     const signedInPreview = await preview("/api/activate/preview", true);
-    expect(signedInPreview).toMatchObject(art);
-    expect(await preview("/api/key/preview", false)).toMatchObject(art);
+    // Signed in, the name is the library's: the listing's display name, not the product row's.
+    expect(signedInPreview).toMatchObject({ ...art, name: "Tidewater" });
+    // Signed out there are no listing hooks, so the product row's name stands.
+    expect(await preview("/api/key/preview", false)).toMatchObject({
+      ...art,
+      name: "tidewater",
+    });
     expect(JSON.stringify(signedInPreview)).not.toContain("githubusercontent");
   });
 

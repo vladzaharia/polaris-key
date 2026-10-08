@@ -11769,6 +11769,7 @@ paths:
                       name: DJDL
                       branding: null
                       developerName: null
+                      tintColor: null
                       iconUrl: null
                       headerUrl: null
                     verdict: addable
@@ -20403,13 +20404,17 @@ components:
       properties:
         product:
           type: object
-          description: The product's public presentation, as the signed-in activate preview shows it.
+          description: >
+            The product's public presentation, as the signed-in activate preview shows it and the
+            library draws it: `name` is the listing's display name, else the product's;
+            `tintColor` is its accent (`null` without one).
           required: [slug, name]
           properties:
             slug: { type: string }
             name: { type: string }
             branding: {}
             developerName: { type: [string, "null"] }
+            tintColor: { type: [string, "null"] }
             iconUrl: { type: [string, "null"] }
             headerUrl: { type: [string, "null"] }
         verdict:

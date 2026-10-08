@@ -305,10 +305,11 @@ async function licenseTerms(
 }
 
 /**
- * The product as a key preview shows it. The developer name and the art come from the same
- * presentation the library draws (`presentationFor`, HA-07): the hosted copies when the product
- * has them, else the media proxy's URLs, sized like a library tile (the confirm step's banner and
- * icon). `null` art when there is none.
+ * The product as a key preview shows it. The name, the developer name, the tint and the art come
+ * from the same presentation the library draws (`presentationFor`, HA-07): the listing's display
+ * name, else the product's; the hosted copies when the product has them, else the media proxy's
+ * URLs, sized like a library tile (the confirm step's banner and icon). `null` art when there is
+ * none, and a `null` tint when the product declares no accent.
  */
 async function productView(
   env: Env,
@@ -324,9 +325,10 @@ async function productView(
     : null;
   return {
     slug: product.slug,
-    name: product.name,
+    name: pres?.name ?? product.name,
     branding: product.branding,
     developerName: pres?.developerName ?? null,
+    tintColor: pres?.tintColor ?? null,
     iconUrl: pres?.iconUrl ?? null,
     headerUrl: pres?.headerUrl ?? null,
   };

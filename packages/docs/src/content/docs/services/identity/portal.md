@@ -438,9 +438,10 @@ not_removable` with `reason` `no_active_key` or `key_claim_off`, and nothing is 
   | `unknown`        | nothing else                                                                               | No such key (or it was replaced), or no such product.                                                                          |
 
   Every answer carries `product` (`null` for `unknown`, so a guessed key never reveals whether a
-  product exists; otherwise `slug`, `name`, `branding`, and `developerName`, `iconUrl` and
-  `headerUrl` from the library's presentation: the hosted copies at a library tile's size, else
-  the `/media/…` URLs) and `keyEntries`: the license's
+  product exists; otherwise `slug`, `branding`, and `name`, `developerName`, `tintColor`,
+  `iconUrl` and `headerUrl` from the library's presentation: the listing's display name, else the
+  product's, and the hosted copies at a library tile's size, else the `/media/…` URLs) and
+  `keyEntries`: the license's
   [key entries](/docs/services/license/activation/#key-entries-identity-products)
   `{ used, limit }` for `addable` and `already_yours` on a product with Identity on, else `null`.
   Nothing is written, so previewing never counts. A refusal never names the other account or the
