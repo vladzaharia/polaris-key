@@ -343,8 +343,8 @@ describe("activateWithKey — POST /<p>/license/activate", () => {
     );
     expect(res).toEqual({
       kind: "error",
-      code: "network",
-      message: "ECONNREFUSED",
+      code: "network-error",
+      message: expect.stringContaining("ECONNREFUSED"),
     });
   });
 });

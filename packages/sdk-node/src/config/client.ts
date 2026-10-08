@@ -196,8 +196,10 @@ export class ConfigClient {
    *
    * Throws `PolarisError`: `service-unavailable` (no Config service, before any request),
    * `bad_request` (a recipe id the router could never match, before any request),
-   * `unauthorized` (no token, or still 401 after the re-acquire), or the Worker's code —
-   * `not_found` for an unknown or unapproved recipe, `rate_limited`, `misconfigured`.
+   * `unauthorized` (no token, or still 401 after the re-acquire), or the one taxonomy
+   * (SP-46): `not_found` for an unknown or unapproved recipe, `rate_limited` with
+   * `retryAfterSeconds`, `server-error` for a 5xx (a `misconfigured` recipe as its `wireCode`),
+   * `network-error` when no answer arrived.
    */
   async mintToken(recipeId: string): Promise<MintedToken> {
     return mintToken(this.ctx, this.tokens, this.minted, recipeId);

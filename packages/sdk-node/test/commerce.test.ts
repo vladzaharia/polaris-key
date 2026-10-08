@@ -49,8 +49,14 @@ describe("commerce", () => {
       ["not-owned", "forbidden"],
       ["attestation-required", "attestation_required"],
       ["refused", "not_found"],
-      ["refused", "unavailable"],
+      // A 5xx is the one taxonomy's server-error (SP-46); the store's own code is kept.
+      ["error", "server-error"],
     ]);
+    expect(kinds[3]).toMatchObject({
+      status: 503,
+      wireCode: "unavailable",
+      reason: "store_unavailable",
+    });
   });
 
   it("claimSteam posts the ticket and syncs so the flag is readable", async () => {

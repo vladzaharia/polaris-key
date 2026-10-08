@@ -448,7 +448,9 @@ describe("the headless views (layer c) name components.json states and catalog k
       }),
     );
     check(activationOutcome({ kind: "unauthorized", code: "unauthorized" }));
-    check(activationOutcome({ kind: "error", code: "network", message: "" }));
+    check(
+      activationOutcome({ kind: "error", code: "network-error", message: "" }),
+    );
   });
   it("covers the hand-off, status, update and devices views", () => {
     for (const s of [

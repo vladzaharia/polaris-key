@@ -36,7 +36,8 @@
       "status": "implemented"
     },
     "core.errors": {
-      "status": "implemented"
+      "status": "implemented",
+      "note": "SP-46: one taxonomy over every network call (src/core/http.ts): no answer is network-error with the failure as cause, 429 rate_limited with retryAfterSeconds, 5xx server-error with status and wireCode, 404 not_found, any other refusal the server's code; the server's message kept. Every exported error class is a PolarisError; activation and registration results print with the device token redacted (test/errorTaxonomy.test.ts)."
     },
     "core.caps": {
       "status": "implemented"

@@ -33,6 +33,7 @@ import {
 } from "@polaris-key/client-core";
 import type { ConfigDoc } from "@polaris-key/protocol/config";
 import type { LicenseDoc } from "@polaris-key/protocol/license";
+import { ErrorCode } from "../constants.generated.js";
 import { fetchLicenseDocument } from "../license/endpoints.js";
 import { fetchConfigDocument } from "../config/fetch.js";
 import type { CacheManager } from "./cache.js";
@@ -48,7 +49,10 @@ export type DocOutcome =
   | { kind: "blocked"; blocked: BlockedState }
   | { kind: "device-cap"; limit?: number; deviceCount?: number }
   | { kind: "skipped" }
-  | { kind: "error" };
+  /** The fetch or the document failed, in the one taxonomy (SP-46, `./http.ts`):
+   *  `network-error` (no answer, status 0), `server-error` (a 5xx), the server's code for any
+   *  other refusal, or `bad_response` for a document that did not verify. */
+  | { kind: "error"; code: string; status?: number };
 
 export interface SyncResult {
   /** True when ANY document's content changed and was applied. */
@@ -254,12 +258,19 @@ async function syncDocument(
       // about the previous one is disturbed. The anti-replay floor `verify` uses is DERIVED
       // from the document currently held, never from an on-disk counter (R4-03).
       const ok = await verify(res.jws, res.etag);
-      if (!ok) return { outcome: { kind: "error" } };
+      if (!ok)
+        return { outcome: { kind: "error", code: ErrorCode.badResponse } };
       cache.markVerified();
       return { outcome: { kind: "applied" } };
     }
     case "error":
-      return { outcome: { kind: "error" } };
+      return {
+        outcome: {
+          kind: "error",
+          code: res.code,
+          ...(res.status > 0 ? { status: res.status } : {}),
+        },
+      };
   }
 }
 

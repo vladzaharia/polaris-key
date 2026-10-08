@@ -291,6 +291,32 @@ sub-client whose service is off. That refusal is the `product` reason and keeps 
 `client.caps()` lists the feature ids `supports()` answers Supported for. Every device report
 sends this list as `caps`, so the console can show what the fleet can do.
 
+## Errors
+
+Every error the SDK throws is a `PolarisError`, so `instanceof PolarisError` catches all of them
+(`UnsupportedError`, `UpdateError`, `PackError`, `InsecureBaseUrlError` and
+`DeviceManagementUnsupportedError` are subclasses). Branch on `code`, a generated `ErrorCode`.
+
+A failed network call reports one of these codes. Most calls throw. Activation, enrolment,
+`devices.register()`, commerce, `sync()` and `discover()` put the code in their result instead.
+
+| What happened                             | `code`                                                          | Also set                                                          |
+| ----------------------------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------- |
+| No answer: offline, refused, the deadline | `network-error`                                                 | `cause`                                                           |
+| 429                                       | `rate_limited`                                                  | `retryAfterSeconds`, from `Retry-After`                           |
+| 5xx                                       | `server-error`                                                  | `status`, `wireCode` (the server's own code), `retryAfterSeconds` |
+| 404                                       | `not_found`                                                     | `status`                                                          |
+| Any other refusal                         | the server's code (`unauthorized`, `download_auth_required`, …) | `status`                                                          |
+| A 2xx the call cannot read                | `bad_response`                                                  |                                                                   |
+
+The message is the server's when it sent one. Two answers keep their contract meaning: a 429 on a
+signed document is the device cap (`sync()` reports `device-cap`), and a 429 on a sign-in poll is
+`slow-down`.
+
+A device token never prints. An `ok` activation or registration result keeps `token` readable,
+but `console.log`, `util.inspect` and `JSON.stringify` show `[redacted]`. The client itself prints
+the same way.
+
 ## `sync()`
 
 One Core pass, in order: trust refresh (Core's own cadence, not a side effect of any document
@@ -339,7 +365,8 @@ CLI prints the link on a device-limit refusal.
 For a host that cannot complete a browser redirect — a CLI over SSH, a daemon, a game on a TV —
 `client.identity` signs in with a device code (RFC 8628). It needs the Identity service
 (`expectedServices` or discovery); with it off, every call throws `service-unavailable` before
-any request.
+any request. When this session's discovery says Identity is on but no sign-in provider is set up,
+`beginSignIn` throws `disabled`, the Worker's own code, also before any request.
 
 ```ts
 const prompt = await client.identity.beginSignIn({
@@ -387,8 +414,9 @@ every API call costs one mint per lifetime. A cached token counts only while the
 holds the device token it was minted with: `deactivate()`, a cleared token or a different sign-in
 drops it. A 401 gets the usual single re-acquire, on the same route a document 401 takes (so a registered device without a licence re-registers), and one retry.
 Failures throw `PolarisError`: `service-unavailable` (Config off) and `bad_request` (an id
-outside `[a-z0-9-]`) before any request, `unauthorized` (no token, or still 401), or the Worker's
-`not_found` / `rate_limited` / `misconfigured`.
+outside `[a-z0-9-]`) before any request, `unauthorized` (no token, or still 401), or one of the
+[error codes](#errors): `not_found` for an unknown recipe, `rate_limited`, or `server-error` (a
+`misconfigured` recipe arrives as its `wireCode`).
 
 ## Layered config precedence
 

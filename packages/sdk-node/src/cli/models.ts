@@ -7,6 +7,7 @@
 //
 // Nothing here touches a terminal, a network or a clock: the flows feed the SDK's answers in.
 
+import { ErrorCode } from "../constants.generated.js";
 import type { LicenseInfo } from "../license/client.js";
 import type { UpdateDecision } from "@polaris-key/protocol/update";
 import type { ActivationResult } from "../license/endpoints.js";
@@ -229,7 +230,7 @@ export function activationOutcome(
   if (r.kind === "refused" || r.kind === "error") {
     const code =
       r.kind === "error"
-        ? r.code === "network"
+        ? r.code === ErrorCode.networkError
           ? "network"
           : "unknown"
         : r.code;

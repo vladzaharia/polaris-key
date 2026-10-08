@@ -65,11 +65,27 @@ describe("activation refusals (§3.1)", () => {
     }
   });
 
-  it("a 5xx is error{server}", () => {
+  it("a 5xx is error{server-error} with the server's code as wireCode (SP-46)", () => {
     expect(activationRefusal(503, {})).toMatchObject({
       kind: "error",
-      code: "server",
+      code: "server-error",
       status: 503,
+    });
+    expect(
+      activationRefusal(500, { error: { code: "misconfigured" } }, "12"),
+    ).toMatchObject({
+      kind: "error",
+      code: "server-error",
+      status: 500,
+      wireCode: "misconfigured",
+      retryAfterSeconds: 12,
+    });
+  });
+
+  it("any 429 is rate-limited, with or without a code (SP-46)", () => {
+    expect(activationRefusal(429, {}, null)).toEqual({
+      kind: "rate-limited",
+      code: "rate_limited",
     });
   });
 

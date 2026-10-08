@@ -25,6 +25,7 @@ import type { ReleaseRecordDoc } from "@polaris-key/protocol/release";
 import type { UpdateDecision } from "@polaris-key/protocol/update";
 import { ErrorCode } from "../constants.generated.js";
 import type { CoreContext } from "../core/context.js";
+import { classifyResponse, errorFrom, transportError } from "../core/http.js";
 import type { TokenManager } from "../core/token.js";
 import type { UpdateClient } from "../update/client.js";
 
@@ -123,10 +124,17 @@ export async function releaseFetch(
       `build ${build.id} names no payload artifact.`,
     );
 
-  // 2. The URL, from discovery.
-  if (update.buildUrl(record.version, build.id) === null)
-    await update.ensureDiscovery();
+  // 2. The URL, from discovery. Discovery that failed for want of an answer is reported as
+  // that failure (`network-error` offline), not as a product without a builds route.
+  const failed =
+    update.buildUrl(record.version, build.id) === null
+      ? await update.ensureDiscovery()
+      : null;
   const url = update.buildUrl(record.version, build.id);
+  if (url === null && failed !== null)
+    throw new PolarisError(failed.code, failed.message, {
+      ...(failed.status > 0 ? { status: failed.status } : {}),
+    });
   if (url === null)
     throw new PolarisError(
       ErrorCode.serviceUnavailable,
@@ -136,7 +144,7 @@ export async function releaseFetch(
   // 3. Download into the part file, resuming.
   const part = `${opts.to}.part`;
   await mkdir(dirname(opts.to), { recursive: true });
-  const f = ctx.fetcher();
+  ctx.fetcher(); // local-only refuses here, before the part file is read or reset
   let have = await stat(part).then(
     (s) => s.size,
     () => 0,
@@ -157,16 +165,12 @@ export async function releaseFetch(
       : {}),
   });
   if (have < payload.size || have === 0) {
-    let res: Response;
-    try {
-      res = await f(url, {
-        headers,
-        ...(opts.signal ? { signal: opts.signal } : {}),
-      });
-    } catch (e) {
-      if (opts.signal?.aborted) throw e;
-      throw new PolarisError(ErrorCode.networkError, (e as Error).message);
-    }
+    // No deadline: a download takes as long as it takes, and the caller's signal cancels it.
+    const res = await ctx.request(
+      url,
+      { headers, signal: opts.signal },
+      "the build download",
+    );
     if (res.status === 416 && have > 0) {
       // The part is already whole; verify it below.
     } else if (res.status === 200 || res.status === 206) {
@@ -178,7 +182,15 @@ export async function releaseFetch(
         if (res.body) {
           const reader = res.body.getReader();
           for (;;) {
-            const { done: end, value } = await reader.read();
+            let chunk: Awaited<ReturnType<typeof reader.read>>;
+            try {
+              chunk = await reader.read();
+            } catch (e) {
+              // The connection dropped mid-body: the part file keeps what arrived.
+              if (opts.signal?.aborted) throw e;
+              throw transportError(e, "the build download");
+            }
+            const { done: end, value } = chunk;
             if (end) break;
             done += value.length;
             if (done > payload.size) {
@@ -193,15 +205,17 @@ export async function releaseFetch(
         await fh.close();
       }
     } else {
-      const body = (await res.json().catch(() => ({}))) as {
-        error?: string | { code?: string };
-      };
-      const code =
-        typeof body.error === "string" ? body.error : body.error?.code;
-      throw new PolarisError(
-        code ??
-          (res.status === 401 ? ErrorCode.unauthorized : ErrorCode.forbidden),
-        `the build download was refused (status ${res.status}).`,
+      // The one taxonomy (SP-46): a gated refusal by its own code (`download_auth_required`),
+      // `not_found` only for a 404, `rate_limited`, `server-error`.
+      const c = await classifyResponse(res);
+      throw errorFrom(
+        c.message === undefined
+          ? {
+              ...c,
+              message: `the build download was refused (status ${res.status}).`,
+            }
+          : c,
+        "the build download",
       );
     }
   }

@@ -11,6 +11,7 @@ import { platform as osPlatform } from "node:os";
 import { PolarisError, canonicalPlatform } from "@polaris-key/client-core";
 import { ErrorCode, Feature } from "../constants.generated.js";
 import type { CoreContext } from "../core/context.js";
+import { readJson, responseError } from "../core/http.js";
 
 /** One downloadable build. */
 export interface DownloadBuild {
@@ -93,30 +94,16 @@ export class DistributionClient {
   /** The download model, optionally for one channel. */
   async downloadModel(opts: { channel?: string } = {}): Promise<DownloadModel> {
     this.ctx.requireService("distribution", Feature.releaseDownload);
-    const f = this.ctx.fetcher();
     const url = new URL(this.ctx.url("distribution/download.json"));
     if (opts.channel) url.searchParams.set("channel", opts.channel);
-    let res: Response;
-    try {
-      res = await f(url.toString(), {
-        headers: this.ctx.headers({ accept: "application/json" }),
-        signal: this.ctx.deadline(),
-      });
-    } catch (e) {
-      throw new PolarisError(ErrorCode.networkError, (e as Error).message);
-    }
-    if (!res.ok) {
-      const body = (await res.json().catch(() => ({}))) as {
-        error?: string | { code?: string };
-      };
-      const code =
-        typeof body.error === "string" ? body.error : body.error?.code;
-      throw new PolarisError(
-        code ?? ErrorCode.notFound,
-        `distribution/download.json failed with status ${res.status}.`,
-      );
-    }
-    const model = (await res.json().catch(() => null)) as DownloadModel | null;
+    const what = "distribution/download.json";
+    const res = await this.ctx.request(
+      url.toString(),
+      { headers: this.ctx.headers({ accept: "application/json" }) },
+      what,
+    );
+    if (!res.ok) throw await responseError(res, what);
+    const model = await readJson<DownloadModel | null>(res, what);
     if (
       !model ||
       !Array.isArray(model.platforms) ||

@@ -218,7 +218,7 @@ export const SCENARIOS: Scenario[] = [
           license: {
             activateWithKey: async () => ({
               kind: "error",
-              code: "network",
+              code: "network-error",
               message: "",
             }),
           },
